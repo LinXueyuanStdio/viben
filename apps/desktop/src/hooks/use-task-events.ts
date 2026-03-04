@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { subscribeTaskEvents } from "@/lib/gateway/modules/tasks";
 import { getGatewayUrl } from "@/lib/gateway";
+import { recordTaskActivity } from "@/stores/task-activity-store";
 import type {
   TaskEvent,
   TaskSSEEvent,
@@ -126,6 +127,10 @@ export function useTaskEvents(
       eventSource.addEventListener("STATE_CHANGED", (e) => {
         try {
           const data = JSON.parse(e.data) as TaskSSEStateChangedEvent;
+          // Record activity for stuck detection
+          if (taskId) {
+            recordTaskActivity(taskId);
+          }
           setLastEvent(data.event);
           onStateChanged?.(data);
         } catch (err) {
@@ -137,6 +142,10 @@ export function useTaskEvents(
       eventSource.addEventListener("TASK_RECOVERED", (e) => {
         try {
           const data = JSON.parse(e.data) as TaskSSERecoveredEvent;
+          // Record activity for stuck detection
+          if (taskId) {
+            recordTaskActivity(taskId);
+          }
           onTaskRecovered?.(data);
         } catch (err) {
           console.error("[useTaskEvents] Failed to parse TASK_RECOVERED event:", err);
@@ -147,6 +156,10 @@ export function useTaskEvents(
       eventSource.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data) as TaskSSEEvent;
+          // Record activity for any valid event
+          if (taskId && (data.type === "STATE_CHANGED" || data.type === "TASK_RECOVERED")) {
+            recordTaskActivity(taskId);
+          }
           if (data.type === "STATE_CHANGED") {
             setLastEvent((data as TaskSSEStateChangedEvent).event);
             onStateChanged?.(data as TaskSSEStateChangedEvent);

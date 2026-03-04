@@ -1,5 +1,42 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getGatewayUrl } from "@/lib/gateway/config";
+
+/**
+ * Gateway Queue Status response type
+ */
+interface GatewayQueueStatus {
+  pending_count: number;
+  running_count: number;
+  max_concurrency: number;
+  tasks?: Array<{
+    id: string;
+    status: string;
+    agent_id: string;
+    created_at: number;
+    position?: number;
+  }>;
+}
+
+/**
+ * Gateway Queue Config response type
+ */
+interface GatewayQueueConfig {
+  max_concurrency: number;
+  default_max_retries: number;
+  persist_debounce_ms: number;
+  shutdown_timeout_ms: number;
+}
+
+/**
+ * Batch enqueue response type
+ */
+interface BatchEnqueueResponse {
+  success: boolean;
+  queued: number;
+  failed: string[];
+  error?: string;
+}
 
 /**
  * Kanban queue settings and archived tasks management store
@@ -7,15 +44,25 @@ import { persist } from "zustand/middleware";
  */
 
 interface KanbanQueueState {
-  // Queue settings
+  // Queue settings (local)
   maxParallelTasks: number; // Default 3, range 1-10
+
+  // Gateway queue status (fetched from API)
+  gatewayQueueStatus: GatewayQueueStatus | null;
+  isLoadingGatewayStatus: boolean;
+  gatewayStatusError: string | null;
 
   // Archived tasks
   showArchived: boolean;
   archivedTaskIds: string[];
 
-  // Actions - Queue settings
+  // Actions - Queue settings (local)
   setMaxParallelTasks: (value: number) => void;
+
+  // Actions - Gateway Queue API
+  fetchGatewayQueueStatus: () => Promise<void>;
+  updateGatewayMaxConcurrency: (value: number) => Promise<void>;
+  queueAllBacklogTasks: (taskIds: string[]) => Promise<BatchEnqueueResponse>;
 
   // Actions - Archived tasks
   toggleShowArchived: () => void;
@@ -35,14 +82,109 @@ export const useKanbanQueueStore = create<KanbanQueueState>()(
     (set, get) => ({
       // Initial state
       maxParallelTasks: 3,
+      gatewayQueueStatus: null,
+      isLoadingGatewayStatus: false,
+      gatewayStatusError: null,
       showArchived: false,
       archivedTaskIds: [],
 
-      // Queue settings
+      // Queue settings (local)
       setMaxParallelTasks: (value) => {
         // Validate range 1-10
         const clampedValue = Math.max(1, Math.min(10, value));
         set({ maxParallelTasks: clampedValue });
+      },
+
+      // Gateway Queue API
+      fetchGatewayQueueStatus: async () => {
+        set({ isLoadingGatewayStatus: true, gatewayStatusError: null });
+        try {
+          const gatewayUrl = getGatewayUrl();
+          const response = await fetch(`${gatewayUrl}/api/queue/status`);
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch queue status: ${response.status}`);
+          }
+
+          const data: GatewayQueueStatus = await response.json();
+          set({
+            gatewayQueueStatus: data,
+            isLoadingGatewayStatus: false,
+            // Sync local maxParallelTasks with Gateway max_concurrency
+            maxParallelTasks: data.max_concurrency,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to fetch queue status";
+          set({
+            gatewayStatusError: message,
+            isLoadingGatewayStatus: false,
+          });
+          console.error("[KanbanQueueStore] Failed to fetch gateway queue status:", error);
+        }
+      },
+
+      updateGatewayMaxConcurrency: async (value) => {
+        const clampedValue = Math.max(1, Math.min(10, value));
+
+        try {
+          const gatewayUrl = getGatewayUrl();
+          const response = await fetch(`${gatewayUrl}/api/queue/config`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ max_concurrency: clampedValue }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to update queue config: ${response.status}`);
+          }
+
+          const config: GatewayQueueConfig = await response.json();
+
+          // Update both local and gateway status
+          set({
+            maxParallelTasks: config.max_concurrency,
+            gatewayQueueStatus: get().gatewayQueueStatus
+              ? { ...get().gatewayQueueStatus!, max_concurrency: config.max_concurrency }
+              : null,
+          });
+
+          // Refresh full status
+          await get().fetchGatewayQueueStatus();
+        } catch (error) {
+          console.error("[KanbanQueueStore] Failed to update gateway max concurrency:", error);
+          // Still update local value for UI feedback
+          set({ maxParallelTasks: clampedValue });
+          throw error;
+        }
+      },
+
+      queueAllBacklogTasks: async (taskIds) => {
+        try {
+          const gatewayUrl = getGatewayUrl();
+          const response = await fetch(`${gatewayUrl}/api/queue/enqueue-batch`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ task_ids: taskIds }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to batch enqueue: ${response.status}`);
+          }
+
+          const result: BatchEnqueueResponse = await response.json();
+
+          // Refresh queue status after batch operation
+          await get().fetchGatewayQueueStatus();
+
+          return result;
+        } catch (error) {
+          console.error("[KanbanQueueStore] Failed to batch enqueue tasks:", error);
+          throw error;
+        }
       },
 
       // Archived tasks
@@ -107,5 +249,9 @@ export function useWorkspaceKanbanQueue(_workspacePath: string | undefined) {
     ...store,
     // Computed values
     archivedCount: store.archivedTaskIds.length,
+    // Gateway status shortcuts
+    gatewayRunningCount: store.gatewayQueueStatus?.running_count ?? 0,
+    gatewayPendingCount: store.gatewayQueueStatus?.pending_count ?? 0,
+    gatewayMaxConcurrency: store.gatewayQueueStatus?.max_concurrency ?? store.maxParallelTasks,
   };
 }

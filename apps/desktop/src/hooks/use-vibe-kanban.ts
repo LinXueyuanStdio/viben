@@ -3,6 +3,7 @@
  * Uses workspace_path for filtering tasks
  */
 
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTasks,
@@ -17,6 +18,7 @@ import {
   type UpdateTaskRequest,
   type TaskStatus,
 } from "@/lib/vibe-kanban";
+import { recordTaskActivity } from "@/stores/task-activity-store";
 
 // Query keys
 export const vibeKanbanKeys = {
@@ -50,6 +52,18 @@ export function useVibeKanbanTasks(workspacePath: string | undefined) {
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 10 * 1000, // Poll every 10 seconds for updates
   });
+
+  // Record activity for running tasks when data is refreshed
+  // This helps prevent false stuck detection when polling updates
+  useEffect(() => {
+    if (query.data) {
+      for (const task of query.data) {
+        if (task.has_in_progress_attempt) {
+          recordTaskActivity(task.id);
+        }
+      }
+    }
+  }, [query.data]);
 
   return {
     data: query.data,

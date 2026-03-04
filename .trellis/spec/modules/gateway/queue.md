@@ -11,9 +11,11 @@
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/api/queue/enqueue` | 提交任务到队列 |
+| POST | `/api/queue/enqueue-batch` | 批量提交任务到队列 |
 | GET | `/api/queue/status` | 获取队列整体状态 |
 | GET | `/api/queue/tasks` | 获取任务列表（支持状态过滤） |
 | GET | `/api/queue/tasks/:id` | 获取单个任务详情 |
+| GET | `/api/queue/tasks/:id/running` | 检查任务进程是否运行中 |
 | GET | `/api/queue/tasks/:id/stream` | 任务输出流（SSE） |
 | DELETE | `/api/queue/tasks/:id` | 取消/删除任务 |
 | PUT | `/api/queue/config` | 更新队列配置 |
@@ -66,6 +68,42 @@
   "status": "pending"
 }
 ```
+
+---
+
+### POST /api/queue/enqueue-batch
+
+批量提交任务到队列。用于 "Queue All" 功能，将多个任务从 Backlog 移到 Queue。
+
+**请求体**:
+
+```json
+{
+  "task_ids": ["task-1", "task-2", "task-3"]
+}
+```
+
+**字段说明**:
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| task_ids | string[] | Yes | Kanban 任务 ID 列表 |
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "queued": 3,
+  "failed": []
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | boolean | 是否全部成功 |
+| queued | number | 成功入队数量 |
+| failed | string[] | 失败的任务 ID 列表 |
 
 ---
 
@@ -155,6 +193,41 @@
   "max_retries": 3,
   "created_at": 1709123456789,
   "started_at": 1709123456800
+}
+```
+
+---
+
+### GET /api/queue/tasks/:id/running
+
+检查任务进程是否实际运行中。用于卡住任务检测，验证 "running" 状态的任务进程是否还活着。
+
+**响应**:
+
+```json
+{
+  "success": true,
+  "data": {
+    "task_id": "task_1709123456789_abc123",
+    "running": true,
+    "status": "running"
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | boolean | 请求是否成功 |
+| data.task_id | string | 任务 ID |
+| data.running | boolean | 进程是否正在执行 |
+| data.status | string | 任务队列状态 |
+
+**错误响应** (404):
+
+```json
+{
+  "success": false,
+  "error": "Task not found: task_xxx"
 }
 ```
 

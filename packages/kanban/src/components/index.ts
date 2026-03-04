@@ -167,4 +167,4 @@ export type { ColumnConfig } from "./board-settings-types";
 export { COLUMN_COLORS } from "./board-settings-types";
 
 export { BoardSettingsDialog } from "./board-settings-dialog";
-export type { BoardSettingsDialogProps } from "./board-settings-dialog";
+export type { BoardSettingsDialogProps, BoardSettingsDialogTranslations } from "./board-settings-dialog";

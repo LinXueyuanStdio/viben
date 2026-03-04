@@ -161,6 +161,7 @@ export {
   COLUMN_COLORS,
   BoardSettingsDialog,
   type BoardSettingsDialogProps,
+  type BoardSettingsDialogTranslations,
 } from "./components";
 
 // Hooks

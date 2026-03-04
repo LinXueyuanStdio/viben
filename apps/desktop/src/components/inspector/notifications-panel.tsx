@@ -153,7 +153,9 @@ export function NotificationsPanel({
         {filteredNotifications.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
             <Info className="h-4 w-4 mr-2" />
-            {t("inspector.noNotifications", { type: activeFilter === "all" ? "" : activeFilter })}
+            {activeFilter === "all"
+              ? t("inspector.noNotifications_all", "No notifications")
+              : t("inspector.noNotifications", { type: activeFilter })}
           </div>
         ) : (
           <div className="divide-y divide-border">

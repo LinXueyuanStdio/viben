@@ -819,7 +819,7 @@ export function WorkspaceChatPage() {
     setWorkspacePath: setGroupChatWorkspacePath,
   } = useGroupChat(selectedGroupChatId || undefined, selectedGroupSessionId || undefined, {
     userId: "user-1", // TODO: Get from auth context
-    userDisplayName: "User",
+    userDisplayName: t("common.you"),
     workspacePath: workspace?.path,
     autoConnect: true,
     notificationCallbacks: {

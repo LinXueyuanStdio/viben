@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code Token 用量统计报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .stat-value.primary { color: var(--primary-light); }
+        .stat-value.secondary { color: var(--secondary); }
+        .stat-value.success { color: var(--success); }
+        .stat-value.danger { color: var(--danger); }
+
+        .stat-detail {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+            display: inline-block;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+
+        .model-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .model-table th,
+        .model-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .model-table th {
+            background: var(--bg-card-hover);
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .model-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .model-table tr:hover td {
+            background: var(--bg-card-hover);
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: var(--primary-light);
+        }
+
+        .token-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .token-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 4px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+
+        .cost-breakdown {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .cost-item {
+            background: var(--bg-card-hover);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .cost-item strong {
+            color: var(--secondary);
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(245, 158, 11, 0.1));
+            border: 1px solid var(--primary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .highlight-title {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-light);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Claude Code Token 用量统计报告</h1>
+            <p class="subtitle">统计周期: 2026-01-01 至 2026-03-03 | 生成时间: 2026-03-04</p>
+        </header>
+
+        <div class="highlight-box">
+            <div class="highlight-title">总体概览</div>
+            <p>您在过去 63 天内使用 Claude Code 进行了 <strong>728</strong> 个会话，发送了 <strong>284,797</strong> 条消息，消耗了约 <strong>64.3 亿</strong> tokens。</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">总会话数</div>
+                <div class="stat-value primary">728</div>
+                <div class="stat-detail">平均每天 11.6 个会话</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">总消息数</div>
+                <div class="stat-value secondary">284,797</div>
+                <div class="stat-detail">平均每会话 391 条消息</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">总 Token 用量</div>
+                <div class="stat-value success">6.43B</div>
+                <div class="stat-detail">64.3 亿 tokens (含缓存)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">总工具调用</div>
+                <div class="stat-value danger">43,755</div>
+                <div class="stat-detail">平均每会话 60 次调用</div>
+            </div>
+        </div>
+
+        <section class="section">
+            <h2 class="section-title">模型用量明细</h2>
+            <div style="overflow-x: auto;">
+                <table class="model-table">
+                    <thead>
+                        <tr>
+                            <th>模型</th>
+                            <th>输入 Tokens</th>
+                            <th>输出 Tokens</th>
+                            <th>缓存读取</th>
+                            <th>缓存创建</th>
+                            <th>总计</th>
+                            <th>占比</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="model-name">claude-opus-4-5-20251101</span></td>
+                            <td>5,971,840</td>
+                            <td>3,728,812</td>
+                            <td>5,546,324,046</td>
+                            <td>547,134,358</td>
+                            <td>6,103,159,056</td>
+                            <td>
+                                94.87%
+                                <div class="token-bar"><div class="token-bar-fill" style="width: 94.87%"></div></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="model-name">claude-sonnet-4-5-20250929</span></td>
+                            <td>282,141</td>
+                            <td>47,297</td>
+                            <td>283,986,024</td>
+                            <td>56,335,593</td>
+                            <td>340,651,055</td>
+                            <td>
+                                5.30%
+                                <div class="token-bar"><div class="token-bar-fill" style="width: 5.30%"></div></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="model-name">claude-sonnet-4-20250514</span></td>
+                            <td>26</td>
+                            <td>188</td>
+                            <td>70,691</td>
+                            <td>101,911</td>
+                            <td>172,816</td>
+                            <td>
+                                0.003%
+                                <div class="token-bar"><div class="token-bar-fill" style="width: 0.003%"></div></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="model-name">gpt-5</span></td>
+                            <td>35,700</td>
+                            <td>740</td>
+                            <td>0</td>
+                            <td>0</td>
+                            <td>36,440</td>
+                            <td>
+                                0.001%
+                                <div class="token-bar"><div class="token-bar-fill" style="width: 0.001%"></div></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">估算成本分析</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Opus 4.5 估算成本</div>
+                    <div class="stat-value danger">$1,093.27</div>
+                    <div class="stat-detail">
+                        输入: $89.58 | 输出: $559.32 | 缓存读: $416.15 | 缓存写: $28.22
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Sonnet 4.5 估算成本</div>
+                    <div class="stat-value secondary">$52.66</div>
+                    <div class="stat-detail">
+                        输入: $0.85 | 输出: $0.71 | 缓存读: $7.10 | 缓存写: $44.00
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">GPT-5 估算成本</div>
+                    <div class="stat-value primary">$0.54</div>
+                    <div class="stat-detail">
+                        输入: $0.54 (按 $15/1M 估算)
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">总估算成本</div>
+                    <div class="stat-value success">$1,146.47</div>
+                    <div class="stat-detail">
+                        平均每天 $18.20 | 平均每会话 $1.57
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <p style="color: var(--text-muted); font-size: 0.875rem;">
+                    * 成本按 Anthropic 官方定价估算: Opus 输入 $15/1M, 输出 $75/1M, 缓存读 $0.075/1M, 缓存写 $0.05155/1M;
+                    Sonnet 输入 $3/1M, 输出 $15/1M, 缓存读 $0.025/1M, 缓存写 $0.78/1M
+                </p>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">每日活动趋势</h2>
+            <div class="chart-container">
+                <div class="chart-title">每日消息数与 Token 用量</div>
+                <div class="chart-wrapper">
+                    <canvas id="dailyActivityChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <div class="two-col">
+            <section class="section">
+                <h2 class="section-title">每日模型 Token 用量</h2>
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="dailyModelTokensChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">活动时段分布</h2>
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="section">
+            <h2 class="section-title">模型用量占比</h2>
+            <div class="two-col">
+                <div class="chart-container">
+                    <div class="chart-title">按输出 Token 计算</div>
+                    <div class="chart-wrapper">
+                        <canvas id="modelPieChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">按总 Token 计算 (含缓存)</div>
+                    <div class="chart-wrapper">
+                        <canvas id="totalTokenPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">会话统计</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">最长会话</div>
+                    <div class="stat-value primary">1,238</div>
+                    <div class="stat-detail">消息数 | 持续 7 天</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">首次使用</div>
+                    <div class="stat-value secondary">2026-01-01</div>
+                    <div class="stat-detail">20:00:25 UTC</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">最活跃日期</div>
+                    <div class="stat-value success">2026-03-03</div>
+                    <div class="stat-detail">29,467 消息 | 99 会话</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">高峰活动时段</div>
+                    <div class="stat-value danger">10:00</div>
+                    <div class="stat-detail">77 个会话在此时段开始</div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>数据来源: ~/.claude/stats-cache.json | 报告生成于 2026-03-04</p>
+            <p style="margin-top: 0.5rem;">Claude Code Token Usage Report - Made with Claude Code</p>
+        </footer>
+    </div>
+
+    <script>
+        // Daily Activity Data
+        const dailyActivity = [
+            { date: "2026-01-01", messageCount: 3, sessionCount: 1, toolCallCount: 0 },
+            { date: "2026-01-05", messageCount: 185, sessionCount: 12, toolCallCount: 16 },
+            { date: "2026-01-07", messageCount: 43, sessionCount: 2, toolCallCount: 17 },
+            { date: "2026-01-09", messageCount: 6, sessionCount: 1, toolCallCount: 0 },
+            { date: "2026-01-11", messageCount: 3, sessionCount: 1, toolCallCount: 0 },
+            { date: "2026-01-15", messageCount: 7, sessionCount: 1, toolCallCount: 0 },
+            { date: "2026-01-25", messageCount: 1238, sessionCount: 1, toolCallCount: 243 },
+            { date: "2026-01-26", messageCount: 2103, sessionCount: 2, toolCallCount: 450 },
+            { date: "2026-01-28", messageCount: 1795, sessionCount: 14, toolCallCount: 270 },
+            { date: "2026-01-29", messageCount: 186, sessionCount: 1, toolCallCount: 28 },
+            { date: "2026-02-01", messageCount: 11029, sessionCount: 19, toolCallCount: 2049 },
+            { date: "2026-02-02", messageCount: 3364, sessionCount: 6, toolCallCount: 477 },
+            { date: "2026-02-03", messageCount: 3580, sessionCount: 8, toolCallCount: 339 },
+            { date: "2026-02-04", messageCount: 18202, sessionCount: 22, toolCallCount: 2497 },
+            { date: "2026-02-05", messageCount: 9547, sessionCount: 15, toolCallCount: 1157 },
+            { date: "2026-02-06", messageCount: 17607, sessionCount: 34, toolCallCount: 2270 },
+            { date: "2026-02-07", messageCount: 19919, sessionCount: 35, toolCallCount: 2827 },
+            { date: "2026-02-08", messageCount: 23807, sessionCount: 44, toolCallCount: 3092 },
+            { date: "2026-02-09", messageCount: 24993, sessionCount: 32, toolCallCount: 2191 },
+            { date: "2026-02-10", messageCount: 20283, sessionCount: 14, toolCallCount: 2788 },
+            { date: "2026-02-11", messageCount: 2450, sessionCount: 7, toolCallCount: 507 },
+            { date: "2026-02-12", messageCount: 15765, sessionCount: 26, toolCallCount: 1914 },
+            { date: "2026-02-13", messageCount: 12350, sessionCount: 59, toolCallCount: 2253 },
+            { date: "2026-02-14", messageCount: 9884, sessionCount: 57, toolCallCount: 1711 },
+            { date: "2026-02-15", messageCount: 8, sessionCount: 1, toolCallCount: 0 },
+            { date: "2026-02-24", messageCount: 9116, sessionCount: 23, toolCallCount: 1600 },
+            { date: "2026-02-25", messageCount: 6431, sessionCount: 24, toolCallCount: 1332 },
+            { date: "2026-02-26", messageCount: 8794, sessionCount: 43, toolCallCount: 1541 },
+            { date: "2026-02-27", messageCount: 10431, sessionCount: 44, toolCallCount: 1993 },
+            { date: "2026-02-28", messageCount: 18164, sessionCount: 62, toolCallCount: 2836 },
+            { date: "2026-03-01", messageCount: 9, sessionCount: 2, toolCallCount: 1 },
+            { date: "2026-03-02", messageCount: 4028, sessionCount: 16, toolCallCount: 904 },
+            { date: "2026-03-03", messageCount: 29467, sessionCount: 99, toolCallCount: 4474 }
+        ];
+
+        // Daily Model Tokens Data
+        const dailyModelTokens = [
+            { date: "2026-01-05", "gpt-5": 36440, "claude-sonnet-4-5-20250929": 75491 },
+            { date: "2026-01-07", "claude-opus-4-5-20251101": 8179 },
+            { date: "2026-01-25", "claude-opus-4-5-20251101": 136371, "claude-sonnet-4-5-20250929": 765 },
+            { date: "2026-01-26", "claude-opus-4-5-20251101": 616, "claude-sonnet-4-5-20250929": 13201 },
+            { date: "2026-01-28", "claude-opus-4-5-20251101": 57091, "claude-sonnet-4-5-20250929": 52788 },
+            { date: "2026-01-29", "claude-sonnet-4-5-20250929": 2326 },
+            { date: "2026-02-01", "claude-sonnet-4-5-20250929": 115352, "claude-opus-4-5-20251101": 70813 },
+            { date: "2026-02-02", "claude-sonnet-4-5-20250929": 13162, "claude-opus-4-5-20251101": 18173 },
+            { date: "2026-02-03", "claude-opus-4-5-20251101": 58136, "claude-sonnet-4-5-20250929": 911 },
+            { date: "2026-02-04", "claude-sonnet-4-5-20250929": 14127, "claude-opus-4-5-20251101": 242682 },
+            { date: "2026-02-05", "claude-opus-4-5-20251101": 87344, "claude-sonnet-4-5-20250929": 4222 },
+            { date: "2026-02-06", "claude-opus-4-5-20251101": 149344, "claude-sonnet-4-5-20250929": 9443 },
+            { date: "2026-02-07", "claude-sonnet-4-5-20250929": 8443, "claude-opus-4-5-20251101": 1365300 },
+            { date: "2026-02-08", "claude-sonnet-4-5-20250929": 756, "claude-opus-4-5-20251101": 1497226 },
+            { date: "2026-02-09", "claude-sonnet-4-5-20250929": 733, "claude-opus-4-5-20251101": 888669 },
+            { date: "2026-02-10", "claude-opus-4-5-20251101": 262269 },
+            { date: "2026-02-11", "claude-opus-4-5-20251101": 120380 },
+            { date: "2026-02-12", "claude-opus-4-5-20251101": 1068019 },
+            { date: "2026-02-13", "claude-opus-4-5-20251101": 363803, "claude-sonnet-4-5-20250929": 72 },
+            { date: "2026-02-14", "claude-opus-4-5-20251101": 364830 },
+            { date: "2026-02-24", "claude-opus-4-5-20251101": 129849 },
+            { date: "2026-02-25", "claude-sonnet-4-20250514": 4, "claude-opus-4-5-20251101": 280095 },
+            { date: "2026-02-26", "claude-opus-4-5-20251101": 197315, "claude-sonnet-4-5-20250929": 1429 },
+            { date: "2026-02-27", "claude-sonnet-4-20250514": 210, "claude-opus-4-5-20251101": 247148, "claude-sonnet-4-5-20250929": 15856 },
+            { date: "2026-02-28", "claude-sonnet-4-5-20250929": 4, "claude-opus-4-5-20251101": 647119 },
+            { date: "2026-03-01", "claude-sonnet-4-5-20250929": 19 },
+            { date: "2026-03-02", "claude-sonnet-4-5-20250929": 305, "claude-opus-4-5-20251101": 73749 },
+            { date: "2026-03-03", "claude-opus-4-5-20251101": 1366132, "claude-sonnet-4-5-20250929": 33 }
+        ];
+
+        // Hour counts
+        const hourCounts = {
+            0: 30, 1: 40, 2: 26, 3: 11, 4: 2, 5: 1,
+            9: 19, 10: 77, 11: 31, 12: 16, 13: 36, 14: 50,
+            15: 52, 16: 61, 17: 47, 18: 38, 19: 50, 20: 65,
+            21: 26, 22: 15, 23: 35
+        };
+
+        // Chart.js configuration
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+
+        // Daily Activity Chart
+        new Chart(document.getElementById('dailyActivityChart'), {
+            type: 'bar',
+            data: {
+                labels: dailyActivity.map(d => d.date.slice(5)),
+                datasets: [
+                    {
+                        label: '消息数',
+                        data: dailyActivity.map(d => d.messageCount),
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '工具调用',
+                        data: dailyActivity.map(d => d.toolCallCount),
+                        backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                        borderColor: '#f59e0b',
+                        borderWidth: 1,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: '会话数',
+                        data: dailyActivity.map(d => d.sessionCount),
+                        type: 'line',
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: '消息数 / 工具调用' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: '会话数' },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
+
+        // Daily Model Tokens Chart
+        const allDates = dailyModelTokens.map(d => d.date.slice(5));
+        const opusData = dailyModelTokens.map(d => (d["claude-opus-4-5-20251101"] || 0) / 1000);
+        const sonnetData = dailyModelTokens.map(d => (d["claude-sonnet-4-5-20250929"] || 0) / 1000);
+
+        new Chart(document.getElementById('dailyModelTokensChart'), {
+            type: 'bar',
+            data: {
+                labels: allDates,
+                datasets: [
+                    {
+                        label: 'Opus 4.5 (K)',
+                        data: opusData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                        borderColor: '#ef4444',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Sonnet 4.5 (K)',
+                        data: sonnetData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: {
+                        stacked: true,
+                        title: { display: true, text: 'Tokens (K)' }
+                    }
+                }
+            }
+        });
+
+        // Hourly Activity Chart
+        const hours = Array.from({length: 24}, (_, i) => i);
+        const hourData = hours.map(h => hourCounts[h] || 0);
+
+        new Chart(document.getElementById('hourlyChart'), {
+            type: 'bar',
+            data: {
+                labels: hours.map(h => `${h}:00`),
+                datasets: [{
+                    label: '会话数',
+                    data: hourData,
+                    backgroundColor: hours.map(h => {
+                        if (h >= 9 && h <= 18) return 'rgba(16, 185, 129, 0.8)';
+                        if (h >= 19 || h <= 2) return 'rgba(99, 102, 241, 0.8)';
+                        return 'rgba(100, 116, 139, 0.8)';
+                    }),
+                    borderWidth: 0,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        title: { display: true, text: '会话数' }
+                    }
+                }
+            }
+        });
+
+        // Model Output Token Pie Chart
+        new Chart(document.getElementById('modelPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Opus 4.5', 'Sonnet 4.5', 'Sonnet 4', 'GPT-5'],
+                datasets: [{
+                    data: [3728812, 47297, 188, 740],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(99, 102, 241, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(16, 185, 129, 0.8)'
+                    ],
+                    borderColor: '#1e293b',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Total Token Pie Chart
+        new Chart(document.getElementById('totalTokenPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Opus 4.5', 'Sonnet 4.5', 'Sonnet 4', 'GPT-5'],
+                datasets: [{
+                    data: [6103159056, 340651055, 172816, 36440],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(99, 102, 241, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(16, 185, 129, 0.8)'
+                    ],
+                    borderColor: '#1e293b',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -684,6 +684,19 @@ export class TaskQueueManager extends EventEmitter {
 
     return task;
   }
+
+  /**
+   * Check if a task is currently executing
+   *
+   * This checks the actual worker process, not just the queue status.
+   * Useful for validating if a "running" task's process is still alive.
+   *
+   * @param taskId - The task ID to check
+   * @returns True if the task is actively executing
+   */
+  isTaskExecuting(taskId: string): boolean {
+    return this.worker.isExecuting(taskId);
+  }
 }
 
 // Re-export types

@@ -156,6 +156,7 @@ function LogEntryItem({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   const hasDetails = !!entry.details;
 
   return (
@@ -210,7 +211,7 @@ function LogEntryItem({
                     isExpanded && "rotate-90"
                   )}
                 />
-                {isExpanded ? "Hide details" : "Show details"}
+                {isExpanded ? t("workspace.logsTab.hideDetails", "Hide details") : t("workspace.logsTab.showDetails", "Show details")}
               </Button>
             </Collapsible.Trigger>
             <Collapsible.Content>

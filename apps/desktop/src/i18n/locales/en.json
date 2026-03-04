@@ -3,6 +3,7 @@
     "loading": "Loading...",
     "error": "Error",
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
     "deleting": "Deleting...",
@@ -1466,6 +1467,7 @@
     "clearAll": "Clear All",
     "all": "All",
     "noNotifications": "No {{type}} notifications",
+    "noNotifications_all": "No notifications",
     "searchTools": "Search tools...",
     "noToolsFound": "No tools match your search",
     "selectTool": "Select a tool from the list",
@@ -1643,6 +1645,7 @@
     "updated": "Updated",
     "subscribe": "Subscribe to updates",
     "unsubscribe": "Unsubscribe from updates",
+    "required": "required",
     "customHeaders": {
       "title": "Custom Headers",
       "titleJson": "Custom Headers (JSON)",
@@ -2139,7 +2142,8 @@
       "btnBack": "Back",
       "btnCreate": "Create",
       "btnContinueAdd": "Continue Adding",
-      "btnGoToWorkspace": "Go to Workspace"
+      "btnGoToWorkspace": "Go to Workspace",
+      "detectFailed": "Failed to detect folder status"
     },
     "global": "Global",
     "custom": "Custom",
@@ -2321,6 +2325,19 @@
     "runAgent": "Run",
     "running": "Running",
     "failed": "Failed",
+    "queueAll": "Queue All",
+    "queueAllSuccess": "Queued {{count}} tasks",
+    "archiveAll": "Archive All",
+    "archiveAllSuccess": "Archived {{count}} tasks",
+    "taskArchived": "Task archived",
+    "taskStopped": "Task stopped",
+    "taskRecovered": "Task recovered and restarted",
+    "taskCreated": "Task created successfully",
+    "taskCreateFailed": "Failed to create task: {{message}}",
+    "invalidTransition": "Cannot move task from {{from}} to {{to}}",
+    "capacityIndicator": "{{current}} of {{max}} parallel tasks",
+    "showArchived": "Show Archived ({{count}})",
+    "hideArchived": "Hide Archived",
     "idle": "Idle",
     "agent": "Agent",
     "status": "Status",
@@ -2347,7 +2364,9 @@
       "completed": "{{completed}} of {{total}} completed",
       "noSubtasks": "No subtasks defined",
       "subtasksWillAppear": "Implementation subtasks will appear here after planning",
-      "files": "file(s)"
+      "files": "file(s)",
+      "statusInProgress": "In Progress",
+      "statusFailed": "Failed"
     },
     "prdTab": {
       "title": "PRD",
@@ -2367,7 +2386,9 @@
       "running": "Running",
       "complete": "Complete",
       "failed": "Failed",
-      "entries": "entries"
+      "entries": "entries",
+      "hideDetails": "Hide details",
+      "showDetails": "Show details"
     },
     "filesTab": {
       "title": "Files",
@@ -2383,6 +2404,36 @@
     "viewMode": {
       "kanban": "Kanban",
       "list": "List"
+    },
+    "boardSettings": "Board Settings",
+    "boardSettingsDialog": {
+      "title": "Board Settings",
+      "description": "Drag to reorder columns. Double-click to rename. Toggle visibility to show/hide columns.",
+      "doubleClickToEdit": "Double-click to edit",
+      "changeColor": "Change color",
+      "deleteColumn": "Delete column",
+      "noColumns": "No columns configured",
+      "saveChanges": "Save Changes"
+    },
+    "queueSettings": "Queue Settings",
+    "queueSettingsDialog": {
+      "title": "Queue Settings",
+      "description": "Configure how many tasks can run in parallel.",
+      "maxParallel": "Max Parallel Tasks",
+      "hint": "Tasks will automatically move from Queue to In Progress when capacity is available.",
+      "errorNaN": "Please enter a valid number",
+      "errorMin": "Minimum value is 1",
+      "errorMax": "Maximum value is 10"
+    },
+    "colors": {
+      "gray": "Gray",
+      "blue": "Blue",
+      "yellow": "Yellow",
+      "green": "Green",
+      "red": "Red",
+      "purple": "Purple",
+      "orange": "Orange",
+      "cyan": "Cyan"
     },
     "commandPalette": {
       "placeholder": "Search commands...",
@@ -2704,6 +2755,21 @@
     "noArtifacts": "No artifacts yet",
     "noFiles": "No working files",
     "noTools": "No tools used yet",
+    "unknownTool": "Unknown Tool",
+    "agentCompleted": "Agent completed successfully.",
+    "agentFailed": "Agent execution failed.",
+    "activity": {
+      "runningCommand": "Running command...",
+      "searching": "Searching...",
+      "findingFiles": "Finding files...",
+      "fetchingPage": "Fetching page...",
+      "runningSubtask": "Running subtask...",
+      "readingFile": "Reading {{file}}...",
+      "writingFile": "Writing {{file}}...",
+      "editingFile": "Editing {{file}}...",
+      "searchingWeb": "Searching web...",
+      "runningTool": "Running {{tool}}..."
+    },
     "sidebar.workspace": "Workspace",
     "sidebar.outputFolder": "Output Folder",
     "sidebar.externalFolders": "External Folders",
@@ -3482,7 +3548,10 @@
     "responseBody": "Response Body",
     "noInputData": "No input data",
     "noOutputData": "No output data",
-    "url": "URL"
+    "url": "URL",
+    "loadDatesFailed": "Failed to load dates",
+    "loadTracesFailed": "Failed to load traces",
+    "loadTraceFailed": "Failed to load trace"
   },
   "errors": {
     "github": {

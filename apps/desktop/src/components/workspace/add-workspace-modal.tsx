@@ -68,7 +68,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
       const response = await fetch(`${client["baseUrl"]}/api/workspaces/detect?path=${encodeURIComponent(path)}`);
 
       if (!response.ok) {
-        throw new Error("Failed to detect folder status");
+        throw new Error(t("workspace.addModal.detectFailed"));
       }
 
       const data = await response.json();
@@ -86,7 +86,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
         folderName: path.split("/").pop() || "",
       };
     }
-  }, []);
+  }, [t]);
 
   // Handle method selection
   const handleMethodSelect = async (selectedMethod: CreationMethod) => {

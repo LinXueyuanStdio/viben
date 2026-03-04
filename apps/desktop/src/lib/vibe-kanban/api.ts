@@ -174,5 +174,47 @@ export async function updateTaskStatus(
   return updateTask(taskId, { status });
 }
 
+/**
+ * Response from the task running check endpoint
+ */
+interface TaskRunningResponse {
+  success: boolean;
+  data?: {
+    task_id: string;
+    running: boolean;
+    status: string;
+  };
+  error?: string;
+}
+
+/**
+ * Check if a task process is actually running
+ *
+ * This queries the Gateway to verify the task's worker process
+ * is still active. Useful for detecting stuck tasks where the
+ * status says "running" but the process has died.
+ *
+ * @param taskId - Task ID to check
+ * @returns True if the task process is actively running
+ */
+export async function checkTaskRunning(taskId: string): Promise<boolean> {
+  try {
+    const url = `${getApiBaseUrl()}/api/queue/tasks/${encodeURIComponent(taskId)}/running`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.warn(`[checkTaskRunning] Failed to check task ${taskId}: ${response.status}`);
+      return false;
+    }
+
+    const data: TaskRunningResponse = await response.json();
+    return data.success && data.data?.running === true;
+  } catch (error) {
+    console.error("[checkTaskRunning] Failed to check task running status:", error);
+    // On error, assume task might still be running to avoid false positives
+    return false;
+  }
+}
+
 // Export API base URL for debugging
 export { getApiBaseUrl as getApiBaseUrl };

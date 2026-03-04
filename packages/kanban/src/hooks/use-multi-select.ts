@@ -1,12 +1,79 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import {
+  useSelectionPersistence,
+  type SelectionPersistenceOptions,
+} from "./use-selection-persistence";
 
 export interface MultiSelectState {
   selectedIds: Set<string>;
   isSelecting: boolean;
 }
 
-export function useMultiSelect<T extends { id: string }>(items: T[]) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+export interface UseMultiSelectOptions {
+  /** Enable persistence across page refreshes and project switches */
+  persistence?: SelectionPersistenceOptions;
+}
+
+export function useMultiSelect<T extends { id: string }>(
+  items: T[],
+  options?: UseMultiSelectOptions
+) {
+  const { persistence } = options ?? {};
+  const isInitializedRef = useRef(false);
+
+  // Persistence hook (always called, but disabled when no persistence options)
+  const {
+    loadPersistedSelection,
+    saveSelectionDebounced,
+    clearPersistedSelection,
+    cleanupStaleIds,
+  } = useSelectionPersistence({
+    projectId: persistence?.projectId ?? "",
+    storageKey: persistence?.storageKey,
+    debounceMs: persistence?.debounceMs,
+    enabled: !!persistence?.enabled && !!persistence?.projectId,
+  });
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    // Load persisted selection on initial mount
+    if (persistence?.enabled && persistence?.projectId) {
+      return loadPersistedSelection();
+    }
+    return new Set();
+  });
+
+  // Reload persisted selection when projectId changes
+  useEffect(() => {
+    if (persistence?.enabled && persistence?.projectId) {
+      const persisted = loadPersistedSelection();
+      setSelectedIds(persisted);
+      isInitializedRef.current = true;
+    }
+  }, [persistence?.enabled, persistence?.projectId, loadPersistedSelection]);
+
+  // Clean up stale IDs when items change
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    if (selectedIds.size === 0) return;
+
+    const validIds = new Set(items.map((item) => item.id));
+    const hasStaleIds = Array.from(selectedIds).some((id) => !validIds.has(id));
+
+    if (hasStaleIds) {
+      const cleanedIds = cleanupStaleIds(validIds, selectedIds);
+      if (cleanedIds.size !== selectedIds.size) {
+        setSelectedIds(cleanedIds);
+      }
+    }
+  }, [items, selectedIds, cleanupStaleIds]);
+
+  // Persist selection changes (debounced)
+  useEffect(() => {
+    if (!isInitializedRef.current) return;
+    if (persistence?.enabled && persistence?.projectId) {
+      saveSelectionDebounced(selectedIds);
+    }
+  }, [selectedIds, persistence?.enabled, persistence?.projectId, saveSelectionDebounced]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -26,7 +93,10 @@ export function useMultiSelect<T extends { id: string }>(items: T[]) {
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
-  }, []);
+    if (persistence?.enabled && persistence?.projectId) {
+      clearPersistedSelection();
+    }
+  }, [persistence?.enabled, persistence?.projectId, clearPersistedSelection]);
 
   const isSelected = useCallback(
     (id: string) => {
