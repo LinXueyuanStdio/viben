@@ -18,7 +18,10 @@ export async function executeCommand(
   } catch (error) {
     console.error(`Failed to execute command /${command.name}:`, error);
     context.showToast(
-      `Failed to execute /${command.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      context.t("chat.slashCommands.executionFailed", {
+        commandName: command.name,
+        error: error instanceof Error ? error.message : context.t("common.unknownError"),
+      }),
       "error"
     );
   }
@@ -50,7 +53,10 @@ function handleCommandResult(result: CommandResult, context: CommandContext) {
     case "action":
       // Show toast notification
       if (result.toast) {
-        context.showToast(result.toast.message, result.toast.type);
+        const message = result.toast.i18n
+          ? context.t(result.toast.message, result.toast.params)
+          : result.toast.message;
+        context.showToast(message, result.toast.type);
       }
       break;
 

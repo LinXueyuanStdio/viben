@@ -164,9 +164,10 @@ export async function notifyChannelMessage(
   sender: string | undefined,
   message: string
 ): Promise<boolean> {
+  const senderName = sender ?? i18n.t('notifications.system.unknownSender');
   return notify({
     title: `${channelName} - ${channelType}`,
-    body: `${sender ?? 'Unknown'}: ${truncate(message, 200)}`,
+    body: `${senderName}: ${truncate(message, 200)}`,
   });
 }
 
@@ -205,10 +206,11 @@ export async function notifyAgentCompletion(
   sessionId: string,
   success: boolean
 ): Promise<boolean> {
-  const title = `Agent: ${agentName}`;
+  const title = `${i18n.t('chat.agent')}: ${agentName}`;
+  const truncatedSessionId = truncate(sessionId, 20);
   const body = success
-    ? `Session ${truncate(sessionId, 20)} completed successfully`
-    : `Session ${truncate(sessionId, 20)} failed`;
+    ? i18n.t('notifications.system.sessionCompletedSuccess', { sessionId: truncatedSessionId })
+    : i18n.t('notifications.system.sessionCompletedFailed', { sessionId: truncatedSessionId });
 
   return notify({ title, body });
 }

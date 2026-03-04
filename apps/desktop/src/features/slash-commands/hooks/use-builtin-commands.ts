@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { SlashCommandDefinition } from "../types";
 
 // Import command implementations
@@ -21,38 +22,77 @@ import { terminalSetupCommand } from "../commands/config/terminal-setup";
 import { vimCommand } from "../commands/session/vim";
 
 /**
- * Hook that provides all builtin slash commands
+ * Map of command IDs to their i18n description keys
+ */
+const COMMAND_I18N_KEYS: Record<string, string> = {
+  help: "chat.slashCommands.helpDesc",
+  clear: "chat.slashCommands.clearDesc",
+  compact: "chat.slashCommands.compactDesc",
+  status: "chat.slashCommands.statusDesc",
+  vim: "chat.slashCommands.vimDesc",
+  model: "chat.slashCommands.modelDesc",
+  config: "chat.slashCommands.configDesc",
+  memory: "chat.slashCommands.memoryDesc",
+  permissions: "chat.slashCommands.permissionsDesc",
+  "terminal-setup": "chat.slashCommands.terminalSetupDesc",
+  cost: "chat.slashCommands.costDesc",
+  doctor: "chat.slashCommands.doctorDesc",
+  init: "chat.slashCommands.initDesc",
+  review: "chat.slashCommands.reviewDesc",
+  "pr-comments": "chat.slashCommands.prCommentsDesc",
+  login: "chat.slashCommands.loginDesc",
+  logout: "chat.slashCommands.logoutDesc",
+};
+
+/**
+ * Hook that provides all builtin slash commands with translated descriptions
  */
 export function useBuiltinCommands(): SlashCommandDefinition[] {
+  const { t } = useTranslation();
+
   return useMemo(
-    () => [
-      // Session commands
-      helpCommand,
-      clearCommand,
-      compactCommand,
-      statusCommand,
-      vimCommand,
+    () => {
+      const commands = [
+        // Session commands
+        helpCommand,
+        clearCommand,
+        compactCommand,
+        statusCommand,
+        vimCommand,
 
-      // Config commands
-      modelCommand,
-      configCommand,
-      memoryCommand,
-      permissionsCommand,
-      terminalSetupCommand,
+        // Config commands
+        modelCommand,
+        configCommand,
+        memoryCommand,
+        permissionsCommand,
+        terminalSetupCommand,
 
-      // Info commands
-      costCommand,
-      doctorCommand,
+        // Info commands
+        costCommand,
+        doctorCommand,
 
-      // Workspace commands
-      initCommand,
-      reviewCommand,
-      prCommentsCommand,
+        // Workspace commands
+        initCommand,
+        reviewCommand,
+        prCommentsCommand,
 
-      // Auth commands
-      loginCommand,
-      logoutCommand,
-    ],
-    []
+        // Auth commands
+        loginCommand,
+        logoutCommand,
+      ];
+
+      // Apply translations to command descriptions
+      return commands.map((cmd) => {
+        const i18nKey = COMMAND_I18N_KEYS[cmd.id];
+        if (i18nKey) {
+          return {
+            ...cmd,
+            description: t(i18nKey, cmd.description),
+          };
+        }
+        return cmd;
+      });
+    },
+    [t]
   );
 }

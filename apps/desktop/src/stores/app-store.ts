@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
 import { getGatewayClient } from "@/lib/gateway";
 
@@ -126,11 +126,15 @@ interface AppState {
   inspectorSelectedServerId: string | null;
   inspectorConnectionStatus: InspectorConnectionStatus;
   inspectorNotifications: InspectorNotification[];
+  inspectorHistory: InspectorHistoryEntry[];
   setInspectorSelectedServerId: (id: string | null) => void;
   setInspectorConnectionStatus: (status: InspectorConnectionStatus) => void;
   addInspectorNotification: (notification: Omit<InspectorNotification, "id" | "timestamp">) => void;
   removeInspectorNotification: (id: string) => void;
   clearInspectorNotifications: () => void;
+  addInspectorHistory: (entry: Omit<InspectorHistoryEntry, "id" | "timestamp">) => void;
+  removeInspectorHistory: (id: string) => void;
+  clearInspectorHistory: () => void;
 
   // Onboarding
   onboardingCompleted: boolean;
@@ -408,6 +412,7 @@ export const useAppStore = create<AppState>()(
       inspectorSelectedServerId: null,
       inspectorConnectionStatus: "disconnected",
       inspectorNotifications: [],
+      inspectorHistory: [],
       setInspectorSelectedServerId: (id) => set({ inspectorSelectedServerId: id }),
       setInspectorConnectionStatus: (status) => set({ inspectorConnectionStatus: status }),
       addInspectorNotification: (notification) =>
@@ -426,6 +431,22 @@ export const useAppStore = create<AppState>()(
           inspectorNotifications: state.inspectorNotifications.filter((n) => n.id !== id),
         })),
       clearInspectorNotifications: () => set({ inspectorNotifications: [] }),
+      addInspectorHistory: (entry) =>
+        set((state) => ({
+          inspectorHistory: [
+            {
+              ...entry,
+              id: `hist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              timestamp: new Date(),
+            },
+            ...state.inspectorHistory,
+          ].slice(0, 100), // Keep max 100 history entries
+        })),
+      removeInspectorHistory: (id) =>
+        set((state) => ({
+          inspectorHistory: state.inspectorHistory.filter((h) => h.id !== id),
+        })),
+      clearInspectorHistory: () => set({ inspectorHistory: [] }),
 
       // Onboarding
       onboardingCompleted: false,

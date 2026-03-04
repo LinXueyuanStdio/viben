@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   MessageSquare,
   Play,
@@ -6,15 +6,23 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";
+import { useCompletion, createCompletionHandler } from "@/hooks/use-completion";
+import { CompletionInput } from "./completion-input";
 import type { McpPrompt } from "@/types";
+
+// =============================================================================
+// Types
+// =============================================================================
 
 interface InspectorPromptsProps {
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
   enabled?: boolean;
+  /** Whether the server supports completions */
+  completionsSupported?: boolean;
 }
 
 interface PromptMessage {
@@ -30,28 +38,94 @@ interface PromptResult {
   messages: PromptMessage[];
 }
 
-export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromptsProps) {
+// =============================================================================
+// Component
+// =============================================================================
+
+export function InspectorPrompts({
+  makeRequest,
+  enabled = true,
+  completionsSupported = true,
+}: InspectorPromptsProps) {
   const { t } = useTranslation();
   const [prompts, setPrompts] = useState<McpPrompt[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [selectedPrompt, setSelectedPrompt] = useState<McpPrompt | null>(null);
   const [promptArgs, setPromptArgs] = useState<Record<string, string>>({});
   const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
   const [getting, setGetting] = useState(false);
   const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
 
-  const fetchPrompts = async () => {
+  // Completion hook
+  const handleCompletion = useCallback(
+    createCompletionHandler(makeRequest),
+    [makeRequest]
+  );
+
+  const {
+    completions,
+    loading: completionLoading,
+    clearCompletions,
+    triggerCompletion,
+  } = useCompletion({
+    handleCompletion,
+    completionsSupported,
+  });
+
+  // Clear completions when selected prompt changes
+  useEffect(() => {
+    clearCompletions();
+  }, [selectedPrompt, clearCompletions]);
+
+  const fetchPrompts = async (cursor?: string) => {
     if (!enabled) return;
 
-    setLoading(true);
+    const isLoadMore = !!cursor;
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      const response = await makeRequest<{ prompts: McpPrompt[] }>("prompts/list", {});
-      setPrompts(response.prompts || []);
+      const params: Record<string, unknown> = {};
+      if (cursor) {
+        params.cursor = cursor;
+      }
+
+      const response = await makeRequest<{ prompts: McpPrompt[]; nextCursor?: string }>(
+        "prompts/list",
+        params
+      );
+      const newPrompts = response.prompts || [];
+
+      if (isLoadMore) {
+        setPrompts((prev) => [...prev, ...newPrompts]);
+      } else {
+        setPrompts(newPrompts);
+      }
+
+      setNextCursor(response.nextCursor);
     } catch (error) {
       console.error("Error fetching prompts:", error);
-      setPrompts([]);
+      if (!isLoadMore) {
+        setPrompts([]);
+      }
+      setNextCursor(undefined);
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadMorePrompts = () => {
+    if (nextCursor) {
+      fetchPrompts(nextCursor);
     }
   };
 
@@ -59,6 +133,8 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
     setPrompts([]);
     setSelectedPrompt(null);
     setPromptResult(null);
+    setNextCursor(undefined);
+    clearCompletions();
   };
 
   const handlePromptGet = async () => {
@@ -81,11 +157,41 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
     }
   };
 
+  // Handle argument change with completions
   const handleArgChange = (argName: string, value: string) => {
     setPromptArgs((prev) => ({
       ...prev,
       [argName]: value,
     }));
+
+    // Trigger completion for this argument
+    if (selectedPrompt) {
+      triggerCompletion(
+        {
+          type: "ref/prompt",
+          name: selectedPrompt.name,
+        },
+        argName,
+        value,
+        promptArgs
+      );
+    }
+  };
+
+  // Handle argument focus (trigger initial completions)
+  const handleArgFocus = (argName: string) => {
+    const currentValue = promptArgs[argName] || "";
+    if (selectedPrompt) {
+      triggerCompletion(
+        {
+          type: "ref/prompt",
+          name: selectedPrompt.name,
+        },
+        argName,
+        currentValue,
+        promptArgs
+      );
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -132,7 +238,7 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
           >
             {t("common.clear")}
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchPrompts} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => fetchPrompts()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             {loading ? t("common.loading") : t("inspector.loadPrompts")}
           </Button>
@@ -146,13 +252,9 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
           <div>
             <h4 className="text-sm font-semibold mb-2">{t("inspector.availablePrompts")}</h4>
             {loading && prompts.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                {t("inspector.loadingPrompts")}
-              </div>
+              <div className="text-sm text-muted-foreground">{t("inspector.loadingPrompts")}</div>
             ) : prompts.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                {t("inspector.clickLoadPrompts")}
-              </div>
+              <div className="text-sm text-muted-foreground">{t("inspector.clickLoadPrompts")}</div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {prompts.map((prompt) => (
@@ -173,6 +275,7 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
                         });
                       }
                       setPromptArgs(initialArgs);
+                      clearCompletions();
                     }}
                   >
                     <div className="flex items-center justify-between">
@@ -228,9 +331,7 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
                                 )}
                               </div>
                               {arg.description && (
-                                <div className="text-muted-foreground mt-1">
-                                  {arg.description}
-                                </div>
+                                <div className="text-muted-foreground mt-1">{arg.description}</div>
                               )}
                             </div>
                           ))}
@@ -239,11 +340,26 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
                     )}
                   </div>
                 ))}
+                {/* Load More Button */}
+                {nextCursor && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-7 text-xs"
+                      onClick={loadMorePrompts}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                      {t("inspector.loadMore", "Load More")}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Arguments Form */}
+          {/* Arguments Form with Completions */}
           {selectedPrompt && selectedPrompt.arguments && selectedPrompt.arguments.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2">{t("inspector.arguments")}</h4>
@@ -255,13 +371,15 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
                       {arg.required && <span className="text-red-500 ml-1">*</span>}
                     </label>
                     {arg.description && (
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {arg.description}
-                      </div>
+                      <div className="text-xs text-muted-foreground mb-1">{arg.description}</div>
                     )}
-                    <Input
+                    <CompletionInput
+                      id={arg.name}
                       value={promptArgs[arg.name] || ""}
-                      onChange={(e) => handleArgChange(arg.name, e.target.value)}
+                      onChange={(value) => handleArgChange(arg.name, value)}
+                      onFocus={() => handleArgFocus(arg.name)}
+                      completions={completions[arg.name] || []}
+                      loading={completionLoading[arg.name]}
                       placeholder={t("inspector.enterArgValue", { argName: arg.name })}
                       className="text-xs"
                     />
@@ -284,9 +402,7 @@ export function InspectorPrompts({ makeRequest, enabled = true }: InspectorPromp
         <div className="space-y-2">
           <h4 className="text-sm font-semibold">{t("inspector.promptResult")}</h4>
           {!selectedPrompt ? (
-            <div className="text-sm text-muted-foreground">
-              {t("inspector.selectPrompt")}
-            </div>
+            <div className="text-sm text-muted-foreground">{t("inspector.selectPrompt")}</div>
           ) : getting ? (
             <div className="text-sm text-muted-foreground">
               {t("inspector.gettingPromptResult")}

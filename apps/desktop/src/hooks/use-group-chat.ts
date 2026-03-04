@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import i18n from "@/i18n";
 import {
   getGatewayClient,
   type GroupChat,
@@ -456,7 +457,7 @@ export function useGroupChat(
       const chats = await client.listGroupChats(effectiveParams);
       setGroupChats(chats);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load group chats";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.loadFailed");
       setError(message);
       console.error("[useGroupChat] Failed to load group chats:", err);
     } finally {
@@ -469,7 +470,7 @@ export function useGroupChat(
    */
   const createGroupChat = useCallback(async (data: Omit<CreateGroupChatRequest, "created_by" | "workspace_path">): Promise<GroupChatWithMembers> => {
     if (!workspacePath) {
-      throw new Error("Workspace path is required to create a group chat");
+      throw new Error(i18n.t("errors.groupChat.workspacePathRequired"));
     }
 
     setIsLoading(true);
@@ -498,7 +499,7 @@ export function useGroupChat(
       setGroupChats((prev) => [result.group_chat, ...prev]);
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create group chat";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.createFailed");
       setError(message);
       throw err;
     } finally {
@@ -519,6 +520,12 @@ export function useGroupChat(
     setError(null);
     try {
       const result = await client.getGroupChat(chatId, workspacePath);
+      if (!result) {
+        setError(i18n.t("errors.groupChat.notFound"));
+        setCurrentGroupChat(null);
+        setMembers([]);
+        return;
+      }
       setCurrentGroupChat(result);
       setMembers(result.members);
       // Store group name for notifications
@@ -529,7 +536,7 @@ export function useGroupChat(
         membersMapRef.current.set(member.id, member.display_name);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load group chat";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.loadChatFailed");
       setError(message);
       console.error("[useGroupChat] Failed to load group chat:", err);
     } finally {
@@ -545,7 +552,7 @@ export function useGroupChat(
     data: { name?: string; description?: string }
   ) => {
     if (!workspacePath) {
-      throw new Error("Workspace path is required to update a group chat");
+      throw new Error(i18n.t("errors.groupChat.workspacePathRequiredUpdate"));
     }
 
     setError(null);
@@ -562,7 +569,7 @@ export function useGroupChat(
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update group chat";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.updateFailed");
       setError(message);
       throw err;
     }
@@ -573,7 +580,7 @@ export function useGroupChat(
    */
   const deleteGroupChat = useCallback(async (chatId: string) => {
     if (!workspacePath) {
-      throw new Error("Workspace path is required to delete a group chat");
+      throw new Error(i18n.t("errors.groupChat.workspacePathRequiredDelete"));
     }
 
     setError(null);
@@ -589,7 +596,7 @@ export function useGroupChat(
         disconnect();
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete group chat";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.deleteFailed");
       setError(message);
       throw err;
     }
@@ -619,7 +626,7 @@ export function useGroupChat(
         currentSessionIdRef.current = sessionList[0].id;
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load sessions";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.loadSessionsFailed");
       setError(message);
       console.error("[useGroupChat] Failed to load sessions:", err);
     } finally {
@@ -632,7 +639,7 @@ export function useGroupChat(
    */
   const createSession = useCallback(async (chatId: string, title?: string): Promise<GroupChatSession> => {
     if (!workspacePath) {
-      throw new Error("Workspace path is required to create a session");
+      throw new Error(i18n.t("errors.groupChat.workspacePathRequired"));
     }
 
     setIsLoading(true);
@@ -645,7 +652,7 @@ export function useGroupChat(
       setMessages([]);
       return session;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create session";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.createSessionFailed");
       setError(message);
       throw err;
     } finally {
@@ -673,7 +680,7 @@ export function useGroupChat(
    */
   const deleteSession = useCallback(async (sessId: string) => {
     if (!workspacePath || !currentGroupChatIdRef.current) {
-      throw new Error("Workspace path and group chat ID are required");
+      throw new Error(i18n.t("errors.groupChat.workspaceAndGroupRequired"));
     }
 
     setError(null);
@@ -692,7 +699,7 @@ export function useGroupChat(
         setMessages([]);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete session";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.deleteSessionFailed");
       setError(message);
       throw err;
     }
@@ -707,7 +714,7 @@ export function useGroupChat(
    */
   const addMember = useCallback(async (member: AddMemberRequest) => {
     if (!currentGroupChatIdRef.current || !workspacePath) {
-      setError("No group chat selected or workspace path not set");
+      setError(i18n.t("errors.groupChat.noChatOrWorkspace"));
       return;
     }
     setError(null);
@@ -719,7 +726,7 @@ export function useGroupChat(
       );
       setMembers((prev) => [...prev, newMember]);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add member";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.addMemberFailed");
       setError(message);
       throw err;
     }
@@ -730,7 +737,7 @@ export function useGroupChat(
    */
   const removeMember = useCallback(async (memberId: string) => {
     if (!currentGroupChatIdRef.current || !workspacePath) {
-      setError("No group chat selected or workspace path not set");
+      setError(i18n.t("errors.groupChat.noChatOrWorkspace"));
       return;
     }
     setError(null);
@@ -738,7 +745,7 @@ export function useGroupChat(
       await client.removeGroupChatMember(currentGroupChatIdRef.current, workspacePath, memberId);
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to remove member";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.removeMemberFailed");
       setError(message);
       throw err;
     }
@@ -775,7 +782,7 @@ export function useGroupChat(
         setMessages((result as { messages: GroupChatUIMessage[] }).messages);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load messages";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.loadMessagesFailed");
       setError(message);
       console.error("[useGroupChat] Failed to load messages:", err);
     } finally {
@@ -788,7 +795,7 @@ export function useGroupChat(
    */
   const sendMessage = useCallback(async (content: string) => {
     if (!currentGroupChatIdRef.current || !currentSessionIdRef.current || !workspacePath) {
-      setError("No group chat or session selected");
+      setError(i18n.t("errors.groupChat.noChatOrSession"));
       return;
     }
     if (!content.trim()) {
@@ -826,7 +833,7 @@ export function useGroupChat(
         ]);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send message";
+      const message = err instanceof Error ? err.message : i18n.t("errors.groupChat.sendMessageFailed");
       setError(message);
       throw err;
     }

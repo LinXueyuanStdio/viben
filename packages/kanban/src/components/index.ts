@@ -74,6 +74,17 @@ export type { EditableTextProps } from "./editable-text";
 export { CollapsibleColumn } from "./collapsible-column";
 export type { CollapsibleColumnProps } from "./collapsible-column";
 
+// Resizable column
+export { ResizableColumn } from "./resizable-column";
+export type { ResizableColumnProps } from "./resizable-column";
+
+// Phase progress indicator
+export { PhaseProgressIndicator } from "./phase-progress-indicator";
+export type {
+  PhaseProgressIndicatorProps,
+  ExecutionPhase as IndicatorExecutionPhase,
+} from "./phase-progress-indicator";
+
 // Stats types
 export type { KanbanStats, StatCardProps } from "./stats-types";
 

@@ -69,7 +69,16 @@ export type GatewayEvent =
   | { type: "github_autofix_task_progress"; data: { task_id: string; workspace_path: string; message: string; percent?: number } }
   | { type: "github_autofix_task_log"; data: { task_id: string; workspace_path: string; level: "info" | "warn" | "error"; message: string } }
   | { type: "github_autofix_task_completed"; data: { task_id: string; workspace_path: string; pr_number?: number; error?: string } }
-  | { type: "github_autofix_task_cancelled"; data: { task_id: string; workspace_path: string } };
+  | { type: "github_autofix_task_cancelled"; data: { task_id: string; workspace_path: string } }
+  // MCP events
+  | { type: "mcp_process_status_changed"; data: McpProcessStatusData }
+  | { type: "mcp_server_started"; data: McpServerEventData }
+  | { type: "mcp_server_stopped"; data: McpServerEventData }
+  | { type: "mcp_config_changed"; data: McpConfigChangedData }
+  // Task state machine events
+  | { type: "task_state_changed"; data: TaskStateChangedData }
+  | { type: "task_recovered"; data: TaskRecoveredData }
+  | { type: "task_event_applied"; data: TaskEventAppliedData };
 
 /**
  * Queue task summary for events
@@ -111,6 +120,80 @@ export interface CronJobData {
   last_run?: number;
   last_status?: string;
   next_run?: number;
+}
+
+/**
+ * MCP process status data for events
+ */
+export interface McpProcessStatusData {
+  server_id: string;
+  server_name: string;
+  old_status: "running" | "stopped" | "error";
+  new_status: "running" | "stopped" | "error";
+  pid?: number;
+  error?: string;
+}
+
+/**
+ * MCP server event data (for started/stopped events)
+ */
+export interface McpServerEventData {
+  server_id: string;
+  server_name: string;
+  pid?: number;
+  port?: number;
+  error?: string;
+}
+
+/**
+ * MCP config changed data
+ */
+export interface McpConfigChangedData {
+  /** Path to the config file that changed */
+  config_path: string;
+  /** Type of change */
+  change_type: "created" | "modified" | "deleted";
+  /** Timestamp of the change */
+  timestamp: number;
+}
+
+/**
+ * Task state changed event data (XState state machine)
+ */
+export interface TaskStateChangedData {
+  task_id: string;
+  workspace_path: string;
+  old_state: string;
+  new_state: string;
+  event_type: string;
+  event_id: string;
+  sequence: number;
+  timestamp: number;
+}
+
+/**
+ * Task recovered event data (stuck detection)
+ */
+export interface TaskRecoveredData {
+  task_id: string;
+  workspace_path: string;
+  reason: string;
+  auto_recovery: boolean;
+  new_status: string;
+  timestamp: number;
+}
+
+/**
+ * Task event applied data
+ */
+export interface TaskEventAppliedData {
+  task_id: string;
+  workspace_path: string;
+  event_id: string;
+  event_type: string;
+  sequence: number;
+  new_state: string;
+  timestamp: number;
 }
 
 /**
@@ -403,6 +486,48 @@ export class EventService {
     this.broadcast({
       type: "github_autofix_task_cancelled",
       data: { task_id, workspace_path },
+    });
+  }
+
+  // MCP Events
+
+  /**
+   * Broadcast MCP process status changed event
+   */
+  mcpProcessStatusChanged(data: McpProcessStatusData): void {
+    this.broadcast({
+      type: "mcp_process_status_changed",
+      data,
+    });
+  }
+
+  /**
+   * Broadcast MCP server started event
+   */
+  mcpServerStarted(data: McpServerEventData): void {
+    this.broadcast({
+      type: "mcp_server_started",
+      data,
+    });
+  }
+
+  /**
+   * Broadcast MCP server stopped event
+   */
+  mcpServerStopped(data: McpServerEventData): void {
+    this.broadcast({
+      type: "mcp_server_stopped",
+      data,
+    });
+  }
+
+  /**
+   * Broadcast MCP config changed event
+   */
+  mcpConfigChanged(data: McpConfigChangedData): void {
+    this.broadcast({
+      type: "mcp_config_changed",
+      data,
     });
   }
 }

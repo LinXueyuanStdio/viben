@@ -53,24 +53,42 @@ export type KanbanBoardProps = {
   className?: string;
   /** Column background color (CSS variable name like "--primary") */
   backgroundColor?: string;
+  /** Whether this column is a valid drop target for the currently dragged item */
+  isValidDropTarget?: boolean;
+  /** Whether an item is currently being dragged (for visual feedback) */
+  isDragging?: boolean;
 };
 
-export const KanbanBoard = ({ id, children, className, backgroundColor }: KanbanBoardProps) => {
+export const KanbanBoard = ({ id, children, className, backgroundColor, isValidDropTarget, isDragging }: KanbanBoardProps) => {
   const { isOver, setNodeRef } = useDroppable({ id });
+
+  // Determine visual state: valid target, invalid target, or neutral
+  const showValidHighlight = isDragging && isValidDropTarget === true;
+  const showInvalidHighlight = isDragging && isValidDropTarget === false;
 
   return (
     <div
       className={cn(
-        "flex min-h-40 flex-col transition-all duration-200",
-        isOver && "ring-2 ring-inset ring-primary/40",
+        "flex min-h-40 flex-col flex-1 transition-all duration-200",
+        // When dragging over valid target
+        isOver && isValidDropTarget !== false && "ring-2 ring-inset ring-primary/40",
+        // When dragging over invalid target
+        isOver && isValidDropTarget === false && "ring-2 ring-inset ring-destructive/40",
+        // Valid target highlight (not hovered)
+        showValidHighlight && !isOver && "ring-1 ring-inset ring-success/30",
+        // Invalid target dimming
+        showInvalidHighlight && "opacity-50",
         className
       )}
       style={{
         backgroundColor: backgroundColor
           ? `hsl(var(${backgroundColor}) / 0.03)`
           : undefined,
-        ...(isOver && backgroundColor ? {
+        ...(isOver && isValidDropTarget !== false && backgroundColor ? {
           backgroundColor: `hsl(var(${backgroundColor}) / 0.08)`,
+        } : {}),
+        ...(isOver && isValidDropTarget === false ? {
+          backgroundColor: "hsl(var(--destructive) / 0.05)",
         } : {}),
       }}
       ref={setNodeRef}
@@ -97,8 +115,10 @@ export type KanbanCardProps = Pick<Feature, "id" | "name"> & {
   showMoreMenu?: boolean;
   /** Callback when more menu is clicked */
   onMoreClick?: (e: React.MouseEvent) => void;
-  /** Render prop for more menu content (dropdown menu) */
-  renderMoreMenu?: () => React.ReactNode;
+  /** Render prop for more menu content (dropdown menu). Receives onOpenChange callback to notify when menu opens/closes */
+  renderMoreMenu?: (onOpenChange?: (open: boolean) => void) => React.ReactNode;
+  /** Callback when menu open state changes */
+  onMenuOpenChange?: (open: boolean) => void;
 };
 
 export const KanbanCard = ({
@@ -118,8 +138,16 @@ export const KanbanCard = ({
   showMoreMenu = false,
   onMoreClick,
   renderMoreMenu,
+  onMenuOpenChange,
 }: KanbanCardProps) => {
   const localRef = useRef<HTMLDivElement | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  // Notify parent when menu open state changes
+  const handleMenuOpenChange = React.useCallback((open: boolean) => {
+    setIsMenuOpen(open);
+    onMenuOpenChange?.(open);
+  }, [onMenuOpenChange]);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
@@ -177,19 +205,20 @@ export const KanbanCard = ({
     >
       {/* Content wrapper - invisible when dragging to show placeholder */}
       <div className={cn("contents", isDragging && "[&>*]:invisible")}>
-        {/* More menu button - top right corner, visible on hover */}
+        {/* More menu button - top right corner, visible on hover or when menu is open */}
         {showMoreMenu && (
           renderMoreMenu ? (
             <div
               className={cn(
-                "absolute top-2 right-2",
-                "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+                "absolute top-2 right-2 z-10",
+                // Stay visible when menu is open, otherwise show on hover
+                isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
                 "transition-all duration-150"
               )}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              {renderMoreMenu()}
+              {renderMoreMenu(handleMenuOpenChange)}
             </div>
           ) : (
             <Button
@@ -269,6 +298,10 @@ export type KanbanHeaderProps =
       addTaskLabel?: string;
       /** Number of tasks in this column */
       taskCount?: number;
+      /** Work-in-progress limit for this column */
+      wipLimit?: number;
+      /** Show warning style when WIP limit is exceeded */
+      showWipWarning?: boolean;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -278,6 +311,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
 
   const addTaskLabel = props.addTaskLabel ?? "Add task";
   const taskCount = props.taskCount;
+  const wipLimit = props.wipLimit;
+  const isOverWip = wipLimit !== undefined && taskCount !== undefined && taskCount > wipLimit;
+  const showWarning = props.showWipWarning !== false && isOverWip;
 
   return (
     <div
@@ -302,13 +338,17 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         <p className="m-0 text-sm font-semibold truncate" style={{ color: `hsl(var(${props.color}))` }}>{props.name}</p>
         {taskCount !== undefined && (
           <span
-            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
-            style={{
+            className={cn(
+              "inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums",
+              showWarning && "bg-destructive/20 text-destructive"
+            )}
+            style={showWarning ? undefined : {
               backgroundColor: `hsl(var(${props.color}) / 0.15)`,
               color: `hsl(var(${props.color}))`,
             }}
           >
             {taskCount}
+            {wipLimit !== undefined && `/${wipLimit}`}
           </span>
         )}
       </span>
@@ -385,6 +425,10 @@ const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
 export type KanbanProviderProps = {
   children: React.ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
+  /** Callback when drag starts, provides the active item ID */
+  onDragStart?: (activeId: string) => void;
+  /** Callback when drag is cancelled */
+  onDragCancel?: () => void;
   className?: string;
   /** Render function for drag overlay */
   renderDragOverlay?: (activeId: string | null) => React.ReactNode;
@@ -393,6 +437,8 @@ export type KanbanProviderProps = {
 export const KanbanProvider = ({
   children,
   onDragEnd,
+  onDragStart,
+  onDragCancel,
   className,
   renderDragOverlay,
 }: KanbanProviderProps) => {
@@ -410,18 +456,25 @@ export const KanbanProvider = ({
   return (
     <DndContext
       collisionDetection={rectIntersection}
-      onDragStart={(event) => setActiveId(String(event.active.id))}
+      onDragStart={(event) => {
+        const id = String(event.active.id);
+        setActiveId(id);
+        onDragStart?.(id);
+      }}
       onDragEnd={(event) => {
         setActiveId(null);
         onDragEnd(event);
       }}
-      onDragCancel={() => setActiveId(null)}
+      onDragCancel={() => {
+        setActiveId(null);
+        onDragCancel?.();
+      }}
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
         className={cn(
-          "inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full",
+          "flex flex-row divide-x border-x items-stretch h-full",
           className
         )}
       >
@@ -433,7 +486,8 @@ export const KanbanProvider = ({
           className="cursor-grabbing"
           style={{ zIndex: 9999 }}
         >
-          {activeId ? renderDragOverlay(activeId) : null}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {activeId ? (renderDragOverlay(activeId) as any) : null}
         </DragOverlay>
       )}
     </DndContext>

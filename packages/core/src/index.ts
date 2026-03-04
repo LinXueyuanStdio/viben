@@ -412,6 +412,38 @@ export {
   type ListMessagesQuery,
 } from "./group-chat";
 
+// Task State Machine
+export {
+  // Event types
+  type TaskEventType as TaskStateMachineEventType,
+  VALID_EVENT_TYPES,
+  isValidEventType,
+  // Task event
+  createTaskEvent,
+  // Event store
+  TaskEventStore,
+  taskEventStore,
+  type ApplyEventResult,
+  // State machine
+  taskMachine,
+  xstateToTaskStatus,
+  xstateToExecutionPhase,
+  getStateValue,
+  createTaskActor,
+  getNextState,
+  type XStateValue as TaskXStateValue,
+  type TaskMachineContext,
+  type TaskMachineEvent,
+  // Guards and actions
+  guards as taskMachineGuards,
+  actions as taskMachineActions,
+  // Recovery
+  TaskRecoveryService,
+  type TaskRecoveryResult,
+  type RecoverySummary,
+  type RecoveryConfig,
+} from "./task";
+
 // Notifications
 export {
   sendNotification,

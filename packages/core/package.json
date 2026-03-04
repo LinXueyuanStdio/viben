@@ -83,6 +83,7 @@
     "shell-quote": "^1.8.3",
     "undici": "^7.22.0",
     "uuid": "^13.0.0",
+    "xstate": "^5.18.0",
     "yaml": "^2.4.5"
   },
   "devDependencies": {

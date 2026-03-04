@@ -1,0 +1,919 @@
+/**
+ * Swarm CLI commands
+ *
+ * Manage multi-agent pipelines using git worktrees.
+ * This command uses TypeScript implementations in packages/core/src/cli/lib/swarm/
+ */
+import { Command } from "commander";
+import { spawn } from "node:child_process";
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, basename } from "node:path";
+import chalk from "chalk";
+import type { OutputContext } from "../types";
+import {
+  output,
+  successResponse,
+  errorResponse,
+  handleCommandError,
+} from "../lib";
+
+// Import TypeScript implementations
+import {
+  // Types
+  type AgentEntry,
+  type Registry,
+  type StartResult,
+  type CleanupResult,
+  type AgentStatus,
+  // Registry functions
+  getRegistryPath,
+  readRegistry,
+  registrySearchAgent,
+  // Start functions
+  startAgent,
+  // Status functions
+  isProcessRunning,
+  getAllAgentStatuses,
+  findAgentStatus,
+  getRecentLogEntries,
+  tailFollowConsole,
+  // Cleanup functions
+  listWorktrees,
+  cleanupWorktree,
+  cleanupMerged,
+  cleanupAll,
+  // CLI Adapter
+  getCLIAdapter,
+  type Platform,
+} from "../lib/swarm";
+
+import { findVibenRoot } from "../lib/viben-workspace";
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/** Mapping from CLI executor IDs to platform names */
+const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
+  CLAUDE_CODE: "claude",
+  CURSOR: "cursor",
+  GEMINI: "gemini",
+  OPENCODE: "opencode",
+  IFLOW: "iflow",
+  CODEX: "codex",
+  KILO: "kilo",
+  KIRO: "kiro",
+  ANTIGRAVITY: "antigravity",
+};
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Get output context from program options
+ */
+function getOutputContext(program: Command): OutputContext {
+  const opts = program.opts();
+  return {
+    json: opts.json ?? false,
+    verbose: opts.verbose ?? false,
+    quiet: opts.quiet ?? false,
+  };
+}
+
+/**
+ * Find agent by task name or ID
+ */
+function findAgent(
+  registry: Registry,
+  search: string
+): AgentEntry | undefined {
+  // Exact ID match
+  const exactMatch = registry.agents.find((a) => a.id === search);
+  if (exactMatch) return exactMatch;
+
+  // Partial match on task_dir
+  return registry.agents.find((a) => a.task_dir.includes(search));
+}
+
+/**
+ * Get task directory from task name
+ * Sanitizes input to prevent path traversal attacks
+ */
+function resolveTaskDir(repoRoot: string, taskName: string): string | null {
+  const tasksDir = join(repoRoot, ".viben", "tasks");
+  if (!existsSync(tasksDir)) {
+    return null;
+  }
+
+  // Sanitize taskName to prevent path traversal (e.g., ../../etc/passwd)
+  const safeTaskName = basename(taskName);
+
+  // Direct path check with sanitized name
+  if (existsSync(join(tasksDir, safeTaskName))) {
+    return join(".viben", "tasks", safeTaskName);
+  }
+
+  // Search for matching task using fs.readdirSync instead of shell command
+  // This avoids command injection vulnerabilities
+  try {
+    const entries = readdirSync(tasksDir);
+
+    for (const entry of entries) {
+      if (entry.includes(safeTaskName) || safeTaskName.includes(entry)) {
+        return join(".viben", "tasks", entry);
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return null;
+}
+
+// =============================================================================
+// Command Implementations
+// =============================================================================
+
+/**
+ * List all worktrees and registered agents
+ */
+async function listWorktreesCommand(
+  ctx: OutputContext,
+  repoRoot: string
+): Promise<void> {
+  const worktrees = listWorktrees(repoRoot);
+  const registry = readRegistry(repoRoot);
+
+  if (ctx.json) {
+    output(ctx, successResponse({ worktrees, agents: registry.agents }));
+    return;
+  }
+
+  // Human-readable output
+  console.log(chalk.blue("=== Git Worktrees ==="));
+  console.log();
+
+  if (worktrees.length === 0) {
+    console.log("  (no worktrees)");
+  } else {
+    console.log("PATH".padEnd(50) + "COMMIT".padEnd(10) + "BRANCH");
+    for (const wt of worktrees) {
+      console.log(
+        wt.path.padEnd(50) +
+        wt.commit.substring(0, 7).padEnd(10) +
+        `[${wt.branch || "(detached)"}]`
+      );
+    }
+  }
+  console.log();
+
+  console.log(chalk.blue("=== Registered Agents ==="));
+  console.log();
+
+  if (registry.agents.length === 0) {
+    console.log("  (no agents registered)");
+  } else {
+    for (const agent of registry.agents) {
+      const statusIcon = isProcessRunning(agent.pid)
+        ? chalk.green("●")
+        : chalk.red("○");
+      console.log(`  ${statusIcon} ${agent.id} (PID: ${agent.pid})`);
+      console.log(chalk.dim(`    Worktree: ${agent.worktree_path}`));
+      console.log(chalk.dim(`    Started:  ${agent.started_at}`));
+      console.log();
+    }
+  }
+}
+
+/**
+ * Start an agent in a worktree
+ */
+async function startAgentCommand(
+  ctx: OutputContext,
+  repoRoot: string,
+  taskName: string,
+  options: {
+    executor?: string;
+    detach?: boolean;
+    resume?: boolean;
+    session?: string;
+  }
+): Promise<void> {
+  // Resolve task directory
+  const taskDir = resolveTaskDir(repoRoot, taskName);
+  if (!taskDir) {
+    output(ctx, errorResponse("TASK_NOT_FOUND", `Task not found: ${taskName}`), () => {
+      console.error(chalk.red(`Error: Task not found: ${taskName}`));
+      console.log(chalk.gray("Use 'viben task list' to see available tasks"));
+    });
+    process.exit(1);
+    return;
+  }
+
+  // Handle resume
+  if (options.resume) {
+    const registry = readRegistry(repoRoot);
+    const agent = findAgent(registry, taskName);
+
+    if (!agent) {
+      output(ctx, errorResponse("AGENT_NOT_FOUND", `No agent found for task: ${taskName}`), () => {
+        console.error(chalk.red(`Error: No agent found for task: ${taskName}`));
+        console.log(chalk.gray("The agent may not have been started yet"));
+      });
+      process.exit(1);
+      return;
+    }
+
+    // Read session ID
+    const sessionIdFile = join(agent.worktree_path, ".session-id");
+    let sessionId = options.session;
+    if (!sessionId && existsSync(sessionIdFile)) {
+      sessionId = readFileSync(sessionIdFile, "utf-8").trim();
+    }
+
+    if (!sessionId) {
+      output(ctx, errorResponse("NO_SESSION", "No session ID found for resume"), () => {
+        console.error(chalk.red("Error: No session ID found for resume"));
+        console.log(chalk.gray("Session ID file not found at: " + sessionIdFile));
+      });
+      process.exit(1);
+      return;
+    }
+
+    // Build resume command using CLI adapter
+    const platform = (agent.platform || "claude") as Platform;
+    const adapter = getCLIAdapter(platform);
+    const resumeCmd = adapter.buildResumeCommand(sessionId);
+
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Resuming Agent ==="));
+      console.log(`  Session: ${sessionId}`);
+      console.log(`  Worktree: ${agent.worktree_path}`);
+      console.log(`  Command: ${resumeCmd.join(" ")}`);
+      console.log();
+    }
+
+    // Execute resume command
+    const child = spawn(resumeCmd[0], resumeCmd.slice(1), {
+      cwd: agent.worktree_path,
+      stdio: "inherit",
+    });
+
+    child.on("close", (code) => {
+      process.exit(code ?? 0);
+    });
+
+    return;
+  }
+
+  // Determine platform
+  const platform: Platform = options.executor
+    ? EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude"
+    : "claude";
+
+  // Start agent using TypeScript implementation
+  if (!ctx.quiet) {
+    console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
+    console.log(`[INFO] Task: ${taskDir}`);
+    console.log(`[INFO] Platform: ${platform}`);
+  }
+
+  const result: StartResult = await startAgent(repoRoot, taskDir, {
+    platform,
+    detach: options.detach ?? true,
+    skipPermissions: true,
+    verbose: ctx.verbose,
+    jsonOutput: true,
+  });
+
+  if (ctx.json) {
+    if (result.success) {
+      output(ctx, successResponse(result));
+    } else {
+      output(ctx, errorResponse("START_FAILED", result.error || "Unknown error"));
+    }
+  } else {
+    if (result.success) {
+      console.log();
+      console.log(chalk.green("=== Agent Started ==="));
+      console.log();
+      console.log(`  ID:        ${result.agentId}`);
+      console.log(`  PID:       ${result.pid}`);
+      console.log(`  Session:   ${result.sessionId || "N/A"}`);
+      console.log(`  Worktree:  ${result.worktreePath}`);
+      console.log(`  Log:       ${result.logFile}`);
+      console.log();
+      console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+      console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
+      if (result.sessionId) {
+        const adapter = getCLIAdapter(platform);
+        const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+        console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
+      }
+    } else {
+      console.error(chalk.red(`Error: ${result.error}`));
+      process.exit(1);
+    }
+  }
+}
+
+/**
+ * Stop a running agent
+ */
+async function stopAgentCommand(
+  ctx: OutputContext,
+  repoRoot: string,
+  taskName: string | undefined,
+  options: { force?: boolean; all?: boolean }
+): Promise<void> {
+  const registry = readRegistry(repoRoot);
+
+  if (options.all) {
+    // Stop all agents
+    const runningAgents = registry.agents.filter((a) =>
+      isProcessRunning(a.pid)
+    );
+
+    if (runningAgents.length === 0) {
+      output(ctx, successResponse({ stopped: [] }), () => {
+        console.log(chalk.yellow("No running agents found"));
+      });
+      return;
+    }
+
+    const stopped: string[] = [];
+    const failed: string[] = [];
+
+    for (const agent of runningAgents) {
+      try {
+        process.kill(agent.pid, options.force ? "SIGKILL" : "SIGTERM");
+        stopped.push(agent.id);
+        if (!ctx.quiet) {
+          console.log(
+            chalk.green(`Stopped: ${agent.id} (PID: ${agent.pid})`)
+          );
+        }
+      } catch {
+        failed.push(agent.id);
+        if (!ctx.quiet) {
+          console.log(
+            chalk.red(`Failed to stop: ${agent.id} (PID: ${agent.pid})`)
+          );
+        }
+      }
+    }
+
+    output(ctx, successResponse({ stopped, failed }));
+    return;
+  }
+
+  if (!taskName) {
+    output(ctx, errorResponse("MISSING_TASK", "Task name required"), () => {
+      console.error(chalk.red("Error: Task name is required"));
+      console.log(chalk.gray("Usage: viben swarm stop <task>"));
+      console.log(chalk.gray("       viben swarm stop --all"));
+    });
+    process.exit(1);
+    return;
+  }
+
+  const agent = findAgent(registry, taskName);
+  if (!agent) {
+    output(ctx, errorResponse("AGENT_NOT_FOUND", `Agent not found: ${taskName}`), () => {
+      console.error(chalk.red(`Error: Agent not found: ${taskName}`));
+    });
+    process.exit(1);
+    return;
+  }
+
+  if (!isProcessRunning(agent.pid)) {
+    output(ctx, successResponse({ agent, status: "already_stopped" }), () => {
+      console.log(chalk.yellow(`Agent ${agent.id} is not running (PID: ${agent.pid})`));
+    });
+    return;
+  }
+
+  try {
+    process.kill(agent.pid, options.force ? "SIGKILL" : "SIGTERM");
+    output(ctx, successResponse({ agent, status: "stopped" }), () => {
+      console.log(
+        chalk.green(`Stopped agent: ${agent.id} (PID: ${agent.pid})`)
+      );
+    });
+  } catch (err) {
+    output(ctx, errorResponse("STOP_FAILED", `Failed to stop agent: ${err}`), () => {
+      console.error(chalk.red(`Error: Failed to stop agent ${agent.id}: ${err}`));
+    });
+    process.exit(1);
+  }
+}
+
+/**
+ * Show agent status
+ */
+async function showStatusCommand(
+  ctx: OutputContext,
+  repoRoot: string,
+  taskName: string | undefined,
+  options: {
+    running?: boolean;
+    stopped?: boolean;
+    detail?: boolean;
+    watch?: boolean;
+    log?: boolean;
+  }
+): Promise<void> {
+  // Handle watch mode
+  if (options.watch && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
+    }
+
+    const logFile = join(status.worktreePath, ".agent-log");
+    if (!existsSync(logFile)) {
+      console.error(chalk.red(`Log file not found: ${logFile}`));
+      process.exit(1);
+      return;
+    }
+
+    console.log(chalk.blue(`Watching: ${logFile}`));
+    console.log(chalk.dim("Press Ctrl+C to stop"));
+    console.log();
+
+    tailFollowConsole(logFile);
+    return;
+  }
+
+  // Handle log mode
+  if (options.log && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
+    }
+
+    const logFile = join(status.worktreePath, ".agent-log");
+    if (!existsSync(logFile)) {
+      console.error(chalk.red(`Log file not found: ${logFile}`));
+      process.exit(1);
+      return;
+    }
+
+    console.log(chalk.blue(`=== Recent Log: ${taskName} ===`));
+    console.log(chalk.dim(`Platform: ${status.platform}`));
+    console.log();
+
+    const entries = getRecentLogEntries(logFile, 50, status.platform);
+    for (const entry of entries) {
+      console.log(entry);
+    }
+    return;
+  }
+
+  // Handle detail mode
+  if ((options.detail || taskName) && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
+    }
+
+    if (ctx.json) {
+      output(ctx, successResponse(status));
+      return;
+    }
+
+    console.log(chalk.blue(`=== Agent Detail: ${status.id} ===`));
+    console.log();
+    console.log(`  ID:        ${status.id}`);
+    console.log(`  PID:       ${status.pid}`);
+    console.log(`  Session:   ${status.sessionId || "N/A"}`);
+    console.log(`  Worktree:  ${status.worktreePath}`);
+    console.log(`  Task Dir:  ${status.taskDir}`);
+    console.log(`  Started:   ${status.startedAt}`);
+    console.log();
+
+    if (status.running) {
+      console.log(`  Status:    ${chalk.green("Running")}`);
+    } else {
+      console.log(`  Status:    ${chalk.red("Stopped")}`);
+      if (status.sessionId) {
+        const adapter = getCLIAdapter(status.platform as Platform);
+        const resumeCmd = adapter.getResumeCommandStr(status.sessionId, status.worktreePath);
+        console.log();
+        console.log(chalk.yellow(`  Resume: ${resumeCmd}`));
+      }
+    }
+
+    // Show git changes
+    if (existsSync(status.worktreePath)) {
+      console.log();
+      console.log(chalk.blue("=== Git Changes ==="));
+      console.log();
+
+      try {
+        const gitStatus = execSync("git status --short", {
+          cwd: status.worktreePath,
+          encoding: "utf-8",
+        });
+        if (gitStatus.trim()) {
+          const lines = gitStatus.trim().split("\n");
+          for (const line of lines.slice(0, 10)) {
+            console.log(`  ${line}`);
+          }
+          if (lines.length > 10) {
+            console.log(`  ... and ${lines.length - 10} more`);
+          }
+        } else {
+          console.log("  (no changes)");
+        }
+      } catch {
+        console.log("  (could not get git status)");
+      }
+    }
+
+    console.log();
+    return;
+  }
+
+  // Summary mode (default)
+  const allStatuses = getAllAgentStatuses(repoRoot);
+
+  // Apply filters
+  let filteredStatuses = allStatuses;
+  if (options.running) {
+    filteredStatuses = allStatuses.filter((s) => s.running);
+  } else if (options.stopped) {
+    filteredStatuses = allStatuses.filter((s) => !s.running);
+  }
+
+  if (ctx.json) {
+    output(ctx, successResponse({ agents: filteredStatuses }));
+    return;
+  }
+
+  // Human-readable summary
+  const runningCount = allStatuses.filter((s) => s.running).length;
+  const totalCount = allStatuses.length;
+
+  console.log(chalk.blue("=== Swarm Status ==="));
+  console.log(`Agents: ${chalk.green(runningCount.toString())} running / ${totalCount} registered`);
+  console.log();
+
+  const runningAgents = filteredStatuses.filter((s) => s.running);
+  const stoppedAgents = filteredStatuses.filter((s) => !s.running);
+
+  if (runningAgents.length > 0) {
+    console.log(chalk.cyan("Running:"));
+    for (const agent of runningAgents) {
+      console.log(`  ${chalk.green("▶")} ${chalk.cyan(agent.id)} ${chalk.green("[running]")}`);
+      if (agent.phase) {
+        console.log(`    Phase:    ${agent.phase}`);
+      }
+      console.log(`    Elapsed:  ${agent.elapsed}`);
+      if (agent.branch) {
+        console.log(`    Branch:   ${chalk.dim(agent.branch)}`);
+      }
+      console.log(`    Modified: ${agent.modifiedFiles} file(s)`);
+      if (agent.lastTool) {
+        console.log(`    Activity: ${chalk.yellow(agent.lastTool)}`);
+      }
+      console.log(`    PID:      ${chalk.dim(agent.pid.toString())}`);
+      console.log();
+    }
+  }
+
+  if (stoppedAgents.length > 0) {
+    console.log(chalk.red("Stopped:"));
+    for (const agent of stoppedAgents) {
+      console.log(`  ${chalk.red("○")} ${agent.id} ${chalk.red("[stopped]")}`);
+      if (agent.lastMessage) {
+        console.log(`    ${chalk.dim(`"${agent.lastMessage}"`)}`);
+      }
+      if (agent.sessionId) {
+        const adapter = getCLIAdapter(agent.platform as Platform);
+        const resumeCmd = adapter.getResumeCommandStr(agent.sessionId, agent.worktreePath);
+        console.log(`    ${chalk.yellow(resumeCmd)}`);
+      }
+      console.log();
+    }
+  }
+}
+
+/**
+ * Show agent registry
+ */
+async function showRegistryCommand(
+  ctx: OutputContext,
+  repoRoot: string
+): Promise<void> {
+  const registryPath = getRegistryPath(repoRoot);
+  const registry = readRegistry(repoRoot);
+
+  if (ctx.json) {
+    output(ctx, successResponse({ path: registryPath, ...registry }));
+    return;
+  }
+
+  console.log(chalk.blue("=== Agent Registry ==="));
+  console.log();
+  console.log(`File: ${registryPath}`);
+  console.log();
+  console.log(JSON.stringify(registry, null, 2));
+}
+
+/**
+ * Cleanup worktrees
+ */
+async function cleanupWorktreesCommand(
+  ctx: OutputContext,
+  repoRoot: string,
+  branch: string | undefined,
+  options: {
+    keepBranch?: boolean;
+    yes?: boolean;
+    merged?: boolean;
+    all?: boolean;
+    list?: boolean;
+  }
+): Promise<void> {
+  // Handle list option
+  if (options.list) {
+    await listWorktreesCommand(ctx, repoRoot);
+    return;
+  }
+
+  // Handle merged option
+  if (options.merged) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning Merged Worktrees ==="));
+      console.log();
+    }
+
+    const results = await cleanupMerged(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No merged worktrees found");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle all option
+  if (options.all) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning All Worktrees ==="));
+      console.log(chalk.red("WARNING: This will remove ALL worktrees!"));
+      console.log();
+    }
+
+    const results = await cleanupAll(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No worktrees to remove");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle specific branch
+  if (!branch) {
+    output(ctx, errorResponse("MISSING_ARG", "Branch name or --merged/--all required"), () => {
+      console.error(chalk.red("Error: Branch name or --merged/--all required"));
+      console.log();
+      console.log("Usage:");
+      console.log(chalk.gray("  viben swarm cleanup <branch>     Remove specific worktree"));
+      console.log(chalk.gray("  viben swarm cleanup --merged     Remove merged worktrees"));
+      console.log(chalk.gray("  viben swarm cleanup --all        Remove all worktrees"));
+      console.log(chalk.gray("  viben swarm cleanup --list       List all worktrees"));
+    });
+    process.exit(1);
+    return;
+  }
+
+  if (!ctx.quiet) {
+    console.log(chalk.blue(`=== Cleaning Worktree: ${branch} ===`));
+    console.log();
+  }
+
+  const result: CleanupResult = await cleanupWorktree(repoRoot, branch, {
+    keepBranch: options.keepBranch,
+    skipConfirm: options.yes,
+  });
+
+  if (ctx.json) {
+    if (result.success) {
+      output(ctx, successResponse(result));
+    } else {
+      output(ctx, errorResponse("CLEANUP_FAILED", result.error || "Unknown error"));
+    }
+    return;
+  }
+
+  if (result.success) {
+    console.log(chalk.green(`Cleanup complete for: ${branch}`));
+    if (result.archived) {
+      console.log(`  Archived: ${result.archived}`);
+    }
+    if (result.worktreeRemoved) {
+      console.log("  Worktree removed");
+    }
+    if (result.branchDeleted) {
+      console.log("  Branch deleted");
+    }
+  } else {
+    console.error(chalk.red(`Error: ${result.error}`));
+    process.exit(1);
+  }
+}
+
+// =============================================================================
+// Command Registration
+// =============================================================================
+
+/**
+ * Register swarm commands
+ */
+export function registerSwarmCommand(program: Command): void {
+  const swarm = program
+    .command("swarm")
+    .description("Manage multi-agent pipelines using git worktrees");
+
+  // swarm list - list all worktrees and agents
+  swarm
+    .command("list")
+    .description("List all git worktrees and registered agents")
+    .action(async () => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await listWorktreesCommand(ctx, repoRoot);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm start - start an agent
+  swarm
+    .command("start")
+    .description("Start an agent in a worktree")
+    .argument("<task>", "Task name or directory")
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
+    .option("--detach", "Run in background")
+    .option("--resume", "Resume an existing session")
+    .option("--session <id>", "Session ID for resume")
+    .action(async (task: string, options) => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await startAgentCommand(ctx, repoRoot, task, options);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm stop - stop an agent
+  swarm
+    .command("stop")
+    .description("Stop a running agent")
+    .argument("[task]", "Task name (optional if --all)")
+    .option("--force", "Force kill with SIGKILL")
+    .option("--all", "Stop all running agents")
+    .action(async (task: string | undefined, options) => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await stopAgentCommand(ctx, repoRoot, task, options);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm status - show status
+  swarm
+    .command("status")
+    .description("Show agent status")
+    .argument("[task]", "Task name for specific agent status")
+    .option("--running", "Show only running agents")
+    .option("--stopped", "Show only stopped agents")
+    .option("--detail", "Show detailed status")
+    .option("--watch", "Watch agent log in real-time")
+    .option("--log", "Show recent log entries")
+    .action(async (task: string | undefined, options) => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await showStatusCommand(ctx, repoRoot, task, options);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm registry - show registry
+  swarm
+    .command("registry")
+    .description("Show agent registry")
+    .action(async () => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await showRegistryCommand(ctx, repoRoot);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm cleanup - cleanup worktrees
+  swarm
+    .command("cleanup")
+    .description("Cleanup worktrees and related resources")
+    .argument("[branch]", "Branch name to cleanup")
+    .option("--keep-branch", "Keep the git branch")
+    .option("-y, --yes", "Skip confirmation prompts")
+    .option("--merged", "Cleanup merged worktrees")
+    .option("--all", "Cleanup all worktrees")
+    .option("--list", "List all worktrees")
+    .action(async (branch: string | undefined, options) => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        return;
+      }
+
+      try {
+        await cleanupWorktreesCommand(ctx, repoRoot, branch, options);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+}

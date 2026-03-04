@@ -171,7 +171,7 @@ export function StepConfigure({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="my-project"
+              placeholder={t("placeholders.projectName")}
             />
           </div>
 
@@ -237,7 +237,7 @@ export function StepConfigure({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="my-new-project"
+              placeholder={t("placeholders.newProjectName")}
             />
             <p className="text-xs text-muted-foreground">
               {t("workspace.addModal.fieldNameHint")}
@@ -316,7 +316,7 @@ export function StepConfigure({
                   id="developerName"
                   value={developerName}
                   onChange={(e) => setDeveloperName(e.target.value)}
-                  placeholder="developer"
+                  placeholder={t("placeholders.developer")}
                 />
               </div>
 

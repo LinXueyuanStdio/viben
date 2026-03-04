@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP App Sandbox Proxy</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    #app-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    #error-container {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.05);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 12px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #error-container.visible {
+      display: flex;
+    }
+    #error-message {
+      color: #dc2626;
+      font-size: 14px;
+      text-align: center;
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="app-frame" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
+  <div id="error-container">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <div id="error-message">Security check failed</div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // =======================================================================
+      // Configuration
+      // =======================================================================
+
+      // Allowed referrer patterns (localhost/127.0.0.1 from desktop app)
+      const ALLOWED_REFERRER_PATTERN = /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/;
+
+      // Security self-test timeout
+      const SECURITY_TEST_TIMEOUT_MS = 1000;
+
+      // =======================================================================
+      // State
+      // =======================================================================
+
+      let appUrl = null;
+      let parentOrigin = null;
+      let isInitialized = false;
+      let securityTestPassed = false;
+
+      const appFrame = document.getElementById('app-frame');
+      const errorContainer = document.getElementById('error-container');
+      const errorMessage = document.getElementById('error-message');
+
+      // =======================================================================
+      // Security Validation
+      // =======================================================================
+
+      /**
+       * Validate the referrer to prevent unauthorized access
+       */
+      function validateReferrer() {
+        const referrer = document.referrer;
+
+        // In production, we expect a referrer from localhost
+        if (!referrer) {
+          // Allow empty referrer for direct access during development
+          console.warn('[Sandbox Proxy] No referrer - allowing for development');
+          return true;
+        }
+
+        if (!ALLOWED_REFERRER_PATTERN.test(referrer)) {
+          console.error('[Sandbox Proxy] Invalid referrer:', referrer);
+          return false;
+        }
+
+        console.log('[Sandbox Proxy] Valid referrer:', referrer);
+        return true;
+      }
+
+      /**
+       * Perform security self-test to verify isolation
+       */
+      function performSecuritySelfTest() {
+        const results = {
+          passed: true,
+          tests: {
+            parentAccess: false,
+            cookieAccess: false,
+            localStorageAccess: false
+          }
+        };
+
+        // Test 1: Cannot access window.top (should throw error or be same as self)
+        try {
+          // In a properly sandboxed iframe without allow-same-origin,
+          // accessing top.location should throw or be blocked
+          const topLocation = window.top.location.href;
+          // If we got here and it's the same as our location, we're not nested
+          // If we got here and it's different, isolation may be compromised
+          if (topLocation !== window.location.href) {
+            console.warn('[Sandbox Proxy] Could access parent window');
+            results.tests.parentAccess = true;
+            // This is expected in development, flag but don't fail
+          }
+        } catch (e) {
+          // Expected - cross-origin access denied
+          results.tests.parentAccess = false;
+        }
+
+        // Test 2: Cannot access cookies
+        try {
+          const cookies = document.cookie;
+          // Empty cookies is fine, we just want to ensure no parent cookies leak
+          results.tests.cookieAccess = cookies.length > 0;
+        } catch (e) {
+          results.tests.cookieAccess = false;
+        }
+
+        // Test 3: Cannot access localStorage (sandbox should block this)
+        try {
+          localStorage.getItem('test');
+          // If we got here, localStorage is accessible
+          results.tests.localStorageAccess = true;
+        } catch (e) {
+          // Expected in sandboxed iframe without allow-same-origin
+          results.tests.localStorageAccess = false;
+        }
+
+        // Determine overall pass/fail
+        // For security, we want these tests to FAIL (blocked access is good)
+        // But we'll be lenient for development
+        results.passed = !results.tests.parentAccess;
+
+        console.log('[Sandbox Proxy] Security self-test results:', results);
+        return results;
+      }
+
+      // =======================================================================
+      // Message Handling
+      // =======================================================================
+
+      /**
+       * Handle messages from parent (Inspector) or child (App)
+       */
+      function handleMessage(event) {
+        const { data, origin, source } = event;
+
+        // Log for debugging
+        console.log('[Sandbox Proxy] Message received:', {
+          type: data?.type,
+          origin,
+          isFromParent: source === window.parent,
+          isFromChild: source === appFrame?.contentWindow
+        });
+
+        // Messages from parent (Inspector)
+        if (source === window.parent) {
+          handleParentMessage(data, origin);
+          return;
+        }
+
+        // Messages from child (App iframe)
+        if (source === appFrame?.contentWindow) {
+          handleChildMessage(data);
+          return;
+        }
+
+        console.warn('[Sandbox Proxy] Message from unknown source');
+      }
+
+      /**
+       * Handle messages from parent Inspector
+       */
+      function handleParentMessage(data, origin) {
+        if (!data || typeof data !== 'object') return;
+
+        switch (data.type) {
+          case 'mcp-sandbox-init':
+            // Initialize sandbox with app URL
+            if (!isInitialized) {
+              parentOrigin = origin;
+              appUrl = data.appUrl;
+
+              console.log('[Sandbox Proxy] Initializing with app URL:', appUrl);
+
+              // Perform security self-test
+              const securityResults = performSecuritySelfTest();
+              securityTestPassed = securityResults.passed;
+
+              // Report security test results back to parent
+              window.parent.postMessage({
+                type: 'mcp-sandbox-security-result',
+                results: securityResults
+              }, origin);
+
+              if (securityResults.passed && appUrl) {
+                // Load the app in the inner iframe
+                appFrame.src = appUrl;
+                isInitialized = true;
+              } else if (!securityResults.passed) {
+                showError('Security isolation check failed');
+              }
+            }
+            break;
+
+          case 'mcp-ui-init':
+          case 'mcp-ui-tool-call':
+            // Relay to child app iframe
+            if (appFrame?.contentWindow && isInitialized) {
+              try {
+                appFrame.contentWindow.postMessage(data, '*');
+              } catch (e) {
+                console.error('[Sandbox Proxy] Failed to relay message to app:', e);
+              }
+            }
+            break;
+
+          default:
+            // Relay unknown message types to child
+            if (appFrame?.contentWindow && isInitialized && data.type?.startsWith('mcp-')) {
+              try {
+                appFrame.contentWindow.postMessage(data, '*');
+              } catch (e) {
+                console.error('[Sandbox Proxy] Failed to relay message to app:', e);
+              }
+            }
+        }
+      }
+
+      /**
+       * Handle messages from child App iframe
+       */
+      function handleChildMessage(data) {
+        if (!data || typeof data !== 'object') return;
+
+        // Relay app messages back to parent Inspector
+        if (data.type?.startsWith('mcp-')) {
+          console.log('[Sandbox Proxy] Relaying message to parent:', data.type);
+          window.parent.postMessage(data, parentOrigin || '*');
+        }
+      }
+
+      /**
+       * Handle app iframe load
+       */
+      function handleAppLoad() {
+        console.log('[Sandbox Proxy] App iframe loaded');
+        window.parent.postMessage({
+          type: 'mcp-sandbox-app-loaded',
+          url: appUrl
+        }, parentOrigin || '*');
+      }
+
+      /**
+       * Handle app iframe error
+       */
+      function handleAppError() {
+        console.error('[Sandbox Proxy] App iframe failed to load');
+        showError('Failed to load application');
+        window.parent.postMessage({
+          type: 'mcp-sandbox-app-error',
+          error: 'Failed to load application'
+        }, parentOrigin || '*');
+      }
+
+      /**
+       * Show error UI
+       */
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorContainer.classList.add('visible');
+        appFrame.style.display = 'none';
+      }
+
+      // =======================================================================
+      // Initialization
+      // =======================================================================
+
+      function init() {
+        // Validate referrer
+        if (!validateReferrer()) {
+          showError('Access denied: Invalid referrer');
+          return;
+        }
+
+        // Set up event listeners
+        window.addEventListener('message', handleMessage);
+        appFrame.addEventListener('load', handleAppLoad);
+        appFrame.addEventListener('error', handleAppError);
+
+        // Notify parent that sandbox is ready
+        window.parent.postMessage({
+          type: 'mcp-sandbox-ready'
+        }, '*');
+
+        console.log('[Sandbox Proxy] Initialized and ready');
+      }
+
+      // Start when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>

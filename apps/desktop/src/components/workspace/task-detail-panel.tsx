@@ -9,7 +9,6 @@ import {
   User,
   Calendar,
   Clock,
-  Play,
   GitBranch,
   ListChecks,
   MessageSquare,
@@ -18,6 +17,11 @@ import {
   Bot,
   Trash2,
   HelpCircle,
+  FileText,
+  Terminal,
+  FolderOpen,
+  History,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Button,
@@ -65,10 +69,27 @@ import {
   useToggleCommentReaction,
   useKanbanActivities,
   useAgentConversation,
+  useTaskSpecsData,
 } from "@/hooks";
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
+import {
+  TaskSubtasksTab,
+  TaskPRDTab,
+  TaskLogsTab,
+  type TaskLog,
+} from "./task-tabs";
+import { FileBrowser } from "@/components/file-browser";
+import { TaskActionButtons } from "./kanban/task-action-buttons";
+import type {
+  TaskStatus,
+  XStateValue,
+  ReviewReason,
+  ExecutionPhase,
+  TaskEvent,
+  TaskEventType,
+} from "@/lib/vibe-kanban/types";
 
 // Editable Title Component
 function EditableTitle({
@@ -226,6 +247,61 @@ function formatDateTime(dateString: string): string {
   });
 }
 
+// Format event timestamp helper
+function formatEventTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Format stuck duration helper
+function formatStuckDuration(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(ms / 86400000);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  return `${minutes}m`;
+}
+
+// Get badge class for event type
+function getEventTypeBadgeClass(eventType: TaskEventType): string {
+  const eventClasses: Partial<Record<TaskEventType, string>> = {
+    START: "bg-info/10 text-info",
+    QUEUE: "bg-cyan-500/10 text-cyan-500",
+    DEQUEUE: "bg-muted text-muted-foreground",
+    PLANNING_COMPLETE: "bg-success/10 text-success",
+    PLANNING_FAILED: "bg-destructive/10 text-destructive",
+    SUBTASK_COMPLETE: "bg-success/10 text-success",
+    ALL_SUBTASKS_DONE: "bg-success/10 text-success",
+    CODING_FAILED: "bg-destructive/10 text-destructive",
+    QA_PASSED: "bg-success/10 text-success",
+    QA_FAILED: "bg-warning/10 text-warning",
+    QA_FIXING_COMPLETE: "bg-success/10 text-success",
+    QA_FIXING_FAILED: "bg-destructive/10 text-destructive",
+    USER_STOPPED: "bg-warning/10 text-warning",
+    APPROVED: "bg-success/10 text-success",
+    REJECTED: "bg-warning/10 text-warning",
+    CREATE_PR: "bg-info/10 text-info",
+    RETRY: "bg-info/10 text-info",
+    ABANDON: "bg-muted text-muted-foreground",
+  };
+  return eventClasses[eventType] || "bg-muted text-muted-foreground";
+}
+
 // Convert UI message to Agent message for display
 function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
   switch (msg.type) {
@@ -302,6 +378,18 @@ export interface TaskForPanel {
   // Phase 2: Subtasks and Relationships
   subtasks?: Subtask[];
   relationships?: TaskRelationship[];
+  // Phase 5: Extended task data for new tabs
+  specsPath?: string;           // Task specs directory path (.viben/tasks/<id>/)
+  prdContent?: string | null;   // PRD content
+  logs?: TaskLog | null;        // Execution logs
+  // State machine fields
+  xstateState?: XStateValue;    // XState state value
+  lastEvent?: TaskEvent;        // Last applied event
+  eventHistory?: TaskEvent[];   // Event history
+  reviewReason?: ReviewReason;  // Review reason for human_review status
+  executionPhase?: ExecutionPhase; // Current execution phase
+  isStuck?: boolean;            // Whether task is stuck
+  stuckDuration?: number;       // How long task has been stuck (ms)
 }
 
 // Available task for relationships
@@ -335,7 +423,9 @@ export function TaskDetailPanel({
   task,
   onClose,
   onUpdate,
-  onStartTask,
+  // onStartTask is kept for backwards compatibility but TaskActionButtons now handles task state transitions
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onStartTask: _onStartTask,
   availableTags = [],
   availableUsers = [],
   availableTasks = [],
@@ -350,6 +440,9 @@ export function TaskDetailPanel({
   const [activeTab, setActiveTab] = useState<string>("details");
   // Track if we should auto-start when switching to agent chat
   const [shouldAutoStart, setShouldAutoStart] = useState(false);
+
+  // Load task specs data (PRD, subtasks, logs, files) from .viben/tasks/{taskId}/
+  const specsData = useTaskSpecsData(task?.id ?? null, workspacePath);
 
   // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
   useEffect(() => {
@@ -407,7 +500,7 @@ export function TaskDetailPanel({
     });
 
     // Status change event (if different from default)
-    if (task.status && task.status !== "todo") {
+    if (task.status && task.status !== "backlog") {
       events.push({
         id: `${task.id}-status`,
         type: "status_changed",
@@ -417,7 +510,7 @@ export function TaskDetailPanel({
         },
         timestamp: task.updated_at,
         data: {
-          oldValue: "todo",
+          oldValue: "backlog",
           newValue: task.status,
         },
       });
@@ -762,10 +855,40 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0"
       >
-        <TabsList className="mx-4 mt-2 shrink-0">
+        <TabsList className="mx-4 mt-2 shrink-0 flex-wrap h-auto gap-1">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             {t("workspace.taskDetail", "Details")}
+          </TabsTrigger>
+          <TabsTrigger value="subtasks" className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            {t("workspace.tabs.subtasks", "Subtasks")}
+            {(() => {
+              // Use implementation plan subtasks if available, otherwise fall back to task.subtasks
+              const subtasksList = specsData.subtasks.length > 0
+                ? specsData.subtasks
+                : task.subtasks || [];
+              const completedCount = specsData.subtasks.length > 0
+                ? specsData.subtasks.filter((s) => s.status === "completed").length
+                : (task.subtasks || []).filter((s) => s.completed).length;
+              return subtasksList.length > 0 ? (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {completedCount}/{subtasksList.length}
+                </Badge>
+              ) : null;
+            })()}
+          </TabsTrigger>
+          <TabsTrigger value="prd" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {t("workspace.tabs.prd", "PRD")}
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Terminal className="h-4 w-4" />
+            {t("workspace.tabs.logs", "Logs")}
+          </TabsTrigger>
+          <TabsTrigger value="files" className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            {t("workspace.tabs.files", "Files")}
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -779,6 +902,15 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             {t("workspace.activity", "Activity")}
+          </TabsTrigger>
+          <TabsTrigger value="events" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            {t("workspace.taskEvents.title", "Events")}
+            {task.eventHistory && task.eventHistory.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {task.eventHistory.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="agent-chat" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
@@ -916,35 +1048,72 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               {/* Execution Status (vibe-kanban specific) */}
               {(task.has_in_progress_attempt !== undefined ||
                 task.last_attempt_failed !== undefined ||
-                task.executor) && (
+                task.executor ||
+                task.xstateState) && (
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-medium text-muted-foreground">
                       {t("workspace.execution", "Execution")}
                     </h3>
-                    {!task.has_in_progress_attempt && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 gap-1.5"
-                        onClick={() => {
-                          onStartTask?.(task.id);
-                          setShouldAutoStart(true);
-                          setActiveTab("agent-chat");
-                        }}
-                      >
-                        <Play className="h-3 w-3" />
-                        {t("workspace.runAgent", "Run")}
-                      </Button>
-                    )}
                   </div>
+
+                  {/* Stuck Warning */}
+                  {task.isStuck && (
+                    <div className="mb-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                      <div className="flex items-center gap-2 text-warning">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          {t("workspace.taskStatus.stuck", "Task is stuck")}
+                        </span>
+                      </div>
+                      {task.stuckDuration && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t("workspace.taskStatus.stuckDuration", "Stuck for {{duration}}", {
+                            duration: formatStuckDuration(task.stuckDuration),
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Task Action Buttons */}
+                  <div className="mb-3">
+                    <TaskActionButtons
+                      taskId={task.id}
+                      workspacePath={workspacePath}
+                      status={task.status as TaskStatus}
+                      xstateState={task.xstateState}
+                      reviewReason={task.reviewReason}
+                      isStuck={task.isStuck}
+                      isRunning={task.has_in_progress_attempt}
+                      lastAttemptFailed={task.last_attempt_failed}
+                      executionPhase={task.executionPhase}
+                      lastEventSequence={task.lastEvent?.sequence}
+                      onEventSubmitted={(eventType, newState) => {
+                        console.log(`[TaskDetailPanel] Event ${eventType} submitted, new state: ${newState}`);
+                        // Trigger refresh of task data
+                        onUpdate?.({ _refresh: true });
+                      }}
+                      onEventError={(error) => {
+                        console.error(`[TaskDetailPanel] Event error: ${error}`);
+                      }}
+                      size="default"
+                      showAllActions
+                    />
+                  </div>
+
                   <div className="flex items-center gap-3">
                     {/* Status indicator with colored dot */}
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
                         {t("workspace.status", "Status")}:
                       </span>
-                      {task.has_in_progress_attempt ? (
+                      {task.isStuck ? (
+                        <Badge variant="outline" className="gap-1.5 pl-1.5 bg-warning/10 text-warning border-warning/30">
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {t("workspace.taskStatus.stuck", "Stuck")}
+                        </Badge>
+                      ) : task.has_in_progress_attempt ? (
                         <Badge variant="secondary" className="gap-1.5 pl-1.5">
                           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                           {t("workspace.running", "Running")}
@@ -973,6 +1142,25 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       </div>
                     )}
                   </div>
+
+                  {/* Review Reason */}
+                  {task.reviewReason && task.status === "human_review" && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t("workspace.reviewReason.label", "Review Reason")}:
+                      </span>
+                      <Badge variant="outline" className={cn(
+                        "text-xs",
+                        task.reviewReason === "completed" && "bg-success/10 text-success border-success/30",
+                        task.reviewReason === "errors" && "bg-destructive/10 text-destructive border-destructive/30",
+                        task.reviewReason === "qa_rejected" && "bg-warning/10 text-warning border-warning/30",
+                        task.reviewReason === "plan_review" && "bg-info/10 text-info border-info/30",
+                        task.reviewReason === "stopped" && "bg-muted text-muted-foreground"
+                      )}>
+                        {t(`workspace.reviewReason.${task.reviewReason}`, task.reviewReason)}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1143,6 +1331,159 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               )}
             </div>
           </ScrollArea>
+        </TabsContent>
+
+        {/* Events Tab - State Machine Event History */}
+        <TabsContent value="events" className="flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-4">
+              {task.eventHistory && task.eventHistory.length > 0 ? (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-4">
+                    {t("workspace.taskEvents.history", "Event History")}
+                  </h3>
+                  {task.eventHistory.slice().reverse().map((event, index) => (
+                    <div
+                      key={event.eventId}
+                      className={cn(
+                        "p-3 rounded-lg border",
+                        index === 0 ? "bg-accent/50 border-accent" : "bg-muted/30 border-border"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            #{event.sequence}
+                          </Badge>
+                          <Badge className={cn(
+                            "text-xs",
+                            getEventTypeBadgeClass(event.type)
+                          )}>
+                            {event.type}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatEventTime(event.timestamp)}
+                        </span>
+                      </div>
+                      {event.payload && Object.keys(event.payload).length > 0 && (
+                        <div className="mt-2 text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded">
+                          {JSON.stringify(event.payload, null, 2)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <History className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                    {t("workspace.taskEvents.noEvents", "No events yet")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
+                    {t(
+                      "workspace.taskEvents.eventsWillAppear",
+                      "State machine events will appear here as the task progresses"
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Subtasks Tab */}
+        <TabsContent value="subtasks" className="flex-1 min-h-0">
+          <TaskSubtasksTab
+            subtasks={
+              // Prefer implementation plan subtasks from specs directory
+              specsData.subtasks.length > 0
+                ? specsData.subtasks.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    completed: s.status === "completed",
+                    description: s.description,
+                    files: s.files,
+                    status: s.status,
+                  }))
+                : // Fallback to basic subtasks from task data
+                  (task.subtasks || []).map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    completed: s.completed,
+                    description: undefined,
+                    files: undefined,
+                  }))
+            }
+            isLoading={specsData.isLoading}
+            onSubtaskClick={(subtaskId) => {
+              // Could navigate to subtask or show details
+              console.log("Subtask clicked:", subtaskId);
+            }}
+            onFileClick={(filePath) => {
+              // Open file in editor
+              const client = getGatewayClient();
+              client.openFile(filePath).catch(console.error);
+            }}
+          />
+        </TabsContent>
+
+        {/* PRD Tab */}
+        <TabsContent value="prd" className="flex-1 min-h-0">
+          <TaskPRDTab
+            taskId={task.id}
+            prdContent={specsData.prdContent ?? task.prdContent}
+            prdPath={specsData.prdPath ?? (task.specsPath ? `${task.specsPath}/spec.md` : undefined)}
+            isLoading={specsData.isLoading}
+            error={specsData.error}
+            onRefresh={specsData.refresh}
+            onOpenInEditor={(path) => {
+              // Open file in default editor via gateway
+              const client = getGatewayClient();
+              client.openFile(path).catch(console.error);
+            }}
+          />
+        </TabsContent>
+
+        {/* Logs Tab */}
+        <TabsContent value="logs" className="flex-1 min-h-0">
+          <TaskLogsTab
+            taskId={task.id}
+            logs={
+              specsData.logs
+                ? { taskId: task.id, phases: specsData.logs.phases }
+                : task.logs
+            }
+            isLoading={specsData.isLoading}
+            error={specsData.error}
+            autoScroll={true}
+            onRefresh={specsData.refresh}
+          />
+        </TabsContent>
+
+        {/* Files Tab - Shows task directory files using FileBrowser */}
+        <TabsContent value="files" className="flex-1 min-h-0">
+          {specsData.taskDir ? (
+            <FileBrowser
+              workspacePath={workspacePath}
+              initialPath={specsData.taskDir}
+              hideToolbar={true}
+              className="h-full"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                {t("workspace.filesTab.noTaskDir", "No task directory")}
+              </h3>
+              <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
+                {t(
+                  "workspace.filesTab.taskDirWillAppear",
+                  "Task files will appear here after the task directory is created"
+                )}
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         {/* Agent Chat Tab */}

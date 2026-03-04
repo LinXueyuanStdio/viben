@@ -211,7 +211,7 @@ export function GitHubRepository({
                 </Label>
                 <Input
                   id="repo-owner"
-                  placeholder="owner"
+                  placeholder={t("placeholders.owner")}
                   value={manualOwner}
                   onChange={(e) => setManualOwner(e.target.value)}
                 />
@@ -222,7 +222,7 @@ export function GitHubRepository({
                 </Label>
                 <Input
                   id="repo-name"
-                  placeholder="repository"
+                  placeholder={t("placeholders.repository")}
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
                 />

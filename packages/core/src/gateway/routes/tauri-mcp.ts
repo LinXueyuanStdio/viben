@@ -10,19 +10,26 @@
  *
  * The tauri-plugin-mcp socket uses a custom protocol (command/payload), not standard MCP JSON-RPC.
  * The tauri-plugin-mcp-server npm package translates between MCP JSON-RPC and the custom protocol.
- * We spawn it as a subprocess and proxy stdio to/from SSE.
+ * We spawn it as a subprocess and proxy stdio to/from SSE or Streamable HTTP.
  *
  * Endpoints:
- *   GET  /api/mcp/tauri/sse      - SSE endpoint for MCP communication
- *   POST /api/mcp/tauri/message  - Send messages to MCP server
+ *   GET  /api/mcp/tauri/mcp      - Streamable HTTP SSE stream for existing session
+ *   POST /api/mcp/tauri/mcp      - Streamable HTTP endpoint (initialize or send message)
+ *   DELETE /api/mcp/tauri/mcp    - Streamable HTTP session termination
+ *   GET  /api/mcp/tauri/sse      - SSE endpoint for MCP communication (legacy)
+ *   POST /api/mcp/tauri/message  - Send messages to MCP server (for SSE transport)
  *   GET  /api/mcp/tauri/status   - Check tauri-plugin-mcp status
  */
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
 // Default socket path for tauri-plugin-mcp
 const DEFAULT_SOCKET_PATH = "/tmp/viben-mcp.sock";
@@ -93,7 +100,26 @@ interface McpSession {
   initialized: boolean;
 }
 
+/** Streamable HTTP session for Tauri MCP */
+interface StreamableHttpSession {
+  id: string;
+  process: ChildProcess;
+  transport: StreamableHTTPServerTransport;
+  pendingRequests: Map<
+    string | number,
+    {
+      resolve: (value: McpMessage) => void;
+      reject: (error: Error) => void;
+      timeout: NodeJS.Timeout;
+    }
+  >;
+}
+
+// SSE sessions (legacy)
 const mcpSessions = new Map<string, McpSession>();
+
+// Streamable HTTP sessions
+const streamableHttpSessions = new Map<string, StreamableHttpSession>();
 
 function generateSessionId(): string {
   return `tauri-mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
@@ -185,7 +211,154 @@ function spawnMcpServer(sessionId: string, reply: FastifyReply): McpSession | nu
 }
 
 /**
- * Send a message to the MCP server process
+ * Set CORS headers on raw response
+ */
+function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
+  const origin = request.headers.origin || "*";
+  reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+  reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, Mcp-Session-Id, Last-Event-Id, mcp-protocol-version"
+  );
+  reply.raw.setHeader("Access-Control-Expose-Headers", "Mcp-Session-Id, mcp-protocol-version");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, DELETE, OPTIONS"
+  );
+}
+
+/**
+ * Spawn MCP server subprocess for Streamable HTTP session
+ */
+function spawnMcpServerForStreamableHttp(
+  sessionId: string,
+  transport: StreamableHTTPServerTransport
+): StreamableHttpSession | null {
+  const mcpServerPath = findMcpServerPath();
+  if (!mcpServerPath) {
+    console.error("[tauri-mcp] tauri-plugin-mcp-server not found");
+    return null;
+  }
+
+  console.log(`[tauri-mcp] Starting MCP server for Streamable HTTP session ${sessionId}`);
+  console.log(`[tauri-mcp] Using: node ${mcpServerPath}`);
+
+  const proc = spawn("node", [mcpServerPath], {
+    env: {
+      ...process.env,
+      TAURI_MCP_IPC_PATH: DEFAULT_SOCKET_PATH,
+    },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+
+  const session: StreamableHttpSession = {
+    id: sessionId,
+    process: proc,
+    transport,
+    pendingRequests: new Map(),
+  };
+
+  // Handle stdout (MCP responses from tauri-plugin-mcp-server)
+  const rl = createInterface({ input: proc.stdout! });
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+
+    try {
+      const message = JSON.parse(line) as McpMessage;
+      console.log(`[tauri-mcp] StreamableHTTP received from MCP server:`, JSON.stringify(message).slice(0, 200));
+
+      // Handle response to a pending request
+      if (message.id !== undefined) {
+        const pending = session.pendingRequests.get(message.id);
+        if (pending) {
+          clearTimeout(pending.timeout);
+          session.pendingRequests.delete(message.id);
+          pending.resolve(message);
+        }
+      }
+
+      // Forward notifications to transport
+      if (message.method && !message.id) {
+        // This is a notification from the MCP server
+        transport.send(message as unknown as JSONRPCMessage).catch((err) => {
+          console.error(`[tauri-mcp] Error forwarding notification:`, err);
+        });
+      }
+    } catch (err) {
+      console.error(`[tauri-mcp] Failed to parse stdout:`, line.slice(0, 100));
+    }
+  });
+
+  // Handle stderr (debug logs from MCP server)
+  proc.stderr?.on("data", (data) => {
+    console.log(`[tauri-mcp] MCP server stderr:`, data.toString().trim());
+  });
+
+  // Handle process exit
+  proc.on("exit", (code, signal) => {
+    console.log(`[tauri-mcp] MCP server exited: code=${code}, signal=${signal}`);
+    // Reject all pending requests
+    for (const [, pending] of session.pendingRequests) {
+      clearTimeout(pending.timeout);
+      pending.reject(new Error("MCP server process exited"));
+    }
+    session.pendingRequests.clear();
+    streamableHttpSessions.delete(sessionId);
+  });
+
+  proc.on("error", (err) => {
+    console.error(`[tauri-mcp] MCP server error:`, err);
+  });
+
+  return session;
+}
+
+/**
+ * Send a message to the MCP server process (for Streamable HTTP)
+ */
+async function sendToMcpServerStreamable(
+  session: StreamableHttpSession,
+  message: McpMessage,
+  timeout = 30000
+): Promise<McpMessage> {
+  return new Promise((resolve, reject) => {
+    const timeoutHandle = setTimeout(() => {
+      if (message.id !== undefined) {
+        session.pendingRequests.delete(message.id);
+      }
+      reject(new Error(`Request timeout: ${message.method}`));
+    }, timeout);
+
+    if (message.id !== undefined) {
+      session.pendingRequests.set(message.id, {
+        resolve,
+        reject,
+        timeout: timeoutHandle,
+      });
+    }
+
+    const data = JSON.stringify(message) + "\n";
+    console.log(`[tauri-mcp] StreamableHTTP sending to MCP server:`, data.trim().slice(0, 200));
+
+    session.process.stdin?.write(data, (err) => {
+      if (err) {
+        clearTimeout(timeoutHandle);
+        if (message.id !== undefined) {
+          session.pendingRequests.delete(message.id);
+        }
+        reject(err);
+      } else if (message.id === undefined) {
+        // No response expected for notifications
+        clearTimeout(timeoutHandle);
+        resolve({ jsonrpc: "2.0" });
+      }
+    });
+  });
+}
+
+/**
+ * Send a message to the MCP server process (for SSE - legacy)
  */
 async function sendToMcpServer(
   session: McpSession,
@@ -292,7 +465,188 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
   });
 
   // ========================================================================
-  // SSE Endpoint
+  // Streamable HTTP Transport Endpoint (/mcp)
+  // ========================================================================
+
+  /**
+   * Streamable HTTP GET - Handle SSE stream for existing session
+   * GET /api/mcp/tauri/mcp
+   */
+  fastify.get("/api/mcp/tauri/mcp", async (request, reply) => {
+    setCorsHeaders(request, reply);
+
+    const sessionId = request.headers["mcp-session-id"] as string;
+    console.log(`[tauri-mcp] Received GET /mcp for sessionId ${sessionId}`);
+
+    if (!sessionId) {
+      reply.code(400);
+      return { error: "Mcp-Session-Id header required" };
+    }
+
+    try {
+      const session = streamableHttpSessions.get(sessionId);
+      if (!session) {
+        reply.code(404);
+        return { error: "Session not found" };
+      }
+
+      // Handle as raw HTTP for SSE streaming
+      await session.transport.handleRequest(request.raw, reply.raw);
+    } catch (error) {
+      console.error("[tauri-mcp] Error in GET /mcp route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  /**
+   * Streamable HTTP POST - Initialize new session or send message to existing
+   * POST /api/mcp/tauri/mcp
+   */
+  fastify.post<{
+    Body: McpMessage | McpMessage[];
+  }>("/api/mcp/tauri/mcp", async (request, reply) => {
+    setCorsHeaders(request, reply);
+
+    const sessionId = request.headers["mcp-session-id"] as string | undefined;
+
+    if (sessionId) {
+      // Existing session - forward message
+      console.log(`[tauri-mcp] Received POST /mcp for existing sessionId ${sessionId}`);
+
+      const session = streamableHttpSessions.get(sessionId);
+      if (!session) {
+        reply.code(404);
+        return { error: "Session not found" };
+      }
+
+      try {
+        // Handle request through transport
+        await session.transport.handleRequest(request.raw, reply.raw, request.body);
+      } catch (error) {
+        console.error("[tauri-mcp] Error in POST /mcp route:", error);
+        reply.code(500);
+        return { error: error instanceof Error ? error.message : "Internal error" };
+      }
+    } else {
+      // New connection - create session
+      console.log("[tauri-mcp] New Streamable HTTP connection request");
+
+      // Check if socket is available
+      if (!existsSync(DEFAULT_SOCKET_PATH)) {
+        reply.code(503);
+        return { error: "Tauri app not running. Socket not found: " + DEFAULT_SOCKET_PATH };
+      }
+
+      // Check if MCP server is available
+      const mcpServerPath = findMcpServerPath();
+      if (!mcpServerPath) {
+        reply.code(503);
+        return { error: "tauri-plugin-mcp-server not found" };
+      }
+
+      try {
+        // Create StreamableHTTP transport for client communication
+        const webAppTransport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: randomUUID,
+          onsessioninitialized: (newSessionId) => {
+            console.log(`[tauri-mcp] StreamableHTTP session initialized: ${newSessionId}`);
+
+            // Spawn MCP server process for this session
+            const session = spawnMcpServerForStreamableHttp(newSessionId, webAppTransport);
+            if (session) {
+              streamableHttpSessions.set(newSessionId, session);
+
+              // Set up message forwarding from client to MCP server
+              webAppTransport.onmessage = async (message) => {
+                console.log(`[tauri-mcp] Client -> MCP server:`, JSON.stringify(message).slice(0, 200));
+                const mcpMsg = message as unknown as McpMessage;
+                try {
+                  const response = await sendToMcpServerStreamable(session, mcpMsg);
+                  // Response is automatically handled via pending requests
+                  // For requests with id, we need to send the response back
+                  if (mcpMsg.id !== undefined) {
+                    await webAppTransport.send(response as unknown as JSONRPCMessage);
+                  }
+                } catch (err) {
+                  console.error(`[tauri-mcp] Error forwarding message:`, err);
+                  if (mcpMsg.id !== undefined) {
+                    await webAppTransport.send({
+                      jsonrpc: "2.0",
+                      id: mcpMsg.id,
+                      error: {
+                        code: -32000,
+                        message: err instanceof Error ? err.message : "Internal error",
+                      },
+                    } as unknown as JSONRPCMessage);
+                  }
+                }
+              };
+            } else {
+              console.error(`[tauri-mcp] Failed to spawn MCP server for session ${newSessionId}`);
+            }
+          },
+          onsessionclosed: (closedSessionId) => {
+            console.log(`[tauri-mcp] StreamableHTTP session closed: ${closedSessionId}`);
+            const session = streamableHttpSessions.get(closedSessionId);
+            if (session) {
+              session.process.kill();
+              streamableHttpSessions.delete(closedSessionId);
+            }
+          },
+        });
+
+        await webAppTransport.start();
+
+        // Handle the initial request
+        await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
+      } catch (error) {
+        console.error("[tauri-mcp] Error in POST /mcp route:", error);
+        reply.code(500);
+        return { error: error instanceof Error ? error.message : "Internal error" };
+      }
+    }
+  });
+
+  /**
+   * Streamable HTTP DELETE - Terminate session
+   * DELETE /api/mcp/tauri/mcp
+   */
+  fastify.delete("/api/mcp/tauri/mcp", async (request, reply) => {
+    setCorsHeaders(request, reply);
+
+    const sessionId = request.headers["mcp-session-id"] as string | undefined;
+    console.log(`[tauri-mcp] Received DELETE /mcp for sessionId ${sessionId}`);
+
+    if (!sessionId) {
+      reply.code(400);
+      return { error: "Mcp-Session-Id header required" };
+    }
+
+    const session = streamableHttpSessions.get(sessionId);
+    if (!session) {
+      reply.code(404);
+      return { error: "Session not found" };
+    }
+
+    try {
+      // Kill the MCP server process
+      session.process.kill();
+
+      // Clean up
+      streamableHttpSessions.delete(sessionId);
+
+      reply.code(200);
+      return { deleted: sessionId };
+    } catch (error) {
+      console.error("[tauri-mcp] Error in DELETE /mcp route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  // ========================================================================
+  // SSE Endpoint (Legacy)
   // ========================================================================
 
   /**
@@ -500,11 +854,12 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
 
   fastify.options("/api/mcp/tauri/*", async (_request, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
-    reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    reply.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     reply.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, Accept, Mcp-Session-Id, Last-Event-Id"
+      "Content-Type, Authorization, Accept, Mcp-Session-Id, Last-Event-Id, mcp-protocol-version"
     );
+    reply.header("Access-Control-Expose-Headers", "Mcp-Session-Id, mcp-protocol-version");
     reply.header("Access-Control-Max-Age", "86400");
     reply.code(204).send();
   });

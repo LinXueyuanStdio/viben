@@ -13,8 +13,12 @@
     },
     "./styles.css": "./dist/styles.css"
   },
-  "sideEffects": ["*.css"],
-  "files": ["dist"],
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup && pnpm build:css",
     "build:css": "tailwindcss -i src/styles/globals.css -o dist/styles.css --minify",
@@ -23,6 +27,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-popover": "^1.1.3",
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-select": "^2.1.4",
@@ -41,7 +46,7 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.1",
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.2.1",
     "tsup": "^8.3.5",

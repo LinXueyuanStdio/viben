@@ -1102,7 +1102,7 @@ export function AgentDetailPage() {
                           {availability.type === "LOGIN_DETECTED" && <CheckCircle2 className="h-3.5 w-3.5" />}
                           {availability.type === "INSTALLATION_FOUND" && <AlertCircle className="h-3.5 w-3.5" />}
                           {availability.type === "NOT_FOUND" && <XCircle className="h-3.5 w-3.5" />}
-                          <span className="font-medium">{getAvailabilityStatus(availability).label}</span>
+                          <span className="font-medium">{t(getAvailabilityStatus(availability).labelKey)}</span>
                         </div>
                         {availability.type === "NOT_FOUND" && (
                           <p className="mt-1 opacity-80">

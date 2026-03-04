@@ -892,7 +892,7 @@ export function WorkspaceCronPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, cronExpression: e.target.value })
                       }
-                      placeholder="0 9 * * *"
+                      placeholder={t("placeholders.cronExpression")}
                       className="font-mono h-11"
                     />
                     <div className="flex flex-wrap gap-1.5">

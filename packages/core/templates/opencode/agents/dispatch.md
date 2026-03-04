@@ -151,7 +151,7 @@ This is different from regular "check" which has full specs for self-fix loop.
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
 ```bash
-python3 ./.viben/scripts/multi_agent/create_pr.py
+viben task create-pr
 ```
 
 This will:
@@ -218,6 +218,6 @@ If a subagent reports failure, read the output and decide:
 ## Key Constraints
 
 1. **Do not read spec/requirement files directly** - Let Hook inject to subagents
-2. **Only commit via create-pr action** - Use `multi_agent/create_pr.py` at the end of pipeline
+2. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
 3. **All subagents should use opus model for complex tasks**
 4. **Keep dispatch logic simple** - Complex logic belongs in subagents

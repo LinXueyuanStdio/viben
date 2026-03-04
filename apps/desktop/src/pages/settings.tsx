@@ -1243,12 +1243,18 @@ const NOTIFICATION_CATEGORIES: NotificationCategoryConfig[] = [
   { id: "cron", labelKey: "settings.notifications.cronCategory", descriptionKey: "settings.notifications.cronDescription", icon: Clock },
   { id: "agent", labelKey: "settings.notifications.agentCategory", descriptionKey: "settings.notifications.agentDescription", icon: Bot },
   { id: "system", labelKey: "settings.notifications.systemCategory", descriptionKey: "settings.notifications.systemDescription", icon: Zap },
+  // Auto-Claude inspired task notifications
+  { id: "task_complete", labelKey: "settings.notifications.taskCompleteCategory", descriptionKey: "settings.notifications.taskCompleteDescription", icon: CheckCircle2 },
+  { id: "task_failed", labelKey: "settings.notifications.taskFailedCategory", descriptionKey: "settings.notifications.taskFailedDescription", icon: XCircle },
+  { id: "review_needed", labelKey: "settings.notifications.reviewNeededCategory", descriptionKey: "settings.notifications.reviewNeededDescription", icon: AlertTriangle },
 ];
 
 function NotificationsSection() {
   const { t } = useTranslation();
   const {
     preferences,
+    preferencesLoading,
+    loadPreferences,
     setPreferences,
     setCategoryEnabled,
     setCategoryMethod,
@@ -1259,6 +1265,11 @@ function NotificationsSection() {
     isChecking,
     requestPermission,
   } = useSystemNotification();
+
+  // Load preferences from Gateway on mount
+  useEffect(() => {
+    loadPreferences();
+  }, [loadPreferences]);
 
   // Handle master toggle - also request permission when enabling
   const handleMasterToggle = async (enabled: boolean) => {
@@ -1283,6 +1294,25 @@ function NotificationsSection() {
   const handleDndEndChange = (end: string) => {
     setDoNotDisturb(preferences.doNotDisturb.enabled, preferences.doNotDisturb.start, end);
   };
+
+  // Show loading state while loading preferences from Gateway
+  if (preferencesLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold font-serif mb-1">
+            {t("settings.sections.notifications")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.notifications.description")}
+          </p>
+        </div>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

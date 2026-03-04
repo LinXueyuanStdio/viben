@@ -59,7 +59,7 @@ Before any Q&A, ensure a task exists. If none exists, create one immediately.
 * It's OK if the title is imperfect — refine later in PRD.
 
 ```bash
-TASK_DIR=$(python3 ./.viben/scripts/task.py create "brainstorm: <short goal>" --slug <auto>)
+viben task create "brainstorm: <short goal>" --slug <auto>
 ```
 
 Create/seed `prd.md` immediately with what you know:

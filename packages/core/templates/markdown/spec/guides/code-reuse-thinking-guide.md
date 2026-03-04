@@ -93,26 +93,55 @@ When you've made similar changes to multiple files:
 
 ---
 
-## Template File Registration (Viben-specific)
+## Extending Viben CLI (Viben-specific)
 
-When adding new files to `src/templates/viben/scripts/`:
+When adding new workflow commands:
 
-**CRITICAL**: New script files must be registered in THREE places:
+**CRITICAL**: Extend the `viben` CLI rather than creating standalone scripts.
 
-1. **`src/templates/viben/index.ts`**:
-   - Add `export const xxxScript = readTemplate("scripts/path/file.py");`
-   - Add to `getAllScripts()` Map
+### CLI Structure
 
-2. **`src/commands/update.ts`**:
-   - Add to import statement
-   - Add to `collectTemplateFiles()` Map
+```
+packages/core/src/cli/
+├── index.ts           # Main entry point (registers all commands)
+├── commands/          # Command implementations
+│   ├── task.ts        # Task management commands
+│   ├── swarm.ts       # Multi-agent commands
+│   ├── user.ts        # User/developer commands
+│   └── team.ts        # Team workspace commands
+└── lib/               # Shared utilities
+    └── viben-workspace.ts  # Workspace operations
+```
 
-**Why this matters**: Without registration, `viben update` won't sync the file to user projects. Bug fixes and features won't propagate.
+### Steps to Add a New Command
 
-### Quick Checklist for New Scripts
+1. **Create/extend command file** in `packages/core/src/cli/commands/`
+2. **Register command** in `packages/core/src/cli/index.ts`
+3. **Update documentation** in `spec/backend/script-conventions.md`
+
+### Example: Adding a New Subcommand
+
+```typescript
+// In packages/core/src/cli/commands/task.ts
+taskCommand
+  .command("my-new-command")
+  .description("Description of what it does")
+  .option("--option <value>", "Option description")
+  .action(async (options) => {
+    // Implementation
+  });
+```
+
+### Quick Checklist for New Commands
 
 ```bash
-# After adding a new .py file, verify:
-grep -l "newFileName" src/templates/viben/index.ts  # Should match
-grep -l "newFileName" src/commands/update.ts          # Should match
+# After adding a new command, verify:
+grep -l "my-new-command" packages/core/src/cli/commands/  # Should match
+viben task my-new-command --help  # Should show help
 ```
+
+**Why this matters**: Using the CLI provides:
+- Consistent interface across all workflow operations
+- Automatic `--help` and `--json` support
+- Proper error handling and exit codes
+- Easy testing and maintenance

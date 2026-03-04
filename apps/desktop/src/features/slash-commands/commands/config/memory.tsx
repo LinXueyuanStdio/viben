@@ -13,7 +13,7 @@ export const memoryCommand: SlashCommandDefinition = {
     if (!context.agentId) {
       return {
         type: "action",
-        toast: { message: "No agent selected", type: "error" },
+        toast: { message: "chat.slashCommands.noAgentSelected", type: "error", i18n: true },
       };
     }
 

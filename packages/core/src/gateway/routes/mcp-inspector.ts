@@ -29,6 +29,10 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
 import { whichSync } from "../../executors/utils";
+import {
+  validateOrigin,
+  setSecurityHeaders,
+} from "../middleware/origin-validation";
 
 // ============================================================================
 // Types
@@ -423,20 +427,45 @@ function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS"
   );
+  // Set security headers for DNS rebinding protection
+  setSecurityHeaders(reply);
+}
+
+/**
+ * Validate origin for DNS rebinding protection
+ * Returns false and sends 403 response if origin is not allowed
+ */
+function checkOrigin(request: FastifyRequest, reply: FastifyReply): boolean {
+  return validateOrigin(request, reply);
 }
 
 /**
  * Authentication middleware
  */
 function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
+  console.log("[MCP Inspector] checkAuth called", {
+    authDisabled,
+    url: request.url,
+    method: request.method,
+    headers: Object.keys(request.headers),
+  });
+
   if (authDisabled) {
+    console.log("[MCP Inspector] Auth disabled, allowing request");
     return true;
   }
 
   const authHeader = request.headers["x-mcp-proxy-auth"];
   const authHeaderValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
 
+  console.log("[MCP Inspector] Auth header check:", {
+    hasAuthHeader: !!authHeader,
+    authHeaderValue: authHeaderValue ? `${authHeaderValue.slice(0, 20)}...` : null,
+    expectedTokenPrefix: `Bearer ${sessionToken.slice(0, 8)}...`,
+  });
+
   if (!authHeaderValue || !authHeaderValue.startsWith("Bearer ")) {
+    console.log("[MCP Inspector] Auth failed: missing or malformed auth header");
     reply.code(401).send({
       error: "Unauthorized",
       message:
@@ -448,12 +477,21 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
   const providedToken = authHeaderValue.substring(7); // Remove 'Bearer ' prefix
   const expectedToken = sessionToken;
 
+  console.log("[MCP Inspector] Token comparison:", {
+    providedLength: providedToken.length,
+    expectedLength: expectedToken.length,
+    providedPrefix: providedToken.slice(0, 8),
+    expectedPrefix: expectedToken.slice(0, 8),
+    match: providedToken === expectedToken,
+  });
+
   // Convert to buffers for timing-safe comparison
   const providedBuffer = Buffer.from(providedToken);
   const expectedBuffer = Buffer.from(expectedToken);
 
   // Check length first to prevent timing attacks
   if (providedBuffer.length !== expectedBuffer.length) {
+    console.log("[MCP Inspector] Auth failed: token length mismatch");
     reply.code(401).send({
       error: "Unauthorized",
       message: "Invalid authentication token.",
@@ -463,6 +501,7 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
 
   // Perform timing-safe comparison
   if (!timingSafeEqual(providedBuffer, expectedBuffer)) {
+    console.log("[MCP Inspector] Auth failed: token mismatch");
     reply.code(401).send({
       error: "Unauthorized",
       message: "Invalid authentication token.",
@@ -470,6 +509,7 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
     return false;
   }
 
+  console.log("[MCP Inspector] Auth successful");
   return true;
 }
 
@@ -648,6 +688,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
 
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string;
@@ -692,6 +735,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/mcp", async (request, reply) => {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -783,6 +829,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
    * DELETE /api/mcp/inspector/mcp
    */
   fastify.delete("/api/mcp/inspector/mcp", async (request, reply) => {
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string | undefined;
@@ -836,6 +885,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/stdio", async (request, reply) => {
     // Set CORS headers for raw response handling (SSE)
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -951,8 +1003,11 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
    * SSE transport - POST messages via SSE URL
    * POST /api/mcp/inspector/sse
    *
-   * Some MCP clients POST to the same SSE URL instead of using /message.
-   * This handler extracts the sessionId and forwards to the message handler.
+   * This handles two cases:
+   * 1. Message to existing session (has sessionId) - forward to SSE transport
+   * 2. New connection attempt (no sessionId, has url) - redirect to GET for proper SSE setup
+   *
+   * Note: SSE transport requires GET to establish connection. POST is only for messages.
    */
   fastify.post<{
     Querystring: {
@@ -964,10 +1019,24 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     // Set CORS headers
     setCorsHeaders(request, reply);
 
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
     console.log(`[MCP Inspector] SSE POST received for sessionId ${sessionId}`);
+
+    // If no sessionId but has URL, this is a new connection attempt
+    // SSE transport requires GET to establish, not POST
+    if (!sessionId && request.query.url) {
+      console.log("[MCP Inspector] SSE transport requires GET to establish connection. Use streamable-http for POST-based connections.");
+      reply.code(400);
+      return {
+        error: "SSE transport requires GET request to establish connection",
+        hint: "Use GET /api/mcp/inspector/sse to establish SSE connection first, then POST to /api/mcp/inspector/message with sessionId. Or use transportType=streamable-http for POST-based connections.",
+      };
+    }
 
     if (!sessionId) {
       reply.code(400);
@@ -1010,6 +1079,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/sse", async (request, reply) => {
     // Set CORS headers for raw response handling (SSE)
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -1080,6 +1152,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/message", async (request, reply) => {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 

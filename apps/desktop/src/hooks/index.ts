@@ -310,6 +310,12 @@ export type {
   GatewayWsMessage,
   UseGatewayWebSocketOptions,
 } from "./use-gateway-websocket";
+export { useMcpWebSocket } from "./use-mcp-websocket";
+export type {
+  McpWebSocketCallbacks,
+  UseMcpWebSocketOptions,
+  UseMcpWebSocketReturn,
+} from "./use-mcp-websocket";
 
 // Background Tasks
 export { useBackgroundTasks } from "./use-background-tasks";
@@ -318,3 +324,46 @@ export type {
   BackgroundTaskStatus,
   UseBackgroundTasksReturn,
 } from "./use-background-tasks";
+
+// MCP Completion
+export {
+  useCompletion,
+  createCompletionHandler,
+} from "./use-completion";
+export type {
+  ResourceReference,
+  PromptReference,
+  CompletionRef,
+  CompletionHandler,
+  UseCompletionOptions,
+  UseCompletionReturn,
+} from "./use-completion";
+
+// Task Specs Data
+export { useTaskSpecsData } from "./use-task-specs-data";
+export type {
+  TaskSpecsData,
+  ImplementationSubtask,
+  ImplementationPlan,
+} from "./use-task-specs-data";
+
+// Stuck Detection
+export { useStuckDetection, formatStuckDuration } from "./use-stuck-detection";
+export type {
+  UseStuckDetectionOptions,
+  UseStuckDetectionReturn,
+} from "./use-stuck-detection";
+
+// Task Events (State Machine SSE)
+export { useTaskEvents } from "./use-task-events";
+export type {
+  UseTaskEventsOptions,
+  UseTaskEventsReturn,
+} from "./use-task-events";
+
+// Queue Auto-Promotion
+export {
+  useQueueAutoPromotion,
+  registerTaskStatusChangeListener,
+  notifyTaskStatusChange,
+} from "./use-queue-auto-promotion";

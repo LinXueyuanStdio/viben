@@ -189,6 +189,18 @@ export interface InspectorNotification {
   type: "notification" | "stderr";
 }
 
+/** History entry for MCP request/response tracking */
+export interface InspectorHistoryEntry {
+  id: string;
+  method: string;
+  params?: Record<string, unknown>;
+  response?: unknown;
+  timestamp: Date;
+  duration: number;
+  status: "success" | "error";
+  error?: string;
+}
+
 /** Tool definition from MCP server */
 export interface McpTool {
   name: string;
@@ -203,6 +215,14 @@ export interface McpTool {
 /** Resource definition from MCP server */
 export interface McpResource {
   uri: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** Resource template definition from MCP server */
+export interface McpResourceTemplate {
+  uriTemplate: string;
   name?: string;
   description?: string;
   mimeType?: string;
@@ -226,6 +246,7 @@ export interface McpServerCapabilities {
   prompts?: Record<string, unknown>;
   roots?: Record<string, unknown>;
   sampling?: Record<string, unknown>;
+  logging?: Record<string, unknown>;
 }
 
 // API Log types

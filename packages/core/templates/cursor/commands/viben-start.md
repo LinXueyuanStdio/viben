@@ -28,7 +28,7 @@ cat .viben/workflow.md  # Development process, conventions, and quick start guid
 ### Step 2: Get Current Status `[AI]`
 
 ```bash
-python3 ./.viben/scripts/get_context.py
+viben team context
 ```
 
 This returns:
@@ -61,7 +61,7 @@ cat .viben/spec/guides/cross-layer-thinking-guide.md
 ### Step 4: Check Active Tasks `[AI]`
 
 ```bash
-python3 ./.viben/scripts/task.py list
+viben task list
 ```
 
 If continuing previous work, review the task file.
@@ -183,7 +183,7 @@ If unclear, ask clarifying questions.
 **Step 2: Create Task Directory** `[AI]`
 
 ```bash
-TASK_DIR=$(python3 ./.viben/scripts/task.py create "<title>" --slug <name>)
+viben task create "<title>" --slug <name>
 ```
 
 **Step 3: Write PRD** `[AI]`
@@ -256,7 +256,7 @@ Use this output format:
 Initialize default context:
 
 ```bash
-python3 ./.viben/scripts/task.py init-context "$TASK_DIR" <type>
+viben task init-context <task> --type <type>
 # type: backend | frontend | fullstack
 ```
 
@@ -264,14 +264,13 @@ Add specs found in your research pass:
 
 ```bash
 # For each relevant spec and code pattern:
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
+viben task add-context <task> <path> --reason "<reason>"
 ```
 
 **Step 7: Activate Task** `[AI]`
 
 ```bash
-python3 ./.viben/scripts/task.py start "$TASK_DIR"
+viben task start <task>
 ```
 
 This sets `.current-task` so hooks can inject context.
@@ -325,37 +324,14 @@ The following slash commands are for users (not AI):
 
 ---
 
-## AI Executed Scripts `[AI]`
+## AI Executed Commands `[AI]`
 
-| Script | Purpose |
-|--------|---------|
-| `python3 ./.viben/scripts/task.py create "<title>" [--slug <name>]` | Create task directory |
-| `python3 ./.viben/scripts/task.py list` | List active tasks |
-| `python3 ./.viben/scripts/task.py archive <name>` | Archive task |
-| `python3 ./.viben/scripts/get_context.py` | Get session context |
-
----
-
-## Platform Detection
-
-Viben auto-detects your platform based on config directories. For Cursor users, ensure detection works correctly:
-
-| Condition | Detected Platform |
-|-----------|-------------------|
-| Only `.cursor/` exists | `cursor` ✅ |
-| Both `.cursor/` and `.claude/` exist | `claude` (default) |
-
-If auto-detection fails, set manually:
-
-```bash
-export VIBEN_PLATFORM=cursor
-```
-
-Or prefix commands:
-
-```bash
-VIBEN_PLATFORM=cursor python3 ./.viben/scripts/task.py list
-```
+| Command | Purpose |
+|---------|---------|
+| `viben task create "<title>" [--slug <name>]` | Create task directory |
+| `viben task list` | List active tasks |
+| `viben task archive <name>` | Archive task |
+| `viben team context` | Get session context |
 
 ---
 

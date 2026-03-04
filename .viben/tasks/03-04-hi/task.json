@@ -1,0 +1,40 @@
+{
+  "id": "task_1772558439965_c4zgrf",
+  "name": "hi",
+  "title": "hi",
+  "status": "backlog",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "priority": "P2",
+  "branch": "main",
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": "",
+  "agent": "pr-合并",
+  "taskIndex": 0,
+  "hasInProgressAttempt": false,
+  "lastAttemptFailed": false,
+  "executor": "Agent",
+  "workspacePath": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben",
+  "createdAt": "2026-03-03",
+  "updatedAt": "2026-03-04T03:39:40.413Z",
+  "sessionId": "1af130c2-4d17-49db-ace0-f1299f5f472c",
+  "completedAt": "2026-03-04T03:39:30.379Z"
+}

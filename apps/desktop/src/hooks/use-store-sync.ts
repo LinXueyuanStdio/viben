@@ -2,7 +2,9 @@ import { useEffect, useCallback, useRef } from "react";
 import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
 import { getGatewayClient } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
+import { useMcpWebSocket } from "./use-mcp-websocket";
 import type { McpServerInstance, McpServerStatusInfo } from "@/types";
+import type { McpConfigChangedData } from "@/lib/gateway/types";
 
 /**
  * Event types for cross-window store synchronization
@@ -38,6 +40,12 @@ let lastWrittenContent: string | null = null;
 
 /** Flag to prevent save during initial load */
 let isInitialLoading = true;
+
+/** Timestamp of last write, used to ignore WebSocket events triggered by own writes */
+let lastWriteTimestamp = 0;
+
+/** Grace period (ms) to ignore WebSocket events after our own write */
+const WRITE_GRACE_PERIOD_MS = 500;
 
 /**
  * Read MCP servers state from Gateway file
@@ -87,6 +95,7 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
     // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
     await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
     lastWrittenContent = content;
+    lastWriteTimestamp = Date.now();
     return true;
   } catch (err) {
     console.debug("Failed to write servers file:", err);
@@ -104,6 +113,7 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
  * 2. Persists changes back to Gateway file
  * 3. Emits events when the store changes for cross-window sync
  * 4. Listens for events from other windows
+ * 5. Listens for WebSocket config change events from Gateway
  */
 export function useStoreSync(windowType: "main" | "tray" = "main") {
   const {
@@ -143,6 +153,33 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       isInitialLoading = false;
     }
   }, []);
+
+  /**
+   * Handle WebSocket config change event
+   */
+  const handleConfigChanged = useCallback((data: McpConfigChangedData) => {
+    // Ignore WebSocket events triggered by our own recent writes
+    const timeSinceLastWrite = Date.now() - lastWriteTimestamp;
+    if (timeSinceLastWrite < WRITE_GRACE_PERIOD_MS) {
+      console.debug("[StoreSync] Ignoring config change triggered by own write");
+      return;
+    }
+
+    console.log("[StoreSync] Config file changed via WebSocket:", data.change_type);
+
+    // Reload from file when config changes
+    // Use a small delay to ensure the file write is complete
+    setTimeout(() => {
+      loadFromFile();
+    }, 100);
+  }, [loadFromFile]);
+
+  // Subscribe to WebSocket for real-time config change notifications
+  const { isConnected: wsConnected } = useMcpWebSocket({
+    enabled: true,
+    updateStore: false, // Don't auto-update status, we handle config changes ourselves
+    onConfigChanged: handleConfigChanged,
+  });
 
   /**
    * Save current state to file and emit update event
@@ -242,7 +279,7 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     };
   }, [mcpServerStatuses, debouncedSaveStatuses]);
 
-  // Listen for sync events from other windows
+  // Listen for sync events from other windows (Tauri events as backup)
   useEffect(() => {
     const unlistenFns: UnlistenFn[] = [];
 
@@ -277,6 +314,7 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
   return {
     saveAndEmit,
     reloadFromFile: loadFromFile,
+    wsConnected,
   };
 }
 

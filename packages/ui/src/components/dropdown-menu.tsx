@@ -26,8 +26,15 @@ interface DropdownMenuProps {
 function DropdownMenu({ children, open: controlledOpen, onOpenChange }: DropdownMenuProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
 
-  const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = onOpenChange ?? setUncontrolledOpen;
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const setOpen = React.useCallback((newOpen: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(newOpen);
+    }
+    onOpenChange?.(newOpen);
+  }, [isControlled, onOpenChange]);
 
   return (
     <DropdownMenuContext.Provider value={{ open, setOpen }}>

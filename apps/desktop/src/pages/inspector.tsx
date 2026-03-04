@@ -23,10 +23,21 @@ import {
   Settings2,
   WrapText,
   AlignJustify,
+  AppWindow,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inspector, NotificationsPanel } from "@/components/inspector";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Inspector, HistoryAndNotifications, ConfigManager, LoggingLevelControl, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
   parseMcpConfig,
@@ -38,9 +49,11 @@ import {
   useGatewayInspector,
   buildGatewayInspectorUrl,
   buildGatewayInspectorHeaders,
+  type GatewayInspectorStatus,
 } from "@/hooks/use-gateway-inspector";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "@/hooks/use-theme";
 import type { InspectorConnectionStatus } from "@/types";
 
 // Default MCP server config example - now with proxy support
@@ -51,10 +64,16 @@ const DEFAULT_CONFIG: McpServerConfig = {
 
 export function InspectorPage() {
   const { t } = useTranslation();
+  const { theme, setTheme } = useTheme();
   const {
     inspectorNotifications,
     addInspectorNotification,
+    removeInspectorNotification,
     clearInspectorNotifications,
+    inspectorHistory,
+    addInspectorHistory,
+    removeInspectorHistory,
+    clearInspectorHistory,
   } = useAppStore();
 
   // Gateway Inspector hook (built-in proxy)
@@ -100,51 +119,60 @@ export function InspectorPage() {
     }
   }, [configJson]);
 
-  // Build effective config for connection (with Gateway Inspector proxy if enabled)
-  const effectiveConfig = useMemo<McpServerConfig | null>(() => {
-    if (!parsedConfig) return null;
+  // Helper function to build effective config with given inspector status
+  const buildEffectiveConfig = useCallback(
+    (status: GatewayInspectorStatus | null): McpServerConfig | null => {
+      if (!parsedConfig) return null;
 
-    // If not using proxy, use original config
-    if (!useProxy || !inspectorStatus?.available) {
+      // If not using proxy, use original config
+      if (!useProxy || !status?.available) {
+        return parsedConfig;
+      }
+
+      // If using proxy, wrap the URL
+      if ("url" in parsedConfig && parsedConfig.url) {
+        const proxyUrl = status.proxyUrl;
+        const targetUrl = parsedConfig.url;
+        const originalTransport = parsedConfig.transport || "streamable-http";
+
+        const effectiveUrl = buildGatewayInspectorUrl(
+          proxyUrl,
+          targetUrl,
+          originalTransport as "stdio" | "sse" | "streamable-http"
+        );
+        const effectiveHeaders = {
+          ...parsedConfig.headers,
+          ...buildGatewayInspectorHeaders(status.authToken, parsedConfig.headers),
+        };
+
+        console.log("[Inspector] effectiveConfig:", {
+          proxyUrl,
+          targetUrl,
+          originalTransport,
+          effectiveUrl,
+          effectiveHeaders,
+          authToken: status.authToken ? "present" : "missing",
+        });
+
+        return {
+          ...parsedConfig,
+          // Connection to proxy is always streamable-http, regardless of target transport
+          transport: "streamable-http" as const,
+          url: effectiveUrl,
+          headers: effectiveHeaders,
+        };
+      }
+
       return parsedConfig;
-    }
+    },
+    [parsedConfig, useProxy]
+  );
 
-    // If using proxy, wrap the URL
-    if ("url" in parsedConfig && parsedConfig.url) {
-      const proxyUrl = inspectorStatus.proxyUrl;
-      const targetUrl = parsedConfig.url;
-      const originalTransport = parsedConfig.transport || "streamable-http";
-
-      const effectiveUrl = buildGatewayInspectorUrl(
-        proxyUrl,
-        targetUrl,
-        originalTransport as "stdio" | "sse" | "streamable-http"
-      );
-      const effectiveHeaders = {
-        ...parsedConfig.headers,
-        ...buildGatewayInspectorHeaders(inspectorStatus.authToken, parsedConfig.headers),
-      };
-
-      console.log("[Inspector] effectiveConfig:", {
-        proxyUrl,
-        targetUrl,
-        originalTransport,
-        effectiveUrl,
-        effectiveHeaders,
-        authToken: inspectorStatus.authToken ? "present" : "missing",
-      });
-
-      return {
-        ...parsedConfig,
-        // Connection to proxy is always streamable-http, regardless of target transport
-        transport: "streamable-http" as const,
-        url: effectiveUrl,
-        headers: effectiveHeaders,
-      };
-    }
-
-    return parsedConfig;
-  }, [parsedConfig, useProxy, inspectorStatus]);
+  // Build effective config for connection (with Gateway Inspector proxy if enabled)
+  const effectiveConfig = useMemo<McpServerConfig | null>(
+    () => buildEffectiveConfig(inspectorStatus),
+    [buildEffectiveConfig, inspectorStatus]
+  );
 
   // Check if config can connect
   const canConnect = useMemo(() => {
@@ -177,7 +205,12 @@ export function InspectorPage() {
 
   // Connection state
   const [isConnecting, setIsConnecting] = useState(false);
-  const [activeTab, setActiveTab] = useState("tools");
+
+  // Initialize activeTab from URL hash
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const hash = window.location.hash.slice(1);
+    return hash || "tools";
+  });
 
   // Auto-refresh Inspector status when proxy mode changes
   useEffect(() => {
@@ -185,6 +218,19 @@ export function InspectorPage() {
       refreshInspectorStatus();
     }
   }, [useProxy, refreshInspectorStatus]);
+
+  // Listen for browser back/forward navigation (hash change)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, [activeTab]);
 
   // Persist config to localStorage
   useEffect(() => {
@@ -256,7 +302,7 @@ export function InspectorPage() {
     connectionError,
     connect,
     disconnect,
-    makeRequest,
+    makeRequest: rawMakeRequest,
   } = useMcpConnection({
     config: effectiveConfig,
     onNotification: useCallback(
@@ -272,22 +318,123 @@ export function InspectorPage() {
     enabled: canConnect,
   });
 
+  // Validate hash against available tabs when connection status changes
+  useEffect(() => {
+    if (connectionStatus === "connected" && serverCapabilities) {
+      const hash = window.location.hash.slice(1);
+      const validTabs = [
+        "tools",
+        "resources",
+        "prompts",
+        "ping",
+        "sampling",
+        "roots",
+        "tasks",
+        "elicitations",
+        "auth",
+        "metadata",
+        "apps",
+      ];
+
+      const isValidTab = validTabs.includes(hash);
+
+      if (!isValidTab) {
+        // Default to tools if hash is invalid
+        const defaultTab = "tools";
+        setActiveTab(defaultTab);
+        window.location.hash = defaultTab;
+      }
+    }
+  }, [connectionStatus, serverCapabilities]);
+
+  // Wrap makeRequest to record history
+  const makeRequest = useCallback(
+    async <T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> => {
+      const startTime = Date.now();
+      try {
+        const response = await rawMakeRequest<T>(method, params);
+        const duration = Date.now() - startTime;
+        addInspectorHistory({
+          method,
+          params,
+          response,
+          duration,
+          status: "success",
+        });
+        return response;
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addInspectorHistory({
+          method,
+          params,
+          duration,
+          status: "error",
+          error: errorMessage,
+        });
+        throw error;
+      }
+    },
+    [rawMakeRequest, addInspectorHistory]
+  );
+
   const handleConnect = useCallback(async () => {
-    if (!canConnect) return;
+    console.log("[Inspector] handleConnect called", {
+      canConnect,
+      connectionStatus,
+      useProxy,
+      currentInspectorStatus: inspectorStatus,
+    });
+
+    if (!canConnect) {
+      console.log("[Inspector] Cannot connect - canConnect is false");
+      return;
+    }
 
     if (connectionStatus === "connected") {
+      console.log("[Inspector] Already connected, disconnecting first...");
       await disconnect();
     }
 
     setIsConnecting(true);
     try {
-      await connect();
+      // When using proxy, refresh status to get fresh auth token before connecting
+      // This handles the case where gateway was restarted and token changed
+      if (useProxy) {
+        console.log("[Inspector] Using proxy mode, refreshing status for fresh token...");
+        const freshStatus = await refreshInspectorStatus();
+        console.log("[Inspector] Fresh status received:", {
+          available: freshStatus?.available,
+          authToken: freshStatus?.authToken ? `${freshStatus.authToken.slice(0, 8)}...` : null,
+          authDisabled: freshStatus?.authDisabled,
+          proxyUrl: freshStatus?.proxyUrl,
+        });
+
+        // Build config with fresh status and pass it to connect
+        const freshConfig = buildEffectiveConfig(freshStatus);
+        console.log("[Inspector] Fresh config built:", {
+          url: freshConfig?.url,
+          transport: freshConfig?.transport,
+          headers: freshConfig?.headers ? Object.keys(freshConfig.headers) : [],
+          hasXMcpProxyAuth: freshConfig?.headers?.["X-MCP-Proxy-Auth"] ? "yes" : "no",
+        });
+
+        if (freshConfig) {
+          console.log("[Inspector] Connecting with fresh config...");
+          await connect(freshConfig);
+        } else {
+          console.error("[Inspector] Failed to build config with fresh status");
+        }
+      } else {
+        console.log("[Inspector] Direct mode (no proxy), connecting with effectiveConfig...");
+        await connect();
+      }
     } catch (error) {
-      console.error("Connection failed:", error);
+      console.error("[Inspector] Connection failed:", error);
     } finally {
       setIsConnecting(false);
     }
-  }, [canConnect, connectionStatus, connect, disconnect]);
+  }, [canConnect, connectionStatus, connect, disconnect, useProxy, refreshInspectorStatus, buildEffectiveConfig, inspectorStatus]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();
@@ -333,6 +480,59 @@ export function InspectorPage() {
     setConfigJson(value);
   }, []);
 
+  // Handle config import from ConfigManager
+  const handleConfigImport = useCallback((importedConfig: InspectorConfig) => {
+    // Convert InspectorConfig to McpServerConfig JSON format
+    const mcpConfig: Record<string, unknown> = {};
+
+    // Set transport type
+    if (importedConfig.transport.type) {
+      mcpConfig.transport = importedConfig.transport.type;
+    }
+
+    // Handle remote config (url-based)
+    if (importedConfig.transport.url) {
+      mcpConfig.url = importedConfig.transport.url;
+    }
+
+    // Handle STDIO config
+    if (importedConfig.transport.command) {
+      mcpConfig.command = importedConfig.transport.command;
+      if (importedConfig.transport.args) {
+        mcpConfig.args = importedConfig.transport.args;
+      }
+      if (importedConfig.transport.env) {
+        mcpConfig.env = importedConfig.transport.env;
+      }
+      if (importedConfig.transport.cwd) {
+        mcpConfig.cwd = importedConfig.transport.cwd;
+      }
+    }
+
+    // Handle headers
+    if (importedConfig.transport.headers) {
+      mcpConfig.headers = importedConfig.transport.headers;
+    }
+
+    // Handle auth
+    if (importedConfig.auth?.token) {
+      mcpConfig.auth = importedConfig.auth.token;
+    }
+
+    // Handle timeout
+    if (importedConfig.transport.timeout) {
+      mcpConfig.timeout = importedConfig.transport.timeout;
+    }
+
+    // Update proxy setting
+    if (importedConfig.proxy?.enabled !== undefined) {
+      setUseProxy(importedConfig.proxy.enabled);
+    }
+
+    // Set the new config JSON
+    setConfigJson(JSON.stringify(mcpConfig, null, 2));
+  }, []);
+
   const getConnectionStatusInfo = (status: InspectorConnectionStatus) => {
     switch (status) {
       case "connected":
@@ -354,6 +554,7 @@ export function InspectorPage() {
   const hasPrompts = serverCapabilities?.prompts !== undefined;
   const hasRoots = serverCapabilities?.roots !== undefined;
   const hasSampling = serverCapabilities?.sampling !== undefined;
+  const hasLogging = serverCapabilities?.logging !== undefined;
   // Tasks capability check - MCP 2024-11-05 added tasks support
   const hasTasks = (serverCapabilities as Record<string, unknown>)?.tasks !== undefined;
 
@@ -496,6 +697,14 @@ export function InspectorPage() {
               )}
             </div>
 
+            {/* Config Export/Import */}
+            <ConfigManager
+              config={parsedConfig}
+              configJson={configJson}
+              useProxy={useProxy}
+              onImport={handleConfigImport}
+            />
+
             {/* Config Examples - Collapsible */}
             <div className="text-xs text-muted-foreground">
               <button
@@ -578,6 +787,49 @@ export function InspectorPage() {
                 </div>
               )}
             </div>
+
+            {/* Logging Level Control - only shown when connected and logging is supported */}
+            <LoggingLevelControl
+              enabled={hasLogging}
+              connectionStatus={connectionStatus}
+              makeRequest={makeRequest}
+            />
+          </div>
+        </div>
+
+        {/* Sidebar Footer - Theme Switcher */}
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center justify-between">
+            <Select
+              value={theme}
+              onValueChange={(value: string) =>
+                setTheme(value as "system" | "light" | "dark")
+              }
+            >
+              <SelectTrigger className="w-[120px]" id="theme-select">
+                <SelectValue placeholder={t("settings.theme")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">
+                  <span className="flex items-center gap-2">
+                    <Monitor className="h-4 w-4" />
+                    {t("settings.system")}
+                  </span>
+                </SelectItem>
+                <SelectItem value="light">
+                  <span className="flex items-center gap-2">
+                    <Sun className="h-4 w-4" />
+                    {t("settings.light")}
+                  </span>
+                </SelectItem>
+                <SelectItem value="dark">
+                  <span className="flex items-center gap-2">
+                    <Moon className="h-4 w-4" />
+                    {t("settings.dark")}
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -603,7 +855,14 @@ export function InspectorPage() {
         {/* Tabs Content */}
         <div className="flex-1 overflow-auto p-4">
           {connectionStatus === "connected" ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => {
+                setActiveTab(value);
+                window.location.hash = value;
+              }}
+              className="w-full"
+            >
               <TabsList className="mb-4 flex-wrap">
                 <TabsTrigger value="tools" disabled={!hasTools}>
                   <Wrench className="w-4 h-4 mr-2" />
@@ -644,6 +903,10 @@ export function InspectorPage() {
                 <TabsTrigger value="metadata">
                   <Settings2 className="w-4 h-4 mr-2" />
                   {t("inspector.metadata")}
+                </TabsTrigger>
+                <TabsTrigger value="apps" disabled={!hasTools}>
+                  <AppWindow className="w-4 h-4 mr-2" />
+                  {t("inspector.apps", "Apps")}
                 </TabsTrigger>
               </TabsList>
 
@@ -717,6 +980,13 @@ export function InspectorPage() {
                   activeTab="metadata"
                 />
               </TabsContent>
+              <TabsContent value="apps" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="apps"
+                />
+              </TabsContent>
             </Tabs>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -738,16 +1008,19 @@ export function InspectorPage() {
         >
           {/* Drag Handle */}
           <div
-            className="absolute w-full h-4 -top-2 cursor-row-resize flex items-center justify-center hover:bg-accent/50"
+            className="absolute w-full h-4 -top-2 cursor-row-resize flex items-center justify-center hover:bg-accent/50 z-10"
             onMouseDown={handleBottomDragStart}
           >
             <div className="w-8 h-1 rounded-full bg-border" />
           </div>
-          <div className="h-full overflow-auto">
-            <NotificationsPanel
+          <div className="h-full overflow-hidden">
+            <HistoryAndNotifications
+              history={inspectorHistory}
               notifications={inspectorNotifications}
+              onClearHistory={clearInspectorHistory}
+              onRemoveHistory={removeInspectorHistory}
               onClearNotifications={clearInspectorNotifications}
-              onRemoveNotification={() => {}}
+              onRemoveNotification={removeInspectorNotification}
             />
           </div>
         </div>

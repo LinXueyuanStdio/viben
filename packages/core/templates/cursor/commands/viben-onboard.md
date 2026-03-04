@@ -80,7 +80,7 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 |   |-- frontend/           # Frontend conventions
 |   |-- backend/            # Backend conventions
 |   +-- guides/             # Thinking patterns
-+-- scripts/                # Automation tools
++-- scripts/                # Legacy scripts (use viben CLI instead)
 ```
 
 ### Understanding spec/ subdirectories
@@ -210,7 +210,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 1: Bug Fix Session
 
 **[1/8] /viben-start** - AI needs project context before touching code
-**[2/8] python3 ./.viben/scripts/task.py create "Fix bug" --slug fix-bug** - Track work for future reference
+**[2/8] viben task create "Fix bug" --slug fix-bug** - Track work for future reference
 **[3/8] /viben-before-frontend-dev** - Inject project-specific frontend knowledge
 **[4/8] Investigate and fix the bug** - Actual development work
 **[5/8] /viben-check-frontend** - Re-verify code against guidelines
@@ -221,7 +221,7 @@ All the context AI built during this session will be lost when session ends. The
 ### Example 2: Planning Session (No Code)
 
 **[1/4] /viben-start** - Context needed even for non-coding work
-**[2/4] python3 ./.viben/scripts/task.py create "Planning task" --slug planning-task** - Planning is valuable work
+**[2/4] viben task create "Planning task" --slug planning-task** - Planning is valuable work
 **[3/4] Review docs, create subtask list** - Actual planning work
 **[4/4] /viben-record-session (with --summary)** - Planning decisions must be recorded
 
@@ -316,7 +316,7 @@ I recommend reading through `.viben/spec/` to familiarize yourself with the team
 If the developer wants help filling guidelines, create a feature to track this:
 
 ```bash
-python3 ./.viben/scripts/task.py create "Fill spec guidelines" --slug fill-spec-guidelines
+viben task create "Fill spec guidelines" --slug fill-spec-guidelines
 ```
 
 Then systematically analyze the codebase and fill each guideline file:
