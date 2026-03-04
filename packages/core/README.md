@@ -472,7 +472,7 @@ if (!executorSupportsChat("CLAUDE_CODE")) {
 }
 
 // 创建 Chat 代理
-const chatProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+const chatProxy = createChatProxy("CLAUDE_CODE", false);
 
 // 执行纯文本格式的 Chat
 const result = await chatProxy.execute({
@@ -496,7 +496,7 @@ if (result.sessionId) {
 ```typescript
 import { createChatProxy } from "@viben/core";
 
-const chatProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+const chatProxy = createChatProxy("CLAUDE_CODE", false);
 
 // 执行 JSON 流格式的 Chat
 const result = await chatProxy.execute({
@@ -556,11 +556,11 @@ import { createChatProxy, isSdkAvailable } from "@viben/core";
 // 检查 SDK 是否可用
 if (isSdkAvailable("CLAUDE_CODE")) {
   // 使用 SDK 模式（推荐）
-  const sdkProxy = createChatProxy("CLAUDE_CODE", { preferSdk: true });
+  const sdkProxy = createChatProxy("CLAUDE_CODE", true);
   await sdkProxy.execute({ prompt: "你好" });
 } else {
   // 降级到 Spawn 模式
-  const spawnProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+  const spawnProxy = createChatProxy("CLAUDE_CODE", false);
   await spawnProxy.execute({ prompt: "你好" });
 }
 ```
@@ -834,11 +834,8 @@ cursor --version
 
 **安装方式**：
 ```bash
-# 通过 pip 安装
+# 通过 pip 安装（官方推荐）
 pip install qwen-code-cli
-
-# 或通过 npm 安装（如果提供）
-npm install -g @alibaba/qwen-code
 ```
 
 **前置条件**：
