@@ -78,7 +78,7 @@ When user describes a task, classify it:
 For questions or trivial fixes, work directly:
 
 1. Answer question or make the fix
-2. If code was changed, remind user to run `/trellis:finish-work`
+2. If code was changed, remind user to run `/viben:finish-work`
 
 ---
 
@@ -243,13 +243,13 @@ Run a quality pass against check context:
 3. Remind user to:
    - Test the changes
    - Commit when ready
-   - Run `/trellis:record-session` to record this session
+   - Run `/viben:record-session` to record this session
 
 ---
 
 ## Continuing Existing Task
 
-If `get_context.py` shows a current task:
+If `viben context` shows a current task:
 
 1. Read the task's `prd.md` to understand the goal
 2. Check `task.json` for current status and phase
@@ -265,9 +265,9 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | When to Use |
 |---------|-------------|
-| `/trellis:start` | Begin a session (this command) |
-| `/trellis:finish-work` | Before committing changes |
-| `/trellis:record-session` | After completing a task |
+| `/viben:start` | Begin a session (this command) |
+| `/viben:finish-work` | Before committing changes |
+| `/viben:record-session` | After completing a task |
 
 ### AI Commands `[AI]`
 

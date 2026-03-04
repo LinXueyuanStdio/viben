@@ -34,6 +34,7 @@ import {
   Server,
   TestTube,
   Lock,
+  Unlock,
   GripVertical,
   Settings,
   ListPlus,
@@ -1984,13 +1985,16 @@ export function WorkspaceKanbanPage() {
                                     variant="ghost"
                                     size="icon"
                                     className={cn(
-                                      "h-6 w-6 rounded-md transition-colors opacity-60 hover:opacity-100",
-                                      columnLocked && "opacity-100 text-amber-500"
+                                      "h-6 w-6 rounded-md transition-colors",
+                                      columnLocked
+                                        ? "text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                                        : "opacity-60 hover:opacity-100"
                                     )}
                                     onClick={() => toggleColumnLock(column.id)}
+                                    aria-pressed={columnLocked}
                                     aria-label={columnLocked ? t("workspace.unlockColumn", "Unlock column width") : t("workspace.lockColumn", "Lock column width")}
                                   >
-                                    <Lock className="h-3 w-3" />
+                                    {columnLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="text-xs">
@@ -2150,9 +2154,9 @@ export function WorkspaceKanbanPage() {
                   {/* Resize handle - right edge */}
                   <div
                     className={cn(
-                      "absolute top-0 right-0 w-1 h-full z-30",
-                      "group cursor-col-resize",
-                      columnLocked && "cursor-not-allowed",
+                      "absolute top-0 right-0 w-1 h-full z-30 touch-none",
+                      "group",
+                      columnLocked ? "cursor-not-allowed" : "cursor-col-resize",
                       isResizing === column.id && "bg-primary/50"
                     )}
                     onMouseDown={(e) => {
@@ -2162,17 +2166,26 @@ export function WorkspaceKanbanPage() {
                         startResize(column.id, e.clientX);
                       }
                     }}
+                    onTouchStart={(e) => {
+                      if (!columnLocked && e.touches.length > 0) {
+                        e.preventDefault();
+                        startResize(column.id, e.touches[0].clientX);
+                      }
+                    }}
                     role="separator"
                     aria-orientation="vertical"
                     aria-label={`Resize ${column.name} column`}
+                    title={columnLocked ? t("workspace.columnLocked", "Column width is locked") : undefined}
                   >
+                    {/* Wider invisible hit area for easier grabbing */}
+                    <div className="absolute inset-y-0 -left-1 -right-1" />
                     {/* Visual indicator on hover */}
                     <div
                       className={cn(
                         "absolute top-0 right-0 w-1 h-full",
-                        "bg-transparent group-hover:bg-primary/30 transition-colors",
-                        columnLocked && "group-hover:bg-transparent",
-                        isResizing === column.id && "bg-primary/50"
+                        "bg-transparent transition-colors duration-150",
+                        !columnLocked && "group-hover:bg-primary/40",
+                        isResizing === column.id && !columnLocked && "bg-primary/60"
                       )}
                     />
                     {/* Grip indicator */}

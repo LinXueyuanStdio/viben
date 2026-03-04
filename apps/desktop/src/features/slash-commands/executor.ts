@@ -18,7 +18,10 @@ export async function executeCommand(
   } catch (error) {
     console.error(`Failed to execute command /${command.name}:`, error);
     context.showToast(
-      `Failed to execute /${command.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      context.t("chat.slashCommands.executionFailed", {
+        commandName: command.name,
+        error: error instanceof Error ? error.message : context.t("common.unknownError"),
+      }),
       "error"
     );
   }

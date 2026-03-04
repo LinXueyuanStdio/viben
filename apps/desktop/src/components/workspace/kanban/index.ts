@@ -9,6 +9,13 @@ export {
 } from "./create-task-dialog";
 export { QueueSettingsModal } from "./queue-settings-modal";
 
+// Components
+export {
+  TaskActionButtons,
+  type TaskActionButtonsProps,
+} from "./task-action-buttons";
+export { PhaseProgressIndicator } from "./phase-progress-indicator";
+
 // Hooks
 export {
   useKanbanNavigation,

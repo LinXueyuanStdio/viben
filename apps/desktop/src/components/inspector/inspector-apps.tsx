@@ -916,7 +916,7 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
           src={sandboxProxyUrl}
           className="w-full h-full border-0"
           sandbox="allow-scripts allow-forms allow-popups allow-modals"
-          title="MCP App Sandbox"
+          title={t("inspector.mcpAppSandbox", "MCP App Sandbox")}
         />
       </div>
     </div>

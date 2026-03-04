@@ -37,7 +37,7 @@ AI-assisted development has three fundamental challenges:
 
 ### Challenge 1: AI Has No Memory
 
-Every AI session starts with a blank slate. The `.trellis/workspace/` system captures what happened in each session. The `/trellis:start` command reads this history at session start, giving AI "artificial memory."
+Every AI session starts with a blank slate. The `.trellis/workspace/` system captures what happened in each session. The `/viben:start` command reads this history at session start, giving AI "artificial memory."
 
 ### Challenge 2: AI Has Generic Knowledge, Not Project-Specific Knowledge
 
@@ -45,7 +45,7 @@ The `.trellis/spec/` directory contains project-specific guidelines. The `/befor
 
 ### Challenge 3: AI Context Window Is Limited
 
-The `/check-*` commands re-verify code against guidelines AFTER writing, catching drift that occurred during development. The `/trellis:finish-work` command does a final holistic review.
+The `/check-*` commands re-verify code against guidelines AFTER writing, catching drift that occurred during development. The `/viben:finish-work` command does a final holistic review.
 
 ---
 
@@ -68,12 +68,12 @@ The `/check-*` commands re-verify code against guidelines AFTER writing, catchin
 
 ## COMMAND DEEP DIVE
 
-### /trellis:start - Restore AI Memory
-### /trellis:before-frontend-dev and /trellis:before-backend-dev - Inject Specialized Knowledge
-### /trellis:check-frontend and /trellis:check-backend - Combat Context Drift
-### /trellis:check-cross-layer - Multi-Dimension Verification
-### /trellis:finish-work - Holistic Pre-Commit Review
-### /trellis:record-session - Persist Memory for Future
+### /viben:start - Restore AI Memory
+### /viben:before-frontend-dev and /viben:before-backend-dev - Inject Specialized Knowledge
+### /viben:check-frontend and /viben:check-backend - Combat Context Drift
+### /viben:check-cross-layer - Multi-Dimension Verification
+### /viben:finish-work - Holistic Pre-Commit Review
+### /viben:record-session - Persist Memory for Future
 
 ---
 
@@ -94,7 +94,7 @@ Walk through each example explaining every step.
 1. **AI NEVER commits** - Human tests and approves. AI prepares, human validates.
 2. **Guidelines before code** - /before-*-dev commands inject project knowledge.
 3. **Check after code** - /check-* commands catch context drift.
-4. **Record everything** - /trellis:record-session persists memory.
+4. **Record everything** - /viben:record-session persists memory.
 
 ---
 

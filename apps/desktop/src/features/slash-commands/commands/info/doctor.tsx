@@ -10,24 +10,25 @@ export const doctorCommand: SlashCommandDefinition = {
   category: "info",
   source: "builtin",
   execute: async (context) => {
+    const { t } = context;
     // Collect diagnostic information
     const diagnostics = [
-      "**System Diagnostics**",
+      `**${t("chat.slashCommands.systemDiagnosticsTitle")}**`,
       "",
-      "**Environment:**",
-      `- Platform: ${navigator.platform}`,
-      `- User Agent: ${navigator.userAgent.slice(0, 50)}...`,
+      `**${t("chat.slashCommands.diagnosticsEnvironment")}:**`,
+      `- ${t("chat.slashCommands.diagnosticsPlatform")}: ${navigator.platform}`,
+      `- ${t("chat.slashCommands.diagnosticsUserAgent")}: ${navigator.userAgent.slice(0, 50)}...`,
       "",
-      "**Connection:**",
-      `- Online: ${navigator.onLine ? "Yes" : "No"}`,
+      `**${t("chat.slashCommands.diagnosticsConnection")}:**`,
+      `- ${t("chat.slashCommands.diagnosticsOnline")}: ${navigator.onLine ? t("chat.slashCommands.diagnosticsYes") : t("chat.slashCommands.diagnosticsNo")}`,
       "",
-      "**Workspace:**",
-      `- Path: ${context.workspacePath || "Not set"}`,
+      `**${t("chat.slashCommands.statusWorkspace")}:**`,
+      `- ${t("chat.slashCommands.diagnosticsPath")}: ${context.workspacePath || t("chat.slashCommands.diagnosticsNotSet")}`,
       "",
-      "**Session:**",
-      `- Agent: ${context.agentId || "None"}`,
-      `- Model: ${context.currentModel || "Default"}`,
-      `- Messages: ${context.messages.length}`,
+      `**${t("chat.slashCommands.diagnosticsSession")}:**`,
+      `- ${t("chat.slashCommands.statusAgent")}: ${context.agentId || t("chat.slashCommands.diagnosticsNone")}`,
+      `- ${t("chat.slashCommands.statusModel")}: ${context.currentModel || t("chat.slashCommands.diagnosticsDefault")}`,
+      `- ${t("chat.slashCommands.statusMessages")}: ${context.messages.length}`,
     ];
 
     return {

@@ -353,3 +353,17 @@ export type {
   UseStuckDetectionOptions,
   UseStuckDetectionReturn,
 } from "./use-stuck-detection";
+
+// Task Events (State Machine SSE)
+export { useTaskEvents } from "./use-task-events";
+export type {
+  UseTaskEventsOptions,
+  UseTaskEventsReturn,
+} from "./use-task-events";
+
+// Queue Auto-Promotion
+export {
+  useQueueAutoPromotion,
+  registerTaskStatusChangeListener,
+  notifyTaskStatusChange,
+} from "./use-queue-auto-promotion";

@@ -8,13 +8,13 @@ Adapt and integrate an external skill into your project's development guidelines
 ## Usage
 
 ```
-/trellis:integrate-skill <skill-name>
+/viben:integrate-skill <skill-name>
 ```
 
 **Examples**:
 ```
-/trellis:integrate-skill frontend-design
-/trellis:integrate-skill mcp-builder
+/viben:integrate-skill frontend-design
+/viben:integrate-skill mcp-builder
 ```
 
 ## Core Principle

@@ -99,7 +99,10 @@ export class TaskSSEManager {
     if (!this.taskSubscribers.has(taskId)) {
       this.taskSubscribers.set(taskId, new Set());
     }
-    this.taskSubscribers.get(taskId)!.add(subscriberId);
+    const taskSubs = this.taskSubscribers.get(taskId);
+    if (taskSubs) {
+      taskSubs.add(subscriberId);
+    }
 
     // Set up event listener
     const eventName = `task:${taskId}`;
@@ -147,7 +150,10 @@ export class TaskSSEManager {
     if (!this.taskSubscribers.has("*")) {
       this.taskSubscribers.set("*", new Set());
     }
-    this.taskSubscribers.get("*")!.add(subscriberId);
+    const globalSubs = this.taskSubscribers.get("*");
+    if (globalSubs) {
+      globalSubs.add(subscriberId);
+    }
 
     // Listen to all events
     this.emitter.on("task:*", listener);
