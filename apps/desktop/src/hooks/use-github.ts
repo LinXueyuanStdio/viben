@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import i18n from "@/i18n";
 import {
   getGitHubClient,
   type GitHubAuthStatus,
@@ -63,7 +64,7 @@ export function useGitHubAuth(workspacePath: string | null): UseGitHubAuthResult
       const result = await client.getAuthStatus(workspacePath);
       setStatus(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to get auth status");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.authStatusFailed"));
       setStatus(null);
     } finally {
       setLoading(false);
@@ -82,7 +83,7 @@ export function useGitHubAuth(workspacePath: string | null): UseGitHubAuthResult
       await refresh();
       return user;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.authFailed"));
       return null;
     } finally {
       setLoading(false);
@@ -101,7 +102,7 @@ export function useGitHubAuth(workspacePath: string | null): UseGitHubAuthResult
       await refresh();
       return user;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.authFailed"));
       return null;
     } finally {
       setLoading(false);
@@ -119,7 +120,7 @@ export function useGitHubAuth(workspacePath: string | null): UseGitHubAuthResult
       await client.signOut(workspacePath);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign out failed");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.signoutFailed"));
     } finally {
       setLoading(false);
     }
@@ -192,7 +193,7 @@ export function useGitHubRepository(workspacePath: string | null): UseGitHubRepo
       setRepository(connected.repository);
       setDetectedRepository(detected.repository);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to get repository info");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.repoInfoFailed"));
     } finally {
       setLoading(false);
     }
@@ -210,7 +211,7 @@ export function useGitHubRepository(workspacePath: string | null): UseGitHubRepo
       setDetectedRepository(repository);
       return repository;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to detect repository");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.repoDetectFailed"));
       return null;
     } finally {
       setLoading(false);
@@ -229,7 +230,7 @@ export function useGitHubRepository(workspacePath: string | null): UseGitHubRepo
       await refresh();
       return repository;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect repository");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.repoConnectFailed"));
       return null;
     } finally {
       setLoading(false);
@@ -247,7 +248,7 @@ export function useGitHubRepository(workspacePath: string | null): UseGitHubRepo
       await client.disconnectRepository(workspacePath);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to disconnect repository");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.repoDisconnectFailed"));
     } finally {
       setLoading(false);
     }
@@ -342,7 +343,7 @@ export function useGitHubIssues(
       setIssues(result.items);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load issues");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.issuesLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -365,7 +366,7 @@ export function useGitHubIssues(
       setPage(nextPage);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more issues");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.issuesLoadMoreFailed"));
     } finally {
       setLoading(false);
     }
@@ -382,7 +383,7 @@ export function useGitHubIssues(
       const { investigation } = await client.investigateIssue(workspacePath, issueNumber, saveSpec);
       return investigation;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to investigate issue");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.issueInvestigateFailed"));
       return null;
     }
   }, [workspacePath]);
@@ -394,7 +395,7 @@ export function useGitHubIssues(
       const client = getGitHubClient();
       return await client.importIssues(workspacePath, issueNumbers);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import issues");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.issuesImportFailed"));
       return null;
     }
   }, [workspacePath]);
@@ -483,7 +484,7 @@ export function useGitHubPRs(workspacePath: string | null): UseGitHubPRsResult {
       setPrs(result.items);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load PRs");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.prsLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -506,7 +507,7 @@ export function useGitHubPRs(workspacePath: string | null): UseGitHubPRsResult {
       setPage(nextPage);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more PRs");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.prsLoadMoreFailed"));
     } finally {
       setLoading(false);
     }
@@ -527,7 +528,7 @@ export function useGitHubPRs(workspacePath: string | null): UseGitHubPRsResult {
       await refresh();
       return pr;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create PR");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.prCreateFailed"));
       return null;
     }
   }, [workspacePath, refresh]);
@@ -606,7 +607,7 @@ export function useGitHubReleases(workspacePath: string | null): UseGitHubReleas
       setReleases(result.items);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load releases");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.releasesLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -625,7 +626,7 @@ export function useGitHubReleases(workspacePath: string | null): UseGitHubReleas
       setPage(nextPage);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more releases");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.releasesLoadMoreFailed"));
     } finally {
       setLoading(false);
     }
@@ -646,7 +647,7 @@ export function useGitHubReleases(workspacePath: string | null): UseGitHubReleas
       await refresh();
       return release;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create release");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.releaseCreateFailed"));
       return null;
     }
   }, [workspacePath, refresh]);
@@ -718,7 +719,7 @@ export function useGitHubComments(
       setComments(result.items);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load comments");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.commentsLoadFailed"));
     } finally {
       setLoading(false);
     }
@@ -737,7 +738,7 @@ export function useGitHubComments(
       setPage(nextPage);
       setHasMore(result.has_more);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more comments");
+      setError(err instanceof Error ? err.message : i18n.t("errors.github.commentsLoadMoreFailed"));
     } finally {
       setLoading(false);
     }

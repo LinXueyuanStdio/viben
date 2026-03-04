@@ -21,6 +21,10 @@ export interface UseStuckDetectionOptions {
   stuckThreshold?: number;
   /** Enable process verification (default: true) */
   enableProcessCheck?: boolean;
+  /** Auto-restart after recovery (default: false) */
+  autoRestartOnRecovery?: boolean;
+  /** Callback when task is recovered (before restart) */
+  onRecovered?: () => void;
 }
 
 /**
@@ -72,6 +76,8 @@ export function useStuckDetection({
   checkInterval = 30000, // 30 seconds
   stuckThreshold = 60000, // 1 minute without updates
   enableProcessCheck = true,
+  autoRestartOnRecovery = false,
+  onRecovered,
 }: UseStuckDetectionOptions): UseStuckDetectionReturn {
   const [isStuck, setIsStuck] = useState(false);
   const [stuckDuration, setStuckDuration] = useState(0);
@@ -194,12 +200,27 @@ export function useStuckDetection({
     try {
       setIsRecovering(true);
 
-      // Move task back to queue to restart it
+      // Move task back to queue first
       await updateTaskStatus.mutateAsync({
         taskId,
         status: "queue",
         workspacePath,
       });
+
+      // Notify callback before restart
+      onRecovered?.();
+
+      // If auto-restart is enabled, immediately promote to in_progress
+      if (autoRestartOnRecovery) {
+        // Small delay to let the queue transition complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        await updateTaskStatus.mutateAsync({
+          taskId,
+          status: "in_progress",
+          workspacePath,
+        });
+      }
 
       // Reset stuck status
       setIsStuck(false);
@@ -211,7 +232,7 @@ export function useStuckDetection({
     } finally {
       setIsRecovering(false);
     }
-  }, [taskId, workspacePath, updateTaskStatus, isRecovering]);
+  }, [taskId, workspacePath, updateTaskStatus, isRecovering, autoRestartOnRecovery, onRecovered]);
 
   // Manual reset
   const resetStuck = useCallback(() => {

@@ -126,11 +126,20 @@ function base64Decode(str: string): string {
 /**
  * Register terminal WebSocket routes
  *
+ * Note: @fastify/websocket plugin must be registered at the gateway level before calling this function.
+ * This prevents ERR_HTTP_SOCKET_ASSIGNED errors from multiple registrations.
+ *
  * @param fastify - Fastify instance
  * @param _state - Application state (unused but kept for consistency)
  */
 export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppState): void {
-  // Register WebSocket route dynamically if the plugins are available
+  // Check if websocket plugin is registered
+  if (!fastify.hasDecorator("websocketServer")) {
+    console.warn("[Terminal] @fastify/websocket not registered, terminal WebSocket routes disabled");
+    return;
+  }
+
+  // Register WebSocket route dynamically if node-pty is available
   fastify.register(async (instance) => {
     let nodePty: NodePtyModule | null = null;
 
@@ -140,15 +149,6 @@ export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppSta
     } catch {
       console.warn("[Terminal] node-pty not available, terminal WebSocket routes disabled");
       console.warn("[Terminal] Install node-pty to enable: npm install node-pty");
-      return;
-    }
-
-    // Try to load @fastify/websocket
-    try {
-      const websocket = await import("@fastify/websocket");
-      await instance.register(websocket.default);
-    } catch {
-      console.warn("[Terminal] @fastify/websocket not available, terminal WebSocket routes disabled");
       return;
     }
 

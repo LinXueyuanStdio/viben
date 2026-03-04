@@ -1052,7 +1052,27 @@
     "homepage": "主页",
     "repository": "代码仓库",
     "installWith": "安装方式：",
-    "searchPlugins": "搜索插件..."
+    "searchPlugins": "搜索插件...",
+    "descriptions": {
+      "arxiv": "物理、数学、计算机科学预印本",
+      "pubmed": "MEDLINE 生物医学文献",
+      "pmc": "生物医学全文文章档案",
+      "biorxiv": "生物学预印本",
+      "medrxiv": "健康科学预印本",
+      "semantic": "AI 驱动的研究工具",
+      "core": "全球最大的开放获取论文库",
+      "crossref": "DOI 注册机构元数据",
+      "google_scholar": "Google 学术搜索",
+      "iacr": "密码学电子论文档案",
+      "sciencedirect": "Elsevier 同行评审文献平台",
+      "springer": "科学、技术和医学出版物",
+      "ieee": "IEEE 和 IET 技术文献",
+      "scopus": "Elsevier 摘要和引用数据库",
+      "acm": "计算与信息技术研究",
+      "wos": "Clarivate 引用数据库",
+      "jstor": "学术期刊数字图书馆",
+      "researchgate": "研究人员社交网络"
+    }
   },
   "agent": {
     "searchAgents": "搜索智能体...",
@@ -1692,6 +1712,9 @@
       "disconnected": "未连接",
       "error": "连接错误",
       "copyConfig": "复制配置",
+      "stdio": "STDIO",
+      "sse": "SSE",
+      "http": "HTTP",
       "stdioTitle": "标准 I/O",
       "stdioDesc": "通过标准输入/输出流连接",
       "sseTitle": "服务器推送事件",
@@ -1747,7 +1770,28 @@
     "toolResultAlt": "工具结果",
     "resourceAlt": "资源",
     "mcpAppSandbox": "MCP 应用沙盒",
-    "unknownErrorOccurred": "发生未知错误"
+    "unknownErrorOccurred": "发生未知错误",
+    "savedConfigs": "已保存配置",
+    "saveConfig": "保存配置",
+    "loadConfig": "加载",
+    "pinnedConfigs": "置顶",
+    "recentConfigs": "最近",
+    "searchConfigs": "搜索配置...",
+    "noConfigsFound": "未找到配置",
+    "noSavedConfigs": "暂无已保存配置",
+    "saveCurrentConfig": "保存当前配置",
+    "editSavedConfig": "编辑已保存配置",
+    "editSavedConfigDesc": "更新此已保存配置的名称和描述。",
+    "saveConfigDesc": "保存当前配置以便快速访问。",
+    "configName": "名称",
+    "configNameRequired": "名称是必填项",
+    "configNamePlaceholder": "例如：生产服务器",
+    "configDescription": "描述",
+    "configDescriptionPlaceholder": "可选描述...",
+    "pinConfig": "置顶",
+    "unpinConfig": "取消置顶",
+    "deleteConfigTitle": "删除配置",
+    "deleteConfigDesc": "确定要删除此已保存配置吗？此操作无法撤销。"
   },
   "updates": {
     "title": "包更新",
@@ -2201,6 +2245,7 @@
     "removeWorkspace": "移除工作区",
     "removeWorkspaceConfirm": "确定要移除 \"{{name}}\" 吗？这不会删除任何文件。",
     "configure": "配置",
+    "openInNewWindow": "在新窗口中打开",
     "delete": "删除",
     "deleteConfirmTitle": "删除工作区",
     "deleteConfirmDescription": "确定要从工作区列表中移除 \"{{name}}\" 吗？这不会删除磁盘上的任何文件。",
@@ -2402,7 +2447,8 @@
       "subtasks": "子任务",
       "prd": "PRD",
       "logs": "日志",
-      "files": "文件"
+      "taskDir": "任务目录",
+      "workingDir": "工作目录"
     },
     "subtasksTab": {
       "completed": "已完成 {{completed}}/{{total}}",
@@ -2443,6 +2489,14 @@
       "openInIDE": "在编辑器中打开",
       "noContent": "无可用内容"
     },
+    "taskDirTab": {
+      "noTaskDir": "暂无任务目录",
+      "taskDirWillAppear": "任务目录创建后将显示在这里"
+    },
+    "workingDirTab": {
+      "noWorkingDir": "暂无工作目录",
+      "workingDirWillAppear": "任务分配到工作区后将显示在这里"
+    },
     "taskPromptWithDescription": "请帮我完成以下任务：\n\n**{{title}}**\n\n{{description}}",
     "taskPromptWithoutDescription": "请帮我完成以下任务：{{title}}",
     "viewMode": {
@@ -2468,6 +2522,10 @@
       "errorNaN": "请输入有效数字",
       "errorMin": "最小值为 1",
       "errorMax": "最大值为 10"
+    },
+    "queueAutoPromotion": {
+      "promoted": "已启动任务：{{title}}",
+      "promotedBatch": "已从队列启动 {{count}} 个任务"
     },
     "colors": {
       "gray": "灰色",
@@ -2812,6 +2870,7 @@
     "closeSidebar": "关闭侧边栏",
     "openSidebar": "打开侧边栏",
     "clearMessages": "清空消息",
+    "commandExecuted": "命令已执行",
     "artifacts": {
       "title": "产物",
       "createdBy": "已创建",
@@ -3514,6 +3573,7 @@
     "noAudioPath": "无可用音频文件路径",
     "loadingAudio": "加载音频中...",
     "audio": "音频",
+    "audioError": "音频错误：{{error}}",
     "rewind10s": "后退 10 秒",
     "forward10s": "前进 10 秒",
     "noSearchResults": "无搜索结果",
@@ -3524,6 +3584,13 @@
     "openInFontViewer": "在字体查看器中打开",
     "characterSet": "字符集",
     "sizeSamples": "字号示例",
+    "noFontPath": "无可用字体文件路径",
+    "noFontSource": "无可用字体源",
+    "fontSampleText": "我能吞下玻璃而不伤身体",
+    "fontAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "fontAlphabetLower": "abcdefghijklmnopqrstuvwxyz",
+    "fontNumbers": "0123456789",
+    "fontSymbols": "！@#￥%……&*（）_+-=【】{}|；'：\"，。、《》？",
     "loadingImage": "加载图片中...",
     "fileTooLarge": "文件过大，无法预览",
     "fileTooLargeDesc": "此文件过大，无法在应用内预览。",
@@ -3660,7 +3727,8 @@
     },
     "conversation": {
       "sendMessageFailed": "发送消息失败",
-      "approvePlanFailed": "批准计划失败"
+      "approvePlanFailed": "批准计划失败",
+      "startAgentFailed": "启动智能体失败：{{error}}"
     },
     "connection": {
       "failed": "连接失败"
@@ -3673,6 +3741,10 @@
     },
     "search": {
       "failed": "搜索失败"
+    },
+    "sessions": {
+      "loadFailed": "加载会话列表失败",
+      "refreshFailed": "刷新会话列表失败"
     },
     "packages": {
       "loadFailed": "加载包失败"

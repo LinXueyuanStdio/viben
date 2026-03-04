@@ -10,6 +10,7 @@ import type { SkillPackage } from '@viben/api-client';
 import { skillsManager } from '@viben/core';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
+import i18n from '@/i18n';
 
 // ============================================
 // Types
@@ -140,7 +141,7 @@ export async function downloadAndInstallSkill(
     onProgress?.({
       stage: 'downloading',
       progress: 100,
-      message: 'Download complete',
+      message: i18n.t('installation.downloadComplete'),
     });
 
     // Get app data directory
@@ -165,7 +166,7 @@ export async function downloadAndInstallSkill(
     onProgress?.({
       stage: 'extracting',
       progress: 0,
-      message: 'Extracting package...',
+      message: i18n.t('installation.extractingPackage'),
     });
 
     // Extract using core skills manager
@@ -178,7 +179,7 @@ export async function downloadAndInstallSkill(
         onProgress?.({
           stage: 'extracting',
           progress: extractProgress,
-          message: 'Extracting files...',
+          message: i18n.t('installation.extractingFiles'),
         });
       },
     });
@@ -187,7 +188,7 @@ export async function downloadAndInstallSkill(
     onProgress?.({
       stage: 'complete',
       progress: 100,
-      message: 'Installation complete',
+      message: i18n.t('installation.complete'),
     });
 
     return {
@@ -199,7 +200,7 @@ export async function downloadAndInstallSkill(
     };
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
+      error instanceof Error ? error.message : i18n.t('common.unknownError');
 
     // Determine structured error code from the error
     let errorCode: InstallErrorCode = 'UNKNOWN_ERROR';
@@ -222,7 +223,7 @@ export async function downloadAndInstallSkill(
     onProgress?.({
       stage: 'error',
       progress: 0,
-      message: 'Installation failed',
+      message: i18n.t('installation.failed'),
       error: errorMessage,
     });
 
@@ -231,7 +232,7 @@ export async function downloadAndInstallSkill(
       name: pkg.name,
       version: pkg.version,
       path: '',
-      message: 'Installation failed',
+      message: i18n.t('installation.failed'),
       error: errorMessage,
       errorCode,
     };

@@ -24,6 +24,7 @@ import {
   ListTodo,
   Trash2,
   Github,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -72,6 +73,7 @@ import { useModels } from "@/hooks/use-models";
 import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
+import { invoke } from "@tauri-apps/api/core";
 
 interface NavItem {
   titleKey: string;
@@ -204,6 +206,15 @@ export function Sidebar() {
     setWorkspaceToConfig(workspaceId);
   };
 
+  const handleOpenInNewWindow = async (workspaceId: string) => {
+    try {
+      await invoke("open_workspace_in_new_window", { workspaceId });
+    } catch (error) {
+      console.error("Failed to open workspace in new window:", error);
+      toast.error(t("common.error"));
+    }
+  };
+
   const handleDeleteWorkspace = async () => {
     if (!workspaceToDelete) return;
 
@@ -326,12 +337,18 @@ export function Sidebar() {
                           )}
                         </span>
                       </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-40">
+                      <DropdownMenuSubContent className="w-48">
                         <DropdownMenuItem
                           onClick={() => handleConfigureWorkspace(ws.id)}
                         >
                           <Settings className="h-4 w-4 mr-2" />
                           {t("workspace.configure")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenInNewWindow(ws.id)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          {t("workspace.openInNewWindow")}
                         </DropdownMenuItem>
                         {ws.type !== "global" && (
                           <DropdownMenuItem

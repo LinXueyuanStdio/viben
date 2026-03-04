@@ -142,17 +142,20 @@ function transformEvent(event: GatewayEvent): ServerMessage {
 
 /**
  * Register WebSocket routes
+ *
+ * Note: @fastify/websocket plugin must be registered at the gateway level before calling this function.
+ * This prevents ERR_HTTP_SOCKET_ASSIGNED errors from multiple registrations.
  */
 export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppState): void {
-  // We need @fastify/websocket plugin for this
-  // Register WebSocket route dynamically if the plugin is available
-  fastify.register(async (instance) => {
-    try {
-      const websocket = await import("@fastify/websocket");
-      await instance.register(websocket.default);
-      console.log("[Gateway] WebSocket routes registered at /ws");
+  // Check if websocket plugin is registered by looking for the decorator
+  if (!fastify.hasDecorator("websocketServer")) {
+    console.warn("[Gateway] @fastify/websocket not registered, WebSocket routes disabled");
+    return;
+  }
 
-      instance.get("/ws", { websocket: true }, (socket) => {
+  console.log("[Gateway] WebSocket routes registered at /ws");
+
+  fastify.get("/ws", { websocket: true }, (socket) => {
         // Create a session span that covers the entire WebSocket connection lifetime
         const sessionSpan = tracer.startSpan("ws.session", {
           kind: SpanKind.SERVER,
@@ -298,10 +301,4 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
           activeWsConnectionCount = Math.max(0, activeWsConnectionCount - 1);
         });
       });
-    } catch (error) {
-      // WebSocket plugin not available, skip WebSocket route registration
-      console.warn("[Gateway] @fastify/websocket not available, WebSocket routes disabled");
-      console.warn("[Gateway] WebSocket registration error:", error instanceof Error ? error.message : error);
-    }
-  });
 }

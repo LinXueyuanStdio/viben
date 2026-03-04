@@ -79,7 +79,7 @@ import {
   ListView,
   ListViewItem,
   BulkActionsBar,
-  // SelectableCard, // TODO: use in multi-select mode
+  SelectableCard,
   EditableCardTitle,
   SortModeSelect,
   StatsPanel,
@@ -123,7 +123,7 @@ import {
   type CreateTaskData,
   type TaskForPanel,
 } from "@/components/workspace";
-import { useLocalWorkspaces, useAgents, useModels, useQueueAutoPromotion } from "@/hooks";
+import { useLocalWorkspaces, useAgents, useModels, useQueueAutoPromotion, useStuckDetection } from "@/hooks";
 import {
   useVibeKanbanTasks,
   useUpdateVibeKanbanTaskStatus,
@@ -574,6 +574,131 @@ const TaskCardContent = memo(function TaskCardContent({
 });
 
 
+/**
+ * Task Card with real-time stuck detection
+ *
+ * Wraps KanbanCard and uses useStuckDetection hook for accurate
+ * stuck status that considers client activity and process verification.
+ */
+interface TaskCardWithStuckDetectionProps {
+  task: EnhancedTask;
+  index: number;
+  columnId: string;
+  workspacePath: string;
+  isSelected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  showMoreMenu?: boolean;
+  renderMoreMenu?: (onOpenChange?: (open: boolean) => void) => React.ReactNode;
+}
+
+const TaskCardWithStuckDetection = memo(function TaskCardWithStuckDetection({
+  task,
+  index,
+  columnId,
+  workspacePath,
+  isSelected,
+  onClick,
+  children,
+  showMoreMenu,
+  renderMoreMenu,
+}: TaskCardWithStuckDetectionProps) {
+  // Use the enhanced stuck detection hook for real-time detection
+  const { isStuck: detectedStuck } = useStuckDetection({
+    taskId: task.id,
+    isRunning: !!task.has_in_progress_attempt,
+    workspacePath,
+    lastUpdated: task.updated_at,
+    // Use shorter threshold for active detection
+    stuckThreshold: 60000, // 1 minute
+    checkInterval: 30000, // 30 seconds
+  });
+
+  // Combine server-side stuck status with client-side detection
+  // Server status (is_stuck) is authoritative but client detection is more responsive
+  const isStuck = detectedStuck || task.isStuck || task.is_stuck || false;
+  const isRunning = !!task.has_in_progress_attempt;
+
+  return (
+    <KanbanCard
+      id={task.id}
+      name={task.title}
+      index={index}
+      parent={columnId}
+      onClick={onClick}
+      isOpen={isSelected}
+      tabIndex={isSelected ? 0 : -1}
+      className={cn(
+        // Running pulse animation - blue border effect
+        isRunning && !isStuck && "task-running-pulse ring-2 ring-primary/50",
+        // Stuck pulse animation - warning border effect
+        isStuck && "task-stuck-pulse ring-2 ring-warning/50"
+      )}
+      showMoreMenu={showMoreMenu}
+      renderMoreMenu={renderMoreMenu}
+    >
+      {children}
+    </KanbanCard>
+  );
+});
+
+
+/**
+ * List View Item with real-time stuck detection
+ *
+ * Wraps ListViewItem and uses useStuckDetection hook for accurate
+ * stuck status that considers client activity and process verification.
+ */
+interface ListViewItemWithStuckDetectionProps {
+  task: EnhancedTask;
+  workspacePath: string;
+  isSelected: boolean;
+  onClick: () => void;
+  renderStatus?: (task: EnhancedTask) => React.ReactNode;
+  children: React.ReactNode;
+}
+
+const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetection({
+  task,
+  workspacePath,
+  isSelected,
+  onClick,
+  renderStatus,
+  children,
+}: ListViewItemWithStuckDetectionProps) {
+  // Use the enhanced stuck detection hook for real-time detection
+  const { isStuck: detectedStuck } = useStuckDetection({
+    taskId: task.id,
+    isRunning: !!task.has_in_progress_attempt,
+    workspacePath,
+    lastUpdated: task.updated_at,
+    stuckThreshold: 60000,
+    checkInterval: 30000,
+  });
+
+  // Combine server-side stuck status with client-side detection
+  const isStuck = detectedStuck || task.isStuck || task.is_stuck || false;
+  const isRunning = !!task.has_in_progress_attempt;
+
+  return (
+    <ListViewItem
+      item={task}
+      onClick={onClick}
+      isSelected={isSelected}
+      renderStatus={renderStatus}
+      className={cn(
+        // Running pulse animation - blue border effect
+        isRunning && !isStuck && "task-running-pulse ring-2 ring-primary/50",
+        // Stuck pulse animation - warning border effect
+        isStuck && "task-stuck-pulse ring-2 ring-warning/50"
+      )}
+    >
+      {children}
+    </ListViewItem>
+  );
+});
+
+
 // Build column statuses with translations
 // Using new 6-column layout: backlog, queue, in_progress, ai_review, human_review, done
 function useColumnStatuses(): Status[] {
@@ -824,6 +949,7 @@ export function WorkspaceKanbanPage() {
     tasks: tasks ?? [],
     onPromoteTask: handlePromoteTask,
     enabled: !!workspace,
+    workspacePath: workspace?.path,
   });
 
   // Fetch available agents and models for task creation
@@ -894,11 +1020,11 @@ export function WorkspaceKanbanPage() {
   const {
     selectedIds,
     selectedCount,
-    isSelecting: _isSelecting,
-    toggleSelect: _toggleSelect,
+    isSelecting,
+    toggleSelect,
+    isSelected: isMultiSelected,
     selectAll,
     clearSelection,
-    isSelected: _isSelected,
     toggleSubset,
     isSubsetAllSelected,
     isSubsetSomeSelected,
@@ -931,6 +1057,9 @@ export function WorkspaceKanbanPage() {
       has_in_progress_attempt: task.has_in_progress_attempt,
       last_attempt_failed: task.last_attempt_failed,
       executor: task.executor,
+      // Git worktree/workspace paths
+      worktree_path: task.worktree_path,
+      workspace_path: task.workspace_path,
     };
   }, [selectedTaskId, tasks]);
 
@@ -1993,26 +2122,28 @@ export function WorkspaceKanbanPage() {
                               </>
                             )}
 
-                            {/* Add task button - primary action */}
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-md transition-colors"
-                                    style={{ color: `hsl(var(${colorVar}))` }}
-                                    onClick={() => handleAddTask(column.id)}
-                                    aria-label={t("workspace.addTask", "Add Task")}
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  {t("workspace.addTask", "Add Task")}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            {/* Add task button - only show for backlog column */}
+                            {column.id === "backlog" && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 rounded-md transition-colors"
+                                      style={{ color: `hsl(var(${colorVar}))` }}
+                                      onClick={() => handleAddTask(column.id)}
+                                      aria-label={t("workspace.addTask", "Add Task")}
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {t("workspace.addTask", "Add Task")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                             {/* Collapse button */}
                             <TooltipProvider>
                               <Tooltip>
@@ -2080,22 +2211,19 @@ export function WorkspaceKanbanPage() {
                             delay: index * 0.02,
                           }}
                         >
-                          <KanbanCard
+                          <SelectableCard
                             id={task.id}
-                            name={task.title}
+                            isSelected={isMultiSelected(task.id)}
+                            isSelecting={isSelecting}
+                            onToggle={toggleSelect}
+                          >
+                          <TaskCardWithStuckDetection
+                            task={task}
                             index={index}
-                            parent={column.id}
+                            columnId={column.id}
+                            workspacePath={workspace?.path ?? ""}
+                            isSelected={selectedTaskId === task.id}
                             onClick={() => handleCardClick(task.id)}
-                            isOpen={selectedTaskId === task.id}
-                            tabIndex={selectedTaskId === task.id ? 0 : -1}
-                            className={cn(
-                              // Running pulse animation - blue border effect
-                              task.has_in_progress_attempt && !task.isStuck && !task.is_stuck &&
-                                "task-running-pulse ring-2 ring-primary/50",
-                              // Stuck pulse animation - warning border effect
-                              (task.isStuck || task.is_stuck) &&
-                                "task-stuck-pulse ring-2 ring-warning/50"
-                            )}
                             showMoreMenu
                             renderMoreMenu={(onOpenChange) => (
                               <DropdownMenu onOpenChange={onOpenChange}>
@@ -2209,7 +2337,8 @@ export function WorkspaceKanbanPage() {
                                   : undefined
                               }
                             />
-                          </KanbanCard>
+                          </TaskCardWithStuckDetection>
+                          </SelectableCard>
                         </motion.div>
                       ))}
                     </AnimatePresence>
@@ -2278,11 +2407,12 @@ export function WorkspaceKanbanPage() {
             onItemClick={(item) => handleCardClick(item.id)}
             emptyMessage={t("workspace.noTasks", "No tasks found")}
             renderItem={(item, itemIsSelected) => (
-              <ListViewItem
-                item={item}
+              <ListViewItemWithStuckDetection
+                task={item}
+                workspacePath={workspace?.path ?? ""}
                 onClick={() => handleCardClick(item.id)}
                 isSelected={itemIsSelected}
-                renderStatus={(task: TaskWithAttemptStatus) => {
+                renderStatus={(task: EnhancedTask) => {
                   const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
                   const column = columnStatuses.find((c) => c.id === mappedColumn);
                   return (
@@ -2296,7 +2426,7 @@ export function WorkspaceKanbanPage() {
                   task={item}
                   onTitleChange={(title) => handleTitleChange(item.id, title)}
                 />
-              </ListViewItem>
+              </ListViewItemWithStuckDetection>
             )}
           />
         </div>

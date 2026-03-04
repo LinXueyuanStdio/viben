@@ -291,6 +291,10 @@ pub fn run() {
             // Screenshot commands (native screen capture)
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,
+            // Window commands (multi-window support)
+            commands::window::open_workspace_in_new_window,
+            commands::window::get_workspace_windows,
+            commands::window::close_workspace_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

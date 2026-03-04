@@ -7,6 +7,7 @@ import { readYaml, writeYaml, ensureDir, fileExists } from "./yaml";
 
 export * from "./paths";
 export * from "./yaml";
+export * from "./markdown";
 export * from "./manager";
 
 /**

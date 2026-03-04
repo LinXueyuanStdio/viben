@@ -18,7 +18,7 @@ import {
   type UpdateTaskRequest,
   type TaskStatus,
 } from "@/lib/vibe-kanban";
-import { recordTaskActivity } from "@/stores/task-activity-store";
+import { recordTaskActivity, clearTaskActivity } from "@/stores/task-activity-store";
 
 // Query keys
 export const vibeKanbanKeys = {
@@ -178,6 +178,12 @@ export function useUpdateVibeKanbanTaskStatus() {
 
       return { previousTasks, queryKey };
     },
+    onSuccess: (_data, { taskId, status }) => {
+      // Clear activity tracking when task completes or is archived
+      if (status === "done") {
+        clearTaskActivity(taskId);
+      }
+    },
     onError: (
       _err: unknown,
       _params: UpdateTaskStatusParams,
@@ -208,7 +214,10 @@ export function useDeleteVibeKanbanTask() {
 
   return useMutation({
     mutationFn: ({ taskId }: DeleteTaskParams) => deleteTask(taskId),
-    onSuccess: (_data: void, { workspacePath }: DeleteTaskParams) => {
+    onSuccess: (_data: void, { taskId, workspacePath }: DeleteTaskParams) => {
+      // Clear activity tracking for deleted task
+      clearTaskActivity(taskId);
+
       queryClient.invalidateQueries({
         queryKey: vibeKanbanKeys.tasks(workspacePath ?? ""),
       });

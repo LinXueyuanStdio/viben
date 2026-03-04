@@ -961,7 +961,7 @@ export function WorkspaceChatPage() {
       console.log(`[WorkspaceChat] Refreshed ${convs.length} sessions for agent ${selectedAgentId}`);
     } catch (error) {
       console.error("[WorkspaceChat] Failed to refresh sessions from Gateway:", error);
-      setSessionsError(error instanceof Error ? error.message : "Failed to refresh sessions");
+      setSessionsError(error instanceof Error ? error.message : t("errors.sessions.refreshFailed"));
     } finally {
       setIsLoadingSessions(false);
     }
@@ -1108,7 +1108,7 @@ export function WorkspaceChatPage() {
         }
       } catch (error) {
         console.error("[WorkspaceChat:Effect:Sessions] Failed to load sessions:", error);
-        setSessionsError(error instanceof Error ? error.message : "Failed to load sessions");
+        setSessionsError(error instanceof Error ? error.message : t("errors.sessions.loadFailed"));
         setConversations([]);
       } finally {
         console.log(`[WorkspaceChat:Effect:Sessions] Finished loading for ${targetAgentId}`);
@@ -1598,7 +1598,7 @@ export function WorkspaceChatPage() {
         // Handle result
         if (result.type === "message" && result.content) {
           // Add as system message - for now just show as toast
-          const description = typeof result.content === "string" ? result.content : "Command executed";
+          const description = typeof result.content === "string" ? result.content : t("chat.commandExecuted");
           toast.info(description, { description: `/${command.name}` });
         } else if (result.type === "prompt" && result.prompt) {
           // Send prompt to AI
@@ -1668,7 +1668,7 @@ export function WorkspaceChatPage() {
 
     const exportData = {
       title: currentConversation.title,
-      agent: currentAgent?.name || "Default Agent",
+      agent: currentAgent?.name || t("chat.defaultAgent", "Default Agent"),
       createdAt: currentConversation.createdAt,
       messages: messages.map((m) => ({
         type: m.type,

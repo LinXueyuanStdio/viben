@@ -21,6 +21,8 @@ export { CompletionInput } from "./completion-input";
 export type { CompletionInputProps } from "./completion-input";
 export { ConfigManager } from "./config-manager";
 export type { InspectorConfig } from "./config-manager";
+export { SaveConfigDialog } from "./save-config-dialog";
+export { SavedConfigsSelector } from "./saved-configs-selector";
 export { TransportSelector, isConfigValid, createDefaultConfig, toMcpServerConfig, fromMcpServerConfig } from "./transport-selector";
 export type {
   TransportType,

@@ -177,6 +177,18 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to register multipart plugin:", e);
   }
 
+  // Register WebSocket plugin once at the top level
+  // This prevents ERR_HTTP_SOCKET_ASSIGNED errors when multiple routes try to register it separately
+  try {
+    const websocketPlugin = await import("@fastify/websocket");
+    await app.register(websocketPlugin.default);
+    logger?.info("WebSocket plugin registered");
+    console.log("[Gateway] WebSocket plugin registered");
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to register WebSocket plugin");
+    console.warn("[Gateway] Failed to register WebSocket plugin:", e);
+  }
+
   // Create application state
   const state = createAppState();
 

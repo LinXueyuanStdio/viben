@@ -387,7 +387,7 @@ export class SessionStoreService {
    * Create a new session
    */
   async createSession(config: SessionConfig): Promise<void> {
-    // Derive agent directory from agentPath (e.g., /path/to/agents/myagent/config.yaml -> /path/to/agents/myagent)
+    // Derive agent directory from agentPath (e.g., /path/to/agents/myagent/AGENTS.md -> /path/to/agents/myagent)
     const agentDir = config.agentPath?.replace(/\/config\.yaml$/, "");
     const sessionDir = this.sessionDir(config.agentId, config.id, agentDir);
 
@@ -409,7 +409,7 @@ export class SessionStoreService {
    * Get session config
    * @param agentId - Agent ID
    * @param sessionId - Session ID
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async getSession(agentId: string, sessionId: string, agentPath?: string): Promise<SessionConfig> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -443,7 +443,7 @@ export class SessionStoreService {
    * Delete a session
    * @param agentId - Agent ID
    * @param sessionId - Session ID
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async deleteSession(agentId: string, sessionId: string, agentPath?: string): Promise<void> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -459,7 +459,7 @@ export class SessionStoreService {
   /**
    * List all sessions for an agent
    * @param agentId - Agent ID
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async listSessions(agentId: string, agentPath?: string): Promise<SessionConfig[]> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -492,7 +492,7 @@ export class SessionStoreService {
 
   /**
    * Append a message to the session
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async appendMessage(agentId: string, sessionId: string, message: SessionMessage, agentPath?: string): Promise<void> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -509,7 +509,7 @@ export class SessionStoreService {
 
   /**
    * Read all messages from a session
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async readMessages(agentId: string, sessionId: string, agentPath?: string): Promise<SessionMessage[]> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -536,7 +536,7 @@ export class SessionStoreService {
 
   /**
    * Append a UI message to the session
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async appendUIMessage(agentId: string, sessionId: string, message: UIMessage, agentPath?: string): Promise<void> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -554,7 +554,7 @@ export class SessionStoreService {
   /**
    * Read all UI messages from a session
    * Falls back to converting rollout messages if UI messages are empty
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async readUIMessages(agentId: string, sessionId: string, agentPath?: string): Promise<UIMessage[]> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
@@ -626,7 +626,7 @@ export class SessionStoreService {
 
   /**
    * Append an agent message to the session
-   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
+   * @param agentPath - Optional absolute path to agent AGENTS.md (for workspace agents)
    */
   async appendAgentMessage(agentId: string, sessionId: string, message: AgentMessage, agentPath?: string): Promise<void> {
     const agentDir = agentPath?.replace(/\/config\.yaml$/, "");

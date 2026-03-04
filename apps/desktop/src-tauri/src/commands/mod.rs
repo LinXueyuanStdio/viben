@@ -8,3 +8,4 @@ pub mod common;
 pub mod gateway;
 pub mod screenshot;
 pub mod tray;
+pub mod window;

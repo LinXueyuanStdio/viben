@@ -1045,7 +1045,27 @@
     "homepage": "Homepage",
     "repository": "Repository",
     "installWith": "Install with:",
-    "searchPlugins": "Search plugins..."
+    "searchPlugins": "Search plugins...",
+    "descriptions": {
+      "arxiv": "Pre-prints in physics, mathematics, computer science",
+      "pubmed": "Biomedical literature from MEDLINE",
+      "pmc": "Full-text archive of biomedical articles",
+      "biorxiv": "Pre-prints in biology",
+      "medrxiv": "Pre-prints in health sciences",
+      "semantic": "AI-powered research tool",
+      "core": "World's largest collection of open access papers",
+      "crossref": "DOI registration agency metadata",
+      "google_scholar": "Google's academic search",
+      "iacr": "Cryptology ePrint Archive",
+      "sciencedirect": "Elsevier's platform for peer-reviewed literature",
+      "springer": "Scientific, technical and medical publications",
+      "ieee": "IEEE and IET technical literature",
+      "scopus": "Elsevier's abstract and citation database",
+      "acm": "Computing and IT research",
+      "wos": "Clarivate's citation database",
+      "jstor": "Digital library of academic journals",
+      "researchgate": "Social network for researchers"
+    }
   },
   "agent": {
     "searchAgents": "Search agents...",
@@ -1675,6 +1695,9 @@
       "disconnected": "Disconnected",
       "error": "Connection Error",
       "copyConfig": "Copy Configuration",
+      "stdio": "STDIO",
+      "sse": "SSE",
+      "http": "HTTP",
       "stdioTitle": "Standard I/O",
       "stdioDesc": "Connect via standard input/output streams",
       "sseTitle": "Server-Sent Events",
@@ -1730,7 +1753,28 @@
     "toolResultAlt": "Tool result",
     "resourceAlt": "Resource",
     "mcpAppSandbox": "MCP App Sandbox",
-    "unknownErrorOccurred": "Unknown error occurred"
+    "unknownErrorOccurred": "Unknown error occurred",
+    "savedConfigs": "Saved Configs",
+    "saveConfig": "Save Config",
+    "loadConfig": "Load",
+    "pinnedConfigs": "Pinned",
+    "recentConfigs": "Recent",
+    "searchConfigs": "Search configs...",
+    "noConfigsFound": "No configs found",
+    "noSavedConfigs": "No saved configs yet",
+    "saveCurrentConfig": "Save Current Config",
+    "editSavedConfig": "Edit Saved Config",
+    "editSavedConfigDesc": "Update the name and description of this saved configuration.",
+    "saveConfigDesc": "Save the current configuration for quick access later.",
+    "configName": "Name",
+    "configNameRequired": "Name is required",
+    "configNamePlaceholder": "e.g., Production Server",
+    "configDescription": "Description",
+    "configDescriptionPlaceholder": "Optional description...",
+    "pinConfig": "Pin",
+    "unpinConfig": "Unpin",
+    "deleteConfigTitle": "Delete Configuration",
+    "deleteConfigDesc": "Are you sure you want to delete this saved configuration? This action cannot be undone."
   },
   "updates": {
     "title": "Package Updates",
@@ -2157,6 +2201,7 @@
     "removeWorkspace": "Remove Workspace",
     "removeWorkspaceConfirm": "Are you sure you want to remove \"{{name}}\"? This will not delete any files.",
     "configure": "Configure",
+    "openInNewWindow": "Open in New Window",
     "delete": "Delete",
     "deleteConfirmTitle": "Delete Workspace",
     "deleteConfirmDescription": "Are you sure you want to remove \"{{name}}\" from your workspace list? This will not delete any files on disk.",
@@ -2358,7 +2403,8 @@
       "subtasks": "Subtasks",
       "prd": "PRD",
       "logs": "Logs",
-      "files": "Files"
+      "taskDir": "Task Directory",
+      "workingDir": "Working Directory"
     },
     "subtasksTab": {
       "completed": "{{completed}} of {{total}} completed",
@@ -2399,6 +2445,14 @@
       "openInIDE": "Open in IDE",
       "noContent": "No content available"
     },
+    "taskDirTab": {
+      "noTaskDir": "No task directory",
+      "taskDirWillAppear": "Task files will appear here after the task directory is created"
+    },
+    "workingDirTab": {
+      "noWorkingDir": "No working directory",
+      "workingDirWillAppear": "Working directory will appear here when the task is assigned to a workspace"
+    },
     "taskPromptWithDescription": "Please help me complete the following task:\n\n**{{title}}**\n\n{{description}}",
     "taskPromptWithoutDescription": "Please help me complete the following task: {{title}}",
     "viewMode": {
@@ -2424,6 +2478,10 @@
       "errorNaN": "Please enter a valid number",
       "errorMin": "Minimum value is 1",
       "errorMax": "Maximum value is 10"
+    },
+    "queueAutoPromotion": {
+      "promoted": "Started task: {{title}}",
+      "promotedBatch": "Started {{count}} tasks from queue"
     },
     "colors": {
       "gray": "Gray",
@@ -2744,6 +2802,7 @@
     "closeSidebar": "Close sidebar",
     "openSidebar": "Open sidebar",
     "clearMessages": "Clear messages",
+    "commandExecuted": "Command executed",
     "artifacts": {
       "title": "Artifacts",
       "createdBy": "Created",
@@ -3445,6 +3504,7 @@
     "noAudioPath": "No audio file path available",
     "loadingAudio": "Loading audio...",
     "audio": "Audio",
+    "audioError": "Audio error: {{error}}",
     "rewind10s": "Rewind 10s",
     "forward10s": "Forward 10s",
     "noSearchResults": "No search results",
@@ -3455,6 +3515,13 @@
     "openInFontViewer": "Open in Font Viewer",
     "characterSet": "Character Set",
     "sizeSamples": "Size Samples",
+    "noFontPath": "No font file path available",
+    "noFontSource": "No font source available",
+    "fontSampleText": "The quick brown fox jumps over the lazy dog",
+    "fontAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "fontAlphabetLower": "abcdefghijklmnopqrstuvwxyz",
+    "fontNumbers": "0123456789",
+    "fontSymbols": "!@#$%^&*()_+-=[]{}|;':\",./<>?",
     "loadingImage": "Loading image...",
     "fileTooLarge": "File too large to preview",
     "fileTooLargeDesc": "This file is too large to preview in the app.",
@@ -3591,7 +3658,8 @@
     },
     "conversation": {
       "sendMessageFailed": "Failed to send message",
-      "approvePlanFailed": "Failed to approve plan"
+      "approvePlanFailed": "Failed to approve plan",
+      "startAgentFailed": "Failed to start agent: {{error}}"
     },
     "connection": {
       "failed": "Connection failed"
@@ -3604,6 +3672,10 @@
     },
     "search": {
       "failed": "Search failed"
+    },
+    "sessions": {
+      "loadFailed": "Failed to load sessions",
+      "refreshFailed": "Failed to refresh sessions"
     },
     "packages": {
       "loadFailed": "Failed to load packages"

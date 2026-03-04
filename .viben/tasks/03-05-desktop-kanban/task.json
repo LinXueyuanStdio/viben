@@ -1,9 +1,8 @@
 {
-  "id": "task_1772557960160_ydfzpm",
-  "name": "hello",
-  "title": "desktop 看板的任务详情弹窗，【任务目录】和【工作目录】页面需要加入控制按钮，和左侧【文件系统】的页面一样，支持切换视图等",
-  "description": null,
-  "status": "backlog",
+  "id": "task_1772698519161_q6wnyg",
+  "name": "desktop-kanban",
+  "title": "desktop 的 kanban 的任务卡片，标题很长时显示效果差，优化一下",
+  "status": "in_progress",
   "current_phase": 0,
   "next_action": [
     {
@@ -30,11 +29,10 @@
   "notes": "",
   "agent": "本地个人助手",
   "taskIndex": 0,
-  "prompt": null,
-  "hasInProgressAttempt": false,
+  "hasInProgressAttempt": true,
   "lastAttemptFailed": false,
   "executor": "Agent",
   "workspacePath": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben",
-  "createdAt": "2026-03-03",
-  "updatedAt": "2026-03-05T08:13:53.970Z"
+  "createdAt": "2026-03-05",
+  "updatedAt": "2026-03-05T08:16:12.734Z"
 }

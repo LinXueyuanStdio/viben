@@ -30,6 +30,7 @@ import {
   removeBackgroundTask,
   updateBackgroundTaskStatus,
 } from "@/lib/background-tasks";
+import i18n from "@/i18n";
 
 /**
  * Generate a unique ID
@@ -389,11 +390,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: data.message || "Unknown error",
+          message: data.message || i18n.t("common.unknownError"),
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
-        setError(data.message || "Unknown error");
+        setError(data.message || i18n.t("common.unknownError"));
         setPhase("error");
         setIsStreaming(false);
         break;
@@ -600,7 +601,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         return true;
       } catch (e) {
         console.error("[useAgent] Failed to send WebSocket message:", e);
-        setError("Failed to send message");
+        setError(i18n.t("errors.conversation.sendMessageFailed"));
         return false;
       }
     },
@@ -656,7 +657,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: "Failed to send message to agent",
+          message: i18n.t("errors.conversation.sendMessageFailed"),
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
@@ -923,7 +924,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           updateBackgroundTaskStatus(activeTaskIdRef.current, false);
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        const errorMessage = err instanceof Error ? err.message : i18n.t("common.unknownError");
         console.error("[useAgent] Error:", errorMessage);
         setError(errorMessage);
         isRunningRef.current = false;
@@ -931,7 +932,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: `Failed to start agent: ${errorMessage}`,
+          message: i18n.t("errors.conversation.startAgentFailed", { error: errorMessage }),
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
@@ -1103,11 +1104,11 @@ The workspace ID for this session is: \`${workspaceId}\`
         const errorMessage: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: err instanceof Error ? err.message : "An unknown error occurred",
+          message: err instanceof Error ? err.message : i18n.t("common.unknownError"),
           isError: true,
         };
         setMessages((prev) => [...prev, errorMessage]);
-        setError(errorMessage.message ?? "Unknown error");
+        setError(errorMessage.message ?? i18n.t("common.unknownError"));
         setPhase("error");
       } finally {
         setIsStreaming(false);
@@ -1210,7 +1211,7 @@ The workspace ID for this session is: \`${workspaceId}\`
         setIsStreaming(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve plan");
+      setError(err instanceof Error ? err.message : i18n.t("errors.conversation.approvePlanFailed"));
       setPhase("error");
       setIsStreaming(false);
     }

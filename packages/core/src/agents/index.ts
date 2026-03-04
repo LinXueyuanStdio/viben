@@ -15,6 +15,7 @@ import {
   getTemplateDir,
 } from "../config/paths";
 import { readYaml, writeYaml, ensureDir, fileExists } from "../config/yaml";
+import { readMarkdownConfig, writeMarkdownConfig } from "../config/markdown";
 import { configManager } from "../config";
 import type {
   Agent,
@@ -27,7 +28,7 @@ import type {
   CreateAgentOptions,
   AgentUpdate,
 } from "../types";
-import type { AgentConfigFile, SessionFile } from "./types";
+import type { AgentConfigFile, SessionFile, TemplateConfigYaml } from "./types";
 
 // Re-export types
 export * from "./types";
@@ -96,19 +97,22 @@ export class AgentManager {
       return null;
     }
 
-    const config = await readYaml<AgentConfigFile>(configPath);
-    if (!config) {
+    const result = await readMarkdownConfig<AgentConfigFile>(configPath);
+    if (!result) {
       return null;
     }
+
+    const { frontmatter: config, body: systemPrompt } = result;
 
     return {
       id,
       name: config.name,
       path: getAgentDir(id),
       description: config.description,
+      tools: config.tools ?? [],
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -145,12 +149,13 @@ export class AgentManager {
     }
 
     const now = new Date().toISOString();
+    const systemPrompt = options.systemPrompt || baseConfig.systemPrompt || "";
     const config: AgentConfigFile = {
       name: options.name,
       description: options.description || baseConfig.description,
+      tools: options.tools ?? [],
       model: options.model || baseConfig.model,
       provider: options.provider || baseConfig.provider,
-      systemPrompt: options.systemPrompt || baseConfig.systemPrompt,
       appendPrompt: options.appendPrompt,
       temperature: options.temperature ?? baseConfig.temperature,
       maxTokens: options.maxTokens ?? baseConfig.maxTokens,
@@ -164,9 +169,9 @@ export class AgentManager {
       updatedAt: now,
     };
 
-    // Create agent directory and config
+    // Create agent directory and config (AGENTS.md)
     await ensureDir(agentDir);
-    await writeYaml(getAgentConfigPath(id), config);
+    await writeMarkdownConfig(getAgentConfigPath(id), config, systemPrompt);
 
     // Create subdirectories
     await ensureDir(getAgentSessionsDir(id));
@@ -176,9 +181,10 @@ export class AgentManager {
       id,
       name: config.name,
       description: config.description,
+      tools: config.tools ?? [],
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -249,12 +255,13 @@ export class AgentManager {
       throw new Error(`Agent "${id}" not found`);
     }
 
+    const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
     const config: AgentConfigFile = {
       name: updates.name ?? agent.name,
       description: updates.description ?? agent.description,
+      tools: updates.tools ?? agent.tools,
       model: updates.model ?? agent.model,
       provider: updates.provider ?? agent.provider,
-      systemPrompt: updates.systemPrompt ?? agent.systemPrompt,
       appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
       temperature: updates.temperature ?? agent.temperature,
       maxTokens: updates.maxTokens ?? agent.maxTokens,
@@ -268,16 +275,17 @@ export class AgentManager {
       updatedAt: new Date().toISOString(),
     };
 
-    await writeYaml(getAgentConfigPath(id), config);
+    await writeMarkdownConfig(getAgentConfigPath(id), config, systemPrompt);
 
     return {
       id,
       name: config.name,
       path: getAgentDir(id),
       description: config.description,
+      tools: config.tools ?? [],
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -349,7 +357,7 @@ export class AgentManager {
       return null;
     }
 
-    const config = await readYaml<AgentConfigFile & { createdAt: string }>(configPath);
+    const config = await readYaml<TemplateConfigYaml>(configPath);
     if (!config) {
       return null;
     }
@@ -623,25 +631,28 @@ export class AgentManager {
    */
   async getAgentFromDir(agentsDir: string, id: string): Promise<Agent | null> {
     const agentDir = join(agentsDir, id);
-    const configPath = join(agentDir, "config.yaml");
+    const configPath = join(agentDir, "AGENTS.md");
 
     if (!fileExists(configPath)) {
       return null;
     }
 
-    const config = await readYaml<AgentConfigFile>(configPath);
-    if (!config) {
+    const result = await readMarkdownConfig<AgentConfigFile>(configPath);
+    if (!result) {
       return null;
     }
+
+    const { frontmatter: config, body: systemPrompt } = result;
 
     return {
       id,
       name: config.name,
       path: agentDir,
       description: config.description,
+      tools: config.tools ?? [],
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -671,14 +682,15 @@ export class AgentManager {
     }
 
     const agentDir = join(agentsDir, id);
-    const configPath = join(agentDir, "config.yaml");
+    const configPath = join(agentDir, "AGENTS.md");
 
+    const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
     const config: AgentConfigFile = {
       name: updates.name ?? agent.name,
       description: updates.description ?? agent.description,
+      tools: updates.tools ?? agent.tools,
       model: updates.model ?? agent.model,
       provider: updates.provider ?? agent.provider,
-      systemPrompt: updates.systemPrompt ?? agent.systemPrompt,
       appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
       temperature: updates.temperature ?? agent.temperature,
       maxTokens: updates.maxTokens ?? agent.maxTokens,
@@ -692,16 +704,17 @@ export class AgentManager {
       updatedAt: new Date().toISOString(),
     };
 
-    await writeYaml(configPath, config);
+    await writeMarkdownConfig(configPath, config, systemPrompt);
 
     return {
       id,
       name: config.name,
       path: agentDir,
       description: config.description,
+      tools: config.tools ?? [],
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,

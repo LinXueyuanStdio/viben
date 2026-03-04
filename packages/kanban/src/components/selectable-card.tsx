@@ -37,7 +37,7 @@ export function SelectableCard({
   return (
     <div
       className={cn(
-        "relative transition-all duration-200",
+        "group relative transition-all duration-200",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg",
         className
       )}
@@ -71,7 +71,7 @@ export function SelectableCard({
       </div>
 
       {/* Card Content */}
-      <div className="group">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }

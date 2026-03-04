@@ -27,7 +27,7 @@ export interface AgentRunPayload {
   input: string;
   /** Working directory */
   cwd?: string;
-  /** Path to agent config.yaml file */
+  /** Path to agent AGENTS.md file */
   agent_path?: string;
   /** Resume from existing SDK session */
   resume_session?: string;
@@ -129,7 +129,7 @@ export interface EnqueueRequest {
   input: string;
   /** Working directory */
   cwd?: string;
-  /** Path to agent config.yaml file */
+  /** Path to agent AGENTS.md file */
   agent_path?: string;
   /** Resume from existing SDK session */
   resume_session?: string;

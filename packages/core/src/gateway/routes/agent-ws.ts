@@ -16,7 +16,7 @@ import { agentService } from "../../services/agent";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
-import { readYaml } from "../../config/yaml";
+import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
 
 // ============================================================================
@@ -29,7 +29,7 @@ import type { AgentConfigFile } from "../../agents";
 interface AgentWsQuery {
   /** Working directory for the agent */
   cwd?: string;
-  /** Path to agent config.yaml file */
+  /** Path to agent AGENTS.md file */
   agentPath?: string;
   /** Session ID for persistence */
   sessionId?: string;
@@ -162,18 +162,20 @@ function resolveAgentId(agentPath?: string, agentConfig?: AgentConfigPayload | n
 }
 
 /**
- * Load agent config from a YAML file path
+ * Load agent config from an AGENTS.md file path
  */
 async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigPayload | null> {
   try {
-    const config = await readYaml<AgentConfigFile>(configPath);
-    if (!config) return null;
+    const result = await readMarkdownConfig<AgentConfigFile>(configPath);
+    if (!result) return null;
+
+    const { frontmatter: config, body: systemPrompt } = result;
 
     return {
       name: config.name,
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -456,16 +458,20 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
 
 /**
  * Register agent WebSocket routes
+ *
+ * Note: @fastify/websocket plugin must be registered at the gateway level before calling this function.
+ * This prevents ERR_HTTP_SOCKET_ASSIGNED errors from multiple registrations.
  */
 export function registerAgentWsRoutes(fastify: FastifyInstance): void {
-  fastify.register(async (instance) => {
-    try {
-      const websocket = await import("@fastify/websocket");
-      await instance.register(websocket.default);
+  // Check if websocket plugin is registered by looking for the decorator
+  if (!fastify.hasDecorator("websocketServer")) {
+    console.warn("[agent-ws] @fastify/websocket not registered, agent WebSocket routes disabled");
+    return;
+  }
 
-      instance.get<{
-        Querystring: AgentWsQuery;
-      }>("/ws/agent/run", { websocket: true }, (socket: WebSocket, req: FastifyRequest) => {
+  fastify.get<{
+    Querystring: AgentWsQuery;
+  }>("/ws/agent/run", { websocket: true }, (socket: WebSocket, req: FastifyRequest) => {
         const query = req.query as AgentWsQuery;
         const sessionId = randomUUID();
 
@@ -653,11 +659,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         });
       });
 
-      console.log("[agent-ws] Agent WebSocket routes registered at /ws/agent/run");
-    } catch {
-      console.warn("[agent-ws] @fastify/websocket not available, agent WebSocket routes disabled");
-    }
-  });
+  console.log("[agent-ws] Agent WebSocket routes registered at /ws/agent/run");
 }
 
 /**

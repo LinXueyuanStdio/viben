@@ -1853,6 +1853,14 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   // WebSocket Endpoint
   // ========================================
 
+  // Check if websocket plugin is registered
+  // Note: @fastify/websocket plugin must be registered at the gateway level before calling this function.
+  // This prevents ERR_HTTP_SOCKET_ASSIGNED errors from multiple registrations.
+  if (!fastify.hasDecorator("websocketServer")) {
+    console.warn("[GroupChat] @fastify/websocket not registered, group chat WebSocket routes disabled");
+    return;
+  }
+
   // Register WebSocket route for group chat sessions
   // Supports query parameters:
   // - workspace_path: Workspace path
@@ -1860,12 +1868,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   // - member_id: Member ID
   // - view: Initial view (ui/agent), default: ui
   // - agent_id: Agent ID for agent view
-  fastify.register(async (instance) => {
-    try {
-      const websocket = await import("@fastify/websocket");
-      await instance.register(websocket.default);
-
-      instance.get(
+  fastify.get(
         "/ws/group-chats/:id/sessions/:sessionId",
         { websocket: true },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2155,11 +2158,4 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
           });
         }
       );
-    } catch {
-      // WebSocket plugin not available
-      console.warn(
-        "[Gateway] @fastify/websocket not available, group chat WebSocket routes disabled"
-      );
-    }
-  });
 }
