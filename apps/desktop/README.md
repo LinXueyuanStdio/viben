@@ -338,7 +338,11 @@ tail -f ~/.viben/logs/gateway-restart.log
 1. **Gateway 未启动**:
    ```bash
    # 检查 Gateway 进程
+   # macOS / Linux
    lsof -i:18790
+
+   # Windows (PowerShell)
+   netstat -ano | findstr :18790
 
    # 如果没有输出，启动 Gateway
    pnpm gateway:restart
@@ -673,19 +677,20 @@ echo "RUST_LOG=info" >> .env
    - 确认命名空间是否正确
 
 3. **检查当前语言设置**:
+
+   > **提示**: 为了在浏览器控制台中访问 `i18n` 实例，您需要先在开发模式下将其暴露到 `window` 对象上。在 `src/i18n/index.ts` 中添加：`if (import.meta.env.DEV) { (window as any).i18n = i18n; }`
+
    ```typescript
-   // 在浏览器控制台
-   import { useTranslation } from 'react-i18next';
-   const { i18n } = useTranslation();
-   console.log(i18n.language); // 当前语言
-   console.log(i18n.options.resources); // 所有翻译资源
+   // 在浏览器控制台（假设 i18n 已暴露）
+   window.i18n.language; // 查看当前语言
+   window.i18n.options.resources; // 查看所有翻译资源
    ```
 
 4. **测试语言切换**:
    ```typescript
-   // 在浏览器控制台
-   i18n.changeLanguage('zh-CN');
-   i18n.changeLanguage('en');
+   // 在浏览器控制台（假设 i18n 已暴露）
+   window.i18n.changeLanguage('zh-CN');
+   window.i18n.changeLanguage('en');
    ```
 
 5. **启用 i18next 调试模式**:
