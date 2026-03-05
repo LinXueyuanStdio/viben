@@ -84,7 +84,7 @@ function errorResponse(c: Context, status: number, message: string, code?: strin
 }
 
 // 路由示例
-app.get('/api/agents/:id', async (c) => {
+app.get('/api/agent/:id', async (c) => {
   const { id } = c.req.param();
 
   try {
@@ -192,7 +192,7 @@ logger.error({
 
 ```typescript
 async function fetchAgent(id: string) {
-  const response = await fetch(`/api/agents/${id}`);
+  const response = await fetch(`/api/agent/${id}`);
 
   if (!response.ok) {
     const error = await response.json();

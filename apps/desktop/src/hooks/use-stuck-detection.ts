@@ -1,7 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useUpdateVibeKanbanTaskStatus } from "./use-vibe-kanban";
-import { hasRecentActivity } from "@/stores/task-activity-store";
-import { checkTaskRunning } from "@/lib/vibe-kanban";
+import { hasRecentActivity, getTimeSinceActivity } from "@/stores/task-activity-store";
+import { checkTaskRunningDetailed } from "@/lib/vibe-kanban";
+import {
+  STUCK_THRESHOLD_MS,
+  STUCK_CHECK_INTERVAL_MS,
+  SAFETY_TIMEOUT_MS,
+} from "@/lib/vibe-kanban/constants";
 
 /**
  * Minimal subtask interface for stuck detection
@@ -75,6 +80,42 @@ export interface UseStuckDetectionReturn {
 }
 
 /**
+ * Parse a timestamp string with fallback to activity store
+ *
+ * Strategy:
+ * 1. Try to parse the lastUpdated timestamp
+ * 2. If invalid, use the activity store timestamp
+ * 3. If no activity recorded, return null
+ *
+ * @param lastUpdated - ISO timestamp string or undefined
+ * @param taskId - Task ID for activity store lookup
+ * @returns Parsed timestamp in milliseconds, or null if no valid timestamp available
+ */
+function parseTimestampWithFallback(
+  lastUpdated: string | undefined,
+  taskId: string
+): number | null {
+  // Try to parse lastUpdated timestamp
+  if (lastUpdated) {
+    const parsed = new Date(lastUpdated).getTime();
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+    console.warn(`[useStuckDetection] Invalid lastUpdated timestamp: ${lastUpdated}, using fallback`);
+  }
+
+  // Fallback: Use activity store timestamp
+  const timeSinceActivity = getTimeSinceActivity(taskId);
+  if (timeSinceActivity !== null) {
+    // Convert "time since activity" back to absolute timestamp
+    return Date.now() - timeSinceActivity;
+  }
+
+  // No valid timestamp available
+  return null;
+}
+
+/**
  * Hook for detecting stuck tasks
  *
  * Uses a multi-layer detection strategy:
@@ -106,8 +147,8 @@ export function useStuckDetection({
   lastUpdated,
   subtasks,
   hasSpec = false,
-  checkInterval = 30000, // 30 seconds
-  stuckThreshold = 60000, // 1 minute without updates
+  checkInterval = STUCK_CHECK_INTERVAL_MS,
+  stuckThreshold = STUCK_THRESHOLD_MS,
   enableProcessCheck = true,
   autoRestartOnRecovery = false,
   onRecovered,
@@ -180,7 +221,6 @@ export function useStuckDetection({
       // Safety timeout: If the async operation hangs for too long (e.g., network issues),
       // ensure we reset the checking state to allow future checks.
       // This prevents isCheckingRef from being stuck forever.
-      const safetyTimeoutMs = 15000; // 15 seconds
       safetyTimeoutRef.current = setTimeout(() => {
         // Only update state if component is still mounted
         if (isMountedRef.current) {
@@ -189,7 +229,7 @@ export function useStuckDetection({
           setIsChecking(false);
         }
         safetyTimeoutRef.current = null;
-      }, safetyTimeoutMs);
+      }, SAFETY_TIMEOUT_MS);
 
       try {
         // Layer 1: Check client-side activity tracking
@@ -200,36 +240,34 @@ export function useStuckDetection({
         }
 
         // Layer 2: Check lastUpdated timestamp
-        if (lastUpdated) {
-          const lastUpdateTime = new Date(lastUpdated).getTime();
-          // Validate date parsing - skip if invalid
-          if (Number.isNaN(lastUpdateTime)) {
-            console.warn(`[useStuckDetection] Invalid lastUpdated timestamp: ${lastUpdated}`);
-          } else {
-            const now = Date.now();
-            const timeSinceUpdate = now - lastUpdateTime;
+        // Use helper function to parse timestamp with fallback
+        const lastUpdateTime = parseTimestampWithFallback(lastUpdated, taskId);
 
-            if (timeSinceUpdate < stuckThreshold) {
-              // Recent update from server
-              setIsStuck(false);
-              setStuckDuration(0);
-              lastCheckedRef.current = lastUpdated;
-              return;
-            }
+        if (lastUpdateTime !== null) {
+          const now = Date.now();
+          const timeSinceUpdate = now - lastUpdateTime;
 
-            // Check if lastUpdated changed (new activity)
-            if (lastUpdated !== lastCheckedRef.current) {
-              setIsStuck(false);
-              setStuckDuration(0);
-              lastCheckedRef.current = lastUpdated;
-              return;
-            }
+          if (timeSinceUpdate < stuckThreshold) {
+            // Recent update from server
+            setIsStuck(false);
+            setStuckDuration(0);
+            lastCheckedRef.current = lastUpdated;
+            return;
+          }
+
+          // Check if lastUpdated changed (new activity)
+          if (lastUpdated && lastUpdated !== lastCheckedRef.current) {
+            setIsStuck(false);
+            setStuckDuration(0);
+            lastCheckedRef.current = lastUpdated;
+            return;
           }
         }
 
         // Layer 3: Verify with Gateway if process is actually running
+        // Use detailed version to check reliability of the result
         if (enableProcessCheck) {
-          const processRunning = await checkTaskRunning(taskId);
+          const result = await checkTaskRunningDetailed(taskId);
 
           // Double-check activity after async call (race condition protection)
           if (hasRecentActivity(taskId, stuckThreshold)) {
@@ -238,19 +276,37 @@ export function useStuckDetection({
             return;
           }
 
-          if (processRunning) {
+          // Re-validate: check if lastUpdated changed during async call
+          if (lastUpdated !== lastCheckedRef.current) {
+            // State changed during check, skip this result
+            return;
+          }
+
+          // If check was reliable and process is running, not stuck
+          if (result.reliable && result.running) {
             // Process is running but no updates - could be slow, not stuck
             // Keep checking but don't mark as stuck yet
             return;
           }
+
+          // If check was unreliable (network error), be conservative
+          if (!result.reliable) {
+            // Network issues - don't mark as stuck to avoid false positives
+            console.warn(
+              `[useStuckDetection] Unreliable check for task ${taskId}: ${result.error}. ` +
+              "Skipping stuck detection to avoid false positive."
+            );
+            return;
+          }
+
+          // Reliable check says process is NOT running - task is stuck
         }
 
         // All checks indicate task is stuck
+        // Calculate stuck duration using best available timestamp
         const now = Date.now();
-        const lastUpdateTime = lastUpdated
-          ? new Date(lastUpdated).getTime()
-          : now - stuckThreshold;
-        const duration = now - lastUpdateTime;
+        const effectiveLastUpdateTime = parseTimestampWithFallback(lastUpdated, taskId) ?? (now - stuckThreshold);
+        const duration = now - effectiveLastUpdateTime;
 
         setIsStuck(true);
         setStuckDuration(duration);

@@ -189,9 +189,17 @@ export class QueuePersistence {
     const timer = setTimeout(async () => {
       const pending = this.pendingTasks.get(task.id);
       if (pending) {
-        await this.writeTask(task.id, pending);
-        this.pendingTasks.delete(task.id);
-        this.taskDebounceTimers.delete(task.id);
+        try {
+          await this.writeTask(task.id, pending);
+        } catch (error) {
+          console.error(`[QueuePersistence] Failed to write task ${task.id}:`, error);
+          // Re-throw to let caller handle, but ensure cleanup happens
+          throw error;
+        } finally {
+          // Always clean up pending state, even on failure
+          this.pendingTasks.delete(task.id);
+          this.taskDebounceTimers.delete(task.id);
+        }
       }
     }, this.debounceMs);
 

@@ -933,7 +933,7 @@
     "allRoutes": "모든 라우트",
     "routeFilters": {
       "agentRun": "/api/agent/run (에이전트 실행)",
-      "agents": "/api/agents (에이전트 관리)",
+      "agents": "/api/agent (에이전트 관리)",
       "workspaces": "/api/workspaces (워크스페이스)",
       "chat": "/api/chat (채팅)",
       "groupChats": "/api/group-chats (그룹 채팅)"

@@ -1,1 +1,1 @@
-export type ViewMode = "kanban" | "list";
+export type ViewMode = "kanban" | "list" | "table";

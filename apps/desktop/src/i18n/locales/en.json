@@ -2468,7 +2468,15 @@
     "taskPromptWithoutDescription": "Please help me complete the following task: {{title}}",
     "viewMode": {
       "kanban": "Kanban",
-      "list": "List"
+      "list": "List",
+      "table": "Table"
+    },
+    "viewTable": "Table View",
+    "table": {
+      "showing": "Showing",
+      "of": "of",
+      "items": "items",
+      "page": "Page"
     },
     "boardSettings": "Board Settings",
     "boardSettingsDialog": {
@@ -2535,13 +2543,18 @@
       "viewKanbanDesc": "Switch to kanban board",
       "viewListDesc": "Switch to list view",
       "toggleArchivedDesc": "Toggle archived tasks visibility",
+      "viewTableDesc": "Switch to table view",
       "clearFiltersDesc": "Reset all filters",
       "filterSearchDesc": "Focus on search input",
       "sortPriorityDesc": "High priority first",
       "sortDueDateDesc": "Earliest due date first",
       "sortTitleDesc": "Alphabetical order",
       "sortCreatedDesc": "Newest first",
-      "sortUpdatedDesc": "Recently updated first"
+      "sortUpdatedDesc": "Recently updated first",
+      "resultsCount": "{{count}} results",
+      "navigateHint": "navigate",
+      "selectHint": "select",
+      "closeHint": "close"
     },
     "connectionError": "Connection Error",
     "noProjectFound": "No Tasks Yet",
@@ -3653,7 +3666,7 @@
     "allRoutes": "All Routes",
     "routeFilters": {
       "agentRun": "/api/agent/run (Agent Execution)",
-      "agents": "/api/agents (Agent Management)",
+      "agents": "/api/agent (Agent Management)",
       "workspaces": "/api/workspaces (Workspaces)",
       "chat": "/api/chat (Chat)",
       "groupChats": "/api/group-chats (Group Chats)"

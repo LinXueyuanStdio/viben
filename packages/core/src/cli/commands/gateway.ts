@@ -172,7 +172,7 @@ async function runSimpleGatewayServer(options: {
         version: "1.0.0",
         endpoints: [
           "/health",
-          "/api/agents",
+          "/api/agent",
           "/api/tasks",
           "/api/sessions",
           "/api/cron",
@@ -186,7 +186,7 @@ async function runSimpleGatewayServer(options: {
     }
 
     // Empty list responses for basic endpoints
-    if (url.pathname === "/api/agents") {
+    if (url.pathname === "/api/agent") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ agents: [] }));
       return;
@@ -271,7 +271,7 @@ async function runSimpleGatewayServer(options: {
       console.log("API endpoints:");
       console.log("  GET  /health - Health check");
       console.log("  GET  /api - API info");
-      console.log("  GET  /api/agents - List agents");
+      console.log("  GET  /api/agent - List agents");
       console.log("  GET  /api/tasks - List tasks");
       console.log("  GET  /api/sessions - List sessions");
       console.log("  GET  /api/cron - List cron jobs");

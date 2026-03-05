@@ -813,7 +813,7 @@
     "allRoutes": "Semua Laluan",
     "routeFilters": {
       "agentRun": "/api/agent/run (Pelaksanaan Ejen)",
-      "agents": "/api/agents (Pengurusan Ejen)",
+      "agents": "/api/agent (Pengurusan Ejen)",
       "workspaces": "/api/workspaces (Ruang Kerja)",
       "chat": "/api/chat (Sembang)",
       "groupChats": "/api/group-chats (Sembang Kumpulan)"

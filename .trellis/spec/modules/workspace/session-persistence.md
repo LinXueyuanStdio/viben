@@ -632,10 +632,10 @@ function resolveAgentId(request: AgentRunRequest): string {
 
 ```typescript
 // 列出 session 下的所有 tasks
-GET /api/agents/:agentId/sessions/:sessionId/tasks
+GET /api/agent/:agentId/sessions/:sessionId/tasks
 
 // 获取 task 的所有消息
-GET /api/agents/:agentId/sessions/:sessionId/tasks/:taskId/messages
+GET /api/agent/:agentId/sessions/:sessionId/tasks/:taskId/messages
 
 // 更新 task 状态
 PATCH /api/tasks/:taskId

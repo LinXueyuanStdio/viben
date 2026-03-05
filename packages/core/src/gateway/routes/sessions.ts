@@ -183,7 +183,7 @@ export function registerSessionRoutes(fastify: FastifyInstance, state: AppState)
     }
   });
 
-  // Note: /api/agents/:id/sessions is handled by agents.ts (file-based sessions)
+  // Note: /api/agent/:id/sessions is handled by agents.ts (file-based sessions)
 
   // Get sessions by task
   fastify.get<{ Params: { taskId: string } }>("/api/tasks/:taskId/sessions", async (request) => {

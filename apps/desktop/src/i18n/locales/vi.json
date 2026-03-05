@@ -794,7 +794,7 @@
     "allRoutes": "Tat ca tuyen duong",
     "routeFilters": {
       "agentRun": "/api/agent/run (Thuc thi Tri tue nhan tao)",
-      "agents": "/api/agents (Quan ly Tri tue nhan tao)",
+      "agents": "/api/agent (Quan ly Tri tue nhan tao)",
       "workspaces": "/api/workspaces (Khong gian lam viec)",
       "chat": "/api/chat (Tro chuyen)",
       "groupChats": "/api/group-chats (Nhom tro chuyen)"

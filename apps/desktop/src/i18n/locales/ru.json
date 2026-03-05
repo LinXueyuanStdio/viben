@@ -159,7 +159,7 @@
     "allRoutes": "Все маршруты",
     "routeFilters": {
       "agentRun": "/api/agent/run (Выполнение агента)",
-      "agents": "/api/agents (Управление агентами)",
+      "agents": "/api/agent (Управление агентами)",
       "workspaces": "/api/workspaces (Рабочие пространства)",
       "chat": "/api/chat (Чат)",
       "groupChats": "/api/group-chats (Групповые чаты)"

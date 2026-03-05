@@ -125,7 +125,7 @@
     "allRoutes": "Tüm Rotalar",
     "routeFilters": {
       "agentRun": "/api/agent/run (Ajan Çalıştırma)",
-      "agents": "/api/agents (Ajan Yönetimi)",
+      "agents": "/api/agent (Ajan Yönetimi)",
       "workspaces": "/api/workspaces (Çalışma Alanları)",
       "chat": "/api/chat (Sohbet)",
       "groupChats": "/api/group-chats (Grup Sohbetleri)"

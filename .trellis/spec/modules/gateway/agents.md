@@ -1,6 +1,6 @@
 # 智能体 API
 
-> `/api/agents` - 智能体管理端点
+> `/api/agent` - 智能体管理端点
 
 ## 概述
 
@@ -22,72 +22,72 @@
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents` | 列出所有智能体 |
-| POST | `/api/agents` | 创建 Viben 智能体 |
-| GET | `/api/agents/:id` | 获取智能体详情 |
-| PATCH | `/api/agents/:id` | 更新 Viben 智能体 |
-| DELETE | `/api/agents/:id` | 删除 Viben 智能体 |
+| GET | `/api/agent` | 列出所有智能体 |
+| POST | `/api/agent` | 创建 Viben 智能体 |
+| GET | `/api/agent/:id` | 获取智能体详情 |
+| PATCH | `/api/agent/:id` | 更新 Viben 智能体 |
+| DELETE | `/api/agent/:id` | 删除 Viben 智能体 |
 
 ### 默认智能体
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/default` | 获取默认智能体 ID |
-| PUT | `/api/agents/default` | 设置默认智能体 |
+| GET | `/api/agent/default` | 获取默认智能体 ID |
+| PUT | `/api/agent/default` | 设置默认智能体 |
 
 ### 模板管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/templates` | 列出所有模板 |
-| GET | `/api/agents/templates/:id` | 获取模板详情 |
-| POST | `/api/agents/templates` | 从智能体创建模板 |
-| POST | `/api/agents/templates/:id/instantiate` | 从模板创建智能体 |
+| GET | `/api/agent/templates` | 列出所有模板 |
+| GET | `/api/agent/templates/:id` | 获取模板详情 |
+| POST | `/api/agent/templates` | 从智能体创建模板 |
+| POST | `/api/agent/templates/:id/instantiate` | 从模板创建智能体 |
 
 ### 可用性检查
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/:id/availability` | 检查智能体可用性 |
+| GET | `/api/agent/:id/availability` | 检查智能体可用性 |
 
 ### 进程管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/agents/:id/spawn` | 启动智能体进程 |
-| POST | `/api/agents/:id/stop` | 停止智能体进程 |
+| POST | `/api/agent/:id/spawn` | 启动智能体进程 |
+| POST | `/api/agent/:id/stop` | 停止智能体进程 |
 
 ### 会话管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/:id/sessions` | 列出会话 |
-| POST | `/api/agents/:id/sessions` | 创建会话 |
-| GET | `/api/agents/:id/sessions/:sid` | 获取会话详情 |
-| DELETE | `/api/agents/:id/sessions/:sid` | 删除会话 |
+| GET | `/api/agent/:id/sessions` | 列出会话 |
+| POST | `/api/agent/:id/sessions` | 创建会话 |
+| GET | `/api/agent/:id/sessions/:sid` | 获取会话详情 |
+| DELETE | `/api/agent/:id/sessions/:sid` | 删除会话 |
 
 ### 消息管理
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/:id/sessions/:sid/messages` | 列出消息 |
-| POST | `/api/agents/:id/sessions/:sid/messages` | 添加消息 |
-| GET | `/api/agents/:id/sessions/:sid/ui-messages` | 获取 UI 消息 |
+| GET | `/api/agent/:id/sessions/:sid/messages` | 列出消息 |
+| POST | `/api/agent/:id/sessions/:sid/messages` | 添加消息 |
+| GET | `/api/agent/:id/sessions/:sid/ui-messages` | 获取 UI 消息 |
 
 ### 历史记录
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/agents/:id/history` | 获取历史记录 |
-| POST | `/api/agents/:id/history` | 添加历史记录 |
-| GET | `/api/agents/:id/history/stats` | 获取历史统计 |
-| DELETE | `/api/agents/:id/history` | 清空历史记录 |
+| GET | `/api/agent/:id/history` | 获取历史记录 |
+| POST | `/api/agent/:id/history` | 添加历史记录 |
+| GET | `/api/agent/:id/history/stats` | 获取历史统计 |
+| DELETE | `/api/agent/:id/history` | 清空历史记录 |
 
 ---
 
 ## 详细说明
 
-### GET /api/agents
+### GET /api/agent
 
 列出所有用户创建的智能体。
 
@@ -133,7 +133,7 @@
 
 ---
 
-### POST /api/agents
+### POST /api/agent
 
 创建新的 Viben 智能体。
 
@@ -171,7 +171,7 @@
 
 ---
 
-### GET /api/agents/:id
+### GET /api/agent/:id
 
 获取智能体详情。支持 Viben 智能体和执行器智能体。
 
@@ -214,7 +214,7 @@
 
 ---
 
-### POST /api/agents/:id/spawn
+### POST /api/agent/:id/spawn
 
 启动智能体进程。
 
@@ -246,7 +246,7 @@
 
 ---
 
-### POST /api/agents/:id/stop
+### POST /api/agent/:id/stop
 
 停止智能体进程。
 
@@ -268,7 +268,7 @@
 
 ---
 
-### GET /api/agents/:id/sessions/:sid/ui-messages
+### GET /api/agent/:id/sessions/:sid/ui-messages
 
 获取 UI 友好的消息列表，用于前端渲染。
 
@@ -296,7 +296,7 @@
 
 ---
 
-### GET /api/agents/:id/history
+### GET /api/agent/:id/history
 
 获取智能体历史记录。
 

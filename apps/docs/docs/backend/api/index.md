@@ -30,11 +30,11 @@ Viben Gateway 提供 RESTful API 用于智能体编排和多智能体工作空�
 
 | 端点 | 方法 | 描述 |
 |------|------|------|
-| `/api/agents` | GET | 列出所有智能体 |
-| `/api/agents/:id` | GET | 获取特定智能体 |
-| `/api/agents` | POST | 创建智能体 |
-| `/api/agents/:id` | PATCH | 更新智能体 |
-| `/api/agents/:id` | DELETE | 删除智能体 |
+| `/api/agent` | GET | 列出所有智能体 |
+| `/api/agent/:id` | GET | 获取特定智能体 |
+| `/api/agent` | POST | 创建智能体 |
+| `/api/agent/:id` | PATCH | 更新智能体 |
+| `/api/agent/:id` | DELETE | 删除智能体 |
 
 ### 执行器管理
 
@@ -114,8 +114,8 @@ Viben Gateway 提供 RESTful API 用于智能体编排和多智能体工作空�
 | `/api/tasks` | POST | 创建任务 |
 | `/api/tasks/:id` | PATCH | 更新任务 |
 | `/api/tasks/:id` | DELETE | 删除任务 |
-| `/api/agents/:agentId/tasks` | GET | 获取智能体任务 |
-| `/api/agents/:agentId/sessions/:sessionId/tasks` | GET | 获取会话任务 |
+| `/api/agent/:agentId/tasks` | GET | 获取智能体任务 |
+| `/api/agent/:agentId/sessions/:sessionId/tasks` | GET | 获取会话任务 |
 
 ### 工作空间管理
 

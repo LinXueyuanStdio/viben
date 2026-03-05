@@ -814,7 +814,7 @@
     "allRoutes": "Alle Routen",
     "routeFilters": {
       "agentRun": "/api/agent/run (Agent-Ausführung)",
-      "agents": "/api/agents (Agent-Verwaltung)",
+      "agents": "/api/agent (Agent-Verwaltung)",
       "workspaces": "/api/workspaces (Arbeitsbereiche)",
       "chat": "/api/chat (Chat)",
       "groupChats": "/api/group-chats (Gruppenchats)"

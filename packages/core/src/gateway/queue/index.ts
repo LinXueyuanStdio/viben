@@ -493,20 +493,44 @@ export class TaskQueueManager extends EventEmitter {
 
       // Handle running tasks (they were interrupted by restart)
       let runningRecovered = 0;
+      let runningFailed = 0;
       for (const taskId of state.task_ids.running) {
         const task = allTasks.get(taskId);
         if (task) {
-          // Mark as pending for retry
-          task.status = "pending";
-          task.started_at = undefined;
-          task.retry_count++; // Count the interrupted run as a retry
+          // Increment retry count for the interrupted run
+          task.retry_count++;
 
-          // Re-queue at front
-          this.queue.unshift(task);
-          this.tasks.set(taskId, task);
-          runningRecovered++;
+          // Check if retry limit exceeded
+          if (task.retry_count > task.max_retries) {
+            // Mark as failed - exceeded retry limit
+            task.status = "failed";
+            task.error = `Max retries exceeded (${task.max_retries}) after gateway restart`;
+            task.completed_at = Date.now();
 
-          await this.persistTask(task);
+            this.tasks.set(taskId, task);
+            runningFailed++;
+
+            console.log(
+              `[TaskQueue] Task ${taskId} marked as failed - exceeded retry limit (${task.retry_count}/${task.max_retries})`
+            );
+
+            await this.persistTask(task);
+          } else {
+            // Mark as pending for retry
+            task.status = "pending";
+            task.started_at = undefined;
+
+            // Re-queue at front
+            this.queue.unshift(task);
+            this.tasks.set(taskId, task);
+            runningRecovered++;
+
+            console.log(
+              `[TaskQueue] Task ${taskId} re-queued for retry (${task.retry_count}/${task.max_retries})`
+            );
+
+            await this.persistTask(task);
+          }
         }
       }
 
@@ -519,18 +543,21 @@ export class TaskQueueManager extends EventEmitter {
 
       console.log(
         `[TaskQueue] Restored ${this.queue.length} pending tasks, ` +
-          `recovered ${runningRecovered} interrupted tasks`
+          `recovered ${runningRecovered} interrupted tasks, ` +
+          `${runningFailed} exceeded retry limit`
       );
 
       this.emit("queue:restored", {
         pending_count: this.queue.length,
         running_recovered: runningRecovered,
+        running_failed: runningFailed,
       });
       this.events.broadcast({
         type: "queue_restored",
         data: {
           pending_count: this.queue.length,
           running_recovered: runningRecovered,
+          running_failed: runningFailed,
         },
       });
     } catch (error) {

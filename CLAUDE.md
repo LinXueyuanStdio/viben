@@ -107,7 +107,7 @@ The gateway runs on port **18790** by default.
 
 API endpoints:
 - Health: `http://127.0.0.1:18790/health`
-- Agents: `http://127.0.0.1:18790/api/agents`
+- Agents: `http://127.0.0.1:18790/api/agent`
 - Cron: `http://127.0.0.1:18790/api/cron`
 - Sessions: `http://127.0.0.1:18790/api/sessions`
 

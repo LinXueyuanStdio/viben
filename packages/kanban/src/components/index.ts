@@ -20,6 +20,9 @@ export type { ListViewItemProps } from "./list-view-item";
 export { ListView } from "./list-view";
 export type { ListViewProps } from "./list-view";
 
+export { TableView } from "./table-view";
+export type { TableViewProps, TableColumn } from "./table-view";
+
 // Subtask types
 export type { Subtask, SubtaskCallbacks } from "./subtask-types";
 

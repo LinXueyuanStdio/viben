@@ -28,8 +28,8 @@ describe("route-names", () => {
   });
 
   it("should return route name for known routes", () => {
-    expect(getRouteName("GET", "/api/agents")).toBe("获取智能体列表");
-    expect(getRouteName("POST", "/api/agents/:id/run")).toBe("运行智能体");
+    expect(getRouteName("GET", "/api/agent")).toBe("获取智能体列表");
+    expect(getRouteName("POST", "/api/agent/:id/run")).toBe("运行智能体");
     expect(getRouteName("GET", "/health")).toBe("健康检查");
   });
 
@@ -54,7 +54,7 @@ describe("trace-viewer", () => {
   const testSpans: TraceSpan[] = [
     {
       spanId: "root001",
-      name: "POST /api/agents/:id/run",
+      name: "POST /api/agent/:id/run",
       displayName: "运行智能体",
       kind: 1,
       startTime: 1000,

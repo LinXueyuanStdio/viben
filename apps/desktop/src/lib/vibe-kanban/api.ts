@@ -10,6 +10,7 @@ import type {
   UpdateTaskRequest,
 } from "./types";
 import { getGatewayUrl } from "@/lib/gateway";
+import { NETWORK_RETRY_CONFIG } from "./constants";
 
 // Get Gateway URL dynamically
 function getApiBaseUrl(): string {
@@ -188,46 +189,153 @@ interface TaskRunningResponse {
 }
 
 /**
+ * Result type for checkTaskRunning with detailed status
+ */
+export interface CheckTaskRunningResult {
+  /** Whether the task is running */
+  running: boolean;
+  /**
+   * Whether the check result is reliable.
+   * - true: The check completed successfully and the result can be trusted
+   * - false: The check failed (network error, timeout) and the result is an assumption
+   */
+  reliable: boolean;
+  /** Whether the check was successful (no network errors) - alias for reliable */
+  success: boolean;
+  /** Error message if check failed */
+  error?: string;
+  /** Number of retry attempts made */
+  retryCount: number;
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Check if a task process is actually running
  *
  * This queries the Gateway to verify the task's worker process
  * is still active. Useful for detecting stuck tasks where the
  * status says "running" but the process has died.
  *
+ * Uses retry logic with exponential backoff for network failures
+ * to balance between avoiding false positives and detecting
+ * genuinely stuck tasks.
+ *
  * @param taskId - Task ID to check
- * @param timeoutMs - Timeout in milliseconds (default: 10000ms = 10 seconds)
+ * @param timeoutMs - Timeout in milliseconds (default from NETWORK_RETRY_CONFIG)
  * @returns True if the task process is actively running
  */
 export async function checkTaskRunning(
   taskId: string,
-  timeoutMs: number = 10000
+  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs
 ): Promise<boolean> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const result = await checkTaskRunningDetailed(taskId, timeoutMs);
 
-  try {
-    const url = `${getApiBaseUrl()}/api/queue/tasks/${encodeURIComponent(taskId)}/running`;
-    const response = await fetch(url, { signal: controller.signal });
-
-    if (!response.ok) {
-      console.warn(`[checkTaskRunning] Failed to check task ${taskId}: ${response.status}`);
-      return false;
-    }
-
-    const data: TaskRunningResponse = await response.json();
-    return data.success && data.data?.running === true;
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      console.warn(`[checkTaskRunning] Timeout (${timeoutMs}ms) for task ${taskId}`);
-    } else {
-      console.error("[checkTaskRunning] Failed to check task running status:", error);
-    }
-    // On error/timeout, assume task might still be running to avoid false positives
-    // Return true (running) to prevent marking healthy tasks as stuck due to network issues
+  // If check failed after all retries, return true (assume running)
+  // to avoid false positives during persistent network issues
+  if (!result.success) {
+    console.warn(
+      `[checkTaskRunning] Failed after ${result.retryCount} retries for task ${taskId}: ${result.error}. ` +
+      "Assuming task is running to avoid false positive stuck detection."
+    );
     return true;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  return result.running;
+}
+
+/**
+ * Check if a task process is actually running (detailed version)
+ *
+ * Returns detailed result including success status and retry count.
+ * Use this for more granular control over error handling.
+ *
+ * @param taskId - Task ID to check
+ * @param timeoutMs - Timeout in milliseconds
+ * @returns Detailed result with running status, success flag, and retry info
+ */
+export async function checkTaskRunningDetailed(
+  taskId: string,
+  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs
+): Promise<CheckTaskRunningResult> {
+  const { maxRetries, initialDelayMs, backoffMultiplier } = NETWORK_RETRY_CONFIG;
+  let lastError: string | undefined;
+  let retryCount = 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // Apply exponential backoff delay for retries
+    if (attempt > 0) {
+      const delay = initialDelayMs * Math.pow(backoffMultiplier, attempt - 1);
+      console.log(`[checkTaskRunning] Retry ${attempt}/${maxRetries} for task ${taskId} after ${delay}ms`);
+      await sleep(delay);
+      retryCount = attempt;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const url = `${getApiBaseUrl()}/api/queue/tasks/${encodeURIComponent(taskId)}/running`;
+      const response = await fetch(url, { signal: controller.signal });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        // HTTP error - task might not exist or server error
+        // Don't retry for 404 (task not found) - this is a reliable result
+        if (response.status === 404) {
+          return {
+            running: false,
+            reliable: true,
+            success: true,
+            retryCount,
+          };
+        }
+
+        lastError = `HTTP ${response.status}`;
+        console.warn(`[checkTaskRunning] HTTP error for task ${taskId}: ${response.status}`);
+        continue; // Retry on server errors
+      }
+
+      const data: TaskRunningResponse = await response.json();
+      return {
+        running: data.success && data.data?.running === true,
+        reliable: true,
+        success: true,
+        retryCount,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          lastError = `Timeout (${timeoutMs}ms)`;
+          console.warn(`[checkTaskRunning] Timeout for task ${taskId}, attempt ${attempt + 1}/${maxRetries + 1}`);
+        } else {
+          lastError = error.message;
+          console.warn(`[checkTaskRunning] Network error for task ${taskId}: ${error.message}`);
+        }
+      } else {
+        lastError = "Unknown error";
+      }
+      // Continue to next retry attempt
+    }
+  }
+
+  // All retries exhausted - result is NOT reliable
+  // Return running: true as a conservative default to avoid false positives
+  return {
+    running: true, // Conservative default: assume running to avoid false stuck detection
+    reliable: false,
+    success: false,
+    error: lastError,
+    retryCount,
+  };
 }
 
 // Export API base URL for debugging

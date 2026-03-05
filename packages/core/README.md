@@ -282,7 +282,7 @@ await runGateway({
 
 Gateway API 端点:
 - `GET /health` - 健康检查
-- `GET /api/agents` - 列出智能体
+- `GET /api/agent` - 列出智能体
 - `GET /api/sessions` - 列出会话
 - `GET /api/tasks` - 列出任务
 - `GET /api/cron` - 列出定时任务

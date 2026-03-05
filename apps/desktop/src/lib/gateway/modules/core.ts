@@ -24,19 +24,19 @@ export interface BuildUrlOptions {
  * Handles common patterns for workspace_path and other parameters
  *
  * @param baseUrl - Gateway base URL
- * @param path - API path (e.g., "/api/agents")
+ * @param path - API path (e.g., "/api/agent")
  * @param options - URL options including workspacePath and custom params
  * @returns Fully constructed URL string
  *
  * @example
  * ```ts
  * // Simple path
- * buildUrl("http://localhost:8080", "/api/agents")
- * // => "http://localhost:8080/api/agents"
+ * buildUrl("http://localhost:8080", "/api/agent")
+ * // => "http://localhost:8080/api/agent"
  *
  * // With workspace path
- * buildUrl("http://localhost:8080", "/api/agents", { workspacePath: "/path/to/project" })
- * // => "http://localhost:8080/api/agents?workspace_path=%2Fpath%2Fto%2Fproject"
+ * buildUrl("http://localhost:8080", "/api/agent", { workspacePath: "/path/to/project" })
+ * // => "http://localhost:8080/api/agent?workspace_path=%2Fpath%2Fto%2Fproject"
  *
  * // With custom params
  * buildUrl("http://localhost:8080", "/api/sessions", {
@@ -180,7 +180,7 @@ export async function diagnose(
   if (result.healthCheck) {
     // Test specific HTTP endpoints - comprehensive list
     const testEndpoints = [
-      "/api/agents",
+      "/api/agent",
       "/api/sessions",
       "/api/cron",
       "/api/group-chats",

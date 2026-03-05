@@ -23,6 +23,10 @@ export interface CommandPaletteProps {
     sort?: string;
     settings?: string;
     resultsCount?: string; // e.g., "{{count}} commands"
+    // Footer hints
+    navigate?: string;
+    select?: string;
+    close?: string;
   };
 }
 
@@ -230,8 +234,8 @@ export function CommandPalette({
               };
 
               return (
-              <div key={category} className="mb-2">
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <div key={category} className="mb-3 last:mb-0">
+                <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider sticky top-0 bg-background/95 backdrop-blur-sm z-10">
                   {getCategoryLabel(category)}
                 </div>
                 {cmds.map((cmd) => {
@@ -241,18 +245,21 @@ export function CommandPalette({
                   return (
                     <button
                       key={cmd.id}
+                      ref={isSelected ? selectedItemRef : undefined}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
                         "text-left text-sm transition-all duration-150",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
                         isSelected
-                          ? "bg-primary/10 text-primary"
+                          ? "bg-primary/10 text-primary shadow-sm"
                           : "hover:bg-muted/80"
                       )}
                       onClick={() => executeCommand(cmd)}
+                      onMouseEnter={() => setSelectedIndex(index)}
                     >
                       {cmd.icon && (
                         <span className={cn(
-                          "shrink-0",
+                          "shrink-0 transition-colors",
                           isSelected ? "text-primary" : "text-muted-foreground"
                         )}>
                           {cmd.icon}
@@ -261,14 +268,17 @@ export function CommandPalette({
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{cmd.label}</div>
                         {cmd.description && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">
+                          <div className={cn(
+                            "text-xs truncate mt-0.5 transition-colors",
+                            isSelected ? "text-primary/70" : "text-muted-foreground"
+                          )}>
                             {cmd.description}
                           </div>
                         )}
                       </div>
                       {cmd.shortcut && (
                         <kbd className={cn(
-                          "text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0",
+                          "text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0 transition-colors",
                           isSelected
                             ? "bg-primary/20 border-primary/30 text-primary"
                             : "bg-muted border-border text-muted-foreground"
@@ -283,6 +293,27 @@ export function CommandPalette({
             );})
           )}
         </div>
+
+        {/* Footer with keyboard hints */}
+        {filteredCommands.length > 0 && (
+          <div className="flex items-center justify-between px-3 py-2 border-t bg-muted/30 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <kbd className="px-1 py-0.5 rounded bg-muted border border-border">↑</kbd>
+                <kbd className="px-1 py-0.5 rounded bg-muted border border-border">↓</kbd>
+                <span className="ml-1">{labels?.navigate ?? "navigate"}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border">↵</kbd>
+                <span className="ml-1">{labels?.select ?? "select"}</span>
+              </span>
+            </div>
+            <span className="flex items-center gap-1">
+              <kbd className="px-1 py-0.5 rounded bg-muted border border-border">esc</kbd>
+              <span className="ml-1">{labels?.close ?? "close"}</span>
+            </span>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -10,7 +10,7 @@
  *
  * Note: Resource discovery routes are defined in other files:
  * - /api/executors - See executors.ts
- * - /api/agents - See agents.ts
+ * - /api/agent - See agents.ts
  * - /api/models - See models.ts
  */
 import type { FastifyInstance } from "fastify";

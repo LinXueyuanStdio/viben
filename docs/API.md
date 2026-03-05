@@ -53,12 +53,12 @@ Viben Gateway 是本地 HTTP API 服务，为桌面应用和 CLI 提供统一的
 
 ```
 # 正确
-GET /api/agents?workspace_path=/path/to/project
-GET /api/agents?include_global=true
+GET /api/agent?workspace_path=/path/to/project
+GET /api/agent?include_global=true
 
 # 错误
-GET /api/agents?workspacePath=/path/to/project
-GET /api/agents?includeGlobal=true
+GET /api/agent?workspacePath=/path/to/project
+GET /api/agent?includeGlobal=true
 ```
 
 ### 2.3 通用响应格式
@@ -127,7 +127,7 @@ GET /api/agents?includeGlobal=true
 
 ### 4.1 列出智能体
 
-**GET /api/agents**
+**GET /api/agent**
 
 列出所有智能体，支持工作空间级别筛选。
 
@@ -169,7 +169,7 @@ GET /api/agents?includeGlobal=true
 
 ### 4.2 获取智能体
 
-**GET /api/agents/:id**
+**GET /api/agent/:id**
 
 获取指定智能体的详细信息。
 
@@ -182,7 +182,7 @@ GET /api/agents?includeGlobal=true
 
 ### 4.3 创建智能体
 
-**POST /api/agents**
+**POST /api/agent**
 
 创建新智能体。
 
@@ -208,7 +208,7 @@ GET /api/agents?includeGlobal=true
 
 ### 4.4 更新智能体
 
-**PATCH /api/agents/:id**
+**PATCH /api/agent/:id**
 
 更新智能体配置。
 
@@ -221,7 +221,7 @@ GET /api/agents?includeGlobal=true
 
 ### 4.5 删除智能体
 
-**DELETE /api/agents/:id**
+**DELETE /api/agent/:id**
 
 删除指定智能体。
 
@@ -232,11 +232,11 @@ GET /api/agents?includeGlobal=true
 
 ### 4.6 默认智能体
 
-**GET /api/agents/default**
+**GET /api/agent/default**
 
 获取默认智能体 ID。
 
-**PUT /api/agents/default**
+**PUT /api/agent/default**
 
 设置默认智能体。
 
@@ -249,15 +249,15 @@ GET /api/agents?includeGlobal=true
 
 ### 4.7 智能体模板
 
-**GET /api/agents/templates**
+**GET /api/agent/templates**
 
 列出所有模板。
 
-**GET /api/agents/templates/:id**
+**GET /api/agent/templates/:id**
 
 获取指定模板。
 
-**POST /api/agents/templates**
+**POST /api/agent/templates**
 
 从智能体创建模板。
 
@@ -268,7 +268,7 @@ GET /api/agents?includeGlobal=true
 }
 ```
 
-**POST /api/agents/templates/:id/instantiate**
+**POST /api/agent/templates/:id/instantiate**
 
 从模板创建智能体。
 
@@ -280,11 +280,11 @@ GET /api/agents?includeGlobal=true
 
 ### 4.8 智能体会话
 
-**GET /api/agents/:id/sessions**
+**GET /api/agent/:id/sessions**
 
 列出智能体的所有会话。
 
-**POST /api/agents/:id/sessions**
+**POST /api/agent/:id/sessions**
 
 创建新会话。
 
@@ -297,31 +297,31 @@ GET /api/agents?includeGlobal=true
 }
 ```
 
-**GET /api/agents/:id/sessions/:session_id**
+**GET /api/agent/:id/sessions/:session_id**
 
 获取会话详情。
 
-**DELETE /api/agents/:id/sessions/:session_id**
+**DELETE /api/agent/:id/sessions/:session_id**
 
 删除会话。
 
 ### 4.9 会话消息
 
-**GET /api/agents/:id/sessions/:session_id/messages**
+**GET /api/agent/:id/sessions/:session_id/messages**
 
 获取会话的原始消息 (rollout)。
 
-**POST /api/agents/:id/sessions/:session_id/messages**
+**POST /api/agent/:id/sessions/:session_id/messages**
 
 追加消息。
 
-**GET /api/agents/:id/sessions/:session_id/ui-messages**
+**GET /api/agent/:id/sessions/:session_id/ui-messages**
 
 获取 UI 消息 (用于前端渲染)。
 
 ### 4.10 智能体可用性检查
 
-**GET /api/agents/:id/availability**
+**GET /api/agent/:id/availability**
 
 检查智能体或执行器的可用性。
 

@@ -923,7 +923,7 @@
     "allRoutes": "Alla rutter",
     "routeFilters": {
       "agentRun": "/api/agent/run (Agentkörning)",
-      "agents": "/api/agents (Agenthantering)",
+      "agents": "/api/agent (Agenthantering)",
       "workspaces": "/api/workspaces (Arbetsytor)",
       "chat": "/api/chat (Chatt)",
       "groupChats": "/api/group-chats (Gruppchattar)"

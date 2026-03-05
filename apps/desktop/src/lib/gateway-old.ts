@@ -528,7 +528,7 @@ export class GatewayClient {
     if (result.healthCheck) {
       // Test specific HTTP endpoints - comprehensive list
       const testEndpoints = [
-        "/api/agents",
+        "/api/agent",
         "/api/sessions",
         "/api/cron",
         "/api/group-chats",
@@ -654,7 +654,7 @@ export class GatewayClient {
    * List all available agent types
    */
   async listAgents(): Promise<ExecutorType[]> {
-    const response = await fetch(`${this.baseUrl}/api/agents`, {
+    const response = await fetch(`${this.baseUrl}/api/agent`, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -674,7 +674,7 @@ export class GatewayClient {
    * Get executor details by type
    */
   async getExecutorDetails(executorType: ExecutorType): Promise<AgentDetails> {
-    const response = await fetch(`${this.baseUrl}/api/agents/${executorType}`, {
+    const response = await fetch(`${this.baseUrl}/api/agent/${executorType}`, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -694,7 +694,7 @@ export class GatewayClient {
    */
   async checkAvailability(executorType: ExecutorType): Promise<AvailabilityInfo> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${executorType}/availability`,
+      `${this.baseUrl}/api/agent/${executorType}/availability`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -854,8 +854,8 @@ export class GatewayClient {
 
     const queryString = params.toString();
     const url = queryString
-      ? `${this.baseUrl}/api/agents?${queryString}`
-      : `${this.baseUrl}/api/agents`;
+      ? `${this.baseUrl}/api/agent?${queryString}`
+      : `${this.baseUrl}/api/agent`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -901,8 +901,8 @@ export class GatewayClient {
 
     const queryString = params.toString();
     const url = queryString
-      ? `${this.baseUrl}/api/agents/${agentId}?${queryString}`
-      : `${this.baseUrl}/api/agents/${agentId}`;
+      ? `${this.baseUrl}/api/agent/${agentId}?${queryString}`
+      : `${this.baseUrl}/api/agent/${agentId}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -990,7 +990,7 @@ export class GatewayClient {
     executorType: ExecutorType,
     request: SpawnAgentRequest
   ): Promise<SpawnAgentResponse> {
-    const url = `${this.baseUrl}/api/agents/${executorType}/spawn`;
+    const url = `${this.baseUrl}/api/agent/${executorType}/spawn`;
     console.log("[GatewayClient] Spawn request:", { url, executorType, request });
 
     const response = await fetch(url, {
@@ -1049,7 +1049,7 @@ export class GatewayClient {
     this.abortController = new AbortController();
 
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${executorType}/spawn`,
+      `${this.baseUrl}/api/agent/${executorType}/spawn`,
       {
         method: "POST",
         headers: {
@@ -1285,7 +1285,7 @@ export class GatewayClient {
     request: ContinueSessionRequest
   ): Promise<SpawnAgentResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${executorType}/continue`,
+      `${this.baseUrl}/api/agent/${executorType}/continue`,
       {
         method: "POST",
         headers: {
@@ -1320,7 +1320,7 @@ export class GatewayClient {
     this.abortController = new AbortController();
 
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${executorType}/continue`,
+      `${this.baseUrl}/api/agent/${executorType}/continue`,
       {
         method: "POST",
         headers: {
@@ -1474,7 +1474,7 @@ export class GatewayClient {
     const params = new URLSearchParams();
     if (workspacePath) params.set("workspace_path", workspacePath);
     const query = params.toString();
-    const url = `${this.baseUrl}/api/agents/${agentId}/sessions${query ? `?${query}` : ""}`;
+    const url = `${this.baseUrl}/api/agent/${agentId}/sessions${query ? `?${query}` : ""}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -1500,7 +1500,7 @@ export class GatewayClient {
     request?: CreateFileSessionRequest
   ): Promise<FileSession> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions`,
+      `${this.baseUrl}/api/agent/${agentId}/sessions`,
       {
         method: "POST",
         headers: {
@@ -1526,7 +1526,7 @@ export class GatewayClient {
    */
   async getAgentSession(agentId: string, sessionId: string): Promise<FileSession> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}`,
+      `${this.baseUrl}/api/agent/${agentId}/sessions/${sessionId}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -1548,7 +1548,7 @@ export class GatewayClient {
    */
   async deleteAgentSession(agentId: string, sessionId: string): Promise<void> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}`,
+      `${this.baseUrl}/api/agent/${agentId}/sessions/${sessionId}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -1571,7 +1571,7 @@ export class GatewayClient {
     sessionId: string
   ): Promise<SessionMessage[]> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/messages`,
+      `${this.baseUrl}/api/agent/${agentId}/sessions/${sessionId}/messages`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -1603,7 +1603,7 @@ export class GatewayClient {
     const params = new URLSearchParams();
     if (workspacePath) params.set("workspace_path", workspacePath);
     const query = params.toString();
-    const url = `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/ui-messages${query ? `?${query}` : ""}`;
+    const url = `${this.baseUrl}/api/agent/${agentId}/sessions/${sessionId}/ui-messages${query ? `?${query}` : ""}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -1630,7 +1630,7 @@ export class GatewayClient {
     message: AppendMessageRequest
   ): Promise<SessionMessage> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/messages`,
+      `${this.baseUrl}/api/agent/${agentId}/sessions/${sessionId}/messages`,
       {
         method: "POST",
         headers: {
@@ -2216,7 +2216,7 @@ export class GatewayClient {
    * @returns Created agent response
    */
   async createAgent(options: CreateAgentOptions): Promise<AgentResponse> {
-    const response = await fetch(`${this.baseUrl}/api/agents`, {
+    const response = await fetch(`${this.baseUrl}/api/agent`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2256,7 +2256,7 @@ export class GatewayClient {
       params.set("workspace_path", options.workspacePath);
     }
     const queryString = params.toString();
-    const url = `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
+    const url = `${this.baseUrl}/api/agent/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
 
     const response = await fetch(url, {
       method: "GET",
@@ -2298,8 +2298,8 @@ export class GatewayClient {
     }
     const queryString = params.toString();
     const url = queryString
-      ? `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
-      : `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+      ? `${this.baseUrl}/api/agent/${encodeURIComponent(agentId)}?${queryString}`
+      : `${this.baseUrl}/api/agent/${encodeURIComponent(agentId)}`;
 
     const response = await fetch(url, {
       method: "PATCH",
@@ -2340,7 +2340,7 @@ export class GatewayClient {
       params.set("workspace_path", options.workspacePath);
     }
     const queryString = params.toString();
-    const url = `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
+    const url = `${this.baseUrl}/api/agent/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
 
     const response = await fetch(url, {
       method: "DELETE",
@@ -2369,7 +2369,7 @@ export class GatewayClient {
    * @returns Default agent response
    */
   async getDefaultAgentId(): Promise<string | null> {
-    const response = await fetch(`${this.baseUrl}/api/agents/default`, {
+    const response = await fetch(`${this.baseUrl}/api/agent/default`, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -2392,7 +2392,7 @@ export class GatewayClient {
    * @param agentId - The agent ID to set as default
    */
   async setDefaultAgent(agentId: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/agents/default`, {
+    const response = await fetch(`${this.baseUrl}/api/agent/default`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -2420,7 +2420,7 @@ export class GatewayClient {
    * @returns List of templates
    */
   async listAgentTemplates(): Promise<AgentTemplate[]> {
-    const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
+    const response = await fetch(`${this.baseUrl}/api/agent/templates`, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -2445,7 +2445,7 @@ export class GatewayClient {
    */
   async getAgentTemplate(templateId: string): Promise<AgentTemplate> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}`,
+      `${this.baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -2474,7 +2474,7 @@ export class GatewayClient {
     agentId: string,
     templateId: string
   ): Promise<AgentTemplate> {
-    const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
+    const response = await fetch(`${this.baseUrl}/api/agent/templates`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2506,7 +2506,7 @@ export class GatewayClient {
     agentId: string
   ): Promise<AgentResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}/instantiate`,
+      `${this.baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}/instantiate`,
       {
         method: "POST",
         headers: {

@@ -66,6 +66,9 @@ export {
   type ListViewProps,
   ListViewItem,
   type ListViewItemProps,
+  TableView,
+  type TableViewProps,
+  type TableColumn,
   // Subtask system
   type Subtask,
   type SubtaskCallbacks,

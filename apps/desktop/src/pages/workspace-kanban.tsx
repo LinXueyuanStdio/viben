@@ -53,6 +53,7 @@ import {
   UserCheck,
   Bot,
   SortAsc,
+  Table2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,8 @@ import {
   ViewSwitcher,
   ListView,
   ListViewItem,
+  TableView,
+  type TableColumn,
   BulkActionsBar,
   SelectableCard,
   EditableCardTitle,
@@ -619,7 +622,7 @@ const TaskCardWithStuckDetection = memo(function TaskCardWithStuckDetection({
   renderMoreMenu,
 }: TaskCardWithStuckDetectionProps) {
   // Use the enhanced stuck detection hook for real-time detection
-  const { isStuck: detectedStuck } = useStuckDetection({
+  const { isStuck: detectedStuck, isChecking } = useStuckDetection({
     taskId: task.id,
     isRunning: !!task.has_in_progress_attempt,
     workspacePath,
@@ -629,10 +632,36 @@ const TaskCardWithStuckDetection = memo(function TaskCardWithStuckDetection({
     checkInterval: 30000, // 30 seconds
   });
 
-  // Combine server-side stuck status with client-side detection
-  // Server status (is_stuck) is authoritative but client detection is more responsive
-  const isStuck = detectedStuck || task.isStuck || task.is_stuck || false;
   const isRunning = !!task.has_in_progress_attempt;
+
+  // Smart stuck status merge with useMemo
+  // Priority:
+  // 1. If client detection found stuck AND check is reliable (not currently checking), trust it
+  // 2. If server says stuck (is_stuck), trust it unless task was recently updated
+  // 3. Default to not stuck
+  const isStuck = useMemo(() => {
+    // If not running, can't be stuck
+    if (!isRunning) return false;
+
+    // Client-side detection is most responsive when reliable
+    if (detectedStuck && !isChecking) return true;
+
+    // Server-side status - check if it's stale
+    const serverStuck = task.isStuck ?? task.is_stuck ?? false;
+    if (serverStuck) {
+      // If task was updated recently (within 30s), server status might be stale
+      if (task.updated_at) {
+        const updateAge = Date.now() - new Date(task.updated_at).getTime();
+        if (updateAge < 30000) {
+          // Recent update - prefer client detection
+          return detectedStuck;
+        }
+      }
+      return true;
+    }
+
+    return detectedStuck;
+  }, [isRunning, detectedStuck, isChecking, task.isStuck, task.is_stuck, task.updated_at]);
 
   return (
     <KanbanCard
@@ -682,7 +711,7 @@ const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetect
   children,
 }: ListViewItemWithStuckDetectionProps) {
   // Use the enhanced stuck detection hook for real-time detection
-  const { isStuck: detectedStuck } = useStuckDetection({
+  const { isStuck: detectedStuck, isChecking } = useStuckDetection({
     taskId: task.id,
     isRunning: !!task.has_in_progress_attempt,
     workspacePath,
@@ -691,9 +720,27 @@ const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetect
     checkInterval: 30000,
   });
 
-  // Combine server-side stuck status with client-side detection
-  const isStuck = detectedStuck || task.isStuck || task.is_stuck || false;
   const isRunning = !!task.has_in_progress_attempt;
+
+  // Smart stuck status merge (same logic as TaskCardWithStuckDetection)
+  const isStuck = useMemo(() => {
+    if (!isRunning) return false;
+
+    if (detectedStuck && !isChecking) return true;
+
+    const serverStuck = task.isStuck ?? task.is_stuck ?? false;
+    if (serverStuck) {
+      if (task.updated_at) {
+        const updateAge = Date.now() - new Date(task.updated_at).getTime();
+        if (updateAge < 30000) {
+          return detectedStuck;
+        }
+      }
+      return true;
+    }
+
+    return detectedStuck;
+  }, [isRunning, detectedStuck, isChecking, task.isStuck, task.is_stuck, task.updated_at]);
 
   return (
     <ListViewItem
@@ -1758,8 +1805,17 @@ export function WorkspaceKanbanPage() {
         description: t("workspace.commandPalette.viewListDesc", "Switch to list view"),
         icon: <List className="h-4 w-4" />,
         category: "view",
-        keywords: ["list", "table", "列表"],
+        keywords: ["list", "列表"],
         action: () => setViewMode("list"),
+      },
+      {
+        id: "view-table",
+        label: t("workspace.viewTable", "Table View"),
+        description: t("workspace.commandPalette.viewTableDesc", "Switch to table view"),
+        icon: <Table2 className="h-4 w-4" />,
+        category: "view",
+        keywords: ["table", "grid", "表格"],
+        action: () => setViewMode("table"),
       },
       {
         id: "toggle-archived",
@@ -1951,6 +2007,7 @@ export function WorkspaceKanbanPage() {
               labels={{
                 kanban: t("workspace.viewMode.kanban", "Kanban"),
                 list: t("workspace.viewMode.list", "List"),
+                table: t("workspace.viewMode.table", "Table"),
               }}
             />
             <Button
@@ -2662,7 +2719,7 @@ export function WorkspaceKanbanPage() {
             })}
           </KanbanProvider>
         </div>
-      ) : (
+      ) : viewMode === "list" ? (
         /* List View */
         <div className="flex-1 h-full overflow-y-auto p-4">
           <ListView
@@ -2694,6 +2751,133 @@ export function WorkspaceKanbanPage() {
             )}
           />
         </div>
+      ) : (
+        /* Table View */
+        <div className="flex-1 h-full overflow-y-auto p-4">
+          <TableView
+            items={sortedTasks}
+            selectedId={selectedTaskId ?? undefined}
+            onItemClick={(item) => handleCardClick(item.id)}
+            emptyMessage={t("workspace.noTasks", "No tasks found")}
+            pagination
+            pageSize={50}
+            stickyHeader
+            hoverable
+            columns={[
+              {
+                id: "title",
+                header: t("workspace.taskName", "Task"),
+                accessor: (task) => (
+                  <div className="flex items-center gap-2 min-w-0">
+                    {task.has_in_progress_attempt && (
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                      </span>
+                    )}
+                    <span className="truncate font-medium">{task.title}</span>
+                  </div>
+                ),
+                sortable: true,
+                minWidth: 200,
+              },
+              {
+                id: "status",
+                header: t("workspace.status", "Status"),
+                accessor: (task) => {
+                  const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
+                  const column = columnStatuses.find((c) => c.id === mappedColumn);
+                  const colorVar = COLUMN_COLOR_VARS[mappedColumn as ColumnId];
+                  return (
+                    <Badge
+                      variant="outline"
+                      className="text-xs whitespace-nowrap"
+                      style={{
+                        borderColor: `hsl(var(${colorVar}) / 0.5)`,
+                        backgroundColor: `hsl(var(${colorVar}) / 0.1)`,
+                      }}
+                    >
+                      {column?.name || task.status}
+                    </Badge>
+                  );
+                },
+                sortable: true,
+                width: 120,
+              },
+              {
+                id: "priority",
+                header: t("workspace.priority.label", "Priority"),
+                accessor: (task) => {
+                  if (!task.priority || task.priority === "none") {
+                    return <span className="text-muted-foreground">-</span>;
+                  }
+                  return (
+                    <div className="flex items-center gap-1.5">
+                      <PriorityIcon priority={task.priority as IssuePriority} size="sm" />
+                      <span className="capitalize text-xs">{task.priority}</span>
+                    </div>
+                  );
+                },
+                sortable: true,
+                width: 100,
+              },
+              {
+                id: "agent",
+                header: t("workspace.agent", "Agent"),
+                accessor: (task) => (
+                  <span className="text-xs text-muted-foreground truncate max-w-[150px] block">
+                    {task.agent_id || "-"}
+                  </span>
+                ),
+                sortable: true,
+                width: 150,
+              },
+              {
+                id: "dueDate",
+                header: t("workspace.dueDate", "Due Date"),
+                accessor: (task) => {
+                  if (!task.due_date) {
+                    return <span className="text-muted-foreground">-</span>;
+                  }
+                  return <DueDateBadge dueDate={new Date(task.due_date)} size="sm" />;
+                },
+                sortable: true,
+                width: 120,
+              },
+              {
+                id: "created",
+                header: t("workspace.created", "Created"),
+                accessor: (task) => (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatRelativeTime(new Date(task.created_at))}
+                  </span>
+                ),
+                sortable: true,
+                width: 100,
+              },
+              {
+                id: "updated",
+                header: t("workspace.updated", "Updated"),
+                accessor: (task) => (
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatRelativeTime(new Date(task.updated_at))}
+                  </span>
+                ),
+                sortable: true,
+                width: 100,
+              },
+            ] as TableColumn<EnhancedTask>[]}
+            rowClassName={(task) =>
+              task.is_stuck ? "bg-destructive/5" : task.has_in_progress_attempt ? "bg-green-500/5" : ""
+            }
+            labels={{
+              showing: t("workspace.table.showing", "Showing"),
+              of: t("workspace.table.of", "of"),
+              items: t("workspace.table.items", "items"),
+              page: t("workspace.table.page", "Page"),
+            }}
+          />
+        </div>
       )}
 
       {/* Bulk Actions Bar */}
@@ -2721,6 +2905,10 @@ export function WorkspaceKanbanPage() {
           filter: t("workspace.commandPalette.filter", "Filter"),
           sort: t("workspace.commandPalette.sort", "Sort"),
           settings: t("workspace.commandPalette.settings", "Settings"),
+          resultsCount: t("workspace.commandPalette.resultsCount", "{{count}} results"),
+          navigate: t("workspace.commandPalette.navigateHint", "navigate"),
+          select: t("workspace.commandPalette.selectHint", "select"),
+          close: t("workspace.commandPalette.closeHint", "close"),
         }}
       />
 

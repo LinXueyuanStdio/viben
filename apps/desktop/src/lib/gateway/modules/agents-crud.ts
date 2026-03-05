@@ -33,7 +33,7 @@ export async function listAgents(
   if (options?.includeGlobal !== undefined) params.set("include_global", String(options.includeGlobal));
 
   const response = await fetch(
-    `${baseUrl}/api/agents?${params.toString()}`,
+    `${baseUrl}/api/agent?${params.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -64,7 +64,7 @@ export async function getAgent(
   if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${params.toString()}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}?${params.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -89,7 +89,7 @@ export async function createAgent(
   baseUrl: string,
   options: CreateAgentOptions
 ): Promise<AgentResponse> {
-  const response = await fetch(`${baseUrl}/api/agents`, {
+  const response = await fetch(`${baseUrl}/api/agent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -127,8 +127,8 @@ export async function updateAgent(
   }
   const queryString = params.toString();
   const url = queryString
-    ? `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
-    : `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+    ? `${baseUrl}/api/agent/${encodeURIComponent(agentId)}?${queryString}`
+    : `${baseUrl}/api/agent/${encodeURIComponent(agentId)}`;
 
   const response = await fetch(url, {
     method: "PATCH",
@@ -162,7 +162,7 @@ export async function deleteAgent(
   if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${params.toString()}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}?${params.toString()}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -188,7 +188,7 @@ export async function deleteAgent(
 export async function getDefaultAgent(
   baseUrl: string
 ): Promise<DefaultAgentResponse> {
-  const response = await fetch(`${baseUrl}/api/agents/default`, {
+  const response = await fetch(`${baseUrl}/api/agent/default`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -211,7 +211,7 @@ export async function setDefaultAgent(
   baseUrl: string,
   agentId: string
 ): Promise<void> {
-  const response = await fetch(`${baseUrl}/api/agents/default`, {
+  const response = await fetch(`${baseUrl}/api/agent/default`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -247,7 +247,7 @@ export async function getDefaultAgentId(baseUrl: string): Promise<string | null>
 export async function listAgentTemplates(
   baseUrl: string
 ): Promise<ListTemplatesResponse> {
-  const response = await fetch(`${baseUrl}/api/agents/templates`, {
+  const response = await fetch(`${baseUrl}/api/agent/templates`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -271,7 +271,7 @@ export async function getAgentTemplate(
   templateId: string
 ): Promise<AgentTemplate | null> {
   const response = await fetch(
-    `${baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}`,
+    `${baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -301,7 +301,7 @@ export async function createAgentTemplate(
   agentId: string,
   templateId: string
 ): Promise<AgentTemplate> {
-  const response = await fetch(`${baseUrl}/api/agents/templates`, {
+  const response = await fetch(`${baseUrl}/api/agent/templates`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -330,7 +330,7 @@ export async function createAgentFromTemplate(
   agentId: string
 ): Promise<AgentResponse> {
   const response = await fetch(
-    `${baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}/instantiate`,
+    `${baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}/instantiate`,
     {
       method: "POST",
       headers: {
