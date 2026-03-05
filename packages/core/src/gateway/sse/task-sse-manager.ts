@@ -3,6 +3,9 @@
  *
  * Manages Server-Sent Events connections for task state changes.
  * Each task can have multiple SSE subscribers.
+ *
+ * IMPORTANT: Includes automatic cleanup of stale subscribers to prevent
+ * memory leaks when network disconnects don't trigger close events.
  */
 
 import { EventEmitter } from "node:events";
@@ -38,8 +41,10 @@ export interface TaskSSEEvent {
 
 /**
  * SSE event listener callback
+ * Returns true if the event was successfully delivered, false otherwise.
+ * This is used for dead connection detection.
  */
-export type TaskSSEListener = (event: TaskSSEEvent) => void | Promise<void>;
+export type TaskSSEListener = (event: TaskSSEEvent) => void | boolean | Promise<void | boolean>;
 
 /**
  * Connection info for a subscriber
@@ -49,11 +54,39 @@ interface SubscriberInfo {
   taskId: string;
   listener: TaskSSEListener;
   connectedAt: number;
+  /** Last successful activity timestamp (event sent or heartbeat ack) */
+  lastActivity: number;
+  /** Number of consecutive failed sends */
+  failedSends: number;
 }
 
 // =============================================================================
 // Task SSE Manager
 // =============================================================================
+
+/**
+ * Configuration for TaskSSEManager
+ */
+export interface TaskSSEManagerConfig {
+  /** Max listeners for EventEmitter (default: 1000) */
+  maxListeners?: number;
+  /** Heartbeat interval in ms (default: 30000) */
+  heartbeatIntervalMs?: number;
+  /** Stale subscriber timeout in ms - subscribers inactive longer are cleaned up (default: 120000 = 2 min) */
+  staleTimeoutMs?: number;
+  /** Max consecutive failed sends before marking subscriber as dead (default: 3) */
+  maxFailedSends?: number;
+  /** Cleanup interval in ms (default: 60000 = 1 min) */
+  cleanupIntervalMs?: number;
+}
+
+const DEFAULT_CONFIG: Required<TaskSSEManagerConfig> = {
+  maxListeners: 1000,
+  heartbeatIntervalMs: 30000,
+  staleTimeoutMs: 120000,
+  maxFailedSends: 3,
+  cleanupIntervalMs: 60000,
+};
 
 /**
  * Manager for task-specific SSE connections
@@ -62,16 +95,21 @@ interface SubscriberInfo {
  * - Per-task subscriptions
  * - Broadcast to all subscribers of a task
  * - Global broadcast to all subscribers
- * - Heartbeat support
+ * - Heartbeat support with dead connection detection
+ * - Automatic cleanup of stale/dead subscribers
  */
 export class TaskSSEManager {
   private emitter: EventEmitter;
   private subscribers: Map<string, SubscriberInfo>;
   private taskSubscribers: Map<string, Set<string>>; // taskId -> subscriberIds
+  private config: Required<TaskSSEManagerConfig>;
+  private heartbeatIntervalId: NodeJS.Timeout | null = null;
+  private cleanupIntervalId: NodeJS.Timeout | null = null;
 
-  constructor() {
+  constructor(config?: TaskSSEManagerConfig) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
     this.emitter = new EventEmitter();
-    this.emitter.setMaxListeners(1000);
+    this.emitter.setMaxListeners(this.config.maxListeners);
     this.subscribers = new Map();
     this.taskSubscribers = new Map();
   }
@@ -85,13 +123,16 @@ export class TaskSSEManager {
    */
   subscribe(taskId: string, listener: TaskSSEListener): () => void {
     const subscriberId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const now = Date.now();
 
     // Store subscriber info
     const info: SubscriberInfo = {
       id: subscriberId,
       taskId,
       listener,
-      connectedAt: Date.now(),
+      connectedAt: now,
+      lastActivity: now,
+      failedSends: 0,
     };
     this.subscribers.set(subscriberId, info);
 
@@ -112,20 +153,32 @@ export class TaskSSEManager {
     this.sendToSubscriber(subscriberId, {
       type: "CONNECTED",
       task_id: taskId,
-      timestamp: Date.now(),
+      timestamp: now,
     });
 
     // Return unsubscribe function
     return () => {
-      this.emitter.off(eventName, listener);
-      this.subscribers.delete(subscriberId);
-      this.taskSubscribers.get(taskId)?.delete(subscriberId);
-
-      // Clean up empty task subscriber sets
-      if (this.taskSubscribers.get(taskId)?.size === 0) {
-        this.taskSubscribers.delete(taskId);
-      }
+      this.unsubscribeById(subscriberId);
     };
+  }
+
+  /**
+   * Internal method to unsubscribe by ID
+   * Used by both explicit unsubscribe and automatic cleanup
+   */
+  private unsubscribeById(subscriberId: string): void {
+    const info = this.subscribers.get(subscriberId);
+    if (!info) return;
+
+    const eventName = info.taskId === "*" ? "task:*" : `task:${info.taskId}`;
+    this.emitter.off(eventName, info.listener);
+    this.subscribers.delete(subscriberId);
+    this.taskSubscribers.get(info.taskId)?.delete(subscriberId);
+
+    // Clean up empty task subscriber sets
+    if (this.taskSubscribers.get(info.taskId)?.size === 0) {
+      this.taskSubscribers.delete(info.taskId);
+    }
   }
 
   /**
@@ -136,13 +189,16 @@ export class TaskSSEManager {
    */
   subscribeAll(listener: TaskSSEListener): () => void {
     const subscriberId = `sub_all_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const now = Date.now();
 
     // Store with special "all" taskId
     const info: SubscriberInfo = {
       id: subscriberId,
       taskId: "*",
       listener,
-      connectedAt: Date.now(),
+      connectedAt: now,
+      lastActivity: now,
+      failedSends: 0,
     };
     this.subscribers.set(subscriberId, info);
 
@@ -159,9 +215,7 @@ export class TaskSSEManager {
     this.emitter.on("task:*", listener);
 
     return () => {
-      this.emitter.off("task:*", listener);
-      this.subscribers.delete(subscriberId);
-      this.taskSubscribers.get("*")?.delete(subscriberId);
+      this.unsubscribeById(subscriberId);
     };
   }
 
@@ -203,39 +257,143 @@ export class TaskSSEManager {
   }
 
   /**
-   * Send a heartbeat to all subscribers
+   * Send a heartbeat to all subscribers and detect dead connections
+   *
+   * Returns the number of subscribers that failed to receive the heartbeat
    */
-  sendHeartbeat(): void {
+  sendHeartbeat(): number {
     const timestamp = Date.now();
+    let failedCount = 0;
 
-    // Send to all task subscribers
-    for (const taskId of this.taskSubscribers.keys()) {
-      if (taskId !== "*") {
-        this.broadcast(taskId, { type: "HEARTBEAT", timestamp });
+    // Send heartbeat to all subscribers
+    for (const [subscriberId, info] of this.subscribers) {
+      const event: TaskSSEEvent = {
+        type: "HEARTBEAT",
+        task_id: info.taskId,
+        timestamp,
+      };
+
+      const success = this.sendToSubscriberWithTracking(subscriberId, event);
+      if (!success) {
+        failedCount++;
       }
     }
 
-    // Send to global subscribers
-    for (const subscriberId of this.taskSubscribers.get("*") ?? []) {
-      const info = this.subscribers.get(subscriberId);
-      if (info) {
-        info.listener({ type: "HEARTBEAT", task_id: "*", timestamp });
+    return failedCount;
+  }
+
+  /**
+   * Send event to subscriber with success/failure tracking
+   * Returns true if sent successfully, false otherwise
+   */
+  private sendToSubscriberWithTracking(subscriberId: string, event: TaskSSEEvent): boolean {
+    const info = this.subscribers.get(subscriberId);
+    if (!info) return false;
+
+    try {
+      const result = info.listener(event);
+
+      // If listener returns false explicitly, treat as failure
+      if (result === false) {
+        info.failedSends++;
+        return false;
       }
+
+      // Success - reset failure count and update activity
+      info.failedSends = 0;
+      info.lastActivity = Date.now();
+      return true;
+    } catch (error) {
+      // Exception during send - connection is likely dead
+      info.failedSends++;
+      console.error(`[TaskSSEManager] Error sending to subscriber ${subscriberId}:`, error);
+      return false;
     }
   }
 
   /**
-   * Start periodic heartbeat
+   * Clean up stale or dead subscribers
    *
-   * @param intervalMs - Heartbeat interval (default: 30 seconds)
-   * @returns Stop function
+   * A subscriber is considered stale/dead if:
+   * 1. No activity for longer than staleTimeoutMs, OR
+   * 2. Consecutive failed sends exceed maxFailedSends
+   *
+   * @returns Number of subscribers cleaned up
    */
-  startHeartbeat(intervalMs: number = 30000): () => void {
-    const intervalId = setInterval(() => {
-      this.sendHeartbeat();
-    }, intervalMs);
+  cleanupStaleSubscribers(): number {
+    const now = Date.now();
+    const staleThreshold = now - this.config.staleTimeoutMs;
+    const toRemove: string[] = [];
 
-    return () => clearInterval(intervalId);
+    for (const [subscriberId, info] of this.subscribers) {
+      const isStale = info.lastActivity < staleThreshold;
+      const isDead = info.failedSends >= this.config.maxFailedSends;
+
+      if (isStale || isDead) {
+        toRemove.push(subscriberId);
+        console.log(
+          `[TaskSSEManager] Cleaning up subscriber ${subscriberId}: ` +
+            `stale=${isStale} (lastActivity=${now - info.lastActivity}ms ago), ` +
+            `dead=${isDead} (failedSends=${info.failedSends})`
+        );
+      }
+    }
+
+    // Remove stale subscribers
+    for (const subscriberId of toRemove) {
+      this.unsubscribeById(subscriberId);
+    }
+
+    if (toRemove.length > 0) {
+      console.log(`[TaskSSEManager] Cleaned up ${toRemove.length} stale subscribers`);
+    }
+
+    return toRemove.length;
+  }
+
+  /**
+   * Start periodic heartbeat and cleanup
+   *
+   * This should be called when the gateway starts.
+   * It starts two intervals:
+   * 1. Heartbeat - sends ping to all subscribers to detect dead connections
+   * 2. Cleanup - removes stale/dead subscribers to prevent memory leaks
+   *
+   * @returns Stop function that clears both intervals
+   */
+  startHeartbeat(intervalMs?: number): () => void {
+    const heartbeatMs = intervalMs ?? this.config.heartbeatIntervalMs;
+
+    // Start heartbeat interval
+    this.heartbeatIntervalId = setInterval(() => {
+      this.sendHeartbeat();
+    }, heartbeatMs);
+
+    // Start cleanup interval
+    this.cleanupIntervalId = setInterval(() => {
+      this.cleanupStaleSubscribers();
+    }, this.config.cleanupIntervalMs);
+
+    console.log(
+      `[TaskSSEManager] Started heartbeat (${heartbeatMs}ms) and cleanup (${this.config.cleanupIntervalMs}ms) intervals`
+    );
+
+    return () => this.stopHeartbeat();
+  }
+
+  /**
+   * Stop heartbeat and cleanup intervals
+   */
+  stopHeartbeat(): void {
+    if (this.heartbeatIntervalId) {
+      clearInterval(this.heartbeatIntervalId);
+      this.heartbeatIntervalId = null;
+    }
+    if (this.cleanupIntervalId) {
+      clearInterval(this.cleanupIntervalId);
+      this.cleanupIntervalId = null;
+    }
+    console.log("[TaskSSEManager] Stopped heartbeat and cleanup intervals");
   }
 
   /**
@@ -263,16 +421,58 @@ export class TaskSSEManager {
   }
 
   /**
-   * Send event to a specific subscriber
+   * Get statistics about subscribers
+   */
+  getStats(): {
+    totalSubscribers: number;
+    taskCount: number;
+    staleCount: number;
+    failingCount: number;
+  } {
+    const now = Date.now();
+    const staleThreshold = now - this.config.staleTimeoutMs;
+    let staleCount = 0;
+    let failingCount = 0;
+
+    for (const info of this.subscribers.values()) {
+      if (info.lastActivity < staleThreshold) staleCount++;
+      if (info.failedSends > 0) failingCount++;
+    }
+
+    return {
+      totalSubscribers: this.subscribers.size,
+      taskCount: this.taskSubscribers.size,
+      staleCount,
+      failingCount,
+    };
+  }
+
+  /**
+   * Send event to a specific subscriber (without tracking)
+   * Used for initial connection events
    */
   private sendToSubscriber(subscriberId: string, event: TaskSSEEvent): void {
     const info = this.subscribers.get(subscriberId);
     if (info) {
       try {
         info.listener(event);
+        info.lastActivity = Date.now();
       } catch (error) {
+        info.failedSends++;
         console.error(`[TaskSSEManager] Error sending to subscriber ${subscriberId}:`, error);
       }
+    }
+  }
+
+  /**
+   * Mark a subscriber as active (called when receiving data from client)
+   * This can be used by routes that receive acknowledgments from clients
+   */
+  markActive(subscriberId: string): void {
+    const info = this.subscribers.get(subscriberId);
+    if (info) {
+      info.lastActivity = Date.now();
+      info.failedSends = 0;
     }
   }
 
@@ -280,9 +480,11 @@ export class TaskSSEManager {
    * Close all connections (cleanup)
    */
   close(): void {
+    this.stopHeartbeat();
     this.emitter.removeAllListeners();
     this.subscribers.clear();
     this.taskSubscribers.clear();
+    console.log("[TaskSSEManager] Closed and cleaned up all resources");
   }
 }
 

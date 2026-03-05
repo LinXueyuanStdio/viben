@@ -50,8 +50,8 @@ export interface RecoveryConfig {
 // Constants
 // =============================================================================
 
-/** Default stuck threshold: 5 minutes */
-const DEFAULT_STUCK_THRESHOLD_MS = 5 * 60 * 1000;
+/** Default stuck threshold: 2 minutes (aligned with frontend 60s + buffer) */
+const DEFAULT_STUCK_THRESHOLD_MS = 2 * 60 * 1000;
 
 // =============================================================================
 // Task Recovery Service

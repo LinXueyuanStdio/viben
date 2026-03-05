@@ -469,13 +469,14 @@ export function TaskDetailPanel({
   const isStuck = detectedStuck || task?.isStuck || false;
 
   // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
+  // Only depend on task?.id instead of the whole task object to prevent unnecessary re-runs
   useEffect(() => {
-    if (autoStartOnOpen && task) {
+    if (autoStartOnOpen && task?.id) {
       setShouldAutoStart(true);
       setActiveTab("agent-chat");
       onAutoStartConsumed?.();
     }
-  }, [autoStartOnOpen, task, onAutoStartConsumed]);
+  }, [autoStartOnOpen, task?.id, onAutoStartConsumed]);
 
   // Persistent comments from Tauri backend
   const {
@@ -595,33 +596,54 @@ You are helping the user work on this task. Provide relevant suggestions, code e
   const prevTaskIdRef = useRef<string | null>(null);
   const loadedSessionIdRef = useRef<string | null>(null);
 
+  // Refs to store callbacks to avoid triggering effects when callbacks change reference
+  const onUpdateRef = useRef(onUpdate);
+  const agentSendMessageRef = useRef(agentSendMessage);
+  const agentClearMessagesRef = useRef(agentClearMessages);
+  const agentLoadMessagesRef = useRef(agentLoadMessages);
+
+  // Track if auto-start has been triggered to prevent multiple triggers
+  const autoStartTriggeredRef = useRef(false);
+
+  // Sync refs with current callback values
+  useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
+  useEffect(() => { agentSendMessageRef.current = agentSendMessage; }, [agentSendMessage]);
+  useEffect(() => { agentClearMessagesRef.current = agentClearMessages; }, [agentClearMessages]);
+  useEffect(() => { agentLoadMessagesRef.current = agentLoadMessages; }, [agentLoadMessages]);
+
   // Reset state when task changes
+  // Use agentClearMessagesRef to avoid re-running when callback reference changes
   useEffect(() => {
     if (task?.id !== prevTaskIdRef.current) {
       console.log(`[TaskDetailPanel] Task changed from ${prevTaskIdRef.current} to ${task?.id}`);
       prevTaskIdRef.current = task?.id ?? null;
       loadedSessionIdRef.current = null;
+      // Reset auto-start trigger for new task
+      autoStartTriggeredRef.current = false;
 
       // Clear messages when switching tasks
       if (task?.id) {
-        agentClearMessages();
+        agentClearMessagesRef.current?.();
       }
     }
-  }, [task?.id, agentClearMessages]);
+  }, [task?.id]);
 
   // Update task's session_id when a new session is created
+  // Use onUpdateRef to avoid re-running when callback reference changes
   useEffect(() => {
-    if (currentSessionId && task?.id && !task.session_id && onUpdate) {
+    if (currentSessionId && task?.id && !task.session_id) {
       // A new session was created, save it to task metadata
       console.log(`[TaskDetailPanel] Saving new session ${currentSessionId} to task ${task.id}`);
-      onUpdate({ session_id: currentSessionId });
+      onUpdateRef.current?.({ session_id: currentSessionId });
     }
-  }, [currentSessionId, task?.id, task?.session_id, onUpdate]);
+  }, [currentSessionId, task?.id, task?.session_id]);
 
   // Load conversation history when task has a session
   // Use either task.session_id (from saved metadata) or currentSessionId (from hook)
   const effectiveSessionId = task?.session_id || currentSessionId;
 
+  // Load conversation history when task has a session
+  // Use agentLoadMessagesRef to avoid re-running when callback reference changes
   useEffect(() => {
     // Only load when agent-chat tab is active
     if (activeTab !== "agent-chat") {
@@ -667,7 +689,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             .pop();
 
           console.log(`[TaskDetailPanel] Loaded ${messages.length} messages for session ${effectiveSessionId}`);
-          agentLoadMessages(messages, sdkSessionMsg?.sdkSessionId);
+          agentLoadMessagesRef.current?.(messages, sdkSessionMsg?.sdkSessionId);
         } else {
           console.log(`[TaskDetailPanel] No messages found for session ${effectiveSessionId}`);
         }
@@ -677,9 +699,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     };
 
     loadTaskMessages();
-  }, [activeTab, task?.id, effectiveSessionId, workspacePath, taskAgentId, agentLoadMessages]);
+  }, [activeTab, task?.id, effectiveSessionId, workspacePath, taskAgentId]);
 
   // Auto-start: send message via SSE when clicking "Run"
+  // Use refs to prevent multiple triggers and avoid callback dependency issues
   useEffect(() => {
     if (!shouldAutoStart || activeTab !== "agent-chat" || !task || !workspacePath) {
       return;
@@ -699,10 +722,21 @@ You are helping the user work on this task. Provide relevant suggestions, code e
       return;
     }
 
+    // Prevent multiple triggers using ref
+    if (autoStartTriggeredRef.current) {
+      console.log(`[TaskDetailPanel] Skipping auto-start - already triggered`);
+      setShouldAutoStart(false);
+      return;
+    }
+
+    // Mark as triggered
+    autoStartTriggeredRef.current = true;
+
     // Reset the flag
     setShouldAutoStart(false);
 
     // Build initial prompt from task context using i18n
+    // Note: t function is stable from useTranslation, but we capture task values in closure
     const initialPrompt = task.description
       ? t("workspace.taskPromptWithDescription", {
           title: task.title,
@@ -715,12 +749,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     // Use the hook's sendMessage to start the conversation via SSE
     // This ensures the SSE stream is properly handled and messages appear in real-time
     const startTask = () => {
-      agentSendMessage(initialPrompt);
+      agentSendMessageRef.current?.(initialPrompt);
     };
 
     // Small delay to ensure the tab switch animation completes
     setTimeout(startTask, 100);
-  }, [shouldAutoStart, activeTab, task, workspacePath, agentIsStreaming, agentMessages.length, agentSendMessage, t]);
+  }, [shouldAutoStart, activeTab, task?.id, task?.title, task?.description, workspacePath, agentIsStreaming, agentMessages.length, t]);
 
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [

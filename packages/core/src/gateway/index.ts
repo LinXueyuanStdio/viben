@@ -246,6 +246,16 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to start task queue manager:", e);
   }
 
+  // Start SSE heartbeat and cleanup for dead connection detection
+  try {
+    state.taskSSEManager.startHeartbeat();
+    logger?.info("Task SSE Manager heartbeat started");
+    console.log("[Gateway] Task SSE Manager heartbeat started");
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start SSE heartbeat");
+    console.warn("[Gateway] Failed to start SSE heartbeat:", e);
+  }
+
   // Run task recovery on startup for all known workspaces
   try {
     const workspaces = await workspaceManager.listWorkspaces();
@@ -306,6 +316,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     await state.cron.shutdown();
     // Gracefully shutdown task queue (waits for running tasks)
     await state.taskQueue.shutdown();
+    // Stop SSE heartbeat and cleanup all SSE connections
+    state.taskSSEManager.stopHeartbeat();
+    state.taskSSEManager.close();
     state.container.killAllRunningProcesses();
     if (telemetry) {
       await telemetry.shutdown();

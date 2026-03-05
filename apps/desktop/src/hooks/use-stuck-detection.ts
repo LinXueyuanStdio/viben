@@ -134,8 +134,23 @@ export function useStuckDetection({
   const lastCheckedRef = useRef<string | undefined>(lastUpdated);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isCheckingRef = useRef(false);
+  const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
 
   const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
+
+  // Track mount state for cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear safety timeout on unmount to prevent memory leaks
+      if (safetyTimeoutRef.current) {
+        clearTimeout(safetyTimeoutRef.current);
+        safetyTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Reset stuck status when task ID changes or stops running
   useEffect(() => {
@@ -162,6 +177,20 @@ export function useStuckDetection({
       isCheckingRef.current = true;
       setIsChecking(true);
 
+      // Safety timeout: If the async operation hangs for too long (e.g., network issues),
+      // ensure we reset the checking state to allow future checks.
+      // This prevents isCheckingRef from being stuck forever.
+      const safetyTimeoutMs = 15000; // 15 seconds
+      safetyTimeoutRef.current = setTimeout(() => {
+        // Only update state if component is still mounted
+        if (isMountedRef.current) {
+          console.warn("[useStuckDetection] Safety timeout triggered - resetting check state");
+          isCheckingRef.current = false;
+          setIsChecking(false);
+        }
+        safetyTimeoutRef.current = null;
+      }, safetyTimeoutMs);
+
       try {
         // Layer 1: Check client-side activity tracking
         if (hasRecentActivity(taskId, stuckThreshold)) {
@@ -173,23 +202,28 @@ export function useStuckDetection({
         // Layer 2: Check lastUpdated timestamp
         if (lastUpdated) {
           const lastUpdateTime = new Date(lastUpdated).getTime();
-          const now = Date.now();
-          const timeSinceUpdate = now - lastUpdateTime;
+          // Validate date parsing - skip if invalid
+          if (Number.isNaN(lastUpdateTime)) {
+            console.warn(`[useStuckDetection] Invalid lastUpdated timestamp: ${lastUpdated}`);
+          } else {
+            const now = Date.now();
+            const timeSinceUpdate = now - lastUpdateTime;
 
-          if (timeSinceUpdate < stuckThreshold) {
-            // Recent update from server
-            setIsStuck(false);
-            setStuckDuration(0);
-            lastCheckedRef.current = lastUpdated;
-            return;
-          }
+            if (timeSinceUpdate < stuckThreshold) {
+              // Recent update from server
+              setIsStuck(false);
+              setStuckDuration(0);
+              lastCheckedRef.current = lastUpdated;
+              return;
+            }
 
-          // Check if lastUpdated changed (new activity)
-          if (lastUpdated !== lastCheckedRef.current) {
-            setIsStuck(false);
-            setStuckDuration(0);
-            lastCheckedRef.current = lastUpdated;
-            return;
+            // Check if lastUpdated changed (new activity)
+            if (lastUpdated !== lastCheckedRef.current) {
+              setIsStuck(false);
+              setStuckDuration(0);
+              lastCheckedRef.current = lastUpdated;
+              return;
+            }
           }
         }
 
@@ -221,8 +255,15 @@ export function useStuckDetection({
         setIsStuck(true);
         setStuckDuration(duration);
       } finally {
+        if (safetyTimeoutRef.current) {
+          clearTimeout(safetyTimeoutRef.current);
+          safetyTimeoutRef.current = null;
+        }
         isCheckingRef.current = false;
-        setIsChecking(false);
+        // Only update state if component is still mounted
+        if (isMountedRef.current) {
+          setIsChecking(false);
+        }
       }
     };
 

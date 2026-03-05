@@ -3,12 +3,22 @@
  *
  * Manages event validation, sequencing, and persistence.
  * Ensures strict ordering of events via sequence numbers.
+ *
+ * IMPORTANT: All write operations are protected by an async lock to prevent
+ * race conditions in concurrent event applications. The lock is keyed by
+ * task directory path, allowing concurrent operations on different tasks
+ * while serializing operations on the same task.
  */
 
-import { createActor } from "xstate";
 import { taskService, type UnifiedTask, type TaskEvent } from "../../services/task-service";
-import { taskMachine, xstateToTaskStatus, getStateValue, type XStateValue, type TaskMachineEvent } from "../machine/task-machine";
+import {
+  xstateToTaskStatus,
+  getNextState,
+  type XStateValue,
+  type TaskMachineEvent,
+} from "../machine/task-machine";
 import { isValidEventType, type TaskEventType } from "./event-types";
+import { taskLock } from "../../utils/async-lock";
 
 // =============================================================================
 // Types
@@ -41,11 +51,27 @@ export class TaskEventStore {
   /**
    * Validate and apply an event to a task
    *
+   * This method is protected by an async lock to prevent race conditions
+   * when multiple concurrent requests try to apply events to the same task.
+   * The lock ensures that read-validate-write operations are atomic.
+   *
    * @param taskDir - Absolute path to task directory
    * @param event - Event to apply
    * @returns ApplyEventResult with success/failure info
    */
   async applyEvent(taskDir: string, event: TaskEvent): Promise<ApplyEventResult> {
+    // Use lock to prevent concurrent modifications to the same task
+    // This ensures the read-validate-write sequence is atomic
+    return taskLock.withLock(taskDir, async () => {
+      return this.applyEventUnsafe(taskDir, event);
+    });
+  }
+
+  /**
+   * Internal method to apply event without locking
+   * Should only be called from within a lock context
+   */
+  private async applyEventUnsafe(taskDir: string, event: TaskEvent): Promise<ApplyEventResult> {
     // 1. Load current task
     const task = await taskService.getTask(taskDir);
     if (!task) {
@@ -102,40 +128,17 @@ export class TaskEventStore {
 
   /**
    * Compute the state transition using XState
+   *
+   * Uses the getNextState function which properly restores the machine
+   * to the current state before computing the transition.
    */
   private computeTransition(
     currentState: XStateValue,
     eventType: string
   ): { value: XStateValue; changed: boolean } {
-    // Create a fresh actor
-    const actor = createActor(taskMachine);
-    actor.start();
-
-    // Get initial state
-    const initialValue = getStateValue(actor.getSnapshot());
-
-    // If current state is not the initial state, we need to navigate there
-    // For simplicity, we'll use a workaround: check if the event is valid
-    // from the given state using the machine's definition
-
-    // Get transitions for the current state
-    const snapshot = actor.getSnapshot();
-
-    // Try to send the event
-    try {
-      actor.send({ type: eventType } as TaskMachineEvent);
-      const newSnapshot = actor.getSnapshot();
-      const newValue = getStateValue(newSnapshot);
-
-      // Check if state actually changed
-      const changed = JSON.stringify(initialValue) !== JSON.stringify(newValue);
-
-      actor.stop();
-      return { value: newValue, changed };
-    } catch {
-      actor.stop();
-      return { value: currentState, changed: false };
-    }
+    // Use the corrected getNextState function that properly handles
+    // state restoration before computing transitions
+    return getNextState(currentState, { type: eventType } as TaskMachineEvent);
   }
 
   /**

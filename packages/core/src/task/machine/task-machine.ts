@@ -6,7 +6,13 @@
  * backlog -> queue -> in_progress (planning/coding/qa_review/qa_fixing) -> human_review -> done/pr_created
  */
 
-import { createMachine, createActor, type AnyMachineSnapshot } from "xstate";
+import {
+  createMachine,
+  createActor,
+  type AnyMachineSnapshot,
+  getInitialSnapshot,
+  transition,
+} from "xstate";
 import type { TaskStatus, ReviewReason, ExecutionPhase } from "../../services/task-service";
 import { guards } from "./guards";
 import { actions } from "./actions";
@@ -279,6 +285,107 @@ export function xstateToExecutionPhase(value: XStateValue): ExecutionPhase | und
 }
 
 /**
+ * Navigation paths to reach each state from initial state
+ * Maps state names to the sequence of events needed to reach them
+ */
+const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
+  backlog: [],
+  queue: [{ type: "QUEUE" }],
+  error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
+  human_review: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_PASSED" },
+  ],
+  done: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_PASSED" },
+    { type: "APPROVED" },
+  ],
+  pr_created: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_PASSED" },
+    { type: "CREATE_PR" },
+  ],
+};
+
+/**
+ * Navigation paths for in_progress substates
+ */
+const IN_PROGRESS_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
+  planning: [{ type: "QUEUE" }, { type: "START" }],
+  coding: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_COMPLETE" }],
+  qa_review: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+  ],
+  qa_fixing: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_FAILED" },
+  ],
+  // "complete" phase doesn't have a corresponding state machine state
+  // It's only used as a logical marker
+  complete: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_PASSED" },
+  ],
+};
+
+/**
+ * Resolve a state value to a snapshot by navigating from initial state
+ *
+ * This function creates a snapshot at the target state by replaying
+ * the necessary events from the initial state. This is the correct way
+ * to compute transitions from an arbitrary state in XState v5.
+ *
+ * @param stateValue - The state value to resolve
+ * @param context - Optional context overrides
+ * @returns A snapshot at the target state
+ */
+export function resolveStateSnapshot(
+  stateValue: XStateValue,
+  context?: Partial<TaskMachineContext>
+): AnyMachineSnapshot {
+  // Get initial snapshot
+  const initialSnapshot = getInitialSnapshot(taskMachine, context);
+
+  // Determine the navigation path
+  let events: TaskMachineEvent[] = [];
+
+  if (typeof stateValue === "string") {
+    events = STATE_NAVIGATION_PATHS[stateValue] ?? [];
+  } else if (typeof stateValue === "object" && "in_progress" in stateValue) {
+    const phase = stateValue.in_progress;
+    events = IN_PROGRESS_NAVIGATION_PATHS[phase] ?? [];
+  }
+
+  // Navigate to the target state by replaying events
+  let currentSnapshot: AnyMachineSnapshot = initialSnapshot;
+  for (const event of events) {
+    const [nextSnapshot] = transition(taskMachine, currentSnapshot, event);
+    currentSnapshot = nextSnapshot;
+  }
+
+  return currentSnapshot;
+}
+
+/**
  * Create a task actor from initial state
  *
  * @param initialState - Initial XState value (default: "backlog")
@@ -289,14 +396,11 @@ export function createTaskActor(
   initialState: XStateValue = "backlog",
   context?: Partial<TaskMachineContext>
 ) {
-  // Create machine with provided context
-  const machineWithContext = taskMachine.provide({
-    // Context can be provided here if needed
-  });
+  // Resolve the state to a proper snapshot
+  const snapshot = resolveStateSnapshot(initialState, context);
 
-  const actor = createActor(machineWithContext, {
-    snapshot: initialState !== "backlog" ? undefined : undefined,
-    input: context,
+  const actor = createActor(taskMachine, {
+    snapshot,
   });
 
   return actor;
@@ -305,41 +409,42 @@ export function createTaskActor(
 /**
  * Get the next state given current state and event
  *
+ * Uses XState v5's pure transition() function to compute state transitions
+ * without creating an actor. This correctly handles the current state.
+ *
  * @param currentState - Current XState value
  * @param event - Event to send
  * @param context - Current context
- * @returns New state value or undefined if transition not allowed
+ * @returns New state value and whether the transition was valid
  */
 export function getNextState(
   currentState: XStateValue,
   event: TaskMachineEvent,
   context?: Partial<TaskMachineContext>
 ): { value: XStateValue; changed: boolean } {
-  // Create an actor to compute the transition
-  const machineWithContext = taskMachine.provide({});
+  try {
+    // Resolve the current state to a proper snapshot
+    const currentSnapshot = resolveStateSnapshot(currentState, context);
 
-  // Get the transition result using the machine's transition function
-  const actor = createActor(machineWithContext, {
-    snapshot: undefined,
-  });
+    // Use XState v5's transition function to compute the next state
+    const [nextSnapshot] = transition(taskMachine, currentSnapshot, event);
 
-  // We need to restore the actor to the current state first
-  // For simplicity, we'll use the machine's transition logic directly
-  const initialSnapshot = actor.getSnapshot();
+    // Get state values for comparison
+    const currentValue = getStateValue(currentSnapshot);
+    const nextValue = getStateValue(nextSnapshot);
 
-  // Send the event and get the result
-  actor.start();
+    // Check if state actually changed
+    const changed = JSON.stringify(currentValue) !== JSON.stringify(nextValue);
 
-  // Navigate to current state by sending appropriate events
-  // This is a simplified version - in production you might want to
-  // use XState's built-in state restoration
-  actor.send(event);
-
-  const newSnapshot = actor.getSnapshot();
-  actor.stop();
-
-  return {
-    value: getStateValue(newSnapshot),
-    changed: JSON.stringify(initialSnapshot.value) !== JSON.stringify(newSnapshot.value),
-  };
+    return {
+      value: nextValue,
+      changed,
+    };
+  } catch {
+    // If transition fails, return unchanged
+    return {
+      value: currentState,
+      changed: false,
+    };
+  }
 }

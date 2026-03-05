@@ -94,7 +94,15 @@ export function createAppState(): AppState {
   configWatcher.watch(getMcpServersConfigPath());
 
   // Create task SSE manager for real-time task state updates
-  const taskSSEManager = new TaskSSEManager();
+  // Configure with automatic stale subscriber cleanup
+  const taskSSEManager = new TaskSSEManager({
+    heartbeatIntervalMs: 30000, // 30 seconds heartbeat
+    staleTimeoutMs: 120000, // 2 minutes stale timeout
+    maxFailedSends: 3, // 3 failed sends = dead connection
+    cleanupIntervalMs: 60000, // 1 minute cleanup interval
+  });
+  // Start heartbeat and cleanup intervals
+  taskSSEManager.startHeartbeat();
 
   // Create task recovery service for stuck task detection
   const taskRecovery = new TaskRecoveryService(taskEventStore, taskSSEManager, {
