@@ -38,6 +38,21 @@ import {
   GripVertical,
   Settings,
   ListPlus,
+  Search,
+  ArrowUpDown,
+  Eye,
+  EyeOff,
+  LayoutGrid,
+  List,
+  CheckSquare,
+  XSquare,
+  ArrowRight,
+  Inbox,
+  CircleDot,
+  CheckCircle2,
+  UserCheck,
+  Bot,
+  SortAsc,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -1517,7 +1532,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-backlog",
         label: t("workspace.column.backlog", "Backlog"),
+        description: t("workspace.commandPalette.gotoBacklogDesc", "Jump to first task in Backlog"),
+        icon: <Inbox className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "backlog", "待办"],
         action: () => {
           const tasks = tasksByColumn["backlog"];
           if (tasks && tasks.length > 0) {
@@ -1528,7 +1546,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-queue",
         label: t("workspace.column.queue", "Queue"),
+        description: t("workspace.commandPalette.gotoQueueDesc", "Jump to first task in Queue"),
+        icon: <ListPlus className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "queue", "队列"],
         action: () => {
           const tasks = tasksByColumn["queue"];
           if (tasks && tasks.length > 0) {
@@ -1539,7 +1560,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-in-progress",
         label: t("workspace.column.inProgress", "In Progress"),
+        description: t("workspace.commandPalette.gotoInProgressDesc", "Jump to first task in progress"),
+        icon: <CircleDot className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "progress", "running", "进行中"],
         action: () => {
           const tasks = tasksByColumn["in_progress"];
           if (tasks && tasks.length > 0) {
@@ -1550,7 +1574,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-ai-review",
         label: t("workspace.column.aiReview", "AI Review"),
+        description: t("workspace.commandPalette.gotoAiReviewDesc", "Jump to first task in AI Review"),
+        icon: <Bot className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "ai", "review", "审核"],
         action: () => {
           const tasks = tasksByColumn["ai_review"];
           if (tasks && tasks.length > 0) {
@@ -1561,7 +1588,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-human-review",
         label: t("workspace.column.humanReview", "Human Review"),
+        description: t("workspace.commandPalette.gotoHumanReviewDesc", "Jump to first task in Human Review"),
+        icon: <UserCheck className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "human", "review", "人工审核"],
         action: () => {
           const tasks = tasksByColumn["human_review"];
           if (tasks && tasks.length > 0) {
@@ -1572,7 +1602,10 @@ export function WorkspaceKanbanPage() {
       {
         id: "goto-done",
         label: t("workspace.column.done", "Done"),
+        description: t("workspace.commandPalette.gotoDoneDesc", "Jump to first completed task"),
+        icon: <CheckCircle2 className="h-4 w-4" />,
         category: "navigation",
+        keywords: ["go", "jump", "done", "complete", "完成"],
         action: () => {
           const tasks = tasksByColumn["done"];
           if (tasks && tasks.length > 0) {
@@ -1585,34 +1618,49 @@ export function WorkspaceKanbanPage() {
       {
         id: "new-task",
         label: t("workspace.addTask", "Add Task"),
+        description: t("workspace.commandPalette.newTaskDesc", "Create a new task in Backlog"),
+        icon: <Plus className="h-4 w-4" />,
         shortcut: "n",
         category: "action",
+        keywords: ["new", "create", "task", "add", "新建", "创建"],
         action: () => handleAddTask("backlog"),
       },
       {
         id: "refresh",
         label: t("common.refresh", "Refresh"),
+        description: t("workspace.commandPalette.refreshDesc", "Reload all tasks"),
+        icon: <RefreshCw className="h-4 w-4" />,
         shortcut: "r",
         category: "action",
+        keywords: ["refresh", "reload", "sync", "刷新", "同步"],
         action: () => handleRefresh(),
       },
       {
         id: "queue-all",
         label: t("workspace.queueAll", "Queue All Backlog Tasks"),
+        description: t("workspace.commandPalette.queueAllDesc", "Move all backlog tasks to queue"),
+        icon: <ArrowRight className="h-4 w-4" />,
         shortcut: "q",
         category: "action",
+        keywords: ["queue", "batch", "all", "backlog", "批量", "队列"],
         action: () => handleQueueAll(),
       },
       {
         id: "queue-settings",
         label: t("workspace.queueSettings", "Queue Settings"),
-        category: "action",
+        description: t("workspace.commandPalette.queueSettingsDesc", "Configure queue concurrency"),
+        icon: <Settings className="h-4 w-4" />,
+        category: "settings",
+        keywords: ["queue", "settings", "config", "concurrency", "配置", "设置"],
         action: () => setQueueSettingsOpen(true),
       },
       {
         id: "archive-done",
         label: t("workspace.archiveAll", "Archive All Done Tasks"),
+        description: t("workspace.commandPalette.archiveAllDesc", "Archive all completed tasks"),
+        icon: <Archive className="h-4 w-4" />,
         category: "action",
+        keywords: ["archive", "done", "complete", "clean", "归档", "清理"],
         action: async () => {
           const doneTasks = tasksByColumn["done"] || [];
           const unarchived = doneTasks.filter((task) => !task.archived);
@@ -1633,24 +1681,33 @@ export function WorkspaceKanbanPage() {
       {
         id: "select-all",
         label: t("workspace.selectAll", "Select All Tasks"),
+        description: t("workspace.commandPalette.selectAllDesc", "Select all visible tasks"),
+        icon: <CheckSquare className="h-4 w-4" />,
         shortcut: "a",
         category: "action",
+        keywords: ["select", "all", "check", "全选"],
         action: () => selectAll(),
       },
       {
         id: "clear-selection",
         label: t("workspace.clearSelection", "Clear Selection"),
+        description: t("workspace.commandPalette.clearSelectionDesc", "Deselect all tasks"),
+        icon: <XSquare className="h-4 w-4" />,
         shortcut: "Escape",
         category: "action",
+        keywords: ["clear", "deselect", "uncheck", "取消选择"],
         action: () => clearSelection(),
       },
 
       // === Task Operations (when task selected) ===
-      ...(selectedTaskId ? [
+      ...(selectedTaskId ? ([
         {
           id: "run-task",
           label: t("workspace.runAgent", "Run Selected Task"),
-          category: "action",
+          description: t("workspace.commandPalette.runTaskDesc", "Start agent for selected task"),
+          icon: <Play className="h-4 w-4" />,
+          category: "action" as const,
+          keywords: ["run", "start", "execute", "agent", "运行", "启动"],
           action: () => {
             const task = sortedTasks.find((t) => t.id === selectedTaskId);
             if (task && !task.has_in_progress_attempt && task.status !== "done") {
@@ -1661,7 +1718,10 @@ export function WorkspaceKanbanPage() {
         {
           id: "stop-task",
           label: t("workspace.stopAgent", "Stop Selected Task"),
-          category: "action",
+          description: t("workspace.commandPalette.stopTaskDesc", "Stop running agent"),
+          icon: <Square className="h-4 w-4" />,
+          category: "action" as const,
+          keywords: ["stop", "cancel", "abort", "agent", "停止", "取消"],
           action: () => {
             const task = sortedTasks.find((t) => t.id === selectedTaskId);
             if (task?.has_in_progress_attempt) {
@@ -1669,7 +1729,7 @@ export function WorkspaceKanbanPage() {
             }
           },
         },
-      ] : []),
+      ] satisfies Command[]) : []),
 
       // === View ===
       {
@@ -1677,19 +1737,28 @@ export function WorkspaceKanbanPage() {
         label: showStats
           ? t("workspace.hideStats", "Hide Stats")
           : t("workspace.showStats", "Show Stats"),
+        description: t("workspace.commandPalette.toggleStatsDesc", "Toggle statistics panel"),
+        icon: showStats ? <EyeOff className="h-4 w-4" /> : <BarChart3 className="h-4 w-4" />,
         category: "view",
+        keywords: ["stats", "statistics", "chart", "统计", "图表"],
         action: () => setShowStats((s) => !s),
       },
       {
         id: "view-kanban",
         label: t("workspace.viewKanban", "Kanban View"),
+        description: t("workspace.commandPalette.viewKanbanDesc", "Switch to kanban board"),
+        icon: <LayoutGrid className="h-4 w-4" />,
         category: "view",
+        keywords: ["kanban", "board", "看板"],
         action: () => setViewMode("kanban"),
       },
       {
         id: "view-list",
         label: t("workspace.viewList", "List View"),
+        description: t("workspace.commandPalette.viewListDesc", "Switch to list view"),
+        icon: <List className="h-4 w-4" />,
         category: "view",
+        keywords: ["list", "table", "列表"],
         action: () => setViewMode("list"),
       },
       {
@@ -1697,65 +1766,81 @@ export function WorkspaceKanbanPage() {
         label: showArchived
           ? t("workspace.hideArchived", "Hide Archived")
           : t("workspace.showArchived", "Show Archived"),
+        description: t("workspace.commandPalette.toggleArchivedDesc", "Toggle archived tasks visibility"),
+        icon: showArchived ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />,
         category: "view",
+        keywords: ["archive", "hidden", "show", "归档", "显示"],
         action: () => toggleShowArchived(),
       },
 
       // === Filter ===
       {
-        id: "filter-backlog",
-        label: t("workspace.filter.backlog", "Filter: Backlog Only"),
-        category: "filter",
-        action: () => setFilter({ ...filter, status: ["backlog"] }),
-      },
-      {
-        id: "filter-in-progress",
-        label: t("workspace.filter.inProgress", "Filter: In Progress Only"),
-        category: "filter",
-        action: () => setFilter({ ...filter, status: ["in_progress"] }),
-      },
-      {
-        id: "filter-done",
-        label: t("workspace.filter.done", "Filter: Done Only"),
-        category: "filter",
-        action: () => setFilter({ ...filter, status: ["done"] }),
-      },
-      {
         id: "clear-filters",
         label: t("workspace.filter.clear", "Clear All Filters"),
+        description: t("workspace.commandPalette.clearFiltersDesc", "Reset all filters"),
+        icon: <XCircle className="h-4 w-4" />,
         category: "filter",
-        action: () => setFilter({ status: [], priority: [], tags: [], search: "" }),
+        keywords: ["clear", "reset", "filter", "清除", "重置"],
+        action: () => setFilter({}),
+      },
+      {
+        id: "filter-search",
+        label: t("workspace.filter.search", "Search Tasks"),
+        description: t("workspace.commandPalette.filterSearchDesc", "Focus on search input"),
+        icon: <Search className="h-4 w-4" />,
+        shortcut: "/",
+        category: "filter",
+        keywords: ["search", "find", "filter", "搜索", "查找"],
+        action: () => {
+          const searchInput = document.querySelector<HTMLInputElement>('[data-filter-search]');
+          searchInput?.focus();
+        },
       },
 
       // === Sort ===
       {
         id: "sort-priority",
         label: t("workspace.sort.priority", "Sort by Priority"),
+        description: t("workspace.commandPalette.sortPriorityDesc", "High priority first"),
+        icon: <SortAsc className="h-4 w-4" />,
         category: "sort",
+        keywords: ["sort", "priority", "urgent", "排序", "优先级"],
         action: () => handleSortChange("priority", "desc"),
       },
       {
         id: "sort-duedate",
         label: t("workspace.sort.dueDate", "Sort by Due Date"),
+        description: t("workspace.commandPalette.sortDueDateDesc", "Earliest due date first"),
+        icon: <Clock className="h-4 w-4" />,
         category: "sort",
+        keywords: ["sort", "due", "date", "deadline", "排序", "截止日期"],
         action: () => handleSortChange("dueDate", "asc"),
       },
       {
         id: "sort-title",
         label: t("workspace.sort.name", "Sort by Title"),
+        description: t("workspace.commandPalette.sortTitleDesc", "Alphabetical order"),
+        icon: <ArrowUpDown className="h-4 w-4" />,
         category: "sort",
+        keywords: ["sort", "name", "title", "alphabetical", "排序", "名称"],
         action: () => handleSortChange("title", "asc"),
       },
       {
         id: "sort-created",
         label: t("workspace.sort.created", "Sort by Created Date"),
+        description: t("workspace.commandPalette.sortCreatedDesc", "Newest first"),
+        icon: <Clock className="h-4 w-4" />,
         category: "sort",
+        keywords: ["sort", "created", "date", "new", "排序", "创建时间"],
         action: () => handleSortChange("createdAt", "desc"),
       },
       {
         id: "sort-updated",
         label: t("workspace.sort.updated", "Sort by Updated Date"),
+        description: t("workspace.commandPalette.sortUpdatedDesc", "Recently updated first"),
+        icon: <Clock className="h-4 w-4" />,
         category: "sort",
+        keywords: ["sort", "updated", "modified", "recent", "排序", "更新时间"],
         action: () => handleSortChange("updatedAt", "desc"),
       },
     ],
@@ -2634,6 +2719,8 @@ export function WorkspaceKanbanPage() {
           action: t("workspace.commandPalette.action", "Action"),
           view: t("workspace.commandPalette.view", "View"),
           filter: t("workspace.commandPalette.filter", "Filter"),
+          sort: t("workspace.commandPalette.sort", "Sort"),
+          settings: t("workspace.commandPalette.settings", "Settings"),
         }}
       />
 

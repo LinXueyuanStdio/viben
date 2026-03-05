@@ -156,12 +156,18 @@ export function registerTaskEventRoutes(fastify: FastifyInstance): void {
     );
 
     // Subscribe to task events
-    const unsubscribe = taskSSEManager.subscribe(task_id, async (event) => {
+    // The listener returns false when write fails, signaling dead connection
+    const unsubscribe = taskSSEManager.subscribe(task_id, (event) => {
       try {
+        // Check if the connection is still writable
+        if (reply.raw.writableEnded || reply.raw.destroyed) {
+          return false; // Signal that this subscriber is dead
+        }
         reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+        return true; // Signal successful delivery
       } catch {
-        // Connection closed
-        unsubscribe();
+        // Connection closed or write error
+        return false; // Signal that this subscriber is dead
       }
     });
 

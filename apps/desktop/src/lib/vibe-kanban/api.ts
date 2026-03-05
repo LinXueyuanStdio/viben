@@ -195,12 +195,19 @@ interface TaskRunningResponse {
  * status says "running" but the process has died.
  *
  * @param taskId - Task ID to check
+ * @param timeoutMs - Timeout in milliseconds (default: 10000ms = 10 seconds)
  * @returns True if the task process is actively running
  */
-export async function checkTaskRunning(taskId: string): Promise<boolean> {
+export async function checkTaskRunning(
+  taskId: string,
+  timeoutMs: number = 10000
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     const url = `${getApiBaseUrl()}/api/queue/tasks/${encodeURIComponent(taskId)}/running`;
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
 
     if (!response.ok) {
       console.warn(`[checkTaskRunning] Failed to check task ${taskId}: ${response.status}`);
@@ -210,9 +217,16 @@ export async function checkTaskRunning(taskId: string): Promise<boolean> {
     const data: TaskRunningResponse = await response.json();
     return data.success && data.data?.running === true;
   } catch (error) {
-    console.error("[checkTaskRunning] Failed to check task running status:", error);
-    // On error, assume task might still be running to avoid false positives
-    return false;
+    if (error instanceof Error && error.name === "AbortError") {
+      console.warn(`[checkTaskRunning] Timeout (${timeoutMs}ms) for task ${taskId}`);
+    } else {
+      console.error("[checkTaskRunning] Failed to check task running status:", error);
+    }
+    // On error/timeout, assume task might still be running to avoid false positives
+    // Return true (running) to prevent marking healthy tasks as stuck due to network issues
+    return true;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

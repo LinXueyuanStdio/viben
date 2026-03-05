@@ -11,7 +11,7 @@ export interface Command {
   keywords?: string[];
 }
 
-export type CommandCategory = "navigation" | "action" | "view" | "settings" | "sort";
+export type CommandCategory = "navigation" | "action" | "view" | "settings" | "sort" | "filter";
 
 export const CATEGORY_LABELS: Record<CommandCategory, string> = {
   navigation: "导航",
@@ -19,4 +19,5 @@ export const CATEGORY_LABELS: Record<CommandCategory, string> = {
   view: "视图",
   settings: "设置",
   sort: "排序",
+  filter: "筛选",
 };

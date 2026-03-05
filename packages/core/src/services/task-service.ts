@@ -9,6 +9,7 @@
 import { join, basename } from "node:path";
 import { mkdir, readFile, writeFile, readdir, rm, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { taskLock } from "../utils/async-lock";
 
 // =============================================================================
 // Types
@@ -474,11 +475,27 @@ export class TaskService {
   /**
    * Update a task
    *
+   * This method is protected by an async lock to prevent race conditions
+   * when multiple concurrent requests try to update the same task.
+   * The lock ensures that read-modify-write operations are atomic.
+   *
    * @param taskDir - Absolute path to task directory
    * @param updates - Partial task data to update
    * @returns Updated task data
    */
   async updateTask(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
+    // Use lock to prevent concurrent modifications to the same task
+    // This ensures the read-modify-write sequence is atomic
+    return taskLock.withLock(taskDir, async () => {
+      return this.updateTaskUnsafe(taskDir, updates);
+    });
+  }
+
+  /**
+   * Internal method to update task without locking
+   * Should only be called from within a lock context
+   */
+  private async updateTaskUnsafe(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
     const existing = await this.getTask(taskDir);
     if (!existing) {
       throw new Error(`Task not found: ${taskDir}`);
@@ -507,7 +524,23 @@ export class TaskService {
     // Update attempt status based on new status
     if (updates.status !== undefined) {
       updated.hasInProgressAttempt = updates.status === "in_progress" || updates.status === "ai_review";
-      updated.lastAttemptFailed = updates.status === "error" || updates.status === "human_review";
+
+      // Fix: Only mark lastAttemptFailed=true for actual failures
+      // human_review with reviewReason "completed" is NOT a failure
+      if (updates.status === "error") {
+        updated.lastAttemptFailed = true;
+      } else if (updates.status === "human_review") {
+        // Determine if this is a failure based on reviewReason
+        // Failure reasons: qa_rejected, errors, stopped
+        // Success reasons: completed, plan_review (awaiting approval, not a failure)
+        const failureReasons: ReviewReason[] = ["qa_rejected", "errors", "stopped"];
+        const currentReviewReason = updates.reviewReason ?? existing.reviewReason;
+        updated.lastAttemptFailed = currentReviewReason
+          ? failureReasons.includes(currentReviewReason)
+          : false;
+      } else {
+        updated.lastAttemptFailed = false;
+      }
     }
 
     // Write updated task.json

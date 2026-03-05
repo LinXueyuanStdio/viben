@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Command as CommandIcon } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Search, Command as CommandIcon, X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, Input, cn } from "@viben/ui";
 import { type Command, type CommandCategory, CATEGORY_LABELS } from "./command-types";
 
@@ -11,6 +11,8 @@ export interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   commands: Command[];
   placeholder?: string;
+  /** Show loading state */
+  loading?: boolean;
   /** Custom labels for i18n */
   labels?: {
     noResults?: string;
@@ -18,6 +20,9 @@ export interface CommandPaletteProps {
     action?: string;
     view?: string;
     filter?: string;
+    sort?: string;
+    settings?: string;
+    resultsCount?: string; // e.g., "{{count}} commands"
   };
 }
 
@@ -26,11 +31,14 @@ export function CommandPalette({
   onOpenChange,
   commands,
   placeholder = "Search commands...",
+  loading = false,
   labels,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectedItemRef = useRef<HTMLButtonElement>(null);
 
   // Filter commands
   const filteredCommands = useMemo(() => {
@@ -74,8 +82,30 @@ export function CommandPalette({
     }
   }, [open]);
 
+  // Scroll selected item into view
+  useEffect(() => {
+    if (selectedItemRef.current && listRef.current) {
+      const item = selectedItemRef.current;
+      const container = listRef.current;
+      const itemRect = item.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+
+      if (itemRect.bottom > containerRect.bottom) {
+        item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } else if (itemRect.top < containerRect.top) {
+        item.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }
+  }, [selectedIndex]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearch("");
+    inputRef.current?.focus();
+  }, []);
+
   // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
@@ -94,10 +124,24 @@ export function CommandPalette({
         break;
       case "Escape":
         e.preventDefault();
-        onOpenChange(false);
+        if (search) {
+          // First Escape clears search, second closes dialog
+          setSearch("");
+        } else {
+          onOpenChange(false);
+        }
+        break;
+      case "Tab":
+        // Prevent tab from leaving the dialog
+        e.preventDefault();
+        if (e.shiftKey) {
+          setSelectedIndex((i) => Math.max(i - 1, 0));
+        } else {
+          setSelectedIndex((i) => Math.min(i + 1, filteredCommands.length - 1));
+        }
         break;
     }
-  };
+  }, [filteredCommands, selectedIndex, onOpenChange, search]);
 
   const executeCommand = (cmd: Command) => {
     cmd.action();
@@ -106,21 +150,57 @@ export function CommandPalette({
 
   let flatIndex = 0;
 
+  // Results count text
+  const resultsCountText = useMemo(() => {
+    if (!search.trim()) return null;
+    const count = filteredCommands.length;
+    if (labels?.resultsCount) {
+      return labels.resultsCount.replace("{{count}}", String(count));
+    }
+    return `${count} ${count === 1 ? "result" : "results"}`;
+  }, [search, filteredCommands.length, labels?.resultsCount]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 gap-0 max-w-lg overflow-hidden">
         {/* Search Input */}
-        <div className="flex items-center gap-2 px-3 border-b">
-          <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-2 px-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          {loading ? (
+            <Loader2 className="h-4 w-4 text-muted-foreground shrink-0 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
           <Input
+            ref={inputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="h-12 border-0 focus-visible:ring-0 px-0"
+            className="h-12 border-0 focus-visible:ring-0 px-0 bg-transparent"
             autoFocus
           />
-          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded">
+          {/* Results count */}
+          {resultsCountText && (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {resultsCountText}
+            </span>
+          )}
+          {/* Clear button */}
+          {search && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className={cn(
+                "shrink-0 p-1 rounded-md",
+                "text-muted-foreground hover:text-foreground",
+                "hover:bg-muted/80 transition-colors"
+              )}
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded shrink-0">
             <CommandIcon className="h-3 w-3" />K
           </kbd>
         </div>
@@ -141,6 +221,8 @@ export function CommandPalette({
                     action: labels.action,
                     view: labels.view,
                     filter: labels.filter,
+                    sort: labels.sort,
+                    settings: labels.settings,
                   };
                   if (labelMap[cat]) return labelMap[cat]!;
                 }
