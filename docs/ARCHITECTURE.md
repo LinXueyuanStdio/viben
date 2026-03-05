@@ -256,7 +256,7 @@ sequenceDiagram
     participant Provider as AI Provider
     participant MCP as MCP Server
 
-    Client->>Gateway: POST /api/agents/:id/run
+    Client->>Gateway: POST /api/agent/:id/run
     Gateway->>Agent: 创建执行器
     Agent->>Provider: 发送请求
 
@@ -314,7 +314,7 @@ sequenceDiagram
 | 端点前缀 | 描述 |
 |----------|------|
 | `/health` | 健康检查 |
-| `/api/agents` | 智能体管理 |
+| `/api/agent` | 智能体管理 |
 | `/api/sessions` | 会话管理 |
 | `/api/providers` | Provider 管理 |
 | `/api/models` | 模型管理 |

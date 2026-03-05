@@ -112,7 +112,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * List all agents
-   * GET /api/agents
+   * GET /api/agent
    *
    * Query params:
    * - workspace_path: Optional workspace path to include workspace agents
@@ -126,7 +126,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       workspace_path?: string;
       include_global?: string;
     };
-  }>("/api/agents", {
+  }>("/api/agent", {
     schema: {
       description: "List all agents",
       tags: ["agents"],
@@ -244,7 +244,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Create a new agent
-   * POST /api/agents
+   * POST /api/agent
    *
    * Returns agent with snake_case fields to match Rust gateway format
    */
@@ -277,7 +277,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       plan_mode?: boolean;
       approvals?: boolean;
     };
-  }>("/api/agents", async (request, reply) => {
+  }>("/api/agent", async (request, reply) => {
     const body = request.body;
     try {
       const agent = await agentManager.createAgent({
@@ -343,19 +343,19 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Get default agent
-   * GET /api/agents/default
+   * GET /api/agent/default
    */
-  fastify.get("/api/agents/default", async () => {
+  fastify.get("/api/agent/default", async () => {
     const defaultAgentId = await agentManager.getDefault();
     return { default_agent_id: defaultAgentId || null };
   });
 
   /**
    * Set default agent
-   * PUT /api/agents/default
+   * PUT /api/agent/default
    */
   fastify.put<{ Body: { agent_id: string } }>(
-    "/api/agents/default",
+    "/api/agent/default",
     async (request, reply) => {
       const { agent_id } = request.body;
       try {
@@ -374,9 +374,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * List all templates
-   * GET /api/agents/templates
+   * GET /api/agent/templates
    */
-  fastify.get("/api/agents/templates", async () => {
+  fastify.get("/api/agent/templates", async () => {
     const templates = await agentManager.listTemplates();
     return {
       templates: templates.map((t) => ({
@@ -392,10 +392,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Create a template from an agent
-   * POST /api/agents/templates
+   * POST /api/agent/templates
    */
   fastify.post<{ Body: { agent_id: string; template_id: string } }>(
-    "/api/agents/templates",
+    "/api/agent/templates",
     async (request, reply) => {
       const { agent_id, template_id } = request.body;
       try {
@@ -417,10 +417,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Get a template by ID
-   * GET /api/agents/templates/:id
+   * GET /api/agent/templates/:id
    */
   fastify.get<{ Params: { id: string } }>(
-    "/api/agents/templates/:id",
+    "/api/agent/templates/:id",
     async (request, reply) => {
       const { id } = request.params;
       const template = await agentManager.getTemplate(id);
@@ -440,12 +440,12 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Create an agent from a template
-   * POST /api/agents/templates/:id/instantiate
+   * POST /api/agent/templates/:id/instantiate
    *
    * Returns agent with snake_case fields to match Rust gateway format
    */
   fastify.post<{ Params: { id: string }; Body: { agent_id: string } }>(
-    "/api/agents/templates/:id/instantiate",
+    "/api/agent/templates/:id/instantiate",
     async (request, reply) => {
       const { id } = request.params;
       const { agent_id } = request.body;
@@ -497,13 +497,13 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * List sessions for an agent
-   * GET /api/agents/:id/sessions
+   * GET /api/agent/:id/sessions
    *
    * Lists sessions from both workspace and global locations to ensure
    * compatibility with sessions created before the workspace-first fix.
    */
   fastify.get<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id/sessions",
+    "/api/agent/:id/sessions",
     async (request, reply) => {
       const { id } = request.params;
       const { workspace_path } = request.query;
@@ -555,7 +555,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Create a session for an agent
-   * POST /api/agents/:id/sessions
+   * POST /api/agent/:id/sessions
    */
   fastify.post<{
     Params: { id: string };
@@ -567,7 +567,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       agent_config?: Record<string, unknown>;
       workspace_path?: string;
     };
-  }>("/api/agents/:id/sessions", async (request, reply) => {
+  }>("/api/agent/:id/sessions", async (request, reply) => {
     const { id } = request.params;
     const body = request.body;
     const sessionId = body.session_id || randomUUID();
@@ -598,10 +598,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Get a session
-   * GET /api/agents/:id/sessions/:session_id
+   * GET /api/agent/:id/sessions/:session_id
    */
   fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id/sessions/:session_id",
+    "/api/agent/:id/sessions/:session_id",
     async (request, reply) => {
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
@@ -618,10 +618,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Delete a session
-   * DELETE /api/agents/:id/sessions/:session_id
+   * DELETE /api/agent/:id/sessions/:session_id
    */
   fastify.delete<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id/sessions/:session_id",
+    "/api/agent/:id/sessions/:session_id",
     async (request, reply) => {
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
@@ -642,10 +642,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * List messages in a session
-   * GET /api/agents/:id/sessions/:session_id/messages
+   * GET /api/agent/:id/sessions/:session_id/messages
    */
   fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id/sessions/:session_id/messages",
+    "/api/agent/:id/sessions/:session_id/messages",
     async (request, reply) => {
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
@@ -665,7 +665,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Append a message to a session
-   * POST /api/agents/:id/sessions/:session_id/messages
+   * POST /api/agent/:id/sessions/:session_id/messages
    */
   fastify.post<{
     Params: { id: string; session_id: string };
@@ -676,7 +676,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       tool_calls?: unknown;
       tool_result?: unknown;
     };
-  }>("/api/agents/:id/sessions/:session_id/messages", async (request, reply) => {
+  }>("/api/agent/:id/sessions/:session_id/messages", async (request, reply) => {
     const { id, session_id } = request.params;
     const { workspace_path } = request.query;
     const body = request.body;
@@ -706,10 +706,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * List UI messages in a session
-   * GET /api/agents/:id/sessions/:session_id/ui-messages
+   * GET /api/agent/:id/sessions/:session_id/ui-messages
    */
   fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id/sessions/:session_id/ui-messages",
+    "/api/agent/:id/sessions/:session_id/ui-messages",
     async (request, reply) => {
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
@@ -733,12 +733,12 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Check agent/executor availability
-   * GET /api/agents/:id/availability
+   * GET /api/agent/:id/availability
    *
    * Returns availability info for executor-type agents (CLAUDE_CODE, CODEX, etc.)
    */
   fastify.get<{ Params: { id: string } }>(
-    "/api/agents/:id/availability",
+    "/api/agent/:id/availability",
     async (request, reply) => {
       const { id } = request.params;
       const homeDir = process.env.HOME || "/";
@@ -896,7 +896,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Get a specific agent
-   * GET /api/agents/:id
+   * GET /api/agent/:id
    *
    * Query params:
    * - workspace_path: Optional workspace path to check workspace agents first
@@ -907,7 +907,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   fastify.get<{
     Params: { id: string };
     Querystring: { workspace_path?: string };
-  }>("/api/agents/:id", async (request, reply) => {
+  }>("/api/agent/:id", async (request, reply) => {
     const { id } = request.params;
     const { workspace_path } = request.query;
     const homeDir = process.env.HOME || "/";
@@ -969,7 +969,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Update an agent
-   * PATCH /api/agents/:id
+   * PATCH /api/agent/:id
    *
    * Returns agent with snake_case fields to match Rust gateway format
    */
@@ -999,7 +999,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       plan_mode?: boolean;
       approvals?: boolean;
     };
-  }>("/api/agents/:id", async (request, reply) => {
+  }>("/api/agent/:id", async (request, reply) => {
     const { id } = request.params;
     const { workspace_path } = request.query;
     const body = request.body;
@@ -1061,13 +1061,13 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
   /**
    * Delete an agent
-   * DELETE /api/agents/:id
+   * DELETE /api/agent/:id
    *
    * Query params:
    * - workspace_path: Optional workspace path to check for workspace-scoped agents first
    */
   fastify.delete<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:id",
+    "/api/agent/:id",
     async (request, reply) => {
       const { id } = request.params;
       const { workspace_path } = request.query;

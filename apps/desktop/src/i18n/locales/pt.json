@@ -1041,7 +1041,7 @@
     "allRoutes": "Todas as rotas",
     "routeFilters": {
       "agentRun": "/api/agent/run (Execução de agente)",
-      "agents": "/api/agents (Gerenciamento de agentes)",
+      "agents": "/api/agent (Gerenciamento de agentes)",
       "workspaces": "/api/workspaces (Espaços de trabalho)",
       "chat": "/api/chat (Chat)",
       "groupChats": "/api/group-chats (Chats em grupo)"

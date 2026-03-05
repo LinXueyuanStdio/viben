@@ -440,7 +440,7 @@ const CHAT_SUPPORTED_EXECUTORS = ["CLAUDE_CODE", "GEMINI", "CODEX"];
 | 路由模块 | 端点前缀 | 功能 |
 |----------|----------|------|
 | **health** | `/health` | 健康检查 |
-| **agents** | `/api/agents` | 智能体 CRUD |
+| **agents** | `/api/agent` | 智能体 CRUD |
 | **sessions** | `/api/sessions` | 会话管理 |
 | **executors** | `/api/executors` | 执行器管理 |
 | **models** | `/api/models` | 模型配置 |

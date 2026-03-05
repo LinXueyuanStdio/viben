@@ -58,8 +58,23 @@ export {
   deleteTask,
   updateTaskStatus,
   checkTaskRunning,
+  checkTaskRunningDetailed,
   VibeKanbanApiError,
 } from "./api";
+
+export type { CheckTaskRunningResult } from "./api";
+
+// Constants
+export {
+  STUCK_THRESHOLD_MS,
+  SERVER_STUCK_THRESHOLD_MS,
+  SSE_HEARTBEAT_INTERVAL_MS,
+  STUCK_CHECK_INTERVAL_MS,
+  ACTIVITY_MAX_AGE_MS,
+  ACTIVITY_CLEANUP_INTERVAL_MS,
+  NETWORK_RETRY_CONFIG,
+  SAFETY_TIMEOUT_MS,
+} from "./constants";
 
 // WebSocket types
 export type {

@@ -246,7 +246,7 @@ export function useWorkspaceModels(
 }
 
 // ============================================================================
-// Agents Hook (New API: /api/agents)
+// Agents Hook (New API: /api/agent)
 // ============================================================================
 
 export interface UseAgentsOptions {
@@ -794,7 +794,7 @@ export interface UseAgentListReturn {
  *
  * This provides a combined view for agent management pages:
  * - Executors: From /api/executors (with merged project/global configs)
- * - Agents: From /api/agents (user-created agents)
+ * - Agents: From /api/agent (user-created agents)
  *
  * When workspacePath is provided with includeGlobal=true (default):
  * - Project-level configs are merged with global configs

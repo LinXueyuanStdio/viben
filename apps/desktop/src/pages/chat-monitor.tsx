@@ -193,7 +193,7 @@ export function ChatMonitorPage() {
   const routeFilterOptions = useMemo(() => [
     { value: "all", label: t("observability.allRoutes") },
     { value: "/api/agent/run", label: t("observability.routeFilters.agentRun") },
-    { value: "/api/agents", label: t("observability.routeFilters.agents") },
+    { value: "/api/agent", label: t("observability.routeFilters.agents") },
     { value: "/api/workspaces", label: t("observability.routeFilters.workspaces") },
     { value: "/api/chat", label: t("observability.routeFilters.chat") },
     { value: "/api/group-chats", label: t("observability.routeFilters.groupChats") },

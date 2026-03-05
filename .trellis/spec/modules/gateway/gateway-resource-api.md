@@ -48,7 +48,7 @@
 
 ## API 端点
 
-### GET /api/agents
+### GET /api/agent
 
 获取智能体列表。
 

@@ -390,7 +390,7 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
     console.log(`[Gateway] Server running on http://${host}:${port}`);
     console.log("[Gateway] API endpoints:");
     console.log("  GET  /health - Health check");
-    console.log("  GET  /api/agents - List agents");
+    console.log("  GET  /api/agent - List agents");
     console.log("  GET  /api/tasks - List tasks");
     console.log("  GET  /api/sessions - List sessions");
     console.log("  GET  /api/cron - List cron jobs");

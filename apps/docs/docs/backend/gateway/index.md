@@ -28,7 +28,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 +-------------------------------------------------------------+
 |  API Routes                                                  |
 |  +-- /health              健康检查                           |
-|  +-- /api/agents          智能体管理                         |
+|  +-- /api/agent          智能体管理                         |
 |  +-- /api/executors       执行器管理                         |
 |  +-- /api/models          模型管理                           |
 |  +-- /api/providers       提供商管理                         |
@@ -67,7 +67,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 | 模块 | 路径前缀 | 规范文档 |
 |------|----------|----------|
 | 健康检查 | `/health` | [health.md](./health.md) |
-| 智能体 | `/api/agents` | [agents.md](./agents.md) |
+| 智能体 | `/api/agent` | [agents.md](./agents.md) |
 | 执行器 | `/api/executors` | [executors.md](./executors.md) |
 | 模型 | `/api/models` | [models.md](./models.md) |
 | 提供商 | `/api/providers` | [providers.md](./providers.md) |

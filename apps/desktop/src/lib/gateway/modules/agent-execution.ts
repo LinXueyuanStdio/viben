@@ -27,7 +27,7 @@ export async function spawnAgent(
   agentType: ExecutorType,
   request: SpawnAgentRequest
 ): Promise<SpawnAgentResponse> {
-  const url = `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/spawn`;
+  const url = `${baseUrl}/api/agent/${encodeURIComponent(agentType)}/spawn`;
   console.log("[GatewayClient] Spawn request:", { url, agentType, request });
 
   const response = await fetch(url, {
@@ -67,7 +67,7 @@ export async function* spawnAgentStream(
   signal?: AbortSignal
 ): AsyncGenerator<SSEMessageEvent, void, unknown> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/spawn`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentType)}/spawn`,
     {
       method: "POST",
       headers: {
@@ -138,7 +138,7 @@ export async function* continueSessionStream(
   signal?: AbortSignal
 ): AsyncGenerator<SSEMessageEvent, void, unknown> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/continue`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentType)}/continue`,
     {
       method: "POST",
       headers: {
@@ -238,7 +238,7 @@ export async function sendAgentInput(
   answers: Record<string, string>
 ): Promise<void> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/sessions/${encodeURIComponent(sessionId)}/input`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentType)}/sessions/${encodeURIComponent(sessionId)}/input`,
     {
       method: "POST",
       headers: {
@@ -273,7 +273,7 @@ export async function checkAvailability(
   executorType: ExecutorType
 ): Promise<AvailabilityInfo> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(executorType)}/availability`,
+    `${baseUrl}/api/agent/${encodeURIComponent(executorType)}/availability`,
     {
       method: "GET",
       headers: { Accept: "application/json" },

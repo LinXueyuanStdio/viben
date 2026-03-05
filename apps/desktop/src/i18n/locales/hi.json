@@ -923,7 +923,7 @@
     "allRoutes": "सभी रूट",
     "routeFilters": {
       "agentRun": "/api/agent/run (एजेंट निष्पादन)",
-      "agents": "/api/agents (एजेंट प्रबंधन)",
+      "agents": "/api/agent (एजेंट प्रबंधन)",
       "workspaces": "/api/workspaces (कार्यक्षेत्र)",
       "chat": "/api/chat (चैट)",
       "groupChats": "/api/group-chats (ग्रुप चैट)"

@@ -297,7 +297,13 @@ export function registerQueueRoutes(fastify: FastifyInstance, state: AppState): 
       }
     };
 
+    // Track cleanup state to prevent double cleanup
+    let cleanedUp = false;
+
     const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+
       state.taskQueue.off("task:progress", onProgress);
       state.taskQueue.off("task:completed", onCompleted);
       state.taskQueue.off("task:failed", onFailed);
@@ -309,14 +315,9 @@ export function registerQueueRoutes(fastify: FastifyInstance, state: AppState): 
     state.taskQueue.on("task:failed", onFailed);
     state.taskQueue.on("task:cancelled", onCancelled);
 
-    // Handle client disconnect
-    request.raw.on("close", () => {
-      cleanup();
-    });
-
     // Send heartbeat to keep connection alive
     const heartbeatInterval = setInterval(() => {
-      if (request.raw.destroyed) {
+      if (request.raw.destroyed || cleanedUp) {
         clearInterval(heartbeatInterval);
         cleanup();
         return;
@@ -324,15 +325,16 @@ export function registerQueueRoutes(fastify: FastifyInstance, state: AppState): 
       reply.raw.write(`data: ${JSON.stringify({ type: "ping" })}\n\n`);
     }, 30000);
 
-    // Cleanup heartbeat on close
-    request.raw.on("close", () => {
+    // Unified disconnect handler - handles all cleanup in one place
+    const handleDisconnect = () => {
       clearInterval(heartbeatInterval);
-    });
+      cleanup();
+    };
 
-    // Keep connection open
+    // Keep connection open until client disconnects
     await new Promise<void>((resolve) => {
       request.raw.on("close", () => {
-        clearInterval(heartbeatInterval);
+        handleDisconnect();
         resolve();
       });
     });

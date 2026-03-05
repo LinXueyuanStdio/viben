@@ -2512,7 +2512,15 @@
     "taskPromptWithoutDescription": "请帮我完成以下任务：{{title}}",
     "viewMode": {
       "kanban": "看板",
-      "list": "列表"
+      "list": "列表",
+      "table": "表格"
+    },
+    "viewTable": "表格视图",
+    "table": {
+      "showing": "显示",
+      "of": "/",
+      "items": "项",
+      "page": "页"
     },
     "boardSettings": "看板设置",
     "boardSettingsDialog": {
@@ -2579,13 +2587,18 @@
       "viewKanbanDesc": "切换到看板视图",
       "viewListDesc": "切换到列表视图",
       "toggleArchivedDesc": "切换归档任务可见性",
+      "viewTableDesc": "切换到表格视图",
       "clearFiltersDesc": "重置所有筛选条件",
       "filterSearchDesc": "聚焦到搜索输入框",
       "sortPriorityDesc": "高优先级在前",
       "sortDueDateDesc": "最早截止日期在前",
       "sortTitleDesc": "按字母顺序排列",
       "sortCreatedDesc": "最新创建在前",
-      "sortUpdatedDesc": "最近更新在前"
+      "sortUpdatedDesc": "最近更新在前",
+      "resultsCount": "{{count}} 个结果",
+      "navigateHint": "导航",
+      "selectHint": "选择",
+      "closeHint": "关闭"
     },
     "connectionError": "连接错误",
     "noProjectFound": "暂无任务",
@@ -3722,7 +3735,7 @@
     "allRoutes": "全部路由",
     "routeFilters": {
       "agentRun": "/api/agent/run (智能体执行)",
-      "agents": "/api/agents (智能体管理)",
+      "agents": "/api/agent (智能体管理)",
       "workspaces": "/api/workspaces (工作区)",
       "chat": "/api/chat (对话)",
       "groupChats": "/api/group-chats (群聊)"

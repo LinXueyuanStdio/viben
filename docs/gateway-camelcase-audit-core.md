@@ -36,9 +36,9 @@
 | 文件 | 行号 | 路径 | 当前命名 | 应改为 |
 |------|------|------|----------|--------|
 | `routes/sessions.ts` | 128 | `/api/tasks/:taskId/sessions` | `taskId` | `task_id` |
-| `routes/tasks.ts` | 213 | `/api/agents/:agentId/tasks` | `agentId` | `agent_id` |
+| `routes/tasks.ts` | 213 | `/api/agent/:agentId/tasks` | `agentId` | `agent_id` |
 | `routes/tasks.ts` | 222, 236 | nested routes | `agentId`, `sessionId`, `taskId` | snake_case |
-| `routes/mcp.ts` | 68, 92, 140, 170, 221, 244, 271 | `/api/agents/:agentId/mcp-*` | `agentId` | `agent_id` |
+| `routes/mcp.ts` | 68, 92, 140, 170, 221, 244, 271 | `/api/agent/:agentId/mcp-*` | `agentId` | `agent_id` |
 | `routes/group-chats.ts` | 1164, 1194, 1235, 1270, 1711, 1764 | `/:id/sessions/:sessionId` | `sessionId` | `session_id` |
 | `routes/executors.ts` | 768 | `/:type/sessions/:sessionId` | `sessionId` | `session_id` |
 | `routes/agent-run.ts` | 925, 1080 | `/:sessionId` | `sessionId` | `session_id` |

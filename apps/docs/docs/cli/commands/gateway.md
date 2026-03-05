@@ -147,7 +147,7 @@ Gateway 启动后提供以下 HTTP API：
 | 端点 | 说明 |
 |------|------|
 | `GET /health` | 健康检查 |
-| `GET /api/agents` | 智能体管理 |
+| `GET /api/agent` | 智能体管理 |
 | `GET /api/sessions` | 会话管理 |
 | `POST /api/chat` | 聊天 API |
 | `GET /api/providers` | Provider 配置 |

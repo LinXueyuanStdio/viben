@@ -135,8 +135,8 @@ The application manages tasks, workspaces (task attempts), sessions, execution p
 | `/api/info` | GET | Get user system info | `frontend/src/lib/api.ts:946` |
 | `/api/config` | PUT | Save config | `frontend/src/lib/api.ts:950` |
 | `/api/editors/check-availability` | GET | Check IDE availability | `frontend/src/lib/api.ts:957` |
-| `/api/agents/check-availability` | GET | Check agent availability | `frontend/src/lib/api.ts:965` |
-| `/api/agents/slash-commands/ws` | WebSocket | Stream slash commands | `frontend/src/lib/api.ts:1375` |
+| `/api/agent/check-availability` | GET | Check agent availability | `frontend/src/lib/api.ts:965` |
+| `/api/agent/slash-commands/ws` | WebSocket | Stream slash commands | `frontend/src/lib/api.ts:1375` |
 
 ### Tags APIs
 
@@ -351,7 +351,7 @@ All WebSocket endpoints use JSON Patch (RFC 6902) for incremental updates:
 8. **Scratch/Notes Stream** (`/api/scratch/{type}/{id}/stream/ws`)
    - Streams workspace notes updates
 
-9. **Slash Commands Stream** (`/api/agents/slash-commands/ws`)
+9. **Slash Commands Stream** (`/api/agent/slash-commands/ws`)
    - Streams available slash commands for agents
 
 ---

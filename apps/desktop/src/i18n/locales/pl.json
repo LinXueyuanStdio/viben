@@ -925,7 +925,7 @@
     "allRoutes": "Wszystkie trasy",
     "routeFilters": {
       "agentRun": "/api/agent/run (Wykonanie agenta)",
-      "agents": "/api/agents (Zarządzanie agentami)",
+      "agents": "/api/agent (Zarządzanie agentami)",
       "workspaces": "/api/workspaces (Przestrzenie robocze)",
       "chat": "/api/chat (Czat)",
       "groupChats": "/api/group-chats (Czaty grupowe)"

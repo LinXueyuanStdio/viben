@@ -82,7 +82,7 @@
     "allRoutes": "Toutes les routes",
     "routeFilters": {
       "agentRun": "/api/agent/run (Exécution d'agent)",
-      "agents": "/api/agents (Gestion des agents)",
+      "agents": "/api/agent (Gestion des agents)",
       "workspaces": "/api/workspaces (Espaces de travail)",
       "chat": "/api/chat (Chat)",
       "groupChats": "/api/group-chats (Chats de groupe)"

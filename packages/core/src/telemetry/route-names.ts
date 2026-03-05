@@ -10,16 +10,16 @@ export const ROUTE_NAMES: Record<string, string> = {
   "GET /api/health": "API健康检查",
 
   // 智能体
-  "GET /api/agents": "获取智能体列表",
-  "GET /api/agents/:id": "获取智能体详情",
-  "POST /api/agents": "创建智能体",
-  "PUT /api/agents/:id": "更新智能体",
-  "PATCH /api/agents/:id": "部分更新智能体",
-  "DELETE /api/agents/:id": "删除智能体",
-  "POST /api/agents/:id/run": "运行智能体",
-  "POST /api/agents/:id/stop": "停止智能体",
-  "GET /api/agents/:id/sessions": "获取智能体会话列表",
-  "GET /api/agents/:id/status": "获取智能体状态",
+  "GET /api/agent": "获取智能体列表",
+  "GET /api/agent/:id": "获取智能体详情",
+  "POST /api/agent": "创建智能体",
+  "PUT /api/agent/:id": "更新智能体",
+  "PATCH /api/agent/:id": "部分更新智能体",
+  "DELETE /api/agent/:id": "删除智能体",
+  "POST /api/agent/:id/run": "运行智能体",
+  "POST /api/agent/:id/stop": "停止智能体",
+  "GET /api/agent/:id/sessions": "获取智能体会话列表",
+  "GET /api/agent/:id/status": "获取智能体状态",
 
   // 智能体运行
   "POST /api/agent/run": "执行智能体任务(SSE)",

@@ -29,7 +29,7 @@ export async function listSessions(
 ): Promise<FileSession[]> {
   const url = buildUrl(
     baseUrl,
-    `/api/agents/${encodeURIComponent(agentId)}/sessions`,
+    `/api/agent/${encodeURIComponent(agentId)}/sessions`,
     { workspacePath }
   );
 
@@ -60,7 +60,7 @@ export async function getSession(
   sessionId: string
 ): Promise<FileSession | null> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -91,7 +91,7 @@ export async function createSession(
   request?: CreateFileSessionRequest
 ): Promise<FileSession> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions`,
     {
       method: "POST",
       headers: {
@@ -126,11 +126,11 @@ export async function updateSession(
   sessionId: string,
   updates: Partial<Pick<FileSession, "status" | "metadata">>
 ): Promise<FileSession> {
-  // Note: This endpoint (PATCH /api/agents/:id/sessions/:session_id) may not exist
+  // Note: This endpoint (PATCH /api/agent/:id/sessions/:session_id) may not exist
   // in all backend implementations. The current backend only supports GET, POST, DELETE.
   // This function is provided for forward compatibility when the backend adds PATCH support.
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "PATCH",
       headers: {
@@ -162,7 +162,7 @@ export async function deleteSession(
   sessionId: string
 ): Promise<void> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -192,7 +192,7 @@ export async function getSessionMessages(
   sessionId: string
 ): Promise<SessionMessage[]> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -223,7 +223,7 @@ export async function getSessionUIMessages(
 ): Promise<UIMessage[]> {
   const url = buildUrl(
     baseUrl,
-    `/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/ui-messages`,
+    `/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/ui-messages`,
     { workspacePath }
   );
 
@@ -255,7 +255,7 @@ export async function appendMessage(
   message: AppendMessageRequest
 ): Promise<SessionMessage> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "POST",
       headers: {
@@ -289,11 +289,11 @@ export async function clearSessionMessages(
   agentId: string,
   sessionId: string
 ): Promise<void> {
-  // Note: This endpoint (DELETE /api/agents/:id/sessions/:session_id/messages) may not exist
+  // Note: This endpoint (DELETE /api/agent/:id/sessions/:session_id/messages) may not exist
   // in all backend implementations. The current backend only supports GET, POST on messages.
   // This function is provided for forward compatibility when the backend adds DELETE support.
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },

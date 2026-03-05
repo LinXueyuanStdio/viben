@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn, Button } from "@viben/ui";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, Table2 } from "lucide-react";
 import type { ViewMode } from "./view-types";
 
 export interface ViewSwitcherProps {
@@ -13,6 +13,7 @@ export interface ViewSwitcherProps {
   labels?: {
     kanban?: string;
     list?: string;
+    table?: string;
   };
 }
 
@@ -56,6 +57,22 @@ export function ViewSwitcher({ value, onChange, className, labels }: ViewSwitche
       >
         <List className="h-4 w-4" />
         <span className="text-sm">{labels?.list ?? "List"}</span>
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className={cn(
+          "h-8 px-3 gap-1.5",
+          "transition-all duration-200",
+          value === "table"
+            ? "bg-background shadow-sm hover:bg-background"
+            : "hover:bg-transparent"
+        )}
+        onClick={() => onChange("table")}
+        aria-pressed={value === "table"}
+      >
+        <Table2 className="h-4 w-4" />
+        <span className="text-sm">{labels?.table ?? "Table"}</span>
       </Button>
     </div>
   );

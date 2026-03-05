@@ -4,19 +4,23 @@
  * Tracks client-side activity for running tasks to prevent
  * false stuck detection. Records activity timestamps when
  * SSE events are received or task data is refreshed.
+ *
+ * Includes automatic cleanup of stale activity records to prevent memory leaks.
  */
 
 import { create } from "zustand";
-
-/**
- * Activity threshold in milliseconds (60 seconds)
- * Tasks with activity more recent than this are considered active
- */
-const ACTIVITY_THRESHOLD_MS = 60_000;
+import {
+  STUCK_THRESHOLD_MS,
+  ACTIVITY_MAX_AGE_MS,
+  ACTIVITY_CLEANUP_INTERVAL_MS,
+} from "@/lib/vibe-kanban/constants";
 
 interface TaskActivityState {
   /** Map<taskId, lastActivityTimestamp> */
   activities: Map<string, number>;
+
+  /** Cleanup interval ID (for stopping cleanup on unmount) */
+  _cleanupIntervalId: ReturnType<typeof setInterval> | null;
 
   /**
    * Record activity for a task
@@ -27,7 +31,7 @@ interface TaskActivityState {
   /**
    * Check if a task has recent activity
    * @param taskId - Task ID to check
-   * @param thresholdMs - Custom threshold (default: 60s)
+   * @param thresholdMs - Custom threshold (default: STUCK_THRESHOLD_MS)
    */
   hasRecentActivity: (taskId: string, thresholdMs?: number) => boolean;
 
@@ -46,10 +50,30 @@ interface TaskActivityState {
    * Clear all task activities
    */
   clearAll: () => void;
+
+  /**
+   * Clean up stale activity records (older than ACTIVITY_MAX_AGE_MS)
+   * Prevents memory leaks from accumulating old records
+   * @returns Number of records cleaned up
+   */
+  cleanupStaleActivities: () => number;
+
+  /**
+   * Start automatic cleanup interval
+   * Should be called when the app starts
+   */
+  startCleanupInterval: () => void;
+
+  /**
+   * Stop automatic cleanup interval
+   * Should be called when the app unmounts
+   */
+  stopCleanupInterval: () => void;
 }
 
 export const useTaskActivityStore = create<TaskActivityState>((set, get) => ({
   activities: new Map(),
+  _cleanupIntervalId: null,
 
   recordTaskActivity: (taskId) => {
     set((state) => {
@@ -59,7 +83,7 @@ export const useTaskActivityStore = create<TaskActivityState>((set, get) => ({
     });
   },
 
-  hasRecentActivity: (taskId, thresholdMs = ACTIVITY_THRESHOLD_MS) => {
+  hasRecentActivity: (taskId, thresholdMs = STUCK_THRESHOLD_MS) => {
     const lastActivity = get().activities.get(taskId);
     if (!lastActivity) return false;
     return Date.now() - lastActivity < thresholdMs;
@@ -82,7 +106,58 @@ export const useTaskActivityStore = create<TaskActivityState>((set, get) => ({
   clearAll: () => {
     set({ activities: new Map() });
   },
+
+  cleanupStaleActivities: () => {
+    const now = Date.now();
+    const state = get();
+    let cleanedCount = 0;
+
+    const newActivities = new Map<string, number>();
+    for (const [taskId, timestamp] of state.activities) {
+      if (now - timestamp < ACTIVITY_MAX_AGE_MS) {
+        newActivities.set(taskId, timestamp);
+      } else {
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`[TaskActivityStore] Cleaned up ${cleanedCount} stale activity records`);
+      set({ activities: newActivities });
+    }
+
+    return cleanedCount;
+  },
+
+  startCleanupInterval: () => {
+    const state = get();
+    // Don't start if already running
+    if (state._cleanupIntervalId) return;
+
+    const intervalId = setInterval(() => {
+      get().cleanupStaleActivities();
+    }, ACTIVITY_CLEANUP_INTERVAL_MS);
+
+    set({ _cleanupIntervalId: intervalId });
+    console.log("[TaskActivityStore] Started automatic cleanup interval");
+  },
+
+  stopCleanupInterval: () => {
+    const state = get();
+    if (state._cleanupIntervalId) {
+      clearInterval(state._cleanupIntervalId);
+      set({ _cleanupIntervalId: null });
+      console.log("[TaskActivityStore] Stopped automatic cleanup interval");
+    }
+  },
 }));
+
+// Auto-start cleanup interval when module loads
+// This ensures cleanup runs even if no component explicitly starts it
+if (typeof window !== "undefined") {
+  // Only run in browser environment
+  useTaskActivityStore.getState().startCleanupInterval();
+}
 
 /**
  * Convenience function to record task activity

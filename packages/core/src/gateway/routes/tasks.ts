@@ -7,9 +7,9 @@
  * - POST /api/tasks - Create a new task (requires workspace_path)
  * - PATCH /api/tasks/:id - Update a task
  * - DELETE /api/tasks/:id - Delete a task
- * - GET /api/agents/:agentId/tasks - Get tasks by agent
- * - GET /api/agents/:agentId/sessions/:sessionId/tasks - List tasks by session
- * - GET /api/agents/:agentId/sessions/:sessionId/tasks/:taskId/messages - Get task messages
+ * - GET /api/agent/:agentId/tasks - Get tasks by agent
+ * - GET /api/agent/:agentId/sessions/:sessionId/tasks - List tasks by session
+ * - GET /api/agent/:agentId/sessions/:sessionId/tasks/:taskId/messages - Get task messages
  *
  * IMPORTANT: All tasks are stored in workspace directories:
  * <workspace>/.viben/tasks/<date>-<slug>/task.json
@@ -179,8 +179,87 @@ interface UpdateTaskInput {
   pr_url?: string;
 }
 
-// Store task directory paths by ID for lookups
-const taskDirCache = new Map<string, { workspacePath: string; taskDir: string }>();
+/**
+ * Task directory cache with TTL and LRU eviction
+ *
+ * Configuration:
+ * - TTL: 5 minutes (300,000 ms)
+ * - Max size: 1000 entries
+ * - Eviction: LRU (least recently used)
+ */
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 1000;
+
+interface CacheEntry {
+  workspacePath: string;
+  taskDir: string;
+  /** Timestamp when this entry was last accessed */
+  lastAccessed: number;
+  /** Timestamp when this entry was created */
+  createdAt: number;
+}
+
+// Store task directory paths by ID for lookups with TTL
+const taskDirCache = new Map<string, CacheEntry>();
+
+/**
+ * Get an entry from cache, updating last accessed time
+ * Returns null if entry is expired or not found
+ */
+function getCacheEntry(taskId: string): CacheEntry | null {
+  const entry = taskDirCache.get(taskId);
+  if (!entry) return null;
+
+  const now = Date.now();
+  // Check if entry is expired
+  if (now - entry.createdAt > CACHE_TTL_MS) {
+    taskDirCache.delete(taskId);
+    return null;
+  }
+
+  // Update last accessed time
+  entry.lastAccessed = now;
+  return entry;
+}
+
+/**
+ * Set a cache entry, evicting LRU entries if necessary
+ */
+function setCacheEntry(taskId: string, workspacePath: string, taskDir: string): void {
+  const now = Date.now();
+
+  // Evict oldest entries if at capacity
+  if (taskDirCache.size >= CACHE_MAX_SIZE) {
+    // Find and remove LRU entry
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+
+    for (const [key, entry] of taskDirCache) {
+      if (entry.lastAccessed < oldestTime) {
+        oldestTime = entry.lastAccessed;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey) {
+      taskDirCache.delete(oldestKey);
+    }
+  }
+
+  taskDirCache.set(taskId, {
+    workspacePath,
+    taskDir,
+    lastAccessed: now,
+    createdAt: now,
+  });
+}
+
+/**
+ * Remove a task from cache
+ */
+function deleteCacheEntry(taskId: string): void {
+  taskDirCache.delete(taskId);
+}
 
 /**
  * Register task routes
@@ -254,7 +333,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     for (const task of tasks) {
       const taskDir = await taskService.findTaskById(workspace_path, task.id);
       if (taskDir) {
-        taskDirCache.set(task.id, { workspacePath: workspace_path, taskDir });
+        setCacheEntry(task.id, workspace_path, taskDir);
       }
     }
 
@@ -322,13 +401,17 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     let taskDir: string | null = null;
     let workspacePath = workspace_path;
 
-    // Check cache first
-    const cached = taskDirCache.get(id);
+    // Check cache first (with TTL validation)
+    const cached = getCacheEntry(id);
     if (cached) {
       taskDir = cached.taskDir;
       workspacePath = cached.workspacePath;
     } else if (workspace_path) {
       taskDir = await taskService.findTaskById(workspace_path, id);
+      // Cache the result if found
+      if (taskDir) {
+        setCacheEntry(id, workspace_path, taskDir);
+      }
     }
 
     if (!taskDir) {
@@ -385,7 +468,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const { taskDir, task } = await taskService.createTask(workspacePath, taskInput);
 
       // Cache the task directory
-      taskDirCache.set(task.id, { workspacePath, taskDir });
+      setCacheEntry(task.id, workspacePath, taskDir);
 
       state.events.taskCreated(toDbTask(task));
       reply.code(201);
@@ -410,12 +493,16 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       let taskDir: string | null = null;
       let workspacePath = workspace_path;
 
-      const cached = taskDirCache.get(id);
+      const cached = getCacheEntry(id);
       if (cached) {
         taskDir = cached.taskDir;
         workspacePath = cached.workspacePath;
       } else if (workspace_path) {
         taskDir = await taskService.findTaskById(workspace_path, id);
+        // Cache the result if found
+        if (taskDir) {
+          setCacheEntry(id, workspace_path, taskDir);
+        }
       }
 
       if (!taskDir) {
@@ -502,7 +589,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         // Find task directory
         let taskDir: string | null = null;
 
-        const cached = taskDirCache.get(id);
+        const cached = getCacheEntry(id);
         if (cached) {
           taskDir = cached.taskDir;
         } else if (workspace_path) {
@@ -521,7 +608,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         }
 
         // Remove from cache
-        taskDirCache.delete(id);
+        deleteCacheEntry(id);
 
         state.events.taskDeleted(id);
         return { deleted: id };
@@ -534,7 +621,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
   // Get tasks by agent (requires workspace_path)
   fastify.get<{ Params: { agentId: string }; Querystring: { workspace_path?: string } }>(
-    "/api/agents/:agentId/tasks",
+    "/api/agent/:agentId/tasks",
     async (request, reply) => {
       const { agentId } = request.params;
       const { workspace_path } = request.query;
@@ -554,7 +641,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   fastify.get<{
     Params: { agentId: string; sessionId: string };
     Querystring: { workspace_path?: string };
-  }>("/api/agents/:agentId/sessions/:sessionId/tasks", async (request, reply) => {
+  }>("/api/agent/:agentId/sessions/:sessionId/tasks", async (request, reply) => {
     const { sessionId } = request.params;
     const { workspace_path } = request.query;
 
@@ -578,7 +665,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   // Get task messages (uses sessionStoreService for UI messages)
   fastify.get<{
     Params: { agentId: string; sessionId: string; taskId: string };
-  }>("/api/agents/:agentId/sessions/:sessionId/tasks/:taskId/messages", async (request, reply) => {
+  }>("/api/agent/:agentId/sessions/:sessionId/tasks/:taskId/messages", async (request, reply) => {
     const { agentId, sessionId, taskId } = request.params;
     try {
       const messages = await sessionStoreService.readUIMessagesByTask(agentId, sessionId, taskId);
@@ -680,8 +767,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     let taskDir: string | null = null;
     let workspacePath = workspace_path;
 
-    // Check cache first
-    const cached = taskDirCache.get(id);
+    // Check cache first (with TTL validation)
+    const cached = getCacheEntry(id);
     if (cached) {
       console.log(`[tasks/specs] Found in cache: ${cached.taskDir}`);
       taskDir = cached.taskDir;
@@ -690,6 +777,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       console.log(`[tasks/specs] Searching for task by ID...`);
       taskDir = await taskService.findTaskById(workspace_path, id);
       console.log(`[tasks/specs] findTaskById result: ${taskDir}`);
+      // Cache the result if found
+      if (taskDir) {
+        setCacheEntry(id, workspace_path, taskDir);
+      }
     }
 
     if (!taskDir) {

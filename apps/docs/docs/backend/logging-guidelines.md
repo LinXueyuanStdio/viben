@@ -109,14 +109,14 @@ logger.info('Server started');
 // 请求开始
 logger.info({
   method: 'POST',
-  path: '/api/agents',
+  path: '/api/agent',
   body: requestBody,
 }, 'API request received');
 
 // 请求完成
 logger.info({
   method: 'POST',
-  path: '/api/agents',
+  path: '/api/agent',
   status: 200,
   duration: '150ms',
 }, 'API request completed');
@@ -200,7 +200,7 @@ logger.info({
 
 ```json
 {"level":"info","time":1705312200000,"msg":"Server started","pid":12345}
-{"level":"info","time":1705312201000,"msg":"Request received","method":"POST","path":"/api/agents"}
+{"level":"info","time":1705312201000,"msg":"Request received","method":"POST","path":"/api/agent"}
 ```
 
 ---

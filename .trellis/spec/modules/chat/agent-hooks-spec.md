@@ -40,7 +40,7 @@
 │                    Gateway (packages/core)                    │
 ├──────────────────────────────────────────────────────────────┤
 │  /api/chat-list    - 聚合列表 (Group Chats + Executors + Agents)│
-│  /api/agents       - Agent CRUD 操作                          │
+│  /api/agent       - Agent CRUD 操作                          │
 │  /api/executors    - Executor 列表                            │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -154,27 +154,27 @@ export interface UseChatListReturn {
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/chat-list` | GET | 聚合列表 |
-| `/api/agents` | GET | Agent 列表 |
+| `/api/agent` | GET | Agent 列表 |
 | `/api/executors` | GET | Executor 列表 |
 
 ### 新增端点 (Agent CRUD)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/agents` | POST | 创建 Agent |
-| `/api/agents/:id` | GET | 获取 Agent 详情 |
-| `/api/agents/:id` | PATCH | 更新 Agent |
-| `/api/agents/:id` | DELETE | 删除 Agent |
-| `/api/agents/default` | GET | 获取默认 Agent ID |
-| `/api/agents/default` | PUT | 设置默认 Agent |
-| `/api/agents/templates` | GET | 列出模板 |
-| `/api/agents/templates` | POST | 从 Agent 创建模板 |
-| `/api/agents/templates/:id` | GET | 获取模板 |
-| `/api/agents/templates/:id/instantiate` | POST | 从模板创建 Agent |
+| `/api/agent` | POST | 创建 Agent |
+| `/api/agent/:id` | GET | 获取 Agent 详情 |
+| `/api/agent/:id` | PATCH | 更新 Agent |
+| `/api/agent/:id` | DELETE | 删除 Agent |
+| `/api/agent/default` | GET | 获取默认 Agent ID |
+| `/api/agent/default` | PUT | 设置默认 Agent |
+| `/api/agent/templates` | GET | 列出模板 |
+| `/api/agent/templates` | POST | 从 Agent 创建模板 |
+| `/api/agent/templates/:id` | GET | 获取模板 |
+| `/api/agent/templates/:id/instantiate` | POST | 从模板创建 Agent |
 
 ### Request/Response 示例
 
-#### POST /api/agents
+#### POST /api/agent
 
 ```json
 // Request
@@ -200,7 +200,7 @@ export interface UseChatListReturn {
 }
 ```
 
-#### PATCH /api/agents/:id
+#### PATCH /api/agent/:id
 
 ```json
 // Request
@@ -213,7 +213,7 @@ export interface UseChatListReturn {
 // Response: Updated AgentInfo
 ```
 
-#### DELETE /api/agents/:id
+#### DELETE /api/agent/:id
 
 ```json
 // Response
@@ -222,7 +222,7 @@ export interface UseChatListReturn {
 }
 ```
 
-#### PUT /api/agents/default
+#### PUT /api/agent/default
 
 ```json
 // Request
@@ -360,8 +360,8 @@ export interface AgentTemplate {
 ### Phase 1: Backend API
 
 1. 在 `packages/core/src/gateway/routes/agents.ts` 添加 CRUD handlers
-2. 添加 `/api/agents/default` 端点
-3. 添加 `/api/agents/templates` 端点
+2. 添加 `/api/agent/default` 端点
+3. 添加 `/api/agent/templates` 端点
 4. 编写测试
 
 ### Phase 2: Gateway Client
@@ -411,9 +411,9 @@ export interface AgentTemplate {
 
 ## 验收标准
 
-- [ ] Gateway API `/api/agents` CRUD 端点正常工作
-- [ ] Gateway API `/api/agents/default` 端点正常工作
-- [ ] Gateway API `/api/agents/templates` 端点正常工作
+- [ ] Gateway API `/api/agent` CRUD 端点正常工作
+- [ ] Gateway API `/api/agent/default` 端点正常工作
+- [ ] Gateway API `/api/agent/templates` 端点正常工作
 - [ ] `useAgents` hook 提供完整 CRUD 操作
 - [ ] `useChatList` hook 提供 agentOperations
 - [ ] 所有 `useVibenAgents` 导入已替换为 `useAgents`

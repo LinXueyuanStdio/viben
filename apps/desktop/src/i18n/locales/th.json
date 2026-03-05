@@ -794,7 +794,7 @@
     "allRoutes": "เส้นทางทั้งหมด",
     "routeFilters": {
       "agentRun": "/api/agent/run (การทำงานของเอเจนต์)",
-      "agents": "/api/agents (การจัดการเอเจนต์)",
+      "agents": "/api/agent (การจัดการเอเจนต์)",
       "workspaces": "/api/workspaces (พื้นที่ทำงาน)",
       "chat": "/api/chat (แชท)",
       "groupChats": "/api/group-chats (แชทกลุ่ม)"

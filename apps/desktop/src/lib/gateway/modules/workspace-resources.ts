@@ -132,8 +132,8 @@ export async function getAgents(
 
   const queryString = params.toString();
   const url = queryString
-    ? `${baseUrl}/api/agents?${queryString}`
-    : `${baseUrl}/api/agents`;
+    ? `${baseUrl}/api/agent?${queryString}`
+    : `${baseUrl}/api/agent`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -160,7 +160,7 @@ export async function getAgentDetails(
   agentType: string
 ): Promise<AgentDetails | null> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentType)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -198,8 +198,8 @@ export async function getAgentById(
 
   const queryString = params.toString();
   const url = queryString
-    ? `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
-    : `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+    ? `${baseUrl}/api/agent/${encodeURIComponent(agentId)}?${queryString}`
+    : `${baseUrl}/api/agent/${encodeURIComponent(agentId)}`;
 
   const response = await fetch(url, {
     method: "GET",

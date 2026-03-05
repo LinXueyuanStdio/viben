@@ -92,7 +92,7 @@
         }
       }
     },
-    "/api/agents": {
+    "/api/agent": {
       "get": {
         "tags": [
           "agents"
@@ -186,7 +186,7 @@
         }
       }
     },
-    "/api/agents/default": {
+    "/api/agent/default": {
       "get": {
         "responses": {
           "200": {
@@ -202,7 +202,7 @@
         }
       }
     },
-    "/api/agents/templates": {
+    "/api/agent/templates": {
       "get": {
         "responses": {
           "200": {
@@ -218,7 +218,7 @@
         }
       }
     },
-    "/api/agents/templates/{id}": {
+    "/api/agent/templates/{id}": {
       "get": {
         "parameters": [
           {
@@ -237,7 +237,7 @@
         }
       }
     },
-    "/api/agents/templates/{id}/instantiate": {
+    "/api/agent/templates/{id}/instantiate": {
       "post": {
         "parameters": [
           {
@@ -256,7 +256,7 @@
         }
       }
     },
-    "/api/agents/{id}/sessions": {
+    "/api/agent/{id}/sessions": {
       "get": {
         "parameters": [
           {
@@ -292,7 +292,7 @@
         }
       }
     },
-    "/api/agents/{id}/sessions/{session_id}": {
+    "/api/agent/{id}/sessions/{session_id}": {
       "get": {
         "parameters": [
           {
@@ -344,7 +344,7 @@
         }
       }
     },
-    "/api/agents/{id}/sessions/{session_id}/messages": {
+    "/api/agent/{id}/sessions/{session_id}/messages": {
       "get": {
         "parameters": [
           {
@@ -396,7 +396,7 @@
         }
       }
     },
-    "/api/agents/{id}/sessions/{session_id}/ui-messages": {
+    "/api/agent/{id}/sessions/{session_id}/ui-messages": {
       "get": {
         "parameters": [
           {
@@ -423,7 +423,7 @@
         }
       }
     },
-    "/api/agents/{id}/availability": {
+    "/api/agent/{id}/availability": {
       "get": {
         "parameters": [
           {
@@ -442,7 +442,7 @@
         }
       }
     },
-    "/api/agents/{id}": {
+    "/api/agent/{id}": {
       "get": {
         "parameters": [
           {
@@ -751,7 +751,7 @@
         }
       }
     },
-    "/api/agents/{agentId}/tasks": {
+    "/api/agent/{agentId}/tasks": {
       "get": {
         "parameters": [
           {
@@ -770,7 +770,7 @@
         }
       }
     },
-    "/api/agents/{agentId}/sessions/{sessionId}/tasks": {
+    "/api/agent/{agentId}/sessions/{sessionId}/tasks": {
       "get": {
         "parameters": [
           {
@@ -797,7 +797,7 @@
         }
       }
     },
-    "/api/agents/{agentId}/sessions/{sessionId}/tasks/{taskId}/messages": {
+    "/api/agent/{agentId}/sessions/{sessionId}/tasks/{taskId}/messages": {
       "get": {
         "parameters": [
           {

@@ -941,7 +941,7 @@
     "allRoutes": "すべてのルート",
     "routeFilters": {
       "agentRun": "/api/agent/run (エージェント実行)",
-      "agents": "/api/agents (エージェント管理)",
+      "agents": "/api/agent (エージェント管理)",
       "workspaces": "/api/workspaces (ワークスペース)",
       "chat": "/api/chat (チャット)",
       "groupChats": "/api/group-chats (グループチャット)"

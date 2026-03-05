@@ -154,7 +154,7 @@ Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
 | 端点 | 功能 |
 |------|------|
 | `/health` | 健康检查 |
-| `/api/agents` | 智能体管理 |
+| `/api/agent` | 智能体管理 |
 | `/api/executors` | 执行器管理 |
 | `/api/sessions` | 会话管理 |
 | `/api/providers` | Provider 管理 |

@@ -283,8 +283,8 @@ cargo build --verbose
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/health` | GET | 健康检查，返回 Gateway 状态 |
-| `/api/agents` | GET/POST | 智能体管理（列表、创建、更新） |
-| `/api/agents/:id` | GET/PUT/DELETE | 单个智能体操作 |
+| `/api/agent` | GET/POST | 智能体管理（列表、创建、更新） |
+| `/api/agent/:id` | GET/PUT/DELETE | 单个智能体操作 |
 | `/api/cron` | GET/POST | Cron 任务管理 |
 | `/api/cron/:id` | GET/PUT/DELETE | 单个 Cron 任务操作 |
 | `/api/sessions` | GET/POST | 会话管理 |
@@ -314,7 +314,7 @@ pnpm gateway:restart
 curl http://127.0.0.1:18790/health
 
 # 2. 列出所有智能体
-curl http://127.0.0.1:18790/api/agents
+curl http://127.0.0.1:18790/api/agent
 
 # 3. 列出所有 Cron 任务
 curl http://127.0.0.1:18790/api/cron
@@ -478,7 +478,7 @@ echo "RUST_LOG=info" >> .env
 3. **使用 curl 测试 API**:
    ```bash
    # 测试智能体 API
-   curl -X GET "http://127.0.0.1:18790/api/agents?workspace_path=/path/to/workspace"
+   curl -X GET "http://127.0.0.1:18790/api/agent?workspace_path=/path/to/workspace"
 
    # 测试会话 API
    curl -X GET "http://127.0.0.1:18790/api/sessions?include_global=true"
