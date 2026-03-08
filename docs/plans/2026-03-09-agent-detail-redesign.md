@@ -1,5 +1,20 @@
 # Agent Detail 页面重构设计
 
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** 重构 agent-detail 页面为双 Tab 布局，增强调试能力，新增模板功能和变量系统。
+
+**Architecture:**
+- 将三列布局改为【调试】【设置】双 Tab
+- 调试 Tab 复用 chat-monitor.tsx 的 trace 组件
+- 设置 Tab 使用左侧导航 + 右侧内容的 VSCode 风格布局
+- 模板功能使用 `is_template` 原地标记
+- 变量系统支持预定义、自定义、环境变量三种类型
+
+**Tech Stack:** React, TypeScript, shadcn/ui, Tailwind CSS, OpenTelemetry
+
+---
+
 ## 概述
 
 重构 `agent-detail.tsx` 页面，从三列布局改为双 Tab 布局，增强调试能力，新增模板功能和变量系统。
@@ -476,3 +491,767 @@ apps/desktop/src/components/agent/
 2. **性能**：Trace 数据量可能较大，考虑虚拟滚动
 3. **响应式**：Tab 内容区域需要适配不同窗口大小
 4. **国际化**：所有新增文本需要添加 i18n key
+
+---
+
+## 详细实现计划
+
+### Task 1: 提取 Trace 可视化组件
+
+从 `chat-monitor.tsx` 提取可复用的 trace 组件到独立文件。
+
+**Files:**
+- Create: `apps/desktop/src/components/observability/index.ts`
+- Create: `apps/desktop/src/components/observability/types.ts`
+- Create: `apps/desktop/src/components/observability/span-node.tsx`
+- Create: `apps/desktop/src/components/observability/timeline-view.tsx`
+- Create: `apps/desktop/src/components/observability/span-detail-panel.tsx`
+- Create: `apps/desktop/src/components/observability/utils.ts`
+- Modify: `apps/desktop/src/pages/chat-monitor.tsx` - 改为从新位置导入
+
+**Step 1: 创建类型定义文件**
+
+创建 `apps/desktop/src/components/observability/types.ts`，包含：
+- `TraceSpan` interface
+- `TraceSpanNode` interface
+- `TraceTree` interface
+- `TraceEvent` interface
+
+**Step 2: 创建工具函数文件**
+
+创建 `apps/desktop/src/components/observability/utils.ts`，包含：
+- `getSpanKindIcon()` - span 类型图标
+- `hasDetailData()` - 检查是否有详情数据
+- `formatDuration()` - 格式化耗时
+- `buildTraceTree()` - 构建 trace 树
+
+**Step 3: 提取 SpanNode 组件**
+
+创建 `apps/desktop/src/components/observability/span-node.tsx`
+
+**Step 4: 提取 TimelineView 组件**
+
+创建 `apps/desktop/src/components/observability/timeline-view.tsx`
+
+**Step 5: 提取 SpanDetailPanel 组件**
+
+创建 `apps/desktop/src/components/observability/span-detail-panel.tsx`
+
+**Step 6: 创建导出文件**
+
+创建 `apps/desktop/src/components/observability/index.ts`
+
+**Step 7: 更新 chat-monitor.tsx**
+
+修改 `apps/desktop/src/pages/chat-monitor.tsx` 改为从 `@/components/observability` 导入
+
+**Step 8: 验证**
+
+运行 `pnpm --filter @viben/desktop typecheck` 确保无类型错误
+
+**Step 9: Commit**
+
+```bash
+git add apps/desktop/src/components/observability/ apps/desktop/src/pages/chat-monitor.tsx
+git commit -m "refactor: extract trace visualization components from chat-monitor"
+```
+
+---
+
+### Task 2: 更新 Agent 类型定义
+
+添加模板标签和变量系统相关字段。
+
+**Files:**
+- Modify: `packages/core/src/types/index.ts:147-200` - 添加新字段到 Agent interface
+- Modify: `packages/core/src/agents/types.ts` - 添加新字段到 AgentConfigFile interface
+
+**Step 1: 更新 Agent interface**
+
+在 `packages/core/src/types/index.ts` 的 `Agent` interface 中添加：
+
+```typescript
+/** Template tags for categorization */
+templateTags?: string[];
+/** Custom variables with default values */
+customVariables?: CustomVariable[];
+/** Environment variable references */
+envVariables?: string[];
+```
+
+**Step 2: 添加 CustomVariable 类型**
+
+```typescript
+export interface CustomVariable {
+  name: string;
+  defaultValue?: string;
+  description?: string;
+}
+```
+
+**Step 3: 更新 AgentConfig interface**
+
+同样添加新字段到 `AgentConfig` interface
+
+**Step 4: 更新 AgentConfigFile**
+
+在 `packages/core/src/agents/types.ts` 添加对应字段
+
+**Step 5: 验证**
+
+运行 `pnpm --filter @viben/core typecheck`
+
+**Step 6: Commit**
+
+```bash
+git add packages/core/src/types/index.ts packages/core/src/agents/types.ts
+git commit -m "feat(core): add template_tags, custom_variables, env_variables to Agent type"
+```
+
+---
+
+### Task 3: 实现变量解析器
+
+创建变量解析器处理三种变量类型。
+
+**Files:**
+- Create: `packages/core/src/agents/variable-resolver.ts`
+- Create: `packages/core/src/agents/variable-resolver.test.ts`
+
+**Step 1: 编写测试**
+
+创建 `packages/core/src/agents/variable-resolver.test.ts`：
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { resolveVariables, extractVariables } from './variable-resolver';
+
+describe('extractVariables', () => {
+  it('should extract predefined variables', () => {
+    const result = extractVariables('Hello {{workspace_name}}');
+    expect(result.predefined).toContain('workspace_name');
+  });
+
+  it('should extract env variables', () => {
+    const result = extractVariables('Key: {{env.API_KEY}}');
+    expect(result.env).toContain('API_KEY');
+  });
+
+  it('should extract custom variables', () => {
+    const result = extractVariables('Type: {{custom.project_type}}');
+    expect(result.custom).toContain('project_type');
+  });
+});
+
+describe('resolveVariables', () => {
+  it('should resolve predefined variables', () => {
+    const result = resolveVariables('Date: {{current_date}}', {
+      workspace: { name: 'test', path: '/test' },
+    });
+    expect(result.resolved).toMatch(/Date: \d{4}-\d{2}-\d{2}/);
+  });
+});
+```
+
+**Step 2: 运行测试验证失败**
+
+```bash
+pnpm --filter @viben/core test variable-resolver
+```
+Expected: FAIL
+
+**Step 3: 实现变量解析器**
+
+创建 `packages/core/src/agents/variable-resolver.ts`：
+
+```typescript
+export interface VariableContext {
+  workspace?: { name: string; path: string };
+  agent?: { name: string };
+  customValues?: Record<string, string>;
+}
+
+export interface ExtractedVariables {
+  predefined: string[];
+  env: string[];
+  custom: string[];
+}
+
+const VARIABLE_REGEX = /\{\{([^}]+)\}\}/g;
+
+const PREDEFINED_VARIABLES = [
+  'workspace_name', 'workspace_path', 'agent_name',
+  'current_date', 'current_time', 'current_datetime',
+  'os_platform', 'user_home'
+];
+
+export function extractVariables(text: string): ExtractedVariables {
+  const predefined: string[] = [];
+  const env: string[] = [];
+  const custom: string[] = [];
+
+  let match;
+  while ((match = VARIABLE_REGEX.exec(text)) !== null) {
+    const varName = match[1].trim();
+    if (varName.startsWith('env.')) {
+      env.push(varName.slice(4));
+    } else if (varName.startsWith('custom.')) {
+      custom.push(varName.slice(7));
+    } else if (PREDEFINED_VARIABLES.includes(varName)) {
+      predefined.push(varName);
+    }
+  }
+
+  return { predefined, env, custom };
+}
+
+export function resolveVariables(
+  text: string,
+  context: VariableContext
+): { resolved: string; unresolvedCustom: string[] } {
+  const unresolvedCustom: string[] = [];
+
+  const resolved = text.replace(VARIABLE_REGEX, (match, varName) => {
+    const name = varName.trim();
+
+    // Predefined variables
+    if (name === 'workspace_name') return context.workspace?.name || '';
+    if (name === 'workspace_path') return context.workspace?.path || '';
+    if (name === 'agent_name') return context.agent?.name || '';
+    if (name === 'current_date') return new Date().toISOString().split('T')[0];
+    if (name === 'current_time') return new Date().toTimeString().split(' ')[0];
+    if (name === 'current_datetime') return new Date().toISOString();
+    if (name === 'os_platform') return process.platform;
+    if (name === 'user_home') return process.env.HOME || process.env.USERPROFILE || '';
+
+    // Environment variables
+    if (name.startsWith('env.')) {
+      const envName = name.slice(4);
+      return process.env[envName] || '';
+    }
+
+    // Custom variables
+    if (name.startsWith('custom.')) {
+      const customName = name.slice(7);
+      if (context.customValues?.[customName] !== undefined) {
+        return context.customValues[customName];
+      }
+      unresolvedCustom.push(customName);
+      return match; // Keep original if unresolved
+    }
+
+    return match;
+  });
+
+  return { resolved, unresolvedCustom };
+}
+```
+
+**Step 4: 运行测试验证通过**
+
+```bash
+pnpm --filter @viben/core test variable-resolver
+```
+Expected: PASS
+
+**Step 5: 导出变量解析器**
+
+在 `packages/core/src/agents/index.ts` 中添加导出
+
+**Step 6: Commit**
+
+```bash
+git add packages/core/src/agents/variable-resolver.ts packages/core/src/agents/variable-resolver.test.ts packages/core/src/agents/index.ts
+git commit -m "feat(core): add variable resolver for template variables"
+```
+
+---
+
+### Task 4: 创建设置 Tab 组件 - 概览面板
+
+**Files:**
+- Create: `apps/desktop/src/components/agent/agent-overview-panel.tsx`
+
+**Step 1: 创建概览面板组件**
+
+```typescript
+// apps/desktop/src/components/agent/agent-overview-panel.tsx
+import * as React from "react";
+import { useTranslation } from "react-i18next";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Copy, Check, ExternalLink, X, Plus } from "lucide-react";
+
+interface AgentOverviewPanelProps {
+  name: string;
+  description: string;
+  isTemplate: boolean;
+  templateDescription: string;
+  templateTags: string[];
+  agentDir: string;
+  configPath: string;
+  isWorkspaceScoped: boolean;
+  onNameChange: (name: string) => void;
+  onDescriptionChange: (description: string) => void;
+  onIsTemplateChange: (isTemplate: boolean) => void;
+  onTemplateDescriptionChange: (description: string) => void;
+  onTemplateTagsChange: (tags: string[]) => void;
+  onOpenFolder: () => void;
+  onCopyPath: (path: string) => void;
+}
+
+export function AgentOverviewPanel({
+  name,
+  description,
+  isTemplate,
+  templateDescription,
+  templateTags,
+  agentDir,
+  configPath,
+  isWorkspaceScoped,
+  onNameChange,
+  onDescriptionChange,
+  onIsTemplateChange,
+  onTemplateDescriptionChange,
+  onTemplateTagsChange,
+  onOpenFolder,
+  onCopyPath,
+}: AgentOverviewPanelProps) {
+  const { t } = useTranslation();
+  const [copiedPath, setCopiedPath] = React.useState<string | null>(null);
+  const [newTag, setNewTag] = React.useState("");
+
+  const handleCopyPath = (path: string) => {
+    onCopyPath(path);
+    setCopiedPath(path);
+    setTimeout(() => setCopiedPath(null), 2000);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !templateTags.includes(newTag.trim())) {
+      onTemplateTagsChange([...templateTags, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    onTemplateTagsChange(templateTags.filter(t => t !== tag));
+  };
+
+  return (
+    <div className="space-y-6 p-4">
+      {/* Basic Info Section */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold">{t("agentDetail.basicInfo")}</h3>
+
+        <div className="space-y-2">
+          <Label>{t("agentDetail.name")}</Label>
+          <Input
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder={t("agentDetail.namePlaceholder")}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("agentDetail.description")}</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            placeholder={t("agentDetail.descriptionPlaceholder")}
+            rows={3}
+          />
+        </div>
+      </section>
+
+      {/* Template Section */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold">{t("agentDetail.templateSettings")}</h3>
+
+        <div className="flex items-center justify-between">
+          <Label>{t("agentDetail.setAsTemplate")}</Label>
+          <Switch checked={isTemplate} onCheckedChange={onIsTemplateChange} />
+        </div>
+
+        {isTemplate && (
+          <>
+            <div className="space-y-2">
+              <Label>{t("agentDetail.templateDescription")}</Label>
+              <Textarea
+                value={templateDescription}
+                onChange={(e) => onTemplateDescriptionChange(e.target.value)}
+                placeholder={t("agentDetail.templateDescriptionPlaceholder")}
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("agentDetail.templateTags")}</Label>
+              <div className="flex flex-wrap gap-2">
+                {templateTags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1">
+                    {tag}
+                    <button onClick={() => handleRemoveTag(tag)}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                    placeholder={t("agentDetail.addTag")}
+                    className="h-6 w-24 text-xs"
+                  />
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleAddTag}>
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Storage Section */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-semibold">{t("agentDetail.storageLocation")}</h3>
+
+        <div className="space-y-2">
+          <Label>{t("agentDetail.scope")}</Label>
+          <Badge variant={isWorkspaceScoped ? "default" : "secondary"}>
+            {isWorkspaceScoped ? t("agentDetail.workspaceScoped") : t("agentDetail.globalScoped")}
+          </Badge>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("agentDetail.agentDir")}</Label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded truncate">
+              {agentDir}
+            </code>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onOpenFolder}>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopyPath(agentDir)}>
+              {copiedPath === agentDir ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>{t("agentDetail.configFile")}</Label>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded truncate">
+              {configPath}
+            </code>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleCopyPath(configPath)}>
+              {copiedPath === configPath ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+```
+
+**Step 2: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/agent-overview-panel.tsx
+git commit -m "feat(desktop): add AgentOverviewPanel component for settings tab"
+```
+
+---
+
+### Task 5: 创建设置 Tab 组件 - 配置面板
+
+**Files:**
+- Create: `apps/desktop/src/components/agent/agent-config-panel.tsx`
+
+**Step 1: 创建配置面板组件**
+
+包含 5 个 section：提示词、模型、能力、记忆、变量。
+支持滚动定位功能。
+
+（详细代码见实现）
+
+**Step 2: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/agent-config-panel.tsx
+git commit -m "feat(desktop): add AgentConfigPanel component with scroll-to-section"
+```
+
+---
+
+### Task 6: 创建变量 Section 组件
+
+**Files:**
+- Create: `apps/desktop/src/components/agent/agent-variables-section.tsx`
+
+**Step 1: 创建变量 Section 组件**
+
+显示预定义变量、自定义变量、环境变量引用。
+
+**Step 2: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/agent-variables-section.tsx
+git commit -m "feat(desktop): add AgentVariablesSection component"
+```
+
+---
+
+### Task 7: 创建调试 Tab 组件
+
+**Files:**
+- Create: `apps/desktop/src/components/agent/agent-debug-tab.tsx`
+
+**Step 1: 创建调试 Tab 组件**
+
+左侧对话区域 + 右侧 trace 面板。
+复用 MessageList、ChatInput、SpanNode、TimelineView 组件。
+
+**Step 2: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/agent-debug-tab.tsx
+git commit -m "feat(desktop): add AgentDebugTab component with trace visualization"
+```
+
+---
+
+### Task 8: 创建设置 Tab 组件
+
+**Files:**
+- Create: `apps/desktop/src/components/agent/agent-settings-tab.tsx`
+
+**Step 1: 创建设置 Tab 组件**
+
+左侧导航菜单 + 右侧内容（概览/配置）。
+支持点击导航滚动定位。
+
+**Step 2: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/agent-settings-tab.tsx
+git commit -m "feat(desktop): add AgentSettingsTab component with nav menu"
+```
+
+---
+
+### Task 9: 重构 agent-detail.tsx 主页面
+
+**Files:**
+- Modify: `apps/desktop/src/pages/agent-detail.tsx`
+
+**Step 1: 重构为双 Tab 布局**
+
+- 保留 Header 区域
+- 添加 Tab 切换（调试/设置）
+- 集成 AgentDebugTab 和 AgentSettingsTab
+
+**Step 2: 添加模板按钮到 Header**
+
+根据 `is_template` 状态显示「设为模板」按钮或模板下拉菜单。
+
+**Step 3: 验证类型**
+
+```bash
+pnpm --filter @viben/desktop typecheck
+```
+
+**Step 4: 测试**
+
+启动 desktop app，验证：
+1. Tab 切换正常
+2. 设置 Tab 导航和滚动定位正常
+3. 调试 Tab 对话和 trace 显示正常
+
+**Step 5: Commit**
+
+```bash
+git add apps/desktop/src/pages/agent-detail.tsx
+git commit -m "refactor(desktop): restructure agent-detail page with debug/settings tabs"
+```
+
+---
+
+### Task 10: 更新组件导出
+
+**Files:**
+- Modify: `apps/desktop/src/components/agent/index.ts`
+
+**Step 1: 导出新组件**
+
+```typescript
+export * from "./agent-overview-panel";
+export * from "./agent-config-panel";
+export * from "./agent-variables-section";
+export * from "./agent-debug-tab";
+export * from "./agent-settings-tab";
+```
+
+**Step 2: Commit**
+
+```bash
+git add apps/desktop/src/components/agent/index.ts
+git commit -m "feat(desktop): export new agent detail components"
+```
+
+---
+
+### Task 11: 添加 i18n 翻译
+
+**Files:**
+- Modify: `apps/desktop/src/i18n/locales/en.json`
+- Modify: `apps/desktop/src/i18n/locales/zh-CN.json`
+
+**Step 1: 添加英文翻译**
+
+```json
+{
+  "agentDetail": {
+    "debugTab": "Debug",
+    "settingsTab": "Settings",
+    "overview": "Overview",
+    "configuration": "Configuration",
+    "basicInfo": "Basic Information",
+    "templateSettings": "Template Settings",
+    "storageLocation": "Storage Location",
+    "setAsTemplate": "Set as Template",
+    "templateDescription": "Template Description",
+    "templateTags": "Tags",
+    "agentDir": "Agent Directory",
+    "configFile": "Configuration File",
+    "scope": "Scope",
+    "variables": "Variables",
+    "predefinedVariables": "Predefined Variables",
+    "customVariables": "Custom Variables",
+    "envVariables": "Environment Variables",
+    "traceId": "Trace ID",
+    "sessionId": "Session ID",
+    "callTree": "Call Tree",
+    "timeline": "Timeline",
+    "noTraceYet": "Send a message to see the call trace"
+  }
+}
+```
+
+**Step 2: 添加中文翻译**
+
+```json
+{
+  "agentDetail": {
+    "debugTab": "调试",
+    "settingsTab": "设置",
+    "overview": "概览",
+    "configuration": "配置",
+    "basicInfo": "基本信息",
+    "templateSettings": "模板设置",
+    "storageLocation": "存储位置",
+    "setAsTemplate": "设为模板",
+    "templateDescription": "模板说明",
+    "templateTags": "标签",
+    "agentDir": "Agent 目录",
+    "configFile": "配置文件",
+    "scope": "作用域",
+    "variables": "变量",
+    "predefinedVariables": "预定义变量",
+    "customVariables": "自定义变量",
+    "envVariables": "环境变量引用",
+    "traceId": "Trace ID",
+    "sessionId": "Session ID",
+    "callTree": "调用树",
+    "timeline": "时序图",
+    "noTraceYet": "发送消息后将显示调用链路"
+  }
+}
+```
+
+**Step 3: Commit**
+
+```bash
+git add apps/desktop/src/i18n/locales/
+git commit -m "feat(desktop): add i18n translations for agent detail redesign"
+```
+
+---
+
+### Task 12: 全量测试和修复
+
+**Step 1: 构建检查**
+
+```bash
+pnpm build
+```
+
+**Step 2: 类型检查**
+
+```bash
+pnpm typecheck
+```
+
+**Step 3: 启动 Desktop App 测试**
+
+```bash
+pnpm desktop:restart
+```
+
+**Step 4: 功能测试清单**
+
+- [ ] 调试 Tab：对话功能正常
+- [ ] 调试 Tab：trace 可视化显示正常
+- [ ] 调试 Tab：Trace ID / Session ID 可复制
+- [ ] 设置 Tab：概览页面显示正常
+- [ ] 设置 Tab：配置页面滚动定位正常
+- [ ] 设置 Tab：模板设置开关正常
+- [ ] 设置 Tab：变量显示和编辑正常
+- [ ] Header：模板 Badge 显示正常
+- [ ] Header：保存按钮功能正常
+
+**Step 5: 修复发现的问题**
+
+**Step 6: Final Commit**
+
+```bash
+git add -A
+git commit -m "fix(desktop): address issues found during agent-detail testing"
+```
