@@ -41,6 +41,17 @@ export {
   type AppendLogOptions,
 } from "./memory";
 
+// Export variable resolver
+export {
+  extractVariables,
+  resolveVariables,
+  PREDEFINED_VARIABLES,
+  type VariableContext,
+  type ExtractedVariables,
+  type ResolveResult,
+  type PredefinedVariable,
+} from "./variable-resolver";
+
 /**
  * AgentManager handles agent CRUD operations
  */
@@ -112,6 +123,13 @@ export class AgentManager {
       approvals: config.approvals ?? false,
       isTemplate: config.isTemplate,
       templateDescription: config.templateDescription,
+      templateTags: config.template_tags,
+      customVariables: config.custom_variables?.map(v => ({
+        name: v.name,
+        defaultValue: v.default_value,
+        description: v.description,
+      })),
+      envVariables: config.env_variables,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -171,6 +189,13 @@ export class AgentManager {
       planMode: options.planMode ?? false,
       approvals: options.approvals ?? false,
       isTemplate: false,
+      template_tags: baseConfig.templateTags,
+      custom_variables: baseConfig.customVariables?.map(v => ({
+        name: v.name,
+        default_value: v.defaultValue,
+        description: v.description,
+      })),
+      env_variables: baseConfig.envVariables,
       createdAt: now,
       updatedAt: now,
     };
@@ -202,6 +227,13 @@ export class AgentManager {
       approvals: config.approvals ?? false,
       isTemplate: config.isTemplate,
       templateDescription: config.templateDescription,
+      templateTags: config.template_tags,
+      customVariables: config.custom_variables?.map(v => ({
+        name: v.name,
+        defaultValue: v.default_value,
+        description: v.description,
+      })),
+      envVariables: config.env_variables,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -264,6 +296,9 @@ export class AgentManager {
     }
 
     const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
+    const templateTags = updates.templateTags ?? agent.templateTags;
+    const customVariables = updates.customVariables ?? agent.customVariables;
+    const envVariables = updates.envVariables ?? agent.envVariables;
     const config: AgentConfigFile = {
       name: updates.name ?? agent.name,
       description: updates.description ?? agent.description,
@@ -281,6 +316,13 @@ export class AgentManager {
       approvals: updates.approvals ?? agent.approvals,
       isTemplate: updates.isTemplate ?? agent.isTemplate,
       templateDescription: updates.templateDescription ?? agent.templateDescription,
+      template_tags: templateTags,
+      custom_variables: customVariables?.map(v => ({
+        name: v.name,
+        default_value: v.defaultValue,
+        description: v.description,
+      })),
+      env_variables: envVariables,
       createdAt: agent.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -307,6 +349,13 @@ export class AgentManager {
       approvals: config.approvals ?? false,
       isTemplate: config.isTemplate,
       templateDescription: config.templateDescription,
+      templateTags: config.template_tags,
+      customVariables: config.custom_variables?.map(v => ({
+        name: v.name,
+        defaultValue: v.default_value,
+        description: v.description,
+      })),
+      envVariables: config.env_variables,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -419,6 +468,13 @@ export class AgentManager {
       planMode: template.planMode,
       approvals: template.approvals,
       isTemplate: false, // New agent is NOT a template
+      template_tags: template.templateTags,
+      custom_variables: template.customVariables?.map(v => ({
+        name: v.name,
+        default_value: v.defaultValue,
+        description: v.description,
+      })),
+      env_variables: template.envVariables,
       createdAt: now,
       updatedAt: now,
     };
@@ -475,6 +531,13 @@ export class AgentManager {
       approvals: agent.approvals,
       isTemplate: true,
       templateDescription: agent.templateDescription,
+      template_tags: agent.templateTags,
+      custom_variables: agent.customVariables?.map(v => ({
+        name: v.name,
+        default_value: v.defaultValue,
+        description: v.description,
+      })),
+      env_variables: agent.envVariables,
       createdAt: now,
       updatedAt: now,
     };
@@ -715,6 +778,13 @@ export class AgentManager {
       approvals: config.approvals ?? false,
       isTemplate: config.isTemplate,
       templateDescription: config.templateDescription,
+      templateTags: config.template_tags,
+      customVariables: config.custom_variables?.map(v => ({
+        name: v.name,
+        defaultValue: v.default_value,
+        description: v.description,
+      })),
+      envVariables: config.env_variables,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -738,6 +808,9 @@ export class AgentManager {
     const configPath = join(agentDir, "AGENTS.md");
 
     const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
+    const templateTags = updates.templateTags ?? agent.templateTags;
+    const customVariables = updates.customVariables ?? agent.customVariables;
+    const envVariables = updates.envVariables ?? agent.envVariables;
     const config: AgentConfigFile = {
       name: updates.name ?? agent.name,
       description: updates.description ?? agent.description,
@@ -755,6 +828,13 @@ export class AgentManager {
       approvals: updates.approvals ?? agent.approvals,
       isTemplate: updates.isTemplate ?? agent.isTemplate,
       templateDescription: updates.templateDescription ?? agent.templateDescription,
+      template_tags: templateTags,
+      custom_variables: customVariables?.map(v => ({
+        name: v.name,
+        default_value: v.defaultValue,
+        description: v.description,
+      })),
+      env_variables: envVariables,
       createdAt: agent.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -781,6 +861,13 @@ export class AgentManager {
       approvals: config.approvals ?? false,
       isTemplate: config.isTemplate,
       templateDescription: config.templateDescription,
+      templateTags: config.template_tags,
+      customVariables: config.custom_variables?.map(v => ({
+        name: v.name,
+        defaultValue: v.default_value,
+        description: v.description,
+      })),
+      envVariables: config.env_variables,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };

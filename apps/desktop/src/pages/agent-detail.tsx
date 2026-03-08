@@ -1,17 +1,15 @@
 /**
  * Agent Detail Page - Agent Configuration Editor
  *
- * Three-column layout for agent configuration:
- * - Left: Persona (System Prompt, Append Prompt)
- * - Middle: Configuration (Model, Executor, Capabilities, Memory)
- * - Right: Preview & Debug
+ * Two-tab layout for agent configuration:
+ * - Debug Tab: Conversation area with trace visualization
+ * - Settings Tab: Overview and configuration panels
  *
  * Supports both global and workspace-scoped agents:
  * - Global: /agents/:agentId
  * - Workspace: /workspace/:workspaceId/agent/:agentId
  */
-import * as React from "react";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDebounceFn } from "ahooks";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -19,47 +17,13 @@ import {
   Save,
   Loader2,
   AlertCircle,
-  ChevronRight,
-  ChevronDown,
-  Cpu,
-  Settings2,
-  Brain,
-  FileText,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  Info,
   Globe,
   FolderOpen,
-  Trash2,
-  HelpCircle,
-  GripVertical,
-  Copy,
-  Check,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -69,162 +33,27 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { filterModelsByExecutor, getProviderConstraintDescription } from "@/lib/executor-constraints";
+import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import {
   useAgents,
   useModels,
   useAgentConversation,
-  useCloudSkillPackages,
   useLocalWorkspaces,
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
-import { MessageList, ChatInput, type SlashCommand, ExecutorCapabilities } from "@/components/chat";
-import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
+import {
+  AgentMcpDialog,
+  AgentSkillsDialog,
+  AgentMemoryDialog,
+  AgentDebugTab,
+  AgentSettingsTab,
+} from "@/components/agent";
+import type { CustomVariable } from "@/components/agent";
 import type { ExecutorType } from "@viben/core/shared";
-import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
-import { useAppStore } from "@/stores/app-store";
-
-// ============================================================================
-// Panel Width Constants
-// ============================================================================
-
-const MIN_LEFT_PANEL_WIDTH = 200;
-const MAX_LEFT_PANEL_WIDTH = 400;
-const DEFAULT_LEFT_PANEL_WIDTH = 288; // w-72
-
-const MIN_RIGHT_PANEL_WIDTH = 240;
-const MAX_RIGHT_PANEL_WIDTH = 480;
-const DEFAULT_RIGHT_PANEL_WIDTH = 320; // w-80
-
-// ============================================================================
-// Resize Handle Component
-// ============================================================================
-
-interface ResizeHandleProps {
-  side: "left" | "right";
-  onResize: (delta: number) => void;
-  className?: string;
-}
-
-function ResizeHandle({ side, onResize, className }: ResizeHandleProps) {
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef(0);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    startXRef.current = e.clientX;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startXRef.current;
-      startXRef.current = moveEvent.clientX;
-      // For left panel, positive delta = expand; for right panel, negative delta = expand
-      onResize(side === "left" ? delta : -delta);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
-
-  return (
-    <div
-      className={cn(
-        "group absolute top-0 bottom-0 w-1 cursor-col-resize z-10",
-        "flex items-center justify-center",
-        side === "left" ? "right-0" : "left-0",
-        isDragging && "bg-primary/30",
-        className
-      )}
-      onMouseDown={handleMouseDown}
-    >
-      {/* Hover/drag indicator line */}
-      <div
-        className={cn(
-          "absolute inset-y-0 w-0.5 transition-colors",
-          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
-        )}
-      />
-      {/* Grip handle - vertically centered */}
-      <div
-        className={cn(
-          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
-          isDragging
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
-        )}
-      >
-        <GripVertical className="h-4 w-4" />
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// Collapsible Section Component
-// ============================================================================
-
-interface CollapsibleSectionProps {
-  title: string;
-  icon?: React.ReactNode;
-  badge?: React.ReactNode;
-  action?: React.ReactNode;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}
-
-function CollapsibleSection({
-  title,
-  icon,
-  badge,
-  action,
-  defaultOpen = false,
-  children,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <button
-          className={cn(
-            "w-full flex items-center gap-2 py-2.5 px-1 text-sm hover:bg-muted/50 rounded-lg transition-colors",
-            isOpen && "text-foreground",
-            !isOpen && "text-muted-foreground"
-          )}
-        >
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4 shrink-0" />
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0" />
-          )}
-          {icon && <span className="shrink-0">{icon}</span>}
-          <span className="font-medium">{title}</span>
-          {badge && <span className="ml-auto mr-2">{badge}</span>}
-          {action && (
-            <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
-              {action}
-            </span>
-          )}
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pl-6 pr-1 pb-2">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
+import type { TraceSpanNode, TraceTree } from "@/components/observability";
 
 // ============================================================================
 // Main Component
@@ -243,7 +72,6 @@ export function AgentDetailPage() {
   const isWorkspaceScoped = !isGlobal;
 
   // Use Gateway API for all agents (global + workspace)
-  // Note: "agents" are user-created configurations, "executors" are underlying AI tools
   const {
     loading: agentsLoading,
     error: agentsError,
@@ -261,19 +89,6 @@ export function AgentDetailPage() {
     },
     [availableExecutors]
   );
-
-  // List of executor types for Select dropdown (from Gateway API)
-  const executorTypeOptions = useMemo(
-    () =>
-      availableExecutors.map((e) => ({
-        id: e.type,
-        name: e.name,
-      })),
-    [availableExecutors]
-  );
-
-  const mcpServers = useAppStore((state) => state.mcpServers);
-  const { packages: skillPackages } = useCloudSkillPackages();
 
   // Determine workdir: workspace path for workspace-scoped, ~/.viben for global
   const [globalVibenDir, setGlobalVibenDir] = useState<string>("");
@@ -303,7 +118,6 @@ export function AgentDetailPage() {
       setLoadingFullAgent(true);
       try {
         const gateway = getGatewayClient();
-        // Pass workspace path to find workspace-scoped agents
         const agentData = await gateway.getAgent(agentId, {
           workspacePath: workspace?.path,
         });
@@ -320,24 +134,33 @@ export function AgentDetailPage() {
   }, [agentId, workspace?.path]);
 
   // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
-  // Use useMemo to prevent unnecessary re-renders and useEffect triggers
   const agent = useMemo(() => fullAgent ? {
     ...fullAgent,
-    // Map config_path to path for backwards compatibility
     path: fullAgent.config_path,
   } : null, [fullAgent]);
 
+  // ============================================================================
   // Form state
+  // ============================================================================
+
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formSystemPrompt, setFormSystemPrompt] = useState("");
   const [formAppendPrompt, setFormAppendPrompt] = useState("");
   const [formTemperature, setFormTemperature] = useState(0.7);
-  const [formMaxTokens, setFormMaxTokens] = useState(4096);
   const [formModel, setFormModel] = useState("");
   const [formExecutorType, setFormExecutorType] = useState<ExecutorType>("CLAUDE_CODE");
   const [formPlanMode, setFormPlanMode] = useState(false);
   const [formApprovals, setFormApprovals] = useState(false);
+
+  // Template settings
+  const [formIsTemplate, setFormIsTemplate] = useState(false);
+  const [formTemplateDescription, setFormTemplateDescription] = useState("");
+  const [formTemplateTags, setFormTemplateTags] = useState<string[]>([]);
+
+  // Variables
+  const [formCustomVariables, setFormCustomVariables] = useState<CustomVariable[]>([]);
+  const [formEnvVariables, setFormEnvVariables] = useState<string[]>([]);
 
   // State
   const [saving, setSaving] = useState(false);
@@ -346,22 +169,8 @@ export function AgentDetailPage() {
   const [availability, setAvailability] = useState<AvailabilityInfo | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Panel width state for resizable panels
-  const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH);
-  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
-
-  // Resize handlers
-  const handleLeftResize = useCallback((delta: number) => {
-    setLeftPanelWidth((prev) =>
-      Math.max(MIN_LEFT_PANEL_WIDTH, Math.min(MAX_LEFT_PANEL_WIDTH, prev + delta))
-    );
-  }, []);
-
-  const handleRightResize = useCallback((delta: number) => {
-    setRightPanelWidth((prev) =>
-      Math.max(MIN_RIGHT_PANEL_WIDTH, Math.min(MAX_RIGHT_PANEL_WIDTH, prev + delta))
-    );
-  }, []);
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"debug" | "settings">("debug");
 
   // Dialog states
   const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
@@ -372,29 +181,36 @@ export function AgentDetailPage() {
   const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-  // Copy path state
-  const [pathCopied, setPathCopied] = useState(false);
+  // Trace visualization state
+  // Note: traceId and traceTree are placeholders for future trace integration
+  const [traceId] = useState<string | undefined>();
+  const [traceTree] = useState<TraceTree | null>(null);
+  const [selectedSpan, setSelectedSpan] = useState<TraceSpanNode | null>(null);
 
-  // Get agent folder path - use agent.path if available (reliable), otherwise fallback to computed path
+  // Get agent folder path
   const agentFolderPath = useMemo(() => {
-    // Prefer the actual path from the agent object (set by backend)
     if (agent?.path) {
       return agent.path;
     }
-    // Fallback: compute path based on scope (less reliable)
     if (isWorkspaceScoped && workspace) {
       return `${workspace.path}/.viben/agents/${agentId}`;
     }
     return globalVibenDir ? `${globalVibenDir}/agents/${agentId}` : "";
   }, [agent?.path, isWorkspaceScoped, workspace, globalVibenDir, agentId]);
 
-  // Copy path to clipboard
-  const handleCopyPath = useCallback(async () => {
-    if (!agentFolderPath) return;
-    await navigator.clipboard.writeText(agentFolderPath);
-    setPathCopied(true);
-    setTimeout(() => setPathCopied(false), 2000);
+  // Get config file path
+  const configPath = useMemo(() => {
+    if (agentFolderPath) {
+      return `${agentFolderPath}/AGENTS.md`;
+    }
+    return "";
   }, [agentFolderPath]);
+
+  // Copy path to clipboard
+  const handleCopyPath = useCallback(async (path: string) => {
+    if (!path) return;
+    await navigator.clipboard.writeText(path);
+  }, []);
 
   // Open folder in file manager
   const handleOpenFolder = useCallback(async () => {
@@ -415,13 +231,23 @@ export function AgentDetailPage() {
       setFormSystemPrompt(agent.system_prompt || "");
       setFormAppendPrompt(agent.append_prompt || "");
       setFormTemperature(agent.temperature ?? 0.7);
-      setFormMaxTokens(agent.max_tokens ?? 4096);
       setFormModel(agent.model || "");
       setFormExecutorType((agent.executor_type as ExecutorType) || "CLAUDE_CODE");
       setFormPlanMode(agent.plan_mode ?? false);
       setFormApprovals(agent.approvals ?? false);
       setSelectedMcpServers(agent.mcp_servers || []);
       setSelectedSkills(agent.skills || []);
+      setFormIsTemplate(agent.is_template ?? false);
+      setFormTemplateDescription(agent.template_description || "");
+      setFormTemplateTags(agent.template_tags || []);
+      setFormCustomVariables(
+        agent.custom_variables?.map(v => ({
+          name: v.name,
+          defaultValue: v.default_value,
+          description: v.description,
+        })) || []
+      );
+      setFormEnvVariables(agent.env_variables || []);
       setIsDirty(false);
     }
   }, [agent]);
@@ -440,16 +266,44 @@ export function AgentDetailPage() {
         formSystemPrompt !== (agent.system_prompt || "") ||
         formAppendPrompt !== (agent.append_prompt || "") ||
         formTemperature !== (agent.temperature ?? 0.7) ||
-        formMaxTokens !== (agent.max_tokens ?? 4096) ||
         formModel !== (agent.model || "") ||
         formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
         formPlanMode !== (agent.plan_mode ?? false) ||
         formApprovals !== (agent.approvals ?? false) ||
         JSON.stringify(selectedMcpServers) !== JSON.stringify(agent.mcp_servers || []) ||
-        JSON.stringify(selectedSkills) !== JSON.stringify(agent.skills || []);
+        JSON.stringify(selectedSkills) !== JSON.stringify(agent.skills || []) ||
+        formIsTemplate !== (agent.is_template ?? false) ||
+        formTemplateDescription !== (agent.template_description || "") ||
+        JSON.stringify(formTemplateTags) !== JSON.stringify(agent.template_tags || []) ||
+        JSON.stringify(formCustomVariables) !== JSON.stringify(
+          agent.custom_variables?.map(v => ({
+            name: v.name,
+            defaultValue: v.default_value,
+            description: v.description,
+          })) || []
+        ) ||
+        JSON.stringify(formEnvVariables) !== JSON.stringify(agent.env_variables || []);
       setIsDirty(hasChanges);
     }
-  }, [agent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills]);
+  }, [
+    agent,
+    formName,
+    formDescription,
+    formSystemPrompt,
+    formAppendPrompt,
+    formTemperature,
+    formModel,
+    formExecutorType,
+    formPlanMode,
+    formApprovals,
+    selectedMcpServers,
+    selectedSkills,
+    formIsTemplate,
+    formTemplateDescription,
+    formTemplateTags,
+    formCustomVariables,
+    formEnvVariables,
+  ]);
 
   // Form validation
   const validateForm = useCallback(() => {
@@ -472,13 +326,23 @@ export function AgentDetailPage() {
         system_prompt: formSystemPrompt || undefined,
         append_prompt: formAppendPrompt || undefined,
         temperature: formTemperature,
-        max_tokens: formMaxTokens,
         model: formModel || undefined,
         executor_type: formExecutorType,
         plan_mode: formPlanMode,
         approvals: formApprovals,
         mcp_servers: selectedMcpServers,
         skills: selectedSkills,
+        is_template: formIsTemplate,
+        template_description: formTemplateDescription || undefined,
+        template_tags: formTemplateTags.length > 0 ? formTemplateTags : undefined,
+        custom_variables: formCustomVariables.length > 0
+          ? formCustomVariables.map(v => ({
+              name: v.name,
+              default_value: v.defaultValue,
+              description: v.description,
+            }))
+          : undefined,
+        env_variables: formEnvVariables.length > 0 ? formEnvVariables : undefined,
       });
       setIsDirty(false);
       setLastSaved(new Date());
@@ -487,12 +351,28 @@ export function AgentDetailPage() {
     } finally {
       setSaving(false);
     }
-  }, [agentId, updateAgent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills, t]);
+  }, [
+    agentId,
+    updateAgent,
+    formName,
+    formDescription,
+    formSystemPrompt,
+    formAppendPrompt,
+    formTemperature,
+    formModel,
+    formExecutorType,
+    formPlanMode,
+    formApprovals,
+    selectedMcpServers,
+    selectedSkills,
+    formIsTemplate,
+    formTemplateDescription,
+    formTemplateTags,
+    formCustomVariables,
+    formEnvVariables,
+  ]);
 
-  // Debounced save with backpressure protection (using ahooks)
-  // - wait: 300ms debounce delay
-  // - leading: false - don't execute on first call
-  // - trailing: true - execute after wait period
+  // Debounced save
   const { run: debouncedSave, cancel: cancelDebouncedSave } = useDebounceFn(
     () => {
       if (formIsValid) {
@@ -521,17 +401,12 @@ export function AgentDetailPage() {
     return () => cancelDebouncedSave();
   }, [cancelDebouncedSave]);
 
-  // Gateway connection state
-  const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
-
   // Check availability
   const checkAvailability = useCallback(async () => {
     setCheckingAvailability(true);
     try {
       const client = getGatewayClient();
-      // First check if gateway is reachable
       const isConnected = await client.ping();
-      setGatewayConnected(isConnected);
 
       if (!isConnected) {
         setAvailability(null);
@@ -541,40 +416,42 @@ export function AgentDetailPage() {
       const result = await client.checkAvailability(formExecutorType);
       setAvailability(result);
     } catch {
-      setGatewayConnected(false);
       setAvailability(null);
     } finally {
       setCheckingAvailability(false);
     }
   }, [formExecutorType]);
 
-  // Filter models by executor type constraints, then group by provider
-  const modelsByProvider = useMemo(() => {
-    // First filter by executor type
+  // Filter models by executor type constraints, then map to ModelOption format
+  const modelOptions = useMemo(() => {
     const filteredModels = filterModelsByExecutor(models, formExecutorType);
-    // Then group by provider
-    const grouped: Record<string, typeof models> = {};
-    for (const model of filteredModels) {
-      if (!grouped[model.provider_id]) {
-        grouped[model.provider_id] = [];
-      }
-      grouped[model.provider_id].push(model);
-    }
-    return grouped;
+    return filteredModels
+      .filter(m => m.is_available)
+      .map(m => ({
+        id: m.id,
+        name: m.name,
+        provider: m.provider_id,
+      }));
   }, [models, formExecutorType]);
 
-  // Get constraint description for UI hint
-  const providerConstraintHint = getProviderConstraintDescription(formExecutorType);
+  // Executor options
+  const executorOptions = useMemo(
+    () =>
+      availableExecutors.map((e) => ({
+        id: e.type as ExecutorType,
+        name: e.name,
+        description: e.description,
+      })),
+    [availableExecutors]
+  );
 
-  // Debug chat (using shared chat components)
-  // Workdir: workspace path for workspace-scoped agents, ~/.viben for global agents
+  // Debug chat
   const debugWorkdir = isWorkspaceScoped
     ? workspace?.path || ""
     : globalVibenDir;
 
   const {
     messages,
-    phase,
     isStreaming,
     pendingPlan,
     pendingQuestions,
@@ -583,7 +460,7 @@ export function AgentDetailPage() {
     rejectPlan,
     answerQuestions,
     cancel,
-    clearMessages,
+    sessionId,
   } = useAgentConversation(debugWorkdir, {
     agentConfig: {
       name: formName || undefined,
@@ -599,7 +476,6 @@ export function AgentDetailPage() {
   });
 
   // Navigate back to appropriate location based on scope
-  // Must be before early returns to maintain hooks order
   const handleNavigateBack = useCallback(() => {
     if (isWorkspaceScoped && workspace) {
       navigate(`/workspace/${workspace.id}/agents`);
@@ -608,33 +484,14 @@ export function AgentDetailPage() {
     }
   }, [navigate, isWorkspaceScoped, workspace]);
 
-  // Slash commands for agent debug chat
-  const slashCommands = useMemo<SlashCommand[]>(() => [
-    {
-      id: "clear",
-      name: t("chat.slashCommands.clear", "clear"),
-      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
-      icon: <Trash2 className="h-4 w-4" />,
-    },
-    {
-      id: "help",
-      name: t("chat.slashCommands.help", "help"),
-      description: t("chat.slashCommands.helpDesc", "Show available commands"),
-      icon: <HelpCircle className="h-4 w-4" />,
-    },
-  ], [t]);
+  // Handle span selection for trace visualization
+  const handleSelectSpan = useCallback((span: TraceSpanNode | null) => {
+    setSelectedSpan(span);
+  }, []);
 
-  // Handle slash command execution
-  const handleSlashCommand = useCallback((command: SlashCommand) => {
-    switch (command.id) {
-      case "clear":
-        clearMessages();
-        break;
-      case "help":
-        // Could show a help modal or inject a help message
-        break;
-    }
-  }, [clearMessages]);
+  // ============================================================================
+  // Loading and Error States
+  // ============================================================================
 
   if (workspacesLoading || agentsLoading || loadingFullAgent) {
     return (
@@ -657,6 +514,10 @@ export function AgentDetailPage() {
     );
   }
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -671,49 +532,11 @@ export function AgentDetailPage() {
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <Input
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              className="h-7 px-2 font-semibold border-none shadow-none focus-visible:ring-0"
-              placeholder={t("settingsAgents.namePlaceholder")}
-            />
-            {/* Path with copy button */}
-            {agentFolderPath && (
-              <div className="flex items-center gap-1 px-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px] cursor-default">
-                        {agentFolderPath.split("/").slice(-3).join("/")}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[400px]">
-                      <code className="text-xs break-all">{agentFolderPath}</code>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={handleCopyPath}
-                      >
-                        {pathCopied ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {pathCopied ? t("common.copied") : t("common.copyPath")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+            <span className="font-semibold text-sm">{formName || t("settingsAgents.unnamed")}</span>
+            {formDescription && (
+              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                {formDescription}
+              </span>
             )}
           </div>
           {/* Scope indicator */}
@@ -821,516 +644,102 @@ export function AgentDetailPage() {
         </div>
       )}
 
-      {/* Three Column Layout */}
-      <div className="flex-1 flex min-h-0">
-        {/* ================================================================
-            LEFT COLUMN: Persona (Resizable)
-            ================================================================ */}
-        <div
-          className="relative flex flex-col shrink-0"
-          style={{ width: leftPanelWidth }}
-        >
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.persona")}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t("settingsAgents.personaDesc")}
-            </p>
-          </div>
-          <ResizeHandle side="left" onResize={handleLeftResize} />
-
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-4">
-              {/* System Prompt */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("settingsAgents.systemPrompt")}
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {formSystemPrompt.length.toLocaleString()}
-                  </span>
-                </div>
-                <Textarea
-                  value={formSystemPrompt}
-                  onChange={(e) => setFormSystemPrompt(e.target.value)}
-                  placeholder={t("settingsAgents.systemPromptPlaceholder")}
-                  rows={12}
-                  className="resize-none text-sm"
-                />
-              </div>
-
-              {/* Append Prompt */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t("settingsAgents.appendPrompt")}
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {formAppendPrompt.length.toLocaleString()}
-                  </span>
-                </div>
-                <Textarea
-                  value={formAppendPrompt}
-                  onChange={(e) => setFormAppendPrompt(e.target.value)}
-                  placeholder={t("settingsAgents.appendPromptPlaceholder")}
-                  rows={4}
-                  className="resize-none text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("settingsAgents.appendPromptHint")}
-                </p>
-              </div>
-            </div>
-          </ScrollArea>
+      {/* Tab Layout */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "debug" | "settings")}
+        className="flex-1 flex flex-col min-h-0"
+      >
+        <div className="px-4 border-b">
+          <TabsList>
+            <TabsTrigger value="debug">
+              {t("agentDetail.debugTab", "Debug")}
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              {t("agentDetail.settingsTab", "Settings")}
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        {/* ================================================================
-            MIDDLE COLUMN: Configuration
-            ================================================================ */}
-        <div className="flex-1 flex flex-col min-w-0 border-r">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.configuration")}</h3>
-          </div>
-
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-1">
-              {/* Config Section - show paths */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("workspace.configuration")}
-                </h4>
-
-                {/* Workspace Config */}
-                <CollapsibleSection
-                  title={t("settingsAgents.workspaceConfig")}
-                  icon={<FolderOpen className="h-4 w-4" />}
-                  defaultOpen={!!agentFolderPath && isWorkspaceScoped}
-                >
-                  <div className="py-2">
-                    {isWorkspaceScoped && agentFolderPath ? (
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                          {agentFolderPath}
-                        </code>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={handleOpenFolder}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {t("settingsAgents.noWorkspaceConfig")}
-                      </p>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Global Config */}
-                <CollapsibleSection
-                  title={t("settingsAgents.globalConfig")}
-                  icon={<Globe className="h-4 w-4" />}
-                  defaultOpen={!!agentFolderPath && !isWorkspaceScoped}
-                >
-                  <div className="py-2">
-                    {!isWorkspaceScoped && agentFolderPath ? (
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                          {agentFolderPath}
-                        </code>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0"
-                                onClick={handleOpenFolder}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        {t("settingsAgents.noGlobalConfig")}
-                      </p>
-                    )}
-                  </div>
-                </CollapsibleSection>
-              </div>
-
-              {/* Model Settings Section */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("settingsAgents.modelSettings")}
-                </h4>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.model")}
-                  icon={<Cpu className="h-4 w-4" />}
-                  badge={
-                    formModel && (
-                      <Badge variant="secondary" className="text-xs">
-                        {formModel.split("/").pop()}
-                      </Badge>
-                    )
-                  }
-                  defaultOpen
-                >
-                  <div className="space-y-3">
-                    <Select value={formModel} onValueChange={setFormModel}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("settingsAgents.selectModel")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(modelsByProvider).map(([provider, providerModels]) => {
-                          // Filter to available models only (enabled + has API key)
-                          const availableModels = providerModels.filter((m) => m.is_available);
-                          if (availableModels.length === 0) return null;
-                          return (
-                            <SelectGroup key={provider}>
-                              <SelectLabel className="text-xs text-muted-foreground">
-                                {provider}
-                              </SelectLabel>
-                              {availableModels.map((model) => (
-                                <SelectItem key={model.id} value={model.id}>
-                                  {model.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {providerConstraintHint && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {providerConstraintHint}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs">{t("settingsAgents.temperature")}</Label>
-                      <span className="text-xs text-muted-foreground">
-                        {formTemperature.toFixed(2)}
-                      </span>
-                    </div>
-                    <Slider
-                      value={[formTemperature]}
-                      onValueChange={([v]) => setFormTemperature(v)}
-                      min={0}
-                      max={2}
-                      step={0.01}
-                    />
-                  </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.executorType")}
-                  icon={<Settings2 className="h-4 w-4" />}
-                  badge={
-                    <div className="flex items-center gap-1">
-                      {availability?.type === "LOGIN_DETECTED" && (
-                        <CheckCircle2 className="h-3 w-3 text-green-500" />
-                      )}
-                      {availability?.type === "NOT_FOUND" && (
-                        <XCircle className="h-3 w-3 text-red-500" />
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        {getExecutorName(formExecutorType)}
-                      </Badge>
-                    </div>
-                  }
-                >
-                  <div className="space-y-3">
-                    <Select
-                      value={formExecutorType}
-                      onValueChange={(v) => setFormExecutorType(v as ExecutorType)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {executorTypeOptions.map((type) => (
-                          <SelectItem key={type.id} value={type.id}>
-                            {type.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={checkAvailability}
-                      disabled={checkingAvailability}
-                      className="w-full"
-                    >
-                      {checkingAvailability ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                      )}
-                      {t("settingsAgents.checkAvailability")}
-                    </Button>
-
-                    {/* Gateway disconnected */}
-                    {gatewayConnected === false && (
-                      <div className="p-2 rounded-md text-xs bg-orange-500/10 text-orange-700 dark:text-orange-400">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-3.5 w-3.5" />
-                          <span className="font-medium">{t("gateway.disconnected")}</span>
-                        </div>
-                        <p className="mt-1 opacity-80">
-                          {t("settingsAgents.gatewayNotRunningHint", { defaultValue: "Gateway 服务未运行。请先在设置中启动 Gateway。" })}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Gateway connected - show availability */}
-                    {gatewayConnected === true && availability && (
-                      <div
-                        className={cn(
-                          "p-2 rounded-md text-xs",
-                          availability.type === "LOGIN_DETECTED" && "bg-green-500/10 text-green-700 dark:text-green-400",
-                          availability.type === "INSTALLATION_FOUND" && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-                          availability.type === "NOT_FOUND" && "bg-red-500/10 text-red-700 dark:text-red-400"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          {availability.type === "LOGIN_DETECTED" && <CheckCircle2 className="h-3.5 w-3.5" />}
-                          {availability.type === "INSTALLATION_FOUND" && <AlertCircle className="h-3.5 w-3.5" />}
-                          {availability.type === "NOT_FOUND" && <XCircle className="h-3.5 w-3.5" />}
-                          <span className="font-medium">{t(getAvailabilityStatus(availability).labelKey)}</span>
-                        </div>
-                        {availability.type === "NOT_FOUND" && (
-                          <p className="mt-1 opacity-80">
-                            {t("settingsAgents.executorNotFoundHint")}
-                          </p>
-                        )}
-                        {availability.type === "INSTALLATION_FOUND" && (
-                          <p className="mt-1 opacity-80">
-                            {t("settingsAgents.executorNotLoggedInHint")}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {formExecutorType === "CLAUDE_CODE" && (
-                      <div className="space-y-2 pt-2 border-t">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs">{t("settingsAgents.planMode")}</Label>
-                          <Switch checked={formPlanMode} onCheckedChange={setFormPlanMode} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs">{t("settingsAgents.approvals")}</Label>
-                          <Switch checked={formApprovals} onCheckedChange={setFormApprovals} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-              </div>
-
-              {/* Capabilities Section - using reusable component in editable mode */}
-              <ExecutorCapabilities
-                executorType={formExecutorType}
-                workspacePath={workspacePath || ""}
-                className="mb-4"
-                sectionHeaderText={t("settingsAgents.capabilities")}
-                editable
-                selectedMcpServers={selectedMcpServers}
-                selectedSkills={selectedSkills}
-                mcpServerOptions={mcpServers.map((s) => ({ id: s.id, name: s.name, transport: s.transport }))}
-                skillPackageOptions={skillPackages.map((s) => ({ id: s.id, name: s.name }))}
-                onConfigureMcp={() => setMcpDialogOpen(true)}
-                onConfigureSkills={() => setSkillsDialogOpen(true)}
-              />
-
-              {/* Memory Section */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("settingsAgents.memory")}
-                </h4>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.memoryFileTitle", "MEMORY.md")}
-                  icon={<Brain className="h-4 w-4" />}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMemoryDialogOpen(true);
-                      }}
-                    >
-                      {t("common.edit")}
-                    </Button>
-                  }
-                  defaultOpen
-                >
-                  <p className="text-xs text-muted-foreground py-2">
-                    {t("settingsAgents.memoryDesc")}
-                  </p>
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.todayLog")}
-                  icon={<FileText className="h-4 w-4" />}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMemoryDialogOpen(true);
-                      }}
-                    >
-                      {t("common.view")}
-                    </Button>
-                  }
-                >
-                  <p className="text-xs text-muted-foreground py-2">
-                    {t("settingsAgents.noLogToday")}
-                  </p>
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.yesterdayLog")}
-                  icon={<FileText className="h-4 w-4" />}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMemoryDialogOpen(true);
-                      }}
-                    >
-                      {t("common.view")}
-                    </Button>
-                  }
-                >
-                  <p className="text-xs text-muted-foreground py-2">
-                    {t("settingsAgents.noLogYesterday")}
-                  </p>
-                </CollapsibleSection>
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* ================================================================
-            RIGHT COLUMN: Preview & Debug (Resizable)
-            ================================================================ */}
-        <div
-          className="relative flex flex-col bg-muted/30 shrink-0"
-          style={{ width: rightPanelWidth }}
-        >
-          <ResizeHandle side="right" onResize={handleRightResize} />
-          {/* Header with actions */}
-          <div className="p-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                  {formName.slice(0, 2).toUpperCase() || "AG"}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold text-sm">{formName || t("settingsAgents.unnamed")}</h3>
-                <p className="text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {messages.length > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={clearMessages}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("settingsAgents.clearChat")}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <Info className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("settingsAgents.contextDetails")}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          {/* Chat Messages - using shared MessageList component */}
-          <MessageList
+        {/* Debug Tab */}
+        <TabsContent value="debug" className="flex-1 min-h-0 mt-0">
+          <AgentDebugTab
+            agentId={agentId || ""}
+            agentPath={agentFolderPath}
+            sessionId={sessionId ?? undefined}
             messages={messages}
+            onSendMessage={sendMessage}
             isStreaming={isStreaming}
             pendingPlan={pendingPlan}
             pendingQuestions={pendingQuestions}
             onApprovePlan={approvePlan}
             onRejectPlan={rejectPlan}
             onAnswerQuestions={answerQuestions}
-            className="flex-1"
+            onCancel={cancel}
+            traceId={traceId}
+            traceTree={traceTree}
+            selectedSpan={selectedSpan}
+            onSelectSpan={handleSelectSpan}
+            className="h-full"
           />
+        </TabsContent>
 
-          {/* Chat Input - using shared ChatInput component */}
-          <div className="border-t border-border bg-background">
-            <ChatInput
-              onSend={sendMessage}
-              onCancel={cancel}
-              isLoading={isStreaming}
-              disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
-              placeholder={
-                phase === "awaiting_approval"
-                  ? t("chat.waitingForApproval")
-                  : phase === "awaiting_input"
-                    ? t("chat.waitingForInput")
-                    : t("settingsAgents.sendMessage")
-              }
-              autoFocus
-              showTopToolbar
-              showConfigBar
-              showResizeHandle
-              enableWritingMode
-              hideAgentSelector
-              hideModelSelector
-              slashCommands={slashCommands}
-              onSlashCommand={handleSlashCommand}
-            />
-            <p className="text-xs text-muted-foreground py-2 text-center">
-              {t("settingsAgents.aiDisclaimer")}
-            </p>
-          </div>
-        </div>
-      </div>
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="flex-1 min-h-0 mt-0">
+          <AgentSettingsTab
+            // Overview panel props
+            name={formName}
+            description={formDescription}
+            isTemplate={formIsTemplate}
+            templateDescription={formTemplateDescription}
+            templateTags={formTemplateTags}
+            agentDir={agentFolderPath}
+            configPath={configPath}
+            isWorkspaceScoped={isWorkspaceScoped}
+            onNameChange={setFormName}
+            onDescriptionChange={setFormDescription}
+            onIsTemplateChange={setFormIsTemplate}
+            onTemplateDescriptionChange={setFormTemplateDescription}
+            onTemplateTagsChange={setFormTemplateTags}
+            onOpenFolder={handleOpenFolder}
+            onCopyPath={handleCopyPath}
+            // Config panel props
+            systemPrompt={formSystemPrompt}
+            appendPrompt={formAppendPrompt}
+            model={formModel}
+            temperature={formTemperature}
+            executorType={formExecutorType}
+            planMode={formPlanMode}
+            approvals={formApprovals}
+            models={modelOptions}
+            executors={executorOptions}
+            selectedMcpServers={selectedMcpServers}
+            selectedSkills={selectedSkills}
+            customVariables={formCustomVariables}
+            envVariables={formEnvVariables}
+            workspaceName={workspace?.name || ""}
+            workspacePath={workspacePath || ""}
+            onSystemPromptChange={setFormSystemPrompt}
+            onAppendPromptChange={setFormAppendPrompt}
+            onModelChange={setFormModel}
+            onTemperatureChange={setFormTemperature}
+            onExecutorTypeChange={setFormExecutorType}
+            onPlanModeChange={setFormPlanMode}
+            onApprovalsChange={setFormApprovals}
+            onCheckAvailability={checkAvailability}
+            availability={availability}
+            checkingAvailability={checkingAvailability}
+            onConfigureMcp={() => setMcpDialogOpen(true)}
+            onConfigureSkills={() => setSkillsDialogOpen(true)}
+            onEditMemory={() => setMemoryDialogOpen(true)}
+            onViewTodayLog={() => setMemoryDialogOpen(true)}
+            onViewYesterdayLog={() => setMemoryDialogOpen(true)}
+            onCustomVariablesChange={setFormCustomVariables}
+            onEnvVariablesChange={setFormEnvVariables}
+            className="h-full"
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <AgentMcpDialog

@@ -149,7 +149,40 @@ export class TaskEventStore {
       updatePayload.queuedAt = event.timestamp;
     }
 
-    // 9. Update task.json with new state
+    // 9. Persist machine_context for pause/resume across restarts
+    // @see docs/plans/2026-03-09-task-system-improvements-design.md - Section 3
+    if (event.type === "PAUSE") {
+      // Save context snapshot when pausing
+      const currentSubtaskIndex = task.machine_context?.current_subtask_index ?? 0;
+      updatePayload.machine_context = {
+        current_subtask_index: currentSubtaskIndex,
+        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
+        paused_snapshot: {
+          from_state: currentXState,
+          subtask_index: currentSubtaskIndex,
+          paused_at: event.timestamp,
+        },
+      };
+    } else if (event.type === "RESUME" || event.type === "ABANDON" || event.type === "CANCEL") {
+      // Clear paused_snapshot on resume/abandon/cancel
+      if (task.machine_context) {
+        updatePayload.machine_context = {
+          current_subtask_index: task.machine_context.current_subtask_index,
+          requires_plan_review: task.machine_context.requires_plan_review,
+          paused_snapshot: undefined,
+        };
+      }
+    } else if (event.type === "SUBTASK_COMPLETE") {
+      // Increment subtask index
+      const newIndex = (task.machine_context?.current_subtask_index ?? 0) + 1;
+      updatePayload.machine_context = {
+        current_subtask_index: newIndex,
+        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
+        paused_snapshot: task.machine_context?.paused_snapshot,
+      };
+    }
+
+    // 10. Update task.json with new state
     const updatedTask = await taskService.updateTask(taskDir, updatePayload);
 
     return {

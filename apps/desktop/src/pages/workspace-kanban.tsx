@@ -2836,10 +2836,10 @@ export function WorkspaceKanbanPage() {
                 id: "dueDate",
                 header: t("workspace.dueDate", "Due Date"),
                 accessor: (task) => {
-                  if (!task.due_date) {
+                  if (!task.dueDate) {
                     return <span className="text-muted-foreground">-</span>;
                   }
-                  return <DueDateBadge dueDate={new Date(task.due_date)} size="sm" />;
+                  return <DueDateBadge dueDate={task.dueDate} />;
                 },
                 sortable: true,
                 width: 120,
@@ -2849,7 +2849,7 @@ export function WorkspaceKanbanPage() {
                 header: t("workspace.created", "Created"),
                 accessor: (task) => (
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatRelativeTime(new Date(task.created_at))}
+                    {formatRelativeTime(task.created_at)}
                   </span>
                 ),
                 sortable: true,
@@ -2860,7 +2860,7 @@ export function WorkspaceKanbanPage() {
                 header: t("workspace.updated", "Updated"),
                 accessor: (task) => (
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatRelativeTime(new Date(task.updated_at))}
+                    {formatRelativeTime(task.updated_at)}
                   </span>
                 ),
                 sortable: true,
@@ -2936,6 +2936,7 @@ export function WorkspaceKanbanPage() {
         onUpdate={handleTaskUpdate}
         onStartTask={handleStartTask}
         availableTasks={availableTasks}
+        availableAgents={availableAgents}
         onNavigateToTask={handleNavigateToTask}
         workspacePath={workspace?.path}
         autoStartOnOpen={autoStartTaskOnOpen}

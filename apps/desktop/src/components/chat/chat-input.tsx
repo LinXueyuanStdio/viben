@@ -134,7 +134,7 @@ export interface ChatInputProps {
   selectedAgentId?: string | null;
   onAgentChange?: (agentId: string) => void;
   /** Override models list (takes precedence over global config) */
-  models?: Array<{ id: string; name: string; provider?: string }>;
+  models?: Array<{ id: string; name: string; provider?: string; provider_id?: string }>;
   selectedModelId?: string | null;
   onModelChange?: (modelId: string) => void;
   /** Executor selection (CLAUDE_CODE, CODEX, etc.) */

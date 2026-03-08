@@ -25,6 +25,13 @@ export interface CreateAgentOptions {
 /** @deprecated Use CreateAgentOptions instead */
 export type CreateVibenAgentOptions = CreateAgentOptions;
 
+/** Custom variable definition */
+export interface AgentCustomVariable {
+  name: string;
+  default_value?: string;
+  description?: string;
+}
+
 /** Response from creating/updating an agent */
 export interface AgentResponse {
   id: string;
@@ -53,6 +60,12 @@ export interface AgentResponse {
   is_template?: boolean;
   /** Template description for selection UI */
   template_description?: string;
+  /** Template tags for filtering */
+  template_tags?: string[];
+  /** Custom variables */
+  custom_variables?: AgentCustomVariable[];
+  /** Environment variable references */
+  env_variables?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -80,6 +93,12 @@ export interface UpdateAgentOptions {
   is_template?: boolean;
   /** Template description for selection UI */
   template_description?: string;
+  /** Template tags for filtering */
+  template_tags?: string[];
+  /** Custom variables */
+  custom_variables?: AgentCustomVariable[];
+  /** Environment variable references */
+  env_variables?: string[];
   /** Workspace path for workspace-scoped agents */
   workspace_path?: string;
 }

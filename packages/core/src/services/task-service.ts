@@ -301,6 +301,25 @@ export interface UnifiedTask {
   // === Template Support ===
   /** Whether this task is a template for creating other tasks */
   is_template?: boolean;
+
+  // === State Machine Context Persistence ===
+  /**
+   * Persisted state machine context for pause/resume across restarts.
+   * Contains currentSubtaskIndex, paused_snapshot, etc.
+   */
+  machine_context?: {
+    /** Current subtask index (0-based) */
+    current_subtask_index: number;
+    /** Whether plan requires human review before coding */
+    requires_plan_review: boolean;
+    /** Complete snapshot saved when task is paused */
+    paused_snapshot?: {
+      from_state: string | { in_progress: string };
+      subtask_index: number;
+      execution_context?: Record<string, unknown>;
+      paused_at: string;
+    };
+  };
 }
 
 // =============================================================================

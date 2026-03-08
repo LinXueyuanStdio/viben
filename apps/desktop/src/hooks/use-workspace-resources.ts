@@ -16,7 +16,6 @@ import {
   type CreateAgentOptions,
   type UpdateAgentOptions,
   type AgentResponse,
-  type AgentTemplate,
   GatewayError,
 } from "@/lib/gateway";
 
@@ -291,13 +290,13 @@ export interface UseAgentsReturn {
 
   // Templates
   /** List of agent templates */
-  templates: AgentTemplate[];
+  templates: AgentResponse[];
   /** Refresh templates */
   refreshTemplates: () => Promise<void>;
   /** Create a template from an agent */
-  createTemplate: (agentId: string, templateId: string) => Promise<AgentTemplate>;
+  createTemplate: (agentId: string, templateId: string) => Promise<AgentResponse>;
   /** Create an agent from a template */
-  createFromTemplate: (templateId: string, agentId: string) => Promise<AgentResponse>;
+  createFromTemplate: (templateId: string, name: string, agentId?: string) => Promise<AgentResponse>;
 }
 
 /**
@@ -315,7 +314,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
+  const [templates, setTemplates] = useState<AgentResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -449,7 +448,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   // Template operations
   const createTemplate = useCallback(
-    async (agentId: string, templateId: string): Promise<AgentTemplate> => {
+    async (agentId: string, templateId: string): Promise<AgentResponse> => {
       const client = getGatewayClient();
       const result = await client.createAgentTemplate(agentId, templateId);
       // Refresh templates after creation
@@ -460,14 +459,18 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   );
 
   const createFromTemplate = useCallback(
-    async (templateId: string, agentId: string): Promise<AgentResponse> => {
+    async (templateId: string, name: string, agentId?: string): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.createAgentFromTemplate(templateId, agentId);
+      const result = await client.createAgentFromTemplate(templateId, {
+        name,
+        agentId,
+        basePath: workspacePath || undefined,
+      });
       // Refresh agent list after creation
       await loadAgents();
       return result;
     },
-    [loadAgents]
+    [loadAgents, workspacePath]
   );
 
   return {

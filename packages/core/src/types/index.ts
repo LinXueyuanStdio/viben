@@ -144,6 +144,18 @@ export interface AvailabilityInfo {
 // Agent Types
 // ============================================================================
 
+/**
+ * Custom variable definition for agent templates
+ */
+export interface CustomVariable {
+  /** Variable name (used as placeholder in prompts) */
+  name: string;
+  /** Default value for the variable */
+  defaultValue?: string;
+  /** Description of what this variable is for */
+  description?: string;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -175,6 +187,12 @@ export interface Agent {
   isTemplate?: boolean;
   /** Template description (shown in template picker) */
   templateDescription?: string;
+  /** Template tags for categorization */
+  templateTags?: string[];
+  /** Custom variables with default values */
+  customVariables?: CustomVariable[];
+  /** Environment variable references */
+  envVariables?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -197,6 +215,9 @@ export interface AgentConfig {
   approvals?: boolean;
   isTemplate?: boolean;
   templateDescription?: string;
+  templateTags?: string[];
+  customVariables?: CustomVariable[];
+  envVariables?: string[];
 }
 
 export interface AgentTemplate {

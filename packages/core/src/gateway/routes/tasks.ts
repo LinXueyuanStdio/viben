@@ -304,7 +304,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
                   name: { type: "string" },
                   title: { type: "string" },
                   description: { type: "string" },
-                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "ai_review", "human_review", "done", "pr_created", "error"] },
+                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "human_review", "completed", "failed", "cancelled"] },
                   workspace_path: { type: "string" },
                   agent_id: { type: "string" },
                   session_id: { type: "string" },
@@ -502,6 +502,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       branch: input.branch ?? sourceTask?.branch,
       base_branch: input.base_branch ?? sourceTask?.base_branch,
       executor: input.executor ?? sourceTask?.executor ?? "Agent",
+      model: input.model_id ?? sourceTask?.model, // Copy model from source task
       workspacePath,
       // Template flag
       is_template: input.is_template ?? false,
@@ -850,5 +851,166 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Failed to get task specs" };
     }
+  });
+
+  // ============================================================================
+  // POST /api/tasks/batch/events - Apply event to multiple tasks
+  // Supports batch operations like QUEUE, PAUSE, RESUME, CANCEL, DEQUEUE
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dirs: string[];
+      event_type: string;
+      payload?: Record<string, unknown>;
+    };
+  }>("/api/tasks/batch/events", {
+    schema: {
+      description: "Apply an event to multiple tasks (batch operation)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dirs: {
+            type: "array",
+            items: { type: "string" },
+            description: "Task directories or IDs to apply event to",
+          },
+          event_type: { type: "string", description: "Event type to apply" },
+          payload: { type: "object", description: "Optional event payload" },
+        },
+        required: ["workspace_path", "task_dirs", "event_type"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            results: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  task_dir: { type: "string" },
+                  success: { type: "boolean" },
+                  error: { type: "string" },
+                  new_state: { type: "string" },
+                },
+              },
+            },
+            summary: {
+              type: "object",
+              properties: {
+                total: { type: "number" },
+                succeeded: { type: "number" },
+                failed: { type: "number" },
+              },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dirs, event_type, payload } = request.body;
+
+    // Validate workspace_path
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required" };
+    }
+
+    // Validate event_type
+    if (!isValidEventType(event_type)) {
+      reply.code(400);
+      return { error: `Invalid event type: ${event_type}` };
+    }
+
+    // Validate task_dirs
+    if (!task_dirs || task_dirs.length === 0) {
+      reply.code(400);
+      return { error: "task_dirs must be a non-empty array" };
+    }
+
+    // Process each task
+    const results = await Promise.all(
+      task_dirs.map(async (taskDirOrId) => {
+        try {
+          // Resolve task directory (handles both directory paths and task IDs)
+          const taskDir = taskDirOrId.includes("/")
+            ? taskDirOrId
+            : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+          if (!taskDir) {
+            return {
+              task_dir: taskDirOrId,
+              success: false,
+              error: "Task not found",
+            };
+          }
+
+          // Get current task state
+          const task = await taskService.getTask(taskDir);
+          if (!task) {
+            return {
+              task_dir: taskDirOrId,
+              success: false,
+              error: "Task not found",
+            };
+          }
+
+          // Create event
+          const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+          const event: TaskEvent = {
+            eventId: randomUUID(),
+            sequence: nextSequence,
+            type: event_type as TaskEventType,
+            timestamp: new Date().toISOString(),
+            payload,
+          };
+
+          // Apply event
+          const result = await taskEventStore.applyEvent(taskDir, event);
+
+          if (!result.success) {
+            return {
+              task_dir: taskDirOrId,
+              success: false,
+              error: result.error,
+            };
+          }
+
+          return {
+            task_dir: taskDirOrId,
+            success: true,
+            new_state: result.newState,
+          };
+        } catch (error) {
+          return {
+            task_dir: taskDirOrId,
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          };
+        }
+      })
+    );
+
+    // Calculate summary
+    const succeeded = results.filter((r) => r.success).length;
+    const failed = results.filter((r) => !r.success).length;
+
+    return {
+      results,
+      summary: {
+        total: results.length,
+        succeeded,
+        failed,
+      },
+    };
   });
 }
