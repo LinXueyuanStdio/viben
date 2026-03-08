@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { MessageList, ChatInput } from "@/components/chat";
+import { DesktopMessageList, ChatInput } from "@/components/chat";
 import {
   SpanNode,
   TimelineView,
@@ -237,7 +237,7 @@ export function AgentDebugTab({
               </p>
             </div>
           ) : (
-            <MessageList
+            <DesktopMessageList
               messages={messages}
               isStreaming={isStreaming}
               pendingPlan={pendingPlan}

@@ -104,7 +104,7 @@ export function AgentOverviewPanel({
       <div className="space-y-4">
         <div>
           <h3 className="text-sm font-semibold mb-3">
-            {t("settingsAgents.basicInfo", { defaultValue: "Basic Information" })}
+            {t("settingsAgents.basicInfo")}
           </h3>
         </div>
 
@@ -141,7 +141,7 @@ export function AgentOverviewPanel({
       <div className="space-y-4 pt-4 border-t">
         <div>
           <h3 className="text-sm font-semibold mb-3">
-            {t("settingsAgents.templateSettings", { defaultValue: "Template Settings" })}
+            {t("settingsAgents.templateSettings")}
           </h3>
         </div>
 
@@ -149,10 +149,10 @@ export function AgentOverviewPanel({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <Label htmlFor="is-template" className="text-sm font-medium">
-              {t("settingsAgents.markAsTemplate", { defaultValue: "Mark as Template" })}
+              {t("settingsAgents.markAsTemplate")}
             </Label>
             <p className="text-xs text-muted-foreground">
-              {t("settingsAgents.markAsTemplateDesc", { defaultValue: "Allow this agent to be used as a template for creating new agents" })}
+              {t("settingsAgents.markAsTemplateDesc")}
             </p>
           </div>
           <Switch
@@ -168,25 +168,25 @@ export function AgentOverviewPanel({
             {/* Template Description */}
             <div className="space-y-2">
               <Label htmlFor="template-description" className="text-xs font-medium">
-                {t("settingsAgents.templateDescription", { defaultValue: "Template Description" })}
+                {t("settingsAgents.templateDescription")}
               </Label>
               <Textarea
                 id="template-description"
                 value={templateDescription}
                 onChange={(e) => onTemplateDescriptionChange(e.target.value)}
-                placeholder={t("settingsAgents.templateDescriptionPlaceholder", { defaultValue: "Describe what this template is for..." })}
+                placeholder={t("settingsAgents.templateDescriptionPlaceholder")}
                 rows={2}
                 className="resize-none"
               />
               <p className="text-xs text-muted-foreground">
-                {t("settingsAgents.templateDescriptionHint", { defaultValue: "This description will be shown when selecting templates" })}
+                {t("settingsAgents.templateDescriptionHint")}
               </p>
             </div>
 
             {/* Template Tags */}
             <div className="space-y-2">
               <Label className="text-xs font-medium">
-                {t("settingsAgents.templateTags", { defaultValue: "Tags" })}
+                {t("settingsAgents.templateTags")}
               </Label>
 
               {/* Tag Input */}
@@ -195,7 +195,7 @@ export function AgentOverviewPanel({
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleTagKeyDown}
-                  placeholder={t("settingsAgents.addTagPlaceholder", { defaultValue: "Add a tag..." })}
+                  placeholder={t("settingsAgents.addTagPlaceholder")}
                   className="flex-1"
                 />
                 <Button
@@ -239,14 +239,14 @@ export function AgentOverviewPanel({
       <div className="space-y-4 pt-4 border-t">
         <div>
           <h3 className="text-sm font-semibold mb-3">
-            {t("settingsAgents.storageLocation", { defaultValue: "Storage Location" })}
+            {t("settingsAgents.storageLocation")}
           </h3>
         </div>
 
         {/* Scope Badge */}
         <div className="flex items-center gap-2">
           <Label className="text-xs font-medium">
-            {t("settingsAgents.scope", { defaultValue: "Scope" })}
+            {t("settingsAgents.scope")}
           </Label>
           <Badge
             variant={isWorkspaceScoped ? "default" : "secondary"}
@@ -274,11 +274,11 @@ export function AgentOverviewPanel({
         {/* Agent Directory */}
         <div className="space-y-2">
           <Label className="text-xs font-medium">
-            {t("settingsAgents.agentDirectory", { defaultValue: "Agent Directory" })}
+            {t("settingsAgents.agentDirectory")}
           </Label>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-              {agentDir || t("common.notAvailable", { defaultValue: "N/A" })}
+              {agentDir || t("settingsAgents.notAvailable")}
             </code>
             <Button
               variant="ghost"
@@ -286,7 +286,7 @@ export function AgentOverviewPanel({
               className="h-8 w-8 shrink-0"
               onClick={onOpenFolder}
               disabled={!agentDir}
-              title={t("common.openInExplorer", { defaultValue: "Open in Explorer" })}
+              title={t("settingsAgents.openInExplorer")}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
@@ -296,7 +296,7 @@ export function AgentOverviewPanel({
               className="h-8 w-8 shrink-0"
               onClick={() => handleCopy(agentDir, "agentDir")}
               disabled={!agentDir}
-              title={t("common.copyPath", { defaultValue: "Copy Path" })}
+              title={t("common.copyPath")}
             >
               {copiedPath === "agentDir" ? (
                 <Check className="h-4 w-4 text-green-500" />
@@ -310,11 +310,11 @@ export function AgentOverviewPanel({
         {/* Config Path */}
         <div className="space-y-2">
           <Label className="text-xs font-medium">
-            {t("settingsAgents.configFile", { defaultValue: "Config File" })}
+            {t("settingsAgents.configFile")}
           </Label>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-              {configPath || t("common.notAvailable", { defaultValue: "N/A" })}
+              {configPath || t("settingsAgents.notAvailable")}
             </code>
             <Button
               variant="ghost"
@@ -322,7 +322,7 @@ export function AgentOverviewPanel({
               className="h-8 w-8 shrink-0"
               onClick={() => handleCopy(configPath, "configPath")}
               disabled={!configPath}
-              title={t("common.copyPath", { defaultValue: "Copy Path" })}
+              title={t("common.copyPath")}
             >
               {copiedPath === "configPath" ? (
                 <Check className="h-4 w-4 text-green-500" />

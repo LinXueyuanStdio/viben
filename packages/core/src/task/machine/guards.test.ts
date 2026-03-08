@@ -251,3 +251,85 @@ describe("Guard backward compatibility", () => {
     });
   });
 });
+
+// =============================================================================
+// Edge Cases and Boundary Conditions
+// =============================================================================
+
+describe("Guard edge cases", () => {
+  describe("noProgress boundary conditions", () => {
+    it("returns false for currentSubtaskIndex = -1 (invalid but handled)", () => {
+      // TypeScript allows any number, so test defensive behavior
+      const context = createMockContext({ currentSubtaskIndex: -1 });
+      expect(noProgress({ context })).toBe(false);
+    });
+
+    it("returns false for very large currentSubtaskIndex", () => {
+      const context = createMockContext({ currentSubtaskIndex: 999999 });
+      expect(noProgress({ context })).toBe(false);
+    });
+  });
+
+  describe("noPlanReviewRequired edge cases", () => {
+    it("returns true for undefined requiresPlanReview (falsy)", () => {
+      const context = createMockContext({ requiresPlanReview: undefined });
+      expect(noPlanReviewRequired({ context })).toBe(true);
+    });
+
+    it("handles null requiresPlanReview as falsy", () => {
+      // @ts-expect-error - testing runtime behavior with invalid value
+      const context = createMockContext({ requiresPlanReview: null });
+      expect(noPlanReviewRequired({ context })).toBe(true);
+    });
+  });
+
+  describe("pausedFrom* with empty context", () => {
+    it("returns false when both pausedFromState and paused_snapshot are undefined", () => {
+      const context = createMockContext({
+        pausedFromState: undefined,
+        paused_snapshot: undefined,
+      });
+
+      expect(pausedFromQueue({ context })).toBe(false);
+      expect(pausedFromPlanning({ context })).toBe(false);
+      expect(pausedFromCoding({ context })).toBe(false);
+      expect(pausedFromQaReview({ context })).toBe(false);
+      expect(pausedFromQaFixing({ context })).toBe(false);
+    });
+
+    it("returns false for mismatched state type (string vs object)", () => {
+      // pausedFromState is a string, but checking for object
+      const context = createMockContext({
+        pausedFromState: "queue",
+      });
+
+      expect(pausedFromPlanning({ context })).toBe(false);
+      expect(pausedFromCoding({ context })).toBe(false);
+    });
+
+    it("returns false for mismatched state type (object vs string)", () => {
+      // pausedFromState is an object, but checking for string
+      const context = createMockContext({
+        pausedFromState: { in_progress: "coding" },
+      });
+
+      expect(pausedFromQueue({ context })).toBe(false);
+    });
+  });
+
+  describe("paused_snapshot with null from_state", () => {
+    it("handles null from_state gracefully", () => {
+      const context = createMockContext({
+        paused_snapshot: {
+          // @ts-expect-error - testing runtime behavior with invalid value
+          from_state: null,
+          subtask_index: 0,
+          paused_at: new Date().toISOString(),
+        },
+      });
+
+      expect(pausedFromQueue({ context })).toBe(false);
+      expect(pausedFromCoding({ context })).toBe(false);
+    });
+  });
+});

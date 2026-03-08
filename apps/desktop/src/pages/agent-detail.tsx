@@ -134,10 +134,17 @@ export function AgentDetailPage() {
   }, [agentId, workspace?.path]);
 
   // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
-  const agent = useMemo(() => fullAgent ? {
-    ...fullAgent,
-    path: fullAgent.config_path,
-  } : null, [fullAgent]);
+  // Note: config_path is the full path to AGENTS.md, we extract the directory from it
+  const agent = useMemo(() => {
+    if (!fullAgent) return null;
+    // Extract agent directory from config_path (remove /AGENTS.md suffix)
+    const agentDir = fullAgent.config_path?.replace(/\/AGENTS\.md$/, "") || "";
+    return {
+      ...fullAgent,
+      path: agentDir,
+      configPath: fullAgent.config_path,
+    };
+  }, [fullAgent]);
 
   // ============================================================================
   // Form state
@@ -198,13 +205,16 @@ export function AgentDetailPage() {
     return globalVibenDir ? `${globalVibenDir}/agents/${agentId}` : "";
   }, [agent?.path, isWorkspaceScoped, workspace, globalVibenDir, agentId]);
 
-  // Get config file path
+  // Get config file path (from API if available, otherwise derive from folder path)
   const configPath = useMemo(() => {
+    if (agent?.configPath) {
+      return agent.configPath;
+    }
     if (agentFolderPath) {
       return `${agentFolderPath}/AGENTS.md`;
     }
     return "";
-  }, [agentFolderPath]);
+  }, [agent?.configPath, agentFolderPath]);
 
   // Copy path to clipboard
   const handleCopyPath = useCallback(async (path: string) => {

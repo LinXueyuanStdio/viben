@@ -150,6 +150,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
                   name: { type: "string" },
                   agent_type: { type: "string" },
                   source: { type: "string", enum: ["global", "workspace"] },
+                  agent_dir: { type: "string" },
                   workspace_path: { type: "string" },
                   config_path: { type: "string" },
                   description: { type: "string" },
@@ -185,7 +186,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         name: a.name,
         agent_type: "viben",
         source,
-        workspace_path: a.path,
+        agent_dir: a.path,
+        workspace_path: a.path, // @deprecated Use agent_dir instead
         config_path: a.path ? `${a.path}/AGENTS.md` : undefined,
         description: a.description,
         model: a.model,
@@ -313,7 +315,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         name: agent.name,
         agent_type: "viben",
         source,
-        workspace_path: agent.path,
+        agent_dir: agent.path,
+        workspace_path: agent.path, // @deprecated Use agent_dir instead
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,

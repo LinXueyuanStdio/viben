@@ -232,21 +232,21 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
           return (
             <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
               <Check className="h-3 w-3" />
-              {t("settingsAgents.loggedIn", { defaultValue: "Logged in" })}
+              {t("settingsAgents.loggedIn")}
             </span>
           );
         case "INSTALLATION_FOUND":
           return (
             <span className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
               <AlertCircle className="h-3 w-3" />
-              {t("settingsAgents.notLoggedIn", { defaultValue: "Not logged in" })}
+              {t("settingsAgents.notLoggedIn")}
             </span>
           );
         case "NOT_FOUND":
           return (
             <span className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
               <AlertCircle className="h-3 w-3" />
-              {t("settingsAgents.notInstalled", { defaultValue: "Not installed" })}
+              {t("common.notInstalled")}
             </span>
           );
         default:
@@ -417,7 +417,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               {isClaudeCode && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                   <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Claude Code Options
+                    {t("settingsAgents.claudeCodeOptions")}
                   </div>
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-normal">
@@ -451,7 +451,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-1.5">
                     <Server className="h-3.5 w-3.5" />
-                    MCP Servers
+                    {t("settingsAgents.mcpServersLabel")}
                   </Label>
                   <Button variant="outline" size="sm" onClick={onConfigureMcp}>
                     {t("common.configure")}
@@ -466,7 +466,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                     ))
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noMcpServers", { defaultValue: "No servers configured" })}
+                      {t("settingsAgents.noMcpServers")}
                     </span>
                   )}
                 </div>
@@ -477,7 +477,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Skills
+                    {t("settingsAgents.skillsLabel")}
                   </Label>
                   <Button variant="outline" size="sm" onClick={onConfigureSkills}>
                     {t("common.configure")}
@@ -492,7 +492,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                     ))
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noSkills", { defaultValue: "No skills configured" })}
+                      {t("settingsAgents.noSkills")}
                     </span>
                   )}
                 </div>
@@ -515,9 +515,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 <div>
                   <div className="text-sm font-medium">MEMORY.md</div>
                   <div className="text-xs text-muted-foreground">
-                    {t("settingsAgents.memoryDescription", {
-                      defaultValue: "Long-term memory file for preferences and context",
-                    })}
+                    {t("settingsAgents.memoryDescription")}
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={onEditMemory}>

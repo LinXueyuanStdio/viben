@@ -20,6 +20,13 @@ import {
   restoreFromSnapshot,
   clearPausedSnapshot,
   setQueuedAt,
+  // Legacy deprecated functions
+  savePausedState_queue,
+  savePausedState_planning,
+  savePausedState_coding,
+  savePausedState_qaReview,
+  savePausedState_qaFixing,
+  clearPausedState,
 } from "./actions";
 import { createMockContext, createPausedContext } from "../__fixtures__/task-fixtures";
 
@@ -245,6 +252,64 @@ describe("setQueuedAt", () => {
 });
 
 // =============================================================================
+// Legacy Deprecated Actions Tests
+// =============================================================================
+
+describe("Legacy deprecated actions", () => {
+  describe("savePausedState_queue", () => {
+    it("sets pausedFromState to queue", () => {
+      const result = savePausedState_queue();
+      expect(result.pausedFromState).toBe("queue");
+    });
+
+    it("only sets pausedFromState (no snapshot)", () => {
+      const result = savePausedState_queue();
+      expect(Object.keys(result)).toEqual(["pausedFromState"]);
+    });
+  });
+
+  describe("savePausedState_planning", () => {
+    it("sets pausedFromState to in_progress.planning", () => {
+      const result = savePausedState_planning();
+      expect(result.pausedFromState).toEqual({ in_progress: "planning" });
+    });
+  });
+
+  describe("savePausedState_coding", () => {
+    it("sets pausedFromState to in_progress.coding", () => {
+      const result = savePausedState_coding();
+      expect(result.pausedFromState).toEqual({ in_progress: "coding" });
+    });
+  });
+
+  describe("savePausedState_qaReview", () => {
+    it("sets pausedFromState to in_progress.qa_review", () => {
+      const result = savePausedState_qaReview();
+      expect(result.pausedFromState).toEqual({ in_progress: "qa_review" });
+    });
+  });
+
+  describe("savePausedState_qaFixing", () => {
+    it("sets pausedFromState to in_progress.qa_fixing", () => {
+      const result = savePausedState_qaFixing();
+      expect(result.pausedFromState).toEqual({ in_progress: "qa_fixing" });
+    });
+  });
+
+  describe("clearPausedState", () => {
+    it("clears pausedFromState to undefined", () => {
+      const result = clearPausedState();
+      expect(result.pausedFromState).toBeUndefined();
+    });
+
+    it("only sets pausedFromState (no snapshot)", () => {
+      const result = clearPausedState();
+      expect(Object.keys(result)).toEqual(["pausedFromState"]);
+    });
+  });
+});
+
+// =============================================================================
 // Action Integration Tests
 // =============================================================================
 
@@ -257,6 +322,48 @@ describe("Action integration", () => {
 
     afterEach(() => {
       vi.useRealTimers();
+    });
+
+    it("correctly saves and restores queue state", () => {
+      const initialContext = createMockContext({
+        currentSubtaskIndex: 0,
+        taskId: "task_queue",
+      });
+
+      // Pause from queue
+      const pauseResult = savePausedSnapshot_queue({ context: initialContext });
+      const pausedContext = { ...initialContext, ...pauseResult };
+
+      // Verify snapshot was saved
+      expect(pausedContext.paused_snapshot?.from_state).toBe("queue");
+      expect(pausedContext.paused_snapshot?.subtask_index).toBe(0);
+
+      // Restore from snapshot
+      const restoreResult = restoreFromSnapshot({ context: pausedContext });
+      expect(restoreResult.pausedFromState).toBeUndefined();
+      expect(restoreResult.paused_snapshot).toBeUndefined();
+      expect(restoreResult.currentSubtaskIndex).toBe(0);
+    });
+
+    it("correctly saves and restores planning state", () => {
+      const initialContext = createMockContext({
+        currentSubtaskIndex: 0,
+        taskId: "task_planning",
+      });
+
+      // Pause from planning
+      const pauseResult = savePausedSnapshot_planning({ context: initialContext });
+      const pausedContext = { ...initialContext, ...pauseResult };
+
+      // Verify snapshot was saved
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "planning" });
+      expect(pausedContext.paused_snapshot?.subtask_index).toBe(0);
+
+      // Restore from snapshot
+      const restoreResult = restoreFromSnapshot({ context: pausedContext });
+      expect(restoreResult.pausedFromState).toBeUndefined();
+      expect(restoreResult.paused_snapshot).toBeUndefined();
+      expect(restoreResult.currentSubtaskIndex).toBe(0);
     });
 
     it("correctly saves and restores coding state", () => {
@@ -288,6 +395,48 @@ describe("Action integration", () => {
       expect(restoreResult.currentSubtaskIndex).toBe(3);
     });
 
+    it("correctly saves and restores qa_review state", () => {
+      const initialContext = createMockContext({
+        currentSubtaskIndex: 5,
+        taskId: "task_qa_review",
+      });
+
+      // Pause from qa_review
+      const pauseResult = savePausedSnapshot_qaReview({ context: initialContext });
+      const pausedContext = { ...initialContext, ...pauseResult };
+
+      // Verify snapshot was saved
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "qa_review" });
+      expect(pausedContext.paused_snapshot?.subtask_index).toBe(5);
+
+      // Restore from snapshot
+      const restoreResult = restoreFromSnapshot({ context: pausedContext });
+      expect(restoreResult.pausedFromState).toBeUndefined();
+      expect(restoreResult.paused_snapshot).toBeUndefined();
+      expect(restoreResult.currentSubtaskIndex).toBe(5);
+    });
+
+    it("correctly saves and restores qa_fixing state", () => {
+      const initialContext = createMockContext({
+        currentSubtaskIndex: 5,
+        taskId: "task_qa_fixing",
+      });
+
+      // Pause from qa_fixing
+      const pauseResult = savePausedSnapshot_qaFixing({ context: initialContext });
+      const pausedContext = { ...initialContext, ...pauseResult };
+
+      // Verify snapshot was saved
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "qa_fixing" });
+      expect(pausedContext.paused_snapshot?.subtask_index).toBe(5);
+
+      // Restore from snapshot
+      const restoreResult = restoreFromSnapshot({ context: pausedContext });
+      expect(restoreResult.pausedFromState).toBeUndefined();
+      expect(restoreResult.paused_snapshot).toBeUndefined();
+      expect(restoreResult.currentSubtaskIndex).toBe(5);
+    });
+
     it("correctly handles abandon (clear without restore)", () => {
       const initialContext = createMockContext({
         currentSubtaskIndex: 3,
@@ -314,6 +463,45 @@ describe("Action integration", () => {
       expect(clearedContext.paused_snapshot).toBeUndefined();
       // Note: clearPausedSnapshot doesn't modify currentSubtaskIndex
       expect(clearedContext.currentSubtaskIndex).toBe(3);
+    });
+  });
+
+  describe("legacy vs new action comparison", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-01-15T10:30:00.000Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("legacy and new actions set same pausedFromState for queue", () => {
+      const context = createMockContext({ currentSubtaskIndex: 0 });
+      const legacy = savePausedState_queue();
+      const newAction = savePausedSnapshot_queue({ context });
+
+      expect(legacy.pausedFromState).toBe("queue");
+      expect(newAction.pausedFromState).toBe("queue");
+    });
+
+    it("legacy and new actions set same pausedFromState for coding", () => {
+      const context = createMockContext({ currentSubtaskIndex: 2 });
+      const legacy = savePausedState_coding();
+      const newAction = savePausedSnapshot_coding({ context });
+
+      expect(legacy.pausedFromState).toEqual({ in_progress: "coding" });
+      expect(newAction.pausedFromState).toEqual({ in_progress: "coding" });
+    });
+
+    it("new action includes snapshot, legacy does not", () => {
+      const context = createMockContext({ currentSubtaskIndex: 2 });
+      const legacy = savePausedState_coding();
+      const newAction = savePausedSnapshot_coding({ context });
+
+      expect("paused_snapshot" in legacy).toBe(false);
+      expect(newAction.paused_snapshot).toBeDefined();
+      expect(newAction.paused_snapshot?.subtask_index).toBe(2);
     });
   });
 });
