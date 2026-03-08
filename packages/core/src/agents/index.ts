@@ -11,8 +11,6 @@ import {
   getAgentConfigPath,
   getAgentSessionsDir,
   getAgentMemoryDir,
-  getTemplatesDir,
-  getTemplateDir,
 } from "../config/paths";
 import { readYaml, writeYaml, ensureDir, fileExists } from "../config/yaml";
 import { readMarkdownConfig, writeMarkdownConfig } from "../config/markdown";
@@ -33,15 +31,6 @@ import type { AgentConfigFile, SessionFile, TemplateConfigYaml } from "./types";
 // Re-export types
 export * from "./types";
 
-// Export template management
-export {
-  TemplateManager,
-  templateManager,
-  type TemplateConfigFile,
-  type CreateTemplateOptions,
-  type ApplyTemplateOptions,
-} from "./templates";
-
 // Export memory management
 export {
   MemoryManager,
@@ -61,7 +50,6 @@ export class AgentManager {
    */
   async initialize(): Promise<void> {
     await ensureDir(getAgentsDir());
-    await ensureDir(getTemplatesDir());
   }
 
   /**
@@ -122,6 +110,8 @@ export class AgentManager {
       skills: config.skills ?? [],
       planMode: config.planMode ?? false,
       approvals: config.approvals ?? false,
+      isTemplate: config.isTemplate,
+      templateDescription: config.templateDescription,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -144,7 +134,22 @@ export class AgentManager {
     if (options.fromTemplate) {
       const template = await this.getTemplate(options.fromTemplate);
       if (template) {
-        baseConfig = template.config;
+        baseConfig = {
+          description: template.description,
+          tools: template.tools,
+          model: template.model,
+          provider: template.provider,
+          systemPrompt: template.systemPrompt,
+          appendPrompt: template.appendPrompt,
+          temperature: template.temperature,
+          maxTokens: template.maxTokens,
+          executorType: template.executorType,
+          executorConfig: template.executorConfig,
+          mcpServers: template.mcpServers,
+          skills: template.skills,
+          planMode: template.planMode,
+          approvals: template.approvals,
+        };
       }
     }
 
@@ -165,6 +170,7 @@ export class AgentManager {
       skills: options.skills ?? [],
       planMode: options.planMode ?? false,
       approvals: options.approvals ?? false,
+      isTemplate: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -194,6 +200,8 @@ export class AgentManager {
       skills: config.skills ?? [],
       planMode: config.planMode ?? false,
       approvals: config.approvals ?? false,
+      isTemplate: config.isTemplate,
+      templateDescription: config.templateDescription,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -271,6 +279,8 @@ export class AgentManager {
       skills: updates.skills ?? agent.skills,
       planMode: updates.planMode ?? agent.planMode,
       approvals: updates.approvals ?? agent.approvals,
+      isTemplate: updates.isTemplate ?? agent.isTemplate,
+      templateDescription: updates.templateDescription ?? agent.templateDescription,
       createdAt: agent.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -295,6 +305,8 @@ export class AgentManager {
       skills: config.skills ?? [],
       planMode: config.planMode ?? false,
       approvals: config.approvals ?? false,
+      isTemplate: config.isTemplate,
+      templateDescription: config.templateDescription,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -323,117 +335,156 @@ export class AgentManager {
   // ========================================================================
 
   /**
-   * List all templates
+   * List all templates (agents with isTemplate=true)
+   * Merges global templates and workspace templates if workspacePath provided
    */
-  async listTemplates(): Promise<AgentTemplate[]> {
-    const templatesDir = getTemplatesDir();
-    if (!fileExists(templatesDir)) {
-      return [];
-    }
+  async listTemplates(workspacePath?: string): Promise<Agent[]> {
+    const globalAgents = await this.listAgents();
+    const workspaceAgents = workspacePath
+      ? await this.listAgentsFromDir(join(workspacePath, ".viben", "agents"))
+      : [];
 
-    const entries = await readdir(templatesDir, { withFileTypes: true });
-    const templates: AgentTemplate[] = [];
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const template = await this.getTemplate(entry.name);
-        if (template) {
-          templates.push(template);
-        }
-      }
-    }
-
-    return templates;
+    return [...globalAgents, ...workspaceAgents]
+      .filter((agent) => agent.isTemplate === true)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   /**
-   * Get a template by ID
+   * Get a template by ID (an agent with isTemplate=true)
    */
-  async getTemplate(id: string): Promise<AgentTemplate | null> {
-    const templateDir = getTemplateDir(id);
-    const configPath = join(templateDir, "config.yaml");
-
-    if (!fileExists(configPath)) {
-      return null;
+  async getTemplate(id: string, workspacePath?: string): Promise<Agent | null> {
+    // Try workspace first
+    if (workspacePath) {
+      const agent = await this.getAgentFromDir(join(workspacePath, ".viben", "agents"), id);
+      if (agent?.isTemplate) return agent;
     }
-
-    const config = await readYaml<TemplateConfigYaml>(configPath);
-    if (!config) {
-      return null;
-    }
-
-    return {
-      id,
-      name: config.name,
-      description: config.description,
-      config: {
-        name: config.name,
-        description: config.description,
-        model: config.model,
-        provider: config.provider,
-        systemPrompt: config.systemPrompt,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-      },
-      createdAt: config.createdAt,
-    };
+    // Fall back to global
+    const agent = await this.getAgent(id);
+    return agent?.isTemplate ? agent : null;
   }
 
   /**
-   * Create a template from an agent
+   * Mark an existing agent as template
    */
-  async createTemplate(agentId: string, templateId: string): Promise<AgentTemplate> {
-    const agent = await this.getAgent(agentId);
-    if (!agent) {
-      throw new Error(`Agent "${agentId}" not found`);
+  async setAsTemplate(
+    id: string,
+    isTemplate: boolean,
+    templateDescription?: string,
+    workspacePath?: string
+  ): Promise<Agent> {
+    return this.updateAgent(id, { isTemplate, templateDescription }, workspacePath);
+  }
+
+  /**
+   * Create a new agent from a template (full config copy)
+   */
+  async createFromTemplate(
+    templateId: string,
+    newAgentId: string,
+    options: {
+      name: string;
+      basePath?: string; // workspace path, undefined for global
+    },
+    templateWorkspacePath?: string // where to find the template
+  ): Promise<Agent> {
+    const template = await this.getTemplate(templateId, templateWorkspacePath);
+    if (!template) {
+      throw new Error(`Template "${templateId}" not found`);
     }
 
-    const templateDir = getTemplateDir(templateId);
-    if (fileExists(templateDir)) {
-      throw new Error(`Template "${templateId}" already exists`);
+    // Determine target directory
+    const targetDir = options.basePath
+      ? join(options.basePath, ".viben", "agents")
+      : getAgentsDir();
+
+    const agentDir = join(targetDir, newAgentId);
+    if (fileExists(agentDir)) {
+      throw new Error(`Agent "${newAgentId}" already exists`);
     }
 
     const now = new Date().toISOString();
-    const config = {
-      name: agent.name,
-      description: agent.description,
-      model: agent.model,
-      provider: agent.provider,
-      systemPrompt: agent.systemPrompt,
-      temperature: agent.temperature,
-      maxTokens: agent.maxTokens,
+    const config: AgentConfigFile = {
+      name: options.name,
+      description: template.description,
+      tools: template.tools,
+      model: template.model,
+      provider: template.provider,
+      appendPrompt: template.appendPrompt,
+      temperature: template.temperature,
+      maxTokens: template.maxTokens,
+      executorType: template.executorType,
+      executorConfig: template.executorConfig,
+      mcpServers: template.mcpServers,
+      skills: template.skills,
+      planMode: template.planMode,
+      approvals: template.approvals,
+      isTemplate: false, // New agent is NOT a template
       createdAt: now,
+      updatedAt: now,
     };
 
-    await ensureDir(templateDir);
-    await writeYaml(join(templateDir, "config.yaml"), config);
+    await ensureDir(agentDir);
+    await writeMarkdownConfig(join(agentDir, "AGENTS.md"), config, template.systemPrompt || "");
+    await ensureDir(join(agentDir, ".agent_sessions"));
+    await ensureDir(join(agentDir, "memory"));
 
-    return {
-      id: templateId,
-      name: config.name,
-      description: config.description,
-      config: {
-        name: config.name,
-        description: config.description,
-        model: config.model,
-        provider: config.provider,
-        systemPrompt: config.systemPrompt,
-        temperature: config.temperature,
-        maxTokens: config.maxTokens,
-      },
-      createdAt: now,
-    };
+    return (await this.getAgentFromDir(targetDir, newAgentId)) as Agent;
   }
 
   /**
-   * Create an agent from a template
+   * Promote a workspace template to global
    */
-  async createAgentFromTemplate(templateId: string, agentId: string): Promise<Agent> {
-    return this.createAgent({
-      id: agentId,
-      name: agentId,
-      fromTemplate: templateId,
-    });
+  async promoteToGlobal(
+    workspacePath: string,
+    agentId: string,
+    newGlobalId?: string
+  ): Promise<Agent> {
+    const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
+    const agent = await this.getAgentFromDir(workspaceAgentsDir, agentId);
+
+    if (!agent) {
+      throw new Error(`Agent "${agentId}" not found in workspace`);
+    }
+    if (!agent.isTemplate) {
+      throw new Error(`Agent "${agentId}" is not a template`);
+    }
+
+    const globalId = newGlobalId || agentId;
+    const globalDir = getAgentDir(globalId);
+
+    if (fileExists(globalDir)) {
+      throw new Error(`Global agent "${globalId}" already exists`);
+    }
+
+    // Copy to global
+    const now = new Date().toISOString();
+    const config: AgentConfigFile = {
+      name: agent.name,
+      description: agent.description,
+      tools: agent.tools,
+      model: agent.model,
+      provider: agent.provider,
+      appendPrompt: agent.appendPrompt,
+      temperature: agent.temperature,
+      maxTokens: agent.maxTokens,
+      executorType: agent.executorType,
+      executorConfig: agent.executorConfig,
+      mcpServers: agent.mcpServers,
+      skills: agent.skills,
+      planMode: agent.planMode,
+      approvals: agent.approvals,
+      isTemplate: true,
+      templateDescription: agent.templateDescription,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await ensureDir(globalDir);
+    await writeMarkdownConfig(getAgentConfigPath(globalId), config, agent.systemPrompt || "");
+    await ensureDir(getAgentSessionsDir(globalId));
+    await ensureDir(getAgentMemoryDir(globalId));
+
+    return (await this.getAgent(globalId)) as Agent;
   }
 
   // ========================================================================
@@ -662,6 +713,8 @@ export class AgentManager {
       skills: config.skills ?? [],
       planMode: config.planMode ?? false,
       approvals: config.approvals ?? false,
+      isTemplate: config.isTemplate,
+      templateDescription: config.templateDescription,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -700,6 +753,8 @@ export class AgentManager {
       skills: updates.skills ?? agent.skills,
       planMode: updates.planMode ?? agent.planMode,
       approvals: updates.approvals ?? agent.approvals,
+      isTemplate: updates.isTemplate ?? agent.isTemplate,
+      templateDescription: updates.templateDescription ?? agent.templateDescription,
       createdAt: agent.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -724,6 +779,8 @@ export class AgentManager {
       skills: config.skills ?? [],
       planMode: config.planMode ?? false,
       approvals: config.approvals ?? false,
+      isTemplate: config.isTemplate,
+      templateDescription: config.templateDescription,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };

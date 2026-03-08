@@ -16,12 +16,8 @@ import {
   Loader2,
   Search,
   ArrowLeft,
-  Sparkles,
-  Workflow,
-  Code2,
-  ChevronDown,
   Terminal,
-  MessageSquare,
+  LayoutTemplate,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,8 +34,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
@@ -58,26 +56,7 @@ import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types";
 import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
-// ============================================================================
-// Agent Templates
-// ============================================================================
-
-interface AgentTemplate {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-}
-
-// Template definitions - names/descriptions are i18n keys
-const AGENT_TEMPLATE_DEFS = [
-  { id: "blank", nameKey: "settingsAgents.templates.blank", descKey: "settingsAgents.templates.blankDesc", icon: <Plus className="h-5 w-5" />, color: "bg-muted" },
-  { id: "general", nameKey: "settingsAgents.templates.general", descKey: "settingsAgents.templates.generalDesc", icon: <Sparkles className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-500" },
-  { id: "task", nameKey: "settingsAgents.templates.task", descKey: "settingsAgents.templates.taskDesc", icon: <Workflow className="h-5 w-5" />, color: "bg-blue-500/10 text-blue-500" },
-  { id: "roleplay", nameKey: "settingsAgents.templates.roleplay", descKey: "settingsAgents.templates.roleplayDesc", icon: <MessageSquare className="h-5 w-5" />, color: "bg-green-500/10 text-green-500" },
-  { id: "coding", nameKey: "settingsAgents.templates.coding", descKey: "settingsAgents.templates.codingDesc", icon: <Code2 className="h-5 w-5" />, color: "bg-orange-500/10 text-orange-500" },
-] as const;
+import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/lib/gateway";
 
 // ============================================================================
 // Main Component
@@ -113,6 +92,9 @@ interface ListItem {
   max_tokens?: number;
   created_at?: string;
   updated_at?: string;
+  // Template fields
+  isTemplate?: boolean;
+  templateDescription?: string;
 }
 
 // ============================================================================
@@ -141,14 +123,27 @@ export function WorkspaceAgentsPage({
   const navigate = useNavigate();
 
   // Translate agent templates
-  const AGENT_TEMPLATES: AgentTemplate[] = useMemo(() =>
-    AGENT_TEMPLATE_DEFS.map(def => ({
-      id: def.id,
-      name: t(def.nameKey),
-      description: t(def.descKey),
-      icon: def.icon,
-      color: def.color,
-    })), [t]);
+  // API templates from gateway
+  const [apiTemplates, setApiTemplates] = useState<GatewayAgentTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // Load templates from API
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const client = getGatewayClient();
+        const templates = await client.listAgentTemplates();
+        setApiTemplates(templates);
+      } catch (err) {
+        console.error("Failed to load templates:", err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    loadTemplates();
+  }, []);
+
   const { workspaceId: routeWorkspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
@@ -181,7 +176,7 @@ export function WorkspaceAgentsPage({
   const [selectedItemType, setSelectedItemType] = useState<"executor" | "agent" | "workspace-agent">("agent");
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<AgentTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<GatewayAgentTemplate | null>(null);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentDescription, setNewAgentDescription] = useState("");
   const [creating, setCreating] = useState(false);
@@ -222,11 +217,14 @@ export function WorkspaceAgentsPage({
     return agentListAgents.map((a) => ({
       id: a.id,
       name: a.name,
-      description: undefined, // Will load on select
+      description: a.description || undefined, // Show description if available
       type: a.source === "workspace" ? "workspace-agent" as const : "agent" as const,
       source: a.source,
       path: a.config_path,
       workspacePath: a.config_path ? a.config_path.replace(/\/[^/]+\.json$/, "/") : undefined,
+      // Template fields (from new API, may be undefined)
+      isTemplate: (a as any).is_template,
+      templateDescription: (a as any).template_description,
     }));
   }, [agentListAgents]);
 
@@ -337,11 +335,11 @@ export function WorkspaceAgentsPage({
     }
   }, [filteredItems, selectedItemId, selectedItemType]);
 
-  // Open create dialog with template
-  const openCreateDialog = (template?: AgentTemplate) => {
-    setSelectedTemplate(template || AGENT_TEMPLATES[0]);
-    setNewAgentName(template && template.id !== "blank" ? template.name : "");
-    setNewAgentDescription("");
+  // Open create dialog - blank or with template
+  const openCreateDialog = (template?: GatewayAgentTemplate | null) => {
+    setSelectedTemplate(template || null);
+    setNewAgentName(template ? template.name : "");
+    setNewAgentDescription(template?.description || "");
     setCreateLocation("workspace");
     setCreateDialogOpen(true);
   };
@@ -357,6 +355,8 @@ export function WorkspaceAgentsPage({
         description: newAgentDescription.trim() || undefined,
         // Pass workspace path if creating in workspace, undefined for global
         base_path: isWorkspaceAgent ? workspace.path : undefined,
+        // Pass template ID if creating from template
+        from_template: selectedTemplate?.id,
       });
       // Refresh the agent list to show the new agent
       await refreshAgentList();
@@ -396,6 +396,39 @@ export function WorkspaceAgentsPage({
       }
     } catch (err) {
       console.error("Failed to delete agent:", err);
+    }
+  };
+
+  // Toggle template status
+  const handleToggleTemplate = async (agentId: string, isCurrentlyTemplate: boolean) => {
+    try {
+      const agent = agentListAgents.find((a) => a.id === agentId);
+      if (!agent) return;
+
+      await updateAgent(agentId, {
+        is_template: !isCurrentlyTemplate,
+        workspace_path: agent.source === "workspace" ? workspace?.path : undefined,
+      });
+
+      await refreshAgentList();
+    } catch (err) {
+      console.error("Failed to toggle template:", err);
+    }
+  };
+
+  // Promote workspace template to global
+  const handlePromoteToGlobal = async (agentId: string, agentName: string) => {
+    if (!workspace?.path) return;
+    if (!confirm(t("agent.promoteTemplateConfirm", `将 "${agentName}" 提升为全局模板？`))) return;
+    try {
+      const client = getGatewayClient();
+      // Call the promote endpoint
+      await client.promoteTemplateToGlobal(agentId, {
+        workspace_path: workspace.path,
+      });
+      await refreshAgentList();
+    } catch (err) {
+      console.error("Failed to promote template:", err);
     }
   };
 
@@ -484,45 +517,71 @@ export function WorkspaceAgentsPage({
       {/* WeChat-style layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Agent List */}
-        <div className="w-80 border-r flex flex-col bg-muted/20">
+        <div className="w-60 border-r flex flex-col bg-muted/20">
           {/* Search and Create */}
-          <div className="p-3 border-b space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t("common.search")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="w-full" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("settingsAgents.add")}
-                  <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64">
-                {AGENT_TEMPLATES.map((template, index) => (
-                  <div key={template.id}>
-                    {index === 1 && <DropdownMenuSeparator />}
-                    <DropdownMenuItem onClick={() => openCreateDialog(template)}>
-                      <span className={cn("mr-2 p-1.5 rounded", template.color)}>
-                        {template.icon}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{template.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {template.description}
+          <div className="px-3 py-2.5 border-b h-[57px] flex items-center">
+            <div className="flex items-center gap-2 flex-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t("common.search")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => openCreateDialog(null)}>
+                  <Bot className="h-4 w-4 mr-2" />
+                  {t("agent.createAgent", "创建智能体")}
+                </DropdownMenuItem>
+                {apiTemplates.length > 0 && (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <LayoutTemplate className="h-4 w-4 mr-2" />
+                      {t("settingsAgents.createFromTemplate", "从模板创建")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-64">
+                      {loadingTemplates ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         </div>
-                      </div>
-                    </DropdownMenuItem>
-                  </div>
-                ))}
+                      ) : (
+                        apiTemplates.map((template) => {
+                          // Determine source from template config or ID
+                          const isGlobal = !(template as any).source || (template as any).source === "global";
+                          return (
+                            <DropdownMenuItem key={template.id} onClick={() => openCreateDialog(template)}>
+                              <LayoutTemplate className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{template.name}</span>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                    {isGlobal ? t("agent.globalTemplate", "全局") : t("agent.workspaceTemplate", "工作区")}
+                                  </Badge>
+                                </div>
+                                {template.description && (
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {template.description}
+                                  </div>
+                                )}
+                              </div>
+                            </DropdownMenuItem>
+                          );
+                        })
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )}
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* List */}
@@ -601,6 +660,13 @@ export function WorkspaceAgentsPage({
                     {filteredAllAgents.map((item) => {
                       const isDefault = item.id === defaultAgentId;
                       const isWorkspaceAgent = item.type === "workspace-agent";
+                      const isTemplate = item.isTemplate || false;
+
+                      // Build badges array
+                      const badges: Array<{ label: string; variant: "primary" | "secondary" | "default" }> = [];
+                      if (isTemplate) {
+                        badges.push({ label: t("agent.template", "模板"), variant: "secondary" });
+                      }
 
                       return (
                         <AgentListItem
@@ -608,7 +674,7 @@ export function WorkspaceAgentsPage({
                           agent={{
                             id: item.id,
                             name: item.name,
-                            description: item.description,
+                            description: item.templateDescription || item.description,
                           }}
                           isSelected={selectedItemId === item.id && selectedItemType === item.type}
                           isDefault={isDefault}
@@ -616,6 +682,7 @@ export function WorkspaceAgentsPage({
                             type: isWorkspaceAgent ? "workspace" : "global",
                             path: item.workspacePath,
                           } : undefined}
+                          badges={badges.length > 0 ? badges : undefined}
                           onSelect={() => {
                             setSelectedItemId(item.id);
                             setSelectedItemType(item.type);
@@ -624,6 +691,8 @@ export function WorkspaceAgentsPage({
                           onCopy={() => handleCopyAgent(item.id, item.name)}
                           onSetDefault={!isDefault && !isWorkspaceAgent ? () => setDefaultAgent(item.id) : undefined}
                           onDelete={() => handleDeleteAgent(item.id, item.name)}
+                          onToggleTemplate={() => handleToggleTemplate(item.id, isTemplate)}
+                          onPromoteToGlobal={isTemplate && isWorkspaceAgent ? () => handlePromoteToGlobal(item.id, item.name) : undefined}
                         />
                       );
                     })}
@@ -645,6 +714,7 @@ export function WorkspaceAgentsPage({
                 id: m.id,
                 name: m.name,
                 provider: m.provider_id,
+                provider_id: m.provider_id,
                 enabled: m.is_available,
               }))}
               onUpdate={updateAgent}
@@ -676,7 +746,7 @@ export function WorkspaceAgentsPage({
           <DialogHeader>
             <DialogTitle>{t("settingsAgents.addAgent")}</DialogTitle>
             <DialogDescription>
-              {selectedTemplate?.id !== "blank"
+              {selectedTemplate
                 ? t("settingsAgents.createFromTemplateDescription")
                 : t("settingsAgents.addDescription")}
             </DialogDescription>
@@ -684,14 +754,23 @@ export function WorkspaceAgentsPage({
 
           <div className="space-y-4 py-4">
             {/* Selected Template */}
-            {selectedTemplate && selectedTemplate.id !== "blank" && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <div className={cn("p-2 rounded-lg", selectedTemplate.color)}>
-                  {selectedTemplate.icon}
+            {selectedTemplate && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+                <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                  <LayoutTemplate className="h-5 w-5 text-primary" />
                 </div>
-                <div>
-                  <p className="font-medium">{selectedTemplate.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium">{selectedTemplate.name}</p>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                      {!(selectedTemplate as any).source || (selectedTemplate as any).source === "global"
+                        ? t("agent.globalTemplate", "全局")
+                        : t("agent.workspaceTemplate", "工作区")}
+                    </Badge>
+                  </div>
+                  {selectedTemplate.description && (
+                    <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+                  )}
                 </div>
               </div>
             )}

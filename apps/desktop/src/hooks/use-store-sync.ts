@@ -3,7 +3,7 @@ import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
 import { getGatewayClient } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
 import { useMcpWebSocket } from "./use-mcp-websocket";
-import type { McpServerInstance, McpServerStatusInfo } from "@/types";
+import type { McpServerInstance } from "@/types";
 import type { McpConfigChangedData } from "@/lib/gateway/types";
 
 /**
@@ -11,10 +11,8 @@ import type { McpConfigChangedData } from "@/lib/gateway/types";
  */
 const STORE_SYNC_EVENT = "store-sync-update";
 
-/** Debounce time for mcpServers changes (more important, shorter delay) */
+/** Debounce time for mcpServers changes */
 const DEBOUNCE_SERVERS = 500;
-/** Debounce time for mcpServerStatuses changes (less critical, longer delay) */
-const DEBOUNCE_STATUSES = 5000;
 
 interface StoreSyncPayload {
   /** Timestamp when the update was made */
@@ -28,10 +26,13 @@ interface StoreSyncPayload {
 /**
  * MCP Servers state persisted to file
  * This is the source of truth stored in ~/.viben/mcp-servers.json
+ *
+ * NOTE: We intentionally do NOT persist mcpServerStatuses.
+ * Status info is transient, frequently updated by WebSocket events.
+ * Persisting it would create a feedback loop.
  */
 interface McpServersFileState {
   mcpServers: McpServerInstance[];
-  mcpServerStatuses: Record<string, McpServerStatusInfo>;
   lastUpdated: number;
 }
 
@@ -132,14 +133,9 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       const fileState = await readServersFromFile();
 
       if (fileState) {
-        // Update MCP servers
+        // Update MCP servers only (statuses are not persisted)
         if (fileState.mcpServers && Array.isArray(fileState.mcpServers)) {
           useAppStore.setState({ mcpServers: fileState.mcpServers });
-        }
-
-        // Update MCP server statuses
-        if (fileState.mcpServerStatuses) {
-          useAppStore.setState({ mcpServerStatuses: fileState.mcpServerStatuses });
         }
       }
 
@@ -191,9 +187,9 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       const store = useAppStore.getState();
 
       // Save to file (returns false if content unchanged)
+      // NOTE: Only mcpServers is persisted, not statuses
       const didWrite = await writeServersToFile({
         mcpServers: store.mcpServers,
-        mcpServerStatuses: store.mcpServerStatuses,
         lastUpdated: timestamp,
       });
 
@@ -216,10 +212,9 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
   );
 
   const serversTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const statusesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
-   * Debounced save for mcpServers (shorter delay)
+   * Debounced save for mcpServers
    */
   const debouncedSaveServers = useCallback(() => {
     if (serversTimeoutRef.current) {
@@ -230,24 +225,15 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     }, DEBOUNCE_SERVERS);
   }, [saveAndEmit]);
 
-  /**
-   * Debounced save for mcpServerStatuses (longer delay)
-   */
-  const debouncedSaveStatuses = useCallback(() => {
-    if (statusesTimeoutRef.current) {
-      clearTimeout(statusesTimeoutRef.current);
-    }
-    statusesTimeoutRef.current = setTimeout(() => {
-      saveAndEmit("mcpServerStatuses");
-    }, DEBOUNCE_STATUSES);
-  }, [saveAndEmit]);
-
   // Load initial state from Gateway file on mount (always)
   useEffect(() => {
     loadFromFile();
   }, [loadFromFile]);
 
   // Watch for mcpServers changes and save to file
+  // NOTE: We intentionally do NOT sync mcpServerStatuses to file.
+  // Status info is transient and frequently updated by WebSocket events.
+  // Syncing it would create a loop: WS event -> status update -> file write -> WS event
   useEffect(() => {
     // Skip if we haven't loaded from file yet
     if (!hasLoadedFromFile.current) {
@@ -262,22 +248,6 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       }
     };
   }, [mcpServers, debouncedSaveServers]);
-
-  // Watch for mcpServerStatuses changes (with longer debounce)
-  useEffect(() => {
-    // Skip if we haven't loaded from file yet
-    if (!hasLoadedFromFile.current) {
-      return;
-    }
-
-    debouncedSaveStatuses();
-
-    return () => {
-      if (statusesTimeoutRef.current) {
-        clearTimeout(statusesTimeoutRef.current);
-      }
-    };
-  }, [mcpServerStatuses, debouncedSaveStatuses]);
 
   // Listen for sync events from other windows (Tauri events as backup)
   useEffect(() => {

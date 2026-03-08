@@ -81,6 +81,10 @@ export interface TaskLogsTabProps {
   className?: string;
   onRefresh?: () => void;
   autoScroll?: boolean;
+  /** When true, enables auto-refresh polling for live updates */
+  isTaskRunning?: boolean;
+  /** Polling interval in ms (default: 3000) */
+  pollingInterval?: number;
 }
 
 /**
@@ -334,10 +338,13 @@ export function TaskLogsTab({
   className,
   onRefresh,
   autoScroll = true,
+  isTaskRunning = false,
+  pollingInterval = 3000,
 }: TaskLogsTabProps) {
   void _taskId; // Reserved for future use
   const { t } = useTranslation();
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [isLiveUpdating, setIsLiveUpdating] = React.useState(false);
 
   // Auto-scroll to bottom when new logs arrive
   React.useEffect(() => {
@@ -345,6 +352,24 @@ export function TaskLogsTab({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [logs?.phases, autoScroll]);
+
+  // Auto-refresh when task is running (polling-based live updates)
+  React.useEffect(() => {
+    if (!isTaskRunning || !onRefresh) {
+      setIsLiveUpdating(false);
+      return;
+    }
+
+    setIsLiveUpdating(true);
+    const intervalId = setInterval(() => {
+      onRefresh();
+    }, pollingInterval);
+
+    return () => {
+      clearInterval(intervalId);
+      setIsLiveUpdating(false);
+    };
+  }, [isTaskRunning, onRefresh, pollingInterval]);
 
   // Loading state
   if (isLoading) {
@@ -404,6 +429,15 @@ export function TaskLogsTab({
   return (
     <ScrollArea className={cn("h-full", className)} ref={scrollRef}>
       <div className="p-4 space-y-3">
+        {/* Live update indicator */}
+        {isLiveUpdating && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-info/10 rounded-lg border border-info/20 text-sm">
+            <Loader2 className="h-3.5 w-3.5 text-info animate-spin" />
+            <span className="text-info">
+              {t("workspace.logsTab.liveUpdating", "Live updating...")}
+            </span>
+          </div>
+        )}
         {logs.phases.map((phase, index) => (
           <PhaseSection
             key={phase.id}

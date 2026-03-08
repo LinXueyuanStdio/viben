@@ -39,11 +39,15 @@ import {
   cn,
 } from "@viben/ui";
 
+import { filterModelsByExecutor, getProviderConstraintDescription } from "@/lib/executor-constraints";
+
 // Types for available agents and models
 export interface AvailableAgent {
   id: string;
   name: string;
   description?: string;
+  /** Executor type for the agent (e.g., "CLAUDE_CODE", "CODEX") */
+  executorType?: string;
 }
 
 export interface AvailableModel {
@@ -51,6 +55,8 @@ export interface AvailableModel {
   name: string;
   description?: string;
   provider?: string;
+  /** Provider ID for filtering (e.g., "anthropic", "openai") */
+  provider_id?: string;
 }
 
 // Branch options (can be extended to be dynamic later)
@@ -159,10 +165,24 @@ export function CreateTaskDialog({
   }, [handleSubmit]);
 
   const selectedAgent = availableAgents.find(a => a.id === agentId);
-  const selectedModel = availableModels.find(m => m.id === modelId);
+
+  // Filter models by selected agent's executor type
+  const filteredModels = filterModelsByExecutor(availableModels, selectedAgent?.executorType);
+  const selectedModel = filteredModels.find(m => m.id === modelId);
+  const providerConstraintHint = getProviderConstraintDescription(selectedAgent?.executorType);
+
+  // Auto-select first available model when agent changes and current model is not valid
+  useEffect(() => {
+    if (selectedAgent?.executorType && filteredModels.length > 0) {
+      const currentModelValid = filteredModels.some(m => m.id === modelId);
+      if (!currentModelValid) {
+        setModelId(filteredModels[0].id);
+      }
+    }
+  }, [selectedAgent?.executorType, filteredModels, modelId]);
 
   const hasNoAgents = availableAgents.length === 0;
-  const hasNoModels = availableModels.length === 0;
+  const hasNoModels = filteredModels.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -255,36 +275,43 @@ export function CreateTaskDialog({
                 </SelectContent>
               </Select>
 
-              {/* Model Selector */}
-              <Select value={modelId} onValueChange={setModelId} disabled={hasNoModels}>
-                <SelectTrigger
-                  className={cn(
-                    "h-10 bg-muted/40 border-border/40 hover:bg-muted/60 transition-colors",
-                    hasNoModels && "opacity-60"
-                  )}
-                >
-                  <div className="flex items-center gap-2 text-sm truncate">
-                    <Sparkles className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    {hasNoModels ? (
-                      <span className="text-muted-foreground">{t("chat.noModels", "No models")}</span>
-                    ) : (
-                      <span className="truncate">{selectedModel?.name || t("workspace.createTaskDialog.selectModel", "Select model")}</span>
+              {/* Model Selector - filtered by agent's executor type */}
+              <div className="space-y-1">
+                <Select value={modelId} onValueChange={setModelId} disabled={hasNoModels}>
+                  <SelectTrigger
+                    className={cn(
+                      "h-10 bg-muted/40 border-border/40 hover:bg-muted/60 transition-colors",
+                      hasNoModels && "opacity-60"
                     )}
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {availableModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      <div className="flex items-center justify-between gap-3 w-full">
-                        <span>{model.name}</span>
-                        {model.provider && (
-                          <span className="text-xs text-muted-foreground">{model.provider}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  >
+                    <div className="flex items-center gap-2 text-sm truncate">
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      {hasNoModels ? (
+                        <span className="text-muted-foreground">{t("chat.noModels", "No models")}</span>
+                      ) : (
+                        <span className="truncate">{selectedModel?.name || t("workspace.createTaskDialog.selectModel", "Select model")}</span>
+                      )}
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredModels.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex items-center justify-between gap-3 w-full">
+                          <span>{model.name}</span>
+                          {model.provider && (
+                            <span className="text-xs text-muted-foreground">{model.provider}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {providerConstraintHint && (
+                  <p className="text-xs text-muted-foreground px-1">
+                    {providerConstraintHint}
+                  </p>
+                )}
+              </div>
 
               {/* Branch Selector */}
               <Select value={branch} onValueChange={setBranch}>

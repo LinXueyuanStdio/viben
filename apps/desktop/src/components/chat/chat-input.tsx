@@ -42,6 +42,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -239,7 +240,7 @@ export function ChatInput({
   // Determine effective agents/models based on props vs global config
   // Props take precedence if provided, otherwise use global config
   const agents = propAgents ?? (useGlobalConfig ? chatConfig.agents : []);
-  const models = propModels ?? (useGlobalConfig ? chatConfig.models : []);
+  const allModels = propModels ?? (useGlobalConfig ? chatConfig.models : []);
   const selectedAgentId = propSelectedAgentId ?? (useGlobalConfig ? chatConfig.selectedAgentId : null);
   const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
   const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
@@ -249,6 +250,8 @@ export function ChatInput({
   const executors = _propExecutors ?? [];
   const selectedExecutor = _propSelectedExecutor ?? "CLAUDE_CODE";
   const onExecutorChange = _propOnExecutorChange;
+  // Filter models by executor type constraints
+  const models = filterModelsByExecutor(allModels, selectedExecutor);
 
   // Determine if selectors should be shown based on global config visibility
   // Only apply visibility rules when useGlobalConfig is true and no prop override

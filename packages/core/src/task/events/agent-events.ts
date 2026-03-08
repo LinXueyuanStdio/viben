@@ -291,23 +291,22 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when PR is created
+   * Emit when task is cancelled
    */
-  async emitCreatePR(
-    options: AgentEventOptions & { prUrl?: string; prNumber?: number }
+  async emitCancel(
+    options: AgentEventOptions & { reason?: string }
   ): Promise<AgentEventResult> {
-    return this.emit("CREATE_PR", {
+    return this.emit("CANCEL", {
       ...options,
       payload: {
         ...options.payload,
-        prUrl: options.prUrl,
-        prNumber: options.prNumber,
+        reason: options.reason,
       },
     });
   }
 
   /**
-   * Emit when retrying after error
+   * Emit when retrying after failure
    */
   async emitRetry(
     options: AgentEventOptions & { retryCount?: number }

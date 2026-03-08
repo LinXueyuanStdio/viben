@@ -49,6 +49,10 @@ export interface AgentResponse {
   plan_mode?: boolean;
   /** Approvals (defaults to false if omitted) */
   approvals?: boolean;
+  /** Whether this agent is marked as a template */
+  is_template?: boolean;
+  /** Template description for selection UI */
+  template_description?: string;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +76,10 @@ export interface UpdateAgentOptions {
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
+  /** Whether this agent is marked as a template */
+  is_template?: boolean;
+  /** Template description for selection UI */
+  template_description?: string;
   /** Workspace path for workspace-scoped agents */
   workspace_path?: string;
 }
@@ -88,7 +96,10 @@ export interface DefaultAgentResponse {
 // Agent Template Types
 // ============================================================================
 
-/** Agent template */
+/**
+ * Agent template (now unified with Agent)
+ * @deprecated Templates are now just Agent with is_template=true. Use AgentResponse instead.
+ */
 export interface AgentTemplate {
   id: string;
   name: string;
@@ -100,10 +111,16 @@ export interface AgentTemplate {
 /** @deprecated Use AgentTemplate instead */
 export type VibenAgentTemplate = AgentTemplate;
 
-/** Response for listing templates */
+/** Response for listing templates (now returns full Agent objects) */
 export interface ListTemplatesResponse {
-  templates: AgentTemplate[];
+  templates: AgentResponse[];
   total: number;
+}
+
+/** Request to promote workspace template to global */
+export interface PromoteTemplateRequest {
+  workspace_path: string;
+  new_id?: string;
 }
 
 // ============================================================================

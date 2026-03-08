@@ -13,7 +13,7 @@ import {
   outputKeyValue,
   outputSuccess,
 } from "../lib";
-import { agentManager, templateManager, memoryManager } from "../../agents";
+import { agentManager, memoryManager } from "../../agents";
 import { configManager } from "../../config";
 import {
   EXECUTOR_TYPES,
@@ -23,7 +23,7 @@ import {
   createChatProxyAsync,
   chatProxyFactory,
 } from "../../executors";
-import type { ExecutorType } from "../../types";
+import type { ExecutorType, Agent, AgentConfig } from "../../types";
 import type { ChatFormat } from "../../executors";
 
 /**
@@ -48,33 +48,66 @@ export function registerAgentCommand(program: Command): void {
   agent
     .command("list")
     .description("List all agents")
-    .action(async () => {
+    .option("--templates", "List only templates")
+    .option("-w, --workspace <path>", "Include workspace agents from path")
+    .action(async (options: { templates?: boolean; workspace?: string }) => {
       const ctx = getOutputContext(program);
       try {
-        const agents = await agentManager.listAgents();
+        let agents: Agent[];
+
+        if (options.templates) {
+          // List templates only (global + workspace if specified)
+          agents = await agentManager.listTemplates(options.workspace);
+        } else {
+          // List all agents
+          agents = await agentManager.listAgents();
+        }
+
         const defaultAgentId = await configManager.getDefaultAgent();
 
         output(ctx, successResponse({ agents, defaultAgentId }), () => {
           if (agents.length === 0) {
-            console.log(chalk.yellow("No agents found"));
-            console.log(
-              chalk.gray('Use "viben agent create <name>" to create one')
-            );
+            if (options.templates) {
+              console.log(chalk.yellow("No templates found"));
+              console.log(
+                chalk.gray('Use "viben agent update <agent-id> --is-template true" to create one')
+              );
+            } else {
+              console.log(chalk.yellow("No agents found"));
+              console.log(
+                chalk.gray('Use "viben agent create <name>" to create one')
+              );
+            }
             return;
           }
 
-          outputTable(
-            ctx,
-            ["ID", "Name", "Executor", "Model", "Default", "Path"],
-            agents.map((a) => [
-              a.id,
-              a.name,
-              a.executorType || "-",
-              a.model || "-",
-              a.id === defaultAgentId ? chalk.green("*") : "",
-              a.path || "-",
-            ])
-          );
+          const headers = options.templates
+            ? ["ID", "Name", "Executor", "Model", "Description"]
+            : ["ID", "Name", "Executor", "Model", "Template", "Default", "Path"];
+
+          const rows = agents.map((a) => {
+            if (options.templates) {
+              return [
+                a.id,
+                a.name,
+                a.executorType || "-",
+                a.model || "-",
+                a.templateDescription || a.description || "-",
+              ];
+            } else {
+              return [
+                a.id,
+                a.name,
+                a.executorType || "-",
+                a.model || "-",
+                a.isTemplate ? chalk.blue("✓") : "",
+                a.id === defaultAgentId ? chalk.green("*") : "",
+                a.path || "-",
+              ];
+            }
+          });
+
+          outputTable(ctx, headers, rows);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -100,6 +133,7 @@ export function registerAgentCommand(program: Command): void {
     .option("--max-tokens <tokens>", "Max output tokens", parseInt)
     .option("--plan-mode", "Enable plan mode (Claude Code)")
     .option("--approvals", "Enable approvals (Claude Code)")
+    .option("-w, --workspace <path>", "Create in workspace instead of global")
     .action(async (name, options) => {
       const ctx = getOutputContext(program);
       try {
@@ -115,23 +149,64 @@ export function registerAgentCommand(program: Command): void {
           options.executorType = upperType as ExecutorType;
         }
 
-        const agent = await agentManager.createAgent({
-          name,
-          description: options.description,
-          model: options.model,
-          provider: options.provider,
-          executorType: options.executorType,
-          systemPrompt: options.systemPrompt,
-          appendPrompt: options.appendPrompt,
-          temperature: options.temperature,
-          maxTokens: options.maxTokens,
-          planMode: options.planMode,
-          approvals: options.approvals,
-          fromTemplate: options.fromTemplate,
-        });
+        let agent: Agent;
+
+        // If creating from template with workspace option, use createFromTemplate
+        if (options.fromTemplate && options.workspace) {
+          // Generate ID from name
+          const newId = name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 50) || `agent-${Date.now()}`;
+          agent = await agentManager.createFromTemplate(
+            options.fromTemplate,
+            newId,
+            { name, basePath: options.workspace },
+            options.workspace // also search template in workspace
+          );
+        } else if (options.fromTemplate) {
+          // Create from template globally
+          const newId = name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 50) || `agent-${Date.now()}`;
+          agent = await agentManager.createFromTemplate(
+            options.fromTemplate,
+            newId,
+            { name }
+          );
+        } else {
+          // Regular creation (currently only supports global)
+          if (options.workspace) {
+            throw new Error(
+              "Creating non-template agents in workspace is not yet supported. " +
+              "Use --from-template to create from an existing template."
+            );
+          }
+          agent = await agentManager.createAgent({
+            name,
+            description: options.description,
+            model: options.model,
+            provider: options.provider,
+            executorType: options.executorType,
+            systemPrompt: options.systemPrompt,
+            appendPrompt: options.appendPrompt,
+            temperature: options.temperature,
+            maxTokens: options.maxTokens,
+            planMode: options.planMode,
+            approvals: options.approvals,
+          });
+        }
 
         output(ctx, successResponse({ agent }), () => {
           outputSuccess(ctx, `Created agent: ${agent.id}`);
+          if (options.workspace) {
+            console.log(chalk.gray(`Location: workspace (${options.workspace})`));
+          } else {
+            console.log(chalk.gray("Location: global"));
+          }
           if (ctx.verbose) {
             console.log();
             outputKeyValue(ctx, {
@@ -140,6 +215,96 @@ export function registerAgentCommand(program: Command): void {
               Executor: agent.executorType || "-",
               Model: agent.model || "-",
               Provider: agent.provider || "-",
+              Path: agent.path || "-",
+            });
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // agent update -n <id> - update an agent
+  agent
+    .command("update")
+    .description("Update an agent")
+    .requiredOption("-n, --name <id>", "Agent ID")
+    .option("-m, --model <model>", "Update model")
+    .option("-p, --provider <provider>", "Update provider ID")
+    .option("-e, --executor-type <type>", "Update executor type")
+    .option("-d, --description <desc>", "Update description")
+    .option("--system-prompt <prompt>", "Update system prompt")
+    .option("--append-prompt <prompt>", "Update append prompt")
+    .option("--temperature <temp>", "Update temperature (0-2)", parseFloat)
+    .option("--max-tokens <tokens>", "Update max output tokens", parseInt)
+    .option("--plan-mode <enabled>", "Update plan mode (true/false)", parseBool)
+    .option("--approvals <enabled>", "Update approvals (true/false)", parseBool)
+    .option("--is-template <enabled>", "Mark as template (true/false)", parseBool)
+    .option("--template-desc <desc>", "Template description")
+    .option("-w, --workspace <path>", "Update workspace agent instead of global")
+    .action(async (options: {
+      name: string;
+      model?: string;
+      provider?: string;
+      executorType?: string;
+      description?: string;
+      systemPrompt?: string;
+      appendPrompt?: string;
+      temperature?: number;
+      maxTokens?: number;
+      planMode?: boolean;
+      approvals?: boolean;
+      isTemplate?: boolean;
+      templateDesc?: string;
+      workspace?: string;
+    }) => {
+      const id = options.name;
+      const ctx = getOutputContext(program);
+      try {
+        // Validate executor type if provided
+        if (options.executorType) {
+          const upperType = options.executorType.toUpperCase();
+          if (!isExecutorType(upperType)) {
+            throw CliError.invalidArgument(
+              "executor-type",
+              `Invalid executor type: ${options.executorType}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+            );
+          }
+          options.executorType = upperType as ExecutorType;
+        }
+
+        // Build updates object
+        const updates: Partial<AgentConfig> = {};
+        if (options.model !== undefined) updates.model = options.model;
+        if (options.provider !== undefined) updates.provider = options.provider;
+        if (options.executorType !== undefined) updates.executorType = options.executorType as Agent["executorType"];
+        if (options.description !== undefined) updates.description = options.description;
+        if (options.systemPrompt !== undefined) updates.systemPrompt = options.systemPrompt;
+        if (options.appendPrompt !== undefined) updates.appendPrompt = options.appendPrompt;
+        if (options.temperature !== undefined) updates.temperature = options.temperature;
+        if (options.maxTokens !== undefined) updates.maxTokens = options.maxTokens;
+        if (options.planMode !== undefined) updates.planMode = options.planMode;
+        if (options.approvals !== undefined) updates.approvals = options.approvals;
+        if (options.isTemplate !== undefined) updates.isTemplate = options.isTemplate;
+        if (options.templateDesc !== undefined) updates.templateDescription = options.templateDesc;
+
+        if (Object.keys(updates).length === 0) {
+          throw new Error("No updates provided. Use options like --model, --is-template, etc.");
+        }
+
+        const agent = await agentManager.updateAgent(id, updates, options.workspace);
+
+        output(ctx, successResponse({ agent }), () => {
+          outputSuccess(ctx, `Updated agent: ${agent.id}`);
+          if (ctx.verbose) {
+            console.log();
+            outputKeyValue(ctx, {
+              ID: agent.id,
+              Name: agent.name,
+              Executor: agent.executorType || "-",
+              Model: agent.model || "-",
+              "Is Template": agent.isTemplate ? "Yes" : "No",
+              "Template Description": agent.templateDescription || "-",
             });
           }
         });
@@ -398,6 +563,43 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
+  // agent promote - promote workspace template to global
+  agent
+    .command("promote")
+    .description("Promote a workspace template to global")
+    .argument("<agent-id>", "Agent ID in workspace")
+    .option("-w, --workspace <path>", "Workspace path (default: current directory)")
+    .option("--new-id <id>", "New global ID (optional, defaults to original ID)")
+    .action(async (agentId: string, options: { workspace?: string; newId?: string }) => {
+      const ctx = getOutputContext(program);
+      try {
+        const workspacePath = options.workspace || process.cwd();
+
+        // promoteToGlobal will validate that the agent exists and is a template
+        const globalAgent = await agentManager.promoteToGlobal(
+          workspacePath,
+          agentId,
+          options.newId
+        );
+
+        output(ctx, successResponse({ agent: globalAgent }), () => {
+          outputSuccess(ctx, `Promoted template to global: ${globalAgent.id}`);
+          if (ctx.verbose) {
+            console.log();
+            outputKeyValue(ctx, {
+              "Original ID": agentId,
+              "Global ID": globalAgent.id,
+              Name: globalAgent.name,
+              Executor: globalAgent.executorType || "-",
+              Model: globalAgent.model || "-",
+            });
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
   // ========================================================================
   // agent chat - non-interactive chat with an agent
   // ========================================================================
@@ -620,14 +822,14 @@ export function registerAgentCommand(program: Command): void {
     .action(async () => {
       const ctx = getOutputContext(program);
       try {
-        const templates = await templateManager.list();
+        const templates = await agentManager.listTemplates();
 
         output(ctx, successResponse({ templates }), () => {
           if (templates.length === 0) {
             console.log(chalk.yellow("No templates found"));
             console.log(
               chalk.gray(
-                'Use "viben agent template create <agent-id> <template-id>" to create one'
+                'Use "viben agent update <agent-id> --is-template true" to create one'
               )
             );
             return;
@@ -636,11 +838,11 @@ export function registerAgentCommand(program: Command): void {
           outputTable(
             ctx,
             ["ID", "Name", "Executor", "Model", "Created"],
-            templates.map((t) => [
+            templates.map((t: Agent) => [
               t.id,
               t.name,
-              t.config.executorType || "-",
-              t.config.model || "-",
+              t.executorType || "-",
+              t.model || "-",
               t.createdAt.split("T")[0],
             ])
           );
@@ -650,30 +852,28 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent template create <agent-id> <template-id>
+  // agent template create <agent-id> - deprecated, use update --is-template
   template
     .command("create")
-    .description("Create a template from an agent")
-    .argument("<agent-id>", "Source agent ID")
-    .argument("<template-id>", "Template ID to create")
-    .action(async (agentId: string, templateId: string) => {
+    .description("Mark an agent as template (deprecated: use 'viben agent update --is-template')")
+    .argument("<agent-id>", "Agent ID to mark as template")
+    .option("--description <desc>", "Template description")
+    .action(async (agentId: string, options: { description?: string }) => {
       const ctx = getOutputContext(program);
       try {
-        const agentData = await agentManager.getAgent(agentId);
-        if (!agentData) {
-          throw CliError.notFound("Agent", agentId);
-        }
+        console.log(chalk.yellow("Note: This command is deprecated. Use 'viben agent update <id> --is-template true' instead."));
 
-        const tpl = await agentManager.createTemplate(agentId, templateId);
+        const agent = await agentManager.setAsTemplate(agentId, true, options.description);
 
-        output(ctx, successResponse({ template: tpl }), () => {
-          outputSuccess(ctx, `Created template: ${templateId}`);
+        output(ctx, successResponse({ template: agent }), () => {
+          outputSuccess(ctx, `Marked agent as template: ${agentId}`);
           if (ctx.verbose) {
             console.log();
             outputKeyValue(ctx, {
-              ID: tpl.id,
-              Name: tpl.name,
-              "Source Agent": agentId,
+              ID: agent.id,
+              Name: agent.name,
+              "Is Template": agent.isTemplate,
+              "Template Description": agent.templateDescription || "-",
             });
           }
         });
@@ -690,7 +890,7 @@ export function registerAgentCommand(program: Command): void {
     .action(async (templateId: string) => {
       const ctx = getOutputContext(program);
       try {
-        const tpl = await templateManager.get(templateId);
+        const tpl = await agentManager.getTemplate(templateId);
         if (!tpl) {
           throw CliError.notFound("Template", templateId);
         }
@@ -702,10 +902,10 @@ export function registerAgentCommand(program: Command): void {
           outputKeyValue(ctx, {
             ID: tpl.id,
             Name: tpl.name,
-            Description: tpl.description || "-",
-            Executor: tpl.config.executorType || "-",
-            Model: tpl.config.model || "-",
-            Provider: tpl.config.provider || "-",
+            Description: tpl.templateDescription || tpl.description || "-",
+            Executor: tpl.executorType || "-",
+            Model: tpl.model || "-",
+            Provider: tpl.provider || "-",
             "Created At": tpl.createdAt,
           });
         });
@@ -717,17 +917,19 @@ export function registerAgentCommand(program: Command): void {
   // agent template remove <template-id>
   template
     .command("remove")
-    .description("Remove a template")
+    .description("Unmark an agent as template (deprecated: use 'viben agent update --is-template false')")
     .argument("<template-id>", "Template ID")
     .action(async (templateId: string) => {
       const ctx = getOutputContext(program);
       try {
-        const tpl = await templateManager.get(templateId);
+        console.log(chalk.yellow("Note: This command is deprecated. Use 'viben agent update <id> --is-template false' instead."));
+
+        const tpl = await agentManager.getTemplate(templateId);
         if (!tpl) {
           throw CliError.notFound("Template", templateId);
         }
 
-        await templateManager.remove(templateId);
+        await agentManager.setAsTemplate(templateId, false);
 
         output(ctx, successResponse({ removed: templateId }), () => {
           outputSuccess(ctx, `Removed template: ${templateId}`);
@@ -1000,6 +1202,16 @@ function parseConfigValue(value: string): unknown {
 
   // Return as string
   return value;
+}
+
+/**
+ * Parse boolean value from string for CLI options
+ */
+function parseBool(value: string): boolean {
+  const lower = value.toLowerCase();
+  if (lower === "true" || lower === "1" || lower === "yes") return true;
+  if (lower === "false" || lower === "0" || lower === "no") return false;
+  throw new Error(`Invalid boolean value: ${value}. Use true/false, yes/no, or 1/0.`);
 }
 
 /**

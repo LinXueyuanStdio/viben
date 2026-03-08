@@ -15,6 +15,7 @@
  * <workspace>/.viben/tasks/<date>-<slug>/task.json
  */
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
 import {
   taskService,
   type UnifiedTask,
@@ -23,6 +24,9 @@ import {
   type TaskSpecsData,
 } from "../../services/task-service";
 import { sessionStoreService } from "../../services/session-store";
+import { taskEventStore } from "../../task/events/event-store";
+import { isValidEventType, type TaskEventType } from "../../task/events/event-types";
+import type { TaskEvent } from "../../task/events/task-event";
 import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
 
@@ -103,7 +107,7 @@ function toSnakeCaseTask(task: UnifiedTask) {
     favorite: task.favorite ?? false,
     // Kanban attempt status - use unified status for inference
     has_in_progress_attempt: task.hasInProgressAttempt ?? task.status === "in_progress",
-    last_attempt_failed: task.lastAttemptFailed ?? task.status === "error",
+    last_attempt_failed: task.lastAttemptFailed ?? task.status === "failed",
     executor: task.executor || "Agent",
     // Subtask visualization
     subtasks_detail: parseSubtasksDetail(task),
@@ -112,6 +116,8 @@ function toSnakeCaseTask(task: UnifiedTask) {
     created_at: task.createdAt,
     updated_at: task.updatedAt ?? task.createdAt,
     completed_at: task.completedAt ?? null,
+    // Template flag
+    is_template: task.is_template ?? false,
   };
 }
 
@@ -142,6 +148,9 @@ interface CreateTaskInput {
   model_id?: string;
   branch?: string;
   base_branch?: string;
+  // Template support
+  copy_from?: string;    // Source task directory to copy config from
+  is_template?: boolean; // Mark this task as a template
 }
 
 /**
@@ -159,6 +168,8 @@ interface UpdateTaskInput {
   cost?: number;
   duration?: number;
   favorite?: boolean;
+  // Template support
+  is_template?: boolean;
   // Session/Agent fields
   sessionId?: string;
   session_id?: string;
@@ -267,7 +278,7 @@ function deleteCacheEntry(taskId: string): void {
 export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): void {
   // List all tasks (requires workspace_path)
   fastify.get<{
-    Querystring: { workspace_path?: string };
+    Querystring: { workspace_path?: string; is_template?: string };
   }>("/api/tasks", {
     schema: {
       description: "List all tasks for a workspace (workspace_path required)",
@@ -276,6 +287,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
+          is_template: { type: "string", description: "Filter by template status (true/false)" },
         },
         required: ["workspace_path"],
       },
@@ -320,14 +332,20 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       },
     },
   }, async (request, reply) => {
-    const { workspace_path } = request.query;
+    const { workspace_path, is_template } = request.query;
 
     if (!workspace_path) {
       reply.code(400);
       return { error: "workspace_path is required" };
     }
 
-    const tasks = await taskService.listTasks(workspace_path);
+    let tasks = await taskService.listTasks(workspace_path);
+
+    // Filter by is_template if specified
+    if (is_template !== undefined) {
+      const isTemplateFilter = is_template === "true";
+      tasks = tasks.filter((t) => (t.is_template ?? false) === isTemplateFilter);
+    }
 
     // Cache task directories for ID lookups
     for (const task of tasks) {
@@ -429,6 +447,9 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // Create a new task (requires workspace_path)
+  // Supports:
+  // - copy_from: Copy configuration from existing task
+  // - is_template: Mark as a template
   fastify.post<{ Body: CreateTaskInput }>("/api/tasks", async (request, reply) => {
     const input = request.body;
     const workspacePath = input.workspacePath || input.workspace_path;
@@ -439,29 +460,51 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path is required to create a task" };
     }
 
+    // If copy_from is specified, load the source task first
+    let sourceTask: UnifiedTask | null = null;
+    if (input.copy_from) {
+      // copy_from can be a task directory path or task ID
+      const sourceDir = input.copy_from.includes("/")
+        ? input.copy_from
+        : await taskService.findTaskById(workspacePath, input.copy_from);
+
+      if (sourceDir) {
+        sourceTask = await taskService.getTask(sourceDir);
+      }
+
+      if (!sourceTask) {
+        reply.code(400);
+        return { error: `Source task not found: ${input.copy_from}` };
+      }
+    }
+
     // Map input status to unified status
     let status: TaskStatus = "backlog";
     if (input.status) {
       status = taskService.normalizeStatus(input.status);
     }
 
+    // Build task input, merging from source task if copying
     const taskInput: Partial<UnifiedTask> = {
-      title: input.title || input.prompt?.slice(0, 100) || "Untitled",
-      description: input.description,
-      prompt: input.prompt || input.description,
+      // Use source task values as defaults, then override with explicit input
+      title: input.title || sourceTask?.title || input.prompt?.slice(0, 100) || "Untitled",
+      description: input.description ?? sourceTask?.description,
+      prompt: input.prompt ?? sourceTask?.prompt ?? input.description,
       status,
-      priority: input.priority || "P2",
-      dev_type: input.dev_type,
-      scope: input.scope,
-      creator: input.creator,
-      assignee: input.assignee,
-      agent: input.agentId || input.agent_id,
-      sessionId: input.sessionId || input.session_id,
+      priority: input.priority ?? sourceTask?.priority ?? "P2",
+      dev_type: input.dev_type ?? sourceTask?.dev_type,
+      scope: input.scope ?? sourceTask?.scope,
+      creator: input.creator ?? sourceTask?.creator,
+      assignee: input.assignee ?? sourceTask?.assignee,
+      agent: input.agentId || input.agent_id || sourceTask?.agent,
+      sessionId: input.sessionId || input.session_id, // Don't copy sessionId - each task needs its own
       taskIndex: input.taskIndex || input.task_index || 0,
-      branch: input.branch,
-      base_branch: input.base_branch,
-      executor: input.executor || "Agent",
+      branch: input.branch ?? sourceTask?.branch,
+      base_branch: input.base_branch ?? sourceTask?.base_branch,
+      executor: input.executor ?? sourceTask?.executor ?? "Agent",
       workspacePath,
+      // Template flag
+      is_template: input.is_template ?? false,
     };
 
     try {
@@ -531,6 +574,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
       if (updates.duration !== undefined) taskUpdates.duration = updates.duration;
       if (updates.favorite !== undefined) taskUpdates.favorite = updates.favorite;
+      if (updates.is_template !== undefined) taskUpdates.is_template = updates.is_template;
 
       // Session/Agent fields
       const sessionId = updates.sessionId ?? updates.session_id;

@@ -3,12 +3,87 @@
  *
  * Type definitions for the Gateway task queue system.
  * All field names use snake_case for API consistency.
+ *
+ * ## Status Mapping to Unified TaskStatus
+ *
+ * The queue system uses its own status terminology for internal operations,
+ * which maps to the unified TaskStatus as follows:
+ *
+ * | Queue Status | Unified TaskStatus | Notes |
+ * |--------------|-------------------|-------|
+ * | pending      | queue             | Task waiting for execution |
+ * | running      | in_progress       | Task currently executing |
+ * | retrying     | in_progress       | Task failed, attempting retry (has retry_count flag) |
+ * | completed    | done              | Task finished successfully |
+ * | failed       | error             | Task failed permanently |
+ *
+ * @see packages/core/src/services/task-service.ts for UnifiedTask and TaskStatus
  */
+
+import type { TaskStatus as UnifiedTaskStatus } from "../../services/task-service";
 
 /**
  * Task status in the queue lifecycle
+ *
+ * @deprecated This type will be removed in future versions.
+ * Use UnifiedTaskStatus from task-service.ts instead.
+ * See status mapping table in module documentation above.
  */
-export type TaskStatus = "pending" | "running" | "retrying" | "completed" | "failed";
+export type QueueTaskStatus = "pending" | "running" | "retrying" | "completed" | "failed";
+
+/**
+ * Task status in the queue lifecycle
+ *
+ * @deprecated Alias for QueueTaskStatus. Use QueueTaskStatus or UnifiedTaskStatus instead.
+ */
+export type TaskStatus = QueueTaskStatus;
+
+/**
+ * Map queue status to unified task status
+ *
+ * @param queueStatus - Queue-specific status
+ * @returns Unified task status
+ */
+export function mapQueueStatusToUnified(queueStatus: QueueTaskStatus): UnifiedTaskStatus {
+  switch (queueStatus) {
+    case "pending":
+      return "queue";
+    case "running":
+    case "retrying":
+      return "in_progress";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    default:
+      return "queue"; // Default fallback
+  }
+}
+
+/**
+ * Map unified task status to queue status
+ *
+ * @param unifiedStatus - Unified task status
+ * @returns Queue-specific status (best match)
+ */
+export function mapUnifiedStatusToQueue(unifiedStatus: UnifiedTaskStatus): QueueTaskStatus {
+  switch (unifiedStatus) {
+    case "queue":
+    case "backlog":
+      return "pending";
+    case "in_progress":
+    case "paused":
+      return "running";
+    case "completed":
+    case "human_review":
+      return "completed";
+    case "failed":
+    case "cancelled":
+      return "failed";
+    default:
+      return "pending"; // Default fallback
+  }
+}
 
 /**
  * Task type - currently only agent-run is supported

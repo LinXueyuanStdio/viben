@@ -1087,7 +1087,14 @@
     "unnamedExecutor": "Unnamed Executor",
     "unnamedAgent": "Unnamed Agent",
     "agents": "Agents",
-    "showDetails": "Show agent details"
+    "showDetails": "Show agent details",
+    "template": "Template",
+    "markAsTemplate": "Mark as Template",
+    "unmarkAsTemplate": "Unmark Template",
+    "promoteToGlobal": "Promote to Global",
+    "promoteTemplateConfirm": "Promote this template to global?",
+    "globalTemplate": "Global",
+    "workspaceTemplate": "Workspace"
   },
   "agents": {
     "title": "Agents",

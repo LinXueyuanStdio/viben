@@ -70,9 +70,11 @@ import {
   useKanbanActivities,
   useAgentConversation,
   useTaskSpecsData,
+  useChatConfig,
 } from "@/hooks";
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
+import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import type { AgentMessage } from "@/types";
 import {
   TaskSubtasksTab,
@@ -83,6 +85,7 @@ import {
 import { FileBrowser } from "@/components/file-browser";
 import { TaskActionButtons } from "./kanban/task-action-buttons";
 import { TaskWarnings } from "./kanban/task-warnings";
+import { StatusSelect } from "./kanban/components/status-select";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
 import type {
   TaskStatus,
@@ -362,6 +365,8 @@ export interface TaskForPanel {
   // Session for agent conversation (UUID format)
   session_id?: string | null;
   agent_id?: string | null;
+  // Execution configuration (locked after queueing)
+  model?: string | null;           // Model ID (locked after queueing)
   // Execution status (from vibe-kanban)
   has_in_progress_attempt?: boolean;
   last_attempt_failed?: boolean;
@@ -437,6 +442,9 @@ export function TaskDetailPanel({
 
   // Load task specs data (PRD, subtasks, logs, files) from .viben/tasks/{taskId}/
   const specsData = useTaskSpecsData(task?.id ?? null, workspacePath);
+
+  // Get available agents and models for selectors (only used when task is in backlog)
+  const chatConfig = useChatConfig();
 
   // Stuck detection with enhanced recovery
   const {
@@ -778,11 +786,25 @@ You are helping the user work on this task. Provide relevant suggestions, code e
       case "clear":
         agentClearMessages?.();
         break;
-      case "help":
-        // Could show a help modal or inject a help message
+      case "help": {
+        // Inject a help message showing available commands
+        const helpText = `**${t("chat.slashCommands.availableCommands", "Available Commands")}**
+
+• \`/clear\` - ${t("chat.slashCommands.clearDesc", "Clear conversation history")}
+• \`/help\` - ${t("chat.slashCommands.helpDesc", "Show available commands")}
+
+**${t("chat.slashCommands.tips", "Tips")}**
+
+- ${t("chat.slashCommands.tipTask", "Ask about the current task to get context-aware suggestions")}
+- ${t("chat.slashCommands.tipCode", "Paste code snippets and ask for help debugging or improving them")}
+- ${t("chat.slashCommands.tipPlan", "Ask the agent to help plan the implementation approach")}`;
+
+        // Send as a user message to get a response
+        agentSendMessage?.(helpText);
         break;
+      }
     }
-  }, [agentClearMessages]);
+  }, [agentClearMessages, agentSendMessage, t]);
 
   if (!task) {
     return (
@@ -814,6 +836,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
   const handleDueDateChange = (dueDate: string | undefined) => {
     onUpdate?.({ dueDate });
+  };
+
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    onUpdate?.({ status: newStatus });
   };
 
   // Comment handlers using persistent storage hooks
@@ -1007,12 +1033,32 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                   {t("workspace.properties", "Properties")}
                 </h3>
 
-                {/* Status (read-only, change via drag) */}
+                {/* Status */}
                 <PropertyRow
                   label={t("workspace.status", "Status")}
                   icon={Circle}
                 >
-                  <Badge variant="outline">{getStatusLabel(task.status)}</Badge>
+                  {onUpdate ? (
+                    <StatusSelect
+                      value={task.status as TaskStatus}
+                      onValueChange={handleStatusChange}
+                      size="sm"
+                      restrictTransitions={true}
+                      labels={{
+                        setStatus: t("workspace.setStatus", "Set status"),
+                        backlog: t("workspace.kanbanStatus.backlog", "Backlog"),
+                        queue: t("workspace.kanbanStatus.queue", "Queue"),
+                        in_progress: t("workspace.kanbanStatus.inProgress", "In Progress"),
+                        ai_review: t("workspace.kanbanStatus.aiReview", "AI Review"),
+                        human_review: t("workspace.kanbanStatus.humanReview", "Human Review"),
+                        done: t("workspace.kanbanStatus.done", "Done"),
+                        pr_created: t("workspace.kanbanStatus.prCreated", "PR Created"),
+                        error: t("workspace.kanbanStatus.error", "Error"),
+                      }}
+                    />
+                  ) : (
+                    <Badge variant="outline">{getStatusLabel(task.status)}</Badge>
+                  )}
                 </PropertyRow>
 
                 {/* Priority */}
@@ -1193,15 +1239,101 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         </Badge>
                       )}
                     </div>
-                    {/* Executor/Agent info */}
+                    {/* Executor/Agent/Model info - editable when in backlog, locked otherwise */}
+                    {/* Agent selector/display */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t("workspace.agent", "Agent")}:
+                      </span>
+                      {task.status === "backlog" && onUpdate ? (
+                        <select
+                          value={task.agent_id || "default"}
+                          onChange={(e) => onUpdate({ agent_id: e.target.value })}
+                          className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background"
+                        >
+                          {chatConfig.agents.length > 0 ? (
+                            chatConfig.agents.map((agent) => (
+                              <option key={agent.id} value={agent.id}>
+                                {agent.name}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="default">default</option>
+                          )}
+                        </select>
+                      ) : (
+                        <>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {task.agent_id || "default"}
+                          </Badge>
+                          {task.status !== "backlog" && (
+                            <span className="text-xs text-muted-foreground/60">
+                              ({t("workspace.locked", "locked")})
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Model selector/display - filtered by agent's executor type */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t("workspace.model", "Model")}:
+                      </span>
+                      {task.status === "backlog" && onUpdate ? (
+                        (() => {
+                          // Get selected agent's executor type for filtering
+                          const selectedAgent = chatConfig.agents.find(a => a.id === task.agent_id);
+                          const filteredModels = filterModelsByExecutor(chatConfig.models, selectedAgent?.executor_type);
+                          return (
+                            <select
+                              value={task.model || chatConfig.selectedModelId || ""}
+                              onChange={(e) => onUpdate({ model: e.target.value || null })}
+                              className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background max-w-[200px]"
+                            >
+                              <option value="">
+                                {t("workspace.useDefault", "Use default")}
+                              </option>
+                              {filteredModels.map((model) => (
+                                <option key={model.id} value={model.id}>
+                                  {model.name}
+                                </option>
+                              ))}
+                            </select>
+                          );
+                        })()
+                      ) : task.model ? (
+                        <>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {task.model}
+                          </Badge>
+                          {task.status !== "backlog" && (
+                            <span className="text-xs text-muted-foreground/60">
+                              ({t("workspace.locked", "locked")})
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {t("workspace.useDefault", "Use default")}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Executor display (read-only, set by system) */}
                     {task.executor && task.executor !== "unknown" && (
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
-                          {t("workspace.agent", "Agent")}:
+                          {t("workspace.executor", "Executor")}:
                         </span>
                         <Badge variant="outline" className="font-mono text-xs">
                           {task.executor}
                         </Badge>
+                        {task.status !== "backlog" && (
+                          <span className="text-xs text-muted-foreground/60">
+                            ({t("workspace.locked", "locked")})
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1222,6 +1354,40 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       )}>
                         {t(`workspace.reviewReason.${task.reviewReason}`, task.reviewReason)}
                       </Badge>
+                    </div>
+                  )}
+
+                  {/* Worktree/Branch Info */}
+                  {task.worktree_path && (
+                    <div className="flex items-start gap-2 mt-3 pt-3 border-t">
+                      <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">
+                            {t("workspace.worktree.title", "Git Worktree")}
+                          </span>
+                          <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">
+                            {t("workspace.worktree.isolated", "Isolated")}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-mono truncate" title={task.worktree_path}>
+                          {task.worktree_path}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const client = getGatewayClient();
+                              client.openFile(task.worktree_path!).catch(console.error);
+                            }}
+                          >
+                            <FolderOpen className="h-3 w-3 mr-1.5" />
+                            {t("workspace.worktree.openInFinder", "Open Folder")}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1480,8 +1646,19 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             }
             isLoading={specsData.isLoading}
             onSubtaskClick={(subtaskId) => {
-              // Could navigate to subtask or show details
-              console.log("Subtask clicked:", subtaskId);
+              // Find the subtask and open its first associated file if available
+              const allSubtasks = specsData.subtasks.length > 0
+                ? specsData.subtasks
+                : task.subtasks || [];
+              const subtask = allSubtasks.find((s) => s.id === subtaskId);
+              if (subtask && 'files' in subtask && subtask.files && subtask.files.length > 0) {
+                // Open the first associated file
+                const client = getGatewayClient();
+                client.openFile(subtask.files[0]).catch(console.error);
+              } else {
+                // No files - just log for now (could show a toast or inline details)
+                console.log("Subtask clicked (no files):", subtaskId, subtask);
+              }
             }}
             onFileClick={(filePath) => {
               // Open file in editor
@@ -1521,6 +1698,8 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             error={specsData.error}
             autoScroll={true}
             onRefresh={specsData.refresh}
+            isTaskRunning={task.has_in_progress_attempt}
+            pollingInterval={3000}
           />
         </TabsContent>
 
@@ -1603,6 +1782,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
           {/* Input */}
           <div className="border-t border-border">
+            {/*
+              Configuration lock rule:
+              - backlog: Show selectors, allow user to configure agent/executor/model
+              - Other states: Hide selectors, configuration is locked after queueing
+              See: .trellis/spec/modules/task-system.md "会话绑定与配置锁定"
+            */}
             <DesktopChatInput
               onSend={agentSendMessage}
               onCancel={agentCancel}
@@ -1621,8 +1806,9 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               showResizeHandle
               enableWritingMode
               useGlobalConfig
-              hideAgentSelector
-              hideModelSelector
+              hideAgentSelector={task.status !== "backlog"}
+              hideModelSelector={task.status !== "backlog"}
+              hideExecutorSelector={task.status !== "backlog"}
               slashCommands={agentSlashCommands}
               onSlashCommand={handleSlashCommand}
             />

@@ -62,6 +62,9 @@ import {
   getAgentTemplate,
   createAgentTemplate,
   createAgentFromTemplate,
+  setAgentAsTemplate,
+  unsetAgentAsTemplate,
+  promoteTemplateToGlobal,
 
   // Models module
   listModels,
@@ -97,7 +100,7 @@ import {
   // API Keys module
   setApiKey,
   clearApiKey,
-  verifyApiKey,
+  // verifyApiKey, // Not used in client
   validateApiKey,
   getAllApiKeys,
   // Workspaces module
@@ -320,7 +323,7 @@ import type {
   CreateAgentOptions,
   UpdateAgentOptions,
   DefaultAgentResponse,
-  AgentTemplate,
+  PromoteTemplateRequest,
   ModelResponse,
   CreateModelOptions,
   ModelUpdate,
@@ -931,27 +934,49 @@ export class GatewayClient {
 
   /**
    * List agent templates
+   * Templates are now regular agents with is_template=true
    */
-  async listAgentTemplates(): Promise<AgentTemplate[]> {
-    const response = await listAgentTemplates(this.baseUrl);
+  async listAgentTemplates(options?: {
+    workspacePath?: string;
+  }): Promise<AgentResponse[]> {
+    const response = await listAgentTemplates(this.baseUrl, options);
     return response.templates;
   }
 
   /**
    * Get agent template by ID
+   * @deprecated Templates are now regular agents. Use getAgent() instead.
    */
-  async getAgentTemplate(templateId: string): Promise<AgentTemplate | null> {
-    return getAgentTemplate(this.baseUrl, templateId);
+  async getAgentTemplate(
+    templateId: string,
+    options?: { workspacePath?: string }
+  ): Promise<AgentResponse | null> {
+    return getAgentTemplate(this.baseUrl, templateId, options);
   }
 
   /**
-   * Create agent template from an existing agent
+   * Mark an existing agent as a template
    */
-  async createAgentTemplate(
+  async setAgentAsTemplate(
     agentId: string,
-    templateId: string
-  ): Promise<AgentTemplate> {
-    return createAgentTemplate(this.baseUrl, agentId, templateId);
+    options: {
+      templateDescription?: string;
+      workspacePath?: string;
+    }
+  ): Promise<AgentResponse> {
+    return setAgentAsTemplate(this.baseUrl, agentId, options);
+  }
+
+  /**
+   * Unmark an agent as template
+   */
+  async unsetAgentAsTemplate(
+    agentId: string,
+    options?: {
+      workspacePath?: string;
+    }
+  ): Promise<AgentResponse> {
+    return unsetAgentAsTemplate(this.baseUrl, agentId, options);
   }
 
   /**
@@ -959,9 +984,33 @@ export class GatewayClient {
    */
   async createAgentFromTemplate(
     templateId: string,
-    agentId: string
+    options: {
+      name: string;
+      agentId?: string;
+      basePath?: string;
+    }
   ): Promise<AgentResponse> {
-    return createAgentFromTemplate(this.baseUrl, templateId, agentId);
+    return createAgentFromTemplate(this.baseUrl, templateId, options);
+  }
+
+  /**
+   * Promote workspace template to global
+   */
+  async promoteTemplateToGlobal(
+    agentId: string,
+    request: PromoteTemplateRequest
+  ): Promise<AgentResponse> {
+    return promoteTemplateToGlobal(this.baseUrl, agentId, request);
+  }
+
+  /**
+   * @deprecated Use setAgentAsTemplate() instead.
+   */
+  async createAgentTemplate(
+    agentId: string,
+    templateId: string
+  ): Promise<AgentResponse> {
+    return createAgentTemplate(this.baseUrl, agentId, templateId);
   }
 
   // ==========================================================================

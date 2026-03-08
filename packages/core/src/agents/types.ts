@@ -36,13 +36,16 @@ export interface AgentConfigFile {
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;
+  isTemplate?: boolean;
+  templateDescription?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 /**
  * Template config file structure (config.yaml)
- * Templates still use YAML format with systemPrompt in the file
+ * @deprecated This will be removed when the old template system is fully migrated.
+ * New templates use AgentConfigFile with isTemplate flag.
  */
 export interface TemplateConfigYaml {
   name: string;

@@ -18,17 +18,28 @@ import { taskLock } from "../utils/async-lock";
 /**
  * Task status - unified state machine (inspired by Auto-Claude)
  *
- * State flow: backlog → queue → in_progress → ai_review → human_review → done/pr_created
+ * State flow: backlog → queue → in_progress → human_review → completed
+ *
+ * Note: ai_review was removed - use executionPhase (qa_review/qa_fixing) instead
+ * Note: paused allows tasks to be paused and resumed later
+ * Note: pr_created was removed - PR creation is tracked via pr_url field
+ *
+ * Terminal states: completed, failed, cancelled
  */
 export type TaskStatus =
   | "backlog" // 待办 - Tasks waiting to be started
   | "queue" // Queued for execution
   | "in_progress" // Currently executing (planning or coding)
-  | "ai_review" // AI automatic review (qa_review/qa_fixing)
+  | "paused" // Task paused, can be resumed later
   | "human_review" // Needs human review
-  | "done" // Completed
-  | "pr_created" // PR created
-  | "error"; // Error state
+  | "completed" // Successfully completed
+  | "failed" // Execution failed
+  | "cancelled"; // Cancelled by user
+
+/**
+ * Legacy status names for backward compatibility
+ */
+export type LegacyTaskStatus = "done" | "error" | "pr_created";
 
 /**
  * Reason for entering human_review state
@@ -89,8 +100,10 @@ export type TaskEventType =
   | "PLANNING_COMPLETE" | "PLANNING_FAILED"
   | "SUBTASK_COMPLETE" | "ALL_SUBTASKS_DONE" | "CODING_FAILED"
   | "QA_PASSED" | "QA_FAILED" | "QA_FIXING_COMPLETE" | "QA_FIXING_FAILED"
-  | "USER_STOPPED" | "APPROVED" | "REJECTED" | "CREATE_PR"
-  | "RETRY" | "ABANDON";
+  | "USER_STOPPED" | "APPROVED" | "REJECTED"
+  | "PAUSE" | "RESUME"
+  | "RETRY" | "ABANDON"
+  | "CANCEL"; // Cancel task
 
 /**
  * Task event for state machine transitions
@@ -226,6 +239,8 @@ export interface UnifiedTask {
   agent?: string;
   /** Session ID */
   sessionId?: string;
+  /** Model ID for task execution */
+  model?: string;
   /** Task index within session */
   taskIndex?: number;
   /** User prompt */
@@ -260,12 +275,32 @@ export interface UnifiedTask {
   // === XState State Machine (Task State Machine System) ===
   /** XState state machine current state */
   xstateState?: XStateValue;
-  /** Last event that was applied */
+  /** Last event that was applied (kept for quick access to latest state) */
   lastEvent?: TaskEvent;
-  /** History of all events applied to this task */
+  /**
+   * @deprecated Event history is now stored in events.jsonl file.
+   * Use TaskEventStore.getEventHistory() to read events.
+   * This field is kept for backward compatibility during migration.
+   */
   eventHistory?: TaskEvent[];
   /** Extended metadata for classification and configuration */
   metadata?: TaskMetadata;
+
+  // === Task Relationships (Task Dependency System) ===
+  /** Task IDs this task depends on - task can only start when all dependencies are completed */
+  dependsOn?: string[];
+  /** Parent task ID (used for task splitting) */
+  parentTaskId?: string;
+  /** Child task IDs (reverse reference for task splitting) */
+  childTaskIds?: string[];
+
+  // === Scheduling Information ===
+  /** Queue entry timestamp (ISO string) - used for FIFO sorting within same priority */
+  queuedAt?: string;
+
+  // === Template Support ===
+  /** Whether this task is a template for creating other tasks */
+  is_template?: boolean;
 }
 
 // =============================================================================
@@ -279,12 +314,21 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "backlog",
   "queue",
   "in_progress",
-  "ai_review",
+  "paused",
   "human_review",
-  "done",
-  "pr_created",
-  "error",
+  "completed",
+  "failed",
+  "cancelled",
 ];
+
+/**
+ * Legacy status mapping for backward compatibility
+ */
+export const LEGACY_STATUS_MAP: Record<LegacyTaskStatus, TaskStatus> = {
+  done: "completed",
+  error: "failed",
+  pr_created: "completed",
+};
 
 /**
  * Check if a status is valid
@@ -501,6 +545,20 @@ export class TaskService {
       throw new Error(`Task not found: ${taskDir}`);
     }
 
+    // Configuration locking: agent/sessionId/executor/model cannot be changed after task is queued
+    // See: .trellis/spec/modules/task-system.md "配置锁定规则"
+    if (existing.status !== "backlog") {
+      const lockedFields = ["agent", "sessionId", "executor", "model"] as const;
+      for (const field of lockedFields) {
+        if (updates[field] !== undefined && updates[field] !== existing[field]) {
+          throw new Error(
+            `Cannot modify '${field}' after task is queued. ` +
+            `Task status is '${existing.status}', locked fields can only be changed in 'backlog' status.`
+          );
+        }
+      }
+    }
+
     const now = new Date().toISOString();
 
     // Build updated task
@@ -512,10 +570,10 @@ export class TaskService {
       updatedAt: now,
     };
 
-    // Set completedAt if status changed to done/pr_created
+    // Set completedAt if status changed to a terminal state (completed, failed, cancelled)
     if (
       updates.status &&
-      (updates.status === "done" || updates.status === "pr_created") &&
+      (updates.status === "completed" || updates.status === "failed" || updates.status === "cancelled") &&
       existing.status !== updates.status
     ) {
       updated.completedAt = now;
@@ -523,11 +581,11 @@ export class TaskService {
 
     // Update attempt status based on new status
     if (updates.status !== undefined) {
-      updated.hasInProgressAttempt = updates.status === "in_progress" || updates.status === "ai_review";
+      updated.hasInProgressAttempt = updates.status === "in_progress";
 
       // Fix: Only mark lastAttemptFailed=true for actual failures
       // human_review with reviewReason "completed" is NOT a failure
-      if (updates.status === "error") {
+      if (updates.status === "failed") {
         updated.lastAttemptFailed = true;
       } else if (updates.status === "human_review") {
         // Determine if this is a failure based on reviewReason
@@ -702,21 +760,21 @@ export class TaskService {
    * Check if a status is a settled state (no automatic transitions)
    */
   isSettledState(status: TaskStatus): boolean {
-    return ["backlog", "human_review", "error", "pr_created", "done"].includes(status);
+    return ["backlog", "paused", "human_review", "completed", "failed", "cancelled"].includes(status);
   }
 
   /**
    * Check if a status is an active state (task is being worked on)
    */
   isActiveState(status: TaskStatus): boolean {
-    return ["queue", "in_progress", "ai_review"].includes(status);
+    return ["queue", "in_progress", "paused"].includes(status);
   }
 
   /**
    * Check if a task is completed
    */
   isCompleted(task: UnifiedTask): boolean {
-    if (task.status === "done" || task.status === "pr_created") {
+    if (task.status === "completed") {
       return true;
     }
     if (task.status === "human_review" && task.reviewReason === "completed") {
@@ -727,12 +785,19 @@ export class TaskService {
 
   /**
    * Normalize a status value to the unified TaskStatus
-   * Only accepts unified status values, defaults to "backlog" for invalid values
+   * Handles legacy status names (done, error, pr_created) for backward compatibility
    */
   normalizeStatus(status: string): TaskStatus {
+    // Check if it's already a valid status
     if (isValidTaskStatus(status)) {
       return status;
     }
+
+    // Check for legacy status names
+    if (status in LEGACY_STATUS_MAP) {
+      return LEGACY_STATUS_MAP[status as LegacyTaskStatus];
+    }
+
     // Default for invalid status
     return "backlog";
   }

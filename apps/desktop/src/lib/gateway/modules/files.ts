@@ -455,6 +455,9 @@ export async function readFileContent(
 export async function readMcpServersFile(
   baseUrl: string
 ): Promise<McpServersConfig> {
+  // Log call stack for debugging frequent requests
+  console.log("[API] readMcpServersFile called", new Error().stack?.split("\n").slice(1, 5).join("\n"));
+
   const response = await fetch(`${baseUrl}/api/files/mcp-servers`, {
     method: "GET",
     headers: { Accept: "application/json" },

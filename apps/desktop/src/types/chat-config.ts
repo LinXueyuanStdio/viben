@@ -16,6 +16,8 @@ export interface ChatAgentConfig {
   name: string;
   description?: string;
   model?: string;
+  /** Executor type for the agent (e.g., "CLAUDE_CODE", "CODEX") */
+  executor_type?: string;
 }
 
 // ============================================================================
@@ -29,6 +31,8 @@ export interface ChatModelConfig {
   id: string;
   name: string;
   provider?: string;
+  /** Provider ID for executor filtering (e.g., "anthropic", "openai") */
+  provider_id?: string;
 }
 
 // ============================================================================

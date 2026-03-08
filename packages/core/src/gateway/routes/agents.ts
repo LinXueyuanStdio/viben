@@ -10,7 +10,7 @@
  */
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { agentManager, templateManager } from "../../agents";
+import { agentManager } from "../../agents";
 import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
@@ -375,42 +375,57 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * List all templates
    * GET /api/agent/templates
+   *
+   * Query params:
+   * - workspace_path: Optional workspace path to include workspace templates
    */
-  fastify.get("/api/agent/templates", async () => {
-    const templates = await agentManager.listTemplates();
+  fastify.get<{
+    Querystring: {
+      workspace_path?: string;
+    };
+  }>("/api/agent/templates", async (request) => {
+    const { workspace_path } = request.query;
+    const templates = await agentManager.listTemplates(workspace_path);
     return {
       templates: templates.map((t) => ({
         id: t.id,
         name: t.name,
-        description: t.description,
-        config: t.config,
-        createdAt: t.createdAt,
+        description: t.description || t.templateDescription,
+        is_template: t.isTemplate,
+        template_description: t.templateDescription,
+        model: t.model,
+        provider: t.provider,
+        executor_type: t.executorType,
+        created_at: t.createdAt,
+        updated_at: t.updatedAt,
       })),
       total: templates.length,
     };
   });
 
   /**
-   * Create a template from an agent
+   * Mark an agent as template (or unmark)
    * POST /api/agent/templates
    */
-  fastify.post<{ Body: { agent_id: string; template_id: string } }>(
+  fastify.post<{ Body: { agent_id: string; is_template: boolean; template_description?: string; workspace_path?: string } }>(
     "/api/agent/templates",
     async (request, reply) => {
-      const { agent_id, template_id } = request.body;
+      const { agent_id, is_template, template_description, workspace_path } = request.body;
       try {
-        const template = await agentManager.createTemplate(agent_id, template_id);
-        reply.code(201);
+        const agent = await agentManager.setAsTemplate(agent_id, is_template, template_description, workspace_path);
+        reply.code(200);
         return {
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          config: template.config,
-          createdAt: template.createdAt,
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          is_template: agent.isTemplate,
+          template_description: agent.templateDescription,
+          created_at: agent.createdAt,
+          updated_at: agent.updatedAt,
         };
       } catch (e) {
         reply.code(400);
-        return { error: e instanceof Error ? e.message : "Failed to create template" };
+        return { error: e instanceof Error ? e.message : "Failed to update template status" };
       }
     }
   );
@@ -419,11 +434,12 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Get a template by ID
    * GET /api/agent/templates/:id
    */
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agent/templates/:id",
     async (request, reply) => {
       const { id } = request.params;
-      const template = await agentManager.getTemplate(id);
+      const { workspace_path } = request.query;
+      const template = await agentManager.getTemplate(id, workspace_path);
       if (!template) {
         reply.code(404);
         return { error: `Template not found: ${id}` };
@@ -432,8 +448,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         id: template.id,
         name: template.name,
         description: template.description,
-        config: template.config,
-        createdAt: template.createdAt,
+        is_template: template.isTemplate,
+        template_description: template.templateDescription,
+        model: template.model,
+        provider: template.provider,
+        executor_type: template.executorType,
+        system_prompt: template.systemPrompt,
+        created_at: template.createdAt,
+        updated_at: template.updatedAt,
       };
     }
   );
@@ -444,13 +466,13 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    *
    * Returns agent with snake_case fields to match Rust gateway format
    */
-  fastify.post<{ Params: { id: string }; Body: { agent_id: string } }>(
+  fastify.post<{ Params: { id: string }; Body: { agent_id: string; name: string; base_path?: string; template_workspace_path?: string } }>(
     "/api/agent/templates/:id/instantiate",
     async (request, reply) => {
       const { id } = request.params;
-      const { agent_id } = request.body;
+      const { agent_id, name, base_path, template_workspace_path } = request.body;
       try {
-        const agent = await agentManager.createAgentFromTemplate(id, agent_id);
+        const agent = await agentManager.createFromTemplate(id, agent_id, { name, basePath: base_path }, template_workspace_path);
         reply.code(201);
 
         const homeDir = process.env.HOME || "/";
@@ -490,6 +512,64 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       }
     }
   );
+
+  /**
+   * Promote a workspace template to global
+   * POST /api/agent/:id/promote
+   *
+   * Body:
+   * - new_id: Optional new ID for the global agent
+   * - workspace_path: Required workspace path where the template is located
+   *
+   * Returns agent with snake_case fields to match Rust gateway format
+   */
+  fastify.post<{
+    Params: { id: string };
+    Body: { new_id?: string; workspace_path: string };
+  }>("/api/agent/:id/promote", async (request, reply) => {
+    const { id } = request.params;
+    const { new_id, workspace_path } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required" };
+    }
+
+    try {
+      const agent = await agentManager.promoteToGlobal(workspace_path, id, new_id);
+      reply.code(201);
+
+      // Global agents always have source="global"
+      return {
+        id: agent.id,
+        name: agent.name,
+        agent_type: "viben",
+        source: "global",
+        workspace_path: agent.path,
+        config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
+        description: agent.description,
+        model: agent.model,
+        provider: agent.provider,
+        system_prompt: agent.systemPrompt,
+        append_prompt: agent.appendPrompt,
+        temperature: agent.temperature,
+        max_tokens: agent.maxTokens,
+        executor_type: agent.executorType,
+        executor_config: agent.executorConfig,
+        mcp_servers: agent.mcpServers,
+        skills: agent.skills,
+        plan_mode: agent.planMode,
+        approvals: agent.approvals,
+        is_template: agent.isTemplate,
+        template_description: agent.templateDescription,
+        created_at: agent.createdAt,
+        updated_at: agent.updatedAt,
+      };
+    } catch (e) {
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to promote template" };
+    }
+  });
 
   // ========================================================================
   // Agent Sessions (file-based)
@@ -998,6 +1078,10 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       planMode?: boolean;
       plan_mode?: boolean;
       approvals?: boolean;
+      isTemplate?: boolean;
+      is_template?: boolean;
+      templateDescription?: string;
+      template_description?: string;
     };
   }>("/api/agent/:id", async (request, reply) => {
     const { id } = request.params;
@@ -1018,6 +1102,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       skills: body.skills,
       planMode: body.planMode ?? body.plan_mode,
       approvals: body.approvals,
+      isTemplate: body.isTemplate ?? body.is_template,
+      templateDescription: body.templateDescription || body.template_description,
     };
     try {
       const agent = await agentManager.updateAgent(id, updates, workspace_path);
@@ -1050,6 +1136,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         skills: agent.skills,
         plan_mode: agent.planMode,
         approvals: agent.approvals,
+        is_template: agent.isTemplate,
+        template_description: agent.templateDescription,
         created_at: agent.createdAt,
         updated_at: agent.updatedAt,
       };

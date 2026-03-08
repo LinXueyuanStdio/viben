@@ -171,6 +171,10 @@ export interface Agent {
   planMode: boolean;
   /** Whether approvals are required (for Claude Code) */
   approvals: boolean;
+  /** Whether this agent is a template */
+  isTemplate?: boolean;
+  /** Template description (shown in template picker) */
+  templateDescription?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -191,6 +195,8 @@ export interface AgentConfig {
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;
+  isTemplate?: boolean;
+  templateDescription?: string;
 }
 
 export interface AgentTemplate {

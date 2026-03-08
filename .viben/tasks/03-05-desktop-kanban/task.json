@@ -2,7 +2,7 @@
   "id": "task_1772698519161_q6wnyg",
   "name": "desktop-kanban",
   "title": "desktop 的 kanban 的任务卡片，标题很长时显示效果差，优化一下",
-  "status": "in_progress",
+  "status": "backlog",
   "current_phase": 0,
   "next_action": [
     {
@@ -29,10 +29,10 @@
   "notes": "",
   "agent": "本地个人助手",
   "taskIndex": 0,
-  "hasInProgressAttempt": true,
+  "hasInProgressAttempt": false,
   "lastAttemptFailed": false,
   "executor": "Agent",
   "workspacePath": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben",
   "createdAt": "2026-03-05",
-  "updatedAt": "2026-03-05T08:16:12.734Z"
+  "updatedAt": "2026-03-08T15:21:11.017Z"
 }

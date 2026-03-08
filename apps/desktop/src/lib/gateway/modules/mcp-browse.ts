@@ -162,6 +162,9 @@ export async function isProcessAlive(
   baseUrl: string,
   pid: number
 ): Promise<boolean> {
+  // Log call stack for debugging frequent requests
+  console.log("[API] isProcessAlive called, pid:", pid, new Error().stack?.split("\n").slice(1, 5).join("\n"));
+
   const response = await fetch(`${baseUrl}/api/mcp/process/alive`, {
     method: "POST",
     headers: {

@@ -10,8 +10,6 @@ import { join, basename, resolve } from "node:path";
 import { stringify } from "yaml";
 import {
   getStateDir,
-  getWorkspaceTemplatesDir,
-  getWorkspaceTemplateDir,
 } from "../config/paths";
 import { readYaml, writeYaml, fileExists, ensureDir } from "../config/yaml";
 import { AlreadyExistsError, ValidationError, NotFoundError } from "../error";
@@ -124,38 +122,22 @@ export async function initWorkspace(
   // Track created files
   const createdFiles: string[] = [];
 
-  // Determine config to use
-  let config: WorkspaceConfigFile;
-  let templateConfig: WorkspaceTemplateConfig | null = null;
-
+  // Template support is deprecated
   if (options.template) {
-    // Load template
-    templateConfig = await getTemplateConfig(options.template);
-    if (!templateConfig) {
-      throw new NotFoundError("WorkspaceTemplate", options.template);
-    }
-
-    // Merge template config with defaults
-    const now = new Date().toISOString();
-    config = {
-      ...DEFAULT_WORKSPACE_CONFIG,
-      ...templateConfig.workspaceConfig,
-      version: 1,
-      name: basename(targetDir),
-      createdAt: now,
-      updatedAt: now,
-    };
-  } else {
-    // Use default config
-    const now = new Date().toISOString();
-    config = {
-      ...DEFAULT_WORKSPACE_CONFIG,
-      version: 1,
-      name: basename(targetDir),
-      createdAt: now,
-      updatedAt: now,
-    };
+    throw new Error(
+      "Workspace templates are deprecated. Use inline template system instead."
+    );
   }
+
+  // Use default config
+  const now = new Date().toISOString();
+  const config: WorkspaceConfigFile = {
+    ...DEFAULT_WORKSPACE_CONFIG,
+    version: 1,
+    name: basename(targetDir),
+    createdAt: now,
+    updatedAt: now,
+  };
 
   // Create .viben directory
   if (!existsSync(vibenDir)) {
@@ -167,48 +149,15 @@ export async function initWorkspace(
   await writeFile(configPath, configContent, "utf-8");
   createdFiles.push(WORKSPACE_CONFIG_FILE);
 
-  // If using template, create additional directories and copy files
-  if (templateConfig) {
-    // Create template-specified directories
-    if (templateConfig.directories) {
-      for (const dir of templateConfig.directories) {
-        const dirPath = join(vibenDir, dir);
-        if (!existsSync(dirPath)) {
-          await mkdir(dirPath, { recursive: true });
-        }
-      }
-    }
+  // Create default agents directory and main agent
+  if (!existsSync(agentsDir)) {
+    await mkdir(agentsDir, { recursive: true });
+  }
 
-    // Copy template files
-    if (templateConfig.files && options.template) {
-      const templateDir = getWorkspaceTemplateDir(options.template);
-      for (const file of templateConfig.files) {
-        const srcPath = join(templateDir, file);
-        const destPath = join(vibenDir, file);
-
-        if (existsSync(srcPath)) {
-          // Ensure destination directory exists
-          const destDir = join(destPath, "..");
-          if (!existsSync(destDir)) {
-            await mkdir(destDir, { recursive: true });
-          }
-
-          await copyFile(srcPath, destPath);
-          createdFiles.push(file);
-        }
-      }
-    }
-  } else {
-    // Create default agents directory and main agent
-    if (!existsSync(agentsDir)) {
-      await mkdir(agentsDir, { recursive: true });
-    }
-
-    // Create default agent config
-    if (!existsSync(mainAgentPath) || options.force) {
-      await writeFile(mainAgentPath, DEFAULT_AGENT_CONFIG, "utf-8");
-      createdFiles.push(`${AGENTS_DIR}/main.yaml`);
-    }
+  // Create default agent config
+  if (!existsSync(mainAgentPath) || options.force) {
+    await writeFile(mainAgentPath, DEFAULT_AGENT_CONFIG, "utf-8");
+    createdFiles.push(`${AGENTS_DIR}/main.yaml`);
   }
 
   return {
@@ -244,46 +193,26 @@ export async function initFromTemplate(
  *
  * @param templateId - Template identifier
  * @returns Template configuration or null if not found
+ * @deprecated Workspace templates are being migrated to inline template system
  */
 async function getTemplateConfig(
   templateId: string
 ): Promise<WorkspaceTemplateConfig | null> {
-  const templateDir = getWorkspaceTemplateDir(templateId);
-  const configPath = join(templateDir, "template.yaml");
-
-  if (!fileExists(configPath)) {
-    return null;
-  }
-
-  const config = await readYaml<WorkspaceTemplateConfig>(configPath);
-  return config ?? null;
+  throw new Error(
+    "Workspace templates are deprecated. Use inline template system instead."
+  );
 }
 
 /**
  * List all available workspace templates.
  *
  * @returns Array of workspace template metadata
+ * @deprecated Workspace templates are being migrated to inline template system
  */
 export async function listWorkspaceTemplates(): Promise<WorkspaceTemplate[]> {
-  const templatesDir = getWorkspaceTemplatesDir();
-
-  if (!fileExists(templatesDir)) {
-    return [];
-  }
-
-  const entries = await readdir(templatesDir, { withFileTypes: true });
-  const templates: WorkspaceTemplate[] = [];
-
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const template = await getWorkspaceTemplate(entry.name);
-      if (template) {
-        templates.push(template);
-      }
-    }
-  }
-
-  return templates;
+  throw new Error(
+    "Workspace templates are deprecated. Use inline template system instead."
+  );
 }
 
 /**
@@ -315,35 +244,15 @@ export async function getWorkspaceTemplate(
  * @param config - Template configuration
  * @returns Created template metadata
  * @throws AlreadyExistsError if template already exists
+ * @deprecated Workspace templates are being migrated to inline template system
  */
 export async function createWorkspaceTemplate(
   templateId: string,
   config: Omit<WorkspaceTemplateConfig, "createdAt">
 ): Promise<WorkspaceTemplate> {
-  const templateDir = getWorkspaceTemplateDir(templateId);
-
-  if (existsSync(templateDir)) {
-    throw new AlreadyExistsError("WorkspaceTemplate", templateId);
-  }
-
-  // Create template directory
-  await ensureDir(templateDir);
-
-  const now = new Date().toISOString();
-  const templateConfig: WorkspaceTemplateConfig = {
-    ...config,
-    createdAt: now,
-  };
-
-  // Write template config
-  await writeYaml(join(templateDir, "template.yaml"), templateConfig);
-
-  return {
-    id: templateId,
-    name: config.name,
-    description: config.description,
-    createdAt: now,
-  };
+  throw new Error(
+    "Workspace templates are deprecated. Use inline template system instead."
+  );
 }
 
 /**
@@ -351,19 +260,14 @@ export async function createWorkspaceTemplate(
  *
  * @param templateId - Template identifier
  * @returns true if deleted, false if not found
+ * @deprecated Workspace templates are being migrated to inline template system
  */
 export async function deleteWorkspaceTemplate(
   templateId: string
 ): Promise<boolean> {
-  const templateDir = getWorkspaceTemplateDir(templateId);
-
-  if (!existsSync(templateDir)) {
-    return false;
-  }
-
-  const { rm } = await import("node:fs/promises");
-  await rm(templateDir, { recursive: true, force: true });
-  return true;
+  throw new Error(
+    "Workspace templates are deprecated. Use inline template system instead."
+  );
 }
 
 /**
