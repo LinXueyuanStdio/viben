@@ -253,6 +253,8 @@ export interface TaskCardContentProps {
   onViewPR?: () => void;
   onArchive?: () => void;
   isSelected?: boolean;
+  /** Elapsed time in milliseconds (for running tasks) */
+  elapsedTime?: number;
 }
 
 /**

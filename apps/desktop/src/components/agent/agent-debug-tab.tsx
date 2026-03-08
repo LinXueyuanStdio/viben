@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DesktopMessageList, ChatInput } from "@/components/chat";
+import { DesktopMessageList, DesktopChatInput } from "@/components/chat";
 import {
   SpanNode,
   TimelineView,
@@ -68,6 +68,7 @@ export interface AgentDebugTabProps {
   traceTree?: TraceTree | null;
   selectedSpan?: TraceSpanNode | null;
   onSelectSpan: (span: TraceSpanNode | null) => void;
+  isLoadingTrace?: boolean;
 
   className?: string;
 }
@@ -163,6 +164,7 @@ export function AgentDebugTab({
   traceTree,
   selectedSpan,
   onSelectSpan,
+  isLoadingTrace,
   className,
 }: AgentDebugTabProps) {
   const { t } = useTranslation("agentDetail");
@@ -252,12 +254,20 @@ export function AgentDebugTab({
 
         {/* Chat Input */}
         <div className="shrink-0 border-t border-border bg-background">
-          <ChatInput
+          <DesktopChatInput
             onSend={handleSendMessage}
             onCancel={onCancel}
             isLoading={isStreaming}
             placeholder={t("inputPlaceholder", "Type a message...")}
             className="rounded-none border-0"
+            autoFocus
+            showTopToolbar
+            showConfigBar
+            showResizeHandle
+            useGlobalConfig
+            hideAgentSelector
+            hideExecutorSelector
+            hideModelSelector
           />
         </div>
       </div>
@@ -364,7 +374,14 @@ export function AgentDebugTab({
             <div className="flex-1 min-h-0 flex gap-2 p-4">
               {/* Main Trace View */}
               <div className="flex-1 min-w-0 min-h-0">
-                {!traceTree ? (
+                {isLoadingTrace ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mb-4" />
+                    <p className="text-muted-foreground">
+                      {t("loadingTrace", "Loading trace data...")}
+                    </p>
+                  </div>
+                ) : !traceTree ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <TreeDeciduous className="h-12 w-12 text-muted-foreground/50 mb-4" />
                     <p className="text-muted-foreground">

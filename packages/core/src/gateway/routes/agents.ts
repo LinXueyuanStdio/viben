@@ -22,8 +22,10 @@ import { join } from "node:path";
 // ============================================================================
 
 /**
- * Resolve the agent's config path from agent ID and optional workspace path
- * Returns the path to the agent's AGENTS.md if found, undefined otherwise
+ * Resolve the agent's directory path from agent ID and optional workspace path
+ * Returns the path to the agent's directory if found, undefined otherwise
+ * Note: This returns the directory path (e.g., /path/to/agents/myagent),
+ * NOT the config file path (e.g., /path/to/agents/myagent/AGENTS.md)
  */
 async function resolveAgentPath(agentId: string, workspacePath?: string): Promise<string | undefined> {
   // 1. Try workspace agent first
@@ -31,14 +33,14 @@ async function resolveAgentPath(agentId: string, workspacePath?: string): Promis
     const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
     const agent = await agentManager.getAgentFromDir(workspaceAgentsDir, agentId);
     if (agent?.path) {
-      return join(agent.path, "AGENTS.md");
+      return agent.path;
     }
   }
 
   // 2. Try global agent
   const agent = await agentManager.getAgent(agentId);
   if (agent?.path) {
-    return join(agent.path, "AGENTS.md");
+    return agent.path;
   }
 
   return undefined;
@@ -55,7 +57,7 @@ function toSnakeCaseSession(s: SessionConfig) {
   return {
     id: s.id,
     agent_id: s.agentId,
-    agent_path: s.agentPath,
+    agent_dir: s.agentDir,
     agent_config: s.agentConfig,
     task_id: s.taskId,
     prompt: s.prompt,
@@ -171,7 +173,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     const homeDir = process.env.HOME || "/";
 
     // Helper to transform agent to API response format
-    const transformAgent = (a: Awaited<ReturnType<typeof agentManager.getAgent>>, sourceOverride?: "global" | "workspace") => {
+    const transformAgent = (a: Awaited<ReturnType<typeof agentManager.getAgent>>, sourceOverride?: "global" | "workspace", workspacePathOverride?: string) => {
       if (!a) return null;
 
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
@@ -187,7 +189,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         agent_type: "viben",
         source,
         agent_dir: a.path,
-        workspace_path: a.path, // @deprecated Use agent_dir instead
+        workspace_path: source === "workspace" ? workspacePathOverride : undefined,
         config_path: a.path ? `${a.path}/AGENTS.md` : undefined,
         description: a.description,
         model: a.model,
@@ -229,7 +231,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const workspaceAgents = await agentManager.listAgentsFromDir(workspaceAgentsDir);
 
       for (const agent of workspaceAgents) {
-        const transformed = transformAgent(agent, "workspace");
+        const transformed = transformAgent(agent, "workspace", workspace_path);
         if (transformed) {
           agentMap.set(agent.id, transformed);
         }
@@ -304,19 +306,22 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
       const homeDir = process.env.HOME || "/";
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
-      const source =
-        agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
-          ? "global"
-          : "workspace";
+      const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
+      const agentSource = isGlobalAgent ? "global" : "workspace";
+
+      // Extract workspace path from agent path (remove /.viben/agents/{id} suffix)
+      const agentWorkspacePath = !isGlobalAgent && agent.path
+        ? agent.path.replace(/\/.viben\/agents\/[^/]+$/, "")
+        : undefined;
 
       // Return agent with snake_case fields
       return {
         id: agent.id,
         name: agent.name,
         agent_type: "viben",
-        source,
+        source: agentSource,
         agent_dir: agent.path,
-        workspace_path: agent.path, // @deprecated Use agent_dir instead
+        workspace_path: agentWorkspacePath,
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
@@ -480,18 +485,22 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
         const homeDir = process.env.HOME || "/";
         // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
-        const source =
-          agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
-            ? "global"
-            : "workspace";
+        const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
+        const agentSource = isGlobalAgent ? "global" : "workspace";
+
+        // Extract workspace path from agent path (remove /.viben/agents/{id} suffix)
+        const agentWorkspacePath = !isGlobalAgent && agent.path
+          ? agent.path.replace(/\/.viben\/agents\/[^/]+$/, "")
+          : undefined;
 
         // Return agent with snake_case fields
         return {
           id: agent.id,
           name: agent.name,
           agent_type: "viben",
-          source,
-          workspace_path: agent.path,
+          source: agentSource,
+          agent_dir: agent.path,
+          workspace_path: agentWorkspacePath,
           config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
           description: agent.description,
           model: agent.model,
@@ -542,13 +551,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const agent = await agentManager.promoteToGlobal(workspace_path, id, new_id);
       reply.code(201);
 
-      // Global agents always have source="global"
+      // Global agents always have source="global" and no workspace_path
       return {
         id: agent.id,
         name: agent.name,
         agent_type: "viben",
         source: "global",
-        workspace_path: agent.path,
+        agent_dir: agent.path,
+        workspace_path: undefined,
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
@@ -600,7 +610,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
           const workspaceAgent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
           if (workspaceAgent?.path) {
-            const workspaceSessions = await state.sessionStore.listSessions(id, join(workspaceAgent.path, "AGENTS.md"));
+            // Pass the agent directory path directly (not AGENTS.md file path)
+            // session-store expects agentPath to be the agent directory
+            const workspaceSessions = await state.sessionStore.listSessions(id, workspaceAgent.path);
             for (const session of workspaceSessions) {
               if (!seenIds.has(session.id)) {
                 seenIds.add(session.id);
@@ -613,7 +625,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         // 2. Also check global agent (for backward compatibility)
         const globalAgent = await agentManager.getAgent(id);
         if (globalAgent?.path) {
-          const globalSessions = await state.sessionStore.listSessions(id, join(globalAgent.path, "AGENTS.md"));
+          // Pass the agent directory path directly
+          const globalSessions = await state.sessionStore.listSessions(id, globalAgent.path);
           for (const session of globalSessions) {
             if (!seenIds.has(session.id)) {
               seenIds.add(session.id);
@@ -1024,13 +1037,19 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       return { error: `Agent not found: ${id}` };
     }
 
+    // Extract workspace path from agent path (remove /.viben/agents/{id} suffix)
+    const agentWorkspacePath = source === "workspace" && agent.path
+      ? agent.path.replace(/\/.viben\/agents\/[^/]+$/, "")
+      : undefined;
+
     // Return agent with snake_case fields
     return {
       id: agent.id,
       name: agent.name,
       agent_type: "viben",
       source,
-      workspace_path: agent.path,
+      agent_dir: agent.path,
+      workspace_path: agentWorkspacePath,
       config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
       description: agent.description,
       model: agent.model,
@@ -1113,18 +1132,22 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
       const homeDir = process.env.HOME || "/";
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
-      const source =
-        agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
-          ? "global"
-          : "workspace";
+      const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
+      const agentSource = isGlobalAgent ? "global" : "workspace";
+
+      // Extract workspace path from agent path (remove /.viben/agents/{id} suffix)
+      const agentWorkspacePath = !isGlobalAgent && agent.path
+        ? agent.path.replace(/\/.viben\/agents\/[^/]+$/, "")
+        : undefined;
 
       // Return agent with snake_case fields
       return {
         id: agent.id,
         name: agent.name,
         agent_type: "viben",
-        source,
-        workspace_path: agent.path,
+        source: agentSource,
+        agent_dir: agent.path,
+        workspace_path: agentWorkspacePath,
         config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,

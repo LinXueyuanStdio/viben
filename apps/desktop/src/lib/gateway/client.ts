@@ -302,6 +302,11 @@ import {
 
   // Tasks module
   getTaskSpecsData,
+
+  // Telemetry module
+  getTrace,
+  listTraces,
+  getTelemetryStats,
 } from "./modules";
 
 // Import types
@@ -432,6 +437,9 @@ import type {
 
 // Import Tasks module types
 import type { TaskSpecsDataResponse } from "./modules/tasks";
+
+// Import Telemetry module types
+import type { TraceDetailResponse, TracesListResponse } from "./modules/telemetry";
 
 // ============================================================================
 // GatewayClient Class
@@ -2768,5 +2776,36 @@ export class GatewayClient {
     workspacePath: string
   ): Promise<TaskSpecsDataResponse> {
     return getTaskSpecsData(this.baseUrl, taskId, workspacePath);
+  }
+
+  // ==========================================================================
+  // Telemetry Module Methods
+  // ==========================================================================
+
+  /**
+   * Get trace details by ID
+   */
+  async getTrace(traceId: string, date?: string): Promise<TraceDetailResponse> {
+    return getTrace(this.baseUrl, traceId, date);
+  }
+
+  /**
+   * List traces for a date
+   */
+  async listTraces(date?: string, route?: string): Promise<TracesListResponse> {
+    return listTraces(this.baseUrl, date, route);
+  }
+
+  /**
+   * Get telemetry stats
+   */
+  async getTelemetryStats(): Promise<{
+    directory: string;
+    dates: number;
+    totalTraces: number;
+    totalSizeBytes: number;
+    totalSizeMB: string;
+  }> {
+    return getTelemetryStats(this.baseUrl);
   }
 }
