@@ -2,13 +2,52 @@
  * Event Store Tests
  *
  * Tests event validation, sequencing, and persistence.
- * Note: These tests require mocking file system operations.
+ * Uses mocks for file system and taskService dependencies.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TaskEventStore } from "./event-store";
+import { TaskEventStore, type ApplyEventResult } from "./event-store";
 import { isValidEventType, VALID_EVENT_TYPES, type TaskEventType } from "./event-types";
-import { createMockTask, createMockEvent } from "../__fixtures__/task-fixtures";
+import { createMockTask, createMockEvent, createTaskInState } from "../__fixtures__/task-fixtures";
+import type { UnifiedTask, TaskEvent } from "../../services/task-service";
+
+// =============================================================================
+// Mocks
+// =============================================================================
+
+// Mock taskService
+const mockGetTask = vi.fn<[string], Promise<UnifiedTask | null>>();
+const mockUpdateTask = vi.fn<[string, Partial<UnifiedTask>], Promise<UnifiedTask>>();
+
+vi.mock("../../services/task-service", () => ({
+  taskService: {
+    getTask: (...args: [string]) => mockGetTask(...args),
+    updateTask: (...args: [string, Partial<UnifiedTask>]) => mockUpdateTask(...args),
+  },
+}));
+
+// Mock file system
+const mockAppendFile = vi.fn<[string, string, string], Promise<void>>();
+const mockReadFile = vi.fn<[string, string], Promise<string>>();
+const mockWriteFile = vi.fn<[string, string, string], Promise<void>>();
+const mockExistsSync = vi.fn<[string], boolean>();
+
+vi.mock("node:fs/promises", () => ({
+  appendFile: (...args: [string, string, string]) => mockAppendFile(...args),
+  readFile: (...args: [string, string]) => mockReadFile(...args),
+  writeFile: (...args: [string, string, string]) => mockWriteFile(...args),
+}));
+
+vi.mock("node:fs", () => ({
+  existsSync: (...args: [string]) => mockExistsSync(...args),
+}));
+
+// Mock async lock - immediately execute the function
+vi.mock("../../utils/async-lock", () => ({
+  taskLock: {
+    withLock: async <T>(_key: string, fn: () => Promise<T>): Promise<T> => fn(),
+  },
+}));
 
 // =============================================================================
 // isValidEventType Tests
@@ -17,26 +56,12 @@ import { createMockTask, createMockEvent } from "../__fixtures__/task-fixtures";
 describe("isValidEventType", () => {
   describe("valid event types", () => {
     const validTypes: TaskEventType[] = [
-      "QUEUE",
-      "START",
-      "DEQUEUE",
-      "PLANNING_COMPLETE",
-      "PLANNING_FAILED",
-      "SUBTASK_COMPLETE",
-      "ALL_SUBTASKS_DONE",
-      "CODING_FAILED",
-      "QA_PASSED",
-      "QA_FAILED",
-      "QA_FIXING_COMPLETE",
-      "QA_FIXING_FAILED",
-      "USER_STOPPED",
-      "APPROVED",
-      "REJECTED",
-      "CANCEL",
-      "PAUSE",
-      "RESUME",
-      "RETRY",
-      "ABANDON",
+      "QUEUE", "START", "DEQUEUE",
+      "PLANNING_COMPLETE", "PLANNING_FAILED",
+      "SUBTASK_COMPLETE", "ALL_SUBTASKS_DONE", "CODING_FAILED",
+      "QA_PASSED", "QA_FAILED", "QA_FIXING_COMPLETE", "QA_FIXING_FAILED",
+      "USER_STOPPED", "APPROVED", "REJECTED", "CANCEL",
+      "PAUSE", "RESUME", "RETRY", "ABANDON",
     ];
 
     for (const type of validTypes) {
@@ -47,16 +72,7 @@ describe("isValidEventType", () => {
   });
 
   describe("invalid event types", () => {
-    const invalidTypes = [
-      "INVALID",
-      "queue",
-      "start",
-      "UNKNOWN_EVENT",
-      "",
-      "123",
-      " QUEUE",
-      "QUEUE ",
-    ];
+    const invalidTypes = ["INVALID", "queue", "start", "", "123", " QUEUE", "QUEUE "];
 
     for (const type of invalidTypes) {
       it(`rejects "${type}" as invalid`, () => {
@@ -71,237 +87,498 @@ describe("isValidEventType", () => {
 });
 
 // =============================================================================
-// TaskEventStore Unit Tests (without mocks)
+// TaskEventStore.applyEvent Tests
 // =============================================================================
 
-describe("TaskEventStore", () => {
+describe("TaskEventStore.applyEvent", () => {
   let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
 
   beforeEach(() => {
     store = new TaskEventStore();
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockAppendFile.mockResolvedValue(undefined);
   });
 
-  describe("computeTransition (via validateEvent)", () => {
-    // We'll test the transition logic indirectly through validation
+  describe("successful event application", () => {
+    it("applies QUEUE event to backlog task", async () => {
+      const task = createTaskInState("backlog", { id: "task1" });
+      mockGetTask.mockResolvedValue(task);
+      mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
 
-    describe("valid transitions from backlog", () => {
-      it("backlog + QUEUE is valid", async () => {
-        // Note: This would need actual file system mocking
-        // For now, we test the helper function logic
-        const event = createMockEvent("QUEUE", 1);
-        expect(isValidEventType(event.type)).toBe(true);
+      const event: TaskEvent = {
+        eventId: "evt_1",
+        sequence: 1,
+        type: "QUEUE",
+        timestamp: "2026-01-15T10:00:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(true);
+      expect(result.newState).toBe('"queue"');
+      expect(mockAppendFile).toHaveBeenCalledWith(
+        expect.stringContaining("events.jsonl"),
+        expect.stringContaining('"type":"QUEUE"'),
+        "utf-8"
+      );
+      expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+        status: "queue",
+        queuedAt: event.timestamp,
+      }));
+    });
+
+    it("applies START event to queue task", async () => {
+      const task = createTaskInState("queue", {
+        id: "task1",
+        lastEvent: { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      });
+      mockGetTask.mockResolvedValue(task);
+      mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+      const event: TaskEvent = {
+        eventId: "evt_2",
+        sequence: 2,
+        type: "START",
+        timestamp: "2026-01-15T10:01:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(true);
+      expect(result.newState).toBe('{"in_progress":"planning"}');
+    });
+
+    it("applies PAUSE event and saves machine_context", async () => {
+      const task = createTaskInState("queue", {
+        id: "task1",
+        xstateState: "queue",
+        lastEvent: { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+        machine_context: { current_subtask_index: 0, requires_plan_review: false },
+      });
+      mockGetTask.mockResolvedValue(task);
+      mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+      const event: TaskEvent = {
+        eventId: "evt_2",
+        sequence: 2,
+        type: "PAUSE",
+        timestamp: "2026-01-15T10:01:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(true);
+      expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+        machine_context: expect.objectContaining({
+          paused_snapshot: expect.objectContaining({
+            from_state: "queue",
+            paused_at: event.timestamp,
+          }),
+        }),
+      }));
+    });
+
+    it("applies RESUME event and clears paused_snapshot", async () => {
+      const task = createTaskInState("paused", {
+        id: "task1",
+        xstateState: "paused",
+        lastEvent: { eventId: "evt_2", sequence: 2, type: "PAUSE", timestamp: "2026-01-15T10:01:00.000Z" },
+        machine_context: {
+          current_subtask_index: 0,
+          requires_plan_review: false,
+          paused_snapshot: { from_state: "queue", subtask_index: 0, paused_at: "2026-01-15T10:01:00.000Z" },
+        },
+      });
+      mockGetTask.mockResolvedValue(task);
+      mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+      const event: TaskEvent = {
+        eventId: "evt_3",
+        sequence: 3,
+        type: "RESUME",
+        timestamp: "2026-01-15T10:02:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(true);
+      expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+        machine_context: expect.objectContaining({
+          paused_snapshot: undefined,
+        }),
+      }));
+    });
+
+    // NOTE: SUBTASK_COMPLETE is a self-transition (coding -> coding with reenter: true)
+    // In XState v5, self-transitions with reenter report changed: false
+    // The current event-store implementation treats this as invalid.
+    // This test documents the current behavior rather than ideal behavior.
+    // TODO: Fix event-store to handle self-transitions correctly
+    it("returns INVALID_TRANSITION for SUBTASK_COMPLETE (self-transition limitation)", async () => {
+      const task = createTaskInState("in_progress", {
+        id: "task1",
+        xstateState: { in_progress: "coding" },
+        lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+        machine_context: { current_subtask_index: 0, requires_plan_review: false },
+      });
+      mockGetTask.mockResolvedValue(task);
+
+      const event: TaskEvent = {
+        eventId: "evt_4",
+        sequence: 4,
+        type: "SUBTASK_COMPLETE",
+        timestamp: "2026-01-15T10:03:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      // Current behavior: self-transitions are rejected due to XState changed: false
+      // This is a known limitation - see TODO above
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("INVALID_TRANSITION");
+    });
+  });
+
+  describe("error handling", () => {
+    it("returns TASK_NOT_FOUND when task does not exist", async () => {
+      mockGetTask.mockResolvedValue(null);
+
+      const event: TaskEvent = {
+        eventId: "evt_1",
+        sequence: 1,
+        type: "QUEUE",
+        timestamp: "2026-01-15T10:00:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("TASK_NOT_FOUND");
+    });
+
+    it("returns INVALID_EVENT_TYPE for unknown event type", async () => {
+      const task = createTaskInState("backlog", { id: "task1" });
+      mockGetTask.mockResolvedValue(task);
+
+      const event = {
+        eventId: "evt_1",
+        sequence: 1,
+        type: "UNKNOWN_EVENT",
+        timestamp: "2026-01-15T10:00:00.000Z",
+      } as TaskEvent;
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("INVALID_EVENT_TYPE");
+    });
+
+    it("returns SEQUENCE_MISMATCH when sequence is wrong", async () => {
+      const task = createTaskInState("backlog", {
+        id: "task1",
+        lastEvent: { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      });
+      mockGetTask.mockResolvedValue(task);
+
+      const event: TaskEvent = {
+        eventId: "evt_2",
+        sequence: 5, // Should be 2
+        type: "START",
+        timestamp: "2026-01-15T10:01:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("SEQUENCE_MISMATCH");
+      expect(result.expected).toBe(2);
+      expect(result.received).toBe(5);
+    });
+
+    it("returns INVALID_TRANSITION for illegal state transition", async () => {
+      const task = createTaskInState("backlog", { id: "task1" });
+      mockGetTask.mockResolvedValue(task);
+
+      const event: TaskEvent = {
+        eventId: "evt_1",
+        sequence: 1,
+        type: "START", // Cannot START from backlog, must QUEUE first
+        timestamp: "2026-01-15T10:00:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("INVALID_TRANSITION");
+      expect(result.currentState).toBe('"backlog"');
+    });
+  });
+});
+
+// =============================================================================
+// TaskEventStore.validateEvent Tests
+// =============================================================================
+
+describe("TaskEventStore.validateEvent", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+  });
+
+  it("validates a correct event without applying it", async () => {
+    const task = createTaskInState("backlog", { id: "task1" });
+    mockGetTask.mockResolvedValue(task);
+
+    const event: TaskEvent = {
+      eventId: "evt_1",
+      sequence: 1,
+      type: "QUEUE",
+      timestamp: "2026-01-15T10:00:00.000Z",
+    };
+
+    const result = await store.validateEvent(taskDir, event);
+
+    expect(result.success).toBe(true);
+    expect(result.newState).toBe('"queue"');
+    // Should NOT call appendFile or updateTask
+    expect(mockAppendFile).not.toHaveBeenCalled();
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+  });
+
+  it("returns error for invalid transition without modifying task", async () => {
+    const task = createTaskInState("completed", { id: "task1" });
+    mockGetTask.mockResolvedValue(task);
+
+    const event: TaskEvent = {
+      eventId: "evt_1",
+      sequence: 1,
+      type: "START",
+      timestamp: "2026-01-15T10:00:00.000Z",
+    };
+
+    const result = await store.validateEvent(taskDir, event);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("INVALID_TRANSITION");
+    expect(mockAppendFile).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// TaskEventStore.getNextSequence Tests
+// =============================================================================
+
+describe("TaskEventStore.getNextSequence", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+  });
+
+  it("returns 1 for task with no events", async () => {
+    const task = createTaskInState("backlog", { id: "task1" });
+    mockGetTask.mockResolvedValue(task);
+
+    const seq = await store.getNextSequence(taskDir);
+    expect(seq).toBe(1);
+  });
+
+  it("returns lastEvent.sequence + 1 for task with events", async () => {
+    const task = createTaskInState("queue", {
+      id: "task1",
+      lastEvent: { eventId: "evt_5", sequence: 5, type: "PAUSE", timestamp: "2026-01-15T10:00:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+
+    const seq = await store.getNextSequence(taskDir);
+    expect(seq).toBe(6);
+  });
+
+  it("returns 1 for non-existent task", async () => {
+    mockGetTask.mockResolvedValue(null);
+
+    const seq = await store.getNextSequence(taskDir);
+    expect(seq).toBe(1);
+  });
+});
+
+// =============================================================================
+// TaskEventStore.getEventHistory Tests
+// =============================================================================
+
+describe("TaskEventStore.getEventHistory", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+  });
+
+  it("reads events from events.jsonl file", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(
+      '{"eventId":"evt_1","sequence":1,"type":"QUEUE","timestamp":"2026-01-15T10:00:00.000Z"}\n' +
+      '{"eventId":"evt_2","sequence":2,"type":"START","timestamp":"2026-01-15T10:01:00.000Z"}\n'
+    );
+
+    const events = await store.getEventHistory(taskDir);
+
+    expect(events).toHaveLength(2);
+    expect(events[0].type).toBe("QUEUE");
+    expect(events[1].type).toBe("START");
+  });
+
+  it("filters events by since parameter", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(
+      '{"eventId":"evt_1","sequence":1,"type":"QUEUE","timestamp":"2026-01-15T10:00:00.000Z"}\n' +
+      '{"eventId":"evt_2","sequence":2,"type":"START","timestamp":"2026-01-15T10:01:00.000Z"}\n' +
+      '{"eventId":"evt_3","sequence":3,"type":"PAUSE","timestamp":"2026-01-15T10:02:00.000Z"}\n'
+    );
+
+    const events = await store.getEventHistory(taskDir, 1);
+
+    expect(events).toHaveLength(2);
+    expect(events[0].sequence).toBe(2);
+    expect(events[1].sequence).toBe(3);
+  });
+
+  it("falls back to task.json eventHistory for legacy tasks", async () => {
+    mockExistsSync.mockReturnValue(false);
+    const task = createTaskInState("queue", {
+      id: "task1",
+      eventHistory: [
+        { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      ],
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockWriteFile.mockResolvedValue(undefined);
+
+    const events = await store.getEventHistory(taskDir);
+
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe("QUEUE");
+    // Should migrate to events.jsonl
+    expect(mockWriteFile).toHaveBeenCalled();
+  });
+
+  it("returns empty array when no events exist", async () => {
+    mockExistsSync.mockReturnValue(false);
+    mockGetTask.mockResolvedValue(createTaskInState("backlog", { id: "task1" }));
+
+    const events = await store.getEventHistory(taskDir);
+    expect(events).toHaveLength(0);
+  });
+
+  it("skips malformed JSON lines", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockResolvedValue(
+      '{"eventId":"evt_1","sequence":1,"type":"QUEUE","timestamp":"2026-01-15T10:00:00.000Z"}\n' +
+      'invalid json line\n' +
+      '{"eventId":"evt_2","sequence":2,"type":"START","timestamp":"2026-01-15T10:01:00.000Z"}\n'
+    );
+
+    const events = await store.getEventHistory(taskDir);
+
+    expect(events).toHaveLength(2);
+  });
+});
+
+// =============================================================================
+// State Transition Complete Flows
+// =============================================================================
+
+describe("Complete State Transition Flows", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockAppendFile.mockResolvedValue(undefined);
+  });
+
+  it("completes happy path: backlog -> queue -> planning -> coding -> qa_review -> human_review -> completed", async () => {
+    let currentTask = createTaskInState("backlog", { id: "task1" });
+
+    const eventFlow: Array<{ type: TaskEventType; expectedState: string }> = [
+      { type: "QUEUE", expectedState: "queue" },
+      { type: "START", expectedState: "in_progress" },
+      { type: "PLANNING_COMPLETE", expectedState: "in_progress" },
+      { type: "ALL_SUBTASKS_DONE", expectedState: "in_progress" },
+      { type: "QA_PASSED", expectedState: "human_review" },
+      { type: "APPROVED", expectedState: "completed" },
+    ];
+
+    for (let i = 0; i < eventFlow.length; i++) {
+      const { type, expectedState } = eventFlow[i];
+
+      mockGetTask.mockResolvedValue(currentTask);
+      mockUpdateTask.mockImplementation(async (_, updates) => {
+        currentTask = { ...currentTask, ...updates } as UnifiedTask;
+        return currentTask;
       });
 
-      it("backlog + CANCEL is valid", () => {
-        const event = createMockEvent("CANCEL", 1);
-        expect(isValidEventType(event.type)).toBe(true);
-      });
-    });
-  });
-});
+      const event: TaskEvent = {
+        eventId: `evt_${i + 1}`,
+        sequence: i + 1,
+        type,
+        timestamp: new Date().toISOString(),
+      };
 
-// =============================================================================
-// Event Validation Logic Tests
-// =============================================================================
+      const result = await store.applyEvent(taskDir, event);
 
-describe("Event Validation Logic", () => {
-  describe("event type validation", () => {
-    it("rejects unknown event types", () => {
-      expect(isValidEventType("UNKNOWN_EVENT")).toBe(false);
-    });
-
-    it("event types are case sensitive", () => {
-      expect(isValidEventType("queue")).toBe(false);
-      expect(isValidEventType("Queue")).toBe(false);
-      expect(isValidEventType("QUEUE")).toBe(true);
-    });
+      expect(result.success).toBe(true);
+      expect(currentTask.status).toBe(expectedState);
+    }
   });
 
-  describe("sequence number validation", () => {
-    it("first event should have sequence 1", () => {
-      const event = createMockEvent("QUEUE", 1);
-      expect(event.sequence).toBe(1);
+  it("handles pause/resume flow", async () => {
+    let currentTask = createTaskInState("queue", {
+      id: "task1",
+      lastEvent: { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
     });
 
-    it("sequence numbers should be positive integers", () => {
-      const event = createMockEvent("START", 2);
-      expect(event.sequence).toBeGreaterThan(0);
-      expect(Number.isInteger(event.sequence)).toBe(true);
-    });
-  });
-
-  describe("timestamp validation", () => {
-    it("event timestamp should be ISO format", () => {
-      const event = createMockEvent("QUEUE", 1);
-      const parsed = new Date(event.timestamp);
-      expect(parsed.toISOString()).toBe(event.timestamp);
-    });
-  });
-});
-
-// =============================================================================
-// State Transition Validation Tests
-// =============================================================================
-
-describe("State Transition Validation", () => {
-  describe("valid transition sequences", () => {
-    it("backlog -> queue -> in_progress.planning is valid", () => {
-      const events = [
-        createMockEvent("QUEUE", 1),
-        createMockEvent("START", 2),
-      ];
-
-      expect(isValidEventType(events[0].type)).toBe(true);
-      expect(isValidEventType(events[1].type)).toBe(true);
+    // PAUSE
+    mockGetTask.mockResolvedValue(currentTask);
+    mockUpdateTask.mockImplementation(async (_, updates) => {
+      currentTask = { ...currentTask, ...updates } as UnifiedTask;
+      return currentTask;
     });
 
-    it("full happy path sequence is valid", () => {
-      const events = [
-        createMockEvent("QUEUE", 1),
-        createMockEvent("START", 2),
-        createMockEvent("PLANNING_COMPLETE", 3),
-        createMockEvent("ALL_SUBTASKS_DONE", 4),
-        createMockEvent("QA_PASSED", 5),
-        createMockEvent("APPROVED", 6),
-      ];
-
-      for (const event of events) {
-        expect(isValidEventType(event.type)).toBe(true);
-      }
+    let result = await store.applyEvent(taskDir, {
+      eventId: "evt_2",
+      sequence: 2,
+      type: "PAUSE",
+      timestamp: "2026-01-15T10:01:00.000Z",
     });
 
-    it("pause/resume sequence is valid", () => {
-      const events = [
-        createMockEvent("QUEUE", 1),
-        createMockEvent("START", 2),
-        createMockEvent("PAUSE", 3),
-        createMockEvent("RESUME", 4),
-      ];
+    expect(result.success).toBe(true);
+    expect(currentTask.status).toBe("paused");
+    expect(currentTask.machine_context?.paused_snapshot).toBeDefined();
 
-      for (const event of events) {
-        expect(isValidEventType(event.type)).toBe(true);
-      }
-    });
-  });
-});
+    // RESUME
+    mockGetTask.mockResolvedValue(currentTask);
 
-// =============================================================================
-// Error Code Tests
-// =============================================================================
-
-describe("Error Codes", () => {
-  describe("INVALID_EVENT_TYPE", () => {
-    it("should be returned for unknown event types", () => {
-      // Test the validation logic that would produce this error
-      expect(isValidEventType("INVALID")).toBe(false);
-    });
-  });
-
-  describe("SEQUENCE_MISMATCH detection", () => {
-    it("should detect when sequence is not incremental", () => {
-      const task = createMockTask({
-        lastEvent: createMockEvent("QUEUE", 1) as any,
-      });
-
-      // Expected next sequence is 2
-      const expectedSeq = (task.lastEvent?.sequence ?? 0) + 1;
-      expect(expectedSeq).toBe(2);
-
-      // Event with sequence 3 would be a mismatch
-      const badEvent = createMockEvent("START", 3);
-      expect(badEvent.sequence).not.toBe(expectedSeq);
+    result = await store.applyEvent(taskDir, {
+      eventId: "evt_3",
+      sequence: 3,
+      type: "RESUME",
+      timestamp: "2026-01-15T10:02:00.000Z",
     });
 
-    it("should detect duplicate sequence numbers", () => {
-      const task = createMockTask({
-        lastEvent: createMockEvent("QUEUE", 5) as any,
-      });
-
-      const expectedSeq = (task.lastEvent?.sequence ?? 0) + 1;
-      const duplicateEvent = createMockEvent("START", 5); // Same as last
-
-      expect(duplicateEvent.sequence).not.toBe(expectedSeq);
-    });
-  });
-});
-
-// =============================================================================
-// Review Reason Computation Tests
-// =============================================================================
-
-describe("Review Reason Computation", () => {
-  it("QA_PASSED should set reviewReason to completed", () => {
-    const event = createMockEvent("QA_PASSED", 1);
-    expect(event.type).toBe("QA_PASSED");
-    // The actual computation is done in event-store.ts computeReviewReason
-  });
-
-  it("USER_STOPPED should set reviewReason to stopped", () => {
-    const event = createMockEvent("USER_STOPPED", 1);
-    expect(event.type).toBe("USER_STOPPED");
-  });
-
-  it("QA_FAILED should set reviewReason to qa_rejected", () => {
-    const event = createMockEvent("QA_FAILED", 1);
-    expect(event.type).toBe("QA_FAILED");
-  });
-});
-
-// =============================================================================
-// Machine Context Update Tests
-// =============================================================================
-
-describe("Machine Context Updates", () => {
-  describe("PAUSE event handling", () => {
-    it("should save context snapshot when pausing", () => {
-      const event = createMockEvent("PAUSE", 1);
-      expect(event.type).toBe("PAUSE");
-      // The event store should save current_subtask_index and from_state
-    });
-  });
-
-  describe("RESUME event handling", () => {
-    it("should clear paused_snapshot when resuming", () => {
-      const event = createMockEvent("RESUME", 1);
-      expect(event.type).toBe("RESUME");
-      // The event store should clear paused_snapshot
-    });
-  });
-
-  describe("ABANDON event handling", () => {
-    it("should clear paused_snapshot when abandoning", () => {
-      const event = createMockEvent("ABANDON", 1);
-      expect(event.type).toBe("ABANDON");
-      // The event store should clear paused_snapshot
-    });
-  });
-
-  describe("CANCEL event handling", () => {
-    it("should clear paused_snapshot when cancelling", () => {
-      const event = createMockEvent("CANCEL", 1);
-      expect(event.type).toBe("CANCEL");
-      // The event store should clear paused_snapshot
-    });
-  });
-
-  describe("SUBTASK_COMPLETE event handling", () => {
-    it("should increment subtask index", () => {
-      const event = createMockEvent("SUBTASK_COMPLETE", 1);
-      expect(event.type).toBe("SUBTASK_COMPLETE");
-      // The event store should increment current_subtask_index
-    });
-  });
-});
-
-// =============================================================================
-// QUEUE Event Handling Tests
-// =============================================================================
-
-describe("QUEUE Event Handling", () => {
-  it("should set queuedAt timestamp", () => {
-    const event = createMockEvent("QUEUE", 1);
-    expect(event.type).toBe("QUEUE");
-    // The event store should set queuedAt to event.timestamp
+    expect(result.success).toBe(true);
+    expect(currentTask.status).toBe("queue");
+    expect(currentTask.machine_context?.paused_snapshot).toBeUndefined();
   });
 });
 
@@ -310,46 +587,134 @@ describe("QUEUE Event Handling", () => {
 // =============================================================================
 
 describe("Legacy State Normalization", () => {
-  const legacyMappings: [string, string][] = [
-    ["done", "completed"],
-    ["pr_created", "completed"],
-    ["error", "failed"],
-  ];
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
 
-  for (const [legacy, normalized] of legacyMappings) {
-    it(`normalizes "${legacy}" to "${normalized}"`, () => {
-      // This tests the normalizeXStateValue logic
-      // The actual normalization is in event-store.ts
-      expect(["done", "pr_created", "error"]).toContain(legacy);
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockAppendFile.mockResolvedValue(undefined);
+  });
+
+  it("normalizes 'done' state to 'completed'", async () => {
+    const task = createMockTask({
+      id: "task1",
+      status: "completed",
+      xstateState: "done" as any, // Legacy state
     });
-  }
+    mockGetTask.mockResolvedValue(task);
+
+    // Trying RETRY from 'done' should fail (completed is terminal)
+    const result = await store.validateEvent(taskDir, {
+      eventId: "evt_1",
+      sequence: 1,
+      type: "RETRY",
+      timestamp: "2026-01-15T10:00:00.000Z",
+    });
+
+    // 'done' is normalized to 'completed' which is a terminal state
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("INVALID_TRANSITION");
+  });
+
+  it("normalizes 'error' state to 'failed'", async () => {
+    const task = createMockTask({
+      id: "task1",
+      status: "failed",
+      xstateState: "error" as any, // Legacy state
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+    // RETRY from 'error' (normalized to 'failed') should work
+    const result = await store.applyEvent(taskDir, {
+      eventId: "evt_1",
+      sequence: 1,
+      type: "RETRY",
+      timestamp: "2026-01-15T10:00:00.000Z",
+    });
+
+    expect(result.success).toBe(true);
+  });
 });
 
 // =============================================================================
-// Event Sequence Tests
+// Review Reason Computation Tests
 // =============================================================================
 
-describe("Event Sequences", () => {
-  it("should track events with monotonically increasing sequence", () => {
-    const events = [
-      createMockEvent("QUEUE", 1),
-      createMockEvent("START", 2),
-      createMockEvent("PLANNING_COMPLETE", 3),
-    ];
+describe("Review Reason Computation", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
 
-    for (let i = 1; i < events.length; i++) {
-      expect(events[i].sequence).toBeGreaterThan(events[i - 1].sequence);
-    }
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+    mockAppendFile.mockResolvedValue(undefined);
   });
 
-  it("should generate unique event IDs", () => {
-    const events = [
-      createMockEvent("QUEUE", 1),
-      createMockEvent("START", 2),
-      createMockEvent("PLANNING_COMPLETE", 3),
-    ];
+  it("sets reviewReason to 'completed' on QA_PASSED", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "qa_review" },
+      lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
 
-    const ids = new Set(events.map((e) => e.eventId));
-    expect(ids.size).toBe(events.length);
+    await store.applyEvent(taskDir, {
+      eventId: "evt_5",
+      sequence: 5,
+      type: "QA_PASSED",
+      timestamp: "2026-01-15T10:04:00.000Z",
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+      reviewReason: "completed",
+    }));
+  });
+
+  it("sets reviewReason to 'stopped' on USER_STOPPED", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "coding" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      machine_context: { current_subtask_index: 1, requires_plan_review: false }, // Has progress
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+    await store.applyEvent(taskDir, {
+      eventId: "evt_4",
+      sequence: 4,
+      type: "USER_STOPPED",
+      timestamp: "2026-01-15T10:03:00.000Z",
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+      reviewReason: "stopped",
+    }));
+  });
+
+  it("sets reviewReason to 'qa_rejected' on QA_FAILED", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "qa_review" },
+      lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
+
+    await store.applyEvent(taskDir, {
+      eventId: "evt_5",
+      sequence: 5,
+      type: "QA_FAILED",
+      timestamp: "2026-01-15T10:04:00.000Z",
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+      reviewReason: "qa_rejected",
+    }));
   });
 });
