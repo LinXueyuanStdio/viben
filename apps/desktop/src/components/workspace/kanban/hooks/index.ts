@@ -29,5 +29,12 @@ export {
   type TaskActionsResult,
 } from "./use-task-actions";
 
+export {
+  useElapsedTime,
+  formatElapsedTime,
+  type UseElapsedTimeOptions,
+  type UseElapsedTimeReturn,
+} from "./use-elapsed-time";
+
 // Re-export TaskActions from types (single source of truth)
 export type { TaskActions } from "../types";

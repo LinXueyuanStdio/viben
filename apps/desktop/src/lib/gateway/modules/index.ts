@@ -86,3 +86,6 @@ export * from "./preferences";
 
 // Tasks module
 export * from "./tasks";
+
+// Telemetry module
+export * from "./telemetry";

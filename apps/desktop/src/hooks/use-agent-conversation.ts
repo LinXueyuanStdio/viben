@@ -61,6 +61,8 @@ interface SSEMessageData {
   type: "session" | "sdk_session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
   // session
   sessionId?: string;
+  /** Trace ID for observability correlation (sent with session message) */
+  traceId?: string;
   // sdk_session - The SDK's internal session ID for resume
   sdkSessionId?: string;
   // text
@@ -159,6 +161,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const [sessionId, setSessionId] = useState<string | null>(null);
   // SDK session ID - The SDK's internal session ID for resume (different from gateway sessionId)
   const [sdkSessionId, setSdkSessionId] = useState<string | null>(null);
+  // Trace ID for observability correlation
+  const [traceId, setTraceId] = useState<string | null>(null);
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -227,6 +231,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       case "session":
         if (data.sessionId) {
           setSessionId(data.sessionId);
+        }
+        // Capture trace ID for observability
+        if (data.traceId) {
+          setTraceId(data.traceId);
+          console.log("[useAgent] Got trace ID:", data.traceId);
         }
         break;
 
@@ -1376,6 +1385,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     setPhase("idle");
     setSessionId(null);
     setSdkSessionId(null);
+    setTraceId(null);
   }, [client, useWebSocket, sendWebSocketMessage]);
 
   /**
@@ -1839,6 +1849,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     toolUsages,
     error,
     sessionId,
+    traceId,
     gatewayConnected,
 
     // Actions

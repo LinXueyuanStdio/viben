@@ -38,7 +38,11 @@ export interface AgentResponse {
   name: string;
   executor_type: string;
   source: string;
+  /** Agent directory path (e.g., ~/.viben/agents/my-agent) */
+  agent_dir?: string;
+  /** @deprecated Use agent_dir instead */
   workspace_path?: string;
+  /** Full path to AGENTS.md config file */
   config_path?: string;
   description?: string;
   model?: string;

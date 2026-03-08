@@ -36,8 +36,8 @@ interface McpServersFileState {
   lastUpdated: number;
 }
 
-/** Cache of last written content to avoid unnecessary writes */
-let lastWrittenContent: string | null = null;
+/** Cache of last written mcpServers content (excluding lastUpdated) to avoid unnecessary writes */
+let lastWrittenServersContent: string | null = null;
 
 /** Flag to prevent save during initial load */
 let isInitialLoading = true;
@@ -76,7 +76,8 @@ async function readServersFromFile(): Promise<McpServersFileState | null> {
 
     if (parsed.mcpServers && Array.isArray(parsed.mcpServers)) {
       const state = config as unknown as McpServersFileState;
-      lastWrittenContent = JSON.stringify(state);
+      // Only cache mcpServers content, not lastUpdated (to avoid false positives)
+      lastWrittenServersContent = JSON.stringify(state.mcpServers);
       console.log(`${LOG_PREFIX} 📖 READ #${callId} - Success, got ${state.mcpServers.length} servers`);
       return state;
     }
@@ -109,19 +110,21 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
   }
 
   try {
-    const content = JSON.stringify(state, null, 2);
+    // Only compare mcpServers content, NOT lastUpdated (which changes every time)
+    const serversContent = JSON.stringify(state.mcpServers);
 
-    // Skip write if content hasn't changed
-    if (content === lastWrittenContent) {
-      console.log(`${LOG_PREFIX} ✏️ WRITE #${callId} - Skipped: content unchanged`);
+    // Skip write if mcpServers hasn't actually changed
+    if (serversContent === lastWrittenServersContent) {
+      console.log(`${LOG_PREFIX} ✏️ WRITE #${callId} - Skipped: mcpServers unchanged`);
       return false;
     }
 
     console.log(`${LOG_PREFIX} ✏️ WRITE #${callId} - Writing ${state.mcpServers.length} servers to file...`);
+    console.log(`${LOG_PREFIX} ✏️ WRITE #${callId} - Content changed: ${lastWrittenServersContent?.slice(0, 50)}... → ${serversContent.slice(0, 50)}...`);
     const gateway = getGatewayClient();
-    // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
+    // Pass state directly - it already contains { mcpServers, lastUpdated }
     await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
-    lastWrittenContent = content;
+    lastWrittenServersContent = serversContent;
     lastWriteTimestamp = Date.now();
     console.log(`${LOG_PREFIX} ✏️ WRITE #${callId} - Success at ${new Date(lastWriteTimestamp).toISOString()}`);
     return true;
@@ -169,8 +172,17 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       if (fileState) {
         // Update MCP servers only (statuses are not persisted)
         if (fileState.mcpServers && Array.isArray(fileState.mcpServers)) {
-          console.log(`${LOG_PREFIX} 📂 loadFromFile() updating store with ${fileState.mcpServers.length} servers`);
-          useAppStore.setState({ mcpServers: fileState.mcpServers });
+          // Compare with current store to avoid unnecessary updates that would trigger save loop
+          const currentServers = useAppStore.getState().mcpServers;
+          const currentContent = JSON.stringify(currentServers);
+          const newContent = JSON.stringify(fileState.mcpServers);
+
+          if (currentContent !== newContent) {
+            console.log(`${LOG_PREFIX} 📂 loadFromFile() updating store with ${fileState.mcpServers.length} servers (content changed)`);
+            useAppStore.setState({ mcpServers: fileState.mcpServers });
+          } else {
+            console.log(`${LOG_PREFIX} 📂 loadFromFile() skipping store update - content unchanged (${fileState.mcpServers.length} servers)`);
+          }
         }
       }
 

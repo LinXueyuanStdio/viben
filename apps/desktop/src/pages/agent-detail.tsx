@@ -134,14 +134,13 @@ export function AgentDetailPage() {
   }, [agentId, workspace?.path]);
 
   // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
-  // Note: config_path is the full path to AGENTS.md, we extract the directory from it
   const agent = useMemo(() => {
     if (!fullAgent) return null;
-    // Extract agent directory from config_path (remove /AGENTS.md suffix)
-    const agentDir = fullAgent.config_path?.replace(/\/AGENTS\.md$/, "") || "";
     return {
       ...fullAgent,
-      path: agentDir,
+      // Use agent_dir from API (agent directory path)
+      path: fullAgent.agent_dir,
+      // Use config_path from API (full path to AGENTS.md)
       configPath: fullAgent.config_path,
     };
   }, [fullAgent]);
@@ -189,10 +188,9 @@ export function AgentDetailPage() {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Trace visualization state
-  // Note: traceId and traceTree are placeholders for future trace integration
-  const [traceId] = useState<string | undefined>();
-  const [traceTree] = useState<TraceTree | null>(null);
+  const [traceTree, setTraceTree] = useState<TraceTree | null>(null);
   const [selectedSpan, setSelectedSpan] = useState<TraceSpanNode | null>(null);
+  const [isLoadingTrace, setIsLoadingTrace] = useState(false);
 
   // Get agent folder path
   const agentFolderPath = useMemo(() => {
@@ -471,6 +469,7 @@ export function AgentDetailPage() {
     answerQuestions,
     cancel,
     sessionId,
+    traceId: conversationTraceId,
   } = useAgentConversation(debugWorkdir, {
     agentConfig: {
       name: formName || undefined,
@@ -484,6 +483,34 @@ export function AgentDetailPage() {
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     },
   });
+
+  // Fetch trace data when traceId changes
+  useEffect(() => {
+    if (!conversationTraceId) {
+      setTraceTree(null);
+      return;
+    }
+
+    const fetchTrace = async () => {
+      setIsLoadingTrace(true);
+      try {
+        const client = getGatewayClient();
+        const response = await client.getTrace(conversationTraceId);
+        if (response.tree) {
+          setTraceTree(response.tree);
+        }
+      } catch (error) {
+        console.error("[agent-detail] Failed to fetch trace:", error);
+        setTraceTree(null);
+      } finally {
+        setIsLoadingTrace(false);
+      }
+    };
+
+    // Add a small delay to let the trace data be written to disk
+    const timer = setTimeout(fetchTrace, 500);
+    return () => clearTimeout(timer);
+  }, [conversationTraceId]);
 
   // Navigate back to appropriate location based on scope
   const handleNavigateBack = useCallback(() => {
@@ -686,10 +713,11 @@ export function AgentDetailPage() {
             onRejectPlan={rejectPlan}
             onAnswerQuestions={answerQuestions}
             onCancel={cancel}
-            traceId={traceId}
+            traceId={conversationTraceId ?? undefined}
             traceTree={traceTree}
             selectedSpan={selectedSpan}
             onSelectSpan={handleSelectSpan}
+            isLoadingTrace={isLoadingTrace}
             className="h-full"
           />
         </TabsContent>

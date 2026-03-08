@@ -26,6 +26,7 @@ import { useStuckDetection } from "@/hooks/use-stuck-detection";
 import type { EnhancedTask, TaskActions, Subtask } from "../types";
 import { TaskCardContent } from "./task-card-content";
 import { TaskCardMenu } from "./task-card-menu";
+import { useElapsedTime } from "../hooks";
 
 /**
  * Props for TaskCard component
@@ -98,6 +99,12 @@ export const TaskCard = memo(function TaskCard({
   });
 
   const isRunning = !!task.has_in_progress_attempt;
+
+  // Track elapsed time for running tasks
+  const { elapsedTime } = useElapsedTime({
+    isRunning,
+    startTime: task.updated_at,
+  });
 
   // Smart stuck status merge with useMemo
   // Priority:
@@ -216,6 +223,7 @@ export const TaskCard = memo(function TaskCard({
         onViewPR={canViewPR ? handleViewPR : undefined}
         onArchive={canArchive ? handleArchive : undefined}
         isSelected={isSelected}
+        elapsedTime={isRunning ? elapsedTime : undefined}
       />
     </KanbanCard>
   );
