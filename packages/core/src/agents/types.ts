@@ -15,6 +15,7 @@ export type {
   AgentCapability,
   AvailabilityStatus,
   AvailabilityInfo,
+  CustomVariable,
 } from "../types";
 
 /**
@@ -38,6 +39,16 @@ export interface AgentConfigFile {
   approvals?: boolean;
   isTemplate?: boolean;
   templateDescription?: string;
+  /** Template tags for categorization (snake_case for YAML) */
+  template_tags?: string[];
+  /** Custom variables with default values (snake_case for YAML) */
+  custom_variables?: Array<{
+    name: string;
+    default_value?: string;
+    description?: string;
+  }>;
+  /** Environment variable references (snake_case for YAML) */
+  env_variables?: string[];
   createdAt: string;
   updatedAt: string;
 }

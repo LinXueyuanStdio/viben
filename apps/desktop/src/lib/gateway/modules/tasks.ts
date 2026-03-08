@@ -365,15 +365,20 @@ export async function getTaskEvents(
  * @param baseUrl - Gateway base URL
  * @param taskId - Task ID
  * @param workspacePath - Workspace path
+ * @param lastSequence - Optional last received sequence number for event replay on reconnect
  * @returns EventSource for SSE stream
  */
 export function subscribeTaskEvents(
   baseUrl: string,
   taskId: string,
-  workspacePath: string
+  workspacePath: string,
+  lastSequence?: number
 ): EventSource {
   const params = new URLSearchParams();
   params.set("workspace_path", workspacePath);
+  if (lastSequence !== undefined) {
+    params.set("last_sequence", String(lastSequence));
+  }
 
   const url = `${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/events/stream?${params.toString()}`;
   return new EventSource(url);

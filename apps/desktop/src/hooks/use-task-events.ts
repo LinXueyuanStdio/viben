@@ -82,6 +82,7 @@ export function useTaskEvents(
 
   const gatewayUrl = useMemo(() => getGatewayUrl(), []);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const lastSequenceRef = useRef<number>(0); // Track last received sequence for event replay
   const [isConnected, setIsConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<TaskEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +107,13 @@ export function useTaskEvents(
     setError(null);
 
     try {
-      const eventSource = subscribeTaskEvents(gatewayUrl, taskId, workspacePath);
+      // Pass lastSequence for event replay on reconnect
+      const eventSource = subscribeTaskEvents(
+        gatewayUrl,
+        taskId,
+        workspacePath,
+        lastSequenceRef.current > 0 ? lastSequenceRef.current : undefined
+      );
       eventSourceRef.current = eventSource;
 
       // Handle connection open
@@ -127,6 +134,10 @@ export function useTaskEvents(
       eventSource.addEventListener("STATE_CHANGED", (e) => {
         try {
           const data = JSON.parse(e.data) as TaskSSEStateChangedEvent;
+          // Track sequence number for event replay on reconnect
+          if (data.event?.sequence) {
+            lastSequenceRef.current = data.event.sequence;
+          }
           // Record activity for stuck detection
           if (taskId) {
             recordTaskActivity(taskId);
@@ -156,6 +167,13 @@ export function useTaskEvents(
       eventSource.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data) as TaskSSEEvent;
+          // Track sequence number for event replay on reconnect
+          if (data.type === "STATE_CHANGED") {
+            const stateEvent = data as TaskSSEStateChangedEvent;
+            if (stateEvent.event?.sequence) {
+              lastSequenceRef.current = stateEvent.event.sequence;
+            }
+          }
           // Record activity for any valid event
           if (taskId && (data.type === "STATE_CHANGED" || data.type === "TASK_RECOVERED")) {
             recordTaskActivity(taskId);

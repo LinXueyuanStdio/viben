@@ -29,13 +29,18 @@ import {
   ScrollArea,
   Input,
   Textarea,
-  Label,
   cn,
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from "@viben/ui";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import {
   PriorityIcon,
   PrioritySelect,
@@ -70,11 +75,9 @@ import {
   useKanbanActivities,
   useAgentConversation,
   useTaskSpecsData,
-  useChatConfig,
 } from "@/hooks";
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
-import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import type { AgentMessage } from "@/types";
 import {
   TaskSubtasksTab,
@@ -136,7 +139,7 @@ function EditableTitle({
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         autoFocus
-        className={cn("text-xl font-semibold h-auto py-1", className)}
+        className={cn("font-semibold h-auto py-0.5", className)}
       />
     );
   }
@@ -144,7 +147,7 @@ function EditableTitle({
   return (
     <h2
       className={cn(
-        "text-xl font-semibold cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 transition-colors",
+        "font-semibold cursor-pointer hover:bg-muted/50 rounded px-1.5 py-0.5 -mx-1.5 transition-colors line-clamp-2",
         className
       )}
       onClick={() => {
@@ -230,15 +233,16 @@ function PropertyRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 py-1.5">
-      <div className="flex items-center gap-1.5 w-24 text-xs text-muted-foreground shrink-0">
-        <Icon className="h-3.5 w-3.5" />
+    <div className="flex items-center gap-2 py-1">
+      <div className="flex items-center gap-1.5 w-20 text-xs text-muted-foreground shrink-0">
+        <Icon className="h-3 w-3" />
         <span>{label}</span>
       </div>
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );
 }
+
 
 // Format date helper
 function formatDateTime(dateString: string): string {
@@ -397,6 +401,13 @@ export interface AvailableTask {
   title: string;
 }
 
+// Available agent for task execution
+export interface AvailableAgent {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 // Main TaskDetailPanel Props
 export interface TaskDetailPanelProps {
   task: TaskForPanel | null;
@@ -406,6 +417,8 @@ export interface TaskDetailPanelProps {
   availableTags?: Tag[];
   availableUsers?: Assignee[];
   availableTasks?: AvailableTask[];
+  /** Available agents for task execution */
+  availableAgents?: AvailableAgent[];
   onNavigateToTask?: (taskId: string) => void;
   // Current user for comments (defaults to "current-user")
   currentUserId?: string;
@@ -428,6 +441,7 @@ export function TaskDetailPanel({
   availableTags = [],
   availableUsers = [],
   availableTasks = [],
+  availableAgents = [],
   onNavigateToTask,
   currentUserId = "current-user",
   currentUserName = "You",
@@ -442,9 +456,6 @@ export function TaskDetailPanel({
 
   // Load task specs data (PRD, subtasks, logs, files) from .viben/tasks/{taskId}/
   const specsData = useTaskSpecsData(task?.id ?? null, workspacePath);
-
-  // Get available agents and models for selectors (only used when task is in backlog)
-  const chatConfig = useChatConfig();
 
   // Stuck detection with enhanced recovery
   const {
@@ -914,26 +925,31 @@ You are helping the user work on this task. Provide relevant suggestions, code e
       {/* Header with Title and Close */}
       <div className="flex items-start justify-between p-4 border-b shrink-0">
         <div className="flex-1 min-w-0 pr-2">
-          {/* Title - Editable */}
-          <EditableTitle value={task.title} onChange={handleTitleChange} />
-          {/* ID + Status on second line */}
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className="font-mono text-xs text-muted-foreground">
-              #{task.id.slice(0, 7)}
-            </span>
-            <span className="text-muted-foreground/30">•</span>
+          {/* Status + Running indicator */}
+          <div className="flex items-center gap-2 mb-0.5">
             <Badge
               variant="secondary"
               className={cn(
-                "text-xs font-normal px-2 py-0.5 rounded-full",
+                "h-5 px-2 text-xs font-normal rounded-full",
                 getStatusColor(task.status)
               )}
             >
               {getStatusLabel(task.status)}
             </Badge>
+            {task.has_in_progress_attempt && (
+              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+            )}
           </div>
+          {/* Title - Editable */}
+          <EditableTitle value={task.title} onChange={handleTitleChange} className="text-lg" />
+          {/* Task Directory Path */}
+          {task.specsPath && (
+            <p className="text-xs text-muted-foreground/60 font-mono truncate mt-0.5" title={task.specsPath}>
+              {task.specsPath}
+            </p>
+          )}
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
+        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 h-8 w-8">
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -945,22 +961,19 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         className="flex-1 flex flex-col min-h-0"
       >
         <TabsList className="mx-4 mt-2 shrink-0 flex-wrap h-auto gap-1">
-          <TabsTrigger value="details" className="flex items-center gap-2">
+          <TabsTrigger value="details" className="flex items-center gap-1.5">
             <ListChecks className="h-4 w-4" />
             {t("workspace.taskDetail", "Details")}
           </TabsTrigger>
-          <TabsTrigger value="agent-chat" className="flex items-center gap-2">
+          <TabsTrigger value="agent-chat" className="flex items-center gap-1.5">
             <Bot className="h-4 w-4" />
             {t("workspace.agentChat", "Agent Chat")}
           </TabsTrigger>
-          <TabsTrigger value="subtasks" className="flex items-center gap-2">
+          <TabsTrigger value="subtasks" className="flex items-center gap-1.5">
             <ListChecks className="h-4 w-4" />
             {t("workspace.tabs.subtasks", "Subtasks")}
             {(() => {
-              // Use implementation plan subtasks if available, otherwise fall back to task.subtasks
-              const subtasksList = specsData.subtasks.length > 0
-                ? specsData.subtasks
-                : task.subtasks || [];
+              const subtasksList = specsData.subtasks.length > 0 ? specsData.subtasks : task.subtasks || [];
               const completedCount = specsData.subtasks.length > 0
                 ? specsData.subtasks.filter((s) => s.status === "completed").length
                 : (task.subtasks || []).filter((s) => s.completed).length;
@@ -971,23 +984,23 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               ) : null;
             })()}
           </TabsTrigger>
-          <TabsTrigger value="prd" className="flex items-center gap-2">
+          <TabsTrigger value="prd" className="flex items-center gap-1.5">
             <FileText className="h-4 w-4" />
             {t("workspace.tabs.prd", "PRD")}
           </TabsTrigger>
-          <TabsTrigger value="logs" className="flex items-center gap-2">
+          <TabsTrigger value="logs" className="flex items-center gap-1.5">
             <Terminal className="h-4 w-4" />
             {t("workspace.tabs.logs", "Logs")}
           </TabsTrigger>
-          <TabsTrigger value="task-dir" className="flex items-center gap-2">
+          <TabsTrigger value="task-dir" className="flex items-center gap-1.5">
             <FolderOpen className="h-4 w-4" />
-            {t("workspace.tabs.taskDir", "Task Directory")}
+            {t("workspace.tabs.taskDir", "Task Dir")}
           </TabsTrigger>
-          <TabsTrigger value="working-dir" className="flex items-center gap-2">
+          <TabsTrigger value="working-dir" className="flex items-center gap-1.5">
             <FolderOpen className="h-4 w-4" />
-            {t("workspace.tabs.workingDir", "Working Directory")}
+            {t("workspace.tabs.workingDir", "Working Dir")}
           </TabsTrigger>
-          <TabsTrigger value="comments" className="flex items-center gap-2">
+          <TabsTrigger value="comments" className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
             {t("chat.artifacts.title", "Comments")}
             {comments.length > 0 && (
@@ -996,11 +1009,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2">
+          <TabsTrigger value="activity" className="flex items-center gap-1.5">
             <Activity className="h-4 w-4" />
             {t("workspace.activity", "Activity")}
           </TabsTrigger>
-          <TabsTrigger value="events" className="flex items-center gap-2">
+          <TabsTrigger value="events" className="flex items-center gap-1.5">
             <History className="h-4 w-4" />
             {t("workspace.taskEvents.title", "Events")}
             {task.eventHistory && task.eventHistory.length > 0 && (
@@ -1014,10 +1027,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         {/* Details Tab */}
         <TabsContent value="details" className="flex-1 min-h-0">
           <ScrollArea className="h-full">
-            <div className="p-4 space-y-6">
+            <div className="p-4 space-y-4">
               {/* Description - Editable */}
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                <h3 className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
                   {t("workspace.description", "Description")}
                 </h3>
                 <EditableDescription
@@ -1028,8 +1041,8 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               </div>
 
               {/* Properties */}
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">
+              <div className="border-t pt-3">
+                <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                   {t("workspace.properties", "Properties")}
                 </h3>
 
@@ -1163,12 +1176,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                 task.last_attempt_failed !== undefined ||
                 task.executor ||
                 task.xstateState) && (
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-muted-foreground">
-                      {t("workspace.execution", "Execution")}
-                    </h3>
-                  </div>
+                <div className="border-t pt-3">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+                    {t("workspace.execution", "Execution")}
+                  </h3>
 
                   {/* Task Warnings - Stuck and Incomplete detection with one-click recovery */}
                   <TaskWarnings
@@ -1179,7 +1190,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     stuckDuration={stuckDuration}
                     onRecover={handleRecover}
                     onResume={handleResume}
-                    className="mb-3"
+                    className="mb-2"
                   />
 
                   {/* Task Action Buttons */}
@@ -1200,7 +1211,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       agentId={task.agent_id ?? "default"}
                       onEventSubmitted={(eventType, newState) => {
                         console.log(`[TaskDetailPanel] Event ${eventType} submitted, new state: ${newState}`);
-                        // Trigger refresh of task data
                         onUpdate?.({ _refresh: true });
                       }}
                       onEventError={(error) => {
@@ -1211,141 +1221,101 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     />
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    {/* Status indicator with colored dot */}
-                    <div className="flex items-center gap-2">
+                  {/* Execution Config */}
+                  <div className="space-y-3 p-3 rounded-md bg-muted/30">
+                    {/* Runtime Status Row */}
+                    <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
-                        {t("workspace.status", "Status")}:
+                        {t("workspace.runtime", "Runtime")}
                       </span>
                       {isStuck ? (
-                        <Badge variant="outline" className="gap-1.5 pl-1.5 bg-warning/10 text-warning border-warning/30">
-                          <AlertTriangle className="h-2.5 w-2.5" />
+                        <Badge variant="outline" className="gap-1.5 bg-warning/10 text-warning border-warning/30">
+                          <AlertTriangle className="h-3 w-3" />
                           {t("workspace.taskStatus.stuck", "Stuck")}
                         </Badge>
                       ) : task.has_in_progress_attempt ? (
-                        <Badge variant="secondary" className="gap-1.5 pl-1.5">
+                        <Badge variant="secondary" className="gap-1.5">
                           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                           {t("workspace.running", "Running")}
                         </Badge>
                       ) : task.last_attempt_failed ? (
-                        <Badge variant="destructive" className="gap-1.5 pl-1.5">
-                          <span className="h-2 w-2 rounded-full bg-red-500" />
+                        <Badge variant="destructive">
                           {t("workspace.failed", "Failed")}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="gap-1.5 pl-1.5">
-                          <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                        <Badge variant="outline">
                           {t("workspace.idle", "Idle")}
                         </Badge>
                       )}
                     </div>
-                    {/* Executor/Agent/Model info - editable when in backlog, locked otherwise */}
-                    {/* Agent selector/display */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {t("workspace.agent", "Agent")}:
-                      </span>
-                      {task.status === "backlog" && onUpdate ? (
-                        <select
-                          value={task.agent_id || "default"}
-                          onChange={(e) => onUpdate({ agent_id: e.target.value })}
-                          className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background"
-                        >
-                          {chatConfig.agents.length > 0 ? (
-                            chatConfig.agents.map((agent) => (
-                              <option key={agent.id} value={agent.id}>
-                                {agent.name}
-                              </option>
-                            ))
-                          ) : (
-                            <option value="default">default</option>
-                          )}
-                        </select>
-                      ) : (
-                        <>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {task.agent_id || "default"}
-                          </Badge>
-                          {task.status !== "backlog" && (
-                            <span className="text-xs text-muted-foreground/60">
-                              ({t("workspace.locked", "locked")})
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
 
-                    {/* Model selector/display - filtered by agent's executor type */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        {t("workspace.model", "Model")}:
+                    {/* Agent Selector Row */}
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">
+                        {t("workspace.agent", "Agent")}
                       </span>
-                      {task.status === "backlog" && onUpdate ? (
-                        (() => {
-                          // Get selected agent's executor type for filtering
-                          const selectedAgent = chatConfig.agents.find(a => a.id === task.agent_id);
-                          const filteredModels = filterModelsByExecutor(chatConfig.models, selectedAgent?.executor_type);
-                          return (
-                            <select
-                              value={task.model || chatConfig.selectedModelId || ""}
-                              onChange={(e) => onUpdate({ model: e.target.value || null })}
-                              className="h-7 px-2 text-xs font-mono rounded-md border border-input bg-background max-w-[200px]"
-                            >
-                              <option value="">
-                                {t("workspace.useDefault", "Use default")}
-                              </option>
-                              {filteredModels.map((model) => (
-                                <option key={model.id} value={model.id}>
-                                  {model.name}
-                                </option>
-                              ))}
-                            </select>
-                          );
-                        })()
-                      ) : task.model ? (
-                        <>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {task.model}
-                          </Badge>
-                          {task.status !== "backlog" && (
-                            <span className="text-xs text-muted-foreground/60">
-                              ({t("workspace.locked", "locked")})
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {t("workspace.useDefault", "Use default")}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Executor display (read-only, set by system) */}
-                    {task.executor && task.executor !== "unknown" && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          {t("workspace.executor", "Executor")}:
-                        </span>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {task.executor}
-                        </Badge>
-                        {task.status !== "backlog" && (
-                          <span className="text-xs text-muted-foreground/60">
-                            ({t("workspace.locked", "locked")})
-                          </span>
+                      <div className="flex-1 min-w-0">
+                        {task.status === "backlog" && onUpdate ? (
+                          (() => {
+                            const hasNoAgents = availableAgents.length === 0;
+                            const selectedAgent = availableAgents.find(a => a.id === task.agent_id);
+                            return (
+                              <Select
+                                value={task.agent_id || ""}
+                                onValueChange={(value) => onUpdate({ agent_id: value })}
+                                disabled={hasNoAgents}
+                              >
+                                <SelectTrigger className={cn(
+                                  "h-8 bg-background",
+                                  hasNoAgents && "opacity-60"
+                                )}>
+                                  <div className="flex items-center gap-2 text-sm truncate">
+                                    <Bot className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    {hasNoAgents ? (
+                                      <span className="text-muted-foreground">{t("chat.noAgents", "No agents")}</span>
+                                    ) : (
+                                      <span className="truncate">{selectedAgent?.name || t("workspace.selectAgent", "Select agent")}</span>
+                                    )}
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableAgents.map((agent) => (
+                                    <SelectItem key={agent.id} value={agent.id}>
+                                      <div className="flex flex-col">
+                                        <span>{agent.name}</span>
+                                        {agent.description && (
+                                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                            {agent.description}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {task.agent_id || "default"}
+                            </Badge>
+                            {task.status !== "backlog" && (
+                              <span className="text-xs text-muted-foreground/60">🔒</span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Review Reason */}
                   {task.reviewReason && task.status === "human_review" && (
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-3">
                       <span className="text-sm text-muted-foreground">
                         {t("workspace.reviewReason.label", "Review Reason")}:
                       </span>
                       <Badge variant="outline" className={cn(
-                        "text-xs",
                         task.reviewReason === "completed" && "bg-success/10 text-success border-success/30",
                         task.reviewReason === "errors" && "bg-destructive/10 text-destructive border-destructive/30",
                         task.reviewReason === "qa_rejected" && "bg-warning/10 text-warning border-warning/30",
@@ -1359,48 +1329,40 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
                   {/* Worktree/Branch Info */}
                   {task.worktree_path && (
-                    <div className="flex items-start gap-2 mt-3 pt-3 border-t">
-                      <GitBranch className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                    <div className="flex items-center gap-2 mt-3 p-2 rounded-md bg-info/5 border border-info/20">
+                      <GitBranch className="h-4 w-4 text-info shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-medium">
-                            {t("workspace.worktree.title", "Git Worktree")}
-                          </span>
+                        <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">
                             {t("workspace.worktree.isolated", "Isolated")}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground font-mono truncate" title={task.worktree_path}>
+                        <p className="text-xs text-muted-foreground font-mono truncate mt-1" title={task.worktree_path}>
                           {task.worktree_path}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              const client = getGatewayClient();
-                              client.openFile(task.worktree_path!).catch(console.error);
-                            }}
-                          >
-                            <FolderOpen className="h-3 w-3 mr-1.5" />
-                            {t("workspace.worktree.openInFinder", "Open Folder")}
-                          </Button>
-                        </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 shrink-0"
+                        onClick={() => {
+                          const client = getGatewayClient();
+                          client.openFile(task.worktree_path!).catch(console.error);
+                        }}
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </Button>
                     </div>
                   )}
                 </div>
               )}
 
               {/* Subtasks Section */}
-              <div className="border-t pt-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <ListChecks className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium text-muted-foreground">
-                    {t("workspace.subtasks", "Subtasks")}
-                  </Label>
-                </div>
+              <div className="border-t pt-3">
+                <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                  <ListChecks className="h-3 w-3" />
+                  {t("workspace.subtasks", "Subtasks")}
+                </h3>
                 <SubtaskList
                   subtasks={task.subtasks || []}
                   callbacks={
@@ -1441,14 +1403,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               </div>
 
               {/* Relationships Section */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <GitBranch className="h-4 w-4 text-muted-foreground" />
-                    <Label className="text-sm font-medium text-muted-foreground">
-                      {t("workspace.relationships", "Relationships")}
-                    </Label>
-                  </div>
+              <div className="border-t pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <GitBranch className="h-3 w-3" />
+                    {t("workspace.relationships", "Relationships")}
+                  </h3>
                   {onUpdate && availableTasks.length > 0 && (
                     <RelationshipAdd
                       availableTasks={availableTasks.filter((t) => t.id !== task.id)}
@@ -1495,23 +1455,16 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                 )}
               </div>
 
-              {/* Timestamps */}
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                  {t("workspace.timestamps", "Timestamps")}
-                </h3>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      {t("workspace.created", "Created")}: {formatDateTime(task.created_at)}
-                    </span>
+              {/* Timestamps - Compact inline */}
+              <div className="border-t pt-3">
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{t("workspace.created", "Created")}: {formatDateTime(task.created_at)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>
-                      {t("workspace.updated", "Updated")}: {formatDateTime(task.updated_at)}
-                    </span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>{t("workspace.updated", "Updated")}: {formatDateTime(task.updated_at)}</span>
                   </div>
                 </div>
               </div>

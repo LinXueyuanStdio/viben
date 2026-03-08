@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { homeDir } from "@tauri-apps/api/path";
-import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole, type AgentTemplate as GatewayAgentTemplate } from "@/lib/gateway";
+import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole, type AgentResponse } from "@/lib/gateway";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -313,7 +313,7 @@ export function WorkspaceChatPage() {
   const [conversationSearchQuery, setConversationSearchQuery] = React.useState("");
 
   // Create agent dialog state
-  const [selectedAgentTemplate, setSelectedAgentTemplate] = React.useState<GatewayAgentTemplate | null>(null);
+  const [selectedAgentTemplate, setSelectedAgentTemplate] = React.useState<AgentResponse | null>(null);
   const [newAgentName, setNewAgentName] = React.useState("");
   const [newAgentDescription, setNewAgentDescription] = React.useState("");
   const [creatingAgent, setCreatingAgent] = React.useState(false);
@@ -1309,7 +1309,7 @@ export function WorkspaceChatPage() {
   }, [executorSessions]);
 
   // Open create agent dialog - blank or with template
-  const openCreateAgentDialog = (template?: GatewayAgentTemplate | null) => {
+  const openCreateAgentDialog = (template?: AgentResponse | null) => {
     setSelectedAgentTemplate(template || null);
     setNewAgentName(template ? template.name : "");
     setNewAgentDescription(template?.description || "");

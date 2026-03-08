@@ -30,9 +30,10 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 ┌─────────────────────────────────────────────────────────────────┐
 │                      XState State Machine                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │  backlog → queue → in_progress → human_review → done/pr   │  │
-│  │              ↓    (planning/coding/qa)    ↑               │  │
-│  │           paused ─────────────────────────┘               │  │
+│  │  backlog → queue → in_progress → human_review → completed │  │
+│  │     │        ↓    (planning/coding/qa)    ↑       ↑       │  │
+│  │     │     paused ─────────────────────────┘       │       │  │
+│  │     └─────→ cancelled   failed ←──────────────────┘       │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
           │
@@ -128,14 +129,14 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
 | `PLANNING_COMPLETE` | 计划完成 | planning → coding 或 human_review |
-| `PLANNING_FAILED` | 计划失败 | planning → error |
+| `PLANNING_FAILED` | 计划失败 | planning → failed |
 
 #### 编码阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
 | `SUBTASK_COMPLETE` | 子任务完成 | 保持 coding，递增索引 |
 | `ALL_SUBTASKS_DONE` | 所有子任务完成 | coding → qa_review |
-| `CODING_FAILED` | 编码失败 | coding → error |
+| `CODING_FAILED` | 编码失败 | coding → failed |
 
 #### QA 阶段事件
 | 事件 | 描述 | 触发转换 |
@@ -143,7 +144,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 | `QA_PASSED` | QA 通过 | qa_review → human_review |
 | `QA_FAILED` | QA 发现问题 | qa_review → qa_fixing |
 | `QA_FIXING_COMPLETE` | 修复完成 | qa_fixing → qa_review |
-| `QA_FIXING_FAILED` | 修复失败 | qa_fixing → error |
+| `QA_FIXING_FAILED` | 修复失败 | qa_fixing → failed |
 
 #### 用户交互事件
 | 事件 | 描述 | 触发转换 |
@@ -230,7 +231,7 @@ interface UnifiedTask {
   metadata?: TaskMetadata;
 
   // 模板标记
-  isTemplate?: boolean;          // 是否为模板任务
+  is_template?: boolean;          // 是否为模板任务（snake_case 与 API 一致）
 }
 ```
 
