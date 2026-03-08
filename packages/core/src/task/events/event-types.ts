@@ -33,10 +33,14 @@ export type TaskEventType =
   | "USER_STOPPED" // User manually stopped the task
   | "APPROVED" // Human approved the work
   | "REJECTED" // Human rejected, back to coding
-  | "CREATE_PR" // Create pull request
+  | "CANCEL" // Cancel task (terminal state)
+
+  // Pause/Resume events
+  | "PAUSE" // Pause task, preserves current progress
+  | "RESUME" // Resume from paused state
 
   // Recovery events
-  | "RETRY" // Retry from error state
+  | "RETRY" // Retry from failed state
   | "ABANDON"; // Abandon task, back to backlog
 
 /**
@@ -58,7 +62,9 @@ export const VALID_EVENT_TYPES: TaskEventType[] = [
   "USER_STOPPED",
   "APPROVED",
   "REJECTED",
-  "CREATE_PR",
+  "CANCEL",
+  "PAUSE",
+  "RESUME",
   "RETRY",
   "ABANDON",
 ];

@@ -736,5 +736,15 @@ export type {
   AgentRunPayload,
   TaskStatus,
   QueueTaskSummary,
+  QueueTaskStatus,
 } from "./types";
-export { DEFAULT_QUEUE_CONFIG } from "./types";
+export { DEFAULT_QUEUE_CONFIG, mapQueueStatusToUnified, mapUnifiedStatusToQueue } from "./types";
+
+// Re-export scheduler utilities for UnifiedTask scheduling
+export {
+  allDependenciesMet,
+  detectCyclicDependency,
+  getNextTask,
+  getDependentTasks,
+  validateDependencies,
+} from "./scheduler";

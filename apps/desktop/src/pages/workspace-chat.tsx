@@ -24,12 +24,16 @@ import {
   History,
   Settings,
   FolderOpen,
+  LayoutTemplate,
+  Globe,
 } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { homeDir } from "@tauri-apps/api/path";
-import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole } from "@/lib/gateway";
+import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole, type AgentTemplate as GatewayAgentTemplate } from "@/lib/gateway";
+import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu,
@@ -37,6 +41,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
@@ -305,6 +312,14 @@ export function WorkspaceChatPage() {
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
   const [conversationSearchQuery, setConversationSearchQuery] = React.useState("");
 
+  // Create agent dialog state
+  const [selectedAgentTemplate, setSelectedAgentTemplate] = React.useState<GatewayAgentTemplate | null>(null);
+  const [newAgentName, setNewAgentName] = React.useState("");
+  const [newAgentDescription, setNewAgentDescription] = React.useState("");
+  const [creatingAgent, setCreatingAgent] = React.useState(false);
+  const [createAgentLocation, setCreateAgentLocation] = React.useState<"workspace" | "global">("workspace");
+  const [globalVibenPath, setGlobalVibenPath] = React.useState<string>("");
+
   // Resizable panel widths
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(240); // Default to minimum width
   const [rightPanelWidth, setRightPanelWidth] = React.useState(320); // Default 320px (w-80)
@@ -332,6 +347,13 @@ export function WorkspaceChatPage() {
   // Left panel ScrollArea ref and width tracking for overflow fix
   const leftPanelScrollRef = React.useRef<HTMLDivElement>(null);
   const [leftPanelScrollWidth, setLeftPanelScrollWidth] = React.useState<number | null>(null);
+
+  // Load global viben path for create agent dialog
+  React.useEffect(() => {
+    homeDir().then((home) => {
+      setGlobalVibenPath(`${home}.viben/agents/`);
+    });
+  }, []);
 
   // Track left panel scroll area width using ResizeObserver
   React.useEffect(() => {
@@ -643,32 +665,26 @@ export function WorkspaceChatPage() {
     };
   }, [executorMessages]);
 
-  // Get models supported by the selected executor type
+  // Models (moved before executorModels to allow filtering)
+  const { models: vibenModels } = useModels();
+
+  // Get models supported by the selected executor type (filtered from viben models)
   const executorModels = React.useMemo(() => {
     if (!selectedExecutorType) return [];
 
-    // Define models per executor type
-    const modelsByExecutor: Record<string, Array<{ id: string; name: string; provider: string }>> = {
-      CLAUDE_CODE: [
-        { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", provider: "Anthropic" },
-        { id: "claude-4-opus-20250514", name: "Claude Opus 4", provider: "Anthropic" },
-        { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "Anthropic" },
-        { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", provider: "Anthropic" },
-      ],
-      CODEX: [
-        { id: "codex-mini-latest", name: "Codex Mini", provider: "OpenAI" },
-        { id: "o3", name: "o3", provider: "OpenAI" },
-        { id: "o4-mini", name: "o4-mini", provider: "OpenAI" },
-      ],
-      CURSOR: [
-        { id: "cursor-small", name: "Cursor Small", provider: "Cursor" },
-        { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
-        { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic" },
-      ],
-    };
+    // Convert viben models to the format expected by ChatInput
+    const allModels = vibenModels
+      .filter((m) => m.is_available)
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        provider: m.provider_id,
+        provider_id: m.provider_id,
+      }));
 
-    return modelsByExecutor[selectedExecutorType] || [];
-  }, [selectedExecutorType]);
+    // Filter by executor type constraints
+    return filterModelsByExecutor(allModels, selectedExecutorType);
+  }, [selectedExecutorType, vibenModels]);
 
   // Selected model state for executor (display only, executor sessions are read-only)
   const [selectedExecutorModelId, setSelectedExecutorModelId] = React.useState<string | null>(null);
@@ -685,10 +701,14 @@ export function WorkspaceChatPage() {
   }, [selectedExecutorType]); // Only trigger on executor type change, executorModels is derived from it
 
   // Agents (using Gateway API)
-  const { agents, defaultAgentId, setDefaultAgent, updateAgent, removeAgent } = useAgents({ workspacePath: workspace?.path });
+  const { agents, defaultAgentId, setDefaultAgent, updateAgent, removeAgent, createAgent, templates: agentTemplates, refreshTemplates } = useAgents({ workspacePath: workspace?.path });
 
-  // Models for agent detail panel
-  const { models: vibenModels } = useModels();
+  // Load agent templates on mount
+  React.useEffect(() => {
+    refreshTemplates();
+  }, [refreshTemplates]);
+
+  // Models for agent detail panel (vibenModels already loaded above)
   const agentModelsForPanel = vibenModels.map((m) => ({
     id: m.id,
     name: m.name,
@@ -1287,6 +1307,45 @@ export function WorkspaceChatPage() {
       messageCount: session.message_count,
     }));
   }, [executorSessions]);
+
+  // Open create agent dialog - blank or with template
+  const openCreateAgentDialog = (template?: GatewayAgentTemplate | null) => {
+    setSelectedAgentTemplate(template || null);
+    setNewAgentName(template ? template.name : "");
+    setNewAgentDescription(template?.description || "");
+    setCreateAgentLocation("workspace");
+    setIsCreateAgentDialogOpen(true);
+  };
+
+  // Create agent handler
+  const handleCreateAgent = async () => {
+    if (!newAgentName.trim()) return;
+    setCreatingAgent(true);
+    const isWorkspaceAgent = createAgentLocation === "workspace" && workspace?.path;
+    try {
+      const newAgent = await createAgent({
+        name: newAgentName.trim(),
+        description: newAgentDescription.trim() || undefined,
+        base_path: isWorkspaceAgent ? workspace.path : undefined,
+        from_template: selectedAgentTemplate?.id,
+      });
+      // Refresh the chat list to show the new agent
+      await refreshChatList();
+      setIsCreateAgentDialogOpen(false);
+      setNewAgentName("");
+      setNewAgentDescription("");
+      setSelectedAgentTemplate(null);
+      // Select the new agent
+      setSelectedAgentId(newAgent.id);
+      setSelectedGroupChatId(null);
+      setSelectedGroupSessionId(null);
+      setSelectedSidebarExecutorId(null);
+    } catch (err) {
+      console.error("Failed to create agent:", err);
+    } finally {
+      setCreatingAgent(false);
+    }
+  };
 
   // Create new conversation for the selected agent
   const handleCreateConversation = async () => {
@@ -2051,10 +2110,34 @@ export function WorkspaceChatPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setIsCreateAgentDialogOpen(true)}>
+                  <DropdownMenuItem onClick={() => openCreateAgentDialog(null)}>
                     <Bot className="h-4 w-4 mr-2" />
-                    {t("agent.createAgent", "Create Agent")}
+                    {t("agent.createAgent", "创建智能体")}
                   </DropdownMenuItem>
+                  {agentTemplates.length > 0 && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <LayoutTemplate className="h-4 w-4 mr-2" />
+                        {t("settingsAgents.createFromTemplate", "从模板创建")}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-64">
+                        {agentTemplates.map((template) => (
+                          <DropdownMenuItem key={template.id} onClick={() => openCreateAgentDialog(template)}>
+                            <LayoutTemplate className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium">{template.name}</div>
+                              {template.description && (
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {template.description}
+                                </div>
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setIsCreateGroupDialogOpen(true)}>
                     <Users className="h-4 w-4 mr-2" />
                     {t("chat.createGroup", "Create Group")}
@@ -3123,35 +3206,126 @@ export function WorkspaceChatPage() {
 
       {/* Create Agent Dialog */}
       <Dialog open={isCreateAgentDialogOpen} onOpenChange={setIsCreateAgentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              {t("agent.createAgent", "创建智能体")}
-            </DialogTitle>
+            <DialogTitle>{t("settingsAgents.addAgent", "添加智能体")}</DialogTitle>
             <DialogDescription>
-              {t("agent.createAgentDesc", "创建一个新的智能体来处理特定任务")}
+              {selectedAgentTemplate
+                ? t("settingsAgents.createFromTemplateDescription", "基于模板创建新智能体")
+                : t("settingsAgents.addDescription", "创建一个新的智能体")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center py-8">
-              {t("agent.createAgentHint", "请前往智能体管理页面创建新智能体")}
-            </p>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateAgentDialogOpen(false)}>
-                {t("common.cancel", "取消")}
-              </Button>
-              <Button onClick={() => {
-                setIsCreateAgentDialogOpen(false);
-                if (workspaceId) {
-                  navigate(`/workspace/${workspaceId}/agents`);
-                }
-              }}>
-                <Bot className="h-4 w-4 mr-2" />
-                {t("agent.goToAgents", "前往管理")}
-              </Button>
-            </DialogFooter>
+
+          <div className="space-y-4 py-4">
+            {/* Selected Template */}
+            {selectedAgentTemplate && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <LayoutTemplate className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">{selectedAgentTemplate.name}</p>
+                  {selectedAgentTemplate.description && (
+                    <p className="text-xs text-muted-foreground">{selectedAgentTemplate.description}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-name">{t("settingsAgents.name", "名称")}</Label>
+              <Input
+                id="agent-name"
+                value={newAgentName}
+                onChange={(e) => setNewAgentName(e.target.value)}
+                placeholder={t("settingsAgents.namePlaceholder", "输入智能体名称")}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="agent-description">{t("settingsAgents.descriptionLabel", "描述")}</Label>
+              <Input
+                id="agent-description"
+                value={newAgentDescription}
+                onChange={(e) => setNewAgentDescription(e.target.value)}
+                placeholder={t("settingsAgents.descriptionPlaceholder", "输入智能体描述")}
+              />
+            </div>
+
+            {/* Location Selector */}
+            <div className="space-y-2">
+              <Label>{t("settingsAgents.createLocation", "创建位置")}</Label>
+              <div className="grid grid-cols-1 gap-2">
+                {/* Workspace Location */}
+                <button
+                  type="button"
+                  onClick={() => setCreateAgentLocation("workspace")}
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border text-left transition-colors",
+                    createAgentLocation === "workspace"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  )}
+                >
+                  <FolderOpen className={cn(
+                    "h-5 w-5 mt-0.5 shrink-0",
+                    createAgentLocation === "workspace" ? "text-primary" : "text-muted-foreground"
+                  )} />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn(
+                      "font-medium text-sm",
+                      createAgentLocation === "workspace" && "text-primary"
+                    )}>
+                      {t("settingsAgents.workspaceLocation", "工作空间")}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5" title={workspace?.path ? `${workspace.path}/.viben/agents/` : ""}>
+                      {workspace?.path ? `${workspace.path}/.viben/agents/` : ""}
+                    </p>
+                  </div>
+                </button>
+
+                {/* Global Location */}
+                <button
+                  type="button"
+                  onClick={() => setCreateAgentLocation("global")}
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border text-left transition-colors",
+                    createAgentLocation === "global"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  )}
+                >
+                  <Globe className={cn(
+                    "h-5 w-5 mt-0.5 shrink-0",
+                    createAgentLocation === "global" ? "text-primary" : "text-muted-foreground"
+                  )} />
+                  <div className="min-w-0 flex-1">
+                    <p className={cn(
+                      "font-medium text-sm",
+                      createAgentLocation === "global" && "text-primary"
+                    )}>
+                      {t("settingsAgents.globalLocation", "全局")}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5" title={globalVibenPath}>
+                      {globalVibenPath}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateAgentDialogOpen(false)}>
+              {t("common.cancel", "取消")}
+            </Button>
+            <Button onClick={handleCreateAgent} disabled={!newAgentName.trim() || creatingAgent}>
+              {creatingAgent && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t("common.create", "创建")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

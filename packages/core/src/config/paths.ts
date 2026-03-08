@@ -84,20 +84,6 @@ export function getAgentSessionsDir(agentId: string): string {
 }
 
 /**
- * Get the agent templates directory path
- */
-export function getTemplatesDir(): string {
-  return join(getStateDir(), "agent-templates");
-}
-
-/**
- * Get the path to a specific template's directory
- */
-export function getTemplateDir(templateId: string): string {
-  return join(getTemplatesDir(), templateId);
-}
-
-/**
  * Get the shared MCP directory path
  */
 export function getSharedMcpDir(): string {
@@ -109,18 +95,4 @@ export function getSharedMcpDir(): string {
  */
 export function getSharedSkillsDir(): string {
   return join(getStateDir(), "skills");
-}
-
-/**
- * Get the workspace templates directory path
- */
-export function getWorkspaceTemplatesDir(): string {
-  return join(getStateDir(), "templates", "workspace");
-}
-
-/**
- * Get the path to a specific workspace template's directory
- */
-export function getWorkspaceTemplateDir(templateId: string): string {
-  return join(getWorkspaceTemplatesDir(), templateId);
 }

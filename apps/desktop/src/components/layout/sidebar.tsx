@@ -616,12 +616,16 @@ export function Sidebar() {
             id: a.id,
             name: a.name,
             description: a.description,
+            executorType: a.executor_type,
           }))}
-          availableModels={models.map((m: WorkspaceModel) => ({
-            id: m.id,
-            name: m.name,
-            provider: m.provider,
-          }))}
+          availableModels={models
+            .filter((m: WorkspaceModel) => m.is_available)
+            .map((m: WorkspaceModel) => ({
+              id: m.id,
+              name: m.name,
+              provider: m.provider_id,
+              provider_id: m.provider_id,
+            }))}
           isLoadingOptions={isLoadingAgents || isLoadingModels}
         />
 

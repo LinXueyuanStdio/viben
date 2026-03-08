@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { Settings, History, Copy, Trash2, Star } from "lucide-react";
+import { Settings, History, Copy, Trash2, Star, Tag, Upload } from "lucide-react";
 import {
   ListItem,
   getGradientByName,
@@ -49,6 +49,10 @@ export interface AgentListItemProps {
   onCopy?: () => void;
   /** Called when delete is clicked */
   onDelete?: () => void;
+  /** Called when toggle template is clicked */
+  onToggleTemplate?: () => void;
+  /** Called when promote to global is clicked (workspace templates only) */
+  onPromoteToGlobal?: () => void;
 }
 
 // ============================================================================
@@ -67,8 +71,13 @@ export function AgentListItem({
   onSetDefault,
   onCopy,
   onDelete,
+  onToggleTemplate,
+  onPromoteToGlobal,
 }: AgentListItemProps) {
   const { t } = useTranslation();
+
+  // Check if this is a template by looking at badges
+  const isTemplate = additionalBadges?.some(b => b.label === t("agent.template", "模板"));
 
   // Build actions list
   const actions: ListItemAction[] = [];
@@ -97,6 +106,26 @@ export function AgentListItem({
     });
   }
 
+  // Template management actions
+  if (onToggleTemplate) {
+    actions.push({
+      label: isTemplate
+        ? t("agent.unmarkAsTemplate", "取消模板")
+        : t("agent.markAsTemplate", "设为模板"),
+      icon: Tag,
+      onClick: onToggleTemplate,
+      separator: true,
+    });
+  }
+
+  if (onPromoteToGlobal) {
+    actions.push({
+      label: t("agent.promoteToGlobal", "提升为全局"),
+      icon: Upload,
+      onClick: onPromoteToGlobal,
+    });
+  }
+
   if (sessionCount !== undefined) {
     actions.push({
       label: `${sessionCount} ${t("agent.sessions", "个会话")}`,
@@ -113,7 +142,7 @@ export function AgentListItem({
       icon: Trash2,
       onClick: onDelete,
       destructive: true,
-      separator: sessionCount === undefined,
+      separator: sessionCount === undefined && !onToggleTemplate && !onPromoteToGlobal,
     });
   }
 

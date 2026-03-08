@@ -158,6 +158,7 @@ export function useChatConfig(): UseChatConfigReturn {
         name: a.name,
         description: a.description,
         model: a.model,
+        executor_type: a.executor_type,
       }));
       setGlobalAgents(chatAgents);
     }
@@ -172,6 +173,7 @@ export function useChatConfig(): UseChatConfigReturn {
           id: m.id,
           name: m.name,
           provider: m.provider_id,
+          provider_id: m.provider_id,
         }));
       setGlobalModels(chatModels);
     }

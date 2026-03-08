@@ -62,7 +62,7 @@ export type GatewayEvent =
   | { type: "queue_task_failed"; data: { task: QueueTaskSummary; error?: string; duration?: number } }
   | { type: "queue_task_cancelled"; data: { task: QueueTaskSummary } }
   | { type: "queue_status_changed"; data: QueueStatusData }
-  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number } }
+  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number; running_failed?: number } }
   // GitHub auto-fix events
   | { type: "github_autofix_task_created"; data: { task_id: string; workspace_path: string; issue_numbers: number[] } }
   | { type: "github_autofix_task_status_changed"; data: { task_id: string; workspace_path: string; status: string; previous_status?: string } }

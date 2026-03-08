@@ -4,12 +4,26 @@
  * Manages event validation, sequencing, and persistence.
  * Ensures strict ordering of events via sequence numbers.
  *
+ * STORAGE FORMAT (v2):
+ * Events are stored in a separate `events.jsonl` file (JSON Lines format)
+ * for append-only writes and efficient storage. The task.json only keeps
+ * `lastEvent` for quick access to the latest state.
+ *
+ * Directory structure:
+ * <workspace>/.viben/tasks/<date>-<slug>/
+ *   ├── task.json      # Main task file (no eventHistory)
+ *   ├── events.jsonl   # Event history (append-only)
+ *   └── ...
+ *
  * IMPORTANT: All write operations are protected by an async lock to prevent
  * race conditions in concurrent event applications. The lock is keyed by
  * task directory path, allowing concurrent operations on different tasks
  * while serializing operations on the same task.
  */
 
+import { join } from "node:path";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { taskService, type UnifiedTask, type TaskEvent } from "../../services/task-service";
 import {
   xstateToTaskStatus,
@@ -19,6 +33,12 @@ import {
 } from "../machine/task-machine";
 import { isValidEventType, type TaskEventType } from "./event-types";
 import { taskLock } from "../../utils/async-lock";
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const EVENTS_FILE = "events.jsonl";
 
 // =============================================================================
 // Types
@@ -109,21 +129,72 @@ export class TaskEventStore {
     // 5. Compute new status
     const newStatus = xstateToTaskStatus(transitionResult.value);
 
-    // 6. Update task with new state and event history
-    const updatedTask = await taskService.updateTask(taskDir, {
+    // 6. Append event to events.jsonl (new storage format)
+    await this.appendEvent(taskDir, event);
+
+    // 7. Build update payload
+    const updatePayload: Parameters<typeof taskService.updateTask>[1] = {
       status: newStatus,
       xstateState: transitionResult.value,
       lastEvent: event,
-      eventHistory: [...(task.eventHistory ?? []), event],
+      // Note: eventHistory is no longer stored in task.json
+      // Events are stored in events.jsonl for append-only efficiency
       // Also update reviewReason if transitioning to human_review
       reviewReason: this.computeReviewReason(event, task),
-    });
+    };
+
+    // 8. Set queuedAt timestamp when QUEUE event is applied (for FIFO ordering)
+    // @see .trellis/spec/modules/task-system.md - 调度信息
+    if (event.type === "QUEUE") {
+      updatePayload.queuedAt = event.timestamp;
+    }
+
+    // 9. Update task.json with new state
+    const updatedTask = await taskService.updateTask(taskDir, updatePayload);
 
     return {
       success: true,
       newState: JSON.stringify(transitionResult.value),
       task: updatedTask,
     };
+  }
+
+  // ==========================================================================
+  // Event Storage Methods (events.jsonl)
+  // ==========================================================================
+
+  /**
+   * Append an event to the events.jsonl file
+   *
+   * This method uses append-only writes for efficiency.
+   * Each line is a complete JSON object.
+   *
+   * @param taskDir - Absolute path to task directory
+   * @param event - Event to append
+   */
+  private async appendEvent(taskDir: string, event: TaskEvent): Promise<void> {
+    const eventsPath = join(taskDir, EVENTS_FILE);
+    const eventLine = JSON.stringify(event) + "\n";
+    await appendFile(eventsPath, eventLine, "utf-8");
+  }
+
+  /**
+   * Normalize legacy XState values to new state names
+   * Maps: done -> completed, error -> failed, pr_created -> completed
+   */
+  private normalizeXStateValue(value: XStateValue): XStateValue {
+    if (typeof value === "string") {
+      switch (value) {
+        case "done":
+        case "pr_created":
+          return "completed";
+        case "error":
+          return "failed";
+        default:
+          return value;
+      }
+    }
+    return value;
   }
 
   /**
@@ -136,9 +207,12 @@ export class TaskEventStore {
     currentState: XStateValue,
     eventType: string
   ): { value: XStateValue; changed: boolean } {
+    // Normalize legacy state names before computing transition
+    const normalizedState = this.normalizeXStateValue(currentState);
+
     // Use the corrected getNextState function that properly handles
     // state restoration before computing transitions
-    return getNextState(currentState, { type: eventType } as TaskMachineEvent);
+    return getNextState(normalizedState, { type: eventType } as TaskMachineEvent);
   }
 
   /**
@@ -177,21 +251,74 @@ export class TaskEventStore {
   /**
    * Get the event history for a task
    *
+   * Reads from events.jsonl file. If the file doesn't exist, falls back to
+   * task.json eventHistory for backward compatibility (and migrates inline).
+   *
    * @param taskDir - Absolute path to task directory
    * @param since - Optional sequence number to start from
    * @returns Array of events since the given sequence
    */
   async getEventHistory(taskDir: string, since?: number): Promise<TaskEvent[]> {
+    const eventsPath = join(taskDir, EVENTS_FILE);
+
+    // Try to read from events.jsonl first
+    if (existsSync(eventsPath)) {
+      const events = await this.readEventsFromJsonl(eventsPath);
+      if (since === undefined) {
+        return events;
+      }
+      return events.filter((e) => e.sequence > since);
+    }
+
+    // Fall back to task.json eventHistory for backward compatibility
     const task = await taskService.getTask(taskDir);
-    if (!task || !task.eventHistory) {
+    if (!task || !task.eventHistory || task.eventHistory.length === 0) {
       return [];
     }
 
+    // Migrate legacy eventHistory to events.jsonl inline
+    try {
+      const content = task.eventHistory.map((e) => JSON.stringify(e)).join("\n") + "\n";
+      await writeFile(eventsPath, content, "utf-8");
+      console.log(`[TaskEventStore] Migrated ${task.eventHistory.length} events to events.jsonl`);
+    } catch (error) {
+      console.error(`[TaskEventStore] Failed to migrate event history:`, error);
+    }
+
+    // Return the events (filter by since if specified)
     if (since === undefined) {
       return task.eventHistory;
     }
-
     return task.eventHistory.filter((e) => e.sequence > since);
+  }
+
+  /**
+   * Read events from events.jsonl file
+   *
+   * @param eventsPath - Absolute path to events.jsonl file
+   * @returns Array of events
+   */
+  private async readEventsFromJsonl(eventsPath: string): Promise<TaskEvent[]> {
+    try {
+      const content = await readFile(eventsPath, "utf-8");
+      const lines = content.trim().split("\n").filter((line) => line.trim());
+
+      const events: TaskEvent[] = [];
+      for (const line of lines) {
+        try {
+          const event = JSON.parse(line) as TaskEvent;
+          events.push(event);
+        } catch {
+          // Skip malformed lines
+          console.warn(`[TaskEventStore] Skipping malformed event line: ${line.substring(0, 50)}...`);
+        }
+      }
+
+      return events;
+    } catch (error) {
+      console.error(`[TaskEventStore] Error reading events.jsonl:`, error);
+      return [];
+    }
   }
 
   /**

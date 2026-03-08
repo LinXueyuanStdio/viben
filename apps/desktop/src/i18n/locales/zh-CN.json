@@ -1094,7 +1094,14 @@
     "unnamedExecutor": "未命名执行器",
     "unnamedAgent": "未命名智能体",
     "agents": "智能体",
-    "showDetails": "显示智能体详情"
+    "showDetails": "显示智能体详情",
+    "template": "模板",
+    "markAsTemplate": "设为模板",
+    "unmarkAsTemplate": "取消模板",
+    "promoteToGlobal": "提升为全局",
+    "promoteTemplateConfirm": "将此模板提升为全局模板？",
+    "globalTemplate": "全局",
+    "workspaceTemplate": "工作区"
   },
   "agents": {
     "title": "智能体",

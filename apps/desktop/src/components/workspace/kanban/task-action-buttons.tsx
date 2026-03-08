@@ -80,7 +80,8 @@ export interface TaskActionButtonsProps {
  * TaskActionButtons component
  *
  * Renders action buttons based on task state:
- * - backlog/queue: Start button
+ * - backlog: Queue button (move to queue)
+ * - queue: Start button (begin execution)
  * - in_progress (running): Stop button
  * - in_progress (stuck): Recover button
  * - human_review: Approve, Reject, Create PR buttons
@@ -219,9 +220,8 @@ export function TaskActionButtons({
   );
 
   // Event handlers
+  const handleQueue = useCallback(() => submitEvent("QUEUE"), [submitEvent]);
   const handleStart = useCallback(() => submitEvent("START"), [submitEvent]);
-  // handleQueue is available for future use when we need queue functionality
-  // const handleQueue = useCallback(() => submitEvent("QUEUE"), [submitEvent]);
   const handleStop = useCallback(() => submitEvent("USER_STOPPED"), [submitEvent]);
   const handleApprove = useCallback(() => submitEvent("APPROVED"), [submitEvent]);
   const handleReject = useCallback(() => submitEvent("REJECTED"), [submitEvent]);
@@ -434,8 +434,30 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 5: Backlog or queue state - Show Start button
-    if (status === "backlog" || status === "queue") {
+    // Priority 5: Backlog state - Show Queue button (move to queue)
+    if (status === "backlog") {
+      buttonList.push(
+        <Button
+          key="queue"
+          variant="default"
+          size={size}
+          className={sizeClasses[size]}
+          onClick={handleQueue}
+          disabled={isSubmitting}
+        >
+          {submittingEvent === "QUEUE" ? (
+            <LoadingIcon />
+          ) : (
+            <Play className={iconWithMargin} />
+          )}
+          {t("workspace.taskActions.queue", "Queue")}
+        </Button>
+      );
+      return buttonList;
+    }
+
+    // Priority 6: Queue state - Show Start button (begin execution)
+    if (status === "queue") {
       buttonList.push(
         <Button
           key="start"
@@ -456,7 +478,7 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 6: Failed but not stuck - Show Resume button
+    // Priority 7: Failed but not stuck - Show Resume button
     if (lastAttemptFailed && !isRunning) {
       buttonList.push(
         <Button
@@ -478,7 +500,7 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 7: Done state - Show completion indicator
+    // Priority 8: Done state - Show completion indicator
     if (status === "done" || status === "pr_created") {
       buttonList.push(
         <div
@@ -505,6 +527,7 @@ export function TaskActionButtons({
     size,
     isSubmitting,
     submittingEvent,
+    handleQueue,
     handleStart,
     handleStop,
     handleApprove,

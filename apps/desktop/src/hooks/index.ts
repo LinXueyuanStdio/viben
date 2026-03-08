@@ -1,7 +1,7 @@
 export { useAuth } from "./use-auth";
 export { usePython } from "./use-python";
 export { useMcp } from "./use-mcp";
-export { useMcpStatusMonitor, useOnPageEnter, useServerStatus } from "./use-mcp-status-monitor";
+export { useMcpStatusMonitor, useMcpStatusWebSocket, useOnPageEnter, useServerStatus } from "./use-mcp-status-monitor";
 export { useUsage } from "./use-usage";
 export { useMarketplace } from "./use-marketplace";
 export { useInstalledSources } from "./use-installed-sources";

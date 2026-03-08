@@ -43,12 +43,8 @@ export {
   getAgentSkillsDir,
   getAgentMemoryDir,
   getAgentSessionsDir,
-  getTemplatesDir,
-  getTemplateDir,
   getSharedMcpDir,
   getSharedSkillsDir,
-  getWorkspaceTemplatesDir,
-  getWorkspaceTemplateDir,
   readYaml,
   writeYaml,
   readJson,
@@ -73,18 +69,12 @@ export {
 export {
   AgentManager,
   agentManager,
-  // Template management
-  TemplateManager,
-  templateManager,
   // Memory management
   MemoryManager,
   memoryManager,
   // Types
   type AgentConfigFile,
   type SessionFile,
-  type TemplateConfigFile,
-  type CreateTemplateOptions,
-  type ApplyTemplateOptions,
   type MemoryContent,
   type DailyLogContent,
   type ParsedLogEntry,
@@ -527,11 +517,8 @@ export async function initializeCore(): Promise<void> {
   const { skillsManager } = await import("./skills");
   const { serviceManager } = await import("./services");
 
-  const { templateManager } = await import("./agents");
-
   await configManager.initialize();
   await agentManager.initialize();
-  await templateManager.initialize();
   await mcpManager.initialize();
   await skillsManager.initialize();
   await serviceManager.initialize();

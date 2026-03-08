@@ -217,6 +217,7 @@ export type {
   AgentTemplate,
   VibenAgentTemplate,
   ListTemplatesResponse,
+  PromoteTemplateRequest,
   AgentMessage,
   PreferencesResponse,
   DeveloperPreferences,

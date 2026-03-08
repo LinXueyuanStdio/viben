@@ -102,6 +102,7 @@ export function DesktopChatInput({
   // Visibility overrides
   hideAgentSelector: propHideAgentSelector,
   hideModelSelector: propHideModelSelector,
+  hideExecutorSelector: propHideExecutorSelector,
   // Custom content
   configBarLeftExtra: propConfigBarLeftExtra,
   ...props
@@ -292,6 +293,7 @@ export function DesktopChatInput({
       onExecutorChange={onExecutorChange}
       hideAgentSelector={hideAgentSelector}
       hideModelSelector={hideModelSelector}
+      hideExecutorSelector={propHideExecutorSelector}
       onScreenshot={handleScreenshot}
       onOpenFile={handleOpenFile}
       configBarLeftExtra={configBarLeftExtra}

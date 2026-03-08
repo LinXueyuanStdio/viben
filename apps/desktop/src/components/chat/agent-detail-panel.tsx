@@ -54,6 +54,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { filterModelsByExecutor, getProviderConstraintDescription } from "@/lib/executor-constraints";
 import { CollapsibleSection } from "./collapsible-section";
 import { ExecutorCapabilities } from "./executor-capabilities";
 
@@ -187,8 +188,13 @@ export function AgentDetailPanel({
     setEditingField(null);
   }, [agent.id, agent.name, agent.description, agent.system_prompt, agent.temperature]);
 
-  const enabledModels = models.filter((m) => m.enabled !== false);
+  // Filter models by executor type constraints
+  const enabledModels = filterModelsByExecutor(
+    models.filter((m) => m.enabled !== false),
+    agent.executor_type
+  );
   const agentModel = models.find((m) => m.id === agent.model);
+  const providerConstraintHint = getProviderConstraintDescription(agent.executor_type);
 
   const handleSave = async (field: string, value: unknown) => {
     if (!onUpdate) return;
@@ -508,7 +514,12 @@ export function AgentDetailPanel({
                       )}
                     </SelectContent>
                   </Select>
-                  {agent.provider && (
+                  {providerConstraintHint && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {providerConstraintHint}
+                    </p>
+                  )}
+                  {!providerConstraintHint && agent.provider && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Provider: {agent.provider}
                     </p>

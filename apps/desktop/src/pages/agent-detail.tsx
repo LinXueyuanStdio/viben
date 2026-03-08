@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { filterModelsByExecutor, getProviderConstraintDescription } from "@/lib/executor-constraints";
 import {
   useAgents,
   useModels,
@@ -547,17 +548,23 @@ export function AgentDetailPage() {
     }
   }, [formExecutorType]);
 
-  // Group models by provider
+  // Filter models by executor type constraints, then group by provider
   const modelsByProvider = useMemo(() => {
+    // First filter by executor type
+    const filteredModels = filterModelsByExecutor(models, formExecutorType);
+    // Then group by provider
     const grouped: Record<string, typeof models> = {};
-    for (const model of models) {
+    for (const model of filteredModels) {
       if (!grouped[model.provider_id]) {
         grouped[model.provider_id] = [];
       }
       grouped[model.provider_id].push(model);
     }
     return grouped;
-  }, [models]);
+  }, [models, formExecutorType]);
+
+  // Get constraint description for UI hint
+  const providerConstraintHint = getProviderConstraintDescription(formExecutorType);
 
   // Debug chat (using shared chat components)
   // Workdir: workspace path for workspace-scoped agents, ~/.viben for global agents
@@ -1009,6 +1016,11 @@ export function AgentDetailPage() {
                         })}
                       </SelectContent>
                     </Select>
+                    {providerConstraintHint && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {providerConstraintHint}
+                      </p>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <Label className="text-xs">{t("settingsAgents.temperature")}</Label>

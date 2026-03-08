@@ -10,8 +10,8 @@ import type {
   CreateAgentOptions,
   UpdateAgentOptions,
   DefaultAgentResponse,
-  AgentTemplate,
   ListTemplatesResponse,
+  PromoteTemplateRequest,
 } from "../types";
 
 // ============================================================================
@@ -243,14 +243,28 @@ export async function getDefaultAgentId(baseUrl: string): Promise<string | null>
 
 /**
  * List agent templates
+ *
+ * Templates are now regular agents with is_template=true.
+ * This endpoint filters agents to return only templates.
+ *
+ * @param workspacePath - Optional workspace path to include workspace-scoped templates
  */
 export async function listAgentTemplates(
-  baseUrl: string
+  baseUrl: string,
+  options?: {
+    workspacePath?: string;
+  }
 ): Promise<ListTemplatesResponse> {
-  const response = await fetch(`${baseUrl}/api/agent/templates`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
+  const params = new URLSearchParams();
+  if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
+
+  const response = await fetch(
+    `${baseUrl}/api/agent/templates?${params.toString()}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -265,89 +279,138 @@ export async function listAgentTemplates(
 
 /**
  * Get agent template by ID
+ *
+ * @deprecated Templates are now regular agents. Use getAgent() instead.
  */
 export async function getAgentTemplate(
   baseUrl: string,
-  templateId: string
-): Promise<AgentTemplate | null> {
-  const response = await fetch(
-    `${baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
+  templateId: string,
+  options?: { workspacePath?: string }
+): Promise<AgentResponse | null> {
+  // Templates are now just agents, so use getAgent
+  try {
+    return await getAgent(baseUrl, templateId, options);
+  } catch (error) {
+    if (error instanceof GatewayError && error.statusCode === 404) {
+      return null;
     }
-  );
-
-  if (response.status === 404) {
-    return null;
+    throw error;
   }
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to get agent template: ${errorMessage}`,
-      response.status
-    );
-  }
-
-  return response.json();
 }
 
 /**
- * Create agent template from an existing agent
+ * Mark an existing agent as a template
+ *
+ * @param agentId - The agent ID to mark as template
+ * @param templateDescription - Optional description for template selection UI
  */
-export async function createAgentTemplate(
+export async function setAgentAsTemplate(
   baseUrl: string,
   agentId: string,
-  templateId: string
-): Promise<AgentTemplate> {
-  const response = await fetch(`${baseUrl}/api/agent/templates`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ agent_id: agentId, template_id: templateId }),
-  });
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to create template: ${errorMessage}`,
-      response.status
-    );
+  options: {
+    templateDescription?: string;
+    workspacePath?: string;
   }
+): Promise<AgentResponse> {
+  return updateAgent(baseUrl, agentId, {
+    is_template: true,
+    template_description: options.templateDescription,
+    workspace_path: options.workspacePath,
+  });
+}
 
-  return response.json();
+/**
+ * Unmark an agent as template
+ *
+ * @param agentId - The agent ID to unmark as template
+ */
+export async function unsetAgentAsTemplate(
+  baseUrl: string,
+  agentId: string,
+  options?: {
+    workspacePath?: string;
+  }
+): Promise<AgentResponse> {
+  return updateAgent(baseUrl, agentId, {
+    is_template: false,
+    template_description: undefined,
+    workspace_path: options?.workspacePath,
+  });
 }
 
 /**
  * Create agent from template
+ *
+ * Creates a new agent by copying configuration from a template agent.
+ * The new agent is a complete copy and has no ongoing relationship with the template.
+ *
+ * @param templateId - Source template agent ID
+ * @param options - Options for the new agent
  */
 export async function createAgentFromTemplate(
   baseUrl: string,
   templateId: string,
-  agentId: string
+  options: {
+    name: string;
+    agentId?: string;
+    basePath?: string; // Workspace path for workspace-scoped agent
+  }
+): Promise<AgentResponse> {
+  return createAgent(baseUrl, {
+    name: options.name,
+    id: options.agentId,
+    from_template: templateId,
+    base_path: options.basePath,
+  });
+}
+
+/**
+ * Promote workspace template to global
+ *
+ * Copies a workspace-scoped template agent to global scope.
+ *
+ * @param agentId - Workspace template agent ID
+ * @param request - Promotion request with workspace path and optional new global ID
+ */
+export async function promoteTemplateToGlobal(
+  baseUrl: string,
+  agentId: string,
+  request: PromoteTemplateRequest
 ): Promise<AgentResponse> {
   const response = await fetch(
-    `${baseUrl}/api/agent/templates/${encodeURIComponent(templateId)}/instantiate`,
+    `${baseUrl}/api/agent/${encodeURIComponent(agentId)}/promote`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ agent_id: agentId }),
+      body: JSON.stringify(request),
     }
   );
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
-      `Failed to create agent from template: ${errorMessage}`,
+      `Failed to promote template to global: ${errorMessage}`,
       response.status
     );
   }
 
   return response.json();
+}
+
+/**
+ * @deprecated Use setAgentAsTemplate() instead.
+ * Old API for creating separate template files is removed.
+ */
+export async function createAgentTemplate(
+  baseUrl: string,
+  agentId: string,
+  _templateId: string
+): Promise<AgentResponse> {
+  console.warn(
+    "createAgentTemplate() is deprecated. Use setAgentAsTemplate() instead."
+  );
+  return setAgentAsTemplate(baseUrl, agentId, {});
 }

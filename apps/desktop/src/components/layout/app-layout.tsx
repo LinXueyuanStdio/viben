@@ -6,6 +6,7 @@ import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
+import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
@@ -17,6 +18,9 @@ export function AppLayout() {
 
   // Initialize store synchronization across windows
   useMainWindowStoreSync();
+
+  // Initialize MCP status WebSocket connection (singleton - only one connection for the entire app)
+  useMcpStatusWebSocket();
 
   // Initialize channel notifications WebSocket connection
   // This maintains a persistent connection to receive notifications from

@@ -3,7 +3,9 @@
  *
  * Implements the task lifecycle using XState v5.
  * State flow follows Auto-Claude pattern:
- * backlog -> queue -> in_progress (planning/coding/qa_review/qa_fixing) -> human_review -> done/pr_created
+ * backlog -> queue -> in_progress (planning/coding/qa_review/qa_fixing) -> human_review -> completed
+ *
+ * Terminal states: completed, failed, cancelled
  */
 
 import {
@@ -28,6 +30,20 @@ import { actions } from "./actions";
 export type XStateValue = string | { in_progress: ExecutionPhase };
 
 /**
+ * Pause snapshot - saved when task is paused for complete restoration on RESUME
+ */
+export interface PausedSnapshot {
+  /** State value before pausing */
+  from_state: XStateValue;
+  /** Current subtask index at pause time */
+  subtask_index: number;
+  /** Optional execution context for the executor */
+  execution_context?: Record<string, unknown>;
+  /** ISO timestamp when paused */
+  paused_at: string;
+}
+
+/**
  * Task machine context - data that persists across state transitions
  */
 export interface TaskMachineContext {
@@ -39,6 +55,13 @@ export interface TaskMachineContext {
   currentSubtaskIndex: number;
   /** Whether plan requires human review before coding */
   requiresPlanReview: boolean;
+  /**
+   * @deprecated Use paused_snapshot instead for complete restoration
+   * Kept for backward compatibility during transition
+   */
+  pausedFromState?: XStateValue;
+  /** Complete snapshot saved when task is paused */
+  paused_snapshot?: PausedSnapshot;
 }
 
 /**
@@ -60,7 +83,9 @@ export type TaskMachineEvent =
   | { type: "USER_STOPPED" }
   | { type: "APPROVED" }
   | { type: "REJECTED" }
-  | { type: "CREATE_PR" }
+  | { type: "CANCEL" }
+  | { type: "PAUSE" }
+  | { type: "RESUME" }
   | { type: "RETRY" }
   | { type: "ABANDON" };
 
@@ -85,6 +110,8 @@ export const taskMachine = createMachine(
       reviewReason: undefined,
       currentSubtaskIndex: 0,
       requiresPlanReview: false,
+      pausedFromState: undefined,
+      paused_snapshot: undefined,
     } as TaskMachineContext,
 
     states: {
@@ -93,8 +120,11 @@ export const taskMachine = createMachine(
       // ==========================================================================
       backlog: {
         on: {
-          QUEUE: { target: "queue" },
-          START: { target: "in_progress" },
+          QUEUE: {
+            target: "queue",
+            actions: ["setQueuedAt"],
+          },
+          CANCEL: { target: "cancelled" },
         },
       },
 
@@ -105,6 +135,11 @@ export const taskMachine = createMachine(
         on: {
           START: { target: "in_progress" },
           DEQUEUE: { target: "backlog" },
+          PAUSE: {
+            target: "paused",
+            actions: ["savePausedSnapshot_queue"],
+          },
+          CANCEL: { target: "cancelled" },
         },
       },
 
@@ -128,7 +163,11 @@ export const taskMachine = createMachine(
                   actions: ["setReviewReason_planReview"],
                 },
               ],
-              PLANNING_FAILED: { target: "#task.error" },
+              PLANNING_FAILED: { target: "#task.failed" },
+              PAUSE: {
+                target: "#task.paused",
+                actions: ["savePausedSnapshot_planning"],
+              },
             },
           },
 
@@ -141,7 +180,11 @@ export const taskMachine = createMachine(
                 reenter: true,
               },
               ALL_SUBTASKS_DONE: { target: "qa_review" },
-              CODING_FAILED: { target: "#task.error" },
+              CODING_FAILED: { target: "#task.failed" },
+              PAUSE: {
+                target: "#task.paused",
+                actions: ["savePausedSnapshot_coding"],
+              },
             },
           },
 
@@ -153,6 +196,10 @@ export const taskMachine = createMachine(
                 actions: ["setReviewReason_completed"],
               },
               QA_FAILED: { target: "qa_fixing" },
+              PAUSE: {
+                target: "#task.paused",
+                actions: ["savePausedSnapshot_qaReview"],
+              },
             },
           },
 
@@ -160,7 +207,11 @@ export const taskMachine = createMachine(
           qa_fixing: {
             on: {
               QA_FIXING_COMPLETE: { target: "qa_review" },
-              QA_FIXING_FAILED: { target: "#task.error" },
+              QA_FIXING_FAILED: { target: "#task.failed" },
+              PAUSE: {
+                target: "#task.paused",
+                actions: ["savePausedSnapshot_qaFixing"],
+              },
             },
           },
         },
@@ -181,38 +232,85 @@ export const taskMachine = createMachine(
       },
 
       // ==========================================================================
+      // Paused - Task is paused, waiting to be resumed
+      // ==========================================================================
+      paused: {
+        on: {
+          RESUME: [
+            // Resume to queue if paused from queue
+            {
+              target: "queue",
+              guard: "pausedFromQueue",
+              actions: ["restoreFromSnapshot"],
+            },
+            // Resume to in_progress.planning if paused from planning
+            {
+              target: "in_progress.planning",
+              guard: "pausedFromPlanning",
+              actions: ["restoreFromSnapshot"],
+            },
+            // Resume to in_progress.coding if paused from coding
+            {
+              target: "in_progress.coding",
+              guard: "pausedFromCoding",
+              actions: ["restoreFromSnapshot"],
+            },
+            // Resume to in_progress.qa_review if paused from qa_review
+            {
+              target: "in_progress.qa_review",
+              guard: "pausedFromQaReview",
+              actions: ["restoreFromSnapshot"],
+            },
+            // Resume to in_progress.qa_fixing if paused from qa_fixing
+            {
+              target: "in_progress.qa_fixing",
+              guard: "pausedFromQaFixing",
+              actions: ["restoreFromSnapshot"],
+            },
+            // Default: resume to queue (fallback)
+            {
+              target: "queue",
+              actions: ["restoreFromSnapshot"],
+            },
+          ],
+          ABANDON: { target: "backlog", actions: ["clearPausedSnapshot"] },
+          CANCEL: { target: "cancelled", actions: ["clearPausedSnapshot"] },
+        },
+      },
+
+      // ==========================================================================
       // Human Review - Waiting for human approval
       // ==========================================================================
       human_review: {
         on: {
-          APPROVED: { target: "done" },
+          APPROVED: { target: "completed" },
           REJECTED: { target: "in_progress.coding" },
-          CREATE_PR: { target: "pr_created" },
+          CANCEL: { target: "cancelled" },
         },
       },
 
       // ==========================================================================
-      // Done - Task completed
+      // Completed - Task successfully completed
       // ==========================================================================
-      done: {
+      completed: {
         type: "final",
       },
 
       // ==========================================================================
-      // PR Created - Pull request created
+      // Failed - Task execution failed
       // ==========================================================================
-      pr_created: {
-        type: "final",
-      },
-
-      // ==========================================================================
-      // Error - Task encountered an error
-      // ==========================================================================
-      error: {
+      failed: {
         on: {
           RETRY: { target: "in_progress" },
           ABANDON: { target: "backlog" },
         },
+      },
+
+      // ==========================================================================
+      // Cancelled - Task was cancelled by user
+      // ==========================================================================
+      cancelled: {
+        type: "final",
       },
     },
   },
@@ -245,7 +343,10 @@ export function getStateValue(snapshot: AnyMachineSnapshot): XStateValue {
  * Convert XState state value to TaskStatus
  *
  * Maps the XState state machine value to the existing TaskStatus type.
- * Substates qa_review and qa_fixing map to ai_review.
+ * All in_progress substates (planning, coding, qa_review, qa_fixing) map to in_progress.
+ * The specific phase is captured in executionProgress.phase separately.
+ *
+ * Note: ai_review status was removed - use executionPhase to determine qa_review/qa_fixing
  *
  * @param value - XState state value
  * @returns Corresponding TaskStatus
@@ -258,12 +359,8 @@ export function xstateToTaskStatus(value: XStateValue): TaskStatus {
 
   // Handle nested in_progress states
   if (typeof value === "object" && "in_progress" in value) {
-    const phase = value.in_progress;
-    // qa_review and qa_fixing map to ai_review status
-    if (phase === "qa_review" || phase === "qa_fixing") {
-      return "ai_review";
-    }
-    // planning and coding remain as in_progress
+    // All in_progress substates (planning, coding, qa_review, qa_fixing) map to in_progress
+    // The specific phase is captured in executionProgress.phase
     return "in_progress";
   }
 
@@ -291,7 +388,8 @@ export function xstateToExecutionPhase(value: XStateValue): ExecutionPhase | und
 const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
   backlog: [],
   queue: [{ type: "QUEUE" }],
-  error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
+  paused: [{ type: "QUEUE" }, { type: "PAUSE" }],
+  failed: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
   human_review: [
     { type: "QUEUE" },
     { type: "START" },
@@ -299,6 +397,16 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
     { type: "ALL_SUBTASKS_DONE" },
     { type: "QA_PASSED" },
   ],
+  completed: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLANNING_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "QA_PASSED" },
+    { type: "APPROVED" },
+  ],
+  cancelled: [{ type: "CANCEL" }],
+  // Legacy mappings for backward compatibility
   done: [
     { type: "QUEUE" },
     { type: "START" },
@@ -307,13 +415,14 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
     { type: "QA_PASSED" },
     { type: "APPROVED" },
   ],
+  error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
   pr_created: [
     { type: "QUEUE" },
     { type: "START" },
     { type: "PLANNING_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
     { type: "QA_PASSED" },
-    { type: "CREATE_PR" },
+    { type: "APPROVED" },
   ],
 };
 
