@@ -611,7 +611,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           const workspaceAgent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
           if (workspaceAgent?.path) {
             // Pass the agent directory path directly (not AGENTS.md file path)
-            // session-store expects agentPath to be the agent directory
+            // session-store expects agentDir to be the agent directory
             const workspaceSessions = await state.sessionStore.listSessions(id, workspaceAgent.path);
             for (const session of workspaceSessions) {
               if (!seenIds.has(session.id)) {

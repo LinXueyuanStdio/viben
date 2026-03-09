@@ -208,14 +208,18 @@ export function transitionName(
 
 /**
  * Create context for testing pause/resume from a specific state
+ * Uses a fixed timestamp for deterministic tests
  */
-export function createPauseContext(fromState: XStateValue): Partial<TaskMachineContext> {
+export function createPauseContext(
+  fromState: XStateValue,
+  pausedAt = "2026-01-15T10:00:00.000Z"
+): Partial<TaskMachineContext> {
   return {
     pausedFromState: fromState,
     paused_snapshot: {
       from_state: fromState,
       subtask_index: 0,
-      paused_at: new Date().toISOString(),
+      paused_at: pausedAt,
     },
   };
 }

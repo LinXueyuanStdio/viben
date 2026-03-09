@@ -39,29 +39,27 @@ def read_file(path: Path, fallback: str = "") -> str:
         return fallback
 
 
-def run_script(script_path: Path) -> str:
+def run_viben_command(args: list[str], cwd: Path) -> str:
+    """Run viben CLI command and return output."""
     try:
-        if script_path.suffix == ".py":
-            # Add PYTHONIOENCODING to force UTF-8 in subprocess
-            env = os.environ.copy()
-            env["PYTHONIOENCODING"] = "utf-8"
-            cmd = [sys.executable, "-W", "ignore", str(script_path)]
-        else:
-            env = os.environ
-            cmd = [str(script_path)]
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5,
-            cwd=script_path.parent.parent.parent,
-            env=env,
-        )
-        return result.stdout if result.returncode == 0 else "No context available"
-    except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
+        # Try npx viben first (for development), then viben (for installed)
+        for cmd_prefix in [["npx", "viben"], ["viben"]]:
+            try:
+                result = subprocess.run(
+                    cmd_prefix + args,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=10,
+                    cwd=cwd,
+                )
+                if result.returncode == 0:
+                    return result.stdout
+            except FileNotFoundError:
+                continue
+        return "No context available"
+    except subprocess.TimeoutExpired:
         return "No context available"
 
 
@@ -84,8 +82,7 @@ Read and follow all instructions below carefully.
 """)
 
     output.write("<current-state>\n")
-    context_script = viben_dir / "scripts" / "get_context.py"
-    output.write(run_script(context_script))
+    output.write(run_viben_command(["task", "context"], project_dir))
     output.write("\n</current-state>\n\n")
 
     output.write("<workflow>\n")

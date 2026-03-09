@@ -785,7 +785,7 @@ export function WorkspaceChatPage() {
     gatewayConnected,
     checkGatewayConnection,
   } = useAgentConversation(workspace?.path || "", {
-    agentPath: currentAgent?.config_path,
+    agentConfigPath: currentAgent?.config_path,
     agentConfig: currentAgent?.config_path ? undefined : currentAgentConfig,
     sessionId: selectedConversationId || undefined,
     sandboxConfig,
@@ -1371,9 +1371,9 @@ export function WorkspaceChatPage() {
 
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: t("chat.newConversation") + (agent ? ` - ${agent.name}` : ""),
-        // Save agent path for correct session location (workspace vs global)
-        // config_path includes /config.yaml, backend will strip it
-        agent_path: agent?.config_path,
+        // Save agent config path for correct session location (workspace vs global)
+        // config_path is the path to AGENTS.md, backend will use it directly
+        agent_config_path: agent?.config_path,
         // Save agent config snapshot for reliable reference
         agent_config: agentConfigSnapshot,
         // Save workspace path for global agents running in this workspace
@@ -1538,8 +1538,8 @@ export function WorkspaceChatPage() {
 
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: t("chat.copyName", { name: original.title }),
-        // Save agent path for correct session location (workspace vs global)
-        agent_path: agent?.config_path,
+        // Save agent config path for correct session location (workspace vs global)
+        agent_config_path: agent?.config_path,
         agent_config: agentConfigSnapshot,
         workspace_path: workspace?.path,
       });

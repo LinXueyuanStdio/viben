@@ -43,7 +43,7 @@ Based on your change type, execute relevant checks below:
 - [ ] Errors properly propagated to caller?
 - [ ] Loading/pending states handled at each layer?
 
-**Detailed Guide**: `.trellis/spec/guides/cross-layer-thinking-guide.md`
+**Detailed Guide**: `docs/specs/guides/cross-layer-thinking-guide.md`
 
 ---
 
@@ -66,7 +66,7 @@ Based on your change type, execute relevant checks below:
 - [ ] After modification, all usage sites updated?
 - [ ] If creating utility: Does similar utility already exist?
 
-**Detailed Guide**: `.trellis/spec/guides/code-reuse-thinking-guide.md`
+**Detailed Guide**: `docs/specs/guides/code-reuse-thinking-guide.md`
 
 ---
 

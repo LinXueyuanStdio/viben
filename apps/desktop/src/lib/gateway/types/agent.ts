@@ -119,22 +119,7 @@ export interface DefaultAgentResponse {
 // Agent Template Types
 // ============================================================================
 
-/**
- * Agent template (now unified with Agent)
- * @deprecated Templates are now just Agent with is_template=true. Use AgentResponse instead.
- */
-export interface AgentTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  config: Record<string, unknown>;
-  created_at: string;
-}
-
-/** @deprecated Use AgentTemplate instead */
-export type VibenAgentTemplate = AgentTemplate;
-
-/** Response for listing templates (now returns full Agent objects) */
+/** Response for listing templates (returns full Agent objects with is_template=true) */
 export interface ListTemplatesResponse {
   templates: AgentResponse[];
   total: number;

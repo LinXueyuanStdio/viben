@@ -69,26 +69,32 @@ Agent = Executor + Skills + Prompts + MCP + Memory
 
 ```bash
 # 创建新 agent
-viben agent create -n my-agent
+viben agent create my-agent
 
 # 从模板创建
-viben agent create -n my-agent -f coding-assistant
+viben agent create my-agent --from-template coding-assistant
 
 # 克隆现有 agent
-viben agent create -n my-agent --clone existing-agent
+viben agent create my-agent --clone existing-agent
+
+# 将 agent 标记为模板
+viben agent update my-agent --is-template true
+
+# 列出所有模板
+viben agent list --templates
 ```
 
 ### 2. 配置 Agent
 
 ```bash
 # 查看配置
-viben agent config -n my-agent
+viben agent config my-agent
 
 # 设置模型
-viben agent config -n my-agent --set model=gpt-4
+viben agent config my-agent --set model=gpt-4
 
 # 启用 MCP
-viben agent config -n my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
+viben agent config my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
 ```
 
 ### 3. 安装 Skill

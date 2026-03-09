@@ -30,11 +30,11 @@ pnpm test
 ### 2. Documentation Sync
 
 **Structure Docs**:
-- [ ] Does `.trellis/spec/backend/` need updates?
+- [ ] Does `docs/specs/backend/` need updates?
   - New patterns, new modules, new conventions
-- [ ] Does `.trellis/spec/frontend/` need updates?
+- [ ] Does `docs/specs/frontend/` need updates?
   - New components, new hooks, new patterns
-- [ ] Does `.trellis/spec/guides/` need updates?
+- [ ] Does `docs/specs/guides/` need updates?
   - New cross-layer flows, lessons from bugs
 
 **Key Question**:
@@ -97,7 +97,7 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Structure docs not updated | Others don't know the change | Check .trellis/spec/ |
+| Structure docs not updated | Others don't know the change | Check docs/specs/ |
 | Migration not created | Schema out of sync | Check db/migrations/ |
 | Types not synced | Runtime errors | Check shared types |
 | Tests not updated | False confidence | Run full test suite |

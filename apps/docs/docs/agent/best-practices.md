@@ -294,8 +294,8 @@ viben agent chat -n my-agent -p "Generate JSON" --json | jq .
 #!/bin/bash
 # test-agent.sh
 
-# 创建测试 agent
-viben agent create -n test-agent -f my-template
+# 创建测试 agent (从模板创建)
+viben agent create test-agent --from-template my-template
 
 # 测试基本功能
 response=$(viben agent chat -n test-agent -p "Test query" --json)
@@ -309,7 +309,7 @@ else
 fi
 
 # 清理
-viben agent remove -n test-agent
+viben agent remove test-agent
 ```
 
 ### Skill 测试
@@ -333,7 +333,7 @@ viben skill test my-skill --input "test input"
 
 ## 安装
 ```bash
-viben agent create -n my-agent -f template-name
+viben agent create my-agent --from-template template-name
 ```
 
 ## 配置

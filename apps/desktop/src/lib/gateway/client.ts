@@ -60,7 +60,6 @@ import {
   setDefaultAgent,
   listAgentTemplates,
   getAgentTemplate,
-  createAgentTemplate,
   createAgentFromTemplate,
   setAgentAsTemplate,
   unsetAgentAsTemplate,
@@ -1009,16 +1008,6 @@ export class GatewayClient {
     request: PromoteTemplateRequest
   ): Promise<AgentResponse> {
     return promoteTemplateToGlobal(this.baseUrl, agentId, request);
-  }
-
-  /**
-   * @deprecated Use setAgentAsTemplate() instead.
-   */
-  async createAgentTemplate(
-    agentId: string,
-    templateId: string
-  ): Promise<AgentResponse> {
-    return createAgentTemplate(this.baseUrl, agentId, templateId);
   }
 
   // ==========================================================================

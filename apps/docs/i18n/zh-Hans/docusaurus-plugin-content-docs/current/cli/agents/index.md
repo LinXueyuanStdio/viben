@@ -77,9 +77,11 @@ Viben CLI 提供了全面的智能体管理工具。**智能体**是一个独立
 | 方面 | 智能体 | 模板 |
 |------|--------|------|
 | **用途** | 活跃的 AI 助手实例 | 可复用的配置蓝图 |
-| **存储** | `~/.viben/agents/<id>/` | `~/.viben/agent-templates/<id>/` |
+| **存储** | `~/.viben/agents/<id>/` | `~/.viben/agents/<id>/` (带 `isTemplate: true` 标记) |
 | **记忆** | 有记忆和会话 | 无运行时状态 |
 | **使用** | 直接交互 | 创建新智能体 |
+
+模板本质上是一个带有 `isTemplate: true` 标记的普通智能体。这种设计简化了管理，模板和智能体共享相同的目录结构。
 
 ## 快速命令
 
@@ -91,7 +93,7 @@ viben agent list
 viben agent create -n my-agent
 
 # 从模板创建
-viben agent create -n my-agent -f coding-assistant
+viben agent create my-agent --from-template coding-assistant
 
 # 克隆现有智能体
 viben agent create -n my-agent --clone existing-agent

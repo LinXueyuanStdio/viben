@@ -3,7 +3,7 @@ description = "Create a new slash command in the Gemini CLI commands directory"
 prompt = """
 # Create New Slash Command
 
-Create a new slash command in `.gemini/commands/trellis/` directory based on user requirements.
+Create a new slash command in `.gemini/commands/viben/` directory based on user requirements.
 
 ## Usage
 
@@ -72,7 +72,7 @@ Template
 ### 4. Create File
 
 Create the TOML file:
-- `.gemini/commands/trellis/<command-name>.toml`
+- `.gemini/commands/viben/<command-name>.toml`
 
 ### 5. Confirm Creation
 
@@ -81,7 +81,7 @@ Output result:
 [OK] Created Slash Command: /viben:<command-name>
 
 File path:
-- .gemini/commands/trellis/<command-name>.toml
+- .gemini/commands/viben/<command-name>.toml
 
 Usage:
 /viben:<command-name>

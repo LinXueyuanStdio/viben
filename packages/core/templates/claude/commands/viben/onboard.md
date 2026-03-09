@@ -49,7 +49,7 @@ AI models are trained on millions of codebases - they know general patterns for 
 
 **The Problem**: AI writes code that "works" but doesn't match your project's style. It uses patterns that conflict with existing code. It makes decisions that violate unwritten team rules.
 
-**The Solution**: The `.viben/spec/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
+**The Solution**: The `docs/specs/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
 
 ### Challenge 3: AI Context Window Is Limited
 
@@ -72,18 +72,18 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 |   +-- {developer}/        # Per-developer directory
 |       |-- index.md        # Personal progress index
 |       +-- journal-N.md    # Session records (max 2000 lines)
-|-- tasks/                  # Task tracking (unified)
-|   +-- {MM}-{DD}-{slug}/   # Task directory
-|       |-- task.json       # Task metadata
-|       +-- prd.md          # Requirements doc
-|-- spec/                   # "AI Training Data" - project knowledge
-|   |-- frontend/           # Frontend conventions
-|   |-- backend/            # Backend conventions
-|   +-- guides/             # Thinking patterns
-+-- scripts/                # Legacy scripts (use viben CLI instead)
++-- tasks/                  # Task tracking (unified)
+    +-- {MM}-{DD}-{slug}/   # Task directory
+        |-- task.json       # Task metadata
+        +-- prd.md          # Requirements doc
+
+docs/specs/                     # "AI Training Data" - project knowledge (outside .viben/)
+|-- frontend/               # Frontend conventions
+|-- backend/                # Backend conventions
++-- guides/                 # Thinking patterns
 ```
 
-### Understanding spec/ subdirectories
+### Understanding docs/specs/ subdirectories
 
 **frontend/** - Single-layer frontend knowledge:
 - Component patterns (how to write components in THIS project)
@@ -132,7 +132,7 @@ AI needs the same onboarding - but compressed into seconds at session start.
 AI models have "pre-trained knowledge" - general patterns from millions of codebases. But YOUR project has specific conventions that differ from generic patterns.
 
 **WHAT IT ACTUALLY DOES**:
-1. Reads `.viben/spec/frontend/` or `.viben/spec/backend/`
+1. Reads `docs/specs/frontend/` or `docs/specs/backend/`
 2. Loads project-specific patterns into AI's working context:
    - Component naming conventions
    - State management patterns
@@ -268,12 +268,12 @@ After explaining Part 1 and Part 2, check if the project's development guideline
 
 ## Step 1: Check Current Guidelines Status
 
-Check if `.viben/spec/` contains empty templates or customized guidelines:
+Check if `docs/specs/` contains empty templates or customized guidelines:
 
 ```bash
 # Check if files are still empty templates (look for placeholder text)
-grep -l "To be filled by the team" .viben/spec/backend/*.md 2>/dev/null | wc -l
-grep -l "To be filled by the team" .viben/spec/frontend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" docs/specs/backend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" docs/specs/frontend/*.md 2>/dev/null | wc -l
 ```
 
 ## Step 2: Determine Situation
@@ -284,7 +284,7 @@ If guidelines are empty templates (contain "To be filled by the team"), this is 
 
 Explain to the developer:
 
-"I see that the development guidelines in `.viben/spec/` are still empty templates. This is normal for a new Viben setup!
+"I see that the development guidelines in `docs/specs/` are still empty templates. This is normal for a new Viben setup!
 
 The templates contain placeholder text that needs to be replaced with YOUR project's actual conventions. Without this, `/before-*-dev` commands won't provide useful guidance.
 
@@ -294,7 +294,7 @@ The templates contain placeholder text that needs to be replaced with YOUR proje
 2. Identify the patterns and conventions already in use
 3. Document them in the guideline files
 
-For example, for `.viben/spec/backend/database-guidelines.md`:
+For example, for `docs/specs/backend/database-guidelines.md`:
 - What ORM/query library does your project use?
 - How are migrations managed?
 - What naming conventions for tables/columns?
@@ -309,7 +309,7 @@ Explain to the developer:
 
 "Great! Your team has already customized the development guidelines. You can start using `/before-*-dev` commands right away.
 
-I recommend reading through `.viben/spec/` to familiarize yourself with the team's coding standards."
+I recommend reading through `docs/specs/` to familiarize yourself with the team's coding standards."
 
 ## Step 3: Help Fill Guidelines (If Empty)
 
@@ -352,7 +352,7 @@ After covering all three parts, summarize:
 
 **Next steps** (tell user):
 1. Run `/viben:record-session` to record this onboard session
-2. [If guidelines empty] Start filling in `.viben/spec/` guidelines
+2. [If guidelines empty] Start filling in `docs/specs/` guidelines
 3. [If guidelines ready] Start your first development task
 
 What would you like to do first?"

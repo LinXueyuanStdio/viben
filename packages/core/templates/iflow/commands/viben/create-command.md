@@ -129,10 +129,10 @@ git diff main...HEAD --name-only
 ### 2. Categorized Review
 
 **Frontend files** (`apps/web/`):
-- Reference `.viben/spec/frontend/index.md`
+- Reference `docs/specs/frontend/index.md`
 
 **Backend files** (`packages/api/`):
-- Reference `.viben/spec/backend/index.md`
+- Reference `docs/specs/backend/index.md`
 
 ### 3. Output Review Report
 

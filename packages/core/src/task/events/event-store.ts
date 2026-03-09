@@ -118,7 +118,14 @@ export class TaskEventStore {
     const currentXState = task.xstateState ?? "backlog";
     const transitionResult = this.computeTransition(currentXState, event.type);
 
-    if (!transitionResult.changed) {
+    // Check if transition is valid:
+    // - changed: true means state changed (normal transition)
+    // - changed: false with same state could be a self-transition (like SUBTASK_COMPLETE)
+    // - For self-transitions, we need to check if the event is valid for current state
+    const isSelfTransition = this.isSelfTransitionEvent(event.type);
+    const isValidSelfTransition = isSelfTransition && this.isValidSelfTransition(currentXState, event.type);
+
+    if (!transitionResult.changed && !isValidSelfTransition) {
       return {
         success: false,
         error: "INVALID_TRANSITION",
@@ -388,7 +395,11 @@ export class TaskEventStore {
     const currentXState = task.xstateState ?? "backlog";
     const transitionResult = this.computeTransition(currentXState, event.type);
 
-    if (!transitionResult.changed) {
+    // Check if transition is valid (same logic as applyEvent)
+    const isSelfTransition = this.isSelfTransitionEvent(event.type);
+    const isValidSelfTransition = isSelfTransition && this.isValidSelfTransition(currentXState, event.type);
+
+    if (!transitionResult.changed && !isValidSelfTransition) {
       return {
         success: false,
         error: "INVALID_TRANSITION",
@@ -400,6 +411,52 @@ export class TaskEventStore {
       success: true,
       newState: JSON.stringify(transitionResult.value),
     };
+  }
+
+  // ==========================================================================
+  // Self-Transition Helpers
+  // ==========================================================================
+
+  /**
+   * Events that are valid self-transitions (stay in same state with actions)
+   * These events have `reenter: true` in the XState machine definition
+   */
+  private static readonly SELF_TRANSITION_EVENTS = new Set(["SUBTASK_COMPLETE"]);
+
+  /**
+   * Valid states for each self-transition event
+   * Maps event type to the XState value(s) where it's valid
+   */
+  private static readonly SELF_TRANSITION_VALID_STATES: Record<string, XStateValue[]> = {
+    SUBTASK_COMPLETE: [{ in_progress: "coding" }],
+  };
+
+  /**
+   * Check if an event type is a known self-transition event
+   */
+  private isSelfTransitionEvent(eventType: string): boolean {
+    return TaskEventStore.SELF_TRANSITION_EVENTS.has(eventType);
+  }
+
+  /**
+   * Check if a self-transition is valid for the current state
+   */
+  private isValidSelfTransition(currentState: XStateValue, eventType: string): boolean {
+    const validStates = TaskEventStore.SELF_TRANSITION_VALID_STATES[eventType];
+    if (!validStates) return false;
+
+    // Normalize current state for comparison
+    const normalizedCurrent = this.normalizeXStateValue(currentState);
+
+    return validStates.some((validState) => {
+      if (typeof validState === "string" && typeof normalizedCurrent === "string") {
+        return validState === normalizedCurrent;
+      }
+      if (typeof validState === "object" && typeof normalizedCurrent === "object") {
+        return JSON.stringify(validState) === JSON.stringify(normalizedCurrent);
+      }
+      return false;
+    });
   }
 }
 

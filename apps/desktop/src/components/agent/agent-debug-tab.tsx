@@ -15,6 +15,7 @@ import {
   Bot,
   MessageSquare,
   GripVertical,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -69,6 +70,7 @@ export interface AgentDebugTabProps {
   selectedSpan?: TraceSpanNode | null;
   onSelectSpan: (span: TraceSpanNode | null) => void;
   isLoadingTrace?: boolean;
+  onRefreshTrace?: () => void;
 
   className?: string;
 }
@@ -165,6 +167,7 @@ export function AgentDebugTab({
   selectedSpan,
   onSelectSpan,
   isLoadingTrace,
+  onRefreshTrace,
   className,
 }: AgentDebugTabProps) {
   const { t } = useTranslation("agentDetail");
@@ -357,7 +360,7 @@ export function AgentDebugTab({
             onValueChange={(v) => setActiveTraceTab(v as "tree" | "timeline")}
             className="flex-1 flex flex-col min-h-0"
           >
-            <div className="px-4 pt-2 shrink-0">
+            <div className="px-4 pt-2 shrink-0 flex items-center justify-between">
               <TabsList>
                 <TabsTrigger value="tree" className="gap-1.5">
                   <TreeDeciduous className="h-4 w-4" />
@@ -368,6 +371,27 @@ export function AgentDebugTab({
                   {t("timeline", "Timeline")}
                 </TabsTrigger>
               </TabsList>
+              {/* Refresh Button */}
+              {traceId && onRefreshTrace && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={onRefreshTrace}
+                        disabled={isLoadingTrace}
+                      >
+                        <RefreshCw className={cn("h-4 w-4", isLoadingTrace && "animate-spin")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t("refreshTrace", "Refresh trace data")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
             {/* Tab Content */}

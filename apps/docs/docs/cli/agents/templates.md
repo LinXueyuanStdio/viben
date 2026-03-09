@@ -6,15 +6,15 @@ description: "Create and use Viben agent templates for reusable configurations"
 
 # Agent Templates
 
-Templates are reusable agent configurations that allow you to quickly create new agents with predefined settings, MCP servers, skills, and memory structure.
+Templates are regular agents marked with `isTemplate: true`. They serve as blueprints for creating new agents with predefined settings, MCP servers, skills, and memory structure.
 
 ## Template Concepts
 
 ### What is a Template?
 
-A template is a blueprint for creating agents. It includes:
+A template is an agent configuration marked as reusable. It includes:
 
-- Agent configuration (`config.yaml`)
+- Agent configuration (`config.yaml` with `isTemplate: true`)
 - MCP servers configuration
 - Skills configuration
 - Initial memory structure
@@ -22,33 +22,36 @@ A template is a blueprint for creating agents. It includes:
 
 ### Template vs Agent
 
+Templates and agents are stored in the same location (`~/.viben/agents/`). The only difference is the `isTemplate` flag in the configuration.
+
 | Aspect | Template | Agent |
 |--------|----------|-------|
 | **Purpose** | Reusable blueprint | Active instance |
-| **Storage** | `~/.viben/agent-templates/` | `~/.viben/agents/` |
+| **Storage** | `~/.viben/agents/<id>/` | `~/.viben/agents/<id>/` |
+| **Config Flag** | `isTemplate: true` | `isTemplate: false` (default) |
 | **Sessions** | None | Has sessions |
 | **Memory** | Initial structure only | Active memory |
 | **Usage** | Create new agents | Direct interaction |
 
 ### Template Storage
 
-Templates are stored in `~/.viben/agent-templates/`:
+Templates are stored alongside regular agents in `~/.viben/agents/`:
 
 ```
-~/.viben/agent-templates/
-+-- coding-assistant/
+~/.viben/agents/
++-- coding-assistant/           # Template (isTemplate: true)
 |   |-- config.yaml
 |   |-- mcp_servers.json
 |   |-- skills/
 |   |-- memory/
 |   |   +-- MEMORY.md          # Initial memory template
 |   +-- .agentrc
-+-- code-reviewer/
++-- code-reviewer/              # Template (isTemplate: true)
 |   |-- config.yaml
 |   +-- ...
-+-- researcher/
-    |-- config.yaml
-    +-- ...
++-- my-agent/                   # Regular agent (isTemplate: false)
+|   |-- config.yaml
+|   +-- ...
 ```
 
 ## Template Commands
@@ -56,7 +59,7 @@ Templates are stored in `~/.viben/agent-templates/`:
 ### List Templates
 
 ```bash
-viben agent template list
+viben agent list --templates
 ```
 
 **Output:**
@@ -71,7 +74,7 @@ Agent Templates:
 ### JSON Output
 
 ```bash
-viben agent template list --json
+viben agent list --templates --json
 ```
 
 **Output:**
@@ -85,66 +88,57 @@ viben agent template list --json
         "name": "General Coding Assistant",
         "type": "claude-code",
         "description": "A general-purpose coding assistant",
-        "path": "~/.viben/agent-templates/coding-assistant/"
+        "isTemplate": true,
+        "path": "~/.viben/agents/coding-assistant/"
       },
       {
         "id": "code-reviewer",
         "name": "Code Review Specialist",
         "type": "claude-code",
         "description": "Specialized in code review and best practices",
-        "path": "~/.viben/agent-templates/code-reviewer/"
+        "isTemplate": true,
+        "path": "~/.viben/agents/code-reviewer/"
       }
     ]
   }
 }
 ```
 
-### Create Template from Agent
+### Mark Agent as Template
 
-Create a new template from an existing agent:
+Convert an existing agent to a template:
 
 ```bash
-viben agent template create -n <template-id> --clone <agent-id>
+viben agent update <agent-id> --is-template true
 ```
 
 **Example:**
 ```bash
-viben agent template create -n my-template --clone my-agent
+viben agent update my-agent --is-template true
 ```
 
 **Output:**
 ```
-Created template: my-template
-  From agent: my-agent
-  Path: ~/.viben/agent-templates/my-template/
-
-Included:
-  - config.yaml
-  - mcp_servers.json
-  - skills/ (2 skills)
-  - memory/MEMORY.md (initial structure)
-  - .agentrc
+Updated agent: my-agent
+  isTemplate: true
+  Path: ~/.viben/agents/my-agent/
 ```
 
-### Create Template Options
+### Convert Template to Regular Agent
 
-| Option | Description |
-|--------|-------------|
-| `-n, --name <id>` | Template ID (required) |
-| `--clone <agent>` | Clone from existing agent |
-| `--include-memory` | Include full memory content (default: structure only) |
-| `--include-history` | Include command history |
-| `--description <text>` | Template description |
+```bash
+viben agent update <template-id> --is-template false
+```
 
 ### Show Template Details
 
 ```bash
-viben agent template show -n <template-id>
+viben agent show <template-id>
 ```
 
 **Example:**
 ```bash
-viben agent template show -n coding-assistant
+viben agent show coding-assistant
 ```
 
 **Output:**
@@ -153,6 +147,7 @@ Template: coding-assistant
 Name: General Coding Assistant
 Type: claude-code
 Description: A general-purpose coding assistant
+isTemplate: true
 
 Configuration:
   type_config:
@@ -170,24 +165,24 @@ Skills:
 Memory Structure:
   - MEMORY.md (template with sections)
 
-Path: ~/.viben/agent-templates/coding-assistant/
+Path: ~/.viben/agents/coding-assistant/
 ```
 
 ### Remove Template
 
 ```bash
-viben agent template remove -n <template-id>
+viben agent remove <template-id>
 ```
 
 **Example:**
 ```bash
-viben agent template remove -n old-template
+viben agent remove old-template
 ```
 
 **Output:**
 ```
-Are you sure you want to remove template 'old-template'? [y/N]: y
-Removed template: old-template
+Are you sure you want to remove agent 'old-template'? [y/N]: y
+Removed agent: old-template
 ```
 
 ## Using Templates
@@ -195,12 +190,12 @@ Removed template: old-template
 ### Create Agent from Template
 
 ```bash
-viben agent create -n <agent-id> -f <template-id>
+viben agent create <agent-id> --from-template <template-id>
 ```
 
 **Example:**
 ```bash
-viben agent create -n my-coder -f coding-assistant
+viben agent create my-coder --from-template coding-assistant
 ```
 
 **Output:**
@@ -210,7 +205,7 @@ Created agent: my-coder
   Path: ~/.viben/agents/my-coder/
 
 Copied:
-  - config.yaml (customized ID)
+  - config.yaml (customized ID, isTemplate: false)
   - mcp_servers.json
   - skills/
   - memory/MEMORY.md
@@ -222,28 +217,59 @@ Copied:
 When initializing a workspace, you can use a template:
 
 ```bash
-viben init --from <template-id>
+viben init --from-template <template-id>
 ```
 
 This creates a workspace configuration based on the template.
 
 ## Creating Custom Templates
 
+### Method 1: Create and Mark as Template
+
+1. **Create a new agent:**
+   ```bash
+   viben agent create my-template
+   ```
+
+2. **Configure it as desired:**
+   ```bash
+   viben agent config my-template --set type=claude-code
+   viben agent config my-template --set mcp.enabled="[\"filesystem\",\"git\"]"
+   ```
+
+3. **Mark as template:**
+   ```bash
+   viben agent update my-template --is-template true
+   ```
+
+### Method 2: Clone and Mark as Template
+
+1. **Clone an existing agent:**
+   ```bash
+   viben agent create my-template --clone existing-agent
+   ```
+
+2. **Mark as template:**
+   ```bash
+   viben agent update my-template --is-template true
+   ```
+
 ### Manual Template Creation
 
-1. **Create template directory:**
+1. **Create agent directory:**
    ```bash
-   mkdir -p ~/.viben/agent-templates/my-template
+   mkdir -p ~/.viben/agents/my-template
    ```
 
 2. **Create config.yaml:**
    ```yaml
-   # ~/.viben/agent-templates/my-template/config.yaml
+   # ~/.viben/agents/my-template/config.yaml
    version: 1
 
    id: "{{AGENT_ID}}"  # Placeholder, replaced on creation
    name: "My Custom Agent"
    description: "A custom agent template"
+   isTemplate: true    # Mark as template
 
    type: claude-code
 
@@ -264,7 +290,7 @@ This creates a workspace configuration based on the template.
 
 3. **Create memory template:**
    ```markdown
-   # ~/.viben/agent-templates/my-template/memory/MEMORY.md
+   # ~/.viben/agents/my-template/memory/MEMORY.md
    # Agent Memory
 
    ## User Preferences
@@ -344,18 +370,17 @@ Documentation specialist:
 3. **Good defaults**: Provide sensible default values
 4. **Clear documentation**: Include descriptions and comments
 
-### Template Organization
+### Naming Convention
 
-```
-~/.viben/agent-templates/
-|-- personal/          # Personal templates
-|   |-- my-coder/
-|   +-- my-writer/
-|-- team/              # Team-shared templates
-|   |-- code-reviewer/
-|   +-- qa-tester/
-+-- experimental/      # Experimental templates
-    +-- new-approach/
+Use descriptive names for templates:
+
+```bash
+# Good: Clear purpose
+viben agent update code-reviewer --is-template true
+viben agent update research-assistant --is-template true
+
+# Avoid: Generic names
+viben agent update template1 --is-template true
 ```
 
 ### Sharing Templates
@@ -363,14 +388,25 @@ Documentation specialist:
 Export a template for sharing:
 
 ```bash
-viben agent template export -n coding-assistant -o ~/templates/
+viben agent export coding-assistant -o ~/templates/
 ```
 
 Import a shared template:
 
 ```bash
-viben agent template import ~/templates/coding-assistant.tar.gz
+viben agent import ~/templates/coding-assistant.tar.gz
 ```
+
+## Command Reference
+
+| Command | Description |
+|---------|-------------|
+| `viben agent list --templates` | List all templates |
+| `viben agent update <id> --is-template true` | Mark agent as template |
+| `viben agent update <id> --is-template false` | Convert template to agent |
+| `viben agent create <name> --from-template <id>` | Create agent from template |
+| `viben agent show <id>` | Show template/agent details |
+| `viben agent remove <id>` | Remove template/agent |
 
 ## Troubleshooting
 
@@ -380,20 +416,21 @@ viben agent template import ~/templates/coding-assistant.tar.gz
 Error: Template 'my-template' not found
 ```
 
-**Solution:** Check template directory exists:
+**Solution:** Check if the agent exists and is marked as template:
 ```bash
-ls ~/.viben/agent-templates/
+viben agent list --templates
+viben agent show my-template
 ```
 
 ### Invalid Template Configuration
 
 ```
-Error: Template 'my-template' has invalid configuration
+Error: Agent 'my-template' is not marked as a template
 ```
 
-**Solution:** Validate template:
+**Solution:** Mark the agent as template:
 ```bash
-viben agent template validate -n my-template
+viben agent update my-template --is-template true
 ```
 
 ### Variable Not Replaced

@@ -220,14 +220,6 @@ export interface AgentConfig {
   envVariables?: string[];
 }
 
-export interface AgentTemplate {
-  id: string;
-  name: string;
-  description?: string;
-  config: AgentConfig;
-  createdAt: string;
-}
-
 export interface AgentSession {
   id: string;
   agentId: string;

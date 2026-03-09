@@ -6,7 +6,7 @@
 
 ## Overview
 
-All workflow operations are now available through the `viben` CLI, implemented in TypeScript in `packages/core`. This replaces the previous shell scripts (`.trellis/scripts/`) for better cross-platform support and integration with the Viben ecosystem.
+All workflow operations are available through the `viben` CLI, implemented in TypeScript in `packages/core`. The CLI provides cross-platform support, consistent output formatting, and integration with the Viben ecosystem.
 
 ---
 
@@ -63,6 +63,9 @@ viben user init <your-name>
 
 # Get current developer name
 viben user get
+
+# Show user status and workspace info
+viben user status
 ```
 
 ### Task Management
@@ -128,8 +131,17 @@ viben swarm start <task> [--platform <platform>]
 # Monitor agent status
 viben swarm status [<task>] [--detail] [--watch]
 
+# List all worktrees and agents
+viben swarm list
+
+# Stop a running agent
+viben swarm stop <task>
+
 # Cleanup worktree
 viben swarm cleanup <task>
+
+# Show agent registry
+viben swarm registry
 
 # Create PR from task
 viben task create-pr [<task>] [--dry-run]
@@ -185,78 +197,6 @@ Error: No developer set. Run "viben user init" first or use --assignee
 
 ---
 
-## Migration from Shell Scripts
-
-> **Recommendation**: Use `viben` CLI commands instead of shell scripts for better cross-platform support, consistent output formatting, and error handling.
-
-The following shell script calls have been replaced by CLI commands:
-
-### User Management
-
-| Old (Shell Script) | New (CLI) |
-|--------------------|-----------|
-| `./.trellis/scripts/init-developer.sh <name>` | `viben user init <name>` |
-| `./.trellis/scripts/get-developer.sh` | `viben user get` |
-
-### Context & Session
-
-| Old (Shell Script) | New (CLI) |
-|--------------------|-----------|
-| `./.trellis/scripts/get-context.sh` | `viben task context` |
-| `./.trellis/scripts/get-context.sh --json` | `viben task context --json` |
-| `./.trellis/scripts/add-session.sh ...` | `viben task add-session ...` |
-
-### Task Management
-
-| Old (Shell Script) | New (CLI) |
-|--------------------|-----------|
-| `./.trellis/scripts/task.sh create "<title>"` | `viben task create "<title>"` |
-| `./.trellis/scripts/task.sh list` | `viben task list` |
-| `./.trellis/scripts/task.sh start <task>` | `viben task start <task>` |
-| `./.trellis/scripts/task.sh finish` | `viben task finish` |
-| `./.trellis/scripts/task.sh archive <task>` | `viben task archive <task>` |
-| `./.trellis/scripts/task.sh list-archive [month]` | `viben task list-archive [month]` |
-| `./.trellis/scripts/task.sh set-branch <task> <branch>` | `viben task set-branch <task> <branch>` |
-| `./.trellis/scripts/task.sh set-scope <task> <scope>` | `viben task set-scope <task> <scope>` |
-| `./.trellis/scripts/task.sh create-pr [task]` | `viben task create-pr [task]` |
-
-### Context Files Management
-
-| Old (Shell Script) | New (CLI) |
-|--------------------|-----------|
-| `./.trellis/scripts/task.sh init-context <task> <type>` | `viben task init-context <task> -t <type>` |
-| `./.trellis/scripts/task.sh add-context <task> <file> ...` | `viben task add-context <task> <files...>` |
-| `./.trellis/scripts/task.sh list-context <task>` | `viben task list-context <task>` |
-| `./.trellis/scripts/task.sh validate <task>` | `viben task validate-context <task>` |
-
-### Multi-Agent / Swarm Operations
-
-| Old (Shell Script) | New (CLI) |
-|--------------------|-----------|
-| `./.trellis/scripts/multi-agent/start.sh <task>` | `viben swarm start <task>` |
-| `./.trellis/scripts/multi-agent/status.sh` | `viben swarm status` |
-| `./.trellis/scripts/multi-agent/status.sh <task> --detail` | `viben swarm status <task> --detail` |
-| `./.trellis/scripts/multi-agent/cleanup.sh <task>` | `viben swarm cleanup <task>` |
-| `./.trellis/scripts/multi-agent/plan.sh ...` | `viben task plan ...` |
-| `./.trellis/scripts/multi-agent/create-pr.sh` | `viben task create-pr` |
-
-### Additional Swarm Commands (CLI only)
-
-| Command | Description |
-|---------|-------------|
-| `viben swarm list` | List all worktrees and registered agents |
-| `viben swarm stop <task>` | Stop a running agent |
-| `viben swarm stop --all` | Stop all running agents |
-| `viben swarm registry` | Show agent registry |
-
-### Additional User Commands (CLI only)
-
-| Command | Description |
-|---------|-------------|
-| `viben user status` | Show user status and workspace info |
-
----
-
 ## DO / DON'T
 
 ### DO
@@ -268,8 +208,7 @@ The following shell script calls have been replaced by CLI commands:
 
 ### DON'T
 
-- Don't rely on shell scripts (deprecated, use CLI instead)
-- Don't modify `.viben/` or `.trellis/` files directly (use CLI commands)
+- Don't modify `.viben/` files directly (use CLI commands)
 - Don't hardcode paths - use CLI to get information
 
 ---
@@ -283,9 +222,3 @@ The CLI is implemented in TypeScript:
 - Swarm commands: `packages/core/src/cli/commands/swarm.ts`
 - User commands: `packages/core/src/cli/commands/user.ts`
 - Workspace utilities: `packages/core/src/cli/lib/viben-workspace.ts`
-
----
-
-## Historical Note
-
-> **Migration History**: Workflow scripts were originally implemented in Bash shell scripts (`.trellis/scripts/`). As of v0.5.0, all workflow operations have been migrated to the TypeScript CLI (`viben` command) for better cross-platform support, consistent JSON output, and integration with the Viben ecosystem. The shell scripts remain available for backward compatibility but are deprecated.

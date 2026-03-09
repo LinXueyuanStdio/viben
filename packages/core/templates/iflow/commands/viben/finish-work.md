@@ -26,7 +26,7 @@ pnpm test
 
 ### 1.5. Test Coverage
 
-Check if your change needs new or updated tests (see `.viben/spec/unit-test/conventions.md`):
+Check if your change needs new or updated tests (see `docs/specs/unit-test/conventions.md`):
 
 - [ ] New pure function → unit test added?
 - [ ] Bug fix → regression test added in `test/regression.test.ts`?
@@ -36,11 +36,11 @@ Check if your change needs new or updated tests (see `.viben/spec/unit-test/conv
 ### 2. Code-Spec Sync
 
 **Code-Spec Docs**:
-- [ ] Does `.viben/spec/backend/` need updates?
+- [ ] Does `docs/specs/backend/` need updates?
   - New patterns, new modules, new conventions
-- [ ] Does `.viben/spec/frontend/` need updates?
+- [ ] Does `docs/specs/frontend/` need updates?
   - New components, new hooks, new patterns
-- [ ] Does `.viben/spec/guides/` need updates?
+- [ ] Does `docs/specs/guides/` need updates?
   - New cross-layer flows, lessons from bugs
 
 **Key Question**: 
@@ -117,7 +117,7 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Code-spec docs not updated | Others don't know the change | Check .viben/spec/ |
+| Code-spec docs not updated | Others don't know the change | Check docs/specs/ |
 | Spec text is abstract only | Easy regressions in infra/cross-layer changes | Require signature/contract/matrix/cases/tests |
 | Migration not created | Schema out of sync | Check db/migrations/ |
 | Types not synced | Runtime errors | Check shared types |

@@ -12,9 +12,9 @@ description: "创建和使用 Viben 智能体模板以实现可复用的配置"
 
 ### 什么是模板？
 
-模板是创建智能体的蓝图。它包括:
+模板是带有 `isTemplate: true` 标记的普通智能体，用作创建新智能体的蓝图。它包括:
 
-- 智能体配置 (`config.yaml`)
+- 智能体配置 (`config.yaml`，带 `isTemplate: true`)
 - MCP 服务器配置
 - 技能配置
 - 初始记忆结构
@@ -25,28 +25,28 @@ description: "创建和使用 Viben 智能体模板以实现可复用的配置"
 | 方面 | 模板 | 智能体 |
 |------|------|--------|
 | **用途** | 可复用的蓝图 | 活跃的实例 |
-| **存储** | `~/.viben/agent-templates/` | `~/.viben/agents/` |
+| **存储** | `~/.viben/agents/` (带 `isTemplate: true`) | `~/.viben/agents/` |
 | **会话** | 无 | 有会话 |
 | **记忆** | 仅初始结构 | 活跃记忆 |
 | **使用** | 创建新智能体 | 直接交互 |
 
 ### 模板存储
 
-模板存储在 `~/.viben/agent-templates/`:
+模板与普通智能体存储在相同的目录 `~/.viben/agents/`，通过配置文件中的 `isTemplate: true` 标记区分:
 
 ```
-~/.viben/agent-templates/
-+-- coding-assistant/
+~/.viben/agents/
++-- coding-assistant/            # 模板 (isTemplate: true)
 |   |-- config.yaml
 |   |-- mcp_servers.json
 |   |-- skills/
 |   |-- memory/
-|   |   +-- MEMORY.md          # 初始记忆模板
+|   |   +-- MEMORY.md            # 初始记忆模板
 |   +-- .agentrc
-+-- code-reviewer/
++-- code-reviewer/               # 模板 (isTemplate: true)
 |   |-- config.yaml
 |   +-- ...
-+-- researcher/
++-- my-agent/                    # 普通智能体 (isTemplate: false 或未设置)
     |-- config.yaml
     +-- ...
 ```
@@ -56,7 +56,7 @@ description: "创建和使用 Viben 智能体模板以实现可复用的配置"
 ### 列出模板
 
 ```bash
-viben agent template list
+viben agent list --templates
 ```
 
 **输出:**
@@ -71,7 +71,7 @@ Agent Templates:
 ### JSON 输出
 
 ```bash
-viben agent template list --json
+viben agent list --templates --json
 ```
 
 **输出:**
@@ -85,74 +85,68 @@ viben agent template list --json
         "name": "通用编程助手",
         "type": "claude-code",
         "description": "通用编程助手",
-        "path": "~/.viben/agent-templates/coding-assistant/"
+        "isTemplate": true,
+        "path": "~/.viben/agents/coding-assistant/"
       },
       {
         "id": "code-reviewer",
         "name": "代码审查专家",
         "type": "claude-code",
         "description": "专注于代码审查和最佳实践",
-        "path": "~/.viben/agent-templates/code-reviewer/"
+        "isTemplate": true,
+        "path": "~/.viben/agents/code-reviewer/"
       }
     ]
   }
 }
 ```
 
-### 从智能体创建模板
+### 将智能体标记为模板
 
-从现有智能体创建新模板:
+将现有智能体标记为模板:
 
 ```bash
-viben agent template create -n <template-id> --clone <agent-id>
+viben agent update <agent-id> --is-template true
 ```
 
 **示例:**
 ```bash
-viben agent template create -n my-template --clone my-agent
+viben agent update my-agent --is-template true
 ```
 
 **输出:**
 ```
-Created template: my-template
-  From agent: my-agent
-  Path: ~/.viben/agent-templates/my-template/
-
-Included:
-  - config.yaml
-  - mcp_servers.json
-  - skills/ (2 skills)
-  - memory/MEMORY.md (initial structure)
-  - .agentrc
+Updated agent: my-agent
+  isTemplate: true
+  Path: ~/.viben/agents/my-agent/
 ```
 
-### 创建模板选项
+### 取消模板标记
 
-| 选项 | 说明 |
-|------|------|
-| `-n, --name <id>` | 模板 ID (必需) |
-| `--clone <agent>` | 从现有智能体克隆 |
-| `--include-memory` | 包含完整记忆内容 (默认: 仅结构) |
-| `--include-history` | 包含命令历史 |
-| `--description <text>` | 模板描述 |
+将模板转换回普通智能体:
+
+```bash
+viben agent update <template-id> --is-template false
+```
 
 ### 查看模板详情
 
 ```bash
-viben agent template show -n <template-id>
+viben agent show <template-id>
 ```
 
 **示例:**
 ```bash
-viben agent template show -n coding-assistant
+viben agent show coding-assistant
 ```
 
 **输出:**
 ```
-Template: coding-assistant
+Agent: coding-assistant
 Name: 通用编程助手
 Type: claude-code
 Description: 通用编程助手
+Is Template: true
 
 Configuration:
   type_config:
@@ -170,24 +164,24 @@ Skills:
 Memory Structure:
   - MEMORY.md (带章节的模板)
 
-Path: ~/.viben/agent-templates/coding-assistant/
+Path: ~/.viben/agents/coding-assistant/
 ```
 
 ### 删除模板
 
 ```bash
-viben agent template remove -n <template-id>
+viben agent remove <template-id>
 ```
 
 **示例:**
 ```bash
-viben agent template remove -n old-template
+viben agent remove old-template
 ```
 
 **输出:**
 ```
-Are you sure you want to remove template 'old-template'? [y/N]: y
-Removed template: old-template
+Are you sure you want to remove agent 'old-template'? [y/N]: y
+Removed agent: old-template
 ```
 
 ## 使用模板
@@ -195,12 +189,12 @@ Removed template: old-template
 ### 从模板创建智能体
 
 ```bash
-viben agent create -n <agent-id> -f <template-id>
+viben agent create <agent-id> --from-template <template-id>
 ```
 
 **示例:**
 ```bash
-viben agent create -n my-coder -f coding-assistant
+viben agent create my-coder --from-template coding-assistant
 ```
 
 **输出:**
@@ -210,7 +204,7 @@ Created agent: my-coder
   Path: ~/.viben/agents/my-coder/
 
 Copied:
-  - config.yaml (customized ID)
+  - config.yaml (customized ID, isTemplate: false)
   - mcp_servers.json
   - skills/
   - memory/MEMORY.md
@@ -222,28 +216,43 @@ Copied:
 初始化工作区时，可以使用模板:
 
 ```bash
-viben init --from <template-id>
+viben init --from-template <template-id>
 ```
 
 这会基于模板创建工作区配置。
 
 ## 创建自定义模板
 
-### 手动创建模板
+### 方法一：从现有智能体创建模板
 
-1. **创建模板目录:**
+最简单的方式是先创建并配置好一个智能体，然后将其标记为模板:
+
+```bash
+# 1. 创建并配置智能体
+viben agent create my-template
+viben agent config my-template set type claude-code
+# ... 其他配置
+
+# 2. 将智能体标记为模板
+viben agent update my-template --is-template true
+```
+
+### 方法二：手动创建模板
+
+1. **创建智能体目录:**
    ```bash
-   mkdir -p ~/.viben/agent-templates/my-template
+   mkdir -p ~/.viben/agents/my-template
    ```
 
-2. **创建 config.yaml:**
+2. **创建 config.yaml (注意 isTemplate: true):**
    ```yaml
-   # ~/.viben/agent-templates/my-template/config.yaml
+   # ~/.viben/agents/my-template/config.yaml
    version: 1
 
    id: "{{AGENT_ID}}"  # 占位符，创建时替换
    name: "My Custom Agent"
    description: "自定义智能体模板"
+   isTemplate: true    # 标记为模板
 
    type: claude-code
 
@@ -264,7 +273,7 @@ viben init --from <template-id>
 
 3. **创建记忆模板:**
    ```markdown
-   # ~/.viben/agent-templates/my-template/memory/MEMORY.md
+   # ~/.viben/agents/my-template/memory/MEMORY.md
    # 智能体记忆
 
    ## 用户偏好
@@ -346,31 +355,35 @@ Viben 包含几个内置模板:
 
 ### 模板组织
 
+由于模板与智能体存储在同一目录，建议使用命名约定来组织:
+
 ```
-~/.viben/agent-templates/
-|-- personal/          # 个人模板
-|   |-- my-coder/
-|   +-- my-writer/
-|-- team/              # 团队共享模板
-|   |-- code-reviewer/
-|   +-- qa-tester/
-+-- experimental/      # 实验性模板
-    +-- new-approach/
+~/.viben/agents/
+|-- tpl-personal-coder/        # 个人模板 (isTemplate: true)
+|-- tpl-personal-writer/       # 个人模板 (isTemplate: true)
+|-- tpl-team-reviewer/         # 团队共享模板 (isTemplate: true)
+|-- tpl-team-qa/               # 团队共享模板 (isTemplate: true)
+|-- my-agent/                  # 普通智能体
++-- research-bot/              # 普通智能体
 ```
+
+或者使用描述性的前缀/后缀来区分模板和普通智能体。
 
 ### 分享模板
 
 导出模板以供分享:
 
 ```bash
-viben agent template export -n coding-assistant -o ~/templates/
+viben agent export coding-assistant -o ~/templates/
 ```
 
 导入共享的模板:
 
 ```bash
-viben agent template import ~/templates/coding-assistant.tar.gz
+viben agent import ~/templates/coding-assistant.tar.gz
 ```
+
+导入后，如果是模板，确保 `isTemplate: true` 已设置在 config.yaml 中。
 
 ## 故障排除
 
@@ -380,9 +393,18 @@ viben agent template import ~/templates/coding-assistant.tar.gz
 Error: Template 'my-template' not found
 ```
 
-**解决方案:** 检查模板目录是否存在:
+**解决方案:** 检查模板是否存在并已标记为模板:
 ```bash
-ls ~/.viben/agent-templates/
+# 列出所有模板
+viben agent list --templates
+
+# 检查智能体是否存在
+viben agent show my-template
+```
+
+如果智能体存在但未出现在模板列表中，需要标记为模板:
+```bash
+viben agent update my-template --is-template true
 ```
 
 ### 无效的模板配置
@@ -391,9 +413,9 @@ ls ~/.viben/agent-templates/
 Error: Template 'my-template' has invalid configuration
 ```
 
-**解决方案:** 验证模板:
+**解决方案:** 验证智能体配置:
 ```bash
-viben agent template validate -n my-template
+viben agent show my-template
 ```
 
 ### 变量未替换

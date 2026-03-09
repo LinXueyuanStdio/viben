@@ -13,7 +13,7 @@ Viben CLI provides comprehensive tools for managing AI agents. An **agent** is a
 | Concept | Description |
 |---------|-------------|
 | **Agent** | An independent AI assistant instance with its own configuration, memory, and sessions |
-| **Template** | A reusable agent configuration template for creating new agents |
+| **Template** | A regular agent marked with `isTemplate: true`, used as a blueprint for creating new agents |
 | **Memory** | Agent's long-term memory (MEMORY.md + daily logs) |
 | **Session** | Agent's conversation history and state |
 | **Workspace Config** | Project-specific agent type configuration (e.g., `.claude/`) |
@@ -74,12 +74,15 @@ For example: Running agent `main` in `/projects/my-app` directory will first loa
 
 ## Agent vs Template
 
+Templates are regular agents with the `isTemplate: true` flag. They serve as blueprints for creating new agents.
+
 | Aspect | Agent | Template |
 |--------|-------|----------|
 | **Purpose** | Active AI assistant instance | Reusable configuration blueprint |
-| **Storage** | `~/.viben/agents/<id>/` | `~/.viben/agent-templates/<id>/` |
-| **Memory** | Has memory and sessions | No runtime state |
-| **Usage** | Direct interaction | Create new agents |
+| **Storage** | `~/.viben/agents/<id>/` | `~/.viben/agents/<id>/` (same location) |
+| **Config Flag** | `isTemplate: false` (default) | `isTemplate: true` |
+| **Memory** | Has memory and sessions | Initial structure only |
+| **Usage** | Direct interaction | Create new agents via `--from-template` |
 
 ## Quick Commands
 
@@ -87,26 +90,32 @@ For example: Running agent `main` in `/projects/my-app` directory will first loa
 # List all agents
 viben agent list
 
+# List templates only
+viben agent list --templates
+
 # Create a new agent
-viben agent create -n my-agent
+viben agent create my-agent
 
 # Create from template
-viben agent create -n my-agent -f coding-assistant
+viben agent create my-agent --from-template coding-assistant
 
 # Clone existing agent
-viben agent create -n my-agent --clone existing-agent
+viben agent create my-agent --clone existing-agent
+
+# Mark an agent as a template
+viben agent update my-agent --is-template true
 
 # Show agent details
-viben agent show -n my-agent
+viben agent show my-agent
 
 # Configure agent
-viben agent config -n my-agent set model gpt-4
+viben agent config my-agent set model gpt-4
 
 # Remove agent
-viben agent remove -n my-agent
+viben agent remove my-agent
 
 # Set default agent
-viben agent set-default -n my-agent
+viben agent set-default my-agent
 
 # Check agent status
 viben agent status

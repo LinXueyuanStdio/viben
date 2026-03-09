@@ -45,9 +45,9 @@ This shows: active tasks, current task (if any). Use `viben task view <task>` to
 ### Step 3: Read Guidelines Index
 
 ```bash
-cat .viben/spec/frontend/index.md  # Frontend guidelines
-cat .viben/spec/backend/index.md   # Backend guidelines
-cat .viben/spec/guides/index.md    # Thinking guides
+cat docs/specs/frontend/index.md  # Frontend guidelines
+cat docs/specs/backend/index.md   # Backend guidelines
+cat docs/specs/guides/index.md    # Thinking guides
 ```
 
 ### Step 4: Report and Ask
@@ -204,7 +204,7 @@ Must-have before proceeding:
 
 Based on the confirmed PRD, run a focused research pass and produce:
 
-1. Relevant spec files in `.viben/spec/`
+1. Relevant spec files in `docs/specs/`
 2. Existing code patterns to follow (2-3 examples)
 3. Files that will likely need modification
 

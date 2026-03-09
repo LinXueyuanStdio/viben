@@ -46,7 +46,7 @@ import {
   type ReviewReason,
 } from "@viben/kanban";
 import type { TaskCardContentProps, Subtask } from "../types";
-import { formatElapsedTime } from "../hooks";
+import { useElapsedTime, formatElapsedTime } from "../hooks";
 import { CategoryIcons } from "../constants";
 import { PhaseProgressIndicator } from "../phase-progress-indicator";
 
@@ -76,8 +76,16 @@ export const TaskCardContent = memo(function TaskCardContent({
   const { t } = useTranslation();
 
   // Determine card state
-  const isRunning = task.has_in_progress_attempt;
+  const isRunning = !!task.has_in_progress_attempt;
   const isStuck = task.isStuck ?? task.is_stuck ?? false;
+
+  // Track elapsed time for running tasks (use hook if prop not provided)
+  const { elapsedTime: hookElapsedTime } = useElapsedTime({
+    isRunning,
+    startTime: task.updated_at,
+  });
+  // Use prop if provided, otherwise use hook value
+  const effectiveElapsedTime = elapsedTime ?? (isRunning ? hookElapsedTime : 0);
   const isArchived = !!task.archivedAt;
   const isFailed = task.last_attempt_failed && !isRunning;
 
@@ -121,8 +129,8 @@ export const TaskCardContent = memo(function TaskCardContent({
 
   // Formatted elapsed time for running tasks
   const formattedElapsedTime = useMemo(
-    () => (elapsedTime !== undefined ? formatElapsedTime(elapsedTime) : null),
-    [elapsedTime]
+    () => (isRunning && effectiveElapsedTime > 0 ? formatElapsedTime(effectiveElapsedTime) : null),
+    [isRunning, effectiveElapsedTime]
   );
 
   return (

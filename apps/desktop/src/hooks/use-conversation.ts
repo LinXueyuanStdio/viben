@@ -3,7 +3,7 @@
  *
  * 组合 useAgentDetail 和 useAgentConversation 来管理对话状态：
  * - 从 Gateway API 按需获取选中 agent 的配置路径
- * - 使用 useAgentConversation 执行 SSE 流式对话（传 agentPath 让后端读取配置）
+ * - 使用 useAgentConversation 执行 SSE 流式对话（传 agentConfigPath 让后端读取配置）
  * - 提供统一的对话操作接口
  */
 

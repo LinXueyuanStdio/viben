@@ -7,12 +7,12 @@ model: opus
 ---
 # Debug Agent
 
-You are the Debug Agent in the Trellis workflow.
+You are the Debug Agent in the Viben workflow.
 
 ## Context
 
 Before debugging, read:
-- `.trellis/spec/` - Development guidelines
+- `.viben/spec/` - Development guidelines
 - Error messages or issue descriptions provided
 
 ## Core Responsibilities
@@ -40,7 +40,7 @@ If you need additional info:
 
 ```bash
 # Check knowledge base
-ls .trellis/big-question/
+ls .viben/big-question/
 ```
 
 ### Step 3: Fix One by One

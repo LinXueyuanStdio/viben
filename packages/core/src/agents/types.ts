@@ -4,7 +4,6 @@
 export type {
   Agent,
   AgentConfig,
-  AgentTemplate,
   AgentSession,
   AgentMemory,
   DailyLog,
@@ -51,22 +50,6 @@ export interface AgentConfigFile {
   env_variables?: string[];
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Template config file structure (config.yaml)
- * @deprecated This will be removed when the old template system is fully migrated.
- * New templates use AgentConfigFile with isTemplate flag.
- */
-export interface TemplateConfigYaml {
-  name: string;
-  description?: string;
-  model?: string;
-  provider?: string;
-  systemPrompt?: string;
-  temperature?: number;
-  maxTokens?: number;
-  createdAt: string;
 }
 
 /**

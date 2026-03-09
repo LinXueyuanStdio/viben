@@ -484,33 +484,74 @@ export function AgentDetailPage() {
     },
   });
 
-  // Fetch trace data when traceId changes
+  // Fetch trace data after stream completes
+  // Trace data is only flushed to disk AFTER spans end, so we need to:
+  // 1. Wait for stream to complete (isStreaming becomes false)
+  // 2. Retry a few times since there's a flush delay
   useEffect(() => {
-    if (!conversationTraceId) {
-      setTraceTree(null);
+    // Only fetch when we have a traceId AND streaming has stopped
+    if (!conversationTraceId || isStreaming) {
       return;
     }
 
-    const fetchTrace = async () => {
-      setIsLoadingTrace(true);
+    let cancelled = false;
+    let retryCount = 0;
+    const maxRetries = 10;
+    const retryDelay = 1000; // 1 second between retries
+
+    const fetchTrace = async (): Promise<boolean> => {
+      if (cancelled) return false;
+
+      console.log("[agent-detail] Fetching trace for ID:", conversationTraceId, "attempt:", retryCount + 1);
       try {
         const client = getGatewayClient();
         const response = await client.getTrace(conversationTraceId);
-        if (response.tree) {
+        console.log("[agent-detail] Trace response:", response);
+        if (response.tree && !cancelled) {
           setTraceTree(response.tree);
+          return true;
         }
       } catch (error) {
-        console.error("[agent-detail] Failed to fetch trace:", error);
-        setTraceTree(null);
-      } finally {
+        // File not found is expected - trace hasn't been flushed yet
+        const isNotFound = error instanceof Error && error.message.includes("not found");
+        if (!isNotFound) {
+          console.error("[agent-detail] Failed to fetch trace:", error);
+        } else {
+          console.log("[agent-detail] Trace file not ready yet, will retry...");
+        }
+      }
+      return false;
+    };
+
+    const fetchWithRetry = async () => {
+      setIsLoadingTrace(true);
+
+      while (retryCount < maxRetries && !cancelled) {
+        const success = await fetchTrace();
+        if (success || cancelled) break;
+
+        retryCount++;
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+
+      if (!cancelled) {
         setIsLoadingTrace(false);
+        if (retryCount >= maxRetries) {
+          console.warn("[agent-detail] Failed to fetch trace after", maxRetries, "attempts");
+        }
       }
     };
 
-    // Add a small delay to let the trace data be written to disk
-    const timer = setTimeout(fetchTrace, 500);
-    return () => clearTimeout(timer);
-  }, [conversationTraceId]);
+    // Start fetching after a small initial delay
+    const timer = setTimeout(fetchWithRetry, 500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [conversationTraceId, isStreaming]);
 
   // Navigate back to appropriate location based on scope
   const handleNavigateBack = useCallback(() => {
@@ -525,6 +566,26 @@ export function AgentDetailPage() {
   const handleSelectSpan = useCallback((span: TraceSpanNode | null) => {
     setSelectedSpan(span);
   }, []);
+
+  // Handle manual refresh of trace data
+  const handleRefreshTrace = useCallback(async () => {
+    if (!conversationTraceId) return;
+
+    setIsLoadingTrace(true);
+    console.log("[agent-detail] Manual refresh trace for ID:", conversationTraceId);
+    try {
+      const client = getGatewayClient();
+      const response = await client.getTrace(conversationTraceId);
+      console.log("[agent-detail] Manual refresh trace response:", response);
+      if (response.tree) {
+        setTraceTree(response.tree);
+      }
+    } catch (error) {
+      console.error("[agent-detail] Manual refresh trace failed:", error);
+    } finally {
+      setIsLoadingTrace(false);
+    }
+  }, [conversationTraceId]);
 
   // ============================================================================
   // Loading and Error States
@@ -718,6 +779,7 @@ export function AgentDetailPage() {
             selectedSpan={selectedSpan}
             onSelectSpan={handleSelectSpan}
             isLoadingTrace={isLoadingTrace}
+            onRefreshTrace={handleRefreshTrace}
             className="h-full"
           />
         </TabsContent>

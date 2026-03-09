@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Ralph Loop - SubagentStop Hook for Check Agent Loop Control
 
@@ -12,10 +13,14 @@ Mechanism:
 - Blocks stopping until verification passes or all markers found
 - Has max iterations as safety limit
 
-State file: .trellis/.ralph-state.json
+State file: .viben/.ralph-state.json
 - Tracks current iteration count per session
 - Resets when task changes
 """
+
+# IMPORTANT: Suppress all warnings FIRST
+import warnings
+warnings.filterwarnings("ignore")
 
 import json
 import os
@@ -24,15 +29,24 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# IMPORTANT: Force stdout to use UTF-8 on Windows
+# This fixes UnicodeEncodeError when outputting non-ASCII characters
+if sys.platform == "win32":
+    import io as _io
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    elif hasattr(sys.stdout, "detach"):
+        sys.stdout = _io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+
 # =============================================================================
 # Configuration
 # =============================================================================
 
 MAX_ITERATIONS = 5  # Safety limit to prevent infinite loops
 STATE_TIMEOUT_MINUTES = 30  # Reset state if older than this
-STATE_FILE = ".trellis/.ralph-state.json"
-WORKTREE_YAML = ".trellis/worktree.yaml"
-DIR_WORKFLOW = ".trellis"
+STATE_FILE = ".viben/.ralph-state.json"
+WORKTREE_YAML = ".viben/worktree.yaml"
+DIR_WORKFLOW = ".viben"
 FILE_CURRENT_TASK = ".current-task"
 
 # Only control loop for check agent

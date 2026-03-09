@@ -142,6 +142,7 @@ import {
   type TaskForPanel,
 } from "@/components/workspace";
 import { useLocalWorkspaces, useAgents, useModels, useQueueAutoPromotion, useStuckDetection } from "@/hooks";
+import { useElapsedTime, formatElapsedTime } from "@/components/workspace/kanban/hooks";
 import {
   useVibeKanbanTasks,
   useUpdateVibeKanbanTaskStatus,
@@ -239,10 +240,16 @@ const TaskCardContent = memo(function TaskCardContent({
   const { t } = useTranslation();
 
   // Determine card state
-  const isRunning = task.has_in_progress_attempt;
+  const isRunning = !!task.has_in_progress_attempt;
   const isStuck = task.isStuck ?? task.is_stuck ?? false;
   const isArchived = !!task.archivedAt;
   const isFailed = task.last_attempt_failed && !isRunning;
+
+  // Track elapsed time for running tasks
+  const { elapsedTime } = useElapsedTime({
+    isRunning,
+    startTime: task.updated_at,
+  });
 
   // Determine if execution phase badge should show
   // ExecutionPhase: "planning" | "coding" | "qa_review" | "qa_fixing" | "complete"
@@ -456,8 +463,13 @@ const TaskCardContent = memo(function TaskCardContent({
         <div className="flex items-center justify-between gap-1.5 pt-1.5 mt-0.5 border-t border-border/30">
           {/* Left side: Time, Assignee, Due Date */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            {/* Relative time */}
-            {relativeTime && (
+            {/* Running elapsed time (takes precedence) or relative time */}
+            {isRunning && elapsedTime > 0 ? (
+              <div className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>{formatElapsedTime(elapsedTime)}</span>
+              </div>
+            ) : relativeTime && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
                 <Clock className="h-3 w-3" />
                 <span>{relativeTime}</span>

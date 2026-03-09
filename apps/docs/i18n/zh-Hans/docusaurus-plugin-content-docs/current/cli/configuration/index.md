@@ -17,11 +17,10 @@ CLI 使用以下目录结构存储配置：
 ├── config.yaml                              # 全局配置
 ├── providers.yaml                           # API Provider 配置
 ├── models.yaml                              # 模型配置（别名、回退链）
-├── agents/                                  # 智能体实例
+├── agents/                                  # 智能体实例和模板
 │   └── <agent-id>/
-│       ├── config.yaml                      # 智能体特定配置
+│       ├── config.yaml                      # 智能体特定配置 (模板带 isTemplate: true)
 │       └── mcp_servers.json                 # 该智能体的 MCP 服务器
-├── agent-templates/                         # 可复用的智能体模板
 ├── mcp/                                     # 共享 MCP 服务器（所有智能体可用）
 │   └── installed.yaml
 └── skills/                                  # 共享技能（所有智能体可用）

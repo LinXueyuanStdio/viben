@@ -101,23 +101,6 @@ describe("initTeam", () => {
     expect(existsSync(join(testDir, ".viben/.current-task"))).toBe(true);
   });
 
-  it("should create scripts with executable permissions", async () => {
-    await initTeam({
-      targetDir: testDir,
-      developerName: "test-dev",
-    });
-
-    const taskScript = join(testDir, ".viben/scripts/task.sh");
-    expect(existsSync(taskScript)).toBe(true);
-
-    // Check executable permission (Unix only)
-    if (process.platform !== "win32") {
-      const stat = statSync(taskScript);
-      const isExecutable = (stat.mode & 0o111) !== 0;
-      expect(isExecutable).toBe(true);
-    }
-  });
-
   it("should validate developer name format", async () => {
     // Valid names
     await expect(initTeam({ targetDir: testDir, developerName: "john" })).resolves.toBeDefined();

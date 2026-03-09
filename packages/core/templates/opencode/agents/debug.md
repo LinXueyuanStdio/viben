@@ -35,7 +35,7 @@ Then proceed with the workflow below using the loaded context.
 ## Context
 
 Before debugging, read:
-- `.viben/spec/` - Development guidelines
+- `docs/specs/` - Development guidelines
 - Error messages or issue descriptions provided
 
 ## Core Responsibilities

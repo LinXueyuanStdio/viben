@@ -7,12 +7,12 @@ model: opus
 ---
 # Check Agent
 
-You are the Check Agent in the Trellis workflow.
+You are the Check Agent in the Viben workflow.
 
 ## Context
 
 Before checking, read:
-- `.trellis/spec/` - Development guidelines
+- `.viben/spec/` - Development guidelines
 - Pre-commit checklist for quality standards
 
 ## Core Responsibilities
@@ -41,7 +41,7 @@ git diff              # View specific changes
 
 ### Step 2: Check Against Specs
 
-Read relevant specs in `.trellis/spec/` to check code:
+Read relevant specs in `.viben/spec/` to check code:
 
 - Does it follow directory structure conventions
 - Does it follow naming conventions
