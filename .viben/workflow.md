@@ -59,10 +59,10 @@ git status && git log --oneline -10              # Git state
 
 ```bash
 # Read frontend guidelines index (if applicable)
-cat .viben/spec/frontend/index.md
+cat docs/specs/frontend/index.md
 
 # Read backend guidelines index (if applicable)
-cat .viben/spec/backend/index.md
+cat docs/specs/backend/index.md
 ```
 
 **Why read both?**
@@ -77,16 +77,16 @@ Based on your task, read the **detailed** guidelines:
 
 **Frontend Task**:
 ```bash
-cat .viben/spec/frontend/hook-guidelines.md      # For hooks
-cat .viben/spec/frontend/component-guidelines.md # For components
-cat .viben/spec/frontend/type-safety.md          # For types
+cat docs/specs/frontend/hook-guidelines.md      # For hooks
+cat docs/specs/frontend/component-guidelines.md # For components
+cat docs/specs/frontend/type-safety.md          # For types
 ```
 
 **Backend Task**:
 ```bash
-cat .viben/spec/backend/database-guidelines.md   # For DB operations
-cat .viben/spec/backend/type-safety.md           # For types
-cat .viben/spec/backend/logging-guidelines.md    # For logging
+cat docs/specs/backend/database-guidelines.md   # For DB operations
+cat docs/specs/backend/type-safety.md           # For types
+cat docs/specs/backend/logging-guidelines.md    # For logging
 ```
 
 ---
@@ -96,7 +96,7 @@ cat .viben/spec/backend/logging-guidelines.md    # For logging
 ### Core Principles
 
 1. **Read Before Write** - Understand context before starting
-2. **Follow Standards** - [!] **MUST read `.viben/spec/` guidelines before coding**
+2. **Follow Standards** - [!] **MUST read `docs/specs/` guidelines before coding**
 3. **Incremental Development** - Complete one task at a time
 4. **Record Promptly** - Update tracking files immediately after completion
 5. **Document Limits** - [!] **Max 2000 lines per journal document**
@@ -114,18 +114,19 @@ cat .viben/spec/backend/logging-guidelines.md    # For logging
 |-- tasks/               # Task tracking
 |   +-- {MM}-{DD}-{name}/
 |       +-- task.json
-|-- spec/                # [!] MUST READ before coding
-|   |-- frontend/        # Frontend guidelines (if applicable)
-|   |   |-- index.md               # Start here - guidelines index
-|   |   +-- *.md                   # Topic-specific docs
-|   |-- backend/         # Backend guidelines (if applicable)
-|   |   |-- index.md               # Start here - guidelines index
-|   |   +-- *.md                   # Topic-specific docs
-|   +-- guides/          # Thinking guides
-|       |-- index.md                      # Guides index
-|       |-- cross-layer-thinking-guide.md # Pre-implementation checklist
-|       +-- *.md                          # Other guides
-+-- workflow.md             # This document
++-- workflow.md          # This document
+
+docs/specs/              # [!] MUST READ before coding (at project root)
+|-- frontend/            # Frontend guidelines (if applicable)
+|   |-- index.md         # Start here - guidelines index
+|   +-- *.md             # Topic-specific docs
+|-- backend/             # Backend guidelines (if applicable)
+|   |-- index.md         # Start here - guidelines index
+|   +-- *.md             # Topic-specific docs
++-- guides/              # Thinking guides
+    |-- index.md                      # Guides index
+    |-- cross-layer-thinking-guide.md # Pre-implementation checklist
+    +-- *.md                          # Other guides
 ```
 
 ### CLI Commands
@@ -179,19 +180,19 @@ Based on what you'll develop, read the corresponding guidelines:
 **Frontend Development** (if applicable):
 ```bash
 # Read index first, then specific docs based on task
-cat .viben/spec/frontend/index.md
+cat docs/specs/frontend/index.md
 ```
 
 **Backend Development** (if applicable):
 ```bash
 # Read index first, then specific docs based on task
-cat .viben/spec/backend/index.md
+cat docs/specs/backend/index.md
 ```
 
 **Cross-Layer Features**:
 ```bash
 # For features spanning multiple layers
-cat .viben/spec/guides/cross-layer-thinking-guide.md
+cat docs/specs/guides/cross-layer-thinking-guide.md
 ```
 
 ### Step 3: Select Task to Develop
@@ -217,8 +218,8 @@ viben task create "<title>" --slug <task-name>
    --> viben task create "<title>" --slug <name> or list
 
 2. Write code according to guidelines
-   --> Read .viben/spec/ docs relevant to your task
-   --> For cross-layer: read .viben/spec/guides/
+   --> Read docs/specs/ docs relevant to your task
+   --> For cross-layer: read docs/specs/guides/
 
 3. Self-test
    --> Run project's lint/test commands (see spec docs)
@@ -241,8 +242,8 @@ viben task create "<title>" --slug <task-name>
 - [OK] Manual feature testing passes
 
 **Project-specific checks**:
-- See `.viben/spec/frontend/quality-guidelines.md` for frontend
-- See `.viben/spec/backend/quality-guidelines.md` for backend
+- See `docs/specs/frontend/quality-guidelines.md` for frontend
+- See `docs/specs/backend/quality-guidelines.md` for backend
 
 ---
 
@@ -296,13 +297,15 @@ workspace/
 - [OK] Complete important task
 - [OK] Fix important bug
 
-### 2. spec/ - Development Guidelines
+### 2. docs/specs/ - Development Guidelines
 
 **Purpose**: Documented standards for consistent development
 
+**Location**: `docs/specs/` at project root (not inside `.viben/`)
+
 **Structure** (Multi-doc format):
 ```
-spec/
+docs/specs/
 |-- frontend/           # Frontend docs (if applicable)
 |   |-- index.md        # Start here
 |   +-- *.md            # Topic-specific docs
@@ -349,10 +352,10 @@ viben task list-archive                       # List archived tasks
 
 1. **Before session start**:
    - Run `viben task context` for full context
-   - [!] **MUST read** relevant `.viben/spec/` docs
+   - [!] **MUST read** relevant `docs/specs/` docs
 
 2. **During development**:
-   - [!] **Follow** `.viben/spec/` guidelines
+   - [!] **Follow** `docs/specs/` guidelines
    - For cross-layer features, use `/viben:check-cross-layer`
    - Develop only one task at a time
    - Run lint and tests frequently
@@ -365,7 +368,7 @@ viben task list-archive                       # List archived tasks
 
 ### [X] DON'T - Should Not Do
 
-1. [!] **Don't** skip reading `.viben/spec/` guidelines
+1. [!] **Don't** skip reading `docs/specs/` guidelines
 2. [!] **Don't** let journal single file exceed 2000 lines
 3. **Don't** develop multiple unrelated tasks simultaneously
 4. **Don't** commit code with lint/test errors

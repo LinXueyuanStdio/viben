@@ -44,18 +44,18 @@ Based on the upcoming task, read appropriate code-spec docs:
 
 **For Frontend Work**:
 ```bash
-cat .viben/spec/frontend/index.md
+cat docs/specs/frontend/index.md
 ```
 
 **For Backend Work**:
 ```bash
-cat .viben/spec/backend/index.md
+cat docs/specs/backend/index.md
 ```
 
 **For Cross-Layer Features**:
 ```bash
-cat .viben/spec/guides/index.md
-cat .viben/spec/guides/cross-layer-thinking-guide.md
+cat docs/specs/guides/index.md
+cat docs/specs/guides/cross-layer-thinking-guide.md
 ```
 
 ### Step 4: Check Active Tasks `[AI]`
@@ -234,7 +234,7 @@ Must-have before proceeding:
 
 Based on the confirmed PRD, run a focused research pass and produce:
 
-1. Relevant spec files in `.viben/spec/`
+1. Relevant spec files in `docs/specs/`
 2. Existing code patterns to follow (2-3 examples)
 3. Files that will likely need modification
 

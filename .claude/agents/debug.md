@@ -12,7 +12,7 @@ You are the Debug Agent in the Viben workflow.
 ## Context
 
 Before debugging, read:
-- `.viben/spec/` - Development guidelines
+- `docs/specs/` - Development guidelines
 - Error messages or issue descriptions provided
 
 ## Core Responsibilities
