@@ -52,6 +52,7 @@ import {
   type KanbanColumnId,
 } from "@/lib/vibe-kanban";
 import { CategoryIcons, COLUMN_COLOR_VARS, COLUMN_I18N_KEYS } from "../constants";
+import { useElapsedTime, formatElapsedTime } from "../hooks";
 import type { EnhancedTask, TaskActions } from "../types";
 
 // ============================================
@@ -111,6 +112,12 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
   const isRunning = !!task.has_in_progress_attempt;
   const isFailed = task.last_attempt_failed && !isRunning;
   const isArchived = !!task.archivedAt;
+
+  // Track elapsed time for running tasks
+  const { elapsedTime } = useElapsedTime({
+    isRunning,
+    startTime: task.updated_at,
+  });
 
   // Smart stuck status merge
   const isStuck = useMemo(() => {
@@ -275,8 +282,13 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
             </div>
           )}
 
-          {/* Relative time */}
-          {relativeTime && (
+          {/* Running elapsed time (takes precedence) or relative time */}
+          {isRunning && elapsedTime > 0 ? (
+            <div className="flex items-center gap-1 text-[10px] text-primary font-medium">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>{formatElapsedTime(elapsedTime)}</span>
+            </div>
+          ) : relativeTime && (
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
               <Clock className="h-3 w-3" />
               <span>{relativeTime}</span>

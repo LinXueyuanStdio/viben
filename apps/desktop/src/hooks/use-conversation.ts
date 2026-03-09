@@ -94,11 +94,11 @@ export function useConversation(
     refresh: refreshAgent,
   } = useAgentDetail(selectedAgentId || null, workspacePath);
 
-  // Get agent config path for backend to read
-  const agentPath = agentDetail?.config_path;
+  // Get agent config path for backend to read (path to AGENTS.md config file)
+  const agentConfigPath = agentDetail?.config_path;
 
   // Use agent conversation hook for SSE streaming execution
-  // Pass agentPath so backend reads config from disk (more reliable than inline config)
+  // Pass agentConfigPath so backend reads config from disk (more reliable than inline config)
   const {
     messages,
     phase,
@@ -118,7 +118,7 @@ export function useConversation(
     clearMessages,
     loadMessages,
     checkGatewayConnection,
-  } = useAgentConversation(workspacePath, { agentPath, mockMode });
+  } = useAgentConversation(workspacePath, { agentConfigPath, mockMode });
 
   // Normalize current agent for consumers
   const currentAgent = useMemo(() => {

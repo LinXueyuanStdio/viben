@@ -123,14 +123,14 @@ export interface AgentConfigPayload {
  * Resolve agent ID from request parameters
  *
  * Priority:
- * 1. Extract from agentPath (e.g., .../agents/<agent-id>/AGENTS.md)
+ * 1. Extract from agentConfigPath (e.g., .../agents/<agent-id>/AGENTS.md)
  * 2. Use agentConfig.name if provided
  * 3. Default to 'default'
  */
-function resolveAgentId(agentPath?: string, agentConfig?: AgentConfigPayload | null): string {
-  // 1. From agentPath: extract agent-id from path like .../agents/<agent-id>/AGENTS.md
-  if (agentPath) {
-    const match = agentPath.match(/agents\/([^/]+)\/AGENTS\.md$/);
+function resolveAgentId(agentConfigPath?: string, agentConfig?: AgentConfigPayload | null): string {
+  // 1. From agentConfigPath: extract agent-id from path like .../agents/<agent-id>/AGENTS.md
+  if (agentConfigPath) {
+    const match = agentConfigPath.match(/agents\/([^/]+)\/AGENTS\.md$/);
     if (match) return match[1];
   }
   // 2. From agentConfig.name
@@ -365,19 +365,23 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
    * POST /api/agent/run
    *
    * Supports two ways to specify agent configuration:
-   * 1. agentPath - Path to agent AGENTS.md file (backend reads from disk)
+   * 1. agent_config_path - Path to agent AGENTS.md file (backend reads from disk)
    * 2. agentConfig - Inline agent configuration object
    *
-   * If both are provided, agentPath takes precedence.
+   * If both are provided, agent_config_path takes precedence.
    */
   fastify.post<{
     Body: {
       prompt: string;
       cwd?: string;
       attachments?: Array<{ type: string; data: string; name?: string }>;
-      /** Path to agent AGENTS.md file (preferred) - camelCase */
+      /** Path to agent AGENTS.md config file (preferred) - camelCase */
+      agentConfigPath?: string;
+      /** Path to agent AGENTS.md config file (preferred) - snake_case */
+      agent_config_path?: string;
+      /** @deprecated Use agentConfigPath instead - camelCase */
       agentPath?: string;
-      /** Path to agent AGENTS.md file (preferred) - snake_case */
+      /** @deprecated Use agent_config_path instead - snake_case */
       agent_path?: string;
       /** Inline agent configuration (fallback) - camelCase */
       agentConfig?: AgentConfigPayload;
@@ -426,12 +430,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       return { error: "Request body is required" };
     }
 
-    // Support both camelCase and snake_case
+    // Support both camelCase and snake_case, with backward compatibility for deprecated agentPath
     const {
       prompt,
       cwd,
     } = request.body;
-    const agentPath = request.body.agentPath || request.body.agent_path;
+    const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path || request.body.agentPath || request.body.agent_path;
     const inlineConfig = request.body.agentConfig || request.body.agent_config;
     const persistSessionId = request.body.sessionId || request.body.session_id;
     const persistTaskId = request.body.taskId || request.body.task_id;
@@ -454,7 +458,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     log.info("validation", "passed", {
       promptLength: prompt.length,
       hasCwd: !!cwd,
-      hasAgentPath: !!agentPath,
+      hasAgentConfigPath: !!agentConfigPath,
       hasInlineConfig: !!inlineConfig,
       hasPersistSession: !!persistSessionId,
       hasResumeSession: !!resumeSession,
@@ -463,13 +467,13 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       sandboxProvider: sandboxConfig?.provider,
     });
 
-    // Load agent config: prefer agentPath, fallback to inline config
+    // Load agent config: prefer agentConfigPath, fallback to inline config
     let agentConfig: AgentConfigPayload | null = null;
-    if (agentPath) {
-      log.debug("config", "loading_from_path", { agentPath });
-      agentConfig = await loadAgentConfigFromPath(agentPath);
+    if (agentConfigPath) {
+      log.debug("config", "loading_from_path", { agentConfigPath });
+      agentConfig = await loadAgentConfigFromPath(agentConfigPath);
       if (!agentConfig) {
-        log.warn("config", "path_load_failed", { agentPath, fallbackToInline: !!inlineConfig });
+        log.warn("config", "path_load_failed", { agentConfigPath, fallbackToInline: !!inlineConfig });
         agentConfig = inlineConfig || null;
       } else {
         log.info("config", "loaded_from_path", {
@@ -500,7 +504,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       prompt: prompt?.slice(0, 500) + (prompt && prompt.length > 500 ? "..." : ""),
       prompt_full_length: prompt?.length || 0,
       cwd: cwd || process.cwd(),
-      agentPath: agentPath || null,
+      agentConfigPath: agentConfigPath || null,
       agentConfig: agentConfig ? {
         name: agentConfig.name,
         model: agentConfig.model,
@@ -577,7 +581,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         sessionId,
         prompt: prompt.slice(0, 200) + (prompt.length > 200 ? "..." : ""),
         workspacePath: cwd,
-        agentPath,
+        agentConfigPath,
         agentName: agentConfig?.name,
       });
       log.debug("background_task", "added", { taskId, workspacePath: cwd });
@@ -588,18 +592,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         log.debug("persistence", "saving_user_message", {
           persistSessionId,
           persistTaskId,
-          agentPath,
+          agentConfigPath,
         });
         try {
-          const persistAgentId = resolveAgentId(agentPath, agentConfig);
-          // Pass agentPath for workspace-level agents to find the correct session directory
+          const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
+          // Pass agentConfigPath for workspace-level agents to find the correct session directory
           await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
             id: generateMessageId(),
             taskId: persistTaskId,
             timestamp: new Date().toISOString(),
             type: "user",
             content: prompt,
-          }, agentPath);
+          }, agentConfigPath);
           log.debug("persistence", "user_message_saved");
         } catch (e) {
           // Non-fatal: log but continue
@@ -807,7 +811,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             sessionId,
             questionMsg.id, // toolUseId
             questionMsg.questions,
-            { agentPath, workspacePath: cwd }
+            { agentConfigPath, workspacePath: cwd }
           );
           log.info("stream", "question_received", {
             questionId: questionMsg.id,
@@ -829,8 +833,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         // Persist message to file system if sessionId and taskId provided
         if (persistSessionId && persistTaskId) {
           try {
-            const persistAgentId = resolveAgentId(agentPath, agentConfig);
-            // Pass agentPath for workspace-level agents to find the correct session directory
+            const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
+            // Pass agentConfigPath for workspace-level agents to find the correct session directory
             await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
               id: generateMessageId(),
               taskId: persistTaskId,
@@ -852,7 +856,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
               // Persist SDK session ID for resume functionality
               sdkSessionId:
                 message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdkSessionId : undefined,
-            }, agentPath);
+            }, agentConfigPath);
           } catch (persistError) {
             log.warn("persistence", "message_save_failed", {
               messageType: message.type,
@@ -1118,9 +1122,13 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     Params: { questionId: string };
     Body: {
       answers: Record<string, string>;
-      /** Agent path for workspace-level agents - camelCase */
+      /** Agent config path for workspace-level agents - camelCase */
+      agentConfigPath?: string;
+      /** Agent config path for workspace-level agents - snake_case */
+      agent_config_path?: string;
+      /** @deprecated Use agentConfigPath instead - camelCase */
       agentPath?: string;
-      /** Agent path for workspace-level agents - snake_case */
+      /** @deprecated Use agent_config_path instead - snake_case */
       agent_path?: string;
       /** Workspace path - camelCase */
       workspacePath?: string;
@@ -1132,8 +1140,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     async (request, reply) => {
       const { questionId } = request.params;
       const { answers } = request.body;
-      // Support both camelCase and snake_case
-      const agentPath = request.body.agentPath || request.body.agent_path;
+      // Support both camelCase and snake_case, with backward compatibility for deprecated agentPath
+      const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path || request.body.agentPath || request.body.agent_path;
       const workspacePath = request.body.workspacePath || request.body.workspace_path;
 
       if (!answers || typeof answers !== "object") {
@@ -1151,7 +1159,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       return {
         success: true,
         questionId,
-        agentPath,
+        agentConfigPath,
         workspacePath,
       };
     }

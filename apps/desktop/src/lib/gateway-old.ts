@@ -357,7 +357,7 @@ export interface BackgroundTask {
   sessionId: string;
   prompt: string;
   workspacePath?: string;
-  agentPath?: string;
+  agentConfigPath?: string;
   agentName?: string;
   status: BackgroundTaskStatus;
   startedAt: string;
@@ -1160,7 +1160,7 @@ export class GatewayClient {
     cwd?: string;
     taskId?: string;
     sessionId?: string;
-    agentPath?: string;
+    agentConfigPath?: string;
     agentConfig?: {
       name?: string;
       model?: string;
@@ -1185,7 +1185,7 @@ export class GatewayClient {
           cwd: request.cwd,
           task_id: request.taskId,
           session_id: request.sessionId,
-          agent_path: request.agentPath,
+          agent_config_path: request.agentConfigPath,
           agent_config: request.agentConfig,
           resume: request.resume,
         }),

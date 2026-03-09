@@ -226,15 +226,17 @@ function sleep(ms: number): Promise<void> {
  * to balance between avoiding false positives and detecting
  * genuinely stuck tasks.
  *
- * @param taskId - Task ID to check
+ * @param taskId - Task ID to check (Kanban task ID)
  * @param timeoutMs - Timeout in milliseconds (default from NETWORK_RETRY_CONFIG)
+ * @param workspacePath - Optional workspace path for task lookup
  * @returns True if the task process is actively running
  */
 export async function checkTaskRunning(
   taskId: string,
-  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs
+  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs,
+  workspacePath?: string
 ): Promise<boolean> {
-  const result = await checkTaskRunningDetailed(taskId, timeoutMs);
+  const result = await checkTaskRunningDetailed(taskId, timeoutMs, workspacePath);
 
   // If check failed after all retries, return true (assume running)
   // to avoid false positives during persistent network issues
@@ -255,13 +257,19 @@ export async function checkTaskRunning(
  * Returns detailed result including success status and retry count.
  * Use this for more granular control over error handling.
  *
- * @param taskId - Task ID to check
+ * Uses the unified /api/tasks/:id/running endpoint which:
+ * 1. Looks up the Kanban task
+ * 2. Checks if it has an associated running queue process
+ *
+ * @param taskId - Task ID to check (Kanban task ID)
  * @param timeoutMs - Timeout in milliseconds
+ * @param workspacePath - Optional workspace path for task lookup
  * @returns Detailed result with running status, success flag, and retry info
  */
 export async function checkTaskRunningDetailed(
   taskId: string,
-  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs
+  timeoutMs: number = NETWORK_RETRY_CONFIG.timeoutMs,
+  workspacePath?: string
 ): Promise<CheckTaskRunningResult> {
   const { maxRetries, initialDelayMs, backoffMultiplier } = NETWORK_RETRY_CONFIG;
   let lastError: string | undefined;
@@ -280,7 +288,11 @@ export async function checkTaskRunningDetailed(
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const url = `${getApiBaseUrl()}/api/queue/tasks/${encodeURIComponent(taskId)}/running`;
+      // Use unified /api/tasks/:id/running endpoint (not queue endpoint)
+      const params = workspacePath
+        ? `?workspace_path=${encodeURIComponent(workspacePath)}`
+        : "";
+      const url = `${getApiBaseUrl()}/api/tasks/${encodeURIComponent(taskId)}/running${params}`;
       const response = await fetch(url, { signal: controller.signal });
 
       clearTimeout(timeoutId);

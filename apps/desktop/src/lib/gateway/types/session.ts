@@ -159,7 +159,7 @@ export interface BackgroundTask {
   sessionId: string;
   prompt: string;
   workspacePath?: string;
-  agentPath?: string;
+  agentConfigPath?: string;
   agentName?: string;
   status: BackgroundTaskStatus;
   startedAt: string;

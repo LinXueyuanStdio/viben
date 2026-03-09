@@ -47,8 +47,8 @@ export interface AgentQuestion {
   status: "pending" | "answered";
   answers?: Record<string, string>;
   createdAt: Date;
-  /** Agent path for workspace-level agents */
-  agentPath?: string;
+  /** Agent config path (AGENTS.md) for workspace-level agents */
+  agentConfigPath?: string;
   /** Workspace path */
   workspacePath?: string;
   /** Promise resolver for WebSocket mode - called when answer is received */
@@ -262,14 +262,14 @@ export class AgentService {
    * @param sessionId - The session identifier
    * @param toolUseId - The tool use ID from the SDK
    * @param questions - Array of questions to ask
-   * @param options - Optional agent path and workspace path
+   * @param options - Optional agent config path and workspace path
    * @returns The created question with all fields
    */
   storeQuestion(
     sessionId: string,
     toolUseId: string,
     questions: AgentQuestion["questions"],
-    options?: { agentPath?: string; workspacePath?: string }
+    options?: { agentConfigPath?: string; workspacePath?: string }
   ): AgentQuestion {
     const fullQuestion: AgentQuestion = {
       id: toolUseId, // Use toolUseId as the question ID for easy lookup
@@ -278,7 +278,7 @@ export class AgentService {
       questions,
       status: "pending",
       createdAt: new Date(),
-      agentPath: options?.agentPath,
+      agentConfigPath: options?.agentConfigPath,
       workspacePath: options?.workspacePath,
     };
     this.questions.set(fullQuestion.id, fullQuestion);

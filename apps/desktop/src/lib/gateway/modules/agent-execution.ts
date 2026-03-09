@@ -362,7 +362,7 @@ export interface StartBackgroundTaskRequest {
   cwd?: string;
   taskId?: string;
   sessionId?: string;
-  agentPath?: string;
+  agentConfigPath?: string;
   agentConfig?: {
     name?: string;
     model?: string;
@@ -403,7 +403,7 @@ export async function startBackgroundTask(
         cwd: request.cwd,
         task_id: request.taskId,
         session_id: request.sessionId,
-        agent_path: request.agentPath,
+        agent_config_path: request.agentConfigPath,
         agent_config: request.agentConfig,
         resume: request.resume,
       }),

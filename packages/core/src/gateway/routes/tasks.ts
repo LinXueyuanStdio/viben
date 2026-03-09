@@ -1013,4 +1013,128 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       },
     };
   });
+
+  // ============================================================================
+  // GET /api/tasks/:id/running - Check if a task's execution process is running
+  // Used by stuck detection to verify if "in_progress" tasks are actually executing
+  // ============================================================================
+  fastify.get<{
+    Params: { id: string };
+    Querystring: { workspace_path?: string };
+  }>("/api/tasks/:id/running", {
+    schema: {
+      description: "Check if a task's execution process is currently running",
+      tags: ["tasks"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Task ID" },
+        },
+        required: ["id"],
+      },
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: {
+              type: "object",
+              properties: {
+                task_id: { type: "string" },
+                running: { type: "boolean" },
+                status: { type: "string" },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const { workspace_path } = request.query;
+
+    // Find task directory
+    let taskDir: string | null = null;
+    let workspacePath = workspace_path;
+
+    // Check cache first
+    const cached = getCacheEntry(id);
+    if (cached) {
+      taskDir = cached.taskDir;
+      workspacePath = cached.workspacePath;
+    } else if (workspace_path) {
+      taskDir = await taskService.findTaskById(workspace_path, id);
+      if (taskDir) {
+        setCacheEntry(id, workspace_path, taskDir);
+      }
+    }
+
+    if (!taskDir) {
+      reply.code(404);
+      return {
+        success: false,
+        error: `Task not found: ${id}`,
+      };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return {
+        success: false,
+        error: `Task not found: ${id}`,
+      };
+    }
+
+    // Check if task is in a running state
+    const isInProgress = task.status === "in_progress" || task.hasInProgressAttempt;
+
+    if (!isInProgress) {
+      // Task is not in progress, so no process should be running
+      return {
+        success: true,
+        data: {
+          task_id: id,
+          running: false,
+          status: task.status,
+        },
+      };
+    }
+
+    // Task is marked as in_progress, check if there's an actual queue task running
+    // Try to find the queue task by looking for tasks with matching session_id
+    let isRunning = false;
+
+    if (task.sessionId && state.taskQueue) {
+      // Get all running queue tasks
+      const queueTasks = state.taskQueue.getTasks("running");
+
+      // Check if any queue task matches this task's session
+      isRunning = queueTasks.some((qt) =>
+        qt.payload.session_id === task.sessionId
+      );
+    }
+
+    return {
+      success: true,
+      data: {
+        task_id: id,
+        running: isRunning,
+        status: task.status,
+      },
+    };
+  });
 }

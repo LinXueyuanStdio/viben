@@ -26,8 +26,8 @@ export interface LocalBackgroundTask {
   startedAt: Date;
   /** User prompt (for display) */
   prompt: string;
-  /** Agent path (for workspace-level agents) */
-  agentPath?: string;
+  /** Agent config path - path to AGENTS.md config file (for workspace-level agents) */
+  agentConfigPath?: string;
   /** Workspace path */
   workspacePath?: string;
 }

@@ -119,9 +119,9 @@ export interface AgentConfig {
  * Agent conversation hook options
  */
 export interface UseAgentConversationOptions {
-  /** Path to agent config.yaml file (preferred, backend reads from disk) */
-  agentPath?: string;
-  /** Inline agent configuration (fallback if agentPath not provided) */
+  /** Path to agent AGENTS.md config file (preferred, backend reads from disk) */
+  agentConfigPath?: string;
+  /** Inline agent configuration (fallback if agentConfigPath not provided) */
   agentConfig?: AgentConfig;
   /** Enable mock mode (for testing) */
   mockMode?: boolean;
@@ -141,7 +141,7 @@ export interface UseAgentConversationOptions {
  */
 export function useAgentConversation(workspaceId: string, options?: UseAgentConversationOptions) {
   const {
-    agentPath,
+    agentConfigPath,
     agentConfig,
     mockMode = false,
     sessionId: persistSessionId,
@@ -487,7 +487,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     // Build query params
     const params = new URLSearchParams();
     if (workspaceId) params.set("cwd", workspaceId);
-    if (agentPath) params.set("agentPath", agentPath);
+    if (agentConfigPath) params.set("agentConfigPath", agentConfigPath);
     if (persistSessionId) params.set("sessionId", persistSessionId);
     if (persistTaskId) params.set("taskId", persistTaskId);
 
@@ -571,7 +571,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
     wsConnectPromiseRef.current = connectPromise;
     return connectPromise;
-  }, [workspaceId, agentPath, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
+  }, [workspaceId, agentConfigPath, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
 
   /**
    * Disconnect WebSocket
@@ -659,7 +659,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       const success = sendWebSocketMessage({
         type: "start",
         prompt: content,
-        agentConfig: agentPath ? undefined : agentConfig,
+        agentConfig: agentConfigPath ? undefined : agentConfig,
       });
 
       if (!success) {
@@ -674,7 +674,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setIsStreaming(false);
       }
     },
-    [agentPath, agentConfig, connectWebSocket, sendWebSocketMessage]
+    [agentConfigPath, agentConfig, connectWebSocket, sendWebSocketMessage]
   );
 
   /**
@@ -850,8 +850,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
         const requestBody: Record<string, unknown> = {
           prompt: content,
-          agent_path: agentPath || undefined,
-          agent_config: agentPath ? undefined : (agentConfig || undefined),
+          agent_config_path: agentConfigPath || undefined,
+          agent_config: agentConfigPath ? undefined : (agentConfig || undefined),
           // Session persistence: pass session/task IDs for backend to persist messages
           session_id: persistSessionId || undefined,
           task_id: currentTaskId,
@@ -954,7 +954,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
       }
     },
-    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig, sdkSessionId]
+    [agentConfigPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig, sdkSessionId]
   );
 
   /**
@@ -1438,7 +1438,7 @@ The workspace ID for this session is: \`${workspaceId}\`
         abortController: abortControllerRef.current,
         isRunning: true,
         prompt: currentPrompt,
-        agentPath,
+        agentConfigPath,
         workspacePath: workspaceId,
       });
       // Clear refs but don't abort - task continues in background
@@ -1457,7 +1457,7 @@ The workspace ID for this session is: \`${workspaceId}\`
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
-  }, [sessionId, sdkSessionId, agentPath, workspaceId]);
+  }, [sessionId, sdkSessionId, agentConfigPath, workspaceId]);
 
   /**
    * Switch to a different task, moving current task to background if running
