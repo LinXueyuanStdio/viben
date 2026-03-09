@@ -86,8 +86,8 @@ export interface ContinueSessionRequest {
 export interface FileSession {
   id: string;
   agent_id: string;
-  /** Agent path (absolute path to agent directory, reliable reference) */
-  agent_path?: string;
+  /** Agent directory (absolute path to agent directory, e.g., /path/to/agents/myagent) */
+  agent_dir?: string;
   /** Agent config snapshot at session creation time */
   agent_config?: Record<string, unknown>;
   task_id: string | null;
@@ -130,8 +130,8 @@ export interface CreateFileSessionRequest {
   session_id?: string;
   prompt?: string;
   task_id?: string;
-  /** Agent path (absolute path to agent directory) */
-  agent_path?: string;
+  /** Agent directory (absolute path to agent directory, e.g., /path/to/agents/myagent) */
+  agent_dir?: string;
   /** Agent config snapshot at session creation time */
   agent_config?: Record<string, unknown>;
   /** Workspace path where this session runs (absolute path) */

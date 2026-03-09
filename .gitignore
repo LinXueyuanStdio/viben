@@ -277,6 +277,7 @@ TODO.md
 Cargo.lock
 .viben/group-chats
 .viben/agents
+.viben/tasks/
 test
 
 # Auto Claude data directory
