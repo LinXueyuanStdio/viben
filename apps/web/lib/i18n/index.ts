@@ -60,28 +60,34 @@ const resources = {
 // Get supported language codes
 const supportedLanguages = LANGUAGES.map((lang) => lang.code);
 
-// Only initialize i18next on the client side
+// Check if running on client or server
 const isClient = typeof window !== 'undefined';
 
-if (isClient && !i18n.isInitialized) {
+// Initialize i18next - must work on both client and server for SSR
+if (!i18n.isInitialized) {
+  // On client, use language detector; on server, use default language
+  if (isClient) {
+    i18n.use(LanguageDetector);
+  }
+
   i18n
-    .use(LanguageDetector) // Auto-detect user language
     .use(initReactI18next) // Pass i18n instance to react-i18next
     .init({
       resources,
+      lng: isClient ? undefined : DEFAULT_LANGUAGE, // Server uses default, client uses detector
       fallbackLng: DEFAULT_LANGUAGE,
       supportedLngs: supportedLanguages,
       interpolation: {
         escapeValue: false, // React already escapes
       },
-      detection: {
+      detection: isClient ? {
         // Detection order: localStorage first, then navigator
         order: ['localStorage', 'navigator'],
         // Cache to localStorage
         caches: ['localStorage'],
         // LocalStorage key name
         lookupLocalStorage: LANGUAGE_STORAGE_KEY,
-      },
+      } : undefined,
       // React specific options
       react: {
         useSuspense: false, // Disable suspense to prevent loading states

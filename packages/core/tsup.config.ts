@@ -20,8 +20,8 @@ export default defineConfig({
   clean: true,
   treeshake: true,
   // Optional dependencies that are dynamically imported at runtime
-  // Note: fastify must be external to avoid "Dynamic require of events is not supported" error
-  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty"],
+  // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
+  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws"],
   onSuccess: async () => {
     // Add shebang to bin.js after build
     const fs = await import("fs/promises");
