@@ -27,11 +27,11 @@ pnpm test
 ### 2. Documentation Sync
 
 **Structure Docs**:
-- [ ] Does `.viben/spec/backend/` need updates?
+- [ ] Does `docs/specs/backend/` need updates?
   - New patterns, new modules, new conventions
-- [ ] Does `.viben/spec/frontend/` need updates?
+- [ ] Does `docs/specs/frontend/` need updates?
   - New components, new hooks, new patterns
-- [ ] Does `.viben/spec/guides/` need updates?
+- [ ] Does `docs/specs/guides/` need updates?
   - New cross-layer flows, lessons from bugs
 
 **Key Question**: 
@@ -94,7 +94,7 @@ git diff --name-only
 
 | Oversight | Consequence | Check |
 |-----------|-------------|-------|
-| Structure docs not updated | Others don't know the change | Check .viben/spec/ |
+| Structure docs not updated | Others don't know the change | Check docs/specs/ |
 | Migration not created | Schema out of sync | Check db/migrations/ |
 | Types not synced | Runtime errors | Check shared types |
 | Tests not updated | False confidence | Run full test suite |

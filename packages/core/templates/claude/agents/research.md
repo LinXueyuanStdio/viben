@@ -94,7 +94,7 @@ Output structured results in report format.
 
 ### Related Spec Documents
 
-- `.viben/spec/xxx.md` - {description}
+- `docs/specs/xxx.md` - {description}
 
 ### Not Found
 

@@ -2,6 +2,7 @@
  * Agent CLI commands
  */
 import { Command } from "commander";
+import { join } from "node:path";
 import chalk from "chalk";
 import type { OutputContext } from "../types";
 import { CliError } from "../types";
@@ -55,12 +56,19 @@ export function registerAgentCommand(program: Command): void {
       try {
         let agents: Agent[];
 
+        // Default workspace to current directory
+        const workspacePath = options.workspace ?? process.cwd();
+
         if (options.templates) {
-          // List templates only (global + workspace if specified)
-          agents = await agentManager.listTemplates(options.workspace);
+          // List templates only (global + workspace)
+          agents = await agentManager.listTemplates(workspacePath);
         } else {
-          // List all agents
-          agents = await agentManager.listAgents();
+          // List all agents (global + workspace)
+          const globalAgents = await agentManager.listAgents();
+          const workspaceAgents = await agentManager.listAgentsFromDir(
+            join(workspacePath, ".viben", "agents")
+          );
+          agents = [...globalAgents, ...workspaceAgents];
         }
 
         const defaultAgentId = await configManager.getDefaultAgent();
@@ -802,138 +810,6 @@ export function registerAgentCommand(program: Command): void {
         }
 
         process.exit(result.exitCode);
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // ========================================================================
-  // Nested command: agent template
-  // ========================================================================
-
-  const template = agent
-    .command("template")
-    .description("Manage agent templates");
-
-  // agent template list
-  template
-    .command("list")
-    .description("List all templates")
-    .action(async () => {
-      const ctx = getOutputContext(program);
-      try {
-        const templates = await agentManager.listTemplates();
-
-        output(ctx, successResponse({ templates }), () => {
-          if (templates.length === 0) {
-            console.log(chalk.yellow("No templates found"));
-            console.log(
-              chalk.gray(
-                'Use "viben agent update <agent-id> --is-template true" to create one'
-              )
-            );
-            return;
-          }
-
-          outputTable(
-            ctx,
-            ["ID", "Name", "Executor", "Model", "Created"],
-            templates.map((t: Agent) => [
-              t.id,
-              t.name,
-              t.executorType || "-",
-              t.model || "-",
-              t.createdAt.split("T")[0],
-            ])
-          );
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // agent template create <agent-id> - deprecated, use update --is-template
-  template
-    .command("create")
-    .description("Mark an agent as template (deprecated: use 'viben agent update --is-template')")
-    .argument("<agent-id>", "Agent ID to mark as template")
-    .option("--description <desc>", "Template description")
-    .action(async (agentId: string, options: { description?: string }) => {
-      const ctx = getOutputContext(program);
-      try {
-        console.log(chalk.yellow("Note: This command is deprecated. Use 'viben agent update <id> --is-template true' instead."));
-
-        const agent = await agentManager.setAsTemplate(agentId, true, options.description);
-
-        output(ctx, successResponse({ template: agent }), () => {
-          outputSuccess(ctx, `Marked agent as template: ${agentId}`);
-          if (ctx.verbose) {
-            console.log();
-            outputKeyValue(ctx, {
-              ID: agent.id,
-              Name: agent.name,
-              "Is Template": agent.isTemplate,
-              "Template Description": agent.templateDescription || "-",
-            });
-          }
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // agent template show <template-id>
-  template
-    .command("show")
-    .description("Show template details")
-    .argument("<template-id>", "Template ID")
-    .action(async (templateId: string) => {
-      const ctx = getOutputContext(program);
-      try {
-        const tpl = await agentManager.getTemplate(templateId);
-        if (!tpl) {
-          throw CliError.notFound("Template", templateId);
-        }
-
-        output(ctx, successResponse({ template: tpl }), () => {
-          console.log(chalk.bold(`Template: ${tpl.name}`));
-          console.log();
-
-          outputKeyValue(ctx, {
-            ID: tpl.id,
-            Name: tpl.name,
-            Description: tpl.templateDescription || tpl.description || "-",
-            Executor: tpl.executorType || "-",
-            Model: tpl.model || "-",
-            Provider: tpl.provider || "-",
-            "Created At": tpl.createdAt,
-          });
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // agent template remove <template-id>
-  template
-    .command("remove")
-    .description("Unmark an agent as template (deprecated: use 'viben agent update --is-template false')")
-    .argument("<template-id>", "Template ID")
-    .action(async (templateId: string) => {
-      const ctx = getOutputContext(program);
-      try {
-        console.log(chalk.yellow("Note: This command is deprecated. Use 'viben agent update <id> --is-template false' instead."));
-
-        const tpl = await agentManager.getTemplate(templateId);
-        if (!tpl) {
-          throw CliError.notFound("Template", templateId);
-        }
-
-        await agentManager.setAsTemplate(templateId, false);
-
-        output(ctx, successResponse({ removed: templateId }), () => {
-          outputSuccess(ctx, `Removed template: ${templateId}`);
-        });
       } catch (error) {
         handleCommandError(ctx, error);
       }

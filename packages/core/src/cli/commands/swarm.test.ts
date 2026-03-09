@@ -111,7 +111,6 @@ describe("Swarm CLI Commands", () => {
   function setupVibenWorkspace(cwdPath: string = "/test/project") {
     mockExistsSync.mockImplementation((path: string) => {
       if (path === `${cwdPath}/.viben`) return true;
-      if (path.includes(".viben/scripts/multi_agent/")) return true;
       return false;
     });
 
@@ -211,11 +210,10 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
-    it("should call start.py with task directory when task exists", async () => {
+    it("should start agent when task exists", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
-        if (path === "/test/project/.viben/scripts/multi_agent/start.py") return true;
         if (path === "/test/project/.viben/tasks") return true;
         if (path === "/test/project/.viben/tasks/my-task") return true;
         return false;

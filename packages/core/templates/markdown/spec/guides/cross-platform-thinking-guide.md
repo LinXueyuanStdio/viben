@@ -211,7 +211,6 @@ When making platform-related changes, check **all these locations**:
 
 ### Code Locations
 - [ ] `src/templates/` - Template files for new projects
-- [ ] `.viben/scripts/` - Project's own scripts (if self-hosting)
 - [ ] `dist/` - Built output (rebuild after changes)
 
 ### Search Pattern
@@ -329,8 +328,8 @@ subprocess.run(["./script.py"])  # FileNotFoundError
 ### 3. "I updated the template"
 
 ```
-src/templates/script.py  ← Updated
-.viben/scripts/script.py  ← Forgot to sync!
+src/templates/file.ts  ← Updated
+dist/templates/file.js  ← Forgot to rebuild!
 ```
 
 ### 4. "Python 3 is always python3"

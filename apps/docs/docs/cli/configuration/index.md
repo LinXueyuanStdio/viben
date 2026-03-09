@@ -17,11 +17,10 @@ The CLI uses the following directory structure for configuration:
 ├── config.yaml                              # Global configuration
 ├── providers.yaml                           # API Provider configurations
 ├── models.yaml                              # Model configurations (aliases, fallbacks)
-├── agents/                                  # Agent instances
+├── agents/                                  # Agent instances (including templates)
 │   └── <agent-id>/
-│       ├── config.yaml                      # Agent-specific config
+│       ├── config.yaml                      # Agent-specific config (isTemplate: true for templates)
 │       └── mcp_servers.json                 # MCP servers for this agent
-├── agent-templates/                         # Reusable agent templates
 ├── mcp/                                     # Shared MCP servers (all agents)
 │   └── installed.yaml
 └── skills/                                  # Shared skills (all agents)

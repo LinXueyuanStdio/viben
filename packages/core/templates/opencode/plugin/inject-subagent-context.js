@@ -1,5 +1,5 @@
 /**
- * Trellis Context Injection Plugin
+ * Viben Context Injection Plugin
  *
  * Injects context when Task tool is called with supported subagent types.
  * Uses OpenCode's tool.execute.before hook.
@@ -11,7 +11,7 @@
 
 import { existsSync, writeFileSync } from "fs"
 import { join } from "path"
-import { TrellisContext, debugLog } from "../lib/trellis-context.js"
+import { VibenContext, debugLog } from "../lib/viben-context.js"
 
 // Supported subagent types
 const AGENTS_ALL = ["implement", "check", "debug", "research"]
@@ -117,10 +117,10 @@ function getCheckContext(ctx, taskDir) {
   } else {
     // Fallback: hardcoded check files + spec.jsonl
     const checkFiles = [
-      [".opencode/commands/trellis/finish-work.md", "Finish work checklist"],
-      [".opencode/commands/trellis/check-cross-layer.md", "Cross-layer check spec"],
-      [".opencode/commands/trellis/check-backend.md", "Backend check spec"],
-      [".opencode/commands/trellis/check-frontend.md", "Frontend check spec"],
+      [".opencode/commands/viben/finish-work.md", "Finish work checklist"],
+      [".opencode/commands/viben/check-cross-layer.md", "Cross-layer check spec"],
+      [".opencode/commands/viben/check-backend.md", "Backend check spec"],
+      [".opencode/commands/viben/check-frontend.md", "Frontend check spec"],
     ]
     for (const [f, description] of checkFiles) {
       const content = ctx.readProjectFile(f)
@@ -160,16 +160,16 @@ function getFinishContext(ctx, taskDir) {
     parts.push(ctx.buildContextFromEntries(entries))
   } else {
     // Fallback: only finish-work.md (lightweight)
-    const finishWork = ctx.readProjectFile(".opencode/commands/trellis/finish-work.md")
+    const finishWork = ctx.readProjectFile(".opencode/commands/viben/finish-work.md")
     if (finishWork) {
-      parts.push(`=== .opencode/commands/trellis/finish-work.md (Finish checklist) ===\n${finishWork}`)
+      parts.push(`=== .opencode/commands/viben/finish-work.md (Finish checklist) ===\n${finishWork}`)
     }
   }
 
   // 2. Spec update process (for active spec sync)
-  const updateSpec = ctx.readProjectFile(".opencode/commands/trellis/update-spec.md")
+  const updateSpec = ctx.readProjectFile(".opencode/commands/viben/update-spec.md")
   if (updateSpec) {
-    parts.push(`=== .opencode/commands/trellis/update-spec.md (Spec update process) ===\n${updateSpec}`)
+    parts.push(`=== .opencode/commands/viben/update-spec.md (Spec update process) ===\n${updateSpec}`)
   }
 
   // 3. Requirements document (for verifying requirements are met)
@@ -202,9 +202,9 @@ function getDebugContext(ctx, taskDir) {
     }
 
     const checkFiles = [
-      [".opencode/commands/trellis/check-backend.md", "Backend check spec"],
-      [".opencode/commands/trellis/check-frontend.md", "Frontend check spec"],
-      [".opencode/commands/trellis/check-cross-layer.md", "Cross-layer check spec"],
+      [".opencode/commands/viben/check-backend.md", "Backend check spec"],
+      [".opencode/commands/viben/check-frontend.md", "Frontend check spec"],
+      [".opencode/commands/viben/check-cross-layer.md", "Cross-layer check spec"],
     ]
     for (const [f, description] of checkFiles) {
       const content = ctx.readProjectFile(f)
@@ -232,19 +232,19 @@ function getResearchContext(ctx, taskDir) {
   parts.push(`## Project Spec Directory Structure
 
 \`\`\`
-.trellis/spec/
+docs/specs/
 ├── shared/      # Cross-project common specs
 ├── frontend/    # Frontend standards
 ├── backend/     # Backend standards
 └── guides/      # Thinking guides
 
-.trellis/big-question/  # Known issues and pitfalls
+.viben/big-question/  # Known issues and pitfalls
 \`\`\`
 
 ## Search Tips
 
-- Spec files: \`.trellis/spec/**/*.md\`
-- Known issues: \`.trellis/big-question/\`
+- Spec files: \`docs/specs/**/*.md\`
+- Known issues: \`.viben/big-question/\`
 - Code search: Use Glob and Grep tools
 - Tech solutions: Use mcp__exa__web_search_exa or mcp__exa__get_code_context_exa`)
 
@@ -422,7 +422,7 @@ ${originalPrompt}
 }
 
 export default async ({ directory }) => {
-  const ctx = new TrellisContext(directory)
+  const ctx = new VibenContext(directory)
   debugLog("inject", "Plugin loaded, directory:", directory)
 
   return {
@@ -434,7 +434,7 @@ export default async ({ directory }) => {
     // 2. Only global plugins (npm packages) have full hook permissions
     // 3. This is a known OpenCode architecture limitation (see Issue #5894)
     //
-    // SOLUTION: Trellis + OpenCode users must install oh-my-opencode (omo)
+    // SOLUTION: Viben + OpenCode users must install oh-my-opencode (omo)
     // - omo is a global plugin with full hook permissions
     // - omo reads .claude/settings.json and executes Python hooks
     // - .claude/hooks/inject-subagent-context.py handles the actual injection

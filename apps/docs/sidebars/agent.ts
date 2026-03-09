@@ -6,14 +6,7 @@ const sidebars: SidebarsConfig = {
     'mcp-development',
     'skill-development',
     'cli-integration',
-    {
-      type: 'category',
-      label: 'Templates',
-      collapsed: false,
-      items: [
-        'templates/agent-templates',
-      ],
-    },
+    'templates/agent-templates',
     'best-practices',
     {
       type: 'link',

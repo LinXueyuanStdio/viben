@@ -107,6 +107,16 @@
     "noData": "No data",
     "id": "ID"
   },
+  "elapsedTime": {
+    "justNow": "just now",
+    "seconds": "{{seconds}}s",
+    "minutes": "{{minutes}}m",
+    "minutesSeconds": "{{minutes}}m {{seconds}}s",
+    "hours": "{{hours}}h",
+    "hoursMinutes": "{{hours}}h {{minutes}}m",
+    "days": "{{days}}d",
+    "daysHours": "{{days}}d {{hours}}h"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "dataSources": "Data Sources",

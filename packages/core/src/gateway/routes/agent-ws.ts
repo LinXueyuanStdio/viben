@@ -31,8 +31,6 @@ interface AgentWsQuery {
   cwd?: string;
   /** Path to agent AGENTS.md config file */
   agentConfigPath?: string;
-  /** @deprecated Use agentConfigPath instead */
-  agentPath?: string;
   /** Session ID for persistence */
   sessionId?: string;
   /** Task ID for persistence */
@@ -478,11 +476,11 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         const query = req.query as AgentWsQuery;
         const sessionId = randomUUID();
 
-        // Create session (support both agentConfigPath and deprecated agentPath)
+        // Create session with agent config path
         const session: WsSession = {
           id: sessionId,
           socket,
-          agentConfigPath: query.agentConfigPath || query.agentPath,
+          agentConfigPath: query.agentConfigPath,
           cwd: query.cwd || process.cwd(),
           persistSessionId: query.sessionId,
           persistTaskId: query.taskId,
@@ -513,9 +511,9 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   return;
                 }
 
-                // Load agent config (support both agentConfigPath and deprecated agentPath)
+                // Load agent config from path
                 let agentConfig = msg.agentConfig;
-                const configPath = query.agentConfigPath || query.agentPath;
+                const configPath = query.agentConfigPath;
                 if (configPath) {
                   const loadedConfig = await loadAgentConfigFromPath(configPath);
                   if (loadedConfig) {

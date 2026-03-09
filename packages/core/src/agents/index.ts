@@ -18,7 +18,6 @@ import { configManager } from "../config";
 import type {
   Agent,
   AgentConfig,
-  AgentTemplate,
   AgentSession,
   AgentMemory,
   DailyLog,
@@ -26,7 +25,7 @@ import type {
   CreateAgentOptions,
   AgentUpdate,
 } from "../types";
-import type { AgentConfigFile, SessionFile, TemplateConfigYaml } from "./types";
+import type { AgentConfigFile, SessionFile } from "./types";
 
 // Re-export types
 export * from "./types";

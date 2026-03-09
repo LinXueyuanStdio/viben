@@ -41,9 +41,9 @@ viben team context
 ### Step 3: Read Project Guidelines `[AI]`
 
 ```bash
-cat .viben/spec/frontend/index.md  # Frontend guidelines index
-cat .viben/spec/backend/index.md   # Backend guidelines index
-cat .viben/spec/guides/index.md    # Thinking guides
+cat docs/specs/frontend/index.md  # Frontend guidelines index
+cat docs/specs/backend/index.md   # Backend guidelines index
+cat docs/specs/guides/index.md    # Thinking guides
 ```
 
 ### Step 4: Ask User for Requirements

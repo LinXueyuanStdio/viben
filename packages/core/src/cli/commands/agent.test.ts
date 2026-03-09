@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerAgentCommand } from "./agent";
-import type { Agent, AgentTemplate, AgentSession } from "../../types";
+import type { Agent, AgentSession } from "../../types";
 
 // Mock the agents module
 vi.mock("../../agents", () => ({
@@ -76,21 +76,6 @@ function createMockAgent(overrides: Partial<Agent> = {}): Agent {
     updatedAt: "2024-01-01T00:00:00Z",
     ...overrides,
   } as Agent;
-}
-
-/**
- * Helper to create a mock template with proper typing
- */
-function createMockTemplate(overrides: Partial<AgentTemplate> = {}): AgentTemplate {
-  return {
-    id: "test-template",
-    name: "Test Template",
-    config: {
-      name: "Test Template",
-    },
-    createdAt: "2024-01-01T00:00:00Z",
-    ...overrides,
-  } as AgentTemplate;
 }
 
 /**

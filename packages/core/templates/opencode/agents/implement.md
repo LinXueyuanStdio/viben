@@ -37,13 +37,13 @@ Then proceed with the workflow below using the loaded context.
 
 Before implementing, read:
 - `.viben/workflow.md` - Project workflow
-- `.viben/spec/` - Development guidelines
+- `docs/specs/` - Development guidelines
 - Task `prd.md` - Requirements document
 - Task `info.md` - Technical design (if exists)
 
 ## Core Responsibilities
 
-1. **Understand specs** - Read relevant spec files in `.viben/spec/`
+1. **Understand specs** - Read relevant spec files in `docs/specs/`
 2. **Understand requirements** - Read prd.md and info.md
 3. **Implement features** - Write code following specs and design
 4. **Self-check** - Ensure code quality
@@ -65,9 +65,9 @@ Before implementing, read:
 
 Read relevant specs based on task type:
 
-- Backend: `.viben/spec/backend/`
-- Frontend: `.viben/spec/frontend/`
-- Guides: `.viben/spec/guides/`
+- Backend: `docs/specs/backend/`
+- Frontend: `docs/specs/frontend/`
+- Guides: `docs/specs/guides/`
 
 ### 2. Understand Requirements
 

@@ -15,31 +15,31 @@ import type { UnifiedTask, TaskEvent } from "../../services/task-service";
 // Mocks
 // =============================================================================
 
-// Mock taskService
-const mockGetTask = vi.fn<[string], Promise<UnifiedTask | null>>();
-const mockUpdateTask = vi.fn<[string, Partial<UnifiedTask>], Promise<UnifiedTask>>();
+// Mock taskService - use explicit function types to avoid inference issues
+const mockGetTask = vi.fn<(taskDir: string) => Promise<UnifiedTask | null>>();
+const mockUpdateTask = vi.fn<(taskDir: string, updates: Partial<UnifiedTask>) => Promise<UnifiedTask>>();
 
 vi.mock("../../services/task-service", () => ({
   taskService: {
-    getTask: (...args: [string]) => mockGetTask(...args),
-    updateTask: (...args: [string, Partial<UnifiedTask>]) => mockUpdateTask(...args),
+    getTask: (taskDir: string) => mockGetTask(taskDir),
+    updateTask: (taskDir: string, updates: Partial<UnifiedTask>) => mockUpdateTask(taskDir, updates),
   },
 }));
 
-// Mock file system
-const mockAppendFile = vi.fn<[string, string, string], Promise<void>>();
-const mockReadFile = vi.fn<[string, string], Promise<string>>();
-const mockWriteFile = vi.fn<[string, string, string], Promise<void>>();
-const mockExistsSync = vi.fn<[string], boolean>();
+// Mock file system - use explicit function types
+const mockAppendFile = vi.fn<(path: string, data: string, encoding: string) => Promise<void>>();
+const mockReadFile = vi.fn<(path: string, encoding: string) => Promise<string>>();
+const mockWriteFile = vi.fn<(path: string, data: string, encoding: string) => Promise<void>>();
+const mockExistsSync = vi.fn<(path: string) => boolean>();
 
 vi.mock("node:fs/promises", () => ({
-  appendFile: (...args: [string, string, string]) => mockAppendFile(...args),
-  readFile: (...args: [string, string]) => mockReadFile(...args),
-  writeFile: (...args: [string, string, string]) => mockWriteFile(...args),
+  appendFile: (path: string, data: string, encoding: string) => mockAppendFile(path, data, encoding),
+  readFile: (path: string, encoding: string) => mockReadFile(path, encoding),
+  writeFile: (path: string, data: string, encoding: string) => mockWriteFile(path, data, encoding),
 }));
 
 vi.mock("node:fs", () => ({
-  existsSync: (...args: [string]) => mockExistsSync(...args),
+  existsSync: (path: string) => mockExistsSync(path),
 }));
 
 // Mock async lock - immediately execute the function
@@ -211,12 +211,7 @@ describe("TaskEventStore.applyEvent", () => {
       }));
     });
 
-    // NOTE: SUBTASK_COMPLETE is a self-transition (coding -> coding with reenter: true)
-    // In XState v5, self-transitions with reenter report changed: false
-    // The current event-store implementation treats this as invalid.
-    // This test documents the current behavior rather than ideal behavior.
-    // TODO: Fix event-store to handle self-transitions correctly
-    it("returns INVALID_TRANSITION for SUBTASK_COMPLETE (self-transition limitation)", async () => {
+    it("applies SUBTASK_COMPLETE and increments subtask index", async () => {
       const task = createTaskInState("in_progress", {
         id: "task1",
         xstateState: { in_progress: "coding" },
@@ -224,6 +219,7 @@ describe("TaskEventStore.applyEvent", () => {
         machine_context: { current_subtask_index: 0, requires_plan_review: false },
       });
       mockGetTask.mockResolvedValue(task);
+      mockUpdateTask.mockImplementation(async (_, updates) => ({ ...task, ...updates }));
 
       const event: TaskEvent = {
         eventId: "evt_4",
@@ -234,8 +230,31 @@ describe("TaskEventStore.applyEvent", () => {
 
       const result = await store.applyEvent(taskDir, event);
 
-      // Current behavior: self-transitions are rejected due to XState changed: false
-      // This is a known limitation - see TODO above
+      expect(result.success).toBe(true);
+      expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
+        machine_context: expect.objectContaining({
+          current_subtask_index: 1,
+        }),
+      }));
+    });
+
+    it("rejects SUBTASK_COMPLETE from non-coding state", async () => {
+      const task = createTaskInState("in_progress", {
+        id: "task1",
+        xstateState: { in_progress: "planning" },
+        lastEvent: { eventId: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
+      });
+      mockGetTask.mockResolvedValue(task);
+
+      const event: TaskEvent = {
+        eventId: "evt_3",
+        sequence: 3,
+        type: "SUBTASK_COMPLETE",
+        timestamp: "2026-01-15T10:02:00.000Z",
+      };
+
+      const result = await store.applyEvent(taskDir, event);
+
       expect(result.success).toBe(false);
       expect(result.error).toBe("INVALID_TRANSITION");
     });
@@ -262,12 +281,13 @@ describe("TaskEventStore.applyEvent", () => {
       const task = createTaskInState("backlog", { id: "task1" });
       mockGetTask.mockResolvedValue(task);
 
+      // Use unknown first then cast to TaskEvent to test invalid type handling
       const event = {
         eventId: "evt_1",
         sequence: 1,
         type: "UNKNOWN_EVENT",
         timestamp: "2026-01-15T10:00:00.000Z",
-      } as TaskEvent;
+      } as unknown as TaskEvent;
 
       const result = await store.applyEvent(taskDir, event);
 
@@ -503,8 +523,14 @@ describe("Complete State Transition Flows", () => {
   beforeEach(() => {
     store = new TaskEventStore();
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-15T10:00:00.000Z"));
     mockExistsSync.mockReturnValue(true);
     mockAppendFile.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("completes happy path: backlog -> queue -> planning -> coding -> qa_review -> human_review -> completed", async () => {
@@ -532,7 +558,7 @@ describe("Complete State Transition Flows", () => {
         eventId: `evt_${i + 1}`,
         sequence: i + 1,
         type,
-        timestamp: new Date().toISOString(),
+        timestamp: `2026-01-15T10:0${i}:00.000Z`,
       };
 
       const result = await store.applyEvent(taskDir, event);
@@ -716,5 +742,194 @@ describe("Review Reason Computation", () => {
     expect(mockUpdateTask).toHaveBeenCalledWith(taskDir, expect.objectContaining({
       reviewReason: "qa_rejected",
     }));
+  });
+});
+
+// =============================================================================
+// Self-Transition (SUBTASK_COMPLETE) Comprehensive Tests
+// =============================================================================
+
+describe("Self-Transition Tests", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-15T10:00:00.000Z"));
+    mockExistsSync.mockReturnValue(true);
+    mockAppendFile.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("handles multiple consecutive SUBTASK_COMPLETE events", async () => {
+    let currentTask = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "coding" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      machine_context: { current_subtask_index: 0, requires_plan_review: false },
+    });
+
+    // Apply 5 consecutive SUBTASK_COMPLETE events
+    for (let i = 0; i < 5; i++) {
+      mockGetTask.mockResolvedValue(currentTask);
+      mockUpdateTask.mockImplementation(async (_, updates) => {
+        currentTask = { ...currentTask, ...updates } as UnifiedTask;
+        return currentTask;
+      });
+
+      const result = await store.applyEvent(taskDir, {
+        eventId: `evt_${4 + i}`,
+        sequence: 4 + i,
+        type: "SUBTASK_COMPLETE",
+        timestamp: `2026-01-15T10:0${3 + i}:00.000Z`,
+      });
+
+      expect(result.success).toBe(true);
+      expect(currentTask.machine_context?.current_subtask_index).toBe(i + 1);
+    }
+
+    // Verify final state
+    expect(currentTask.machine_context?.current_subtask_index).toBe(5);
+    expect(currentTask.status).toBe("in_progress");
+    expect(currentTask.xstateState).toEqual({ in_progress: "coding" });
+  });
+
+  it("validates SUBTASK_COMPLETE without applying", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "coding" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+
+    const result = await store.validateEvent(taskDir, {
+      eventId: "evt_4",
+      sequence: 4,
+      type: "SUBTASK_COMPLETE",
+      timestamp: "2026-01-15T10:03:00.000Z",
+    });
+
+    expect(result.success).toBe(true);
+    // Validation should not modify task
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+    expect(mockAppendFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects SUBTASK_COMPLETE from qa_review state", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "qa_review" },
+      lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+
+    const result = await store.applyEvent(taskDir, {
+      eventId: "evt_5",
+      sequence: 5,
+      type: "SUBTASK_COMPLETE",
+      timestamp: "2026-01-15T10:04:00.000Z",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("INVALID_TRANSITION");
+  });
+
+  it("rejects SUBTASK_COMPLETE from qa_fixing state", async () => {
+    const task = createTaskInState("in_progress", {
+      id: "task1",
+      xstateState: { in_progress: "qa_fixing" },
+      lastEvent: { eventId: "evt_5", sequence: 5, type: "QA_FAILED", timestamp: "2026-01-15T10:04:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+
+    const result = await store.applyEvent(taskDir, {
+      eventId: "evt_6",
+      sequence: 6,
+      type: "SUBTASK_COMPLETE",
+      timestamp: "2026-01-15T10:05:00.000Z",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("INVALID_TRANSITION");
+  });
+
+  it("rejects SUBTASK_COMPLETE from queue state", async () => {
+    const task = createTaskInState("queue", {
+      id: "task1",
+      lastEvent: { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+    });
+    mockGetTask.mockResolvedValue(task);
+
+    const result = await store.applyEvent(taskDir, {
+      eventId: "evt_2",
+      sequence: 2,
+      type: "SUBTASK_COMPLETE",
+      timestamp: "2026-01-15T10:01:00.000Z",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("INVALID_TRANSITION");
+  });
+});
+
+// =============================================================================
+// File System Error Handling Tests
+// =============================================================================
+
+describe("File System Error Handling", () => {
+  let store: TaskEventStore;
+  const taskDir = "/workspace/.viben/tasks/01-01-test-task";
+
+  beforeEach(() => {
+    store = new TaskEventStore();
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+  });
+
+  it("handles readFile error gracefully in getEventHistory", async () => {
+    mockExistsSync.mockReturnValue(true);
+    mockReadFile.mockRejectedValue(new Error("ENOENT: file not found"));
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const events = await store.getEventHistory(taskDir);
+
+    expect(events).toHaveLength(0);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Error reading events.jsonl"),
+      expect.any(Error)
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  it("handles writeFile error during legacy migration", async () => {
+    mockExistsSync.mockReturnValue(false);
+    const task = createTaskInState("queue", {
+      id: "task1",
+      eventHistory: [
+        { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      ],
+    });
+    mockGetTask.mockResolvedValue(task);
+    mockWriteFile.mockRejectedValue(new Error("EACCES: permission denied"));
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Should still return events even if migration fails
+    const events = await store.getEventHistory(taskDir);
+
+    expect(events).toHaveLength(1);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to migrate event history"),
+      expect.any(Error)
+    );
+
+    consoleSpy.mockRestore();
   });
 });

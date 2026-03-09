@@ -108,6 +108,16 @@
     "noData": "无数据",
     "id": "ID"
   },
+  "elapsedTime": {
+    "justNow": "刚刚",
+    "seconds": "{{seconds}} 秒",
+    "minutes": "{{minutes}} 分钟",
+    "minutesSeconds": "{{minutes}} 分 {{seconds}} 秒",
+    "hours": "{{hours}} 小时",
+    "hoursMinutes": "{{hours}} 小时 {{minutes}} 分",
+    "days": "{{days}} 天",
+    "daysHours": "{{days}} 天 {{hours}} 小时"
+  },
   "nav": {
     "dashboard": "仪表盘",
     "dataSources": "数据源",

@@ -1,6 +1,6 @@
 /* global process */
 /**
- * Trellis Session Start Plugin
+ * Viben Session Start Plugin
  *
  * Injects context when user sends the first message in a session.
  * Uses OpenCode's chat.message + experimental.chat.messages.transform hooks.
@@ -10,40 +10,58 @@
  * - Otherwise, this plugin handles injection
  */
 
-import { existsSync } from "fs"
 import { join } from "path"
-import { TrellisContext, contextCollector, debugLog } from "../lib/trellis-context.js"
+import { execSync } from "child_process"
+import { VibenContext, contextCollector, debugLog } from "../lib/viben-context.js"
+
+/**
+ * Run viben CLI command and return output
+ */
+function runVibenCommand(args, cwd) {
+  // Try npx viben first (for development), then viben (for installed)
+  for (const cmdPrefix of [["npx", "viben"], ["viben"]]) {
+    try {
+      const result = execSync([...cmdPrefix, ...args].join(" "), {
+        cwd,
+        timeout: 10000,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"]
+      })
+      return result || ""
+    } catch {
+      continue
+    }
+  }
+  return "No context available"
+}
 
 /**
  * Build session context for injection
  */
 function buildSessionContext(ctx) {
   const directory = ctx.directory
-  const trellisDir = join(directory, ".trellis")
+  const vibenDir = join(directory, ".viben")
   const claudeDir = join(directory, ".claude")
   const opencodeDir = join(directory, ".opencode")
 
   const parts = []
 
   // 1. Header
-  parts.push(`<trellis-context>
-You are starting a new session in a Trellis-managed project.
+  parts.push(`<viben-context>
+You are starting a new session in a Viben-managed project.
 Read and follow all instructions below carefully.
-</trellis-context>`)
+</viben-context>`)
 
-  // 2. Current Context (dynamic)
-  const contextScript = join(trellisDir, "scripts", "get_context.py")
-  if (existsSync(contextScript)) {
-    const output = ctx.runScript(contextScript)
-    if (output) {
-      parts.push("<current-state>")
-      parts.push(output)
-      parts.push("</current-state>")
-    }
+  // 2. Current Context (dynamic) - use viben CLI
+  const contextOutput = runVibenCommand(["task", "context"], directory)
+  if (contextOutput && contextOutput !== "No context available") {
+    parts.push("<current-state>")
+    parts.push(contextOutput)
+    parts.push("</current-state>")
   }
 
   // 3. Workflow Guide
-  const workflow = ctx.readProjectFile(".trellis/workflow.md")
+  const workflow = ctx.readProjectFile(".viben/workflow.md")
   if (workflow) {
     parts.push("<workflow>")
     parts.push(workflow)
@@ -54,23 +72,23 @@ Read and follow all instructions below carefully.
   parts.push("<guidelines>")
 
   parts.push("## Frontend")
-  const frontendIndex = ctx.readProjectFile(".trellis/spec/frontend/index.md")
+  const frontendIndex = ctx.readProjectFile("docs/specs/frontend/index.md")
   parts.push(frontendIndex || "Not configured")
 
   parts.push("\n## Backend")
-  const backendIndex = ctx.readProjectFile(".trellis/spec/backend/index.md")
+  const backendIndex = ctx.readProjectFile("docs/specs/backend/index.md")
   parts.push(backendIndex || "Not configured")
 
   parts.push("\n## Guides")
-  const guidesIndex = ctx.readProjectFile(".trellis/spec/guides/index.md")
+  const guidesIndex = ctx.readProjectFile("docs/specs/guides/index.md")
   parts.push(guidesIndex || "Not configured")
 
   parts.push("</guidelines>")
 
   // 5. Session Instructions - try both .claude and .opencode
-  let startMd = ctx.readFile(join(claudeDir, "commands", "trellis", "start.md"))
+  let startMd = ctx.readFile(join(claudeDir, "commands", "viben", "start.md"))
   if (!startMd) {
-    startMd = ctx.readFile(join(opencodeDir, "commands", "trellis", "start.md"))
+    startMd = ctx.readFile(join(opencodeDir, "commands", "viben", "start.md"))
   }
   if (startMd) {
     parts.push("<instructions>")
@@ -87,7 +105,7 @@ Context loaded. Wait for user's first message, then follow <instructions> to han
 }
 
 export default async ({ directory }) => {
-  const ctx = new TrellisContext(directory)
+  const ctx = new VibenContext(directory)
   debugLog("session", "Plugin loaded, directory:", directory)
 
   return {

@@ -7,7 +7,7 @@ model: opus
 ---
 # Research Agent
 
-You are the Research Agent in the Trellis workflow.
+You are the Research Agent in the Viben workflow.
 
 ## Core Principle
 
@@ -94,7 +94,7 @@ Output structured results in report format.
 
 ### Related Spec Documents
 
-- `.trellis/spec/xxx.md` - {description}
+- `.viben/spec/xxx.md` - {description}
 
 ### Not Found
 

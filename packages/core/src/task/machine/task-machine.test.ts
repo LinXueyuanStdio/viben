@@ -14,15 +14,8 @@ import {
   type XStateValue,
 } from "./task-machine";
 import {
-  createEventSequence,
-  expectValidTransition,
-  expectInvalidTransition,
   applyEventSequence,
   EVENT_SEQUENCES,
-  formatState,
-  createPauseContext,
-  createPlanReviewContext,
-  createProgressContext,
 } from "../__test-utils__/test-helpers";
 
 // =============================================================================

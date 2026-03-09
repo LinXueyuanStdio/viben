@@ -103,7 +103,7 @@ export interface AgentRunPayload {
   /** Working directory */
   cwd?: string;
   /** Path to agent AGENTS.md file */
-  agent_path?: string;
+  agent_config_path?: string;
   /** Resume from existing SDK session */
   resume_session?: string;
   /** Attachments (optional) */
@@ -205,7 +205,7 @@ export interface EnqueueRequest {
   /** Working directory */
   cwd?: string;
   /** Path to agent AGENTS.md file */
-  agent_path?: string;
+  agent_config_path?: string;
   /** Resume from existing SDK session */
   resume_session?: string;
   /** Maximum retry attempts (optional, uses default if not specified) */

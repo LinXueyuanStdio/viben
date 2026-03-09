@@ -137,7 +137,7 @@ export class TaskQueueManager extends EventEmitter {
       session_id: request.session_id,
       input: request.input,
       cwd: request.cwd,
-      agent_path: request.agent_path,
+      agent_config_path: request.agent_config_path,
       resume_session: request.resume_session,
       attachments: request.attachments,
     };

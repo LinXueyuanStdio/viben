@@ -170,7 +170,7 @@ Task: ${PLAN_REQUIREMENT}
 Dev Type: ${PLAN_DEV_TYPE}
 
 Instructions:
-1. Search .viben/spec/ for relevant spec files
+1. Search docs/specs/ for relevant spec files
 2. Search the codebase for related modules and patterns
 3. Identify files that should be added to jsonl context
 

@@ -60,8 +60,8 @@ What broader problems does this bug reveal?
 
 Solidify insights into the system:
 
-- [ ] Update `.viben/spec/guides/` thinking guides
-- [ ] Update `.viben/spec/backend/` or `frontend/` docs
+- [ ] Update `docs/specs/guides/` thinking guides
+- [ ] Update `docs/specs/backend/` or `frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
 - [ ] Update check skills if needed
@@ -123,7 +123,7 @@ Three levels of insight:
    - If it's a code reuse issue → update `code-reuse-thinking-guide.md`
    - If it's domain-specific → update `backend/*.md` or `frontend/*.md`
 
-2. **Sync templates** - After updating `.viben/spec/`, sync to `src/templates/markdown/spec/`
+2. **Sync templates** - After updating `docs/specs/`, sync to `src/templates/markdown/spec/`
 
 3. **Commit the spec updates** - This is the primary output, not just the analysis text
 

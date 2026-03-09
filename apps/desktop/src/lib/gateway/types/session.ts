@@ -132,6 +132,8 @@ export interface CreateFileSessionRequest {
   task_id?: string;
   /** Agent directory (absolute path to agent directory, e.g., /path/to/agents/myagent) */
   agent_dir?: string;
+  /** Agent config path (absolute path to AGENTS.md file) */
+  agent_config_path?: string;
   /** Agent config snapshot at session creation time */
   agent_config?: Record<string, unknown>;
   /** Workspace path where this session runs (absolute path) */

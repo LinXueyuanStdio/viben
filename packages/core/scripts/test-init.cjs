@@ -48,7 +48,7 @@ async function main() {
     // Verify key files exist
     const expectedFiles = [
       ".viben/workflow.md",
-      ".viben/scripts/task.sh",
+      ".viben/worktree.yaml",
       ".claude/settings.json",
       ".claude/agents/check.md",
       ".claude/commands/viben/start.md",

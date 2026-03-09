@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Multi-Agent Pipeline Context Injection Hook
 
@@ -10,7 +11,7 @@ Core Design Philosophy:
 
 Trigger: PreToolUse (before Task tool call)
 
-Context Source: .trellis/.current-task points to task directory
+Context Source: .viben/.current-task points to task directory
 - implement.jsonl - Implement agent dedicated context
 - check.jsonl     - Check agent dedicated context
 - debug.jsonl     - Debug agent dedicated context
@@ -21,16 +22,29 @@ Context Source: .trellis/.current-task points to task directory
 - codex-review-output.txt - Code Review results
 """
 
+# IMPORTANT: Suppress all warnings FIRST
+import warnings
+warnings.filterwarnings("ignore")
+
 import json
 import os
 import sys
 from pathlib import Path
 
+# IMPORTANT: Force stdout to use UTF-8 on Windows
+# This fixes UnicodeEncodeError when outputting non-ASCII characters
+if sys.platform == "win32":
+    import io as _io
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    elif hasattr(sys.stdout, "detach"):
+        sys.stdout = _io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+
 # =============================================================================
 # Path Constants (change here to rename directories)
 # =============================================================================
 
-DIR_WORKFLOW = ".trellis"
+DIR_WORKFLOW = ".viben"
 DIR_WORKSPACE = "workspace"
 DIR_TASKS = "tasks"
 DIR_SPEC = "spec"
@@ -72,7 +86,7 @@ def find_repo_root(start_path: str) -> str | None:
 
 def get_current_task(repo_root: str) -> str | None:
     """
-    Read current task directory path from .trellis/.current-task
+    Read current task directory path from .viben/.current-task
 
     Returns:
         Task directory relative path (relative to repo_root)
@@ -323,10 +337,10 @@ def get_check_context(repo_root: str, task_dir: str) -> str:
     else:
         # Fallback: use hardcoded check files + spec.jsonl
         check_files = [
-            (".claude/commands/trellis/finish-work.md", "Finish work checklist"),
-            (".claude/commands/trellis/check-cross-layer.md", "Cross-layer check spec"),
-            (".claude/commands/trellis/check-backend.md", "Backend check spec"),
-            (".claude/commands/trellis/check-frontend.md", "Frontend check spec"),
+            (".claude/commands/viben/finish-work.md", "Finish work checklist"),
+            (".claude/commands/viben/check-cross-layer.md", "Cross-layer check spec"),
+            (".claude/commands/viben/check-backend.md", "Backend check spec"),
+            (".claude/commands/viben/check-frontend.md", "Frontend check spec"),
         ]
         for file_path, description in check_files:
             content = read_file_content(repo_root, file_path)
@@ -355,7 +369,8 @@ def get_finish_context(repo_root: str, task_dir: str) -> str:
     Read order:
     1. All files in finish.jsonl (if exists)
     2. Fallback to finish-work.md only (lightweight final check)
-    3. prd.md (for verifying requirements are met)
+    3. update-spec.md (for active spec sync)
+    4. prd.md (for verifying requirements are met)
     """
     context_parts = []
 
@@ -368,14 +383,23 @@ def get_finish_context(repo_root: str, task_dir: str) -> str:
     else:
         # Fallback: only finish-work.md (lightweight)
         finish_work = read_file_content(
-            repo_root, ".claude/commands/trellis/finish-work.md"
+            repo_root, ".claude/commands/viben/finish-work.md"
         )
         if finish_work:
             context_parts.append(
-                f"=== .claude/commands/trellis/finish-work.md (Finish checklist) ===\n{finish_work}"
+                f"=== .claude/commands/viben/finish-work.md (Finish checklist) ===\n{finish_work}"
             )
 
-    # 2. Requirements document (for verifying requirements are met)
+    # 2. Spec update process (for active spec sync)
+    update_spec = read_file_content(
+        repo_root, ".claude/commands/viben/update-spec.md"
+    )
+    if update_spec:
+        context_parts.append(
+            f"=== .claude/commands/viben/update-spec.md (Spec update process) ===\n{update_spec}"
+        )
+
+    # 3. Requirements document (for verifying requirements are met)
     prd_content = read_file_content(repo_root, f"{task_dir}/prd.md")
     if prd_content:
         context_parts.append(
@@ -408,9 +432,9 @@ def get_debug_context(repo_root: str, task_dir: str) -> str:
             context_parts.append(f"=== {file_path} (Dev spec) ===\n{content}")
 
         check_files = [
-            (".claude/commands/trellis/check-backend.md", "Backend check spec"),
-            (".claude/commands/trellis/check-frontend.md", "Frontend check spec"),
-            (".claude/commands/trellis/check-cross-layer.md", "Cross-layer check spec"),
+            (".claude/commands/viben/check-backend.md", "Backend check spec"),
+            (".claude/commands/viben/check-frontend.md", "Frontend check spec"),
+            (".claude/commands/viben/check-cross-layer.md", "Cross-layer check spec"),
         ]
         for file_path, description in check_files:
             content = read_file_content(repo_root, file_path)
@@ -519,13 +543,19 @@ Finish checklist and requirements:
 
 1. **Review changes** - Run `git diff --name-only` to see all changed files
 2. **Verify requirements** - Check each requirement in prd.md is implemented
-3. **Run final checks** - Execute finish-work.md checklist
-4. **Confirm ready** - Ensure code is ready for PR
+3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
+   - If new pattern/convention found: read target spec file → update it → update index.md if needed
+   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
+   - If pure code fix with no new patterns: skip this step
+4. **Run final checks** - Execute lint and typecheck
+5. **Confirm ready** - Ensure code is ready for PR
 
 ## Important Constraints
 
-- This is a final verification, not a fix phase
-- If critical issues found, report them clearly
+- You MAY update spec files when gaps are detected (use update-spec.md as guide)
+- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
+- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
+- If critical CODE issues found, report them clearly (fix specs, not code)
 - Verify all acceptance criteria in prd.md are met"""
 
 
@@ -741,7 +771,7 @@ def main():
     if not context:
         sys.exit(0)
 
-    # Return updated input
+    # Return updated input with correct Claude Code PreToolUse format
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",

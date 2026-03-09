@@ -379,10 +379,6 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       agentConfigPath?: string;
       /** Path to agent AGENTS.md config file (preferred) - snake_case */
       agent_config_path?: string;
-      /** @deprecated Use agentConfigPath instead - camelCase */
-      agentPath?: string;
-      /** @deprecated Use agent_config_path instead - snake_case */
-      agent_path?: string;
       /** Inline agent configuration (fallback) - camelCase */
       agentConfig?: AgentConfigPayload;
       /** Inline agent configuration (fallback) - snake_case */
@@ -430,12 +426,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       return { error: "Request body is required" };
     }
 
-    // Support both camelCase and snake_case, with backward compatibility for deprecated agentPath
+    // Support both camelCase and snake_case
     const {
       prompt,
       cwd,
     } = request.body;
-    const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path || request.body.agentPath || request.body.agent_path;
+    const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path;
     const inlineConfig = request.body.agentConfig || request.body.agent_config;
     const persistSessionId = request.body.sessionId || request.body.session_id;
     const persistTaskId = request.body.taskId || request.body.task_id;
@@ -1126,10 +1122,6 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       agentConfigPath?: string;
       /** Agent config path for workspace-level agents - snake_case */
       agent_config_path?: string;
-      /** @deprecated Use agentConfigPath instead - camelCase */
-      agentPath?: string;
-      /** @deprecated Use agent_config_path instead - snake_case */
-      agent_path?: string;
       /** Workspace path - camelCase */
       workspacePath?: string;
       /** Workspace path - snake_case */
@@ -1140,8 +1132,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     async (request, reply) => {
       const { questionId } = request.params;
       const { answers } = request.body;
-      // Support both camelCase and snake_case, with backward compatibility for deprecated agentPath
-      const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path || request.body.agentPath || request.body.agent_path;
+      // Support both camelCase and snake_case
+      const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path;
       const workspacePath = request.body.workspacePath || request.body.workspace_path;
 
       if (!answers || typeof answers !== "object") {

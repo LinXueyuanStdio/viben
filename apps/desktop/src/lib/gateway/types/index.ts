@@ -214,8 +214,6 @@ export type {
   UpdateAgentOptions,
   UpdateVibenAgentOptions,
   DefaultAgentResponse,
-  AgentTemplate,
-  VibenAgentTemplate,
   ListTemplatesResponse,
   PromoteTemplateRequest,
   AgentMessage,

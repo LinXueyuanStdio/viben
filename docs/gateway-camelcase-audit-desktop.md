@@ -1,6 +1,7 @@
 # Gateway API 驼峰命名审计报告 - apps/desktop
 
 > 审计日期: 2026-02-26
+> 更新日期: 2026-03-10
 >
 > 根据 CLAUDE.md 规范，所有 Gateway API 查询参数和请求体字段应使用 **snake_case** 格式
 
@@ -8,7 +9,9 @@
 
 ## 摘要
 
-Desktop 应用在 **gateway client (gateway.ts)** 的接口定义中已正确使用 snake_case，但在 **直接 fetch 调用** 中存在 camelCase 违规。
+~~Desktop 应用在 **gateway client (gateway.ts)** 的接口定义中已正确使用 snake_case，但在 **直接 fetch 调用** 中存在 camelCase 违规。~~
+
+**更新 (2026-03-10)**: 大部分违规已修复。同时完成了命名重构：`agentPath` → `agentConfigPath`，语义更明确。
 
 ---
 
@@ -18,61 +21,41 @@ Desktop 应用在 **gateway client (gateway.ts)** 的接口定义中已正确使
 
 #### POST `/api/agent/run` (Lines 436-456)
 
-**当前代码:**
+**当前代码:** ✅ 已修复
 ```typescript
 const requestBody: Record<string, unknown> = {
   prompt: content,
-  agentPath: agentPath || undefined,           // ❌ 应为 agent_path
-  agentConfig: agentPath ? undefined : ...,    // ❌ 应为 agent_config
-  sessionId: persistSessionId || undefined,    // ❌ 应为 session_id
-  taskId: currentTaskId,                       // ❌ 应为 task_id
+  agent_config_path: agentConfigPath || undefined,  // ✅ 已修复
+  agent_config: agentConfigPath ? undefined : ...,  // ✅ 已修复
+  session_id: persistSessionId || undefined,        // ✅ 已修复
+  task_id: currentTaskId,                           // ✅ 已修复
 };
 ```
 
-**应修改为:**
-```typescript
-const requestBody: Record<string, unknown> = {
-  prompt: content,
-  agent_path: agentPath || undefined,
-  agent_config: agentPath ? undefined : ...,
-  session_id: persistSessionId || undefined,
-  task_id: currentTaskId,
-};
-```
-
-| 行号 | 当前命名 | 应改为 |
-|------|----------|--------|
-| 438 | `agentPath` | `agent_path` |
-| 439 | `agentConfig` | `agent_config` |
-| 441 | `sessionId` | `session_id` |
-| 442 | `taskId` | `task_id` |
+| 字段 | 状态 |
+|------|------|
+| `agent_config_path` | ✅ 已修复 |
+| `agent_config` | ✅ 已修复 |
+| `session_id` | ✅ 已修复 |
+| `task_id` | ✅ 已修复 |
 
 ---
 
 #### POST `/api/agent/answer/{questionId}` (Lines 870-877)
 
-**当前代码:**
+**当前代码:** ✅ 已修复
 ```typescript
 body: JSON.stringify({
   answers: flatAnswers,
-  agentPath,              // ❌ 应为 agent_path
-  workspacePath: workspaceId,   // ❌ 应为 workspace_path
+  agent_config_path: agentConfigPath,  // ✅ 已修复
+  workspace_path: workspaceId,         // ✅ 已修复
 }),
 ```
 
-**应修改为:**
-```typescript
-body: JSON.stringify({
-  answers: flatAnswers,
-  agent_path: agentPath,
-  workspace_path: workspaceId,
-}),
-```
-
-| 行号 | 当前命名 | 应改为 |
-|------|----------|--------|
-| 875 | `agentPath` | `agent_path` |
-| 876 | `workspacePath` | `workspace_path` |
+| 字段 | 状态 |
+|------|------|
+| `agent_config_path` | ✅ 已修复 |
+| `workspace_path` | ✅ 已修复 |
 
 ---
 
@@ -111,12 +94,12 @@ export interface SpawnAgentRequest {
 }
 
 export interface CreateFileSessionRequest {
-  session_id?: string;      // ✅ snake_case
+  session_id?: string;           // ✅ snake_case
   prompt?: string;
-  task_id?: string;         // ✅ snake_case
-  agent_path?: string;      // ✅ snake_case
+  task_id?: string;              // ✅ snake_case
+  agent_config_path?: string;    // ✅ snake_case (renamed from agent_path)
   agent_config?: Record<string, unknown>;  // ✅ snake_case
-  workspace_path?: string;  // ✅ snake_case
+  workspace_path?: string;       // ✅ snake_case
 }
 ```
 
@@ -157,27 +140,30 @@ Cron 相关 API 调用使用正确的 snake_case 类型。
 
 ## 4. 修复汇总
 
-| 文件 | 违规数量 | 类型 | 优先级 |
-|------|----------|------|--------|
-| `use-agent-conversation.ts` | 6 | Request Body | **高** |
-| `use-background-tasks.ts` | 1 | Path Parameter | 中 |
+| 文件 | 状态 | 类型 | 说明 |
+|------|------|------|------|
+| `use-agent-conversation.ts` | ✅ 已修复 | Request Body | 使用 `agent_config_path` |
+| `use-background-tasks.ts` | 🔄 待确认 | Path Parameter | 需确认路径参数规范 |
 
-**总计: 7 处违规**
+**原始违规: 7 处 → 已修复: 6 处**
 
 ---
 
 ## 5. 修复建议
 
-### 高优先级 - Request Body 字段
+### 高优先级 - Request Body 字段 ✅ 已完成
 
-修改 `use-agent-conversation.ts` 中的请求体字段命名:
+`use-agent-conversation.ts` 中的请求体字段已修复:
 
-1. Line 438: `agentPath` → `agent_path`
-2. Line 439: `agentConfig` → `agent_config`
-3. Line 441: `sessionId` → `session_id`
-4. Line 442: `taskId` → `task_id`
-5. Line 875: `agentPath` → `agent_path`
-6. Line 876: `workspacePath` → `workspace_path`
+1. ✅ `agent_config_path` (原 `agentPath` → `agent_path` → `agent_config_path`)
+2. ✅ `agent_config`
+3. ✅ `session_id`
+4. ✅ `task_id`
+5. ✅ `workspace_path`
+
+**命名变更说明**: `agentPath` 已重命名为 `agentConfigPath` (TypeScript) / `agent_config_path` (API)，语义更明确：
+- `agentConfigPath` - 指向配置文件路径 (e.g., `/path/to/agents/myagent/AGENTS.md`)
+- `agentDir` - 指向智能体目录路径 (e.g., `/path/to/agents/myagent/`)
 
 ### 中优先级 - Path Parameters
 

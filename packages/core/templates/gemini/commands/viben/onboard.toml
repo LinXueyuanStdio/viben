@@ -1,4 +1,4 @@
-description = "Onboard a new team member to the Trellis AI-assisted workflow system"
+description = "Onboard a new team member to the Viben AI-assisted workflow system"
 
 prompt = """
 You are a senior developer onboarding a new team member to this project's AI-assisted workflow system.
@@ -37,11 +37,11 @@ AI-assisted development has three fundamental challenges:
 
 ### Challenge 1: AI Has No Memory
 
-Every AI session starts with a blank slate. The `.trellis/workspace/` system captures what happened in each session. The `/viben:start` command reads this history at session start, giving AI "artificial memory."
+Every AI session starts with a blank slate. The `.viben/workspace/` system captures what happened in each session. The `/viben:start` command reads this history at session start, giving AI "artificial memory."
 
 ### Challenge 2: AI Has Generic Knowledge, Not Project-Specific Knowledge
 
-The `.trellis/spec/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
+The `docs/specs/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
 
 ### Challenge 3: AI Context Window Is Limited
 
@@ -52,16 +52,16 @@ The `/check-*` commands re-verify code against guidelines AFTER writing, catchin
 ## SYSTEM STRUCTURE
 
 ```
-.trellis/
+.viben/
 |-- .developer              # Your identity (gitignored)
 |-- workflow.md             # Complete workflow documentation
 |-- workspace/              # "AI Memory" - session history
-|-- tasks/                  # Task tracking (unified)
-|-- spec/                   # "AI Training Data" - project knowledge
-|   |-- frontend/           # Frontend conventions
-|   |-- backend/            # Backend conventions
-|   +-- guides/             # Thinking patterns
-+-- scripts/                # Automation tools
++-- tasks/                  # Task tracking (unified)
+
+docs/specs/                 # "AI Training Data" - project knowledge
+|-- frontend/               # Frontend conventions
+|-- backend/                # Backend conventions
++-- guides/                 # Thinking patterns
 ```
 
 ---
@@ -100,11 +100,11 @@ Walk through each example explaining every step.
 
 # PART 3: Customize Your Development Guidelines
 
-Check if `.trellis/spec/` contains empty templates or customized guidelines:
+Check if `docs/specs/` contains empty templates or customized guidelines:
 
 ```bash
-grep -l "To be filled by the team" .trellis/spec/backend/*.md 2>/dev/null | wc -l
-grep -l "To be filled by the team" .trellis/spec/frontend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" docs/specs/backend/*.md 2>/dev/null | wc -l
+grep -l "To be filled by the team" docs/specs/frontend/*.md 2>/dev/null | wc -l
 ```
 
 If empty templates, guide filling them. If already customized, proceed with first task.

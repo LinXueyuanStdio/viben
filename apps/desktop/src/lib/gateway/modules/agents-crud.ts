@@ -400,17 +400,3 @@ export async function promoteTemplateToGlobal(
   return response.json();
 }
 
-/**
- * @deprecated Use setAgentAsTemplate() instead.
- * Old API for creating separate template files is removed.
- */
-export async function createAgentTemplate(
-  baseUrl: string,
-  agentId: string,
-  _templateId: string
-): Promise<AgentResponse> {
-  console.warn(
-    "createAgentTemplate() is deprecated. Use setAgentAsTemplate() instead."
-  );
-  return setAgentAsTemplate(baseUrl, agentId, {});
-}

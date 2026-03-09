@@ -293,8 +293,8 @@ export interface UseAgentsReturn {
   templates: AgentResponse[];
   /** Refresh templates */
   refreshTemplates: () => Promise<void>;
-  /** Create a template from an agent */
-  createTemplate: (agentId: string, templateId: string) => Promise<AgentResponse>;
+  /** Mark an agent as a template */
+  setAsTemplate: (agentId: string, templateDescription?: string) => Promise<AgentResponse>;
   /** Create an agent from a template */
   createFromTemplate: (templateId: string, name: string, agentId?: string) => Promise<AgentResponse>;
 }
@@ -447,15 +447,18 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   );
 
   // Template operations
-  const createTemplate = useCallback(
-    async (agentId: string, templateId: string): Promise<AgentResponse> => {
+  const setAsTemplate = useCallback(
+    async (agentId: string, templateDescription?: string): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.createAgentTemplate(agentId, templateId);
+      const result = await client.setAgentAsTemplate(agentId, {
+        templateDescription,
+        workspacePath: workspacePath || undefined,
+      });
       // Refresh templates after creation
       await loadTemplates();
       return result;
     },
-    [loadTemplates]
+    [loadTemplates, workspacePath]
   );
 
   const createFromTemplate = useCallback(
@@ -496,7 +499,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     // Templates
     templates,
     refreshTemplates: loadTemplates,
-    createTemplate,
+    setAsTemplate,
     createFromTemplate,
   };
 }

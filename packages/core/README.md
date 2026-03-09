@@ -74,8 +74,6 @@ const all = await gitConfigManager.list();
 import {
   AgentManager,
   agentManager,
-  TemplateManager,
-  templateManager,
   MemoryManager,
   memoryManager,
 } from "@viben/core";
@@ -111,12 +109,15 @@ await agentManager.removeAgent("code-assistant");
 // 设置默认智能体
 await agentManager.setDefault("code-assistant");
 
-// 模板管理
-const templates = await templateManager.list();
-await templateManager.create({
-  name: "通用助手模板",
-  systemPrompt: "...",
-});
+// 模板管理 - 模板是带有 isTemplate=true 标志的智能体
+const templates = await agentManager.listTemplates();
+const template = await agentManager.getTemplate("my-template");
+
+// 将智能体标记为模板
+await agentManager.setTemplateStatus("code-assistant", true, "通用代码助手模板");
+
+// 从模板创建新智能体
+const newAgent = await agentManager.createFromTemplate("my-template", "new-agent-name");
 
 // 记忆管理
 const memory = await memoryManager.getMemory("agent-id");
@@ -1089,6 +1090,12 @@ viben agent list
 viben agent create --name "助手" --model "claude-sonnet-4-20250514"
 viben agent run my-agent "帮我写代码"
 
+# 模板管理 (模板是带有 isTemplate=true 标志的智能体)
+viben agent list --templates                           # 列出所有模板
+viben agent update my-agent --is-template true         # 将智能体标记为模板
+viben agent update my-agent --template-desc "通用模板" # 设置模板描述
+viben agent create my-new-agent --from-template my-template  # 从模板创建智能体
+
 # Provider 管理
 viben provider list
 viben provider add anthropic --api-key "sk-ant-..."
@@ -1131,9 +1138,9 @@ viben config --get user.name
 ├── models.yaml              # Model 配置
 ├── channels.yaml            # 通知渠道配置
 ├── workspaces.yaml          # 已知工作区列表
-├── agents/                  # 智能体目录
+├── agents/                  # 智能体目录 (模板也存储在此，通过 isTemplate 标志区分)
 │   └── <agent-id>/
-│       ├── config.yaml      # 智能体配置
+│       ├── config.yaml      # 智能体配置 (isTemplate: true 表示这是模板)
 │       ├── mcp_servers.json # MCP 服务器配置
 │       ├── memory/          # 智能体记忆
 │       │   ├── CLAUDE.md    # 长期记忆
@@ -1144,7 +1151,6 @@ viben config --get user.name
 │               ├── messages.ui.jsonl
 │               ├── messages.rollout.jsonl
 │               └── messages.agent.jsonl
-├── agent-templates/         # 智能体模板
 ├── mcp/                     # 共享 MCP 服务器
 ├── skills/                  # 共享技能
 └── templates/
@@ -1224,6 +1230,8 @@ skills:
   - code-review
 planMode: false
 approvals: false
+isTemplate: false                # true 表示这是一个模板
+templateDescription: ""          # 模板描述 (仅当 isTemplate=true 时有意义)
 createdAt: "2024-01-01T00:00:00Z"
 updatedAt: "2024-01-01T00:00:00Z"
 ```

@@ -400,8 +400,8 @@ export interface EnqueueTaskRequest {
   input: string;
   /** Working directory */
   cwd?: string;
-  /** Path to agent config.yaml file */
-  agent_path?: string;
+  /** Path to agent config file (e.g., /path/to/agents/myagent/AGENTS.md) */
+  agent_config_path?: string;
   /** Resume from existing SDK session */
   resume_session?: string;
   /** Maximum retry attempts (optional, uses default if not specified) */

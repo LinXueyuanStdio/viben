@@ -290,3 +290,6 @@ test
 .worktrees/
 .security-key
 logs/security/
+
+# Viben worktrees (git worktrees for multi-agent workflows)
+.viben/worktrees

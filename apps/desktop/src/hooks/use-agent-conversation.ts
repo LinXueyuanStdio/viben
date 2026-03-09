@@ -839,7 +839,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         console.log("[useAgent] Starting SSE connection to:", url);
 
         // Build request body
-        // Prefer agentPath (backend reads config from disk), fallback to inline agentConfig
+        // Prefer agentConfigPath (backend reads config from disk), fallback to inline agentConfig
         // workspaceId is actually workspace path, use it as cwd
         // Generate taskId for each conversation turn if sessionId is provided
         const currentTaskId = persistSessionId ? (persistTaskId || generateTaskId()) : undefined;

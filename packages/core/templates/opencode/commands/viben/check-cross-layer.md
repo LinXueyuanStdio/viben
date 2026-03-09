@@ -2,7 +2,7 @@
 
 Check if your changes considered all dimensions. Most bugs come from "didn't think of it", not lack of technical skill.
 
-> **Note**: This is a **post-implementation** safety net. Ideally, read the [Pre-Implementation Checklist](.viben/spec/guides/pre-implementation-checklist.md) **before** writing code.
+> **Note**: This is a **post-implementation** safety net. Ideally, read the [Pre-Implementation Checklist](docs/specs/guides/pre-implementation-checklist.md) **before** writing code.
 
 ---
 
@@ -10,8 +10,8 @@ Check if your changes considered all dimensions. Most bugs come from "didn't thi
 
 | Document | Purpose | Timing |
 |----------|---------|--------|
-| [Pre-Implementation Checklist](.viben/spec/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
-| [Code Reuse Thinking Guide](.viben/spec/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
+| [Pre-Implementation Checklist](docs/specs/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
+| [Code Reuse Thinking Guide](docs/specs/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
 | **`/viben:check-cross-layer`** (this) | Verification check | **After** implementation |
 
 ---
@@ -50,7 +50,7 @@ Based on your change type, execute relevant checks below:
 - [ ] Errors properly propagated to caller?
 - [ ] Loading/pending states handled at each layer?
 
-**Detailed Guide**: `.viben/spec/guides/cross-layer-thinking-guide.md`
+**Detailed Guide**: `docs/specs/guides/cross-layer-thinking-guide.md`
 
 ---
 
@@ -73,7 +73,7 @@ Based on your change type, execute relevant checks below:
 - [ ] After modification, all usage sites updated?
 - [ ] If creating utility: Does similar utility already exist?
 
-**Detailed Guide**: `.viben/spec/guides/code-reuse-thinking-guide.md`
+**Detailed Guide**: `docs/specs/guides/code-reuse-thinking-guide.md`
 
 ---
 

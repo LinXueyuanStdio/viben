@@ -23,7 +23,7 @@ Initialize your AI development session and begin working on tasks.
 First, read the workflow guide to understand the development process:
 
 ```bash
-cat .trellis/workflow.md
+cat .viben/workflow.md
 ```
 
 **Follow the instructions in workflow.md** - it contains:
@@ -43,9 +43,9 @@ This shows: developer identity, git status, current task (if any), active tasks.
 ### Step 3: Read Guidelines Index
 
 ```bash
-cat .trellis/spec/frontend/index.md  # Frontend guidelines
-cat .trellis/spec/backend/index.md   # Backend guidelines
-cat .trellis/spec/guides/index.md    # Thinking guides
+cat docs/specs/frontend/index.md  # Frontend guidelines
+cat docs/specs/backend/index.md   # Backend guidelines
+cat docs/specs/guides/index.md    # Thinking guides
 ```
 
 ### Step 4: Report and Ask
@@ -174,7 +174,7 @@ Must-have before proceeding:
 
 Based on the confirmed PRD, run a focused research pass and produce:
 
-1. Relevant spec files in `.trellis/spec/`
+1. Relevant spec files in `docs/specs/`
 2. Existing code patterns to follow (2-3 examples)
 3. Files that will likely need modification
 

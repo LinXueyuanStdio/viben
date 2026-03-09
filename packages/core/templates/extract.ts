@@ -6,7 +6,7 @@ import { ensureDir, writeFile } from "../utils/file-writer.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-type TemplateCategory = "scripts" | "markdown" | "commands";
+type TemplateCategory = "markdown" | "commands";
 
 /**
  * Get the path to the viben templates directory.
@@ -189,8 +189,8 @@ export function getAntigravitySourcePath(): string {
 }
 
 /**
- * Read a file from the .viben directory
- * @param relativePath - Path relative to .viben/ (e.g., 'scripts/task.py')
+ * Read a file from the viben templates directory
+ * @param relativePath - Path relative to templates/viben/ (e.g., 'workflow.md')
  * @returns File content as string
  */
 export function readVibenFile(relativePath: string): string {
@@ -214,16 +214,8 @@ export function readTemplate(
 }
 
 /**
- * Helper to read script template from .viben/scripts/
- * @param relativePath - Path relative to .viben/scripts/ (e.g., 'task.py')
- */
-export function readScript(relativePath: string): string {
-  return readVibenFile(`scripts/${relativePath}`);
-}
-
-/**
- * Helper to read markdown template from .viben/
- * @param relativePath - Path relative to .viben/ (e.g., 'workflow.md')
+ * Helper to read markdown template from templates/viben/
+ * @param relativePath - Path relative to templates/viben/ (e.g., 'workflow.md')
  */
 export function readMarkdown(relativePath: string): string {
   return readVibenFile(relativePath);
@@ -323,9 +315,9 @@ export function readGeminiFile(relativePath: string): string {
 }
 
 /**
- * Copy a directory from .viben/ to target, making scripts executable
+ * Copy a directory from viben templates to target, making Python/shell files executable
  * Uses writeFile to handle file conflicts with the global writeMode setting
- * @param srcRelativePath - Source path relative to .viben/ (e.g., 'scripts')
+ * @param srcRelativePath - Source path relative to templates/viben/ (e.g., 'spec')
  * @param destPath - Absolute destination path
  * @param options - Copy options
  */

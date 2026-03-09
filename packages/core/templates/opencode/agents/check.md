@@ -36,7 +36,7 @@ Then proceed with the workflow below using the loaded context.
 ## Context
 
 Before checking, read:
-- `.viben/spec/` - Development guidelines
+- `docs/specs/` - Development guidelines
 - Pre-commit checklist for quality standards
 
 ## Core Responsibilities
@@ -65,7 +65,7 @@ git diff              # View specific changes
 
 ### Step 2: Check Against Specs
 
-Read relevant specs in `.viben/spec/` to check code:
+Read relevant specs in `docs/specs/` to check code:
 
 - Does it follow directory structure conventions
 - Does it follow naming conventions

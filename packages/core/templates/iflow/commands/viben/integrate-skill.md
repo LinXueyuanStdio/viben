@@ -18,8 +18,8 @@ Adapt and integrate a iFlow global skill into your project's development guideli
 
 > [!] **Important**: The goal of skill integration is to update **development guidelines**, not to generate project code directly.
 >
-> - Guidelines content -> Write to `.viben/spec/{target}/doc.md`
-> - Code examples -> Place in `.viben/spec/{target}/examples/skills/<skill-name>/`
+> - Guidelines content -> Write to `docs/specs/{target}/doc.md`
+> - Code examples -> Place in `docs/specs/{target}/examples/skills/<skill-name>/`
 > - Example files -> Use `.template` suffix (e.g., `component.tsx.template`) to avoid IDE errors
 >
 > Where `{target}` is `frontend` or `backend`, determined by skill type.
@@ -43,10 +43,10 @@ Based on skill type, determine which guidelines to update:
 
 | Skill Category | Integration Target |
 |----------------|-------------------|
-| UI/Frontend (`frontend-design`, `web-artifacts-builder`) | `.viben/spec/frontend/` |
-| Backend/API (`mcp-builder`) | `.viben/spec/backend/` |
-| Documentation (`doc-coauthoring`, `docx`, `pdf`) | `.viben/` or create dedicated guidelines |
-| Testing (`webapp-testing`) | `.viben/spec/frontend/` (E2E) |
+| UI/Frontend (`frontend-design`, `web-artifacts-builder`) | `docs/specs/frontend/` |
+| Backend/API (`mcp-builder`) | `docs/specs/backend/` |
+| Documentation (`doc-coauthoring`, `docx`, `pdf`) | `docs/specs/guides/` or create dedicated guidelines |
+| Testing (`webapp-testing`) | `docs/specs/frontend/` (E2E) |
 
 ### 3. Analyze Skill Content
 
@@ -90,7 +90,7 @@ See `examples/skills/<skill-name>/`
 
 ```bash
 # Directory structure ({target} = frontend or backend)
-.viben/spec/{target}/
+docs/specs/{target}/
 |-- doc.md                      # Add skill-related section
 |-- index.md                    # Update index
 +-- examples/
@@ -122,7 +122,7 @@ Add to the Quick Navigation table in `index.md`:
 
 ### # Overview
 - **Skill description**: [Functionality description]
-- **Integration target**: `.viben/spec/{target}/`
+- **Integration target**: `docs/specs/{target}/`
 
 ### # Tech Stack Compatibility
 
@@ -134,9 +134,9 @@ Add to the Quick Navigation table in `index.md`:
 
 | Type | Path |
 |------|------|
-| Guidelines doc | `.viben/spec/{target}/doc.md` (section: `skill-<name>`) |
-| Code examples | `.viben/spec/{target}/examples/skills/<name>/` |
-| Index update | `.viben/spec/{target}/index.md` |
+| Guidelines doc | `docs/specs/{target}/doc.md` (section: `skill-<name>`) |
+| Code examples | `docs/specs/{target}/examples/skills/<name>/` |
+| Index update | `docs/specs/{target}/index.md` |
 
 > `{target}` = `frontend` or `backend`
 
@@ -179,14 +179,14 @@ If this skill is frequently used, create a shortcut command:
 | `frontend-design` | `frontend` | `examples/skills/frontend-design/` |
 | `mcp-builder` | `backend` | `examples/skills/mcp-builder/` |
 | `webapp-testing` | `frontend` | `examples/skills/webapp-testing/` |
-| `doc-coauthoring` | `.viben/` | N/A (documentation workflow only) |
+| `doc-coauthoring` | `docs/specs/guides/` | N/A (documentation workflow only) |
 
 ## Example: Integrating `mcp-builder` Skill
 
 ### Directory Structure
 
 ```
-.viben/spec/backend/
+docs/specs/backend/
 |-- doc.md                           # Add MCP section
 |-- index.md                         # Add index entry
 +-- examples/

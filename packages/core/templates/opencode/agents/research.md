@@ -29,9 +29,9 @@ Otherwise, if task-specific research is needed:
    - If `path` is a directory → Read all `.md` files in it
 
 Project spec locations for reference:
-- `.viben/spec/backend/` - Backend standards
-- `.viben/spec/frontend/` - Frontend standards
-- `.viben/spec/guides/` - Thinking guides
+- `docs/specs/backend/` - Backend standards
+- `docs/specs/frontend/` - Frontend standards
+- `docs/specs/guides/` - Thinking guides
 - `.viben/big-question/` - Known issues and pitfalls
 
 ---
@@ -121,7 +121,7 @@ Output structured results in report format.
 
 ### Related Spec Documents
 
-- `.viben/spec/xxx.md` - {description}
+- `docs/specs/xxx.md` - {description}
 
 ### Not Found
 

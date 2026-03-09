@@ -74,12 +74,12 @@ PLAN_REQUIREMENT = <the requirement from environment>
    - <how to make the requirement actionable>
    
    ## To Retry
-   
+
    1. Delete this directory:
       rm -rf $PLAN_TASK_DIR
-   
+
    2. Run with revised requirement:
-      ./.trellis/scripts/multi-agent/plan.sh --name "<name>" --type "<type>" --requirement "<revised requirement>"
+      viben task plan --name "<name>" --type "<type>" --requirement "<revised requirement>"
    EOF
    ```
 
@@ -114,7 +114,7 @@ Continue to Step 1. The requirement is:
 
 ## Input
 
-You receive input via environment variables (set by plan.sh):
+You receive input via environment variables (set by `viben task plan`):
 
 ```bash
 PLAN_TASK_NAME    # Task name (e.g., "user-auth")
@@ -152,7 +152,7 @@ ${PLAN_TASK_DIR}/
 ### Step 1: Initialize Context Files
 
 ```bash
-./.trellis/scripts/task.sh init-context "$PLAN_TASK_DIR" "$PLAN_DEV_TYPE"
+viben task init-context "$PLAN_TASK_DIR" -t "$PLAN_DEV_TYPE"
 ```
 
 This creates base jsonl files with standard specs for the dev type.
@@ -170,7 +170,7 @@ Task: ${PLAN_REQUIREMENT}
 Dev Type: ${PLAN_DEV_TYPE}
 
 Instructions:
-1. Search .trellis/spec/ for relevant spec files
+1. Search .viben/spec/ for relevant spec files
 2. Search the codebase for related modules and patterns
 3. Identify files that should be added to jsonl context
 
@@ -200,14 +200,8 @@ Output format (use exactly this format):
 Parse research agent output and add entries to jsonl files:
 
 ```bash
-# For each entry in implement.jsonl section:
-./.trellis/scripts/task.sh add-context "$PLAN_TASK_DIR" implement "<path>" "<reason>"
-
-# For each entry in check.jsonl section:
-./.trellis/scripts/task.sh add-context "$PLAN_TASK_DIR" check "<path>" "<reason>"
-
-# For each entry in debug.jsonl section:
-./.trellis/scripts/task.sh add-context "$PLAN_TASK_DIR" debug "<path>" "<reason>"
+# For each entry from research agent output:
+viben task add-context "$PLAN_TASK_DIR" "<path>" -r "<reason>"
 ```
 
 ### Step 4: Write prd.md
@@ -249,21 +243,18 @@ EOF
 
 ```bash
 # Set branch name
-./.trellis/scripts/task.sh set-branch "$PLAN_TASK_DIR" "feature/${PLAN_TASK_NAME}"
+viben task set-branch "$PLAN_TASK_DIR" -b "feature/${PLAN_TASK_NAME}"
 
 # Set scope (from research agent suggestion)
-./.trellis/scripts/task.sh set-scope "$PLAN_TASK_DIR" "<scope>"
+viben task set-scope "$PLAN_TASK_DIR" -s "<scope>"
 
-# Update dev_type in task.json
-jq --arg type "$PLAN_DEV_TYPE" '.dev_type = $type' \
-  "$PLAN_TASK_DIR/task.json" > "$PLAN_TASK_DIR/task.json.tmp" \
-  && mv "$PLAN_TASK_DIR/task.json.tmp" "$PLAN_TASK_DIR/task.json"
+# Update dev_type in task.json (already set during init-context)
 ```
 
 ### Step 6: Validate Configuration
 
 ```bash
-./.trellis/scripts/task.sh validate "$PLAN_TASK_DIR"
+viben task validate-context "$PLAN_TASK_DIR"
 ```
 
 If validation fails, fix the invalid paths and re-validate.
@@ -280,9 +271,9 @@ echo "Files created:"
 ls -la "$PLAN_TASK_DIR"
 echo ""
 echo "Context summary:"
-./.trellis/scripts/task.sh list-context "$PLAN_TASK_DIR"
+viben task list-context "$PLAN_TASK_DIR"
 echo ""
-echo "Ready for: ./.trellis/scripts/multi-agent/start.sh $PLAN_TASK_DIR"
+echo "Ready for: viben swarm start $PLAN_TASK_DIR"
 ```
 
 ---
@@ -335,7 +326,7 @@ Input:
 Result: ACCEPTED - Clear, specific, has defined behavior
 
 Output:
-  .trellis/workspace/xxx/tasks/17-add-rate-limiting/
+  .viben/tasks/02-03-add-rate-limiting/
   ├── task.json      # branch: feature/add-rate-limiting, scope: api
   ├── prd.md            # Detailed requirements with acceptance criteria
   ├── implement.jsonl   # Backend specs + existing middleware patterns

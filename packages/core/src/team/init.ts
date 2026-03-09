@@ -7,7 +7,7 @@
  * Templates are read from packages/core/templates/
  *
  * Generated structure:
- * - .viben/ - Workflow files, scripts, specs, and workspace
+ * - .viben/ - Workflow files, specs, and workspace
  * - .claude/ - Claude Code agents, commands, hooks, and settings (if selected)
  * - .cursor/ - Cursor IDE commands (if selected)
  * - Other executors as selected
@@ -136,8 +136,8 @@ const EXCLUDE_FROM_HASH = [
   "workspace/", // Workspace files (user data)
   "tasks/", // Task files (user data)
   ".current-task", // Current task marker
-  "spec/frontend/", // User-filled spec files
-  "spec/backend/", // User-filled spec files
+  "docs/specs/frontend/", // User-filled spec files
+  "docs/specs/backend/", // User-filled spec files
   ".backup-", // Backup directories
   "__pycache__", // Python cache
   ".pyc", // Python bytecode
@@ -546,7 +546,7 @@ function getBootstrapPrdContent(projectType: ProjectType): string {
 
 Welcome to Viben! This is your first task.
 
-AI agents use \`.viben/spec/\` to understand YOUR project's coding conventions.
+AI agents use \`docs/specs/\` to understand YOUR project's coding conventions.
 **Empty templates = AI writes generic code that doesn't match your project style.**
 
 Filling these guidelines is a one-time setup that pays off for every future AI session.
@@ -564,11 +564,11 @@ Fill in the guideline files based on your **existing codebase**.
 
 | File | What to Document |
 |------|------------------|
-| \`.viben/spec/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
-| \`.viben/spec/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
-| \`.viben/spec/backend/error-handling.md\` | How errors are caught, logged, and returned |
-| \`.viben/spec/backend/logging-guidelines.md\` | Log levels, format, what to log |
-| \`.viben/spec/backend/quality-guidelines.md\` | Code review standards, testing requirements |
+| \`docs/specs/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
+| \`docs/specs/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
+| \`docs/specs/backend/error-handling.md\` | How errors are caught, logged, and returned |
+| \`docs/specs/backend/logging-guidelines.md\` | Log levels, format, what to log |
+| \`docs/specs/backend/quality-guidelines.md\` | Code review standards, testing requirements |
 `;
 
   const frontendSection = `
@@ -577,19 +577,19 @@ Fill in the guideline files based on your **existing codebase**.
 
 | File | What to Document |
 |------|------------------|
-| \`.viben/spec/frontend/directory-structure.md\` | Component/page/hook organization |
-| \`.viben/spec/frontend/component-guidelines.md\` | Component patterns, props conventions |
-| \`.viben/spec/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
-| \`.viben/spec/frontend/state-management.md\` | State library, patterns, what goes where |
-| \`.viben/spec/frontend/type-safety.md\` | TypeScript conventions, type organization |
-| \`.viben/spec/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
+| \`docs/specs/frontend/directory-structure.md\` | Component/page/hook organization |
+| \`docs/specs/frontend/component-guidelines.md\` | Component patterns, props conventions |
+| \`docs/specs/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
+| \`docs/specs/frontend/state-management.md\` | State library, patterns, what goes where |
+| \`docs/specs/frontend/type-safety.md\` | TypeScript conventions, type organization |
+| \`docs/specs/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
 `;
 
   const footer = `
 
 ### Thinking Guides (Optional)
 
-The \`.viben/spec/guides/\` directory contains thinking guides that are already
+The \`docs/specs/guides/\` directory contains thinking guides that are already
 filled with general best practices. You can customize them for your project if needed.
 
 ---
@@ -615,7 +615,7 @@ Many projects already have coding conventions documented. **Check these first** 
 | \`CONTRIBUTING.md\` | General project conventions |
 | \`.editorconfig\` | Editor formatting rules |
 
-If any of these exist, read them first and extract the relevant coding conventions into the corresponding \`.viben/spec/\` files. This saves significant effort compared to writing everything from scratch.
+If any of these exist, read them first and extract the relevant coding conventions into the corresponding \`docs/specs/\` files. This saves significant effort compared to writing everything from scratch.
 
 ### Step 1: Analyze the Codebase
 
@@ -710,13 +710,13 @@ function getBootstrapTaskJson(
       { name: "Fill frontend guidelines", status: "pending" },
       { name: "Add code examples", status: "pending" },
     ];
-    relatedFiles = [".viben/spec/frontend/"];
+    relatedFiles = ["docs/specs/frontend/"];
   } else if (projectType === "backend") {
     subtasks = [
       { name: "Fill backend guidelines", status: "pending" },
       { name: "Add code examples", status: "pending" },
     ];
-    relatedFiles = [".viben/spec/backend/"];
+    relatedFiles = ["docs/specs/backend/"];
   } else {
     // fullstack
     subtasks = [
@@ -724,7 +724,7 @@ function getBootstrapTaskJson(
       { name: "Fill frontend guidelines", status: "pending" },
       { name: "Add code examples", status: "pending" },
     ];
-    relatedFiles = [".viben/spec/backend/", ".viben/spec/frontend/"];
+    relatedFiles = ["docs/specs/backend/", "docs/specs/frontend/"];
   }
 
   return {
@@ -919,15 +919,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   // Create .viben workflow structure
   // ===================
 
-  // Copy scripts directory
-  await copyTemplateDir(
-    "viben/scripts",
-    join(vibenDir, "scripts"),
-    { ...writeOpts, executable: true },
-    createdFiles,
-    targetDir
-  );
-
   // Copy workflow.md
   const workflowMd = readTemplate("viben/workflow.md");
   await writeFileIfNeeded(
@@ -1101,7 +1092,7 @@ async function createSpecTemplates(
   options: { force?: boolean; skipExisting?: boolean },
   createdFiles: string[]
 ): Promise<void> {
-  const specDir = join(cwd, ".viben/spec");
+  const specDir = join(cwd, "docs/specs");
   ensureDir(specDir);
 
   // Guides - always created
