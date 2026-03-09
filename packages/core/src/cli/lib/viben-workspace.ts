@@ -5,7 +5,17 @@
  * Replaces Python scripts in templates/viben/scripts/common/
  */
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  unlinkSync,
+  mkdirSync,
+  appendFileSync,
+  renameSync,
+} from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
 
@@ -952,8 +962,7 @@ export function clearCurrentTask(repoRoot: string): boolean {
 
   try {
     if (existsSync(currentFile)) {
-      const fs = require("node:fs");
-      fs.unlinkSync(currentFile);
+      unlinkSync(currentFile);
     }
     return true;
   } catch {
@@ -996,16 +1005,15 @@ export function archiveTask(
 
   try {
     // Create archive directory if needed
-    const fs = require("node:fs");
     if (!existsSync(monthDir)) {
-      fs.mkdirSync(monthDir, { recursive: true });
+      mkdirSync(monthDir, { recursive: true });
     }
 
     // Move task to archive
     const taskName = taskDir.split("/").pop() || "";
     const destPath = join(monthDir, taskName);
 
-    fs.renameSync(taskDir, destPath);
+    renameSync(taskDir, destPath);
     return destPath;
   } catch {
     return null;
@@ -1068,8 +1076,7 @@ export function writeTaskJson(
 ): boolean {
   const taskJsonPath = join(taskDir, FILE_TASK_JSON);
   try {
-    const fs = require("node:fs");
-    fs.writeFileSync(
+    writeFileSync(
       taskJsonPath,
       JSON.stringify(data, null, 2),
       "utf-8"
@@ -1149,9 +1156,8 @@ export function writeJsonlFile(
   entries: Array<Record<string, unknown>>
 ): boolean {
   try {
-    const fs = require("node:fs");
     const lines = entries.map((e) => JSON.stringify(e));
-    fs.writeFileSync(filePath, lines.join("\n") + "\n", "utf-8");
+    writeFileSync(filePath, lines.join("\n") + "\n", "utf-8");
     return true;
   } catch {
     return false;
@@ -1170,8 +1176,7 @@ export function appendToJsonl(
   entry: Record<string, unknown>
 ): boolean {
   try {
-    const fs = require("node:fs");
-    fs.appendFileSync(filePath, JSON.stringify(entry) + "\n", "utf-8");
+    appendFileSync(filePath, JSON.stringify(entry) + "\n", "utf-8");
     return true;
   } catch {
     return false;
@@ -1480,12 +1485,11 @@ function writeRegistry(repoRoot: string, registry: AgentRegistry): boolean {
   }
 
   try {
-    const fs = require("node:fs");
     const agentsDir = getAgentsDir(repoRoot);
     if (agentsDir && !existsSync(agentsDir)) {
-      fs.mkdirSync(agentsDir, { recursive: true });
+      mkdirSync(agentsDir, { recursive: true });
     }
-    fs.writeFileSync(registryFile, JSON.stringify(registry, null, 2), "utf-8");
+    writeFileSync(registryFile, JSON.stringify(registry, null, 2), "utf-8");
     return true;
   } catch {
     return false;

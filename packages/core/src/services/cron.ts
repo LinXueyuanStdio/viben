@@ -9,6 +9,7 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { CronError } from "../error";
 import { EventService, type CronJobData } from "./events";
@@ -776,7 +777,6 @@ export class CronService {
     }
 
     return new Promise((resolve) => {
-      const { spawn } = require("node:child_process");
       const child = spawn("bash", ["-c", script], {
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
