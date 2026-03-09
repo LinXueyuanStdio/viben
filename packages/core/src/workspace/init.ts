@@ -6,7 +6,7 @@
  */
 import { readdir, mkdir, writeFile, copyFile, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, basename, resolve } from "node:path";
+import { join, basename, resolve, parse } from "node:path";
 import { stringify } from "yaml";
 import {
   getStateDir,
@@ -64,7 +64,7 @@ function getEnclosingWorkspace(
  */
 function findWorkspaceRoot(startDir: string): string | null {
   let currentDir = resolve(startDir);
-  const { root } = require("node:path").parse(currentDir);
+  const { root } = parse(currentDir);
 
   while (currentDir !== root) {
     const vibenDir = join(currentDir, WORKSPACE_DIR);

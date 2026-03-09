@@ -9,6 +9,7 @@
 
 import type { MessageBus, InboundMessage } from "../../services/message-bus";
 import type { Channel, WhatsAppChannelConfig } from "../types";
+import WebSocketImpl from "ws";
 
 /**
  * WhatsApp poller configuration
@@ -148,7 +149,6 @@ export class WhatsAppPoller {
   private async connectToBridge(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
-        const WebSocketImpl = require("ws") as typeof WebSocket;
         this.ws = new WebSocketImpl(this.config.bridge_url) as unknown as WebSocket;
 
         this.ws.onopen = () => {

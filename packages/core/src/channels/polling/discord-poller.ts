@@ -9,6 +9,7 @@
 
 import type { MessageBus, InboundMessage } from "../../services/message-bus";
 import type { Channel, DiscordChannelConfig } from "../types";
+import WebSocketImpl from "ws";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DEFAULT_GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
@@ -140,7 +141,6 @@ export class DiscordPoller {
     return new Promise<void>((resolve, reject) => {
       try {
         // Use ws library for Node.js
-        const WebSocketImpl = require("ws") as typeof WebSocket;
         this.ws = new WebSocketImpl(url) as unknown as WebSocket;
 
         this.ws.onopen = () => {

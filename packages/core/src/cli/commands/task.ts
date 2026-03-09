@@ -21,6 +21,8 @@ import {
   mkdirSync,
   statSync,
   openSync,
+  readSync,
+  closeSync,
 } from "node:fs";
 import { resolve, join, relative, basename } from "node:path";
 import type { Command } from "commander";
@@ -2791,12 +2793,10 @@ function cmdStatusDetail(target: string, repoRoot: string, ctx?: OutputContext):
  * Cross-platform tail follow implementation
  */
 function tailFollow(filePath: string): void {
-  const fs = require("node:fs");
-
   // Get initial file size
   let position = 0;
   try {
-    const stats = fs.statSync(filePath);
+    const stats = statSync(filePath);
     position = stats.size;
   } catch {
     // Start from beginning if file doesn't exist
@@ -2805,13 +2805,13 @@ function tailFollow(filePath: string): void {
   // Poll for changes
   const pollInterval = setInterval(() => {
     try {
-      const stats = fs.statSync(filePath);
+      const stats = statSync(filePath);
       if (stats.size > position) {
         // Read new content
-        const fd = fs.openSync(filePath, "r");
+        const fd = openSync(filePath, "r");
         const buffer = Buffer.alloc(stats.size - position);
-        fs.readSync(fd, buffer, 0, buffer.length, position);
-        fs.closeSync(fd);
+        readSync(fd, buffer, 0, buffer.length, position);
+        closeSync(fd);
 
         process.stdout.write(buffer.toString("utf-8"));
         position = stats.size;
