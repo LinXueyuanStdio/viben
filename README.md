@@ -15,47 +15,90 @@
 
 ```mermaid
 graph TB
-    subgraph Applications["应用层"]
-        CLI["apps/cli<br/>viben CLI"]
-        Desktop["apps/desktop<br/>Tauri + React"]
-        Web["apps/web<br/>Next.js"]
+    subgraph Apps["应用层"]
+        CLI["CLI<br/><small>viben 命令行</small>"]
+        Desktop["Desktop<br/><small>Tauri 桌面应用</small>"]
+        Web["Web<br/><small>Next.js 市场</small>"]
     end
 
-    subgraph Core["packages/core"]
-        Agents["Agents"]
-        Providers["Providers"]
-        Models["Models"]
-        Config["Config"]
-        Gateway["Gateway"]
+    subgraph Core["packages/core · 核心层"]
+        direction TB
+        Agents["Agent 管理"]
+        Providers["Provider 配置"]
+        Models["Model 管理"]
+        MCP["MCP Client"]
+        Gateway["Gateway API"]
     end
 
-    subgraph UI["UI 组件层"]
-        PkgUI["packages/ui<br/>组件库"]
-        PkgChat["packages/chat<br/>聊天组件"]
-        PkgKanban["packages/kanban<br/>看板组件"]
+    subgraph UI["UI 组件"]
+        PkgUI["ui"]
+        PkgChat["chat"]
+        PkgKanban["kanban"]
+    end
+
+    subgraph External["外部服务"]
+        MCPServer["MCP Servers"]
+        LLM["LLM APIs"]
     end
 
     CLI --> Core
     Desktop --> Core
+    Desktop --> UI
     Web --> Core
 
-    Core --> PkgUI
-    Core --> PkgChat
-    Core --> PkgKanban
+    Gateway -.->|":18790"| Desktop
+    Gateway -.->|":18790"| Web
 
-    GatewayServer["Gateway Server :18790"]
-    Core --> GatewayServer
+    MCP --> MCPServer
+    Providers --> LLM
+```
+
+**核心设计原则**: `packages/core` 是所有应用访问底层能力的唯一边界，配置使用 file-native 范式 (YAML)，存储在 `~/.viben/`。
+
+## 下载安装
+
+### 桌面应用
+
+| 平台 | 下载 |
+|------|------|
+| macOS (Universal) | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+| Windows (64-bit) | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+| Linux | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+
+> 💡 访问 [Releases](https://github.com/LinXueyuanStdio/viben/releases) 查看所有版本
+
+### CLI 命令行工具
+
+**Shell Script (macOS/Linux)**
+```bash
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+```
+
+**npm**
+```bash
+npm install -g viben
+```
+
+**npx (无需安装)**
+```bash
+npx viben
+```
+
+**Homebrew (macOS/Linux)**
+```bash
+brew tap LinXueyuanStdio/viben
+brew install viben
 ```
 
 ## 快速开始
 
-### 环境要求
+### 环境要求 (开发)
 
 - Node.js >= 20.0.0
 - pnpm >= 9.15.0
 - Rust (桌面应用需要)
 
-### 安装依赖
+### 从源码构建
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
@@ -112,25 +155,26 @@ viben/
 ├── apps/
 │   ├── cli/              # 命令行工具 (viben)
 │   ├── desktop/          # Tauri 桌面应用
-│   ├── web/              # Next.js Web 应用
-│   ├── docs/             # 文档站点
-│   └── landingpage/      # 落地页
+│   ├── web/              # Next.js Web 应用 (MCP 市场、技能库)
+│   └── docs/             # 文档站点
 │
 ├── packages/
-│   ├── core/             # 核心功能库
+│   ├── core/             # 核心功能库 (所有应用的唯一边界)
 │   │   ├── agents/       # Agent 管理
 │   │   ├── providers/    # Provider 配置
 │   │   ├── models/       # Model 管理
 │   │   ├── config/       # 配置管理
-│   │   └── gateway/      # HTTP Gateway 服务
+│   │   └── gateway/      # HTTP Gateway 服务 (:18790)
 │   ├── ui/               # 共享 UI 组件库
 │   ├── chat/             # 聊天 UI 组件
 │   ├── kanban/           # 看板组件
-│   ├── api-client/       # API 客户端
-│   └── vibe-kanban/      # Kanban 扩展
+│   └── api-client/       # Gateway API 客户端
 │
-├── docs/                 # 开发文档
-├── scripts/              # 构建脚本
+├── .github/workflows/
+│   ├── release-desktop.yml  # 桌面应用发布 (生成 desktop-releases.json)
+│   └── release-cli.yml      # CLI 发布 (生成 cli-releases.json)
+│
+├── scripts/              # 构建和运维脚本
 └── ~/.viben/             # 用户配置目录 (YAML)
 ```
 
@@ -140,9 +184,22 @@ viben/
 
 ```
 ~/.viben/
-├── providers.yaml        # Provider 配置
-├── models.yaml           # Model 配置
-└── agents/               # Agent 定义
+├── config.yaml           # 全局配置
+├── providers.yaml        # Provider 配置 (API Keys, Endpoints)
+├── models.yaml           # Model 配置 (模型参数)
+├── channels.yaml         # 通知渠道配置
+├── cron.yaml             # 定时任务配置
+├── workspaces.yaml       # 工作空间配置
+│
+├── agents/               # Agent 定义 (每个 Agent 一个目录)
+│   └── <agent-name>/
+│       └── AGENTS.md     # Agent 配置
+│
+├── skills/               # 技能定义
+├── cron/                 # 定时任务脚本
+├── queue/                # 任务队列持久化
+├── logs/                 # 运行日志
+└── telemetry/            # 遥测数据
 ```
 
 ## 开发

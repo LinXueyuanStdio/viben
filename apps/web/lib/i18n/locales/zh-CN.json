@@ -1301,6 +1301,169 @@
     "thisWeek": "本周",
     "fromLastWeek": "较上周 {{change}}%"
   },
+  "homepage": {
+    "nav": {
+      "mcpMarket": "MCP 市场",
+      "skills": "技能库"
+    },
+    "hero": {
+      "badge": "多智能体工作空间",
+      "title": "从想法到上线，再到迭代维护。让多智能体协作真正可控。",
+      "description": "Viben 不是「只会写代码」的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。",
+      "cta": {
+        "getStarted": "立即开始",
+        "viewStats": "查看代码统计"
+      }
+    },
+    "challenges": {
+      "badge": "Why Viben",
+      "title": "AI 能写代码，但代码不等于产品",
+      "items": {
+        "codeScatter": {
+          "title": "代码能生成，但产品难落地",
+          "desc": "纯代码生成很快，但经常缺流程、缺审查、缺可追踪协作。"
+        },
+        "agentChaos": {
+          "title": "多智能体协作难以控盘",
+          "desc": "任务拆解、上下文同步、执行状态与结果复盘往往分散在多个工具里。"
+        },
+        "costRise": {
+          "title": "上线后维护成本持续攀升",
+          "desc": "缺少可复用工作流与记忆体系，团队每次都在重复搭建同样流程。"
+        }
+      }
+    },
+    "lifecycle": {
+      "title": "完整生命周期，你始终在控制中",
+      "items": {
+        "define": {
+          "title": "定义目标",
+          "desc": "从需求到任务树，建立可执行的多智能体计划。"
+        },
+        "execute": {
+          "title": "并行执行",
+          "desc": "看板 + 时间线 + 日历视图，统一调度执行进度。"
+        },
+        "review": {
+          "title": "审查发布",
+          "desc": "关键节点支持人工确认，保障可控与可追踪。"
+        },
+        "iterate": {
+          "title": "持续迭代",
+          "desc": "沉淀上下文与流程模板，后续任务持续复用提效。"
+        }
+      }
+    },
+    "features": {
+      "badge": "Capabilities",
+      "title": "不止代码生成，是真正可交付的工作流",
+      "exploreSkills": "探索技能库",
+      "items": {
+        "kanban": {
+          "title": "看板视图",
+          "desc": "拖拽管理任务优先级与状态。"
+        },
+        "calendar": {
+          "title": "日历规划",
+          "desc": "用时间轴安排自动化节点与截止日期。"
+        },
+        "mcp": {
+          "title": "MCP 集成",
+          "desc": "兼容 Claude、Cursor、Cline 等 MCP 生态。"
+        },
+        "agents": {
+          "title": "多智能体协作",
+          "desc": "支持多角色智能体并行执行与协同审查。"
+        },
+        "desktop": {
+          "title": "桌面工作台",
+          "desc": "统一管理工作区、配置与执行监控。"
+        },
+        "release": {
+          "title": "可控发布流",
+          "desc": "从计划到发布形成闭环，降低上线风险。"
+        }
+      }
+    },
+    "download": {
+      "badge": "Download",
+      "title": "获取 Viben",
+      "description": "选择适合你的方式开始使用 Viben，桌面应用提供完整的可视化工作台，CLI 适合命令行爱好者。",
+      "desktopApp": "桌面应用",
+      "cliTools": "命令行工具",
+      "macosDesc": "Universal 版本，支持 Intel 和 Apple Silicon 芯片。",
+      "windowsDesc": "适用于 Windows 10/11 64 位系统。",
+      "linuxDesc": "支持主流 Linux 发行版。",
+      "shellDesc": "一键安装，适合 macOS 和 Linux 用户。",
+      "npmDesc": "使用 Node.js 包管理器安装。",
+      "homebrewDesc": "使用 Homebrew 安装（推荐 macOS 用户）。",
+      "viewAllReleases": "查看所有版本和更新日志",
+      "downloadDesktop": "下载桌面版",
+      "loading": "加载中...",
+      "recommended": "推荐",
+      "viewAllVersions": "查看所有版本",
+      "copyCommand": "复制命令"
+    },
+    "agents": {
+      "title": "开发者与团队正在用 Viben 提升交付效率",
+      "description": "兼容主流智能体客户端，保留你已有的模型与工具链。"
+    },
+    "pricing": {
+      "badge": "Pricing",
+      "title": "定价即将发布",
+      "description": "先体验核心能力，后续将提供适配个人与团队的灵活方案。",
+      "getUpdates": "获取最新进展"
+    },
+    "faq": {
+      "title": "常见问题",
+      "items": {
+        "difference": {
+          "q": "Viben 和传统 AI 编码助手有什么不同？",
+          "a": "Viben 聚焦「多智能体工作流编排」，不只生成代码，还覆盖任务管理、审查节点与持续迭代。"
+        },
+        "model": {
+          "q": "是否必须使用特定模型？",
+          "a": "不需要。Viben 基于 MCP 生态，可接入多种模型与客户端，按团队习惯自由组合。"
+        },
+        "audience": {
+          "q": "适合个人开发者还是团队？",
+          "a": "两者都适合。个人可用它构建稳定自动化流程，团队可统一协作规范并提升交付效率。"
+        }
+      }
+    },
+    "cta": {
+      "title": "准备好构建真正可交付的 AI 工作流了吗？",
+      "description": "从今天开始，把多智能体协作变成团队稳定产能。",
+      "enterMarket": "进入 MCP 市场",
+      "readDocs": "阅读文档"
+    },
+    "demo": {
+      "title": "任务编排 Demo",
+      "tabs": {
+        "board": "看板",
+        "terminal": "终端",
+        "code": "代码",
+        "tests": "测试"
+      },
+      "board": {
+        "working": "进行中",
+        "inReview": "审核中",
+        "done": "已完成"
+      },
+      "code": {
+        "reviewComments": "审查评论",
+        "resolved": "已解决",
+        "open": "待处理"
+      },
+      "tests": {
+        "passed": "通过",
+        "failed": "失败",
+        "total": "总计",
+        "coverage": "覆盖率"
+      },
+      "agentsActive": "{{count}} 个智能体活跃"
+    }
+  },
   "chat": {
     "title": "对话",
     "chatButton": "对话",

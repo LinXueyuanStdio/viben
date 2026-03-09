@@ -1,15 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-const TABS = [
-  { id: 'board', label: 'Board' },
-  { id: 'terminal', label: 'Terminal' },
-  { id: 'code', label: 'Code' },
-  { id: 'tests', label: 'Tests' },
-] as const;
-
-type TabId = (typeof TABS)[number]['id'];
+const TAB_IDS = ['board', 'terminal', 'code', 'tests'] as const;
+type TabId = (typeof TAB_IDS)[number];
 
 /* ── Board: Kanban columns ── */
 function BoardPanel() {
@@ -564,19 +559,25 @@ function DemoStyles() {
 
 /* ── Tab container ── */
 export function DemoTabs() {
+  const { t } = useTranslation();
   const [active, setActive] = useState<TabId>('board');
+
+  const tabs = TAB_IDS.map((id) => ({
+    id,
+    label: t(`homepage.demo.tabs.${id}`),
+  }));
 
   return (
     <section className="border-b border-white/10 bg-[#0a0a10]/80 py-14">
       <DemoStyles />
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-6 text-center">
-          <p className="text-sm font-medium text-zinc-400">任务编排 Demo</p>
+          <p className="text-sm font-medium text-zinc-400">{t('homepage.demo.title')}</p>
         </div>
 
         {/* tab bar */}
         <div className="mx-auto flex w-fit justify-center gap-1 rounded-full p-1" style={{ background: '#0E0E14', border: '1px solid #1E1E2D' }}>
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               role="tab"
@@ -614,7 +615,7 @@ export function DemoTabs() {
                 <span className="ml-2 font-mono text-[11px] text-[#555568]">viben — multi-agent workspace</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-[11px] text-[#555568]">8 agents active</span>
+                <span className="font-mono text-[11px] text-[#555568]">{t('homepage.demo.agentsActive', { count: 8 })}</span>
                 <div className="flex -space-x-1">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <div
