@@ -729,7 +729,7 @@ describe("Context CLI Command", () => {
       expect(output).toContain("## PATHS");
       expect(output).toContain("Workspace: .viben/workspace/john/");
       expect(output).toContain("Tasks: .viben/tasks/");
-      expect(output).toContain("Spec: .viben/spec/");
+      expect(output).toContain("Spec: docs/specs/");
     });
 
     it("should output footer matching Python format", async () => {

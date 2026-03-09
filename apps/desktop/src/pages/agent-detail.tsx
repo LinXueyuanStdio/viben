@@ -17,14 +17,11 @@ import {
   Save,
   Loader2,
   AlertCircle,
-  Globe,
-  FolderOpen,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
   TooltipContent,
@@ -32,7 +29,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import {
   useAgents,
@@ -618,151 +614,102 @@ export function AgentDetailPage() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary/20 text-primary text-xs">
-              {formName.slice(0, 2).toUpperCase() || "AG"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm">{formName || t("settingsAgents.unnamed")}</span>
-            {formDescription && (
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {formDescription}
-              </span>
-            )}
-          </div>
-          {/* Scope indicator */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant={isWorkspaceScoped ? "default" : "secondary"}
-                  className={cn(
-                    "text-xs gap-1",
-                    isWorkspaceScoped
-                      ? "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/30"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {isWorkspaceScoped ? (
-                    <>
-                      <FolderOpen className="h-3 w-3" />
-                      {t("settingsAgents.workspaceScoped")}
-                    </>
-                  ) : (
-                    <>
-                      <Globe className="h-3 w-3" />
-                      {t("settingsAgents.globalScoped")}
-                    </>
-                  )}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isWorkspaceScoped
-                  ? t("settingsAgents.workspaceScopedDesc")
-                  : t("settingsAgents.globalScopedDesc")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Badge variant="outline" className="text-xs">
-            {getExecutorName(formExecutorType)}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          {lastSaved && (
-            <span className="text-xs text-muted-foreground">
-              {t("settingsAgents.lastSaved", {
-                time: lastSaved.toLocaleTimeString(),
-              })}
-            </span>
-          )}
-          {isDirty && (
-            <Badge variant="secondary" className="text-xs">
-              {t("settingsAgents.unsaved")}
-            </Badge>
-          )}
-          {/* Validation errors */}
-          {!formIsValid && isDirty && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="text-xs gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    {t("settingsAgents.validationError", "Validation failed")}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <ul className="text-xs space-y-1">
-                    {validationErrors.map((error, i) => (
-                      <li key={i}>{error}</li>
-                    ))}
-                  </ul>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {/* Open folder button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleOpenFolder}
-                  disabled={!agentFolderPath}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Button onClick={debouncedSave} disabled={saving || !isDirty || !formIsValid}>
-            {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            {t("common.save")}
-          </Button>
-        </div>
-      </div>
-
-      {/* Error Banner */}
-      {agentsError && (
-        <div className="mx-4 mt-4 p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {agentsError}
-        </div>
-      )}
-
-      {/* Tab Layout */}
+      {/* Header with Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "debug" | "settings")}
         className="flex-1 flex flex-col min-h-0"
       >
-        <div className="px-4 border-b">
-          <TabsList>
-            <TabsTrigger value="debug">
-              {t("agentDetail.debugTab", "Debug")}
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              {t("agentDetail.settingsTab", "Settings")}
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex items-center justify-between px-4 border-b h-[57px]">
+          {/* Left side: Back button + Tabs */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <TabsList>
+              <TabsTrigger value="debug">
+                {t("agentDetail.debugTab", "Debug")}
+              </TabsTrigger>
+              <TabsTrigger value="settings">
+                {t("agentDetail.settingsTab", "Settings")}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* Right side: Status + Actions */}
+          <div className="flex items-center gap-2">
+            {lastSaved && (
+              <span className="text-xs text-muted-foreground">
+                {t("settingsAgents.lastSaved", {
+                  time: lastSaved.toLocaleTimeString(),
+                })}
+              </span>
+            )}
+            {isDirty && (
+              <Badge variant="secondary" className="text-xs">
+                {t("settingsAgents.unsaved")}
+              </Badge>
+            )}
+            {/* Validation errors */}
+            {!formIsValid && isDirty && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="text-xs gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {t("settingsAgents.validationError", "Validation failed")}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <ul className="text-xs space-y-1">
+                      {validationErrors.map((error, i) => (
+                        <li key={i}>{error}</li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {/* Open folder button */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleOpenFolder}
+                    disabled={!agentFolderPath}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button onClick={debouncedSave} disabled={saving || !isDirty || !formIsValid}>
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {t("common.save")}
+            </Button>
+          </div>
         </div>
+
+        {/* Error Banner */}
+        {agentsError && (
+          <div className="mx-4 mt-4 p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {agentsError}
+          </div>
+        )}
 
         {/* Debug Tab */}
         <TabsContent value="debug" className="flex-1 min-h-0 mt-0">
           <AgentDebugTab
             agentId={agentId || ""}
+            agentName={formName}
             agentConfigPath={configPath}
             sessionId={sessionId ?? undefined}
             messages={messages}

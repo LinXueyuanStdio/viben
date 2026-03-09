@@ -201,7 +201,7 @@ export function registerTeamCommand(program: Command): void {
 
             console.log();
             console.log("Next steps:");
-            console.log(chalk.cyan("  1. Review and customize .viben/spec/ guidelines"));
+            console.log(chalk.cyan("  1. Review and customize docs/specs/ guidelines"));
             console.log(chalk.cyan("  2. Run `viben context` to verify setup"));
             console.log(chalk.cyan("  3. Start developing with AI assistance!"));
           }

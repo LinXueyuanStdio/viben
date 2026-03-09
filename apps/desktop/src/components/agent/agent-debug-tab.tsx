@@ -48,6 +48,7 @@ import type { AgentMessage, MessageAttachment, TaskPlan, PendingQuestion } from 
 export interface AgentDebugTabProps {
   // Agent info
   agentId: string;
+  agentName?: string;
   agentConfigPath: string;
   sessionId?: string;
 
@@ -151,6 +152,7 @@ function ResizeHandle({ onResize, className }: ResizeHandleProps) {
 
 export function AgentDebugTab({
   agentId: _agentId,
+  agentName,
   agentConfigPath: _agentConfigPath,
   sessionId,
   messages,
@@ -221,10 +223,22 @@ export function AgentDebugTab({
         className="flex flex-col min-w-0 h-full border-r border-border"
         style={{ width: `${leftPanelWidth}%` }}
       >
-        {/* Conversation Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 shrink-0">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium text-sm">{t("debugTab", "Debug")}</span>
+        {/* Conversation Header - WeChat style (reused from workspace-chat) */}
+        <div className="flex items-center justify-between px-4 border-b border-border bg-background h-[57px] shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Agent avatar */}
+            <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm">
+              <Bot className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{agentName || t("debugTab", "Debug")}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("debugDescription", "Test conversation")}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Messages */}
