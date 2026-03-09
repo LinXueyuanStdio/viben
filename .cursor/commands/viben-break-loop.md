@@ -55,8 +55,8 @@ What broader problems does this bug reveal?
 
 Solidify insights into the system:
 
-- [ ] Update `.viben/spec/guides/` thinking guides
-- [ ] Update `.viben/spec/backend/` or `frontend/` docs
+- [ ] Update `docs/specs/guides/` thinking guides
+- [ ] Update `docs/specs/backend/` or `frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
 - [ ] Update check commands if needed

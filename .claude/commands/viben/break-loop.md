@@ -55,8 +55,8 @@ What broader problems does this bug reveal?
 
 Solidify insights into the system:
 
-- [ ] Update `.viben/spec/guides/` thinking guides
-- [ ] Update `.viben/spec/backend/` or `frontend/` docs
+- [ ] Update `docs/specs/guides/` thinking guides
+- [ ] Update `docs/specs/backend/` or `docs/specs/frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
 - [ ] Update check commands if needed
@@ -112,14 +112,12 @@ Three levels of insight:
 
 **IMPORTANT**: After completing the analysis above, you MUST immediately:
 
-1. **Update spec/guides** - Don't just list TODOs, actually update the relevant files:
-   - If it's a cross-platform issue → update `cross-platform-thinking-guide.md`
-   - If it's a cross-layer issue → update `cross-layer-thinking-guide.md`
-   - If it's a code reuse issue → update `code-reuse-thinking-guide.md`
-   - If it's domain-specific → update `backend/*.md` or `frontend/*.md`
+1. **Update `docs/specs/` guides** - Don't just list TODOs, actually update the relevant files:
+   - If it's a cross-platform issue → update `docs/specs/guides/cross-platform-thinking-guide.md`
+   - If it's a cross-layer issue → update `docs/specs/guides/cross-layer-thinking-guide.md`
+   - If it's a code reuse issue → update `docs/specs/guides/code-reuse-thinking-guide.md`
+   - If it's domain-specific → update `docs/specs/backend/*.md` or `docs/specs/frontend/*.md`
 
-2. **Sync templates** - After updating `.viben/spec/`, sync to `src/templates/markdown/spec/`
-
-3. **Commit the spec updates** - This is the primary output, not just the analysis text
+2. **Commit the spec updates** - This is the primary output, not just the analysis text
 
 > **The analysis is worthless if it stays in chat. The value is in the updated specs.**

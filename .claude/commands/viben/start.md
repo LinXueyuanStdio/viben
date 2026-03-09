@@ -40,10 +40,10 @@ This shows: developer identity, git status, current task (if any), active tasks.
 ### Step 3: Read Guidelines Index
 
 ```bash
-cat .viben/spec/frontend/index.md  # Frontend guidelines
-cat .viben/spec/backend/index.md   # Backend guidelines
-cat .viben/spec/guides/index.md    # Thinking guides
-cat .viben/spec/unit-test/index.md # Testing guidelines
+cat docs/specs/frontend/index.md  # Frontend guidelines
+cat docs/specs/backend/index.md   # Backend guidelines
+cat docs/specs/guides/index.md    # Thinking guides
+cat docs/specs/unit-test/index.md # Testing guidelines
 ```
 
 ### Step 4: Report and Ask
@@ -231,7 +231,7 @@ Task(
   Type: <frontend/backend/fullstack>
 
   Please find:
-  1. Relevant code-spec files in .viben/spec/
+  1. Relevant code-spec files in docs/specs/
   2. Existing code patterns to follow (find 2-3 examples)
   3. Files that will likely need modification
 

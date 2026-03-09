@@ -117,7 +117,7 @@ packages/core/src/cli/
 
 1. **Create/extend command file** in `packages/core/src/cli/commands/`
 2. **Register command** in `packages/core/src/cli/index.ts`
-3. **Update documentation** in `spec/backend/script-conventions.md`
+3. **Update documentation** in `docs/specs/backend/script-conventions.md`
 
 ### Example: Adding a New Subcommand
 

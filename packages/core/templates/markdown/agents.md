@@ -10,7 +10,7 @@ Use the `/viben:start` command when starting a new session to:
 
 Use `@/.viben/` to learn:
 - Development workflow (`workflow.md`)
-- Project structure guidelines (`spec/`)
+- Project structure guidelines (`docs/specs/`)
 - Developer workspace (`workspace/`)
 
 Keep this managed block so 'viben update' can refresh the instructions.
