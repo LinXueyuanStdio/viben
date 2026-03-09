@@ -29,8 +29,8 @@ export interface BackgroundTask {
   duration?: number;
   /** Workspace path (for filtering by workspace) */
   workspacePath?: string;
-  /** Agent path (for workspace-level agents) */
-  agentPath?: string;
+  /** Agent config path (AGENTS.md) for workspace-level agents */
+  agentConfigPath?: string;
   /** Agent name (for display) */
   agentName?: string;
 }
@@ -55,7 +55,7 @@ export class BackgroundTaskManager {
     sessionId: string;
     prompt: string;
     workspacePath?: string;
-    agentPath?: string;
+    agentConfigPath?: string;
     agentName?: string;
   }): BackgroundTask {
     const abortController = new AbortController();

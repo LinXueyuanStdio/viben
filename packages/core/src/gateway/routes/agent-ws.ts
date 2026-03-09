@@ -29,7 +29,9 @@ import type { AgentConfigFile } from "../../agents";
 interface AgentWsQuery {
   /** Working directory for the agent */
   cwd?: string;
-  /** Path to agent AGENTS.md file */
+  /** Path to agent AGENTS.md config file */
+  agentConfigPath?: string;
+  /** @deprecated Use agentConfigPath instead */
   agentPath?: string;
   /** Session ID for persistence */
   sessionId?: string;
@@ -117,7 +119,8 @@ interface ServerMessage {
 interface WsSession {
   id: string;
   socket: WebSocket;
-  agentPath?: string;
+  /** Path to agent AGENTS.md config file */
+  agentConfigPath?: string;
   cwd: string;
   persistSessionId?: string;
   persistTaskId?: string;
@@ -152,9 +155,9 @@ function generateMessageId(): string {
 /**
  * Resolve agent ID from request parameters
  */
-function resolveAgentId(agentPath?: string, agentConfig?: AgentConfigPayload | null): string {
-  if (agentPath) {
-    const match = agentPath.match(/agents\/([^/]+)\/config\.yaml$/);
+function resolveAgentId(agentConfigPath?: string, agentConfig?: AgentConfigPayload | null): string {
+  if (agentConfigPath) {
+    const match = agentConfigPath.match(/agents\/([^/]+)\/AGENTS\.md$/);
     if (match) return match[1];
   }
   if (agentConfig?.name) return agentConfig.name;
@@ -251,13 +254,13 @@ function formatAnswersAsText(
  * answer as a new message to the agent.
  */
 async function executeAgent(session: WsSession, prompt: string, isFollowUp = false): Promise<void> {
-  const { socket, cwd, agentPath, persistSessionId, persistTaskId, agentConfig } = session;
+  const { socket, cwd, agentConfigPath, persistSessionId, persistTaskId, agentConfig } = session;
 
   // Create trace span
   const span = tracer.startSpan("agent-ws.execute", {
     kind: SpanKind.SERVER,
     attributes: {
-      "agent.path": agentPath || "inline",
+      "agent.config_path": agentConfigPath || "inline",
       "agent.cwd": cwd,
       "prompt.length": prompt.length,
       "is_follow_up": isFollowUp,
@@ -285,14 +288,14 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
   // Persist user message if persistence is enabled
   if (persistSessionId && persistTaskId && prompt) {
     try {
-      const agentId = resolveAgentId(agentPath, agentConfig);
+      const agentId = resolveAgentId(agentConfigPath, agentConfig);
       await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
         id: generateMessageId(),
         taskId: persistTaskId,
         timestamp: new Date().toISOString(),
         type: "user",
         content: prompt,
-      }, agentPath);
+      }, agentConfigPath);
     } catch (e) {
       console.warn("[agent-ws] Failed to persist user message:", e);
     }
@@ -342,7 +345,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
           session.id,
           questionMsg.id,
           questionMsg.questions,
-          { agentPath, workspacePath: cwd }
+          { agentConfigPath, workspacePath: cwd }
         );
 
         // Send question to client
@@ -373,14 +376,14 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         // Persist user answer
         if (persistSessionId && persistTaskId) {
           try {
-            const agentId = resolveAgentId(agentPath, agentConfig);
+            const agentId = resolveAgentId(agentConfigPath, agentConfig);
             await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
               id: generateMessageId(),
               taskId: persistTaskId,
               timestamp: new Date().toISOString(),
               type: "user",
               content: answerText,
-            }, agentPath);
+            }, agentConfigPath);
           } catch (e) {
             console.warn("[agent-ws] Failed to persist user answer:", e);
           }
@@ -402,7 +405,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
       // Persist message if enabled
       if (persistSessionId && persistTaskId) {
         try {
-          const agentId = resolveAgentId(agentPath, agentConfig);
+          const agentId = resolveAgentId(agentConfigPath, agentConfig);
           await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
             id: generateMessageId(),
             taskId: persistTaskId,
@@ -421,7 +424,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               message.type === "tool_result" ? (message as { output: string }).output : undefined,
             isError:
               message.type === "tool_result" ? (message as { isError?: boolean }).isError : undefined,
-          }, agentPath);
+          }, agentConfigPath);
         } catch (e) {
           console.warn("[agent-ws] Failed to persist message:", e);
         }
@@ -475,11 +478,11 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         const query = req.query as AgentWsQuery;
         const sessionId = randomUUID();
 
-        // Create session
+        // Create session (support both agentConfigPath and deprecated agentPath)
         const session: WsSession = {
           id: sessionId,
           socket,
-          agentPath: query.agentPath,
+          agentConfigPath: query.agentConfigPath || query.agentPath,
           cwd: query.cwd || process.cwd(),
           persistSessionId: query.sessionId,
           persistTaskId: query.taskId,
@@ -510,10 +513,11 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   return;
                 }
 
-                // Load agent config
+                // Load agent config (support both agentConfigPath and deprecated agentPath)
                 let agentConfig = msg.agentConfig;
-                if (query.agentPath) {
-                  const loadedConfig = await loadAgentConfigFromPath(query.agentPath);
+                const configPath = query.agentConfigPath || query.agentPath;
+                if (configPath) {
+                  const loadedConfig = await loadAgentConfigFromPath(configPath);
                   if (loadedConfig) {
                     agentConfig = loadedConfig;
                   }

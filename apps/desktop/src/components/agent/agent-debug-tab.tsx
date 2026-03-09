@@ -47,7 +47,7 @@ import type { AgentMessage, MessageAttachment, TaskPlan, PendingQuestion } from 
 export interface AgentDebugTabProps {
   // Agent info
   agentId: string;
-  agentPath: string;
+  agentConfigPath: string;
   sessionId?: string;
 
   // Conversation props
@@ -149,7 +149,7 @@ function ResizeHandle({ onResize, className }: ResizeHandleProps) {
 
 export function AgentDebugTab({
   agentId: _agentId,
-  agentPath: _agentPath,
+  agentConfigPath: _agentConfigPath,
   sessionId,
   messages,
   onSendMessage,

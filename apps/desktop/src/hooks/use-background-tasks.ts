@@ -41,8 +41,8 @@ export interface BackgroundTask {
   duration?: number;
   /** Workspace path (for filtering by workspace) */
   workspacePath?: string;
-  /** Agent path (for workspace-level agents) */
-  agentPath?: string;
+  /** Agent config path - path to AGENTS.md config file (for workspace-level agents) */
+  agentConfigPath?: string;
   /** Agent name (for display) */
   agentName?: string;
 }

@@ -702,7 +702,7 @@ export function AgentDetailPage() {
         <TabsContent value="debug" className="flex-1 min-h-0 mt-0">
           <AgentDebugTab
             agentId={agentId || ""}
-            agentPath={agentFolderPath}
+            agentConfigPath={configPath}
             sessionId={sessionId ?? undefined}
             messages={messages}
             onSendMessage={sendMessage}

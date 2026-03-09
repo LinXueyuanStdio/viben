@@ -267,7 +267,7 @@ export function useStuckDetection({
         // Layer 3: Verify with Gateway if process is actually running
         // Use detailed version to check reliability of the result
         if (enableProcessCheck) {
-          const result = await checkTaskRunningDetailed(taskId);
+          const result = await checkTaskRunningDetailed(taskId, undefined, workspacePath);
 
           // Double-check activity after async call (race condition protection)
           if (hasRecentActivity(taskId, stuckThreshold)) {
