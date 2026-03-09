@@ -28,17 +28,10 @@ viben team <subcommand> [options]
 |      +-- .developer            # 开发者身份                   |
 |      +-- .current-task         # 当前任务指针                 |
 |      +-- .template-hashes.json # 模板文件哈希                 |
-|      +-- scripts/              # 工作流脚本                   |
-|      |   +-- common/           # 公共脚本                     |
-|      |   +-- multi-agent/      # 多智能体脚本                 |
 |      +-- workspace/            # 开发者工作区                 |
 |      |   +-- <developer>/      # 每个开发者的独立空间         |
 |      +-- tasks/                # 任务目录                     |
 |      |   +-- archive/          # 归档任务                     |
-|      +-- spec/                 # 项目规范                     |
-|          +-- backend/          # 后端规范                     |
-|          +-- frontend/         # 前端规范                     |
-|          +-- guides/           # 通用指南                     |
 +-------------------------------------------------------------+
 |  .claude/                      # Claude Code 配置             |
 |      +-- settings.json         # Claude Code 设置             |
@@ -126,7 +119,8 @@ viben team init --developer <name> --json
 Initialized Viben team workspace
 
 Created directories:
-  .viben/           Team workflow and specs
+  .viben/           Team workflow and workspace
+  docs/specs/       Project specifications
   .claude/          Claude Code configuration
   .cursor/          Cursor IDE commands
   AGENTS.md         Root agent instructions
@@ -136,7 +130,7 @@ Project type: fullstack
 
 Next steps:
   1. Review .viben/tasks/00-bootstrap-guidelines/prd.md
-  2. Fill in project-specific specs in .viben/spec/
+  2. Fill in project-specific specs in docs/specs/
   3. Run /viben:start to begin your first session
 ```
 
@@ -152,7 +146,7 @@ Next steps:
     ".viben/.gitignore",
     ".viben/.version",
     ".viben/.developer",
-    ".viben/scripts/task.sh",
+    "docs/specs/guides/index.md",
     ".claude/settings.json",
     ".claude/agents/check.md",
     "AGENTS.md"
@@ -196,31 +190,6 @@ Valid examples: john, john-doe, dev123
 +-- .current-task            # 当前任务路径
 +-- .template-hashes.json    # 模板 SHA256 哈希
 |
-+-- scripts/
-|   +-- task.sh              # 任务管理脚本
-|   +-- init-developer.sh    # 开发者初始化
-|   +-- get-developer.sh     # 获取开发者信息
-|   +-- get-context.sh       # 获取上下文
-|   +-- add-session.sh       # 添加会话
-|   +-- create-bootstrap.sh  # 创建引导任务
-|   |
-|   +-- common/
-|   |   +-- paths.sh         # 路径工具
-|   |   +-- developer.sh     # 开发者工具
-|   |   +-- git-context.sh   # Git 上下文
-|   |   +-- worktree.sh      # Worktree 工具
-|   |   +-- task-queue.sh    # 任务队列
-|   |   +-- task-utils.sh    # 任务工具
-|   |   +-- phase.sh         # 阶段管理
-|   |   +-- registry.sh      # 注册表
-|   |
-|   +-- multi-agent/
-|       +-- start.sh         # 启动多智能体
-|       +-- cleanup.sh       # 清理
-|       +-- status.sh        # 状态查看
-|       +-- create-pr.sh     # 创建 PR
-|       +-- plan.sh          # 规划
-|
 +-- workspace/
 |   +-- index.md             # 工作区索引
 |   +-- <developer>/
@@ -232,29 +201,33 @@ Valid examples: john, john-doe, dev123
 |   +-- 00-bootstrap-guidelines/
 |       +-- task.json        # 任务元数据
 |       +-- prd.md           # 任务需求文档
+```
+
+### docs/specs/ 目录
+
+```
+docs/specs/
++-- guides/              # 通用指南 (始终创建)
+|   +-- index.md
+|   +-- cross-layer-thinking-guide.md
+|   +-- code-reuse-thinking-guide.md
 |
-+-- spec/
-    +-- guides/              # 通用指南 (始终创建)
-    |   +-- index.md
-    |   +-- cross-layer-thinking-guide.md
-    |   +-- code-reuse-thinking-guide.md
-    |
-    +-- backend/             # 后端规范 (backend/fullstack)
-    |   +-- index.md
-    |   +-- directory-structure.md
-    |   +-- database-guidelines.md
-    |   +-- logging-guidelines.md
-    |   +-- quality-guidelines.md
-    |   +-- error-handling.md
-    |
-    +-- frontend/            # 前端规范 (frontend/fullstack)
-        +-- index.md
-        +-- directory-structure.md
-        +-- type-safety.md
-        +-- hook-guidelines.md
-        +-- component-guidelines.md
-        +-- quality-guidelines.md
-        +-- state-management.md
++-- backend/             # 后端规范 (backend/fullstack)
+|   +-- index.md
+|   +-- directory-structure.md
+|   +-- database-guidelines.md
+|   +-- logging-guidelines.md
+|   +-- quality-guidelines.md
+|   +-- error-handling.md
+|
++-- frontend/            # 前端规范 (frontend/fullstack)
+    +-- index.md
+    +-- directory-structure.md
+    +-- type-safety.md
+    +-- hook-guidelines.md
+    +-- component-guidelines.md
+    +-- quality-guidelines.md
+    +-- state-management.md
 ```
 
 ### .claude/ 目录
@@ -315,7 +288,7 @@ Valid examples: john, john-doe, dev123
 
 ## 文件权限
 
-所有脚本文件 (`.sh`, `.py`) 创建时设置为可执行 (mode 0755)。
+钩子脚本文件 (`.py`) 创建时设置为可执行 (mode 0755)。
 
 ## 模板哈希
 

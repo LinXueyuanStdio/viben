@@ -114,18 +114,19 @@ cat docs/specs/backend/logging-guidelines.md    # For logging
 |-- tasks/               # Task tracking
 |   +-- {MM}-{DD}-{name}/
 |       +-- task.json
-|-- spec/                # [!] MUST READ before coding
-|   |-- frontend/        # Frontend guidelines (if applicable)
-|   |   |-- index.md               # Start here - guidelines index
-|   |   +-- *.md                   # Topic-specific docs
-|   |-- backend/         # Backend guidelines (if applicable)
-|   |   |-- index.md               # Start here - guidelines index
-|   |   +-- *.md                   # Topic-specific docs
-|   +-- guides/          # Thinking guides
-|       |-- index.md                      # Guides index
-|       |-- cross-layer-thinking-guide.md # Pre-implementation checklist
-|       +-- *.md                          # Other guides
-+-- workflow.md             # This document
++-- workflow.md          # This document
+
+docs/specs/              # [!] MUST READ before coding (at project root)
+|-- frontend/            # Frontend guidelines (if applicable)
+|   |-- index.md         # Start here - guidelines index
+|   +-- *.md             # Topic-specific docs
+|-- backend/             # Backend guidelines (if applicable)
+|   |-- index.md         # Start here - guidelines index
+|   +-- *.md             # Topic-specific docs
++-- guides/              # Thinking guides
+    |-- index.md                      # Guides index
+    |-- cross-layer-thinking-guide.md # Pre-implementation checklist
+    +-- *.md                          # Other guides
 ```
 
 ### CLI Commands
@@ -296,13 +297,15 @@ workspace/
 - [OK] Complete important task
 - [OK] Fix important bug
 
-### 2. spec/ - Development Guidelines
+### 2. docs/specs/ - Development Guidelines
 
 **Purpose**: Documented standards for consistent development
 
+**Location**: `docs/specs/` at project root (not inside `.viben/`)
+
 **Structure** (Multi-doc format):
 ```
-spec/
+docs/specs/
 |-- frontend/           # Frontend docs (if applicable)
 |   |-- index.md        # Start here
 |   +-- *.md            # Topic-specific docs

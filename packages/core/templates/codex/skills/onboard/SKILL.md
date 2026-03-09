@@ -88,7 +88,7 @@ docs/specs/                 # "AI Training Data" - project knowledge
 +-- guides/                 # Thinking patterns
 ```
 
-### Understanding spec/ subdirectories
+### Understanding docs/specs/ subdirectories
 
 **frontend/** - Single-layer frontend knowledge:
 - Component patterns (how to write components in THIS project)
