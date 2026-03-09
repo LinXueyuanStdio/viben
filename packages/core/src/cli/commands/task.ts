@@ -1299,7 +1299,7 @@ export function registerTaskCommand(program: Command): void {
         const adapter = getCLIAdapter(platform);
 
         // Check plan agent exists
-        const planMdPath = adapter.getAgentPath("plan", repoRoot);
+        const planMdPath = adapter.getAgentConfigPath("plan", repoRoot);
         if (!existsSync(planMdPath)) {
           throw CliError.operationFailed(
             "Plan",
