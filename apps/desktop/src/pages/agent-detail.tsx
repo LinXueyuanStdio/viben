@@ -188,6 +188,16 @@ export function AgentDetailPage() {
   const [selectedSpan, setSelectedSpan] = useState<TraceSpanNode | null>(null);
   const [isLoadingTrace, setIsLoadingTrace] = useState(false);
 
+  // Session management state
+  const [debugSessions, setDebugSessions] = useState<Array<{
+    id: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+    messageCount?: number;
+  }>>([]);
+  const [isLoadingDebugSessions, setIsLoadingDebugSessions] = useState(false);
+
   // Get agent folder path
   const agentFolderPath = useMemo(() => {
     if (agent?.path) {
@@ -464,6 +474,8 @@ export function AgentDetailPage() {
     rejectPlan,
     answerQuestions,
     cancel,
+    clearMessages,
+    loadMessages,
     sessionId,
     traceId: conversationTraceId,
   } = useAgentConversation(debugWorkdir, {
@@ -582,6 +594,59 @@ export function AgentDetailPage() {
       setIsLoadingTrace(false);
     }
   }, [conversationTraceId]);
+
+  // Load debug sessions for this agent
+  const loadDebugSessions = useCallback(async () => {
+    if (!agentId) return;
+    setIsLoadingDebugSessions(true);
+    try {
+      const client = getGatewayClient();
+      const sessions = await client.getSessionList({
+        workspacePath: debugWorkdir,
+        agentId,
+        limit: 50,
+      });
+      setDebugSessions(
+        sessions.map((s) => ({
+          id: s.id,
+          name: s.prompt || `Session ${s.id.slice(0, 8)}`,
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
+          messageCount: 0,
+        }))
+      );
+    } catch (error) {
+      console.error("[agent-detail] Failed to load debug sessions:", error);
+    } finally {
+      setIsLoadingDebugSessions(false);
+    }
+  }, [agentId, debugWorkdir]);
+
+  // Load sessions when agent changes
+  useEffect(() => {
+    loadDebugSessions();
+  }, [loadDebugSessions]);
+
+  // Session management handlers
+  const handleSelectDebugSession = useCallback((session: { id: string }) => {
+    // Load messages for selected session
+    loadMessages(session.id);
+  }, [loadMessages]);
+
+  const handleCreateDebugSession = useCallback(() => {
+    clearMessages();
+  }, [clearMessages]);
+
+  const handleOpenSessionFolder = useCallback(async () => {
+    if (!sessionId || !debugWorkdir) return;
+    try {
+      const client = getGatewayClient();
+      const sessionPath = `${debugWorkdir}/.viben/sessions/${sessionId}`;
+      await client.revealFile(sessionPath);
+    } catch (error) {
+      console.error("[agent-detail] Failed to open session folder:", error);
+    }
+  }, [sessionId, debugWorkdir]);
 
   // ============================================================================
   // Loading and Error States
@@ -712,6 +777,13 @@ export function AgentDetailPage() {
             agentName={formName}
             agentConfigPath={configPath}
             sessionId={sessionId ?? undefined}
+            sessions={debugSessions}
+            isLoadingSessions={isLoadingDebugSessions}
+            onSelectSession={handleSelectDebugSession}
+            onCreateSession={handleCreateDebugSession}
+            onRefreshSessions={loadDebugSessions}
+            onOpenSessionFolder={handleOpenSessionFolder}
+            onClearMessages={clearMessages}
             messages={messages}
             onSendMessage={sendMessage}
             isStreaming={isStreaming}

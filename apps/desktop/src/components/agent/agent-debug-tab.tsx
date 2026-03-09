@@ -13,9 +13,13 @@ import {
   TreeDeciduous,
   Activity,
   Bot,
-  MessageSquare,
   GripVertical,
   RefreshCw,
+  RefreshCcw,
+  Search,
+  MoreHorizontal,
+  FolderOpen,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,8 +30,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { DesktopMessageList, DesktopChatInput } from "@/components/chat";
+import { DesktopMessageList, DesktopChatInput, SessionSelector, type Session } from "@/components/chat";
 import {
   SpanNode,
   TimelineView,
@@ -50,7 +61,18 @@ export interface AgentDebugTabProps {
   agentId: string;
   agentName?: string;
   agentConfigPath: string;
+
+  // Session management
   sessionId?: string;
+  sessions?: Session[];
+  isLoadingSessions?: boolean;
+  onSelectSession?: (session: Session) => void;
+  onCreateSession?: () => void;
+  onRefreshSessions?: () => void;
+  onRenameSession?: (sessionId: string, newName: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onOpenSessionFolder?: () => void;
+  onClearMessages?: () => void;
 
   // Conversation props
   messages: AgentMessage[];
@@ -155,6 +177,15 @@ export function AgentDebugTab({
   agentName,
   agentConfigPath: _agentConfigPath,
   sessionId,
+  sessions = [],
+  isLoadingSessions,
+  onSelectSession,
+  onCreateSession,
+  onRefreshSessions,
+  onRenameSession,
+  onDeleteSession,
+  onOpenSessionFolder,
+  onClearMessages,
   messages,
   onSendMessage,
   isStreaming,
@@ -172,7 +203,7 @@ export function AgentDebugTab({
   onRefreshTrace,
   className,
 }: AgentDebugTabProps) {
-  const { t } = useTranslation("agentDetail");
+  const { t } = useTranslation();
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(50); // percentage
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [activeTraceTab, setActiveTraceTab] = React.useState<"tree" | "timeline">("tree");
@@ -232,12 +263,95 @@ export function AgentDebugTab({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{agentName || t("debugTab", "Debug")}</span>
+                {/* Session Selector */}
+                <SessionSelector
+                  currentSession={
+                    sessionId
+                      ? sessions.find((s) => s.id === sessionId) || {
+                          id: sessionId,
+                          name: t("agentDetail.debugSession", "Debug Session"),
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                          agentName: agentName,
+                        }
+                      : undefined
+                  }
+                  sessions={sessions}
+                  onSelect={(session) => onSelectSession?.(session)}
+                  onCreateNew={() => onCreateSession?.()}
+                  onRename={onRenameSession}
+                  onDelete={onDeleteSession}
+                  agentName={agentName}
+                />
               </div>
               <p className="text-xs text-muted-foreground">
-                {t("debugDescription", "Test conversation")}
+                {agentName || t("chat.defaultAgent", "Default Agent")}
               </p>
             </div>
+          </div>
+
+          {/* WeChat style action buttons */}
+          <div className="flex items-center gap-1">
+            {/* Refresh sessions button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={t("chat.refreshSessions", "Refresh sessions")}
+              onClick={() => onRefreshSessions?.()}
+              disabled={isLoadingSessions}
+            >
+              <RefreshCcw className={cn("h-4 w-4", isLoadingSessions && "animate-spin")} />
+            </Button>
+
+            {/* Search in conversation */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={t("chat.searchInConversation", "Search in conversation")}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* More options dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {/* Search */}
+                <DropdownMenuItem>
+                  <Search className="h-4 w-4 mr-3" />
+                  {t("chat.searchInConversation", "Search in conversation")}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Open session folder */}
+                <DropdownMenuItem onClick={() => onOpenSessionFolder?.()}>
+                  <FolderOpen className="h-4 w-4 mr-3" />
+                  {t("chat.openSessionFolder", "Open Session Folder")}
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                {/* Clear messages */}
+                <DropdownMenuItem
+                  onClick={() => onClearMessages?.()}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-3" />
+                  {t("chat.clearMessages", "Clear messages")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

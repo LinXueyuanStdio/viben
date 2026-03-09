@@ -1,13 +1,21 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRight,
   ChevronRight,
   Github,
+  Globe,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import {
+  LANGUAGES,
+  DEFAULT_LANGUAGE,
+  getLanguageByCode,
+  changeLanguage,
+} from '@/lib/i18n';
 import { DemoTabs } from './demo-tabs';
 import { ChallengeCard } from './animated-cards/challenge-card';
 import { LifecycleCard } from './animated-cards/lifecycle-card';
@@ -21,6 +29,63 @@ const FEATURE_VARIANTS = ['kanban', 'calendar', 'mcp', 'agents', 'desktop', 'rel
 const FAQ_KEYS = ['difference', 'model', 'audience'] as const;
 
 const SUPPORTED_AGENTS = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleLanguageSelect = useCallback((langCode: string) => {
+    changeLanguage(langCode);
+    setIsOpen(false);
+  }, []);
+
+  const currentLang = i18n.language || DEFAULT_LANGUAGE;
+  const currentLanguage = getLanguageByCode(currentLang);
+
+  if (!mounted) {
+    return (
+      <button className="rounded-md p-2 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
+        <Globe className="h-4 w-4" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="rounded-md p-2 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white"
+        title={currentLanguage?.name}
+      >
+        <Globe className="h-4 w-4" />
+      </button>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-white/10 bg-[#0b0b10]/95 py-1 shadow-xl backdrop-blur-xl">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => handleLanguageSelect(lang.code)}
+                className={`flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-white/5 ${
+                  lang.code === currentLang ? 'bg-amber-300/10 text-amber-300' : 'text-zinc-300 hover:text-white'
+                }`}
+              >
+                <span>{lang.nativeName}</span>
+                <span className="text-xs text-zinc-500">{lang.code}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function Nav() {
   const { t } = useTranslation();
@@ -39,6 +104,7 @@ function Nav() {
           <Link href="/skills" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             {t('homepage.nav.skills')}
           </Link>
+          <LanguageSwitcher />
           <a
             href="https://github.com/LinXueyuanStdio/viben"
             target="_blank"

@@ -94,7 +94,7 @@ git clone https://github.com/LinXueyuanStdio/viben.git
 cd viben && pnpm install
 
 pnpm build              # 构建
-pnpm desktop:dev        # 桌面应用开发
+pnpm desktop:restart    # 桌面应用开发
 pnpm gateway:restart    # 启动 Gateway
 ```
 
@@ -115,10 +115,17 @@ packages/
 
 ### 技术栈
 
-TypeScript · Tauri · Next.js 15 · Tailwind CSS · Radix UI · Zustand · pnpm + Turbo
+```
+语言        TypeScript
+桌面        Tauri 2 + React 19 + Vite
+Web         Next.js 15
+样式        Tailwind CSS 4 + Radix UI
+状态        Zustand
+构建        pnpm + Turborepo
+```
 
 </details>
 
 ## 许可证
 
-[MIT](./LICENSE) © 2025 OPENAGS
+[MIT](./LICENSE)
