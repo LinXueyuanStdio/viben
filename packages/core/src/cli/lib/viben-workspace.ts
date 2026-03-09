@@ -1004,6 +1004,19 @@ export function archiveTask(
   const monthDir = join(archiveBase, yearMonth);
 
   try {
+    // Update task status to completed before archiving
+    const taskJsonPath = join(taskDir, FILE_TASK_JSON);
+    if (existsSync(taskJsonPath)) {
+      try {
+        const taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
+        taskData.status = "completed";
+        taskData.completedAt = getTodayDate();
+        writeFileSync(taskJsonPath, JSON.stringify(taskData, null, 2), "utf-8");
+      } catch {
+        // Continue even if status update fails
+      }
+    }
+
     // Create archive directory if needed
     if (!existsSync(monthDir)) {
       mkdirSync(monthDir, { recursive: true });

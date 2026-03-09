@@ -622,15 +622,15 @@ export function AgentDetailPage() {
       >
         <div className="flex items-center justify-between px-4 border-b h-[57px]">
           {/* Left side: Back button + Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 h-full">
             <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <TabsList>
-              <TabsTrigger value="debug">
+            <TabsList className="h-full border-b-0">
+              <TabsTrigger value="debug" className="h-full rounded-none">
                 {t("agentDetail.debugTab", "Debug")}
               </TabsTrigger>
-              <TabsTrigger value="settings">
+              <TabsTrigger value="settings" className="h-full rounded-none">
                 {t("agentDetail.settingsTab", "Settings")}
               </TabsTrigger>
             </TabsList>
