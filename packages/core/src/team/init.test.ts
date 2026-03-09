@@ -157,9 +157,9 @@ describe("initTeam", () => {
       projectType: "backend",
     });
 
-    expect(existsSync(join(testDir, ".viben/spec/backend/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/backend/database-guidelines.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/frontend/index.md"))).toBe(false);
+    expect(existsSync(join(testDir, "docs/specs/backend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/backend/database-guidelines.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/frontend/index.md"))).toBe(false);
   });
 
   it("should create frontend specs for frontend project type", async () => {
@@ -169,9 +169,9 @@ describe("initTeam", () => {
       projectType: "frontend",
     });
 
-    expect(existsSync(join(testDir, ".viben/spec/frontend/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/frontend/component-guidelines.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/backend/index.md"))).toBe(false);
+    expect(existsSync(join(testDir, "docs/specs/frontend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/frontend/component-guidelines.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/backend/index.md"))).toBe(false);
   });
 
   it("should create both frontend and backend specs for fullstack project type", async () => {
@@ -181,9 +181,9 @@ describe("initTeam", () => {
       projectType: "fullstack",
     });
 
-    expect(existsSync(join(testDir, ".viben/spec/frontend/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/backend/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/guides/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/frontend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/backend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/index.md"))).toBe(true);
   });
 
   it("should return list of created files", async () => {
@@ -276,9 +276,9 @@ describe("initTeam", () => {
       developerName: "test-dev",
       projectType: "frontend",
     });
-    expect(existsSync(join(testDir, ".viben/spec/guides/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/guides/cross-layer-thinking-guide.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/guides/code-reuse-thinking-guide.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/cross-layer-thinking-guide.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/code-reuse-thinking-guide.md"))).toBe(true);
     rmSync(testDir, { recursive: true });
 
     // Test backend type
@@ -287,9 +287,9 @@ describe("initTeam", () => {
       developerName: "test-dev",
       projectType: "backend",
     });
-    expect(existsSync(join(testDir, ".viben/spec/guides/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/guides/cross-layer-thinking-guide.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/guides/code-reuse-thinking-guide.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/cross-layer-thinking-guide.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/guides/code-reuse-thinking-guide.md"))).toBe(true);
   });
 
   it("should return warnings array in result", async () => {
@@ -405,7 +405,7 @@ describe("initTeam", () => {
 
     expect(result.success).toBe(true);
     // Should have both frontend and backend specs
-    expect(existsSync(join(testDir, ".viben/spec/frontend/index.md"))).toBe(true);
-    expect(existsSync(join(testDir, ".viben/spec/backend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/frontend/index.md"))).toBe(true);
+    expect(existsSync(join(testDir, "docs/specs/backend/index.md"))).toBe(true);
   });
 });

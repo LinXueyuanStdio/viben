@@ -1764,11 +1764,11 @@ describe("Python parity - git_context.py get_context_text()", () => {
       // Python format
       const workspace = `.viben/workspace/${developer}/`;
       const tasks = ".viben/tasks/";
-      const spec = ".viben/spec/";
+      const spec = "docs/specs/";
 
       expect(workspace).toBe(".viben/workspace/john/");
       expect(tasks).toBe(".viben/tasks/");
-      expect(spec).toBe(".viben/spec/");
+      expect(spec).toBe("docs/specs/");
     });
   });
 

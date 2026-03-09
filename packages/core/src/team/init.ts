@@ -621,7 +621,7 @@ If any of these exist, read them first and extract the relevant coding conventio
 
 Ask AI to help discover patterns from actual code:
 
-- "Read all existing config files (CLAUDE.md, .cursorrules, etc.) and extract coding conventions into .viben/spec/"
+- "Read all existing config files (CLAUDE.md, .cursorrules, etc.) and extract coding conventions into docs/specs/"
 - "Analyze my codebase and document the patterns you see"
 - "Find error handling / component / API patterns and document them"
 
