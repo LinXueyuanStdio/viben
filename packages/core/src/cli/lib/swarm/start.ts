@@ -236,7 +236,7 @@ export async function startAgent(
   }
 
   // Check dispatch agent exists
-  const dispatchMd = adapter.getAgentPath("dispatch", repoRoot);
+  const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
   if (!existsSync(dispatchMd)) {
     return {
       success: false,
@@ -606,7 +606,7 @@ export function startAgentSync(
     };
   }
 
-  const dispatchMd = adapter.getAgentPath("dispatch", repoRoot);
+  const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
   if (!existsSync(dispatchMd)) {
     return {
       success: false,

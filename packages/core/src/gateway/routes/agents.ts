@@ -27,7 +27,7 @@ import { join } from "node:path";
  * Note: This returns the directory path (e.g., /path/to/agents/myagent),
  * NOT the config file path (e.g., /path/to/agents/myagent/AGENTS.md)
  */
-async function resolveAgentPath(agentId: string, workspacePath?: string): Promise<string | undefined> {
+async function resolveAgentDir(agentId: string, workspacePath?: string): Promise<string | undefined> {
   // 1. Try workspace agent first
   if (workspacePath) {
     const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
@@ -671,7 +671,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     try {
       // Resolve agent directory: use provided agent_dir, or resolve from workspace_path
       // This ensures sessions are created in project level when workspace_path is provided
-      const agentDir = body.agent_dir || await resolveAgentPath(id, body.workspace_path);
+      const agentDir = body.agent_dir || await resolveAgentDir(id, body.workspace_path);
 
       const config = createSessionConfigWithAgentInfo(
         sessionId,
@@ -702,7 +702,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
       try {
-        const agentDir = await resolveAgentPath(id, workspace_path);
+        const agentDir = await resolveAgentDir(id, workspace_path);
         const session = await state.sessionStore.getSession(id, session_id, agentDir);
         return toSnakeCaseSession(session);
       } catch (e) {
@@ -722,7 +722,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
       try {
-        const agentDir = await resolveAgentPath(id, workspace_path);
+        const agentDir = await resolveAgentDir(id, workspace_path);
         await state.sessionStore.deleteSession(id, session_id, agentDir);
         return { deleted: session_id, agent_id: id };
       } catch (e) {
@@ -746,7 +746,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
       try {
-        const agentDir = await resolveAgentPath(id, workspace_path);
+        const agentDir = await resolveAgentDir(id, workspace_path);
         const messages = await state.sessionStore.readMessages(id, session_id, agentDir);
         return {
           messages: messages.map(toSnakeCaseMessage),
@@ -778,7 +778,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     const body = request.body;
 
     try {
-      const agentDir = await resolveAgentPath(id, workspace_path);
+      const agentDir = await resolveAgentDir(id, workspace_path);
       const message: SessionMessage = {
         timestamp: new Date().toISOString(),
         role: body.role,
@@ -810,7 +810,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id, session_id } = request.params;
       const { workspace_path } = request.query;
       try {
-        const agentDir = await resolveAgentPath(id, workspace_path);
+        const agentDir = await resolveAgentDir(id, workspace_path);
         const messages = await state.sessionStore.readUIMessages(id, session_id, agentDir);
         return {
           messages: messages.map(toSnakeCaseUIMessage),

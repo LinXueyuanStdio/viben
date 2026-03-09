@@ -81,8 +81,8 @@ export interface ICLIAdapter {
 
   /** Get platform-specific agent name */
   getAgentName(agent: string): string;
-  /** Get path to agent definition file */
-  getAgentPath(agent: string, projectRoot: string): string;
+  /** Get path to agent config file (.md) */
+  getAgentConfigPath(agent: string, projectRoot: string): string;
   /** Get path to config directory */
   getConfigDir(projectRoot: string): string;
   /** Get path to commands directory or specific command file */
@@ -263,13 +263,13 @@ export class CLIAdapter implements ICLIAdapter {
   }
 
   /**
-   * Get path to agent definition file
+   * Get path to agent config file (.md)
    *
    * @param agent - Agent name (original, before mapping)
    * @param projectRoot - Project root directory
-   * @returns Path to agent .md file
+   * @returns Path to agent config file (.md)
    */
-  getAgentPath(agent: string, projectRoot: string): string {
+  getAgentConfigPath(agent: string, projectRoot: string): string {
     const mappedName = this.getAgentName(agent);
     return join(this.getConfigDir(projectRoot), "agents", `${mappedName}.md`);
   }
