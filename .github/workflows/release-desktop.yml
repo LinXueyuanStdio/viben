@@ -237,3 +237,78 @@ jobs:
           files: release-assets/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate desktop-releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+        run: |
+          # Get release assets from GitHub API
+          RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME)
+
+          # Extract asset URLs by pattern
+          ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
+
+          # Find URLs for each platform
+          DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
+          MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
+          EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
+          APPIMAGE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
+          DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
+
+          # Get file names
+          DMG_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .name' | head -1)
+          MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
+          EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
+          APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
+          DEB_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .name' | head -1)
+
+          # Create JSON file
+          cat > release-assets/desktop-releases.json << EOF
+          {
+            "version": "${VERSION}",
+            "tag": "${TAG_NAME}",
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "assets": {
+              "macos": {
+                "dmg": {
+                  "url": "${DMG_URL}",
+                  "name": "${DMG_NAME}"
+                }
+              },
+              "windows": {
+                "msi": {
+                  "url": "${MSI_URL}",
+                  "name": "${MSI_NAME}"
+                },
+                "exe": {
+                  "url": "${EXE_URL}",
+                  "name": "${EXE_NAME}"
+                }
+              },
+              "linux": {
+                "appimage": {
+                  "url": "${APPIMAGE_URL}",
+                  "name": "${APPIMAGE_NAME}"
+                },
+                "deb": {
+                  "url": "${DEB_URL}",
+                  "name": "${DEB_NAME}"
+                }
+              }
+            }
+          }
+          EOF
+
+          echo "Generated desktop-releases.json:"
+          cat release-assets/desktop-releases.json
+
+      - name: Upload releases JSON to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/desktop-releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

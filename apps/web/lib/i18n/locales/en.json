@@ -1298,6 +1298,169 @@
     "thisWeek": "This Week",
     "fromLastWeek": "{{change}}% from last week"
   },
+  "homepage": {
+    "nav": {
+      "mcpMarket": "MCP Market",
+      "skills": "Skills"
+    },
+    "hero": {
+      "badge": "MULTI-AGENT WORKSPACE",
+      "title": "From idea to launch, to iteration. Make multi-agent collaboration truly controllable.",
+      "description": "Viben isn't just a code assistant—it's a complete collaboration system. Unified management of planning, execution, review, and retrospective makes AI productivity reliable.",
+      "cta": {
+        "getStarted": "Get Started",
+        "viewStats": "View Code Stats"
+      }
+    },
+    "challenges": {
+      "badge": "Why Viben",
+      "title": "AI can write code, but code isn't product",
+      "items": {
+        "codeScatter": {
+          "title": "Code generates, but products struggle to ship",
+          "desc": "Pure code generation is fast, but often lacks process, review, and traceable collaboration."
+        },
+        "agentChaos": {
+          "title": "Multi-agent collaboration is hard to control",
+          "desc": "Task decomposition, context sync, execution status and results review are often scattered across multiple tools."
+        },
+        "costRise": {
+          "title": "Post-launch maintenance costs keep rising",
+          "desc": "Without reusable workflows and memory systems, teams rebuild the same processes repeatedly."
+        }
+      }
+    },
+    "lifecycle": {
+      "title": "Complete lifecycle, you're always in control",
+      "items": {
+        "define": {
+          "title": "Define Goals",
+          "desc": "From requirements to task trees, build executable multi-agent plans."
+        },
+        "execute": {
+          "title": "Parallel Execution",
+          "desc": "Kanban + timeline + calendar views for unified scheduling and progress tracking."
+        },
+        "review": {
+          "title": "Review & Release",
+          "desc": "Key checkpoints support manual confirmation, ensuring control and traceability."
+        },
+        "iterate": {
+          "title": "Continuous Iteration",
+          "desc": "Accumulate context and workflow templates for continuous efficiency in future tasks."
+        }
+      }
+    },
+    "features": {
+      "badge": "Capabilities",
+      "title": "Not just code generation, it's a truly deliverable workflow",
+      "exploreSkills": "Explore Skills",
+      "items": {
+        "kanban": {
+          "title": "Kanban View",
+          "desc": "Drag and drop to manage task priorities and status."
+        },
+        "calendar": {
+          "title": "Calendar Planning",
+          "desc": "Use timeline to schedule automation nodes and deadlines."
+        },
+        "mcp": {
+          "title": "MCP Integration",
+          "desc": "Compatible with Claude, Cursor, Cline and other MCP ecosystems."
+        },
+        "agents": {
+          "title": "Multi-Agent Collaboration",
+          "desc": "Support multiple role agents for parallel execution and collaborative review."
+        },
+        "desktop": {
+          "title": "Desktop Workbench",
+          "desc": "Unified management of workspaces, configuration and execution monitoring."
+        },
+        "release": {
+          "title": "Controlled Release Flow",
+          "desc": "From planning to release in a closed loop, reducing launch risks."
+        }
+      }
+    },
+    "download": {
+      "badge": "Download",
+      "title": "Get Viben",
+      "description": "Choose your preferred way to start using Viben. Desktop app provides a complete visual workbench, CLI is for command-line enthusiasts.",
+      "desktopApp": "Desktop App",
+      "cliTools": "Command Line Tools",
+      "macosDesc": "Universal version, supports both Intel and Apple Silicon chips.",
+      "windowsDesc": "For Windows 10/11 64-bit systems.",
+      "linuxDesc": "Supports major Linux distributions.",
+      "shellDesc": "One-click install for macOS and Linux users.",
+      "npmDesc": "Install using Node.js package manager.",
+      "homebrewDesc": "Install with Homebrew (recommended for macOS users).",
+      "viewAllReleases": "View all releases and changelog",
+      "downloadDesktop": "Download Desktop",
+      "loading": "Loading...",
+      "recommended": "Recommended",
+      "viewAllVersions": "View all versions",
+      "copyCommand": "Copy command"
+    },
+    "agents": {
+      "title": "Developers and teams are using Viben to boost delivery efficiency",
+      "description": "Compatible with mainstream agent clients, keeping your existing models and toolchains."
+    },
+    "pricing": {
+      "badge": "Pricing",
+      "title": "Pricing coming soon",
+      "description": "Experience core capabilities first. Flexible plans for individuals and teams will be available soon.",
+      "getUpdates": "Get Latest Updates"
+    },
+    "faq": {
+      "title": "FAQ",
+      "items": {
+        "difference": {
+          "q": "What's different between Viben and traditional AI coding assistants?",
+          "a": "Viben focuses on 'multi-agent workflow orchestration', not just code generation, but also task management, review checkpoints, and continuous iteration."
+        },
+        "model": {
+          "q": "Do I need to use a specific model?",
+          "a": "No. Viben is based on the MCP ecosystem and can integrate with various models and clients, freely combining according to team habits."
+        },
+        "audience": {
+          "q": "Is it suitable for individual developers or teams?",
+          "a": "Both. Individuals can use it to build stable automation workflows, teams can unify collaboration standards and improve delivery efficiency."
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to build truly deliverable AI workflows?",
+      "description": "Start today and turn multi-agent collaboration into stable team productivity.",
+      "enterMarket": "Enter MCP Market",
+      "readDocs": "Read Documentation"
+    },
+    "demo": {
+      "title": "Task Orchestration Demo",
+      "tabs": {
+        "board": "Board",
+        "terminal": "Terminal",
+        "code": "Code",
+        "tests": "Tests"
+      },
+      "board": {
+        "working": "Working",
+        "inReview": "In Review",
+        "done": "Done"
+      },
+      "code": {
+        "reviewComments": "Review Comments",
+        "resolved": "Resolved",
+        "open": "Open"
+      },
+      "tests": {
+        "passed": "passed",
+        "failed": "failed",
+        "total": "total",
+        "coverage": "coverage"
+      },
+      "agentsActive": "{{count}} agents active"
+    }
+  },
   "chat": {
     "title": "Chat",
     "chatButton": "Chat",

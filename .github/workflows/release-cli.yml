@@ -125,6 +125,61 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Generate cli-releases.json
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+        run: |
+          INSTALL_SH_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/install.sh"
+
+          cat > release-assets/cli-releases.json << EOF
+          {
+            "version": "${VERSION}",
+            "tag": "${TAG_NAME}",
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "install_methods": {
+              "shell": {
+                "command": "curl -fsSL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | bash",
+                "platforms": ["macos", "linux"]
+              },
+              "npx": {
+                "command": "npx viben",
+                "platforms": ["macos", "linux", "windows"]
+              },
+              "npm": {
+                "command": "npm install -g viben",
+                "platforms": ["macos", "linux", "windows"]
+              },
+              "homebrew": {
+                "command": "brew tap LinXueyuanStdio/viben && brew install viben",
+                "platforms": ["macos", "linux"]
+              }
+            },
+            "assets": {
+              "install_sh": {
+                "url": "${INSTALL_SH_URL}",
+                "name": "install.sh"
+              }
+            },
+            "links": {
+              "npm": "https://www.npmjs.com/package/viben",
+              "documentation": "https://github.com/${{ github.repository }}"
+            }
+          }
+          EOF
+
+          echo "Generated cli-releases.json:"
+          cat release-assets/cli-releases.json
+
+      - name: Upload releases JSON to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/cli-releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-npm:
     needs: [prepare, release]
     runs-on: ubuntu-latest

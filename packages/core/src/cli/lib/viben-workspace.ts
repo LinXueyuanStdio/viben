@@ -5,7 +5,7 @@
  * Replaces Python scripts in templates/viben/scripts/common/
  */
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
 
@@ -934,8 +934,7 @@ export function setCurrentTask(taskPath: string, repoRoot: string): boolean {
   const currentFile = join(repoRoot, DIR_VIBEN, FILE_CURRENT_TASK);
 
   try {
-    const fs = require("node:fs");
-    fs.writeFileSync(currentFile, taskPath, "utf-8");
+    writeFileSync(currentFile, taskPath, "utf-8");
     return true;
   } catch {
     return false;
