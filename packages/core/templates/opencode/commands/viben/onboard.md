@@ -72,17 +72,18 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 |   +-- {developer}/        # Per-developer directory
 |       |-- index.md        # Personal progress index
 |       +-- journal-N.md    # Session records (max 2000 lines)
-|-- tasks/                  # Task tracking (unified)
-|   +-- {MM}-{DD}-{slug}/   # Task directory
-|       |-- task.json       # Task metadata
-|       +-- prd.md          # Requirements doc
-+-- spec/                   # "AI Training Data" - project knowledge
-    |-- frontend/           # Frontend conventions
-    |-- backend/            # Backend conventions
-    +-- guides/             # Thinking patterns
++-- tasks/                  # Task tracking (unified)
+    +-- {MM}-{DD}-{slug}/   # Task directory
+        |-- task.json       # Task metadata
+        +-- prd.md          # Requirements doc
+
+docs/specs/                 # "AI Training Data" - project knowledge (at project root)
+|-- frontend/               # Frontend conventions
+|-- backend/                # Backend conventions
++-- guides/                 # Thinking patterns
 ```
 
-### Understanding spec/ subdirectories
+### Understanding docs/specs/ subdirectories
 
 **frontend/** - Single-layer frontend knowledge:
 - Component patterns (how to write components in THIS project)
