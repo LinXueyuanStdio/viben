@@ -406,6 +406,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     const parentSpan = trace.getActiveSpan();
     const traceId = parentSpan?.spanContext().traceId;
 
+    // Debug: Log trace ID availability
+    console.log("[agent-run] DEBUG: parentSpan exists:", !!parentSpan, "traceId:", traceId);
+
     // Create session-scoped logger
     const log = createSessionLogger(sessionId, traceId);
 

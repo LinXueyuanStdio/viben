@@ -46,6 +46,7 @@ import {
   type ReviewReason,
 } from "@viben/kanban";
 import type { TaskCardContentProps, Subtask } from "../types";
+import { formatElapsedTime } from "../hooks";
 import { CategoryIcons } from "../constants";
 import { PhaseProgressIndicator } from "../phase-progress-indicator";
 
@@ -70,6 +71,7 @@ export const TaskCardContent = memo(function TaskCardContent({
   onViewPR,
   onArchive,
   isSelected,
+  elapsedTime,
 }: TaskCardContentProps) {
   const { t } = useTranslation();
 
@@ -111,10 +113,16 @@ export const TaskCardContent = memo(function TaskCardContent({
     isFailed ||
     (task.status === "done" && (task.prUrl || task.pr_url));
 
-  // Memoize relative time
+  // Memoize relative time (for non-running tasks)
   const relativeTime = useMemo(
     () => (task.updated_at ? formatRelativeTime(task.updated_at) : null),
     [task.updated_at]
+  );
+
+  // Formatted elapsed time for running tasks
+  const formattedElapsedTime = useMemo(
+    () => (elapsedTime !== undefined ? formatElapsedTime(elapsedTime) : null),
+    [elapsedTime]
   );
 
   return (
@@ -311,8 +319,13 @@ export const TaskCardContent = memo(function TaskCardContent({
         <div className="flex items-center justify-between gap-1.5 pt-1.5 mt-0.5 border-t border-border/30">
           {/* Left side: Time, Assignee, Due Date */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            {/* Relative time */}
-            {relativeTime && (
+            {/* Running elapsed time (takes precedence) or relative time */}
+            {isRunning && formattedElapsedTime ? (
+              <div className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>{formattedElapsedTime}</span>
+              </div>
+            ) : relativeTime && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
                 <Clock className="h-3 w-3" />
                 <span>{relativeTime}</span>
