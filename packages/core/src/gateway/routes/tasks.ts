@@ -11,20 +11,31 @@
  * - GET /api/agent/:agentId/sessions/:sessionId/tasks - List tasks by session
  * - GET /api/agent/:agentId/sessions/:sessionId/tasks/:taskId/messages - Get task messages
  *
+ * Configuration endpoints:
+ * - POST /api/task/set-branch - Set Git branch for task
+ * - POST /api/task/set-base - Set PR target branch
+ * - POST /api/task/set-scope - Set PR title scope
+ * - POST /api/task/set-agent - Set associated agent
+ *
+ * Context management endpoints:
+ * - POST /api/task/init-context - Initialize context files (implement.jsonl, check.jsonl, debug.jsonl)
+ * - POST /api/task/add-context - Add context files to task
+ * - POST /api/task/remove-context - Remove context files from task
+ * - POST /api/task/list-context - List context entries
+ * - POST /api/task/validate-context - Validate context file existence
+ *
  * IMPORTANT: All tasks are stored in workspace directories:
  * <workspace>/.viben/tasks/<date>-<slug>/task.json
  */
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { spawn, execSync, type SpawnOptions } from "node:child_process";
-import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, openSync, readdirSync } from "node:fs";
-import { join, basename } from "node:path";
+import { existsSync, statSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   taskService,
   type UnifiedTask,
   type TaskStatus,
   type SubtaskInfo,
-  type TaskSpecsData,
 } from "../../services/task-service";
 import { sessionStoreService } from "../../services/session-store";
 import { taskEventStore } from "../../task/events/event-store";
@@ -38,33 +49,8 @@ import {
   writeJsonlFile,
   appendToJsonl,
   jsonlEntryExists,
-  findVibenRoot,
-  getDeveloper,
-  getTasksDir,
-  getCurrentTask,
-  getActiveTasks,
-  getDatePrefix,
-  getTodayDate,
-  writeTaskJson as writeTaskJsonFile,
-  resolveTaskDirectory,
-  runGitCommand,
-  getPhaseForAction,
-  registryAddAgent,
-  registryListAgents,
-  registrySearchAgent,
-  isProcessRunning,
-  getTaskStats,
-  formatTaskStats,
-  getPhaseInfo,
-  calcElapsed,
-  getJournalInfo,
-  readTaskJson as readTaskJsonFromWorkspace,
   DIR_VIBEN,
-  DIR_WORKSPACE,
-  DIR_TASKS,
   DIR_SPEC,
-  FILE_TASK_JSON,
-  getCLIAdapter,
 } from "../../cli/lib/viben-workspace";
 
 /**
@@ -2008,5 +1994,1061 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       missing_files: missing,
       all_valid: missing.length === 0,
     };
+  });
+
+  // ============================================================================
+  // Execution Control (Integration from Queue)
+  // ============================================================================
+
+  /**
+   * POST /api/task/execute - Trigger task execution
+   * Maps task_dir to queue task_id for tracking
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dir: string;
+      agent_id?: string;
+      input?: string;
+      cwd?: string;
+      agent_config_path?: string;
+      resume_session?: string;
+      max_retries?: number;
+      attachments?: Array<{ type: string; data: string; name?: string }>;
+    };
+  }>("/api/task/execute", {
+    schema: {
+      description: "Trigger task execution via queue system",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory path or ID (required)" },
+          agent_id: { type: "string", description: "Agent ID to use" },
+          input: { type: "string", description: "User prompt" },
+          cwd: { type: "string", description: "Working directory" },
+          agent_config_path: { type: "string", description: "Path to agent config" },
+          resume_session: { type: "string", description: "Resume from existing session" },
+          max_retries: { type: "number", description: "Maximum retry attempts" },
+          attachments: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: { type: "string" },
+                data: { type: "string" },
+                name: { type: "string" },
+              },
+            },
+          },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+      response: {
+        201: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string", description: "Queue task ID" },
+            position: { type: "number" },
+            status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const {
+      workspace_path,
+      task_dir: taskDirOrId,
+      agent_id,
+      input,
+      cwd,
+      agent_config_path,
+      resume_session,
+      max_retries,
+      attachments,
+    } = request.body;
+
+    // Validate workspace_path
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required" };
+    }
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Get task to extract execution parameters
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Determine execution parameters
+    const effectiveAgentId = agent_id || task.agent;
+    const effectiveInput = input || task.prompt || task.description || task.title;
+    const effectiveCwd = cwd || workspace_path;
+
+    if (!effectiveAgentId) {
+      reply.code(400);
+      return { error: "agent_id is required (not found in task or request)" };
+    }
+
+    if (!effectiveInput) {
+      reply.code(400);
+      return { error: "input is required (not found in task or request)" };
+    }
+
+    try {
+      // Enqueue to the task queue
+      const result = await state.taskQueue.enqueue({
+        agent_id: effectiveAgentId,
+        session_id: task.sessionId,
+        input: effectiveInput,
+        cwd: effectiveCwd,
+        agent_config_path,
+        resume_session,
+        max_retries,
+        attachments,
+      });
+
+      // Store mapping from task_dir to queue task_id
+      // Update task with queue reference
+      await taskService.updateTask(taskDir, {
+        status: "queue",
+        sessionId: task.sessionId || result.task_id, // Use queue task_id as session reference
+      });
+
+      reply.code(201);
+      return {
+        success: true,
+        task_id: result.task_id,
+        position: result.position,
+        status: result.status,
+      };
+    } catch (e) {
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to enqueue task" };
+    }
+  });
+
+  /**
+   * POST /api/task/stop - Stop task execution
+   * Finds queue task by session_id and cancels it
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dir: string;
+    };
+  }>("/api/task/stop", {
+    schema: {
+      description: "Stop task execution",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory path or ID (required)" },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            cancelled: { type: "boolean" },
+            task_id: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir: taskDirOrId } = request.body;
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Get task to find session_id
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Try to find and cancel the queue task
+    let cancelled = false;
+    let queueTaskId: string | null = null;
+
+    if (task.sessionId && state.taskQueue) {
+      // Search running tasks for matching session
+      const runningTasks = state.taskQueue.getTasks("running");
+      const pendingTasks = state.taskQueue.getTasks("pending");
+      const allTasks = [...runningTasks, ...pendingTasks];
+
+      const queueTask = allTasks.find((qt) => qt.payload.session_id === task.sessionId);
+
+      if (queueTask) {
+        queueTaskId = queueTask.id;
+        cancelled = await state.taskQueue.cancel(queueTask.id);
+      }
+    }
+
+    // Update task status
+    if (cancelled || task.status === "in_progress" || task.status === "queue") {
+      await taskService.updateTask(taskDir, {
+        status: "human_review",
+        reviewReason: "stopped",
+      });
+    }
+
+    return {
+      success: true,
+      cancelled,
+      task_id: queueTaskId,
+    };
+  });
+
+  /**
+   * POST /api/task/running - Check execution status
+   * Checks both task status and actual queue execution
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dir: string;
+    };
+  }>("/api/task/running", {
+    schema: {
+      description: "Check if task execution is running",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory path or ID (required)" },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: {
+              type: "object",
+              properties: {
+                task_id: { type: "string" },
+                running: { type: "boolean" },
+                status: { type: "string" },
+                queue_task_id: { type: "string" },
+                queue_status: { type: "string" },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir: taskDirOrId } = request.body;
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Get task
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Check queue execution status
+    let queueTaskId: string | null = null;
+    let queueStatus: string | null = null;
+    let isRunning = false;
+
+    if (task.sessionId && state.taskQueue) {
+      const queueTasks = state.taskQueue.getTasks();
+      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.sessionId);
+
+      if (queueTask) {
+        queueTaskId = queueTask.id;
+        queueStatus = queueTask.status;
+        isRunning = queueTask.status === "running";
+      }
+    }
+
+    // Also check task status
+    const isInProgress = task.status === "in_progress" || task.status === "queue";
+
+    return {
+      success: true,
+      data: {
+        task_id: task.id,
+        running: isRunning || isInProgress,
+        status: task.status,
+        queue_task_id: queueTaskId,
+        queue_status: queueStatus,
+      },
+    };
+  });
+
+  // ============================================================================
+  // Queue Management
+  // ============================================================================
+
+  /**
+   * POST /api/task/queue-status - Get queue status
+   */
+  fastify.post("/api/task/queue-status", {
+    schema: {
+      description: "Get queue status",
+      tags: ["tasks"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            pending_count: { type: "number" },
+            running_count: { type: "number" },
+            max_concurrency: { type: "number" },
+            tasks: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  status: { type: "string" },
+                  agent_id: { type: "string" },
+                  created_at: { type: "number" },
+                  position: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
+    return state.taskQueue.getStatus();
+  });
+
+  /**
+   * POST /api/task/queue-config - Get/update queue configuration
+   */
+  fastify.post<{
+    Body: {
+      max_concurrency?: number;
+      default_max_retries?: number;
+    };
+  }>("/api/task/queue-config", {
+    schema: {
+      description: "Get or update queue configuration",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          max_concurrency: { type: "number" },
+          default_max_retries: { type: "number" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            max_concurrency: { type: "number" },
+            default_max_retries: { type: "number" },
+            persist_debounce_ms: { type: "number" },
+            shutdown_timeout_ms: { type: "number" },
+          },
+        },
+      },
+    },
+  }, async (request) => {
+    const updates = request.body;
+
+    // If updates provided, update config
+    if (updates && Object.keys(updates).length > 0) {
+      return await state.taskQueue.updateConfig(updates);
+    }
+
+    // Otherwise just return current config
+    return state.taskQueue.getConfig();
+  });
+
+  /**
+   * POST /api/task/batch-enqueue - Batch enqueue multiple tasks
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dirs: string[];
+      agent_id?: string;
+    };
+  }>("/api/task/batch-enqueue", {
+    schema: {
+      description: "Batch enqueue multiple tasks for execution",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dirs: {
+            type: "array",
+            items: { type: "string" },
+            description: "Task directories or IDs to enqueue",
+          },
+          agent_id: { type: "string", description: "Agent ID to use for all tasks" },
+        },
+        required: ["workspace_path", "task_dirs"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            queued: { type: "number" },
+            failed: { type: "number" },
+            results: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  task_dir: { type: "string" },
+                  success: { type: "boolean" },
+                  error: { type: "string" },
+                  queue_task_id: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
+    const { workspace_path, task_dirs, agent_id } = request.body;
+
+    if (!task_dirs || task_dirs.length === 0) {
+      return { success: false, queued: 0, failed: 0, results: [] };
+    }
+
+    const results = [];
+    let queued = 0;
+    let failed = 0;
+
+    for (const taskDirOrId of task_dirs) {
+      try {
+        // Resolve task directory
+        const taskDir = taskDirOrId.includes("/")
+          ? taskDirOrId
+          : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+        if (!taskDir) {
+          results.push({ task_dir: taskDirOrId, success: false, error: "Task not found" });
+          failed++;
+          continue;
+        }
+
+        // Get task
+        const task = await taskService.getTask(taskDir);
+        if (!task) {
+          results.push({ task_dir: taskDirOrId, success: false, error: "Task not found" });
+          failed++;
+          continue;
+        }
+
+        // Determine agent_id
+        const effectiveAgentId = agent_id || task.agent;
+        if (!effectiveAgentId) {
+          results.push({ task_dir: taskDirOrId, success: false, error: "No agent_id specified" });
+          failed++;
+          continue;
+        }
+
+        // Determine input
+        const effectiveInput = task.prompt || task.description || task.title;
+        if (!effectiveInput) {
+          results.push({ task_dir: taskDirOrId, success: false, error: "No input/prompt found" });
+          failed++;
+          continue;
+        }
+
+        // Enqueue
+        const result = await state.taskQueue.enqueue({
+          agent_id: effectiveAgentId,
+          session_id: task.sessionId,
+          input: effectiveInput,
+          cwd: workspace_path,
+        });
+
+        // Update task status
+        await taskService.updateTask(taskDir, {
+          status: "queue",
+        });
+
+        results.push({
+          task_dir: taskDirOrId,
+          success: true,
+          queue_task_id: result.task_id,
+        });
+        queued++;
+      } catch (e) {
+        results.push({
+          task_dir: taskDirOrId,
+          success: false,
+          error: e instanceof Error ? e.message : "Unknown error",
+        });
+        failed++;
+      }
+    }
+
+    return {
+      success: failed === 0,
+      queued,
+      failed,
+      results,
+    };
+  });
+
+  /**
+   * POST /api/task/clear-history - Clear execution history
+   */
+  fastify.post("/api/task/clear-history", {
+    schema: {
+      description: "Clear completed and failed tasks from queue history",
+      tags: ["tasks"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            cleared: { type: "number" },
+          },
+        },
+      },
+    },
+  }, async () => {
+    const cleared = await state.taskQueue.clearHistory();
+    return { success: true, cleared };
+  });
+
+  // ============================================================================
+  // Event Operations
+  // ============================================================================
+
+  /**
+   * POST /api/task/events - Get event history for a task
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dir: string;
+      since?: number;
+    };
+  }>("/api/task/events", {
+    schema: {
+      description: "Get event history for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory path or ID (required)" },
+          since: { type: "number", description: "Get events after this sequence number" },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            task_id: { type: "string" },
+            events: { type: "array" },
+            count: { type: "number" },
+            next_sequence: { type: "number" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir: taskDirOrId, since } = request.body;
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Get task for ID
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    // Get event history
+    const events = await taskEventStore.getEventHistory(taskDir, since);
+    const nextSequence = await taskEventStore.getNextSequence(taskDir);
+
+    return {
+      task_id: task.id,
+      events,
+      count: events.length,
+      next_sequence: nextSequence,
+    };
+  });
+
+  /**
+   * POST /api/task/specs - Get PRD/subtasks/logs for a task
+   */
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_dir: string;
+    };
+  }>("/api/task/specs", {
+    schema: {
+      description: "Get task specs (PRD, subtasks, logs)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory path or ID (required)" },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            prd_content: { type: "string", nullable: true },
+            prd_path: { type: "string", nullable: true },
+            subtasks: { type: "array" },
+            logs: { type: "object", nullable: true },
+            task_dir: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir: taskDirOrId } = request.body;
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${taskDirOrId}` };
+    }
+
+    try {
+      const specsData = await taskService.getTaskSpecsData(taskDir);
+
+      return {
+        prd_content: specsData.prdContent,
+        prd_path: specsData.prdPath,
+        subtasks: specsData.subtasks,
+        logs: specsData.logs,
+        task_dir: specsData.taskDir,
+      };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Failed to get task specs" };
+    }
+  });
+
+  // ============================================================================
+  // Streaming Endpoints (GET for SSE)
+  // ============================================================================
+
+  /**
+   * GET /api/task/events-stream - SSE event subscription
+   * Subscribe to task events for a workspace or specific tasks
+   */
+  fastify.get<{
+    Querystring: {
+      workspace_path: string;
+      task_ids?: string;
+      last_sequence?: string;
+    };
+  }>("/api/task/events-stream", {
+    schema: {
+      description: "SSE stream for task events",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_ids: { type: "string", description: "Comma-separated task IDs for filtering" },
+          last_sequence: { type: "string", description: "Last received sequence for replay" },
+        },
+        required: ["workspace_path"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_ids, last_sequence } = request.query;
+
+    if (!workspace_path) {
+      return reply.status(400).send({ error: "workspace_path required" });
+    }
+
+    // Parse task IDs if provided
+    const taskIdList = task_ids
+      ? task_ids.split(",").map((id) => id.trim()).filter(Boolean)
+      : [];
+
+    const isBatchSubscription = taskIdList.length > 0;
+    const lastSeq = last_sequence ? parseInt(last_sequence, 10) : undefined;
+
+    // Set SSE headers
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+      "X-Accel-Buffering": "no",
+    });
+
+    // Event replay if last_sequence provided
+    if (lastSeq !== undefined && !isNaN(lastSeq)) {
+      try {
+        if (isBatchSubscription) {
+          for (const taskId of taskIdList) {
+            const taskDir = await taskService.findTaskById(workspace_path, taskId);
+            if (taskDir) {
+              const missedEvents = await taskEventStore.getEventHistory(taskDir, lastSeq);
+              for (const event of missedEvents) {
+                const replayEvent = {
+                  type: "STATE_CHANGED",
+                  task_id: taskId,
+                  workspace_path,
+                  timestamp: new Date(event.timestamp).getTime(),
+                  event,
+                  replay: true,
+                };
+                reply.raw.write(`event: STATE_CHANGED\ndata: ${JSON.stringify(replayEvent)}\n\n`);
+              }
+            }
+          }
+        } else {
+          const tasks = await taskService.listTasks(workspace_path);
+          for (const task of tasks) {
+            const taskDir = await taskService.findTaskById(workspace_path, task.id);
+            if (taskDir) {
+              const missedEvents = await taskEventStore.getEventHistory(taskDir, lastSeq);
+              for (const event of missedEvents) {
+                const replayEvent = {
+                  type: "STATE_CHANGED",
+                  task_id: task.id,
+                  workspace_path,
+                  timestamp: new Date(event.timestamp).getTime(),
+                  event,
+                  replay: true,
+                };
+                reply.raw.write(`event: STATE_CHANGED\ndata: ${JSON.stringify(replayEvent)}\n\n`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`[SSE] Error replaying events:`, error);
+      }
+    }
+
+    // Send connected event
+    reply.raw.write(
+      `event: connected\ndata: ${JSON.stringify({
+        subscription_type: isBatchSubscription ? "batch" : "workspace",
+        workspace_path,
+        task_ids: isBatchSubscription ? taskIdList : undefined,
+        last_sequence: lastSeq,
+        timestamp: Date.now(),
+      })}\n\n`
+    );
+
+    // Subscribe based on type
+    let unsubscribe: () => void;
+
+    if (isBatchSubscription) {
+      unsubscribe = state.taskSSEManager.subscribeTasks(taskIdList, (event) => {
+        try {
+          if (reply.raw.writableEnded || reply.raw.destroyed) {
+            return false;
+          }
+          reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+          return true;
+        } catch {
+          return false;
+        }
+      }, workspace_path);
+    } else {
+      unsubscribe = state.taskSSEManager.subscribeWorkspace(workspace_path, (event) => {
+        try {
+          if (reply.raw.writableEnded || reply.raw.destroyed) {
+            return false;
+          }
+          reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    // Handle client disconnect
+    request.raw.on("close", () => {
+      unsubscribe();
+    });
+
+    // Keep connection open
+    await new Promise<void>((resolve) => {
+      request.raw.on("close", resolve);
+    });
+  });
+
+  /**
+   * GET /api/task/execution-stream - SSE execution progress
+   * Stream real-time execution progress from the queue
+   */
+  fastify.get<{
+    Querystring: {
+      workspace_path: string;
+      task_dir: string;
+    };
+  }>("/api/task/execution-stream", {
+    schema: {
+      description: "SSE stream for task execution progress",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory or ID (required)" },
+        },
+        required: ["workspace_path", "task_dir"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir: taskDirOrId } = request.query;
+
+    if (!workspace_path || !taskDirOrId) {
+      return reply.status(400).send({ error: "workspace_path and task_dir required" });
+    }
+
+    // Resolve task directory
+    const taskDir = taskDirOrId.includes("/")
+      ? taskDirOrId
+      : await taskService.findTaskById(workspace_path, taskDirOrId);
+
+    if (!taskDir) {
+      return reply.status(404).send({ error: `Task not found: ${taskDirOrId}` });
+    }
+
+    // Get task
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      return reply.status(404).send({ error: `Task not found: ${taskDirOrId}` });
+    }
+
+    // Set SSE headers
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+      "X-Accel-Buffering": "no",
+    });
+
+    // Send initial task state
+    reply.raw.write(`data: ${JSON.stringify({ type: "task", task: toSnakeCaseTask(task) })}\n\n`);
+
+    // If task is already completed, send done and close
+    if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+      reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      reply.raw.end();
+      return;
+    }
+
+    // Find queue task for this task
+    let queueTaskId: string | null = null;
+    if (task.sessionId && state.taskQueue) {
+      const queueTasks = state.taskQueue.getTasks();
+      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.sessionId);
+      if (queueTask) {
+        queueTaskId = queueTask.id;
+      }
+    }
+
+    // If no queue task found, subscribe to task state changes instead
+    if (!queueTaskId) {
+      const unsubscribe = state.taskSSEManager.subscribe(task.id, (event) => {
+        try {
+          if (reply.raw.writableEnded || reply.raw.destroyed) {
+            return false;
+          }
+          reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+
+          // Check if task is done
+          if (event.type === "STATE_CHANGED") {
+            const newState = (event as { new_state?: string }).new_state;
+            if (newState === "completed" || newState === "failed" || newState === "cancelled") {
+              reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+              reply.raw.end();
+            }
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }, workspace_path);
+
+      request.raw.on("close", () => {
+        unsubscribe();
+      });
+
+      await new Promise<void>((resolve) => {
+        request.raw.on("close", resolve);
+      });
+      return;
+    }
+
+    // Subscribe to queue task events
+    const onProgress = (data: { id: string; progress: unknown }) => {
+      if (data.id === queueTaskId) {
+        reply.raw.write(`data: ${JSON.stringify({ type: "progress", ...data })}\n\n`);
+      }
+    };
+
+    const onCompleted = (data: { task: { id: string } }) => {
+      if (data.task.id === queueTaskId) {
+        reply.raw.write(`data: ${JSON.stringify({ type: "completed", task: data.task })}\n\n`);
+        reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        cleanup();
+        reply.raw.end();
+      }
+    };
+
+    const onFailed = (data: { task: { id: string } }) => {
+      if (data.task.id === queueTaskId) {
+        reply.raw.write(`data: ${JSON.stringify({ type: "failed", task: data.task })}\n\n`);
+        reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        cleanup();
+        reply.raw.end();
+      }
+    };
+
+    const onCancelled = (data: { task: { id: string } }) => {
+      if (data.task.id === queueTaskId) {
+        reply.raw.write(`data: ${JSON.stringify({ type: "cancelled", task: data.task })}\n\n`);
+        reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        cleanup();
+        reply.raw.end();
+      }
+    };
+
+    let cleanedUp = false;
+
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+
+      state.taskQueue.off("task:progress", onProgress);
+      state.taskQueue.off("task:completed", onCompleted);
+      state.taskQueue.off("task:failed", onFailed);
+      state.taskQueue.off("task:cancelled", onCancelled);
+    };
+
+    state.taskQueue.on("task:progress", onProgress);
+    state.taskQueue.on("task:completed", onCompleted);
+    state.taskQueue.on("task:failed", onFailed);
+    state.taskQueue.on("task:cancelled", onCancelled);
+
+    // Heartbeat to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      if (request.raw.destroyed || cleanedUp) {
+        clearInterval(heartbeatInterval);
+        cleanup();
+        return;
+      }
+      reply.raw.write(`data: ${JSON.stringify({ type: "ping" })}\n\n`);
+    }, 30000);
+
+    const handleDisconnect = () => {
+      clearInterval(heartbeatInterval);
+      cleanup();
+    };
+
+    await new Promise<void>((resolve) => {
+      request.raw.on("close", () => {
+        handleDisconnect();
+        resolve();
+      });
+    });
   });
 }

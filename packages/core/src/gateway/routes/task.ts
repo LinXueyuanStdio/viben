@@ -27,12 +27,7 @@ import { taskSSEManager } from "../sse/task-sse-manager";
 import type { TaskEvent } from "../../task/events/task-event";
 import {
   resolveTaskDirectory,
-  readTaskJson,
-  writeTaskJson,
-  updateTaskStatus,
-  appendTaskEvent,
   validateStatusTransition,
-  getActiveTasks,
 } from "../../cli/lib/viben-workspace";
 
 // =============================================================================

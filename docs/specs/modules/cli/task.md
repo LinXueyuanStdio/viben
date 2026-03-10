@@ -194,6 +194,8 @@ viben task <command> <task>
   approve <task>     human_review → completed   批准完成
   reject <task>      human_review → backlog     拒绝返工
   retry <task>       failed → queue         重试失败任务
+  cancel <task>      * → cancelled          取消任务
+  stop <task>        cancel 的别名
 ```
 
 ### 与现有命令的关系
@@ -392,6 +394,38 @@ viben task retry <task>
 
 ---
 
+### `viben task cancel`
+
+取消任务，直接进入 `cancelled` 终止状态。
+
+```bash
+viben task cancel <task> [options]
+viben task stop <task>   # cancel 的别名
+
+Options:
+  --reason <text>    取消原因（可选）
+  --force, -f        强制取消 in_progress 状态的任务
+```
+
+**行为:**
+
+1. 验证任务状态在允许列表中：`backlog`, `queue`, `paused`, `in_progress`, `human_review`
+2. 如果是 `in_progress` 且未指定 `--force`，报错退出：
+   ```
+   Error: Task is in_progress. Use --force to cancel a running task.
+   ```
+3. 记录 `cancelReason`（如指定）
+4. 设置 `cancelledAt` 为当前时间
+5. 状态变更 → `cancelled`
+6. 写入 `CANCEL` 事件到 `events.jsonl`
+
+**不允许取消的状态:**
+- `completed` - 已完成，应使用 archive
+- `failed` - 已失败，应使用 retry 或 archive
+- `cancelled` - 已取消
+
+---
+
 ### 状态转换验证
 
 合法的状态转换:
@@ -405,6 +439,9 @@ viben task retry <task>
 | approve | human_review | completed |
 | reject | human_review | backlog |
 | retry | failed | queue |
+| cancel / stop | backlog, queue, paused, in_progress*, human_review | cancelled |
+
+> *`in_progress` 状态需要 `--force` 参数
 
 非法转换返回错误:
 
@@ -462,6 +499,12 @@ flowchart TD
     H -->|viben task retry| C
     H -->|viben task archive| I[archived]
     G -->|viben swarm cleanup| I
+
+    B -->|viben task cancel| J[cancelled]
+    C -->|viben task cancel| J
+    E -->|viben task cancel| J
+    D -->|viben task cancel --force| J
+    F -->|viben task cancel| J
 ```
 
 ---
@@ -848,6 +891,8 @@ viben task create-pr --dry-run          # 预览
 - [x] `viben task approve` 批准完成 (human_review → completed)
 - [x] `viben task reject` 拒绝返工 (human_review → backlog)
 - [x] `viben task retry` 重试失败任务 (failed → queue)
+- [ ] `viben task cancel` 取消任务 (* → cancelled)
+- [ ] `viben task stop` cancel 的别名
 - [x] 状态转换验证 (`validateStatusTransition`)
 - [x] 事件追加 (`appendTaskEvent` → events.jsonl)
 
