@@ -152,4 +152,4 @@ packages/
 
 ## 📄 License
 
-[MIT](./LICENSE) © 2025 OPENAGS
+[MIT](./LICENSE)

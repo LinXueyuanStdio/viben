@@ -152,4 +152,4 @@ packages/
 
 ## 📄 许可证
 
-[MIT](./LICENSE) © 2025 OPENAGS
+[MIT](./LICENSE)
