@@ -2532,6 +2532,7 @@ export function WorkspaceKanbanPage() {
                     </KanbanHeader>
                   <KanbanCards
                     className="flex-1 overflow-y-auto"
+                    count={columnTasks.length}
                     emptyMessage={t("workspace.noTasks", "No tasks")}
                     emptyHint={t("workspace.emptyColumnHint", "Drag tasks here or click + to create")}
                   >

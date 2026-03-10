@@ -496,6 +496,33 @@ export {
   type ProjectType as TeamProjectType,
 } from "./team";
 
+// Index Generator
+export {
+  IndexBuilder,
+  CodeAnalyzer,
+  DocsAnalyzer,
+  AIEnhancer,
+  AIEnhancerError,
+  CodeFormatter,
+  DocsFormatter,
+  OverviewFormatter,
+  type CodeIndex,
+  type TechStack,
+  type PackageInfo,
+  type AppInfo,
+  type KeyFile,
+  type ExportInfo,
+  type DirectoryNode,
+  type DocsIndex,
+  type DocCategory,
+  type DocInfo,
+  type EnhanceRequest,
+  type EnhanceResult,
+  type ImportanceScore,
+  type IndexBuilderOptions,
+  type GenerateResult,
+} from "./index-generator";
+
 // CLI
 export { run, createProgram } from "./cli";
 

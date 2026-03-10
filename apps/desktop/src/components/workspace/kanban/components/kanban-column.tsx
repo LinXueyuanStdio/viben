@@ -198,6 +198,7 @@ export function KanbanColumn({
             {/* Scrollable task cards */}
             <KanbanCards
               className="flex-1 overflow-y-auto"
+              count={column.tasks.length}
               emptyMessage={emptyState?.message ?? t("workspace.noTasks", "No tasks")}
               emptyHint={emptyState?.hint ?? t(
                 "workspace.emptyColumnHint",
@@ -206,7 +207,6 @@ export function KanbanColumn({
               emptyIcon={emptyState?.icon}
               isOver={isOver && isValidDropTarget !== false}
               dropHereText={emptyState?.dropText ?? t("workspace.dropHere", "Drop here")}
-              isEmpty={column.tasks.length === 0}
             >
               <AnimatePresence initial={false}>
                 {column.tasks.map((task, index) => (

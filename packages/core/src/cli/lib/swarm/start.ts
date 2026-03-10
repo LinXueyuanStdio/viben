@@ -33,8 +33,6 @@ import { join, resolve, relative, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import {
-  DIR_VIBEN,
-  FILE_CURRENT_TASK,
   FILE_TASK_JSON,
   readTaskJson,
   writeTaskJson,
@@ -410,20 +408,9 @@ export async function startAgent(
   }
 
   // =============================================================================
-  // Step 2: Set .current-task in Worktree
+  // Step 2: Prepare and Start Agent
   // =============================================================================
-
-  const worktreeWorkflowDir = join(worktreePath, DIR_VIBEN);
-  if (!existsSync(worktreeWorkflowDir)) {
-    mkdirSync(worktreeWorkflowDir, { recursive: true });
-  }
-
-  const currentTaskFile = join(worktreeWorkflowDir, FILE_CURRENT_TASK);
-  writeFileSync(currentTaskFile, taskDirRelative, "utf-8");
-
-  // =============================================================================
-  // Step 3: Prepare and Start Agent
-  // =============================================================================
+  // Note: task_dir is passed via prompt, no need to write .current-task file
 
   // Update task status
   taskData.status = "in_progress";
@@ -459,8 +446,9 @@ export async function startAgent(
   // Build CLI command using adapter
   const cliCmd = adapter.buildRunCommand({
     agent: "dispatch",
-    prompt:
-      "Follow your agent instructions to execute the task workflow. Start by reading .viben/.current-task to get the task directory, then execute each action in task.json next_action array in order.",
+    prompt: `task_dir: ${taskDirRelative}
+
+Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
     sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
     skipPermissions,
     verbose,
@@ -751,13 +739,7 @@ export function startAgentSync(
     }
   }
 
-  // Set current task
-  const worktreeWorkflowDir = join(worktreePath, DIR_VIBEN);
-  if (!existsSync(worktreeWorkflowDir)) {
-    mkdirSync(worktreeWorkflowDir, { recursive: true });
-  }
-  const currentTaskFile = join(worktreeWorkflowDir, FILE_CURRENT_TASK);
-  writeFileSync(currentTaskFile, taskDirRelative, "utf-8");
+  // Note: task_dir is passed via prompt, no need to write .current-task file
 
   // Update task status
   taskData.status = "in_progress";
@@ -782,8 +764,9 @@ export function startAgentSync(
 
   const cliCmd = adapter.buildRunCommand({
     agent: "dispatch",
-    prompt:
-      "Follow your agent instructions to execute the task workflow. Start by reading .viben/.current-task to get the task directory, then execute each action in task.json next_action array in order.",
+    prompt: `task_dir: ${taskDirRelative}
+
+Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
     sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
     skipPermissions,
     verbose,
