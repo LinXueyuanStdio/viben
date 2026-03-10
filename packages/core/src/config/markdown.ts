@@ -31,6 +31,29 @@ export async function readMarkdownConfig<T>(path: string): Promise<MarkdownConfi
 }
 
 /**
+ * Recursively remove undefined values from an object
+ * This is necessary because YAML serializers cannot handle undefined values
+ */
+function removeUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefined) as T;
+  }
+  if (typeof obj === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      if (value !== undefined) {
+        result[key] = removeUndefined(value);
+      }
+    }
+    return result as T;
+  }
+  return obj;
+}
+
+/**
  * Write a markdown file with YAML frontmatter
  *
  * @param path - Path to the markdown file
@@ -43,6 +66,8 @@ export async function writeMarkdownConfig<T extends object>(
   body: string
 ): Promise<void> {
   await ensureDir(dirname(path));
-  const content = matter.stringify(body, frontmatter as Record<string, unknown>);
+  // Remove undefined values to avoid YAML serialization errors
+  const cleanFrontmatter = removeUndefined(frontmatter);
+  const content = matter.stringify(body, cleanFrontmatter as Record<string, unknown>);
   await writeFile(path, content, "utf-8");
 }

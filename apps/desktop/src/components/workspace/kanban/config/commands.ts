@@ -37,7 +37,7 @@ import {
 import * as React from "react";
 
 // Type for task status
-type TaskStatus = "backlog" | "queue" | "in_progress" | "ai_review" | "human_review" | "done";
+type TaskStatus = "backlog" | "queue" | "in_progress" | "paused" | "ai_review" | "human_review" | "completed" | "failed" | "cancelled";
 
 /**
  * Minimal task interface for commands
@@ -196,14 +196,14 @@ function createNavigationCommands(
       },
     },
     {
-      id: "goto-done",
-      label: t("workspace.column.done", "Done"),
-      description: t("workspace.commandPalette.gotoDoneDesc", "Jump to first completed task"),
+      id: "goto-completed",
+      label: t("workspace.column.completed", "Completed"),
+      description: t("workspace.commandPalette.gotoCompletedDesc", "Jump to first completed task"),
       icon: React.createElement(CheckCircle2, { className: "h-4 w-4" }),
       category: "navigation",
-      keywords: ["go", "jump", "done", "complete", "完成"],
+      keywords: ["go", "jump", "completed", "complete", "完成"],
       action: () => {
-        const tasks = tasksByColumn["done"];
+        const tasks = tasksByColumn["completed"];
         if (tasks && tasks.length > 0) {
           setSelectedTaskId(tasks[0].id);
         }
@@ -255,15 +255,15 @@ function createActionCommands(
       action: () => handleQueueAll(),
     },
     {
-      id: "archive-done",
-      label: t("workspace.archiveAll", "Archive All Done Tasks"),
+      id: "archive-completed",
+      label: t("workspace.archiveAll", "Archive All Completed Tasks"),
       description: t("workspace.commandPalette.archiveAllDesc", "Archive all completed tasks"),
       icon: React.createElement(Archive, { className: "h-4 w-4" }),
       category: "action",
-      keywords: ["archive", "done", "complete", "clean", "归档", "清理"],
+      keywords: ["archive", "completed", "complete", "clean", "归档", "清理"],
       action: async () => {
-        const doneTasks = tasksByColumn["done"] || [];
-        const unarchived = doneTasks.filter((task) => !task.archived);
+        const completedTasks = tasksByColumn["completed"] || [];
+        const unarchived = completedTasks.filter((task) => !task.archived);
         if (unarchived.length === 0) {
           toast.info(t("workspace.noTasksToArchive", "No tasks to archive"));
           return;
@@ -342,7 +342,7 @@ function createTaskOperationCommands(
       keywords: ["run", "start", "execute", "agent", "运行", "启动"],
       action: () => {
         const task = allTasks.find((t) => t.id === selectedTaskId);
-        if (task && !task.has_in_progress_attempt && task.status !== "done") {
+        if (task && !task.has_in_progress_attempt && task.status !== "completed") {
           handleStartTask(selectedTaskId);
         }
       },

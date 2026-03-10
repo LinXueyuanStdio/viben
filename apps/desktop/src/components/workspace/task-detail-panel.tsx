@@ -1062,11 +1062,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         backlog: t("workspace.kanbanStatus.backlog", "Backlog"),
                         queue: t("workspace.kanbanStatus.queue", "Queue"),
                         in_progress: t("workspace.kanbanStatus.inProgress", "In Progress"),
+                        paused: t("workspace.kanbanStatus.paused", "Paused"),
                         ai_review: t("workspace.kanbanStatus.aiReview", "AI Review"),
                         human_review: t("workspace.kanbanStatus.humanReview", "Human Review"),
-                        done: t("workspace.kanbanStatus.done", "Done"),
-                        pr_created: t("workspace.kanbanStatus.prCreated", "PR Created"),
-                        error: t("workspace.kanbanStatus.error", "Error"),
+                        completed: t("workspace.kanbanStatus.completed", "Completed"),
+                        failed: t("workspace.kanbanStatus.failed", "Failed"),
+                        cancelled: t("workspace.kanbanStatus.cancelled", "Cancelled"),
                       }}
                     />
                   ) : (

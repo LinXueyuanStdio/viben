@@ -413,10 +413,10 @@ export function InspectorPage() {
         // Build config with fresh status and pass it to connect
         const freshConfig = buildEffectiveConfig(freshStatus);
         console.log("[Inspector] Fresh config built:", {
-          url: freshConfig?.url,
+          url: freshConfig && "url" in freshConfig ? freshConfig.url : undefined,
           transport: freshConfig?.transport,
-          headers: freshConfig?.headers ? Object.keys(freshConfig.headers) : [],
-          hasXMcpProxyAuth: freshConfig?.headers?.["X-MCP-Proxy-Auth"] ? "yes" : "no",
+          headers: freshConfig && "headers" in freshConfig && freshConfig.headers ? Object.keys(freshConfig.headers) : [],
+          hasXMcpProxyAuth: freshConfig && "headers" in freshConfig && freshConfig.headers?.["X-MCP-Proxy-Auth"] ? "yes" : "no",
         });
 
         if (freshConfig) {

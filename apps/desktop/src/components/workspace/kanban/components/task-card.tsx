@@ -186,7 +186,7 @@ export const TaskCard = memo(function TaskCard({
   const canRecover = isStuck;
   const canResume = task.last_attempt_failed && !task.has_in_progress_attempt;
   const canViewPR = !!(task.prUrl || task.pr_url);
-  const canArchive = task.status === "done" && !task.archivedAt;
+  const canArchive = task.status === "completed" && !task.archivedAt;
 
   return (
     <KanbanCard

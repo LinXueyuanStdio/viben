@@ -234,7 +234,7 @@ function getContextText(repoRoot: string): string {
   // My tasks
   lines.push("## MY TASKS (Assigned to me)");
   const myTasks = tasks.filter(
-    (t) => t.assignee === developer && t.status !== "done"
+    (t) => t.assignee === developer && t.status !== "completed"
   );
 
   if (myTasks.length > 0) {

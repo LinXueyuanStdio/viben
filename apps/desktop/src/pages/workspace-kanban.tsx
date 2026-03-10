@@ -283,7 +283,7 @@ const TaskCardContent = memo(function TaskCardContent({
     task.dueDate ||
     isStuck ||
     isFailed ||
-    (task.status === "done" && (task.prUrl || task.pr_url));
+    (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time
   const relativeTime = useMemo(
@@ -515,8 +515,8 @@ const TaskCardContent = memo(function TaskCardContent({
                 <Play className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.resume", "Resume")}
               </Button>
-            ) : /* Priority 3: Done with PR - Show View PR and Archive buttons */
-            task.status === "done" && (task.prUrl || task.pr_url) ? (
+            ) : /* Priority 3: Completed with PR - Show View PR and Archive buttons */
+            task.status === "completed" && (task.prUrl || task.pr_url) ? (
               <div className="flex gap-1">
                 {onViewPR && (
                   <Button
@@ -547,8 +547,8 @@ const TaskCardContent = memo(function TaskCardContent({
                   </Button>
                 )}
               </div>
-            ) : /* Priority 4: Done without PR - Show Archive button */
-            task.status === "done" && !isArchived && onArchive ? (
+            ) : /* Priority 4: Completed without PR - Show Archive button */
+            task.status === "completed" && !isArchived && onArchive ? (
               <Button
                 variant="ghost"
                 size="sm"
@@ -783,9 +783,12 @@ function useColumnStatuses(): Status[] {
     backlog: "backlog",
     queue: "queue",
     in_progress: "inProgress",
+    paused: "paused",
     ai_review: "aiReview",
     human_review: "humanReview",
-    done: "done",
+    completed: "completed",
+    failed: "failed",
+    cancelled: "cancelled",
   };
 
   return KANBAN_COLUMNS.map((id) => ({
@@ -1167,13 +1170,13 @@ export function WorkspaceKanbanPage() {
     return grouped;
   }, [sortedTasks, columnStatuses, showArchived, archivedTaskIds]);
 
-  // Count archived tasks in Done column (for badge display)
-  const archivedDoneCount = useMemo(() => {
-    const doneTasks = (sortedTasks ?? []).filter((task) => {
+  // Count archived tasks in Completed column (for badge display)
+  const archivedCompletedCount = useMemo(() => {
+    const completedTasks = (sortedTasks ?? []).filter((task) => {
       const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
-      return mappedColumn === "done";
+      return mappedColumn === "completed";
     });
-    return doneTasks.filter((task) => archivedTaskIds.includes(task.id)).length;
+    return completedTasks.filter((task) => archivedTaskIds.includes(task.id)).length;
   }, [sortedTasks, archivedTaskIds]);
 
   // Handle drag end - move task to new status with transition validation
@@ -1512,10 +1515,10 @@ export function WorkspaceKanbanPage() {
     }
   }, [workspace, tasksByColumn, updateTaskStatus, queueAllBacklogTasks, toast, t]);
 
-  // Archive All - archive all done tasks
+  // Archive All - archive all completed tasks
   const handleArchiveAll = useCallback(() => {
-    const doneTasks = tasksByColumn["done"] ?? [];
-    const taskIds = doneTasks.map((t) => t.id);
+    const completedTasks = tasksByColumn["completed"] ?? [];
+    const taskIds = completedTasks.map((t) => t.id);
     if (taskIds.length === 0) return;
 
     archiveAllDone(taskIds);
@@ -1659,14 +1662,14 @@ export function WorkspaceKanbanPage() {
         },
       },
       {
-        id: "goto-done",
-        label: t("workspace.column.done", "Done"),
-        description: t("workspace.commandPalette.gotoDoneDesc", "Jump to first completed task"),
+        id: "goto-completed",
+        label: t("workspace.column.completed", "Completed"),
+        description: t("workspace.commandPalette.gotoCompletedDesc", "Jump to first completed task"),
         icon: <CheckCircle2 className="h-4 w-4" />,
         category: "navigation",
-        keywords: ["go", "jump", "done", "complete", "完成"],
+        keywords: ["go", "jump", "completed", "complete", "完成"],
         action: () => {
-          const tasks = tasksByColumn["done"];
+          const tasks = tasksByColumn["completed"];
           if (tasks && tasks.length > 0) {
             setSelectedTaskId(tasks[0].id);
           }
@@ -1719,10 +1722,10 @@ export function WorkspaceKanbanPage() {
         description: t("workspace.commandPalette.archiveAllDesc", "Archive all completed tasks"),
         icon: <Archive className="h-4 w-4" />,
         category: "action",
-        keywords: ["archive", "done", "complete", "clean", "归档", "清理"],
+        keywords: ["archive", "completed", "complete", "clean", "归档", "清理"],
         action: async () => {
-          const doneTasks = tasksByColumn["done"] || [];
-          const unarchived = doneTasks.filter((task) => !task.archived);
+          const completedTasks = tasksByColumn["completed"] || [];
+          const unarchived = completedTasks.filter((task) => !task.archived);
           if (unarchived.length === 0) {
             toast.info(t("workspace.noTasksToArchive", "No tasks to archive"));
             return;
@@ -1769,7 +1772,7 @@ export function WorkspaceKanbanPage() {
           keywords: ["run", "start", "execute", "agent", "运行", "启动"],
           action: () => {
             const task = sortedTasks.find((t) => t.id === selectedTaskId);
-            if (task && !task.has_in_progress_attempt && task.status !== "done") {
+            if (task && !task.has_in_progress_attempt && task.status !== "completed") {
               handleStartTask(selectedTaskId);
             }
           },
@@ -2420,7 +2423,7 @@ export function WorkspaceKanbanPage() {
                                 )}
 
                                 {/* Archive toggle button - show when there are archived tasks */}
-                                {archivedDoneCount > 0 && (
+                                {archivedCompletedCount > 0 && (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -2440,14 +2443,14 @@ export function WorkspaceKanbanPage() {
                                         >
                                           <Archive className="h-3.5 w-3.5" />
                                           <span className="absolute -top-1 -right-1 text-[9px] font-medium bg-muted rounded-full min-w-[12px] h-[12px] flex items-center justify-center">
-                                            {archivedDoneCount}
+                                            {archivedCompletedCount}
                                           </span>
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="text-xs">
                                         {showArchived
                                           ? t("workspace.hideArchived", "Hide Archived")
-                                          : t("workspace.showArchived", "Show Archived ({{count}})", { count: archivedDoneCount })}
+                                          : t("workspace.showArchived", "Show Archived ({{count}})", { count: archivedCompletedCount })}
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
@@ -2571,7 +2574,7 @@ export function WorkspaceKanbanPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 z-50" sideOffset={5}>
                                   {/* Start task - only show for non-running tasks */}
-                                  {!task.has_in_progress_attempt && task.status !== "done" && (
+                                  {!task.has_in_progress_attempt && task.status !== "completed" && (
                                     <>
                                       <DropdownMenuItem
                                         onClick={() => {
@@ -2665,7 +2668,7 @@ export function WorkspaceKanbanPage() {
                                   : undefined
                               }
                               onArchive={
-                                task.status === "done" && !task.archived
+                                task.status === "completed" && !task.archived
                                   ? () => handleArchiveTask(task.id)
                                   : undefined
                               }

@@ -273,8 +273,8 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 2: Error state - Show Retry and Abandon buttons
-    if (status === "error") {
+    // Priority 2: Failed state - Show Retry and Abandon buttons
+    if (status === "failed") {
       buttonList.push(
         <Button
           key="retry"
@@ -500,8 +500,8 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 8: Done state - Show completion indicator
-    if (status === "done" || status === "pr_created") {
+    // Priority 8: Completed state - Show completion indicator
+    if (status === "completed") {
       buttonList.push(
         <div
           key="complete"

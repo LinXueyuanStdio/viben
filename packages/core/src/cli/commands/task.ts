@@ -176,28 +176,33 @@ function readTaskJson(taskDir: string): TaskJson | null {
 
 /**
  * Format task status for display
- * Uses unified status values: backlog, queue, in_progress, ai_review, human_review, done, pr_created, error
+ * Uses unified status values: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled
  */
 function formatStatus(status: string): string {
   switch (status) {
     // Completed states
-    case "done":
-    case "pr_created":
-    case "completed": // Legacy
+    case "completed":
       return chalk.green(status);
     // In-progress states
     case "in_progress":
-    case "ai_review":
     case "queue":
       return chalk.blue(status);
     // Waiting states
     case "backlog":
     case "human_review":
-    case "planning": // Legacy
+    case "paused":
       return chalk.yellow(status);
-    // Error state
-    case "error":
+    // Error/terminal states
+    case "failed":
+    case "cancelled":
       return chalk.red(status);
+    // Legacy mappings
+    case "done":
+    case "pr_created":
+      return chalk.green("completed");
+    case "planning":
+    case "error":
+      return chalk.gray(status);
     default:
       return chalk.gray(status);
   }
@@ -242,7 +247,7 @@ export function registerTaskCommand(program: Command): void {
     .command("list")
     .description("List all tasks")
     .option("-m, --mine", "Show only tasks assigned to current developer")
-    .option("-s, --status <status>", "Filter by status (planning, in_progress, completed)")
+    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, human_review, completed)")
     .option("--json", "Output in JSON format")
     .action(async (options: { mine?: boolean; status?: string; json?: boolean }) => {
       const ctx = getContext(program);
@@ -742,7 +747,7 @@ export function registerTaskCommand(program: Command): void {
         if (existsSync(taskJsonPath)) {
           const taskData = readTaskJsonFromWorkspace(taskDir);
           if (taskData) {
-            taskData.status = "done";
+            taskData.status = "completed";
             taskData.completedAt = today;
             writeTaskJson(taskDir, taskData);
           }
@@ -1460,7 +1465,7 @@ export function registerTaskCommand(program: Command): void {
     .description("Show task status")
     .argument("[task]", "Specific task to show (shows all if not specified)")
     .option("-a, --assignee <dev>", "Filter by assignee")
-    .option("-s, --status <status>", "Filter by status (planning, in_progress, completed)")
+    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, human_review, completed)")
     .option("--running", "Show only tasks with running agents")
     .option("--json", "Output in JSON format")
     .option("--list", "List all worktrees and agents")
@@ -1735,7 +1740,7 @@ export function registerTaskCommand(program: Command): void {
         console.log(chalk.yellow("Updating task status..."));
         if (dryRun) {
           console.log("[DRY-RUN] Would update task.json:");
-          console.log("  status: pr_created");
+          console.log("  status: human_review");
           console.log(`  pr_url: ${prUrl}`);
           console.log("  current_phase: (set to create-pr phase)");
         } else {
@@ -1745,11 +1750,11 @@ export function registerTaskCommand(program: Command): void {
             createPrPhase = 4; // Default fallback
           }
 
-          updateTaskField(taskDirPath, "status", "pr_created");
+          updateTaskField(taskDirPath, "status", "human_review");
           updateTaskField(taskDirPath, "pr_url", prUrl);
           updateTaskField(taskDirPath, "current_phase", createPrPhase);
 
-          console.log(chalk.green(`Task status updated to 'pr_created', phase ${createPrPhase}`));
+          console.log(chalk.green(`Task status updated to 'human_review', phase ${createPrPhase}`));
         }
 
         // In dry-run, reset staging area
@@ -2395,28 +2400,33 @@ function countModifiedFiles(worktree: string): number {
 
 /**
  * Format status with color
- * Uses unified status values: backlog, queue, in_progress, ai_review, human_review, done, pr_created, error
+ * Uses unified status values: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled
  */
 function statusColor(status: string): string {
   switch (status) {
     // Completed states
-    case "done":
-    case "pr_created":
-    case "completed": // Legacy
+    case "completed":
       return chalk.green(status);
     // In-progress states
     case "in_progress":
-    case "ai_review":
     case "queue":
       return chalk.blue(status);
     // Waiting states
     case "backlog":
     case "human_review":
-    case "planning": // Legacy
+    case "paused":
       return chalk.yellow(status);
-    // Error state
-    case "error":
+    // Error/terminal states
+    case "failed":
+    case "cancelled":
       return chalk.red(status);
+    // Legacy mappings
+    case "done":
+    case "pr_created":
+      return chalk.green("completed");
+    case "planning":
+    case "error":
+      return chalk.gray(status);
     default:
       return chalk.gray(status);
   }
@@ -2592,8 +2602,8 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
   if (stoppedTasks.length > 0) {
     console.log(chalk.red("Stopped Agents:"));
     for (const t of stoppedTasks) {
-      // Check for completed states (done, pr_created, or legacy "completed")
-      if (t.status === "done" || t.status === "pr_created" || t.status === "completed") {
+      // Check for completed states
+      if (t.status === "completed" || t.status === "done" || t.status === "pr_created") {
         console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
       } else {
         if (existsSync(t.sessionIdFile)) {
@@ -2631,8 +2641,8 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
       const priorityCompare = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
       if (priorityCompare !== 0) return priorityCompare;
 
-      const statusOrder: Record<string, number> = { in_progress: 0, planning: 1, completed: 2 };
-      return (statusOrder[a.status] || 1) - (statusOrder[b.status] || 1);
+      const statusOrder: Record<string, number> = { in_progress: 0, queue: 1, backlog: 2, human_review: 3, completed: 4 };
+      return (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2);
     });
 
     let currentAssignee: string | null = null;

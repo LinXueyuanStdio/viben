@@ -100,7 +100,7 @@ export const ColumnHeader = memo(function ColumnHeader({
   const isBacklog = id === "backlog";
   const isQueue = id === "queue";
   const isInProgress = id === "in_progress";
-  const isDone = id === "done";
+  const isCompleted = id === "completed";
 
   // Show capacity indicator for in_progress, otherwise show task count
   const showCapacity = isInProgress && capacity;
@@ -216,8 +216,8 @@ export const ColumnHeader = memo(function ColumnHeader({
         />
       )}
 
-      {/* Done column actions: Archive All + Toggle Archived */}
-      {isDone && (
+      {/* Completed column actions: Archive All + Toggle Archived */}
+      {isCompleted && (
         <>
           {/* Archive All button - only show when there are unarchived tasks */}
           {taskCount > 0 && !showArchived && onArchiveAll && (

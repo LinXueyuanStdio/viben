@@ -77,11 +77,11 @@ export function TaskCardMenu({
   const { t } = useTranslation();
 
   // Determine which actions to show based on task state
-  const canStart = !task.has_in_progress_attempt && task.status !== "done";
+  const canStart = !task.has_in_progress_attempt && task.status !== "completed";
   const canStop = task.has_in_progress_attempt === true;
   const canRecover = task.is_stuck === true;
   const canResume = task.last_attempt_failed === true && !task.has_in_progress_attempt;
-  const canArchive = task.status === "done" && !task.archivedAt;
+  const canArchive = task.status === "completed" && !task.archivedAt;
   // Support both snake_case (from API) and camelCase (from EnhancedTask)
   const prUrl = task.pr_url || task.prUrl;
   const hasPR = Boolean(prUrl);

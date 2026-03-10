@@ -57,7 +57,7 @@ export interface UseModelsReturn {
   /** Get models by provider */
   getModelsByProvider: (providerId: string) => WorkspaceModel[];
   /** Get a model by ID */
-  getModel: (id: string) => Promise<ModelResponse>;
+  getModel: (id: string) => Promise<ModelResponse | null>;
 
   // CRUD operations
   /** Create a new custom model */
@@ -162,7 +162,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
     [models]
   );
 
-  const getModel = useCallback(async (id: string): Promise<ModelResponse> => {
+  const getModel = useCallback(async (id: string): Promise<ModelResponse | null> => {
     const client = getGatewayClient();
     return client.getModel(id);
   }, []);

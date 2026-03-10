@@ -119,7 +119,7 @@ export const TaskCardContent = memo(function TaskCardContent({
     task.dueDate ||
     isStuck ||
     isFailed ||
-    (task.status === "done" && (task.prUrl || task.pr_url));
+    (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time (for non-running tasks)
   const relativeTime = useMemo(
@@ -379,8 +379,8 @@ export const TaskCardContent = memo(function TaskCardContent({
                 <Play className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.resume", "Resume")}
               </Button>
-            ) : /* Priority 3: Done with PR - Show View PR and Archive buttons */
-            task.status === "done" && (task.prUrl || task.pr_url) ? (
+            ) : /* Priority 3: Completed with PR - Show View PR and Archive buttons */
+            task.status === "completed" && (task.prUrl || task.pr_url) ? (
               <div className="flex gap-1">
                 {onViewPR && (
                   <Button
@@ -411,8 +411,8 @@ export const TaskCardContent = memo(function TaskCardContent({
                   </Button>
                 )}
               </div>
-            ) : /* Priority 4: Done without PR - Show Archive button */
-            task.status === "done" && !isArchived && onArchive ? (
+            ) : /* Priority 4: Completed without PR - Show Archive button */
+            task.status === "completed" && !isArchived && onArchive ? (
               <Button
                 variant="ghost"
                 size="sm"

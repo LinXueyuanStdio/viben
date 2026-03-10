@@ -284,7 +284,7 @@ export const taskMachine = createMachine(
       human_review: {
         on: {
           APPROVED: { target: "completed" },
-          REJECTED: { target: "in_progress.coding" },
+          REJECTED: { target: "backlog" },
           CANCEL: { target: "cancelled" },
         },
       },
@@ -301,7 +301,7 @@ export const taskMachine = createMachine(
       // ==========================================================================
       failed: {
         on: {
-          RETRY: { target: "in_progress" },
+          RETRY: { target: "queue" },
           ABANDON: { target: "backlog" },
         },
       },

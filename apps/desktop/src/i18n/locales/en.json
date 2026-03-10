@@ -105,7 +105,8 @@
     "openInExplorer": "Open in file manager",
     "learnMore": "Learn More",
     "noData": "No data",
-    "id": "ID"
+    "id": "ID",
+    "openFolderFailed": "Failed to open folder"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -2350,19 +2351,23 @@
       "backlog": "Backlog",
       "queue": "Queue",
       "in_progress": "In Progress",
+      "paused": "Paused",
       "ai_review": "AI Review",
       "human_review": "Human Review",
-      "done": "Done",
-      "pr_created": "PR Created",
-      "error": "Error"
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
     },
     "column": {
       "backlog": "Backlog",
       "queue": "Queue",
       "inProgress": "In Progress",
+      "paused": "Paused",
       "aiReview": "AI Review",
       "humanReview": "Human Review",
-      "done": "Done"
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
     },
     "taskDetail": "Details",
     "taskName": "Task Name",
@@ -2397,7 +2402,10 @@
     "filter": {
       "backlog": "Filter: Backlog Only",
       "inProgress": "Filter: In Progress Only",
-      "done": "Filter: Done Only",
+      "paused": "Filter: Paused Only",
+      "completed": "Filter: Completed Only",
+      "failed": "Filter: Failed Only",
+      "cancelled": "Filter: Cancelled Only",
       "clear": "Clear All Filters",
       "search": "Search Tasks"
     },
@@ -3779,7 +3787,13 @@
     },
     "sessions": {
       "loadFailed": "Failed to load sessions",
-      "refreshFailed": "Failed to refresh sessions"
+      "refreshFailed": "Failed to refresh sessions",
+      "renamed": "Session renamed",
+      "renameFailed": "Failed to rename session",
+      "deleted": "Session deleted",
+      "deleteFailed": "Failed to delete session",
+      "created": "New session created",
+      "createFailed": "Failed to create session"
     },
     "packages": {
       "loadFailed": "Failed to load packages"

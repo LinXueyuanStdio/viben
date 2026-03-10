@@ -102,12 +102,12 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
                       │ RESUME                     ┌────┘    └────┐
                       └────────────────────────────▼              ▼
                                              ┌───────────┐    ┌─────────┐
-                                             │ completed │    │ coding  │
+                                             │ completed │    │ backlog │
                                              └───────────┘    └─────────┘
 
     CANCEL 事件: backlog/queue/paused/human_review → cancelled
     *_FAILED 事件 → failed
-    failed + RETRY → in_progress
+    failed + RETRY → queue
     failed + ABANDON → backlog
 ```
 
@@ -151,7 +151,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 |------|------|----------|
 | `USER_STOPPED` | 用户手动停止 | * → backlog 或 human_review |
 | `APPROVED` | 人工批准 | human_review → completed |
-| `REJECTED` | 人工拒绝 | human_review → coding |
+| `REJECTED` | 人工拒绝 | human_review → backlog |
 | `CANCEL` | 取消任务 | backlog/queue/paused/human_review → cancelled |
 
 #### 暂停/恢复事件
@@ -163,7 +163,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 #### 恢复事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `RETRY` | 重试 | failed → in_progress |
+| `RETRY` | 重试 | failed → queue |
 | `ABANDON` | 放弃 | failed/paused → backlog |
 
 ## 核心类型定义

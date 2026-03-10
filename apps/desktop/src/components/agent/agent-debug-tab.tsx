@@ -326,8 +326,8 @@ export function AgentDebugTab({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {/* Search */}
-                <DropdownMenuItem>
+                {/* Search - disabled for now */}
+                <DropdownMenuItem disabled>
                   <Search className="h-4 w-4 mr-3" />
                   {t("chat.searchInConversation", "Search in conversation")}
                 </DropdownMenuItem>
@@ -335,7 +335,7 @@ export function AgentDebugTab({
                 <DropdownMenuSeparator />
 
                 {/* Open session folder */}
-                <DropdownMenuItem onClick={() => onOpenSessionFolder?.()}>
+                <DropdownMenuItem onSelect={() => onOpenSessionFolder?.()}>
                   <FolderOpen className="h-4 w-4 mr-3" />
                   {t("chat.openSessionFolder", "Open Session Folder")}
                 </DropdownMenuItem>
@@ -344,7 +344,7 @@ export function AgentDebugTab({
 
                 {/* Clear messages */}
                 <DropdownMenuItem
-                  onClick={() => onClearMessages?.()}
+                  onSelect={() => onClearMessages?.()}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-3" />
