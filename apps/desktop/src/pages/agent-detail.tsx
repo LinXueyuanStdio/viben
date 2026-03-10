@@ -50,6 +50,7 @@ import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
 import type { TraceSpanNode, TraceTree } from "@/components/observability";
+import { toast } from "@/hooks/use-toast";
 
 // ============================================================================
 // Main Component
@@ -329,45 +330,71 @@ export function AgentDetailPage() {
 
   const { isValid: formIsValid, errors: validationErrors } = validateForm();
 
-  // Save agent
+  // Save agent with toast feedback
   const handleSave = useCallback(async () => {
     if (!agentId) return;
+
+    // Validate form first
+    const { isValid, errors } = validateForm();
+    if (!isValid) {
+      toast.error(t("settingsAgents.validationError", "Validation failed"), {
+        description: errors.join(", "),
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      await updateAgent(agentId, {
+      // Build update payload, excluding undefined values to avoid YAML serialization errors
+      const updatePayload: Parameters<typeof updateAgent>[1] = {
         name: formName,
-        description: formDescription || undefined,
-        system_prompt: formSystemPrompt || undefined,
-        append_prompt: formAppendPrompt || undefined,
         temperature: formTemperature,
-        model: formModel || undefined,
         executor_type: formExecutorType,
         plan_mode: formPlanMode,
         approvals: formApprovals,
         mcp_servers: selectedMcpServers,
         skills: selectedSkills,
         is_template: formIsTemplate,
-        template_description: formTemplateDescription || undefined,
-        template_tags: formTemplateTags.length > 0 ? formTemplateTags : undefined,
-        custom_variables: formCustomVariables.length > 0
-          ? formCustomVariables.map(v => ({
-              name: v.name,
-              default_value: v.defaultValue,
-              description: v.description,
-            }))
-          : undefined,
-        env_variables: formEnvVariables.length > 0 ? formEnvVariables : undefined,
-      });
+      };
+
+      // Only include optional fields if they have values
+      if (formDescription) updatePayload.description = formDescription;
+      if (formSystemPrompt) updatePayload.system_prompt = formSystemPrompt;
+      if (formAppendPrompt) updatePayload.append_prompt = formAppendPrompt;
+      if (formModel) updatePayload.model = formModel;
+      if (formTemplateDescription) updatePayload.template_description = formTemplateDescription;
+      if (formTemplateTags.length > 0) updatePayload.template_tags = formTemplateTags;
+      if (formEnvVariables.length > 0) updatePayload.env_variables = formEnvVariables;
+
+      // Handle custom variables - filter out undefined values in each variable
+      if (formCustomVariables.length > 0) {
+        updatePayload.custom_variables = formCustomVariables.map(v => {
+          const variable: { name: string; default_value?: string; description?: string } = {
+            name: v.name,
+          };
+          if (v.defaultValue) variable.default_value = v.defaultValue;
+          if (v.description) variable.description = v.description;
+          return variable;
+        });
+      }
+
+      await updateAgent(agentId, updatePayload);
       setIsDirty(false);
       setLastSaved(new Date());
+      toast.success(t("settingsAgents.saveSuccess", "Agent saved successfully"));
     } catch (err) {
       console.error("Failed to save agent:", err);
+      toast.error(t("settingsAgents.saveFailed", "Failed to save agent"), {
+        description: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setSaving(false);
     }
   }, [
     agentId,
     updateAgent,
+    validateForm,
+    t,
     formName,
     formDescription,
     formSystemPrompt,
@@ -386,14 +413,10 @@ export function AgentDetailPage() {
     formEnvVariables,
   ]);
 
-  // Debounced save
+  // Debounced save for keyboard shortcut (Cmd+S) to avoid multiple rapid saves
   const { run: debouncedSave, cancel: cancelDebouncedSave } = useDebounceFn(
-    () => {
-      if (formIsValid) {
-        handleSave();
-      }
-    },
-    { wait: 300, leading: false, trailing: true }
+    handleSave,
+    { wait: 300, leading: true, trailing: false }
   );
 
   // Keyboard shortcut: Cmd+S to save
@@ -601,11 +624,7 @@ export function AgentDetailPage() {
     setIsLoadingDebugSessions(true);
     try {
       const client = getGatewayClient();
-      const sessions = await client.getSessionList({
-        workspacePath: debugWorkdir,
-        agentId,
-        limit: 50,
-      });
+      const sessions = await client.listAgentSessions(agentId, debugWorkdir);
       setDebugSessions(
         sessions.map((s) => ({
           id: s.id,
@@ -636,6 +655,36 @@ export function AgentDetailPage() {
   const handleCreateDebugSession = useCallback(() => {
     clearMessages();
   }, [clearMessages]);
+
+  const handleRenameDebugSession = useCallback(async (sessionIdToRename: string, newName: string) => {
+    if (!agentId) return;
+    try {
+      const client = getGatewayClient();
+      await client.updateSession(agentId, sessionIdToRename, {
+        metadata: { name: newName },
+      });
+      // Reload sessions to reflect the change
+      loadDebugSessions();
+    } catch (error) {
+      console.error("[agent-detail] Failed to rename session:", error);
+    }
+  }, [agentId, loadDebugSessions]);
+
+  const handleDeleteDebugSession = useCallback(async (sessionIdToDelete: string) => {
+    if (!agentId) return;
+    try {
+      const client = getGatewayClient();
+      await client.deleteAgentSession(agentId, sessionIdToDelete);
+      // Reload sessions to reflect the change
+      loadDebugSessions();
+      // If the deleted session is the current one, clear messages
+      if (sessionIdToDelete === sessionId) {
+        clearMessages();
+      }
+    } catch (error) {
+      console.error("[agent-detail] Failed to delete session:", error);
+    }
+  }, [agentId, sessionId, loadDebugSessions, clearMessages]);
 
   const handleOpenSessionFolder = useCallback(async () => {
     if (!sessionId || !debugWorkdir) return;
@@ -751,13 +800,16 @@ export function AgentDetailPage() {
                 <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <Button onClick={debouncedSave} disabled={saving || !isDirty || !formIsValid}>
+            <Button
+              onClick={handleSave}
+              disabled={saving || !isDirty}
+            >
               {saving ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <Save className="h-4 w-4 mr-2" />
               )}
-              {t("common.save")}
+              {saving ? t("common.saving", "Saving...") : t("common.save")}
             </Button>
           </div>
         </div>
@@ -782,6 +834,8 @@ export function AgentDetailPage() {
             onSelectSession={handleSelectDebugSession}
             onCreateSession={handleCreateDebugSession}
             onRefreshSessions={loadDebugSessions}
+            onRenameSession={handleRenameDebugSession}
+            onDeleteSession={handleDeleteDebugSession}
             onOpenSessionFolder={handleOpenSessionFolder}
             onClearMessages={clearMessages}
             messages={messages}

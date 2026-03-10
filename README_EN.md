@@ -1,12 +1,12 @@
 <div align="center">
 
-**中文 | [English](./README_EN.md)**
+**[中文](./README.md) | English**
 
 # 🚀 Viben
 
-### 多智能体工作空间管理器
+### Multi-Agent Workspace Manager
 
-*在本地编排 AI Agent 集群，统一管理看板、日历、时间线和任务*
+*Orchestrate AI Agent clusters locally, unified management of kanban, calendar, timeline and tasks*
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
@@ -19,24 +19,24 @@
 
 ---
 
-## ✨ 特性
+## ✨ Features
 
-| 特性 | 描述 |
-|------|------|
-| 🤖 **多智能体编排** | 在本地工作空间中协调 AI Agent 集群 |
-| 🔌 **MCP 协议** | 完整支持 Model Context Protocol |
-| 🖥️ **跨平台** | CLI、桌面应用、Web 应用三端统一 |
-| 📋 **看板管理** | 可拖拽的任务看板，实时追踪进度 |
-| 📡 **会话监控** | 实时查看 Agent 对话和工具调用 |
+| Feature | Description |
+|---------|-------------|
+| 🤖 **Multi-Agent Orchestration** | Coordinate AI Agent clusters in local workspace |
+| 🔌 **MCP Protocol** | Full support for Model Context Protocol |
+| 🖥️ **Cross-Platform** | CLI, Desktop, and Web apps unified |
+| 📋 **Kanban Board** | Drag-and-drop task management with real-time tracking |
+| 📡 **Session Monitoring** | Real-time view of Agent conversations and tool calls |
 
 ---
 
-## 📦 下载
+## 📦 Download
 
-### 🖥️ 桌面应用
+### 🖥️ Desktop App
 
-| 平台 | 下载 |
-|:----:|------|
+| Platform | Download |
+|:--------:|----------|
 | 🍎 **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
 | 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
 | 🐧 **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
@@ -53,17 +53,17 @@ npm install -g viben
 # Homebrew
 brew tap LinXueyuanStdio/viben && brew install viben
 
-# 或直接运行 (无需安装)
+# Or run directly (no installation)
 npx viben
 ```
 
 ---
 
-## 🏗️ 架构
+## 🏗️ Architecture
 
 ```mermaid
 graph LR
-    subgraph Apps["📱 应用"]
+    subgraph Apps["📱 Apps"]
         CLI["CLI"]
         Desktop["Desktop"]
         Web["Web"]
@@ -80,76 +80,76 @@ graph LR
     Agent --> LLM["LLM APIs"]
 ```
 
-> `packages/core` 是所有应用的唯一边界，配置存储在 `~/.viben/` (YAML)
+> `packages/core` is the single boundary for all apps, config stored in `~/.viben/` (YAML)
 
 ---
 
-## ⚙️ 配置
+## ⚙️ Configuration
 
 ```
 ~/.viben/
 ├── providers.yaml    # API Keys, Endpoints
-├── models.yaml       # 模型参数
-├── agents/           # Agent 定义
+├── models.yaml       # Model parameters
+├── agents/           # Agent definitions
 │   └── <name>/
 │       └── AGENTS.md
-├── cron.yaml         # 定时任务
-├── channels.yaml     # 通知渠道
-└── workspaces.yaml   # 工作空间
+├── cron.yaml         # Scheduled tasks
+├── channels.yaml     # Notification channels
+└── workspaces.yaml   # Workspaces
 ```
 
 ---
 
 <details>
-<summary><b>🛠️ 开发者指南</b></summary>
+<summary><b>🛠️ Developer Guide</b></summary>
 
-### 📋 环境要求
+### 📋 Requirements
 
 - Node.js >= 20
 - pnpm >= 9.15
-- Rust (桌面应用)
+- Rust (for desktop app)
 
-### 🚀 快速开始
+### 🚀 Quick Start
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
 cd viben && pnpm install
 
-pnpm build              # 构建
-pnpm desktop:restart    # 桌面应用开发
-pnpm gateway:restart    # 启动 Gateway
+pnpm build              # Build
+pnpm desktop:restart    # Desktop app dev
+pnpm gateway:restart    # Start Gateway
 ```
 
-### 📁 项目结构
+### 📁 Project Structure
 
 ```
 apps/
-├── cli/        # viben 命令行
-├── desktop/    # Tauri 桌面应用
-└── web/        # Next.js (MCP 市场)
+├── cli/        # viben CLI
+├── desktop/    # Tauri desktop app
+└── web/        # Next.js (MCP marketplace)
 
 packages/
-├── core/       # 核心库 + Gateway
-├── ui/         # UI 组件库
-├── chat/       # 聊天组件
-└── kanban/     # 看板组件
+├── core/       # Core library + Gateway
+├── ui/         # UI component library
+├── chat/       # Chat components
+└── kanban/     # Kanban components
 ```
 
-### 🔧 技术栈
+### 🔧 Tech Stack
 
-| 类别 | 技术 |
-|:----:|------|
-| 📝 语言 | TypeScript |
-| 🖥️ 桌面 | Tauri 2 + React 19 + Vite |
+| Category | Technology |
+|:--------:|------------|
+| 📝 Language | TypeScript |
+| 🖥️ Desktop | Tauri 2 + React 19 + Vite |
 | 🌐 Web | Next.js 15 |
-| 🎨 样式 | Tailwind CSS 4 + Radix UI |
-| 📊 状态 | Zustand |
-| 🔨 构建 | pnpm + Turborepo |
+| 🎨 Styling | Tailwind CSS 4 + Radix UI |
+| 📊 State | Zustand |
+| 🔨 Build | pnpm + Turborepo |
 
 </details>
 
 ---
 
-## 📄 许可证
+## 📄 License
 
 [MIT](./LICENSE) © 2025 OPENAGS
