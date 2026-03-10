@@ -338,6 +338,7 @@ export const KanbanBoardView = memo(function KanbanBoardView({
                         emptyIcon={emptyConfig.icon}
                         isOver={isOver && isValidTarget}
                         dropHereText={t("workspace.dropHere", "Drop here")}
+                        isEmpty={columnTasks.length === 0}
                       >
                   <AnimatePresence initial={false}>
                     {columnTasks.map((task, index) => (

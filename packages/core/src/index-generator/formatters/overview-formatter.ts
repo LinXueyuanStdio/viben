@@ -135,7 +135,7 @@ export class OverviewFormatter {
       packages: 'Shared packages',
       docs: 'Documentation',
       scripts: 'Build scripts',
-      '.viben: 'Viben workspace',
+      '.viben': 'Viben workspace',
     };
 
     return comments[dirPath] || '';

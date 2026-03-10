@@ -206,6 +206,7 @@ export function KanbanColumn({
               emptyIcon={emptyState?.icon}
               isOver={isOver && isValidDropTarget !== false}
               dropHereText={emptyState?.dropText ?? t("workspace.dropHere", "Drop here")}
+              isEmpty={column.tasks.length === 0}
             >
               <AnimatePresence initial={false}>
                 {column.tasks.map((task, index) => (
