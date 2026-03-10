@@ -142,6 +142,8 @@ review <task>      # 展示审查信息           查看待审任务
 approve <task>     # human_review → completed   批准完成
 reject <task>      # human_review → backlog     拒绝返工
 retry <task>       # failed → queue         重试失败任务
+cancel <task>      # * → cancelled          取消任务
+stop <task>        # cancel 的别名
 ```
 
 #### 命令与状态转换映射
@@ -155,6 +157,9 @@ retry <task>       # failed → queue         重试失败任务
 | `approve` | APPROVED | human_review | completed |
 | `reject` | REJECTED | human_review | backlog |
 | `retry` | RETRY | failed | queue |
+| `cancel` / `stop` | CANCEL | backlog, queue, paused, in_progress*, human_review | cancelled |
+
+> *`in_progress` 状态需要 `--force` 参数
 
 #### 完整任务生命周期示例
 
@@ -169,10 +174,16 @@ flowchart TD
     F -->|viben task approve| G[completed]
     F -->|viben task reject| B
     C -->|viben task dequeue| B
-    D -->|detected failed<br>viben task stop| H[failed]
+    D -->|detected failed| H[failed]
     H -->|viben task retry| C
     H -->|viben task archive| I[archived]
     G -->|viben swarm cleanup| I
+
+    B -->|viben task cancel| J[cancelled]
+    C -->|viben task cancel| J
+    E -->|viben task cancel| J
+    D -->|viben task cancel --force| J
+    F -->|viben task cancel| J
 ```
 
 #### 文件结构变化

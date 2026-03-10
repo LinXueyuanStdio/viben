@@ -23,6 +23,7 @@ import { type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "
 import { initDeveloper } from "../cli/commands/user";
 
 export type { ProjectType, ExecutorType } from "./types";
+export { EXECUTOR_TEMPLATE_CONFIGS } from "./types";
 
 // =============================================================================
 // Template Path Helpers
@@ -1172,8 +1173,10 @@ async function createSpecTemplates(
  *
  * These are the prompt templates for the `viben idea` command.
  * Both builtin and custom types are stored in this directory.
+ *
+ * This function is exported for use by `viben team update --idea-types`.
  */
-async function createIdeaTypesTemplates(
+export async function createIdeaTypesTemplates(
   cwd: string,
   options: { force?: boolean; skipExisting?: boolean },
   createdFiles: string[]

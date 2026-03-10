@@ -16,7 +16,7 @@ import {
   errorResponse,
   handleCommandError,
 } from "../lib";
-import { initTeam, type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "../../team";
+import { initTeam, createIdeaTypesTemplates, type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "../../team";
 
 /**
  * Valid executor types for team init (these have template support)
@@ -204,6 +204,91 @@ export function registerTeamCommand(program: Command): void {
             console.log(chalk.cyan("  1. Review and customize docs/specs/ guidelines"));
             console.log(chalk.cyan("  2. Run `viben context` to verify setup"));
             console.log(chalk.cyan("  3. Start developing with AI assistance!"));
+          }
+        );
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // team update
+  teamCmd
+    .command("update")
+    .description("Update specific parts of a Viben team workspace")
+    .argument("[target-dir]", "Target directory (default: current directory)", ".")
+    .option("--idea-types", "Update idea-types templates in docs/idea-types/")
+    .option("-f, --force", "Force overwrite existing files")
+    .option("-s, --skip-existing", "Skip existing files without error")
+    .action(async (targetDir: string, options: {
+      ideaTypes?: boolean;
+      force?: boolean;
+      skipExisting?: boolean;
+    }) => {
+      const ctx: OutputContext = {
+        json: program.opts().json ?? false,
+        verbose: program.opts().verbose ?? false,
+        quiet: program.opts().quiet ?? false,
+      };
+
+      try {
+        const resolvedDir = resolve(targetDir);
+        const createdFiles: string[] = [];
+
+        // Check if at least one update option is specified
+        if (!options.ideaTypes) {
+          output(
+            ctx,
+            errorResponse("NO_UPDATE_OPTION", "No update option specified. Use --idea-types to update idea-types templates."),
+            () => {
+              console.log(chalk.red("Error: No update option specified."));
+              console.log();
+              console.log("Available options:");
+              console.log(chalk.cyan("  --idea-types    Update idea-types templates in docs/idea-types/"));
+              console.log();
+              console.log("Example:");
+              console.log(chalk.gray("  viben team update --idea-types"));
+            }
+          );
+          process.exit(1);
+        }
+
+        const writeOpts = {
+          force: options.force,
+          skipExisting: options.skipExisting,
+        };
+
+        if (!ctx.quiet) {
+          console.log(chalk.cyan("Updating Viben team workspace..."));
+          console.log(chalk.gray(`  Target: ${resolvedDir}`));
+          console.log();
+        }
+
+        // Update idea-types templates
+        if (options.ideaTypes) {
+          if (!ctx.quiet) {
+            console.log(chalk.gray("  Updating idea-types templates..."));
+          }
+          await createIdeaTypesTemplates(resolvedDir, writeOpts, createdFiles);
+        }
+
+        output(
+          ctx,
+          successResponse({
+            path: resolvedDir,
+            files: createdFiles,
+            count: createdFiles.length,
+          }),
+          () => {
+            console.log(chalk.green("✓ Workspace updated successfully!"));
+            console.log();
+            if (createdFiles.length > 0) {
+              console.log(`Updated ${chalk.bold(createdFiles.length)} files:`);
+              for (const file of createdFiles) {
+                console.log(chalk.gray(`  ${file}`));
+              }
+            } else {
+              console.log(chalk.gray("No files were updated (all files already exist)."));
+            }
           }
         );
       } catch (error) {
