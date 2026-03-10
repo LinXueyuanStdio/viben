@@ -24,13 +24,33 @@
  * - POST /api/task/list-context - List context entries
  * - POST /api/task/validate-context - Validate context file existence
  *
+ * Execution control endpoints:
+ * - POST /api/task/execute - Trigger task execution via queue system
+ * - POST /api/task/stop - Stop task execution
+ * - POST /api/task/running - Check execution status
+ *
+ * Queue management endpoints:
+ * - POST /api/task/queue-status - Get queue status
+ * - POST /api/task/queue-config - Get/update queue configuration
+ * - POST /api/task/batch-enqueue - Batch enqueue multiple tasks
+ * - POST /api/task/clear-history - Clear execution history
+ *
+ * Event endpoints:
+ * - POST /api/task/events - Get event history for a task
+ * - POST /api/task/specs - Get PRD/subtasks/logs for a task
+ *
+ * Streaming endpoints (SSE):
+ * - GET /api/task/events-stream - SSE event subscription
+ * - GET /api/task/execution-stream - SSE execution progress
+ *
  * IMPORTANT: All tasks are stored in workspace directories:
  * <workspace>/.viben/tasks/<date>-<slug>/task.json
  */
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { existsSync, statSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawn, execSync, type SpawnOptions } from "node:child_process";
+import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, openSync, readdirSync } from "node:fs";
+import { join, basename } from "node:path";
 import {
   taskService,
   type UnifiedTask,
@@ -43,14 +63,42 @@ import { isValidEventType, type TaskEventType } from "../../task/events/event-ty
 import type { TaskEvent } from "../../task/events/task-event";
 import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
+import { taskSSEManager } from "../sse/task-sse-manager";
 import {
   updateTaskField,
   readJsonlFile,
   writeJsonlFile,
   appendToJsonl,
   jsonlEntryExists,
+  findVibenRoot,
+  getDeveloper,
+  getTasksDir,
+  getCurrentTask,
+  getActiveTasks,
+  getDatePrefix,
+  getTodayDate,
+  writeTaskJson as writeTaskJsonFile,
+  resolveTaskDirectory,
+  runGitCommand,
+  getPhaseForAction,
+  registryAddAgent,
+  registryListAgents,
+  registrySearchAgent,
+  isProcessRunning,
+  getTaskStats,
+  formatTaskStats,
+  archiveTask as archiveTaskToDirectory,
+  getArchivedTasks,
+  getPhaseInfo,
+  calcElapsed,
+  getJournalInfo,
+  readTaskJson as readTaskJsonFromWorkspace,
   DIR_VIBEN,
+  DIR_WORKSPACE,
+  DIR_TASKS,
   DIR_SPEC,
+  FILE_TASK_JSON,
+  getCLIAdapter,
 } from "../../cli/lib/viben-workspace";
 
 /**
@@ -3050,5 +3098,1089 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         resolve();
       });
     });
+  });
+
+  // ============================================================================
+  // Task Status Lifecycle Endpoints
+  // These endpoints provide REST API for task state transitions
+  // ============================================================================
+
+  /**
+   * Helper to find task directory from ID or path
+   */
+  async function resolveTaskDir(
+    taskIdOrPath: string,
+    workspacePath: string
+  ): Promise<string | null> {
+    // Check cache first
+    const cached = getCacheEntry(taskIdOrPath);
+    if (cached) {
+      return cached.taskDir;
+    }
+
+    // Try to find by ID
+    const taskDir = await taskService.findTaskById(workspacePath, taskIdOrPath);
+    if (taskDir) {
+      setCacheEntry(taskIdOrPath, workspacePath, taskDir);
+    }
+    return taskDir;
+  }
+
+  // ============================================================================
+  // POST /api/task/start - Set as current task + queue -> in_progress + trigger execution
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      trigger_execution?: boolean;
+    };
+  }>("/api/task/start", {
+    schema: {
+      description: "Start a task: set as current task, queue -> in_progress, optionally trigger execution",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          trigger_execution: { type: "boolean", description: "Trigger TaskQueueManager execution", default: false },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, trigger_execution } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Find task directory
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    // Get current task
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const previousStatus = task.status;
+
+    // If task is in queue status, transition to in_progress via START event
+    if (task.status === "queue") {
+      // Create START event
+      const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+      const event: TaskEvent = {
+        eventId: randomUUID(),
+        sequence: nextSequence,
+        type: "START",
+        timestamp: new Date().toISOString(),
+      };
+
+      const result = await taskEventStore.applyEvent(taskDir, event);
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error || "Failed to start task", code: "START_FAILED" };
+      }
+
+      // Broadcast state change
+      taskSSEManager.broadcast(
+        task_id,
+        {
+          type: "STATE_CHANGED",
+          event,
+          new_state: result.newState,
+        },
+        workspace_path
+      );
+
+      // Optionally trigger TaskQueueManager execution
+      if (trigger_execution && state.taskQueue && task.agent && task.prompt) {
+        try {
+          await state.taskQueue.enqueue({
+            agent_id: task.agent,
+            session_id: task.sessionId,
+            input: task.prompt,
+            cwd: workspace_path,
+          });
+        } catch (e) {
+          console.warn(`[task/start] Failed to enqueue task for execution:`, e);
+        }
+      }
+
+      return {
+        success: true,
+        task_id,
+        status: result.newState,
+        previous_status: previousStatus,
+      };
+    }
+
+    return {
+      success: true,
+      task_id,
+      status: task.status,
+      previous_status: previousStatus,
+      message: `Task is already in ${task.status} status`,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/finish - Clear current task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/finish", {
+    schema: {
+      description: "Finish a task: clear current task marker",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            message: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    return {
+      success: true,
+      task_id,
+      message: "Task finish acknowledged",
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/pause - in_progress/queue -> paused
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/pause", {
+    schema: {
+      description: "Pause a task: in_progress/queue -> paused (saves pausedSnapshot)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (!["queue", "in_progress"].includes(task.status)) {
+      reply.code(400);
+      return {
+        error: `Cannot pause task in '${task.status}' status. Expected: queue or in_progress`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "PAUSE",
+      timestamp: new Date().toISOString(),
+      payload: {
+        fromState: task.status,
+        subtaskIndex: task.current_phase ?? 0,
+        pausedAt: new Date().toISOString(),
+      },
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to pause task", code: "PAUSE_FAILED" };
+    }
+
+    await taskService.updateTask(taskDir, {
+      machine_context: {
+        current_subtask_index: task.machine_context?.current_subtask_index ?? 0,
+        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
+        paused_snapshot: {
+          from_state: previousStatus,
+          subtask_index: task.current_phase ?? 0,
+          paused_at: new Date().toISOString(),
+        },
+      },
+    });
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/resume - paused -> queue/in_progress
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/resume", {
+    schema: {
+      description: "Resume a paused task: paused -> queue/in_progress",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (task.status !== "paused") {
+      reply.code(400);
+      return {
+        error: `Cannot resume task in '${task.status}' status. Expected: paused`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const pausedSnapshot = task.machine_context?.paused_snapshot;
+    const targetStatus = pausedSnapshot?.from_state as string || "queue";
+    const previousStatus = task.status;
+
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "RESUME",
+      timestamp: new Date().toISOString(),
+      payload: { toState: targetStatus },
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to resume task", code: "RESUME_FAILED" };
+    }
+
+    // Clear paused_snapshot from machine_context
+    await taskService.updateTask(taskDir, {
+      machine_context: {
+        current_subtask_index: task.machine_context?.current_subtask_index ?? 0,
+        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
+        paused_snapshot: undefined,
+      },
+    });
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/approve - human_review -> completed
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      comment?: string;
+    };
+  }>("/api/task/approve", {
+    schema: {
+      description: "Approve a task in human_review: human_review -> completed",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          comment: { type: "string", description: "Optional approval comment" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, comment } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (task.status !== "human_review") {
+      reply.code(400);
+      return {
+        error: `Cannot approve task in '${task.status}' status. Expected: human_review`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "APPROVED",
+      timestamp: new Date().toISOString(),
+      payload: comment ? { comment } : undefined,
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to approve task", code: "APPROVE_FAILED" };
+    }
+
+    await taskService.updateTask(taskDir, {
+      completedAt: new Date().toISOString().split("T")[0],
+    });
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/reject - human_review -> backlog
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      reason?: string;
+    };
+  }>("/api/task/reject", {
+    schema: {
+      description: "Reject a task in human_review: human_review -> backlog",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          reason: { type: "string", description: "Optional rejection reason" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, reason } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (task.status !== "human_review") {
+      reply.code(400);
+      return {
+        error: `Cannot reject task in '${task.status}' status. Expected: human_review`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "REJECTED",
+      timestamp: new Date().toISOString(),
+      payload: reason ? { reason } : undefined,
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to reject task", code: "REJECT_FAILED" };
+    }
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/retry - failed -> queue
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/retry", {
+    schema: {
+      description: "Retry a failed task: failed -> queue",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (task.status !== "failed") {
+      reply.code(400);
+      return {
+        error: `Cannot retry task in '${task.status}' status. Expected: failed`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "RETRY",
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to retry task", code: "RETRY_FAILED" };
+    }
+
+    await taskService.updateTask(taskDir, { lastAttemptFailed: false });
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/cancel - * -> cancelled
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      reason?: string;
+    };
+  }>("/api/task/cancel", {
+    schema: {
+      description: "Cancel a task: * -> cancelled (terminal state)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          reason: { type: "string", description: "Optional cancellation reason" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, reason } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const nonCancellableStates = ["completed", "cancelled", "archived"];
+    if (nonCancellableStates.includes(task.status)) {
+      reply.code(400);
+      return {
+        error: `Cannot cancel task in '${task.status}' status`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "CANCEL",
+      timestamp: new Date().toISOString(),
+      payload: reason ? { reason } : undefined,
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to cancel task", code: "CANCEL_FAILED" };
+    }
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/archive - completed -> archived
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/archive", {
+    schema: {
+      description: "Archive a completed task: completed -> archived",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            previous_status: { type: "string" },
+            archive_path: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = await resolveTaskDir(task_id, workspace_path);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    const task = await taskService.getTask(taskDir);
+    if (!task) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    if (task.status !== "completed") {
+      reply.code(400);
+      return {
+        error: `Cannot archive task in '${task.status}' status. Expected: completed`,
+        code: "INVALID_STATUS_TRANSITION",
+      };
+    }
+
+    const previousStatus = task.status;
+    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const event: TaskEvent = {
+      eventId: randomUUID(),
+      sequence: nextSequence,
+      type: "ARCHIVE",
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = await taskEventStore.applyEvent(taskDir, event);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to archive task", code: "ARCHIVE_FAILED" };
+    }
+
+    // Archive the task using CLI function
+    const archivePath = archiveTaskToDirectory(taskDir, workspace_path);
+    deleteCacheEntry(task_id);
+
+    taskSSEManager.broadcast(
+      task_id,
+      { type: "STATE_CHANGED", event, new_state: result.newState },
+      workspace_path
+    );
+
+    return {
+      success: true,
+      task_id,
+      status: result.newState,
+      previous_status: previousStatus,
+      archive_path: archivePath,
+    };
+  });
+
+  // ============================================================================
+  // GET /api/task/list-archive - List archived tasks
+  // ============================================================================
+  fastify.get<{
+    Querystring: {
+      workspace_path: string;
+      month?: string;
+    };
+  }>("/api/task/list-archive", {
+    schema: {
+      description: "List archived tasks",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          month: { type: "string", description: "Filter by month (YYYY-MM format)" },
+        },
+        required: ["workspace_path"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            archives: {
+              type: "object",
+              additionalProperties: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, month } = request.query;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    // Use CLI function for archived tasks
+    const archivedMap = getArchivedTasks(workspace_path, month);
+    const archives: Record<string, string[]> = {};
+    for (const [monthKey, tasks] of archivedMap) {
+      archives[monthKey] = tasks;
+    }
+
+    return { archives };
   });
 }

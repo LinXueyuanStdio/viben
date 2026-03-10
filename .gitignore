@@ -293,3 +293,6 @@ logs/security/
 
 # Viben worktrees (git worktrees for multi-agent workflows)
 .viben/worktrees
+
+# Auto-generated index files
+docs/index/

@@ -2246,6 +2246,84 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
+  // task cancel - * -> cancelled
+  const cancelAction = async (task: string, options: { reason?: string; force?: boolean }) => {
+    const ctx = getContext(program);
+    const cwd = process.cwd();
+
+    try {
+      const repoRoot = ensureVibenDirWithRoot(cwd);
+      const taskDir = resolveTaskDirectory(task, repoRoot);
+
+      if (!taskDir || !existsSync(taskDir)) {
+        throw CliError.notFound("Task", task);
+      }
+
+      const taskData = readTaskJson(taskDir);
+      if (!taskData) {
+        throw CliError.notFound("Task", task);
+      }
+
+      // Check if task is in_progress and --force is not specified
+      if (taskData.status === "in_progress" && !options.force) {
+        throw CliError.operationFailed(
+          "Cancel task",
+          "Task is in_progress. Use --force to cancel a running task."
+        );
+      }
+
+      // Validate status transition
+      const validation = validateStatusTransition(taskData.status, "cancelled", "CANCEL");
+      if (!validation.valid) {
+        throw CliError.operationFailed("Cancel task", validation.error!);
+      }
+
+      // Build additional fields
+      const additionalFields: Record<string, unknown> = {
+        cancelledAt: new Date().toISOString(),
+      };
+      if (options.reason) {
+        additionalFields.cancelReason = options.reason;
+      }
+
+      // Update task status
+      if (!updateTaskStatus(taskDir, "cancelled", additionalFields)) {
+        throw CliError.operationFailed("Cancel task", "Failed to update task.json");
+      }
+
+      // Append event
+      appendTaskEvent(taskDir, "CANCEL", options.reason ? { reason: options.reason } : undefined);
+
+      const dirName = taskDir.split("/").pop() || task;
+      output(ctx, successResponse({ task: dirName, status: "cancelled", reason: options.reason }), () => {
+        console.log(chalk.red(`Cancelled: ${dirName}`));
+        console.log(chalk.gray(`Status: ${taskData.status} -> cancelled`));
+        if (options.reason) {
+          console.log(chalk.gray(`Reason: ${options.reason}`));
+        }
+      });
+    } catch (error) {
+      handleCommandError(ctx, error);
+    }
+  };
+
+  taskCmd
+    .command("cancel")
+    .description("Cancel a task (enters cancelled state)")
+    .argument("<task>", "Task name or directory")
+    .option("--reason <text>", "Cancellation reason")
+    .option("-f, --force", "Force cancel a running (in_progress) task")
+    .action(cancelAction);
+
+  // task stop - alias for cancel
+  taskCmd
+    .command("stop")
+    .description("Stop a task (alias for cancel)")
+    .argument("<task>", "Task name or directory")
+    .option("--reason <text>", "Cancellation reason")
+    .option("-f, --force", "Force stop a running (in_progress) task")
+    .action(cancelAction);
+
   // task context
   taskCmd
     .command("context")

@@ -891,8 +891,8 @@ viben task create-pr --dry-run          # 预览
 - [x] `viben task approve` 批准完成 (human_review → completed)
 - [x] `viben task reject` 拒绝返工 (human_review → backlog)
 - [x] `viben task retry` 重试失败任务 (failed → queue)
-- [ ] `viben task cancel` 取消任务 (* → cancelled)
-- [ ] `viben task stop` cancel 的别名
+- [x] `viben task cancel` 取消任务 (* → cancelled)
+- [x] `viben task stop` cancel 的别名
 - [x] 状态转换验证 (`validateStatusTransition`)
 - [x] 事件追加 (`appendTaskEvent` → events.jsonl)
 
