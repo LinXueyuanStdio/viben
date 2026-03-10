@@ -80,6 +80,12 @@ import {
   // Task stats
   getTaskStats,
   formatTaskStats,
+  // Task status lifecycle
+  updateTaskStatus,
+  appendTaskEvent,
+  validateStatusTransition,
+  type TaskEventType,
+  type PausedSnapshot,
   // CLI adapter
   getCLIAdapter,
   detectPlatform,
@@ -809,6 +815,232 @@ export function registerTaskCommand(program: Command): void {
               }
             }
           }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // Task Status Lifecycle Commands
+  // ============================================================================
+
+  // task enqueue - backlog -> queue
+  taskCmd
+    .command("enqueue")
+    .description("Move task from backlog to queue for execution")
+    .argument("<task>", "Task name or directory")
+    .option("--agent <id>", "Agent ID to execute this task")
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, OPENCODE, etc.)")
+    .option("--model <id>", "Model ID for execution")
+    .option("--priority <p>", "Priority (P0/P1/P2/P3)")
+    .action(async (task: string, options: {
+      agent?: string;
+      executor?: string;
+      model?: string;
+      priority?: string;
+    }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "queue", "QUEUE");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Enqueue task", validation.error!);
+        }
+
+        // Build additional fields
+        const additionalFields: Record<string, unknown> = {
+          queuedAt: new Date().toISOString(),
+        };
+
+        if (options.agent) additionalFields.agent = options.agent;
+        if (options.executor) additionalFields.executor = options.executor;
+        if (options.model) additionalFields.model = options.model;
+        if (options.priority) additionalFields.priority = options.priority;
+
+        // Update task status
+        if (!updateTaskStatus(taskDir, "queue", additionalFields)) {
+          throw CliError.operationFailed("Enqueue task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "QUEUE", {
+          agent: options.agent,
+          executor: options.executor,
+          model: options.model,
+        });
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "queue" }), () => {
+          console.log(chalk.green(`Enqueued: ${dirName}`));
+          console.log(chalk.gray(`Status: backlog -> queue`));
+          if (options.agent) console.log(chalk.gray(`Agent: ${options.agent}`));
+          if (options.executor) console.log(chalk.gray(`Executor: ${options.executor}`));
+          if (options.model) console.log(chalk.gray(`Model: ${options.model}`));
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task dequeue - queue -> backlog
+  taskCmd
+    .command("dequeue")
+    .description("Remove task from queue back to backlog")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "backlog", "DEQUEUE");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Dequeue task", validation.error!);
+        }
+
+        // Update task status (clear queuedAt)
+        if (!updateTaskStatus(taskDir, "backlog", { queuedAt: null })) {
+          throw CliError.operationFailed("Dequeue task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "DEQUEUE");
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "backlog" }), () => {
+          console.log(chalk.green(`Dequeued: ${dirName}`));
+          console.log(chalk.gray(`Status: queue -> backlog`));
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task pause - in_progress/queue -> paused
+  taskCmd
+    .command("pause")
+    .description("Pause execution of a task")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "paused", "PAUSE");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Pause task", validation.error!);
+        }
+
+        // Save paused snapshot
+        const pausedSnapshot: PausedSnapshot = {
+          fromState: taskData.status,
+          subtaskIndex: taskData.current_phase || 0,
+          pausedAt: new Date().toISOString(),
+        };
+
+        // Update task status
+        if (!updateTaskStatus(taskDir, "paused", { pausedSnapshot })) {
+          throw CliError.operationFailed("Pause task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "PAUSE", { fromState: taskData.status });
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "paused", fromState: taskData.status }), () => {
+          console.log(chalk.green(`Paused: ${dirName}`));
+          console.log(chalk.gray(`Status: ${taskData.status} -> paused`));
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task resume - paused -> in_progress/queue (restore)
+  taskCmd
+    .command("resume")
+    .description("Resume a paused task")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition (RESUME expects paused state)
+        const validation = validateStatusTransition(taskData.status, "queue", "RESUME");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Resume task", validation.error!);
+        }
+
+        // Read pausedSnapshot to determine target status
+        const pausedSnapshot = (taskData as unknown as { pausedSnapshot?: PausedSnapshot }).pausedSnapshot;
+
+        const targetStatus = pausedSnapshot?.fromState || "queue";
+
+        // Update task status (clear pausedSnapshot)
+        if (!updateTaskStatus(taskDir, targetStatus, { pausedSnapshot: null })) {
+          throw CliError.operationFailed("Resume task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "RESUME", { toState: targetStatus });
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: targetStatus }), () => {
+          console.log(chalk.green(`Resumed: ${dirName}`));
+          console.log(chalk.gray(`Status: paused -> ${targetStatus}`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1766,6 +1998,249 @@ export function registerTaskCommand(program: Command): void {
         console.log(chalk.green("=== PR Created Successfully ==="));
         console.log(`PR URL: ${prUrl}`);
 
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // Task Status Lifecycle Commands
+  // ============================================================================
+
+  // task review - display task info for review
+  taskCmd
+    .command("review")
+    .description("View task details for human review")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const dirName = taskDir.split("/").pop() || task;
+
+        // Try to get PR info if pr_url exists
+        let prInfo: { additions?: number; deletions?: number; changedFiles?: number } = {};
+        if (taskData.pr_url) {
+          try {
+            const prUrl = taskData.pr_url;
+            // Extract PR number from URL
+            const prMatch = prUrl.match(/\/pull\/(\d+)/);
+            if (prMatch) {
+              const result = execSync(
+                `gh pr view ${prMatch[1]} --json additions,deletions,changedFiles 2>/dev/null`,
+                { cwd: repoRoot, encoding: "utf-8" }
+              );
+              prInfo = JSON.parse(result);
+            }
+          } catch {
+            // Ignore gh errors
+          }
+        }
+
+        output(ctx, successResponse({ task: dirName, ...taskData, prInfo }), () => {
+          console.log(chalk.bold(`=== Task Review: ${dirName} ===`));
+          console.log();
+          console.log(`Title:    ${taskData.title}`);
+          console.log(`Status:   ${formatStatus(taskData.status)}`);
+          console.log(`Priority: ${formatPriority(taskData.priority)}`);
+          console.log();
+
+          if (taskData.pr_url) {
+            console.log(`PR URL:   ${chalk.cyan(taskData.pr_url)}`);
+            console.log(`Branch:   ${taskData.branch || "-"}`);
+            console.log();
+            if (prInfo.changedFiles) {
+              console.log(`Files Changed: ${prInfo.changedFiles}`);
+              console.log(`+${prInfo.additions || 0} -${prInfo.deletions || 0}`);
+              console.log();
+            }
+          }
+
+          if (taskData.status === "human_review") {
+            console.log(chalk.blue("Next steps:"));
+            console.log(`  viben task approve ${dirName}   # Approve and complete`);
+            console.log(`  viben task reject ${dirName}    # Reject and return to backlog`);
+          } else if (taskData.status === "failed") {
+            console.log(chalk.blue("Next steps:"));
+            console.log(`  viben task retry ${dirName}     # Retry failed task`);
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task approve - human_review -> completed
+  taskCmd
+    .command("approve")
+    .description("Approve task and mark as completed")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "completed", "APPROVED");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Approve task", validation.error!);
+        }
+
+        // Update task status
+        const completedAt = getTodayDate();
+        if (!updateTaskStatus(taskDir, "completed", {
+          completedAt,
+          reviewReason: "approved"
+        })) {
+          throw CliError.operationFailed("Approve task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "APPROVED");
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "completed" }), () => {
+          console.log(chalk.green(`Approved: ${dirName}`));
+          console.log(chalk.gray(`Status: human_review -> completed`));
+          console.log();
+          console.log(chalk.blue("Next steps:"));
+          console.log(`  viben task archive ${dirName}    # Archive completed task`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task reject - human_review -> backlog
+  taskCmd
+    .command("reject")
+    .description("Reject task and return to backlog")
+    .argument("<task>", "Task name or directory")
+    .option("--reason <text>", "Reason for rejection")
+    .action(async (task: string, options: { reason?: string }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "backlog", "REJECTED");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Reject task", validation.error!);
+        }
+
+        // Build additional fields - clear pr_url, record rejection
+        const additionalFields: Record<string, unknown> = {
+          pr_url: null, // Clear PR URL as it may need to be resubmitted
+          reviewReason: "rejected",
+        };
+        if (options.reason) {
+          additionalFields.rejectReason = options.reason;
+        }
+
+        // Update task status
+        if (!updateTaskStatus(taskDir, "backlog", additionalFields)) {
+          throw CliError.operationFailed("Reject task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "REJECTED", { reason: options.reason });
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "backlog", reason: options.reason }), () => {
+          console.log(chalk.yellow(`Rejected: ${dirName}`));
+          console.log(chalk.gray(`Status: human_review -> backlog`));
+          if (options.reason) {
+            console.log(chalk.gray(`Reason: ${options.reason}`));
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task retry - failed -> queue
+  taskCmd
+    .command("retry")
+    .description("Retry a failed task")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        const taskData = readTaskJson(taskDir);
+        if (!taskData) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Validate status transition
+        const validation = validateStatusTransition(taskData.status, "queue", "RETRY");
+        if (!validation.valid) {
+          throw CliError.operationFailed("Retry task", validation.error!);
+        }
+
+        // Update task status - clear error fields, set new queuedAt
+        if (!updateTaskStatus(taskDir, "queue", {
+          queuedAt: new Date().toISOString(),
+          error: null,
+          errorMessage: null,
+          failedAt: null,
+        })) {
+          throw CliError.operationFailed("Retry task", "Failed to update task.json");
+        }
+
+        // Append event
+        appendTaskEvent(taskDir, "RETRY");
+
+        const dirName = taskDir.split("/").pop() || task;
+        output(ctx, successResponse({ task: dirName, status: "queue" }), () => {
+          console.log(chalk.green(`Retrying: ${dirName}`));
+          console.log(chalk.gray(`Status: failed -> queue`));
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }

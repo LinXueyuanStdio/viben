@@ -1159,8 +1159,8 @@ export function WorkspaceKanbanPage() {
         return mappedColumn === column.id;
       });
 
-      // For Done column, filter archived tasks unless showArchived is enabled
-      if (column.id === "done" && !showArchived) {
+      // For Completed column, filter archived tasks unless showArchived is enabled
+      if (column.id === "completed" && !showArchived) {
         columnTasks = columnTasks.filter((task) => !archivedTaskIds.includes(task.id));
       }
 
@@ -2397,8 +2397,8 @@ export function WorkspaceKanbanPage() {
                               </TooltipProvider>
                             )}
 
-                            {/* Done column - Archive All + Archive Toggle */}
-                            {column.id === "done" && (
+                            {/* Completed column - Archive All + Archive Toggle */}
+                            {column.id === "completed" && (
                               <>
                                 {/* Archive All button - only show when there are unarchived tasks */}
                                 {columnTasks.length > 0 && !showArchived && (

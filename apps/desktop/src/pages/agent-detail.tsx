@@ -779,20 +779,30 @@ export function AgentDetailPage() {
   }, [agentId, sessionId, loadDebugSessions, clearMessages, t]);
 
   const handleOpenSessionFolder = useCallback(async () => {
-    if (!debugWorkdir) return;
+    console.log("[agent-detail] handleOpenSessionFolder called", { agentFolderPath, sessionId, agentId });
+    if (!agentFolderPath) {
+      console.warn("[agent-detail] agentFolderPath is empty, cannot open folder");
+      toast.error(t("common.openFolderFailed", "Failed to open folder"), {
+        description: t("common.agentPathNotAvailable", "Agent path is not available yet"),
+      });
+      return;
+    }
     try {
       const client = getGatewayClient();
-      // If there's an active session, open its folder; otherwise open the sessions directory
+      // If there's an active session, open its folder; otherwise open the agent's sessions directory
       const folderPath = sessionId
-        ? `${debugWorkdir}/.viben/sessions/${sessionId}`
-        : `${debugWorkdir}/.viben/sessions`;
+        ? `${agentFolderPath}/sessions/${sessionId}`
+        : `${agentFolderPath}/sessions`;
       console.log("[agent-detail] Opening session folder:", folderPath);
       await client.revealFile(folderPath);
     } catch (error) {
       console.error("[agent-detail] Failed to open session folder:", error);
-      toast.error(t("common.openFolderFailed", "Failed to open folder"));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(t("common.openFolderFailed", "Failed to open folder"), {
+        description: errorMessage,
+      });
     }
-  }, [sessionId, debugWorkdir, t]);
+  }, [sessionId, agentFolderPath, agentId, t]);
 
   // ============================================================================
   // Loading and Error States

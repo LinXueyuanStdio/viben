@@ -140,6 +140,16 @@ describe("task command", () => {
       expect(subcommandNames).toContain("archive");
       expect(subcommandNames).toContain("list-archive");
 
+      // Status lifecycle
+      expect(subcommandNames).toContain("enqueue");
+      expect(subcommandNames).toContain("dequeue");
+      expect(subcommandNames).toContain("pause");
+      expect(subcommandNames).toContain("resume");
+      expect(subcommandNames).toContain("review");
+      expect(subcommandNames).toContain("approve");
+      expect(subcommandNames).toContain("reject");
+      expect(subcommandNames).toContain("retry");
+
       // Config
       expect(subcommandNames).toContain("set-branch");
       expect(subcommandNames).toContain("set-base");
@@ -395,6 +405,287 @@ describe("task command", () => {
       expect(args.length).toBeGreaterThan(0);
       expect(args[0]?.name()).toBe("task");
       expect(args[0]?.required).toBe(false);
+    });
+  });
+
+  describe("validateStatusTransition", () => {
+    // Import validateStatusTransition and TaskEventType for testing
+    let validateStatusTransition: (
+      currentStatus: string,
+      targetStatus: string,
+      eventType: import("../lib/viben-workspace").TaskEventType
+    ) => { valid: boolean; error?: string };
+
+    beforeEach(async () => {
+      const module = await import("../lib/viben-workspace");
+      validateStatusTransition = module.validateStatusTransition;
+    });
+
+    describe("valid transitions", () => {
+      it("should allow QUEUE from backlog to queue", () => {
+        expect(validateStatusTransition("backlog", "queue", "QUEUE")).toEqual({ valid: true });
+      });
+
+      it("should allow START from queue to in_progress", () => {
+        expect(validateStatusTransition("queue", "in_progress", "START")).toEqual({ valid: true });
+      });
+
+      it("should allow DEQUEUE from queue to backlog", () => {
+        expect(validateStatusTransition("queue", "backlog", "DEQUEUE")).toEqual({ valid: true });
+      });
+
+      it("should allow PAUSE from in_progress to paused", () => {
+        expect(validateStatusTransition("in_progress", "paused", "PAUSE")).toEqual({ valid: true });
+      });
+
+      it("should allow PAUSE from queue to paused", () => {
+        expect(validateStatusTransition("queue", "paused", "PAUSE")).toEqual({ valid: true });
+      });
+
+      it("should allow RESUME from paused (dynamic target)", () => {
+        expect(validateStatusTransition("paused", "queue", "RESUME")).toEqual({ valid: true });
+        expect(validateStatusTransition("paused", "in_progress", "RESUME")).toEqual({ valid: true });
+      });
+
+      it("should allow APPROVED from human_review to completed", () => {
+        expect(validateStatusTransition("human_review", "completed", "APPROVED")).toEqual({ valid: true });
+      });
+
+      it("should allow REJECTED from human_review to backlog", () => {
+        expect(validateStatusTransition("human_review", "backlog", "REJECTED")).toEqual({ valid: true });
+      });
+
+      it("should allow RETRY from failed to queue", () => {
+        expect(validateStatusTransition("failed", "queue", "RETRY")).toEqual({ valid: true });
+      });
+
+      it("should allow CANCEL from multiple states", () => {
+        expect(validateStatusTransition("backlog", "cancelled", "CANCEL")).toEqual({ valid: true });
+        expect(validateStatusTransition("queue", "cancelled", "CANCEL")).toEqual({ valid: true });
+        expect(validateStatusTransition("paused", "cancelled", "CANCEL")).toEqual({ valid: true });
+        expect(validateStatusTransition("in_progress", "cancelled", "CANCEL")).toEqual({ valid: true });
+        expect(validateStatusTransition("human_review", "cancelled", "CANCEL")).toEqual({ valid: true });
+      });
+    });
+
+    describe("invalid transitions - wrong source state", () => {
+      it("should reject QUEUE from non-backlog states", () => {
+        const result1 = validateStatusTransition("in_progress", "queue", "QUEUE");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot queue task in 'in_progress'");
+
+        const result2 = validateStatusTransition("completed", "queue", "QUEUE");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("queue", "queue", "QUEUE");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject START from non-queue states", () => {
+        const result1 = validateStatusTransition("backlog", "in_progress", "START");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot start task in 'backlog'");
+
+        const result2 = validateStatusTransition("in_progress", "in_progress", "START");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("completed", "in_progress", "START");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject DEQUEUE from non-queue states", () => {
+        const result1 = validateStatusTransition("backlog", "backlog", "DEQUEUE");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot dequeue task in 'backlog'");
+
+        const result2 = validateStatusTransition("in_progress", "backlog", "DEQUEUE");
+        expect(result2.valid).toBe(false);
+      });
+
+      it("should reject PAUSE from terminal or backlog states", () => {
+        const result1 = validateStatusTransition("backlog", "paused", "PAUSE");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot pause task in 'backlog'");
+
+        const result2 = validateStatusTransition("completed", "paused", "PAUSE");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("cancelled", "paused", "PAUSE");
+        expect(result3.valid).toBe(false);
+
+        const result4 = validateStatusTransition("failed", "paused", "PAUSE");
+        expect(result4.valid).toBe(false);
+      });
+
+      it("should reject RESUME from non-paused states", () => {
+        const result1 = validateStatusTransition("queue", "in_progress", "RESUME");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot resume task in 'queue'");
+
+        const result2 = validateStatusTransition("backlog", "queue", "RESUME");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("in_progress", "in_progress", "RESUME");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject APPROVED from non-human_review states", () => {
+        const result1 = validateStatusTransition("backlog", "completed", "APPROVED");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot approved task in 'backlog'");
+
+        const result2 = validateStatusTransition("completed", "completed", "APPROVED");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("queue", "completed", "APPROVED");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject REJECTED from non-human_review states", () => {
+        const result1 = validateStatusTransition("queue", "backlog", "REJECTED");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot rejected task in 'queue'");
+
+        const result2 = validateStatusTransition("backlog", "backlog", "REJECTED");
+        expect(result2.valid).toBe(false);
+      });
+
+      it("should reject RETRY from non-failed states", () => {
+        const result1 = validateStatusTransition("queue", "queue", "RETRY");
+        expect(result1.valid).toBe(false);
+        expect(result1.error).toContain("Cannot retry task in 'queue'");
+
+        const result2 = validateStatusTransition("backlog", "queue", "RETRY");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("completed", "queue", "RETRY");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject CANCEL from terminal states", () => {
+        const result1 = validateStatusTransition("completed", "cancelled", "CANCEL");
+        expect(result1.valid).toBe(false);
+
+        const result2 = validateStatusTransition("cancelled", "cancelled", "CANCEL");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("failed", "cancelled", "CANCEL");
+        expect(result3.valid).toBe(false);
+      });
+    });
+
+    describe("invalid transitions - wrong target state", () => {
+      it("should reject incorrect target for QUEUE", () => {
+        const result = validateStatusTransition("backlog", "in_progress", "QUEUE");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: queue");
+      });
+
+      it("should reject incorrect target for START", () => {
+        const result = validateStatusTransition("queue", "queue", "START");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: in_progress");
+      });
+
+      it("should reject incorrect target for DEQUEUE", () => {
+        const result = validateStatusTransition("queue", "queue", "DEQUEUE");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: backlog");
+      });
+
+      it("should reject incorrect target for APPROVED", () => {
+        const result = validateStatusTransition("human_review", "queue", "APPROVED");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: completed");
+      });
+
+      it("should reject incorrect target for REJECTED", () => {
+        const result = validateStatusTransition("human_review", "completed", "REJECTED");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: backlog");
+      });
+
+      it("should reject incorrect target for RETRY", () => {
+        const result = validateStatusTransition("failed", "backlog", "RETRY");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: queue");
+      });
+
+      it("should reject incorrect target for CANCEL", () => {
+        const result = validateStatusTransition("backlog", "completed", "CANCEL");
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Expected: cancelled");
+      });
+
+      it("should skip target validation for RESUME (dynamic target)", () => {
+        // RESUME allows any target since it restores from pausedSnapshot
+        expect(validateStatusTransition("paused", "queue", "RESUME")).toEqual({ valid: true });
+        expect(validateStatusTransition("paused", "in_progress", "RESUME")).toEqual({ valid: true });
+        expect(validateStatusTransition("paused", "backlog", "RESUME")).toEqual({ valid: true });
+      });
+    });
+
+    describe("unsupported event types", () => {
+      it("should reject unknown event types", () => {
+        const result = validateStatusTransition("backlog", "queue", "INVALID_EVENT" as any);
+        expect(result.valid).toBe(false);
+        expect(result.error).toContain("Unsupported event type for CLI");
+      });
+
+      it("should reject internal state machine events not exposed to CLI", () => {
+        const internalEvents = [
+          "PLANNING_COMPLETE",
+          "PLANNING_FAILED",
+          "SUBTASK_COMPLETE",
+          "ALL_SUBTASKS_DONE",
+          "CODING_FAILED",
+          "QA_PASSED",
+          "QA_FAILED",
+        ];
+
+        for (const event of internalEvents) {
+          const result = validateStatusTransition("in_progress", "queue", event as any);
+          expect(result.valid).toBe(false);
+          expect(result.error).toContain("Unsupported event type for CLI");
+        }
+      });
+    });
+
+    describe("edge cases", () => {
+      it("should handle empty string status", () => {
+        const result1 = validateStatusTransition("", "queue", "QUEUE");
+        expect(result1.valid).toBe(false);
+
+        const result2 = validateStatusTransition("backlog", "", "QUEUE");
+        expect(result2.valid).toBe(false);
+      });
+
+      it("should be case-sensitive for status values", () => {
+        const result1 = validateStatusTransition("BACKLOG", "queue", "QUEUE");
+        expect(result1.valid).toBe(false);
+
+        const result2 = validateStatusTransition("backlog", "QUEUE", "QUEUE");
+        expect(result2.valid).toBe(false);
+      });
+
+      it("should reject status values with whitespace", () => {
+        const result1 = validateStatusTransition(" backlog", "queue", "QUEUE");
+        expect(result1.valid).toBe(false);
+
+        const result2 = validateStatusTransition("backlog ", "queue", "QUEUE");
+        expect(result2.valid).toBe(false);
+
+        const result3 = validateStatusTransition("backlog", " queue", "QUEUE");
+        expect(result3.valid).toBe(false);
+      });
+
+      it("should reject invalid status names", () => {
+        const result1 = validateStatusTransition("invalid_status", "queue", "QUEUE");
+        expect(result1.valid).toBe(false);
+
+        const result2 = validateStatusTransition("backlog", "invalid_target", "QUEUE");
+        expect(result2.valid).toBe(false);
+      });
     });
   });
 });

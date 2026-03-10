@@ -270,12 +270,14 @@ export const KanbanCards = ({
   return (
     <div className={cn("flex flex-1 flex-col gap-2 p-2", className)}>
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center h-32 text-center px-4 rounded-lg border border-dashed border-border/40">
-          <ClipboardList className="h-6 w-6 text-muted-foreground/30 mb-2" />
-          <p className="text-sm text-muted-foreground/60">
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[120px] text-center px-4 py-6 mx-1 rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 transition-colors hover:border-muted-foreground/30 hover:bg-muted/40">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted mb-3">
+            <ClipboardList className="h-5 w-5 text-muted-foreground/50" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground/70">
             {emptyMessage}
           </p>
-          <p className="text-xs text-muted-foreground/40 mt-0.5">
+          <p className="text-xs text-muted-foreground/50 mt-1 max-w-[180px]">
             {emptyHint}
           </p>
         </div>
