@@ -4,17 +4,24 @@
 
 /**
  * Task status - unified status system
- * State flow: backlog → queue → in_progress → ai_review → human_review → done/pr_created
+ * State flow: backlog → queue → in_progress → human_review → completed
+ * Terminal states: completed, failed, cancelled, archived
  */
 export type TaskStatus =
   | "backlog"       // 待办 - Tasks waiting to be started
   | "queue"         // 排队 - Tasks waiting for available capacity
   | "in_progress"   // 执行中 - Currently running (planning/coding)
-  | "ai_review"     // AI审查 - AI automatic review
+  | "paused"        // 暂停中 - Task paused, can be resumed
+  | "ai_review"     // AI审查 - AI automatic review (legacy)
   | "human_review"  // 人工审查 - Needs human review
-  | "done"          // 完成 - Completed
-  | "pr_created"    // PR已创建 - PR has been created
-  | "error";        // 错误 - Error state
+  | "completed"     // 已完成 - Successfully completed
+  | "failed"        // 失败 - Execution failed
+  | "cancelled"     // 已取消 - Cancelled by user
+  | "archived"      // 已归档 - Archived for reference
+  // Legacy statuses (for backward compatibility)
+  | "done"          // 完成 (legacy → completed)
+  | "pr_created"    // PR已创建 (legacy → completed)
+  | "error";        // 错误 (legacy → failed)
 
 /**
  * Task entity

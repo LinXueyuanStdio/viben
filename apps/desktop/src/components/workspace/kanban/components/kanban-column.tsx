@@ -71,6 +71,20 @@ export interface TaskCardConfig {
 }
 
 /**
+ * Empty state configuration for a column
+ */
+export interface EmptyStateConfig {
+  /** Main message to display when empty */
+  message: string;
+  /** Secondary hint text */
+  hint: string;
+  /** Custom icon to display */
+  icon?: React.ReactNode;
+  /** Text to show when dragging over */
+  dropText?: string;
+}
+
+/**
  * Props for KanbanColumn component
  */
 export interface KanbanColumnProps {
@@ -90,6 +104,8 @@ export interface KanbanColumnProps {
   isResizing: boolean;
   /** Whether this column's width is locked */
   isLocked: boolean;
+  /** Empty state configuration */
+  emptyState?: EmptyStateConfig;
 }
 
 // ============================================
@@ -129,6 +145,7 @@ export function KanbanColumn({
   onStartResize,
   isResizing,
   isLocked,
+  emptyState,
 }: KanbanColumnProps) {
   const { t } = useTranslation();
 
@@ -173,43 +190,50 @@ export function KanbanColumn({
         isDragging={isDragging}
         isValidDropTarget={isValidDropTarget}
       >
-        {/* Column header */}
-        <KanbanHeader>{renderHeader()}</KanbanHeader>
+        {(isOver: boolean) => (
+          <>
+            {/* Column header */}
+            <KanbanHeader>{renderHeader()}</KanbanHeader>
 
-        {/* Scrollable task cards */}
-        <KanbanCards
-          className="flex-1 overflow-y-auto"
-          emptyMessage={t("workspace.noTasks", "No tasks")}
-          emptyHint={t(
-            "workspace.emptyColumnHint",
-            "Drag tasks here or click + to create"
-          )}
-        >
-          <AnimatePresence initial={false}>
-            {column.tasks.map((task, index) => (
-              <motion.div
-                key={task.id}
-                variants={cardAnimationVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{
-                  ...cardTransition,
-                  delay: index * 0.02,
-                }}
-              >
-                <SelectableCard
-                  id={task.id}
-                  isSelected={taskConfig.isMultiSelected(task.id)}
-                  isSelecting={taskConfig.isSelecting}
-                  onToggle={taskConfig.onToggleSelect}
-                >
-                  {taskConfig.renderTaskCard(task, index, column.id)}
-                </SelectableCard>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </KanbanCards>
+            {/* Scrollable task cards */}
+            <KanbanCards
+              className="flex-1 overflow-y-auto"
+              emptyMessage={emptyState?.message ?? t("workspace.noTasks", "No tasks")}
+              emptyHint={emptyState?.hint ?? t(
+                "workspace.emptyColumnHint",
+                "Drag tasks here or click + to create"
+              )}
+              emptyIcon={emptyState?.icon}
+              isOver={isOver && isValidDropTarget !== false}
+              dropHereText={emptyState?.dropText ?? t("workspace.dropHere", "Drop here")}
+            >
+              <AnimatePresence initial={false}>
+                {column.tasks.map((task, index) => (
+                  <motion.div
+                    key={task.id}
+                    variants={cardAnimationVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={{
+                      ...cardTransition,
+                      delay: index * 0.02,
+                    }}
+                  >
+                    <SelectableCard
+                      id={task.id}
+                      isSelected={taskConfig.isMultiSelected(task.id)}
+                      isSelecting={taskConfig.isSelecting}
+                      onToggle={taskConfig.onToggleSelect}
+                    >
+                      {taskConfig.renderTaskCard(task, index, column.id)}
+                    </SelectableCard>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </KanbanCards>
+          </>
+        )}
       </KanbanBoard>
 
       {/* Resize handle - right edge */}

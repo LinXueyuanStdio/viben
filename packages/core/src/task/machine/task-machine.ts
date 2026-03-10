@@ -87,7 +87,8 @@ export type TaskMachineEvent =
   | { type: "PAUSE" }
   | { type: "RESUME" }
   | { type: "RETRY" }
-  | { type: "ABANDON" };
+  | { type: "ABANDON" }
+  | { type: "ARCHIVE" };
 
 // =============================================================================
 // State Machine Definition
@@ -293,7 +294,9 @@ export const taskMachine = createMachine(
       // Completed - Task successfully completed
       // ==========================================================================
       completed: {
-        type: "final",
+        on: {
+          ARCHIVE: { target: "archived" },
+        },
       },
 
       // ==========================================================================
@@ -303,6 +306,7 @@ export const taskMachine = createMachine(
         on: {
           RETRY: { target: "queue" },
           ABANDON: { target: "backlog" },
+          ARCHIVE: { target: "archived" },
         },
       },
 
@@ -310,6 +314,15 @@ export const taskMachine = createMachine(
       // Cancelled - Task was cancelled by user
       // ==========================================================================
       cancelled: {
+        on: {
+          ARCHIVE: { target: "archived" },
+        },
+      },
+
+      // ==========================================================================
+      // Archived - Task archived for reference
+      // ==========================================================================
+      archived: {
         type: "final",
       },
     },

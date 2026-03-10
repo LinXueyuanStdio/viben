@@ -34,7 +34,8 @@ export type TaskStatus =
   | "human_review" // Needs human review
   | "completed" // Successfully completed
   | "failed" // Execution failed
-  | "cancelled"; // Cancelled by user
+  | "cancelled" // Cancelled by user
+  | "archived"; // Archived for reference
 
 /**
  * Legacy status names for backward compatibility
@@ -103,7 +104,8 @@ export type TaskEventType =
   | "USER_STOPPED" | "APPROVED" | "REJECTED"
   | "PAUSE" | "RESUME"
   | "RETRY" | "ABANDON"
-  | "CANCEL"; // Cancel task
+  | "CANCEL" // Cancel task
+  | "ARCHIVE"; // Archive task
 
 /**
  * Task event for state machine transitions
@@ -338,6 +340,7 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "completed",
   "failed",
   "cancelled",
+  "archived",
 ];
 
 /**
@@ -650,9 +653,15 @@ export class TaskService {
    * List all tasks in a workspace
    *
    * @param workspacePath - Absolute path to workspace
+   * @param options - Options for listing tasks
+   * @param options.includeArchived - Include tasks from archive directory (default: true)
    * @returns Array of tasks
    */
-  async listTasks(workspacePath: string): Promise<UnifiedTask[]> {
+  async listTasks(
+    workspacePath: string,
+    options: { includeArchived?: boolean } = {}
+  ): Promise<UnifiedTask[]> {
+    const { includeArchived = true } = options;
     const tasksDir = this.tasksDir(workspacePath);
 
     if (!existsSync(tasksDir)) {
@@ -665,8 +674,17 @@ export class TaskService {
       const entries = await readdir(tasksDir, { withFileTypes: true });
 
       for (const entry of entries) {
-        // Skip archive directory and non-directories
-        if (!entry.isDirectory() || entry.name === "archive") {
+        // Skip non-directories
+        if (!entry.isDirectory()) {
+          continue;
+        }
+
+        // Handle archive directory separately
+        if (entry.name === "archive") {
+          if (includeArchived) {
+            const archivedTasks = await this.listArchivedTasks(workspacePath);
+            tasks.push(...archivedTasks);
+          }
           continue;
         }
 
@@ -688,6 +706,63 @@ export class TaskService {
       const dateB = new Date(b.createdAt).getTime();
       return dateB - dateA;
     });
+
+    return tasks;
+  }
+
+  /**
+   * List archived tasks from .viben/tasks/archive/
+   *
+   * Archive structure: archive/{year-month}/{task-dir}/task.json
+   * e.g., archive/2026-01/01-15-my-task/task.json
+   *
+   * @param workspacePath - Absolute path to workspace
+   * @returns Array of archived tasks
+   */
+  async listArchivedTasks(workspacePath: string): Promise<UnifiedTask[]> {
+    const archiveDir = join(this.tasksDir(workspacePath), "archive");
+
+    if (!existsSync(archiveDir)) {
+      return [];
+    }
+
+    const tasks: UnifiedTask[] = [];
+
+    try {
+      // List year-month directories (e.g., 2026-01, 2026-02)
+      const monthDirs = await readdir(archiveDir, { withFileTypes: true });
+
+      for (const monthDir of monthDirs) {
+        if (!monthDir.isDirectory()) {
+          continue;
+        }
+
+        const monthPath = join(archiveDir, monthDir.name);
+
+        // List task directories within each month
+        const taskDirs = await readdir(monthPath, { withFileTypes: true });
+
+        for (const taskEntry of taskDirs) {
+          if (!taskEntry.isDirectory()) {
+            continue;
+          }
+
+          const taskDir = join(monthPath, taskEntry.name);
+          const task = await this.getTask(taskDir);
+          if (task) {
+            // Ensure workspacePath is set and status is archived
+            task.workspacePath = task.workspacePath || workspacePath;
+            // Mark as archived if not already
+            if (task.status !== "archived") {
+              task.status = "archived";
+            }
+            tasks.push(task);
+          }
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
 
     return tasks;
   }
@@ -741,33 +816,63 @@ export class TaskService {
   /**
    * Find a task by ID in a workspace
    *
+   * Searches both active tasks and archived tasks.
+   *
    * @param workspacePath - Absolute path to workspace
    * @param id - Task ID to find
    * @returns Task directory path or null
    */
   async findTaskById(workspacePath: string, id: string): Promise<string | null> {
-    const tasks = await this.listTasks(workspacePath);
-    for (const task of tasks) {
-      if (task.id === id) {
-        // Reconstruct task directory from workspacePath and name
-        const tasksDir = this.tasksDir(workspacePath);
-        // Need to find the actual directory name
-        try {
-          const entries = await readdir(tasksDir, { withFileTypes: true });
-          for (const entry of entries) {
-            if (entry.isDirectory()) {
-              const taskDir = join(tasksDir, entry.name);
-              const t = await this.getTask(taskDir);
-              if (t && t.id === id) {
-                return taskDir;
-              }
-            }
-          }
-        } catch {
-          // Ignore
+    const tasksDir = this.tasksDir(workspacePath);
+
+    if (!existsSync(tasksDir)) {
+      return null;
+    }
+
+    // Search active tasks first
+    try {
+      const entries = await readdir(tasksDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === "archive") {
+          continue;
+        }
+        const taskDir = join(tasksDir, entry.name);
+        const task = await this.getTask(taskDir);
+        if (task && task.id === id) {
+          return taskDir;
         }
       }
+    } catch {
+      // Ignore
     }
+
+    // Search archived tasks
+    const archiveDir = join(tasksDir, "archive");
+    if (existsSync(archiveDir)) {
+      try {
+        const monthDirs = await readdir(archiveDir, { withFileTypes: true });
+        for (const monthDir of monthDirs) {
+          if (!monthDir.isDirectory()) {
+            continue;
+          }
+          const monthPath = join(archiveDir, monthDir.name);
+          const taskDirs = await readdir(monthPath, { withFileTypes: true });
+          for (const taskEntry of taskDirs) {
+            if (!taskEntry.isDirectory()) {
+              continue;
+            }
+            const taskDir = join(monthPath, taskEntry.name);
+            const task = await this.getTask(taskDir);
+            if (task && task.id === id) {
+              return taskDir;
+            }
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
     return null;
   }
 
@@ -779,7 +884,7 @@ export class TaskService {
    * Check if a status is a settled state (no automatic transitions)
    */
   isSettledState(status: TaskStatus): boolean {
-    return ["backlog", "paused", "human_review", "completed", "failed", "cancelled"].includes(status);
+    return ["backlog", "paused", "human_review", "completed", "failed", "cancelled", "archived"].includes(status);
   }
 
   /**

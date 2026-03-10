@@ -966,6 +966,9 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   // Create spec templates based on project type
   await createSpecTemplates(targetDir, projectType, writeOpts, createdFiles);
 
+  // Create idea-types templates
+  await createIdeaTypesTemplates(targetDir, writeOpts, createdFiles);
+
   // Add .viben/worktrees to root .gitignore
   const rootGitignorePath = join(targetDir, ".gitignore");
   const worktreesIgnoreEntry = ".viben/worktrees";
@@ -1161,5 +1164,41 @@ async function createSpecTemplates(
         cwd
       );
     }
+  }
+}
+
+/**
+ * Create idea-types templates in docs/idea-types/
+ *
+ * These are the prompt templates for the `viben idea` command.
+ * Both builtin and custom types are stored in this directory.
+ */
+async function createIdeaTypesTemplates(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const ideaTypesDir = join(cwd, "docs/idea-types");
+  ensureDir(ideaTypesDir);
+
+  // Builtin idea types
+  const ideaTypeFiles = [
+    "code_improvements.md",
+    "code_quality.md",
+    "documentation_gaps.md",
+    "performance_optimizations.md",
+    "security_hardening.md",
+    "ui_ux_improvements.md",
+  ];
+
+  for (const file of ideaTypeFiles) {
+    const content = readTemplate(`viben/idea-types/${file}`);
+    await writeFileIfNeeded(
+      join(ideaTypesDir, file),
+      content,
+      options,
+      createdFiles,
+      cwd
+    );
   }
 }

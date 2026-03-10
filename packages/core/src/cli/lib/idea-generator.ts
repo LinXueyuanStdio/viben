@@ -362,7 +362,7 @@ export function parseAIResponse(response: string, type: string): Idea[] {
     const parsed = JSON.parse(jsonStr);
 
     if (!Array.isArray(parsed)) {
-      console.warn("AI response is not an array, wrapping in array");
+      // AI returned a single object instead of array, wrap it
       return parseAIResponse(JSON.stringify([parsed]), type);
     }
 
@@ -403,17 +403,16 @@ export function parseAIResponse(response: string, type: string): Idea[] {
 
       ideas.push(idea);
     }
-  } catch (e) {
-    console.error("Failed to parse AI response:", e);
-    // Try to salvage partial JSON
+  } catch {
+    // Failed to parse AI response, try to salvage partial JSON
     try {
-      // Look for array pattern
+      // Look for array pattern in the response
       const match = response.match(/\[[\s\S]*\]/);
       if (match) {
         return parseAIResponse(match[0], type);
       }
     } catch {
-      // Give up
+      // Give up, return empty array
     }
   }
 

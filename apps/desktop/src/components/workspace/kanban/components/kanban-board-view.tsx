@@ -10,7 +10,19 @@
 
 import { memo, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GripVertical } from "lucide-react";
+import {
+  GripVertical,
+  Inbox,
+  ListTodo,
+  Play,
+  Pause,
+  Eye,
+  UserCheck,
+  CheckCircle2,
+  XCircle,
+  Ban,
+  Archive,
+} from "lucide-react";
 import { cn } from "@viben/ui";
 import {
   KanbanProvider,
@@ -31,6 +43,69 @@ import type {
 } from "../types";
 import { CollapsedColumn } from "./collapsed-column";
 import { ColumnHeader } from "./column-header";
+
+// ============================================
+// Empty State Configuration per Column
+// ============================================
+
+type EmptyStateConfig = {
+  icon: React.ReactNode;
+  messageKey: string;
+  hintKey: string;
+};
+
+const COLUMN_EMPTY_STATES: Record<KanbanColumnId, EmptyStateConfig> = {
+  backlog: {
+    icon: <Inbox className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyBacklog",
+    hintKey: "workspace.emptyBacklogHint",
+  },
+  queue: {
+    icon: <ListTodo className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyQueue",
+    hintKey: "workspace.emptyQueueHint",
+  },
+  in_progress: {
+    icon: <Play className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyInProgress",
+    hintKey: "workspace.emptyInProgressHint",
+  },
+  paused: {
+    icon: <Pause className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyPaused",
+    hintKey: "workspace.emptyPausedHint",
+  },
+  ai_review: {
+    icon: <Eye className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyAiReview",
+    hintKey: "workspace.emptyAiReviewHint",
+  },
+  human_review: {
+    icon: <UserCheck className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyHumanReview",
+    hintKey: "workspace.emptyHumanReviewHint",
+  },
+  completed: {
+    icon: <CheckCircle2 className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyCompleted",
+    hintKey: "workspace.emptyCompletedHint",
+  },
+  failed: {
+    icon: <XCircle className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyFailed",
+    hintKey: "workspace.emptyFailedHint",
+  },
+  cancelled: {
+    icon: <Ban className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyCancelled",
+    hintKey: "workspace.emptyCancelledHint",
+  },
+  archived: {
+    icon: <Archive className="h-5 w-5 text-muted-foreground/50" />,
+    messageKey: "workspace.emptyArchived",
+    hintKey: "workspace.emptyArchivedHint",
+  },
+};
 
 /**
  * Props for KanbanBoardView component
@@ -222,43 +297,48 @@ export const KanbanBoardView = memo(function KanbanBoardView({
                   column.id as KanbanColumnId
                 )}
               >
-                <KanbanHeader>
-                  <ColumnHeader
-                    column={column}
-                    onAddTask={() => onAddTask(column.id)}
-                    onCollapse={() => toggleCollapse(column.id)}
-                    onToggleLock={() => toggleLock(column.id)}
-                    onQueueAll={onQueueAll}
-                    onArchiveAll={onArchiveAll}
-                    onToggleArchived={onToggleArchived}
-                    onOpenQueueSettings={onOpenQueueSettings}
-                    selection={{
-                      allSelected: multiSelect.isSubsetAllSelected(
-                        columnTasks.map((t) => t.id)
-                      ),
-                      someSelected: multiSelect.isSubsetSomeSelected(
-                        columnTasks.map((t) => t.id)
-                      ),
-                      onToggle: () =>
-                        multiSelect.toggleSubset(columnTasks.map((t) => t.id)),
-                    }}
-                    capacity={
-                      column.id === "in_progress" && maxParallelTasks
-                        ? { current: columnTasks.length, max: maxParallelTasks }
-                        : undefined
-                    }
-                    archivedCount={archivedCount}
-                    showArchived={showArchived}
-                  />
-                </KanbanHeader>
-                <KanbanCards
-                  className="flex-1 overflow-y-auto"
-                  emptyMessage={t("workspace.noTasks", "No tasks")}
-                  emptyHint={t(
-                    "workspace.emptyColumnHint",
-                    "Drag tasks here or click + to create"
-                  )}
-                >
+                {(isOver: boolean) => {
+                  const emptyConfig = COLUMN_EMPTY_STATES[column.id as KanbanColumnId];
+                  const isValidTarget = validDropTargets.includes(column.id as KanbanColumnId);
+                  return (
+                    <>
+                      <KanbanHeader>
+                        <ColumnHeader
+                          column={column}
+                          onAddTask={() => onAddTask(column.id)}
+                          onCollapse={() => toggleCollapse(column.id)}
+                          onToggleLock={() => toggleLock(column.id)}
+                          onQueueAll={onQueueAll}
+                          onArchiveAll={onArchiveAll}
+                          onToggleArchived={onToggleArchived}
+                          onOpenQueueSettings={onOpenQueueSettings}
+                          selection={{
+                            allSelected: multiSelect.isSubsetAllSelected(
+                              columnTasks.map((t) => t.id)
+                            ),
+                            someSelected: multiSelect.isSubsetSomeSelected(
+                              columnTasks.map((t) => t.id)
+                            ),
+                            onToggle: () =>
+                              multiSelect.toggleSubset(columnTasks.map((t) => t.id)),
+                          }}
+                          capacity={
+                            column.id === "in_progress" && maxParallelTasks
+                              ? { current: columnTasks.length, max: maxParallelTasks }
+                              : undefined
+                          }
+                          archivedCount={archivedCount}
+                          showArchived={showArchived}
+                        />
+                      </KanbanHeader>
+                      <KanbanCards
+                        className="flex-1 overflow-y-auto"
+                        emptyMessage={t(emptyConfig.messageKey, "No tasks")}
+                        emptyHint={t(emptyConfig.hintKey, "Drag tasks here")}
+                        emptyIcon={emptyConfig.icon}
+                        isOver={isOver && isValidTarget}
+                        dropHereText={t("workspace.dropHere", "Drop here")}
+                      >
                   <AnimatePresence initial={false}>
                     {columnTasks.map((task, index) => (
                       <motion.div
@@ -308,8 +388,11 @@ export const KanbanBoardView = memo(function KanbanBoardView({
                         </SelectableCard>
                       </motion.div>
                     ))}
-                  </AnimatePresence>
-                </KanbanCards>
+                      </AnimatePresence>
+                    </KanbanCards>
+                  </>
+                );
+              }}
               </KanbanBoard>
 
               {/* Resize handle - right edge */}

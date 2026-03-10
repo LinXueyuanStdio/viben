@@ -2401,7 +2401,8 @@
       "human_review": "人工审查",
       "completed": "已完成",
       "failed": "失败",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "archived": "已归档"
     },
     "column": {
       "backlog": "待办",
@@ -2412,7 +2413,8 @@
       "humanReview": "人工审查",
       "completed": "已完成",
       "failed": "失败",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "archived": "已归档"
     },
     "taskDetail": "任务详情",
     "taskName": "任务名称",
@@ -2451,6 +2453,7 @@
       "completed": "筛选：仅完成",
       "failed": "筛选：仅失败",
       "cancelled": "筛选：仅取消",
+      "archived": "筛选：仅归档",
       "clear": "清除所有筛选",
       "search": "搜索任务"
     },
@@ -2462,6 +2465,27 @@
     "agentChat": "智能体对话",
     "agentChatPlaceholder": "询问关于此任务的问题...",
     "emptyColumnHint": "拖拽任务到此处或点击 + 创建",
+    "dropHere": "放置到此处",
+    "emptyBacklog": "暂无计划任务",
+    "emptyBacklogHint": "添加任务开始工作",
+    "emptyQueue": "队列为空",
+    "emptyQueueHint": "达到并行上限时任务在此等待",
+    "emptyInProgress": "暂无运行任务",
+    "emptyInProgressHint": "从待办列表启动任务",
+    "emptyPaused": "暂无暂停任务",
+    "emptyPausedHint": "暂停的任务会显示在这里",
+    "emptyAiReview": "暂无 AI 审核任务",
+    "emptyAiReviewHint": "AI 会审核完成的任务",
+    "emptyHumanReview": "暂无待审核任务",
+    "emptyHumanReviewHint": "等待您审批的任务",
+    "emptyCompleted": "暂无已完成任务",
+    "emptyCompletedHint": "已批准的任务会显示在这里",
+    "emptyFailed": "暂无失败任务",
+    "emptyFailedHint": "失败的任务会显示在这里",
+    "emptyCancelled": "暂无已取消任务",
+    "emptyCancelledHint": "取消的任务会显示在这里",
+    "emptyArchived": "暂无归档任务",
+    "emptyArchivedHint": "归档的任务会显示在这里",
     "collapseColumn": "折叠列",
     "expandColumn": "展开 {{name}}",
     "lockColumn": "锁定列宽",
@@ -2710,7 +2734,8 @@
       "human_review": "人工审查",
       "completed": "已完成",
       "failed": "失败",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "archived": "已归档"
     },
     "column": {
       "backlog": "待办",
@@ -2721,7 +2746,8 @@
       "humanReview": "人工审查",
       "completed": "已完成",
       "failed": "失败",
-      "cancelled": "已取消"
+      "cancelled": "已取消",
+      "archived": "已归档"
     },
     "addTask": "添加任务",
     "hideStats": "隐藏统计",

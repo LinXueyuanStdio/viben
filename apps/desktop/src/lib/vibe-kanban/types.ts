@@ -19,7 +19,8 @@ export type TaskStatus =
   | "human_review"  // 人工审查 - Needs human review
   | "completed"     // 已完成 - Successfully completed
   | "failed"        // 失败 - Task execution failed
-  | "cancelled";    // 已取消 - Task was cancelled
+  | "cancelled"     // 已取消 - Task was cancelled
+  | "archived";     // 已归档 - Task archived for reference
 
 /**
  * Reason for entering human_review status
@@ -194,6 +195,7 @@ export const KANBAN_COLUMNS = [
   "completed",
   "failed",
   "cancelled",
+  "archived",
 ] as const;
 
 export type KanbanColumnId = (typeof KANBAN_COLUMNS)[number];
@@ -212,6 +214,7 @@ export const STATUS_TO_COLUMN: Record<TaskStatus, KanbanColumnId> = {
   completed: "completed",
   failed: "failed",
   cancelled: "cancelled",
+  archived: "archived",
 };
 
 export const COLUMN_TO_STATUS: Record<KanbanColumnId, TaskStatus> = {
@@ -224,6 +227,7 @@ export const COLUMN_TO_STATUS: Record<KanbanColumnId, TaskStatus> = {
   completed: "completed",
   failed: "failed",
   cancelled: "cancelled",
+  archived: "archived",
 };
 
 // Visible statuses for kanban
@@ -237,6 +241,7 @@ export const VISIBLE_STATUSES: TaskStatus[] = [
   "completed",
   "failed",
   "cancelled",
+  "archived",
 ];
 
 // ==========================================
@@ -244,6 +249,7 @@ export const VISIBLE_STATUSES: TaskStatus[] = [
 // ==========================================
 
 export const TASK_STATUS_PRIORITY: Record<TaskStatus, number> = {
+  archived: 110,
   completed: 100,
   cancelled: 95,
   failed: 90,
@@ -281,9 +287,10 @@ export const VALID_STATUS_TRANSITIONS: Record<TaskStatus, KanbanColumnId[]> = {
   paused: ["in_progress", "backlog", "cancelled"],
   ai_review: ["in_progress", "human_review", "paused"],
   human_review: ["backlog", "completed", "cancelled"],
-  completed: [],  // Terminal state
-  failed: ["queue", "backlog"],
-  cancelled: [],  // Terminal state
+  completed: ["archived"],  // Can be archived
+  failed: ["queue", "backlog", "archived"],
+  cancelled: ["archived"],  // Can be archived
+  archived: [],  // Terminal state
 };
 
 /**
@@ -334,6 +341,7 @@ export const COLUMN_COLOR_VARS: Record<KanbanColumnId, string> = {
   completed: "--success",
   failed: "--destructive",
   cancelled: "--muted-foreground",
+  archived: "--slate-500",
 };
 
 /**
@@ -349,6 +357,7 @@ export const COLUMN_COLORS: Record<KanbanColumnId, string> = {
   completed: "hsl(var(--success))",
   failed: "hsl(var(--destructive))",
   cancelled: "hsl(var(--muted-foreground))",
+  archived: "#64748b",     // Slate
 };
 
 /**
@@ -364,6 +373,7 @@ export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
   completed: "bg-success/10 text-success",
   failed: "bg-destructive/10 text-destructive",
   cancelled: "bg-muted text-muted-foreground",
+  archived: "bg-slate-500/10 text-slate-400",
 };
 
 /**
@@ -401,6 +411,7 @@ export const COLUMN_LABELS: Record<KanbanColumnId, string> = {
   completed: "workspace.column.completed",
   failed: "workspace.column.failed",
   cancelled: "workspace.column.cancelled",
+  archived: "workspace.column.archived",
 };
 
 // ==========================================
@@ -420,6 +431,7 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "completed",
   "failed",
   "cancelled",
+  "archived",
 ];
 
 /**

@@ -86,6 +86,7 @@ export const COLUMN_I18N_KEYS: Record<KanbanColumnId, string> = {
   completed: "completed",
   failed: "failed",
   cancelled: "cancelled",
+  archived: "archived",
 };
 
 // ============================================

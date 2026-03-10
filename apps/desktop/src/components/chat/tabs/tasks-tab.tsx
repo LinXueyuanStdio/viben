@@ -91,6 +91,7 @@ const STATUS_LABELS: Record<TaskStatus, { key: string; fallback: string }> = {
   completed: { key: "workspace.column.completed", fallback: "Completed" },
   failed: { key: "workspace.column.failed", fallback: "Failed" },
   cancelled: { key: "workspace.column.cancelled", fallback: "Cancelled" },
+  archived: { key: "workspace.column.archived", fallback: "Archived" },
 };
 
 /**
@@ -246,6 +247,7 @@ export function TasksTabContent({
       completed: [],
       failed: [],
       cancelled: [],
+      archived: [],
     };
 
     for (const task of tasks) {

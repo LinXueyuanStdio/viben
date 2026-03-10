@@ -12,8 +12,8 @@
  *         └── idea_<type>.md
  *
  * docs/
- * └── idea-types/                  # Custom type prompts
- *     └── <type>.md
+ * └── idea-types/                  # Idea type prompts (builtin + custom)
+ *     └── <type>.md                # Copied from templates via `viben team init`
  */
 import {
   existsSync,
@@ -21,13 +21,11 @@ import {
   readdirSync,
   readFileSync,
   writeFileSync,
-  statSync,
   unlinkSync,
   rmSync,
 } from "node:fs";
-import { join, resolve, dirname, basename } from "node:path";
+import { join, resolve } from "node:path";
 import {
-  BUILTIN_IDEA_TYPES,
   CUSTOM_IDEA_TYPES_DIR,
   IDEAS_DIR,
   IDEA_JSON_FILE,
@@ -40,7 +38,6 @@ import {
   type IdeaSession,
   type IdeaListOptions,
   type RawIdeaSession,
-  type EffortLevel,
   isValidEffortLevel,
   isValidIdeaStatus,
   getIdeaIdPrefix,
@@ -53,20 +50,15 @@ import { DIR_VIBEN, getDatePrefix } from "./viben-workspace";
 // =============================================================================
 
 /**
- * Path to built-in prompt templates (relative to packages/core/src)
- */
-const BUILTIN_PROMPTS_DIR = "prompts/idea-types";
-
-/**
- * Built-in type descriptions
+ * Built-in type descriptions (fallback when prompt file doesn't exist)
  */
 const BUILTIN_TYPE_DESCRIPTIONS: Record<string, string> = {
-  code_improvements: "Code improvement opportunities based on existing patterns",
-  code_quality: "Code quality improvements and refactoring opportunities",
-  documentation_gaps: "Missing or incomplete documentation",
-  performance_optimizations: "Performance bottlenecks and optimization opportunities",
-  security_hardening: "Security vulnerabilities and hardening measures",
-  ui_ux_improvements: "UI/UX improvements for better user experience",
+  code_improvements: "代码改进 - 基于现有模式的改进机会",
+  code_quality: "代码质量 - 代码质量改进和重构模式",
+  documentation_gaps: "文档缺失 - 缺失或不足的文档",
+  performance_optimizations: "性能优化 - 性能瓶颈和优化技术",
+  security_hardening: "安全加固 - 安全漏洞和加固措施",
+  ui_ux_improvements: "UI/UX 改进 - 视觉和交互增强",
 };
 
 // =============================================================================
@@ -88,48 +80,23 @@ export function getIdeasDir(repoRoot: string, customOutput?: string): string {
 }
 
 /**
- * Get the builtin prompts directory path
+ * Get the idea types directory path
  *
- * Looks for the prompts directory relative to the current file location.
- * Falls back to searching in common locations.
+ * All idea types (builtin + custom) are stored in docs/idea-types/.
+ * Builtin types are copied there by `viben team init`.
  *
- * @returns Absolute path to builtin prompts directory
+ * @param repoRoot - Repository root path
+ * @returns Absolute path to idea types directory
  */
-export function getBuiltinPromptsDir(): string {
-  // Try to find prompts relative to this file's location
-  // This file is at: packages/core/src/cli/lib/idea-store.ts
-  // Prompts are at: packages/core/src/prompts/idea-types/
-  const currentDir = dirname(__filename);
-  const relativeToSrc = join(currentDir, "..", "..", BUILTIN_PROMPTS_DIR);
-  if (existsSync(relativeToSrc)) {
-    return resolve(relativeToSrc);
-  }
-
-  // Fallback: Try common locations for built prompts
-  const fallbackPaths = [
-    join(process.cwd(), "packages/core/src", BUILTIN_PROMPTS_DIR),
-    join(process.cwd(), "node_modules/@viben/core/dist", BUILTIN_PROMPTS_DIR),
-    join(__dirname, "..", "..", BUILTIN_PROMPTS_DIR),
-  ];
-
-  for (const p of fallbackPaths) {
-    if (existsSync(p)) {
-      return resolve(p);
-    }
-  }
-
-  // Return the relative path even if it doesn't exist (for error reporting)
-  return resolve(relativeToSrc);
+export function getIdeaTypesDir(repoRoot: string): string {
+  return join(repoRoot, CUSTOM_IDEA_TYPES_DIR);
 }
 
 /**
- * Get the custom idea types directory path
- *
- * @param repoRoot - Repository root path
- * @returns Absolute path to custom idea types directory
+ * @deprecated Use getIdeaTypesDir instead
  */
 export function getCustomTypesDir(repoRoot: string): string {
-  return join(repoRoot, CUSTOM_IDEA_TYPES_DIR);
+  return getIdeaTypesDir(repoRoot);
 }
 
 /**
@@ -165,24 +132,29 @@ export function getIdeaMarkdownPath(sessionDir: string, type: string): string {
 }
 
 /**
- * Get the builtin prompt file path for a specific type
- *
- * @param type - Idea type name
- * @returns Absolute path to builtin prompt file
- */
-export function getBuiltinPromptPath(type: string): string {
-  return join(getBuiltinPromptsDir(), `${type}.md`);
-}
-
-/**
- * Get the custom prompt file path for a specific type
+ * Get the prompt file path for a specific idea type
  *
  * @param repoRoot - Repository root path
  * @param type - Idea type name
- * @returns Path to custom prompt file in docs/idea-types/
+ * @returns Path to prompt file in docs/idea-types/
+ */
+export function getIdeaTypePromptPath(repoRoot: string, type: string): string {
+  return join(getIdeaTypesDir(repoRoot), `${type}.md`);
+}
+
+/**
+ * @deprecated Use getIdeaTypePromptPath instead
+ */
+export function getBuiltinPromptPath(type: string): string {
+  // This function is deprecated - use getIdeaTypePromptPath with repoRoot
+  return join(process.cwd(), CUSTOM_IDEA_TYPES_DIR, `${type}.md`);
+}
+
+/**
+ * @deprecated Use getIdeaTypePromptPath instead
  */
 export function getCustomPromptPath(repoRoot: string, type: string): string {
-  return join(getCustomTypesDir(repoRoot), `${type}.md`);
+  return getIdeaTypePromptPath(repoRoot, type);
 }
 
 // =============================================================================
@@ -284,21 +256,10 @@ function loadIdeaTypeFromFile(
  * @returns IdeaType object or null if not found
  */
 export function getIdeaType(typeName: string, repoRoot: string): IdeaType | null {
-  // Check custom types first
-  const customPath = join(getCustomTypesDir(repoRoot), `${typeName}.md`);
-  const customType = loadIdeaTypeFromFile(customPath, "custom");
-  if (customType) {
-    return customType;
-  }
-
-  // Check built-in types
-  const builtinPath = join(getBuiltinPromptsDir(), `${typeName}.md`);
-  const builtinType = loadIdeaTypeFromFile(builtinPath, "builtin");
-  if (builtinType) {
-    return builtinType;
-  }
-
-  return null;
+  // All types are in docs/idea-types/ (copied by `viben team init`)
+  const promptPath = getIdeaTypePromptPath(repoRoot, typeName);
+  const source: IdeaTypeSource = isBuiltinTypeName(typeName) ? "builtin" : "custom";
+  return loadIdeaTypeFromFile(promptPath, source);
 }
 
 /**
@@ -311,49 +272,46 @@ export function listIdeaTypes(repoRoot: string): IdeaType[] {
   const types: IdeaType[] = [];
   const seenNames = new Set<string>();
 
-  // Add custom types first (they take precedence)
-  const customDir = getCustomTypesDir(repoRoot);
-  if (existsSync(customDir)) {
+  // Read all types from docs/idea-types/
+  // Builtin types are copied there by `viben team init`
+  const typesDir = getIdeaTypesDir(repoRoot);
+  if (existsSync(typesDir)) {
     try {
-      const files = readdirSync(customDir);
+      const files = readdirSync(typesDir);
       for (const file of files) {
         if (file.endsWith(".md")) {
-          const promptPath = join(customDir, file);
-          const ideaType = loadIdeaTypeFromFile(promptPath, "custom");
-          if (ideaType) {
+          const promptPath = join(typesDir, file);
+          const typeName = file.replace(".md", "");
+          // Determine source: builtin types have known names
+          const source: IdeaTypeSource = isBuiltinTypeName(typeName) ? "builtin" : "custom";
+          const ideaType = loadIdeaTypeFromFile(promptPath, source);
+          if (ideaType && !seenNames.has(ideaType.name)) {
             types.push(ideaType);
             seenNames.add(ideaType.name);
           }
         }
       }
     } catch {
-      // Ignore errors reading custom types directory
-    }
-  }
-
-  // Add built-in types (skip if custom override exists)
-  const builtinDir = getBuiltinPromptsDir();
-  if (existsSync(builtinDir)) {
-    try {
-      const files = readdirSync(builtinDir);
-      for (const file of files) {
-        if (file.endsWith(".md")) {
-          const typeName = file.replace(".md", "");
-          if (!seenNames.has(typeName)) {
-            const promptPath = join(builtinDir, file);
-            const ideaType = loadIdeaTypeFromFile(promptPath, "builtin");
-            if (ideaType) {
-              types.push(ideaType);
-            }
-          }
-        }
-      }
-    } catch {
-      // Ignore errors reading builtin types directory
+      // Ignore errors reading types directory
     }
   }
 
   return types.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Check if a type name is a builtin type
+ */
+function isBuiltinTypeName(name: string): boolean {
+  const builtinNames = [
+    "code_improvements",
+    "code_quality",
+    "documentation_gaps",
+    "performance_optimizations",
+    "security_hardening",
+    "ui_ux_improvements",
+  ];
+  return builtinNames.includes(name);
 }
 
 /**
@@ -541,6 +499,125 @@ export function getLatestSession(
 ): string | null {
   const sessions = listSessions(repoRoot, customOutput);
   return sessions.length > 0 ? sessions[0] : null;
+}
+
+/**
+ * Alias for getLatestSession for API compatibility
+ */
+export const findLatestSession = getLatestSession;
+
+/**
+ * Create a new idea session
+ *
+ * @param repoRoot - Repository root path
+ * @param slug - Slug for the session
+ * @param types - Array of idea types to generate
+ * @param model - AI model used for generation
+ * @returns The created IdeaSession
+ */
+export function createIdeaSession(
+  repoRoot: string,
+  slug: string,
+  types: string[],
+  model: string
+): IdeaSession {
+  const datePrefix = getDatePrefix();
+  const sessionId = `${datePrefix}-${slug}`;
+  const sessionDir = createSessionDir(repoRoot, sessionId);
+
+  const now = new Date().toISOString();
+
+  // Initialize type counts
+  const byType: Record<string, number> = {};
+  for (const type of types) {
+    byType[type] = 0;
+  }
+
+  const session: IdeaSession = {
+    id: sessionId,
+    types,
+    model,
+    summary: {
+      totalIdeas: 0,
+      byType,
+      byStatus: {
+        draft: 0,
+        promoted: 0,
+        dismissed: 0,
+      },
+    },
+    generatedAt: now,
+    updatedAt: now,
+  };
+
+  // Write session metadata
+  const rawSession: RawIdeaSession = {
+    id: session.id,
+    types: session.types,
+    model: session.model,
+    summary: {
+      total_ideas: session.summary.totalIdeas,
+      by_type: session.summary.byType,
+      by_status: session.summary.byStatus,
+    },
+    generated_at: session.generatedAt,
+    updated_at: session.updatedAt,
+  };
+  writeSessionMetadata(sessionDir, rawSession);
+
+  return session;
+}
+
+/**
+ * List all idea sessions with their metadata
+ *
+ * @param repoRoot - Repository root path
+ * @returns Array of IdeaSessions, sorted by date descending
+ */
+export function listIdeaSessions(repoRoot: string): IdeaSession[] {
+  const sessionDirs = listSessions(repoRoot);
+  const sessions: IdeaSession[] = [];
+
+  for (const sessionDir of sessionDirs) {
+    const session = readSessionMetadata(sessionDir);
+    if (session) {
+      sessions.push(session);
+    }
+  }
+
+  return sessions;
+}
+
+/**
+ * Alias for readSessionMetadata for API compatibility
+ */
+export const readIdeaSession = readSessionMetadata;
+
+/**
+ * Write an idea session to its directory
+ *
+ * @param sessionDir - Path to session directory
+ * @param session - IdeaSession to write
+ */
+export function writeIdeaSession(
+  sessionDir: string,
+  session: IdeaSession
+): void {
+  // Convert to raw format for storage
+  const raw: RawIdeaSession = {
+    id: session.id,
+    types: session.types,
+    model: session.model,
+    summary: {
+      total_ideas: session.summary.totalIdeas,
+      by_type: session.summary.byType,
+      by_status: session.summary.byStatus,
+    },
+    generated_at: session.generatedAt,
+    updated_at: session.updatedAt,
+  };
+
+  writeSessionMetadata(sessionDir, raw);
 }
 
 // =============================================================================
@@ -795,4 +872,441 @@ export function updateIdea(
   ideas[index] = { ...ideas[index], ...updates };
   writeIdeasToFile(filePath, ideas);
   return true;
+}
+
+// =============================================================================
+// Idea Query Functions
+// =============================================================================
+
+/**
+ * Get all ideas from all sessions with optional filtering
+ *
+ * @param repoRoot - Repository root path
+ * @param options - Optional filter options
+ * @returns Array of Ideas
+ */
+export function getAllIdeas(
+  repoRoot: string,
+  options?: IdeaListOptions
+): Idea[] {
+  const sessionDirs = listSessions(repoRoot);
+  const allIdeas: Idea[] = [];
+
+  for (const sessionDir of sessionDirs) {
+    const sessionIdeas = getAllIdeasFromSession(sessionDir);
+    allIdeas.push(...sessionIdeas);
+  }
+
+  // Apply filters
+  let filtered = allIdeas;
+
+  if (options?.type) {
+    filtered = filtered.filter((idea) => idea.type === options.type);
+  }
+
+  if (options?.effort) {
+    filtered = filtered.filter(
+      (idea) => idea.estimatedEffort === options.effort
+    );
+  }
+
+  if (options?.status) {
+    filtered = filtered.filter((idea) => idea.status === options.status);
+  }
+
+  return filtered;
+}
+
+/**
+ * Get an idea by its ID
+ *
+ * @param repoRoot - Repository root path
+ * @param ideaId - Idea ID (e.g., "ci-001")
+ * @returns Idea or null if not found
+ */
+export function getIdeaById(repoRoot: string, ideaId: string): Idea | null {
+  const result = findIdeaById(repoRoot, ideaId);
+  return result ? result.idea : null;
+}
+
+/**
+ * Update an idea's status
+ *
+ * @param repoRoot - Repository root path
+ * @param ideaId - Idea ID
+ * @param status - New status
+ * @param promotedTo - Optional task ID if promoting
+ */
+export function updateIdeaStatus(
+  repoRoot: string,
+  ideaId: string,
+  status: string,
+  promotedTo?: string
+): void {
+  const location = findIdeaById(repoRoot, ideaId);
+  if (!location) {
+    return;
+  }
+
+  const updates: Partial<Idea> = {};
+  if (isValidIdeaStatus(status)) {
+    updates.status = status;
+  }
+  if (promotedTo !== undefined) {
+    updates.promotedTo = promotedTo;
+  }
+
+  updateIdea(location.filePath, ideaId, updates);
+
+  // Update session summary
+  updateSessionSummary(location.sessionDir);
+}
+
+/**
+ * Remove an idea by ID
+ *
+ * @param repoRoot - Repository root path
+ * @param ideaId - Idea ID
+ * @returns True if removed, false if not found
+ */
+export function removeIdea(repoRoot: string, ideaId: string): boolean {
+  const location = findIdeaById(repoRoot, ideaId);
+  if (!location) {
+    return false;
+  }
+
+  const ideas = readIdeasFromFile(location.filePath);
+  const filteredIdeas = ideas.filter((idea) => idea.id !== ideaId);
+
+  if (filteredIdeas.length === ideas.length) {
+    return false; // Not found
+  }
+
+  writeIdeasToFile(location.filePath, filteredIdeas);
+
+  // Update session summary
+  updateSessionSummary(location.sessionDir);
+
+  return true;
+}
+
+/**
+ * Remove all ideas of a specific type
+ *
+ * @param repoRoot - Repository root path
+ * @param type - Idea type to remove
+ * @returns Number of ideas removed
+ */
+export function removeIdeasByType(repoRoot: string, type: string): number {
+  const sessionDirs = listSessions(repoRoot);
+  let removedCount = 0;
+
+  for (const sessionDir of sessionDirs) {
+    const mdPath = getIdeaMarkdownPath(sessionDir, type);
+
+    if (existsSync(mdPath)) {
+      const ideas = readIdeasFromFile(mdPath);
+      removedCount += ideas.length;
+
+      // Remove the file
+      unlinkSync(mdPath);
+
+      // Update session summary
+      updateSessionSummary(sessionDir);
+    }
+  }
+
+  return removedCount;
+}
+
+/**
+ * Remove all ideas
+ *
+ * @param repoRoot - Repository root path
+ * @returns Number of ideas removed
+ */
+export function removeAllIdeas(repoRoot: string): number {
+  const sessions = listIdeaSessions(repoRoot);
+  let removedCount = 0;
+
+  for (const session of sessions) {
+    removedCount += session.summary.totalIdeas;
+    const sessionDir = getIdeaSessionDir(repoRoot, session.id);
+
+    // Remove entire session directory
+    if (existsSync(sessionDir)) {
+      rmSync(sessionDir, { recursive: true, force: true });
+    }
+  }
+
+  return removedCount;
+}
+
+/**
+ * Update session summary after modifying ideas
+ *
+ * @param sessionDir - Session directory path
+ */
+function updateSessionSummary(sessionDir: string): void {
+  const session = readSessionMetadata(sessionDir);
+  if (!session) {
+    return;
+  }
+
+  // Recalculate summary
+  session.summary.totalIdeas = 0;
+  session.summary.byType = {};
+  session.summary.byStatus = { draft: 0, promoted: 0, dismissed: 0 };
+
+  // Check which types still have files
+  const remainingTypes: string[] = [];
+
+  for (const type of session.types) {
+    const mdPath = getIdeaMarkdownPath(sessionDir, type);
+    if (existsSync(mdPath)) {
+      const ideas = readIdeasFromFile(mdPath);
+
+      if (ideas.length > 0) {
+        remainingTypes.push(type);
+        session.summary.byType[type] = ideas.length;
+        session.summary.totalIdeas += ideas.length;
+
+        for (const idea of ideas) {
+          if (idea.status in session.summary.byStatus) {
+            session.summary.byStatus[idea.status as IdeaStatus]++;
+          }
+        }
+      }
+    }
+  }
+
+  session.types = remainingTypes;
+  session.updatedAt = new Date().toISOString();
+  writeIdeaSession(sessionDir, session);
+}
+
+// =============================================================================
+// Markdown Parsing and Formatting
+// =============================================================================
+
+/**
+ * Parse markdown content into Ideas
+ *
+ * Expects format:
+ * ---
+ * id: ci-001
+ * type: code_improvements
+ * ...
+ * ---
+ *
+ * @param content - Markdown content
+ * @returns Array of Ideas
+ */
+export function parseIdeaMarkdown(content: string): Idea[] {
+  // Create a temp in-memory approach using the existing parser
+  const ideas: Idea[] = [];
+
+  // Split by document separator (---)
+  const sections = content.split(/\n---\n+/);
+
+  for (const section of sections) {
+    const trimmed = section.trim();
+    if (!trimmed || !trimmed.startsWith("---")) {
+      continue;
+    }
+
+    const { frontmatter, body } = parseFrontmatter(trimmed);
+    if (!frontmatter.id) {
+      continue;
+    }
+
+    // Parse affected files from body
+    const affectedFiles: string[] = [];
+    const existingPatterns: string[] = [];
+    let implementationApproach: string | undefined;
+
+    const lines = body.split("\n");
+    let currentSection = "";
+
+    for (const line of lines) {
+      if (line.startsWith("## Affected Files")) {
+        currentSection = "affected";
+      } else if (line.startsWith("## Existing Patterns")) {
+        currentSection = "patterns";
+      } else if (line.startsWith("## Implementation Approach")) {
+        currentSection = "implementation";
+      } else if (line.startsWith("## ")) {
+        currentSection = "";
+      } else if (line.startsWith("- ") && currentSection === "affected") {
+        affectedFiles.push(line.slice(2).trim());
+      } else if (line.startsWith("- ") && currentSection === "patterns") {
+        existingPatterns.push(line.slice(2).trim());
+      } else if (currentSection === "implementation" && line.trim()) {
+        implementationApproach = implementationApproach
+          ? implementationApproach + "\n" + line
+          : line;
+      }
+    }
+
+    const effortStr = String(frontmatter.estimated_effort || "medium");
+
+    ideas.push({
+      id: String(frontmatter.id),
+      type: String(frontmatter.type || ""),
+      title: String(frontmatter.title || ""),
+      description: String(frontmatter.description || ""),
+      rationale: String(frontmatter.rationale || ""),
+      estimatedEffort: isValidEffortLevel(effortStr) ? effortStr : "medium",
+      status:
+        frontmatter.status === "promoted"
+          ? "promoted"
+          : frontmatter.status === "dismissed"
+            ? "dismissed"
+            : "draft",
+      promotedTo:
+        frontmatter.promoted_to && frontmatter.promoted_to !== "null"
+          ? String(frontmatter.promoted_to)
+          : undefined,
+      createdAt: String(frontmatter.created_at || new Date().toISOString()),
+      affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
+      existingPatterns:
+        existingPatterns.length > 0 ? existingPatterns : undefined,
+      implementationApproach,
+    });
+  }
+
+  return ideas;
+}
+
+/**
+ * Format an Idea as markdown
+ *
+ * @param idea - Idea to format
+ * @returns Markdown string
+ */
+export function formatIdeaMarkdown(idea: Idea): string {
+  const lines: string[] = [];
+
+  // YAML frontmatter
+  lines.push("---");
+  lines.push(`id: ${idea.id}`);
+  lines.push(`type: ${idea.type}`);
+  lines.push(`title: ${idea.title}`);
+  lines.push(`description: ${idea.description}`);
+  lines.push(`rationale: ${idea.rationale}`);
+  lines.push(`estimated_effort: ${idea.estimatedEffort}`);
+  lines.push(`status: ${idea.status}`);
+  lines.push(`promoted_to: ${idea.promotedTo || "null"}`);
+  lines.push(`created_at: ${idea.createdAt}`);
+  lines.push("---");
+  lines.push("");
+
+  // Body sections
+  if (idea.affectedFiles && idea.affectedFiles.length > 0) {
+    lines.push("## Affected Files");
+    lines.push("");
+    for (const file of idea.affectedFiles) {
+      lines.push(`- ${file}`);
+    }
+    lines.push("");
+  }
+
+  if (idea.existingPatterns && idea.existingPatterns.length > 0) {
+    lines.push("## Existing Patterns");
+    lines.push("");
+    for (const pattern of idea.existingPatterns) {
+      lines.push(`- ${pattern}`);
+    }
+    lines.push("");
+  }
+
+  if (idea.implementationApproach) {
+    lines.push("## Implementation Approach");
+    lines.push("");
+    lines.push(idea.implementationApproach);
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Alias for readIdeasFromFile for API compatibility
+ */
+export const readIdeasFromMarkdown = readIdeasFromFile;
+
+/**
+ * Alias for writeIdeasToFile for API compatibility
+ */
+export const writeIdeasToMarkdown = writeIdeasToFile;
+
+// =============================================================================
+// ID Generation Helpers
+// =============================================================================
+
+/**
+ * Get the next available ID for a type in a session
+ *
+ * @param sessionDir - Session directory
+ * @param type - Idea type
+ * @returns Next available ID (e.g., "ci-003")
+ */
+export function getNextIdeaId(sessionDir: string, type: string): string {
+  const mdPath = getIdeaMarkdownPath(sessionDir, type);
+  const ideas = readIdeasFromFile(mdPath);
+
+  const prefix = getIdeaIdPrefix(type);
+
+  // Find highest existing number
+  let maxNum = 0;
+  for (const idea of ideas) {
+    const match = idea.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  return `${prefix}-${String(maxNum + 1).padStart(3, "0")}`;
+}
+
+/**
+ * Generate multiple idea IDs for a type
+ *
+ * @param sessionDir - Session directory
+ * @param type - Idea type
+ * @param count - Number of IDs to generate
+ * @returns Array of IDs
+ */
+export function generateIdeaIds(
+  sessionDir: string,
+  type: string,
+  count: number
+): string[] {
+  const mdPath = getIdeaMarkdownPath(sessionDir, type);
+  const ideas = readIdeasFromFile(mdPath);
+
+  const prefix = getIdeaIdPrefix(type);
+
+  // Find highest existing number
+  let maxNum = 0;
+  for (const idea of ideas) {
+    const match = idea.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  // Generate IDs
+  const ids: string[] = [];
+  for (let i = 1; i <= count; i++) {
+    ids.push(`${prefix}-${String(maxNum + i).padStart(3, "0")}`);
+  }
+
+  return ids;
 }
