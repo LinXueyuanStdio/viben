@@ -333,12 +333,12 @@ export const KanbanBoardView = memo(function KanbanBoardView({
                       </KanbanHeader>
                       <KanbanCards
                         className="flex-1 overflow-y-auto"
+                        count={columnTasks.length}
                         emptyMessage={t(emptyConfig.messageKey, "No tasks")}
                         emptyHint={t(emptyConfig.hintKey, "Drag tasks here")}
                         emptyIcon={emptyConfig.icon}
                         isOver={isOver && isValidTarget}
                         dropHereText={t("workspace.dropHere", "Drop here")}
-                        isEmpty={columnTasks.length === 0}
                       >
                   <AnimatePresence initial={false}>
                     {columnTasks.map((task, index) => (

@@ -256,6 +256,8 @@ export const KanbanCard = ({
 export type KanbanCardsProps = {
   children: React.ReactNode;
   className?: string;
+  /** Number of items (tasks) in the column - used to determine empty state */
+  count: number;
   /** Show empty state when no children */
   emptyMessage?: string;
   /** Secondary empty state message */
@@ -266,22 +268,19 @@ export type KanbanCardsProps = {
   isOver?: boolean;
   /** Text to show when dragging over empty column */
   dropHereText?: string;
-  /** Explicit isEmpty flag - use when children includes wrapper components like AnimatePresence */
-  isEmpty?: boolean;
 };
 
 export const KanbanCards = ({
   children,
   className,
+  count,
   emptyMessage = "No tasks",
   emptyHint = "Drag tasks here or click + to create",
   emptyIcon,
   isOver = false,
   dropHereText = "Drop here",
-  isEmpty: isEmptyProp,
 }: KanbanCardsProps) => {
-  // Use explicit isEmpty prop if provided, otherwise check children count
-  const isEmpty = isEmptyProp ?? React.Children.count(children) === 0;
+  const isEmpty = count === 0;
 
   return (
     <div className={cn("flex flex-1 flex-col gap-2 p-2", className)}>

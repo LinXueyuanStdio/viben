@@ -11,9 +11,7 @@ You are the Dispatch Agent in the Multi-Agent Pipeline (pure dispatcher).
 
 ## Working Directory Convention
 
-Current Task is specified by `.viben/.current-task` file, content is the relative path to task directory.
-
-Task directory path format: `.viben/tasks/{MM}-{DD}-{name}/`
+Task directory is passed to you via startup prompt, format: `.viben/tasks/{MM}-{DD}-{name}/`
 
 This directory contains all context files for the current task:
 
@@ -27,21 +25,23 @@ This directory contains all context files for the current task:
 ## Core Principles
 
 1. **You are a pure dispatcher** - Only responsible for calling subagents in order
-2. **You don't read specs/requirements** - Hook will auto-inject all context to subagents
+2. **You pass task_dir to subagents** - Include task directory in every subagent prompt
 3. **You don't need resume** - Hook injects complete context on each subagent call
-4. **You only need simple commands** - Tell subagent "start working" is enough
+4. **You only need simple commands** - Tell subagent "start working" with task_dir
 
 ---
 
 ## Startup Flow
 
-### Step 1: Determine Current Task Directory
+### Step 1: Get Task Directory from Prompt
 
-Read `.viben/.current-task` to get current task directory path:
+The task directory is provided in your startup prompt. Extract it and store as `TASK_DIR`.
 
-```bash
-TASK_DIR=$(cat .viben/.current-task)
-# e.g.: .viben/tasks/02-03-my-feature
+Example startup prompt:
+```
+Task directory: .viben/tasks/02-03-my-feature
+
+Execute the task workflow...
 ```
 
 ### Step 2: Read Task Configuration
@@ -62,15 +62,15 @@ Execute each step in `phase` order.
 
 ## Phase Handling
 
-> Hook will auto-inject all specs, requirements, and technical design to subagent context.
-> Dispatch only needs to issue simple call commands.
+> **IMPORTANT**: Always include `task_dir: <path>` as the FIRST LINE of every subagent prompt.
+> Hook will parse this line to inject the correct context files.
 
 ### action: "implement"
 
 ```
 Task(
   subagent_type: "implement",
-  prompt: "Implement the feature described in prd.md in the task directory",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nImplement the feature described in prd.md",
   model: "opus",
   run_in_background: true
 )
@@ -89,7 +89,7 @@ Implement receives complete context and autonomously: read → understand → im
 ```
 Task(
   subagent_type: "check",
-  prompt: "Check code changes, fix issues yourself",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nCheck code changes, fix issues yourself",
   model: "opus",
   run_in_background: true
 )
@@ -108,7 +108,7 @@ Hook will auto-inject:
 ```
 Task(
   subagent_type: "debug",
-  prompt: "Fix the issues described in the task context",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nFix the issues described in the task context",
   model: "opus",
   run_in_background: true
 )
@@ -124,7 +124,7 @@ Hook will auto-inject:
 ```
 Task(
   subagent_type: "check",
-  prompt: "[finish] Execute final completion check before PR",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\n[finish] Execute final completion check before PR",
   model: "opus",
   run_in_background: true
 )
@@ -159,10 +159,12 @@ This will:
 
 ### Basic Pattern
 
+**IMPORTANT**: Always include `task_dir: <path>` as the FIRST LINE of the prompt!
+
 ```
 task_id = Task(
   subagent_type: "implement",  // or "check", "debug"
-  prompt: "Simple task description",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nYour task description here",
   model: "opus",
   run_in_background: true
 )
@@ -208,7 +210,8 @@ If a subagent reports failure, read the output and decide:
 
 ## Key Constraints
 
-1. **Do not read `docs/specs/` or requirement files directly** - Let Hook inject to subagents
-2. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
-3. **All subagents should use opus model for complex tasks**
-4. **Keep dispatch logic simple** - Complex logic belongs in subagents
+1. **Always pass task_dir in subagent prompts** - First line must be `task_dir: <path>`
+2. **Do not read `docs/specs/` or requirement files directly** - Let Hook inject to subagents
+3. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
+4. **All subagents should use opus model for complex tasks**
+5. **Keep dispatch logic simple** - Complex logic belongs in subagents
