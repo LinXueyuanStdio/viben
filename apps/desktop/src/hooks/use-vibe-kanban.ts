@@ -180,7 +180,7 @@ export function useUpdateVibeKanbanTaskStatus() {
     },
     onSuccess: (_data, { taskId, status }) => {
       // Clear activity tracking when task completes or is archived
-      if (status === "done") {
+      if (status === "completed") {
         clearTaskActivity(taskId);
       }
     },

@@ -409,7 +409,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
     const [rawJsonValue, setRawJsonValue] = useState<string>(
       JSON.stringify(value ?? generateDefaultValue(schema), null, 2)
     );
-    const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // Resolve and normalize schema
     const resolvedSchema = normalizeUnionType(resolveRef(schema, effectiveRootSchema));

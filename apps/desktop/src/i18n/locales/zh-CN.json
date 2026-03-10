@@ -106,7 +106,8 @@
     "openInExplorer": "在文件管理器中打开",
     "learnMore": "了解更多",
     "noData": "无数据",
-    "id": "ID"
+    "id": "ID",
+    "openFolderFailed": "无法打开文件夹"
   },
   "elapsedTime": {
     "justNow": "刚刚",
@@ -2394,19 +2395,23 @@
       "backlog": "待办",
       "queue": "排队中",
       "in_progress": "执行中",
+      "paused": "暂停中",
       "ai_review": "AI审查",
       "human_review": "人工审查",
-      "done": "已完成",
-      "pr_created": "PR已创建",
-      "error": "错误"
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
     },
     "column": {
       "backlog": "待办",
       "queue": "排队中",
       "inProgress": "执行中",
+      "paused": "暂停中",
       "aiReview": "AI审查",
       "humanReview": "人工审查",
-      "done": "已完成"
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
     },
     "taskDetail": "任务详情",
     "taskName": "任务名称",
@@ -2441,7 +2446,10 @@
     "filter": {
       "backlog": "筛选：仅待办",
       "inProgress": "筛选：仅进行中",
-      "done": "筛选：仅完成",
+      "paused": "筛选：仅暂停",
+      "completed": "筛选：仅完成",
+      "failed": "筛选：仅失败",
+      "cancelled": "筛选：仅取消",
       "clear": "清除所有筛选",
       "search": "搜索任务"
     },
@@ -2696,19 +2704,23 @@
       "backlog": "待办",
       "queue": "排队中",
       "in_progress": "执行中",
+      "paused": "暂停中",
       "ai_review": "AI审查",
       "human_review": "人工审查",
-      "done": "已完成",
-      "pr_created": "PR已创建",
-      "error": "错误"
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
     },
     "column": {
       "backlog": "待办",
       "queue": "排队中",
       "inProgress": "执行中",
+      "paused": "暂停中",
       "aiReview": "AI审查",
       "humanReview": "人工审查",
-      "done": "已完成"
+      "completed": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
     },
     "addTask": "添加任务",
     "hideStats": "隐藏统计",
@@ -3848,7 +3860,13 @@
     },
     "sessions": {
       "loadFailed": "加载会话列表失败",
-      "refreshFailed": "刷新会话列表失败"
+      "refreshFailed": "刷新会话列表失败",
+      "renamed": "会话已重命名",
+      "renameFailed": "重命名会话失败",
+      "deleted": "会话已删除",
+      "deleteFailed": "删除会话失败",
+      "created": "新会话已创建",
+      "createFailed": "创建会话失败"
     },
     "packages": {
       "loadFailed": "加载包失败"

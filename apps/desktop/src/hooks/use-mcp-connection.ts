@@ -225,10 +225,10 @@ export function useMcpConnection({
     }
 
     console.log("[useMcpConnection] Effective config:", {
-      url: effectiveConfig.url,
+      url: isRemoteConfig(effectiveConfig) ? effectiveConfig.url : undefined,
       transport: effectiveConfig.transport,
-      headers: effectiveConfig.headers ? Object.keys(effectiveConfig.headers) : [],
-      headerValues: effectiveConfig.headers,
+      headers: isRemoteConfig(effectiveConfig) && effectiveConfig.headers ? Object.keys(effectiveConfig.headers) : [],
+      headerValues: isRemoteConfig(effectiveConfig) ? effectiveConfig.headers : undefined,
     });
 
     // Clear previous error

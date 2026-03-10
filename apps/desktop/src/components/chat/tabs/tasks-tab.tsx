@@ -36,11 +36,13 @@ function getStatusIcon(status: TaskStatus) {
       return AlertCircle;
     case "human_review":
       return AlertCircle;
-    case "done":
+    case "paused":
+      return Clock;
+    case "completed":
       return CheckCircle2;
-    case "pr_created":
-      return CheckCircle2;
-    case "error":
+    case "failed":
+      return XCircle;
+    case "cancelled":
       return XCircle;
     default:
       return Circle;
@@ -62,12 +64,14 @@ function getStatusColor(status: TaskStatus) {
       return "text-amber-500";
     case "human_review":
       return "text-purple-500";
-    case "done":
+    case "paused":
+      return "text-yellow-500";
+    case "completed":
       return "text-green-500";
-    case "pr_created":
-      return "text-blue-500";
-    case "error":
+    case "failed":
       return "text-red-500";
+    case "cancelled":
+      return "text-muted-foreground";
     default:
       return "text-muted-foreground";
   }
@@ -81,11 +85,12 @@ const STATUS_LABELS: Record<TaskStatus, { key: string; fallback: string }> = {
   backlog: { key: "workspace.column.backlog", fallback: "Backlog" },
   queue: { key: "workspace.column.queue", fallback: "Queue" },
   in_progress: { key: "workspace.column.inProgress", fallback: "In Progress" },
+  paused: { key: "workspace.column.paused", fallback: "Paused" },
   ai_review: { key: "workspace.column.aiReview", fallback: "AI Review" },
   human_review: { key: "workspace.column.humanReview", fallback: "Human Review" },
-  done: { key: "workspace.column.done", fallback: "Done" },
-  pr_created: { key: "workspace.column.prCreated", fallback: "PR Created" },
-  error: { key: "workspace.column.error", fallback: "Error" },
+  completed: { key: "workspace.column.completed", fallback: "Completed" },
+  failed: { key: "workspace.column.failed", fallback: "Failed" },
+  cancelled: { key: "workspace.column.cancelled", fallback: "Cancelled" },
 };
 
 /**
@@ -235,11 +240,12 @@ export function TasksTabContent({
       backlog: [],
       queue: [],
       in_progress: [],
+      paused: [],
       ai_review: [],
       human_review: [],
-      done: [],
-      pr_created: [],
-      error: [],
+      completed: [],
+      failed: [],
+      cancelled: [],
     };
 
     for (const task of tasks) {
@@ -251,8 +257,8 @@ export function TasksTabContent({
     return groups;
   }, [tasks]);
 
-  // Status order for display (error shown separately)
-  const statusOrder: TaskStatus[] = ["in_progress", "queue", "ai_review", "human_review", "backlog", "done", "pr_created"];
+  // Status order for display (failed shown separately)
+  const statusOrder: TaskStatus[] = ["in_progress", "paused", "queue", "ai_review", "human_review", "backlog", "completed", "cancelled"];
 
   if (isLoading) {
     return (
@@ -282,11 +288,11 @@ export function TasksTabContent({
           onTaskClick={onTaskClick}
         />
       ))}
-      {/* Show error tasks if any exist */}
-      {tasksByStatus.error.length > 0 && (
+      {/* Show failed tasks if any exist */}
+      {tasksByStatus.failed.length > 0 && (
         <TaskGroup
-          status="error"
-          tasks={tasksByStatus.error}
+          status="failed"
+          tasks={tasksByStatus.failed}
           onTaskClick={onTaskClick}
         />
       )}

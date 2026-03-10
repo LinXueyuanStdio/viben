@@ -492,6 +492,48 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // Generic HTTP Methods
+  // ==========================================================================
+
+  /**
+   * Generic GET request
+   * @param path - API path (e.g., "/api/packages/installed")
+   * @returns Response data
+   */
+  async get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`GET ${path} failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Generic POST request
+   * @param path - API path (e.g., "/api/packages/update")
+   * @param body - Request body
+   * @returns Response data
+   */
+  async post<T>(path: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) {
+      throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}`);
+    }
+    return response.json();
+  }
+
+  // ==========================================================================
   // Core Module Methods
   // ==========================================================================
 

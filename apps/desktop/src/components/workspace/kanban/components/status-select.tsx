@@ -36,11 +36,12 @@ export interface StatusSelectProps {
     backlog?: string;
     queue?: string;
     in_progress?: string;
+    paused?: string;
     ai_review?: string;
     human_review?: string;
-    done?: string;
-    pr_created?: string;
-    error?: string;
+    completed?: string;
+    failed?: string;
+    cancelled?: string;
   };
 }
 
@@ -56,11 +57,12 @@ const DEFAULT_LABELS: Required<StatusSelectProps["labels"]> = {
   backlog: "Backlog",
   queue: "Queue",
   in_progress: "In Progress",
+  paused: "Paused",
   ai_review: "AI Review",
   human_review: "Human Review",
-  done: "Done",
-  pr_created: "PR Created",
-  error: "Error",
+  completed: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
 };
 
 // Get status label with i18n support

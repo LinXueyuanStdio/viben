@@ -48,9 +48,59 @@ import {
 import type { CustomVariable } from "@/components/agent";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
-import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
+import type { AvailabilityInfo, AgentResponse, UIMessage } from "@/lib/gateway";
 import type { TraceSpanNode, TraceTree } from "@/components/observability";
+import type { AgentMessage } from "@/types";
 import { toast } from "@/hooks/use-toast";
+
+// Convert Gateway UIMessage to AgentMessage
+function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
+  switch (msg.type) {
+    case "user":
+      return {
+        id: msg.id,
+        type: "user" as const,
+        content: msg.content || "",
+      };
+    case "text":
+      return {
+        id: msg.id,
+        type: "text" as const,
+        content: msg.content || "",
+      };
+    case "tool_use":
+      return {
+        id: msg.id,
+        type: "tool_use" as const,
+        name: msg.tool_name || "unknown_tool",
+        input: msg.tool_input || {},
+        toolUseId: msg.tool_use_id,
+      };
+    case "tool_result":
+      return {
+        id: msg.id,
+        type: "tool_result" as const,
+        toolUseId: msg.tool_use_id,
+        output: msg.tool_output || "",
+        isError: msg.is_error || false,
+      };
+    case "thinking":
+      return {
+        id: msg.id,
+        type: "text" as const,
+        content: msg.content || "",
+      };
+    case "error":
+      return {
+        id: msg.id,
+        type: "error" as const,
+        message: msg.content || "",
+        isError: true,
+      };
+    default:
+      return null;
+  }
+}
 
 // ============================================================================
 // Main Component
@@ -79,13 +129,14 @@ export function AgentDetailPage() {
   const { executors: availableExecutors } = useExecutors();
 
   // Helper to get executor name by type (using Gateway API data)
-  const getExecutorName = useCallback(
+  const _getExecutorName = useCallback(
     (executorType: ExecutorType) => {
       const executor = availableExecutors.find((e) => e.type === executorType);
       return executor?.name || executorType;
     },
     [availableExecutors]
   );
+  void _getExecutorName; // Reserved for future use
 
   // Determine workdir: workspace path for workspace-scoped, ~/.viben for global
   const [globalVibenDir, setGlobalVibenDir] = useState<string>("");
@@ -378,6 +429,32 @@ export function AgentDetailPage() {
         });
       }
 
+      // Debug: log the payload to find undefined values
+      console.log("[agent-detail] Save payload:", JSON.stringify(updatePayload, (_key, value) => {
+        if (value === undefined) return `__UNDEFINED__`;
+        return value;
+      }, 2));
+
+      // Also check each field individually
+      console.log("[agent-detail] Field check:", {
+        name: formName,
+        temperature: formTemperature,
+        executor_type: formExecutorType,
+        plan_mode: formPlanMode,
+        approvals: formApprovals,
+        mcp_servers: selectedMcpServers,
+        skills: selectedSkills,
+        is_template: formIsTemplate,
+        formDescription,
+        formSystemPrompt,
+        formAppendPrompt,
+        formModel,
+        formTemplateDescription,
+        formTemplateTags,
+        formEnvVariables,
+        formCustomVariables,
+      });
+
       await updateAgent(agentId, updatePayload);
       setIsDirty(false);
       setLastSaved(new Date());
@@ -647,10 +724,21 @@ export function AgentDetailPage() {
   }, [loadDebugSessions]);
 
   // Session management handlers
-  const handleSelectDebugSession = useCallback((session: { id: string }) => {
-    // Load messages for selected session
-    loadMessages(session.id);
-  }, [loadMessages]);
+  const handleSelectDebugSession = useCallback(async (session: { id: string }) => {
+    if (!agentId) return;
+    try {
+      // Fetch session UI messages from gateway
+      const client = getGatewayClient();
+      const uiMessages = await client.listSessionUIMessages(agentId, session.id, debugWorkdir);
+      // Convert UIMessage[] to AgentMessage[] using the proper converter
+      const agentMessages = uiMessages
+        .map(uiMessageToAgentMessage)
+        .filter((msg): msg is AgentMessage => msg !== null);
+      loadMessages(agentMessages, session.id);
+    } catch (error) {
+      console.error("[agent-detail] Failed to load session messages:", error);
+    }
+  }, [agentId, debugWorkdir, loadMessages]);
 
   const handleCreateDebugSession = useCallback(() => {
     clearMessages();
@@ -665,10 +753,12 @@ export function AgentDetailPage() {
       });
       // Reload sessions to reflect the change
       loadDebugSessions();
+      toast.success(t("errors.sessions.renamed", "Session renamed"));
     } catch (error) {
       console.error("[agent-detail] Failed to rename session:", error);
+      toast.error(t("errors.sessions.renameFailed", "Failed to rename session"));
     }
-  }, [agentId, loadDebugSessions]);
+  }, [agentId, loadDebugSessions, t]);
 
   const handleDeleteDebugSession = useCallback(async (sessionIdToDelete: string) => {
     if (!agentId) return;
@@ -681,21 +771,28 @@ export function AgentDetailPage() {
       if (sessionIdToDelete === sessionId) {
         clearMessages();
       }
+      toast.success(t("errors.sessions.deleted", "Session deleted"));
     } catch (error) {
       console.error("[agent-detail] Failed to delete session:", error);
+      toast.error(t("errors.sessions.deleteFailed", "Failed to delete session"));
     }
-  }, [agentId, sessionId, loadDebugSessions, clearMessages]);
+  }, [agentId, sessionId, loadDebugSessions, clearMessages, t]);
 
   const handleOpenSessionFolder = useCallback(async () => {
-    if (!sessionId || !debugWorkdir) return;
+    if (!debugWorkdir) return;
     try {
       const client = getGatewayClient();
-      const sessionPath = `${debugWorkdir}/.viben/sessions/${sessionId}`;
-      await client.revealFile(sessionPath);
+      // If there's an active session, open its folder; otherwise open the sessions directory
+      const folderPath = sessionId
+        ? `${debugWorkdir}/.viben/sessions/${sessionId}`
+        : `${debugWorkdir}/.viben/sessions`;
+      console.log("[agent-detail] Opening session folder:", folderPath);
+      await client.revealFile(folderPath);
     } catch (error) {
       console.error("[agent-detail] Failed to open session folder:", error);
+      toast.error(t("common.openFolderFailed", "Failed to open folder"));
     }
-  }, [sessionId, debugWorkdir]);
+  }, [sessionId, debugWorkdir, t]);
 
   // ============================================================================
   // Loading and Error States

@@ -394,8 +394,8 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
             </TooltipProvider>
           )}
 
-          {/* Done with PR - View PR */}
-          {task.status === "done" && (task.prUrl || task.pr_url) && (
+          {/* Completed with PR - View PR */}
+          {task.status === "completed" && (task.prUrl || task.pr_url) && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -418,8 +418,8 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
             </TooltipProvider>
           )}
 
-          {/* Done - Archive button */}
-          {task.status === "done" && !isArchived && (
+          {/* Completed - Archive button */}
+          {task.status === "completed" && !isArchived && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -474,9 +474,12 @@ export function KanbanListView({
       backlog: [],
       queue: [],
       in_progress: [],
+      paused: [],
       ai_review: [],
       human_review: [],
-      done: [],
+      completed: [],
+      failed: [],
+      cancelled: [],
     };
 
     for (const task of tasks) {

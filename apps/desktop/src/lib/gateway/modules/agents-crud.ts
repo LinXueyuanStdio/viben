@@ -130,13 +130,22 @@ export async function updateAgent(
     ? `${baseUrl}/api/agent/${encodeURIComponent(agentId)}?${queryString}`
     : `${baseUrl}/api/agent/${encodeURIComponent(agentId)}`;
 
+  // Clean undefined values from body to avoid YAML serialization issues
+  const cleanBody = JSON.parse(JSON.stringify(bodyOptions));
+
+  // Debug log
+  console.log("[gateway] updateAgent request:", {
+    url,
+    body: cleanBody,
+  });
+
   const response = await fetch(url, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify(bodyOptions),
+    body: JSON.stringify(cleanBody),
   });
 
   if (!response.ok) {

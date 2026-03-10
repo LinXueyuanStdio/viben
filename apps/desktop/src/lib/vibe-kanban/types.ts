@@ -8,17 +8,18 @@
 
 /**
  * Task status enum - unified status system
- * @see Auto-Claude status machine
+ * @see XState task machine in packages/core/src/task/machine/task-machine.ts
  */
 export type TaskStatus =
   | "backlog"       // 待办 - Tasks waiting to be started
   | "queue"         // 排队 - Tasks waiting for available capacity
-  | "in_progress"   // 执行中 - Currently running (planning/coding)
-  | "ai_review"     // AI审查 - AI automatic review (qa_review/qa_fixing)
+  | "in_progress"   // 执行中 - Currently running (planning/coding/qa)
+  | "paused"        // 暂停中 - Task paused, preserving progress
+  | "ai_review"     // AI审查 - AI automatic review (legacy, maps to in_progress)
   | "human_review"  // 人工审查 - Needs human review
-  | "done"          // 完成 - Completed
-  | "pr_created"    // PR已创建 - PR has been created
-  | "error";        // 错误 - Error state
+  | "completed"     // 已完成 - Successfully completed
+  | "failed"        // 失败 - Task execution failed
+  | "cancelled";    // 已取消 - Task was cancelled
 
 /**
  * Reason for entering human_review status
@@ -180,42 +181,49 @@ export interface UpdateTaskRequest {
 // ==========================================
 
 /**
- * Kanban columns in display order
+ * Kanban columns in display order (9 columns)
+ * Flow: backlog → queue → in_progress → paused → ai_review → human_review → completed → failed → cancelled
  */
 export const KANBAN_COLUMNS = [
   "backlog",
   "queue",
   "in_progress",
+  "paused",
   "ai_review",
   "human_review",
-  "done",
+  "completed",
+  "failed",
+  "cancelled",
 ] as const;
 
 export type KanbanColumnId = (typeof KANBAN_COLUMNS)[number];
 
 /**
  * Status to column mapping
- * - pr_created → done (visually in done column)
- * - error → human_review (errors need human attention)
+ * Each status maps directly to its column (1:1 mapping)
  */
 export const STATUS_TO_COLUMN: Record<TaskStatus, KanbanColumnId> = {
   backlog: "backlog",
   queue: "queue",
   in_progress: "in_progress",
+  paused: "paused",
   ai_review: "ai_review",
   human_review: "human_review",
-  done: "done",
-  pr_created: "done",      // PR tasks shown in done column
-  error: "human_review",   // Errors need human attention
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
 };
 
 export const COLUMN_TO_STATUS: Record<KanbanColumnId, TaskStatus> = {
   backlog: "backlog",
   queue: "queue",
   in_progress: "in_progress",
+  paused: "paused",
   ai_review: "ai_review",
   human_review: "human_review",
-  done: "done",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
 };
 
 // Visible statuses for kanban
@@ -223,10 +231,12 @@ export const VISIBLE_STATUSES: TaskStatus[] = [
   "backlog",
   "queue",
   "in_progress",
+  "paused",
   "ai_review",
   "human_review",
-  "done",
-  "pr_created",
+  "completed",
+  "failed",
+  "cancelled",
 ];
 
 // ==========================================
@@ -234,14 +244,15 @@ export const VISIBLE_STATUSES: TaskStatus[] = [
 // ==========================================
 
 export const TASK_STATUS_PRIORITY: Record<TaskStatus, number> = {
-  done: 100,
-  pr_created: 90,
+  completed: 100,
+  cancelled: 95,
+  failed: 90,
   human_review: 80,
   ai_review: 70,
+  paused: 60,
   in_progress: 50,
   queue: 30,
   backlog: 20,
-  error: 10,
 };
 
 // ==========================================
@@ -252,25 +263,27 @@ export const TASK_STATUS_PRIORITY: Record<TaskStatus, number> = {
  * Valid status transitions map
  * Defines which columns a task can be dragged to based on its current status
  *
- * Rules:
- * - backlog: Can go to queue (add to queue) or in_progress (start immediately)
- * - queue: Can go back to backlog (remove from queue) or in_progress (force start)
- * - in_progress: Can go to backlog/queue (stop), human_review (manual review)
- * - ai_review: Can go to in_progress (back to coding), human_review (escalate)
- * - human_review: Can go anywhere (human decides next step)
- * - done: Can go to backlog (reopen task)
- * - pr_created: Same as done
- * - error: Can go to backlog/queue (retry) or human_review
+ * Rules based on XState task machine:
+ * - backlog: QUEUE → queue, CANCEL → cancelled
+ * - queue: START → in_progress, DEQUEUE → backlog, PAUSE → paused, CANCEL → cancelled
+ * - in_progress: PAUSE → paused, USER_STOPPED → backlog/human_review
+ * - paused: RESUME → in_progress, ABANDON → backlog, CANCEL → cancelled
+ * - ai_review: Legacy status, same as in_progress
+ * - human_review: APPROVED → completed, REJECTED → backlog, CANCEL → cancelled
+ * - completed: Terminal state (no transitions out)
+ * - failed: RETRY → queue, ABANDON → backlog
+ * - cancelled: Terminal state (no transitions out)
  */
 export const VALID_STATUS_TRANSITIONS: Record<TaskStatus, KanbanColumnId[]> = {
-  backlog: ["queue", "in_progress"],
-  queue: ["backlog", "in_progress"],
-  in_progress: ["backlog", "queue", "human_review"],
-  ai_review: ["in_progress", "human_review", "done"],
-  human_review: ["backlog", "queue", "in_progress", "done"],
-  done: ["backlog"],
-  pr_created: ["backlog"],
-  error: ["backlog", "queue", "human_review"],
+  backlog: ["queue", "cancelled"],
+  queue: ["backlog", "in_progress", "paused", "cancelled"],
+  in_progress: ["paused", "backlog", "human_review"],
+  paused: ["in_progress", "backlog", "cancelled"],
+  ai_review: ["in_progress", "human_review", "paused"],
+  human_review: ["backlog", "completed", "cancelled"],
+  completed: [],  // Terminal state
+  failed: ["queue", "backlog"],
+  cancelled: [],  // Terminal state
 };
 
 /**
@@ -315,9 +328,12 @@ export const COLUMN_COLOR_VARS: Record<KanbanColumnId, string> = {
   backlog: "--muted-foreground",
   queue: "--cyan-500",
   in_progress: "--info",
+  paused: "--yellow-500",
   ai_review: "--warning",
   human_review: "--purple-500",
-  done: "--success",
+  completed: "--success",
+  failed: "--destructive",
+  cancelled: "--muted-foreground",
 };
 
 /**
@@ -327,9 +343,12 @@ export const COLUMN_COLORS: Record<KanbanColumnId, string> = {
   backlog: "hsl(var(--muted-foreground))",
   queue: "#22d3ee",        // Cyan
   in_progress: "hsl(var(--info))",
+  paused: "#EAB308",       // Yellow
   ai_review: "hsl(var(--warning))",
   human_review: "#A855F7", // Purple
-  done: "hsl(var(--success))",
+  completed: "hsl(var(--success))",
+  failed: "hsl(var(--destructive))",
+  cancelled: "hsl(var(--muted-foreground))",
 };
 
 /**
@@ -339,11 +358,12 @@ export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
   backlog: "bg-muted text-muted-foreground",
   queue: "bg-cyan-500/10 text-cyan-400",
   in_progress: "bg-info/10 text-info",
+  paused: "bg-yellow-500/10 text-yellow-500",
   ai_review: "bg-warning/10 text-warning",
   human_review: "bg-purple-500/10 text-purple-400",
-  done: "bg-success/10 text-success",
-  pr_created: "bg-info/10 text-info",
-  error: "bg-destructive/10 text-destructive",
+  completed: "bg-success/10 text-success",
+  failed: "bg-destructive/10 text-destructive",
+  cancelled: "bg-muted text-muted-foreground",
 };
 
 /**
@@ -375,9 +395,12 @@ export const COLUMN_LABELS: Record<KanbanColumnId, string> = {
   backlog: "workspace.column.backlog",
   queue: "workspace.column.queue",
   in_progress: "workspace.column.inProgress",
+  paused: "workspace.column.paused",
   ai_review: "workspace.column.aiReview",
   human_review: "workspace.column.humanReview",
-  done: "workspace.column.done",
+  completed: "workspace.column.completed",
+  failed: "workspace.column.failed",
+  cancelled: "workspace.column.cancelled",
 };
 
 // ==========================================
@@ -391,11 +414,12 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "backlog",
   "queue",
   "in_progress",
+  "paused",
   "ai_review",
   "human_review",
-  "done",
-  "pr_created",
-  "error",
+  "completed",
+  "failed",
+  "cancelled",
 ];
 
 /**
