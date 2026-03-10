@@ -480,6 +480,7 @@ export function KanbanListView({
       completed: [],
       failed: [],
       cancelled: [],
+      archived: [],
     };
 
     for (const task of tasks) {

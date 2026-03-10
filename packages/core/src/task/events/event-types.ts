@@ -41,7 +41,10 @@ export type TaskEventType =
 
   // Recovery events
   | "RETRY" // Retry from failed state
-  | "ABANDON"; // Abandon task, back to backlog
+  | "ABANDON" // Abandon task, back to backlog
+
+  // Archive event
+  | "ARCHIVE"; // Archive task (terminal state)
 
 /**
  * All valid event types as an array (for validation)
@@ -67,6 +70,7 @@ export const VALID_EVENT_TYPES: TaskEventType[] = [
   "RESUME",
   "RETRY",
   "ABANDON",
+  "ARCHIVE",
 ];
 
 /**

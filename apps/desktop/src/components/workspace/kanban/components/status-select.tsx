@@ -42,6 +42,7 @@ export interface StatusSelectProps {
     completed?: string;
     failed?: string;
     cancelled?: string;
+    archived?: string;
   };
 }
 
@@ -63,6 +64,7 @@ const DEFAULT_LABELS: Required<StatusSelectProps["labels"]> = {
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
+  archived: "Archived",
 };
 
 // Get status label with i18n support

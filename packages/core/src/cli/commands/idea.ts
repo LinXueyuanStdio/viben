@@ -13,7 +13,7 @@
  * - remove: Remove ideas
  */
 import chalk from "chalk";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
@@ -27,93 +27,33 @@ import {
   handleCommandError,
 } from "../lib";
 import { CliError } from "../types";
+import { findVibenRoot } from "../lib/viben-workspace";
+
+// Import from idea-types and idea-store modules
 import {
-  findVibenRoot,
-  DIR_VIBEN,
-} from "../lib/viben-workspace";
+  EFFORT_LEVELS,
+  IDEA_STATUSES,
+  EFFORT_PRIORITY_MAP,
+  IDEAS_DIR,
+  isValidEffortLevel,
+  isValidIdeaStatus,
+  type EffortLevel,
+  type IdeaStatus,
+  type Idea,
+  type IdeaType,
+  type IdeaSession,
+} from "../lib/idea-types";
 
-// Import from lib modules (will be created by other agents)
-// TODO: Import actual implementations when modules are ready
-// import { IdeaStore } from "../lib/idea-store";
-// import { IdeaGenerator } from "../lib/idea-generator";
-// import type { Idea, IdeaType, IdeaStatus, IdeaEffort, IdeaTypeInfo } from "../lib/idea-types";
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/** Ideas directory name under .viben */
-const DIR_IDEAS = "ideas";
-
-/** Custom idea types directory under docs */
-const DIR_CUSTOM_TYPES = "docs/idea-types";
-
-/** Built-in idea types */
-const BUILTIN_TYPES = [
-  "code_improvements",
-  "ui_ux_improvements",
-  "documentation_gaps",
-  "security_hardening",
-  "performance_optimizations",
-  "code_quality",
-] as const;
-
-/** Valid effort levels */
-const EFFORT_LEVELS = ["trivial", "small", "medium", "large", "complex"] as const;
-
-/** Valid idea statuses */
-const IDEA_STATUSES = ["draft", "promoted", "dismissed"] as const;
-
-/** Effort to priority mapping */
-const EFFORT_TO_PRIORITY: Record<string, string> = {
-  trivial: "P3",
-  small: "P3",
-  medium: "P2",
-  large: "P1",
-  complex: "P1",
-};
-
-// =============================================================================
-// Types (minimal, import from idea-types when module is ready)
-// =============================================================================
-
-type IdeaEffort = (typeof EFFORT_LEVELS)[number];
-type IdeaStatus = (typeof IDEA_STATUSES)[number];
-
-interface Idea {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  rationale: string;
-  estimated_effort: IdeaEffort;
-  status: IdeaStatus;
-  promoted_to: string | null;
-  created_at: string;
-  affected_files?: string[];
-  existing_patterns?: string[];
-  implementation_approach?: string;
-}
-
-interface IdeaTypeInfo {
-  name: string;
-  source: "builtin" | "custom";
-  description: string;
-  path?: string;
-}
-
-interface IdeaSession {
-  id: string;
-  types: string[];
-  model: string;
-  summary: {
-    total_ideas: number;
-    by_type: Record<string, number>;
-    by_status: Record<string, number>;
-  };
-  generated_at: string;
-  updated_at: string;
-}
+import {
+  getIdeasDir,
+  listIdeaTypes,
+  getIdeaType,
+  getAllIdeas,
+  getIdeaById,
+  removeIdea,
+  removeIdeasByType,
+  removeAllIdeas,
+} from "../lib/idea-store";
 
 // =============================================================================
 // Helpers
@@ -146,16 +86,9 @@ function ensureVibenRoot(cwd: string): string {
 }
 
 /**
- * Get ideas directory path
- */
-function getIdeasDir(repoRoot: string): string {
-  return join(repoRoot, DIR_VIBEN, DIR_IDEAS);
-}
-
-/**
  * Ensure ideas directory exists
  */
-function ensureIdeasDir(repoRoot: string): string {
+function ensureIdeasDirExists(repoRoot: string): string {
   const ideasDir = getIdeasDir(repoRoot);
   if (!existsSync(ideasDir)) {
     mkdirSync(ideasDir, { recursive: true });
@@ -200,100 +133,21 @@ function formatEffort(effort: string): string {
 }
 
 /**
- * Validate idea type exists
+ * Validate idea type exists using the idea-store module
  */
-function validateIdeaType(type: string, repoRoot: string): IdeaTypeInfo | null {
-  // Check builtin types first
-  if (BUILTIN_TYPES.includes(type as (typeof BUILTIN_TYPES)[number])) {
-    return {
-      name: type,
-      source: "builtin",
-      description: getBuiltinTypeDescription(type),
-    };
-  }
-
-  // Check custom types
-  const customTypePath = join(repoRoot, DIR_CUSTOM_TYPES, `${type}.md`);
-  if (existsSync(customTypePath)) {
-    return {
-      name: type,
-      source: "custom",
-      description: customTypePath,
-      path: customTypePath,
-    };
-  }
-
-  return null;
-}
-
-/**
- * Get builtin type description
- */
-function getBuiltinTypeDescription(type: string): string {
-  const descriptions: Record<string, string> = {
-    code_improvements: "Code improvements - pattern-based improvement opportunities",
-    ui_ux_improvements: "UI/UX improvements - visual and interaction enhancements",
-    documentation_gaps: "Documentation gaps - missing or insufficient docs",
-    security_hardening: "Security hardening - vulnerabilities and hardening measures",
-    performance_optimizations: "Performance optimizations - bottlenecks and optimization techniques",
-    code_quality: "Code quality - code quality improvements and refactoring patterns",
-  };
-  return descriptions[type] || type;
-}
-
-/**
- * List all available idea types (builtin + custom)
- */
-function listAvailableTypes(repoRoot: string): IdeaTypeInfo[] {
-  const types: IdeaTypeInfo[] = [];
-
-  // Add builtin types
-  for (const type of BUILTIN_TYPES) {
-    types.push({
-      name: type,
-      source: "builtin",
-      description: getBuiltinTypeDescription(type),
-    });
-  }
-
-  // Add custom types from docs/idea-types/
-  const customTypesDir = join(repoRoot, DIR_CUSTOM_TYPES);
-  if (existsSync(customTypesDir)) {
-    try {
-      const { readdirSync } = require("node:fs");
-      const files = readdirSync(customTypesDir) as string[];
-      for (const file of files) {
-        if (file.endsWith(".md")) {
-          const name = file.replace(/\.md$/, "");
-          // Skip if it's a builtin type (shouldn't happen, but be safe)
-          if (!BUILTIN_TYPES.includes(name as (typeof BUILTIN_TYPES)[number])) {
-            types.push({
-              name,
-              source: "custom",
-              description: join(customTypesDir, file),
-              path: join(customTypesDir, file),
-            });
-          }
-        }
-      }
-    } catch {
-      // Ignore errors reading custom types directory
-    }
-  }
-
-  return types;
+function validateIdeaTypeExists(type: string, repoRoot: string): IdeaType | null {
+  return getIdeaType(type, repoRoot);
 }
 
 // =============================================================================
-// Stub functions (replace with actual implementations)
+// Stub functions for features not yet implemented
 // =============================================================================
-
-// TODO: Replace these stubs with actual IdeaStore and IdeaGenerator calls
 
 /**
  * Stub: Generate ideas using AI
+ * TODO: Implement with IdeaGenerator when ready
  */
-async function generateIdeas(
+async function generateIdeasStub(
   _repoRoot: string,
   _options: {
     types: string[];
@@ -304,7 +158,6 @@ async function generateIdeas(
     override?: boolean;
   }
 ): Promise<{ sessionId: string; ideas: Idea[]; summary: IdeaSession["summary"] }> {
-  // TODO: Implement with IdeaGenerator
   throw CliError.operationFailed(
     "Generate ideas",
     "IdeaGenerator not yet implemented. This feature is coming soon."
@@ -312,32 +165,10 @@ async function generateIdeas(
 }
 
 /**
- * Stub: List ideas
- */
-async function listIdeas(
-  _repoRoot: string,
-  _filters?: {
-    type?: string;
-    effort?: IdeaEffort;
-    status?: IdeaStatus;
-  }
-): Promise<Idea[]> {
-  // TODO: Implement with IdeaStore
-  return [];
-}
-
-/**
- * Stub: Get idea by ID
- */
-async function getIdea(_repoRoot: string, _ideaId: string): Promise<Idea | null> {
-  // TODO: Implement with IdeaStore
-  return null;
-}
-
-/**
  * Stub: Promote idea to task
+ * TODO: Implement with task creation integration
  */
-async function promoteIdea(
+async function promoteIdeaStub(
   _repoRoot: string,
   _ideaId: string,
   _options: {
@@ -346,26 +177,10 @@ async function promoteIdea(
     assignee?: string;
   }
 ): Promise<{ taskId: string; taskDir: string }> {
-  // TODO: Implement with IdeaStore and task creation
   throw CliError.operationFailed(
     "Promote idea",
-    "IdeaStore not yet implemented. This feature is coming soon."
+    "Task integration not yet implemented. This feature is coming soon."
   );
-}
-
-/**
- * Stub: Remove ideas
- */
-async function removeIdeas(
-  _repoRoot: string,
-  _options: {
-    ideaIds?: string[];
-    type?: string;
-    all?: boolean;
-  }
-): Promise<{ removed: string[]; count: number }> {
-  // TODO: Implement with IdeaStore
-  return { removed: [], count: 0 };
 }
 
 // =============================================================================
@@ -387,7 +202,7 @@ export function registerIdeaCommand(program: Command): void {
     .command("generate")
     .description("Generate ideas by analyzing the codebase")
     .requiredOption("-t, --types <types...>", "Idea types to generate (e.g., code_improvements security_hardening)")
-    .option("-o, --output <dir>", "Output directory", `.viben/${DIR_IDEAS}/`)
+    .option("-o, --output <dir>", "Output directory", `.viben/${IDEAS_DIR}/`)
     .option("-m, --model <model>", "AI model override")
     .option("--max-ideas <n>", "Maximum ideas per type", "5")
     .option("--append", "Append mode - keep existing ideas")
@@ -415,7 +230,7 @@ export function registerIdeaCommand(program: Command): void {
           // Validate types
           const invalidTypes: string[] = [];
           for (const type of options.types) {
-            if (!validateIdeaType(type, repoRoot)) {
+            if (!validateIdeaTypeExists(type, repoRoot)) {
               invalidTypes.push(type);
             }
           }
@@ -430,14 +245,14 @@ export function registerIdeaCommand(program: Command): void {
           // Ensure output directory
           const outputDir = options.output
             ? join(repoRoot, options.output)
-            : ensureIdeasDir(repoRoot);
+            : ensureIdeasDirExists(repoRoot);
 
           if (!existsSync(outputDir)) {
             mkdirSync(outputDir, { recursive: true });
           }
 
           // Generate ideas
-          const result = await generateIdeas(repoRoot, {
+          const result = await generateIdeasStub(repoRoot, {
             types: options.types,
             outputDir,
             model: options.model,
@@ -447,11 +262,11 @@ export function registerIdeaCommand(program: Command): void {
           });
 
           output(ctx, successResponse(result), () => {
-            console.log(chalk.green(`Generated ${result.summary.total_ideas} ideas`));
+            console.log(chalk.green(`Generated ${result.summary.totalIdeas} ideas`));
             console.log();
 
             console.log(chalk.bold("Summary by type:"));
-            for (const [type, count] of Object.entries(result.summary.by_type)) {
+            for (const [type, count] of Object.entries(result.summary.byType)) {
               console.log(`  ${type}: ${count} idea(s)`);
             }
             console.log();
@@ -492,23 +307,23 @@ export function registerIdeaCommand(program: Command): void {
           const repoRoot = ensureVibenRoot(cwd);
 
           // Validate filters
-          if (options.effort && !EFFORT_LEVELS.includes(options.effort as IdeaEffort)) {
+          if (options.effort && !isValidEffortLevel(options.effort)) {
             throw CliError.invalidArgument(
               "effort",
               `Invalid effort level. Must be one of: ${EFFORT_LEVELS.join(", ")}`
             );
           }
 
-          if (options.status && !IDEA_STATUSES.includes(options.status as IdeaStatus)) {
+          if (options.status && !isValidIdeaStatus(options.status)) {
             throw CliError.invalidArgument(
               "status",
               `Invalid status. Must be one of: ${IDEA_STATUSES.join(", ")}`
             );
           }
 
-          const ideas = await listIdeas(repoRoot, {
+          const ideas = getAllIdeas(repoRoot, {
             type: options.type,
-            effort: options.effort as IdeaEffort,
+            effort: options.effort as EffortLevel,
             status: options.status as IdeaStatus,
           });
 
@@ -530,7 +345,7 @@ export function registerIdeaCommand(program: Command): void {
                 idea.id,
                 idea.type,
                 idea.title.length > 40 ? idea.title.substring(0, 37) + "..." : idea.title,
-                formatEffort(idea.estimated_effort),
+                formatEffort(idea.estimatedEffort),
                 formatStatus(idea.status),
               ])
             );
@@ -557,7 +372,7 @@ export function registerIdeaCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenRoot(cwd);
-        const types = listAvailableTypes(repoRoot);
+        const types = listIdeaTypes(repoRoot);
 
         output(ctx, successResponse({ types, count: types.length }), () => {
           console.log(chalk.bold("Available Idea Types:"));
@@ -589,7 +404,7 @@ export function registerIdeaCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenRoot(cwd);
-        const idea = await getIdea(repoRoot, ideaId);
+        const idea = getIdeaById(repoRoot, ideaId);
 
         if (!idea) {
           throw CliError.notFound("Idea", ideaId);
@@ -603,9 +418,9 @@ export function registerIdeaCommand(program: Command): void {
             ID: idea.id,
             Type: idea.type,
             Status: formatStatus(idea.status),
-            Effort: formatEffort(idea.estimated_effort),
-            "Created At": idea.created_at,
-            "Promoted To": idea.promoted_to || "-",
+            Effort: formatEffort(idea.estimatedEffort),
+            "Created At": idea.createdAt,
+            "Promoted To": idea.promotedTo || "-",
           });
 
           console.log();
@@ -616,26 +431,26 @@ export function registerIdeaCommand(program: Command): void {
           console.log(chalk.bold("Rationale:"));
           console.log(`  ${idea.rationale}`);
 
-          if (idea.affected_files && idea.affected_files.length > 0) {
+          if (idea.affectedFiles && idea.affectedFiles.length > 0) {
             console.log();
             console.log(chalk.bold("Affected Files:"));
-            for (const file of idea.affected_files) {
+            for (const file of idea.affectedFiles) {
               console.log(`  - ${file}`);
             }
           }
 
-          if (idea.existing_patterns && idea.existing_patterns.length > 0) {
+          if (idea.existingPatterns && idea.existingPatterns.length > 0) {
             console.log();
             console.log(chalk.bold("Existing Patterns:"));
-            for (const pattern of idea.existing_patterns) {
+            for (const pattern of idea.existingPatterns) {
               console.log(`  - ${pattern}`);
             }
           }
 
-          if (idea.implementation_approach) {
+          if (idea.implementationApproach) {
             console.log();
             console.log(chalk.bold("Implementation Approach:"));
-            console.log(`  ${idea.implementation_approach}`);
+            console.log(`  ${idea.implementationApproach}`);
           }
         });
       } catch (error) {
@@ -676,7 +491,7 @@ export function registerIdeaCommand(program: Command): void {
           }
 
           // Get idea first to validate and get effort for default priority
-          const idea = await getIdea(repoRoot, ideaId);
+          const idea = getIdeaById(repoRoot, ideaId);
           if (!idea) {
             throw CliError.notFound("Idea", ideaId);
           }
@@ -684,14 +499,14 @@ export function registerIdeaCommand(program: Command): void {
           if (idea.status === "promoted") {
             throw CliError.operationFailed(
               "Promote idea",
-              `Idea "${ideaId}" has already been promoted to task "${idea.promoted_to}"`
+              `Idea "${ideaId}" has already been promoted to task "${idea.promotedTo}"`
             );
           }
 
           // Use effort-based priority if not specified
-          const priority = options.priority || EFFORT_TO_PRIORITY[idea.estimated_effort] || "P2";
+          const priority = options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "P2";
 
-          const result = await promoteIdea(repoRoot, ideaId, {
+          const result = await promoteIdeaStub(repoRoot, ideaId, {
             slug: options.slug,
             priority,
             assignee: options.assignee,
@@ -750,11 +565,24 @@ export function registerIdeaCommand(program: Command): void {
             outputWarning(ctx, "This will remove ALL ideas. Use with caution.");
           }
 
-          const result = await removeIdeas(repoRoot, {
-            ideaIds: ideaIds.length > 0 ? ideaIds : undefined,
-            type: options.type,
-            all: options.all,
-          });
+          // Perform removal based on options
+          let removedCount = 0;
+          const removedIds: string[] = [];
+
+          if (options.all) {
+            removedCount = removeAllIdeas(repoRoot);
+          } else if (options.type) {
+            removedCount = removeIdeasByType(repoRoot, options.type);
+          } else if (ideaIds.length > 0) {
+            for (const id of ideaIds) {
+              if (removeIdea(repoRoot, id)) {
+                removedIds.push(id);
+                removedCount++;
+              }
+            }
+          }
+
+          const result = { removed: removedIds, count: removedCount };
 
           output(ctx, successResponse(result), () => {
             if (result.count === 0) {
@@ -764,7 +592,7 @@ export function registerIdeaCommand(program: Command): void {
 
             outputSuccess(ctx, `Removed ${result.count} idea(s)`);
 
-            if (result.removed.length <= 10) {
+            if (result.removed.length > 0 && result.removed.length <= 10) {
               for (const id of result.removed) {
                 console.log(chalk.gray(`  - ${id}`));
               }

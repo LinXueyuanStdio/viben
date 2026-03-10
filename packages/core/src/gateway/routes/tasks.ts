@@ -16,6 +16,9 @@
  */
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
+import { spawn, execSync, type SpawnOptions } from "node:child_process";
+import { existsSync, statSync, readFileSync, writeFileSync, mkdirSync, openSync, readdirSync } from "node:fs";
+import { join, basename } from "node:path";
 import {
   taskService,
   type UnifiedTask,
@@ -29,6 +32,40 @@ import { isValidEventType, type TaskEventType } from "../../task/events/event-ty
 import type { TaskEvent } from "../../task/events/task-event";
 import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
+import {
+  updateTaskField,
+  readJsonlFile,
+  writeJsonlFile,
+  appendToJsonl,
+  jsonlEntryExists,
+  findVibenRoot,
+  getDeveloper,
+  getTasksDir,
+  getCurrentTask,
+  getActiveTasks,
+  getDatePrefix,
+  getTodayDate,
+  writeTaskJson as writeTaskJsonFile,
+  resolveTaskDirectory,
+  runGitCommand,
+  getPhaseForAction,
+  registryAddAgent,
+  registryListAgents,
+  registrySearchAgent,
+  isProcessRunning,
+  getTaskStats,
+  formatTaskStats,
+  getPhaseInfo,
+  calcElapsed,
+  getJournalInfo,
+  readTaskJson as readTaskJsonFromWorkspace,
+  DIR_VIBEN,
+  DIR_WORKSPACE,
+  DIR_TASKS,
+  DIR_SPEC,
+  FILE_TASK_JSON,
+  getCLIAdapter,
+} from "../../cli/lib/viben-workspace";
 
 /**
  * Convert UnifiedTask to db Task for events
@@ -304,7 +341,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
                   name: { type: "string" },
                   title: { type: "string" },
                   description: { type: "string" },
-                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "human_review", "completed", "failed", "cancelled"] },
+                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "human_review", "completed", "failed", "cancelled", "archived"] },
                   workspace_path: { type: "string" },
                   agent_id: { type: "string" },
                   session_id: { type: "string" },
@@ -1135,6 +1172,841 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         running: isRunning,
         status: task.status,
       },
+    };
+  });
+
+  // ============================================================================
+  // Configuration Endpoints
+  // ============================================================================
+
+  // POST /api/task/set-branch - Set Git branch for task
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      branch: string;
+    };
+  }>("/api/task/set-branch", {
+    schema: {
+      description: "Set Git branch for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          branch: { type: "string", description: "Branch name to set" },
+        },
+        required: ["workspace_path", "task_id", "branch"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            branch: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, branch } = request.body;
+
+    if (!workspace_path || !task_id || !branch) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and branch are required" };
+    }
+
+    // Find task directory
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const success = updateTaskField(taskDir, "branch", branch);
+    if (!success) {
+      reply.code(400);
+      return { error: "Failed to update task.json" };
+    }
+
+    return { success: true, task_id, branch };
+  });
+
+  // POST /api/task/set-base - Set PR target branch
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      base_branch: string;
+    };
+  }>("/api/task/set-base", {
+    schema: {
+      description: "Set PR target branch for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          base_branch: { type: "string", description: "Base branch name (PR target)" },
+        },
+        required: ["workspace_path", "task_id", "base_branch"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            base_branch: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, base_branch } = request.body;
+
+    if (!workspace_path || !task_id || !base_branch) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and base_branch are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const success = updateTaskField(taskDir, "base_branch", base_branch);
+    if (!success) {
+      reply.code(400);
+      return { error: "Failed to update task.json" };
+    }
+
+    return { success: true, task_id, base_branch };
+  });
+
+  // POST /api/task/set-scope - Set PR title scope
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      scope: string;
+    };
+  }>("/api/task/set-scope", {
+    schema: {
+      description: "Set scope for PR title",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          scope: { type: "string", description: "Scope name for PR title" },
+        },
+        required: ["workspace_path", "task_id", "scope"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            scope: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, scope } = request.body;
+
+    if (!workspace_path || !task_id || !scope) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and scope are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const success = updateTaskField(taskDir, "scope", scope);
+    if (!success) {
+      reply.code(400);
+      return { error: "Failed to update task.json" };
+    }
+
+    return { success: true, task_id, scope };
+  });
+
+  // POST /api/task/set-agent - Set associated agent
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      agent_id: string;
+    };
+  }>("/api/task/set-agent", {
+    schema: {
+      description: "Set associated agent configuration for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          agent_id: { type: "string", description: "Agent ID to associate" },
+        },
+        required: ["workspace_path", "task_id", "agent_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            agent_id: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, agent_id } = request.body;
+
+    if (!workspace_path || !task_id || !agent_id) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and agent_id are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const success = updateTaskField(taskDir, "agent", agent_id);
+    if (!success) {
+      reply.code(400);
+      return { error: "Failed to update task.json" };
+    }
+
+    return { success: true, task_id, agent_id };
+  });
+
+  // ============================================================================
+  // Context Management Endpoints
+  // ============================================================================
+
+  /**
+   * Context entry structure stored in JSONL files
+   */
+  interface ContextEntry {
+    file: string;
+    reason: string;
+    type?: "file" | "directory";
+  }
+
+  // POST /api/task/init-context - Initialize context files for task
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      dev_type: string;
+    };
+  }>("/api/task/init-context", {
+    schema: {
+      description: "Initialize context files (implement.jsonl, check.jsonl, debug.jsonl) for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          dev_type: { type: "string", enum: ["backend", "frontend", "fullstack", "test", "docs"], description: "Development type" },
+        },
+        required: ["workspace_path", "task_id", "dev_type"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            dev_type: { type: "string" },
+            files_created: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, dev_type } = request.body;
+
+    if (!workspace_path || !task_id || !dev_type) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and dev_type are required" };
+    }
+
+    const validTypes = ["backend", "frontend", "fullstack", "test", "docs"];
+    if (!validTypes.includes(dev_type)) {
+      reply.code(400);
+      return { error: `dev_type must be one of: ${validTypes.join(", ")}` };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const filesCreated: string[] = [];
+
+    // Create implement.jsonl
+    const implementEntries: ContextEntry[] = [
+      { file: `${DIR_VIBEN}/workflow.md`, reason: "Project workflow and conventions" },
+    ];
+
+    if (dev_type === "backend" || dev_type === "test" || dev_type === "fullstack") {
+      implementEntries.push({
+        file: `${DIR_VIBEN}/${DIR_SPEC}/backend/index.md`,
+        reason: "Backend development guide",
+      });
+    }
+    if (dev_type === "frontend" || dev_type === "fullstack") {
+      implementEntries.push({
+        file: `${DIR_VIBEN}/${DIR_SPEC}/frontend/index.md`,
+        reason: "Frontend development guide",
+      });
+    }
+
+    const implementFile = join(taskDir, "implement.jsonl");
+    writeJsonlFile(implementFile, implementEntries as unknown as Array<Record<string, unknown>>);
+    filesCreated.push("implement.jsonl");
+
+    // Create check.jsonl
+    const checkEntries: ContextEntry[] = [
+      { file: ".claude/commands/viben/finish-work.md", reason: "Finish work checklist" },
+    ];
+    if (dev_type === "backend" || dev_type === "fullstack") {
+      checkEntries.push({
+        file: ".claude/commands/viben/check-backend.md",
+        reason: "Backend check spec",
+      });
+    }
+    if (dev_type === "frontend" || dev_type === "fullstack") {
+      checkEntries.push({
+        file: ".claude/commands/viben/check-frontend.md",
+        reason: "Frontend check spec",
+      });
+    }
+
+    const checkFile = join(taskDir, "check.jsonl");
+    writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
+    filesCreated.push("check.jsonl");
+
+    // Create debug.jsonl
+    const debugEntries: ContextEntry[] = [];
+    if (dev_type === "backend" || dev_type === "fullstack") {
+      debugEntries.push({
+        file: ".claude/commands/viben/check-backend.md",
+        reason: "Backend check spec",
+      });
+    }
+    if (dev_type === "frontend" || dev_type === "fullstack") {
+      debugEntries.push({
+        file: ".claude/commands/viben/check-frontend.md",
+        reason: "Frontend check spec",
+      });
+    }
+
+    const debugFile = join(taskDir, "debug.jsonl");
+    writeJsonlFile(debugFile, debugEntries as unknown as Array<Record<string, unknown>>);
+    filesCreated.push("debug.jsonl");
+
+    // Update task.json with dev_type
+    updateTaskField(taskDir, "dev_type", dev_type);
+
+    return {
+      success: true,
+      task_id,
+      dev_type,
+      files_created: filesCreated,
+    };
+  });
+
+  // POST /api/task/add-context - Add context files to task
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      files: Array<{
+        path: string;
+        reason?: string;
+      }>;
+      context_type?: "implement" | "check" | "debug";
+    };
+  }>("/api/task/add-context", {
+    schema: {
+      description: "Add context files to a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          files: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                path: { type: "string" },
+                reason: { type: "string" },
+              },
+              required: ["path"],
+            },
+            description: "Files to add with optional reasons",
+          },
+          context_type: { type: "string", enum: ["implement", "check", "debug"], description: "Context file to add to (default: implement)" },
+        },
+        required: ["workspace_path", "task_id", "files"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            added: { type: "number" },
+            skipped: { type: "number" },
+            total: { type: "number" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, files, context_type = "implement" } = request.body;
+
+    if (!workspace_path || !task_id || !files || files.length === 0) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and files are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const jsonlFile = join(taskDir, `${context_type}.jsonl`);
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    for (const fileInput of files) {
+      // Skip if already exists
+      if (jsonlEntryExists(jsonlFile, fileInput.path)) {
+        skippedCount++;
+        continue;
+      }
+
+      // Determine type
+      let type: "file" | "directory" | undefined;
+      const fullPath = join(workspace_path, fileInput.path);
+      if (existsSync(fullPath)) {
+        type = statSync(fullPath).isDirectory() ? "directory" : "file";
+      }
+
+      const entry: ContextEntry = {
+        file: fileInput.path,
+        reason: fileInput.reason || "Added via API",
+      };
+      if (type) {
+        entry.type = type;
+      }
+
+      appendToJsonl(jsonlFile, entry as unknown as Record<string, unknown>);
+      addedCount++;
+    }
+
+    return {
+      success: true,
+      task_id,
+      added: addedCount,
+      skipped: skippedCount,
+      total: files.length,
+    };
+  });
+
+  // POST /api/task/remove-context - Remove context files from task
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      files: string[];
+    };
+  }>("/api/task/remove-context", {
+    schema: {
+      description: "Remove context files from a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+          files: {
+            type: "array",
+            items: { type: "string" },
+            description: "File paths to remove",
+          },
+        },
+        required: ["workspace_path", "task_id", "files"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            removed: { type: "number" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, files } = request.body;
+
+    if (!workspace_path || !task_id || !files || files.length === 0) {
+      reply.code(400);
+      return { error: "workspace_path, task_id, and files are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    let totalRemoved = 0;
+
+    // Remove from all context files
+    for (const jsonlName of ["implement.jsonl", "check.jsonl", "debug.jsonl"]) {
+      const jsonlPath = join(taskDir, jsonlName);
+      if (!existsSync(jsonlPath)) continue;
+
+      const content = readFileSync(jsonlPath, "utf-8");
+      const lines = content.split("\n").filter((line) => {
+        if (!line.trim()) return false;
+        try {
+          const entry = JSON.parse(line);
+          const shouldRemove = files.includes(entry.file);
+          if (shouldRemove) totalRemoved++;
+          return !shouldRemove;
+        } catch {
+          return true;
+        }
+      });
+
+      writeFileSync(jsonlPath, lines.join("\n") + "\n", "utf-8");
+    }
+
+    return {
+      success: true,
+      task_id,
+      removed: totalRemoved,
+    };
+  });
+
+  // POST /api/task/list-context - List context entries for task
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/list-context", {
+    schema: {
+      description: "List all context entries for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            context: {
+              type: "object",
+              properties: {
+                implement: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      file: { type: "string" },
+                      reason: { type: "string" },
+                      type: { type: "string" },
+                    },
+                  },
+                },
+                check: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      file: { type: "string" },
+                      reason: { type: "string" },
+                      type: { type: "string" },
+                    },
+                  },
+                },
+                debug: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      file: { type: "string" },
+                      reason: { type: "string" },
+                      type: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path || !task_id) {
+      reply.code(400);
+      return { error: "workspace_path and task_id are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const context: Record<string, ContextEntry[]> = {
+      implement: [],
+      check: [],
+      debug: [],
+    };
+
+    for (const [key, fileName] of Object.entries({
+      implement: "implement.jsonl",
+      check: "check.jsonl",
+      debug: "debug.jsonl",
+    })) {
+      const filePath = join(taskDir, fileName);
+      if (existsSync(filePath)) {
+        context[key] = readJsonlFile(filePath) as unknown as ContextEntry[];
+      }
+    }
+
+    return {
+      success: true,
+      task_id,
+      context,
+    };
+  });
+
+  // POST /api/task/validate-context - Validate context files exist
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/validate-context", {
+    schema: {
+      description: "Validate that all context file references exist",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            valid_count: { type: "number" },
+            missing_count: { type: "number" },
+            missing_files: {
+              type: "array",
+              items: { type: "string" },
+            },
+            all_valid: { type: "boolean" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path || !task_id) {
+      reply.code(400);
+      return { error: "workspace_path and task_id are required" };
+    }
+
+    const taskDir = await taskService.findTaskById(workspace_path, task_id);
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}` };
+    }
+
+    const contextFiles = ["implement.jsonl", "check.jsonl", "debug.jsonl"];
+    const missing: string[] = [];
+    let validCount = 0;
+
+    for (const fileName of contextFiles) {
+      const filePath = join(taskDir, fileName);
+      if (!existsSync(filePath)) continue;
+
+      const entries = readJsonlFile(filePath) as unknown as ContextEntry[];
+      for (const entry of entries) {
+        const fullPath = join(workspace_path, entry.file);
+        if (existsSync(fullPath)) {
+          validCount++;
+        } else {
+          missing.push(entry.file);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      task_id,
+      valid_count: validCount,
+      missing_count: missing.length,
+      missing_files: missing,
+      all_valid: missing.length === 0,
     };
   });
 }

@@ -77,44 +77,118 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 
 ### 状态流转图
 
-```
-                    ┌──────────────────────────────────────────────────────┐
-                    │                   in_progress                        │
-                    │  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌────────┐ │
-                    │  │planning │→ │ coding  │→ │qa_review │→ │qa_fixing│→│
-                    │  └────┬────┘  └────┬────┘  └────┬─────┘  └───┬────┘ │
-                    │       │            │            │             │      │
-                    │       └────────────┴────────────┴─────────────┘      │
-                    │                        │ PAUSE                       │
-                    └────────────────────────┼─────────────────────────────┘
-                           │               │            │           │
-                           ▼               ▼            ▼           ▼
-┌───────┐  QUEUE  ┌───────┐  START  ┌─────────────────────────────────┐
-│backlog│────────→│ queue │────────→│           (see above)           │
-└───────┘         └───┬───┘         └─────────────────────────────────┘
-                      │                              │
-         DEQUEUE      │ PAUSE                        │ QA_PASSED
-    ┌─────────────────┤                              ▼
-    │                 ▼                        ┌─────────────┐
-    │            ┌─────────┐                   │human_review │
-    └───────────→│ paused  │←──────────────────└─────────────┘
-                 └────┬────┘                   APPROVED │    │  REJECTED
-                      │ RESUME                     ┌────┘    └────┐
-                      └────────────────────────────▼              ▼
-                                             ┌───────────┐    ┌─────────┐
-                                             │ completed │    │ backlog │
-                                             └───────────┘    └─────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> backlog: 创建任务
 
-    CANCEL 事件: backlog/queue/paused/human_review → cancelled
-    *_FAILED 事件 → failed
-    failed + RETRY → queue
-    failed + ABANDON → backlog
+    backlog --> queue: QUEUE
+    backlog --> cancelled: CANCEL
+
+    queue --> in_progress: START
+    queue --> backlog: DEQUEUE
+    queue --> paused: PAUSE
+    queue --> cancelled: CANCEL
+
+    state in_progress {
+        [*] --> planning
+        planning --> coding: PLANNING_COMPLETE
+        planning --> failed: PLANNING_FAILED
+        coding --> qa_review: ALL_SUBTASKS_DONE
+        coding --> failed: CODING_FAILED
+        qa_review --> human_review: QA_PASSED
+        qa_review --> qa_fixing: QA_FAILED
+        qa_fixing --> qa_review: QA_FIXING_COMPLETE
+        qa_fixing --> failed: QA_FIXING_FAILED
+    }
+
+    in_progress --> paused: PAUSE
+    in_progress --> cancelled: CANCEL
+
+    paused --> queue: RESUME (from queue)
+    paused --> in_progress: RESUME (from in_progress)
+    paused --> backlog: ABANDON
+    paused --> cancelled: CANCEL
+
+    human_review --> completed: APPROVED
+    human_review --> backlog: REJECTED
+    human_review --> cancelled: CANCEL
+
+    failed --> queue: RETRY
+    failed --> backlog: ABANDON
+
+    completed --> [*]
+    cancelled --> [*]
 ```
 
 > **注意**:
 > - `backlog` 状态只能通过 `QUEUE` 事件进入 `queue` 状态，不能直接 `START`
 > - 前端待办列的"开始"按钮应发送 `QUEUE` 事件
 > - `CANCEL` 事件可从多个非执行状态直接进入 `cancelled` 终止状态
+> - `RESUME` 事件会恢复到暂停前的状态（通过 `pausedSnapshot` 记录）
+
+### CLI 命令概览
+
+以下 CLI 命令用于管理任务状态生命周期：
+
+```bash
+viben task <command> <task>
+
+# 状态转换命令
+enqueue <task>     # backlog → queue        入队等待执行
+dequeue <task>     # queue → backlog        移出队列
+pause <task>       # in_progress → paused   暂停执行
+resume <task>      # paused → 恢复          恢复执行
+review <task>      # 展示审查信息           查看待审任务
+approve <task>     # human_review → completed   批准完成
+reject <task>      # human_review → backlog     拒绝返工
+retry <task>       # failed → queue         重试失败任务
+```
+
+#### 命令与状态转换映射
+
+| 命令 | 事件类型 | 允许的起始状态 | 目标状态 |
+|------|---------|--------------|----------|
+| `enqueue` | QUEUE | backlog | queue |
+| `dequeue` | DEQUEUE | queue | backlog |
+| `pause` | PAUSE | queue, in_progress | paused |
+| `resume` | RESUME | paused | queue 或 in_progress |
+| `approve` | APPROVED | human_review | completed |
+| `reject` | REJECTED | human_review | backlog |
+| `retry` | RETRY | failed | queue |
+
+#### 完整任务生命周期示例
+
+```mermaid
+flowchart TD
+    A(START) -->|viben task create| B[backlog]
+    B -->|viben task enqueue| C[queue]
+    C -->|viben swarm start| D[in_progress]
+    D -->|viben task pause| E[paused]
+    E -->|viben task resume| D
+    D -->|viben task create-pr| F[human_review]
+    F -->|viben task approve| G[completed]
+    F -->|viben task reject| B
+    C -->|viben task dequeue| B
+    D -->|detected failed<br>viben task stop| H[failed]
+    H -->|viben task retry| C
+    H -->|viben task archive| I[archived]
+    G -->|viben swarm cleanup| I
+```
+
+#### 文件结构变化
+
+任务状态转换时，task.json 和 events.jsonl 会相应更新：
+
+```
+.viben/tasks/<date>-<slug>/
+├── task.json           # status, pausedSnapshot 等字段更新
+└── events.jsonl        # 追加事件记录
+    │
+    ├── {"eventId":"...","sequence":1,"type":"QUEUE","timestamp":"..."}
+    ├── {"eventId":"...","sequence":2,"type":"START","timestamp":"..."}
+    ├── {"eventId":"...","sequence":3,"type":"PAUSE","timestamp":"...","payload":{"fromState":"in_progress"}}
+    └── {"eventId":"...","sequence":4,"type":"RESUME","timestamp":"..."}
+```
 
 ### 事件类型 (TaskEventType)
 

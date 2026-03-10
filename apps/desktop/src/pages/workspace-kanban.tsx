@@ -789,6 +789,7 @@ function useColumnStatuses(): Status[] {
     completed: "completed",
     failed: "failed",
     cancelled: "cancelled",
+    archived: "archived",
   };
 
   return KANBAN_COLUMNS.map((id) => ({

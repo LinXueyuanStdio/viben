@@ -49,7 +49,8 @@ export const STATUS_INDICATOR_COLORS: Record<StatusIndicator, string> = {
 
 export type KanbanBoardProps = {
   id: Status["id"];
-  children: React.ReactNode;
+  /** Children can be React nodes or a render function receiving isOver state */
+  children: React.ReactNode | ((isOver: boolean) => React.ReactNode);
   className?: string;
   /** Column background color (CSS variable name like "--primary") */
   backgroundColor?: string;
@@ -65,6 +66,9 @@ export const KanbanBoard = ({ id, children, className, backgroundColor, isValidD
   // Determine visual state: valid target, invalid target, or neutral
   const showValidHighlight = isDragging && isValidDropTarget === true;
   const showInvalidHighlight = isDragging && isValidDropTarget === false;
+
+  // Support render function pattern for children
+  const renderedChildren = typeof children === 'function' ? children(isOver) : children;
 
   return (
     <div
@@ -93,7 +97,7 @@ export const KanbanBoard = ({ id, children, className, backgroundColor, isValidD
       }}
       ref={setNodeRef}
     >
-      {children}
+      {renderedChildren}
     </div>
   );
 };
@@ -256,6 +260,12 @@ export type KanbanCardsProps = {
   emptyMessage?: string;
   /** Secondary empty state message */
   emptyHint?: string;
+  /** Custom icon to show in empty state */
+  emptyIcon?: React.ReactNode;
+  /** Whether a task is being dragged over this column */
+  isOver?: boolean;
+  /** Text to show when dragging over empty column */
+  dropHereText?: string;
 };
 
 export const KanbanCards = ({
@@ -263,6 +273,9 @@ export const KanbanCards = ({
   className,
   emptyMessage = "No tasks",
   emptyHint = "Drag tasks here or click + to create",
+  emptyIcon,
+  isOver = false,
+  dropHereText = "Drop here",
 }: KanbanCardsProps) => {
   // Check if children is empty (no actual tasks)
   const isEmpty = React.Children.count(children) === 0;
@@ -270,16 +283,36 @@ export const KanbanCards = ({
   return (
     <div className={cn("flex flex-1 flex-col gap-2 p-2", className)}>
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center flex-1 min-h-[120px] text-center px-4 py-6 mx-1 rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 transition-colors hover:border-muted-foreground/30 hover:bg-muted/40">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted mb-3">
-            <ClipboardList className="h-5 w-5 text-muted-foreground/50" />
-          </div>
-          <p className="text-sm font-medium text-muted-foreground/70">
-            {emptyMessage}
-          </p>
-          <p className="text-xs text-muted-foreground/50 mt-1 max-w-[180px]">
-            {emptyHint}
-          </p>
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center flex-1 min-h-[120px] text-center px-4 py-6 mx-1 rounded-xl border-2 border-dashed transition-all duration-200",
+            isOver
+              ? "border-primary/50 bg-primary/10"
+              : "border-muted-foreground/20 bg-muted/30 hover:border-muted-foreground/30 hover:bg-muted/40"
+          )}
+        >
+          {isOver ? (
+            <>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 mb-3">
+                <Plus className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-primary">
+                {dropHereText}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted mb-3">
+                {emptyIcon || <ClipboardList className="h-5 w-5 text-muted-foreground/50" />}
+              </div>
+              <p className="text-sm font-medium text-muted-foreground/70">
+                {emptyMessage}
+              </p>
+              <p className="text-xs text-muted-foreground/50 mt-1 max-w-[180px]">
+                {emptyHint}
+              </p>
+            </>
+          )}
         </div>
       ) : (
         children
