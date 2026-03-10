@@ -24,6 +24,7 @@ import { registerTaskCommand } from "./task";
 import { registerContextCommand } from "./context";
 import { registerUserCommand } from "./user";
 import { registerSessionCommand } from "./session";
+import { registerIdeaCommand } from "./idea";
 
 /**
  * Register all commands on the program
@@ -50,4 +51,5 @@ export function registerCommands(program: Command): void {
   registerContextCommand(program);
   registerUserCommand(program);
   registerSessionCommand(program);
+  registerIdeaCommand(program);
 }

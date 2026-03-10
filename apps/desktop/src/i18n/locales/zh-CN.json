@@ -107,7 +107,8 @@
     "learnMore": "了解更多",
     "noData": "无数据",
     "id": "ID",
-    "openFolderFailed": "无法打开文件夹"
+    "openFolderFailed": "无法打开文件夹",
+    "agentPathNotAvailable": "智能体路径尚未加载"
   },
   "elapsedTime": {
     "justNow": "刚刚",

@@ -106,7 +106,8 @@
     "learnMore": "Learn More",
     "noData": "No data",
     "id": "ID",
-    "openFolderFailed": "Failed to open folder"
+    "openFolderFailed": "Failed to open folder",
+    "agentPathNotAvailable": "Agent path is not available yet"
   },
   "elapsedTime": {
     "justNow": "just now",

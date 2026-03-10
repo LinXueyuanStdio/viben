@@ -18,6 +18,7 @@ import {
 } from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
+import type { TaskEventType } from "../../services/task-service";
 
 // Re-export TaskService for unified task operations
 export {
@@ -27,8 +28,19 @@ export {
   type TaskStatus,
   type ReviewReason,
   type SubtaskStatus,
+  type TaskEventType,
+  type TaskEvent,
   isValidTaskStatus,
 } from "../../services/task-service";
+
+/**
+ * Snapshot saved when a task is paused, used to restore state on resume
+ */
+export interface PausedSnapshot {
+  fromState: string;
+  subtaskIndex?: number;
+  pausedAt: string;
+}
 
 // =============================================================================
 // Constants
@@ -1842,6 +1854,178 @@ export function calcElapsed(started: string | null | undefined): string {
     }
   } catch {
     return "N/A";
+  }
+}
+
+// =============================================================================
+// Task Status Lifecycle
+// =============================================================================
+
+// NOTE: TaskEventType is imported from task-service.ts (re-exported above)
+// This validation function handles a subset of CLI-relevant transitions
+
+/**
+ * Validate if a status transition is legal
+ *
+ * Based on the task lifecycle defined in docs/specs/modules/task-system.md
+ *
+ * @param currentStatus - Current task status
+ * @param targetStatus - Target task status
+ * @param eventType - The event type causing this transition
+ * @returns Object with valid flag and optional error message
+ */
+export function validateStatusTransition(
+  currentStatus: string,
+  targetStatus: string,
+  eventType: TaskEventType
+): { valid: boolean; error?: string } {
+  // CLI-relevant status transitions
+  const validTransitions: Partial<Record<TaskEventType, { from: string[]; to: string }>> = {
+    QUEUE: { from: ["backlog"], to: "queue" },
+    START: { from: ["queue"], to: "in_progress" },
+    DEQUEUE: { from: ["queue"], to: "backlog" },
+    PAUSE: { from: ["queue", "in_progress"], to: "paused" },
+    RESUME: { from: ["paused"], to: "queue" }, // Note: actual target determined by pausedSnapshot
+    APPROVED: { from: ["human_review"], to: "completed" },
+    REJECTED: { from: ["human_review"], to: "backlog" },
+    RETRY: { from: ["failed"], to: "queue" },
+    CANCEL: { from: ["backlog", "queue", "paused", "in_progress", "human_review"], to: "cancelled" },
+  };
+
+  const transition = validTransitions[eventType];
+  if (!transition) {
+    return { valid: false, error: `Unsupported event type for CLI: ${eventType}` };
+  }
+
+  if (!transition.from.includes(currentStatus)) {
+    return {
+      valid: false,
+      error: `Cannot ${eventType.toLowerCase()} task in '${currentStatus}' status. Expected: ${transition.from.join(" or ")}`,
+    };
+  }
+
+  // For RESUME, target is dynamic based on pausedSnapshot, skip target validation
+  if (eventType !== "RESUME" && targetStatus !== transition.to) {
+    return {
+      valid: false,
+      error: `Invalid target status '${targetStatus}' for ${eventType}. Expected: ${transition.to}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Update task status with additional fields
+ *
+ * @param taskDir - Absolute path to task directory
+ * @param newStatus - New status value
+ * @param additionalFields - Optional additional fields to update
+ * @returns True on success
+ */
+export function updateTaskStatus(
+  taskDir: string,
+  newStatus: string,
+  additionalFields?: Record<string, unknown>
+): boolean {
+  const taskJsonPath = join(taskDir, FILE_TASK_JSON);
+  if (!existsSync(taskJsonPath)) {
+    return false;
+  }
+
+  try {
+    const taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
+    taskData.status = newStatus;
+
+    // Merge additional fields
+    if (additionalFields) {
+      for (const [key, value] of Object.entries(additionalFields)) {
+        if (value === null || value === undefined) {
+          delete taskData[key];
+        } else {
+          taskData[key] = value;
+        }
+      }
+    }
+
+    writeFileSync(taskJsonPath, JSON.stringify(taskData, null, 2), "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Generate a simple UUID v4
+ */
+function generateEventId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Get the next sequence number for events in a task
+ */
+function getNextEventSequence(taskDir: string): number {
+  const eventsPath = join(taskDir, "events.jsonl");
+  if (!existsSync(eventsPath)) {
+    return 1;
+  }
+
+  try {
+    const content = readFileSync(eventsPath, "utf-8");
+    const lines = content.split("\n").filter(line => line.trim());
+    let maxSeq = 0;
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        if (typeof event.sequence === "number" && event.sequence > maxSeq) {
+          maxSeq = event.sequence;
+        }
+      } catch {
+        // Skip invalid lines
+      }
+    }
+    return maxSeq + 1;
+  } catch {
+    return 1;
+  }
+}
+
+/**
+ * Append an event to the task's events.jsonl file
+ *
+ * Events are used for event sourcing the task lifecycle.
+ * Format matches TaskEvent interface from task-service.ts
+ *
+ * @param taskDir - Absolute path to task directory
+ * @param eventType - Type of event
+ * @param payload - Optional additional event data
+ * @returns True on success
+ */
+export function appendTaskEvent(
+  taskDir: string,
+  eventType: TaskEventType,
+  payload?: Record<string, unknown>
+): boolean {
+  const eventsPath = join(taskDir, "events.jsonl");
+
+  const event = {
+    eventId: generateEventId(),
+    sequence: getNextEventSequence(taskDir),
+    type: eventType,
+    timestamp: new Date().toISOString(),
+    payload: payload || undefined,
+  };
+
+  try {
+    appendFileSync(eventsPath, JSON.stringify(event) + "\n", "utf-8");
+    return true;
+  } catch {
+    return false;
   }
 }
 

@@ -58,6 +58,12 @@
 |------|------|------|------|
 | [cron.md](./cron.md) | `viben cron` | 定时任务管理 | 待实现 |
 
+### AI 辅助
+
+| 文档 | 命令 | 说明 | 状态 |
+|------|------|------|------|
+| [idea.md](./idea.md) | `viben idea` | AI 驱动的想法生成 | 待实现 |
+
 ## 命令结构
 
 ```
@@ -94,6 +100,9 @@ Commands:
 
   # 自动化
   cron          Manage scheduled tasks
+
+  # AI 辅助
+  idea          AI-powered idea generation (generate, list, promote)
 
   # 通用
   version       Show version info
