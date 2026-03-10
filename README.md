@@ -1,11 +1,23 @@
-# Viben
+<div align="center">
 
-> 多智能体工作空间管理器 — 在本地编排 AI Agent 集群，统一管理看板、日历、时间线和任务。
+# 🚀 Viben
 
-[![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square)](https://github.com/LinXueyuanStdio/viben/releases)
+### 多智能体工作空间管理器
+
+*在本地编排 AI Agent 集群，统一管理看板、日历、时间线和任务*
+
+[![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square&logo=node.js)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tauri](https://img.shields.io/badge/Tauri-2.0-orange?style=flat-square&logo=tauri)](https://tauri.app/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/LinXueyuanStdio/viben/pulls)
 
-## 特性
+</div>
+
+---
+
+## ✨ 特性
 
 | 特性 | 描述 |
 |------|------|
@@ -15,17 +27,19 @@
 | 📋 **看板管理** | 可拖拽的任务看板，实时追踪进度 |
 | 📡 **会话监控** | 实时查看 Agent 对话和工具调用 |
 
-## 下载
+---
 
-### 桌面应用
+## 📦 下载
+
+### 🖥️ 桌面应用
 
 | 平台 | 下载 |
-|------|------|
-| **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
-| **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
-| **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+|:----:|------|
+| 🍎 **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
+| 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
+| 🐧 **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
 
-### CLI
+### 💻 CLI
 
 ```bash
 # Shell (macOS/Linux)
@@ -41,17 +55,19 @@ brew tap LinXueyuanStdio/viben && brew install viben
 npx viben
 ```
 
-## 架构
+---
+
+## 🏗️ 架构
 
 ```mermaid
 graph LR
-    subgraph Apps["应用"]
+    subgraph Apps["📱 应用"]
         CLI["CLI"]
         Desktop["Desktop"]
         Web["Web"]
     end
 
-    subgraph Core["packages/core"]
+    subgraph Core["📦 packages/core"]
         Gateway["Gateway :18790"]
         Agent["Agents"]
         MCP["MCP Client"]
@@ -62,9 +78,11 @@ graph LR
     Agent --> LLM["LLM APIs"]
 ```
 
-`packages/core` 是所有应用的唯一边界，配置存储在 `~/.viben/` (YAML)。
+> `packages/core` 是所有应用的唯一边界，配置存储在 `~/.viben/` (YAML)
 
-## 配置
+---
+
+## ⚙️ 配置
 
 ```
 ~/.viben/
@@ -78,16 +96,18 @@ graph LR
 └── workspaces.yaml   # 工作空间
 ```
 
-<details>
-<summary><b>开发者指南</b></summary>
+---
 
-### 环境要求
+<details>
+<summary><b>🛠️ 开发者指南</b></summary>
+
+### 📋 环境要求
 
 - Node.js >= 20
 - pnpm >= 9.15
 - Rust (桌面应用)
 
-### 快速开始
+### 🚀 快速开始
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
@@ -98,7 +118,7 @@ pnpm desktop:restart    # 桌面应用开发
 pnpm gateway:restart    # 启动 Gateway
 ```
 
-### 项目结构
+### 📁 项目结构
 
 ```
 apps/
@@ -113,19 +133,21 @@ packages/
 └── kanban/     # 看板组件
 ```
 
-### 技术栈
+### 🔧 技术栈
 
-```
-语言        TypeScript
-桌面        Tauri 2 + React 19 + Vite
-Web         Next.js 15
-样式        Tailwind CSS 4 + Radix UI
-状态        Zustand
-构建        pnpm + Turborepo
-```
+| 类别 | 技术 |
+|:----:|------|
+| 📝 语言 | TypeScript |
+| 🖥️ 桌面 | Tauri 2 + React 19 + Vite |
+| 🌐 Web | Next.js 15 |
+| 🎨 样式 | Tailwind CSS 4 + Radix UI |
+| 📊 状态 | Zustand |
+| 🔨 构建 | pnpm + Turborepo |
 
 </details>
 
-## 许可证
+---
 
-[MIT](./LICENSE)
+## 📄 许可证
+
+[MIT](./LICENSE) © 2025 OPENAGS
