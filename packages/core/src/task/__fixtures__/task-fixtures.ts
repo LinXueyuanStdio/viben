@@ -30,21 +30,24 @@ export function createMockContext(
  *
  * @param fromState - Can be a string for simple states like "queue",
  *                    or an object like { in_progress: "planning" } for nested states
+ * @param subtaskIndex - Optional subtask index to save in the snapshot (default 0)
  */
 export function createPausedContext(
-  fromState: XStateValue | string
+  fromState: XStateValue | string,
+  subtaskIndex = 0
 ): TaskMachineContext {
   const stateValue: XStateValue =
     typeof fromState === "string" ? fromState : fromState;
 
   const pausedSnapshot: PausedSnapshot = {
     from_state: stateValue,
-    subtask_index: 0,
+    subtask_index: subtaskIndex,
     paused_at: new Date().toISOString(),
   };
 
   return createMockContext({
     paused_snapshot: pausedSnapshot,
+    currentSubtaskIndex: subtaskIndex,
   });
 }
 
@@ -64,8 +67,8 @@ export function createMockTask(
     title: "Test Task",
     status: "backlog" as TaskStatus,
     priority: "P2",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     ...overrides,
   };
 }

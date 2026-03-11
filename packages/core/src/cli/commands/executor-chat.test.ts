@@ -169,7 +169,8 @@ vi.mock("../../executors", () => {
           throw new Error("spawn mock not initialized");
         }
         // Call the shared mock spawn function
-        const child = mockState.spawnFn(chatCommand, args, spawnOpts);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const child = (mockState.spawnFn as any)(chatCommand, args, spawnOpts);
 
         child.on("error", (error: Error) => {
           console.error(`Failed to start ${chatCommand}: ${error.message}`);
@@ -384,7 +385,7 @@ describe("Executor Chat CLI Commands", () => {
 
       // Strict: error must be output to console.error
       expect(consoleErrorSpy).toHaveBeenCalled();
-      const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+      const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
       expect(errorOutput).toContain("Chat not supported for executor: AMP");
       expect(errorOutput).toContain("CLAUDE_CODE");
       expect(errorOutput).toContain("GEMINI");
@@ -397,7 +398,7 @@ describe("Executor Chat CLI Commands", () => {
       ).rejects.toThrow("process.exit(1)");
 
       expect(consoleErrorSpy).toHaveBeenCalled();
-      const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+      const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
       expect(errorOutput).toContain("Unknown executor type: UNKNOWN");
     });
   });
@@ -707,7 +708,7 @@ describe("Executor Chat CLI Commands", () => {
 
       // Strict: error message must be output
       expect(consoleErrorSpy).toHaveBeenCalled();
-      const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+      const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
       expect(errorOutput).toContain("Failed to start claude");
 
       // Strict: must exit with code 1
@@ -749,7 +750,7 @@ describe("Executor Chat CLI Commands", () => {
         ).rejects.toThrow("process.exit(1)");
 
         // Strict: must show specific error message
-        const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+        const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
         expect(errorOutput).toContain("No prompt provided");
         expect(errorOutput).toContain("-p");
       } finally {
@@ -810,7 +811,7 @@ describe("Executor Chat CLI Commands", () => {
         ).rejects.toThrow("process.exit(1)");
 
         // Strict: must show specific error message about empty stdin
-        const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+        const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
         expect(errorOutput).toContain("No prompt provided");
         expect(errorOutput).toContain("stdin is empty");
       } finally {
@@ -930,7 +931,7 @@ describe("Executor Chat CLI Commands", () => {
 
       // With --json flag, error should be output via console.log in JSON format
       expect(consoleSpy).toHaveBeenCalled();
-      const logOutput = consoleSpy.mock.calls.map(c => String(c[0])).join("");
+      const logOutput = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
 
       // Parse as JSON - the format is { success: false, error: { code, message } }
       const jsonOutput = JSON.parse(logOutput);
@@ -956,7 +957,7 @@ describe("Executor Chat CLI Commands", () => {
       ).rejects.toThrow("process.exit(1)");
 
       // Strict: error must be output
-      const errorOutput = consoleErrorSpy.mock.calls.map(c => String(c[0])).join(" ");
+      const errorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => String(c[0])).join(" ");
       expect(errorOutput).toContain("spawn ENOENT");
     });
   });

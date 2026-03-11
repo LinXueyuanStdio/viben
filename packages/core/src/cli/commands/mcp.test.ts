@@ -1141,7 +1141,7 @@ describe("MCP CLI Commands", () => {
       ]);
 
       await runCommand(["--json", "mcp", "list"]);
-      const listOutput = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const listOutput = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const listParsed = JSON.parse(listOutput);
       expect(listParsed.data.installed.length).toBe(2);
 
@@ -1149,7 +1149,7 @@ describe("MCP CLI Commands", () => {
 
       // Show specific MCP
       await runCommand(["--json", "mcp", "show", "filesystem"]);
-      const showOutput = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const showOutput = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const showParsed = JSON.parse(showOutput);
       expect(showParsed.data.mcp.name).toBe("filesystem");
     });

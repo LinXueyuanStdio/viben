@@ -1183,8 +1183,8 @@ describe("Provider CLI Commands", () => {
     it("should include all provider types in output (openai, anthropic, google, azure, openrouter, ollama, custom)", async () => {
       await runCommand(["--json", "provider", "types"]);
 
-      const outputCalls = consoleSpy.mock.calls.map((call) => String(call[0]));
-      const jsonOutput = outputCalls.find((output) => output.includes('"types"'));
+      const outputCalls = consoleSpy.mock.calls.map((call: unknown[]) => String(call[0]));
+      const jsonOutput = outputCalls.find((output: string) => output.includes('"types"'));
 
       expect(jsonOutput).toBeDefined();
       expect(jsonOutput).toContain("openai");
@@ -1206,8 +1206,8 @@ describe("Provider CLI Commands", () => {
     it("should show environment variable names for each type", async () => {
       await runCommand(["--json", "provider", "types"]);
 
-      const outputCalls = consoleSpy.mock.calls.map((call) => String(call[0]));
-      const jsonOutput = outputCalls.find((output) => output.includes('"types"'));
+      const outputCalls = consoleSpy.mock.calls.map((call: unknown[]) => String(call[0]));
+      const jsonOutput = outputCalls.find((output: string) => output.includes('"types"'));
 
       expect(jsonOutput).toBeDefined();
       expect(jsonOutput).toContain("OPENAI_API_KEY");
