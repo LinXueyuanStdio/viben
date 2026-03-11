@@ -95,45 +95,45 @@ file-pairs:
   # spec/backend/
   # =============================================================================
   - src: .trellis/spec/backend/database-guidelines.md
-    tgt: .viben/spec/backend/database-guidelines.md
+    tgt: docs/specs/backend/database-guidelines.md
   - src: .trellis/spec/backend/directory-structure.md
-    tgt: .viben/spec/backend/directory-structure.md
+    tgt: docs/specs/backend/directory-structure.md
   - src: .trellis/spec/backend/error-handling.md
-    tgt: .viben/spec/backend/error-handling.md
+    tgt: docs/specs/backend/error-handling.md
   - src: .trellis/spec/backend/index.md
-    tgt: .viben/spec/backend/index.md
+    tgt: docs/specs/backend/index.md
   - src: .trellis/spec/backend/logging-guidelines.md
-    tgt: .viben/spec/backend/logging-guidelines.md
+    tgt: docs/specs/backend/logging-guidelines.md
   - src: .trellis/spec/backend/quality-guidelines.md
-    tgt: .viben/spec/backend/quality-guidelines.md
+    tgt: docs/specs/backend/quality-guidelines.md
 
   # =============================================================================
   # spec/frontend/
   # =============================================================================
   - src: .trellis/spec/frontend/component-guidelines.md
-    tgt: .viben/spec/frontend/component-guidelines.md
+    tgt: docs/specs/frontend/component-guidelines.md
   - src: .trellis/spec/frontend/directory-structure.md
-    tgt: .viben/spec/frontend/directory-structure.md
+    tgt: docs/specs/frontend/directory-structure.md
   - src: .trellis/spec/frontend/hook-guidelines.md
-    tgt: .viben/spec/frontend/hook-guidelines.md
+    tgt: docs/specs/frontend/hook-guidelines.md
   - src: .trellis/spec/frontend/index.md
-    tgt: .viben/spec/frontend/index.md
+    tgt: docs/specs/frontend/index.md
   - src: .trellis/spec/frontend/quality-guidelines.md
-    tgt: .viben/spec/frontend/quality-guidelines.md
+    tgt: docs/specs/frontend/quality-guidelines.md
   - src: .trellis/spec/frontend/state-management.md
-    tgt: .viben/spec/frontend/state-management.md
+    tgt: docs/specs/frontend/state-management.md
   - src: .trellis/spec/frontend/type-safety.md
-    tgt: .viben/spec/frontend/type-safety.md
+    tgt: docs/specs/frontend/type-safety.md
 
   # =============================================================================
   # spec/guides/
   # =============================================================================
   - src: .trellis/spec/guides/code-reuse-thinking-guide.md
-    tgt: .viben/spec/guides/code-reuse-thinking-guide.md
+    tgt: docs/specs/guides/code-reuse-thinking-guide.md
   - src: .trellis/spec/guides/cross-layer-thinking-guide.md
-    tgt: .viben/spec/guides/cross-layer-thinking-guide.md
+    tgt: docs/specs/guides/cross-layer-thinking-guide.md
   - src: .trellis/spec/guides/index.md
-    tgt: .viben/spec/guides/index.md
+    tgt: docs/specs/guides/index.md
 
   # =============================================================================
   # tasks/

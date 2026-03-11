@@ -23,7 +23,7 @@ If task directory is provided, you may read:
 ## Project Spec Structure
 
 ```
-.viben/spec/
+docs/specs/
 ├── shared/      # Cross-project common specs
 ├── frontend/    # Frontend standards
 ├── backend/     # Backend standards

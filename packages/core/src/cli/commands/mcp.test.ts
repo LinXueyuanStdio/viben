@@ -644,7 +644,7 @@ describe("MCP CLI Commands", () => {
 
       // Should not show "Starting MCP Inspector Proxy..." message
       const startingCalls = consoleSpy.mock.calls.filter(
-        (call) => (call[0] as string)?.includes?.("Starting MCP Inspector")
+        (call: unknown[]) => (call[0] as string)?.includes?.("Starting MCP Inspector")
       );
       expect(startingCalls.length).toBe(0);
     });
@@ -988,7 +988,7 @@ describe("MCP CLI Commands", () => {
 
       await runCommand(["--json", "mcp", "list"]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
@@ -997,7 +997,7 @@ describe("MCP CLI Commands", () => {
 
       await runCommand(["--json", "mcp", "list", "--agent", "test"]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
@@ -1008,7 +1008,7 @@ describe("MCP CLI Commands", () => {
 
       await runCommand(["--json", "mcp", "show", "test"]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
@@ -1026,7 +1026,7 @@ describe("MCP CLI Commands", () => {
         "cmd",
       ]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
@@ -1035,7 +1035,7 @@ describe("MCP CLI Commands", () => {
 
       await runCommand(["--json", "mcp", "remove", "test", "--agent", "agent"]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       expect(() => JSON.parse(output)).not.toThrow();
     });
 
@@ -1044,7 +1044,7 @@ describe("MCP CLI Commands", () => {
 
       await runCommand(["--json", "mcp", "list"]);
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const parsed = JSON.parse(output);
       expect(parsed.success).toBe(true);
     });
@@ -1086,7 +1086,7 @@ describe("MCP CLI Commands", () => {
 
       await expect(runCommand(["--json", "mcp", "list"])).rejects.toThrow();
 
-      const output = consoleSpy.mock.calls.map((call) => call[0]).join("");
+      const output = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const parsed = JSON.parse(output);
       expect(parsed.success).toBe(false);
       expect(parsed.error).toBeDefined();

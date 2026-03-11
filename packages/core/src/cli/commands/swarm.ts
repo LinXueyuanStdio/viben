@@ -38,13 +38,14 @@ import {
   findAgentStatus,
   getRecentLogEntries,
   tailFollowConsole,
+  getSessionId,
   // Cleanup functions
   listWorktrees,
   cleanupWorktree,
   cleanupMerged,
   cleanupAll,
   // CLI Adapter
-  getCLIAdapter,
+  createCLIAdapter,
   type Platform,
 } from "../lib/swarm";
 
@@ -227,17 +228,17 @@ async function startAgentCommand(
       return;
     }
 
-    // Read session ID
-    const sessionIdFile = join(agent.worktree_path, ".session-id");
+    // Read session ID from task.json
     let sessionId = options.session;
-    if (!sessionId && existsSync(sessionIdFile)) {
-      sessionId = readFileSync(sessionIdFile, "utf-8").trim();
+    if (!sessionId) {
+      const taskDirAbs = join(repoRoot, agent.task_dir);
+      sessionId = getSessionId(taskDirAbs) || undefined;
     }
 
     if (!sessionId) {
       output(ctx, errorResponse("NO_SESSION", "No session ID found for resume"), () => {
         console.error(chalk.red("Error: No session ID found for resume"));
-        console.log(chalk.gray("Session ID file not found at: " + sessionIdFile));
+        console.log(chalk.gray("No session_id in task.json and no --session provided"));
       });
       process.exit(1);
       return;
@@ -245,7 +246,7 @@ async function startAgentCommand(
 
     // Build resume command using CLI adapter
     const platform = (agent.platform || "claude") as Platform;
-    const adapter = getCLIAdapter(platform);
+    const adapter = createCLIAdapter(platform);
     const resumeCmd = adapter.buildResumeCommand(sessionId);
 
     if (!ctx.quiet) {
@@ -309,7 +310,7 @@ async function startAgentCommand(
       console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
       console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
       if (result.sessionId) {
-        const adapter = getCLIAdapter(platform);
+        const adapter = createCLIAdapter(platform);
         const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
         console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
       }
@@ -506,7 +507,7 @@ async function showStatusCommand(
     } else {
       console.log(`  Status:    ${chalk.red("Stopped")}`);
       if (status.sessionId) {
-        const adapter = getCLIAdapter(status.platform as Platform);
+        const adapter = createCLIAdapter(status.platform as Platform);
         const resumeCmd = adapter.getResumeCommandStr(status.sessionId, status.worktreePath);
         console.log();
         console.log(chalk.yellow(`  Resume: ${resumeCmd}`));
@@ -599,7 +600,7 @@ async function showStatusCommand(
         console.log(`    ${chalk.dim(`"${agent.lastMessage}"`)}`);
       }
       if (agent.sessionId) {
-        const adapter = getCLIAdapter(agent.platform as Platform);
+        const adapter = createCLIAdapter(agent.platform as Platform);
         const resumeCmd = adapter.getResumeCommandStr(agent.sessionId, agent.worktreePath);
         console.log(`    ${chalk.yellow(resumeCmd)}`);
       }

@@ -708,17 +708,3 @@ export function createCLIAdapterAuto(projectRoot: string): ICLIAdapter {
   const platform = detectPlatform(projectRoot);
   return new CLIAdapter(platform);
 }
-
-// =============================================================================
-// Backward Compatibility Aliases
-// =============================================================================
-
-/**
- * @deprecated Use createCLIAdapter instead
- */
-export const getCLIAdapter = createCLIAdapter;
-
-/**
- * @deprecated Use createCLIAdapterAuto instead
- */
-export const getCLIAdapterAuto = createCLIAdapterAuto;

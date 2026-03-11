@@ -25,6 +25,7 @@ import {
   rmSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import matter from "gray-matter";
 import {
   CUSTOM_IDEA_TYPES_DIR,
   IDEAS_DIR,
@@ -162,48 +163,101 @@ export function getCustomPromptPath(repoRoot: string, type: string): string {
 // =============================================================================
 
 /**
- * Parse YAML frontmatter from a markdown file
+ * Parse YAML frontmatter from a markdown file using gray-matter
  *
  * @param content - File content
- * @returns Object with frontmatter and body
+ * @returns Object with frontmatter (data) and body (content)
  */
 function parseFrontmatter(content: string): {
   frontmatter: Record<string, unknown>;
   body: string;
 } {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!match) {
+  try {
+    const parsed = matter(content);
+    return {
+      frontmatter: parsed.data as Record<string, unknown>,
+      body: parsed.content,
+    };
+  } catch {
     return { frontmatter: {}, body: content };
   }
+}
 
-  const [, yamlStr, body] = match;
-  const frontmatter: Record<string, unknown> = {};
+/**
+ * Parse an Idea from parsed frontmatter and body content
+ *
+ * @param frontmatter - Parsed YAML frontmatter
+ * @param body - Markdown body content
+ * @returns Idea or null if invalid
+ */
+function parseIdeaFromFrontmatterAndBody(
+  frontmatter: Record<string, unknown>,
+  body: string
+): Idea | null {
+  if (!frontmatter.id) {
+    return null;
+  }
 
-  // Simple YAML parsing (key: value only)
-  for (const line of yamlStr.split("\n")) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      let value: unknown = line.slice(colonIndex + 1).trim();
+  // Parse affected files from body
+  const affectedFiles: string[] = [];
+  const existingPatterns: string[] = [];
+  let implementationApproach: string | undefined;
 
-      // Remove quotes
-      if (
-        (value as string).startsWith('"') && (value as string).endsWith('"') ||
-        (value as string).startsWith("'") && (value as string).endsWith("'")
-      ) {
-        value = (value as string).slice(1, -1);
-      }
+  const lines = body.split("\n");
+  let currentSection = "";
 
-      // Parse numbers
-      if (/^\d+$/.test(value as string)) {
-        value = parseInt(value as string, 10);
-      }
-
-      frontmatter[key] = value;
+  for (const line of lines) {
+    if (line.startsWith("## Affected Files")) {
+      currentSection = "affected";
+    } else if (line.startsWith("## Existing Patterns")) {
+      currentSection = "patterns";
+    } else if (line.startsWith("## Implementation Approach")) {
+      currentSection = "implementation";
+    } else if (line.startsWith("## ")) {
+      currentSection = "";
+    } else if (line.startsWith("- ") && currentSection === "affected") {
+      affectedFiles.push(line.slice(2).trim());
+    } else if (line.startsWith("- ") && currentSection === "patterns") {
+      existingPatterns.push(line.slice(2).trim());
+    } else if (currentSection === "implementation" && line.trim()) {
+      implementationApproach = implementationApproach
+        ? implementationApproach + "\n" + line
+        : line;
     }
   }
 
-  return { frontmatter, body };
+  const effortStr = String(frontmatter.estimated_effort || "medium");
+
+  return {
+    id: String(frontmatter.id),
+    type: String(frontmatter.type || ""),
+    name: frontmatter.name ? String(frontmatter.name) : undefined,
+    title: String(frontmatter.title || ""),
+    description: String(frontmatter.description || ""),
+    rationale: String(frontmatter.rationale || ""),
+    estimatedEffort: isValidEffortLevel(effortStr) ? effortStr : "medium",
+    status:
+      frontmatter.status === "promoted"
+        ? "promoted"
+        : frontmatter.status === "dismissed"
+          ? "dismissed"
+          : "draft",
+    promotedTo:
+      frontmatter.promoted_to && frontmatter.promoted_to !== "null"
+        ? String(frontmatter.promoted_to)
+        : undefined,
+    createdAt: String(frontmatter.created_at || new Date().toISOString()),
+    affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
+    existingPatterns:
+      existingPatterns.length > 0 ? existingPatterns : undefined,
+    implementationApproach,
+    category: frontmatter.category
+      ? String(frontmatter.category)
+      : undefined,
+    severity: frontmatter.severity
+      ? String(frontmatter.severity)
+      : undefined,
+  };
 }
 
 /**
@@ -625,7 +679,7 @@ export function writeIdeaSession(
 // =============================================================================
 
 /**
- * Get the path to an idea file for a type
+ * Get the path to an idea file for a type (legacy - all ideas in one file)
  *
  * @param sessionDir - Session directory path
  * @param typeName - Idea type name
@@ -633,6 +687,36 @@ export function writeIdeaSession(
  */
 export function getIdeaFilePath(sessionDir: string, typeName: string): string {
   return join(sessionDir, `${IDEA_FILE_PREFIX}${typeName}.md`);
+}
+
+/**
+ * Get the path to a single idea file
+ *
+ * @param sessionDir - Session directory path
+ * @param typeName - Idea type name
+ * @param ideaName - Idea name (e.g., "add-pagination-sessions")
+ * @returns Absolute path to individual idea file
+ */
+export function getSingleIdeaFilePath(
+  sessionDir: string,
+  typeName: string,
+  ideaName: string
+): string {
+  return join(sessionDir, `${IDEA_FILE_PREFIX}${typeName}_${ideaName}.md`);
+}
+
+/**
+ * Get the filename for a single idea file
+ *
+ * @param typeName - Idea type name
+ * @param ideaName - Idea name
+ * @returns Filename without path
+ */
+export function getSingleIdeaFileName(
+  typeName: string,
+  ideaName: string
+): string {
+  return `${IDEA_FILE_PREFIX}${typeName}_${ideaName}.md`;
 }
 
 /**
@@ -693,7 +777,90 @@ export function writeIdeasToFile(filePath: string, ideas: Idea[]): void {
 }
 
 /**
+ * Write a single idea to its own file
+ *
+ * @param sessionDir - Session directory path
+ * @param idea - Idea to write
+ * @returns The filename that was written
+ */
+export function writeSingleIdeaToFile(sessionDir: string, idea: Idea): string {
+  // Use name if available, fallback to id
+  const ideaName = idea.name || idea.id;
+  const filePath = getSingleIdeaFilePath(sessionDir, idea.type, ideaName);
+  const fileName = getSingleIdeaFileName(idea.type, ideaName);
+
+  const frontmatter = [
+    "---",
+    `id: ${idea.id}`,
+    `type: ${idea.type}`,
+    `name: ${ideaName}`,
+    `title: ${idea.title}`,
+    `description: ${idea.description}`,
+    `rationale: ${idea.rationale}`,
+    `estimated_effort: ${idea.estimatedEffort}`,
+    `status: ${idea.status}`,
+    `promoted_to: ${idea.promotedTo || "null"}`,
+    `created_at: ${idea.createdAt}`,
+    "---",
+  ];
+
+  const body: string[] = [];
+
+  if (idea.affectedFiles && idea.affectedFiles.length > 0) {
+    body.push("## Affected Files", "");
+    for (const file of idea.affectedFiles) {
+      body.push(`- ${file}`);
+    }
+    body.push("");
+  }
+
+  if (idea.existingPatterns && idea.existingPatterns.length > 0) {
+    body.push("## Existing Patterns", "");
+    for (const pattern of idea.existingPatterns) {
+      body.push(`- ${pattern}`);
+    }
+    body.push("");
+  }
+
+  if (idea.implementationApproach) {
+    body.push("## Implementation Approach", "");
+    body.push(idea.implementationApproach);
+    body.push("");
+  }
+
+  const content = frontmatter.join("\n") + "\n\n" + body.join("\n");
+  writeFileSync(filePath, content, "utf-8");
+
+  return fileName;
+}
+
+/**
+ * Write ideas - each idea to its own file
+ *
+ * @param sessionDir - Session directory path
+ * @param ideas - Array of ideas to write
+ * @returns Array of filenames that were written
+ */
+export function writeIdeasToSeparateFiles(
+  sessionDir: string,
+  ideas: Idea[]
+): string[] {
+  const files: string[] = [];
+  for (const idea of ideas) {
+    const fileName = writeSingleIdeaToFile(sessionDir, idea);
+    files.push(fileName);
+  }
+  return files;
+}
+
+/**
  * Parse ideas from a markdown file
+ *
+ * Supports both:
+ * - Single idea per file (new format): starts with ---\nfrontmatter\n---
+ * - Multiple ideas per file (legacy format): multiple --- separated sections
+ *
+ * Uses gray-matter for robust YAML frontmatter parsing.
  *
  * @param filePath - Path to the idea file
  * @returns Array of parsed ideas
@@ -704,82 +871,42 @@ export function readIdeasFromFile(filePath: string): Idea[] {
   }
 
   try {
-    const content = readFileSync(filePath, "utf-8");
-    const ideas: Idea[] = [];
+    const content = readFileSync(filePath, "utf-8").trim();
 
-    // Split by document separator (---)
+    // Use gray-matter to parse the file
+    const { frontmatter, body } = parseFrontmatter(content);
+
+    // If frontmatter has an id, this is a single-idea file
+    if (frontmatter.id) {
+      const idea = parseIdeaFromFrontmatterAndBody(frontmatter, body);
+      if (idea) {
+        return [idea];
+      }
+    }
+
+    // Legacy format: multiple ideas separated by \n---\n
+    // This happens when ideas were written with writeIdeasToFile (multiple per file)
+    const ideas: Idea[] = [];
     const sections = content.split(/\n---\n+/);
 
     for (const section of sections) {
       const trimmed = section.trim();
-      if (!trimmed || !trimmed.startsWith("---")) {
+      if (!trimmed) {
         continue;
       }
 
-      const { frontmatter, body } = parseFrontmatter(trimmed);
-      if (!frontmatter.id) {
-        continue;
-      }
+      // Section might start with --- or not (if it was split)
+      const sectionToparse = trimmed.startsWith("---")
+        ? trimmed
+        : "---\n" + trimmed;
+      const { frontmatter: fm, body: bd } = parseFrontmatter(sectionToparse);
 
-      // Parse affected files from body
-      const affectedFiles: string[] = [];
-      const existingPatterns: string[] = [];
-      let implementationApproach: string | undefined;
-
-      const lines = body.split("\n");
-      let currentSection = "";
-
-      for (const line of lines) {
-        if (line.startsWith("## Affected Files")) {
-          currentSection = "affected";
-        } else if (line.startsWith("## Existing Patterns")) {
-          currentSection = "patterns";
-        } else if (line.startsWith("## Implementation Approach")) {
-          currentSection = "implementation";
-        } else if (line.startsWith("## ")) {
-          currentSection = "";
-        } else if (line.startsWith("- ") && currentSection === "affected") {
-          affectedFiles.push(line.slice(2).trim());
-        } else if (line.startsWith("- ") && currentSection === "patterns") {
-          existingPatterns.push(line.slice(2).trim());
-        } else if (currentSection === "implementation" && line.trim()) {
-          implementationApproach = implementationApproach
-            ? implementationApproach + "\n" + line
-            : line;
+      if (fm.id) {
+        const idea = parseIdeaFromFrontmatterAndBody(fm, bd);
+        if (idea) {
+          ideas.push(idea);
         }
       }
-
-      const effortStr = String(frontmatter.estimated_effort || "medium");
-
-      ideas.push({
-        id: String(frontmatter.id),
-        type: String(frontmatter.type || ""),
-        title: String(frontmatter.title || ""),
-        description: String(frontmatter.description || ""),
-        rationale: String(frontmatter.rationale || ""),
-        estimatedEffort: isValidEffortLevel(effortStr) ? effortStr : "medium",
-        status:
-          frontmatter.status === "promoted"
-            ? "promoted"
-            : frontmatter.status === "dismissed"
-              ? "dismissed"
-              : "draft",
-        promotedTo:
-          frontmatter.promoted_to && frontmatter.promoted_to !== "null"
-            ? String(frontmatter.promoted_to)
-            : undefined,
-        createdAt: String(frontmatter.created_at || new Date().toISOString()),
-        affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
-        existingPatterns:
-          existingPatterns.length > 0 ? existingPatterns : undefined,
-        implementationApproach,
-        category: frontmatter.category
-          ? String(frontmatter.category)
-          : undefined,
-        severity: frontmatter.severity
-          ? String(frontmatter.severity)
-          : undefined,
-      });
     }
 
     return ideas;
@@ -1099,80 +1226,44 @@ function updateSessionSummary(sessionDir: string): void {
  * ...
  * ---
  *
+ * Uses gray-matter for robust YAML frontmatter parsing.
+ *
  * @param content - Markdown content
  * @returns Array of Ideas
  */
 export function parseIdeaMarkdown(content: string): Idea[] {
-  // Create a temp in-memory approach using the existing parser
   const ideas: Idea[] = [];
 
-  // Split by document separator (---)
+  // First try to parse as single idea
+  const { frontmatter, body } = parseFrontmatter(content);
+  if (frontmatter.id) {
+    const idea = parseIdeaFromFrontmatterAndBody(frontmatter, body);
+    if (idea) {
+      return [idea];
+    }
+  }
+
+  // Legacy format: multiple ideas separated by \n---\n
   const sections = content.split(/\n---\n+/);
 
   for (const section of sections) {
     const trimmed = section.trim();
-    if (!trimmed || !trimmed.startsWith("---")) {
+    if (!trimmed) {
       continue;
     }
 
-    const { frontmatter, body } = parseFrontmatter(trimmed);
-    if (!frontmatter.id) {
-      continue;
-    }
+    // Section might start with --- or not (if it was split)
+    const sectionToparse = trimmed.startsWith("---")
+      ? trimmed
+      : "---\n" + trimmed;
+    const { frontmatter: fm, body: bd } = parseFrontmatter(sectionToparse);
 
-    // Parse affected files from body
-    const affectedFiles: string[] = [];
-    const existingPatterns: string[] = [];
-    let implementationApproach: string | undefined;
-
-    const lines = body.split("\n");
-    let currentSection = "";
-
-    for (const line of lines) {
-      if (line.startsWith("## Affected Files")) {
-        currentSection = "affected";
-      } else if (line.startsWith("## Existing Patterns")) {
-        currentSection = "patterns";
-      } else if (line.startsWith("## Implementation Approach")) {
-        currentSection = "implementation";
-      } else if (line.startsWith("## ")) {
-        currentSection = "";
-      } else if (line.startsWith("- ") && currentSection === "affected") {
-        affectedFiles.push(line.slice(2).trim());
-      } else if (line.startsWith("- ") && currentSection === "patterns") {
-        existingPatterns.push(line.slice(2).trim());
-      } else if (currentSection === "implementation" && line.trim()) {
-        implementationApproach = implementationApproach
-          ? implementationApproach + "\n" + line
-          : line;
+    if (fm.id) {
+      const idea = parseIdeaFromFrontmatterAndBody(fm, bd);
+      if (idea) {
+        ideas.push(idea);
       }
     }
-
-    const effortStr = String(frontmatter.estimated_effort || "medium");
-
-    ideas.push({
-      id: String(frontmatter.id),
-      type: String(frontmatter.type || ""),
-      title: String(frontmatter.title || ""),
-      description: String(frontmatter.description || ""),
-      rationale: String(frontmatter.rationale || ""),
-      estimatedEffort: isValidEffortLevel(effortStr) ? effortStr : "medium",
-      status:
-        frontmatter.status === "promoted"
-          ? "promoted"
-          : frontmatter.status === "dismissed"
-            ? "dismissed"
-            : "draft",
-      promotedTo:
-        frontmatter.promoted_to && frontmatter.promoted_to !== "null"
-          ? String(frontmatter.promoted_to)
-          : undefined,
-      createdAt: String(frontmatter.created_at || new Date().toISOString()),
-      affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
-      existingPatterns:
-        existingPatterns.length > 0 ? existingPatterns : undefined,
-      implementationApproach,
-    });
   }
 
   return ideas;

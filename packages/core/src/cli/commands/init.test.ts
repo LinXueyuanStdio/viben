@@ -198,7 +198,7 @@ describe("viben init command", () => {
       await program.parseAsync(["node", "viben", "init", "--json"]);
 
       // Find the JSON output call
-      const jsonCall = consoleLogSpy.mock.calls.find((call) => {
+      const jsonCall = consoleLogSpy.mock.calls.find((call: unknown[]) => {
         try {
           const parsed = JSON.parse(String(call[0]));
           return parsed.success !== undefined;
@@ -237,7 +237,7 @@ describe("viben init command", () => {
         "--json",
       ]);
 
-      const jsonCall = consoleLogSpy.mock.calls.find((call) => {
+      const jsonCall = consoleLogSpy.mock.calls.find((call: unknown[]) => {
         try {
           const parsed = JSON.parse(String(call[0]));
           return parsed.success !== undefined;
@@ -489,7 +489,7 @@ describe("viben init command", () => {
         "--json",
       ]);
 
-      const jsonCall = consoleLogSpy.mock.calls.find((call) => {
+      const jsonCall = consoleLogSpy.mock.calls.find((call: unknown[]) => {
         try {
           const parsed = JSON.parse(String(call[0]));
           return parsed.success !== undefined;
@@ -557,7 +557,7 @@ describe("viben init command", () => {
         program.parseAsync(["node", "viben", "init", "--json"])
       ).rejects.toThrow("Process exited");
 
-      const jsonCall = consoleLogSpy.mock.calls.find((call) => {
+      const jsonCall = consoleLogSpy.mock.calls.find((call: unknown[]) => {
         try {
           const parsed = JSON.parse(String(call[0]));
           return parsed.success === false;

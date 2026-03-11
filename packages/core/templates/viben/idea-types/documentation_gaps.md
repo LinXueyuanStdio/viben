@@ -81,6 +81,7 @@ Each idea MUST have this structure:
 {
   "id": "doc-001",
   "type": "documentation_gaps",
+  "name": "api-docs-auth-module",
   "title": "Add API documentation for authentication module",
   "description": "The auth/ module exports 12 functions but only 3 have JSDoc comments.",
   "rationale": "Authentication is a critical module used throughout the app. Developers frequently need to understand token handling but must read source code.",

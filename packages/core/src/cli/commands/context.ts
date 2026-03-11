@@ -34,7 +34,6 @@ import {
   DIR_VIBEN,
   DIR_WORKSPACE,
   DIR_TASKS,
-  DIR_SPEC,
 } from "../lib/viben-workspace";
 
 /**
@@ -267,7 +266,7 @@ function getContextText(repoRoot: string): string {
   lines.push("## PATHS");
   lines.push(`Workspace: ${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`);
   lines.push(`Tasks: ${DIR_VIBEN}/${DIR_TASKS}/`);
-  lines.push(`Spec: ${DIR_VIBEN}/${DIR_SPEC}/`);
+  lines.push("Spec: docs/specs/");
   lines.push("");
 
   lines.push("========================================");

@@ -319,7 +319,7 @@ Line count: 1500 / 2000
 ## PATHS
 Workspace: .viben/workspace/john/
 Tasks: .viben/tasks/
-Spec: .viben/spec/
+Spec: docs/specs/
 
 ========================================
 \`\`\`

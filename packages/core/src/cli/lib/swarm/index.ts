@@ -23,9 +23,6 @@ export {
   createCLIAdapter,
   createCLIAdapterAuto,
   detectPlatform,
-  // Backward compatibility
-  getCLIAdapter,
-  getCLIAdapterAuto,
 } from "./cli-adapter";
 
 // Registry

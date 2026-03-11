@@ -96,9 +96,8 @@ import {
   DIR_VIBEN,
   DIR_WORKSPACE,
   DIR_TASKS,
-  DIR_SPEC,
   FILE_TASK_JSON,
-  getCLIAdapter,
+  createCLIAdapter,
 } from "../../cli/lib/viben-workspace";
 
 /**
@@ -1888,13 +1887,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
     if (dev_type === "backend" || dev_type === "test" || dev_type === "fullstack") {
       implementEntries.push({
-        file: `${DIR_VIBEN}/${DIR_SPEC}/backend/index.md`,
+        file: "docs/specs/backend/index.md",
         reason: "Backend development guide",
       });
     }
     if (dev_type === "frontend" || dev_type === "fullstack") {
       implementEntries.push({
-        file: `${DIR_VIBEN}/${DIR_SPEC}/frontend/index.md`,
+        file: "docs/specs/frontend/index.md",
         reason: "Frontend development guide",
       });
     }
@@ -4739,7 +4738,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         paths: {
           workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
           tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
-          spec: `${DIR_VIBEN}/${DIR_SPEC}/`,
+          spec: "docs/specs/",
         },
       };
 
@@ -4809,12 +4808,12 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           data: {
             type: "registry",
             agents: agents.map((a) => ({
-              agent_id: a.agentId,
-              worktree_path: a.worktreePath,
+              agent_id: a.id,
+              worktree_path: a.worktree_path,
               pid: a.pid,
-              task_dir: a.taskDir,
+              task_dir: a.task_dir,
               platform: a.platform,
-              started_at: a.startedAt,
+              started_at: a.started_at,
               running: a.pid ? isProcessRunning(a.pid) : false,
             })),
           },
@@ -4859,10 +4858,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
             type: "list",
             worktrees,
             agents: agents.map((a) => ({
-              agent_id: a.agentId,
-              worktree_path: a.worktreePath,
+              agent_id: a.id,
+              worktree_path: a.worktree_path,
               pid: a.pid,
-              task_dir: a.taskDir,
+              task_dir: a.task_dir,
               running: a.pid ? isProcessRunning(a.pid) : false,
             })),
           },
@@ -4890,7 +4889,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         }
 
         // Check if agent is running
-        const agent = registrySearchAgent(taskData.id || basename(resolvedDir), repoRoot);
+        const taskId = (taskData.id as string) || basename(resolvedDir);
+        const agent = registrySearchAgent(taskId, repoRoot);
         const isRunning = agent?.pid ? isProcessRunning(agent.pid) : false;
 
         // Get stats
@@ -4914,7 +4914,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
             },
             agent: agent
               ? {
-                  agent_id: agent.agentId,
+                  agent_id: agent.id,
                   pid: agent.pid,
                   running: isRunning,
                   platform: agent.platform,
@@ -4940,7 +4940,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         const runningTaskIds = new Set(
           agents
             .filter((a) => a.pid && isProcessRunning(a.pid))
-            .map((a) => a.taskDir?.split("/").pop())
+            .map((a) => a.task_dir?.split("/").pop())
         );
         filtered = filtered.filter((t) => runningTaskIds.has(t.name));
       }
@@ -5381,7 +5381,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     try {
-      const adapter = getCLIAdapter(platform);
+      const adapter = createCLIAdapter(platform);
 
       // Check plan agent exists
       const planMdPath = adapter.getAgentConfigPath("plan", workspace_path);

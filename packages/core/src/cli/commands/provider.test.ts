@@ -829,8 +829,8 @@ describe("Provider CLI Commands", () => {
       await runCommand(["provider", "show", "-n", "my-provider"]);
 
       // Should not display actual API key
-      const outputCalls = consoleSpy.mock.calls.map((call) => String(call[0]));
-      const hasSecretKey = outputCalls.some((output) =>
+      const outputCalls = consoleSpy.mock.calls.map((call: unknown[]) => String(call[0]));
+      const hasSecretKey = outputCalls.some((output: string) =>
         output.includes("sk-secret-key-12345")
       );
       expect(hasSecretKey).toBe(false);

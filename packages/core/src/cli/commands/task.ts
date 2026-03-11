@@ -42,7 +42,6 @@ import {
   getDeveloper,
   getTasksDir,
   getCurrentTask,
-  setCurrentTask,
   clearCurrentTask,
   readTaskJson as readTaskJsonFromWorkspace,
   writeTaskJson,
@@ -65,7 +64,6 @@ import {
   DIR_VIBEN,
   DIR_WORKSPACE,
   DIR_TASKS,
-  DIR_SPEC,
   FILE_TASK_JSON,
   // Phase management
   getPhaseInfo,
@@ -88,7 +86,7 @@ import {
   type TaskEventType,
   type PausedSnapshot,
   // CLI adapter
-  getCLIAdapter,
+  createCLIAdapter,
   detectPlatform,
   type AgentRegistryEntry,
 } from "../lib/viben-workspace";
@@ -98,11 +96,9 @@ import type { UnifiedTask } from "../../services/task-service";
 // Import swarm functions for agent management
 import {
   type StartResult,
-  type Registry,
-  type AgentEntry,
-  readRegistry,
-  startAgent,
   type Platform,
+  startAgent,
+  getSessionId,
 } from "../lib/swarm";
 
 // =============================================================================
@@ -154,21 +150,6 @@ function getContext(program: Command): OutputContext {
     verbose: opts.verbose || false,
     quiet: opts.quiet || false,
   };
-}
-
-/**
- * Find agent by task name or ID in registry
- */
-function findAgent(
-  registry: Registry,
-  search: string
-): AgentEntry | undefined {
-  // Exact ID match
-  const exactMatch = registry.agents.find((a) => a.id === search);
-  if (exactMatch) return exactMatch;
-
-  // Partial match on task_dir
-  return registry.agents.find((a) => a.task_dir.includes(search));
 }
 
 /**
@@ -623,15 +604,14 @@ export function registerTaskCommand(program: Command): void {
   // Status Commands
   // ============================================================================
 
-  // task start - Set as current task and optionally start an agent in a worktree
-  // This command combines the functionality of the old `viben task start` and `viben swarm start`
+  // task start - Start an agent in a worktree (migrated from swarm start)
   taskCmd
     .command("start")
-    .description("Set as current task and optionally start an agent in a worktree")
+    .description("Start an agent in a worktree")
     .argument("<task>", "Task name or directory")
-    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.) - starts agent if provided")
-    .option("--detach", "Run agent in background (default: true when starting agent)")
-    .option("--resume", "Resume an existing agent session")
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
+    .option("--detach", "Run in background")
+    .option("--resume", "Resume an existing session")
     .option("--session <id>", "Session ID for resume")
     .action(async (task: string, options: {
       executor?: string;
@@ -648,10 +628,15 @@ export function registerTaskCommand(program: Command): void {
         // Resolve task directory
         const taskDir = resolveTaskDirectory(task, repoRoot);
         if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+          output(ctx, errorResponse("TASK_NOT_FOUND", `Task not found: ${task}`), () => {
+            console.error(chalk.red(`Error: Task not found: ${task}`));
+            console.log(chalk.gray("Use 'viben task list' to see available tasks"));
+          });
+          process.exit(1);
+          return;
         }
 
-        // Convert to relative path for storage
+        // Convert to relative path
         let relativePath: string;
         try {
           relativePath = relative(repoRoot, taskDir);
@@ -659,61 +644,42 @@ export function registerTaskCommand(program: Command): void {
           relativePath = taskDir;
         }
 
-        // Always set current task first
-        if (!setCurrentTask(relativePath, repoRoot)) {
-          throw CliError.operationFailed("Set current task", "Failed to write .current-task file");
-        }
+        // Read task.json to get sessionId and other config
+        const taskJson = readTaskJsonFromWorkspace(taskDir) as UnifiedTask | null;
 
         // Handle resume mode
         if (options.resume) {
-          const registry = readRegistry(repoRoot);
-          const agent = findAgent(registry, task);
-
-          if (!agent) {
-            output(ctx, successResponse({ task: relativePath, agentStatus: "not_found" }), () => {
-              console.log(chalk.green(`Current task set to: ${relativePath}`));
-              console.log();
-              console.log(chalk.yellow("No agent found for this task."));
-              console.log(chalk.gray("Start an agent with: viben task start " + task + " --executor CLAUDE_CODE"));
-            });
-            return;
-          }
-
-          // Read session ID
-          const sessionIdFile = join(agent.worktree_path, ".session-id");
+          // Read session ID from task.json or CLI option
           let sessionId = options.session;
-          if (!sessionId && existsSync(sessionIdFile)) {
-            sessionId = readFileSync(sessionIdFile, "utf-8").trim();
+          if (!sessionId && taskJson?.sessionId) {
+            sessionId = taskJson.sessionId;
           }
 
           if (!sessionId) {
-            output(ctx, successResponse({ task: relativePath, agentStatus: "no_session" }), () => {
-              console.log(chalk.green(`Current task set to: ${relativePath}`));
-              console.log();
-              console.log(chalk.yellow("No session ID found for resume."));
-              console.log(chalk.gray("Session ID file not found at: " + sessionIdFile));
+            output(ctx, errorResponse("NO_SESSION", "No session ID found for resume"), () => {
+              console.error(chalk.red("Error: No session ID found for resume"));
+              console.log(chalk.gray("No sessionId in task.json and no --session provided"));
             });
+            process.exit(1);
             return;
           }
 
           // Build resume command using CLI adapter
-          const platform = (agent.platform || "claude") as Platform;
-          const adapter = getCLIAdapter(platform);
+          const platform = (taskJson?.executor || "claude") as Platform;
+          const adapter = createCLIAdapter(platform);
           const resumeCmd = adapter.buildResumeCommand(sessionId);
 
           if (!ctx.quiet) {
-            console.log(chalk.green(`Current task set to: ${relativePath}`));
-            console.log();
             console.log(chalk.blue("=== Resuming Agent ==="));
             console.log(`  Session: ${sessionId}`);
-            console.log(`  Worktree: ${agent.worktree_path}`);
+            console.log(`  Task: ${relativePath}`);
             console.log(`  Command: ${resumeCmd.join(" ")}`);
             console.log();
           }
 
           // Execute resume command
           const child = spawn(resumeCmd[0], resumeCmd.slice(1), {
-            cwd: agent.worktree_path,
+            cwd: taskDir,
             stdio: "inherit",
           });
 
@@ -724,70 +690,55 @@ export function registerTaskCommand(program: Command): void {
           return;
         }
 
-        // Handle start agent mode (when --executor is provided)
-        if (options.executor) {
-          // Determine platform
-          const platform: Platform = EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude";
+        // Determine platform
+        const platform: Platform = options.executor
+          ? EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude"
+          : "claude";
 
-          if (!ctx.quiet) {
-            console.log(chalk.green(`Current task set to: ${relativePath}`));
-            console.log();
-            console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
-            console.log(`[INFO] Task: ${relativePath}`);
-            console.log(`[INFO] Platform: ${platform}`);
-          }
-
-          const result: StartResult = await startAgent(repoRoot, relativePath, {
-            platform,
-            detach: options.detach ?? true,
-            skipPermissions: true,
-            verbose: ctx.verbose,
-            jsonOutput: true,
-          });
-
-          if (ctx.json) {
-            if (result.success) {
-              output(ctx, successResponse({ task: relativePath, ...result }));
-            } else {
-              output(ctx, errorResponse("START_FAILED", result.error || "Unknown error"));
-              process.exit(1);
-            }
-          } else {
-            if (result.success) {
-              console.log();
-              console.log(chalk.green("=== Agent Started ==="));
-              console.log();
-              console.log(`  ID:        ${result.agentId}`);
-              console.log(`  PID:       ${result.pid}`);
-              console.log(`  Session:   ${result.sessionId || "N/A"}`);
-              console.log(`  Worktree:  ${result.worktreePath}`);
-              console.log(`  Log:       ${result.logFile}`);
-              console.log();
-              console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
-              console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
-              if (result.sessionId) {
-                const adapter = getCLIAdapter(platform);
-                const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
-                console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
-              }
-            } else {
-              console.error(chalk.red(`Error: ${result.error}`));
-              process.exit(1);
-            }
-          }
-
-          return;
+        // Start agent using TypeScript implementation
+        if (!ctx.quiet) {
+          console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
+          console.log(`[INFO] Task: ${relativePath}`);
+          console.log(`[INFO] Platform: ${platform}`);
         }
 
-        // Default mode: just set current task (no agent start)
-        output(ctx, successResponse({ task: relativePath }), () => {
-          console.log(chalk.green(`Current task set to: ${relativePath}`));
-          console.log();
-          console.log(chalk.blue("The hook will now inject context from this task's jsonl files."));
-          console.log();
-          console.log(chalk.gray("To start an agent: viben task start " + task + " --executor CLAUDE_CODE"));
-          console.log(chalk.gray("To resume agent:   viben task start " + task + " --resume"));
+        const result: StartResult = await startAgent(repoRoot, relativePath, {
+          platform,
+          detach: options.detach ?? true,
+          skipPermissions: true,
+          verbose: ctx.verbose,
+          jsonOutput: true,
         });
+
+        if (ctx.json) {
+          if (result.success) {
+            output(ctx, successResponse(result));
+          } else {
+            output(ctx, errorResponse("START_FAILED", result.error || "Unknown error"));
+          }
+        } else {
+          if (result.success) {
+            console.log();
+            console.log(chalk.green("=== Agent Started ==="));
+            console.log();
+            console.log(`  ID:        ${result.agentId}`);
+            console.log(`  PID:       ${result.pid}`);
+            console.log(`  Session:   ${result.sessionId || "N/A"}`);
+            console.log(`  Worktree:  ${result.worktreePath}`);
+            console.log(`  Log:       ${result.logFile}`);
+            console.log();
+            console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+            console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
+            if (result.sessionId) {
+              const adapter = createCLIAdapter(platform);
+              const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+              console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
+            }
+          } else {
+            console.error(chalk.red(`Error: ${result.error}`));
+            process.exit(1);
+          }
+        }
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1313,13 +1264,13 @@ export function registerTaskCommand(program: Command): void {
 
         if (devType === "backend" || devType === "test" || devType === "fullstack") {
           implementEntries.push({
-            file: `${DIR_VIBEN}/${DIR_SPEC}/backend/index.md`,
+            file: "docs/specs/backend/index.md",
             reason: "Backend development guide",
           });
         }
         if (devType === "frontend" || devType === "fullstack") {
           implementEntries.push({
-            file: `${DIR_VIBEN}/${DIR_SPEC}/frontend/index.md`,
+            file: "docs/specs/frontend/index.md",
             reason: "Frontend development guide",
           });
         }
@@ -1632,7 +1583,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         // Initialize CLI adapter
-        const adapter = getCLIAdapter(platform);
+        const adapter = createCLIAdapter(platform);
 
         // Check plan agent exists
         const planMdPath = adapter.getAgentConfigPath("plan", repoRoot);
@@ -3136,7 +3087,7 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
     name: string;
     worktree: string;
     status: string;
-    sessionIdFile: string;
+    taskDir: string;
     logFile: string;
     platform: string;
   }
@@ -3210,14 +3161,14 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
         });
       } else {
         // Stopped agent
-        const sessionIdFile = join(worktree, ".session-id");
         const logFile = join(worktree, ".agent-log");
+        const taskDirPath = join(tasksDir, name);
 
         stoppedTasks.push({
           name,
           worktree,
           status,
-          sessionIdFile,
+          taskDir: taskDirPath,
           logFile,
           platform: agentPlatform,
         });
@@ -3256,14 +3207,14 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
       if (t.status === "completed" || t.status === "done" || t.status === "pr_created") {
         console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
       } else {
-        if (existsSync(t.sessionIdFile)) {
-          const sessionId = readFileSync(t.sessionIdFile, "utf-8").trim();
+        const sessionId = getSessionId(t.taskDir);
+        if (sessionId) {
           const lastMsg = getLastMessage(t.logFile, 150, t.platform);
           console.log(`${chalk.red("○")} ${t.name} ${chalk.red("[stopped]")}`);
           if (lastMsg) {
             console.log(`${chalk.gray(`"${lastMsg}"`)}`);
           }
-          const adapter = getCLIAdapter(t.platform);
+          const adapter = createCLIAdapter(t.platform);
           const resumeCmd = adapter.getResumeCommandStr(sessionId, t.worktree);
           console.log(chalk.yellow(resumeCmd));
         } else {
@@ -3382,12 +3333,9 @@ function cmdStatusDetail(target: string, repoRoot: string, ctx?: OutputContext):
   const started = agent.started_at;
   const platform = agent.platform || "claude";
 
-  // Check for session-id
-  let sessionId = "";
-  const sessionIdFile = join(worktree, ".session-id");
-  if (existsSync(sessionIdFile)) {
-    sessionId = readFileSync(sessionIdFile, "utf-8").trim();
-  }
+  // Get session-id from task.json
+  const taskDirAbs = join(repoRoot, taskDir);
+  const sessionId = getSessionId(taskDirAbs) || "";
 
   console.log(chalk.blue(`=== Agent Detail: ${agentId} ===`));
   console.log();
@@ -3406,7 +3354,7 @@ function cmdStatusDetail(target: string, repoRoot: string, ctx?: OutputContext):
     console.log(`  Status:    ${chalk.red("Stopped")}`);
     if (sessionId) {
       console.log();
-      const adapter = getCLIAdapter(platform);
+      const adapter = createCLIAdapter(platform);
       const resumeCmd = adapter.getResumeCommandStr(sessionId, worktree);
       console.log(`  ${chalk.yellow("Resume:")} ${resumeCmd}`);
     }
@@ -3773,7 +3721,7 @@ function getContextJson(repoRoot: string): ContextJson {
     paths: {
       workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
       tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
-      spec: `${DIR_VIBEN}/${DIR_SPEC}/`,
+      spec: "docs/specs/",
     },
   };
 }
@@ -3925,7 +3873,7 @@ function getContextText(repoRoot: string): string {
   lines.push("## PATHS");
   lines.push(`Workspace: ${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`);
   lines.push(`Tasks: ${DIR_VIBEN}/${DIR_TASKS}/`);
-  lines.push(`Spec: ${DIR_VIBEN}/${DIR_SPEC}/`);
+  lines.push("Spec: docs/specs/");
   lines.push("");
 
   lines.push("========================================");
