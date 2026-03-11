@@ -192,6 +192,327 @@ function toSnakeCaseTask(task: UnifiedTask) {
   };
 }
 
+// =============================================================================
+// Session/Journal Helper Functions
+// =============================================================================
+
+/**
+ * Get the latest journal file info from workspace directory
+ */
+function getLatestJournalInfo(devDir: string): {
+  file: string | null;
+  number: number;
+  lines: number;
+} {
+  if (!existsSync(devDir)) {
+    return { file: null, number: 0, lines: 0 };
+  }
+
+  let latestFile: string | null = null;
+  let latestNum = -1;
+
+  try {
+    const files = readdirSync(devDir);
+    for (const file of files) {
+      if (file.startsWith("journal-") && file.endsWith(".md")) {
+        const match = file.match(/journal-(\d+)\.md$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > latestNum) {
+            latestNum = num;
+            latestFile = join(devDir, file);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  if (latestFile) {
+    let lines = 0;
+    try {
+      const content = readFileSync(latestFile, "utf-8");
+      const splitLines = content.split("\n");
+      if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
+        lines = splitLines.length - 1;
+      } else {
+        lines = splitLines.length;
+      }
+    } catch {
+      // Ignore errors
+    }
+    return { file: latestFile, number: latestNum, lines };
+  }
+
+  return { file: null, number: 0, lines: 0 };
+}
+
+/**
+ * Get current session number from index.md by parsing "Total Sessions" line
+ */
+function getSessionNumberFromIndex(indexPath: string): number {
+  if (!existsSync(indexPath)) {
+    return 0;
+  }
+
+  try {
+    const content = readFileSync(indexPath, "utf-8");
+    for (const line of content.split("\n")) {
+      if (line.includes("Total Sessions")) {
+        const match = line.match(/:\s*(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return 0;
+}
+
+/**
+ * Generate session content markdown
+ */
+function generateSessionMarkdown(params: {
+  sessionNum: number;
+  title: string;
+  commit: string;
+  summary: string;
+  extraContent: string;
+  date: string;
+}): string {
+  const { sessionNum, title, commit, summary, extraContent, date } = params;
+
+  let commitTable: string;
+  if (commit && commit !== "-") {
+    const lines = ["| Hash | Message |", "|------|---------|"];
+    for (const c of commit.split(",")) {
+      const trimmed = c.trim();
+      lines.push(`| \`${trimmed}\` | (see git log) |`);
+    }
+    commitTable = lines.join("\n");
+  } else {
+    commitTable = "(No commits - planning session)";
+  }
+
+  return `
+
+## Session ${sessionNum}: ${title}
+
+**Date**: ${date}
+**Task**: ${title}
+
+### Summary
+
+${summary}
+
+### Main Changes
+
+${extraContent}
+
+### Git Commits
+
+${commitTable}
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+`;
+}
+
+/**
+ * Create a new journal file when current one exceeds MAX_LINES
+ */
+function createNewJournalFileSync(
+  devDir: string,
+  number: number,
+  developer: string,
+  date: string,
+  prevNumber: number
+): string {
+  const newFilePath = join(devDir, `journal-${number}.md`);
+  const maxLines = 2000;
+
+  const content = `# Journal - ${developer} (Part ${number})
+
+> Continuation from \`journal-${prevNumber}.md\` (archived at ~${maxLines} lines)
+> Started: ${date}
+
+---
+
+`;
+
+  writeFileSync(newFilePath, content, "utf-8");
+  return newFilePath;
+}
+
+/**
+ * Count journal files and return markdown table rows
+ */
+function countJournalFilesTable(devDir: string, activeNum: number): string {
+  const activeFile = `journal-${activeNum}.md`;
+  const resultLines: string[] = [];
+
+  try {
+    const files = readdirSync(devDir)
+      .filter((f) => f.startsWith("journal-") && f.endsWith(".md"))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/(\d+)/)?.[1] ?? "0", 10);
+        const numB = parseInt(b.match(/(\d+)/)?.[1] ?? "0", 10);
+        return numB - numA;
+      });
+
+    for (const filename of files) {
+      const filePath = join(devDir, filename);
+      let lines = 0;
+      try {
+        const content = readFileSync(filePath, "utf-8");
+        const splitLines = content.split("\n");
+        if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
+          lines = splitLines.length - 1;
+        } else {
+          lines = splitLines.length;
+        }
+      } catch {
+        // Ignore errors
+      }
+      const status = filename === activeFile ? "Active" : "Archived";
+      resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return resultLines.join("\n");
+}
+
+/**
+ * Update index.md with new session info
+ */
+function updateIndexWithNewSession(params: {
+  indexPath: string;
+  devDir: string;
+  sessionNum: number;
+  title: string;
+  commit: string;
+  activeFile: string;
+  date: string;
+}): boolean {
+  const { indexPath, devDir, sessionNum, title, commit, activeFile, date } = params;
+
+  if (!existsSync(indexPath)) {
+    return false;
+  }
+
+  let commitDisplay = "-";
+  if (commit && commit !== "-") {
+    commitDisplay = commit
+      .split(",")
+      .map((c) => `\`${c.trim()}\``)
+      .join(", ");
+  }
+
+  const match = activeFile.match(/journal-(\d+)\.md$/);
+  const activeNum = match ? parseInt(match[1], 10) : 0;
+  const filesTable = countJournalFilesTable(devDir, activeNum);
+
+  try {
+    const content = readFileSync(indexPath, "utf-8");
+
+    if (!content.includes("@@@auto:current-status")) {
+      return false;
+    }
+
+    const lines = content.split("\n");
+    const newLines: string[] = [];
+
+    let inCurrentStatus = false;
+    let inActiveDocuments = false;
+    let inSessionHistory = false;
+    let headerWritten = false;
+
+    for (const line of lines) {
+      if (line.includes("@@@auto:current-status")) {
+        newLines.push(line);
+        inCurrentStatus = true;
+        newLines.push(`- **Active File**: \`${activeFile}\``);
+        newLines.push(`- **Total Sessions**: ${sessionNum}`);
+        newLines.push(`- **Last Active**: ${date}`);
+        continue;
+      }
+
+      if (line.includes("@@@/auto:current-status")) {
+        inCurrentStatus = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (line.includes("@@@auto:active-documents")) {
+        newLines.push(line);
+        inActiveDocuments = true;
+        newLines.push("| File | Lines | Status |");
+        newLines.push("|------|-------|--------|");
+        newLines.push(filesTable);
+        continue;
+      }
+
+      if (line.includes("@@@/auto:active-documents")) {
+        inActiveDocuments = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (line.includes("@@@auto:session-history")) {
+        newLines.push(line);
+        inSessionHistory = true;
+        headerWritten = false;
+        continue;
+      }
+
+      if (line.includes("@@@/auto:session-history")) {
+        inSessionHistory = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (inCurrentStatus) {
+        continue;
+      }
+
+      if (inActiveDocuments) {
+        continue;
+      }
+
+      if (inSessionHistory) {
+        newLines.push(line);
+        if (/^\|\s*-/.test(line) && !headerWritten) {
+          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
+          headerWritten = true;
+        }
+        continue;
+      }
+
+      newLines.push(line);
+    }
+
+    writeFileSync(indexPath, newLines.join("\n"), "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Input type for creating a task (supports both camelCase and snake_case)
  */
@@ -4182,5 +4503,1014 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     return { archives };
+  });
+
+  // ==========================================================================
+  // POST /api/task/review - View task details for human review
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string; task_dir?: string };
+  }>("/api/task/review", {
+    schema: {
+      description: "View task details for human review",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path" },
+          task_dir: { type: "string", description: "Task directory path (required)" },
+        },
+        required: ["task_dir"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir } = request.query;
+
+    if (!task_dir) {
+      reply.code(400);
+      return { error: "task_dir is required", code: "MISSING_TASK_DIR" };
+    }
+
+    // Resolve task directory
+    let taskDir = task_dir;
+    if (!task_dir.startsWith("/") && workspace_path) {
+      const resolved = resolveTaskDirectory(task_dir, workspace_path);
+      if (resolved) taskDir = resolved;
+    }
+
+    if (!existsSync(taskDir)) {
+      reply.code(404);
+      return { error: "Task not found", code: "TASK_NOT_FOUND" };
+    }
+
+    const taskData = readTaskJsonFromWorkspace(taskDir);
+    if (!taskData) {
+      reply.code(404);
+      return { error: "Task not found", code: "TASK_NOT_FOUND" };
+    }
+
+    const dirName = basename(taskDir);
+
+    // Get PR info if pr_url exists
+    let prInfo: { additions?: number; deletions?: number; changedFiles?: number } = {};
+    if (taskData.pr_url) {
+      try {
+        const prUrl = String(taskData.pr_url);
+        const prMatch = prUrl.match(/\/pull\/(\d+)/);
+        if (prMatch && workspace_path) {
+          const result = execSync(
+            `gh pr view ${prMatch[1]} --json additions,deletions,changedFiles 2>/dev/null`,
+            { cwd: workspace_path, encoding: "utf-8" }
+          );
+          prInfo = JSON.parse(result);
+        }
+      } catch {
+        // Ignore gh errors
+      }
+    }
+
+    // Get specs data
+    const specsData = await taskService.getTaskSpecsData(taskDir);
+
+    return {
+      success: true,
+      data: {
+        task_dir: taskDir,
+        task_name: dirName,
+        task: {
+          id: taskData.id,
+          name: taskData.name,
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority,
+          dev_type: taskData.dev_type,
+          scope: taskData.scope,
+          branch: taskData.branch,
+          base_branch: taskData.base_branch,
+          pr_url: taskData.pr_url,
+          creator: taskData.creator,
+          assignee: taskData.assignee,
+          created_at: taskData.createdAt,
+          completed_at: taskData.completedAt,
+        },
+        pr_info: prInfo,
+        specs: {
+          prd_content: specsData.prdContent,
+          prd_path: specsData.prdPath,
+          subtasks: specsData.subtasks,
+          logs: specsData.logs,
+        },
+        next_actions: taskData.status === "human_review"
+          ? ["approve", "reject"]
+          : taskData.status === "failed"
+            ? ["retry"]
+            : [],
+      },
+    };
+  });
+
+  // ==========================================================================
+  // POST /api/task/context - Get session context for AI agents
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string };
+    Body: { json?: boolean };
+  }>("/api/task/context", {
+    schema: {
+      description: "Get session context for AI agents",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+        },
+        required: ["workspace_path"],
+      },
+      body: {
+        type: "object",
+        properties: {
+          json: { type: "boolean", description: "Return JSON format" },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path } = request.query;
+    const { json: jsonFormat } = request.body || {};
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    try {
+      const developer = getDeveloper(workspace_path) || "";
+      const tasksDir = getTasksDir(workspace_path);
+
+      // Git info
+      const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], workspace_path);
+      const branch = branchOut.trim() || "unknown";
+
+      const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], workspace_path);
+      const statusLines = statusOut.split("\n").filter((line: string) => line.trim());
+      const gitStatusCount = statusLines.length;
+      const isClean = gitStatusCount === 0;
+
+      // Recent commits
+      const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], workspace_path);
+      const commits: Array<{ hash: string; message: string }> = [];
+      for (const line of logOut.split("\n")) {
+        if (line.trim()) {
+          const parts = line.split(" ", 1);
+          const hash = parts[0] || "";
+          const message = line.slice(hash.length + 1) || "";
+          commits.push({ hash, message });
+        }
+      }
+
+      // Current task
+      let currentTask: {
+        path: string;
+        name: string;
+        status: string;
+        createdAt: string;
+        description: string;
+        hasPrd: boolean;
+      } | null = null;
+      const currentTaskPath = getCurrentTask(workspace_path);
+      if (currentTaskPath) {
+        const currentTaskDir = join(workspace_path, currentTaskPath);
+        const taskData = readTaskJsonFromWorkspace(currentTaskDir);
+        if (taskData) {
+          const prdFile = join(currentTaskDir, "prd.md");
+          currentTask = {
+            path: currentTaskPath,
+            name: String(taskData.name || taskData.id || "unknown"),
+            status: String(taskData.status || "unknown"),
+            createdAt: String(taskData.createdAt || "unknown"),
+            description: String(taskData.description || ""),
+            hasPrd: existsSync(prdFile),
+          };
+        }
+      }
+
+      // Active tasks
+      const activeTasks = getActiveTasks(workspace_path);
+
+      // My tasks (assigned to developer and not done)
+      const myTasks: Array<{ title: string; priority: string; status: string }> = [];
+      if (developer) {
+        for (const task of activeTasks) {
+          if (task.assignee === developer && task.status !== "done") {
+            myTasks.push({
+              title: task.title,
+              priority: task.priority,
+              status: task.status,
+            });
+          }
+        }
+      }
+
+      // Journal info
+      const journalInfo = getJournalInfo(workspace_path);
+      const journalRelative = journalInfo.file && developer
+        ? `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`
+        : "";
+
+      const contextData = {
+        developer,
+        git: {
+          branch,
+          isClean,
+          uncommittedChanges: gitStatusCount,
+          recentCommits: commits,
+        },
+        currentTask,
+        tasks: {
+          active: activeTasks,
+          directory: `${DIR_VIBEN}/${DIR_TASKS}`,
+        },
+        myTasks,
+        journal: {
+          file: journalRelative,
+          lines: journalInfo.lines,
+          nearLimit: journalInfo.lines > 1800,
+        },
+        paths: {
+          workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
+          tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
+          spec: `${DIR_VIBEN}/${DIR_SPEC}/`,
+        },
+      };
+
+      return { success: true, data: contextData };
+    } catch (error) {
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : "Failed to get context",
+        code: "CONTEXT_FAILED",
+      };
+    }
+  });
+
+  // ==========================================================================
+  // POST /api/task/status - Get task status summary or details
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string; task_dir?: string };
+    Body: {
+      assignee?: string;
+      status?: string;
+      running?: boolean;
+      registry?: boolean;
+      list?: boolean;
+      detail?: boolean;
+    };
+  }>("/api/task/status", {
+    schema: {
+      description: "Get task status summary or details",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path" },
+          task_dir: { type: "string", description: "Specific task directory" },
+        },
+      },
+      body: {
+        type: "object",
+        properties: {
+          assignee: { type: "string", description: "Filter by assignee" },
+          status: { type: "string", description: "Filter by status" },
+          running: { type: "boolean", description: "Show only running tasks" },
+          registry: { type: "boolean", description: "Show agent registry" },
+          list: { type: "boolean", description: "List worktrees and agents" },
+          detail: { type: "boolean", description: "Show detailed status" },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir } = request.query;
+    const { assignee, status, running, registry, list, detail } = request.body || {};
+
+    if (!workspace_path && !task_dir) {
+      reply.code(400);
+      return { error: "workspace_path or task_dir is required", code: "MISSING_PATH" };
+    }
+
+    const repoRoot = workspace_path || (task_dir ? task_dir.split("/.viben/")[0] : "");
+
+    try {
+      // Registry view
+      if (registry) {
+        const agents = registryListAgents(repoRoot);
+        return {
+          success: true,
+          data: {
+            type: "registry",
+            agents: agents.map((a) => ({
+              agent_id: a.agentId,
+              worktree_path: a.worktreePath,
+              pid: a.pid,
+              task_dir: a.taskDir,
+              platform: a.platform,
+              started_at: a.startedAt,
+              running: a.pid ? isProcessRunning(a.pid) : false,
+            })),
+          },
+        };
+      }
+
+      // List view (worktrees and agents)
+      if (list) {
+        const agents = registryListAgents(repoRoot);
+        // Get git worktrees
+        const { stdout: worktreeOut } = runGitCommand(["worktree", "list", "--porcelain"], repoRoot);
+        const worktrees: Array<{ path: string; branch: string; bare: boolean }> = [];
+        let currentWorktree: { path?: string; branch?: string; bare?: boolean } = {};
+
+        for (const line of worktreeOut.split("\n")) {
+          if (line.startsWith("worktree ")) {
+            if (currentWorktree.path) {
+              worktrees.push({
+                path: currentWorktree.path,
+                branch: currentWorktree.branch || "",
+                bare: currentWorktree.bare || false,
+              });
+            }
+            currentWorktree = { path: line.slice(9) };
+          } else if (line.startsWith("branch ")) {
+            currentWorktree.branch = line.slice(7).replace("refs/heads/", "");
+          } else if (line === "bare") {
+            currentWorktree.bare = true;
+          }
+        }
+        if (currentWorktree.path) {
+          worktrees.push({
+            path: currentWorktree.path,
+            branch: currentWorktree.branch || "",
+            bare: currentWorktree.bare || false,
+          });
+        }
+
+        return {
+          success: true,
+          data: {
+            type: "list",
+            worktrees,
+            agents: agents.map((a) => ({
+              agent_id: a.agentId,
+              worktree_path: a.worktreePath,
+              pid: a.pid,
+              task_dir: a.taskDir,
+              running: a.pid ? isProcessRunning(a.pid) : false,
+            })),
+          },
+        };
+      }
+
+      // Specific task detail
+      if (task_dir || detail) {
+        const targetDir = task_dir || "";
+        let resolvedDir = targetDir;
+        if (!targetDir.startsWith("/") && workspace_path) {
+          const resolved = resolveTaskDirectory(targetDir, workspace_path);
+          if (resolved) resolvedDir = resolved;
+        }
+
+        if (!existsSync(resolvedDir)) {
+          reply.code(404);
+          return { error: "Task not found", code: "TASK_NOT_FOUND" };
+        }
+
+        const taskData = readTaskJsonFromWorkspace(resolvedDir);
+        if (!taskData) {
+          reply.code(404);
+          return { error: "Task not found", code: "TASK_NOT_FOUND" };
+        }
+
+        // Check if agent is running
+        const agent = registrySearchAgent(taskData.id || basename(resolvedDir), repoRoot);
+        const isRunning = agent?.pid ? isProcessRunning(agent.pid) : false;
+
+        // Get stats
+        const stats = getTaskStats(resolvedDir);
+
+        return {
+          success: true,
+          data: {
+            type: "detail",
+            task_dir: resolvedDir,
+            task: {
+              id: taskData.id,
+              name: taskData.name,
+              title: taskData.title,
+              status: taskData.status,
+              priority: taskData.priority,
+              dev_type: taskData.dev_type,
+              branch: taskData.branch,
+              pr_url: taskData.pr_url,
+              current_phase: taskData.current_phase,
+            },
+            agent: agent
+              ? {
+                  agent_id: agent.agentId,
+                  pid: agent.pid,
+                  running: isRunning,
+                  platform: agent.platform,
+                }
+              : null,
+            stats,
+          },
+        };
+      }
+
+      // Summary view (default)
+      const tasks = getActiveTasks(repoRoot);
+      let filtered = tasks;
+
+      if (assignee) {
+        filtered = filtered.filter((t) => t.assignee === assignee);
+      }
+      if (status) {
+        filtered = filtered.filter((t) => t.status === status);
+      }
+      if (running) {
+        const agents = registryListAgents(repoRoot);
+        const runningTaskIds = new Set(
+          agents
+            .filter((a) => a.pid && isProcessRunning(a.pid))
+            .map((a) => a.taskDir?.split("/").pop())
+        );
+        filtered = filtered.filter((t) => runningTaskIds.has(t.name));
+      }
+
+      // Group by status
+      const byStatus: Record<string, typeof filtered> = {};
+      for (const task of filtered) {
+        if (!byStatus[task.status]) {
+          byStatus[task.status] = [];
+        }
+        byStatus[task.status].push(task);
+      }
+
+      return {
+        success: true,
+        data: {
+          type: "summary",
+          total: filtered.length,
+          by_status: byStatus,
+          tasks: filtered,
+        },
+      };
+    } catch (error) {
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : "Failed to get status",
+        code: "STATUS_FAILED",
+      };
+    }
+  });
+
+  // ==========================================================================
+  // POST /api/task/create-pr - Create PR from task
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string; task_dir?: string };
+    Body: { dry_run?: boolean };
+  }>("/api/task/create-pr", {
+    schema: {
+      description: "Create PR from task",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path" },
+          task_dir: { type: "string", description: "Task directory path" },
+        },
+      },
+      body: {
+        type: "object",
+        properties: {
+          dry_run: { type: "boolean", description: "Show what would be done without making changes" },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_dir } = request.query;
+    const { dry_run: dryRun } = request.body || {};
+
+    // Determine task directory
+    let targetDir = task_dir;
+    if (!targetDir && workspace_path) {
+      const currentTask = getCurrentTask(workspace_path);
+      if (currentTask) {
+        targetDir = currentTask;
+      }
+    }
+
+    if (!targetDir) {
+      reply.code(400);
+      return { error: "No task directory specified and no current task set", code: "MISSING_TASK" };
+    }
+
+    // Resolve path
+    let taskDirPath = targetDir;
+    if (!targetDir.startsWith("/") && workspace_path) {
+      taskDirPath = join(workspace_path, targetDir);
+    }
+
+    const repoRoot = workspace_path || taskDirPath.split("/.viben/")[0];
+
+    if (!existsSync(join(taskDirPath, FILE_TASK_JSON))) {
+      reply.code(404);
+      return { error: "Task not found", code: "TASK_NOT_FOUND" };
+    }
+
+    try {
+      const taskData = readTaskJsonFromWorkspace(taskDirPath);
+      if (!taskData) {
+        reply.code(404);
+        return { error: "Failed to read task.json", code: "TASK_READ_FAILED" };
+      }
+
+      const taskName = String(taskData.name || "");
+      const baseBranch = String(taskData.base_branch || "main");
+      const scope = String(taskData.scope || "core");
+      const devType = String(taskData.dev_type || "feature");
+
+      const prefixMap: Record<string, string> = {
+        feature: "feat",
+        frontend: "feat",
+        backend: "feat",
+        fullstack: "feat",
+        bugfix: "fix",
+        fix: "fix",
+        refactor: "refactor",
+        docs: "docs",
+        test: "test",
+      };
+      const commitPrefix = prefixMap[devType] || "feat";
+
+      // Get current branch
+      const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
+      const currentBranch = branchOut.trim();
+
+      const steps: string[] = [];
+      let prUrl = "";
+
+      // Stage changes
+      runGitCommand(["add", "-A"], repoRoot);
+      runGitCommand(["reset", `${DIR_VIBEN}/workspace/`], repoRoot);
+      runGitCommand(["reset", ".agent-log", ".session-id"], repoRoot);
+
+      // Check for staged changes
+      const { code: diffCode } = runGitCommand(["diff", "--cached", "--quiet"], repoRoot);
+      const hasStagedChanges = diffCode !== 0;
+
+      if (!hasStagedChanges) {
+        // Check for unpushed commits
+        const { stdout: logOut } = runGitCommand(
+          ["log", `origin/${currentBranch}..HEAD`, "--oneline"],
+          repoRoot
+        );
+        const unpushed = logOut.split("\n").filter((line: string) => line.trim()).length;
+
+        if (unpushed === 0) {
+          if (dryRun) {
+            runGitCommand(["reset", "HEAD"], repoRoot);
+          }
+          reply.code(400);
+          return { error: "No changes to create PR", code: "NO_CHANGES" };
+        }
+        steps.push(`Found ${unpushed} unpushed commit(s)`);
+      } else {
+        // Commit changes
+        const commitMsg = `${commitPrefix}(${scope}): ${taskName}`;
+        if (dryRun) {
+          const { stdout: stagedOut } = runGitCommand(["diff", "--cached", "--name-only"], repoRoot);
+          steps.push(`[DRY-RUN] Would commit: ${commitMsg}`);
+          steps.push(`[DRY-RUN] Staged files: ${stagedOut.split("\n").filter((l: string) => l.trim()).join(", ")}`);
+        } else {
+          runGitCommand(["commit", "-m", commitMsg], repoRoot);
+          steps.push(`Committed: ${commitMsg}`);
+        }
+      }
+
+      // Push to remote
+      if (dryRun) {
+        steps.push(`[DRY-RUN] Would push to: origin/${currentBranch}`);
+      } else {
+        const { code: pushCode, stderr: pushErr } = runGitCommand(
+          ["push", "-u", "origin", currentBranch],
+          repoRoot
+        );
+        if (pushCode !== 0) {
+          reply.code(500);
+          return { error: `Failed to push: ${pushErr}`, code: "PUSH_FAILED" };
+        }
+        steps.push(`Pushed to origin/${currentBranch}`);
+      }
+
+      // Create PR
+      const prTitle = `${commitPrefix}(${scope}): ${taskName}`;
+
+      if (dryRun) {
+        steps.push(`[DRY-RUN] Would create PR: ${prTitle}`);
+        prUrl = "https://github.com/example/repo/pull/DRY-RUN";
+      } else {
+        // Check if PR already exists
+        try {
+          const existingPrResult = execSync(
+            `gh pr list --head "${currentBranch}" --base "${baseBranch}" --json url --jq ".[0].url"`,
+            { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+          ).trim();
+
+          if (existingPrResult) {
+            prUrl = existingPrResult;
+            steps.push(`PR already exists: ${existingPrResult}`);
+          }
+        } catch {
+          // No existing PR
+        }
+
+        if (!prUrl) {
+          let prBody = "";
+          const prdFile = join(taskDirPath, "prd.md");
+          if (existsSync(prdFile)) {
+            prBody = readFileSync(prdFile, "utf-8");
+          }
+
+          try {
+            const createPrResult = execSync(
+              `gh pr create --draft --base "${baseBranch}" --title "${prTitle}" --body "${prBody.replace(/"/g, '\\"')}"`,
+              { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+            ).trim();
+
+            prUrl = createPrResult;
+            steps.push(`PR created: ${prUrl}`);
+          } catch (err) {
+            const error = err as { stderr?: string };
+            reply.code(500);
+            return { error: `Failed to create PR: ${error.stderr || "Unknown error"}`, code: "PR_CREATE_FAILED" };
+          }
+        }
+
+        // Update task.json
+        let createPrPhase = getPhaseForAction(join(taskDirPath, FILE_TASK_JSON), "create-pr");
+        if (!createPrPhase) {
+          createPrPhase = 4;
+        }
+
+        updateTaskField(taskDirPath, "status", "human_review");
+        updateTaskField(taskDirPath, "pr_url", prUrl);
+        updateTaskField(taskDirPath, "current_phase", createPrPhase);
+        steps.push("Task status updated to human_review");
+      }
+
+      // In dry-run, reset staging area
+      if (dryRun) {
+        runGitCommand(["reset", "HEAD"], repoRoot);
+      }
+
+      return {
+        success: true,
+        data: {
+          pr_url: prUrl,
+          pr_title: prTitle,
+          base_branch: baseBranch,
+          head_branch: currentBranch,
+          dry_run: dryRun || false,
+          steps,
+        },
+      };
+    } catch (error) {
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : "Failed to create PR",
+        code: "CREATE_PR_FAILED",
+      };
+    }
+  });
+
+  // ==========================================================================
+  // POST /api/task/add-session - Add session to journal file
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string };
+    Body: {
+      title: string;
+      commit?: string;
+      summary?: string;
+      content?: string;
+    };
+  }>("/api/task/add-session", {
+    schema: {
+      description: "Add a new session to journal file and update index.md",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+        },
+        required: ["workspace_path"],
+      },
+      body: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Session title (required)" },
+          commit: { type: "string", description: "Commit hash(es)" },
+          summary: { type: "string", description: "Brief summary" },
+          content: { type: "string", description: "Detailed content" },
+        },
+        required: ["title"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path } = request.query;
+    const { title, commit, summary, content } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!title) {
+      reply.code(400);
+      return { error: "title is required", code: "MISSING_TITLE" };
+    }
+
+    const MAX_LINES = 2000;
+
+    try {
+      const developer = getDeveloper(workspace_path);
+
+      if (!developer) {
+        reply.code(400);
+        return { error: "Developer not initialized", code: "DEVELOPER_NOT_INITIALIZED" };
+      }
+
+      // Get workspace directory for developer
+      const devDir = join(workspace_path, DIR_VIBEN, DIR_WORKSPACE, developer);
+      if (!existsSync(devDir)) {
+        reply.code(400);
+        return { error: `Workspace directory not found: ${devDir}`, code: "WORKSPACE_NOT_FOUND" };
+      }
+
+      const indexPath = join(devDir, "index.md");
+      const today = getTodayDate();
+
+      // Get journal info
+      const journalInfo = getLatestJournalInfo(devDir);
+      const currentSession = getSessionNumberFromIndex(indexPath);
+      const newSession = currentSession + 1;
+
+      // Generate session content
+      const sessionContent = generateSessionMarkdown({
+        sessionNum: newSession,
+        title,
+        commit: commit || "-",
+        summary: summary || "(Add summary)",
+        extraContent: content || "(Add details)",
+        date: today,
+      });
+      const contentLines = sessionContent.split("\n").length;
+
+      // Determine target file
+      let targetFile = journalInfo.file;
+      let targetNum = journalInfo.number;
+
+      // Check if need to rotate journal file
+      if (journalInfo.lines + contentLines > MAX_LINES) {
+        targetNum = journalInfo.number + 1;
+        targetFile = createNewJournalFileSync(devDir, targetNum, developer, today, journalInfo.number);
+      }
+
+      // Create initial journal file if none exists
+      if (!targetFile) {
+        targetNum = 1;
+        targetFile = createNewJournalFileSync(devDir, targetNum, developer, today, 0);
+      }
+
+      // Append session content to target file
+      const existingContent = readFileSync(targetFile, "utf-8");
+      writeFileSync(targetFile, existingContent + sessionContent, "utf-8");
+
+      // Update index.md
+      const activeFileName = `journal-${targetNum}.md`;
+      const updateSuccess = updateIndexWithNewSession({
+        indexPath,
+        devDir,
+        sessionNum: newSession,
+        title,
+        commit: commit || "-",
+        activeFile: activeFileName,
+        date: today,
+      });
+
+      return {
+        success: true,
+        data: {
+          session: newSession,
+          journal_file: activeFileName,
+          title,
+          index_updated: updateSuccess,
+          lines_added: contentLines,
+        },
+      };
+    } catch (error) {
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : "Failed to add session",
+        code: "ADD_SESSION_FAILED",
+      };
+    }
+  });
+
+  // ==========================================================================
+  // POST /api/task/plan - Start Plan Agent (simplified version)
+  // ==========================================================================
+  fastify.post<{
+    Querystring: { workspace_path?: string };
+    Body: {
+      name: string;
+      type: string;
+      requirement: string;
+      platform?: string;
+    };
+  }>("/api/task/plan", {
+    schema: {
+      description: "Start Plan Agent to plan a task",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+        },
+        required: ["workspace_path"],
+      },
+      body: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Task name (required)" },
+          type: { type: "string", description: "Dev type: backend, frontend, fullstack (required)" },
+          requirement: { type: "string", description: "Requirement description (required)" },
+          platform: { type: "string", description: "Platform: claude, cursor, iflow, opencode" },
+        },
+        required: ["name", "type", "requirement"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path } = request.query;
+    const { name, type: devType, requirement, platform = "claude" } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    if (!name || !devType || !requirement) {
+      reply.code(400);
+      return { error: "name, type, and requirement are required", code: "MISSING_PARAMS" };
+    }
+
+    // Validate dev type
+    if (!["backend", "frontend", "fullstack"].includes(devType)) {
+      reply.code(400);
+      return { error: "type must be: backend, frontend, fullstack", code: "INVALID_TYPE" };
+    }
+
+    try {
+      const adapter = getCLIAdapter(platform);
+
+      // Check plan agent exists
+      const planMdPath = adapter.getAgentConfigPath("plan", workspace_path);
+      if (!existsSync(planMdPath)) {
+        reply.code(400);
+        return { error: `Plan agent not found at ${planMdPath}`, code: "PLAN_AGENT_NOT_FOUND" };
+      }
+
+      // Check developer is initialized
+      const developer = getDeveloper(workspace_path);
+      if (!developer) {
+        reply.code(400);
+        return { error: "Developer not initialized", code: "DEVELOPER_NOT_INITIALIZED" };
+      }
+
+      // Create task directory
+      const tasksDir = getTasksDir(workspace_path);
+      if (!existsSync(tasksDir)) {
+        mkdirSync(tasksDir, { recursive: true });
+      }
+
+      const datePrefix = getDatePrefix();
+      const dirName = `${datePrefix}-${name}`;
+      const taskDir = join(tasksDir, dirName);
+
+      if (!existsSync(taskDir)) {
+        mkdirSync(taskDir, { recursive: true });
+      }
+
+      // Get current branch as base_branch
+      const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], workspace_path);
+      const currentBranch = branchOut.trim() || "main";
+      const today = getTodayDate();
+
+      const taskData = {
+        id: name,
+        name,
+        title: requirement,
+        description: "",
+        status: "backlog",
+        dev_type: devType,
+        priority: "P2",
+        creator: developer,
+        assignee: developer,
+        createdAt: today,
+        base_branch: currentBranch,
+        current_phase: 0,
+        next_action: [
+          { phase: 1, action: "implement" },
+          { phase: 2, action: "check" },
+          { phase: 3, action: "finish" },
+          { phase: 4, action: "create-pr" },
+        ],
+        subtasks: [],
+        relatedFiles: [],
+        notes: "",
+      };
+
+      writeTaskJsonFile(taskDir, taskData as unknown as Record<string, unknown>);
+
+      const taskDirRel = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
+
+      // Start Plan Agent in background
+      const logFile = join(taskDir, ".plan-log");
+      writeFileSync(logFile, "", "utf-8");
+
+      // Build environment
+      const env = { ...process.env };
+      env.PLAN_TASK_NAME = name;
+      env.PLAN_DEV_TYPE = devType;
+      env.PLAN_TASK_DIR = taskDirRel;
+      env.PLAN_REQUIREMENT = requirement;
+      Object.assign(env, adapter.getNonInteractiveEnv());
+
+      // Build CLI command
+      const cliCmd = adapter.buildRunCommand({
+        agent: "plan",
+        prompt: `Start planning for task: ${name}`,
+        skipPermissions: true,
+        verbose: true,
+        jsonOutput: true,
+      });
+
+      // Open log file for writing
+      const logFd = openSync(logFile, "w");
+
+      // Spawn background process
+      const spawnOpts: SpawnOptions = {
+        cwd: workspace_path,
+        env,
+        stdio: ["ignore", logFd, logFd],
+        detached: true,
+      };
+
+      const child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
+      child.unref();
+
+      const agentPid = child.pid || 0;
+
+      // Register agent in registry
+      registryAddAgent(
+        {
+          agentId: `plan-${name}`,
+          worktreePath: workspace_path,
+          pid: agentPid,
+          taskDir: taskDirRel,
+          platform,
+        },
+        workspace_path
+      );
+
+      return {
+        success: true,
+        data: {
+          task_name: name,
+          task_dir: taskDirRel,
+          dev_type: devType,
+          agent_id: `plan-${name}`,
+          pid: agentPid,
+          log_file: logFile,
+          platform,
+        },
+      };
+    } catch (error) {
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : "Failed to start plan agent",
+        code: "PLAN_FAILED",
+      };
+    }
   });
 }

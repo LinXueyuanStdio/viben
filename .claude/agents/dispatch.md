@@ -63,7 +63,6 @@ Execute each step in `phase` order.
 ## Phase Handling
 
 > **IMPORTANT**: Always include `task_dir: <path>` as the FIRST LINE of every subagent prompt.
-> Hook will parse this line to inject the correct context files.
 
 ### action: "implement"
 

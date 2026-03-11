@@ -1,7 +1,7 @@
 ---
 name: implement
 description: |
-  Code implementation expert. Understands specs and requirements, then implements features. No git commit allowed.
+  Code implementation expert. Understands specs and requirements, then implements features. No git commit allowed. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of 'implement' subagent prompt.
 tools: Read, Write, Edit, Bash, Glob, Grep, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa
 model: opus
 ---
@@ -112,3 +112,9 @@ Run project's lint and typecheck commands to verify changes.
 - Don't add unnecessary abstractions
 - Only do what's required, no over-engineering
 - Keep code readable
+
+## Important Constraints
+
+- Do NOT execute git commit, only code modifications
+- Follow all dev specs from jsonl files
+- Report list of modified/created files when done

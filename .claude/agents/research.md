@@ -141,3 +141,13 @@ Output structured results in report format.
 - Don't omit important search results
 - Don't add improvement suggestions in report (unless explicitly asked)
 - Don't modify any files
+
+## Search Tools
+
+| Tool | Purpose |
+|------|---------|
+| Glob | Search by filename pattern |
+| Grep | Search by content |
+| Read | Read file content |
+| mcp__exa__web_search_exa | External web search |
+| mcp__exa__get_code_context_exa | External code/doc search |
