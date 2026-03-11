@@ -30,6 +30,7 @@ import type { OutputContext } from "../types";
 import {
   output,
   successResponse,
+  errorResponse,
   outputKeyValue,
   handleCommandError,
   outputSuccess,
@@ -748,7 +749,7 @@ export function registerTaskCommand(program: Command): void {
             if (result.success) {
               output(ctx, successResponse({ task: relativePath, ...result }));
             } else {
-              console.error(chalk.red(`Error: ${result.error}`));
+              output(ctx, errorResponse("START_FAILED", result.error || "Unknown error"));
               process.exit(1);
             }
           } else {

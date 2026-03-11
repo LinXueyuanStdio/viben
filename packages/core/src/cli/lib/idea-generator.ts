@@ -7,12 +7,10 @@
 import {
   existsSync,
   readdirSync,
-  statSync,
   readFileSync,
 } from "node:fs";
-import { spawn } from "node:child_process";
 import { join, basename } from "node:path";
-import { createCLIAdapterAuto, type ICLIAdapter } from "./swarm/cli-adapter";
+import { SdkChatProxy, isSdkAvailable } from "../../executors/chat/sdk-proxy";
 import {
   type IdeaGenerateOptions,
   type IdeaType,
@@ -249,13 +247,26 @@ function countSourceFiles(dir: string, maxDepth = 5): number {
  * @returns True if command is available
  */
 function isCommandAvailable(command: string): boolean {
-  try {
-    const { execSync } = require("node:child_process");
-    execSync(`which ${command}`, { stdio: "pipe" });
-    return true;
-  } catch {
-    return false;
+  // Try multiple detection methods
+  const checks = [
+    // Unix-like: which
+    () => execSync(`which ${command}`, { stdio: "pipe", encoding: "utf-8" }),
+    // Windows: where
+    () => execSync(`where ${command}`, { stdio: "pipe", encoding: "utf-8" }),
+    // Direct version check (works if command is in PATH)
+    () => execSync(`${command} --version`, { stdio: "pipe", encoding: "utf-8" }),
+  ];
+
+  for (const check of checks) {
+    try {
+      check();
+      return true;
+    } catch {
+      // Continue to next check
+    }
   }
+
+  return false;
 }
 
 /**
