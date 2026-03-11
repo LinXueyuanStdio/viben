@@ -213,7 +213,6 @@ docs/specs/
 │   └── update-spec.md
 │
 └── hooks/                   # 钩子脚本 (可执行)
-    ├── inject-subagent-context.py
     ├── ralph-loop.py
     └── session-start.py
 ```

@@ -436,8 +436,8 @@ export default async ({ directory }) => {
     //
     // SOLUTION: Viben + OpenCode users must install oh-my-opencode (omo)
     // - omo is a global plugin with full hook permissions
-    // - omo reads .claude/settings.json and executes Python hooks
-    // - .claude/hooks/inject-subagent-context.py handles the actual injection
+    // - omo reads .claude/settings.json and executes hooks
+    // - This plugin handles the actual injection for OpenCode
     //
     // References:
     // - https://github.com/sst/opencode/issues/5894 (plugin hooks don't intercept subagent)
