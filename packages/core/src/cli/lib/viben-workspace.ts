@@ -2043,6 +2043,4 @@ export {
   createCLIAdapter,
   createCLIAdapterAuto,
   detectPlatform,
-  getCLIAdapter,
-  getCLIAdapterAuto,
 } from "./swarm/cli-adapter";

@@ -41,7 +41,7 @@ import {
   getWorktreeBaseDir,
   parseSimpleYaml,
   registryAddAgent,
-  getCLIAdapter,
+  createCLIAdapter,
   type Platform,
 } from "../viben-workspace";
 
@@ -205,7 +205,7 @@ export async function startAgent(
   } = options;
 
   // Initialize CLI adapter
-  const adapter = getCLIAdapter(platform);
+  const adapter = createCLIAdapter(platform);
 
   // Normalize paths
   let taskDirRelative: string;
@@ -417,16 +417,17 @@ export async function startAgent(
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
   const logFile = join(worktreePath, ".agent-log");
-  const sessionIdFile = join(worktreePath, ".session-id");
 
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");
 
   // Generate session ID for resume support (Claude Code only)
+  // Store in task.json instead of .session-id file
   let sessionId: string | null = null;
   if (adapter.supportsSessionIdOnCreate) {
     sessionId = randomUUID().toLowerCase();
-    writeFileSync(sessionIdFile, sessionId, "utf-8");
+    taskData.session_id = sessionId;
+    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
   }
 
   // Get proxy environment variables
@@ -503,7 +504,9 @@ Follow your agent instructions to execute the task workflow. Read task.json from
         const extractedSessionId = extractSessionIdFromLog(logContent);
         if (extractedSessionId) {
           sessionId = extractedSessionId;
-          writeFileSync(sessionIdFile, sessionId, "utf-8");
+          // Store in task.json
+          taskData.session_id = sessionId;
+          writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
           break;
         }
       } catch {
@@ -570,7 +573,7 @@ export function startAgentSync(
     jsonOutput = true,
   } = options;
 
-  const adapter = getCLIAdapter(platform);
+  const adapter = createCLIAdapter(platform);
 
   // Normalize paths
   let taskDirRelative: string;
@@ -746,14 +749,16 @@ export function startAgentSync(
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
   const logFile = join(worktreePath, ".agent-log");
-  const sessionIdFile = join(worktreePath, ".session-id");
 
   writeFileSync(logFile, "", "utf-8");
 
+  // Generate session ID for resume support (Claude Code only)
+  // Store in task.json instead of .session-id file
   let sessionId: string | null = null;
   if (adapter.supportsSessionIdOnCreate) {
     sessionId = randomUUID().toLowerCase();
-    writeFileSync(sessionIdFile, sessionId, "utf-8");
+    taskData.session_id = sessionId;
+    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
   }
 
   const env: Record<string, string> = { ...process.env } as Record<string, string>;

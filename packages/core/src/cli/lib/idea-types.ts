@@ -139,6 +139,9 @@ export interface Idea {
   /** Type of idea (e.g., "code_improvements") */
   type: string;
 
+  /** File-friendly name for the idea (e.g., "add-pagination-sessions") */
+  name?: string;
+
   /** Short title describing the idea */
   title: string;
 
@@ -203,6 +206,7 @@ export interface Idea {
 export interface RawIdeaData {
   id: string;
   type: string;
+  name?: string;
   title: string;
   description: string;
   rationale: string;
@@ -272,6 +276,9 @@ export interface IdeaSession {
   /** Summary statistics */
   summary: IdeaSessionSummary;
 
+  /** Generated idea files */
+  files?: string[];
+
   /** ISO timestamp when session was created */
   generatedAt: string;
 
@@ -288,6 +295,7 @@ export interface RawIdeaSession {
   types: string[];
   model: string;
   summary: RawIdeaSessionSummary;
+  files?: string[];
   generated_at: string;
   updated_at: string;
 }
@@ -480,6 +488,7 @@ export function parseRawIdea(raw: RawIdeaData): Idea {
   return {
     id: raw.id,
     type: raw.type,
+    name: raw.name,
     title: raw.title,
     description: raw.description,
     rationale: raw.rationale,
@@ -520,6 +529,7 @@ export function parseRawSession(raw: RawIdeaSession): IdeaSession {
         dismissed: raw.summary.by_status.dismissed || 0,
       },
     },
+    files: raw.files,
     generatedAt: raw.generated_at,
     updatedAt: raw.updated_at,
   };

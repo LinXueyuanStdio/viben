@@ -5,14 +5,23 @@
   ],
   "model": "sonnet",
   "summary": {
-    "total_ideas": 0,
-    "by_type": {},
+    "total_ideas": 5,
+    "by_type": {
+      "code_improvements": 5
+    },
     "by_status": {
-      "draft": 0,
+      "draft": 5,
       "promoted": 0,
       "dismissed": 0
     }
   },
-  "generated_at": "2026-03-11T13:15:05.683Z",
-  "updated_at": "2026-03-11T13:15:05.683Z"
+  "files": [
+    "idea_code_improvements_ci-001.md",
+    "idea_code_improvements_ci-002.md",
+    "idea_code_improvements_ci-003.md",
+    "idea_code_improvements_ci-004.md",
+    "idea_code_improvements_ci-005.md"
+  ],
+  "generated_at": "2026-03-11T15:03:35.711Z",
+  "updated_at": "2026-03-11T15:03:35.711Z"
 }

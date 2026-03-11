@@ -374,24 +374,22 @@ export function getRecentLogEntries(
 // =============================================================================
 
 /**
- * Get session ID from worktree.
+ * Get session ID from task directory.
  *
- * Reads the .session-id file if it exists.
+ * Reads the session_id field from task.json.
  *
- * @param worktreePath - Path to the git worktree
+ * @param taskDir - Path to the task directory (absolute)
  * @returns Session ID or null if not found
  */
-export function getSessionId(worktreePath: string): string | null {
-  const sessionIdFile = join(worktreePath, ".session-id");
-  if (!existsSync(sessionIdFile)) {
+export function getSessionId(taskDir: string): string | null {
+  const taskData = readTaskJson(taskDir);
+  if (!taskData) {
     return null;
   }
 
-  try {
-    return readFileSync(sessionIdFile, "utf-8").trim();
-  } catch {
-    return null;
-  }
+  // Support both camelCase and snake_case
+  const sessionId = (taskData.sessionId as string) || (taskData.session_id as string);
+  return sessionId || null;
 }
 
 /**
@@ -416,8 +414,9 @@ export function getAgentStatus(agent: AgentRegistryEntry, repoRoot: string): Age
   const logFile = join(worktree, ".agent-log");
   const taskJsonPath = join(repoRoot, agent.task_dir, "task.json");
 
-  // Get session ID
-  const sessionId = getSessionId(worktree);
+  // Get session ID from task.json
+  const taskDir = join(repoRoot, agent.task_dir);
+  const sessionId = getSessionId(taskDir);
 
   // Get elapsed time
   const elapsed = calcElapsed(agent.started_at);
@@ -431,7 +430,6 @@ export function getAgentStatus(agent: AgentRegistryEntry, repoRoot: string): Age
 
   // Get branch from task.json
   let branch: string | undefined;
-  const taskDir = join(repoRoot, agent.task_dir);
   const taskData = readTaskJson(taskDir);
   if (taskData) {
     branch = (taskData.branch as string) || undefined;

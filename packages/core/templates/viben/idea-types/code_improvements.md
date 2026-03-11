@@ -21,6 +21,7 @@ Each idea MUST have this structure:
 {
   "id": "ci-001",
   "type": "code_improvements",
+  "name": "kebab-case-file-friendly-name",
   "title": "Short descriptive title",
   "description": "What the feature/improvement does",
   "rationale": "Why the code reveals this opportunity - what patterns enable it",
@@ -33,6 +34,12 @@ Each idea MUST have this structure:
   "created_at": "ISO timestamp"
 }
 ```
+
+**IMPORTANT**: The `name` field must be:
+- kebab-case format (lowercase with hyphens)
+- File-system friendly (no spaces or special characters)
+- Short but descriptive (max 50 chars)
+- Example: "add-pagination-to-sessions", "improve-error-handling"
 
 ---
 

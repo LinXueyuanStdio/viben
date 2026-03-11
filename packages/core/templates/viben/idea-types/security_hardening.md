@@ -70,6 +70,7 @@ Each idea MUST have this structure:
 {
   "id": "sec-001",
   "type": "security_hardening",
+  "name": "fix-sql-injection-user-search",
   "title": "Fix SQL injection vulnerability in user search",
   "description": "The searchUsers() function constructs SQL queries using string concatenation with user input.",
   "rationale": "SQL injection could allow attackers to read, modify, or delete database contents.",

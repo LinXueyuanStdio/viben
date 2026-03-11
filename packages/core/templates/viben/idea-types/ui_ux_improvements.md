@@ -19,6 +19,7 @@ Each idea MUST have this structure:
 {
   "id": "uiux-001",
   "type": "ui_ux_improvements",
+  "name": "kebab-case-file-friendly-name",
   "title": "Short descriptive title",
   "description": "What the improvement does",
   "rationale": "Why this improves UX",

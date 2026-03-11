@@ -278,6 +278,7 @@ Cargo.lock
 .viben/group-chats
 .viben/agents
 .viben/tasks/
+.viben/ideas/
 test
 
 # Auto Claude data directory

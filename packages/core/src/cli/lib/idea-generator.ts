@@ -30,6 +30,7 @@ import {
   readSessionMetadata,
   getIdeaFilePath,
   writeIdeasToFile,
+  writeIdeasToSeparateFiles,
   readIdeasFromFile,
   getLatestSession,
 } from "./idea-store";
@@ -241,153 +242,55 @@ function countSourceFiles(dir: string, maxDepth = 5): number {
 // =============================================================================
 
 /**
- * Check if a CLI tool is available
+ * Call AI using SdkChatProxy for reliable AI integration
  *
- * @param command - Command to check
- * @returns True if command is available
- */
-function isCommandAvailable(command: string): boolean {
-  // Try multiple detection methods
-  const checks = [
-    // Unix-like: which
-    () => execSync(`which ${command}`, { stdio: "pipe", encoding: "utf-8" }),
-    // Windows: where
-    () => execSync(`where ${command}`, { stdio: "pipe", encoding: "utf-8" }),
-    // Direct version check (works if command is in PATH)
-    () => execSync(`${command} --version`, { stdio: "pipe", encoding: "utf-8" }),
-  ];
-
-  for (const check of checks) {
-    try {
-      check();
-      return true;
-    } catch {
-      // Continue to next check
-    }
-  }
-
-  return false;
-}
-
-/**
- * Build ideation command based on CLI adapter
- *
- * @param adapter - CLI adapter
- * @param prompt - Prompt to send
- * @param model - Model to use
- * @returns Command array
- */
-function buildIdeationCommand(
-  adapter: ICLIAdapter,
-  prompt: string,
-  model: string
-): string[] {
-  switch (adapter.platform) {
-    case "opencode":
-      return ["opencode", "run", "--format", "text", prompt];
-    case "codex":
-      return ["codex", "exec", prompt];
-    case "gemini":
-      return ["gemini", prompt];
-    case "kiro":
-      return ["kiro", "run", prompt];
-    default:
-      // Claude Code (default)
-      return [
-        "claude",
-        "-p",
-        "--dangerously-skip-permissions",
-        "--model",
-        model,
-        prompt,
-      ];
-  }
-}
-
-/**
- * Call AI using CLI adapter for multi-platform support
- *
- * Supported platforms:
- * - Claude Code (default): Uses `claude -p` with prompt mode
- * - OpenCode: Uses `opencode run`
- * - Codex: Uses `codex exec`
- * - Gemini: Uses `gemini` CLI
- * - Kiro: Uses `kiro run`
+ * Uses the Claude Agent SDK via SdkChatProxy for idea generation.
+ * This provides better reliability than spawning CLI processes.
  *
  * @param prompt - The full prompt to send to the AI
  * @param model - Model identifier to use
  * @param cwd - Working directory for code analysis
+ * @param verbose - Enable verbose logging (default: false)
  * @returns AI response text
  */
 async function callAI(
   prompt: string,
   model: string,
-  cwd: string
+  cwd: string,
+  verbose = false
 ): Promise<string> {
   // Resolve model alias if needed
   const resolvedModel = await modelManager.resolveAlias(model);
 
-  // Auto-detect platform
-  const adapter = createCLIAdapterAuto(cwd);
-
-  // Check if CLI is available
-  if (!isCommandAvailable(adapter.cliName)) {
+  // Check if SDK is available
+  const sdkAvailable = await isSdkAvailable();
+  if (!sdkAvailable) {
     throw new Error(
-      `${adapter.cliName} CLI not found. Please install ${adapter.cliName} to use idea generation.`
+      "Claude Agent SDK not installed. Install with: pnpm add @anthropic-ai/claude-agent-sdk"
     );
   }
 
-  // Build the command
-  const cmd = buildIdeationCommand(adapter, prompt, resolvedModel);
+  // Create SDK proxy and execute
+  const proxy = new SdkChatProxy();
 
-  // Execute command and collect output
-  return new Promise((resolve, reject) => {
-    const proc = spawn(cmd[0], cmd.slice(1), {
-      cwd,
-      env: { ...process.env, ...adapter.getNonInteractiveEnv() },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+  // Collect output from streaming execution
+  let output = "";
 
-    let output = "";
-    let stderr = "";
+  for await (const message of proxy.executeStreaming({
+    prompt,
+    model: resolvedModel,
+    cwd,
+    verbose,
+    dangerouslySkipPermissions: true,
+  })) {
+    if (message.type === "text") {
+      output += message.content;
+    } else if (message.type === "error") {
+      throw new Error(message.message);
+    }
+  }
 
-    proc.stdout.on("data", (data: Buffer) => {
-      output += data.toString();
-    });
-
-    proc.stderr.on("data", (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    proc.on("close", (code: number | null) => {
-      if (code === 0 || code === null) {
-        resolve(output);
-      } else {
-        reject(
-          new Error(`${adapter.cliName} exited with code ${code}: ${stderr}`)
-        );
-      }
-    });
-
-    proc.on("error", (err: Error) => {
-      reject(
-        new Error(
-          `Failed to spawn ${adapter.cliName}: ${err.message}. ` +
-            `Please ensure ${adapter.cliName} is installed and in your PATH.`
-        )
-      );
-    });
-
-    // Set timeout (5 minutes for idea generation)
-    const timeout = setTimeout(() => {
-      proc.kill("SIGTERM");
-      reject(new Error(`${adapter.cliName} timed out after 5 minutes`));
-    }, 5 * 60 * 1000);
-
-    proc.on("close", () => {
-      clearTimeout(timeout);
-    });
-  });
+  return output;
 }
 
 /**
@@ -729,6 +632,9 @@ export async function generateIdeas(
   // Wait for all generations to complete
   const results = await Promise.all(generatePromises);
 
+  // Track all generated files
+  const allFiles: string[] = [];
+
   // Process results
   for (const result of results) {
     if (result.error) {
@@ -754,9 +660,9 @@ export async function generateIdeas(
         }
       }
 
-      // Write ideas to file
-      const filePath = getIdeaFilePath(sessionDir, result.type);
-      writeIdeasToFile(filePath, finalIdeas);
+      // Write each idea to its own file (using name field)
+      const files = writeIdeasToSeparateFiles(sessionDir, finalIdeas);
+      allFiles.push(...files);
 
       allIdeas.push(...finalIdeas);
       byType[result.type] = finalIdeas.length;
@@ -765,7 +671,7 @@ export async function generateIdeas(
     }
   }
 
-  // Write session metadata
+  // Write session metadata with file list
   const sessionData: RawIdeaSession = {
     id: sessionId,
     types: Array.from(typePrompts.keys()),
@@ -779,6 +685,7 @@ export async function generateIdeas(
         dismissed: allIdeas.filter((i) => i.status === "dismissed").length,
       },
     },
+    files: allFiles,
     generated_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

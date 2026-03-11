@@ -97,6 +97,7 @@ Each idea MUST have this structure:
 {
   "id": "cq-001",
   "type": "code_quality",
+  "name": "split-api-handlers",
   "title": "Split large API handler file into domain modules",
   "description": "The file src/api/handlers.ts has grown to 1200 lines and handles multiple unrelated domains.",
   "rationale": "Very large files increase cognitive load, make code reviews harder, and often lead to merge conflicts.",

@@ -74,6 +74,7 @@ Each idea MUST have this structure:
 {
   "id": "perf-001",
   "type": "performance_optimizations",
+  "name": "replace-moment-with-datefns",
   "title": "Replace moment.js with date-fns for 90% bundle reduction",
   "description": "The project uses moment.js (300KB) for simple date formatting. date-fns is tree-shakeable and would reduce the date utility footprint to ~30KB.",
   "rationale": "moment.js is the largest dependency in the bundle and only 3 functions are used.",
