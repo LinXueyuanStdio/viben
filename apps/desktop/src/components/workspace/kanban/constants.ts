@@ -81,7 +81,6 @@ export const COLUMN_I18N_KEYS: Record<KanbanColumnId, string> = {
   queue: "queue",
   in_progress: "inProgress",
   paused: "paused",
-  ai_review: "aiReview",
   human_review: "humanReview",
   completed: "completed",
   failed: "failed",

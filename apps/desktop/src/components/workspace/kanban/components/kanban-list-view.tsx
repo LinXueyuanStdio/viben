@@ -469,13 +469,13 @@ export function KanbanListView({
   const { t } = useTranslation();
 
   // Group tasks by column
+  // Note: ai_review is a legacy status that maps to in_progress column via STATUS_TO_COLUMN
   const tasksByColumn = useMemo(() => {
     const grouped: Record<KanbanColumnId, EnhancedTask[]> = {
       backlog: [],
       queue: [],
       in_progress: [],
       paused: [],
-      ai_review: [],
       human_review: [],
       completed: [],
       failed: [],

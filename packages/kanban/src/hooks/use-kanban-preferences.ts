@@ -36,7 +36,8 @@ const DEFAULT_PREFERENCES: KanbanPreferences = {
   viewMode: "kanban",
   sortMode: "manual",
   sortDirection: "asc",
-  collapsedColumns: [],
+  // Default: collapse terminal state columns
+  collapsedColumns: ["completed", "failed", "cancelled", "archived"],
   columnOrder: [],
   hiddenColumns: [],
   columnWidths: {},
