@@ -958,7 +958,7 @@ describe("Cron CLI Commands", () => {
       await runCommand(["cron", "list"]);
 
       // Check that the cron expression appears in output
-      const allLogs = consoleSpy.mock.calls.map(call => String(call[0])).join("\n");
+      const allLogs = consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
       expect(allLogs).toContain("cron");
     });
 
@@ -975,7 +975,7 @@ describe("Cron CLI Commands", () => {
 
       await runCommand(["cron", "list"]);
 
-      const allLogs = consoleSpy.mock.calls.map(call => String(call[0])).join("\n");
+      const allLogs = consoleSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
       expect(allLogs).toContain("every");
     });
 

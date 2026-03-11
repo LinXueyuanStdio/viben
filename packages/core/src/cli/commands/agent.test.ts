@@ -425,7 +425,7 @@ describe("Agent CLI Commands", () => {
 
       // Check that warning was NOT called
       const warningCalls = consoleSpy.mock.calls.filter(
-        (call) => (call[0] as string)?.includes?.("Warning")
+        (call: unknown[]) => (call[0] as string)?.includes?.("Warning")
       );
       expect(warningCalls.length).toBe(0);
     });
@@ -1014,7 +1014,7 @@ describe("Agent CLI Commands", () => {
 
       // Check that warning was NOT called
       const warningCalls = consoleSpy.mock.calls.filter(
-        (call) => (call[0] as string)?.includes?.("Warning")
+        (call: unknown[]) => (call[0] as string)?.includes?.("Warning")
       );
       expect(warningCalls.length).toBe(0);
     });

@@ -299,6 +299,10 @@ export interface UnifiedTask {
   // === Scheduling Information ===
   /** Queue entry timestamp (ISO string) - used for FIFO sorting within same priority */
   queuedAt?: string;
+  /** Auto-start agent when enqueued */
+  autoStart?: boolean;
+  /** Run agent in a git worktree (isolated branch) */
+  worktree?: boolean;
 
   // === Template Support ===
   /** Whether this task is a template for creating other tasks */

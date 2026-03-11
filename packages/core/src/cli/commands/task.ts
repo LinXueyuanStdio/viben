@@ -357,12 +357,20 @@ export function registerTaskCommand(program: Command): void {
     .option("-p, --priority <priority>", "Priority (P0, P1, P2, P3)", "P2")
     .option("-d, --description <text>", "Task description")
     .option("--agent <agent-id>", "Associated agent configuration")
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
+    .option("--model <model>", "Model to use for execution")
+    .option("--start", "Auto-enqueue task for execution (status: queue)")
+    .option("--worktree", "Run agent in a git worktree (isolated branch)")
     .action(async (title: string, options: {
       slug?: string;
       assignee?: string;
       priority?: string;
       description?: string;
       agent?: string;
+      executor?: string;
+      model?: string;
+      start?: boolean;
+      worktree?: boolean;
     }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
@@ -413,6 +421,10 @@ export function registerTaskCommand(program: Command): void {
 
         const today = getTodayDate();
 
+        // Determine executor/platform
+        const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
+        const platform: Platform = EXECUTOR_TO_PLATFORM[executor] || "claude";
+
         const taskData: TaskJson = {
           id: taskSlug,
           name: taskSlug,
@@ -442,21 +454,47 @@ export function registerTaskCommand(program: Command): void {
           relatedFiles: [],
           notes: "",
           agent: options.agent,
+          executor: executor,
+          model: options.model,
+          autoStart: options.start || false,
+          worktree: options.worktree || false,
         };
+
+        // If --start is provided, set status to queue directly
+        if (options.start) {
+          taskData.status = "queue";
+          taskData.queuedAt = new Date().toISOString();
+        }
 
         writeTaskJson(taskDir, taskData as unknown as Record<string, unknown>);
 
         const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
 
-        output(ctx, successResponse({ taskDir: relativePath }), () => {
-          console.log(chalk.green(`Created task: ${dirName}`));
-          console.log();
-          console.log(chalk.blue("Next steps:"));
-          console.log("  1. Create prd.md with requirements");
-          console.log(`  2. Run: viben task init-context ${dirName} -t <dev_type>`);
-          console.log(`  3. Run: viben task start ${dirName}`);
-          console.log();
-        });
+        // If --start is provided, show enqueue message
+        if (options.start) {
+
+          output(ctx, successResponse({ taskDir: relativePath, status: "queue" }), () => {
+            console.log(chalk.green(`Created and enqueued: ${dirName}`));
+            console.log(chalk.gray(`Status: backlog -> queue`));
+            if (options.worktree) {
+              console.log(chalk.gray(`Worktree: enabled`));
+            }
+          });
+        } else {
+          // No auto-start, just show next steps
+          output(ctx, successResponse({ taskDir: relativePath }), () => {
+            console.log(chalk.green(`Created task: ${dirName}`));
+            console.log();
+            console.log(chalk.blue("Next steps:"));
+            console.log("  1. Create prd.md with requirements");
+            console.log(`  2. Run: viben task init-context ${dirName} -t <dev_type>`);
+            console.log(`  3. Run: viben task start ${dirName}`);
+            console.log();
+            if (options.executor || options.model) {
+              console.log(chalk.gray(`Configured: executor=${executor}, model=${options.model || "default"}`));
+            }
+          });
+        }
       } catch (error) {
         handleCommandError(ctx, error);
       }

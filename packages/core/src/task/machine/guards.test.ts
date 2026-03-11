@@ -16,6 +16,7 @@ import {
   pausedFromQaFixing,
 } from "./guards";
 import { createMockContext, createPausedContext } from "../__fixtures__/task-fixtures";
+import type { XStateValue } from "./task-machine";
 
 // =============================================================================
 // noPlanReviewRequired Guard
@@ -277,8 +278,8 @@ describe("Guard edge cases", () => {
     });
 
     it("handles null requiresPlanReview as falsy", () => {
-      // @ts-expect-error - testing runtime behavior with invalid value
-      const context = createMockContext({ requiresPlanReview: null });
+      // Note: null is not a valid type for requiresPlanReview but testing runtime behavior
+      const context = createMockContext({ requiresPlanReview: null as unknown as boolean });
       expect(noPlanReviewRequired({ context })).toBe(true);
     });
   });
@@ -321,8 +322,8 @@ describe("Guard edge cases", () => {
     it("handles null from_state gracefully", () => {
       const context = createMockContext({
         paused_snapshot: {
-          // @ts-expect-error - testing runtime behavior with invalid value
-          from_state: null,
+          // Note: null is not a valid type for from_state but testing runtime behavior
+          from_state: null as unknown as XStateValue,
           subtask_index: 0,
           paused_at: new Date().toISOString(),
         },
