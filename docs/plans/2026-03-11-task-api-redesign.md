@@ -205,13 +205,34 @@ interface QueueConfig {
 
 ---
 
+## 实现状态
+
+### ✅ 全部实现完成 (43/43)
+
+#### task.ts (7 个)
+- ✅ `list`, `create`, `view`, `edit`, `delete`
+- ✅ `enqueue`, `dequeue`
+
+#### tasks.ts (36 个)
+- ✅ 状态生命周期: `start`, `finish`, `pause`, `resume`, `approve`, `reject`, `retry`, `cancel`, `archive`, `list-archive`
+- ✅ 配置: `set-branch`, `set-base`, `set-scope`, `set-agent`
+- ✅ 上下文: `init-context`, `add-context`, `remove-context`, `list-context`, `validate-context`
+- ✅ 执行控制: `execute`, `stop`, `running`
+- ✅ 队列管理: `queue-status`, `queue-config`, `batch-enqueue`, `clear-history`
+- ✅ 事件: `events`, `specs`
+- ✅ 流式: `events-stream`, `execution-stream`
+- ✅ 规划监控: `plan`, `status`, `create-pr`, `review`
+- ✅ 会话: `context`, `add-session`
+
+---
+
 ## 迁移计划
 
-### Phase 1: 创建新路由文件
+### Phase 1: 创建新路由文件 ✅ 完成
 
-1. 创建 `packages/core/src/gateway/routes/task.ts`
-2. 实现所有端点，复用现有 `taskService` 和 `TaskQueueManager`
-3. 保持旧端点工作 (向后兼容)
+1. ✅ 创建 `packages/core/src/gateway/routes/task.ts`
+2. ✅ 实现全部 43 个端点，复用现有 `taskService` 和 `TaskQueueManager`
+3. ✅ 保持旧端点工作 (向后兼容)
 
 ### Phase 2: 迁移前端调用
 
@@ -230,18 +251,18 @@ interface QueueConfig {
 
 ### 新增文件
 
-- `packages/core/src/gateway/routes/task.ts` - 新 Task API 路由
+- ✅ `packages/core/src/gateway/routes/task.ts` - 新 Task API 路由 (7 个端点)
 
 ### 修改文件
 
-- `packages/core/src/gateway/server.ts` - 注册新路由
-- `apps/desktop/src/lib/gateway/modules/tasks.ts` - 前端客户端
-- `apps/desktop/src/lib/gateway/client.ts` - GatewayClient 类
-- `apps/desktop/src/components/workspace/kanban/*.tsx` - 看板组件
-- `packages/core/src/cli/commands/queue.ts` - CLI queue 命令 (调用新 API)
+- ✅ `packages/core/src/gateway/routes/index.ts` - 注册新路由
+- ✅ `packages/core/src/gateway/routes/tasks.ts` - 添加 30 个新端点
+- ⏳ `apps/desktop/src/lib/gateway/modules/tasks.ts` - 前端客户端
+- ⏳ `apps/desktop/src/lib/gateway/client.ts` - GatewayClient 类
+- ⏳ `apps/desktop/src/components/workspace/kanban/*.tsx` - 看板组件
+- ⏳ `packages/core/src/cli/commands/queue.ts` - CLI queue 命令 (调用新 API)
 
 ### 废弃文件 (Phase 3 移除)
 
 - `packages/core/src/gateway/routes/queue.ts`
-- `packages/core/src/gateway/routes/tasks.ts`
 - `packages/core/src/gateway/routes/task-events.ts`

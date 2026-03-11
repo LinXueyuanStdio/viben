@@ -133,3 +133,9 @@ Fixed X/Y issues. Z issues require discussion.
 - Don't modify unrelated files
 - Don't use non-null assertion (`x!` operator)
 - Don't execute git commit
+
+## Important Constraints
+
+- Do NOT execute git commit, only code modifications
+- Run typecheck after each fix to verify
+- Report which issues were fixed and which files were modified

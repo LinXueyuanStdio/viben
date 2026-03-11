@@ -1,7 +1,7 @@
 ---
 name: check
 description: |
-  Code quality check expert. Reviews code changes against specs and self-fixes issues.
+  Code quality check expert. Reviews code changes against specs and self-fixes issues. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of 'check' subagent prompt.
 tools: Read, Write, Edit, Bash, Glob, Grep, mcp__exa__web_search_exa, mcp__exa__get_code_context_exa
 model: opus
 ---
@@ -100,6 +100,35 @@ After finding issues:
 Run project's lint and typecheck commands to verify changes.
 
 If failed, fix issues and re-run.
+
+## Important Constraints
+
+- Fix issues yourself, don't just report
+- Must execute complete checklist in check specs
+- Pay special attention to impact radius analysis (L1-L5)
+
+---
+
+## [finish] Phase Workflow
+
+If your prompt contains `[finish]`, use this workflow instead:
+
+1. **Review changes** - Run `git diff --name-only` to see all changed files
+2. **Verify requirements** - Check each requirement in prd.md is implemented
+3. **Spec sync** - Analyze whether changes introduce new patterns, contracts, or conventions
+   - If new pattern/convention found: read target spec file → update it → update index.md if needed
+   - If infra/cross-layer change: follow the 7-section mandatory template from update-spec.md
+   - If pure code fix with no new patterns: skip this step
+4. **Run final checks** - Execute lint and typecheck
+5. **Confirm ready** - Ensure code is ready for PR
+
+### [finish] Constraints
+
+- You MAY update spec files when gaps are detected (use update-spec.md as guide)
+- MUST read the target spec file BEFORE editing (avoid duplicating existing content)
+- Do NOT update specs for trivial changes (typos, formatting, obvious fixes)
+- If critical CODE issues found, report them clearly (fix specs, not code)
+- Verify all acceptance criteria in prd.md are met
 
 ---
 
