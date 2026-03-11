@@ -10,7 +10,9 @@ import {
   statSync,
   readFileSync,
 } from "node:fs";
+import { spawn } from "node:child_process";
 import { join, basename } from "node:path";
+import { createCLIAdapterAuto, type ICLIAdapter } from "./swarm/cli-adapter";
 import {
   type IdeaGenerateOptions,
   type IdeaType,
@@ -241,33 +243,140 @@ function countSourceFiles(dir: string, maxDepth = 5): number {
 // =============================================================================
 
 /**
- * Placeholder for AI service integration
+ * Check if a CLI tool is available
  *
- * This function will be connected to viben's AI service.
- * For now, it throws an error indicating integration is needed.
+ * @param command - Command to check
+ * @returns True if command is available
+ */
+function isCommandAvailable(command: string): boolean {
+  try {
+    const { execSync } = require("node:child_process");
+    execSync(`which ${command}`, { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build ideation command based on CLI adapter
  *
- * TODO: Integrate with viben's AI service (Claude, OpenAI, etc.)
+ * @param adapter - CLI adapter
+ * @param prompt - Prompt to send
+ * @param model - Model to use
+ * @returns Command array
+ */
+function buildIdeationCommand(
+  adapter: ICLIAdapter,
+  prompt: string,
+  model: string
+): string[] {
+  switch (adapter.platform) {
+    case "opencode":
+      return ["opencode", "run", "--format", "text", prompt];
+    case "codex":
+      return ["codex", "exec", prompt];
+    case "gemini":
+      return ["gemini", prompt];
+    case "kiro":
+      return ["kiro", "run", prompt];
+    default:
+      // Claude Code (default)
+      return [
+        "claude",
+        "-p",
+        "--dangerously-skip-permissions",
+        "--model",
+        model,
+        prompt,
+      ];
+  }
+}
+
+/**
+ * Call AI using CLI adapter for multi-platform support
+ *
+ * Supported platforms:
+ * - Claude Code (default): Uses `claude -p` with prompt mode
+ * - OpenCode: Uses `opencode run`
+ * - Codex: Uses `codex exec`
+ * - Gemini: Uses `gemini` CLI
+ * - Kiro: Uses `kiro run`
  *
  * @param prompt - The full prompt to send to the AI
  * @param model - Model identifier to use
+ * @param cwd - Working directory for code analysis
  * @returns AI response text
  */
-async function callAI(prompt: string, model: string): Promise<string> {
+async function callAI(
+  prompt: string,
+  model: string,
+  cwd: string
+): Promise<string> {
   // Resolve model alias if needed
   const resolvedModel = await modelManager.resolveAlias(model);
 
-  // TODO: Integrate with viben's AI service
-  // This could use:
-  // 1. The Claude Agent SDK (already available in the codebase)
-  // 2. Direct API calls to providers
-  // 3. A unified AI service abstraction
+  // Auto-detect platform
+  const adapter = createCLIAdapterAuto(cwd);
 
-  // For now, throw an error with helpful information
-  throw new Error(
-    `AI integration not yet implemented. ` +
-    `Model requested: ${resolvedModel}. ` +
-    `Please implement callAI() with viben's AI service.`
-  );
+  // Check if CLI is available
+  if (!isCommandAvailable(adapter.cliName)) {
+    throw new Error(
+      `${adapter.cliName} CLI not found. Please install ${adapter.cliName} to use idea generation.`
+    );
+  }
+
+  // Build the command
+  const cmd = buildIdeationCommand(adapter, prompt, resolvedModel);
+
+  // Execute command and collect output
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd[0], cmd.slice(1), {
+      cwd,
+      env: { ...process.env, ...adapter.getNonInteractiveEnv() },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    let output = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data: Buffer) => {
+      output += data.toString();
+    });
+
+    proc.stderr.on("data", (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on("close", (code: number | null) => {
+      if (code === 0 || code === null) {
+        resolve(output);
+      } else {
+        reject(
+          new Error(`${adapter.cliName} exited with code ${code}: ${stderr}`)
+        );
+      }
+    });
+
+    proc.on("error", (err: Error) => {
+      reject(
+        new Error(
+          `Failed to spawn ${adapter.cliName}: ${err.message}. ` +
+            `Please ensure ${adapter.cliName} is installed and in your PATH.`
+        )
+      );
+    });
+
+    // Set timeout (5 minutes for idea generation)
+    const timeout = setTimeout(() => {
+      proc.kill("SIGTERM");
+      reject(new Error(`${adapter.cliName} timed out after 5 minutes`));
+    }, 5 * 60 * 1000);
+
+    proc.on("close", () => {
+      clearTimeout(timeout);
+    });
+  });
 }
 
 /**
@@ -455,8 +564,8 @@ export async function generateIdeasForType(
     // Build the full prompt
     const fullPrompt = buildPrompt(prompt, context, maxIdeas);
 
-    // Call AI service
-    const response = await callAI(fullPrompt, model);
+    // Call AI service with cwd from context
+    const response = await callAI(fullPrompt, model, context.rootDir);
 
     // Parse the response
     const ideas = parseAIResponse(response, type);

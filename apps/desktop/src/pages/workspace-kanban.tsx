@@ -51,7 +51,6 @@ import {
   CircleDot,
   CheckCircle2,
   UserCheck,
-  Bot,
   SortAsc,
   Table2,
 } from "lucide-react";
@@ -170,8 +169,9 @@ import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
 import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
 
-// Kanban column IDs - using new 6-column layout from Auto-Claude
-// backlog → queue → in_progress → ai_review → human_review → done
+// Kanban column IDs - 9-column layout
+// backlog → queue → in_progress → paused → human_review → completed → failed → cancelled → archived
+// Note: ai_review is a legacy status that maps to in_progress
 type ColumnId = KanbanColumnId;
 
 // Column colors mapping (full CSS value for List View)
@@ -1628,20 +1628,6 @@ export function WorkspaceKanbanPage() {
         keywords: ["go", "jump", "progress", "running", "进行中"],
         action: () => {
           const tasks = tasksByColumn["in_progress"];
-          if (tasks && tasks.length > 0) {
-            setSelectedTaskId(tasks[0].id);
-          }
-        },
-      },
-      {
-        id: "goto-ai-review",
-        label: t("workspace.column.aiReview", "AI Review"),
-        description: t("workspace.commandPalette.gotoAiReviewDesc", "Jump to first task in AI Review"),
-        icon: <Bot className="h-4 w-4" />,
-        category: "navigation",
-        keywords: ["go", "jump", "ai", "review", "审核"],
-        action: () => {
-          const tasks = tasksByColumn["ai_review"];
           if (tasks && tasks.length > 0) {
             setSelectedTaskId(tasks[0].id);
           }

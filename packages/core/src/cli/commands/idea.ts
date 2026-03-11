@@ -55,6 +55,8 @@ import {
   removeAllIdeas,
 } from "../lib/idea-store";
 
+import { generateIdeas } from "../lib/idea-generator";
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -144,27 +146,6 @@ function validateIdeaTypeExists(type: string, repoRoot: string): IdeaType | null
 // =============================================================================
 
 /**
- * Stub: Generate ideas using AI
- * TODO: Implement with IdeaGenerator when ready
- */
-async function generateIdeasStub(
-  _repoRoot: string,
-  _options: {
-    types: string[];
-    outputDir?: string;
-    model?: string;
-    maxIdeas?: number;
-    append?: boolean;
-    override?: boolean;
-  }
-): Promise<{ sessionId: string; ideas: Idea[]; summary: IdeaSession["summary"] }> {
-  throw CliError.operationFailed(
-    "Generate ideas",
-    "IdeaGenerator not yet implemented. This feature is coming soon."
-  );
-}
-
-/**
  * Stub: Promote idea to task
  * TODO: Implement with task creation integration
  */
@@ -252,27 +233,56 @@ export function registerIdeaCommand(program: Command): void {
           }
 
           // Generate ideas
-          const result = await generateIdeasStub(repoRoot, {
-            types: options.types,
-            outputDir,
-            model: options.model,
-            maxIdeas: parseInt(options.maxIdeas || "5", 10),
-            append: options.append,
-            override: options.override,
-          });
+          if (!ctx.quiet) {
+            console.log(chalk.cyan("Generating ideas..."));
+          }
+
+          const result = await generateIdeas(
+            repoRoot,
+            {
+              types: options.types,
+              output: options.output,
+              model: options.model,
+              maxIdeas: parseInt(options.maxIdeas || "5", 10),
+              append: options.append,
+              override: options.override,
+            },
+            ctx.quiet
+              ? undefined
+              : (msg: string) => {
+                  console.log(chalk.gray(`  ${msg}`));
+                }
+          );
+
+          // Check for errors
+          if (result.errors.length > 0 && result.ideas.length === 0) {
+            throw CliError.operationFailed(
+              "Generate ideas",
+              result.errors.join("\n")
+            );
+          }
 
           output(ctx, successResponse(result), () => {
-            console.log(chalk.green(`Generated ${result.summary.totalIdeas} ideas`));
+            console.log();
+            console.log(chalk.green(`Generated ${result.ideas.length} ideas`));
             console.log();
 
             console.log(chalk.bold("Summary by type:"));
-            for (const [type, count] of Object.entries(result.summary.byType)) {
+            for (const [type, count] of Object.entries(result.byType)) {
               console.log(`  ${type}: ${count} idea(s)`);
             }
-            console.log();
 
+            if (result.errors.length > 0) {
+              console.log();
+              console.log(chalk.yellow("Warnings:"));
+              for (const error of result.errors) {
+                console.log(chalk.yellow(`  ${error}`));
+              }
+            }
+
+            console.log();
             console.log(chalk.gray(`Session ID: ${result.sessionId}`));
-            console.log(chalk.gray(`Output: ${outputDir}`));
+            console.log(chalk.gray(`Output: ${result.sessionDir}`));
           });
         } catch (error) {
           handleCommandError(ctx, error);

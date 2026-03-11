@@ -16,7 +16,6 @@ import {
   ListTodo,
   Play,
   Pause,
-  Eye,
   UserCheck,
   CheckCircle2,
   XCircle,
@@ -74,11 +73,6 @@ const COLUMN_EMPTY_STATES: Record<KanbanColumnId, EmptyStateConfig> = {
     icon: <Pause className="h-5 w-5 text-muted-foreground/50" />,
     messageKey: "workspace.emptyPaused",
     hintKey: "workspace.emptyPausedHint",
-  },
-  ai_review: {
-    icon: <Eye className="h-5 w-5 text-muted-foreground/50" />,
-    messageKey: "workspace.emptyAiReview",
-    hintKey: "workspace.emptyAiReviewHint",
   },
   human_review: {
     icon: <UserCheck className="h-5 w-5 text-muted-foreground/50" />,

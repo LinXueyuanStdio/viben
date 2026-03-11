@@ -10,7 +10,6 @@ import {
   Inbox,
   ListPlus,
   CircleDot,
-  Bot,
   UserCheck,
   CheckCircle2,
   Plus,
