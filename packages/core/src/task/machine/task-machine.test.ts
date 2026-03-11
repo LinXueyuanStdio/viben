@@ -44,10 +44,10 @@ describe("Task State Machine - Valid Transitions", () => {
   // Queue transitions
   // -------------------------------------------------------------------------
   describe("from queue", () => {
-    it("queue + START -> in_progress.planning", () => {
+    it("queue + START -> in_progress.plan", () => {
       const result = getNextState("queue", { type: "START" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "planning" });
+      expect(result.value).toEqual({ in_progress: "plan" });
     });
 
     it("queue + DEQUEUE -> backlog", () => {
@@ -70,114 +70,114 @@ describe("Task State Machine - Valid Transitions", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Planning phase transitions
+  // Plan phase transitions
   // -------------------------------------------------------------------------
-  describe("from in_progress.planning", () => {
-    const planningState: XStateValue = { in_progress: "planning" };
+  describe("from in_progress.plan", () => {
+    const planState: XStateValue = { in_progress: "plan" };
 
-    it("planning + PLANNING_COMPLETE -> coding (default: no plan review)", () => {
+    it("plan + PLAN_COMPLETE -> implement (default: no plan review)", () => {
       // Default context has requiresPlanReview: false
-      const result = getNextState(planningState, { type: "PLANNING_COMPLETE" });
+      const result = getNextState(planState, { type: "PLAN_COMPLETE" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "coding" });
+      expect(result.value).toEqual({ in_progress: "implement" });
     });
 
     // Note: Testing requiresPlanReview=true requires XState actor with context override,
     // which is not directly testable through getNextState since the navigation path
     // doesn't support arbitrary context injection. The guard is tested in guards.test.ts.
 
-    it("planning + PLANNING_FAILED -> failed", () => {
-      const result = getNextState(planningState, { type: "PLANNING_FAILED" });
+    it("plan + PLAN_FAILED -> failed", () => {
+      const result = getNextState(planState, { type: "PLAN_FAILED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("failed");
     });
 
-    it("planning + PAUSE -> paused", () => {
-      const result = getNextState(planningState, { type: "PAUSE" });
+    it("plan + PAUSE -> paused", () => {
+      const result = getNextState(planState, { type: "PAUSE" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("paused");
     });
   });
 
   // -------------------------------------------------------------------------
-  // Coding phase transitions
+  // Implement phase transitions
   // -------------------------------------------------------------------------
-  describe("from in_progress.coding", () => {
-    const codingState: XStateValue = { in_progress: "coding" };
+  describe("from in_progress.implement", () => {
+    const implementState: XStateValue = { in_progress: "implement" };
 
-    it("coding + SUBTASK_COMPLETE -> coding (transition occurs)", () => {
-      // SUBTASK_COMPLETE is a re-entry transition that stays in coding
+    it("implement + SUBTASK_COMPLETE -> implement (transition occurs)", () => {
+      // SUBTASK_COMPLETE is a re-entry transition that stays in implement
       // XState's changed detection compares JSON strings, and re-entry with
       // actions may show as unchanged since state value is the same
-      const result = getNextState(codingState, { type: "SUBTASK_COMPLETE" });
-      // The transition happens (action runs) but state value remains { in_progress: "coding" }
-      expect(result.value).toEqual({ in_progress: "coding" });
+      const result = getNextState(implementState, { type: "SUBTASK_COMPLETE" });
+      // The transition happens (action runs) but state value remains { in_progress: "implement" }
+      expect(result.value).toEqual({ in_progress: "implement" });
     });
 
-    it("coding + ALL_SUBTASKS_DONE -> qa_review", () => {
-      const result = getNextState(codingState, { type: "ALL_SUBTASKS_DONE" });
+    it("implement + ALL_SUBTASKS_DONE -> check", () => {
+      const result = getNextState(implementState, { type: "ALL_SUBTASKS_DONE" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "qa_review" });
+      expect(result.value).toEqual({ in_progress: "check" });
     });
 
-    it("coding + CODING_FAILED -> failed", () => {
-      const result = getNextState(codingState, { type: "CODING_FAILED" });
+    it("implement + IMPLEMENT_FAILED -> failed", () => {
+      const result = getNextState(implementState, { type: "IMPLEMENT_FAILED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("failed");
     });
 
-    it("coding + PAUSE -> paused", () => {
-      const result = getNextState(codingState, { type: "PAUSE" });
+    it("implement + PAUSE -> paused", () => {
+      const result = getNextState(implementState, { type: "PAUSE" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("paused");
     });
   });
 
   // -------------------------------------------------------------------------
-  // QA Review phase transitions
+  // Check phase transitions
   // -------------------------------------------------------------------------
-  describe("from in_progress.qa_review", () => {
-    const qaReviewState: XStateValue = { in_progress: "qa_review" };
+  describe("from in_progress.check", () => {
+    const checkState: XStateValue = { in_progress: "check" };
 
-    it("qa_review + QA_PASSED -> human_review", () => {
-      const result = getNextState(qaReviewState, { type: "QA_PASSED" });
+    it("check + CHECK_PASSED -> human_review", () => {
+      const result = getNextState(checkState, { type: "CHECK_PASSED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("human_review");
     });
 
-    it("qa_review + QA_FAILED -> qa_fixing", () => {
-      const result = getNextState(qaReviewState, { type: "QA_FAILED" });
+    it("check + CHECK_FAILED -> fix", () => {
+      const result = getNextState(checkState, { type: "CHECK_FAILED" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "qa_fixing" });
+      expect(result.value).toEqual({ in_progress: "fix" });
     });
 
-    it("qa_review + PAUSE -> paused", () => {
-      const result = getNextState(qaReviewState, { type: "PAUSE" });
+    it("check + PAUSE -> paused", () => {
+      const result = getNextState(checkState, { type: "PAUSE" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("paused");
     });
   });
 
   // -------------------------------------------------------------------------
-  // QA Fixing phase transitions
+  // Fix phase transitions
   // -------------------------------------------------------------------------
-  describe("from in_progress.qa_fixing", () => {
-    const qaFixingState: XStateValue = { in_progress: "qa_fixing" };
+  describe("from in_progress.fix", () => {
+    const fixState: XStateValue = { in_progress: "fix" };
 
-    it("qa_fixing + QA_FIXING_COMPLETE -> qa_review", () => {
-      const result = getNextState(qaFixingState, { type: "QA_FIXING_COMPLETE" });
+    it("fix + FIX_COMPLETE -> check", () => {
+      const result = getNextState(fixState, { type: "FIX_COMPLETE" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "qa_review" });
+      expect(result.value).toEqual({ in_progress: "check" });
     });
 
-    it("qa_fixing + QA_FIXING_FAILED -> failed", () => {
-      const result = getNextState(qaFixingState, { type: "QA_FIXING_FAILED" });
+    it("fix + FIX_FAILED -> failed", () => {
+      const result = getNextState(fixState, { type: "FIX_FAILED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("failed");
     });
 
-    it("qa_fixing + PAUSE -> paused", () => {
-      const result = getNextState(qaFixingState, { type: "PAUSE" });
+    it("fix + PAUSE -> paused", () => {
+      const result = getNextState(fixState, { type: "PAUSE" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("paused");
     });
@@ -194,25 +194,25 @@ describe("Task State Machine - Valid Transitions", () => {
 
     it("in_progress + USER_STOPPED -> backlog (default: no progress)", () => {
       const result = getNextState(
-        { in_progress: "coding" },
+        { in_progress: "implement" },
         { type: "USER_STOPPED" }
       );
       expect(result.changed).toBe(true);
       expect(result.value).toBe("backlog");
     });
 
-    it("planning + USER_STOPPED -> backlog (default: no progress)", () => {
+    it("plan + USER_STOPPED -> backlog (default: no progress)", () => {
       const result = getNextState(
-        { in_progress: "planning" },
+        { in_progress: "plan" },
         { type: "USER_STOPPED" }
       );
       expect(result.changed).toBe(true);
       expect(result.value).toBe("backlog");
     });
 
-    it("qa_review + USER_STOPPED -> backlog (default: no progress)", () => {
+    it("check + USER_STOPPED -> backlog (default: no progress)", () => {
       const result = getNextState(
-        { in_progress: "qa_review" },
+        { in_progress: "check" },
         { type: "USER_STOPPED" }
       );
       expect(result.changed).toBe(true);
@@ -260,10 +260,10 @@ describe("Task State Machine - Valid Transitions", () => {
       expect(result.value).toBe("completed");
     });
 
-    it("human_review + REJECTED -> coding", () => {
+    it("human_review + REJECTED -> backlog", () => {
       const result = getNextState("human_review", { type: "REJECTED" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "coding" });
+      expect(result.value).toBe("backlog");
     });
 
     it("human_review + CANCEL -> cancelled", () => {
@@ -277,10 +277,10 @@ describe("Task State Machine - Valid Transitions", () => {
   // Failed state transitions
   // -------------------------------------------------------------------------
   describe("from failed", () => {
-    it("failed + RETRY -> in_progress.planning", () => {
+    it("failed + RETRY -> queue", () => {
       const result = getNextState("failed", { type: "RETRY" });
       expect(result.changed).toBe(true);
-      expect(result.value).toEqual({ in_progress: "planning" });
+      expect(result.value).toBe("queue");
     });
 
     it("failed + ABANDON -> backlog", () => {
@@ -361,25 +361,25 @@ describe("Task State Machine - Invalid Transitions", () => {
       expect(result.changed).toBe(false);
     });
 
-    it("queue + PLANNING_COMPLETE should not change state", () => {
-      const result = getNextState("queue", { type: "PLANNING_COMPLETE" });
+    it("queue + PLAN_COMPLETE should not change state", () => {
+      const result = getNextState("queue", { type: "PLAN_COMPLETE" });
       expect(result.changed).toBe(false);
     });
   });
 
   describe("in_progress invalid transitions", () => {
-    it("planning + APPROVED should not change state", () => {
-      const result = getNextState({ in_progress: "planning" }, { type: "APPROVED" });
+    it("plan + APPROVED should not change state", () => {
+      const result = getNextState({ in_progress: "plan" }, { type: "APPROVED" });
       expect(result.changed).toBe(false);
     });
 
-    it("coding + PLANNING_COMPLETE should not change state", () => {
-      const result = getNextState({ in_progress: "coding" }, { type: "PLANNING_COMPLETE" });
+    it("implement + PLAN_COMPLETE should not change state", () => {
+      const result = getNextState({ in_progress: "implement" }, { type: "PLAN_COMPLETE" });
       expect(result.changed).toBe(false);
     });
 
-    it("qa_review + SUBTASK_COMPLETE should not change state", () => {
-      const result = getNextState({ in_progress: "qa_review" }, { type: "SUBTASK_COMPLETE" });
+    it("check + SUBTASK_COMPLETE should not change state", () => {
+      const result = getNextState({ in_progress: "check" }, { type: "SUBTASK_COMPLETE" });
       expect(result.changed).toBe(false);
     });
   });
@@ -419,17 +419,17 @@ describe("Task State Machine - Full Paths", () => {
     expect(finalState).toBe("completed");
   });
 
-  it("qa failure path: backlog -> qa_fixing -> qa_review -> completed", () => {
-    let state = applyEventSequence("backlog", EVENT_SEQUENCES.toQaReview);
-    expect(state).toEqual({ in_progress: "qa_review" });
+  it("check failure path: backlog -> fix -> check -> completed", () => {
+    let state = applyEventSequence("backlog", EVENT_SEQUENCES.toCheck);
+    expect(state).toEqual({ in_progress: "check" });
 
-    state = applyEventSequence(state, [{ type: "QA_FAILED" }]);
-    expect(state).toEqual({ in_progress: "qa_fixing" });
+    state = applyEventSequence(state, [{ type: "CHECK_FAILED" }]);
+    expect(state).toEqual({ in_progress: "fix" });
 
-    state = applyEventSequence(state, [{ type: "QA_FIXING_COMPLETE" }]);
-    expect(state).toEqual({ in_progress: "qa_review" });
+    state = applyEventSequence(state, [{ type: "FIX_COMPLETE" }]);
+    expect(state).toEqual({ in_progress: "check" });
 
-    state = applyEventSequence(state, [{ type: "QA_PASSED" }, { type: "APPROVED" }]);
+    state = applyEventSequence(state, [{ type: "CHECK_PASSED" }, { type: "APPROVED" }]);
     expect(state).toBe("completed");
   });
 
@@ -447,22 +447,14 @@ describe("Task State Machine - Full Paths", () => {
     expect(state).toBe("queue");
   });
 
-  it("rejection path: human_review -> coding -> qa_review -> completed", () => {
+  it("rejection path: human_review -> backlog", () => {
     // Go to human_review
     let state = applyEventSequence("backlog", EVENT_SEQUENCES.toHumanReview);
     expect(state).toBe("human_review");
 
     // Reject
     state = applyEventSequence(state, [{ type: "REJECTED" }]);
-    expect(state).toEqual({ in_progress: "coding" });
-
-    // Complete again
-    state = applyEventSequence(state, [
-      { type: "ALL_SUBTASKS_DONE" },
-      { type: "QA_PASSED" },
-      { type: "APPROVED" },
-    ]);
-    expect(state).toBe("completed");
+    expect(state).toBe("backlog");
   });
 
   it("failed + retry path", () => {
@@ -472,7 +464,7 @@ describe("Task State Machine - Full Paths", () => {
 
     // Retry
     state = applyEventSequence(state, [{ type: "RETRY" }]);
-    expect(state).toEqual({ in_progress: "planning" });
+    expect(state).toBe("queue");
   });
 });
 
@@ -493,19 +485,19 @@ describe("Helper Functions", () => {
     });
 
     it("maps in_progress substates to in_progress", () => {
-      expect(xstateToTaskStatus({ in_progress: "planning" })).toBe("in_progress");
-      expect(xstateToTaskStatus({ in_progress: "coding" })).toBe("in_progress");
-      expect(xstateToTaskStatus({ in_progress: "qa_review" })).toBe("in_progress");
-      expect(xstateToTaskStatus({ in_progress: "qa_fixing" })).toBe("in_progress");
+      expect(xstateToTaskStatus({ in_progress: "plan" })).toBe("in_progress");
+      expect(xstateToTaskStatus({ in_progress: "implement" })).toBe("in_progress");
+      expect(xstateToTaskStatus({ in_progress: "check" })).toBe("in_progress");
+      expect(xstateToTaskStatus({ in_progress: "fix" })).toBe("in_progress");
     });
   });
 
   describe("xstateToExecutionPhase", () => {
     it("extracts phase from in_progress states", () => {
-      expect(xstateToExecutionPhase({ in_progress: "planning" })).toBe("planning");
-      expect(xstateToExecutionPhase({ in_progress: "coding" })).toBe("coding");
-      expect(xstateToExecutionPhase({ in_progress: "qa_review" })).toBe("qa_review");
-      expect(xstateToExecutionPhase({ in_progress: "qa_fixing" })).toBe("qa_fixing");
+      expect(xstateToExecutionPhase({ in_progress: "plan" })).toBe("plan");
+      expect(xstateToExecutionPhase({ in_progress: "implement" })).toBe("implement");
+      expect(xstateToExecutionPhase({ in_progress: "check" })).toBe("check");
+      expect(xstateToExecutionPhase({ in_progress: "fix" })).toBe("fix");
     });
 
     it("returns undefined for non-in_progress states", () => {

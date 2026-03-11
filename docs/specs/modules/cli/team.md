@@ -190,7 +190,7 @@ docs/specs/
 │
 ├── agents/                  # 子智能体
 │   ├── check.md
-│   ├── debug.md
+│   ├── fix.md
 │   ├── dispatch.md
 │   ├── implement.md
 │   ├── plan.md

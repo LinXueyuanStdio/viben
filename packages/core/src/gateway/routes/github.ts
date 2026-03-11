@@ -16,6 +16,10 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import * as github from "../../services/github";
 import * as autofix from "../../github";
 import { eventService } from "../../services/events";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level child logger
+const log = globalLogger.child({ module: "github" });
 
 // Track workspaces with event listeners already set up to avoid duplicate registration
 const eventListenersSetup = new Set<string>();
@@ -219,7 +223,7 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
       const status = await github.getAuthStatus(workspacePath);
       return status;
     } catch (error) {
-      console.error("[GitHub] Auth status error:", error);
+      log.error({ err: error }, "Auth status error");
       return reply.code(500).send({
         error: error instanceof Error ? error.message : "Failed to get auth status",
       });
@@ -241,7 +245,7 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
       const user = await github.authenticateWithGhCli(workspacePath);
       return { user };
     } catch (error) {
-      console.error("[GitHub] gh-cli auth error:", error);
+      log.error({ err: error }, "gh-cli auth error");
       return reply.code(400).send({
         error: error instanceof Error ? error.message : "Failed to authenticate with gh CLI",
       });

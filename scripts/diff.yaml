@@ -24,8 +24,8 @@ file-pairs:
   # =============================================================================
   - src: .claude/agents/check.md
     tgt: .claude/agents/check.md
-  - src: .claude/agents/debug.md
-    tgt: .claude/agents/debug.md
+  - src: .claude/agents/fix.md
+    tgt: .claude/agents/fix.md
   - src: .claude/agents/dispatch.md
     tgt: .claude/agents/dispatch.md
   - src: .claude/agents/implement.md

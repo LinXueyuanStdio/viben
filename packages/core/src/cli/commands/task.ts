@@ -16,15 +16,11 @@ import { spawn, execSync, type SpawnOptions } from "node:child_process";
 import {
   existsSync,
   readFileSync,
-  readdirSync,
   writeFileSync,
   mkdirSync,
-  statSync,
   openSync,
-  readSync,
-  closeSync,
 } from "node:fs";
-import { resolve, join, relative, basename } from "node:path";
+import { join, relative, basename } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -42,53 +38,25 @@ import {
   getDeveloper,
   getTasksDir,
   getCurrentTask,
-  clearCurrentTask,
   readTaskJson as readTaskJsonFromWorkspace,
   writeTaskJson,
   updateTaskField,
-  getActiveTasks,
   getDatePrefix,
   getTodayDate,
-  getYearMonth,
-  slugify,
-  findTaskByName,
   resolveTaskDirectory,
-  archiveTask,
-  getArchivedTasks,
-  readJsonlFile,
-  writeJsonlFile,
-  appendToJsonl,
-  jsonlEntryExists,
   runGitCommand,
-  getJournalInfo,
   DIR_VIBEN,
   DIR_WORKSPACE,
   DIR_TASKS,
   FILE_TASK_JSON,
   // Phase management
-  getPhaseInfo,
   getPhaseForAction,
   // Agent registry
-  getRegistryFile,
-  getAgentsDir,
-  registrySearchAgent,
   registryAddAgent,
-  registryListAgents,
-  isProcessRunning,
-  calcElapsed,
-  // Task stats
-  getTaskStats,
-  formatTaskStats,
-  // Task status lifecycle
-  updateTaskStatus,
-  appendTaskEvent,
-  validateStatusTransition,
-  type TaskEventType,
-  type PausedSnapshot,
   // CLI adapter
   createCLIAdapter,
-  detectPlatform,
-  type AgentRegistryEntry,
+  // Check phase validation
+  validateIfReviewFinished,
 } from "../lib/viben-workspace";
 
 import type { UnifiedTask } from "../../services/task-service";
@@ -101,11 +69,80 @@ import {
   getSessionId,
 } from "../lib/swarm";
 
+// Import startTask from phase/start
+import { startTask } from "../../task/phase/start";
+
+// Import task operations from lib/task
+import {
+  // Types
+  type TaskJson,
+  type ContextEntry,
+  // Display
+  formatStatus,
+  formatPriority,
+  // Session
+  getLatestJournalInfo,
+  getSessionNumberFromIndex,
+  generateSessionMarkdown,
+  createNewJournalFile,
+  updateIndexWithNewSession,
+  // Status
+  cmdStatusSummary,
+  cmdStatusList,
+  cmdStatusDetail,
+  cmdStatusWatch,
+  cmdStatusLog,
+  cmdStatusRegistry,
+  // Context output
+  getContextJson,
+  getContextText,
+  // Lifecycle operations
+  enqueueTask,
+  dequeueTask,
+  pauseTask,
+  resumeTask,
+  approveTask,
+  rejectTask,
+  retryTask,
+  cancelTask,
+  // Context file operations
+  initContext,
+  addContext,
+  removeContext,
+  listContext,
+  validateContext,
+  // CRUD operations
+  listTasks,
+  createTask,
+  viewTask,
+  deleteTask,
+  finishTask,
+  archiveTask as archiveTaskOp,
+  listArchivedTasks,
+  // Config operations
+  setTaskBranch,
+  setTaskBaseBranch,
+  setTaskScope,
+  setTaskAgent,
+  // Review operations
+  reviewTask,
+  // Edit operations
+  editTask,
+  // PR operations
+  createPR,
+} from "../../task/ops";
+
+// Import phase operations
+import {
+  runPlanPhase,
+  runImplementPhase,
+  runCheckPhase,
+  runWorkPhaseInRepo,
+} from "../../task/phase";
+
 // =============================================================================
 // Constants
 // =============================================================================
-
-const VIBEN_DIR = ".viben";
 
 /** Mapping from CLI executor IDs to platform names */
 const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
@@ -119,22 +156,6 @@ const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
   KIRO: "kiro",
   ANTIGRAVITY: "antigravity",
 };
-
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * Task JSON format stored in .viben/tasks/<date>-<slug>/task.json
- * This is compatible with UnifiedTask from task-service.ts
- */
-type TaskJson = UnifiedTask;
-
-interface ContextEntry {
-  file: string;
-  reason: string;
-  type?: "file" | "directory";
-}
 
 // =============================================================================
 // Helpers
@@ -184,74 +205,6 @@ function ensureTasksDir(repoRoot: string): string {
   return tasksDir;
 }
 
-/**
- * Read task.json from a task directory
- */
-function readTaskJson(taskDir: string): TaskJson | null {
-  const taskJsonPath = join(taskDir, "task.json");
-  if (!existsSync(taskJsonPath)) {
-    return null;
-  }
-  try {
-    const content = readFileSync(taskJsonPath, "utf-8");
-    return JSON.parse(content) as TaskJson;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Format task status for display
- * Uses unified status values: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled
- */
-function formatStatus(status: string): string {
-  switch (status) {
-    // Completed states
-    case "completed":
-      return chalk.green(status);
-    // In-progress states
-    case "in_progress":
-    case "queue":
-      return chalk.blue(status);
-    // Waiting states
-    case "backlog":
-    case "human_review":
-    case "paused":
-      return chalk.yellow(status);
-    // Error/terminal states
-    case "failed":
-    case "cancelled":
-      return chalk.red(status);
-    // Legacy mappings
-    case "done":
-    case "pr_created":
-      return chalk.green("completed");
-    case "planning":
-    case "error":
-      return chalk.gray(status);
-    default:
-      return chalk.gray(status);
-  }
-}
-
-/**
- * Format priority for display
- */
-function formatPriority(priority: string): string {
-  switch (priority) {
-    case "P0":
-      return chalk.red(priority);
-    case "P1":
-      return chalk.yellow(priority);
-    case "P2":
-      return chalk.blue(priority);
-    case "P3":
-      return chalk.gray(priority);
-    default:
-      return priority;
-  }
-}
-
 // =============================================================================
 // Command Registration
 // =============================================================================
@@ -285,32 +238,17 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const developer = getDeveloper(repoRoot);
-        const currentTask = getCurrentTask(repoRoot);
+        const result = listTasks(repoRoot, { mine: options.mine, status: options.status });
 
-        // Check filters
-        if (options.mine && !developer) {
-          throw CliError.operationFailed(
-            "List tasks",
-            "No developer set. Run init-developer first or remove --mine flag"
-          );
+        if (!result.success) {
+          throw CliError.operationFailed("List tasks", result.error!);
         }
 
-        // Get all active tasks
-        let tasks = getActiveTasks(repoRoot);
-
-        // Apply --mine filter
-        if (options.mine && developer) {
-          tasks = tasks.filter((t) => t.assignee === developer);
-        }
-
-        // Apply --status filter
-        if (options.status) {
-          tasks = tasks.filter((t) => t.status === options.status);
-        }
+        const { tasks, currentTask } = result;
 
         output(ctx, successResponse({ tasks, currentTask }), () => {
           if (options.mine) {
+            const developer = getDeveloper(repoRoot);
             console.log(chalk.blue(`My tasks (assignee: ${developer}):`));
           } else {
             console.log(chalk.blue("All active tasks:"));
@@ -377,103 +315,18 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
+        const result = createTask(repoRoot, title, options);
 
-        // Get developer for assignee and creator
-        const developer = getDeveloper(repoRoot);
-        const assignee = options.assignee || developer;
-
-        if (!assignee) {
-          throw CliError.operationFailed(
-            "Create task",
-            "No developer set. Run init-developer first or use --assignee"
-          );
+        if (!result.success) {
+          throw CliError.operationFailed("Create task", result.error!);
         }
 
-        const creator = developer || assignee;
-
-        // Generate slug if not provided
-        const taskSlug = options.slug || slugify(title);
-        if (!taskSlug) {
-          throw CliError.invalidArgument(
-            "slug",
-            "Could not generate slug from title. Use --slug to specify manually"
-          );
-        }
-
-        // Create task directory
-        const tasksDir = ensureTasksDir(repoRoot);
-        const datePrefix = getDatePrefix();
-        const dirName = `${datePrefix}-${taskSlug}`;
-        const taskDir = join(tasksDir, dirName);
-
-        if (existsSync(taskDir)) {
-          outputWarning(ctx, `Task directory already exists: ${dirName}`);
-        } else {
-          mkdirSync(taskDir, { recursive: true });
-        }
-
-        // Get current branch as base_branch (PR target)
-        const { stdout: branchOut } = runGitCommand(
-          ["branch", "--show-current"],
-          repoRoot
-        );
-        const currentBranch = branchOut.trim() || "main";
-
-        const today = getTodayDate();
-
-        // Determine executor/platform
-        const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
-        const platform: Platform = EXECUTOR_TO_PLATFORM[executor] || "claude";
-
-        const taskData: TaskJson = {
-          id: taskSlug,
-          name: taskSlug,
-          title: title,
-          description: options.description || "",
-          status: "backlog",
-          dev_type: undefined,
-          scope: undefined,
-          priority: options.priority || "P2",
-          creator: creator,
-          assignee: assignee,
-          createdAt: today,
-          completedAt: undefined,
-          branch: undefined,
-          base_branch: currentBranch,
-          worktree_path: undefined,
-          current_phase: 0,
-          next_action: [
-            { phase: 1, action: "implement" },
-            { phase: 2, action: "check" },
-            { phase: 3, action: "finish" },
-            { phase: 4, action: "create-pr" },
-          ],
-          commit: undefined,
-          pr_url: undefined,
-          subtasks: [],
-          relatedFiles: [],
-          notes: "",
-          agent: options.agent,
-          executor: executor,
-          model: options.model,
-          autoStart: options.start || false,
-          worktree: options.worktree || false,
-        };
-
-        // If --start is provided, set status to queue directly
-        if (options.start) {
-          taskData.status = "queue";
-          taskData.queuedAt = new Date().toISOString();
-        }
-
-        writeTaskJson(taskDir, taskData as unknown as Record<string, unknown>);
-
+        const { dirName, status } = result;
         const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
 
         // If --start is provided, show enqueue message
         if (options.start) {
-
-          output(ctx, successResponse({ taskDir: relativePath, status: "queue" }), () => {
+          output(ctx, successResponse({ taskDir: relativePath, status }), () => {
             console.log(chalk.green(`Created and enqueued: ${dirName}`));
             console.log(chalk.gray(`Status: backlog -> queue`));
             if (options.worktree) {
@@ -491,6 +344,7 @@ export function registerTaskCommand(program: Command): void {
             console.log(`  3. Run: viben task start ${dirName}`);
             console.log();
             if (options.executor || options.model) {
+              const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
               console.log(chalk.gray(`Configured: executor=${executor}, model=${options.model || "default"}`));
             }
           });
@@ -511,20 +365,13 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
+        const result = viewTask(repoRoot, task);
 
-        // Try to resolve task directory
-        const taskDir = resolveTaskDirectory(task, repoRoot);
-        if (!taskDir || !existsSync(taskDir)) {
+        if (!result.success) {
           throw CliError.notFound("Task", task);
         }
 
-        const taskData = readTaskJsonFromWorkspace(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Cast to TaskJson for type safety
-        const taskJson = taskData as unknown as TaskJson;
+        const taskJson = result.task!;
 
         output(ctx, successResponse(taskJson), () => {
           console.log(chalk.bold(`Task: ${taskJson.title}`));
@@ -575,29 +422,18 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
-        if (!taskDir) {
-          throw CliError.notFound("Task", task);
-        }
 
-        const taskJsonPath = join(taskDir, FILE_TASK_JSON);
-
-        if (!existsSync(taskJsonPath)) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Open in default editor
-        const editor = process.env.EDITOR || process.env.VISUAL || "vi";
-        const child = spawn(editor, [taskJsonPath], {
-          stdio: "inherit",
-          shell: true,
+        const { result } = editTask(repoRoot, task, {
+          onClose: (code) => {
+            if (code === 0) {
+              outputSuccess(ctx, `Edited task: ${task}`);
+            }
+          },
         });
 
-        child.on("close", (code) => {
-          if (code === 0) {
-            outputSuccess(ctx, `Edited task: ${task}`);
-          }
-        });
+        if (!result.success) {
+          throw CliError.notFound("Task", task);
+        }
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -615,9 +451,10 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
 
-        if (!taskDir || !existsSync(taskDir)) {
+        // Check if task exists first (for warning message)
+        const checkResult = viewTask(repoRoot, task);
+        if (!checkResult.success) {
           throw CliError.notFound("Task", task);
         }
 
@@ -627,8 +464,11 @@ export function registerTaskCommand(program: Command): void {
           return;
         }
 
-        // Use rm -rf to delete the directory
-        execSync(`rm -rf "${taskDir}"`, { cwd: repoRoot });
+        const result = deleteTask(repoRoot, task);
+
+        if (!result.success) {
+          throw CliError.operationFailed("Delete task", result.error!);
+        }
 
         output(ctx, successResponse({ deleted: task }), () => {
           outputSuccess(ctx, `Deleted task: ${task}`);
@@ -642,18 +482,20 @@ export function registerTaskCommand(program: Command): void {
   // Status Commands
   // ============================================================================
 
-  // task start - Start an agent in a worktree (migrated from swarm start)
+  // task start - Start task execution
   taskCmd
     .command("start")
-    .description("Start an agent in a worktree")
+    .description("Start task execution (serial mode by default, use --worktree for parallel)")
     .argument("<task>", "Task name or directory")
     .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
     .option("--detach", "Run in background")
+    .option("--worktree", "Run in isolated git worktree (parallel mode)")
     .option("--resume", "Resume an existing session")
     .option("--session <id>", "Session ID for resume")
     .action(async (task: string, options: {
       executor?: string;
       detach?: boolean;
+      worktree?: boolean;
       resume?: boolean;
       session?: string;
     }) => {
@@ -733,19 +575,24 @@ export function registerTaskCommand(program: Command): void {
           ? EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude"
           : "claude";
 
-        // Start agent using TypeScript implementation
+        // Determine mode: CLI --worktree overrides task.json worktree field
+        const isParallel = options.worktree ?? taskJson?.worktree ?? false;
+        const modeLabel = isParallel ? "parallel (worktree)" : "serial";
+
+        // Start task using startTask from phase/start
         if (!ctx.quiet) {
-          console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
+          console.log(chalk.blue("=== Task Start ==="));
           console.log(`[INFO] Task: ${relativePath}`);
           console.log(`[INFO] Platform: ${platform}`);
+          console.log(`[INFO] Mode: ${modeLabel}`);
         }
 
-        const result: StartResult = await startAgent(repoRoot, relativePath, {
+        const result = await startTask(repoRoot, relativePath, {
           platform,
+          parallel: isParallel,
           detach: options.detach ?? true,
           skipPermissions: true,
           verbose: ctx.verbose,
-          jsonOutput: true,
         });
 
         if (ctx.json) {
@@ -757,19 +604,19 @@ export function registerTaskCommand(program: Command): void {
         } else {
           if (result.success) {
             console.log();
-            console.log(chalk.green("=== Agent Started ==="));
+            console.log(chalk.green(`=== Task Started (${result.mode} mode) ===`));
             console.log();
             console.log(`  ID:        ${result.agentId}`);
             console.log(`  PID:       ${result.pid}`);
             console.log(`  Session:   ${result.sessionId || "N/A"}`);
-            console.log(`  Worktree:  ${result.worktreePath}`);
+            console.log(`  Working:   ${result.workingDir}`);
             console.log(`  Log:       ${result.logFile}`);
             console.log();
             console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
             console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
             if (result.sessionId) {
               const adapter = createCLIAdapter(platform);
-              const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+              const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.workingDir);
               console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
             }
           } else {
@@ -793,19 +640,17 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const currentTask = getCurrentTask(repoRoot);
+        const result = finishTask(repoRoot);
 
-        if (!currentTask) {
-          output(ctx, successResponse({ message: "No current task set" }), () => {
-            console.log(chalk.yellow("No current task set"));
+        if (result.message) {
+          output(ctx, successResponse({ message: result.message }), () => {
+            console.log(chalk.yellow(result.message));
           });
           return;
         }
 
-        clearCurrentTask(repoRoot);
-
-        output(ctx, successResponse({ cleared: currentTask }), () => {
-          console.log(chalk.green(`Cleared current task (was: ${currentTask})`));
+        output(ctx, successResponse({ cleared: result.cleared }), () => {
+          console.log(chalk.green(`Cleared current task (was: ${result.cleared})`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -823,44 +668,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const tasksDir = getTasksDir(repoRoot);
+        const result = archiveTaskOp(repoRoot, task);
 
-        // Find task directory
-        const taskDir = findTaskByName(task, tasksDir);
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Archive task", result.error!);
         }
 
-        const dirName = taskDir.split("/").pop() || "";
-        const taskJsonPath = join(taskDir, FILE_TASK_JSON);
-
-        // Update status before archiving
-        const today = getTodayDate();
-        if (existsSync(taskJsonPath)) {
-          const taskData = readTaskJsonFromWorkspace(taskDir);
-          if (taskData) {
-            taskData.status = "completed";
-            taskData.completedAt = today;
-            writeTaskJson(taskDir, taskData);
-          }
-        }
-
-        // Clear if it's the current task
-        const currentTask = getCurrentTask(repoRoot);
-        if (currentTask && currentTask.includes(dirName)) {
-          clearCurrentTask(repoRoot);
-        }
-
-        // Archive the task
-        const archiveDest = archiveTask(taskDir, repoRoot);
-        if (archiveDest) {
-          const yearMonth = getYearMonth();
-          output(ctx, successResponse({ archived: dirName, to: archiveDest }), () => {
-            console.log(chalk.green(`Archived: ${dirName} -> archive/${yearMonth}/`));
-          });
-        } else {
-          throw CliError.operationFailed("Archive task", "Failed to move task to archive");
-        }
+        output(ctx, successResponse({ archived: result.archived, to: result.destination }), () => {
+          console.log(chalk.green(`Archived: ${result.archived} -> ${result.destination}`));
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -877,7 +693,8 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const archived = getArchivedTasks(repoRoot, month);
+        const result = listArchivedTasks(repoRoot, month);
+        const { archived } = result;
 
         output(ctx, successResponse({ archived: Object.fromEntries(archived) }), () => {
           console.log(chalk.blue("Archived tasks:"));
@@ -931,49 +748,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = enqueueTask(repoRoot, task, options);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Enqueue task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "queue", "QUEUE");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Enqueue task", validation.error!);
-        }
-
-        // Build additional fields
-        const additionalFields: Record<string, unknown> = {
-          queuedAt: new Date().toISOString(),
-        };
-
-        if (options.agent) additionalFields.agent = options.agent;
-        if (options.executor) additionalFields.executor = options.executor;
-        if (options.model) additionalFields.model = options.model;
-        if (options.priority) additionalFields.priority = options.priority;
-
-        // Update task status
-        if (!updateTaskStatus(taskDir, "queue", additionalFields)) {
-          throw CliError.operationFailed("Enqueue task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "QUEUE", {
-          agent: options.agent,
-          executor: options.executor,
-          model: options.model,
-        });
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "queue" }), () => {
-          console.log(chalk.green(`Enqueued: ${dirName}`));
-          console.log(chalk.gray(`Status: backlog -> queue`));
+        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+          console.log(chalk.green(`Enqueued: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> ${result.status}`));
           if (options.agent) console.log(chalk.gray(`Agent: ${options.agent}`));
           if (options.executor) console.log(chalk.gray(`Executor: ${options.executor}`));
           if (options.model) console.log(chalk.gray(`Model: ${options.model}`));
@@ -994,35 +777,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = dequeueTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Dequeue task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "backlog", "DEQUEUE");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Dequeue task", validation.error!);
-        }
-
-        // Update task status (clear queuedAt)
-        if (!updateTaskStatus(taskDir, "backlog", { queuedAt: null })) {
-          throw CliError.operationFailed("Dequeue task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "DEQUEUE");
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "backlog" }), () => {
-          console.log(chalk.green(`Dequeued: ${dirName}`));
-          console.log(chalk.gray(`Status: queue -> backlog`));
+        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+          console.log(chalk.green(`Dequeued: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> ${result.status}`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1040,42 +803,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = pauseTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Pause task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "paused", "PAUSE");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Pause task", validation.error!);
-        }
-
-        // Save paused snapshot
-        const pausedSnapshot: PausedSnapshot = {
-          fromState: taskData.status,
-          subtaskIndex: taskData.current_phase || 0,
-          pausedAt: new Date().toISOString(),
-        };
-
-        // Update task status
-        if (!updateTaskStatus(taskDir, "paused", { pausedSnapshot })) {
-          throw CliError.operationFailed("Pause task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "PAUSE", { fromState: taskData.status });
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "paused", fromState: taskData.status }), () => {
-          console.log(chalk.green(`Paused: ${dirName}`));
-          console.log(chalk.gray(`Status: ${taskData.status} -> paused`));
+        output(ctx, successResponse({ task: result.task, status: result.status, fromState: result.fromStatus }), () => {
+          console.log(chalk.green(`Paused: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> paused`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1093,40 +829,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = resumeTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Resume task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition (RESUME expects paused state)
-        const validation = validateStatusTransition(taskData.status, "queue", "RESUME");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Resume task", validation.error!);
-        }
-
-        // Read pausedSnapshot to determine target status
-        const pausedSnapshot = (taskData as unknown as { pausedSnapshot?: PausedSnapshot }).pausedSnapshot;
-
-        const targetStatus = pausedSnapshot?.fromState || "queue";
-
-        // Update task status (clear pausedSnapshot)
-        if (!updateTaskStatus(taskDir, targetStatus, { pausedSnapshot: null })) {
-          throw CliError.operationFailed("Resume task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "RESUME", { toState: targetStatus });
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: targetStatus }), () => {
-          console.log(chalk.green(`Resumed: ${dirName}`));
-          console.log(chalk.gray(`Status: paused -> ${targetStatus}`));
+        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+          console.log(chalk.green(`Resumed: ${result.task}`));
+          console.log(chalk.gray(`Status: paused -> ${result.status}`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1149,22 +860,18 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = setTaskBranch(repoRoot, task, options.branch);
 
-        if (!taskDir || !existsSync(join(taskDir, FILE_TASK_JSON))) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Set branch", result.error!);
         }
 
-        if (updateTaskField(taskDir, "branch", options.branch)) {
-          output(ctx, successResponse({ task, branch: options.branch }), () => {
-            console.log(chalk.green(`Branch set to: ${options.branch}`));
-            console.log();
-            console.log(chalk.blue("Now you can start the multi-agent pipeline:"));
-            console.log(`  viben task plan --name ${task} ...`);
-          });
-        } else {
-          throw CliError.operationFailed("Set branch", "Failed to update task.json");
-        }
+        output(ctx, successResponse({ task, branch: options.branch }), () => {
+          console.log(chalk.green(`Branch set to: ${options.branch}`));
+          console.log();
+          console.log(chalk.blue("Now you can start the multi-agent pipeline:"));
+          console.log(`  viben task plan --name ${task} ...`);
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1182,20 +889,16 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = setTaskBaseBranch(repoRoot, task, options.branch);
 
-        if (!taskDir || !existsSync(join(taskDir, FILE_TASK_JSON))) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Set base branch", result.error!);
         }
 
-        if (updateTaskField(taskDir, "base_branch", options.branch)) {
-          output(ctx, successResponse({ task, base_branch: options.branch }), () => {
-            console.log(chalk.green(`Base branch set to: ${options.branch}`));
-            console.log(`  PR will target: ${options.branch}`);
-          });
-        } else {
-          throw CliError.operationFailed("Set base branch", "Failed to update task.json");
-        }
+        output(ctx, successResponse({ task, base_branch: options.branch }), () => {
+          console.log(chalk.green(`Base branch set to: ${options.branch}`));
+          console.log(`  PR will target: ${options.branch}`);
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1213,19 +916,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = setTaskScope(repoRoot, task, options.scope);
 
-        if (!taskDir || !existsSync(join(taskDir, FILE_TASK_JSON))) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Set scope", result.error!);
         }
 
-        if (updateTaskField(taskDir, "scope", options.scope)) {
-          output(ctx, successResponse({ task, scope: options.scope }), () => {
-            console.log(chalk.green(`Scope set to: ${options.scope}`));
-          });
-        } else {
-          throw CliError.operationFailed("Set scope", "Failed to update task.json");
-        }
+        output(ctx, successResponse({ task, scope: options.scope }), () => {
+          console.log(chalk.green(`Scope set to: ${options.scope}`));
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1243,19 +942,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = setTaskAgent(repoRoot, task, options.agent);
 
-        if (!taskDir || !existsSync(join(taskDir, FILE_TASK_JSON))) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Set agent", result.error!);
         }
 
-        if (updateTaskField(taskDir, "agent", options.agent)) {
-          output(ctx, successResponse({ task, agent: options.agent }), () => {
-            outputSuccess(ctx, `Set agent "${options.agent}" for task "${task}"`);
-          });
-        } else {
-          throw CliError.operationFailed("Set agent", "Failed to update task.json");
-        }
+        output(ctx, successResponse({ task, agent: options.agent }), () => {
+          outputSuccess(ctx, `Set agent "${options.agent}" for task "${task}"`);
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1277,97 +972,34 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = initContext(repoRoot, task, options.type);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Initialize context", result.error!);
         }
 
-        const devType = options.type;
-        const validTypes = ["backend", "frontend", "fullstack", "test", "docs"];
-        if (!validTypes.includes(devType)) {
-          throw CliError.invalidArgument("type", `Must be one of: ${validTypes.join(", ")}`);
-        }
-
-        console.log(chalk.blue("=== Initializing Agent Context Files ==="));
-        console.log(`Target dir: ${taskDir}`);
-        console.log(`Dev type: ${devType}`);
-        console.log();
-
-        // implement.jsonl
-        console.log(chalk.cyan("Creating implement.jsonl..."));
-        const implementEntries: ContextEntry[] = [
-          { file: `${DIR_VIBEN}/workflow.md`, reason: "Project workflow and conventions" },
-        ];
-
-        if (devType === "backend" || devType === "test" || devType === "fullstack") {
-          implementEntries.push({
-            file: "docs/specs/backend/index.md",
-            reason: "Backend development guide",
-          });
-        }
-        if (devType === "frontend" || devType === "fullstack") {
-          implementEntries.push({
-            file: "docs/specs/frontend/index.md",
-            reason: "Frontend development guide",
-          });
-        }
-
-        const implementFile = join(taskDir, "implement.jsonl");
-        writeJsonlFile(implementFile, implementEntries as unknown as Array<Record<string, unknown>>);
-        console.log(`  ${chalk.green("OK")} ${implementEntries.length} entries`);
-
-        // check.jsonl
-        console.log(chalk.cyan("Creating check.jsonl..."));
-        const checkEntries: ContextEntry[] = [
-          { file: ".claude/commands/viben/finish-work.md", reason: "Finish work checklist" },
-        ];
-        if (devType === "backend" || devType === "fullstack") {
-          checkEntries.push({
-            file: ".claude/commands/viben/check-backend.md",
-            reason: "Backend check spec",
-          });
-        }
-        if (devType === "frontend" || devType === "fullstack") {
-          checkEntries.push({
-            file: ".claude/commands/viben/check-frontend.md",
-            reason: "Frontend check spec",
-          });
-        }
-
-        const checkFile = join(taskDir, "check.jsonl");
-        writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
-        console.log(`  ${chalk.green("OK")} ${checkEntries.length} entries`);
-
-        // debug.jsonl
-        console.log(chalk.cyan("Creating debug.jsonl..."));
-        const debugEntries: ContextEntry[] = [];
-        if (devType === "backend" || devType === "fullstack") {
-          debugEntries.push({
-            file: ".claude/commands/viben/check-backend.md",
-            reason: "Backend check spec",
-          });
-        }
-        if (devType === "frontend" || devType === "fullstack") {
-          debugEntries.push({
-            file: ".claude/commands/viben/check-frontend.md",
-            reason: "Frontend check spec",
-          });
-        }
-
-        const debugFile = join(taskDir, "debug.jsonl");
-        writeJsonlFile(debugFile, debugEntries as unknown as Array<Record<string, unknown>>);
-        console.log(`  ${chalk.green("OK")} ${debugEntries.length} entries`);
-
-        // Update task.json with dev_type
-        updateTaskField(taskDir, "dev_type", devType);
-
-        console.log();
-        console.log(chalk.green("OK All context files created"));
-        console.log();
-        console.log(chalk.blue("Next steps:"));
-        console.log("  1. Add task-specific specs: viben task add-context <task> <path>");
-        console.log("  2. Set as current: viben task start <task>");
+        output(ctx, successResponse({
+          taskDir: result.taskDir,
+          devType: result.devType,
+          files: result.files,
+        }), () => {
+          console.log(chalk.blue("=== Initializing Agent Context Files ==="));
+          console.log(`Target dir: ${result.taskDir}`);
+          console.log(`Dev type: ${result.devType}`);
+          console.log();
+          console.log(chalk.cyan("Created implement.jsonl..."));
+          console.log(`  ${chalk.green("OK")} ${result.files.implement} entries`);
+          console.log(chalk.cyan("Created check.jsonl..."));
+          console.log(`  ${chalk.green("OK")} ${result.files.check} entries`);
+          console.log(chalk.cyan("Created fix.jsonl..."));
+          console.log(`  ${chalk.green("OK")} ${result.files.fix} entries`);
+          console.log();
+          console.log(chalk.green("OK All context files created"));
+          console.log();
+          console.log(chalk.blue("Next steps:"));
+          console.log("  1. Add task-specific specs: viben task add-context <task> <path>");
+          console.log("  2. Set as current: viben task start <task>");
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1387,43 +1019,17 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = addContext(repoRoot, task, files, options);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Add context", result.error!);
         }
 
-        const implementFile = join(taskDir, "implement.jsonl");
-        const reason = options.reason || "Added by user";
-
-        let addedCount = 0;
-        for (const file of files) {
-          // Skip if already exists
-          if (jsonlEntryExists(implementFile, file)) {
-            console.log(chalk.yellow(`Skipped (exists): ${file}`));
-            continue;
+        output(ctx, successResponse({ added: result.added, skipped: result.skipped, total: result.total }), () => {
+          if (result.skipped > 0) {
+            console.log(chalk.yellow(`Skipped ${result.skipped} existing file(s)`));
           }
-
-          // Determine type
-          let type: "file" | "directory" | undefined;
-          const fullPath = join(repoRoot, file);
-          if (existsSync(fullPath)) {
-            type = statSync(fullPath).isDirectory() ? "directory" : "file";
-          }
-
-          const entry: ContextEntry = { file, reason };
-          if (type) {
-            entry.type = type;
-          }
-
-          appendToJsonl(implementFile, entry as unknown as Record<string, unknown>);
-          console.log(chalk.green(`Added: ${file}`));
-          addedCount++;
-        }
-
-        output(ctx, successResponse({ added: addedCount, total: files.length }), () => {
-          console.log();
-          console.log(chalk.blue(`Added ${addedCount}/${files.length} file(s) to implement.jsonl`));
+          console.log(chalk.blue(`Added ${result.added}/${result.total} file(s) to implement.jsonl`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1442,32 +1048,14 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = removeContext(repoRoot, task, files);
 
-        if (!taskDir) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Remove context", result.error!);
         }
 
-        for (const jsonlName of ["implement.jsonl", "check.jsonl", "debug.jsonl"]) {
-          const jsonlPath = join(taskDir, jsonlName);
-          if (!existsSync(jsonlPath)) continue;
-
-          const content = readFileSync(jsonlPath, "utf-8");
-          const lines = content.split("\n").filter((line) => {
-            if (!line.trim()) return false;
-            try {
-              const entry = JSON.parse(line);
-              return !files.includes(entry.file);
-            } catch {
-              return true;
-            }
-          });
-
-          writeFileSync(jsonlPath, lines.join("\n") + "\n", "utf-8");
-        }
-
-        output(ctx, successResponse({ removed: files }), () => {
-          outputSuccess(ctx, `Removed ${files.length} context file(s) from task "${task}"`);
+        output(ctx, successResponse({ removed: result.removed }), () => {
+          outputSuccess(ctx, `Removed ${result.removed.length} context file(s) from task "${task}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1485,27 +1073,17 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = listContext(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("List context", result.error!);
         }
 
-        const contextFiles = ["implement.jsonl", "check.jsonl", "debug.jsonl"];
-        const result: Record<string, ContextEntry[]> = {};
-
-        for (const fileName of contextFiles) {
-          const filePath = join(taskDir, fileName);
-          if (existsSync(filePath)) {
-            result[fileName] = readJsonlFile(filePath) as unknown as ContextEntry[];
-          }
-        }
-
-        output(ctx, successResponse(result), () => {
+        output(ctx, successResponse(result.context), () => {
           console.log(chalk.blue(`Context entries for task: ${task}`));
           console.log();
 
-          for (const [fileName, entries] of Object.entries(result)) {
+          for (const [fileName, entries] of Object.entries(result.context)) {
             console.log(chalk.cyan(`[${fileName}]`));
             if (entries.length === 0) {
               console.log("  (empty)");
@@ -1537,46 +1115,25 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = validateContext(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (result.error) {
+          throw CliError.operationFailed("Validate context", result.error);
         }
 
-        const contextFiles = ["implement.jsonl", "check.jsonl", "debug.jsonl"];
-        const missing: string[] = [];
-        const valid: string[] = [];
-
-        for (const fileName of contextFiles) {
-          const filePath = join(taskDir, fileName);
-          if (!existsSync(filePath)) continue;
-
-          const entries = readJsonlFile(filePath) as unknown as ContextEntry[];
-          for (const entry of entries) {
-            const fullPath = join(repoRoot, entry.file);
-            if (existsSync(fullPath)) {
-              valid.push(entry.file);
-            } else {
-              missing.push(entry.file);
-            }
-          }
-        }
-
-        const success = missing.length === 0;
-
-        output(ctx, successResponse({ valid: valid.length, missing }), () => {
+        output(ctx, successResponse({ valid: result.valid.length, missing: result.missing }), () => {
           console.log(chalk.blue(`Validating context files for task: ${task}`));
           console.log();
 
-          if (success) {
-            console.log(chalk.green(`All ${valid.length} referenced files exist.`));
+          if (result.success) {
+            console.log(chalk.green(`All ${result.valid.length} referenced files exist.`));
           } else {
-            console.log(chalk.yellow(`Found ${missing.length} missing file(s):`));
-            for (const file of missing) {
+            console.log(chalk.yellow(`Found ${result.missing.length} missing file(s):`));
+            for (const file of result.missing) {
               console.log(chalk.red(`  - ${file}`));
             }
             console.log();
-            console.log(chalk.gray(`Valid: ${valid.length}, Missing: ${missing.length}`));
+            console.log(chalk.gray(`Valid: ${result.valid.length}, Missing: ${result.missing.length}`));
           }
         });
       } catch (error) {
@@ -1865,224 +1422,58 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
         const dryRun = options.dryRun || false;
 
-        // Get task directory
-        let targetDir = task;
-        if (!targetDir) {
-          const currentTask = getCurrentTask(repoRoot);
-          if (currentTask) {
-            targetDir = currentTask;
-          }
-        }
-
-        if (!targetDir) {
-          throw CliError.operationFailed(
-            "Create PR",
-            "No task directory specified and no current task set"
-          );
-        }
-
-        // Resolve path
-        const taskDirPath = targetDir.startsWith("/")
-          ? targetDir
-          : join(repoRoot, targetDir);
-
-        const taskJsonPath = join(taskDirPath, FILE_TASK_JSON);
-        if (!existsSync(taskJsonPath)) {
-          throw CliError.notFound("Task", targetDir);
-        }
-
         console.log(chalk.blue("=== Create PR ==="));
         if (dryRun) {
           console.log(chalk.yellow("[DRY-RUN MODE] No actual changes will be made"));
         }
         console.log();
 
-        // Read task config
-        const taskData = readTaskJsonFromWorkspace(taskDirPath);
-        if (!taskData) {
-          throw CliError.operationFailed("Create PR", "Failed to read task.json");
+        const result = createPR(repoRoot, task, { dryRun });
+
+        if (!result.success) {
+          throw CliError.operationFailed("Create PR", result.error || "Unknown error");
         }
 
-        const taskName = (taskData.name as string) || "";
-        const baseBranch = (taskData.base_branch as string) || "main";
-        const scope = (taskData.scope as string) || "core";
-        const devType = (taskData.dev_type as string) || "feature";
-
-        // Map dev_type to commit prefix
-        const prefixMap: Record<string, string> = {
-          feature: "feat",
-          frontend: "feat",
-          backend: "feat",
-          fullstack: "feat",
-          bugfix: "fix",
-          fix: "fix",
-          refactor: "refactor",
-          docs: "docs",
-          test: "test",
-        };
-        const commitPrefix = prefixMap[devType] || "feat";
-
-        console.log(`Task: ${taskName}`);
-        console.log(`Base branch: ${baseBranch}`);
-        console.log(`Scope: ${scope}`);
-        console.log(`Commit prefix: ${commitPrefix}`);
+        // Display task info
+        console.log(`Task: ${result.taskName}`);
+        console.log(`Base branch: ${result.baseBranch}`);
+        console.log(`Current branch: ${result.currentBranch}`);
         console.log();
 
-        // Get current branch
-        const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
-        const currentBranch = branchOut.trim();
-        console.log(`Current branch: ${currentBranch}`);
-
-        // Check for changes
-        console.log(chalk.yellow("Checking for changes..."));
-
-        // Stage changes
-        runGitCommand(["add", "-A"], repoRoot);
-
-        // Exclude workspace and temp files
-        runGitCommand(["reset", `${DIR_VIBEN}/workspace/`], repoRoot);
-        runGitCommand(["reset", ".agent-log", ".session-id"], repoRoot);
-
-        // Check if there are staged changes
-        const { code: diffCode } = runGitCommand(["diff", "--cached", "--quiet"], repoRoot);
-        const hasStagedChanges = diffCode !== 0;
-
-        if (!hasStagedChanges) {
-          console.log(chalk.yellow("No staged changes to commit"));
-
-          // Check for unpushed commits
-          const { stdout: logOut } = runGitCommand(
-            ["log", `origin/${currentBranch}..HEAD`, "--oneline"],
-            repoRoot
-          );
-          const unpushed = logOut.split("\n").filter((line) => line.trim()).length;
-
-          if (unpushed === 0) {
-            if (dryRun) {
-              runGitCommand(["reset", "HEAD"], repoRoot);
-            }
-            throw CliError.operationFailed("Create PR", "No changes to create PR");
-          }
-
-          console.log(`Found ${unpushed} unpushed commit(s)`);
-        } else {
-          // Commit changes
-          console.log(chalk.yellow("Committing changes..."));
-          const commitMsg = `${commitPrefix}(${scope}): ${taskName}`;
-
-          if (dryRun) {
-            console.log(`[DRY-RUN] Would commit with message: ${commitMsg}`);
-            const { stdout: stagedOut } = runGitCommand(["diff", "--cached", "--name-only"], repoRoot);
+        if (dryRun && result.dryRunInfo) {
+          // Show dry run info
+          if (result.hadStagedChanges) {
+            console.log(`[DRY-RUN] Would commit with message: ${result.commitMessage}`);
             console.log("[DRY-RUN] Staged files:");
-            for (const line of stagedOut.split("\n")) {
-              if (line.trim()) {
-                console.log(`  - ${line}`);
-              }
+            for (const file of result.dryRunInfo.stagedFiles) {
+              console.log(`  - ${file}`);
             }
-          } else {
-            runGitCommand(["commit", "-m", commitMsg], repoRoot);
-            console.log(chalk.green(`Committed: ${commitMsg}`));
+          } else if (result.unpushedCommits) {
+            console.log(`Found ${result.unpushedCommits} unpushed commit(s)`);
           }
-        }
 
-        // Push to remote
-        console.log(chalk.yellow("Pushing to remote..."));
-        if (dryRun) {
-          console.log(`[DRY-RUN] Would push to: origin/${currentBranch}`);
-        } else {
-          const { code: pushCode, stderr: pushErr } = runGitCommand(
-            ["push", "-u", "origin", currentBranch],
-            repoRoot
-          );
-          if (pushCode !== 0) {
-            throw CliError.operationFailed("Create PR", `Failed to push: ${pushErr}`);
-          }
-          console.log(chalk.green(`Pushed to origin/${currentBranch}`));
-        }
-
-        // Create PR
-        console.log(chalk.yellow("Creating PR..."));
-        const prTitle = `${commitPrefix}(${scope}): ${taskName}`;
-        let prUrl = "";
-
-        if (dryRun) {
+          console.log(`[DRY-RUN] Would push to: origin/${result.currentBranch}`);
           console.log("[DRY-RUN] Would create PR:");
-          console.log(`  Title: ${prTitle}`);
-          console.log(`  Base:  ${baseBranch}`);
-          console.log(`  Head:  ${currentBranch}`);
-          const prdFile = join(taskDirPath, "prd.md");
-          if (existsSync(prdFile)) {
-            console.log("  Body:  (from prd.md)");
-          }
-          prUrl = "https://github.com/example/repo/pull/DRY-RUN";
-        } else {
-          // Check if PR already exists
-          try {
-            const existingPrResult = execSync(
-              `gh pr list --head "${currentBranch}" --base "${baseBranch}" --json url --jq ".[0].url"`,
-              { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-            ).trim();
-
-            if (existingPrResult) {
-              console.log(chalk.yellow(`PR already exists: ${existingPrResult}`));
-              prUrl = existingPrResult;
-            }
-          } catch {
-            // No existing PR
-          }
-
-          if (!prUrl) {
-            // Read PRD as PR body
-            let prBody = "";
-            const prdFile = join(taskDirPath, "prd.md");
-            if (existsSync(prdFile)) {
-              prBody = readFileSync(prdFile, "utf-8");
-            }
-
-            try {
-              const createPrResult = execSync(
-                `gh pr create --draft --base "${baseBranch}" --title "${prTitle}" --body "${prBody.replace(/"/g, '\\"')}"`,
-                { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-              ).trim();
-
-              prUrl = createPrResult;
-              console.log(chalk.green(`PR created: ${prUrl}`));
-            } catch (err) {
-              const error = err as { stderr?: string };
-              throw CliError.operationFailed("Create PR", `Failed to create PR: ${error.stderr || "Unknown error"}`);
-            }
-          }
-        }
-
-        // Update task.json
-        console.log(chalk.yellow("Updating task status..."));
-        if (dryRun) {
+          console.log(`  Title: ${result.dryRunInfo.prTitle}`);
+          console.log(`  Base:  ${result.dryRunInfo.prBase}`);
+          console.log(`  Head:  ${result.dryRunInfo.prHead}`);
           console.log("[DRY-RUN] Would update task.json:");
           console.log("  status: human_review");
-          console.log(`  pr_url: ${prUrl}`);
-          console.log("  current_phase: (set to create-pr phase)");
+          console.log(`  pr_url: ${result.prUrl}`);
         } else {
-          // Get phase number for create-pr action
-          let createPrPhase = getPhaseForAction(taskJsonPath, "create-pr");
-          if (!createPrPhase) {
-            createPrPhase = 4; // Default fallback
+          // Show actual results
+          if (result.hadStagedChanges) {
+            console.log(chalk.green(`Committed: ${result.commitMessage}`));
+          } else if (result.unpushedCommits) {
+            console.log(`Found ${result.unpushedCommits} unpushed commit(s)`);
           }
-
-          updateTaskField(taskDirPath, "status", "human_review");
-          updateTaskField(taskDirPath, "pr_url", prUrl);
-          updateTaskField(taskDirPath, "current_phase", createPrPhase);
-
-          console.log(chalk.green(`Task status updated to 'human_review', phase ${createPrPhase}`));
-        }
-
-        // In dry-run, reset staging area
-        if (dryRun) {
-          runGitCommand(["reset", "HEAD"], repoRoot);
+          console.log(chalk.green(`Pushed to origin/${result.currentBranch}`));
+          console.log(chalk.green(`Task status updated to 'human_review'`));
         }
 
         console.log();
         console.log(chalk.green("=== PR Created Successfully ==="));
-        console.log(`PR URL: ${prUrl}`);
+        console.log(`PR URL: ${result.prUrl}`);
 
       } catch (error) {
         handleCommandError(ctx, error);
@@ -2104,62 +1495,38 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = reviewTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
+        if (!result.success) {
           throw CliError.notFound("Task", task);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        const dirName = taskDir.split("/").pop() || task;
-
-        // Try to get PR info if pr_url exists
-        let prInfo: { additions?: number; deletions?: number; changedFiles?: number } = {};
-        if (taskData.pr_url) {
-          try {
-            const prUrl = taskData.pr_url;
-            // Extract PR number from URL
-            const prMatch = prUrl.match(/\/pull\/(\d+)/);
-            if (prMatch) {
-              const result = execSync(
-                `gh pr view ${prMatch[1]} --json additions,deletions,changedFiles 2>/dev/null`,
-                { cwd: repoRoot, encoding: "utf-8" }
-              );
-              prInfo = JSON.parse(result);
-            }
-          } catch {
-            // Ignore gh errors
-          }
-        }
+        const { task: taskData, dirName, prInfo } = result;
 
         output(ctx, successResponse({ task: dirName, ...taskData, prInfo }), () => {
           console.log(chalk.bold(`=== Task Review: ${dirName} ===`));
           console.log();
-          console.log(`Title:    ${taskData.title}`);
-          console.log(`Status:   ${formatStatus(taskData.status)}`);
-          console.log(`Priority: ${formatPriority(taskData.priority)}`);
+          console.log(`Title:    ${taskData!.title}`);
+          console.log(`Status:   ${formatStatus(taskData!.status)}`);
+          console.log(`Priority: ${formatPriority(taskData!.priority)}`);
           console.log();
 
-          if (taskData.pr_url) {
-            console.log(`PR URL:   ${chalk.cyan(taskData.pr_url)}`);
-            console.log(`Branch:   ${taskData.branch || "-"}`);
+          if (taskData!.pr_url) {
+            console.log(`PR URL:   ${chalk.cyan(taskData!.pr_url)}`);
+            console.log(`Branch:   ${taskData!.branch || "-"}`);
             console.log();
-            if (prInfo.changedFiles) {
+            if (prInfo?.changedFiles) {
               console.log(`Files Changed: ${prInfo.changedFiles}`);
               console.log(`+${prInfo.additions || 0} -${prInfo.deletions || 0}`);
               console.log();
             }
           }
 
-          if (taskData.status === "human_review") {
+          if (taskData!.status === "human_review") {
             console.log(chalk.blue("Next steps:"));
             console.log(`  viben task approve ${dirName}   # Approve and complete`);
             console.log(`  viben task reject ${dirName}    # Reject and return to backlog`);
-          } else if (taskData.status === "failed") {
+          } else if (taskData!.status === "failed") {
             console.log(chalk.blue("Next steps:"));
             console.log(`  viben task retry ${dirName}     # Retry failed task`);
           }
@@ -2180,42 +1547,18 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = approveTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Approve task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "completed", "APPROVED");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Approve task", validation.error!);
-        }
-
-        // Update task status
-        const completedAt = getTodayDate();
-        if (!updateTaskStatus(taskDir, "completed", {
-          completedAt,
-          reviewReason: "approved"
-        })) {
-          throw CliError.operationFailed("Approve task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "APPROVED");
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "completed" }), () => {
-          console.log(chalk.green(`Approved: ${dirName}`));
-          console.log(chalk.gray(`Status: human_review -> completed`));
+        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+          console.log(chalk.green(`Approved: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> completed`));
           console.log();
           console.log(chalk.blue("Next steps:"));
-          console.log(`  viben task archive ${dirName}    # Archive completed task`);
+          console.log(`  viben task archive ${result.task}    # Archive completed task`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -2234,44 +1577,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = rejectTask(repoRoot, task, options.reason);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Reject task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "backlog", "REJECTED");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Reject task", validation.error!);
-        }
-
-        // Build additional fields - clear pr_url, record rejection
-        const additionalFields: Record<string, unknown> = {
-          pr_url: null, // Clear PR URL as it may need to be resubmitted
-          reviewReason: "rejected",
-        };
-        if (options.reason) {
-          additionalFields.rejectReason = options.reason;
-        }
-
-        // Update task status
-        if (!updateTaskStatus(taskDir, "backlog", additionalFields)) {
-          throw CliError.operationFailed("Reject task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "REJECTED", { reason: options.reason });
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "backlog", reason: options.reason }), () => {
-          console.log(chalk.yellow(`Rejected: ${dirName}`));
-          console.log(chalk.gray(`Status: human_review -> backlog`));
+        output(ctx, successResponse({ task: result.task, status: result.status, reason: options.reason }), () => {
+          console.log(chalk.yellow(`Rejected: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> backlog`));
           if (options.reason) {
             console.log(chalk.gray(`Reason: ${options.reason}`));
           }
@@ -2292,40 +1606,15 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskDir = resolveTaskDirectory(task, repoRoot);
+        const result = retryTask(repoRoot, task);
 
-        if (!taskDir || !existsSync(taskDir)) {
-          throw CliError.notFound("Task", task);
+        if (!result.success) {
+          throw CliError.operationFailed("Retry task", result.error!);
         }
 
-        const taskData = readTaskJson(taskDir);
-        if (!taskData) {
-          throw CliError.notFound("Task", task);
-        }
-
-        // Validate status transition
-        const validation = validateStatusTransition(taskData.status, "queue", "RETRY");
-        if (!validation.valid) {
-          throw CliError.operationFailed("Retry task", validation.error!);
-        }
-
-        // Update task status - clear error fields, set new queuedAt
-        if (!updateTaskStatus(taskDir, "queue", {
-          queuedAt: new Date().toISOString(),
-          error: null,
-          errorMessage: null,
-          failedAt: null,
-        })) {
-          throw CliError.operationFailed("Retry task", "Failed to update task.json");
-        }
-
-        // Append event
-        appendTaskEvent(taskDir, "RETRY");
-
-        const dirName = taskDir.split("/").pop() || task;
-        output(ctx, successResponse({ task: dirName, status: "queue" }), () => {
-          console.log(chalk.green(`Retrying: ${dirName}`));
-          console.log(chalk.gray(`Status: failed -> queue`));
+        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+          console.log(chalk.green(`Retrying: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> queue`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -2339,51 +1628,15 @@ export function registerTaskCommand(program: Command): void {
 
     try {
       const repoRoot = ensureVibenDirWithRoot(cwd);
-      const taskDir = resolveTaskDirectory(task, repoRoot);
+      const result = cancelTask(repoRoot, task, options);
 
-      if (!taskDir || !existsSync(taskDir)) {
-        throw CliError.notFound("Task", task);
+      if (!result.success) {
+        throw CliError.operationFailed("Cancel task", result.error!);
       }
 
-      const taskData = readTaskJson(taskDir);
-      if (!taskData) {
-        throw CliError.notFound("Task", task);
-      }
-
-      // Check if task is in_progress and --force is not specified
-      if (taskData.status === "in_progress" && !options.force) {
-        throw CliError.operationFailed(
-          "Cancel task",
-          "Task is in_progress. Use --force to cancel a running task."
-        );
-      }
-
-      // Validate status transition
-      const validation = validateStatusTransition(taskData.status, "cancelled", "CANCEL");
-      if (!validation.valid) {
-        throw CliError.operationFailed("Cancel task", validation.error!);
-      }
-
-      // Build additional fields
-      const additionalFields: Record<string, unknown> = {
-        cancelledAt: new Date().toISOString(),
-      };
-      if (options.reason) {
-        additionalFields.cancelReason = options.reason;
-      }
-
-      // Update task status
-      if (!updateTaskStatus(taskDir, "cancelled", additionalFields)) {
-        throw CliError.operationFailed("Cancel task", "Failed to update task.json");
-      }
-
-      // Append event
-      appendTaskEvent(taskDir, "CANCEL", options.reason ? { reason: options.reason } : undefined);
-
-      const dirName = taskDir.split("/").pop() || task;
-      output(ctx, successResponse({ task: dirName, status: "cancelled", reason: options.reason }), () => {
-        console.log(chalk.red(`Cancelled: ${dirName}`));
-        console.log(chalk.gray(`Status: ${taskData.status} -> cancelled`));
+      output(ctx, successResponse({ task: result.task, status: result.status, reason: options.reason }), () => {
+        console.log(chalk.red(`Cancelled: ${result.task}`));
+        console.log(chalk.gray(`Status: ${result.fromStatus} -> cancelled`));
         if (options.reason) {
           console.log(chalk.gray(`Reason: ${options.reason}`));
         }
@@ -2527,7 +1780,7 @@ export function registerTaskCommand(program: Command): void {
                 `[!] Exceeds ${MAX_LINES} lines, creating journal-${targetNum}.md`
               )
             );
-            targetFile = createNewJournalFileSync(
+            targetFile = createNewJournalFile(
               devDir,
               targetNum,
               developer,
@@ -2540,7 +1793,7 @@ export function registerTaskCommand(program: Command): void {
           // Create initial journal file if none exists
           if (!targetFile) {
             targetNum = 1;
-            targetFile = createNewJournalFileSync(devDir, targetNum, developer, today, 0);
+            targetFile = createNewJournalFile(devDir, targetNum, developer, today, 0);
             console.log(`Created initial: ${targetFile}`);
           }
 
@@ -2600,1321 +1853,297 @@ export function registerTaskCommand(program: Command): void {
         }
       }
     );
-}
 
-// =============================================================================
-// Add Session Command Helpers
-// =============================================================================
+  // ============================================================================
+  // Phase Commands
+  // ============================================================================
 
-/**
- * Get the latest journal file info from workspace directory
- * Returns: { file: path | null, number: number, lines: number }
- */
-function getLatestJournalInfo(devDir: string): {
-  file: string | null;
-  number: number;
-  lines: number;
-} {
-  if (!existsSync(devDir)) {
-    return { file: null, number: 0, lines: 0 };
-  }
-
-  let latestFile: string | null = null;
-  let latestNum = -1;
-
-  try {
-    const files = readdirSync(devDir);
-    for (const file of files) {
-      if (file.startsWith("journal-") && file.endsWith(".md")) {
-        const match = file.match(/journal-(\d+)\.md$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > latestNum) {
-            latestNum = num;
-            latestFile = join(devDir, file);
-          }
-        }
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  if (latestFile) {
-    let lines = 0;
-    try {
-      const content = readFileSync(latestFile, "utf-8");
-      const splitLines = content.split("\n");
-      // Match Python's splitlines() behavior - don't count trailing empty line
-      if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
-        lines = splitLines.length - 1;
-      } else {
-        lines = splitLines.length;
-      }
-    } catch {
-      // Ignore errors
-    }
-    return { file: latestFile, number: latestNum, lines };
-  }
-
-  return { file: null, number: 0, lines: 0 };
-}
-
-/**
- * Get current session number from index.md by parsing "Total Sessions" line
- */
-function getSessionNumberFromIndex(indexPath: string): number {
-  if (!existsSync(indexPath)) {
-    return 0;
-  }
-
-  try {
-    const content = readFileSync(indexPath, "utf-8");
-    for (const line of content.split("\n")) {
-      if (line.includes("Total Sessions")) {
-        const match = line.match(/:\s*(\d+)/);
-        if (match) {
-          return parseInt(match[1], 10);
-        }
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return 0;
-}
-
-/**
- * Generate session content markdown
- */
-function generateSessionMarkdown(params: {
-  sessionNum: number;
-  title: string;
-  commit: string;
-  summary: string;
-  extraContent: string;
-  date: string;
-}): string {
-  const { sessionNum, title, commit, summary, extraContent, date } = params;
-
-  let commitTable: string;
-  if (commit && commit !== "-") {
-    const lines = ["| Hash | Message |", "|------|---------|"];
-    for (const c of commit.split(",")) {
-      const trimmed = c.trim();
-      lines.push(`| \`${trimmed}\` | (see git log) |`);
-    }
-    commitTable = lines.join("\n");
-  } else {
-    commitTable = "(No commits - planning session)";
-  }
-
-  return `
-
-## Session ${sessionNum}: ${title}
-
-**Date**: ${date}
-**Task**: ${title}
-
-### Summary
-
-${summary}
-
-### Main Changes
-
-${extraContent}
-
-### Git Commits
-
-${commitTable}
-
-### Testing
-
-- [OK] (Add test results)
-
-### Status
-
-[OK] **Completed**
-
-### Next Steps
-
-- None - task complete
-`;
-}
-
-/**
- * Create a new journal file when current one exceeds MAX_LINES
- */
-function createNewJournalFileSync(
-  devDir: string,
-  number: number,
-  developer: string,
-  date: string,
-  prevNumber: number
-): string {
-  const newFilePath = join(devDir, `journal-${number}.md`);
-  const maxLines = 2000;
-
-  const content = `# Journal - ${developer} (Part ${number})
-
-> Continuation from \`journal-${prevNumber}.md\` (archived at ~${maxLines} lines)
-> Started: ${date}
-
----
-
-`;
-
-  writeFileSync(newFilePath, content, "utf-8");
-  return newFilePath;
-}
-
-/**
- * Count journal files and return markdown table rows
- */
-function countJournalFilesTable(devDir: string, activeNum: number): string {
-  const activeFile = `journal-${activeNum}.md`;
-  const resultLines: string[] = [];
-
-  try {
-    const files = readdirSync(devDir)
-      .filter((f) => f.startsWith("journal-") && f.endsWith(".md"))
-      .sort((a, b) => {
-        const numA = parseInt(a.match(/(\d+)/)?.[1] ?? "0", 10);
-        const numB = parseInt(b.match(/(\d+)/)?.[1] ?? "0", 10);
-        return numB - numA; // Descending order
-      });
-
-    for (const filename of files) {
-      const filePath = join(devDir, filename);
-      let lines = 0;
-      try {
-        const content = readFileSync(filePath, "utf-8");
-        const splitLines = content.split("\n");
-        if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
-          lines = splitLines.length - 1;
-        } else {
-          lines = splitLines.length;
-        }
-      } catch {
-        // Ignore errors
-      }
-      const status = filename === activeFile ? "Active" : "Archived";
-      resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return resultLines.join("\n");
-}
-
-/**
- * Update index.md with new session info
- * Processes sections marked with @@@auto markers
- */
-function updateIndexWithNewSession(params: {
-  indexPath: string;
-  devDir: string;
-  sessionNum: number;
-  title: string;
-  commit: string;
-  activeFile: string;
-  date: string;
-}): boolean {
-  const { indexPath, devDir, sessionNum, title, commit, activeFile, date } =
-    params;
-
-  if (!existsSync(indexPath)) {
-    return false;
-  }
-
-  // Format commit for display
-  let commitDisplay = "-";
-  if (commit && commit !== "-") {
-    commitDisplay = commit
-      .split(",")
-      .map((c) => `\`${c.trim()}\``)
-      .join(", ");
-  }
-
-  // Get active file number and count all journal files
-  const match = activeFile.match(/journal-(\d+)\.md$/);
-  const activeNum = match ? parseInt(match[1], 10) : 0;
-  const filesTable = countJournalFilesTable(devDir, activeNum);
-
-  try {
-    const content = readFileSync(indexPath, "utf-8");
-
-    if (!content.includes("@@@auto:current-status")) {
-      return false;
-    }
-
-    const lines = content.split("\n");
-    const newLines: string[] = [];
-
-    let inCurrentStatus = false;
-    let inActiveDocuments = false;
-    let inSessionHistory = false;
-    let headerWritten = false;
-
-    for (const line of lines) {
-      if (line.includes("@@@auto:current-status")) {
-        newLines.push(line);
-        inCurrentStatus = true;
-        newLines.push(`- **Active File**: \`${activeFile}\``);
-        newLines.push(`- **Total Sessions**: ${sessionNum}`);
-        newLines.push(`- **Last Active**: ${date}`);
-        continue;
-      }
-
-      if (line.includes("@@@/auto:current-status")) {
-        inCurrentStatus = false;
-        newLines.push(line);
-        continue;
-      }
-
-      if (line.includes("@@@auto:active-documents")) {
-        newLines.push(line);
-        inActiveDocuments = true;
-        newLines.push("| File | Lines | Status |");
-        newLines.push("|------|-------|--------|");
-        newLines.push(filesTable);
-        continue;
-      }
-
-      if (line.includes("@@@/auto:active-documents")) {
-        inActiveDocuments = false;
-        newLines.push(line);
-        continue;
-      }
-
-      if (line.includes("@@@auto:session-history")) {
-        newLines.push(line);
-        inSessionHistory = true;
-        headerWritten = false;
-        continue;
-      }
-
-      if (line.includes("@@@/auto:session-history")) {
-        inSessionHistory = false;
-        newLines.push(line);
-        continue;
-      }
-
-      if (inCurrentStatus) {
-        continue;
-      }
-
-      if (inActiveDocuments) {
-        continue;
-      }
-
-      if (inSessionHistory) {
-        newLines.push(line);
-        if (/^\|\s*-/.test(line) && !headerWritten) {
-          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
-          headerWritten = true;
-        }
-        continue;
-      }
-
-      newLines.push(line);
-    }
-
-    writeFileSync(indexPath, newLines.join("\n"), "utf-8");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// =============================================================================
-// Status Command Helpers
-// =============================================================================
-
-/**
- * Get last tool call from agent log
- */
-function getLastTool(logFile: string, platform: string = "claude"): string | null {
-  if (!existsSync(logFile)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(logFile, "utf-8");
-    const lines = content.split("\n").slice(-100);
-
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (!line.trim()) continue;
+  // task plan-phase - Run plan phase for an existing task
+  taskCmd
+    .command("plan-phase")
+    .description("Run plan phase for an existing task (spawns plan agent)")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
 
       try {
-        const data = JSON.parse(line);
+        const repoRoot = ensureVibenDirWithRoot(cwd);
 
-        if (platform === "opencode") {
-          if (data.type === "tool_use") {
-            return data.tool;
-          }
-        } else {
-          if (data.type === "assistant") {
-            const content = data.message?.content || [];
-            for (const item of content) {
-              if (item.type === "tool_use") {
-                return item.name;
-              }
-            }
-          }
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(repoRoot, task);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }
-      } catch {
-        continue;
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
 
-  return null;
-}
+        console.log();
+        console.log(chalk.blue("=== Plan Phase ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log();
 
-/**
- * Get last assistant message from agent log
- */
-function getLastMessage(logFile: string, maxLen: number = 100, platform: string = "claude"): string | null {
-  if (!existsSync(logFile)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(logFile, "utf-8");
-    const lines = content.split("\n").slice(-100);
-
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (!line.trim()) continue;
-
-      try {
-        const data = JSON.parse(line);
-
-        if (platform === "opencode") {
-          if (data.type === "text" && data.text) {
-            return data.text.slice(0, maxLen);
-          }
-        } else {
-          if (data.type === "assistant") {
-            const content = data.message?.content || [];
-            for (const item of content) {
-              if (item.type === "text" && item.text) {
-                return item.text.slice(0, maxLen);
-              }
-            }
-          }
-        }
-      } catch {
-        continue;
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return null;
-}
-
-/**
- * Count modified files in a directory
- */
-function countModifiedFiles(worktree: string): number {
-  if (!existsSync(worktree)) {
-    return 0;
-  }
-
-  try {
-    const { stdout } = runGitCommand(["status", "--short"], worktree);
-    return stdout.split("\n").filter((line) => line.trim()).length;
-  } catch {
-    return 0;
-  }
-}
-
-/**
- * Format status with color
- * Uses unified status values: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled
- */
-function statusColor(status: string): string {
-  switch (status) {
-    // Completed states
-    case "completed":
-      return chalk.green(status);
-    // In-progress states
-    case "in_progress":
-    case "queue":
-      return chalk.blue(status);
-    // Waiting states
-    case "backlog":
-    case "human_review":
-    case "paused":
-      return chalk.yellow(status);
-    // Error/terminal states
-    case "failed":
-    case "cancelled":
-      return chalk.red(status);
-    // Legacy mappings
-    case "done":
-    case "pr_created":
-      return chalk.green("completed");
-    case "planning":
-    case "error":
-      return chalk.gray(status);
-    default:
-      return chalk.gray(status);
-  }
-}
-
-/**
- * Status summary filter options
- */
-interface StatusSummaryOptions {
-  filterAssignee?: string;
-  filterStatus?: string;
-  onlyRunning?: boolean;
-}
-
-/**
- * Show summary of all tasks
- */
-function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, ctx?: OutputContext): void {
-  const { filterAssignee, filterStatus, onlyRunning } = options;
-  const tasksDir = getTasksDir(repoRoot);
-  if (!existsSync(tasksDir)) {
-    console.log("No tasks directory found");
-    return;
-  }
-
-  // Count running agents
-  const agents = registryListAgents(repoRoot);
-  let runningCount = 0;
-  for (const agent of agents) {
-    if (isProcessRunning(agent.pid)) {
-      runningCount++;
-    }
-  }
-
-  // Task queue stats
-  const taskStats = getTaskStats(repoRoot);
-
-  console.log(chalk.blue("=== Multi-Agent Status ==="));
-  console.log(`  Agents:  ${chalk.green(String(runningCount))} running / ${agents.length} registered`);
-  console.log(`  Tasks:   ${formatTaskStats(taskStats)}`);
-  console.log();
-
-  // Process tasks
-  interface RunningTask {
-    name: string;
-    priority: string;
-    assignee: string;
-    phaseInfo: string;
-    elapsed: string;
-    branch: string;
-    modified: number;
-    lastTool: string | null;
-    pid: number;
-  }
-
-  interface StoppedTask {
-    name: string;
-    worktree: string;
-    status: string;
-    taskDir: string;
-    logFile: string;
-    platform: string;
-  }
-
-  interface RegularTask {
-    name: string;
-    status: string;
-    priority: string;
-    assignee: string;
-  }
-
-  const runningTasks: RunningTask[] = [];
-  const stoppedTasks: StoppedTask[] = [];
-  const regularTasks: RegularTask[] = [];
-
-  const tasks = getActiveTasks(repoRoot);
-
-  for (const t of tasks) {
-    const name = t.dir;
-    const status = t.status;
-    const assignee = t.assignee;
-    const priority = t.priority;
-
-    // Filter by assignee
-    if (filterAssignee && assignee !== filterAssignee) {
-      continue;
-    }
-
-    // Filter by status
-    if (filterStatus && status !== filterStatus) {
-      continue;
-    }
-
-    // Check agent status
-    const agent = registrySearchAgent(name, repoRoot);
-
-    // If --running flag is set, skip tasks without running agents
-    if (onlyRunning && (!agent || !isProcessRunning(agent.pid))) {
-      continue;
-    }
-
-    if (agent) {
-      const pid = agent.pid;
-      const worktree = agent.worktree_path;
-      const started = agent.started_at;
-      const agentPlatform = agent.platform || "claude";
-
-      if (isProcessRunning(pid)) {
-        // Running agent
-        const taskJsonPath = join(tasksDir, name, FILE_TASK_JSON);
-        const phaseInfoStr = getPhaseInfo(taskJsonPath);
-        const elapsed = calcElapsed(started);
-        const modified = countModifiedFiles(worktree);
-
-        const taskData = readTaskJsonFromWorkspace(join(tasksDir, name));
-        const branch = (taskData?.branch as string) || "N/A";
-
-        const logFile = join(worktree, ".agent-log");
-        const lastTool = getLastTool(logFile, agentPlatform);
-
-        runningTasks.push({
-          name,
-          priority,
-          assignee,
-          phaseInfo: phaseInfoStr,
-          elapsed,
-          branch,
-          modified,
-          lastTool,
-          pid,
+        const result = await runPlanPhase(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
         });
-      } else {
-        // Stopped agent
-        const logFile = join(worktree, ".agent-log");
-        const taskDirPath = join(tasksDir, name);
 
-        stoppedTasks.push({
-          name,
-          worktree,
-          status,
-          taskDir: taskDirPath,
-          logFile,
-          platform: agentPlatform,
-        });
-      }
-    } else {
-      // Regular task
-      regularTasks.push({ name, status, priority, assignee });
-    }
-  }
+        if (result.success) {
+          console.log(chalk.green("=== Plan Agent Started ==="));
+          console.log();
+          console.log(`  ID:   ${result.agentId}`);
+          console.log(`  PID:  ${result.pid}`);
+          console.log(`  Log:  ${result.logFile}`);
+          console.log();
+          console.log(chalk.yellow("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+          console.log();
 
-  // Output running agents
-  if (runningTasks.length > 0) {
-    console.log(chalk.cyan("Running Agents:"));
-    for (const t of runningTasks) {
-      const priorityColor = t.priority === "P0" ? chalk.red : t.priority === "P1" ? chalk.yellow : chalk.blue;
-      console.log(
-        `${chalk.green("▶")} ${chalk.cyan(t.name)} ${chalk.green("[running]")} ${priorityColor(`[${t.priority}]`)} @${t.assignee}`
-      );
-      console.log(`  Phase:    ${t.phaseInfo}`);
-      console.log(`  Elapsed:  ${t.elapsed}`);
-      console.log(`  Branch:   ${chalk.gray(t.branch)}`);
-      console.log(`  Modified: ${t.modified} file(s)`);
-      if (t.lastTool) {
-        console.log(`  Activity: ${chalk.yellow(t.lastTool)}`);
-      }
-      console.log(`  PID:      ${chalk.gray(String(t.pid))}`);
-      console.log();
-    }
-  }
-
-  // Output stopped agents
-  if (stoppedTasks.length > 0) {
-    console.log(chalk.red("Stopped Agents:"));
-    for (const t of stoppedTasks) {
-      // Check for completed states
-      if (t.status === "completed" || t.status === "done" || t.status === "pr_created") {
-        console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
-      } else {
-        const sessionId = getSessionId(t.taskDir);
-        if (sessionId) {
-          const lastMsg = getLastMessage(t.logFile, 150, t.platform);
-          console.log(`${chalk.red("○")} ${t.name} ${chalk.red("[stopped]")}`);
-          if (lastMsg) {
-            console.log(`${chalk.gray(`"${lastMsg}"`)}`);
-          }
-          const adapter = createCLIAdapter(t.platform);
-          const resumeCmd = adapter.getResumeCommandStr(sessionId, t.worktree);
-          console.log(chalk.yellow(resumeCmd));
+          output(ctx, successResponse(result));
         } else {
-          console.log(`${chalk.red("○")} ${t.name} ${chalk.red("[stopped]")} ${chalk.gray("(no session-id)")}`);
+          throw CliError.operationFailed("Plan Phase", result.error || "Unknown error");
         }
+      } catch (error) {
+        handleCommandError(ctx, error);
       }
-      console.log();
-    }
-  }
-
-  // Separator
-  if ((runningTasks.length > 0 || stoppedTasks.length > 0) && regularTasks.length > 0) {
-    console.log(chalk.gray("───────────────────────────────────────"));
-    console.log();
-  }
-
-  // Output regular tasks grouped by assignee
-  if (regularTasks.length > 0) {
-    // Sort by assignee, priority, status
-    regularTasks.sort((a, b) => {
-      const assigneeCompare = a.assignee.localeCompare(b.assignee);
-      if (assigneeCompare !== 0) return assigneeCompare;
-
-      const priorityOrder: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-      const priorityCompare = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
-      if (priorityCompare !== 0) return priorityCompare;
-
-      const statusOrder: Record<string, number> = { in_progress: 0, queue: 1, backlog: 2, human_review: 3, completed: 4 };
-      return (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2);
     });
 
-    let currentAssignee: string | null = null;
-    for (const t of regularTasks) {
-      if (t.assignee !== currentAssignee) {
-        if (currentAssignee !== null) {
+  // task implement-phase - Run implement phase for a task
+  taskCmd
+    .command("implement-phase")
+    .description("Run implement phase for a task (spawns implement agent)")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(repoRoot, task);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Implement Phase ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log();
+
+        const result = await runImplementPhase(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
+        });
+
+        if (result.success) {
+          console.log(chalk.green("=== Implement Agent Started ==="));
           console.log();
+          console.log(`  ID:   ${result.agentId}`);
+          console.log(`  PID:  ${result.pid}`);
+          console.log(`  Log:  ${result.logFile}`);
+          console.log();
+          console.log(chalk.yellow("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+          console.log();
+
+          output(ctx, successResponse(result));
+        } else {
+          throw CliError.operationFailed("Implement Phase", result.error || "Unknown error");
         }
-        console.log(chalk.cyan(`@${t.assignee}:`));
-        currentAssignee = t.assignee;
+      } catch (error) {
+        handleCommandError(ctx, error);
       }
+    });
 
-      const priorityColor = t.priority === "P0" ? chalk.red : t.priority === "P1" ? chalk.yellow : chalk.blue;
-      console.log(`  ${statusColor(t.status).slice(0, 1)} ${t.name} (${t.status}) ${priorityColor(`[${t.priority}]`)}`);
-    }
-  }
+  // task check-phase - Run check phase for a task
+  taskCmd
+    .command("check-phase")
+    .description("Run check phase for a task (spawns check agent)")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
 
-  if (runningTasks.length > 0) {
-    console.log();
-    console.log(chalk.gray("─────────────────────────────────────"));
-    console.log(chalk.gray("Use --detail <name> for more info"));
-  }
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
 
-  console.log();
-}
-
-/**
- * List worktrees and agents
- */
-function cmdStatusList(repoRoot: string, ctx?: OutputContext): void {
-  console.log(chalk.blue("=== Git Worktrees ==="));
-  console.log();
-
-  // Run git worktree list
-  try {
-    const { stdout } = runGitCommand(["worktree", "list"], repoRoot);
-    if (stdout.trim()) {
-      console.log(stdout);
-    } else {
-      console.log("  (no worktrees)");
-    }
-  } catch {
-    console.log("  (failed to list worktrees)");
-  }
-  console.log();
-
-  console.log(chalk.blue("=== Registered Agents ==="));
-  console.log();
-
-  const agents = registryListAgents(repoRoot);
-  if (agents.length === 0) {
-    console.log("  (no agents registered)");
-    return;
-  }
-
-  for (const agent of agents) {
-    const agentId = agent.id;
-    const pid = agent.pid;
-    const worktree = agent.worktree_path;
-    const started = agent.started_at;
-
-    const statusIcon = isProcessRunning(pid)
-      ? chalk.green("●")
-      : chalk.red("○");
-
-    console.log(`  ${statusIcon} ${agentId} (PID: ${pid})`);
-    console.log(`    ${chalk.gray(`Worktree: ${worktree}`)}`);
-    console.log(`    ${chalk.gray(`Started:  ${started}`)}`);
-    console.log();
-  }
-}
-
-/**
- * Show detailed task status
- */
-function cmdStatusDetail(target: string, repoRoot: string, ctx?: OutputContext): void {
-  const agent = registrySearchAgent(target, repoRoot);
-  if (!agent) {
-    console.log(`Agent not found: ${target}`);
-    return;
-  }
-
-  const agentId = agent.id;
-  const pid = agent.pid;
-  const worktree = agent.worktree_path;
-  const taskDir = agent.task_dir;
-  const started = agent.started_at;
-  const platform = agent.platform || "claude";
-
-  // Get session-id from task.json
-  const taskDirAbs = join(repoRoot, taskDir);
-  const sessionId = getSessionId(taskDirAbs) || "";
-
-  console.log(chalk.blue(`=== Agent Detail: ${agentId} ===`));
-  console.log();
-  console.log(`  ID:        ${agentId}`);
-  console.log(`  PID:       ${pid}`);
-  console.log(`  Session:   ${sessionId || "N/A"}`);
-  console.log(`  Worktree:  ${worktree}`);
-  console.log(`  Task Dir:  ${taskDir}`);
-  console.log(`  Started:   ${started}`);
-  console.log();
-
-  // Status
-  if (isProcessRunning(pid)) {
-    console.log(`  Status:    ${chalk.green("Running")}`);
-  } else {
-    console.log(`  Status:    ${chalk.red("Stopped")}`);
-    if (sessionId) {
-      console.log();
-      const adapter = createCLIAdapter(platform);
-      const resumeCmd = adapter.getResumeCommandStr(sessionId, worktree);
-      console.log(`  ${chalk.yellow("Resume:")} ${resumeCmd}`);
-    }
-  }
-
-  // Task info
-  const taskJsonPath = join(repoRoot, taskDir, FILE_TASK_JSON);
-  if (existsSync(taskJsonPath)) {
-    console.log();
-    console.log(chalk.blue("=== Task Info ==="));
-    console.log();
-    const data = readTaskJsonFromWorkspace(join(repoRoot, taskDir));
-    if (data) {
-      console.log(`  Status:      ${data.status || "unknown"}`);
-      console.log(`  Branch:      ${data.branch || "N/A"}`);
-      console.log(`  Base Branch: ${data.base_branch || "N/A"}`);
-    }
-  }
-
-  // Git changes
-  if (existsSync(worktree)) {
-    console.log();
-    console.log(chalk.blue("=== Git Changes ==="));
-    console.log();
-
-    const { stdout: changes } = runGitCommand(["status", "--short"], worktree);
-    if (changes.trim()) {
-      const lines = changes.split("\n").filter((l) => l.trim());
-      for (const line of lines.slice(0, 10)) {
-        console.log(`  ${line}`);
-      }
-      if (lines.length > 10) {
-        console.log(`  ... and ${lines.length - 10} more`);
-      }
-    } else {
-      console.log("  (no changes)");
-    }
-  }
-
-  console.log();
-}
-
-/**
- * Cross-platform tail follow implementation
- */
-function tailFollow(filePath: string): void {
-  // Get initial file size
-  let position = 0;
-  try {
-    const stats = statSync(filePath);
-    position = stats.size;
-  } catch {
-    // Start from beginning if file doesn't exist
-  }
-
-  // Poll for changes
-  const pollInterval = setInterval(() => {
-    try {
-      const stats = statSync(filePath);
-      if (stats.size > position) {
-        // Read new content
-        const fd = openSync(filePath, "r");
-        const buffer = Buffer.alloc(stats.size - position);
-        readSync(fd, buffer, 0, buffer.length, position);
-        closeSync(fd);
-
-        process.stdout.write(buffer.toString("utf-8"));
-        position = stats.size;
-      } else if (stats.size < position) {
-        // File was truncated, start from beginning
-        position = 0;
-      }
-    } catch {
-      // File might have been deleted, continue polling
-    }
-  }, 100);
-
-  // Handle cleanup
-  process.on("SIGINT", () => {
-    clearInterval(pollInterval);
-    console.log();
-    process.exit(0);
-  });
-
-  process.on("SIGTERM", () => {
-    clearInterval(pollInterval);
-    process.exit(0);
-  });
-}
-
-/**
- * Watch agent log in real-time
- */
-function cmdStatusWatch(target: string, repoRoot: string, ctx?: OutputContext): void {
-  const agent = registrySearchAgent(target, repoRoot);
-  if (!agent) {
-    console.log(`Agent not found: ${target}`);
-    return;
-  }
-
-  const worktree = agent.worktree_path;
-  const logFile = join(worktree, ".agent-log");
-
-  if (!existsSync(logFile)) {
-    console.log(`Log file not found: ${logFile}`);
-    return;
-  }
-
-  console.log(chalk.blue("Watching:"), logFile);
-  console.log(chalk.gray("Press Ctrl+C to stop"));
-  console.log();
-
-  // Use cross-platform tail follow
-  tailFollow(logFile);
-}
-
-/**
- * Show recent log entries
- */
-function cmdStatusLog(target: string, repoRoot: string, ctx?: OutputContext): void {
-  const agent = registrySearchAgent(target, repoRoot);
-  if (!agent) {
-    console.log(`Agent not found: ${target}`);
-    return;
-  }
-
-  const worktree = agent.worktree_path;
-  const platform = agent.platform || "claude";
-  const logFile = join(worktree, ".agent-log");
-
-  if (!existsSync(logFile)) {
-    console.log(`Log file not found: ${logFile}`);
-    return;
-  }
-
-  console.log(chalk.blue(`=== Recent Log: ${target} ===`));
-  console.log(chalk.gray(`Platform: ${platform}`));
-  console.log();
-
-  const content = readFileSync(logFile, "utf-8");
-  const lines = content.split("\n").slice(-50);
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-
-    try {
-      const data = JSON.parse(line);
-      const msgType = data.type || "";
-
-      if (platform === "opencode") {
-        // OpenCode format
-        if (msgType === "text") {
-          const text = data.text || "";
-          if (text) {
-            const display = text.slice(0, 300) + (text.length > 300 ? "..." : "");
-            console.log(`${chalk.blue("[TEXT]")} ${display}`);
-          }
-        } else if (msgType === "tool_use") {
-          const toolName = data.tool || "unknown";
-          const status = data.state?.status || "";
-          console.log(`${chalk.yellow("[TOOL]")} ${toolName} (${status})`);
-        } else if (msgType === "step_start") {
-          console.log(`${chalk.cyan("[STEP]")} Start`);
-        } else if (msgType === "step_finish") {
-          const reason = data.reason || "";
-          console.log(`${chalk.cyan("[STEP]")} Finish (${reason})`);
-        } else if (msgType === "error") {
-          const errorMsg = data.message || "";
-          console.log(`${chalk.red("[ERROR]")} ${errorMsg}`);
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(repoRoot, task);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }
-      } else {
-        // Claude Code format
-        if (msgType === "system") {
-          const subtype = data.subtype || "";
-          console.log(`${chalk.cyan("[SYSTEM]")} ${subtype}`);
-        } else if (msgType === "user") {
-          const content = data.message?.content || "";
-          if (content) {
-            console.log(`${chalk.green("[USER]")} ${content.slice(0, 200)}`);
+
+        console.log();
+        console.log(chalk.blue("=== Check Phase ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log();
+
+        const result = await runCheckPhase(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
+        });
+
+        if (result.success) {
+          console.log(chalk.green("=== Check Agent Started ==="));
+          console.log();
+          console.log(`  ID:   ${result.agentId}`);
+          console.log(`  PID:  ${result.pid}`);
+          console.log(`  Log:  ${result.logFile}`);
+          console.log();
+          console.log(chalk.yellow("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+          console.log();
+
+          output(ctx, successResponse(result));
+        } else {
+          throw CliError.operationFailed("Check Phase", result.error || "Unknown error");
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task work-phase - Run dispatch agent for a task (in current repo, no worktree)
+  taskCmd
+    .command("work-phase")
+    .description("Run work phase for a task (spawns dispatch agent in current repo)")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .option("--no-detach", "Run in foreground (default: background)")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean; detach?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(repoRoot, task);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Work Phase ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach !== false ? "background" : "foreground"}`);
+        console.log();
+
+        const result = await runWorkPhaseInRepo(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
+          detach: options.detach !== false,
+        });
+
+        if (result.success) {
+          console.log(chalk.green("=== Dispatch Agent Started ==="));
+          console.log();
+          console.log(`  ID:       ${result.agentId}`);
+          console.log(`  PID:      ${result.pid}`);
+          if (result.sessionId) {
+            console.log(`  Session:  ${result.sessionId}`);
           }
-        } else if (msgType === "assistant") {
-          const content = data.message?.content || [];
-          if (content.length > 0) {
-            const item = content[0];
-            const text = item.text;
-            const tool = item.name;
-            if (text) {
-              const display = text.slice(0, 300) + (text.length > 300 ? "..." : "");
-              console.log(`${chalk.blue("[ASSISTANT]")} ${display}`);
-            } else if (tool) {
-              console.log(`${chalk.yellow("[TOOL]")} ${tool}`);
+          console.log(`  Log:      ${result.logFile}`);
+          console.log();
+          console.log(chalk.yellow("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  viben swarm status ${task}`);
+          console.log();
+
+          output(ctx, successResponse(result));
+        } else {
+          throw CliError.operationFailed("Work Phase", result.error || "Unknown error");
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task validate-finish-review - Validate finish/review phase completion
+  taskCmd
+    .command("validate-finish-review")
+    .description("Validate finish/review phase completion (runs verify commands or checks completion markers)")
+    .argument("<task>", "Task name or directory")
+    .option("-o, --output <output>", "Agent output text (for completion markers validation)")
+    .option("-f, --output-file <file>", "File containing agent output")
+    .action(async (task: string, options: { output?: string; outputFile?: string }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(repoRoot, task);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        // Get agent output (from option or file)
+        let agentOutput: string | undefined = options.output;
+        if (!agentOutput && options.outputFile) {
+          if (existsSync(options.outputFile)) {
+            agentOutput = readFileSync(options.outputFile, "utf-8");
+          }
+        }
+
+        const result = validateIfReviewFinished(repoRoot, taskDir, agentOutput);
+
+        if (ctx.json) {
+          output(ctx, successResponse(result));
+          return;
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Check Phase Validation ==="));
+        console.log();
+        console.log(`  Method: ${result.method}`);
+        console.log(`  Result: ${result.success ? chalk.green("PASSED") : chalk.red("FAILED")}`);
+        console.log();
+
+        if (result.method === "verify_commands") {
+          console.log(chalk.cyan("Commands:"));
+          for (const cmd of result.details.commands || []) {
+            console.log(`  - ${cmd}`);
+          }
+          if (result.details.outputs) {
+            console.log();
+            for (const out of result.details.outputs) {
+              const icon = out.exitCode === 0 ? chalk.green("✓") : chalk.red("✗");
+              console.log(`  ${icon} ${out.command} (exit: ${out.exitCode})`);
             }
           }
-        } else if (msgType === "result") {
-          const toolName = data.tool || "unknown";
-          console.log(`${chalk.gray("[RESULT]")} ${toolName} completed`);
+        } else {
+          console.log(chalk.cyan("Expected markers:"));
+          for (const marker of result.details.expectedMarkers || []) {
+            const found = result.details.foundMarkers?.includes(marker);
+            const icon = found ? chalk.green("✓") : chalk.red("✗");
+            console.log(`  ${icon} ${marker}`);
+          }
         }
+
+        console.log();
+        if (result.success) {
+          console.log(chalk.green("Check phase validation passed."));
+        } else {
+          console.log(chalk.red("Check phase validation failed:"));
+          console.log(chalk.red(`  ${result.error}`));
+        }
+
+        output(ctx, successResponse(result));
+      } catch (error) {
+        handleCommandError(ctx, error);
       }
-    } catch {
-      continue;
-    }
-  }
-}
+    });
 
-/**
- * Show agent registry
- */
-function cmdStatusRegistry(repoRoot: string, ctx?: OutputContext): void {
-  const registryFile = getRegistryFile(repoRoot);
-
-  console.log(chalk.blue("=== Agent Registry ==="));
-  console.log();
-  console.log(`File: ${registryFile}`);
-  console.log();
-
-  if (registryFile && existsSync(registryFile)) {
-    const content = readFileSync(registryFile, "utf-8");
-    const data = JSON.parse(content);
-    console.log(JSON.stringify(data, null, 2));
-  } else {
-    console.log("(registry not found)");
-  }
-}
-
-// =============================================================================
-// Context Command Types and Helpers
-// =============================================================================
-
-/**
- * Context JSON structure matching Python git_context.py get_context_json()
- */
-interface ContextJson {
-  developer: string;
-  git: {
-    branch: string;
-    isClean: boolean;
-    uncommittedChanges: number;
-    recentCommits: Array<{ hash: string; message: string }>;
-  };
-  currentTask: {
-    path: string;
-    name: string;
-    status: string;
-    createdAt: string;
-    description: string;
-    hasPrd: boolean;
-  } | null;
-  tasks: {
-    active: Array<{
-      dir: string;
-      name: string;
-      status: string;
-      assignee: string;
-      priority: string;
-    }>;
-    directory: string;
-  };
-  myTasks: Array<{
-    title: string;
-    priority: string;
-    status: string;
-  }>;
-  journal: {
-    file: string;
-    lines: number;
-    nearLimit: boolean;
-  };
-  paths: {
-    workspace: string;
-    tasks: string;
-    spec: string;
-  };
-}
-
-/**
- * Get context as JSON object
- */
-function getContextJson(repoRoot: string): ContextJson {
-  const developer = getDeveloper(repoRoot) || "";
-  const tasksDir = getTasksDir(repoRoot);
-
-  // Git info
-  const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
-  const branch = branchOut.trim() || "unknown";
-
-  const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], repoRoot);
-  const statusLines = statusOut.split("\n").filter((line) => line.trim());
-  const gitStatusCount = statusLines.length;
-  const isClean = gitStatusCount === 0;
-
-  // Recent commits
-  const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], repoRoot);
-  const commits: Array<{ hash: string; message: string }> = [];
-  for (const line of logOut.split("\n")) {
-    if (line.trim()) {
-      const parts = line.split(" ", 1);
-      const hash = parts[0] || "";
-      const message = line.slice(hash.length + 1) || "";
-      commits.push({ hash, message });
-    }
-  }
-
-  // Current task
-  let currentTask: ContextJson["currentTask"] = null;
-  const currentTaskPath = getCurrentTask(repoRoot);
-  if (currentTaskPath) {
-    const currentTaskDir = join(repoRoot, currentTaskPath);
-    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
-    if (taskData) {
-      const prdFile = join(currentTaskDir, "prd.md");
-      currentTask = {
-        path: currentTaskPath,
-        name: String(taskData.name || taskData.id || "unknown"),
-        status: String(taskData.status || "unknown"),
-        createdAt: String(taskData.createdAt || "unknown"),
-        description: String(taskData.description || ""),
-        hasPrd: existsSync(prdFile),
-      };
-    }
-  }
-
-  // Active tasks
-  const activeTasks = getActiveTasks(repoRoot);
-
-  // My tasks (assigned to developer and not done)
-  const myTasks: Array<{ title: string; priority: string; status: string }> = [];
-  if (developer) {
-    for (const task of activeTasks) {
-      if (task.assignee === developer && task.status !== "done") {
-        myTasks.push({
-          title: task.title,
-          priority: task.priority,
-          status: task.status,
-        });
-      }
-    }
-  }
-
-  // Journal info
-  const journalInfo = getJournalInfo(repoRoot);
-  const journalRelative = journalInfo.file && developer
-    ? `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`
-    : "";
-
-  return {
-    developer,
-    git: {
-      branch,
-      isClean,
-      uncommittedChanges: gitStatusCount,
-      recentCommits: commits,
-    },
-    currentTask,
-    tasks: {
-      active: activeTasks,
-      directory: `${DIR_VIBEN}/${DIR_TASKS}`,
-    },
-    myTasks,
-    journal: {
-      file: journalRelative,
-      lines: journalInfo.lines,
-      nearLimit: journalInfo.lines > 1800,
-    },
-    paths: {
-      workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
-      tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
-      spec: "docs/specs/",
-    },
-  };
-}
-
-/**
- * Get context as formatted text
- */
-function getContextText(repoRoot: string): string {
-  const lines: string[] = [];
-  const developer = getDeveloper(repoRoot);
-
-  lines.push("========================================");
-  lines.push("SESSION CONTEXT");
-  lines.push("========================================");
-  lines.push("");
-
-  // Developer section
-  lines.push("## DEVELOPER");
-  if (!developer) {
-    lines.push(
-      `ERROR: Not initialized. Run: viben team init-developer <name>`
-    );
-    return lines.join("\n");
-  }
-
-  lines.push(`Name: ${developer}`);
-  lines.push("");
-
-  // Git status
-  lines.push("## GIT STATUS");
-  const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
-  const branch = branchOut.trim() || "unknown";
-  lines.push(`Branch: ${branch}`);
-
-  const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], repoRoot);
-  const statusLines = statusOut.split("\n").filter((line) => line.trim());
-  const statusCount = statusLines.length;
-
-  if (statusCount === 0) {
-    lines.push("Working directory: Clean");
-  } else {
-    lines.push(`Working directory: ${statusCount} uncommitted change(s)`);
-    lines.push("");
-    lines.push("Changes:");
-    const { stdout: shortOut } = runGitCommand(["status", "--short"], repoRoot);
-    for (const line of shortOut.split("\n").slice(0, 10)) {
-      if (line.trim()) {
-        lines.push(line);
-      }
-    }
-  }
-  lines.push("");
-
-  // Recent commits
-  lines.push("## RECENT COMMITS");
-  const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], repoRoot);
-  if (logOut.trim()) {
-    for (const line of logOut.split("\n")) {
-      if (line.trim()) {
-        lines.push(line);
-      }
-    }
-  } else {
-    lines.push("(no commits)");
-  }
-  lines.push("");
-
-  // Current task
-  lines.push("## CURRENT TASK");
-  const currentTaskPath = getCurrentTask(repoRoot);
-  if (currentTaskPath) {
-    const currentTaskDir = join(repoRoot, currentTaskPath);
-    lines.push(`Path: ${currentTaskPath}`);
-
-    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
-    if (taskData) {
-      const tName = String(taskData.name || taskData.id || "unknown");
-      const tStatus = String(taskData.status || "unknown");
-      const tCreated = String(taskData.createdAt || "unknown");
-      const tDesc = String(taskData.description || "");
-
-      lines.push(`Name: ${tName}`);
-      lines.push(`Status: ${tStatus}`);
-      lines.push(`Created: ${tCreated}`);
-      if (tDesc) {
-        lines.push(`Description: ${tDesc}`);
-      }
-    }
-
-    // Check for prd.md
-    const prdFile = join(currentTaskDir, "prd.md");
-    if (existsSync(prdFile)) {
-      lines.push("");
-      lines.push("[!] This task has prd.md - read it for task details");
-    }
-  } else {
-    lines.push("(none)");
-  }
-  lines.push("");
-
-  // Active tasks
-  lines.push("## ACTIVE TASKS");
-  const tasksDir = getTasksDir(repoRoot);
-  const activeTasks = getActiveTasks(repoRoot);
-  const taskCount = activeTasks.length;
-
-  if (taskCount > 0) {
-    for (const t of activeTasks) {
-      lines.push(`- ${t.dir}/ (${t.status}) @${t.assignee}`);
-    }
-  } else {
-    lines.push("(no active tasks)");
-  }
-  lines.push(`Total: ${taskCount} active task(s)`);
-  lines.push("");
-
-  // My tasks
-  lines.push("## MY TASKS (Assigned to me)");
-  let myTaskCount = 0;
-
-  for (const t of activeTasks) {
-    if (t.assignee === developer && t.status !== "done") {
-      lines.push(`- [${t.priority}] ${t.title} (${t.status})`);
-      myTaskCount++;
-    }
-  }
-
-  if (myTaskCount === 0) {
-    lines.push("(no tasks assigned to you)");
-  }
-  lines.push("");
-
-  // Journal file
-  lines.push("## JOURNAL FILE");
-  const journalInfo = getJournalInfo(repoRoot);
-  if (journalInfo.file) {
-    const journalRelative = `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`;
-    lines.push(`Active file: ${journalRelative}`);
-    lines.push(`Line count: ${journalInfo.lines} / 2000`);
-    if (journalInfo.lines > 1800) {
-      lines.push("[!] WARNING: Approaching 2000 line limit!");
-    }
-  } else {
-    lines.push("No journal file found");
-  }
-  lines.push("");
-
-  // Paths
-  lines.push("## PATHS");
-  lines.push(`Workspace: ${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`);
-  lines.push(`Tasks: ${DIR_VIBEN}/${DIR_TASKS}/`);
-  lines.push("Spec: docs/specs/");
-  lines.push("");
-
-  lines.push("========================================");
-
-  return lines.join("\n");
 }

@@ -195,7 +195,7 @@ import { createSdkChatProxy } from "../executors/chat/sdk-proxy";
 export interface AgentSession {
   id: string;
   createdAt: Date;
-  phase: "planning" | "executing" | "idle";
+  phase: "plan" | "implement" | "idle";
   isAborted: boolean;
   abortController: AbortController;
 }
@@ -236,7 +236,7 @@ export class AgentService {
       // ... 其他选项
     };
 
-    session.phase = "executing";
+    session.phase = "implement";
 
     try {
       // 使用现有的 SdkChatProxy 执行
@@ -345,7 +345,7 @@ import { useState, useCallback, useRef } from "react";
 import type { AgentMessage } from "@/types";
 import { getGatewayClient } from "@/lib/gateway";
 
-export type AgentPhase = "idle" | "planning" | "awaiting_approval" | "executing";
+export type AgentPhase = "idle" | "plan" | "awaiting_approval" | "implement";
 
 export interface TaskPlan {
   id: string;

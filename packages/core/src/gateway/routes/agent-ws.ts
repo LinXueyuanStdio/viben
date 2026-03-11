@@ -18,6 +18,10 @@ import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "agent-ws" });
 
 // ============================================================================
 // Types
@@ -187,7 +191,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       approvals: config.approvals,
     };
   } catch (error) {
-    console.error(`[agent-ws] Failed to load agent config from ${configPath}:`, error);
+    log.error({ err: error, configPath }, "Failed to load agent config");
     return null;
   }
 }
@@ -199,7 +203,7 @@ function sendMessage(socket: WebSocket, message: ServerMessage): void {
   try {
     socket.send(JSON.stringify(message));
   } catch (error) {
-    console.error("[agent-ws] Failed to send message:", error);
+    log.error({ err: error }, "Failed to send message");
   }
 }
 
@@ -278,9 +282,9 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
       traceId,
     });
 
-    console.log(`[agent-ws] Session started: ${session.id}`);
+    log.info({ sessionId: session.id }, "Session started");
   } else {
-    console.log(`[agent-ws] Continuing session: ${session.id}`);
+    log.info({ sessionId: session.id }, "Continuing session");
   }
 
   // Persist user message if persistence is enabled
@@ -295,7 +299,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         content: prompt,
       }, agentConfigPath);
     } catch (e) {
-      console.warn("[agent-ws] Failed to persist user message:", e);
+      log.warn({ err: e }, "Failed to persist user message");
     }
   }
 
@@ -320,7 +324,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
     for await (const message of stream) {
       // Check if session was cancelled
       if (agentService.isSessionAborted(session.id)) {
-        console.log(`[agent-ws] Session cancelled: ${session.id}`);
+        log.info({ sessionId: session.id }, "Session cancelled");
         sendMessage(socket, { type: "error", message: "Session cancelled by user" });
         break;
       }
@@ -350,13 +354,13 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         sendMessage(socket, message as ServerMessage);
 
         // Wait for user answer
-        console.log(`[agent-ws] Waiting for answer to question: ${questionMsg.id}`);
+        log.info({ questionId: questionMsg.id }, "Waiting for answer to question");
 
         const answers = await new Promise<Record<string, string>>((resolve) => {
           session.pendingQuestionResolver = resolve;
         });
 
-        console.log(`[agent-ws] Received answer for question: ${questionMsg.id}`);
+        log.info({ questionId: questionMsg.id }, "Received answer for question");
 
         // Mark question as answered
         agentService.answerQuestion(questionMsg.id, answers);
@@ -383,7 +387,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               content: answerText,
             }, agentConfigPath);
           } catch (e) {
-            console.warn("[agent-ws] Failed to persist user answer:", e);
+            log.warn({ err: e }, "Failed to persist user answer");
           }
         }
 
@@ -424,7 +428,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               message.type === "tool_result" ? (message as { isError?: boolean }).isError : undefined,
           }, agentConfigPath);
         } catch (e) {
-          console.warn("[agent-ws] Failed to persist message:", e);
+          log.warn({ err: e }, "Failed to persist message");
         }
       }
     }
@@ -432,7 +436,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
     span.setStatus({ code: SpanStatusCode.OK });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[agent-ws] Execution error: ${errorMessage}`);
+    log.error({ err: error, errorMessage }, "Execution error");
 
     span.setStatus({ code: SpanStatusCode.ERROR, message: errorMessage });
     span.recordException(error instanceof Error ? error : new Error(errorMessage));
@@ -447,7 +451,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
       // Send done message
       sendMessage(socket, { type: "done" });
 
-      console.log(`[agent-ws] Session completed: ${session.id}`);
+      log.info({ sessionId: session.id }, "Session completed");
     }
     span.end();
   }
@@ -466,7 +470,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
 export function registerAgentWsRoutes(fastify: FastifyInstance): void {
   // Check if websocket plugin is registered by looking for the decorator
   if (!fastify.hasDecorator("websocketServer")) {
-    console.warn("[agent-ws] @fastify/websocket not registered, agent WebSocket routes disabled");
+    log.warn("@fastify/websocket not registered, agent WebSocket routes disabled");
     return;
   }
 
@@ -488,13 +492,13 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         };
 
         wsSessions.set(sessionId, session);
-        console.log(`[agent-ws] WebSocket connected: ${sessionId}`);
+        log.info({ sessionId }, "WebSocket connected");
 
         // Handle incoming messages
         socket.on("message", async (data: Buffer) => {
           try {
             const msg = JSON.parse(data.toString()) as ClientMessage;
-            console.log(`[agent-ws] Received message: ${msg.type}`);
+            log.debug({ messageType: msg.type }, "Received message");
 
             switch (msg.type) {
               case "start": {
@@ -524,7 +528,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
 
                 // Start agent execution (non-blocking)
                 executeAgent(session, msg.prompt).catch((err) => {
-                  console.error("[agent-ws] Unhandled execution error:", err);
+                  log.error({ err }, "Unhandled execution error");
                 });
                 break;
               }
@@ -629,14 +633,14 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 });
             }
           } catch (error) {
-            console.error("[agent-ws] Failed to parse message:", error);
+            log.error({ err: error }, "Failed to parse message");
             sendMessage(socket, { type: "error", message: "Failed to parse message" });
           }
         });
 
         // Handle WebSocket close
         socket.on("close", () => {
-          console.log(`[agent-ws] WebSocket disconnected: ${sessionId}`);
+          log.info({ sessionId }, "WebSocket disconnected");
 
           // Abort any running session
           if (session.isRunning) {
@@ -649,7 +653,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
 
         // Handle WebSocket error
         socket.on("error", (err) => {
-          console.error(`[agent-ws] WebSocket error for session ${sessionId}:`, err);
+          log.error({ err, sessionId }, "WebSocket error");
 
           // Abort any running session
           if (session.isRunning) {
@@ -661,7 +665,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         });
       });
 
-  console.log("[agent-ws] Agent WebSocket routes registered at /ws/agent/run");
+  log.info("Agent WebSocket routes registered at /ws/agent/run");
 }
 
 /**

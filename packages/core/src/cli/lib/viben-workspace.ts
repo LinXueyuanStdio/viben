@@ -2044,3 +2044,227 @@ export {
   createCLIAdapterAuto,
   detectPlatform,
 } from "./swarm/cli-adapter";
+
+// =============================================================================
+// Check Phase Validation
+// =============================================================================
+
+/**
+ * Result of check phase validation
+ */
+export interface CheckValidationResult {
+  /** Whether all checks passed */
+  success: boolean;
+  /** Validation method used: "verify_commands" or "completion_markers" */
+  method: "verify_commands" | "completion_markers";
+  /** Details of the validation */
+  details: {
+    /** Commands run (if method is verify_commands) */
+    commands?: string[];
+    /** Command outputs (if method is verify_commands) */
+    outputs?: Array<{ command: string; exitCode: number; output: string }>;
+    /** Expected markers (if method is completion_markers) */
+    expectedMarkers?: string[];
+    /** Found markers (if method is completion_markers) */
+    foundMarkers?: string[];
+    /** Missing markers (if method is completion_markers) */
+    missingMarkers?: string[];
+  };
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Get verify commands from worktree.yaml
+ *
+ * @param repoRoot - Repository root path
+ * @returns List of verify commands, or empty array if not configured
+ */
+export function getVerifyCommands(repoRoot: string): string[] {
+  const configPath = getWorktreeConfig(repoRoot);
+  if (!existsSync(configPath)) {
+    return [];
+  }
+
+  try {
+    const content = readFileSync(configPath, "utf-8");
+    const config = parseSimpleYaml(content);
+    const verify = config.verify;
+    if (Array.isArray(verify)) {
+      return verify.filter((v): v is string => typeof v === "string" && v.length > 0);
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return [];
+}
+
+/**
+ * Get completion markers from check.jsonl
+ *
+ * Each entry's "reason" field becomes {REASON}_FINISH marker.
+ * Example: {"file": "...", "reason": "TypeCheck"} -> "TYPECHECK_FINISH"
+ *
+ * @param taskDir - Absolute path to task directory
+ * @returns List of expected completion markers
+ */
+export function getCompletionMarkers(taskDir: string): string[] {
+  const checkJsonlPath = join(taskDir, "check.jsonl");
+  const markers: string[] = [];
+
+  if (!existsSync(checkJsonlPath)) {
+    // Fallback: if no check.jsonl, use default marker
+    return ["ALL_CHECKS_FINISH"];
+  }
+
+  try {
+    const content = readFileSync(checkJsonlPath, "utf-8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      try {
+        const item = JSON.parse(trimmed);
+        const reason = item.reason;
+        if (typeof reason === "string" && reason.length > 0) {
+          // Convert to uppercase and add _FINISH suffix
+          const marker = `${reason.toUpperCase().replace(/\s+/g, "_")}_FINISH`;
+          if (!markers.includes(marker)) {
+            markers.push(marker);
+          }
+        }
+      } catch {
+        // Skip invalid JSON lines
+      }
+    }
+  } catch {
+    // Ignore read errors
+  }
+
+  // If no markers found, use default
+  if (markers.length === 0) {
+    markers.push("ALL_CHECKS_FINISH");
+  }
+
+  return markers;
+}
+
+/**
+ * Run verify commands and check results
+ *
+ * @param repoRoot - Repository root path
+ * @param commands - List of commands to run
+ * @returns Validation result
+ */
+export function runVerifyCommands(
+  repoRoot: string,
+  commands: string[]
+): CheckValidationResult {
+  const outputs: Array<{ command: string; exitCode: number; output: string }> = [];
+
+  for (const cmd of commands) {
+    try {
+      const result = execSync(cmd, {
+        cwd: repoRoot,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+        timeout: 120000, // 2 minute timeout
+      });
+      outputs.push({ command: cmd, exitCode: 0, output: result });
+    } catch (error: unknown) {
+      const execError = error as { status?: number; stdout?: string; stderr?: string; message?: string };
+      const exitCode = execError.status ?? 1;
+      const output = execError.stderr || execError.stdout || execError.message || "Unknown error";
+      outputs.push({ command: cmd, exitCode, output: output.slice(0, 500) });
+
+      return {
+        success: false,
+        method: "verify_commands",
+        details: { commands, outputs },
+        error: `Command failed: ${cmd}\n${output.slice(0, 500)}`,
+      };
+    }
+  }
+
+  return {
+    success: true,
+    method: "verify_commands",
+    details: { commands, outputs },
+  };
+}
+
+/**
+ * Check completion markers in agent output
+ *
+ * @param agentOutput - Agent output text
+ * @param expectedMarkers - List of expected markers
+ * @returns Validation result
+ */
+export function checkCompletionMarkers(
+  agentOutput: string,
+  expectedMarkers: string[]
+): CheckValidationResult {
+  const foundMarkers: string[] = [];
+  const missingMarkers: string[] = [];
+
+  for (const marker of expectedMarkers) {
+    if (agentOutput.includes(marker)) {
+      foundMarkers.push(marker);
+    } else {
+      missingMarkers.push(marker);
+    }
+  }
+
+  const success = missingMarkers.length === 0;
+
+  return {
+    success,
+    method: "completion_markers",
+    details: {
+      expectedMarkers,
+      foundMarkers,
+      missingMarkers,
+    },
+    error: success ? undefined : `Missing completion markers: ${missingMarkers.join(", ")}`,
+  };
+}
+
+/**
+ * Validate check phase completion
+ *
+ * This function implements the ralph-loop logic:
+ * 1. If verify commands are configured in worktree.yaml, run them
+ * 2. Otherwise, check completion markers from check.jsonl in agent output
+ *
+ * @param repoRoot - Repository root path
+ * @param taskDir - Absolute path to task directory
+ * @param agentOutput - Agent output text (required if no verify commands)
+ * @returns Validation result
+ */
+export function validateIfReviewFinished(
+  repoRoot: string,
+  taskDir: string,
+  agentOutput?: string
+): CheckValidationResult {
+  // Check if verify commands are configured
+  const verifyCommands = getVerifyCommands(repoRoot);
+
+  if (verifyCommands.length > 0) {
+    // Use programmatic verification
+    return runVerifyCommands(repoRoot, verifyCommands);
+  }
+
+  // Fall back to completion markers
+  if (!agentOutput) {
+    return {
+      success: false,
+      method: "completion_markers",
+      details: {},
+      error: "No verify commands configured and no agent output provided",
+    };
+  }
+
+  const expectedMarkers = getCompletionMarkers(taskDir);
+  return checkCompletionMarkers(agentOutput, expectedMarkers);
+}

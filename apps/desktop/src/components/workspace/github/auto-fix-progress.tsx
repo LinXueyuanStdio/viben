@@ -32,9 +32,10 @@ interface AutoFixProgressProps {
 const statusIcons: Record<AutoFixTaskStatus, React.ComponentType<{ className?: string }>> = {
   queued: Clock,
   analyzing: Search,
-  planning: FileCode,
-  executing: Play,
-  testing: TestTube,
+  plan: FileCode,
+  implement: Play,
+  check: TestTube,
+  fix: TestTube,
   awaiting_approval: Eye,
   creating_pr: GitPullRequest,
   completed: CheckCircle2,
@@ -46,9 +47,10 @@ const statusIcons: Record<AutoFixTaskStatus, React.ComponentType<{ className?: s
 const statusColors: Record<AutoFixTaskStatus, string> = {
   queued: "text-muted-foreground",
   analyzing: "text-blue-500",
-  planning: "text-purple-500",
-  executing: "text-amber-500",
-  testing: "text-cyan-500",
+  plan: "text-purple-500",
+  implement: "text-amber-500",
+  check: "text-cyan-500",
+  fix: "text-cyan-500",
   awaiting_approval: "text-orange-500",
   creating_pr: "text-green-500",
   completed: "text-green-600",
@@ -60,9 +62,10 @@ const statusColors: Record<AutoFixTaskStatus, string> = {
 const statusBadgeColors: Record<AutoFixTaskStatus, string> = {
   queued: "bg-muted text-muted-foreground",
   analyzing: "bg-blue-500/10 text-blue-600 border-blue-500/30",
-  planning: "bg-purple-500/10 text-purple-600 border-purple-500/30",
-  executing: "bg-amber-500/10 text-amber-600 border-amber-500/30",
-  testing: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30",
+  plan: "bg-purple-500/10 text-purple-600 border-purple-500/30",
+  implement: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  check: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30",
+  fix: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30",
   awaiting_approval: "bg-orange-500/10 text-orange-600 border-orange-500/30",
   creating_pr: "bg-green-500/10 text-green-600 border-green-500/30",
   completed: "bg-green-500/10 text-green-600 border-green-500/30",
@@ -74,9 +77,10 @@ const statusBadgeColors: Record<AutoFixTaskStatus, string> = {
 const statusProgress: Record<AutoFixTaskStatus, number> = {
   queued: 0,
   analyzing: 15,
-  planning: 30,
-  executing: 50,
-  testing: 70,
+  plan: 30,
+  implement: 50,
+  check: 60,
+  fix: 70,
   awaiting_approval: 85,
   creating_pr: 95,
   completed: 100,
@@ -88,7 +92,7 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
   const { t } = useTranslation();
 
   const StatusIcon = statusIcons[task.status];
-  const isActive = ["queued", "analyzing", "planning", "executing", "testing", "creating_pr"].includes(task.status);
+  const isActive = ["queued", "analyzing", "plan", "implement", "check", "fix", "creating_pr"].includes(task.status);
   const progress = task.progress ?? statusProgress[task.status];
 
   if (compact) {

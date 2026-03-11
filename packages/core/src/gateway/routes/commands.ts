@@ -6,6 +6,9 @@ import type { FastifyInstance } from "fastify";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, basename, dirname, relative } from "node:path";
 import { homedir } from "node:os";
+import { logger as globalLogger } from "../../telemetry";
+
+const log = globalLogger.child({ module: "commands" });
 
 /**
  * Workspace command file
@@ -268,7 +271,7 @@ export function registerCommandsRoutes(fastify: FastifyInstance): void {
         const command = parseWorkspaceCommand(file, content, commandsDir);
         commands.push(command);
       } catch (error) {
-        console.error(`Failed to parse command file ${file}:`, error);
+        log.error({ err: error, file }, "Failed to parse command file");
       }
     }
 
@@ -309,7 +312,7 @@ export function registerCommandsRoutes(fastify: FastifyInstance): void {
         const skill = parseSkillFile(file, content);
         skills.push(skill);
       } catch (error) {
-        console.error(`Failed to parse skill file ${file}:`, error);
+        log.error({ err: error, file }, "Failed to parse skill file");
       }
     }
 

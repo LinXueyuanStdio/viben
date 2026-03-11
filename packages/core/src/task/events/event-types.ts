@@ -14,25 +14,25 @@ export type TaskEventType =
   | "START" // Start task execution
   | "DEQUEUE" // Move task back to backlog
 
-  // Planning phase events
-  | "PLANNING_COMPLETE" // Planning done, may need review
-  | "PLANNING_FAILED" // Planning failed
+  // Plan phase events
+  | "PLAN_COMPLETE" // Planning done, may need review
+  | "PLAN_FAILED" // Planning failed
 
-  // Coding phase events
+  // Implement phase events
   | "SUBTASK_COMPLETE" // A subtask completed
-  | "ALL_SUBTASKS_DONE" // All subtasks completed, move to QA
-  | "CODING_FAILED" // Coding failed
+  | "ALL_SUBTASKS_DONE" // All subtasks completed, move to check
+  | "IMPLEMENT_FAILED" // Implementation failed
 
-  // QA phase events
-  | "QA_PASSED" // QA review passed
-  | "QA_FAILED" // QA found issues
-  | "QA_FIXING_COMPLETE" // QA fix attempt done
-  | "QA_FIXING_FAILED" // QA fix failed
+  // Check phase events
+  | "CHECK_PASSED" // Check review passed
+  | "CHECK_FAILED" // Check found issues
+  | "FIX_COMPLETE" // Fix attempt done
+  | "FIX_FAILED" // Fix failed
 
   // User interaction events
   | "USER_STOPPED" // User manually stopped the task
   | "APPROVED" // Human approved the work
-  | "REJECTED" // Human rejected, back to coding
+  | "REJECTED" // Human rejected, back to implement
   | "CANCEL" // Cancel task (terminal state)
 
   // Pause/Resume events
@@ -53,15 +53,15 @@ export const VALID_EVENT_TYPES: TaskEventType[] = [
   "QUEUE",
   "START",
   "DEQUEUE",
-  "PLANNING_COMPLETE",
-  "PLANNING_FAILED",
+  "PLAN_COMPLETE",
+  "PLAN_FAILED",
   "SUBTASK_COMPLETE",
   "ALL_SUBTASKS_DONE",
-  "CODING_FAILED",
-  "QA_PASSED",
-  "QA_FAILED",
-  "QA_FIXING_COMPLETE",
-  "QA_FIXING_FAILED",
+  "IMPLEMENT_FAILED",
+  "CHECK_PASSED",
+  "CHECK_FAILED",
+  "FIX_COMPLETE",
+  "FIX_FAILED",
   "USER_STOPPED",
   "APPROVED",
   "REJECTED",

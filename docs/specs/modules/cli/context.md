@@ -57,7 +57,7 @@ Description: 实现用户认证功能
 
 ## ACTIVE TASKS
 - 03-03-add-user-auth/ (in_progress) @john
-- 03-02-fix-bug/ (planning) @alice
+- 03-02-fix-bug/ (backlog) @alice
 - 03-01-docs/ (completed) @john
 Total: 3 active task(s)
 
@@ -97,7 +97,7 @@ Spec: docs/specs/
   "tasks": {
     "active": [
       {"dir": "03-03-add-user-auth", "name": "add-user-auth", "status": "in_progress"},
-      {"dir": "03-02-fix-bug", "name": "fix-bug", "status": "planning"},
+      {"dir": "03-02-fix-bug", "name": "fix-bug", "status": "backlog"},
       {"dir": "03-01-docs", "name": "docs", "status": "completed"}
     ],
     "directory": ".viben/tasks"

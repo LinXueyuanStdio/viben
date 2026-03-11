@@ -90,9 +90,10 @@ export interface GitHubAutoFixConfig {
 export type AutoFixTaskStatus =
   | "queued"
   | "analyzing"
-  | "planning"
-  | "executing"
-  | "testing"
+  | "plan"
+  | "implement"
+  | "check"
+  | "fix"
   | "awaiting_approval"
   | "creating_pr"
   | "completed"

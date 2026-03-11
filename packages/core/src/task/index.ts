@@ -90,3 +90,122 @@ export {
   type AgentEventOptions,
   type AgentEventResult,
 } from "./events/agent-events";
+
+// =============================================================================
+// Task Operations (CLI Operations)
+// =============================================================================
+
+export {
+  // Types
+  type TaskJson,
+  type ContextEntry,
+  type StatusSummaryOptions,
+  type RunningTaskInfo,
+  type StoppedTaskInfo,
+  type RegularTaskInfo,
+  type ContextJson,
+  type SessionMarkdownParams,
+  type IndexUpdateParams,
+  type JournalFileInfo,
+  // Display utilities
+  formatStatus,
+  formatPriority,
+  statusColor,
+  getPriorityColor,
+  // Session operations
+  getLatestJournalInfo,
+  getSessionNumberFromIndex,
+  generateSessionMarkdown,
+  createNewJournalFile,
+  countJournalFilesTable,
+  updateIndexWithNewSession,
+  // Status operations
+  getLastTool,
+  getLastMessage,
+  countModifiedFiles,
+  tailFollow,
+  cmdStatusSummary,
+  cmdStatusList,
+  cmdStatusDetail,
+  cmdStatusWatch,
+  cmdStatusLog,
+  cmdStatusRegistry,
+  // Context output
+  getContextJson,
+  getContextText,
+  // Lifecycle operations
+  type LifecycleResult,
+  enqueueTask,
+  dequeueTask,
+  pauseTask,
+  resumeTask,
+  approveTask,
+  rejectTask,
+  retryTask,
+  cancelTask,
+  // Context file operations
+  type ContextInitResult,
+  type ContextAddResult,
+  type ContextRemoveResult,
+  type ContextListResult,
+  type ContextValidateResult,
+  initContext,
+  addContext,
+  removeContext,
+  listContext,
+  validateContext,
+  // CRUD operations
+  type ListTasksResult,
+  type ListTasksOptions,
+  type CreateTaskOptions,
+  type CreateTaskResult,
+  type ViewTaskResult,
+  type DeleteTaskResult,
+  type FinishTaskResult,
+  type ArchiveTaskResult,
+  type ListArchiveResult,
+  listTasks,
+  createTask,
+  viewTask,
+  deleteTask,
+  finishTask,
+  archiveTask,
+  listArchivedTasks,
+  // Config operations
+  type SetFieldResult,
+  setTaskField,
+  setTaskBranch,
+  setTaskBaseBranch,
+  setTaskScope,
+  setTaskAgent,
+  // Review operations
+  type PRInfo,
+  type ReviewTaskResult,
+  reviewTask,
+} from "./ops";
+
+// =============================================================================
+// Phase Modules
+// =============================================================================
+
+export {
+  // Plan phase
+  runPlanPhase,
+  type PlanPhaseOptions,
+  type PlanPhaseResult,
+  // Implement phase
+  runImplementPhase,
+  runImplementPhaseSync,
+  type ImplementPhaseOptions,
+  type ImplementPhaseResult,
+  // Check phase
+  runCheckPhase,
+  type CheckPhaseOptions,
+  type CheckPhaseResult,
+  // Work phase (dispatch agent - reusable by swarm start)
+  runWorkPhase,
+  runWorkPhaseInRepo,
+  type WorkPhaseOptions,
+  type WorkPhaseResult,
+  type WorkPhaseSimpleOptions,
+} from "./phase";

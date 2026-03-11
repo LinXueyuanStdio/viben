@@ -38,6 +38,43 @@ export {
 export { createLogger, createDualLogger, createConsoleLogger, createChildLogger } from "./logger";
 export type { Logger } from "./logger";
 
+// Re-export global logger utilities
+export {
+  logger,
+  getLogger,
+  setGlobalLogger,
+  isLoggerInitialized,
+  resetGlobalLogger,
+} from "./global-logger";
+
+// Re-export redact utilities
+export {
+  REDACT_PATHS,
+  createRedactConfig,
+  defaultCensor,
+  fullCensor,
+  type RedactMode,
+  type RedactConfig,
+} from "./redact";
+
+// Re-export trace context utilities
+export {
+  traceContextMixin,
+  hasActiveTraceContext,
+  getCurrentTraceContext,
+  type TraceContextInfo,
+} from "./context";
+
+// Re-export sampling utilities
+export {
+  shouldSample,
+  resetSamplingState,
+  getSamplingStateSnapshot,
+  DEFAULT_SAMPLING_RULES,
+  type SamplingRule,
+  type SamplingResult,
+} from "./sampling";
+
 // Re-export business metrics
 export {
   // Counters

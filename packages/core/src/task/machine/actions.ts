@@ -89,10 +89,10 @@ export function savePausedSnapshot_queue({ context }: { context: TaskMachineCont
 }
 
 /**
- * Save pause snapshot: in_progress.planning
+ * Save pause snapshot: in_progress.plan
  */
-export function savePausedSnapshot_planning({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
-  const from_state: XStateValue = { in_progress: "planning" };
+export function savePausedSnapshot_plan({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
+  const from_state: XStateValue = { in_progress: "plan" };
   return {
     pausedFromState: from_state, // Keep for backward compatibility
     paused_snapshot: createPausedSnapshot(from_state, context.currentSubtaskIndex),
@@ -100,10 +100,10 @@ export function savePausedSnapshot_planning({ context }: { context: TaskMachineC
 }
 
 /**
- * Save pause snapshot: in_progress.coding
+ * Save pause snapshot: in_progress.implement
  */
-export function savePausedSnapshot_coding({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
-  const from_state: XStateValue = { in_progress: "coding" };
+export function savePausedSnapshot_implement({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
+  const from_state: XStateValue = { in_progress: "implement" };
   return {
     pausedFromState: from_state, // Keep for backward compatibility
     paused_snapshot: createPausedSnapshot(from_state, context.currentSubtaskIndex),
@@ -111,10 +111,10 @@ export function savePausedSnapshot_coding({ context }: { context: TaskMachineCon
 }
 
 /**
- * Save pause snapshot: in_progress.qa_review
+ * Save pause snapshot: in_progress.check
  */
-export function savePausedSnapshot_qaReview({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
-  const from_state: XStateValue = { in_progress: "qa_review" };
+export function savePausedSnapshot_check({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
+  const from_state: XStateValue = { in_progress: "check" };
   return {
     pausedFromState: from_state, // Keep for backward compatibility
     paused_snapshot: createPausedSnapshot(from_state, context.currentSubtaskIndex),
@@ -122,10 +122,10 @@ export function savePausedSnapshot_qaReview({ context }: { context: TaskMachineC
 }
 
 /**
- * Save pause snapshot: in_progress.qa_fixing
+ * Save pause snapshot: in_progress.fix
  */
-export function savePausedSnapshot_qaFixing({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
-  const from_state: XStateValue = { in_progress: "qa_fixing" };
+export function savePausedSnapshot_fix({ context }: { context: TaskMachineContext }): Partial<TaskMachineContext> {
+  const from_state: XStateValue = { in_progress: "fix" };
   return {
     pausedFromState: from_state, // Keep for backward compatibility
     paused_snapshot: createPausedSnapshot(from_state, context.currentSubtaskIndex),
@@ -174,38 +174,38 @@ export function savePausedState_queue(): Partial<TaskMachineContext> {
 }
 
 /**
- * @deprecated Use savePausedSnapshot_planning instead
+ * @deprecated Use savePausedSnapshot_plan instead
  */
-export function savePausedState_planning(): Partial<TaskMachineContext> {
+export function savePausedState_plan(): Partial<TaskMachineContext> {
   return {
-    pausedFromState: { in_progress: "planning" },
+    pausedFromState: { in_progress: "plan" },
   };
 }
 
 /**
- * @deprecated Use savePausedSnapshot_coding instead
+ * @deprecated Use savePausedSnapshot_implement instead
  */
-export function savePausedState_coding(): Partial<TaskMachineContext> {
+export function savePausedState_implement(): Partial<TaskMachineContext> {
   return {
-    pausedFromState: { in_progress: "coding" },
+    pausedFromState: { in_progress: "implement" },
   };
 }
 
 /**
- * @deprecated Use savePausedSnapshot_qaReview instead
+ * @deprecated Use savePausedSnapshot_check instead
  */
-export function savePausedState_qaReview(): Partial<TaskMachineContext> {
+export function savePausedState_check(): Partial<TaskMachineContext> {
   return {
-    pausedFromState: { in_progress: "qa_review" },
+    pausedFromState: { in_progress: "check" },
   };
 }
 
 /**
- * @deprecated Use savePausedSnapshot_qaFixing instead
+ * @deprecated Use savePausedSnapshot_fix instead
  */
-export function savePausedState_qaFixing(): Partial<TaskMachineContext> {
+export function savePausedState_fix(): Partial<TaskMachineContext> {
   return {
-    pausedFromState: { in_progress: "qa_fixing" },
+    pausedFromState: { in_progress: "fix" },
   };
 }
 
@@ -247,18 +247,18 @@ export const actions = {
   setReviewReason_qaRejected,
   // New snapshot-based actions
   savePausedSnapshot_queue,
-  savePausedSnapshot_planning,
-  savePausedSnapshot_coding,
-  savePausedSnapshot_qaReview,
-  savePausedSnapshot_qaFixing,
+  savePausedSnapshot_plan,
+  savePausedSnapshot_implement,
+  savePausedSnapshot_check,
+  savePausedSnapshot_fix,
   restoreFromSnapshot,
   clearPausedSnapshot,
   // Legacy actions (kept for backward compatibility)
   savePausedState_queue,
-  savePausedState_planning,
-  savePausedState_coding,
-  savePausedState_qaReview,
-  savePausedState_qaFixing,
+  savePausedState_plan,
+  savePausedState_implement,
+  savePausedState_check,
+  savePausedState_fix,
   clearPausedState,
   setQueuedAt,
 };

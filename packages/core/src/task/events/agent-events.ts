@@ -142,12 +142,12 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when planning phase completes
+   * Emit when plan phase completes
    */
-  async emitPlanningComplete(
+  async emitPlanComplete(
     options: AgentEventOptions & { requiresReview?: boolean }
   ): Promise<AgentEventResult> {
-    return this.emit("PLANNING_COMPLETE", {
+    return this.emit("PLAN_COMPLETE", {
       ...options,
       payload: {
         ...options.payload,
@@ -157,12 +157,12 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when planning phase fails
+   * Emit when plan phase fails
    */
-  async emitPlanningFailed(
+  async emitPlanFailed(
     options: AgentEventOptions & { errorMessage?: string }
   ): Promise<AgentEventResult> {
-    return this.emit("PLANNING_FAILED", {
+    return this.emit("PLAN_FAILED", {
       ...options,
       payload: {
         ...options.payload,
@@ -188,19 +188,19 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when all subtasks are done (triggers QA review)
+   * Emit when all subtasks are done (triggers check phase)
    */
   async emitAllSubtasksDone(options: AgentEventOptions): Promise<AgentEventResult> {
     return this.emit("ALL_SUBTASKS_DONE", options);
   }
 
   /**
-   * Emit when coding phase fails
+   * Emit when implement phase fails
    */
-  async emitCodingFailed(
+  async emitImplementFailed(
     options: AgentEventOptions & { errorMessage?: string }
   ): Promise<AgentEventResult> {
-    return this.emit("CODING_FAILED", {
+    return this.emit("IMPLEMENT_FAILED", {
       ...options,
       payload: {
         ...options.payload,
@@ -210,19 +210,19 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when QA review passes
+   * Emit when check passes
    */
-  async emitQAPassed(options: AgentEventOptions): Promise<AgentEventResult> {
-    return this.emit("QA_PASSED", options);
+  async emitCheckPassed(options: AgentEventOptions): Promise<AgentEventResult> {
+    return this.emit("CHECK_PASSED", options);
   }
 
   /**
-   * Emit when QA review fails (triggers QA fixing)
+   * Emit when check fails (triggers fix phase)
    */
-  async emitQAFailed(
+  async emitCheckFailed(
     options: AgentEventOptions & { issues?: string[] }
   ): Promise<AgentEventResult> {
-    return this.emit("QA_FAILED", {
+    return this.emit("CHECK_FAILED", {
       ...options,
       payload: {
         ...options.payload,
@@ -232,19 +232,19 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when QA fixing completes
+   * Emit when fix completes
    */
-  async emitQAFixingComplete(options: AgentEventOptions): Promise<AgentEventResult> {
-    return this.emit("QA_FIXING_COMPLETE", options);
+  async emitFixComplete(options: AgentEventOptions): Promise<AgentEventResult> {
+    return this.emit("FIX_COMPLETE", options);
   }
 
   /**
-   * Emit when QA fixing fails
+   * Emit when fix fails
    */
-  async emitQAFixingFailed(
+  async emitFixFailed(
     options: AgentEventOptions & { errorMessage?: string }
   ): Promise<AgentEventResult> {
-    return this.emit("QA_FIXING_FAILED", {
+    return this.emit("FIX_FAILED", {
       ...options,
       payload: {
         ...options.payload,

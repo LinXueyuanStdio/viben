@@ -173,7 +173,7 @@ ${PLAN_TASK_DIR}/
 ├── prd.md            # Requirements document
 ├── implement.jsonl   # Implement phase context
 ├── check.jsonl       # Check phase context
-└── debug.jsonl       # Debug phase context
+└── fix.jsonl         # Fix phase context
 ```
 
 ---
@@ -214,7 +214,7 @@ Output format (use exactly this format):
 ## check.jsonl
 - path: <relative file path>, reason: <why needed>
 
-## debug.jsonl
+## fix.jsonl
 - path: <relative file path>, reason: <why needed>
 
 ## Suggested Scope
@@ -360,7 +360,7 @@ Output:
   ├── prd.md            # Detailed requirements with acceptance criteria
   ├── implement.jsonl   # Backend specs + existing middleware patterns
   ├── check.jsonl       # Quality guidelines + API testing specs
-  └── debug.jsonl       # Error handling specs
+  └── fix.jsonl         # Error handling specs
 ```
 
 ### Example: Rejected - Vague Requirement

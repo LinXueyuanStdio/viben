@@ -260,14 +260,14 @@ export class TaskEventStore {
    */
   private computeReviewReason(event: TaskEvent, task: UnifiedTask): UnifiedTask["reviewReason"] {
     switch (event.type) {
-      case "QA_PASSED":
+      case "CHECK_PASSED":
         return "completed";
       case "USER_STOPPED":
         return "stopped";
-      case "PLANNING_COMPLETE":
+      case "PLAN_COMPLETE":
         // Only set if going to human_review (requiresPlanReview)
         return task.metadata?.agentConfig?.thinkingLevel === "high" ? "plan_review" : task.reviewReason;
-      case "QA_FAILED":
+      case "CHECK_FAILED":
         return "qa_rejected";
       default:
         return task.reviewReason;
@@ -428,7 +428,7 @@ export class TaskEventStore {
    * Maps event type to the XState value(s) where it's valid
    */
   private static readonly SELF_TRANSITION_VALID_STATES: Record<string, XStateValue[]> = {
-    SUBTASK_COMPLETE: [{ in_progress: "coding" }],
+    SUBTASK_COMPLETE: [{ in_progress: "implement" }],
   };
 
   /**

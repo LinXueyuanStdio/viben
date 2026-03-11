@@ -27,37 +27,37 @@ interface PhaseProgressIndicatorProps {
 
 // Phase colors configuration
 const PHASE_COLORS: Record<ExecutionPhase, { color: string; bgColor: string }> = {
-  planning: { color: "bg-amber-500", bgColor: "bg-amber-500/20" },
-  coding: { color: "bg-info", bgColor: "bg-info/20" },
-  qa_review: { color: "bg-purple-500", bgColor: "bg-purple-500/20" },
-  qa_fixing: { color: "bg-orange-500", bgColor: "bg-orange-500/20" },
+  plan: { color: "bg-amber-500", bgColor: "bg-amber-500/20" },
+  implement: { color: "bg-info", bgColor: "bg-info/20" },
+  check: { color: "bg-purple-500", bgColor: "bg-purple-500/20" },
+  fix: { color: "bg-orange-500", bgColor: "bg-orange-500/20" },
   complete: { color: "bg-success", bgColor: "bg-success/20" },
 };
 
 // Phase display labels (i18n keys)
 const PHASE_LABELS: Record<ExecutionPhase, string> = {
-  planning: "workspace.phase.planning",
-  coding: "workspace.phase.coding",
-  qa_review: "workspace.phase.qaReview",
-  qa_fixing: "workspace.phase.qaFixing",
+  plan: "workspace.phase.plan",
+  implement: "workspace.phase.implement",
+  check: "workspace.phase.check",
+  fix: "workspace.phase.fix",
   complete: "workspace.phase.complete",
 };
 
 // Phase fallback labels (i18n keys)
 const PHASE_FALLBACK_KEYS: Record<ExecutionPhase, string> = {
-  planning: "phase.planning",
-  coding: "phase.coding",
-  qa_review: "phase.qaReview",
-  qa_fixing: "phase.qaFixing",
+  plan: "phase.plan",
+  implement: "phase.implement",
+  check: "phase.check",
+  fix: "phase.fix",
   complete: "phase.complete",
 };
 
 // Phase short labels for step indicator (i18n keys)
 const PHASE_SHORT_LABEL_KEYS: Record<ExecutionPhase, string> = {
-  planning: "phase.planShort",
-  coding: "phase.codeShort",
-  qa_review: "phase.qaShort",
-  qa_fixing: "phase.fixShort",
+  plan: "phase.planShort",
+  implement: "phase.implementShort",
+  check: "phase.checkShort",
+  fix: "phase.fixShort",
   complete: "phase.doneShort",
 };
 
@@ -90,7 +90,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
   className,
 }: PhaseProgressIndicatorProps) {
   const { t } = useTranslation();
-  const phase = rawPhase || "planning";
+  const phase = rawPhase || "plan";
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -121,12 +121,12 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
     : 0;
 
   // Determine if we should show indeterminate (activity) vs determinate (%) progress
-  const isIndeterminatePhase = phase === "planning" || phase === "qa_review" || phase === "qa_fixing";
+  const isIndeterminatePhase = phase === "plan" || phase === "check" || phase === "fix";
   // Show subtask progress whenever subtasks exist
   const showSubtaskProgress = totalSubtasks > 0;
 
-  const colors = PHASE_COLORS[phase] || PHASE_COLORS.planning;
-  const phaseLabel = t(PHASE_LABELS[phase] || PHASE_LABELS.planning, t(PHASE_FALLBACK_KEYS[phase]));
+  const colors = PHASE_COLORS[phase] || PHASE_COLORS.plan;
+  const phaseLabel = t(PHASE_LABELS[phase] || PHASE_LABELS.plan, t(PHASE_FALLBACK_KEYS[phase]));
 
   // Show max 10 subtask dots
   const visibleSubtasks = useMemo(() => subtasks.slice(0, 10), [subtasks]);
@@ -291,18 +291,18 @@ const PhaseStepsIndicator = memo(function PhaseStepsIndicator({
 }) {
   const { t } = useTranslation();
   const phases: { key: ExecutionPhase; labelKey: string }[] = [
-    { key: "planning", labelKey: PHASE_SHORT_LABEL_KEYS.planning },
-    { key: "coding", labelKey: PHASE_SHORT_LABEL_KEYS.coding },
-    { key: "qa_review", labelKey: PHASE_SHORT_LABEL_KEYS.qa_review },
+    { key: "plan", labelKey: PHASE_SHORT_LABEL_KEYS.plan },
+    { key: "implement", labelKey: PHASE_SHORT_LABEL_KEYS.implement },
+    { key: "check", labelKey: PHASE_SHORT_LABEL_KEYS.check },
   ];
 
   const getPhaseState = (phaseKey: ExecutionPhase) => {
-    const phaseOrder = ["planning", "coding", "qa_review", "qa_fixing", "complete"];
+    const phaseOrder = ["plan", "implement", "check", "fix", "complete"];
     const currentIndex = phaseOrder.indexOf(currentPhase);
     const phaseIndex = phaseOrder.indexOf(phaseKey);
 
     if (currentPhase === "complete") return "complete";
-    if (phaseKey === currentPhase || (phaseKey === "qa_review" && currentPhase === "qa_fixing")) {
+    if (phaseKey === currentPhase || (phaseKey === "check" && currentPhase === "fix")) {
       return isStuck ? "stuck" : "active";
     }
     if (phaseIndex < currentIndex) return "complete";

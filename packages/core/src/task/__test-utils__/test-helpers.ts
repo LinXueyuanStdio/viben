@@ -1,154 +1,304 @@
 /**
- * Test Helpers for Task State Machine Tests
+ * Test Helpers for Task State Machine
  *
- * Provides utility functions for state machine testing.
+ * Provides utilities for testing state machine transitions
+ * with common event sequences and validation helpers.
  */
 
-import { getNextState, type TaskMachineEvent, type XStateValue } from "../machine/task-machine";
-import type { TaskMachineContext } from "../machine/task-machine";
+import {
+  getNextState,
+  type TaskMachineEvent,
+  type XStateValue,
+  type TaskMachineContext,
+} from "../machine/task-machine";
+import type { ExecutionPhase } from "../../services/task-service";
 
 // =============================================================================
-// State Transition Helpers
+// Types
+// =============================================================================
+
+export interface StateTransitionResult {
+  value: XStateValue;
+  changed: boolean;
+}
+
+// =============================================================================
+// Event Sequences
 // =============================================================================
 
 /**
- * Apply a sequence of events to a state and return the final state
+ * Common event sequences for testing complete flows
+ */
+export const EVENT_SEQUENCES = {
+  /**
+   * Happy path: backlog -> completed
+   */
+  HAPPY_PATH: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "CHECK_PASSED" },
+    { type: "APPROVED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * To completed state (alias for HAPPY_PATH)
+   */
+  toCompleted: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "CHECK_PASSED" },
+    { type: "APPROVED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * To check state
+   */
+  toCheck: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * To human review state (via CHECK_PASSED)
+   */
+  toHumanReview: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "CHECK_PASSED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * To failed state (via PLAN_FAILED)
+   */
+  toFailed: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_FAILED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Plan failure path
+   */
+  PLAN_FAILURE: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_FAILED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Implement failure path
+   */
+  IMPLEMENT_FAILURE: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "IMPLEMENT_FAILED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Check rejection and fix path
+   */
+  CHECK_FIX_CYCLE: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "ALL_SUBTASKS_DONE" },
+    { type: "CHECK_FAILED" },
+    { type: "FIX_COMPLETE" },
+    { type: "CHECK_PASSED" },
+    { type: "APPROVED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Pause and resume from queue
+   */
+  PAUSE_RESUME_QUEUE: [
+    { type: "QUEUE" },
+    { type: "PAUSE" },
+    { type: "RESUME" },
+    { type: "START" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Pause and resume from implement
+   */
+  PAUSE_RESUME_IMPLEMENT: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "PAUSE" },
+    { type: "RESUME" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * User stops with progress -> human review
+   */
+  USER_STOP_WITH_PROGRESS: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_COMPLETE" },
+    { type: "SUBTASK_COMPLETE" },
+    { type: "USER_STOPPED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * User stops without progress -> backlog
+   */
+  USER_STOP_NO_PROGRESS: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "USER_STOPPED" },
+  ] as TaskMachineEvent[],
+
+  /**
+   * Cancel from backlog
+   */
+  CANCEL_FROM_BACKLOG: [{ type: "CANCEL" }] as TaskMachineEvent[],
+
+  /**
+   * Retry after failure
+   */
+  RETRY_AFTER_FAILURE: [
+    { type: "QUEUE" },
+    { type: "START" },
+    { type: "PLAN_FAILED" },
+    { type: "RETRY" },
+    { type: "START" },
+  ] as TaskMachineEvent[],
+};
+
+// =============================================================================
+// Test Helpers
+// =============================================================================
+
+/**
+ * Apply a sequence of events and return the final state
+ *
+ * @param initialState - Starting state
+ * @param events - Array of events to apply
+ * @param initialContext - Optional initial context
+ * @returns Final state value
  */
 export function applyEventSequence(
   initialState: XStateValue,
   events: TaskMachineEvent[],
-  context?: Partial<TaskMachineContext>
+  initialContext?: Partial<TaskMachineContext>
 ): XStateValue {
   let currentState = initialState;
 
   for (const event of events) {
-    const result = getNextState(currentState, event, context);
-    if (result.changed) {
-      currentState = result.value;
-    }
+    const result = getNextState(currentState, event, initialContext);
+    currentState = result.value;
   }
 
   return currentState;
 }
 
 /**
- * Test that a valid transition occurs
+ * Apply a sequence of events and return detailed results
+ *
+ * @param initialState - Starting state
+ * @param events - Array of events to apply
+ * @param initialContext - Optional initial context
+ * @returns Final state value and whether all transitions were successful
  */
-export function expectValidTransition(
+export function applyEventSequenceDetailed(
+  initialState: XStateValue,
+  events: TaskMachineEvent[],
+  initialContext?: Partial<TaskMachineContext>
+): { finalState: XStateValue; allSuccessful: boolean; states: XStateValue[] } {
+  let currentState = initialState;
+  const states: XStateValue[] = [currentState];
+  let allSuccessful = true;
+
+  for (const event of events) {
+    const result = getNextState(currentState, event, initialContext);
+    if (!result.changed) {
+      allSuccessful = false;
+    }
+    currentState = result.value;
+    states.push(currentState);
+  }
+
+  return {
+    finalState: currentState,
+    allSuccessful,
+    states,
+  };
+}
+
+/**
+ * Test that an event sequence reaches the expected final state
+ *
+ * @param events - Array of events to apply
+ * @param expectedFinalState - Expected final state
+ * @param initialState - Starting state (default: "backlog")
+ * @returns true if final state matches expected
+ */
+export function testEventSequence(
+  events: TaskMachineEvent[],
+  expectedFinalState: XStateValue,
+  initialState: XStateValue = "backlog"
+): boolean {
+  const finalState = applyEventSequence(initialState, events);
+  return JSON.stringify(finalState) === JSON.stringify(expectedFinalState);
+}
+
+/**
+ * Get all states that a sequence passes through
+ *
+ * @param events - Array of events to apply
+ * @param initialState - Starting state (default: "backlog")
+ * @returns Array of all state values traversed
+ */
+export function getStateTrace(
+  events: TaskMachineEvent[],
+  initialState: XStateValue = "backlog"
+): XStateValue[] {
+  return applyEventSequenceDetailed(initialState, events).states;
+}
+
+/**
+ * Test that a transition is valid
+ *
+ * @param fromState - Current state
+ * @param event - Event to apply
+ * @param expectedState - Expected resulting state
+ * @returns true if transition produces expected state
+ */
+export function testTransition(
   fromState: XStateValue,
   event: TaskMachineEvent,
-  toState: XStateValue,
-  context?: Partial<TaskMachineContext>
-): { success: boolean; actual: XStateValue } {
-  const result = getNextState(fromState, event, context);
-
-  const expectedStr = JSON.stringify(toState);
-  const actualStr = JSON.stringify(result.value);
-
-  return {
-    success: result.changed && expectedStr === actualStr,
-    actual: result.value,
-  };
+  expectedState: XStateValue
+): boolean {
+  const result = getNextState(fromState, event);
+  return (
+    result.changed && JSON.stringify(result.value) === JSON.stringify(expectedState)
+  );
 }
 
 /**
- * Test that an invalid transition does not change state
+ * Test that a transition is invalid (state doesn't change)
+ *
+ * @param fromState - Current state
+ * @param event - Event to apply
+ * @returns true if transition is invalid (state unchanged)
  */
-export function expectInvalidTransition(
-  state: XStateValue,
-  event: TaskMachineEvent,
-  context?: Partial<TaskMachineContext>
-): { unchanged: boolean; actual: XStateValue } {
-  const result = getNextState(state, event, context);
-
-  return {
-    unchanged: !result.changed,
-    actual: result.value,
-  };
+export function testInvalidTransition(
+  fromState: XStateValue,
+  event: TaskMachineEvent
+): boolean {
+  const result = getNextState(fromState, event);
+  return !result.changed;
 }
-
-// =============================================================================
-// Event Sequence Builders
-// =============================================================================
-
-type EventType = TaskMachineEvent["type"];
-
-/**
- * Create an array of events from event types
- */
-export function createEventSequence(types: EventType[]): TaskMachineEvent[] {
-  return types.map((type) => ({ type }));
-}
-
-/**
- * Standard event sequences to reach specific states
- */
-export const EVENT_SEQUENCES = {
-  /** backlog -> queue */
-  toQueue: createEventSequence(["QUEUE"]),
-
-  /** backlog -> in_progress.planning */
-  toPlanning: createEventSequence(["QUEUE", "START"]),
-
-  /** backlog -> in_progress.coding */
-  toCoding: createEventSequence(["QUEUE", "START", "PLANNING_COMPLETE"]),
-
-  /** backlog -> in_progress.qa_review */
-  toQaReview: createEventSequence([
-    "QUEUE",
-    "START",
-    "PLANNING_COMPLETE",
-    "ALL_SUBTASKS_DONE",
-  ]),
-
-  /** backlog -> in_progress.qa_fixing */
-  toQaFixing: createEventSequence([
-    "QUEUE",
-    "START",
-    "PLANNING_COMPLETE",
-    "ALL_SUBTASKS_DONE",
-    "QA_FAILED",
-  ]),
-
-  /** backlog -> human_review (via qa_passed) */
-  toHumanReview: createEventSequence([
-    "QUEUE",
-    "START",
-    "PLANNING_COMPLETE",
-    "ALL_SUBTASKS_DONE",
-    "QA_PASSED",
-  ]),
-
-  /** backlog -> completed */
-  toCompleted: createEventSequence([
-    "QUEUE",
-    "START",
-    "PLANNING_COMPLETE",
-    "ALL_SUBTASKS_DONE",
-    "QA_PASSED",
-    "APPROVED",
-  ]),
-
-  /** backlog -> failed */
-  toFailed: createEventSequence(["QUEUE", "START", "PLANNING_FAILED"]),
-
-  /** backlog -> cancelled */
-  toCancelled: createEventSequence(["CANCEL"]),
-
-  /** backlog -> paused (from queue) */
-  toPausedFromQueue: createEventSequence(["QUEUE", "PAUSE"]),
-
-  /** backlog -> paused (from planning) */
-  toPausedFromPlanning: createEventSequence(["QUEUE", "START", "PAUSE"]),
-
-  /** backlog -> paused (from coding) */
-  toPausedFromCoding: createEventSequence([
-    "QUEUE",
-    "START",
-    "PLANNING_COMPLETE",
-    "PAUSE",
-  ]),
-} as const;
 
 // =============================================================================
 // State Comparison Helpers
@@ -162,82 +312,18 @@ export function statesEqual(a: XStateValue, b: XStateValue): boolean {
 }
 
 /**
- * Check if state is in_progress with a specific phase
+ * Check if state is a nested in_progress state
  */
-export function isInProgressPhase(state: XStateValue, phase: string): boolean {
-  if (typeof state !== "object") return false;
-  if (!("in_progress" in state)) return false;
-  return state.in_progress === phase;
+export function isInProgressState(state: XStateValue): state is { in_progress: ExecutionPhase } {
+  return typeof state === "object" && "in_progress" in state;
 }
 
 /**
- * Get the phase from an in_progress state
+ * Get the in_progress substate if applicable
  */
-export function getPhase(state: XStateValue): string | null {
-  if (typeof state !== "object") return null;
-  if (!("in_progress" in state)) return null;
-  return state.in_progress;
-}
-
-// =============================================================================
-// Assertion Helpers (for use with vitest)
-// =============================================================================
-
-/**
- * Format state for error messages
- */
-export function formatState(state: XStateValue): string {
-  if (typeof state === "string") return state;
-  return JSON.stringify(state);
-}
-
-/**
- * Create a descriptive test name for a transition
- */
-export function transitionName(
-  from: XStateValue,
-  event: string,
-  to: XStateValue
-): string {
-  return `${formatState(from)} + ${event} -> ${formatState(to)}`;
-}
-
-// =============================================================================
-// Context Helpers
-// =============================================================================
-
-/**
- * Create context for testing pause/resume from a specific state
- * Uses a fixed timestamp for deterministic tests
- */
-export function createPauseContext(
-  fromState: XStateValue,
-  pausedAt = "2026-01-15T10:00:00.000Z"
-): Partial<TaskMachineContext> {
-  return {
-    pausedFromState: fromState,
-    paused_snapshot: {
-      from_state: fromState,
-      subtask_index: 0,
-      paused_at: pausedAt,
-    },
-  };
-}
-
-/**
- * Create context with requiresPlanReview flag
- */
-export function createPlanReviewContext(required: boolean): Partial<TaskMachineContext> {
-  return {
-    requiresPlanReview: required,
-  };
-}
-
-/**
- * Create context with subtask progress
- */
-export function createProgressContext(index: number): Partial<TaskMachineContext> {
-  return {
-    currentSubtaskIndex: index,
-  };
+export function getInProgressPhase(state: XStateValue): string | null {
+  if (isInProgressState(state)) {
+    return state.in_progress;
+  }
+  return null;
 }

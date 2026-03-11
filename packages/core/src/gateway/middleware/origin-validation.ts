@@ -5,6 +5,9 @@
  * the Origin header of incoming requests against an allowlist.
  */
 import type { FastifyRequest, FastifyReply } from "fastify";
+import { logger as globalLogger } from "../../telemetry";
+
+const log = globalLogger.child({ module: "origin-validation" });
 
 /**
  * Default allowed origins for the Gateway
@@ -68,9 +71,7 @@ export function validateOrigin(request: FastifyRequest, reply: FastifyReply): bo
   const origin = request.headers.origin;
 
   if (!isOriginAllowed(origin)) {
-    console.warn(
-      `[Origin Validation] Blocked request from untrusted origin: ${origin}`
-    );
+    log.warn({ origin }, "Blocked request from untrusted origin");
 
     reply.code(403).send({
       error: "Forbidden",

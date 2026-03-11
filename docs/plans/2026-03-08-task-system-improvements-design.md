@@ -117,7 +117,7 @@ interface UnifiedTask {
 ```jsonl
 {"eventId":"uuid-1","sequence":1,"type":"QUEUE","timestamp":"2026-03-08T10:00:00Z"}
 {"eventId":"uuid-2","sequence":2,"type":"START","timestamp":"2026-03-08T10:00:05Z"}
-{"eventId":"uuid-3","sequence":3,"type":"PLANNING_COMPLETE","timestamp":"2026-03-08T10:05:00Z","payload":{"planId":"..."}}
+{"eventId":"uuid-3","sequence":3,"type":"PLAN_COMPLETE","timestamp":"2026-03-08T10:05:00Z","payload":{"planId":"..."}}
 ```
 
 #### 2.4 事件存储 API 变更

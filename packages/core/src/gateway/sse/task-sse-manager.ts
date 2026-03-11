@@ -9,6 +9,10 @@
  */
 
 import { EventEmitter } from "node:events";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "task-sse-manager" });
 
 // =============================================================================
 // Types
@@ -467,7 +471,7 @@ export class TaskSSEManager {
     } catch (error) {
       // Exception during send - connection is likely dead
       info.failedSends++;
-      console.error(`[TaskSSEManager] Error sending to subscriber ${subscriberId}:`, error);
+      log.error({ err: error, subscriberId }, "Error sending to subscriber");
       return false;
     }
   }
@@ -492,10 +496,9 @@ export class TaskSSEManager {
 
       if (isStale || isDead) {
         toRemove.push(subscriberId);
-        console.log(
-          `[TaskSSEManager] Cleaning up subscriber ${subscriberId}: ` +
-            `stale=${isStale} (lastActivity=${now - info.lastActivity}ms ago), ` +
-            `dead=${isDead} (failedSends=${info.failedSends})`
+        log.debug(
+          { subscriberId, isStale, isDead, lastActivityMs: now - info.lastActivity, failedSends: info.failedSends },
+          "Cleaning up subscriber"
         );
       }
     }
@@ -506,7 +509,7 @@ export class TaskSSEManager {
     }
 
     if (toRemove.length > 0) {
-      console.log(`[TaskSSEManager] Cleaned up ${toRemove.length} stale subscribers`);
+      log.info({ count: toRemove.length }, "Cleaned up stale subscribers");
     }
 
     return toRemove.length;
@@ -535,8 +538,9 @@ export class TaskSSEManager {
       this.cleanupStaleSubscribers();
     }, this.config.cleanupIntervalMs);
 
-    console.log(
-      `[TaskSSEManager] Started heartbeat (${heartbeatMs}ms) and cleanup (${this.config.cleanupIntervalMs}ms) intervals`
+    log.info(
+      { heartbeatMs, cleanupIntervalMs: this.config.cleanupIntervalMs },
+      "Started heartbeat and cleanup intervals"
     );
 
     return () => this.stopHeartbeat();
@@ -554,7 +558,7 @@ export class TaskSSEManager {
       clearInterval(this.cleanupIntervalId);
       this.cleanupIntervalId = null;
     }
-    console.log("[TaskSSEManager] Stopped heartbeat and cleanup intervals");
+    log.info("Stopped heartbeat and cleanup intervals");
   }
 
   /**
@@ -620,7 +624,7 @@ export class TaskSSEManager {
         info.lastActivity = Date.now();
       } catch (error) {
         info.failedSends++;
-        console.error(`[TaskSSEManager] Error sending to subscriber ${subscriberId}:`, error);
+        log.error({ err: error, subscriberId }, "Error sending to subscriber");
       }
     }
   }
@@ -646,7 +650,7 @@ export class TaskSSEManager {
     this.subscribers.clear();
     this.taskSubscribers.clear();
     this.workspaceSubscribers.clear();
-    console.log("[TaskSSEManager] Closed and cleaned up all resources");
+    log.info("Closed and cleaned up all resources");
   }
 
   /**

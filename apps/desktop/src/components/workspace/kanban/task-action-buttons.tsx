@@ -18,7 +18,6 @@ import {
   RotateCcw,
   CheckCircle2,
   XCircle,
-  GitPullRequest,
   Loader2,
 } from "lucide-react";
 import { Button, cn } from "@viben/ui";
@@ -225,7 +224,7 @@ export function TaskActionButtons({
   const handleStop = useCallback(() => submitEvent("USER_STOPPED"), [submitEvent]);
   const handleApprove = useCallback(() => submitEvent("APPROVED"), [submitEvent]);
   const handleReject = useCallback(() => submitEvent("REJECTED"), [submitEvent]);
-  const handleCreatePR = useCallback(() => submitEvent("CREATE_PR"), [submitEvent]);
+  // Note: CREATE_PR is not a state machine event, handle separately if needed
   const handleRetry = useCallback(() => submitEvent("RETRY"), [submitEvent]);
   const handleAbandon = useCallback(() => submitEvent("ABANDON"), [submitEvent]);
 
@@ -318,7 +317,7 @@ export function TaskActionButtons({
     if (status === "human_review") {
       // Show different buttons based on review reason
       if (reviewReason === "completed") {
-        // Task completed, show Approve and Create PR
+        // Task completed, show Approve button
         buttonList.push(
           <Button
             key="approve"
@@ -334,23 +333,6 @@ export function TaskActionButtons({
               <CheckCircle2 className={iconWithMargin} />
             )}
             {t("workspace.taskActions.approve", "Approve")}
-          </Button>
-        );
-        buttonList.push(
-          <Button
-            key="createPr"
-            variant="outline"
-            size={size}
-            className={sizeClasses[size]}
-            onClick={handleCreatePR}
-            disabled={isSubmitting}
-          >
-            {submittingEvent === "CREATE_PR" ? (
-              <LoadingIcon />
-            ) : (
-              <GitPullRequest className={iconWithMargin} />
-            )}
-            {t("workspace.taskActions.createPr", "Create PR")}
           </Button>
         );
       } else if (reviewReason === "plan_review") {
@@ -532,7 +514,6 @@ export function TaskActionButtons({
     handleStop,
     handleApprove,
     handleReject,
-    handleCreatePR,
     handleRetry,
     handleAbandon,
     LoadingIcon,

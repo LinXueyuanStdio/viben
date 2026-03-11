@@ -9,6 +9,10 @@ import { EventEmitter } from "node:events";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import type { QueueTask, AgentRunPayload } from "./types";
 import type { SSEMessage } from "../../executors/chat/sdk-proxy";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "queue-worker" });
 
 /**
  * Worker execution result
@@ -170,7 +174,7 @@ export class QueueWorker extends EventEmitter {
     if (!controller) return false;
 
     controller.abort();
-    console.log(`[QueueWorker] Cancelled task: ${taskId}`);
+    log.info({ taskId }, "Cancelled task");
     return true;
   }
 
@@ -216,7 +220,7 @@ export class QueueWorker extends EventEmitter {
   cancelAll(): void {
     for (const [taskId, controller] of this.abortControllers) {
       controller.abort();
-      console.log(`[QueueWorker] Force cancelled task: ${taskId}`);
+      log.info({ taskId }, "Force cancelled task");
     }
     this.abortControllers.clear();
   }

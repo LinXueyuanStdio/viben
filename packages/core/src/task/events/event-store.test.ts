@@ -57,9 +57,9 @@ describe("isValidEventType", () => {
   describe("valid event types", () => {
     const validTypes: TaskEventType[] = [
       "QUEUE", "START", "DEQUEUE",
-      "PLANNING_COMPLETE", "PLANNING_FAILED",
-      "SUBTASK_COMPLETE", "ALL_SUBTASKS_DONE", "CODING_FAILED",
-      "QA_PASSED", "QA_FAILED", "QA_FIXING_COMPLETE", "QA_FIXING_FAILED",
+      "PLAN_COMPLETE", "PLAN_FAILED",
+      "SUBTASK_COMPLETE", "ALL_SUBTASKS_DONE", "IMPLEMENT_FAILED",
+      "CHECK_PASSED", "CHECK_FAILED", "FIX_COMPLETE", "FIX_FAILED",
       "USER_STOPPED", "APPROVED", "REJECTED", "CANCEL",
       "PAUSE", "RESUME", "RETRY", "ABANDON",
     ];
@@ -81,8 +81,8 @@ describe("isValidEventType", () => {
     }
   });
 
-  it("VALID_EVENT_TYPES contains all 20 event types", () => {
-    expect(VALID_EVENT_TYPES).toHaveLength(20);
+  it("VALID_EVENT_TYPES contains all 21 event types", () => {
+    expect(VALID_EVENT_TYPES).toHaveLength(21);
   });
 });
 
@@ -147,7 +147,7 @@ describe("TaskEventStore.applyEvent", () => {
       const result = await store.applyEvent(taskDir, event);
 
       expect(result.success).toBe(true);
-      expect(result.newState).toBe('{"in_progress":"planning"}');
+      expect(result.newState).toBe('{"in_progress":"plan"}');
     });
 
     it("applies PAUSE event and saves machine_context", async () => {
@@ -214,8 +214,8 @@ describe("TaskEventStore.applyEvent", () => {
     it("applies SUBTASK_COMPLETE and increments subtask index", async () => {
       const task = createTaskInState("in_progress", {
         id: "task1",
-        xstateState: { in_progress: "coding" },
-        lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+        xstateState: { in_progress: "implement" },
+        lastEvent: { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
         machine_context: { current_subtask_index: 0, requires_plan_review: false },
       });
       mockGetTask.mockResolvedValue(task);
@@ -238,10 +238,10 @@ describe("TaskEventStore.applyEvent", () => {
       }));
     });
 
-    it("rejects SUBTASK_COMPLETE from non-coding state", async () => {
+    it("rejects SUBTASK_COMPLETE from non-implement state", async () => {
       const task = createTaskInState("in_progress", {
         id: "task1",
-        xstateState: { in_progress: "planning" },
+        xstateState: { in_progress: "plan" },
         lastEvent: { eventId: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
       });
       mockGetTask.mockResolvedValue(task);
@@ -533,15 +533,15 @@ describe("Complete State Transition Flows", () => {
     vi.useRealTimers();
   });
 
-  it("completes happy path: backlog -> queue -> planning -> coding -> qa_review -> human_review -> completed", async () => {
+  it("completes happy path: backlog -> queue -> plan -> implement -> check -> human_review -> completed", async () => {
     let currentTask = createTaskInState("backlog", { id: "task1" });
 
     const eventFlow: Array<{ type: TaskEventType; expectedState: string }> = [
       { type: "QUEUE", expectedState: "queue" },
       { type: "START", expectedState: "in_progress" },
-      { type: "PLANNING_COMPLETE", expectedState: "in_progress" },
+      { type: "PLAN_COMPLETE", expectedState: "in_progress" },
       { type: "ALL_SUBTASKS_DONE", expectedState: "in_progress" },
-      { type: "QA_PASSED", expectedState: "human_review" },
+      { type: "CHECK_PASSED", expectedState: "human_review" },
       { type: "APPROVED", expectedState: "completed" },
     ];
 
@@ -680,10 +680,10 @@ describe("Review Reason Computation", () => {
     mockAppendFile.mockResolvedValue(undefined);
   });
 
-  it("sets reviewReason to 'completed' on QA_PASSED", async () => {
+  it("sets reviewReason to 'completed' on CHECK_PASSED", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "qa_review" },
+      xstateState: { in_progress: "check" },
       lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
     });
     mockGetTask.mockResolvedValue(task);
@@ -692,7 +692,7 @@ describe("Review Reason Computation", () => {
     await store.applyEvent(taskDir, {
       eventId: "evt_5",
       sequence: 5,
-      type: "QA_PASSED",
+      type: "CHECK_PASSED",
       timestamp: "2026-01-15T10:04:00.000Z",
     });
 
@@ -704,8 +704,8 @@ describe("Review Reason Computation", () => {
   it("sets reviewReason to 'stopped' on USER_STOPPED", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "coding" },
-      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      xstateState: { in_progress: "implement" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
       machine_context: { current_subtask_index: 1, requires_plan_review: false }, // Has progress
     });
     mockGetTask.mockResolvedValue(task);
@@ -723,10 +723,10 @@ describe("Review Reason Computation", () => {
     }));
   });
 
-  it("sets reviewReason to 'qa_rejected' on QA_FAILED", async () => {
+  it("sets reviewReason to 'qa_rejected' on CHECK_FAILED", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "qa_review" },
+      xstateState: { in_progress: "check" },
       lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
     });
     mockGetTask.mockResolvedValue(task);
@@ -735,7 +735,7 @@ describe("Review Reason Computation", () => {
     await store.applyEvent(taskDir, {
       eventId: "evt_5",
       sequence: 5,
-      type: "QA_FAILED",
+      type: "CHECK_FAILED",
       timestamp: "2026-01-15T10:04:00.000Z",
     });
 
@@ -769,8 +769,8 @@ describe("Self-Transition Tests", () => {
   it("handles multiple consecutive SUBTASK_COMPLETE events", async () => {
     let currentTask = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "coding" },
-      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      xstateState: { in_progress: "implement" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
       machine_context: { current_subtask_index: 0, requires_plan_review: false },
     });
 
@@ -796,14 +796,14 @@ describe("Self-Transition Tests", () => {
     // Verify final state
     expect(currentTask.machine_context?.current_subtask_index).toBe(5);
     expect(currentTask.status).toBe("in_progress");
-    expect(currentTask.xstateState).toEqual({ in_progress: "coding" });
+    expect(currentTask.xstateState).toEqual({ in_progress: "implement" });
   });
 
   it("validates SUBTASK_COMPLETE without applying", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "coding" },
-      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLANNING_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      xstateState: { in_progress: "implement" },
+      lastEvent: { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
     });
     mockGetTask.mockResolvedValue(task);
 
@@ -820,10 +820,10 @@ describe("Self-Transition Tests", () => {
     expect(mockAppendFile).not.toHaveBeenCalled();
   });
 
-  it("rejects SUBTASK_COMPLETE from qa_review state", async () => {
+  it("rejects SUBTASK_COMPLETE from check state", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "qa_review" },
+      xstateState: { in_progress: "check" },
       lastEvent: { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
     });
     mockGetTask.mockResolvedValue(task);
@@ -839,11 +839,11 @@ describe("Self-Transition Tests", () => {
     expect(result.error).toBe("INVALID_TRANSITION");
   });
 
-  it("rejects SUBTASK_COMPLETE from qa_fixing state", async () => {
+  it("rejects SUBTASK_COMPLETE from fix state", async () => {
     const task = createTaskInState("in_progress", {
       id: "task1",
-      xstateState: { in_progress: "qa_fixing" },
-      lastEvent: { eventId: "evt_5", sequence: 5, type: "QA_FAILED", timestamp: "2026-01-15T10:04:00.000Z" },
+      xstateState: { in_progress: "fix" },
+      lastEvent: { eventId: "evt_5", sequence: 5, type: "CHECK_FAILED", timestamp: "2026-01-15T10:04:00.000Z" },
     });
     mockGetTask.mockResolvedValue(task);
 

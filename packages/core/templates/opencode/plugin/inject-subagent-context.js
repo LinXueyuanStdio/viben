@@ -14,10 +14,10 @@ import { join } from "path"
 import { VibenContext, debugLog } from "../lib/viben-context.js"
 
 // Supported subagent types
-const AGENTS_ALL = ["implement", "check", "debug", "research"]
-const AGENTS_REQUIRE_TASK = ["implement", "check", "debug"]
+const AGENTS_ALL = ["implement", "check", "fix", "research"]
+const AGENTS_REQUIRE_TASK = ["implement", "check", "fix"]
 // Agents that don't update phase (can be called at any time)
-const AGENTS_NO_PHASE_UPDATE = ["debug", "research"]
+const AGENTS_NO_PHASE_UPDATE = ["fix", "research"]
 
 /**
  * Update current_phase in task.json based on subagent_type
@@ -182,13 +182,13 @@ function getFinishContext(ctx, taskDir) {
 }
 
 /**
- * Get context for debug agent
+ * Get context for fix agent
  */
 function getDebugContext(ctx, taskDir) {
   const parts = []
 
-  // 1. Read debug.jsonl (or fallback to spec.jsonl + check files)
-  const jsonlPath = join(ctx.directory, taskDir, "debug.jsonl")
+  // 1. Read fix.jsonl (or fallback to spec.jsonl + check files)
+  const jsonlPath = join(ctx.directory, taskDir, "fix.jsonl")
   const entries = ctx.readJsonlWithFiles(jsonlPath)
 
   if (entries.length > 0) {
@@ -356,9 +356,9 @@ ${originalPrompt}
 - Fix issues yourself, don't just report
 - Must execute complete checklist`,
 
-    debug: `# Debug Agent Task
+    fix: `# Fix Agent Task
 
-You are the Debug Agent in the Multi-Agent Pipeline.
+You are the Fix Agent in the Multi-Agent Pipeline.
 
 ## Your Context
 
@@ -506,7 +506,7 @@ export default async ({ directory }) => {
               ? getFinishContext(ctx, taskDir)
               : getCheckContext(ctx, taskDir)
             break
-          case "debug":
+          case "fix":
             context = getDebugContext(ctx, taskDir)
             break
           case "research":

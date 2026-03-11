@@ -252,7 +252,7 @@ const TaskCardContent = memo(function TaskCardContent({
   });
 
   // Determine if execution phase badge should show
-  // ExecutionPhase: "planning" | "coding" | "qa_review" | "qa_fixing" | "complete"
+  // ExecutionPhase: "plan" | "implement" | "check" | "fix" | "complete"
   const executionPhase = task.executionPhase ?? task.execution_phase;
   const hasActiveExecution =
     executionPhase &&

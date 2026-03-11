@@ -17,7 +17,7 @@ import type { TaskMachineContext, XStateValue } from "./task-machine";
 
 /**
  * Check if plan review is not required
- * Used when PLANNING_COMPLETE event is received
+ * Used when PLAN_COMPLETE event is received
  */
 export function noPlanReviewRequired({ context }: { context: TaskMachineContext }): boolean {
   return !context.requiresPlanReview;
@@ -61,31 +61,31 @@ export function pausedFromQueue({ context }: { context: TaskMachineContext }): b
 }
 
 /**
- * Check if paused from in_progress.planning state
+ * Check if paused from in_progress.plan state
  */
-export function pausedFromPlanning({ context }: { context: TaskMachineContext }): boolean {
-  return isPausedFrom(context, { in_progress: "planning" });
+export function pausedFromPlan({ context }: { context: TaskMachineContext }): boolean {
+  return isPausedFrom(context, { in_progress: "plan" });
 }
 
 /**
- * Check if paused from in_progress.coding state
+ * Check if paused from in_progress.implement state
  */
-export function pausedFromCoding({ context }: { context: TaskMachineContext }): boolean {
-  return isPausedFrom(context, { in_progress: "coding" });
+export function pausedFromImplement({ context }: { context: TaskMachineContext }): boolean {
+  return isPausedFrom(context, { in_progress: "implement" });
 }
 
 /**
- * Check if paused from in_progress.qa_review state
+ * Check if paused from in_progress.check state
  */
-export function pausedFromQaReview({ context }: { context: TaskMachineContext }): boolean {
-  return isPausedFrom(context, { in_progress: "qa_review" });
+export function pausedFromCheck({ context }: { context: TaskMachineContext }): boolean {
+  return isPausedFrom(context, { in_progress: "check" });
 }
 
 /**
- * Check if paused from in_progress.qa_fixing state
+ * Check if paused from in_progress.fix state
  */
-export function pausedFromQaFixing({ context }: { context: TaskMachineContext }): boolean {
-  return isPausedFrom(context, { in_progress: "qa_fixing" });
+export function pausedFromFix({ context }: { context: TaskMachineContext }): boolean {
+  return isPausedFrom(context, { in_progress: "fix" });
 }
 
 /**
@@ -95,10 +95,10 @@ export const guards = {
   noPlanReviewRequired,
   noProgress,
   pausedFromQueue,
-  pausedFromPlanning,
-  pausedFromCoding,
-  pausedFromQaReview,
-  pausedFromQaFixing,
+  pausedFromPlan,
+  pausedFromImplement,
+  pausedFromCheck,
+  pausedFromFix,
 };
 
 // =============================================================================

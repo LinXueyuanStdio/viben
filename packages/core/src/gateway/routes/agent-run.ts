@@ -16,11 +16,14 @@ import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
-import { trace, context, SpanStatusCode, recordAgentRequest, recordAgentToolCall } from "../../telemetry";
+import { trace, context, SpanStatusCode, recordAgentRequest, recordAgentToolCall, logger as globalLogger } from "../../telemetry";
 import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
+
+// Module-level logger for agent-run (used by session logger)
+const moduleLog = globalLogger.child({ module: "agent-run" });
 
 // ============================================================================
 // Structured Logger for Agent Run
@@ -50,6 +53,8 @@ interface LogEntry {
  */
 function createSessionLogger(sessionId: string, traceId?: string) {
   const startTime = Date.now();
+  // Create a child logger with session context
+  const sessionLog = moduleLog.child({ sessionId, traceId });
 
   const log = (level: LogLevel, phase: string, event: string, details?: Record<string, unknown>) => {
     const entry: LogEntry = {
@@ -63,24 +68,21 @@ function createSessionLogger(sessionId: string, traceId?: string) {
       details,
     };
 
-    // Format: [agent-run] [sessionId] [phase] event - details
-    const prefix = `[agent-run] [${sessionId}]`;
-    const message = `${prefix} [${phase}] ${event}`;
+    // Use structured logger with phase and event as message
+    const logData = { phase, ...details, duration: Date.now() - startTime };
 
     switch (level) {
       case "debug":
-        if (process.env.DEBUG || process.env.VIBEN_DEBUG) {
-          console.debug(message, details ? JSON.stringify(details) : "");
-        }
+        sessionLog.debug(logData, event);
         break;
       case "info":
-        console.log(message, details ? JSON.stringify(details) : "");
+        sessionLog.info(logData, event);
         break;
       case "warn":
-        console.warn(message, details ? JSON.stringify(details) : "");
+        sessionLog.warn(logData, event);
         break;
       case "error":
-        console.error(message, details ? JSON.stringify(details) : "");
+        sessionLog.error(logData, event);
         break;
     }
 
@@ -181,7 +183,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       approvals: config.approvals,
     };
   } catch (error) {
-    console.error(`[agent-run] Failed to load agent config from ${configPath}:`, error);
+    moduleLog.error({ err: error, configPath }, "Failed to load agent config");
     return null;
   }
 }
@@ -407,7 +409,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     const traceId = parentSpan?.spanContext().traceId;
 
     // Debug: Log trace ID availability
-    console.log("[agent-run] DEBUG: parentSpan exists:", !!parentSpan, "traceId:", traceId);
+    moduleLog.debug({ parentSpanExists: !!parentSpan, traceId }, "Trace ID availability");
 
     // Create session-scoped logger
     const log = createSessionLogger(sessionId, traceId);
@@ -820,7 +822,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             sdkSessionId,
             willPersist: !!(persistSessionId && persistTaskId),
           });
-          console.log("[agent-run] SDK session ID received:", sdkSessionId, "will persist:", !!(persistSessionId && persistTaskId));
+          moduleLog.info({ sdkSessionId, willPersist: !!(persistSessionId && persistTaskId) }, "SDK session ID received");
         }
         // Note: plan message type is defined but not currently emitted by SdkChatProxy.
 
