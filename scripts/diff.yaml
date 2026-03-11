@@ -38,8 +38,6 @@ file-pairs:
   # =============================================================================
   # .claude/hooks/
   # =============================================================================
-  - src: .claude/hooks/inject-subagent-context.py
-    tgt: .claude/hooks/inject-subagent-context.py
   - src: .claude/hooks/ralph-loop.py
     tgt: .claude/hooks/ralph-loop.py
   - src: .claude/hooks/session-start.py

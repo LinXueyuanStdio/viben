@@ -46,14 +46,6 @@ cat docs/specs/backend/index.md   # Backend guidelines index
 cat docs/specs/guides/index.md    # Thinking guides
 ```
 
-### Step 4: Ask User for Requirements
-
-Ask the user:
-
-1. What feature to develop?
-2. Which modules are involved?
-3. Development type? (backend / frontend / fullstack)
-
 ---
 
 ## Planning: Choose Your Approach
@@ -144,19 +136,6 @@ viben swarm start "$TASK_DIR"
 ## After Starting: Report Status
 
 Tell the user the agent has started and provide monitoring commands.
-
----
-
-## User Available Commands `[USER]`
-
-The following slash commands are for users (not AI):
-
-| Command | Description |
-|---------|-------------|
-| `/viben:parallel` | Start Multi-Agent Pipeline (this command) |
-| `/viben:start` | Start normal development mode (single process) |
-| `/viben:record-session` | Record session progress |
-| `/viben:finish-work` | Pre-completion checklist |
 
 ---
 
