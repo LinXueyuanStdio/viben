@@ -13,7 +13,7 @@
   ".viben/workflow.md": "87c10e0104eaee874b43939d9a8e44c97d7e99eafe23b7801621eb4196b84dba",
   ".viben/worktree.yaml": "4e63b1a498d2423fa88d68ea2f12d39266c66e0e3ca8e6a26115b69a90295915",
   ".claude/agents/check.md": "6e99973ed3807b9c9775ea2fb6eeaa8b11a44b7811a000e2ef8bf891c891dfdc",
-  ".claude/agents/debug.md": "bd43f4597be628824082d5b86a88864dfba5e07a959a3a9dada79daad624c431",
+  ".claude/agents/fix.md": "bd43f4597be628824082d5b86a88864dfba5e07a959a3a9dada79daad624c431",
   ".claude/agents/dispatch.md": "e537c3e18f79c5722a87b6de884134b71eca62f99748352eba2d2ee99e3f2403",
   ".claude/agents/implement.md": "f57e77a5fcdcd7704029185e1e9b17bd1562eaa1343e6b2e42ecff128d5174cc",
   ".claude/agents/plan.md": "04a9c55fcb6c33f4b6aa6dbd43a4c9f4edb9ef29705fefc68a51adff97c0e31f",

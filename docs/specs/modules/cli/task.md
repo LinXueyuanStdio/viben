@@ -28,7 +28,7 @@ viben task list [--mine] [--status <status>] [--json]
 | 选项 | 说明 |
 |------|------|
 | `--mine`, `-m` | 只显示分配给当前开发者的任务 |
-| `--status`, `-s` | 按状态过滤 (planning, in_progress, completed) |
+| `--status`, `-s` | 按状态过滤 (backlog, in_progress, completed) |
 | `--json` | JSON 格式输出 |
 
 **示例**:
@@ -589,7 +589,7 @@ viben task init-context <task> --type <type>
 创建的文件:
 - `implement.jsonl` - 实现阶段上下文
 - `check.jsonl` - 检查阶段上下文
-- `debug.jsonl` - 调试阶段上下文
+- `fix.jsonl` - 修复阶段上下文
 
 **示例**:
 ```bash
@@ -702,7 +702,7 @@ viben task status <task> --log           # 显示最近日志条目
 | 选项 | 说明 |
 |------|------|
 | `--assignee`, `-a` | 按分配人过滤 |
-| `--status`, `-s` | 按状态过滤 (planning, in_progress, completed) |
+| `--status`, `-s` | 按状态过滤 (backlog, in_progress, completed) |
 | `--running` | 只显示有运行中智能体的任务 |
 | `--json` | JSON 格式输出 |
 | `--detail` | 显示详细状态 |
@@ -799,7 +799,7 @@ viben task create-pr --dry-run          # 预览
 │   ├── prd.md              # 产品需求文档 (Plan Agent 生成)
 │   ├── implement.jsonl     # 实现阶段上下文
 │   ├── check.jsonl         # 检查阶段上下文
-│   ├── debug.jsonl         # 调试阶段上下文
+│   ├── fix.jsonl           # 修复阶段上下文
 │   └── .plan-log           # Plan Agent 日志
 └── archive/
     └── 2024-02/
@@ -816,7 +816,7 @@ viben task create-pr --dry-run          # 预览
   "name": "add-user-auth",
   "title": "Add user authentication",
   "description": "",
-  "status": "planning",
+  "status": "backlog",
   "dev_type": "backend",
   "scope": "auth",
   "priority": "P2",

@@ -63,24 +63,192 @@ npx viben
 
 ```mermaid
 graph LR
-    subgraph Apps["📱 Apps"]
+    subgraph Clients["📱 Clients"]
+        direction TB
         CLI["CLI"]
         Desktop["Desktop"]
         Web["Web"]
     end
 
     subgraph Core["📦 packages/core"]
-        Gateway["Gateway :18790"]
-        Agent["Agents"]
-        MCP["MCP Client"]
+        direction TB
+
+        subgraph GW["Gateway :18790"]
+            direction LR
+            REST["REST API"]
+            WS["WebSocket"]
+        end
+
+        subgraph Svc["Services"]
+            direction TB
+            Agent["AgentService"]
+            Session["SessionStore"]
+            Cron["CronService"]
+        end
+
+        subgraph Mod["Modules"]
+            direction TB
+            Exec["Executors"]
+            MCP["MCP Client"]
+            Chan["Channels"]
+        end
     end
 
-    CLI & Desktop & Web --> Core
-    MCP --> MCPServer["MCP Servers"]
-    Agent --> LLM["LLM APIs"]
+    subgraph Ext["🌍 External"]
+        direction TB
+        LLM["LLM APIs"]
+        MCPSrv["MCP Servers"]
+    end
+
+    subgraph Cfg["📁 ~/.viben/"]
+        direction TB
+        YAML["*.yaml"]
+    end
+
+    Clients -->|HTTP/WS| GW
+    GW --> Svc
+    Svc --> Mod
+    Mod --> Cfg
+    Exec --> LLM
+    MCP --> MCPSrv
 ```
 
-> `packages/core` is the single boundary for all apps, config stored in `~/.viben/` (YAML)
+> **Design Principles**: `packages/core` as single boundary · file-native config (YAML) · unified REST/WebSocket API · multi-provider support
+
+---
+
+## 📋 Task System
+
+XState-based task lifecycle management with kanban, queue, and automated execution.
+
+### Task Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> backlog: Create
+
+    backlog --> queue: enqueue
+    backlog --> cancelled: cancel
+
+    queue --> in_progress: start
+    queue --> backlog: dequeue
+    queue --> paused: pause
+
+    state in_progress {
+        direction LR
+        [*] --> plan
+        plan --> implement
+        implement --> check
+        check --> fix: Failed
+        fix --> check
+    }
+
+    in_progress --> human_review: QA Passed
+    in_progress --> paused: pause
+    in_progress --> failed: Error
+
+    paused --> queue: resume
+    paused --> backlog: abandon
+
+    human_review --> completed: approve
+    human_review --> backlog: reject
+
+    failed --> queue: retry
+    failed --> backlog: abandon
+
+    completed --> [*]
+    cancelled --> [*]
+```
+
+| Status | Description | Trigger Command |
+|--------|-------------|-----------------|
+| `backlog` | Pending, waiting to be queued | `task create` |
+| `queue` | Queued, waiting for execution | `task enqueue` |
+| `in_progress` | Executing (plan → implement → check) | `task start` |
+| `paused` | Paused, progress preserved | `task pause` |
+| `human_review` | Awaiting human review | Auto (QA passed) |
+| `completed` | Completed | `task approve` |
+| `failed` | Execution failed | Auto |
+| `cancelled` | Cancelled | `task cancel` |
+
+### Task Directory Structure
+
+```
+.viben/tasks/<date>-<slug>/
+├── task.json           # Task metadata (status, config, timestamps)
+├── events.jsonl        # Event history (state transitions)
+├── prd.md              # Product requirements document
+├── implement.jsonl     # Implementation phase context injection
+├── check.jsonl         # Check phase context injection
+└── logs/               # Execution logs
+```
+
+<details>
+<summary><b>CLI Command Reference</b></summary>
+
+**Create & Configure**
+```bash
+viben task create "<title>" --slug <name>    # Create task
+viben task init-context <task> -t <type>     # Init context (backend/frontend/fullstack)
+viben task add-context <task> <file> -r "reason"  # Add context file
+viben task set-agent <task> -a <agent>       # Set agent
+```
+
+**Execution Flow**
+```bash
+viben task enqueue <task>    # backlog → queue
+viben task start <task>      # queue → in_progress
+viben task pause <task>      # Pause execution
+viben task resume <task>     # Resume execution
+viben task status <task>     # View status
+```
+
+**Review & Complete**
+```bash
+viben task review <task>     # View task for review
+viben task approve <task>    # human_review → completed
+viben task reject <task>     # human_review → backlog
+viben task retry <task>      # failed → queue
+viben task cancel <task>     # * → cancelled
+```
+
+**Utilities**
+```bash
+viben task list              # List all tasks
+viben task context           # Get session context
+viben task create-pr <task>  # Create PR from task
+viben task archive <task>    # Archive completed task
+```
+
+</details>
+
+---
+
+## 💡 Idea Generation
+
+AI-driven codebase analysis that auto-generates improvement suggestions and converts them to tasks.
+
+| Built-in Types | Description |
+|----------------|-------------|
+| `code_improvements` | Code improvements based on existing patterns |
+| `security_hardening` | Security vulnerabilities and hardening |
+| `performance_optimizations` | Performance bottlenecks and optimizations |
+| `documentation_gaps` | Missing documentation |
+| `ui_ux_improvements` | UI/UX enhancements |
+| `code_quality` | Code quality and refactoring |
+
+```bash
+# Generate improvement suggestions
+viben idea generate --types code_improvements security_hardening
+
+# List generated ideas
+viben idea list
+
+# Promote idea to task
+viben idea promote ci-001
+```
+
+> Custom type prompt templates can be created in `docs/idea-types/*.md`
 
 ---
 

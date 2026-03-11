@@ -1,4 +1,9 @@
 import { defineConfig } from "tsup";
+import { readFileSync } from "fs";
+
+// Read version from package.json at build time
+const packageJson = JSON.parse(readFileSync("./package.json", "utf-8"));
+const VERSION = packageJson.version;
 
 export default defineConfig({
   entry: {
@@ -8,6 +13,7 @@ export default defineConfig({
     "providers/index": "src/providers/index.ts",
     "models/index": "src/models/index.ts",
     "config/index": "src/config/index.ts",
+    "telemetry/index": "src/telemetry/index.ts",
     "cli/index": "src/cli/index.ts",
     "cli/bin": "src/cli/bin.ts",
   },
@@ -22,6 +28,10 @@ export default defineConfig({
   // Optional dependencies that are dynamically imported at runtime
   // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
   external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws"],
+  // Inject version at build time
+  define: {
+    __VERSION__: JSON.stringify(VERSION),
+  },
   onSuccess: async () => {
     // Add shebang to bin.js after build
     const fs = await import("fs/promises");

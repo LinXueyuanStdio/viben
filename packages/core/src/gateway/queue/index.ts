@@ -26,6 +26,10 @@ import { DEFAULT_QUEUE_CONFIG } from "./types";
 import { QueuePersistence, getQueuePersistence } from "./persistence";
 import { QueueWorker, shouldRetry, type WorkerResult } from "./worker";
 import type { EventService } from "../../services/events";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "task-queue" });
 
 /**
  * Generate a unique task ID using crypto randomUUID
@@ -104,7 +108,7 @@ export class TaskQueueManager extends EventEmitter {
   async start(): Promise<void> {
     if (this.started) return;
 
-    console.log("[TaskQueue] Starting queue manager...");
+    log.info("Starting queue manager...");
 
     // Load persisted state
     await this.restore();
@@ -115,7 +119,7 @@ export class TaskQueueManager extends EventEmitter {
     // Start processing any pending tasks
     this.tryDequeue();
 
-    console.log("[TaskQueue] Queue manager started");
+    log.info("Queue manager started");
   }
 
   /**
@@ -168,7 +172,7 @@ export class TaskQueueManager extends EventEmitter {
     });
     this.emitQueueChanged();
 
-    console.log(`[TaskQueue] Task ${taskId} enqueued (position: ${this.queue.length})`);
+    log.info({ taskId, position: this.queue.length }, "Task enqueued");
 
     // Try to start executing
     this.tryDequeue();
@@ -222,7 +226,7 @@ export class TaskQueueManager extends EventEmitter {
     });
     this.emitQueueChanged();
 
-    console.log(`[TaskQueue] Task ${taskId} cancelled`);
+    log.info({ taskId }, "Task cancelled");
     return true;
   }
 
@@ -293,7 +297,7 @@ export class TaskQueueManager extends EventEmitter {
    * Stops accepting new tasks and waits for running tasks to complete.
    */
   async shutdown(): Promise<void> {
-    console.log("[TaskQueue] Shutting down...");
+    log.info("Shutting down...");
 
     // Stop accepting new tasks
     this.accepting = false;
@@ -302,7 +306,7 @@ export class TaskQueueManager extends EventEmitter {
     const completed = await this.worker.waitForAll(this.config.shutdown_timeout_ms);
 
     if (!completed) {
-      console.warn("[TaskQueue] Shutdown timeout, force cancelling remaining tasks");
+      log.warn("Shutdown timeout, force cancelling remaining tasks");
       this.worker.cancelAll();
 
       // Mark running tasks as failed
@@ -319,7 +323,7 @@ export class TaskQueueManager extends EventEmitter {
     await this.persistence.flush();
 
     this.started = false;
-    console.log("[TaskQueue] Shutdown complete");
+    log.info("Shutdown complete");
   }
 
   // ==========================================================================
@@ -362,7 +366,7 @@ export class TaskQueueManager extends EventEmitter {
     });
     this.emitQueueChanged();
 
-    console.log(`[TaskQueue] Task ${task.id} started (running: ${this.running.size})`);
+    log.info({ taskId: task.id, runningCount: this.running.size }, "Task started");
 
     try {
       const result = await this.worker.execute(task);
@@ -402,9 +406,7 @@ export class TaskQueueManager extends EventEmitter {
         },
       });
 
-      console.log(
-        `[TaskQueue] Task ${task.id} completed (duration: ${result.duration}ms)`
-      );
+      log.info({ taskId: task.id, durationMs: result.duration }, "Task completed");
     } else {
       // Failure - check if we should retry
       const canRetry =
@@ -417,8 +419,9 @@ export class TaskQueueManager extends EventEmitter {
         task.retry_count++;
         task.error = result.error;
 
-        console.log(
-          `[TaskQueue] Task ${task.id} failed, retrying (${task.retry_count}/${task.max_retries}): ${result.error}`
+        log.warn(
+          { taskId: task.id, retryCount: task.retry_count, maxRetries: task.max_retries, err: result.error },
+          "Task failed, retrying"
         );
 
         // Reset for retry and re-queue
@@ -449,9 +452,7 @@ export class TaskQueueManager extends EventEmitter {
           },
         });
 
-        console.log(
-          `[TaskQueue] Task ${task.id} failed permanently: ${result.error}`
-        );
+        log.error({ taskId: task.id, err: result.error }, "Task failed permanently");
       }
     }
 
@@ -475,7 +476,7 @@ export class TaskQueueManager extends EventEmitter {
       // Load state
       const state = await this.persistence.loadState();
       if (!state) {
-        console.log("[TaskQueue] No persisted state found, starting fresh");
+        log.info("No persisted state found, starting fresh");
         return;
       }
 
@@ -510,8 +511,9 @@ export class TaskQueueManager extends EventEmitter {
             this.tasks.set(taskId, task);
             runningFailed++;
 
-            console.log(
-              `[TaskQueue] Task ${taskId} marked as failed - exceeded retry limit (${task.retry_count}/${task.max_retries})`
+            log.warn(
+              { taskId, retryCount: task.retry_count, maxRetries: task.max_retries },
+              "Task marked as failed - exceeded retry limit"
             );
 
             await this.persistTask(task);
@@ -525,8 +527,9 @@ export class TaskQueueManager extends EventEmitter {
             this.tasks.set(taskId, task);
             runningRecovered++;
 
-            console.log(
-              `[TaskQueue] Task ${taskId} re-queued for retry (${task.retry_count}/${task.max_retries})`
+            log.info(
+              { taskId, retryCount: task.retry_count, maxRetries: task.max_retries },
+              "Task re-queued for retry"
             );
 
             await this.persistTask(task);
@@ -541,10 +544,9 @@ export class TaskQueueManager extends EventEmitter {
         }
       }
 
-      console.log(
-        `[TaskQueue] Restored ${this.queue.length} pending tasks, ` +
-          `recovered ${runningRecovered} interrupted tasks, ` +
-          `${runningFailed} exceeded retry limit`
+      log.info(
+        { pendingCount: this.queue.length, runningRecovered, runningFailed },
+        "Restored queue state"
       );
 
       this.emit("queue:restored", {
@@ -561,7 +563,7 @@ export class TaskQueueManager extends EventEmitter {
         },
       });
     } catch (error) {
-      console.error("[TaskQueue] Failed to restore state:", error);
+      log.error({ err: error }, "Failed to restore state");
       // Continue with empty queue
     }
   }
@@ -583,7 +585,7 @@ export class TaskQueueManager extends EventEmitter {
     try {
       await this.persistence.saveState(state, immediate);
     } catch (error) {
-      console.error("[TaskQueue] Failed to persist state:", error);
+      log.error({ err: error }, "Failed to persist state");
       this.events.broadcast({
         type: "error",
         data: {
@@ -601,7 +603,7 @@ export class TaskQueueManager extends EventEmitter {
     try {
       await this.persistence.saveTask(task, immediate);
     } catch (error) {
-      console.error(`[TaskQueue] Failed to persist task ${task.id}:`, error);
+      log.error({ err: error, taskId: task.id }, "Failed to persist task");
     }
   }
 
@@ -704,7 +706,7 @@ export class TaskQueueManager extends EventEmitter {
     });
     this.emitQueueChanged();
 
-    console.log(`[TaskQueue] Task ${taskId} re-queued for retry (position: ${this.queue.length})`);
+    log.info({ taskId, position: this.queue.length }, "Task re-queued for retry");
 
     // Try to start executing
     this.tryDequeue();

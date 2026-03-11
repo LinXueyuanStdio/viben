@@ -13,19 +13,19 @@ import {
   setReviewReason_completed,
   setReviewReason_qaRejected,
   savePausedSnapshot_queue,
-  savePausedSnapshot_planning,
-  savePausedSnapshot_coding,
-  savePausedSnapshot_qaReview,
-  savePausedSnapshot_qaFixing,
+  savePausedSnapshot_plan,
+  savePausedSnapshot_implement,
+  savePausedSnapshot_check,
+  savePausedSnapshot_fix,
   restoreFromSnapshot,
   clearPausedSnapshot,
   setQueuedAt,
   // Legacy deprecated functions
   savePausedState_queue,
-  savePausedState_planning,
-  savePausedState_coding,
-  savePausedState_qaReview,
-  savePausedState_qaFixing,
+  savePausedState_plan,
+  savePausedState_implement,
+  savePausedState_check,
+  savePausedState_fix,
   clearPausedState,
 } from "./actions";
 import { createMockContext, createPausedContext } from "../__fixtures__/task-fixtures";
@@ -122,45 +122,45 @@ describe("savePausedSnapshot actions", () => {
     });
   });
 
-  describe("savePausedSnapshot_planning", () => {
-    it("saves in_progress.planning as from_state", () => {
+  describe("savePausedSnapshot_plan", () => {
+    it("saves in_progress.plan as from_state", () => {
       const context = createMockContext({ currentSubtaskIndex: 0 });
-      const result = savePausedSnapshot_planning({ context });
+      const result = savePausedSnapshot_plan({ context });
 
-      expect(result.pausedFromState).toEqual({ in_progress: "planning" });
-      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "planning" });
+      expect(result.pausedFromState).toEqual({ in_progress: "plan" });
+      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "plan" });
     });
   });
 
-  describe("savePausedSnapshot_coding", () => {
-    it("saves in_progress.coding as from_state", () => {
+  describe("savePausedSnapshot_implement", () => {
+    it("saves in_progress.implement as from_state", () => {
       const context = createMockContext({ currentSubtaskIndex: 2 });
-      const result = savePausedSnapshot_coding({ context });
+      const result = savePausedSnapshot_implement({ context });
 
-      expect(result.pausedFromState).toEqual({ in_progress: "coding" });
-      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "coding" });
+      expect(result.pausedFromState).toEqual({ in_progress: "implement" });
+      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "implement" });
       expect(result.paused_snapshot?.subtask_index).toBe(2);
     });
   });
 
-  describe("savePausedSnapshot_qaReview", () => {
-    it("saves in_progress.qa_review as from_state", () => {
+  describe("savePausedSnapshot_check", () => {
+    it("saves in_progress.check as from_state", () => {
       const context = createMockContext({ currentSubtaskIndex: 5 });
-      const result = savePausedSnapshot_qaReview({ context });
+      const result = savePausedSnapshot_check({ context });
 
-      expect(result.pausedFromState).toEqual({ in_progress: "qa_review" });
-      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "qa_review" });
+      expect(result.pausedFromState).toEqual({ in_progress: "check" });
+      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "check" });
       expect(result.paused_snapshot?.subtask_index).toBe(5);
     });
   });
 
-  describe("savePausedSnapshot_qaFixing", () => {
-    it("saves in_progress.qa_fixing as from_state", () => {
+  describe("savePausedSnapshot_fix", () => {
+    it("saves in_progress.fix as from_state", () => {
       const context = createMockContext({ currentSubtaskIndex: 5 });
-      const result = savePausedSnapshot_qaFixing({ context });
+      const result = savePausedSnapshot_fix({ context });
 
-      expect(result.pausedFromState).toEqual({ in_progress: "qa_fixing" });
-      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "qa_fixing" });
+      expect(result.pausedFromState).toEqual({ in_progress: "fix" });
+      expect(result.paused_snapshot?.from_state).toEqual({ in_progress: "fix" });
       expect(result.paused_snapshot?.subtask_index).toBe(5);
     });
   });
@@ -172,21 +172,21 @@ describe("savePausedSnapshot actions", () => {
 
 describe("restoreFromSnapshot", () => {
   it("clears pausedFromState", () => {
-    const context = createPausedContext({ in_progress: "coding" }, 3);
+    const context = createPausedContext({ in_progress: "implement" }, 3);
     const result = restoreFromSnapshot({ context });
 
     expect(result.pausedFromState).toBeUndefined();
   });
 
   it("clears paused_snapshot", () => {
-    const context = createPausedContext({ in_progress: "coding" }, 3);
+    const context = createPausedContext({ in_progress: "implement" }, 3);
     const result = restoreFromSnapshot({ context });
 
     expect(result.paused_snapshot).toBeUndefined();
   });
 
   it("restores subtask index from snapshot", () => {
-    const context = createPausedContext({ in_progress: "coding" }, 3);
+    const context = createPausedContext({ in_progress: "implement" }, 3);
     const result = restoreFromSnapshot({ context });
 
     expect(result.currentSubtaskIndex).toBe(3);
@@ -268,31 +268,31 @@ describe("Legacy deprecated actions", () => {
     });
   });
 
-  describe("savePausedState_planning", () => {
-    it("sets pausedFromState to in_progress.planning", () => {
-      const result = savePausedState_planning();
-      expect(result.pausedFromState).toEqual({ in_progress: "planning" });
+  describe("savePausedState_plan", () => {
+    it("sets pausedFromState to in_progress.plan", () => {
+      const result = savePausedState_plan();
+      expect(result.pausedFromState).toEqual({ in_progress: "plan" });
     });
   });
 
-  describe("savePausedState_coding", () => {
-    it("sets pausedFromState to in_progress.coding", () => {
-      const result = savePausedState_coding();
-      expect(result.pausedFromState).toEqual({ in_progress: "coding" });
+  describe("savePausedState_implement", () => {
+    it("sets pausedFromState to in_progress.implement", () => {
+      const result = savePausedState_implement();
+      expect(result.pausedFromState).toEqual({ in_progress: "implement" });
     });
   });
 
-  describe("savePausedState_qaReview", () => {
-    it("sets pausedFromState to in_progress.qa_review", () => {
-      const result = savePausedState_qaReview();
-      expect(result.pausedFromState).toEqual({ in_progress: "qa_review" });
+  describe("savePausedState_check", () => {
+    it("sets pausedFromState to in_progress.check", () => {
+      const result = savePausedState_check();
+      expect(result.pausedFromState).toEqual({ in_progress: "check" });
     });
   });
 
-  describe("savePausedState_qaFixing", () => {
-    it("sets pausedFromState to in_progress.qa_fixing", () => {
-      const result = savePausedState_qaFixing();
-      expect(result.pausedFromState).toEqual({ in_progress: "qa_fixing" });
+  describe("savePausedState_fix", () => {
+    it("sets pausedFromState to in_progress.fix", () => {
+      const result = savePausedState_fix();
+      expect(result.pausedFromState).toEqual({ in_progress: "fix" });
     });
   });
 
@@ -345,18 +345,18 @@ describe("Action integration", () => {
       expect(restoreResult.currentSubtaskIndex).toBe(0);
     });
 
-    it("correctly saves and restores planning state", () => {
+    it("correctly saves and restores plan state", () => {
       const initialContext = createMockContext({
         currentSubtaskIndex: 0,
-        taskId: "task_planning",
+        taskId: "task_plan",
       });
 
-      // Pause from planning
-      const pauseResult = savePausedSnapshot_planning({ context: initialContext });
+      // Pause from plan
+      const pauseResult = savePausedSnapshot_plan({ context: initialContext });
       const pausedContext = { ...initialContext, ...pauseResult };
 
       // Verify snapshot was saved
-      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "planning" });
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "plan" });
       expect(pausedContext.paused_snapshot?.subtask_index).toBe(0);
 
       // Restore from snapshot
@@ -366,15 +366,15 @@ describe("Action integration", () => {
       expect(restoreResult.currentSubtaskIndex).toBe(0);
     });
 
-    it("correctly saves and restores coding state", () => {
+    it("correctly saves and restores implement state", () => {
       // Initial context with progress
       const initialContext = createMockContext({
         currentSubtaskIndex: 3,
         taskId: "task_123",
       });
 
-      // Pause from coding
-      const pauseResult = savePausedSnapshot_coding({ context: initialContext });
+      // Pause from implement
+      const pauseResult = savePausedSnapshot_implement({ context: initialContext });
 
       // Create paused context
       const pausedContext = {
@@ -383,7 +383,7 @@ describe("Action integration", () => {
       };
 
       // Verify snapshot was saved
-      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "coding" });
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "implement" });
       expect(pausedContext.paused_snapshot?.subtask_index).toBe(3);
 
       // Restore from snapshot
@@ -395,18 +395,18 @@ describe("Action integration", () => {
       expect(restoreResult.currentSubtaskIndex).toBe(3);
     });
 
-    it("correctly saves and restores qa_review state", () => {
+    it("correctly saves and restores check state", () => {
       const initialContext = createMockContext({
         currentSubtaskIndex: 5,
-        taskId: "task_qa_review",
+        taskId: "task_check",
       });
 
-      // Pause from qa_review
-      const pauseResult = savePausedSnapshot_qaReview({ context: initialContext });
+      // Pause from check
+      const pauseResult = savePausedSnapshot_check({ context: initialContext });
       const pausedContext = { ...initialContext, ...pauseResult };
 
       // Verify snapshot was saved
-      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "qa_review" });
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "check" });
       expect(pausedContext.paused_snapshot?.subtask_index).toBe(5);
 
       // Restore from snapshot
@@ -416,18 +416,18 @@ describe("Action integration", () => {
       expect(restoreResult.currentSubtaskIndex).toBe(5);
     });
 
-    it("correctly saves and restores qa_fixing state", () => {
+    it("correctly saves and restores fix state", () => {
       const initialContext = createMockContext({
         currentSubtaskIndex: 5,
-        taskId: "task_qa_fixing",
+        taskId: "task_fix",
       });
 
-      // Pause from qa_fixing
-      const pauseResult = savePausedSnapshot_qaFixing({ context: initialContext });
+      // Pause from fix
+      const pauseResult = savePausedSnapshot_fix({ context: initialContext });
       const pausedContext = { ...initialContext, ...pauseResult };
 
       // Verify snapshot was saved
-      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "qa_fixing" });
+      expect(pausedContext.paused_snapshot?.from_state).toEqual({ in_progress: "fix" });
       expect(pausedContext.paused_snapshot?.subtask_index).toBe(5);
 
       // Restore from snapshot
@@ -442,8 +442,8 @@ describe("Action integration", () => {
         currentSubtaskIndex: 3,
       });
 
-      // Pause from coding
-      const pauseResult = savePausedSnapshot_coding({ context: initialContext });
+      // Pause from implement
+      const pauseResult = savePausedSnapshot_implement({ context: initialContext });
       const pausedContext = {
         ...initialContext,
         ...pauseResult,
@@ -485,19 +485,19 @@ describe("Action integration", () => {
       expect(newAction.pausedFromState).toBe("queue");
     });
 
-    it("legacy and new actions set same pausedFromState for coding", () => {
+    it("legacy and new actions set same pausedFromState for implement", () => {
       const context = createMockContext({ currentSubtaskIndex: 2 });
-      const legacy = savePausedState_coding();
-      const newAction = savePausedSnapshot_coding({ context });
+      const legacy = savePausedState_implement();
+      const newAction = savePausedSnapshot_implement({ context });
 
-      expect(legacy.pausedFromState).toEqual({ in_progress: "coding" });
-      expect(newAction.pausedFromState).toEqual({ in_progress: "coding" });
+      expect(legacy.pausedFromState).toEqual({ in_progress: "implement" });
+      expect(newAction.pausedFromState).toEqual({ in_progress: "implement" });
     });
 
     it("new action includes snapshot, legacy does not", () => {
       const context = createMockContext({ currentSubtaskIndex: 2 });
-      const legacy = savePausedState_coding();
-      const newAction = savePausedSnapshot_coding({ context });
+      const legacy = savePausedState_implement();
+      const newAction = savePausedSnapshot_implement({ context });
 
       expect("paused_snapshot" in legacy).toBe(false);
       expect(newAction.paused_snapshot).toBeDefined();

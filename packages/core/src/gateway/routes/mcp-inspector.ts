@@ -10,6 +10,10 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { parse as shellParseArgs } from "shell-quote";
 import { randomUUID, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "mcp-inspector" });
 
 // MCP SDK imports
 import {
@@ -85,17 +89,17 @@ const defaultEnvironment: Record<string, string> = {
  * Error handlers for proxy connections
  */
 function onClientError(error: Error) {
-  console.error("[MCP Inspector] Error from inspector client:", error);
+  log.error({ err: error }, "Error from inspector client");
 }
 
 function onServerError(error: Error) {
   const errorCause = (error as any)?.cause;
   if (errorCause && JSON.stringify(errorCause).includes("ECONNREFUSED")) {
-    console.error("[MCP Inspector] Connection refused. Is the MCP server running?");
+    log.error("Connection refused. Is the MCP server running?");
   } else if (error.message && error.message.includes("404")) {
-    console.error("[MCP Inspector] Error accessing endpoint (HTTP 404)");
+    log.error("Error accessing endpoint (HTTP 404)");
   } else {
-    console.error("[MCP Inspector] Error from MCP server:", error);
+    log.error({ err: error }, "Error from MCP server");
   }
 }
 
@@ -114,9 +118,9 @@ function mcpProxy({
   let reportedServerSession = false;
 
   transportToClient.onmessage = (message) => {
-    console.log("[MCP Inspector] Client -> Server message:", JSON.stringify(message).slice(0, 200));
+    log.debug({ message: JSON.stringify(message).slice(0, 200) }, "Client -> Server message");
     transportToServer.send(message).catch((error) => {
-      console.error("[MCP Inspector] Error sending to server:", error);
+      log.error({ err: error }, "Error sending to server");
       // Send error response back to client if it was a request (has id) and connection is still open
       if (isJSONRPCRequest(message) && !transportToClientClosed) {
         const errorCause = (error as any)?.cause;
@@ -137,13 +141,11 @@ function mcpProxy({
   };
 
   transportToServer.onmessage = (message) => {
-    console.log("[MCP Inspector] Server -> Client message:", JSON.stringify(message).slice(0, 200));
+    log.debug({ message: JSON.stringify(message).slice(0, 200) }, "Server -> Client message");
     if (!reportedServerSession) {
       if (transportToServer.sessionId) {
         // Can only report for StreamableHttp
-        console.log(
-          "[MCP Inspector] Proxy <-> Server sessionId: " + transportToServer.sessionId
-        );
+        log.info({ sessionId: transportToServer.sessionId }, "Proxy <-> Server sessionId");
       }
       reportedServerSession = true;
     }
@@ -250,7 +252,7 @@ function getHttpHeaders(request: FastifyRequest): Record<string, string> {
         });
       }
     } catch (error) {
-      console.warn("[MCP Inspector] Failed to parse x-custom-auth-headers:", error);
+      log.warn({ err: error }, "Failed to parse x-custom-auth-headers");
     }
   }
   return headers;
@@ -343,7 +345,7 @@ async function createTransport(
   headerHolder?: { headers: Record<string, string> };
 }> {
   const query = request.query;
-  console.log("[MCP Inspector] Query parameters:", JSON.stringify(query));
+  log.debug({ query }, "Query parameters");
 
   const transportType = query.transportType;
 
@@ -355,7 +357,7 @@ async function createTransport(
 
     const { cmd, args } = findActualExecutable(command, origArgs);
 
-    console.log(`[MCP Inspector] STDIO transport: command=${cmd}, args=${args}`);
+    log.info({ command: cmd, args }, "STDIO transport");
 
     const transport = new StdioClientTransport({
       command: cmd,
@@ -373,9 +375,7 @@ async function createTransport(
     headers["Accept"] = "text/event-stream";
     const headerHolder = { headers };
 
-    console.log(
-      `[MCP Inspector] SSE transport: url=${url}, headers=${JSON.stringify(headers)}`
-    );
+    log.info({ url, headers }, "SSE transport");
 
     const transport = new SSEClientTransport(new URL(url), {
       eventSourceInit: {
@@ -392,9 +392,7 @@ async function createTransport(
     headers["Accept"] = "text/event-stream, application/json";
     const headerHolder = { headers };
 
-    console.log(
-      `[MCP Inspector] StreamableHttp transport: url=${query.url}, headers=${JSON.stringify(headers)}`
-    );
+    log.info({ url: query.url, headers }, "StreamableHttp transport");
 
     const transport = new StreamableHTTPClientTransport(
       new URL(query.url || ""),
@@ -405,7 +403,7 @@ async function createTransport(
     await transport.start();
     return { transport, headerHolder };
   } else {
-    console.error(`[MCP Inspector] Invalid transport type: ${transportType}`);
+    log.error({ transportType }, "Invalid transport type");
     throw new Error("Invalid transport type specified");
   }
 }
@@ -443,29 +441,29 @@ function checkOrigin(request: FastifyRequest, reply: FastifyReply): boolean {
  * Authentication middleware
  */
 function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
-  console.log("[MCP Inspector] checkAuth called", {
+  log.debug({
     authDisabled,
     url: request.url,
     method: request.method,
     headers: Object.keys(request.headers),
-  });
+  }, "checkAuth called");
 
   if (authDisabled) {
-    console.log("[MCP Inspector] Auth disabled, allowing request");
+    log.debug("Auth disabled, allowing request");
     return true;
   }
 
   const authHeader = request.headers["x-mcp-proxy-auth"];
   const authHeaderValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
 
-  console.log("[MCP Inspector] Auth header check:", {
+  log.debug({
     hasAuthHeader: !!authHeader,
     authHeaderValue: authHeaderValue ? `${authHeaderValue.slice(0, 20)}...` : null,
     expectedTokenPrefix: `Bearer ${sessionToken.slice(0, 8)}...`,
-  });
+  }, "Auth header check");
 
   if (!authHeaderValue || !authHeaderValue.startsWith("Bearer ")) {
-    console.log("[MCP Inspector] Auth failed: missing or malformed auth header");
+    log.warn("Auth failed: missing or malformed auth header");
     reply.code(401).send({
       error: "Unauthorized",
       message:
@@ -477,13 +475,13 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
   const providedToken = authHeaderValue.substring(7); // Remove 'Bearer ' prefix
   const expectedToken = sessionToken;
 
-  console.log("[MCP Inspector] Token comparison:", {
+  log.debug({
     providedLength: providedToken.length,
     expectedLength: expectedToken.length,
     providedPrefix: providedToken.slice(0, 8),
     expectedPrefix: expectedToken.slice(0, 8),
     match: providedToken === expectedToken,
-  });
+  }, "Token comparison");
 
   // Convert to buffers for timing-safe comparison
   const providedBuffer = Buffer.from(providedToken);
@@ -491,7 +489,7 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
 
   // Check length first to prevent timing attacks
   if (providedBuffer.length !== expectedBuffer.length) {
-    console.log("[MCP Inspector] Auth failed: token length mismatch");
+    log.warn("Auth failed: token length mismatch");
     reply.code(401).send({
       error: "Unauthorized",
       message: "Invalid authentication token.",
@@ -501,7 +499,7 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
 
   // Perform timing-safe comparison
   if (!timingSafeEqual(providedBuffer, expectedBuffer)) {
-    console.log("[MCP Inspector] Auth failed: token mismatch");
+    log.warn("Auth failed: token mismatch");
     reply.code(401).send({
       error: "Unauthorized",
       message: "Invalid authentication token.",
@@ -509,7 +507,7 @@ function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
     return false;
   }
 
-  console.log("[MCP Inspector] Auth successful");
+  log.debug("Auth successful");
   return true;
 }
 
@@ -536,16 +534,12 @@ export function isMcpInspectorAuthDisabled(): boolean {
  */
 export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   // Log startup info
-  console.log("[MCP Inspector] Registering routes...");
+  log.info("Registering routes...");
   if (!authDisabled) {
-    console.log(`[MCP Inspector] Session token: ${sessionToken}`);
-    console.log(
-      "[MCP Inspector] Use this token in x-mcp-proxy-auth header or set DANGEROUSLY_OMIT_AUTH=true to disable auth"
-    );
+    log.info({ sessionToken }, "Session token generated");
+    log.info("Use this token in x-mcp-proxy-auth header or set DANGEROUSLY_OMIT_AUTH=true to disable auth");
   } else {
-    console.log(
-      "[MCP Inspector] WARNING: Authentication is disabled. This is not recommended."
-    );
+    log.warn("Authentication is disabled. This is not recommended.");
   }
 
   // Custom content type parser for MCP Inspector routes
@@ -694,7 +688,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string;
-    console.log(`[MCP Inspector] Received GET message for sessionId ${sessionId}`);
+    log.debug({ sessionId }, "Received GET message");
 
     const headerHolder = sessionHeaderHolders.get(sessionId);
     if (headerHolder) {
@@ -714,7 +708,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       // Handle as raw HTTP for SSE streaming
       await transport.handleRequest(request.raw, reply.raw);
     } catch (error) {
-      console.error("[MCP Inspector] Error in GET /mcp route:", error);
+      log.error({ err: error }, "Error in GET /mcp route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -745,7 +739,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
     if (sessionId) {
       // Existing session
-      console.log(`[MCP Inspector] Received POST message for sessionId ${sessionId}`);
+      log.debug({ sessionId }, "Received POST message");
       const headerHolder = sessionHeaderHolders.get(sessionId);
       if (headerHolder) {
         updateHeadersInPlace(
@@ -764,13 +758,13 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
         // Pass body to handleRequest (like Express version)
         await transport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
-        console.error("[MCP Inspector] Error in POST /mcp route:", error);
+        log.error({ err: error }, "Error in POST /mcp route");
         reply.code(500);
         return { error: error instanceof Error ? error.message : "Internal error" };
       }
     } else {
       // New connection
-      console.log("[MCP Inspector] New StreamableHttp connection request");
+      log.info("New StreamableHttp connection request");
       try {
         const { transport: serverTransport, headerHolder } = await createTransport(request);
 
@@ -788,7 +782,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
               createdAt: new Date(),
               serverConnected: true,
             });
-            console.log("[MCP Inspector] Client <-> Proxy sessionId: " + newSessionId);
+            log.info({ sessionId: newSessionId }, "Client <-> Proxy sessionId");
           },
           onsessionclosed: (closedSessionId) => {
             webAppTransports.delete(closedSessionId);
@@ -797,7 +791,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
             sessionMetadata.delete(closedSessionId);
           },
         });
-        console.log("[MCP Inspector] Created StreamableHttp client transport");
+        log.info("Created StreamableHttp client transport");
 
         await webAppTransport.start();
 
@@ -810,14 +804,11 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
         await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
         if (is401Error(error)) {
-          console.error(
-            "[MCP Inspector] Received 401 Unauthorized from MCP server:",
-            error instanceof Error ? error.message : error
-          );
+          log.error({ err: error }, "Received 401 Unauthorized from MCP server");
           reply.code(401);
           return { error: "Unauthorized from MCP server" };
         }
-        console.error("[MCP Inspector] Error in POST /mcp route:", error);
+        log.error({ err: error }, "Error in POST /mcp route");
         reply.code(500);
         return { error: error instanceof Error ? error.message : "Internal error" };
       }
@@ -835,7 +826,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string | undefined;
-    console.log(`[MCP Inspector] Received DELETE message for sessionId ${sessionId}`);
+    log.debug({ sessionId }, "Received DELETE message");
 
     if (sessionId) {
       try {
@@ -851,12 +842,12 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
         serverTransports.delete(sessionId);
         sessionHeaderHolders.delete(sessionId);
         sessionMetadata.delete(sessionId);
-        console.log(`[MCP Inspector] Transports removed for sessionId ${sessionId}`);
+        log.info({ sessionId }, "Transports removed");
 
         reply.code(200);
         return { deleted: sessionId };
       } catch (error) {
-        console.error("[MCP Inspector] Error in DELETE /mcp route:", error);
+        log.error({ err: error }, "Error in DELETE /mcp route");
         reply.code(500);
         return { error: error instanceof Error ? error.message : "Internal error" };
       }
@@ -892,7 +883,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     try {
-      console.log("[MCP Inspector] New STDIO connection request");
+      log.info("New STDIO connection request");
       const { transport: serverTransport } = await createTransport(request);
 
       const proxyFullAddress = request.query.proxyFullAddress || "";
@@ -901,7 +892,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
       const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
       webAppTransports.set(webAppTransport.sessionId, webAppTransport);
-      console.log("[MCP Inspector] Created client transport");
+      log.info("Created client transport");
 
       serverTransports.set(webAppTransport.sessionId, serverTransport);
       sessionMetadata.set(webAppTransport.sessionId, {
@@ -910,7 +901,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
         createdAt: new Date(),
         serverConnected: true,
       });
-      console.log("[MCP Inspector] Created server transport");
+      log.info("Created server transport");
 
       await webAppTransport.start();
 
@@ -940,7 +931,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
             serverTransports.delete(webAppTransport.sessionId);
             sessionHeaderHolders.delete(webAppTransport.sessionId);
             sessionMetadata.delete(webAppTransport.sessionId);
-            console.error("[MCP Inspector] Command not found, transports removed");
+            log.error("Command not found, transports removed");
           } else {
             // Determine log level based on content
             let level: string;
@@ -985,11 +976,11 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       // Keep connection open - SSE will handle the response
     } catch (error) {
       if (is401Error(error)) {
-        console.error("[MCP Inspector] Received 401 Unauthorized from MCP server");
+        log.error("Received 401 Unauthorized from MCP server");
         reply.code(401);
         return { error: "Unauthorized from MCP server" };
       }
-      console.error("[MCP Inspector] Error in /stdio route:", error);
+      log.error({ err: error }, "Error in /stdio route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -1025,12 +1016,12 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
-    console.log(`[MCP Inspector] SSE POST received for sessionId ${sessionId}`);
+    log.debug({ sessionId }, "SSE POST received");
 
     // If no sessionId but has URL, this is a new connection attempt
     // SSE transport requires GET to establish, not POST
     if (!sessionId && request.query.url) {
-      console.log("[MCP Inspector] SSE transport requires GET to establish connection. Use streamable-http for POST-based connections.");
+      log.info("SSE transport requires GET to establish connection. Use streamable-http for POST-based connections.");
       reply.code(400);
       return {
         error: "SSE transport requires GET request to establish connection",
@@ -1060,7 +1051,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     try {
       await transport.handlePostMessage(request.raw, reply.raw);
     } catch (error) {
-      console.error("[MCP Inspector] Error in POST /sse route:", error);
+      log.error({ err: error }, "Error in POST /sse route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -1086,9 +1077,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     try {
-      console.log(
-        "[MCP Inspector] New SSE connection request. NOTE: The SSE transport is deprecated and has been replaced by StreamableHttp"
-      );
+      log.info("New SSE connection request. NOTE: The SSE transport is deprecated and has been replaced by StreamableHttp");
       const { transport: serverTransport, headerHolder } = await createTransport(request);
 
       const proxyFullAddress = request.query.proxyFullAddress || "";
@@ -1097,7 +1086,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
       const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
       webAppTransports.set(webAppTransport.sessionId, webAppTransport);
-      console.log("[MCP Inspector] Created client transport");
+      log.info("Created client transport");
 
       serverTransports.set(webAppTransport.sessionId, serverTransport);
       if (headerHolder) {
@@ -1109,7 +1098,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
         createdAt: new Date(),
         serverConnected: true,
       });
-      console.log("[MCP Inspector] Created server transport");
+      log.info("Created server transport");
 
       await webAppTransport.start();
 
@@ -1121,19 +1110,19 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       // Keep connection open - SSE will handle the response
     } catch (error) {
       if (is401Error(error)) {
-        console.error("[MCP Inspector] Received 401 Unauthorized from MCP server");
+        log.error("Received 401 Unauthorized from MCP server");
         reply.code(401);
         return { error: "Unauthorized from MCP server" };
       } else if (error instanceof SseError && error.code === 404) {
-        console.error("[MCP Inspector] Received 404 from MCP server. Does it support SSE?");
+        log.error("Received 404 from MCP server. Does it support SSE?");
         reply.code(404);
         return { error: "MCP server does not support SSE" };
       } else if (JSON.stringify(error).includes("ECONNREFUSED")) {
-        console.error("[MCP Inspector] Connection refused. Is the MCP server running?");
+        log.error("Connection refused. Is the MCP server running?");
         reply.code(500);
         return { error: "Connection refused" };
       }
-      console.error("[MCP Inspector] Error in /sse route:", error);
+      log.error({ err: error }, "Error in /sse route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -1160,7 +1149,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
     try {
       const sessionId = request.query.sessionId;
-      console.log(`[MCP Inspector] Received POST message for sessionId ${sessionId}`);
+      log.debug({ sessionId }, "Received POST message");
 
       if (!sessionId) {
         reply.code(400);
@@ -1183,7 +1172,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
       await transport.handlePostMessage(request.raw, reply.raw);
     } catch (error) {
-      console.error("[MCP Inspector] Error in /message route:", error);
+      log.error({ err: error }, "Error in /message route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }

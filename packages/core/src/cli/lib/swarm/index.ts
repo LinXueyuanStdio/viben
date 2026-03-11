@@ -53,7 +53,6 @@ export {
   type StartOptions,
   type StartResult,
   startAgent,
-  startAgentSync,
 } from "./start";
 
 // Status Monitoring

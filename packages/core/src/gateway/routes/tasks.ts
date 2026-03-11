@@ -18,7 +18,7 @@
  * - POST /api/task/set-agent - Set associated agent
  *
  * Context management endpoints:
- * - POST /api/task/init-context - Initialize context files (implement.jsonl, check.jsonl, debug.jsonl)
+ * - POST /api/task/init-context - Initialize context files (implement.jsonl, check.jsonl, fix.jsonl)
  * - POST /api/task/add-context - Add context files to task
  * - POST /api/task/remove-context - Remove context files from task
  * - POST /api/task/list-context - List context entries
@@ -57,6 +57,10 @@ import {
   type TaskStatus,
   type SubtaskInfo,
 } from "../../services/task-service";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "tasks" });
 import { sessionStoreService } from "../../services/session-store";
 import { taskEventStore } from "../../task/events/event-store";
 import { isValidEventType, type TaskEventType } from "../../task/events/event-types";
@@ -1197,7 +1201,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     const { workspace_path } = request.query;
 
-    console.log(`[tasks/specs] Getting specs for task ${id}, workspace: ${workspace_path}`);
+    log.info({ taskId: id, workspacePath: workspace_path }, "Getting specs for task");
 
     // Find task directory
     let taskDir: string | null = null;
@@ -1206,13 +1210,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     // Check cache first (with TTL validation)
     const cached = getCacheEntry(id);
     if (cached) {
-      console.log(`[tasks/specs] Found in cache: ${cached.taskDir}`);
+      log.debug({ taskDir: cached.taskDir }, "Found in cache");
       taskDir = cached.taskDir;
       workspacePath = cached.workspacePath;
     } else if (workspace_path) {
-      console.log(`[tasks/specs] Searching for task by ID...`);
+      log.debug("Searching for task by ID...");
       taskDir = await taskService.findTaskById(workspace_path, id);
-      console.log(`[tasks/specs] findTaskById result: ${taskDir}`);
+      log.debug({ taskDir }, "findTaskById result");
       // Cache the result if found
       if (taskDir) {
         setCacheEntry(id, workspace_path, taskDir);
@@ -1220,14 +1224,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     if (!taskDir) {
-      console.log(`[tasks/specs] Task not found: ${id}`);
+      log.warn({ taskId: id }, "Task not found");
       reply.code(404);
       return { error: `Task not found: ${id}. Provide workspace_path parameter.` };
     }
 
     try {
       const specsData = await taskService.getTaskSpecsData(taskDir);
-      console.log(`[tasks/specs] Specs data loaded, taskDir: ${specsData.taskDir}`);
+      log.debug({ taskDir: specsData.taskDir }, "Specs data loaded");
 
       // Convert to snake_case for API response
       return {
@@ -1238,7 +1242,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         task_dir: specsData.taskDir,
       };
     } catch (error) {
-      console.error(`[tasks/specs] Error:`, error);
+      log.error({ err: error }, "Error getting task specs");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Failed to get task specs" };
     }
@@ -1820,7 +1824,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     };
   }>("/api/task/init-context", {
     schema: {
-      description: "Initialize context files (implement.jsonl, check.jsonl, debug.jsonl) for a task",
+      description: "Initialize context files (implement.jsonl, check.jsonl, fix.jsonl) for a task",
       tags: ["tasks"],
       body: {
         type: "object",
@@ -1923,7 +1927,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
     filesCreated.push("check.jsonl");
 
-    // Create debug.jsonl
+    // Create fix.jsonl
     const debugEntries: ContextEntry[] = [];
     if (dev_type === "backend" || dev_type === "fullstack") {
       debugEntries.push({
@@ -1938,9 +1942,9 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       });
     }
 
-    const debugFile = join(taskDir, "debug.jsonl");
-    writeJsonlFile(debugFile, debugEntries as unknown as Array<Record<string, unknown>>);
-    filesCreated.push("debug.jsonl");
+    const fixFile = join(taskDir, "fix.jsonl");
+    writeJsonlFile(fixFile, debugEntries as unknown as Array<Record<string, unknown>>);
+    filesCreated.push("fix.jsonl");
 
     // Update task.json with dev_type
     updateTaskField(taskDir, "dev_type", dev_type);
@@ -1962,7 +1966,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         path: string;
         reason?: string;
       }>;
-      context_type?: "implement" | "check" | "debug";
+      context_type?: "implement" | "check" | "fix";
     };
   }>("/api/task/add-context", {
     schema: {
@@ -1985,7 +1989,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
             },
             description: "Files to add with optional reasons",
           },
-          context_type: { type: "string", enum: ["implement", "check", "debug"], description: "Context file to add to (default: implement)" },
+          context_type: { type: "string", enum: ["implement", "check", "fix"], description: "Context file to add to (default: implement)" },
         },
         required: ["workspace_path", "task_id", "files"],
       },
@@ -2131,7 +2135,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     let totalRemoved = 0;
 
     // Remove from all context files
-    for (const jsonlName of ["implement.jsonl", "check.jsonl", "debug.jsonl"]) {
+    for (const jsonlName of ["implement.jsonl", "check.jsonl", "fix.jsonl"]) {
       const jsonlPath = join(taskDir, jsonlName);
       if (!existsSync(jsonlPath)) continue;
 
@@ -2259,7 +2263,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     for (const [key, fileName] of Object.entries({
       implement: "implement.jsonl",
       check: "check.jsonl",
-      debug: "debug.jsonl",
+      fix: "fix.jsonl",
     })) {
       const filePath = join(taskDir, fileName);
       if (existsSync(filePath)) {
@@ -2335,7 +2339,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: `Task not found: ${task_id}` };
     }
 
-    const contextFiles = ["implement.jsonl", "check.jsonl", "debug.jsonl"];
+    const contextFiles = ["implement.jsonl", "check.jsonl", "fix.jsonl"];
     const missing: string[] = [];
     let validCount = 0;
 
@@ -3185,7 +3189,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           }
         }
       } catch (error) {
-        console.error(`[SSE] Error replaying events:`, error);
+        log.error({ err: error }, "Error replaying events");
       }
     }
 
@@ -3562,7 +3566,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
             cwd: workspace_path,
           });
         } catch (e) {
-          console.warn(`[task/start] Failed to enqueue task for execution:`, e);
+          log.warn({ err: e }, "Failed to enqueue task for execution");
         }
       }
 

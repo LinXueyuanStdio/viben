@@ -41,9 +41,10 @@ export interface IssueAnalysis {
 export type AutoFixTaskStatus =
   | "queued"
   | "analyzing"
-  | "planning"
-  | "executing"
-  | "testing"
+  | "plan"
+  | "implement"
+  | "check"
+  | "fix"
   | "awaiting_approval"
   | "creating_pr"
   | "completed"
@@ -303,7 +304,7 @@ export const useGitHubStore = create<GitHubState & GitHubActions>()(
 
       getRunningTasksCount: () =>
         get().autoFixTasks.filter((t) =>
-          ["queued", "analyzing", "planning", "executing", "testing"].includes(t.status)
+          ["queued", "analyzing", "plan", "implement", "check", "fix"].includes(t.status)
         ).length,
 
       getAwaitingApprovalCount: () =>

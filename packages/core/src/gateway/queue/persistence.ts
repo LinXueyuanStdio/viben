@@ -16,6 +16,10 @@ import type {
   TaskFile,
   QueueConfig,
 } from "./types";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "queue-persistence" });
 
 /**
  * Get the queue storage directory path
@@ -192,7 +196,7 @@ export class QueuePersistence {
         try {
           await this.writeTask(task.id, pending);
         } catch (error) {
-          console.error(`[QueuePersistence] Failed to write task ${task.id}:`, error);
+          log.error({ err: error, taskId: task.id }, "Failed to write task");
           // Re-throw to let caller handle, but ensure cleanup happens
           throw error;
         } finally {
@@ -224,7 +228,7 @@ export class QueuePersistence {
       try {
         await unlink(taskPath);
       } catch (e) {
-        console.warn(`[QueuePersistence] Failed to delete task ${taskId}:`, e);
+        log.warn({ err: e, taskId }, "Failed to delete task");
       }
     }
   }
@@ -244,9 +248,9 @@ export class QueuePersistence {
 
     try {
       await rename(taskPath, corruptedPath);
-      console.warn(`[QueuePersistence] Moved corrupted task to: ${corruptedPath}`);
+      log.warn({ taskId, corruptedPath }, "Moved corrupted task");
     } catch (e) {
-      console.error(`[QueuePersistence] Failed to move corrupted task:`, e);
+      log.error({ err: e, taskId }, "Failed to move corrupted task");
     }
   }
 
@@ -273,13 +277,13 @@ export class QueuePersistence {
             tasks.set(taskId, task);
           }
         } catch (e) {
-          console.error(`[QueuePersistence] Failed to load task ${taskId}:`, e);
+          log.error({ err: e, taskId }, "Failed to load task");
           // Move corrupted file
           await this.moveToCorrupted(taskId);
         }
       }
     } catch (e) {
-      console.error(`[QueuePersistence] Failed to read tasks directory:`, e);
+      log.error({ err: e }, "Failed to read tasks directory");
     }
 
     return tasks;

@@ -27,6 +27,10 @@ import { createInterface } from "node:readline";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "tauri-mcp" });
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
@@ -131,12 +135,11 @@ function generateSessionId(): string {
 function spawnMcpServer(sessionId: string, reply: FastifyReply): McpSession | null {
   const mcpServerPath = findMcpServerPath();
   if (!mcpServerPath) {
-    console.error("[tauri-mcp] tauri-plugin-mcp-server not found");
+    log.error("tauri-plugin-mcp-server not found");
     return null;
   }
 
-  console.log(`[tauri-mcp] Starting MCP server for session ${sessionId}`);
-  console.log(`[tauri-mcp] Using: node ${mcpServerPath}`);
+  log.info({ sessionId, mcpServerPath }, "Starting MCP server for session");
 
   const proc = spawn("node", [mcpServerPath], {
     env: {
@@ -162,7 +165,7 @@ function spawnMcpServer(sessionId: string, reply: FastifyReply): McpSession | nu
 
     try {
       const message = JSON.parse(line) as McpMessage;
-      console.log(`[tauri-mcp] Received from MCP server:`, JSON.stringify(message).slice(0, 200));
+      log.debug({ message: JSON.stringify(message).slice(0, 200) }, "Received from MCP server");
 
       // Handle response to a pending request
       if (message.id !== undefined) {
@@ -180,18 +183,18 @@ function spawnMcpServer(sessionId: string, reply: FastifyReply): McpSession | nu
         reply.raw.write(`data: ${JSON.stringify(message)}\n\n`);
       }
     } catch (err) {
-      console.error(`[tauri-mcp] Failed to parse stdout:`, line.slice(0, 100));
+      log.error({ line: line.slice(0, 100) }, "Failed to parse stdout");
     }
   });
 
   // Handle stderr (debug logs from MCP server)
   proc.stderr?.on("data", (data) => {
-    console.log(`[tauri-mcp] MCP server stderr:`, data.toString().trim());
+    log.debug({ stderr: data.toString().trim() }, "MCP server stderr");
   });
 
   // Handle process exit
   proc.on("exit", (code, signal) => {
-    console.log(`[tauri-mcp] MCP server exited: code=${code}, signal=${signal}`);
+    log.info({ code, signal }, "MCP server exited");
     // Reject all pending requests
     for (const [, pending] of session.pendingRequests) {
       clearTimeout(pending.timeout);
@@ -202,7 +205,7 @@ function spawnMcpServer(sessionId: string, reply: FastifyReply): McpSession | nu
   });
 
   proc.on("error", (err) => {
-    console.error(`[tauri-mcp] MCP server error:`, err);
+    log.error({ err }, "MCP server error");
     reply.raw.write(`event: error\n`);
     reply.raw.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
   });
@@ -237,12 +240,11 @@ function spawnMcpServerForStreamableHttp(
 ): StreamableHttpSession | null {
   const mcpServerPath = findMcpServerPath();
   if (!mcpServerPath) {
-    console.error("[tauri-mcp] tauri-plugin-mcp-server not found");
+    log.error("tauri-plugin-mcp-server not found");
     return null;
   }
 
-  console.log(`[tauri-mcp] Starting MCP server for Streamable HTTP session ${sessionId}`);
-  console.log(`[tauri-mcp] Using: node ${mcpServerPath}`);
+  log.info({ sessionId, mcpServerPath }, "Starting MCP server for Streamable HTTP session");
 
   const proc = spawn("node", [mcpServerPath], {
     env: {
@@ -266,7 +268,7 @@ function spawnMcpServerForStreamableHttp(
 
     try {
       const message = JSON.parse(line) as McpMessage;
-      console.log(`[tauri-mcp] StreamableHTTP received from MCP server:`, JSON.stringify(message).slice(0, 200));
+      log.debug({ message: JSON.stringify(message).slice(0, 200) }, "StreamableHTTP received from MCP server");
 
       // Handle response to a pending request
       if (message.id !== undefined) {
@@ -282,22 +284,22 @@ function spawnMcpServerForStreamableHttp(
       if (message.method && !message.id) {
         // This is a notification from the MCP server
         transport.send(message as unknown as JSONRPCMessage).catch((err) => {
-          console.error(`[tauri-mcp] Error forwarding notification:`, err);
+          log.error({ err }, "Error forwarding notification");
         });
       }
     } catch (err) {
-      console.error(`[tauri-mcp] Failed to parse stdout:`, line.slice(0, 100));
+      log.error({ line: line.slice(0, 100) }, "Failed to parse stdout");
     }
   });
 
   // Handle stderr (debug logs from MCP server)
   proc.stderr?.on("data", (data) => {
-    console.log(`[tauri-mcp] MCP server stderr:`, data.toString().trim());
+    log.debug({ stderr: data.toString().trim() }, "MCP server stderr");
   });
 
   // Handle process exit
   proc.on("exit", (code, signal) => {
-    console.log(`[tauri-mcp] MCP server exited: code=${code}, signal=${signal}`);
+    log.info({ code, signal }, "MCP server exited");
     // Reject all pending requests
     for (const [, pending] of session.pendingRequests) {
       clearTimeout(pending.timeout);
@@ -308,7 +310,7 @@ function spawnMcpServerForStreamableHttp(
   });
 
   proc.on("error", (err) => {
-    console.error(`[tauri-mcp] MCP server error:`, err);
+    log.error({ err }, "MCP server error");
   });
 
   return session;
@@ -339,7 +341,7 @@ async function sendToMcpServerStreamable(
     }
 
     const data = JSON.stringify(message) + "\n";
-    console.log(`[tauri-mcp] StreamableHTTP sending to MCP server:`, data.trim().slice(0, 200));
+    log.debug({ data: data.trim().slice(0, 200) }, "StreamableHTTP sending to MCP server");
 
     session.process.stdin?.write(data, (err) => {
       if (err) {
@@ -382,7 +384,7 @@ async function sendToMcpServer(
     }
 
     const data = JSON.stringify(message) + "\n";
-    console.log(`[tauri-mcp] Sending to MCP server:`, data.trim().slice(0, 200));
+    log.debug({ data: data.trim().slice(0, 200) }, "Sending to MCP server");
 
     session.process.stdin?.write(data, (err) => {
       if (err) {
@@ -476,7 +478,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
     setCorsHeaders(request, reply);
 
     const sessionId = request.headers["mcp-session-id"] as string;
-    console.log(`[tauri-mcp] Received GET /mcp for sessionId ${sessionId}`);
+    log.debug({ sessionId }, "Received GET /mcp");
 
     if (!sessionId) {
       reply.code(400);
@@ -493,7 +495,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       // Handle as raw HTTP for SSE streaming
       await session.transport.handleRequest(request.raw, reply.raw);
     } catch (error) {
-      console.error("[tauri-mcp] Error in GET /mcp route:", error);
+      log.error({ err: error }, "Error in GET /mcp route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -512,7 +514,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
 
     if (sessionId) {
       // Existing session - forward message
-      console.log(`[tauri-mcp] Received POST /mcp for existing sessionId ${sessionId}`);
+      log.debug({ sessionId }, "Received POST /mcp for existing session");
 
       const session = streamableHttpSessions.get(sessionId);
       if (!session) {
@@ -524,13 +526,13 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
         // Handle request through transport
         await session.transport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
-        console.error("[tauri-mcp] Error in POST /mcp route:", error);
+        log.error({ err: error }, "Error in POST /mcp route");
         reply.code(500);
         return { error: error instanceof Error ? error.message : "Internal error" };
       }
     } else {
       // New connection - create session
-      console.log("[tauri-mcp] New Streamable HTTP connection request");
+      log.info("New Streamable HTTP connection request");
 
       // Check if socket is available
       if (!existsSync(DEFAULT_SOCKET_PATH)) {
@@ -550,7 +552,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
         const webAppTransport = new StreamableHTTPServerTransport({
           sessionIdGenerator: randomUUID,
           onsessioninitialized: (newSessionId) => {
-            console.log(`[tauri-mcp] StreamableHTTP session initialized: ${newSessionId}`);
+            log.info({ sessionId: newSessionId }, "StreamableHTTP session initialized");
 
             // Spawn MCP server process for this session
             const session = spawnMcpServerForStreamableHttp(newSessionId, webAppTransport);
@@ -559,7 +561,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
 
               // Set up message forwarding from client to MCP server
               webAppTransport.onmessage = async (message) => {
-                console.log(`[tauri-mcp] Client -> MCP server:`, JSON.stringify(message).slice(0, 200));
+                log.debug({ message: JSON.stringify(message).slice(0, 200) }, "Client -> MCP server");
                 const mcpMsg = message as unknown as McpMessage;
                 try {
                   const response = await sendToMcpServerStreamable(session, mcpMsg);
@@ -569,7 +571,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
                     await webAppTransport.send(response as unknown as JSONRPCMessage);
                   }
                 } catch (err) {
-                  console.error(`[tauri-mcp] Error forwarding message:`, err);
+                  log.error({ err }, "Error forwarding message");
                   if (mcpMsg.id !== undefined) {
                     await webAppTransport.send({
                       jsonrpc: "2.0",
@@ -583,11 +585,11 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
                 }
               };
             } else {
-              console.error(`[tauri-mcp] Failed to spawn MCP server for session ${newSessionId}`);
+              log.error({ sessionId: newSessionId }, "Failed to spawn MCP server for session");
             }
           },
           onsessionclosed: (closedSessionId) => {
-            console.log(`[tauri-mcp] StreamableHTTP session closed: ${closedSessionId}`);
+            log.info({ sessionId: closedSessionId }, "StreamableHTTP session closed");
             const session = streamableHttpSessions.get(closedSessionId);
             if (session) {
               session.process.kill();
@@ -601,7 +603,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
         // Handle the initial request
         await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
-        console.error("[tauri-mcp] Error in POST /mcp route:", error);
+        log.error({ err: error }, "Error in POST /mcp route");
         reply.code(500);
         return { error: error instanceof Error ? error.message : "Internal error" };
       }
@@ -616,7 +618,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
     setCorsHeaders(request, reply);
 
     const sessionId = request.headers["mcp-session-id"] as string | undefined;
-    console.log(`[tauri-mcp] Received DELETE /mcp for sessionId ${sessionId}`);
+    log.debug({ sessionId }, "Received DELETE /mcp");
 
     if (!sessionId) {
       reply.code(400);
@@ -639,7 +641,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       reply.code(200);
       return { deleted: sessionId };
     } catch (error) {
-      console.error("[tauri-mcp] Error in DELETE /mcp route:", error);
+      log.error({ err: error }, "Error in DELETE /mcp route");
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Internal error" };
     }
@@ -713,7 +715,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
 
     // Handle client disconnect
     request.raw.on("close", () => {
-      console.log(`[tauri-mcp] SSE session ${sessionId} closed, killing MCP server`);
+      log.info({ sessionId }, "SSE session closed, killing MCP server");
       session.process.kill();
       mcpSessions.delete(sessionId);
     });
@@ -757,7 +759,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
     const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
     const message = request.body;
 
-    console.log(`[tauri-mcp] POST /message sessionId=${sessionId}, message=${JSON.stringify(message).slice(0, 100)}`);
+    log.debug({ sessionId, message: JSON.stringify(message).slice(0, 100) }, "POST /message received");
 
     if (!sessionId) {
       reply.code(400);
@@ -783,7 +785,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       reply.code(202);
       return { accepted: true };
     } catch (err) {
-      console.error(`[tauri-mcp] Error handling message:`, err);
+      log.error({ err }, "Error handling message");
       reply.code(500);
       return {
         jsonrpc: "2.0",

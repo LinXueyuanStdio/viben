@@ -12,6 +12,10 @@ import type { AppState } from "../state";
 import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as os from "os";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "terminal" });
 
 /**
  * Query parameters for terminal WebSocket connection
@@ -135,7 +139,7 @@ function base64Decode(str: string): string {
 export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppState): void {
   // Check if websocket plugin is registered
   if (!fastify.hasDecorator("websocketServer")) {
-    console.warn("[Terminal] @fastify/websocket not registered, terminal WebSocket routes disabled");
+    log.warn("@fastify/websocket not registered, terminal WebSocket routes disabled");
     return;
   }
 
@@ -147,8 +151,8 @@ export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppSta
     try {
       nodePty = (await import("node-pty")) as unknown as NodePtyModule;
     } catch {
-      console.warn("[Terminal] node-pty not available, terminal WebSocket routes disabled");
-      console.warn("[Terminal] Install node-pty to enable: npm install node-pty");
+      log.warn("node-pty not available, terminal WebSocket routes disabled");
+      log.warn("Install node-pty to enable: npm install node-pty");
       return;
     }
 
@@ -286,17 +290,17 @@ export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppSta
       // Handle WebSocket close
       socket.on("close", () => {
         cleanup();
-        console.log(`[Terminal] WebSocket connection closed for session ${sessionId}`);
+        log.info({ sessionId }, "WebSocket connection closed");
       });
 
       // Handle WebSocket error
       socket.on("error", (err) => {
-        console.error(`[Terminal] WebSocket error for session ${sessionId}:`, err);
+        log.error({ err, sessionId }, "WebSocket error");
         cleanup();
       });
     });
 
-    console.log("[Terminal] Terminal WebSocket routes registered at /ws/terminal");
+    log.info("Terminal WebSocket routes registered at /ws/terminal");
   });
 }
 

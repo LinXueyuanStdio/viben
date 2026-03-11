@@ -76,12 +76,12 @@ type TaskStatus =
 ```
                     ┌──────────────────────────────────────────────────────┐
                     │                   in_progress                        │
-                    │  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌────────┐ │
-                    │  │planning │→ │ coding  │→ │qa_review │→ │qa_fixing│ │
-                    │  └─────────┘  └─────────┘  └──────────┘  └────────┘ │
+                    │  ┌─────────┐  ┌───────────┐  ┌───────┐  ┌─────────┐ │
+                    │  │  plan   │→ │ implement │→ │ check │→ │   fix   │ │
+                    │  └─────────┘  └───────────┘  └───────┘  └─────────┘ │
                     └────────────────────┬─────────────────────────────────┘
                            │             │
-┌───────┐  QUEUE  ┌───────┐│ START      │ QA_PASSED
+┌───────┐  QUEUE  ┌───────┐│ START      │ CHECK_PASSED
 │backlog│────────→│ queue │┼────────────┘        │
 └───┬───┘         └───┬───┘                      ▼
     │                 │                    ┌─────────────┐
@@ -93,7 +93,7 @@ type TaskStatus =
     │                 │                    ┌─────┴─────┬───────────┐
     │                 │ CANCEL             │ APPROVED  │ REJECTED  │
     ▼                 ▼                    ▼           ▼           │
-┌───────────┐   ┌───────────┐        ┌───────────┐  coding ◄──────┘
+┌───────────┐   ┌───────────┐        ┌───────────┐  implement ◄───┘
 │ cancelled │   │ cancelled │        │ completed │
 └───────────┘   └───────────┘        └───────────┘
 
@@ -133,10 +133,10 @@ interface TaskMachineContext {
 
 | 场景 | 恢复行为 |
 |------|----------|
-| `paused` from `planning` | 继续 planning，保留已有计划草稿 |
-| `paused` from `coding` | 继续当前子任务（`subtask_index` 不变） |
-| `paused` from `qa_review` | 重新开始 QA 审查 |
-| `paused` from `qa_fixing` | 继续修复当前问题 |
+| `paused` from `plan` | 继续 plan，保留已有计划草稿 |
+| `paused` from `implement` | 继续当前子任务（`subtask_index` 不变） |
+| `paused` from `check` | 重新开始 QA 审查 |
+| `paused` from `fix` | 继续修复当前问题 |
 | `paused` from `queue` | 回到 `queue`，等待重新调度 |
 
 ### RESUME 事件处理

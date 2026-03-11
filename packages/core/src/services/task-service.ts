@@ -20,7 +20,7 @@ import { taskLock } from "../utils/async-lock";
  *
  * State flow: backlog → queue → in_progress → human_review → completed
  *
- * Note: ai_review was removed - use executionPhase (qa_review/qa_fixing) instead
+ * Note: ai_review was removed - use executionPhase (check/fix) instead
  * Note: paused allows tasks to be paused and resumed later
  * Note: pr_created was removed - PR creation is tracked via pr_url field
  *
@@ -29,7 +29,7 @@ import { taskLock } from "../utils/async-lock";
 export type TaskStatus =
   | "backlog" // 待办 - Tasks waiting to be started
   | "queue" // Queued for execution
-  | "in_progress" // Currently executing (planning or coding)
+  | "in_progress" // Currently executing (plan or implement)
   | "paused" // Task paused, can be resumed later
   | "human_review" // Needs human review
   | "completed" // Successfully completed
@@ -49,7 +49,7 @@ export type ReviewReason =
   | "completed" // All subtasks done, QA passed, waiting final approval
   | "errors" // Errors during execution
   | "qa_rejected" // QA found issues
-  | "plan_review" // Plan complete, awaiting approval before coding
+  | "plan_review" // Plan complete, awaiting approval before implement
   | "stopped"; // User manually stopped
 
 /**
@@ -72,7 +72,7 @@ export interface SubtaskInfo {
 /**
  * Execution phase for running tasks
  */
-export type ExecutionPhase = "planning" | "coding" | "qa_review" | "qa_fixing" | "complete";
+export type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete";
 
 /**
  * Execution progress tracking
@@ -98,9 +98,9 @@ export type XStateValue = string | { in_progress: ExecutionPhase };
  */
 export type TaskEventType =
   | "QUEUE" | "START" | "DEQUEUE"
-  | "PLANNING_COMPLETE" | "PLANNING_FAILED"
-  | "SUBTASK_COMPLETE" | "ALL_SUBTASKS_DONE" | "CODING_FAILED"
-  | "QA_PASSED" | "QA_FAILED" | "QA_FIXING_COMPLETE" | "QA_FIXING_FAILED"
+  | "PLAN_COMPLETE" | "PLAN_FAILED"
+  | "SUBTASK_COMPLETE" | "ALL_SUBTASKS_DONE" | "IMPLEMENT_FAILED"
+  | "CHECK_PASSED" | "CHECK_FAILED" | "FIX_COMPLETE" | "FIX_FAILED"
   | "USER_STOPPED" | "APPROVED" | "REJECTED"
   | "PAUSE" | "RESUME"
   | "RETRY" | "ABANDON"
@@ -316,7 +316,7 @@ export interface UnifiedTask {
   machine_context?: {
     /** Current subtask index (0-based) */
     current_subtask_index: number;
-    /** Whether plan requires human review before coding */
+    /** Whether plan requires human review before implement */
     requires_plan_review: boolean;
     /** Complete snapshot saved when task is paused */
     paused_snapshot?: {
@@ -1004,7 +1004,7 @@ export class TaskService {
         const phases: TaskLogPhase[] = [];
 
         // Standard phase files
-        const standardPhases = ["planning", "coding", "validation"];
+        const standardPhases = ["plan", "implement", "check"];
 
         for (const entry of logEntries) {
           if (entry.isFile() && entry.name.endsWith(".log")) {
@@ -1151,7 +1151,7 @@ export interface TaskLogEntry {
 export type TaskLogPhaseStatus = "pending" | "running" | "complete" | "failed";
 
 /**
- * A log phase (planning, coding, validation)
+ * A log phase (plan, implement, check)
  */
 export interface TaskLogPhase {
   id: string;
@@ -1219,7 +1219,7 @@ export interface ImplementationPhase {
   /** Human-readable phase name */
   name: string;
   /** Phase type for categorization */
-  type: "planning" | "implementation" | "qa";
+  type: "plan" | "implement" | "check";
   /** Subtasks within this phase */
   subtasks: ImplementationPlanSubtaskV2[];
 }
@@ -1240,7 +1240,7 @@ export interface ImplementationProgress {
  * Extended implementation plan with phases and verification support
  *
  * This V2 format supports:
- * - Structured phases (planning, implementation, qa)
+ * - Structured phases (plan, implement, check)
  * - Subtask-level verification
  * - Progress tracking
  */

@@ -31,7 +31,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 │                      XState State Machine                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  backlog → queue → in_progress → human_review → completed │  │
-│  │     │        ↓    (planning/coding/qa)    ↑       ↑       │  │
+│  │     │        ↓    (plan/implement/check)  ↑       ↑       │  │
 │  │     │     paused ─────────────────────────┘       │       │  │
 │  │     └─────→ cancelled   failed ←──────────────────┘       │  │
 │  └───────────────────────────────────────────────────────────┘  │
@@ -62,7 +62,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 | `cancelled` | 已取消 | 任务被主动取消 |
 
 > **注意**:
-> - `ai_review` 状态已移除，AI 审查通过 `executionPhase` 表示（`qa_review`、`qa_fixing`）
+> - `ai_review` 状态已移除，AI 审查通过 `executionPhase` 表示（`check`、`fix`）
 > - `pr_created` 状态已移除，PR 创建记录在 `pr_url` 字段
 > - `done` → `completed`、`error` → `failed` 重命名以提供更清晰的语义
 
@@ -70,10 +70,10 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 
 | 阶段 | 描述 |
 |------|------|
-| `planning` | 生成实现计划 |
-| `coding` | 执行子任务编码 |
-| `qa_review` | AI 质量审查 |
-| `qa_fixing` | 修复 QA 发现的问题 |
+| `plan` | 生成实现计划 |
+| `implement` | 执行子任务编码 |
+| `check` | AI 质量审查 |
+| `fix` | 修复 QA 发现的问题 |
 
 ### 状态流转图
 
@@ -90,15 +90,15 @@ stateDiagram-v2
     queue --> cancelled: CANCEL
 
     state in_progress {
-        [*] --> planning
-        planning --> coding: PLANNING_COMPLETE
-        planning --> failed: PLANNING_FAILED
-        coding --> qa_review: ALL_SUBTASKS_DONE
-        coding --> failed: CODING_FAILED
-        qa_review --> human_review: QA_PASSED
-        qa_review --> qa_fixing: QA_FAILED
-        qa_fixing --> qa_review: QA_FIXING_COMPLETE
-        qa_fixing --> failed: QA_FIXING_FAILED
+        [*] --> plan
+        plan --> implement: PLAN_COMPLETE
+        plan --> failed: PLAN_FAILED
+        implement --> check: ALL_SUBTASKS_DONE
+        implement --> failed: IMPLEMENT_FAILED
+        check --> human_review: CHECK_PASSED
+        check --> fix: CHECK_FAILED
+        fix --> check: FIX_COMPLETE
+        fix --> failed: FIX_FAILED
     }
 
     in_progress --> paused: PAUSE
@@ -167,7 +167,7 @@ stop <task>        # cancel 的别名
 flowchart TD
     A(START) -->|viben task create| B[backlog]
     B -->|viben task enqueue| C[queue]
-    C -->|viben swarm start| D[in_progress]
+    C -->|viben task start| D[in_progress]
     D -->|viben task pause| E[paused]
     E -->|viben task resume| D
     D -->|viben task create-pr| F[human_review]
@@ -177,7 +177,7 @@ flowchart TD
     D -->|detected failed| H[failed]
     H -->|viben task retry| C
     H -->|viben task archive| I[archived]
-    G -->|viben swarm cleanup| I
+    G -->|viben task cleanup| I
 
     B -->|viben task cancel| J[cancelled]
     C -->|viben task cancel| J
@@ -207,29 +207,29 @@ flowchart TD
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
 | `QUEUE` | 将任务从待办移到队列 | backlog → queue |
-| `START` | 开始执行任务 | queue → in_progress.planning |
+| `START` | 开始执行任务 | queue → in_progress.plan |
 | `DEQUEUE` | 将任务移回待办 | queue → backlog |
 
 #### 计划阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `PLANNING_COMPLETE` | 计划完成 | planning → coding 或 human_review |
-| `PLANNING_FAILED` | 计划失败 | planning → failed |
+| `PLAN_COMPLETE` | 计划完成 | plan → implement 或 human_review |
+| `PLAN_FAILED` | 计划失败 | plan → failed |
 
 #### 编码阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `SUBTASK_COMPLETE` | 子任务完成 | 保持 coding，递增索引 |
-| `ALL_SUBTASKS_DONE` | 所有子任务完成 | coding → qa_review |
-| `CODING_FAILED` | 编码失败 | coding → failed |
+| `SUBTASK_COMPLETE` | 子任务完成 | 保持 implement，递增索引 |
+| `ALL_SUBTASKS_DONE` | 所有子任务完成 | implement → check |
+| `IMPLEMENT_FAILED` | 编码失败 | implement → failed |
 
 #### QA 阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `QA_PASSED` | QA 通过 | qa_review → human_review |
-| `QA_FAILED` | QA 发现问题 | qa_review → qa_fixing |
-| `QA_FIXING_COMPLETE` | 修复完成 | qa_fixing → qa_review |
-| `QA_FIXING_FAILED` | 修复失败 | qa_fixing → failed |
+| `CHECK_PASSED` | QA 通过 | check → human_review |
+| `CHECK_FAILED` | QA 发现问题 | check → fix |
+| `FIX_COMPLETE` | 修复完成 | fix → check |
+| `FIX_FAILED` | 修复失败 | fix → failed |
 
 #### 用户交互事件
 | 事件 | 描述 | 触发转换 |
@@ -355,10 +355,10 @@ interface TaskMachineContext {
 
 | 暂停前状态 | 恢复行为 |
 |-----------|----------|
-| `planning` | 继续 planning，保留已有计划草稿 |
-| `coding` | 继续当前子任务（`subtaskIndex` 不变） |
-| `qa_review` | 重新开始 QA 审查 |
-| `qa_fixing` | 继续修复当前问题 |
+| `plan` | 继续 plan，保留已有计划草稿 |
+| `implement` | 继续当前子任务（`subtaskIndex` 不变） |
+| `check` | 重新开始 QA 审查 |
+| `fix` | 继续修复当前问题 |
 | `queue` | 回到 `queue`，等待重新调度 |
 
 ### ReviewReason - 审查原因
@@ -383,9 +383,9 @@ interface TaskMachineContext {
     ├── prd.md                 # 产品需求文档
     ├── implementation_plan.json  # 实现计划
     └── logs/                  # 执行日志
-        ├── planning.json
-        ├── coding.json
-        └── qa.json
+        ├── plan.json
+        ├── implement.json
+        └── check.json
 ```
 
 ### task.json 示例
@@ -396,11 +396,11 @@ interface TaskMachineContext {
   "name": "2026-03-08-implement-feature",
   "title": "实现用户认证功能",
   "status": "in_progress",
-  "executionPhase": "coding",
+  "executionPhase": "implement",
   "priority": "P1",
   "dependsOn": ["task-uuid-1", "task-uuid-2"],
   "queuedAt": "2026-03-08T09:55:00.000Z",
-  "xstateState": { "in_progress": "coding" },
+  "xstateState": { "in_progress": "implement" },
   "lastEvent": {
     "eventId": "...",
     "sequence": 5,
@@ -419,7 +419,7 @@ interface TaskMachineContext {
 ```jsonl
 {"eventId":"uuid-1","sequence":1,"type":"QUEUE","timestamp":"2026-03-08T10:00:00Z"}
 {"eventId":"uuid-2","sequence":2,"type":"START","timestamp":"2026-03-08T10:00:05Z"}
-{"eventId":"uuid-3","sequence":3,"type":"PLANNING_COMPLETE","timestamp":"2026-03-08T10:05:00Z","payload":{"planId":"..."}}
+{"eventId":"uuid-3","sequence":3,"type":"PLAN_COMPLETE","timestamp":"2026-03-08T10:05:00Z","payload":{"planId":"..."}}
 {"eventId":"uuid-4","sequence":4,"type":"PAUSE","timestamp":"2026-03-08T10:10:00Z"}
 {"eventId":"uuid-5","sequence":5,"type":"RESUME","timestamp":"2026-03-08T10:15:00Z"}
 ```
@@ -1016,6 +1016,63 @@ interface QueueConfig {
 1. **检查循环依赖**: 设置依赖前验证不会形成环
 2. **处理依赖阻塞**: 显示任务等待哪些依赖完成
 3. **使用优先级**: P0 > P1 > P2 > P3，合理分配优先级
+
+## Multi-Agent Pipeline (Swarm) 架构
+
+### Worktree 与 Task Directory 的分离设计
+
+在 Multi-Agent Pipeline 中，`viben swarm start` 会为每个任务创建独立的 git worktree，实现代码隔离。设计上需要区分两个路径：
+
+| 路径 | 用途 | 说明 |
+|------|------|------|
+| 主 repo 的 task dir | 状态追踪 | agent 读取/更新 task.json，主 repo 可追踪任务状态 |
+| worktree 中的 task dir 副本 | 只读上下文 | 提供 prd.md 等任务规格文档，供 agent 参考 |
+
+### 设计原则
+
+```
+主 repo (.viben/tasks/03-12-my-task/)
+├── task.json           ← agent 读取/更新（状态追踪）
+├── prd.md              ← 任务规格
+└── events.jsonl        ← 事件历史
+
+worktree (/worktrees/task/my-task/)
+├── .viben/tasks/03-12-my-task/   ← 初始快照副本（只读上下文）
+│   ├── task.json       ← 不更新（会过时）
+│   └── prd.md          ← agent 可读取
+└── src/                ← agent 代码修改区域
+```
+
+### 关键点
+
+1. **状态一致性**：agent 更新主 repo 的 task.json，确保主 repo 可追踪所有任务状态
+2. **worktree 副本是快照**：创建 worktree 时复制 task dir，之后不再同步
+3. **代码修改隔离**：agent 在 worktree 中修改代码，不影响主 repo
+
+### runWorkPhase 接口设计
+
+```typescript
+interface WorkPhaseOptions {
+  repoRoot: string;      // 主 repo 路径（用于 registry 和 dispatch agent 验证）
+  workingDir: string;    // agent 工作目录（主 repo 或 worktree）
+  taskDir: string;       // task directory 绝对路径（始终指向主 repo）
+  // ...
+}
+```
+
+**使用场景**：
+
+| 场景 | workingDir | taskDir |
+|------|------------|---------|
+| `viben task work-phase` | 主 repo | 主 repo 的 task dir |
+| `viben swarm start` | worktree | 主 repo 的 task dir（非 worktree 副本） |
+
+### 相关代码
+
+| 文件 | 说明 |
+|------|------|
+| `packages/core/src/task/phase/work.ts` | `runWorkPhase` 核心逻辑 |
+| `packages/core/src/cli/lib/swarm/start.ts` | `viben swarm start` 实现 |
 
 ## 相关文件
 

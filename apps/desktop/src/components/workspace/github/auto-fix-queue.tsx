@@ -74,7 +74,7 @@ function AutoFixQueueItem({
 }: AutoFixQueueItemProps) {
   const { t } = useTranslation();
 
-  const isActive = ["queued", "analyzing", "planning", "executing", "testing", "creating_pr"].includes(task.status);
+  const isActive = ["queued", "analyzing", "plan", "implement", "check", "fix", "creating_pr"].includes(task.status);
   const isAwaitingApproval = task.status === "awaiting_approval";
   const isDone = ["completed", "failed", "cancelled"].includes(task.status);
 

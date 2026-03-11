@@ -10,7 +10,10 @@ import type { FastifyInstance } from "fastify";
 import type { AppState } from "../state";
 import type { GatewayEvent } from "../../services/events";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
-import { recordWsConnection, recordWsDisconnect, recordWsMessage } from "../../telemetry";
+import { recordWsConnection, recordWsDisconnect, recordWsMessage, logger as globalLogger } from "../../telemetry";
+
+// Module logger
+const log = globalLogger.child({ module: "ws" });
 
 // WebSocket tracer
 const tracer = trace.getTracer("viben-gateway-ws", "1.0.0");
@@ -149,11 +152,11 @@ function transformEvent(event: GatewayEvent): ServerMessage {
 export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppState): void {
   // Check if websocket plugin is registered by looking for the decorator
   if (!fastify.hasDecorator("websocketServer")) {
-    console.warn("[Gateway] @fastify/websocket not registered, WebSocket routes disabled");
+    log.warn("@fastify/websocket not registered, WebSocket routes disabled");
     return;
   }
 
-  console.log("[Gateway] WebSocket routes registered at /ws");
+  log.info({ path: "/ws" }, "WebSocket routes registered");
 
   fastify.get("/ws", { websocket: true }, (socket) => {
         // Create a session span that covers the entire WebSocket connection lifetime
@@ -288,7 +291,7 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
 
         // Handle error
         socket.on("error", (err) => {
-          console.error("[WebSocket] Error:", err);
+          log.error({ err }, "WebSocket error");
           unsubscribe();
           sessionSpan.setAttribute("ws.messages.sent", messagesSent);
           sessionSpan.setAttribute("ws.messages.received", messagesReceived);

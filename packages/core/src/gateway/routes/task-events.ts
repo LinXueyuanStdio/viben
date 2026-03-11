@@ -14,6 +14,9 @@ import { taskEventStore } from "../../task/events/event-store";
 import { taskSSEManager } from "../sse/task-sse-manager";
 import type { TaskEvent } from "../../task/events/task-event";
 import { isValidEventType } from "../../task/events/event-types";
+import { logger as globalLogger } from "../../telemetry";
+
+const log = globalLogger.child({ module: "task-events" });
 
 // =============================================================================
 // Types
@@ -143,7 +146,7 @@ export function registerTaskEventRoutes(fastify: FastifyInstance): void {
           }
         }
       } catch (error) {
-        console.error(`[SSE] Error replaying events:`, error);
+        log.error({ err: error, workspace_path }, "Error replaying events");
         // Continue with connection even if replay fails
       }
     }
@@ -342,7 +345,7 @@ export function registerTaskEventRoutes(fastify: FastifyInstance): void {
           reply.raw.write(`event: STATE_CHANGED\ndata: ${JSON.stringify(replayEvent)}\n\n`);
         }
       } catch (error) {
-        console.error(`[SSE] Error replaying events for task ${task_id}:`, error);
+        log.error({ err: error, task_id }, "Error replaying events for task");
         // Continue with connection even if replay fails
       }
     }

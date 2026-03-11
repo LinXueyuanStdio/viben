@@ -11,6 +11,12 @@
  */
 
 import type { UnifiedTask, TaskStatus } from "../../services/task-service";
+import { logger as globalLogger } from "../../telemetry";
+
+/**
+ * Module-level logger for queue scheduler
+ */
+const log = globalLogger.child({ module: "queue-scheduler" });
 
 /**
  * Priority order mapping for scheduling
@@ -53,8 +59,9 @@ export function allDependenciesMet(
     if (!depTask) {
       // Dependency task not found - treat as not met
       // This prevents starting tasks with invalid dependencies
-      console.warn(
-        `[Scheduler] Task ${task.id} has dependency on non-existent task ${depId}`
+      log.warn(
+        { taskId: task.id, missingDependency: depId },
+        "Task has dependency on non-existent task"
       );
       return false;
     }

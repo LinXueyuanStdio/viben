@@ -5,6 +5,9 @@
  */
 import type { FastifyInstance } from "fastify";
 import { getSandboxService, type SandboxProviderType } from "../../services/sandbox";
+import { logger as globalLogger } from "../../telemetry";
+
+const log = globalLogger.child({ module: "sandbox" });
 
 /**
  * Register sandbox routes
@@ -91,5 +94,5 @@ export function registerSandboxRoutes(fastify: FastifyInstance): void {
     return { success: true };
   });
 
-  console.log("[Gateway] Sandbox routes registered");
+  log.info("Sandbox routes registered");
 }

@@ -9,35 +9,35 @@
 
 export type ExecutionPhase =
   | "idle"
-  | "planning"
-  | "coding"
+  | "plan"
+  | "implement"
   | "rate_limit_paused"
   | "auth_failure_paused"
-  | "qa_review"
-  | "qa_fixing"
+  | "check"
+  | "fix"
   | "complete"
   | "failed";
 
 export const EXECUTION_PHASE_LABELS: Record<ExecutionPhase, string> = {
   idle: "Idle",
-  planning: "Planning",
-  coding: "Coding",
+  plan: "Planning",
+  implement: "Implementing",
   rate_limit_paused: "Rate Limited",
   auth_failure_paused: "Auth Required",
-  qa_review: "AI Review",
-  qa_fixing: "Fixing Issues",
+  check: "AI Review",
+  fix: "Fixing Issues",
   complete: "Complete",
   failed: "Failed",
 };
 
 export const EXECUTION_PHASE_BADGE_COLORS: Record<ExecutionPhase, string> = {
   idle: "bg-muted/50 text-muted-foreground border-muted",
-  planning: "bg-amber-500/10 text-amber-500 border-amber-500/30",
-  coding: "bg-info/10 text-info border-info/30",
+  plan: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+  implement: "bg-info/10 text-info border-info/30",
   rate_limit_paused: "bg-orange-500/10 text-orange-400 border-orange-500/30",
   auth_failure_paused: "bg-red-500/10 text-red-400 border-red-500/30",
-  qa_review: "bg-purple-500/10 text-purple-400 border-purple-500/30",
-  qa_fixing: "bg-warning/10 text-warning border-warning/30",
+  check: "bg-purple-500/10 text-purple-400 border-purple-500/30",
+  fix: "bg-warning/10 text-warning border-warning/30",
   complete: "bg-success/10 text-success border-success/30",
   failed: "bg-destructive/10 text-destructive border-destructive/30",
 };

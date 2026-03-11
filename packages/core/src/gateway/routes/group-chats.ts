@@ -16,6 +16,10 @@ import { homedir } from "node:os";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AppState } from "../state";
 import { GroupChatService } from "../../group-chat/service";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "group-chats" });
 import { createOrchestrator, type OrchestratorEvent } from "../../group-chat/orchestrator";
 import type {
   GroupChatConfig,
@@ -644,7 +648,7 @@ async function executeAgentsInBackground(
       handleOrchestratorEvent(event, state, groupChatId, sessionId);
     }
   } catch (err) {
-    console.error("[GroupChat] Agent orchestration error:", err);
+    log.error({ err }, "Agent orchestration error");
     // Broadcast error to clients
     state.events.broadcast({
       type: "group_chat_error",
@@ -1857,7 +1861,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   // Note: @fastify/websocket plugin must be registered at the gateway level before calling this function.
   // This prevents ERR_HTTP_SOCKET_ASSIGNED errors from multiple registrations.
   if (!fastify.hasDecorator("websocketServer")) {
-    console.warn("[GroupChat] @fastify/websocket not registered, group chat WebSocket routes disabled");
+    log.warn("@fastify/websocket not registered, group chat WebSocket routes disabled");
     return;
   }
 
@@ -1982,7 +1986,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
             };
             socket.send(JSON.stringify(messagesMsg));
           } catch (err) {
-            console.error("[GroupChat WebSocket] Failed to load initial messages:", err);
+            log.error({ err }, "Failed to load initial messages");
           }
 
           // Handle incoming messages
@@ -2150,7 +2154,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
 
           // Handle error
           socket.on("error", (err: Error) => {
-            console.error("[GroupChat WebSocket] Error:", err);
+            log.error({ err }, "WebSocket error");
             const conns = wsConnections.get(sessionId);
             if (conns) {
               conns.delete(connectionId);

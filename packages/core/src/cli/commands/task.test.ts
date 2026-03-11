@@ -61,7 +61,7 @@ vi.mock("node:fs", () => ({
       id: "test-task",
       name: "test-task",
       title: "Test Task",
-      status: "planning",
+      status: "plan",
       priority: "P2",
       createdAt: "2024-03-03",
       current_phase: 0,
@@ -634,13 +634,13 @@ describe("task command", () => {
 
       it("should reject internal state machine events not exposed to CLI", () => {
         const internalEvents = [
-          "PLANNING_COMPLETE",
-          "PLANNING_FAILED",
+          "PLAN_COMPLETE",
+          "PLAN_FAILED",
           "SUBTASK_COMPLETE",
           "ALL_SUBTASKS_DONE",
-          "CODING_FAILED",
-          "QA_PASSED",
-          "QA_FAILED",
+          "IMPLEMENT_FAILED",
+          "CHECK_PASSED",
+          "CHECK_FAILED",
         ];
 
         for (const event of internalEvents) {

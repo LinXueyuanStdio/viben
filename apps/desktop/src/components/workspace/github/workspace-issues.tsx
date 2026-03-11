@@ -175,7 +175,7 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
     try {
       const client = getGitHubClient();
       await client.approveAutoFixTask(workspacePath, taskId);
-      updateAutoFixTask(taskId, { status: "executing" });
+      updateAutoFixTask(taskId, { status: "creating_pr" });
     } catch (error) {
       console.error("Failed to approve auto-fix:", error);
     }

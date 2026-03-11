@@ -63,24 +63,192 @@ npx viben
 
 ```mermaid
 graph LR
-    subgraph Apps["📱 应用"]
+    subgraph Clients["📱 客户端"]
+        direction LR
         CLI["CLI"]
         Desktop["Desktop"]
         Web["Web"]
     end
 
     subgraph Core["📦 packages/core"]
-        Gateway["Gateway :18790"]
-        Agent["Agents"]
-        MCP["MCP Client"]
+        direction TB
+
+        subgraph GW["Gateway :18790"]
+            direction LR
+            REST["REST API"]
+            WS["WebSocket"]
+        end
+
+        subgraph Svc["Services"]
+            direction LR
+            Agent["AgentService"]
+            Session["SessionStore"]
+            Cron["CronService"]
+        end
+
+        subgraph Mod["Modules"]
+            direction LR
+            Exec["Executors"]
+            MCP["MCP Client"]
+            Chan["Channels"]
+        end
     end
 
-    CLI & Desktop & Web --> Core
-    MCP --> MCPServer["MCP Servers"]
-    Agent --> LLM["LLM APIs"]
+    subgraph Ext["🌍 外部"]
+        direction TB
+        LLM["LLM APIs"]
+        MCPSrv["MCP Servers"]
+    end
+
+    subgraph Cfg["📁 ~/.viben/"]
+        direction TB
+        YAML["*.yaml"]
+    end
+
+    Clients -->|HTTP/WS| GW
+    GW --> Svc
+    Svc --> Mod
+    Mod --> Cfg
+    Exec --> LLM
+    MCP --> MCPSrv
 ```
 
-> `packages/core` 是所有应用的唯一边界，配置存储在 `~/.viben/` (YAML)
+> **设计原则**: `packages/core` 是唯一边界 · file-native 配置 (YAML+Markdown) · 统一 REST/WebSocket API · 多 Provider 支持
+
+---
+
+## 📋 任务系统
+
+基于 XState 状态机的任务生命周期管理，支持看板、队列和自动化执行。
+
+### 任务生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> backlog: 创建
+
+    backlog --> queue: enqueue
+    backlog --> cancelled: cancel
+
+    queue --> in_progress: start
+    queue --> backlog: dequeue
+    queue --> paused: pause
+
+    state in_progress {
+        direction LR
+        [*] --> plan
+        plan --> implement
+        implement --> check
+        check --> fix: 失败
+        fix --> check
+    }
+
+    in_progress --> human_review: QA通过
+    in_progress --> paused: pause
+    in_progress --> failed: 错误
+
+    paused --> queue: resume
+    paused --> backlog: abandon
+
+    human_review --> completed: approve
+    human_review --> backlog: reject
+
+    failed --> queue: retry
+    failed --> backlog: abandon
+
+    completed --> [*]
+    cancelled --> [*]
+```
+
+| 状态 | 说明 | 触发命令 |
+|------|------|----------|
+| `backlog` | 待办，等待排队 | `task create` |
+| `queue` | 已排队，等待执行 | `task enqueue` |
+| `in_progress` | 执行中 (plan → implement → check) | `task start` |
+| `paused` | 已暂停，保留进度 | `task pause` |
+| `human_review` | 等待人工审核 | 自动 (QA 通过) |
+| `completed` | 已完成 | `task approve` |
+| `failed` | 执行失败 | 自动 |
+| `cancelled` | 已取消 | `task cancel` |
+
+### 任务目录结构
+
+```
+.viben/tasks/<date>-<slug>/
+├── task.json           # 任务元数据 (状态、配置、时间戳)
+├── events.jsonl        # 事件历史 (状态转换记录)
+├── prd.md              # 产品需求文档
+├── implement.jsonl     # 实现阶段上下文注入
+├── check.jsonl         # 检查阶段上下文注入
+└── logs/               # 执行日志
+```
+
+<details>
+<summary><b>CLI 命令速查</b></summary>
+
+**创建与配置**
+```bash
+viben task create "<title>" --slug <name>    # 创建任务
+viben task init-context <task> -t <type>     # 初始化上下文 (backend/frontend/fullstack)
+viben task add-context <task> <file> -r "原因"  # 添加上下文文件
+viben task set-agent <task> -a <agent>       # 设置智能体
+```
+
+**执行流程**
+```bash
+viben task enqueue <task>    # backlog → queue
+viben task start <task>      # queue → in_progress
+viben task pause <task>      # 暂停执行
+viben task resume <task>     # 恢复执行
+viben task status <task>     # 查看状态
+```
+
+**审核与完成**
+```bash
+viben task review <task>     # 查看待审核任务
+viben task approve <task>    # human_review → completed
+viben task reject <task>     # human_review → backlog
+viben task retry <task>      # failed → queue
+viben task cancel <task>     # * → cancelled
+```
+
+**辅助命令**
+```bash
+viben task list              # 列出所有任务
+viben task context           # 获取会话上下文
+viben task create-pr <task>  # 从任务创建 PR
+viben task archive <task>    # 归档已完成任务
+```
+
+</details>
+
+---
+
+## 💡 Idea 生成
+
+AI 驱动的代码库分析，自动生成改进建议并转化为任务。
+
+| 内置类型 | 说明 |
+|----------|------|
+| `code_improvements` | 基于现有模式的代码改进 |
+| `security_hardening` | 安全漏洞和加固措施 |
+| `performance_optimizations` | 性能瓶颈和优化 |
+| `documentation_gaps` | 缺失的文档 |
+| `ui_ux_improvements` | UI/UX 增强 |
+| `code_quality` | 代码质量和重构 |
+
+```bash
+# 生成代码改进建议
+viben idea generate --types code_improvements security_hardening
+
+# 查看生成的想法
+viben idea list
+
+# 将想法转为任务
+viben idea promote ci-001
+```
+
+> 支持在 `docs/idea-types/*.md` 创建自定义类型 prompt 模板
 
 ---
 

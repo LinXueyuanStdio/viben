@@ -29,7 +29,7 @@ This directory contains all context files for the current task:
 - `info.md` - Technical design (optional)
 - `implement.jsonl` - Implement context
 - `check.jsonl` - Check context
-- `debug.jsonl` - Debug context
+- `fix.jsonl` - Fix context
 
 ## Core Principles
 
@@ -110,11 +110,11 @@ Hook will auto-inject:
 - check-frontend.md
 - All spec files from check.jsonl
 
-### action: "debug"
+### action: "fix"
 
 ```
 Task(
-  subagent_type: "debug",
+  subagent_type: "fix",
   prompt: "Fix the issues described in the task context",
   model: "opus",
   run_in_background: true
@@ -123,7 +123,7 @@ Task(
 
 Hook will auto-inject:
 
-- All spec files from debug.jsonl
+- All spec files from fix.jsonl
 - Error context if available
 
 ### action: "finish"
@@ -170,7 +170,7 @@ This will:
 
 ```
 task_id = Task(
-  subagent_type: "implement",  // or "check", "debug"
+  subagent_type: "implement",  // or "check", "fix"
   prompt: "Simple task description",
   model: "opus",
   run_in_background: true
@@ -189,7 +189,7 @@ for i in 1..N:
 |-------|----------|------------|
 | implement | 30 min | 6 times |
 | check | 15 min | 3 times |
-| debug | 20 min | 4 times |
+| fix | 20 min | 4 times |
 
 ---
 
@@ -210,7 +210,7 @@ If a subagent times out, notify the user and ask for guidance:
 
 If a subagent reports failure, read the output and decide:
 
-- If recoverable: call debug agent to fix
+- If recoverable: call fix agent to fix
 - If not recoverable: notify user and ask for guidance
 
 ---

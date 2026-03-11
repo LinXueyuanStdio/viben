@@ -18,19 +18,16 @@
  * Configuration: .viben/worktree.yaml
  */
 
-import { spawn, execSync, type SpawnOptions, type ChildProcess } from "node:child_process";
+import { execSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
   readFileSync,
-  writeFileSync,
   copyFileSync,
   rmSync,
   cpSync,
-  openSync,
 } from "node:fs";
 import { join, resolve, relative, dirname } from "node:path";
-import { randomUUID } from "node:crypto";
 
 import {
   FILE_TASK_JSON,
@@ -40,10 +37,11 @@ import {
   getWorktreeConfig,
   getWorktreeBaseDir,
   parseSimpleYaml,
-  registryAddAgent,
   createCLIAdapter,
   type Platform,
 } from "../viben-workspace";
+
+import { runWorkPhase } from "../../../task/phase/work";
 
 // =============================================================================
 // Types
@@ -148,37 +146,6 @@ function getWorktreePostCreateHooks(repoRoot: string): string[] {
   return [];
 }
 
-/**
- * Extract session ID from OpenCode logs
- */
-function extractSessionIdFromLog(logContent: string): string | null {
-  // OpenCode format: look for session ID in JSON logs
-  const lines = logContent.split("\n");
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    try {
-      const data = JSON.parse(line);
-      // Look for session_id field in various places
-      if (data.session_id) {
-        return data.session_id;
-      }
-      if (data.session?.id) {
-        return data.session.id;
-      }
-    } catch {
-      // Not JSON, continue
-    }
-  }
-  return null;
-}
-
-/**
- * Sleep for specified milliseconds
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 // =============================================================================
 // Main Function
 // =============================================================================
@@ -264,7 +231,6 @@ export async function startAgent(
   }
 
   const branch = taskData.branch;
-  const taskName = taskData.name;
   const taskStatus = taskData.status;
   let worktreePath = taskData.worktree_path;
 
@@ -408,115 +374,7 @@ export async function startAgent(
   }
 
   // =============================================================================
-  // Step 2: Prepare and Start Agent
-  // =============================================================================
-  // Note: task_dir is passed via prompt, no need to write .current-task file
-
-  // Update task status
-  taskData.status = "in_progress";
-  writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-
-  const logFile = join(worktreePath, ".agent-log");
-
-  // Create empty log file
-  writeFileSync(logFile, "", "utf-8");
-
-  // Generate session ID for resume support (Claude Code only)
-  // Store in task.json instead of .session-id file
-  let sessionId: string | null = null;
-  if (adapter.supportsSessionIdOnCreate) {
-    sessionId = randomUUID().toLowerCase();
-    taskData.session_id = sessionId;
-    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-  }
-
-  // Get proxy environment variables
-  const httpsProxy = process.env.https_proxy || "";
-  const httpProxy = process.env.http_proxy || "";
-  const allProxy = process.env.all_proxy || "";
-
-  // Build environment
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  env.https_proxy = httpsProxy;
-  env.http_proxy = httpProxy;
-  env.all_proxy = allProxy;
-
-  // Set non-interactive env var based on platform
-  Object.assign(env, adapter.getNonInteractiveEnv());
-
-  // Build CLI command using adapter
-  const cliCmd = adapter.buildRunCommand({
-    agent: "dispatch",
-    prompt: `task_dir: ${taskDirRelative}
-
-Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
-    sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
-    skipPermissions,
-    verbose,
-    jsonOutput,
-  });
-
-  // Open log file for writing
-  const logFd = openSync(logFile, "w");
-
-  // Spawn process
-  const spawnOpts: SpawnOptions = {
-    cwd: worktreePath,
-    env,
-    stdio: ["ignore", logFd, logFd],
-  };
-
-  if (detach) {
-    spawnOpts.detached = true;
-  }
-
-  // Platform-specific spawn options
-  if (process.platform === "win32") {
-    // Windows: CREATE_NEW_PROCESS_GROUP
-    // Note: Node.js doesn't expose creationflags directly, but detached achieves similar effect
-  } else {
-    // Unix: start_new_session equivalent is handled by detached
-  }
-
-  let child: ChildProcess;
-  try {
-    child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to spawn agent process: ${error}`,
-    };
-  }
-
-  if (detach) {
-    child.unref();
-  }
-
-  const agentPid = child.pid || 0;
-
-  // For platforms that don't support session ID on create, extract from logs
-  if (!adapter.supportsSessionIdOnCreate) {
-    // Wait a bit for the log to have session ID
-    for (let i = 0; i < 10; i++) {
-      await sleep(500);
-      try {
-        const logContent = readFileSync(logFile, "utf-8");
-        const extractedSessionId = extractSessionIdFromLog(logContent);
-        if (extractedSessionId) {
-          sessionId = extractedSessionId;
-          // Store in task.json
-          taskData.session_id = sessionId;
-          writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-          break;
-        }
-      } catch {
-        // Continue trying
-      }
-    }
-  }
-
-  // =============================================================================
-  // Step 4: Register to Registry (in main repo, not worktree)
+  // Step 2: Start Agent using runWorkPhase
   // =============================================================================
 
   // Generate agent ID
@@ -525,16 +383,28 @@ Follow your agent instructions to execute the task workflow. Read task.json from
     taskId = branch.replace(/\//g, "-");
   }
 
-  registryAddAgent(
-    {
-      agentId: taskId,
-      worktreePath: worktreePath,
-      pid: agentPid,
-      taskDir: taskDirRelative,
-      platform,
-    },
-    repoRoot
-  );
+  // Task directory stays in main repo (for status tracking)
+  // Agent runs in worktree but reports status to main repo's task dir
+  const workResult = await runWorkPhase({
+    repoRoot,
+    workingDir: worktreePath,
+    taskDir: taskDirAbs, // Main repo's task dir, not worktree's copy
+    platform,
+    verbose,
+    detach,
+    skipPermissions,
+    jsonOutput,
+    logFileName: ".agent-log",
+    agentId: taskId,
+    skipNextActionValidation: true, // swarm start doesn't require next_action
+  });
+
+  if (!workResult.success) {
+    return {
+      success: false,
+      error: workResult.error,
+    };
+  }
 
   // =============================================================================
   // Return Result
@@ -542,289 +412,11 @@ Follow your agent instructions to execute the task workflow. Read task.json from
 
   return {
     success: true,
-    agentId: taskId,
-    pid: agentPid,
-    sessionId: sessionId || undefined,
+    agentId: workResult.agentId,
+    pid: workResult.pid,
+    sessionId: workResult.sessionId,
     worktreePath,
-    logFile,
+    logFile: workResult.logFile,
   };
 }
 
-/**
- * Start agent synchronously (for CLI commands)
- *
- * @param repoRoot - Repository root path
- * @param taskDir - Task directory path
- * @param options - Start options
- * @returns StartResult
- */
-export function startAgentSync(
-  repoRoot: string,
-  taskDir: string,
-  options: StartOptions = {}
-): StartResult {
-  // For synchronous usage, we can't wait for session ID extraction
-  // Just run the async function without waiting for session extraction
-  const {
-    platform = "claude",
-    detach = true,
-    skipPermissions = true,
-    verbose = true,
-    jsonOutput = true,
-  } = options;
-
-  const adapter = createCLIAdapter(platform);
-
-  // Normalize paths
-  let taskDirRelative: string;
-  let taskDirAbs: string;
-
-  if (taskDir.startsWith("/")) {
-    taskDirAbs = taskDir;
-    taskDirRelative = relative(repoRoot, taskDir);
-  } else {
-    taskDirRelative = taskDir;
-    taskDirAbs = resolve(repoRoot, taskDir);
-  }
-
-  const taskJsonPath = join(taskDirAbs, FILE_TASK_JSON);
-
-  // Validation
-  if (!existsSync(taskJsonPath)) {
-    return {
-      success: false,
-      error: `task.json not found at ${taskJsonPath}`,
-    };
-  }
-
-  const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
-  if (!existsSync(dispatchMd)) {
-    return {
-      success: false,
-      error: `dispatch.md not found at ${dispatchMd}. Platform: ${platform}`,
-    };
-  }
-
-  const configFile = getWorktreeConfig(repoRoot);
-  if (!existsSync(configFile)) {
-    return {
-      success: false,
-      error: `worktree.yaml not found at ${configFile}`,
-    };
-  }
-
-  const taskData = readTaskJson(taskDirAbs) as TaskData | null;
-  if (!taskData) {
-    return {
-      success: false,
-      error: "Failed to read task.json",
-    };
-  }
-
-  const branch = taskData.branch;
-  const taskStatus = taskData.status;
-  let worktreePath = taskData.worktree_path;
-
-  if (taskStatus === "rejected") {
-    return {
-      success: false,
-      error: "Task was rejected by Plan Agent",
-    };
-  }
-
-  const prdFile = join(taskDirAbs, "prd.md");
-  if (!existsSync(prdFile)) {
-    return {
-      success: false,
-      error: "prd.md not found - Plan Agent may not have completed",
-    };
-  }
-
-  if (!branch) {
-    return {
-      success: false,
-      error: "branch field not set in task.json",
-    };
-  }
-
-  // Create worktree if needed
-  if (!worktreePath || !existsSync(worktreePath)) {
-    const { stdout: baseBranchOut } = runGitCommand(
-      ["branch", "--show-current"],
-      repoRoot
-    );
-    const baseBranch = baseBranchOut.trim() || "main";
-
-    let worktreeBaseDir = getWorktreeBaseDir(repoRoot);
-    if (!existsSync(worktreeBaseDir)) {
-      mkdirSync(worktreeBaseDir, { recursive: true });
-    }
-    worktreeBaseDir = resolve(worktreeBaseDir);
-
-    worktreePath = join(worktreeBaseDir, branch);
-
-    const parentDir = dirname(worktreePath);
-    if (!existsSync(parentDir)) {
-      mkdirSync(parentDir, { recursive: true });
-    }
-
-    const { code: refCode } = runGitCommand(
-      ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`],
-      repoRoot
-    );
-
-    let gitResult: { code: number; stderr: string };
-    if (refCode === 0) {
-      gitResult = runGitCommand(
-        ["worktree", "add", worktreePath, branch],
-        repoRoot
-      );
-    } else {
-      gitResult = runGitCommand(
-        ["worktree", "add", "-b", branch, worktreePath],
-        repoRoot
-      );
-    }
-
-    if (gitResult.code !== 0) {
-      return {
-        success: false,
-        error: `Failed to create worktree: ${gitResult.stderr}`,
-      };
-    }
-
-    taskData.worktree_path = worktreePath;
-    taskData.base_branch = baseBranch;
-    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-
-    // Copy environment files
-    const copyList = getWorktreeCopyFiles(repoRoot);
-    for (const item of copyList) {
-      if (!item) continue;
-      const source = join(repoRoot, item);
-      const target = join(worktreePath, item);
-      if (existsSync(source)) {
-        const targetDir = dirname(target);
-        if (!existsSync(targetDir)) {
-          mkdirSync(targetDir, { recursive: true });
-        }
-        copyFileSync(source, target);
-      }
-    }
-
-    // Copy task directory
-    const taskTargetDir = join(worktreePath, taskDirRelative);
-    const taskTargetParent = dirname(taskTargetDir);
-    if (!existsSync(taskTargetParent)) {
-      mkdirSync(taskTargetParent, { recursive: true });
-    }
-    if (existsSync(taskTargetDir)) {
-      rmSync(taskTargetDir, { recursive: true, force: true });
-    }
-    cpSync(taskDirAbs, taskTargetDir, { recursive: true });
-
-    // Run post_create hooks
-    const postCreateHooks = getWorktreePostCreateHooks(repoRoot);
-    for (const cmd of postCreateHooks) {
-      if (!cmd) continue;
-      try {
-        execSync(cmd, {
-          cwd: worktreePath,
-          stdio: "inherit",
-          shell: "/bin/sh",
-        });
-      } catch (error) {
-        return {
-          success: false,
-          error: `Post-create hook failed: ${cmd}`,
-        };
-      }
-    }
-  }
-
-  // Note: task_dir is passed via prompt, no need to write .current-task file
-
-  // Update task status
-  taskData.status = "in_progress";
-  writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-
-  const logFile = join(worktreePath, ".agent-log");
-
-  writeFileSync(logFile, "", "utf-8");
-
-  // Generate session ID for resume support (Claude Code only)
-  // Store in task.json instead of .session-id file
-  let sessionId: string | null = null;
-  if (adapter.supportsSessionIdOnCreate) {
-    sessionId = randomUUID().toLowerCase();
-    taskData.session_id = sessionId;
-    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-  }
-
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  env.https_proxy = process.env.https_proxy || "";
-  env.http_proxy = process.env.http_proxy || "";
-  env.all_proxy = process.env.all_proxy || "";
-  Object.assign(env, adapter.getNonInteractiveEnv());
-
-  const cliCmd = adapter.buildRunCommand({
-    agent: "dispatch",
-    prompt: `task_dir: ${taskDirRelative}
-
-Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
-    sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
-    skipPermissions,
-    verbose,
-    jsonOutput,
-  });
-
-  const logFd = openSync(logFile, "w");
-
-  const spawnOpts: SpawnOptions = {
-    cwd: worktreePath,
-    env,
-    stdio: ["ignore", logFd, logFd],
-    detached: detach,
-  };
-
-  let child: ChildProcess;
-  try {
-    child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  } catch (error) {
-    return {
-      success: false,
-      error: `Failed to spawn agent process: ${error}`,
-    };
-  }
-
-  if (detach) {
-    child.unref();
-  }
-
-  const agentPid = child.pid || 0;
-
-  let taskId = taskData.id;
-  if (!taskId) {
-    taskId = branch.replace(/\//g, "-");
-  }
-
-  registryAddAgent(
-    {
-      agentId: taskId,
-      worktreePath: worktreePath,
-      pid: agentPid,
-      taskDir: taskDirRelative,
-      platform,
-    },
-    repoRoot
-  );
-
-  return {
-    success: true,
-    agentId: taskId,
-    pid: agentPid,
-    sessionId: sessionId || undefined,
-    worktreePath,
-    logFile,
-  };
-}

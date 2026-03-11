@@ -1232,9 +1232,6 @@ function updateSessionSummary(sessionDir: string): void {
  * @returns Array of Ideas
  */
 export function parseIdeaMarkdown(content: string): Idea[] {
-  const ideas: Idea[] = [];
-
-  // First try to parse as single idea
   const { frontmatter, body } = parseFrontmatter(content);
   if (frontmatter.id) {
     const idea = parseIdeaFromFrontmatterAndBody(frontmatter, body);
@@ -1242,31 +1239,7 @@ export function parseIdeaMarkdown(content: string): Idea[] {
       return [idea];
     }
   }
-
-  // Legacy format: multiple ideas separated by \n---\n
-  const sections = content.split(/\n---\n+/);
-
-  for (const section of sections) {
-    const trimmed = section.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    // Section might start with --- or not (if it was split)
-    const sectionToparse = trimmed.startsWith("---")
-      ? trimmed
-      : "---\n" + trimmed;
-    const { frontmatter: fm, body: bd } = parseFrontmatter(sectionToparse);
-
-    if (fm.id) {
-      const idea = parseIdeaFromFrontmatterAndBody(fm, bd);
-      if (idea) {
-        ideas.push(idea);
-      }
-    }
-  }
-
-  return ideas;
+  return [];
 }
 
 /**

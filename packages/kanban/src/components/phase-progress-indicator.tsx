@@ -4,7 +4,7 @@ import * as React from "react";
 import { Loader2, CheckCircle, Circle, AlertCircle } from "lucide-react";
 import { cn } from "@viben/ui";
 
-export type ExecutionPhase = "planning" | "implementing" | "testing" | "review";
+export type ExecutionPhase = "plan" | "implement" | "check" | "fix";
 
 export interface PhaseProgressIndicatorProps {
   /** Current execution phase */
@@ -18,20 +18,20 @@ export interface PhaseProgressIndicatorProps {
   className?: string;
 }
 
-const PHASE_ORDER: ExecutionPhase[] = ["planning", "implementing", "testing", "review"];
+const PHASE_ORDER: ExecutionPhase[] = ["plan", "implement", "check", "fix"];
 
 const PHASE_LABELS: Record<ExecutionPhase, string> = {
-  planning: "Planning",
-  implementing: "Implementing",
-  testing: "Testing",
-  review: "Review",
+  plan: "Plan",
+  implement: "Implement",
+  check: "Check",
+  fix: "Fix",
 };
 
 const PHASE_COLORS: Record<ExecutionPhase, string> = {
-  planning: "text-blue-500",
-  implementing: "text-amber-500",
-  testing: "text-purple-500",
-  review: "text-green-500",
+  plan: "text-blue-500",
+  implement: "text-amber-500",
+  check: "text-purple-500",
+  fix: "text-green-500",
 };
 
 export function PhaseProgressIndicator({

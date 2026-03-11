@@ -360,7 +360,7 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 | research | Analyze codebase | No (reads directly) |
 | implement | Write code | Yes (implement.jsonl) |
 | check | Review & fix | Yes (check.jsonl) |
-| debug | Fix specific issues | Yes (debug.jsonl) |
+| fix | Fix specific issues | Yes (fix.jsonl) |
 
 ---
 

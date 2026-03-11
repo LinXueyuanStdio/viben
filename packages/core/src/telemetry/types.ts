@@ -1,6 +1,7 @@
 /**
  * Telemetry 类型定义
  */
+import type { SamplingRule } from "./sampling";
 
 /**
  * Trace Span 数据结构
@@ -152,6 +153,20 @@ export interface TelemetryConfig {
   log?: {
     /** 日志级别 */
     level?: string;
+    /** 敏感信息脱敏配置 */
+    redact?: {
+      /** 需要脱敏的字段路径 */
+      paths?: string[];
+      /** 脱敏模式：full 完全遮蔽, partial 部分显示 */
+      censor?: "full" | "partial";
+    };
+    /** 日志采样配置 */
+    sampling?: {
+      /** 是否启用采样 */
+      enabled?: boolean;
+      /** 自定义采样规则 */
+      rules?: SamplingRule[];
+    };
   };
   /** 保留天数 */
   retentionDays?: number;

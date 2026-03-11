@@ -14,7 +14,7 @@ Trigger: PreToolUse (before Task tool call)
 Context Source: .viben/.current-task points to task directory
 - implement.jsonl - Implement agent dedicated context
 - check.jsonl     - Check agent dedicated context
-- debug.jsonl     - Debug agent dedicated context
+- fix.jsonl       - Fix agent dedicated context
 - research.jsonl  - Research agent dedicated context (optional, usually not needed)
 - cr.jsonl        - Code review dedicated context
 - prd.md          - Requirements document
@@ -52,7 +52,7 @@ FILE_CURRENT_TASK = ".current-task"
 FILE_TASK_JSON = "task.json"
 
 # Agents that don't update phase (can be called at any time)
-AGENTS_NO_PHASE_UPDATE = {"debug", "research"}
+AGENTS_NO_PHASE_UPDATE = {"fix", "research"}
 
 # =============================================================================
 # Subagent Constants (change here to rename subagent types)
@@ -60,13 +60,13 @@ AGENTS_NO_PHASE_UPDATE = {"debug", "research"}
 
 AGENT_IMPLEMENT = "implement"
 AGENT_CHECK = "check"
-AGENT_DEBUG = "debug"
+AGENT_FIX = "fix"
 AGENT_RESEARCH = "research"
 
 # Agents that require a task directory
-AGENTS_REQUIRE_TASK = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_DEBUG)
+AGENTS_REQUIRE_TASK = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_FIX)
 # All supported agents
-AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_DEBUG, AGENT_RESEARCH)
+AGENTS_ALL = (AGENT_IMPLEMENT, AGENT_CHECK, AGENT_FIX, AGENT_RESEARCH)
 
 
 def find_repo_root(start_path: str) -> str | None:
@@ -115,7 +115,7 @@ def update_current_phase(repo_root: str, task_dir: str, subagent_type: str) -> N
     - Read next_action array from task.json
     - Find the next phase whose action matches subagent_type
     - Only move forward, never backward
-    - Some agents (debug, research) don't update phase
+    - Some agents (fix, research) don't update phase
     """
     if subagent_type in AGENTS_NO_PHASE_UPDATE:
         return
@@ -409,21 +409,21 @@ def get_finish_context(repo_root: str, task_dir: str) -> str:
     return "\n\n".join(context_parts)
 
 
-def get_debug_context(repo_root: str, task_dir: str) -> str:
+def get_fix_context(repo_root: str, task_dir: str) -> str:
     """
-    Complete context for Debug Agent
+    Complete context for Fix Agent
 
     Read order:
-    1. All files in debug.jsonl (specs needed for fixing)
+    1. All files in fix.jsonl (specs needed for fixing)
     2. codex-review-output.txt (Codex Review results)
     """
     context_parts = []
 
-    # 1. Read debug.jsonl (or fallback to spec.jsonl + hardcoded check files)
-    debug_entries = read_jsonl_entries(repo_root, f"{task_dir}/debug.jsonl")
+    # 1. Read fix.jsonl (or fallback to spec.jsonl + hardcoded check files)
+    fix_entries = read_jsonl_entries(repo_root, f"{task_dir}/fix.jsonl")
 
-    if debug_entries:
-        for file_path, content in debug_entries:
+    if fix_entries:
+        for file_path, content in fix_entries:
             context_parts.append(f"=== {file_path} ===\n{content}")
     else:
         # Fallback: use spec.jsonl + hardcoded check files
@@ -559,11 +559,11 @@ Finish checklist and requirements:
 - Verify all acceptance criteria in prd.md are met"""
 
 
-def build_debug_prompt(original_prompt: str, context: str) -> str:
-    """Build complete prompt for Debug"""
-    return f"""# Debug Agent Task
+def build_fix_prompt(original_prompt: str, context: str) -> str:
+    """Build complete prompt for Fix"""
+    return f"""# Fix Agent Task
 
-You are the Debug Agent in the Multi-Agent Pipeline (issue fixer).
+You are the Fix Agent in the Multi-Agent Pipeline (issue fixer).
 
 ## Your Context
 
@@ -727,7 +727,7 @@ def main():
     # Get current task directory (research doesn't require it)
     task_dir = get_current_task(repo_root)
 
-    # implement/check/debug need task directory
+    # implement/check/fix need task directory
     if subagent_type in AGENTS_REQUIRE_TASK:
         if not task_dir:
             sys.exit(0)
@@ -757,10 +757,10 @@ def main():
             # Regular check phase: use check context (full specs for self-fix loop)
             context = get_check_context(repo_root, task_dir)
             new_prompt = build_check_prompt(original_prompt, context)
-    elif subagent_type == AGENT_DEBUG:
+    elif subagent_type == AGENT_FIX:
         assert task_dir is not None  # validated above
-        context = get_debug_context(repo_root, task_dir)
-        new_prompt = build_debug_prompt(original_prompt, context)
+        context = get_fix_context(repo_root, task_dir)
+        new_prompt = build_fix_prompt(original_prompt, context)
     elif subagent_type == AGENT_RESEARCH:
         # Research can work without task directory
         context = get_research_context(repo_root, task_dir)

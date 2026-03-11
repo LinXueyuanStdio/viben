@@ -342,18 +342,21 @@ export class AutoFixTaskQueue extends EventEmitter {
       const analysis = await this.analyzeIssues(task);
 
       // Step 2: Plan
-      await this.updateTaskProgress(task.id, "planning", "Generating fix plan...", 30);
+      await this.updateTaskProgress(task.id, "plan", "Generating fix plan...", 30);
       const plan = await this.generatePlan(task, analysis);
 
-      // Step 3: Execute
-      await this.updateTaskProgress(task.id, "executing", "Creating worktree...", 40);
+      // Step 3: Implement
+      await this.updateTaskProgress(task.id, "implement", "Creating worktree...", 40);
       await this.executeFixPlan(task, plan, options.base_branch);
 
-      // Step 4: Test
-      await this.updateTaskProgress(task.id, "testing", "Running tests...", 70);
+      // Step 4: Check
+      await this.updateTaskProgress(task.id, "check", "Running tests...", 60);
       await this.runTests(task);
 
-      // Step 5: Approval or PR
+      // Step 5: Fix (if issues found)
+      await this.updateTaskProgress(task.id, "fix", "Applying fixes...", 70);
+
+      // Step 6: Approval or PR
       if (options.require_approval) {
         await this.updateTaskProgress(
           task.id,
@@ -626,9 +629,10 @@ Please review the changes and ensure they meet the requirements.
     const pendingStatuses: AutoFixTaskStatus[] = [
       "queued",
       "analyzing",
-      "planning",
-      "executing",
-      "testing",
+      "plan",
+      "implement",
+      "check",
+      "fix",
     ];
 
     for (const task of state.tasks) {

@@ -11,6 +11,10 @@ import { mcpManager } from "../../mcp";
 import type { McpServer } from "../../types";
 import { exec, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger for MCP routes
+const log = globalLogger.child({ module: "mcp" });
 
 const execAsync = promisify(exec);
 
@@ -480,7 +484,7 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
           if (browseMcpStdout.length > 10240) {
             browseMcpStdout = browseMcpStdout.slice(-10240);
           }
-          console.log(`[browse-mcp stdout] ${text.trim()}`);
+          log.debug({ text: text.trim() }, "browse-mcp stdout");
         });
       }
 
@@ -493,13 +497,13 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
           if (browseMcpStderr.length > 10240) {
             browseMcpStderr = browseMcpStderr.slice(-10240);
           }
-          console.error(`[browse-mcp stderr] ${text.trim()}`);
+          log.warn({ text: text.trim() }, "browse-mcp stderr");
         });
       }
 
       // Handle process exit
       child.on("exit", (code, signal) => {
-        console.log(`[browse-mcp] Process exited with code=${code}, signal=${signal}`);
+        log.info({ code, signal }, "browse-mcp process exited");
         browseMcpStatus = {
           ...browseMcpStatus,
           running: false,
@@ -515,7 +519,7 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
 
       // Handle process error
       child.on("error", (err) => {
-        console.error(`[browse-mcp] Process error:`, err);
+        log.error({ err }, "browse-mcp process error");
         browseMcpStatus = {
           ...browseMcpStatus,
           running: false,

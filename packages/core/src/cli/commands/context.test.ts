@@ -79,7 +79,7 @@ const sampleTasks = [
   {
     dir: "03-02-fix-bug",
     name: "fix-bug",
-    status: "planning",
+    status: "plan",
     assignee: "alice",
     title: "Fix login bug",
     priority: "P2",
@@ -424,7 +424,7 @@ describe("Context CLI Command", () => {
         {
           dir: "03-02-fix-bug",
           name: "fix-bug",
-          status: "planning",
+          status: "plan",
           assignee: "alice",
           title: "Fix login bug",
           priority: "P2",

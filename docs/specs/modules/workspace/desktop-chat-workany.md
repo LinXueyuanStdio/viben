@@ -154,7 +154,7 @@ interface UseAgentReturn {
   respondToQuestion(answers: Record<string, string>): void;
 }
 
-type AgentPhase = 'idle' | 'planning' | 'awaiting_approval' | 'executing' | 'running';
+type AgentPhase = 'idle' | 'plan' | 'awaiting_approval' | 'implement' | 'running';
 ```
 
 ---

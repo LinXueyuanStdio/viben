@@ -3,7 +3,7 @@
  *
  * Implements the task lifecycle using XState v5.
  * State flow follows Auto-Claude pattern:
- * backlog -> queue -> in_progress (planning/coding/qa_review/qa_fixing) -> human_review -> completed
+ * backlog -> queue -> in_progress (plan/implement/check/fix) -> human_review -> completed
  *
  * Terminal states: completed, failed, cancelled
  */
@@ -53,7 +53,7 @@ export interface TaskMachineContext {
   reviewReason?: ReviewReason;
   /** Current subtask index (0-based) */
   currentSubtaskIndex: number;
-  /** Whether plan requires human review before coding */
+  /** Whether plan requires human review before implement */
   requiresPlanReview: boolean;
   /**
    * @deprecated Use paused_snapshot instead for complete restoration
@@ -71,15 +71,15 @@ export type TaskMachineEvent =
   | { type: "QUEUE" }
   | { type: "START" }
   | { type: "DEQUEUE" }
-  | { type: "PLANNING_COMPLETE" }
-  | { type: "PLANNING_FAILED" }
+  | { type: "PLAN_COMPLETE" }
+  | { type: "PLAN_FAILED" }
   | { type: "SUBTASK_COMPLETE" }
   | { type: "ALL_SUBTASKS_DONE" }
-  | { type: "CODING_FAILED" }
-  | { type: "QA_PASSED" }
-  | { type: "QA_FAILED" }
-  | { type: "QA_FIXING_COMPLETE" }
-  | { type: "QA_FIXING_FAILED" }
+  | { type: "IMPLEMENT_FAILED" }
+  | { type: "CHECK_PASSED" }
+  | { type: "CHECK_FAILED" }
+  | { type: "FIX_COMPLETE" }
+  | { type: "FIX_FAILED" }
   | { type: "USER_STOPPED" }
   | { type: "APPROVED" }
   | { type: "REJECTED" }
@@ -148,15 +148,15 @@ export const taskMachine = createMachine(
       // In Progress - Task is being executed
       // ==========================================================================
       in_progress: {
-        initial: "planning",
+        initial: "plan",
 
         states: {
-          // Planning phase - generating implementation plan
-          planning: {
+          // Plan phase - generating implementation plan
+          plan: {
             on: {
-              PLANNING_COMPLETE: [
+              PLAN_COMPLETE: [
                 {
-                  target: "coding",
+                  target: "implement",
                   guard: "noPlanReviewRequired",
                 },
                 {
@@ -164,54 +164,54 @@ export const taskMachine = createMachine(
                   actions: ["setReviewReason_planReview"],
                 },
               ],
-              PLANNING_FAILED: { target: "#task.failed" },
+              PLAN_FAILED: { target: "#task.failed" },
               PAUSE: {
                 target: "#task.paused",
-                actions: ["savePausedSnapshot_planning"],
+                actions: ["savePausedSnapshot_plan"],
               },
             },
           },
 
-          // Coding phase - implementing subtasks
-          coding: {
+          // Implement phase - implementing subtasks
+          implement: {
             on: {
               SUBTASK_COMPLETE: {
-                target: "coding",
+                target: "implement",
                 actions: ["markSubtaskDone"],
                 reenter: true,
               },
-              ALL_SUBTASKS_DONE: { target: "qa_review" },
-              CODING_FAILED: { target: "#task.failed" },
+              ALL_SUBTASKS_DONE: { target: "check" },
+              IMPLEMENT_FAILED: { target: "#task.failed" },
               PAUSE: {
                 target: "#task.paused",
-                actions: ["savePausedSnapshot_coding"],
+                actions: ["savePausedSnapshot_implement"],
               },
             },
           },
 
-          // QA Review phase - AI reviewing the work
-          qa_review: {
+          // Check phase - AI reviewing the work
+          check: {
             on: {
-              QA_PASSED: {
+              CHECK_PASSED: {
                 target: "#task.human_review",
                 actions: ["setReviewReason_completed"],
               },
-              QA_FAILED: { target: "qa_fixing" },
+              CHECK_FAILED: { target: "fix" },
               PAUSE: {
                 target: "#task.paused",
-                actions: ["savePausedSnapshot_qaReview"],
+                actions: ["savePausedSnapshot_check"],
               },
             },
           },
 
-          // QA Fixing phase - fixing issues found by QA
-          qa_fixing: {
+          // Fix phase - fixing issues found by check
+          fix: {
             on: {
-              QA_FIXING_COMPLETE: { target: "qa_review" },
-              QA_FIXING_FAILED: { target: "#task.failed" },
+              FIX_COMPLETE: { target: "check" },
+              FIX_FAILED: { target: "#task.failed" },
               PAUSE: {
                 target: "#task.paused",
-                actions: ["savePausedSnapshot_qaFixing"],
+                actions: ["savePausedSnapshot_fix"],
               },
             },
           },
@@ -244,28 +244,28 @@ export const taskMachine = createMachine(
               guard: "pausedFromQueue",
               actions: ["restoreFromSnapshot"],
             },
-            // Resume to in_progress.planning if paused from planning
+            // Resume to in_progress.plan if paused from plan
             {
-              target: "in_progress.planning",
-              guard: "pausedFromPlanning",
+              target: "in_progress.plan",
+              guard: "pausedFromPlan",
               actions: ["restoreFromSnapshot"],
             },
-            // Resume to in_progress.coding if paused from coding
+            // Resume to in_progress.implement if paused from implement
             {
-              target: "in_progress.coding",
-              guard: "pausedFromCoding",
+              target: "in_progress.implement",
+              guard: "pausedFromImplement",
               actions: ["restoreFromSnapshot"],
             },
-            // Resume to in_progress.qa_review if paused from qa_review
+            // Resume to in_progress.check if paused from check
             {
-              target: "in_progress.qa_review",
-              guard: "pausedFromQaReview",
+              target: "in_progress.check",
+              guard: "pausedFromCheck",
               actions: ["restoreFromSnapshot"],
             },
-            // Resume to in_progress.qa_fixing if paused from qa_fixing
+            // Resume to in_progress.fix if paused from fix
             {
-              target: "in_progress.qa_fixing",
-              guard: "pausedFromQaFixing",
+              target: "in_progress.fix",
+              guard: "pausedFromFix",
               actions: ["restoreFromSnapshot"],
             },
             // Default: resume to queue (fallback)
@@ -356,10 +356,10 @@ export function getStateValue(snapshot: AnyMachineSnapshot): XStateValue {
  * Convert XState state value to TaskStatus
  *
  * Maps the XState state machine value to the existing TaskStatus type.
- * All in_progress substates (planning, coding, qa_review, qa_fixing) map to in_progress.
+ * All in_progress substates (plan, implement, check, fix) map to in_progress.
  * The specific phase is captured in executionProgress.phase separately.
  *
- * Note: ai_review status was removed - use executionPhase to determine qa_review/qa_fixing
+ * Note: ai_review status was removed - use executionPhase to determine check/fix
  *
  * @param value - XState state value
  * @returns Corresponding TaskStatus
@@ -372,7 +372,7 @@ export function xstateToTaskStatus(value: XStateValue): TaskStatus {
 
   // Handle nested in_progress states
   if (typeof value === "object" && "in_progress" in value) {
-    // All in_progress substates (planning, coding, qa_review, qa_fixing) map to in_progress
+    // All in_progress substates (plan, implement, check, fix) map to in_progress
     // The specific phase is captured in executionProgress.phase
     return "in_progress";
   }
@@ -402,20 +402,20 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
   backlog: [],
   queue: [{ type: "QUEUE" }],
   paused: [{ type: "QUEUE" }, { type: "PAUSE" }],
-  failed: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
+  failed: [{ type: "QUEUE" }, { type: "START" }, { type: "PLAN_FAILED" }],
   human_review: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_PASSED" },
+    { type: "CHECK_PASSED" },
   ],
   completed: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_PASSED" },
+    { type: "CHECK_PASSED" },
     { type: "APPROVED" },
   ],
   cancelled: [{ type: "CANCEL" }],
@@ -423,18 +423,18 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
   done: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_PASSED" },
+    { type: "CHECK_PASSED" },
     { type: "APPROVED" },
   ],
-  error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_FAILED" }],
+  error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLAN_FAILED" }],
   pr_created: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_PASSED" },
+    { type: "CHECK_PASSED" },
     { type: "APPROVED" },
   ],
 };
@@ -443,29 +443,29 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
  * Navigation paths for in_progress substates
  */
 const IN_PROGRESS_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
-  planning: [{ type: "QUEUE" }, { type: "START" }],
-  coding: [{ type: "QUEUE" }, { type: "START" }, { type: "PLANNING_COMPLETE" }],
-  qa_review: [
+  plan: [{ type: "QUEUE" }, { type: "START" }],
+  implement: [{ type: "QUEUE" }, { type: "START" }, { type: "PLAN_COMPLETE" }],
+  check: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
   ],
-  qa_fixing: [
+  fix: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_FAILED" },
+    { type: "CHECK_FAILED" },
   ],
   // "complete" phase doesn't have a corresponding state machine state
   // It's only used as a logical marker
   complete: [
     { type: "QUEUE" },
     { type: "START" },
-    { type: "PLANNING_COMPLETE" },
+    { type: "PLAN_COMPLETE" },
     { type: "ALL_SUBTASKS_DONE" },
-    { type: "QA_PASSED" },
+    { type: "CHECK_PASSED" },
   ],
 };
 

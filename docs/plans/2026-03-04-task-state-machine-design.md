@@ -28,7 +28,7 @@
 export type TaskStatus = "backlog" | "queue" | "in_progress" | "ai_review" | "human_review" | "done" | "pr_created" | "error";
 export type ReviewReason = "completed" | "errors" | "qa_rejected" | "plan_review" | "stopped";
 export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
-export type ExecutionPhase = "planning" | "coding" | "qa_review" | "qa_fixing" | "complete";
+export type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete";
 
 export interface ExecutionProgress {
   phase: ExecutionPhase;
@@ -120,13 +120,13 @@ export interface TaskEvent {
 
 export type TaskEventType =
   | 'QUEUE' | 'START' | 'DEQUEUE'
-  | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
-  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'CODING_FAILED'
-  | 'QA_PASSED' | 'QA_FAILED' | 'QA_FIXING_COMPLETE' | 'QA_FIXING_FAILED'
+  | 'PLAN_COMPLETE' | 'PLAN_FAILED'
+  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'IMPLEMENT_FAILED'
+  | 'CHECK_PASSED' | 'CHECK_FAILED' | 'FIX_COMPLETE' | 'FIX_FAILED'
   | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CREATE_PR'
   | 'RETRY' | 'ABANDON';
 
-// 新增 - XState 状态存储
+// 新增 - XState 状态存储 (ExecutionPhase: plan, implement, check, fix)
 export type XStateValue = string | { in_progress: ExecutionPhase };
 
 // 新增 - 元数据扩展
@@ -238,34 +238,34 @@ export const taskMachine = createMachine({
     },
 
     in_progress: {
-      initial: 'planning',
+      initial: 'plan',
       states: {
-        planning: {
+        plan: {
           on: {
-            PLANNING_COMPLETE: [
-              { target: 'coding', guard: 'noPlanReviewRequired' },
+            PLAN_COMPLETE: [
+              { target: 'implement', guard: 'noPlanReviewRequired' },
               { target: '#task.human_review', actions: 'setReviewReason_planReview' }
             ],
-            PLANNING_FAILED: '#task.error',
+            PLAN_FAILED: '#task.error',
           }
         },
-        coding: {
+        implement: {
           on: {
-            SUBTASK_COMPLETE: { target: 'coding', actions: 'markSubtaskDone' },
-            ALL_SUBTASKS_DONE: 'qa_review',
-            CODING_FAILED: '#task.error',
+            SUBTASK_COMPLETE: { target: 'implement', actions: 'markSubtaskDone' },
+            ALL_SUBTASKS_DONE: 'check',
+            IMPLEMENT_FAILED: '#task.error',
           }
         },
-        qa_review: {
+        check: {
           on: {
-            QA_PASSED: '#task.human_review',
-            QA_FAILED: 'qa_fixing',
+            CHECK_PASSED: '#task.human_review',
+            CHECK_FAILED: 'fix',
           }
         },
-        qa_fixing: {
+        fix: {
           on: {
-            QA_FIXING_COMPLETE: 'qa_review',
-            QA_FIXING_FAILED: '#task.error',
+            FIX_COMPLETE: 'check',
+            FIX_FAILED: '#task.error',
           }
         },
       },
@@ -280,7 +280,7 @@ export const taskMachine = createMachine({
     human_review: {
       on: {
         APPROVED: 'done',
-        REJECTED: 'in_progress.coding',
+        REJECTED: 'in_progress.implement',
         CREATE_PR: 'pr_created',
       }
     },
@@ -304,7 +304,7 @@ export function xstateToTaskStatus(value: XStateValue): TaskStatus {
   // 子状态映射
   if ('in_progress' in value) {
     const phase = value.in_progress;
-    if (phase === 'qa_review' || phase === 'qa_fixing') {
+    if (phase === 'check' || phase === 'fix') {
       return 'ai_review';
     }
     return 'in_progress';
@@ -316,7 +316,7 @@ export function xstateToTaskStatus(value: XStateValue): TaskStatus {
 **关键点：**
 - 复用已有的 `TaskStatus`, `ReviewReason`, `ExecutionPhase` 类型
 - `xstateToTaskStatus()` 函数将 XState 状态映射到已有的 TaskStatus
-- 子状态 `qa_review`/`qa_fixing` 映射到 `ai_review` 保持兼容
+- 子状态 `check`/`fix` 映射到 `ai_review` 保持兼容
 
 ## 事件序列号机制
 
@@ -338,9 +338,9 @@ export interface TaskEvent {
 /** 事件类型枚举 - 新增 */
 export type TaskEventType =
   | 'QUEUE' | 'START' | 'DEQUEUE'
-  | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
-  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'CODING_FAILED'
-  | 'QA_PASSED' | 'QA_FAILED' | 'QA_FIXING_COMPLETE' | 'QA_FIXING_FAILED'
+  | 'PLAN_COMPLETE' | 'PLAN_FAILED'
+  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'IMPLEMENT_FAILED'
+  | 'CHECK_PASSED' | 'CHECK_FAILED' | 'FIX_COMPLETE' | 'FIX_FAILED'
   | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CREATE_PR'
   | 'RETRY' | 'ABANDON';
 
@@ -537,7 +537,7 @@ export interface ImplementationPlanFileV2 extends ImplementationPlanFile {
 export interface Phase {
   id: number;
   name: string;
-  type: 'planning' | 'implementation' | 'qa';
+  type: 'plan' | 'implement' | 'check';
   subtasks: ImplementationPlanSubtask[];
 }
 
@@ -559,9 +559,9 @@ export interface ImplementationPlanSubtaskV2 extends ImplementationPlanSubtask {
 ├── implementation_plan.json     # ImplementationPlanFile (已有)
 ├── prd.md                       # PRD 文档 (已有)
 └── logs/                        # 执行日志 (已有)
-    ├── planning.log
-    ├── coding.log
-    └── validation.log
+    ├── plan.log
+    ├── implement.log
+    └── check.log
 
 .viben/specs/                    # 技术规格单独存放
 ```

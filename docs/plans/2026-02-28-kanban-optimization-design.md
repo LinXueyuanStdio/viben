@@ -28,7 +28,7 @@ interface Task {
   impact?: "low" | "medium" | "high" | "critical";
 
   // 新增: 执行追踪
-  execution_phase?: "planning" | "coding" | "testing" | "reviewing" | "completed";
+  execution_phase?: "plan" | "implement" | "check" | "fix" | "complete";
   phase_progress?: number; // 0-100
   subtasks?: Subtask[];
 
@@ -187,7 +187,7 @@ interface QueueSettings {
 ### 4.1 阶段定义
 
 ```typescript
-type ExecutionPhase = 'planning' | 'coding' | 'testing' | 'reviewing' | 'completed';
+type ExecutionPhase = 'plan' | 'implement' | 'check' | 'fix' | 'complete';
 
 interface ExecutionProgress {
   phase: ExecutionPhase;
@@ -198,11 +198,11 @@ interface ExecutionProgress {
 }
 
 const PHASE_COLORS: Record<ExecutionPhase, string> = {
-  planning:  'bg-blue-500',
-  coding:    'bg-yellow-500',
-  testing:   'bg-purple-500',
-  reviewing: 'bg-cyan-500',
-  completed: 'bg-green-500',
+  plan:      'bg-blue-500',
+  implement: 'bg-yellow-500',
+  check:     'bg-purple-500',
+  fix:       'bg-cyan-500',
+  complete:  'bg-green-500',
 };
 ```
 

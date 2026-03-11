@@ -16,6 +16,7 @@ import {
   initTelemetry,
   getDefaultTelemetryDir,
   registerGaugeCallbacks,
+  logger as globalLogger,
   type TelemetryInstance,
   type Logger,
 } from "../telemetry";
@@ -29,6 +30,9 @@ export { setGatewayStartupConfig } from "./routes/health";
 
 // Global telemetry instance
 let telemetry: TelemetryInstance | null = null;
+
+// Module-level logger
+const log = globalLogger.child({ module: "gateway" });
 
 /**
  * Get the gateway logger
@@ -87,8 +91,6 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       },
     });
   }
-
-  const logger = telemetry?.logger;
 
   // Dynamically import fastify to keep it optional
   const fastify = (await import("fastify")).default;
@@ -156,11 +158,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       },
     });
 
-    logger?.info("Swagger API documentation registered at /docs");
-    console.log("[Gateway] Swagger API documentation available at /docs");
+    log.info("Swagger API documentation registered at /docs");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to register Swagger plugin");
-    console.warn("[Gateway] Failed to register Swagger plugin:", e);
+    log.warn({ err: e }, "Failed to register Swagger plugin");
   }
 
   // Enable multipart file uploads
@@ -172,10 +172,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
         files: 10, // Max 10 files per request
       },
     });
-    logger?.info("Multipart plugin registered");
+    log.info("Multipart plugin registered");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to register multipart plugin");
-    console.warn("[Gateway] Failed to register multipart plugin:", e);
+    log.warn({ err: e }, "Failed to register multipart plugin");
   }
 
   // Register WebSocket plugin once at the top level
@@ -183,11 +182,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   try {
     const websocketPlugin = await import("@fastify/websocket");
     await app.register(websocketPlugin.default);
-    logger?.info("WebSocket plugin registered");
-    console.log("[Gateway] WebSocket plugin registered");
+    log.info("WebSocket plugin registered");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to register WebSocket plugin");
-    console.warn("[Gateway] Failed to register WebSocket plugin:", e);
+    log.warn({ err: e }, "Failed to register WebSocket plugin");
   }
 
   // Create application state
@@ -202,58 +199,46 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   // Start cron scheduler
   try {
     await state.cron.start();
-    logger?.info("Cron scheduler started");
-    console.log("[Gateway] Cron scheduler started");
+    log.info("Cron scheduler started");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to start cron scheduler");
-    console.warn("[Gateway] Failed to start cron scheduler:", e);
+    log.warn({ err: e }, "Failed to start cron scheduler");
   }
 
   // Start channel router for message routing to bound agents
   try {
     await state.channelRouter.start();
-    logger?.info("Channel router started");
-    console.log("[Gateway] Channel router started");
+    log.info("Channel router started");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to start channel router");
-    console.warn("[Gateway] Failed to start channel router:", e);
+    log.warn({ err: e }, "Failed to start channel router");
   }
 
   // Start channel runtime for long polling (receives messages from external channels)
   try {
     await state.channelRuntime.start();
     const activePollers = state.channelRuntime.getActivePollers();
-    logger?.info({ count: activePollers.length }, "Channel runtime started");
-    console.log(`[Gateway] Channel runtime started (${activePollers.length} active poller(s))`);
+    log.info({ activePollerCount: activePollers.length }, "Channel runtime started");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to start channel runtime");
-    console.warn("[Gateway] Failed to start channel runtime:", e);
+    log.warn({ err: e }, "Failed to start channel runtime");
   }
 
   // Start task queue manager
   try {
     await state.taskQueue.start();
     const queueStatus = state.taskQueue.getStatus();
-    logger?.info(
+    log.info(
       { pending: queueStatus.pending_count, running: queueStatus.running_count },
       "Task queue manager started"
     );
-    console.log(
-      `[Gateway] Task queue manager started (pending: ${queueStatus.pending_count}, running: ${queueStatus.running_count})`
-    );
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to start task queue manager");
-    console.warn("[Gateway] Failed to start task queue manager:", e);
+    log.warn({ err: e }, "Failed to start task queue manager");
   }
 
   // Start SSE heartbeat and cleanup for dead connection detection
   try {
     state.taskSSEManager.startHeartbeat();
-    logger?.info("Task SSE Manager heartbeat started");
-    console.log("[Gateway] Task SSE Manager heartbeat started");
+    log.info("Task SSE Manager heartbeat started");
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to start SSE heartbeat");
-    console.warn("[Gateway] Failed to start SSE heartbeat:", e);
+    log.warn({ err: e }, "Failed to start SSE heartbeat");
   }
 
   // Run task recovery on startup for all known workspaces
@@ -269,31 +254,27 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
         totalRecovered += summary.recovered;
 
         if (summary.recovered > 0) {
-          logger?.info(
+          log.info(
             { workspace: workspace.path, recovered: summary.recovered, checked: summary.totalChecked },
             "Task recovery completed for workspace"
           );
         }
       } catch (workspaceError) {
-        logger?.warn(
-          { workspace: workspace.path, error: workspaceError },
+        log.warn(
+          { workspace: workspace.path, err: workspaceError },
           "Failed to recover tasks for workspace"
         );
       }
     }
 
     if (totalChecked > 0) {
-      logger?.info(
+      log.info(
         { totalChecked, totalRecovered, workspaceCount: workspaces.length },
         "Task recovery completed"
       );
-      console.log(
-        `[Gateway] Task recovery completed: ${totalRecovered}/${totalChecked} tasks recovered across ${workspaces.length} workspace(s)`
-      );
     }
   } catch (e) {
-    logger?.warn({ error: e }, "Failed to run task recovery");
-    console.warn("[Gateway] Failed to run task recovery:", e);
+    log.warn({ err: e }, "Failed to run task recovery");
   }
 
   // Register Observable Gauge callbacks for metrics
@@ -303,14 +284,12 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       getActiveWsConnections: () => getActiveWsConnectionCount(),
       getCronJobCounts: () => state.cron.getJobStats(),
     });
-    logger?.info("Metrics gauge callbacks registered");
-    console.log("[Gateway] Metrics gauge callbacks registered");
+    log.info("Metrics gauge callbacks registered");
   }
 
   // Handle shutdown
   app.addHook("onClose", async () => {
-    logger?.info("Shutting down gateway...");
-    console.log("[Gateway] Shutting down...");
+    log.info("Shutting down gateway...");
     state.channelRouter.stop();
     await state.channelRuntime.stop();
     await state.cron.shutdown();
@@ -324,8 +303,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       await telemetry.shutdown();
       telemetry = null;
     }
-    logger?.info("Shutdown complete");
-    console.log("[Gateway] Shutdown complete");
+    log.info("Shutdown complete");
   });
 
   return app;
@@ -352,13 +330,12 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
   // Handle graceful shutdown
   const shutdown = async (signal: string) => {
     if (isShuttingDown) {
-      console.log(`[Gateway] Already shutting down, ignoring ${signal}`);
+      log.debug({ signal }, "Already shutting down, ignoring signal");
       return;
     }
     isShuttingDown = true;
 
-    console.log(`\n[Gateway] Received ${signal}, shutting down gracefully...`);
-    telemetry?.logger.info({ signal }, "Received shutdown signal");
+    log.info({ signal }, "Received shutdown signal, shutting down gracefully...");
 
     try {
       // Close Fastify server with a timeout
@@ -368,10 +345,9 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
       );
 
       await Promise.race([closePromise, timeoutPromise]);
-      console.log("[Gateway] Server closed successfully");
+      log.info("Server closed successfully");
     } catch (err) {
-      console.warn("[Gateway] Shutdown timed out or failed, forcing exit");
-      telemetry?.logger.warn({ error: err }, "Shutdown error");
+      log.warn({ err }, "Shutdown timed out or failed, forcing exit");
     }
 
     process.exit(0);
@@ -384,29 +360,20 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
   try {
     await app.listen({ host, port });
 
-    const logger = telemetry?.logger;
-    logger?.info({ host, port }, "Gateway server started");
+    log.info({ host, port, telemetryEnabled: enableTelemetry, telemetryDir }, "Gateway server started");
 
-    console.log(`[Gateway] Server running on http://${host}:${port}`);
-    console.log("[Gateway] API endpoints:");
-    console.log("  GET  /health - Health check");
-    console.log("  GET  /api/agent - List agents");
-    console.log("  GET  /api/tasks - List tasks");
-    console.log("  GET  /api/sessions - List sessions");
-    console.log("  GET  /api/cron - List cron jobs");
-    console.log("  GET  /api/events - SSE event stream");
-    console.log("  POST /api/queue/enqueue - Enqueue agent task");
-    console.log("  GET  /api/queue/status - Queue status");
-
+    // CLI user-facing output
+    console.log(`\n[Gateway] Server running on http://${host}:${port}`);
+    console.log("[Gateway] API: /health, /api/agent, /api/tasks, /api/sessions, /docs");
     if (enableTelemetry) {
-      console.log(`[Gateway] Telemetry enabled, data stored in: ${telemetryDir}`);
+      console.log(`[Gateway] Telemetry: ${telemetryDir}`);
     }
+    console.log("");
 
     // Keep the process running
     await new Promise<void>(() => {});
   } catch (err) {
-    telemetry?.logger.error({ error: err }, "Failed to start gateway");
-    app.log.error(err);
+    log.error({ err }, "Failed to start gateway");
     process.exit(1);
   }
 }

@@ -13,6 +13,10 @@ import { join } from "node:path";
 import { access, constants, readdir, realpath } from "node:fs/promises";
 import { getConfigPath } from "../../config/paths";
 import { readYaml, writeYaml } from "../../config/yaml";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "python" });
 
 const execAsync = promisify(exec);
 
@@ -778,20 +782,20 @@ async function checkPackageInstalled(
 ): Promise<PackageInfo> {
   // Method 1: Try pip show
   const pipCommand = `"${pythonPath}" -m pip show ${packageName}`;
-  console.log(`[Python] Checking package with pip: ${pipCommand}`);
+  log.debug({ pipCommand }, "Checking package with pip");
 
   try {
     const { stdout, stderr } = await execAsync(pipCommand, { timeout: 10000 });
-    console.log(`[Python] pip show stdout: ${stdout.slice(0, 200)}`);
+    log.debug({ stdout: stdout.slice(0, 200) }, "pip show stdout");
     if (stderr) {
-      console.log(`[Python] pip show stderr: ${stderr.slice(0, 200)}`);
+      log.debug({ stderr: stderr.slice(0, 200) }, "pip show stderr");
     }
 
     // Parse version from pip show output
     const versionMatch = stdout.match(/^Version:\s*(.+)$/m);
     const version = versionMatch ? versionMatch[1].trim() : null;
 
-    console.log(`[Python] Package ${packageName} found via pip, version: ${version}`);
+    log.debug({ packageName, version }, "Package found via pip");
     return {
       name: packageName,
       version,
@@ -799,17 +803,17 @@ async function checkPackageInstalled(
     };
   } catch (pipErr) {
     const pipError = pipErr as { message?: string; stderr?: string };
-    console.log(`[Python] pip show failed: ${pipError.message || String(pipErr)}`);
+    log.debug({ err: pipError.message || String(pipErr) }, "pip show failed");
 
     // Method 2: Try importing the module directly (works for uv tool installs)
     const moduleName = packageName.replace(/-/g, "_"); // browse-mcp -> browse_mcp
     const importCommand = `"${pythonPath}" -c "import ${moduleName}; print(getattr(${moduleName}, '__version__', 'unknown'))"`;
-    console.log(`[Python] Trying import: ${importCommand}`);
+    log.debug({ importCommand }, "Trying import");
 
     try {
       const { stdout: importStdout } = await execAsync(importCommand, { timeout: 10000 });
       const version = importStdout.trim() || "unknown";
-      console.log(`[Python] Package ${packageName} found via import, version: ${version}`);
+      log.debug({ packageName, version }, "Package found via import");
       return {
         name: packageName,
         version: version === "unknown" ? null : version,
@@ -817,24 +821,24 @@ async function checkPackageInstalled(
       };
     } catch (importErr) {
       const importError = importErr as { message?: string; stderr?: string };
-      console.log(`[Python] import failed: ${importError.message || String(importErr)}`);
+      log.debug({ err: importError.message || String(importErr) }, "import failed");
 
       // Method 3: Try running the module directly (e.g., python -m browse_mcp --version)
       const moduleCommand = `"${pythonPath}" -m ${moduleName} --version`;
-      console.log(`[Python] Trying module version: ${moduleCommand}`);
+      log.debug({ moduleCommand }, "Trying module version");
 
       try {
         const { stdout: modStdout } = await execAsync(moduleCommand, { timeout: 10000 });
         const versionMatch = modStdout.match(/(\d+\.\d+\.\d+)/);
         const version = versionMatch ? versionMatch[1] : "installed";
-        console.log(`[Python] Package ${packageName} found via module, version: ${version}`);
+        log.debug({ packageName, version }, "Package found via module");
         return {
           name: packageName,
           version,
           installed: true,
         };
       } catch (modErr) {
-        console.log(`[Python] All methods failed, package not installed`);
+        log.debug("All methods failed, package not installed");
         return {
           name: packageName,
           version: null,

@@ -306,7 +306,7 @@ Created: 2024-03-03
 
 ## ACTIVE TASKS
 - 03-03-add-user-auth/ (in_progress) @john
-- 03-02-fix-bug/ (planning) @alice
+- 03-02-fix-bug/ (backlog) @alice
 Total: 2 active task(s)
 
 ## MY TASKS (Assigned to me)

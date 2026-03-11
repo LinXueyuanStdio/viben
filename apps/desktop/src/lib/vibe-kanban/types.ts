@@ -135,10 +135,10 @@ export interface TaskWithAttemptStatus extends Task {
  * Execution phase for running tasks
  */
 export type ExecutionPhase =
-  | "planning"      // 规划阶段
-  | "coding"        // 编码阶段
-  | "qa_review"     // QA审查阶段
-  | "qa_fixing"     // QA修复阶段
+  | "plan"          // 规划阶段
+  | "implement"     // 实现阶段
+  | "check"         // 检查阶段
+  | "fix"           // 修复阶段
   | "complete";     // 执行完成
 
 // Create task request
@@ -447,11 +447,11 @@ export function isValidTaskStatus(status: string): status is TaskStatus {
  */
 export type TaskEventType =
   | 'QUEUE' | 'START' | 'DEQUEUE'
-  | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
-  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'CODING_FAILED'
-  | 'QA_PASSED' | 'QA_FAILED' | 'QA_FIXING_COMPLETE' | 'QA_FIXING_FAILED'
-  | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CREATE_PR'
-  | 'RETRY' | 'ABANDON';
+  | 'PLAN_COMPLETE' | 'PLAN_FAILED'
+  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'IMPLEMENT_FAILED'
+  | 'CHECK_PASSED' | 'CHECK_FAILED' | 'FIX_COMPLETE' | 'FIX_FAILED'
+  | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CANCEL'
+  | 'PAUSE' | 'RESUME' | 'RETRY' | 'ABANDON' | 'ARCHIVE';
 
 /**
  * Task event structure for state machine transitions

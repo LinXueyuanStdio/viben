@@ -23,8 +23,11 @@ import { promisify } from "node:util";
 import { workspaceManager } from "../../workspace";
 import type { Workspace } from "../../workspace";
 import { initTeam, type ProjectType, type ExecutorType } from "../../team/init";
+import { logger as globalLogger } from "../../telemetry";
 
 const execAsync = promisify(exec);
+
+const log = globalLogger.child({ module: "workspaces" });
 
 // ============================================================================
 // Types
@@ -326,7 +329,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
           gitInitialized = true;
         } catch (err) {
           // Log but don't fail - git init is optional
-          console.warn("Failed to initialize git:", err);
+          log.warn({ err, workspacePath }, "Failed to initialize git");
         }
       }
 
@@ -357,7 +360,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
           vibenFiles = result.files;
         } catch (err) {
           // Log but don't fail - viben init is optional
-          console.warn("Failed to initialize .viben:", err);
+          log.warn({ err, workspacePath }, "Failed to initialize .viben");
         }
       }
 

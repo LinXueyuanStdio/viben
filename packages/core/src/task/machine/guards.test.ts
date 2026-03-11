@@ -10,10 +10,10 @@ import {
   noPlanReviewRequired,
   noProgress,
   pausedFromQueue,
-  pausedFromPlanning,
-  pausedFromCoding,
-  pausedFromQaReview,
-  pausedFromQaFixing,
+  pausedFromPlan,
+  pausedFromImplement,
+  pausedFromCheck,
+  pausedFromFix,
 } from "./guards";
 import { createMockContext, createPausedContext } from "../__fixtures__/task-fixtures";
 import type { XStateValue } from "./task-machine";
@@ -75,8 +75,8 @@ describe("pausedFromQueue", () => {
     expect(pausedFromQueue({ context })).toBe(true);
   });
 
-  it("returns false when paused from planning", () => {
-    const context = createPausedContext({ in_progress: "planning" });
+  it("returns false when paused from plan", () => {
+    const context = createPausedContext({ in_progress: "plan" });
     expect(pausedFromQueue({ context })).toBe(false);
   });
 
@@ -87,134 +87,134 @@ describe("pausedFromQueue", () => {
 });
 
 // =============================================================================
-// pausedFromPlanning Guard
+// pausedFromPlan Guard
 // =============================================================================
 
-describe("pausedFromPlanning", () => {
-  it("returns true when paused from planning (using paused_snapshot)", () => {
-    const context = createPausedContext({ in_progress: "planning" });
-    expect(pausedFromPlanning({ context })).toBe(true);
+describe("pausedFromPlan", () => {
+  it("returns true when paused from plan (using paused_snapshot)", () => {
+    const context = createPausedContext({ in_progress: "plan" });
+    expect(pausedFromPlan({ context })).toBe(true);
   });
 
-  it("returns true when paused from planning (using legacy pausedFromState)", () => {
+  it("returns true when paused from plan (using legacy pausedFromState)", () => {
     const context = createMockContext({
-      pausedFromState: { in_progress: "planning" },
+      pausedFromState: { in_progress: "plan" },
     });
-    expect(pausedFromPlanning({ context })).toBe(true);
+    expect(pausedFromPlan({ context })).toBe(true);
   });
 
   it("returns false when paused from queue", () => {
     const context = createPausedContext("queue");
-    expect(pausedFromPlanning({ context })).toBe(false);
+    expect(pausedFromPlan({ context })).toBe(false);
   });
 
-  it("returns false when paused from coding", () => {
-    const context = createPausedContext({ in_progress: "coding" });
-    expect(pausedFromPlanning({ context })).toBe(false);
+  it("returns false when paused from implement", () => {
+    const context = createPausedContext({ in_progress: "implement" });
+    expect(pausedFromPlan({ context })).toBe(false);
   });
 
   it("returns false when no paused state", () => {
     const context = createMockContext();
-    expect(pausedFromPlanning({ context })).toBe(false);
+    expect(pausedFromPlan({ context })).toBe(false);
   });
 });
 
 // =============================================================================
-// pausedFromCoding Guard
+// pausedFromImplement Guard
 // =============================================================================
 
-describe("pausedFromCoding", () => {
-  it("returns true when paused from coding (using paused_snapshot)", () => {
-    const context = createPausedContext({ in_progress: "coding" });
-    expect(pausedFromCoding({ context })).toBe(true);
+describe("pausedFromImplement", () => {
+  it("returns true when paused from implement (using paused_snapshot)", () => {
+    const context = createPausedContext({ in_progress: "implement" });
+    expect(pausedFromImplement({ context })).toBe(true);
   });
 
-  it("returns true when paused from coding (using legacy pausedFromState)", () => {
+  it("returns true when paused from implement (using legacy pausedFromState)", () => {
     const context = createMockContext({
-      pausedFromState: { in_progress: "coding" },
+      pausedFromState: { in_progress: "implement" },
     });
-    expect(pausedFromCoding({ context })).toBe(true);
+    expect(pausedFromImplement({ context })).toBe(true);
   });
 
   it("returns false when paused from queue", () => {
     const context = createPausedContext("queue");
-    expect(pausedFromCoding({ context })).toBe(false);
+    expect(pausedFromImplement({ context })).toBe(false);
   });
 
-  it("returns false when paused from planning", () => {
-    const context = createPausedContext({ in_progress: "planning" });
-    expect(pausedFromCoding({ context })).toBe(false);
+  it("returns false when paused from plan", () => {
+    const context = createPausedContext({ in_progress: "plan" });
+    expect(pausedFromImplement({ context })).toBe(false);
   });
 
   it("returns false when no paused state", () => {
     const context = createMockContext();
-    expect(pausedFromCoding({ context })).toBe(false);
+    expect(pausedFromImplement({ context })).toBe(false);
   });
 });
 
 // =============================================================================
-// pausedFromQaReview Guard
+// pausedFromCheck Guard
 // =============================================================================
 
-describe("pausedFromQaReview", () => {
-  it("returns true when paused from qa_review (using paused_snapshot)", () => {
-    const context = createPausedContext({ in_progress: "qa_review" });
-    expect(pausedFromQaReview({ context })).toBe(true);
+describe("pausedFromCheck", () => {
+  it("returns true when paused from check (using paused_snapshot)", () => {
+    const context = createPausedContext({ in_progress: "check" });
+    expect(pausedFromCheck({ context })).toBe(true);
   });
 
-  it("returns true when paused from qa_review (using legacy pausedFromState)", () => {
+  it("returns true when paused from check (using legacy pausedFromState)", () => {
     const context = createMockContext({
-      pausedFromState: { in_progress: "qa_review" },
+      pausedFromState: { in_progress: "check" },
     });
-    expect(pausedFromQaReview({ context })).toBe(true);
+    expect(pausedFromCheck({ context })).toBe(true);
   });
 
-  it("returns false when paused from coding", () => {
-    const context = createPausedContext({ in_progress: "coding" });
-    expect(pausedFromQaReview({ context })).toBe(false);
+  it("returns false when paused from implement", () => {
+    const context = createPausedContext({ in_progress: "implement" });
+    expect(pausedFromCheck({ context })).toBe(false);
   });
 
-  it("returns false when paused from qa_fixing", () => {
-    const context = createPausedContext({ in_progress: "qa_fixing" });
-    expect(pausedFromQaReview({ context })).toBe(false);
+  it("returns false when paused from fix", () => {
+    const context = createPausedContext({ in_progress: "fix" });
+    expect(pausedFromCheck({ context })).toBe(false);
   });
 
   it("returns false when no paused state", () => {
     const context = createMockContext();
-    expect(pausedFromQaReview({ context })).toBe(false);
+    expect(pausedFromCheck({ context })).toBe(false);
   });
 });
 
 // =============================================================================
-// pausedFromQaFixing Guard
+// pausedFromFix Guard
 // =============================================================================
 
-describe("pausedFromQaFixing", () => {
-  it("returns true when paused from qa_fixing (using paused_snapshot)", () => {
-    const context = createPausedContext({ in_progress: "qa_fixing" });
-    expect(pausedFromQaFixing({ context })).toBe(true);
+describe("pausedFromFix", () => {
+  it("returns true when paused from fix (using paused_snapshot)", () => {
+    const context = createPausedContext({ in_progress: "fix" });
+    expect(pausedFromFix({ context })).toBe(true);
   });
 
-  it("returns true when paused from qa_fixing (using legacy pausedFromState)", () => {
+  it("returns true when paused from fix (using legacy pausedFromState)", () => {
     const context = createMockContext({
-      pausedFromState: { in_progress: "qa_fixing" },
+      pausedFromState: { in_progress: "fix" },
     });
-    expect(pausedFromQaFixing({ context })).toBe(true);
+    expect(pausedFromFix({ context })).toBe(true);
   });
 
-  it("returns false when paused from qa_review", () => {
-    const context = createPausedContext({ in_progress: "qa_review" });
-    expect(pausedFromQaFixing({ context })).toBe(false);
+  it("returns false when paused from check", () => {
+    const context = createPausedContext({ in_progress: "check" });
+    expect(pausedFromFix({ context })).toBe(false);
   });
 
-  it("returns false when paused from coding", () => {
-    const context = createPausedContext({ in_progress: "coding" });
-    expect(pausedFromQaFixing({ context })).toBe(false);
+  it("returns false when paused from implement", () => {
+    const context = createPausedContext({ in_progress: "implement" });
+    expect(pausedFromFix({ context })).toBe(false);
   });
 
   it("returns false when no paused state", () => {
     const context = createMockContext();
-    expect(pausedFromQaFixing({ context })).toBe(false);
+    expect(pausedFromFix({ context })).toBe(false);
   });
 });
 
@@ -228,27 +228,27 @@ describe("Guard backward compatibility", () => {
       const context = createMockContext({
         pausedFromState: "queue",
         paused_snapshot: {
-          from_state: { in_progress: "coding" },
+          from_state: { in_progress: "implement" },
           subtask_index: 0,
           paused_at: new Date().toISOString(),
         },
       });
 
-      // Should use paused_snapshot (coding), not pausedFromState (queue)
+      // Should use paused_snapshot (implement), not pausedFromState (queue)
       expect(pausedFromQueue({ context })).toBe(false);
-      expect(pausedFromCoding({ context })).toBe(true);
+      expect(pausedFromImplement({ context })).toBe(true);
     });
   });
 
   describe("falls back to pausedFromState when paused_snapshot is absent", () => {
     it("uses pausedFromState when paused_snapshot is undefined", () => {
       const context = createMockContext({
-        pausedFromState: { in_progress: "planning" },
+        pausedFromState: { in_progress: "plan" },
         paused_snapshot: undefined,
       });
 
-      expect(pausedFromPlanning({ context })).toBe(true);
-      expect(pausedFromCoding({ context })).toBe(false);
+      expect(pausedFromPlan({ context })).toBe(true);
+      expect(pausedFromImplement({ context })).toBe(false);
     });
   });
 });
@@ -292,10 +292,10 @@ describe("Guard edge cases", () => {
       });
 
       expect(pausedFromQueue({ context })).toBe(false);
-      expect(pausedFromPlanning({ context })).toBe(false);
-      expect(pausedFromCoding({ context })).toBe(false);
-      expect(pausedFromQaReview({ context })).toBe(false);
-      expect(pausedFromQaFixing({ context })).toBe(false);
+      expect(pausedFromPlan({ context })).toBe(false);
+      expect(pausedFromImplement({ context })).toBe(false);
+      expect(pausedFromCheck({ context })).toBe(false);
+      expect(pausedFromFix({ context })).toBe(false);
     });
 
     it("returns false for mismatched state type (string vs object)", () => {
@@ -304,14 +304,14 @@ describe("Guard edge cases", () => {
         pausedFromState: "queue",
       });
 
-      expect(pausedFromPlanning({ context })).toBe(false);
-      expect(pausedFromCoding({ context })).toBe(false);
+      expect(pausedFromPlan({ context })).toBe(false);
+      expect(pausedFromImplement({ context })).toBe(false);
     });
 
     it("returns false for mismatched state type (object vs string)", () => {
       // pausedFromState is an object, but checking for string
       const context = createMockContext({
-        pausedFromState: { in_progress: "coding" },
+        pausedFromState: { in_progress: "implement" },
       });
 
       expect(pausedFromQueue({ context })).toBe(false);
@@ -330,7 +330,7 @@ describe("Guard edge cases", () => {
       });
 
       expect(pausedFromQueue({ context })).toBe(false);
-      expect(pausedFromCoding({ context })).toBe(false);
+      expect(pausedFromImplement({ context })).toBe(false);
     });
   });
 });
