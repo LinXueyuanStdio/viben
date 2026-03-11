@@ -774,7 +774,7 @@ const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetect
 
 
 // Build column statuses with translations
-// Using new 6-column layout: backlog, queue, in_progress, ai_review, human_review, done
+// 9-column layout: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled, archived
 function useColumnStatuses(): Status[] {
   const { t } = useTranslation();
 
@@ -784,7 +784,6 @@ function useColumnStatuses(): Status[] {
     queue: "queue",
     in_progress: "inProgress",
     paused: "paused",
-    ai_review: "aiReview",
     human_review: "humanReview",
     completed: "completed",
     failed: "failed",

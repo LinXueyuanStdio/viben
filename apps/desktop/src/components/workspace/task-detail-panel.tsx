@@ -1063,11 +1063,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         queue: t("workspace.kanbanStatus.queue", "Queue"),
                         in_progress: t("workspace.kanbanStatus.inProgress", "In Progress"),
                         paused: t("workspace.kanbanStatus.paused", "Paused"),
-                        ai_review: t("workspace.kanbanStatus.aiReview", "AI Review"),
                         human_review: t("workspace.kanbanStatus.humanReview", "Human Review"),
                         completed: t("workspace.kanbanStatus.completed", "Completed"),
                         failed: t("workspace.kanbanStatus.failed", "Failed"),
                         cancelled: t("workspace.kanbanStatus.cancelled", "Cancelled"),
+                        archived: t("workspace.kanbanStatus.archived", "Archived"),
                       }}
                     />
                   ) : (
