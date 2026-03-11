@@ -94,11 +94,34 @@ import {
 
 import type { UnifiedTask } from "../../services/task-service";
 
+// Import swarm functions for agent management
+import {
+  type StartResult,
+  type Registry,
+  type AgentEntry,
+  readRegistry,
+  startAgent,
+  type Platform,
+} from "../lib/swarm";
+
 // =============================================================================
 // Constants
 // =============================================================================
 
 const VIBEN_DIR = ".viben";
+
+/** Mapping from CLI executor IDs to platform names */
+const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
+  CLAUDE_CODE: "claude",
+  CURSOR: "cursor",
+  GEMINI: "gemini",
+  OPENCODE: "opencode",
+  IFLOW: "iflow",
+  CODEX: "codex",
+  KILO: "kilo",
+  KIRO: "kiro",
+  ANTIGRAVITY: "antigravity",
+};
 
 // =============================================================================
 // Types
@@ -130,6 +153,21 @@ function getContext(program: Command): OutputContext {
     verbose: opts.verbose || false,
     quiet: opts.quiet || false,
   };
+}
+
+/**
+ * Find agent by task name or ID in registry
+ */
+function findAgent(
+  registry: Registry,
+  search: string
+): AgentEntry | undefined {
+  // Exact ID match
+  const exactMatch = registry.agents.find((a) => a.id === search);
+  if (exactMatch) return exactMatch;
+
+  // Partial match on task_dir
+  return registry.agents.find((a) => a.task_dir.includes(search));
 }
 
 /**
@@ -584,13 +622,22 @@ export function registerTaskCommand(program: Command): void {
   // Status Commands
   // ============================================================================
 
-  // task start
+  // task start - Set as current task and optionally start an agent in a worktree
+  // This command combines the functionality of the old `viben task start` and `viben swarm start`
   taskCmd
     .command("start")
-    .description("Set as current task")
+    .description("Set as current task and optionally start an agent in a worktree")
     .argument("<task>", "Task name or directory")
-    .option("--resume", "Resume associated agent session (if any)")
-    .action(async (task: string, options: { resume?: boolean }) => {
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.) - starts agent if provided")
+    .option("--detach", "Run agent in background (default: true when starting agent)")
+    .option("--resume", "Resume an existing agent session")
+    .option("--session <id>", "Session ID for resume")
+    .action(async (task: string, options: {
+      executor?: string;
+      detach?: boolean;
+      resume?: boolean;
+      session?: string;
+    }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
@@ -611,86 +658,135 @@ export function registerTaskCommand(program: Command): void {
           relativePath = taskDir;
         }
 
-        if (setCurrentTask(relativePath, repoRoot)) {
-          output(ctx, successResponse({ task: relativePath }), () => {
-            console.log(chalk.green(`Current task set to: ${relativePath}`));
-            console.log();
-            console.log(chalk.blue("The hook will now inject context from this task's jsonl files."));
-          });
-
-          if (options.resume) {
-            // Find agent associated with this task in the registry
-            const agent = registrySearchAgent(task, repoRoot);
-
-            if (!agent) {
-              if (!ctx.quiet) {
-                console.log(chalk.yellow("No agent session found for this task."));
-                console.log(chalk.gray("Start an agent with: viben swarm start " + task));
-              }
-            } else {
-              // Check if agent is still running
-              if (isProcessRunning(agent.pid)) {
-                if (!ctx.quiet) {
-                  console.log(chalk.yellow(`Agent is already running (PID: ${agent.pid})`));
-                  console.log(chalk.gray(`Worktree: ${agent.worktree_path}`));
-                }
-              } else {
-                // Try to read session ID from worktree
-                const sessionIdFile = join(agent.worktree_path, ".session-id");
-                let sessionId: string | null = null;
-
-                if (existsSync(sessionIdFile)) {
-                  try {
-                    sessionId = readFileSync(sessionIdFile, "utf-8").trim();
-                  } catch {
-                    // Ignore read errors
-                  }
-                }
-
-                if (!sessionId) {
-                  if (!ctx.quiet) {
-                    console.log(chalk.yellow("No session ID found for resume."));
-                    console.log(chalk.gray("Start a new agent with: viben swarm start " + task));
-                  }
-                } else {
-                  // Build resume command using CLI adapter
-                  const platform = agent.platform || detectPlatform(repoRoot);
-                  const cliAdapter = getCLIAdapter(platform);
-                  const resumeCmd = cliAdapter.buildResumeCommand(sessionId);
-
-                  if (!ctx.quiet) {
-                    console.log();
-                    console.log(chalk.blue("=== Resuming Agent Session ==="));
-                    console.log(`  Session: ${sessionId}`);
-                    console.log(`  Platform: ${platform}`);
-                    console.log(`  Worktree: ${agent.worktree_path}`);
-                    console.log(`  Command: ${resumeCmd.join(" ")}`);
-                    console.log();
-                  }
-
-                  // Execute resume command
-                  const child = spawn(resumeCmd[0], resumeCmd.slice(1), {
-                    cwd: agent.worktree_path,
-                    stdio: "inherit",
-                  });
-
-                  child.on("error", (err) => {
-                    console.error(chalk.red(`Failed to resume: ${err.message}`));
-                  });
-
-                  // Wait for the child process to complete
-                  await new Promise<void>((resolvePromise) => {
-                    child.on("close", () => {
-                      resolvePromise();
-                    });
-                  });
-                }
-              }
-            }
-          }
-        } else {
+        // Always set current task first
+        if (!setCurrentTask(relativePath, repoRoot)) {
           throw CliError.operationFailed("Set current task", "Failed to write .current-task file");
         }
+
+        // Handle resume mode
+        if (options.resume) {
+          const registry = readRegistry(repoRoot);
+          const agent = findAgent(registry, task);
+
+          if (!agent) {
+            output(ctx, successResponse({ task: relativePath, agentStatus: "not_found" }), () => {
+              console.log(chalk.green(`Current task set to: ${relativePath}`));
+              console.log();
+              console.log(chalk.yellow("No agent found for this task."));
+              console.log(chalk.gray("Start an agent with: viben task start " + task + " --executor CLAUDE_CODE"));
+            });
+            return;
+          }
+
+          // Read session ID
+          const sessionIdFile = join(agent.worktree_path, ".session-id");
+          let sessionId = options.session;
+          if (!sessionId && existsSync(sessionIdFile)) {
+            sessionId = readFileSync(sessionIdFile, "utf-8").trim();
+          }
+
+          if (!sessionId) {
+            output(ctx, successResponse({ task: relativePath, agentStatus: "no_session" }), () => {
+              console.log(chalk.green(`Current task set to: ${relativePath}`));
+              console.log();
+              console.log(chalk.yellow("No session ID found for resume."));
+              console.log(chalk.gray("Session ID file not found at: " + sessionIdFile));
+            });
+            return;
+          }
+
+          // Build resume command using CLI adapter
+          const platform = (agent.platform || "claude") as Platform;
+          const adapter = getCLIAdapter(platform);
+          const resumeCmd = adapter.buildResumeCommand(sessionId);
+
+          if (!ctx.quiet) {
+            console.log(chalk.green(`Current task set to: ${relativePath}`));
+            console.log();
+            console.log(chalk.blue("=== Resuming Agent ==="));
+            console.log(`  Session: ${sessionId}`);
+            console.log(`  Worktree: ${agent.worktree_path}`);
+            console.log(`  Command: ${resumeCmd.join(" ")}`);
+            console.log();
+          }
+
+          // Execute resume command
+          const child = spawn(resumeCmd[0], resumeCmd.slice(1), {
+            cwd: agent.worktree_path,
+            stdio: "inherit",
+          });
+
+          child.on("close", (code) => {
+            process.exit(code ?? 0);
+          });
+
+          return;
+        }
+
+        // Handle start agent mode (when --executor is provided)
+        if (options.executor) {
+          // Determine platform
+          const platform: Platform = EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude";
+
+          if (!ctx.quiet) {
+            console.log(chalk.green(`Current task set to: ${relativePath}`));
+            console.log();
+            console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
+            console.log(`[INFO] Task: ${relativePath}`);
+            console.log(`[INFO] Platform: ${platform}`);
+          }
+
+          const result: StartResult = await startAgent(repoRoot, relativePath, {
+            platform,
+            detach: options.detach ?? true,
+            skipPermissions: true,
+            verbose: ctx.verbose,
+            jsonOutput: true,
+          });
+
+          if (ctx.json) {
+            if (result.success) {
+              output(ctx, successResponse({ task: relativePath, ...result }));
+            } else {
+              console.error(chalk.red(`Error: ${result.error}`));
+              process.exit(1);
+            }
+          } else {
+            if (result.success) {
+              console.log();
+              console.log(chalk.green("=== Agent Started ==="));
+              console.log();
+              console.log(`  ID:        ${result.agentId}`);
+              console.log(`  PID:       ${result.pid}`);
+              console.log(`  Session:   ${result.sessionId || "N/A"}`);
+              console.log(`  Worktree:  ${result.worktreePath}`);
+              console.log(`  Log:       ${result.logFile}`);
+              console.log();
+              console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+              console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
+              if (result.sessionId) {
+                const adapter = getCLIAdapter(platform);
+                const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+                console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
+              }
+            } else {
+              console.error(chalk.red(`Error: ${result.error}`));
+              process.exit(1);
+            }
+          }
+
+          return;
+        }
+
+        // Default mode: just set current task (no agent start)
+        output(ctx, successResponse({ task: relativePath }), () => {
+          console.log(chalk.green(`Current task set to: ${relativePath}`));
+          console.log();
+          console.log(chalk.blue("The hook will now inject context from this task's jsonl files."));
+          console.log();
+          console.log(chalk.gray("To start an agent: viben task start " + task + " --executor CLAUDE_CODE"));
+          console.log(chalk.gray("To resume agent:   viben task start " + task + " --resume"));
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
