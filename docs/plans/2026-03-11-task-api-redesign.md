@@ -38,7 +38,7 @@ POST /api/task/{action}?task_dir=<path>&workspace_path=<path>
 | `POST /api/task/enqueue` | `viben task enqueue` | Query: `task_dir`, Body: `agent?`, `executor?`, `model?`, `priority?` | QUEUE | backlog → queue |
 | `POST /api/task/dequeue` | `viben task dequeue` | Query: `task_dir` | DEQUEUE | queue → backlog |
 | `POST /api/task/start` | `viben task start` | Query: `task_dir`, Body: `resume?` | START | 设为当前任务 + queue → in_progress + 触发执行 |
-| `POST /api/task/finish` | `viben task finish` | Query: `task_dir?` | - | 清除当前任务 |
+| `POST /api/task/finish` | `viben task finish <task>` | Query: `task_dir` | - | 完成指定任务 |
 | `POST /api/task/pause` | `viben task pause` | Query: `task_dir` | PAUSE | in_progress/queue → paused |
 | `POST /api/task/resume` | `viben task resume` | Query: `task_dir` | RESUME | paused → queue/in_progress |
 | `POST /api/task/approve` | `viben task approve` | Query: `task_dir` | APPROVED | human_review → completed |
@@ -80,7 +80,7 @@ POST /api/task/{action}?task_dir=<path>&workspace_path=<path>
 
 | 端点 | 对应 CLI | 参数 | 描述 |
 |------|----------|------|------|
-| `POST /api/task/context` | `viben task context` | Query: `workspace_path?`, Body: `json?` | 获取 AI 会话上下文 |
+| `POST /api/task/context` | `viben task context <task>` | Query: `task_dir`, Body: `json?` | 获取指定任务的 AI 会话上下文 |
 | `POST /api/task/add-session` | `viben task add-session` | Query: `workspace_path?`, Body: `title`, `commit?`, `summary?`, `content?` | 添加会话记录 |
 
 #### 执行控制操作 (原 Queue 功能整合)
