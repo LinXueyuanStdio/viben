@@ -76,9 +76,9 @@ const SUBTASK_STATUS_COLORS: Record<SubtaskStatus, string> = {
  *
  * Features:
  * - Progress label row with phase name and percentage
- * - Animated progress bar (shimmer for planning/qa, determinate for coding)
+ * - Animated progress bar (shimmer for plan/check/fix, determinate for implement)
  * - Subtask dots visualization (max 10) with status-specific animations
- * - Phase steps indicator (Plan → Code → QA)
+ * - Phase steps indicator (Plan → Implement → Check)
  * - Performance optimized with IntersectionObserver
  */
 export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
