@@ -129,15 +129,13 @@ viben task start add-user-auth --resume    # 恢复智能体
 
 ---
 
-### `viben task finish`
+### `viben task finish <task>`
 
-完成当前任务。
+完成指定任务。
 
 ```bash
-viben task finish [task]
+viben task finish <task>
 ```
-
-如果不指定 task，清除当前任务。
 
 ---
 
@@ -204,7 +202,7 @@ viben task <command> <task>
 |---------|------|---------|
 | `start <task>` | 设置 .current-task（本地开发用） | ✓ |
 | `finish [task]` | 清除 .current-task | ✓ |
-| `create-pr [task]` | 创建 PR 并进入 human_review | ✓ |
+| `create-pr <task>` | 创建 PR 并进入 human_review | ✓ |
 | `archive <task>` | 归档到 archive/ 目录 | ✓ |
 
 ---
@@ -767,7 +765,7 @@ viben task status add-user-auth --watch
 从任务创建 PR。
 
 ```bash
-viben task create-pr [task] [--dry-run]
+viben task create-pr <task> [--dry-run]
 ```
 
 **选项**:
@@ -783,9 +781,8 @@ viben task create-pr [task] [--dry-run]
 
 **示例**:
 ```bash
-viben task create-pr                    # 使用当前任务
 viben task create-pr add-user-auth
-viben task create-pr --dry-run          # 预览
+viben task create-pr add-user-auth --dry-run   # 预览
 ```
 
 ---
@@ -851,7 +848,7 @@ viben task create-pr --dry-run          # 预览
 | `task.py create` | `viben task create` |
 | `task.py list` | `viben task list` |
 | `task.py start` | `viben task start` |
-| `task.py finish` | `viben task finish` |
+| `task.py finish` | `viben task finish <task>` |
 | `task.py archive` | `viben task archive` |
 | `task.py list-archive` | `viben task list-archive` |
 | `task.py set-branch` | `viben task set-branch` |
@@ -878,7 +875,7 @@ viben task create-pr --dry-run          # 预览
 
 ### 任务状态（本地开发）
 - [ ] `viben task start` 设为当前任务
-- [ ] `viben task finish` 完成当前任务
+- [ ] `viben task finish <task>` 完成指定任务
 - [ ] `viben task archive` 归档任务
 - [ ] `viben task list-archive` 列出归档任务
 
