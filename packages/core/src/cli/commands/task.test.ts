@@ -13,7 +13,6 @@
  * - task list-archive: List archived tasks
  * - task set-branch: Set branch
  * - task set-base: Set base branch
- * - task set-scope: Set scope
  * - task set-agent: Set agent
  * - task init-context: Initialize context
  * - task add-context: Add context
@@ -153,7 +152,6 @@ describe("task command", () => {
       // Config
       expect(subcommandNames).toContain("set-branch");
       expect(subcommandNames).toContain("set-base");
-      expect(subcommandNames).toContain("set-scope");
       expect(subcommandNames).toContain("set-agent");
 
       // Context
@@ -360,17 +358,6 @@ describe("task command", () => {
       const branchOption = options.find((opt) => opt.long === "--branch");
       expect(branchOption).toBeDefined();
       expect(branchOption?.required).toBe(true);
-    });
-
-    it("set-scope should require --scope option", () => {
-      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
-      const setScopeCmd = taskCmd?.commands.find(
-        (cmd) => cmd.name() === "set-scope"
-      );
-      const options = setScopeCmd?.options ?? [];
-      const scopeOption = options.find((opt) => opt.long === "--scope");
-      expect(scopeOption).toBeDefined();
-      expect(scopeOption?.required).toBe(true);
     });
 
     it("set-agent should require --agent option", () => {

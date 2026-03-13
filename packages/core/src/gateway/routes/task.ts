@@ -97,7 +97,6 @@ interface UpdateTaskInput {
   assignee?: string;
   priority?: string;
   dev_type?: string;
-  scope?: string;
   branch?: string;
   base_branch?: string;
   agent?: string;
@@ -151,7 +150,6 @@ function toSnakeCaseTask(task: UnifiedTask) {
     current_phase: task.current_phase ?? 0,
     priority: task.priority || "P2",
     dev_type: task.dev_type ?? null,
-    scope: task.scope ?? null,
     workspace_path: task.workspacePath ?? null,
     creator: task.creator ?? null,
     assignee: task.assignee ?? null,
@@ -473,7 +471,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
             assignee: { type: "string" },
             priority: { type: "string" },
             dev_type: { type: "string" },
-            scope: { type: "string" },
             branch: { type: "string" },
             base_branch: { type: "string" },
             agent: { type: "string" },
@@ -500,7 +497,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
         if (updates.assignee !== undefined) taskUpdates.assignee = updates.assignee;
         if (updates.priority !== undefined) taskUpdates.priority = updates.priority;
         if (updates.dev_type !== undefined) taskUpdates.dev_type = updates.dev_type;
-        if (updates.scope !== undefined) taskUpdates.scope = updates.scope;
         if (updates.branch !== undefined) taskUpdates.branch = updates.branch;
         if (updates.base_branch !== undefined) taskUpdates.base_branch = updates.base_branch;
         if (updates.agent !== undefined) taskUpdates.agent = updates.agent;

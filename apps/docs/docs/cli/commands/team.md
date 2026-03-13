@@ -255,9 +255,9 @@ docs/specs/
 |   +-- finish-work.md
 |   +-- integrate-skill.md
 |   +-- onboard.md
-|   +-- parallel.md
 |   +-- record-session.md
 |   +-- start.md
+|   +-- task.md
 |   +-- update-spec.md
 |
 +-- hooks/                   # 钩子脚本 (可执行)

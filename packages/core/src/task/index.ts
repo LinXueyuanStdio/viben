@@ -176,7 +176,6 @@ export {
   setTaskField,
   setTaskBranch,
   setTaskBaseBranch,
-  setTaskScope,
   setTaskAgent,
   // Review operations
   type PRInfo,
@@ -204,8 +203,14 @@ export {
   type CheckPhaseResult,
   // Work phase (dispatch agent - reusable by swarm start)
   runWorkPhase,
-  runWorkPhaseInRepo,
   type WorkPhaseOptions,
   type WorkPhaseResult,
-  type WorkPhaseSimpleOptions,
+  // Start phase (unified entry point)
+  startTask,
+  type StartTaskOptions,
+  type StartTaskResult,
+  // Worktree phase (create isolated worktree)
+  runCreateWorktree,
+  type CreateWorktreeOptions,
+  type CreateWorktreeResult,
 } from "./phase";

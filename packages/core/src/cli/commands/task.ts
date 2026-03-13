@@ -7,7 +7,7 @@
  * Subcommands:
  * - CRUD: list, create, view, edit, delete
  * - Status: start, finish, archive, list-archive
- * - Config: set-branch, set-base, set-scope, set-agent
+ * - Config: set-branch, set-base, set-agent
  * - Context: init-context, add-context, remove-context, list-context, validate-context
  * - Planning: plan, status, create-pr
  */
@@ -37,7 +37,6 @@ import {
   findVibenRoot,
   getDeveloper,
   getTasksDir,
-  getCurrentTask,
   readTaskJson as readTaskJsonFromWorkspace,
   writeTaskJson,
   updateTaskField,
@@ -69,8 +68,10 @@ import {
   getSessionId,
 } from "../lib/swarm";
 
-// Import startTask from phase/start
+// Import phase functions
 import { startTask } from "../../task/phase/start";
+import { runWorkPhase } from "../../task/phase/work";
+import { runCreateWorktree } from "../../task/phase/worktree";
 
 // Import task operations from lib/task
 import {
@@ -122,7 +123,6 @@ import {
   // Config operations
   setTaskBranch,
   setTaskBaseBranch,
-  setTaskScope,
   setTaskAgent,
   // Review operations
   reviewTask,
@@ -137,7 +137,6 @@ import {
   runPlanPhase,
   runImplementPhase,
   runCheckPhase,
-  runWorkPhaseInRepo,
 } from "../../task/phase";
 
 // =============================================================================
@@ -224,11 +223,12 @@ export function registerTaskCommand(program: Command): void {
   // task list
   taskCmd
     .command("list")
-    .description("List all tasks")
+    .description("List all tasks, or view task details if task is specified")
+    .argument("[task]", "Task name or directory (if specified, shows task details)")
     .option("-m, --mine", "Show only tasks assigned to current developer")
     .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, human_review, completed)")
     .option("--json", "Output in JSON format")
-    .action(async (options: { mine?: boolean; status?: string; json?: boolean }) => {
+    .action(async (task: string | undefined, options: { mine?: boolean; status?: string; json?: boolean }) => {
       const ctx = getContext(program);
       if (options.json) {
         ctx.json = true;
@@ -238,15 +238,56 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // If task is specified, show task details (equivalent to `viben task view <task>`)
+        if (task) {
+          const result = viewTask(repoRoot, task);
+
+          if (!result.success) {
+            throw CliError.notFound("Task", task);
+          }
+
+          const taskJson = result.task!;
+
+          output(ctx, successResponse(taskJson), () => {
+            console.log(chalk.bold(`Task: ${taskJson.title}`));
+            console.log();
+
+            outputKeyValue(ctx, {
+              ID: taskJson.id,
+              Name: taskJson.name,
+              Status: formatStatus(taskJson.status),
+              Priority: formatPriority(taskJson.priority),
+              "Dev Type": taskJson.dev_type || "-",
+              Creator: taskJson.creator || "-",
+              Assignee: taskJson.assignee || "-",
+              Branch: taskJson.branch || "-",
+              "Base Branch": taskJson.base_branch || "-",
+              "Created At": taskJson.createdAt,
+              "Completed At": taskJson.completedAt || "-",
+              "Current Phase": String(taskJson.current_phase),
+              "PR URL": taskJson.pr_url || "-",
+            });
+
+            if (taskJson.description) {
+              console.log();
+              console.log(chalk.gray("Description:"));
+              console.log(`  ${taskJson.description}`);
+            }
+          });
+          return;
+        }
+
+        // List all tasks
         const result = listTasks(repoRoot, { mine: options.mine, status: options.status });
 
         if (!result.success) {
           throw CliError.operationFailed("List tasks", result.error!);
         }
 
-        const { tasks, currentTask } = result;
+        const { tasks } = result;
 
-        output(ctx, successResponse({ tasks, currentTask }), () => {
+        output(ctx, successResponse({ tasks }), () => {
           if (options.mine) {
             const developer = getDeveloper(repoRoot);
             console.log(chalk.blue(`My tasks (assignee: ${developer}):`));
@@ -262,16 +303,12 @@ export function registerTaskCommand(program: Command): void {
               console.log("  (no active tasks)");
             }
           } else {
-            for (const task of tasks) {
-              const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${task.dir}`;
-              const isCurrent = relativePath === currentTask;
-              const marker = isCurrent ? chalk.green(" <- current") : "";
-
+            for (const t of tasks) {
               if (options.mine) {
-                console.log(`  - ${task.dir}/ (${formatStatus(task.status)})${marker}`);
+                console.log(`  - ${t.dir}/ (${formatStatus(t.status)})`);
               } else {
                 console.log(
-                  `  - ${task.dir}/ (${formatStatus(task.status)}) [${chalk.cyan(task.assignee)}]${marker}`
+                  `  - ${t.dir}/ (${formatStatus(t.status)}) [${chalk.cyan(t.assignee)}]`
                 );
               }
             }
@@ -289,8 +326,9 @@ export function registerTaskCommand(program: Command): void {
   taskCmd
     .command("create")
     .description("Create a new task")
-    .argument("<title>", "Task title")
+    .argument("<title>", "Task title (used as commit/PR title)")
     .option("-s, --slug <name>", "Task identifier (auto-generated from title if not provided)")
+    .option("-b, --branch <branch>", "Custom branch name (default: feature/<slug>)")
     .option("-a, --assignee <dev>", "Assignee developer name")
     .option("-p, --priority <priority>", "Priority (P0, P1, P2, P3)", "P2")
     .option("-d, --description <text>", "Task description")
@@ -301,6 +339,7 @@ export function registerTaskCommand(program: Command): void {
     .option("--worktree", "Run agent in a git worktree (isolated branch)")
     .action(async (title: string, options: {
       slug?: string;
+      branch?: string;
       assignee?: string;
       priority?: string;
       description?: string;
@@ -321,32 +360,40 @@ export function registerTaskCommand(program: Command): void {
           throw CliError.operationFailed("Create task", result.error!);
         }
 
-        const { dirName, status } = result;
+        const { dirName, status, contextInitialized } = result;
         const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
 
         // If --start is provided, show enqueue message
         if (options.start) {
-          output(ctx, successResponse({ taskDir: relativePath, status }), () => {
+          output(ctx, successResponse({ taskDir: relativePath, status, contextInitialized }), () => {
             console.log(chalk.green(`Created and enqueued: ${dirName}`));
             console.log(chalk.gray(`Status: backlog -> queue`));
             if (options.worktree) {
               console.log(chalk.gray(`Worktree: enabled`));
             }
+            if (contextInitialized) {
+              console.log(chalk.gray(`Context: initialized (empty)`));
+            }
           });
         } else {
-          // No auto-start, just show next steps
-          output(ctx, successResponse({ taskDir: relativePath }), () => {
+          // Show what was configured
+          output(ctx, successResponse({ taskDir: relativePath, contextInitialized }), () => {
             console.log(chalk.green(`Created task: ${dirName}`));
             console.log();
+
+            // Show auto-configured values
+            if (options.branch) {
+              console.log(chalk.blue("Configured:"));
+              console.log(`  Branch:  ${options.branch}`);
+              console.log();
+            }
+
+            // Show next steps
             console.log(chalk.blue("Next steps:"));
             console.log("  1. Create prd.md with requirements");
-            console.log(`  2. Run: viben task init-context ${dirName} -t <dev_type>`);
+            console.log("  2. Use research agent to add context (add-context)");
             console.log(`  3. Run: viben task start ${dirName}`);
             console.log();
-            if (options.executor || options.model) {
-              const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
-              console.log(chalk.gray(`Configured: executor=${executor}, model=${options.model || "default"}`));
-            }
           });
         }
       } catch (error) {
@@ -383,7 +430,6 @@ export function registerTaskCommand(program: Command): void {
             Status: formatStatus(taskJson.status),
             Priority: formatPriority(taskJson.priority),
             "Dev Type": taskJson.dev_type || "-",
-            Scope: taskJson.scope || "-",
             Creator: taskJson.creator || "-",
             Assignee: taskJson.assignee || "-",
             Branch: taskJson.branch || "-",
@@ -575,21 +621,15 @@ export function registerTaskCommand(program: Command): void {
           ? EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude"
           : "claude";
 
-        // Determine mode: CLI --worktree overrides task.json worktree field
-        const isParallel = options.worktree ?? taskJson?.worktree ?? false;
-        const modeLabel = isParallel ? "parallel (worktree)" : "serial";
-
         // Start task using startTask from phase/start
         if (!ctx.quiet) {
           console.log(chalk.blue("=== Task Start ==="));
           console.log(`[INFO] Task: ${relativePath}`);
           console.log(`[INFO] Platform: ${platform}`);
-          console.log(`[INFO] Mode: ${modeLabel}`);
         }
 
         const result = await startTask(repoRoot, relativePath, {
           platform,
-          parallel: isParallel,
           detach: options.detach ?? true,
           skipPermissions: true,
           verbose: ctx.verbose,
@@ -604,7 +644,7 @@ export function registerTaskCommand(program: Command): void {
         } else {
           if (result.success) {
             console.log();
-            console.log(chalk.green(`=== Task Started (${result.mode} mode) ===`));
+            console.log(chalk.green(`=== Task Started ===`));
             console.log();
             console.log(`  ID:        ${result.agentId}`);
             console.log(`  PID:       ${result.pid}`);
@@ -632,25 +672,22 @@ export function registerTaskCommand(program: Command): void {
   // task finish
   taskCmd
     .command("finish")
-    .description("Clear current task")
-    .argument("[task]", "Task to finish (uses current task if not specified)")
-    .action(async (_task?: string) => {
+    .description("Finish a task (clears current task if it matches)")
+    .argument("<task>", "Task name or directory to finish")
+    .action(async (task: string) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = finishTask(repoRoot);
+        const result = finishTask(repoRoot, task);
 
-        if (result.message) {
-          output(ctx, successResponse({ message: result.message }), () => {
-            console.log(chalk.yellow(result.message));
-          });
-          return;
+        if (!result.success) {
+          throw CliError.operationFailed("Finish task", result.error!);
         }
 
-        output(ctx, successResponse({ cleared: result.cleared }), () => {
-          console.log(chalk.green(`Cleared current task (was: ${result.cleared})`));
+        output(ctx, successResponse({ finished: result.cleared }), () => {
+          console.log(chalk.green(`Finished task: ${result.cleared}`));
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -904,32 +941,6 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task set-scope
-  taskCmd
-    .command("set-scope")
-    .description("Set scope for PR title")
-    .argument("<task>", "Task name or directory")
-    .requiredOption("-s, --scope <name>", "Scope name")
-    .action(async (task: string, options: { scope: string }) => {
-      const ctx = getContext(program);
-      const cwd = process.cwd();
-
-      try {
-        const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = setTaskScope(repoRoot, task, options.scope);
-
-        if (!result.success) {
-          throw CliError.operationFailed("Set scope", result.error!);
-        }
-
-        output(ctx, successResponse({ task, scope: options.scope }), () => {
-          console.log(chalk.green(`Scope set to: ${options.scope}`));
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
   // task set-agent
   taskCmd
     .command("set-agent")
@@ -963,16 +974,15 @@ export function registerTaskCommand(program: Command): void {
   // task init-context
   taskCmd
     .command("init-context")
-    .description("Initialize context files for task")
+    .description("Initialize empty context files for task (to be populated by research)")
     .argument("<task>", "Task name or directory")
-    .requiredOption("-t, --type <type>", "Dev type (frontend, backend, fullstack, test, docs)")
-    .action(async (task: string, options: { type: string }) => {
+    .action(async (task: string) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = initContext(repoRoot, task, options.type);
+        const result = initContext(repoRoot, task);
 
         if (!result.success) {
           throw CliError.operationFailed("Initialize context", result.error!);
@@ -980,25 +990,18 @@ export function registerTaskCommand(program: Command): void {
 
         output(ctx, successResponse({
           taskDir: result.taskDir,
-          devType: result.devType,
           files: result.files,
         }), () => {
-          console.log(chalk.blue("=== Initializing Agent Context Files ==="));
-          console.log(`Target dir: ${result.taskDir}`);
-          console.log(`Dev type: ${result.devType}`);
+          console.log(chalk.green(`Initialized context files for: ${task}`));
           console.log();
-          console.log(chalk.cyan("Created implement.jsonl..."));
-          console.log(`  ${chalk.green("OK")} ${result.files.implement} entries`);
-          console.log(chalk.cyan("Created check.jsonl..."));
-          console.log(`  ${chalk.green("OK")} ${result.files.check} entries`);
-          console.log(chalk.cyan("Created fix.jsonl..."));
-          console.log(`  ${chalk.green("OK")} ${result.files.fix} entries`);
-          console.log();
-          console.log(chalk.green("OK All context files created"));
+          console.log("Created:");
+          console.log("  - implement.jsonl (empty)");
+          console.log("  - check.jsonl (empty)");
+          console.log("  - fix.jsonl (empty)");
           console.log();
           console.log(chalk.blue("Next steps:"));
-          console.log("  1. Add task-specific specs: viben task add-context <task> <path>");
-          console.log("  2. Set as current: viben task start <task>");
+          console.log("  1. Use research agent or add-context to populate specs");
+          console.log("  2. Run: viben task start <task>");
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1145,195 +1148,6 @@ export function registerTaskCommand(program: Command): void {
   // Planning & Monitoring Commands
   // ============================================================================
 
-  // task plan
-  taskCmd
-    .command("plan")
-    .description("Start Plan Agent to plan a task")
-    .requiredOption("-n, --name <name>", "Task name")
-    .requiredOption("-t, --type <type>", "Dev type (backend, frontend, fullstack)")
-    .requiredOption("-r, --requirement <text>", "Requirement description")
-    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
-    .action(async (options: {
-      name: string;
-      type: string;
-      requirement: string;
-      platform?: string;
-    }) => {
-      const ctx = getContext(program);
-      const cwd = process.cwd();
-
-      try {
-        const repoRoot = ensureVibenDirWithRoot(cwd);
-        const taskName = options.name;
-        const devType = options.type;
-        const requirement = options.requirement;
-        const platform = options.platform || "claude";
-
-        // Validate dev type
-        if (!["backend", "frontend", "fullstack"].includes(devType)) {
-          throw CliError.invalidArgument(
-            "type",
-            "Must be: backend, frontend, fullstack"
-          );
-        }
-
-        // Initialize CLI adapter
-        const adapter = createCLIAdapter(platform);
-
-        // Check plan agent exists
-        const planMdPath = adapter.getAgentConfigPath("plan", repoRoot);
-        if (!existsSync(planMdPath)) {
-          throw CliError.operationFailed(
-            "Plan",
-            `Plan agent not found at ${planMdPath}. Platform: ${platform}`
-          );
-        }
-
-        // Check developer is initialized
-        const developer = getDeveloper(repoRoot);
-        if (!developer) {
-          throw CliError.operationFailed(
-            "Plan",
-            "Developer not initialized. Run 'viben team init-developer' first."
-          );
-        }
-
-        console.log();
-        console.log(chalk.blue("=== Multi-Agent Pipeline: Plan ==="));
-        console.log(chalk.cyan("[INFO]"), `Task: ${taskName}`);
-        console.log(chalk.cyan("[INFO]"), `Type: ${devType}`);
-        console.log(chalk.cyan("[INFO]"), `Requirement: ${requirement}`);
-        console.log();
-
-        // Step 1: Create task directory
-        console.log(chalk.cyan("[INFO]"), "Step 1: Creating task directory...");
-
-        const tasksDir = ensureTasksDir(repoRoot);
-        const datePrefix = getDatePrefix();
-        const dirName = `${datePrefix}-${taskName}`;
-        const taskDir = join(tasksDir, dirName);
-
-        if (!existsSync(taskDir)) {
-          mkdirSync(taskDir, { recursive: true });
-        }
-
-        // Get current branch as base_branch
-        const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
-        const currentBranch = branchOut.trim() || "main";
-        const today = getTodayDate();
-
-        const taskData: TaskJson = {
-          id: taskName,
-          name: taskName,
-          title: requirement,
-          description: "",
-          status: "backlog",
-          dev_type: devType,
-          scope: undefined,
-          priority: "P2",
-          creator: developer,
-          assignee: developer,
-          createdAt: today,
-          completedAt: undefined,
-          branch: undefined,
-          base_branch: currentBranch,
-          worktree_path: undefined,
-          current_phase: 0,
-          next_action: [
-            { phase: 1, action: "implement" },
-            { phase: 2, action: "check" },
-            { phase: 3, action: "finish" },
-            { phase: 4, action: "create-pr" },
-          ],
-          commit: undefined,
-          pr_url: undefined,
-          subtasks: [],
-          relatedFiles: [],
-          notes: "",
-          agent: undefined,
-        };
-
-        writeTaskJson(taskDir, taskData as unknown as Record<string, unknown>);
-
-        const taskDirRel = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
-        console.log(chalk.green("[SUCCESS]"), `Task directory: ${taskDirRel}`);
-
-        // Step 2: Start Plan Agent in background
-        console.log(chalk.cyan("[INFO]"), "Step 2: Starting Plan Agent in background...");
-
-        const logFile = join(taskDir, ".plan-log");
-        // Create empty log file
-        writeFileSync(logFile, "", "utf-8");
-
-        // Build environment
-        const env = { ...process.env };
-        env.PLAN_TASK_NAME = taskName;
-        env.PLAN_DEV_TYPE = devType;
-        env.PLAN_TASK_DIR = taskDirRel;
-        env.PLAN_REQUIREMENT = requirement;
-        Object.assign(env, adapter.getNonInteractiveEnv());
-
-        // Build CLI command
-        const cliCmd = adapter.buildRunCommand({
-          agent: "plan",
-          prompt: `Start planning for task: ${taskName}`,
-          skipPermissions: true,
-          verbose: true,
-          jsonOutput: true,
-        });
-
-        // Open log file for writing
-        const logFd = openSync(logFile, "w");
-
-        // Spawn background process
-        const spawnOpts: SpawnOptions = {
-          cwd: repoRoot,
-          env,
-          stdio: ["ignore", logFd, logFd],
-          detached: true,
-        };
-
-        const child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-        child.unref();
-
-        const agentPid = child.pid || 0;
-        console.log(chalk.green("[SUCCESS]"), `Plan Agent started (PID: ${agentPid})`);
-
-        // Register agent in registry
-        registryAddAgent(
-          {
-            agentId: `plan-${taskName}`,
-            worktreePath: repoRoot,
-            pid: agentPid,
-            taskDir: taskDirRel,
-            platform,
-          },
-          repoRoot
-        );
-
-        // Summary
-        console.log();
-        console.log(chalk.green("=== Plan Agent Running ==="));
-        console.log();
-        console.log(`  Task:  ${taskName}`);
-        console.log(`  Type:  ${devType}`);
-        console.log(`  Dir:   ${taskDirRel}`);
-        console.log(`  Log:   ${logFile}`);
-        console.log(`  PID:   ${agentPid}`);
-        console.log();
-        console.log(chalk.yellow("To monitor:"));
-        console.log(`  tail -f ${logFile}`);
-        console.log();
-        console.log(chalk.yellow("To check status:"));
-        console.log(`  ps -p ${agentPid}`);
-        console.log(`  viben task status ${taskName}`);
-        console.log();
-
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
   // task status (with subcommand behavior)
   taskCmd
     .command("status")
@@ -1412,9 +1226,9 @@ export function registerTaskCommand(program: Command): void {
   taskCmd
     .command("create-pr")
     .description("Create PR from task")
-    .argument("[task]", "Task name or directory (uses current task if not specified)")
+    .argument("<task>", "Task name or directory")
     .option("--dry-run", "Show what would be done without making changes")
-    .action(async (task: string | undefined, options: { dryRun?: boolean }) => {
+    .action(async (task: string, options: { dryRun?: boolean }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
@@ -1667,8 +1481,9 @@ export function registerTaskCommand(program: Command): void {
   taskCmd
     .command("context")
     .description("Get session context for AI agents")
+    .argument("<task>", "Task name or directory")
     .option("-j, --json", "Output in JSON format")
-    .action(async (options: { json?: boolean }) => {
+    .action(async (task: string, options: { json?: boolean }) => {
       const ctx = getContext(program);
       if (options.json) {
         ctx.json = true;
@@ -1678,14 +1493,19 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
 
         if (ctx.json) {
-          const contextData = getContextJson(repoRoot);
+          const contextData = getContextJson(repoRoot, taskDir);
           output(ctx, successResponse(contextData), () => {
             // JSON output handled by output()
           });
         } else {
-          const contextText = getContextText(repoRoot);
+          const contextText = getContextText(repoRoot, taskDir);
           output(ctx, successResponse({ context: contextText }), () => {
             console.log(contextText);
           });
@@ -2011,10 +1831,83 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task work-phase - Run dispatch agent for a task (in current repo, no worktree)
+  // task create-worktree - Create isolated git worktree for a task
+  taskCmd
+    .command("create-worktree")
+    .description("Create isolated git worktree for a task")
+    .argument("<task>", "Task name or directory")
+    .option("--skip-prd", "Skip prd.md validation")
+    .action(async (task: string, options: { skipPrd?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Business logic validation (before worktree creation)
+        const taskJson = readTaskJsonFromWorkspace(taskDir) as { status?: string } | null;
+
+        // Check if task was rejected
+        if (taskJson?.status === "rejected") {
+          const rejectedFile = join(taskDir, "REJECTED.md");
+          let reason = "";
+          if (existsSync(rejectedFile)) {
+            reason = readFileSync(rejectedFile, "utf-8").trim();
+          }
+          throw CliError.operationFailed(
+            "Create Worktree",
+            `Task was rejected. ${reason ? `Reason: ${reason}` : "Check REJECTED.md for details."}`
+          );
+        }
+
+        // Check prd.md exists (unless skipped)
+        if (!options.skipPrd) {
+          const prdFile = join(taskDir, "prd.md");
+          if (!existsSync(prdFile)) {
+            throw CliError.operationFailed(
+              "Create Worktree",
+              "prd.md not found - planning may not have completed. Use --skip-prd to bypass this check."
+            );
+          }
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Create Worktree ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log();
+
+        const result = await runCreateWorktree(repoRoot, taskDir);
+
+        if (result.success) {
+          console.log(chalk.green("=== Worktree Created ==="));
+          console.log();
+          console.log(`  Path:        ${result.worktreePath}`);
+          console.log(`  Branch:      ${result.branch}`);
+          console.log(`  Base Branch: ${result.baseBranch}`);
+          console.log();
+          console.log(chalk.yellow("Next step:"));
+          console.log(`  viben task work-phase ${task} --worktree ${result.worktreePath}`);
+          console.log();
+
+          output(ctx, successResponse(result));
+        } else {
+          throw CliError.operationFailed("Create Worktree", result.error || "Unknown error");
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task work-phase - Run dispatch agent for a task
   taskCmd
     .command("work-phase")
-    .description("Run work phase for a task (spawns dispatch agent in current repo)")
+    .description("Run work phase for a task (spawns dispatch agent)")
     .argument("<task>", "Task name or directory")
     .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
     .option("-v, --verbose", "Enable verbose output")
@@ -2027,22 +1920,88 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
 
         // Resolve task directory
-        const taskDir = resolveTaskDirectory(repoRoot, task);
-        if (!taskDir) {
-          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Read task.json to get worktree_path and worktree flag
+        const taskJson = readTaskJsonFromWorkspace(taskDir) as { worktree_path?: string; worktree?: boolean; branch?: string; status?: string } | null;
+        let worktreePath = taskJson?.worktree_path;
+        const useWorktree = taskJson?.worktree ?? false;
+
+        // Business logic validation (before work phase)
+        // Check if task was rejected
+        if (taskJson?.status === "rejected") {
+          const rejectedFile = join(taskDir, "REJECTED.md");
+          let reason = "";
+          if (existsSync(rejectedFile)) {
+            reason = readFileSync(rejectedFile, "utf-8").trim();
+          }
+          throw CliError.operationFailed(
+            "Work Phase",
+            `Task was rejected. ${reason ? `Reason: ${reason}` : "Check REJECTED.md for details."}`
+          );
+        }
+
+        // Check prd.md exists
+        const prdFile = join(taskDir, "prd.md");
+        if (!existsSync(prdFile)) {
+          throw CliError.operationFailed(
+            "Work Phase",
+            "prd.md not found - planning must be completed before work phase."
+          );
+        }
+
+        // Determine working directory from task.json
+        let workingDir: string;
+        let modeLabel: string;
+        let logFileName: string;
+        let agentIdPrefix: string;
+
+        if (useWorktree || worktreePath) {
+          // Check if worktree exists, create if not
+          if (!worktreePath || !existsSync(worktreePath)) {
+            console.log(chalk.cyan("[INFO]"), "Worktree not found, creating...");
+
+            const createResult = await runCreateWorktree(repoRoot, taskDir);
+
+            if (!createResult.success) {
+              throw CliError.operationFailed("Create Worktree", createResult.error || "Unknown error");
+            }
+
+            worktreePath = createResult.worktreePath!;
+            console.log(chalk.green("[OK]"), `Worktree created at ${worktreePath}`);
+          }
+
+          workingDir = worktreePath;
+          modeLabel = `worktree (${worktreePath})`;
+          logFileName = ".agent-log";
+          agentIdPrefix = "swarm";
+        } else {
+          workingDir = repoRoot;
+          modeLabel = "current repo";
+          logFileName = ".work-log";
+          agentIdPrefix = "work";
         }
 
         console.log();
         console.log(chalk.blue("=== Work Phase ==="));
         console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
         console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log(chalk.cyan("[INFO]"), `Working Dir: ${modeLabel}`);
         console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach !== false ? "background" : "foreground"}`);
         console.log();
 
-        const result = await runWorkPhaseInRepo(repoRoot, taskDir, {
+        const result = await runWorkPhase({
+          repoRoot,
+          workingDir,
+          taskDir,
           platform: options.platform,
           verbose: options.verbose,
           detach: options.detach !== false,
+          logFileName,
+          agentIdPrefix,
         });
 
         if (result.success) {

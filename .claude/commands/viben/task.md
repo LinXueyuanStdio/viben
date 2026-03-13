@@ -327,9 +327,9 @@ When a task directory is provided in the context below, this is an existing task
 
 | Command | When to Use |
 |---------|-------------|
-| `/viben:start` | Begin a session (this command) |
-| `/viben:brainstorm` | Clarify vague requirements (called from start) |
-| `/viben:parallel` | Complex tasks needing isolated worktree |
+| `/viben:task` | Begin a session (this command) |
+| `/viben:brainstorm` | Clarify vague requirements (called from task) |
+| `/viben:start` | Complex tasks needing isolated worktree |
 | `/viben:finish-work` | Before committing changes |
 | `/viben:record-session` | After completing a task |
 

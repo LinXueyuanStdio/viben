@@ -11,7 +11,6 @@ import { execSync } from "node:child_process";
 import {
   getActiveTasks,
   getDeveloper,
-  getCurrentTask,
   resolveTaskDirectory,
   readTaskJson,
   writeTaskJson,
@@ -19,7 +18,6 @@ import {
   findTaskByName,
   archiveTask as archiveTaskToDir,
   getArchivedTasks,
-  clearCurrentTask,
   runGitCommand,
   getTodayDate,
   getDatePrefix,
@@ -48,6 +46,7 @@ const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
 };
 
 import type { TaskJson } from "./types";
+import { initContext } from "./context-files";
 
 // =============================================================================
 // Result Types
@@ -61,7 +60,6 @@ export interface ListTasksResult {
     assignee: string;
     priority: string;
   }>;
-  currentTask: string | null;
   error?: string;
 }
 
@@ -70,6 +68,7 @@ export interface CreateTaskOptions {
   assignee?: string;
   priority?: string;
   description?: string;
+  branch?: string; // custom branch name
   agent?: string;
   executor?: string;
   model?: string;
@@ -82,6 +81,7 @@ export interface CreateTaskResult {
   taskDir?: string;
   dirName?: string;
   status?: string;
+  contextInitialized?: boolean;
   error?: string;
 }
 
@@ -100,7 +100,7 @@ export interface DeleteTaskResult {
 export interface FinishTaskResult {
   success: boolean;
   cleared?: string;
-  message?: string;
+  error?: string;
 }
 
 export interface ArchiveTaskResult {
@@ -156,14 +156,12 @@ export function listTasks(
   const { mine, status } = options;
 
   const developer = getDeveloper(repoRoot);
-  const currentTask = getCurrentTask(repoRoot);
 
   // Check filters
   if (mine && !developer) {
     return {
       success: false,
       tasks: [],
-      currentTask: null,
       error: "No developer set. Run init-developer first or remove --mine flag",
     };
   }
@@ -184,7 +182,6 @@ export function listTasks(
   return {
     success: true,
     tasks,
-    currentTask,
   };
 }
 
@@ -246,20 +243,21 @@ export function createTask(
   const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
   const _platform: Platform = EXECUTOR_TO_PLATFORM[executor] || "claude";
 
+  // Determine branch (scope is no longer needed - title is used directly)
+  const branch = options.branch || `feature/${taskSlug}`;
+
   const taskData: TaskJson = {
     id: taskSlug,
     name: taskSlug,
     title: title,
     description: options.description || "",
     status: "backlog",
-    dev_type: undefined,
-    scope: undefined,
     priority: options.priority || "P2",
     creator: creator,
     assignee: assignee,
     createdAt: today,
     completedAt: undefined,
-    branch: undefined,
+    branch: branch,
     base_branch: currentBranch,
     worktree_path: undefined,
     current_phase: 0,
@@ -289,11 +287,16 @@ export function createTask(
 
   writeTaskJson(taskDir, taskData as unknown as Record<string, unknown>);
 
+  // Initialize empty context files (to be populated by research agent)
+  const contextResult = initContext(repoRoot, dirName);
+  const contextInitialized = contextResult.success;
+
   return {
     success: true,
     taskDir,
     dirName,
     status: taskData.status,
+    contextInitialized,
   };
 }
 
@@ -358,23 +361,23 @@ export function deleteTask(repoRoot: string, taskName: string): DeleteTaskResult
 // =============================================================================
 
 /**
- * Clear current task
+ * Finish a task - mark as completed
  */
-export function finishTask(repoRoot: string): FinishTaskResult {
-  const currentTask = getCurrentTask(repoRoot);
+export function finishTask(repoRoot: string, taskName: string): FinishTaskResult {
+  const tasksDir = getTasksDir(repoRoot);
 
-  if (!currentTask) {
+  // Find task directory
+  const taskDir = findTaskByName(taskName, tasksDir);
+  if (!taskDir || !existsSync(taskDir)) {
     return {
-      success: true,
-      message: "No current task set",
+      success: false,
+      error: `Task not found: ${taskName}`,
     };
   }
 
-  clearCurrentTask(repoRoot);
-
   return {
     success: true,
-    cleared: currentTask,
+    cleared: taskDir,
   };
 }
 
@@ -409,12 +412,6 @@ export function archiveTask(repoRoot: string, taskName: string): ArchiveTaskResu
       taskData.completedAt = today;
       writeTaskJson(taskDir, taskData);
     }
-  }
-
-  // Clear if it's the current task
-  const currentTask = getCurrentTask(repoRoot);
-  if (currentTask && currentTask.includes(dirName)) {
-    clearCurrentTask(repoRoot);
   }
 
   // Archive the task

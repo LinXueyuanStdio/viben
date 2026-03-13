@@ -40,9 +40,8 @@ viben swarm start <task> [options]
 **流程**:
 1. 创建 worktree（如果不存在）并安装依赖
 2. 复制环境文件（从 worktree.yaml 配置）
-3. 设置 `.current-task`
-4. 启动 Dispatch Agent 后台运行
-5. 注册 agent 到 registry.json
+3. 启动 Dispatch Agent 后台运行
+4. 注册 agent 到 registry.json
 
 **示例**:
 ```bash

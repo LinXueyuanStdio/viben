@@ -10,7 +10,6 @@ import { join } from "node:path";
 import {
   getDeveloper,
   getTasksDir,
-  getCurrentTask,
   getActiveTasks,
   readTaskJson as readTaskJsonFromWorkspace,
   runGitCommand,
@@ -24,8 +23,10 @@ import type { ContextJson } from "./types";
 
 /**
  * Get context as JSON object
+ * @param repoRoot - Repository root directory
+ * @param taskDir - Task directory (required for CURRENT TASK section)
  */
-export function getContextJson(repoRoot: string): ContextJson {
+export function getContextJson(repoRoot: string, taskDir?: string): ContextJson {
   const developer = getDeveloper(repoRoot) || "";
   const _tasksDir = getTasksDir(repoRoot);
 
@@ -50,16 +51,18 @@ export function getContextJson(repoRoot: string): ContextJson {
     }
   }
 
-  // Current task
+  // Current task - requires taskDir parameter
   let currentTask: ContextJson["currentTask"] = null;
-  const currentTaskPath = getCurrentTask(repoRoot);
-  if (currentTaskPath) {
-    const currentTaskDir = join(repoRoot, currentTaskPath);
-    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
+  if (taskDir) {
+    const taskData = readTaskJsonFromWorkspace(taskDir);
     if (taskData) {
-      const prdFile = join(currentTaskDir, "prd.md");
+      const prdFile = join(taskDir, "prd.md");
+      // Get relative path from repoRoot
+      const relativePath = taskDir.startsWith(repoRoot)
+        ? taskDir.slice(repoRoot.length + 1)
+        : taskDir;
       currentTask = {
-        path: currentTaskPath,
+        path: relativePath,
         name: String(taskData.name || taskData.id || "unknown"),
         status: String(taskData.status || "unknown"),
         createdAt: String(taskData.createdAt || "unknown"),
@@ -121,8 +124,10 @@ export function getContextJson(repoRoot: string): ContextJson {
 
 /**
  * Get context as formatted text
+ * @param repoRoot - Repository root directory
+ * @param taskDir - Task directory (required for CURRENT TASK section)
  */
-export function getContextText(repoRoot: string): string {
+export function getContextText(repoRoot: string, taskDir?: string): string {
   const lines: string[] = [];
   const developer = getDeveloper(repoRoot);
 
@@ -182,14 +187,16 @@ export function getContextText(repoRoot: string): string {
   }
   lines.push("");
 
-  // Current task
+  // Current task - requires taskDir parameter
   lines.push("## CURRENT TASK");
-  const currentTaskPath = getCurrentTask(repoRoot);
-  if (currentTaskPath) {
-    const currentTaskDir = join(repoRoot, currentTaskPath);
-    lines.push(`Path: ${currentTaskPath}`);
+  if (taskDir) {
+    // Get relative path from repoRoot
+    const relativePath = taskDir.startsWith(repoRoot)
+      ? taskDir.slice(repoRoot.length + 1)
+      : taskDir;
+    lines.push(`Path: ${relativePath}`);
 
-    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
+    const taskData = readTaskJsonFromWorkspace(taskDir);
     if (taskData) {
       const tName = String(taskData.name || taskData.id || "unknown");
       const tStatus = String(taskData.status || "unknown");
@@ -205,7 +212,7 @@ export function getContextText(repoRoot: string): string {
     }
 
     // Check for prd.md
-    const prdFile = join(currentTaskDir, "prd.md");
+    const prdFile = join(taskDir, "prd.md");
     if (existsSync(prdFile)) {
       lines.push("");
       lines.push("[!] This task has prd.md - read it for task details");

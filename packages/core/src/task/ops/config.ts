@@ -1,7 +1,7 @@
 /**
  * Task configuration operations
  *
- * Setters for task fields (branch, base_branch, scope, agent)
+ * Setters for task fields (branch, base_branch, agent)
  */
 
 import { existsSync } from "node:fs";
@@ -86,17 +86,6 @@ export function setTaskBaseBranch(
   baseBranch: string
 ): SetFieldResult {
   return setTaskField(repoRoot, taskName, "base_branch", baseBranch);
-}
-
-/**
- * Set task scope (for PR title)
- */
-export function setTaskScope(
-  repoRoot: string,
-  taskName: string,
-  scope: string
-): SetFieldResult {
-  return setTaskField(repoRoot, taskName, "scope", scope);
 }
 
 /**

@@ -54,7 +54,6 @@ POST /api/task/{action}?task_dir=<path>&workspace_path=<path>
 |------|----------|------|------|
 | `POST /api/task/set-branch` | `viben task set-branch` | Query: `task_dir`, Body: `branch` | 设置 Git 分支 |
 | `POST /api/task/set-base` | `viben task set-base` | Query: `task_dir`, Body: `branch` | 设置 PR 目标分支 |
-| `POST /api/task/set-scope` | `viben task set-scope` | Query: `task_dir`, Body: `scope` | 设置 PR 标题 scope |
 | `POST /api/task/set-agent` | `viben task set-agent` | Query: `task_dir`, Body: `agent` | 设置关联 agent |
 
 #### 上下文管理操作
@@ -215,7 +214,7 @@ interface QueueConfig {
 
 #### tasks.ts (36 个)
 - ✅ 状态生命周期: `start`, `finish`, `pause`, `resume`, `approve`, `reject`, `retry`, `cancel`, `archive`, `list-archive`
-- ✅ 配置: `set-branch`, `set-base`, `set-scope`, `set-agent`
+- ✅ 配置: `set-branch`, `set-base`, `set-agent`
 - ✅ 上下文: `init-context`, `add-context`, `remove-context`, `list-context`, `validate-context`
 - ✅ 执行控制: `execute`, `stop`, `running`
 - ✅ 队列管理: `queue-status`, `queue-config`, `batch-enqueue`, `clear-history`

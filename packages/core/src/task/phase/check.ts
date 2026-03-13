@@ -31,6 +31,8 @@ import {
   DIR_TASKS,
 } from "../../cli/lib/viben-workspace";
 
+import { buildContextSection } from "../ops/context-prompt";
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -69,7 +71,7 @@ export interface CheckPhaseResult {
  * Run the review (check) phase for a task
  *
  * This function:
- * 1. Validates that task.json, prd.md, and check.jsonl exist
+ * 1. Validates that task.json, prd.md exist (check.jsonl is optional)
  * 2. Validates that the "check" agent exists for the platform
  * 3. Spawns the check agent in background mode
  * 4. Registers the agent in the registry
@@ -139,14 +141,12 @@ export async function runCheckPhase(
     };
   }
 
-  // Validate check.jsonl exists (context for check agent)
-  const checkJsonlPath = join(taskDirAbs, "check.jsonl");
-  if (!existsSync(checkJsonlPath)) {
-    return {
-      success: false,
-      error: `check.jsonl not found at ${checkJsonlPath}. Run 'viben task init-context' first.`,
-    };
-  }
+  // check.jsonl is optional - build context section if it exists
+  const contextSection = buildContextSection(
+    taskDirAbs,
+    "check.jsonl",
+    "Code-Spec Files to Read"
+  );
 
   // Check that the "check" agent exists for the platform
   const checkAgentPath = adapter.getAgentConfigPath("check", repoRoot);
@@ -182,7 +182,7 @@ export async function runCheckPhase(
 
 Task directory: ${taskDirRelative}
 
-Fix any issues you find directly.
+${contextSection ? contextSection + "\n\n" : ""}Fix any issues you find directly.
 Ensure lint and typecheck pass.`;
 
   // Build CLI command using the adapter

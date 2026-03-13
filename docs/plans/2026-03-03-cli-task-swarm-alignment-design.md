@@ -19,7 +19,7 @@ viben
 ├── task                    # 任务管理 [更新]
 │   ├── list / create / view / edit / delete
 │   ├── start [--resume] / finish / archive / list-archive
-│   ├── set-branch / set-base / set-scope / set-agent
+│   ├── set-branch / set-base / set-agent
 │   ├── init-context / add-context / remove-context / list-context / validate-context
 │   ├── plan
 │   ├── status [--detail/--watch/--log/--running]

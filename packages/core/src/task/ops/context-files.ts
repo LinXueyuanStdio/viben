@@ -26,7 +26,6 @@ import type { ContextEntry } from "./types";
 export interface ContextInitResult {
   success: boolean;
   taskDir: string;
-  devType: string;
   files: {
     implement: number;
     check: number;
@@ -67,105 +66,42 @@ export interface ContextValidateResult {
 // =============================================================================
 
 /**
- * Initialize context files for a task
+ * Initialize empty context files for a task
+ *
+ * Creates empty implement.jsonl, check.jsonl, and fix.jsonl files.
+ * These will be populated by research agent via add-context.
  */
 export function initContext(
   repoRoot: string,
-  taskName: string,
-  devType: string
+  taskName: string
 ): ContextInitResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return {
       success: false,
       taskDir: taskName,
-      devType,
       files: { implement: 0, check: 0, fix: 0 },
       error: `Task not found: ${taskName}`,
     };
   }
 
-  const validTypes = ["backend", "frontend", "fullstack", "test", "docs"];
-  if (!validTypes.includes(devType)) {
-    return {
-      success: false,
-      taskDir,
-      devType,
-      files: { implement: 0, check: 0, fix: 0 },
-      error: `Invalid dev type. Must be one of: ${validTypes.join(", ")}`,
-    };
-  }
-
-  // implement.jsonl
-  const implementEntries: ContextEntry[] = [
-    { file: `${DIR_VIBEN}/workflow.md`, reason: "Project workflow and conventions" },
-  ];
-
-  if (devType === "backend" || devType === "test" || devType === "fullstack") {
-    implementEntries.push({
-      file: "docs/specs/backend/index.md",
-      reason: "Backend development guide",
-    });
-  }
-  if (devType === "frontend" || devType === "fullstack") {
-    implementEntries.push({
-      file: "docs/specs/frontend/index.md",
-      reason: "Frontend development guide",
-    });
-  }
-
+  // Create empty jsonl files - research agent will populate them
   const implementFile = join(taskDir, "implement.jsonl");
-  writeJsonlFile(implementFile, implementEntries as unknown as Array<Record<string, unknown>>);
-
-  // check.jsonl
-  const checkEntries: ContextEntry[] = [
-    { file: ".claude/commands/viben/finish-work.md", reason: "Finish work checklist" },
-  ];
-  if (devType === "backend" || devType === "fullstack") {
-    checkEntries.push({
-      file: ".claude/commands/viben/check-backend.md",
-      reason: "Backend check spec",
-    });
-  }
-  if (devType === "frontend" || devType === "fullstack") {
-    checkEntries.push({
-      file: ".claude/commands/viben/check-frontend.md",
-      reason: "Frontend check spec",
-    });
-  }
-
   const checkFile = join(taskDir, "check.jsonl");
-  writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
-
-  // fix.jsonl
-  const fixEntries: ContextEntry[] = [];
-  if (devType === "backend" || devType === "fullstack") {
-    fixEntries.push({
-      file: ".claude/commands/viben/check-backend.md",
-      reason: "Backend check spec",
-    });
-  }
-  if (devType === "frontend" || devType === "fullstack") {
-    fixEntries.push({
-      file: ".claude/commands/viben/check-frontend.md",
-      reason: "Frontend check spec",
-    });
-  }
-
   const fixFile = join(taskDir, "fix.jsonl");
-  writeJsonlFile(fixFile, fixEntries as unknown as Array<Record<string, unknown>>);
 
-  // Update task.json with dev_type
-  updateTaskField(taskDir, "dev_type", devType);
+  // Initialize with empty arrays (creates empty files)
+  writeJsonlFile(implementFile, []);
+  writeJsonlFile(checkFile, []);
+  writeJsonlFile(fixFile, []);
 
   return {
     success: true,
     taskDir,
-    devType,
     files: {
-      implement: implementEntries.length,
-      check: checkEntries.length,
-      fix: fixEntries.length,
+      implement: 0,
+      check: 0,
+      fix: 0,
     },
   };
 }

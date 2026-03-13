@@ -55,11 +55,10 @@ viben task edit <task>
 ### 上下文管理
 
 ```bash
-# 初始化上下文模板
-viben task init-context <task> -t <type>
-# type: backend | frontend | fullstack
+# 初始化空上下文文件
+viben task init-context <task>
 
-# 添加上下文文件
+# 添加上下文文件 (由 research agent 填充)
 viben task add-context <task> <files...> -r "<reason>"
 
 # 移除上下文文件
@@ -81,8 +80,6 @@ viben task set-branch <task> -b <branch>
 # 设置 PR 目标分支 (默认 main)
 viben task set-base <task> -b <base>
 
-# 设置 PR 标题 scope
-viben task set-scope <task> -s <scope>
 ```
 
 ### 智能体配置

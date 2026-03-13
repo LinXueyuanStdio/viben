@@ -9,7 +9,6 @@ import { execSync } from "node:child_process";
 import { join } from "node:path";
 
 import {
-  getCurrentTask,
   readTaskJson,
   updateTaskField,
   runGitCommand,
@@ -53,32 +52,17 @@ export interface CreatePRResult {
  * Create a pull request from a task
  *
  * @param repoRoot - The repository root directory
- * @param taskNameOrPath - Task name, directory path, or undefined to use current task
+ * @param taskNameOrPath - Task name or directory path (required)
  * @param options - Options including dryRun mode
  * @returns Result with PR URL and operation details
  */
 export function createPR(
   repoRoot: string,
-  taskNameOrPath: string | undefined,
+  taskNameOrPath: string,
   options: CreatePROptions = {}
 ): CreatePRResult {
   const dryRun = options.dryRun || false;
-
-  // Resolve task directory
-  let targetDir = taskNameOrPath;
-  if (!targetDir) {
-    const currentTask = getCurrentTask(repoRoot);
-    if (currentTask) {
-      targetDir = currentTask;
-    }
-  }
-
-  if (!targetDir) {
-    return {
-      success: false,
-      error: "No task directory specified and no current task set",
-    };
-  }
+  const targetDir = taskNameOrPath;
 
   // Resolve path
   const taskDirPath = targetDir.startsWith("/")
@@ -104,22 +88,8 @@ export function createPR(
 
   const taskName = (taskData.name as string) || "";
   const baseBranch = (taskData.base_branch as string) || "main";
-  const scope = (taskData.scope as string) || "core";
-  const devType = (taskData.dev_type as string) || "feature";
-
-  // Map dev_type to commit prefix
-  const prefixMap: Record<string, string> = {
-    feature: "feat",
-    frontend: "feat",
-    backend: "feat",
-    fullstack: "feat",
-    bugfix: "fix",
-    fix: "fix",
-    refactor: "refactor",
-    docs: "docs",
-    test: "test",
-  };
-  const commitPrefix = prefixMap[devType] || "feat";
+  // Use task title directly as commit/PR title
+  const taskTitle = (taskData.title as string) || taskName;
 
   // Get current branch
   const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
@@ -137,7 +107,7 @@ export function createPR(
   const hasStagedChanges = diffCode !== 0;
 
   let unpushedCommits = 0;
-  const commitMsg = `${commitPrefix}(${scope}): ${taskName}`;
+  const commitMsg = taskTitle;
 
   if (!hasStagedChanges) {
     // Check for unpushed commits
@@ -185,7 +155,7 @@ export function createPR(
   }
 
   // Create PR
-  const prTitle = `${commitPrefix}(${scope}): ${taskName}`;
+  const prTitle = taskTitle;
   let prUrl = "";
 
   if (dryRun) {

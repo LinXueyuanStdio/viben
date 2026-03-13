@@ -253,11 +253,10 @@ Use this output format:
 
 **Step 6: Configure Context** `[AI]`
 
-Initialize default context:
+Initialize empty context files:
 
 ```bash
-viben task init-context <task> --type <type>
-# type: backend | frontend | fullstack
+viben task init-context <task>
 ```
 
 Add specs found in your research pass:
