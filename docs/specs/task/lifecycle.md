@@ -202,8 +202,8 @@ human_review → backlog (reject)
 处理任务的各种结束情况。
 
 ```bash
-# 清除当前任务
-viben task finish [task]
+# 完成指定任务
+viben task finish <task>
 
 # 重试失败的任务
 viben task retry <task>
@@ -258,14 +258,14 @@ viben task delete <task> --force
 # 列出所有任务
 viben task list
 
-# 获取 AI Agent 会话上下文
-viben task context
+# 获取指定任务的 AI Agent 会话上下文
+viben task context <task>
 
 # 添加会话记录到 journal
 viben task add-session --title "<title>" --commit "<hash>" --summary "<summary>"
 
-# 从任务创建 PR
-viben task create-pr [task]
+# 从指定任务创建 PR
+viben task create-pr <task>
 ```
 
 ### 列表过滤
