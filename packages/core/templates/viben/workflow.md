@@ -44,8 +44,8 @@ This creates:
 ### Step 1: Understand Current Context
 
 ```bash
-# Get full context in one command
-viben task context
+# Get full context in one command (specify task or use current task)
+viben task context <task>
 
 # Or check manually:
 viben user get                                   # Your identity
@@ -142,9 +142,9 @@ viben user get            # Get current developer name
 viben task list           # List active tasks
 viben task create         # Create new task
 viben task start          # Set current task
-viben task finish         # Clear current task
+viben task finish <task>  # Finish specified task
 viben task archive        # Archive completed task
-viben task context        # Get session context
+viben task context <task> # Get session context for specified task
 viben task add-session    # Record session
 
 # Multi-agent operations
@@ -164,11 +164,11 @@ viben task plan           # Start plan agent
 Use the unified context command:
 
 ```bash
-# Get all context in one command
-viben task context
+# Get all context for a specific task
+viben task context <task>
 
 # Or get JSON format
-viben task context --json
+viben task context <task> --json
 ```
 
 ### Step 2: Read Development Guidelines [!] REQUIRED
@@ -351,7 +351,7 @@ viben task list-archive                       # List archived tasks
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `viben task context` for full context
+   - Run `viben task context <task>` for full context of the task you're working on
    - [!] **MUST read** relevant `docs/specs/` docs
 
 2. **During development**:
@@ -400,7 +400,7 @@ git commit -m "type(scope): description"
 
 ```bash
 # Session management
-viben task context           # Get full context
+viben task context <task>    # Get full context for specified task
 viben task add-session       # Record session
 
 # Task management
