@@ -83,7 +83,6 @@ interface CreateTaskInput {
   assignee?: string;
   priority?: "P0" | "P1" | "P2" | "P3";
   agent?: string;
-  dev_type?: "frontend" | "backend" | "fullstack";
   executor?: string;
   model?: string;
 }
@@ -96,7 +95,6 @@ interface UpdateTaskInput {
   description?: string;
   assignee?: string;
   priority?: string;
-  dev_type?: string;
   branch?: string;
   base_branch?: string;
   agent?: string;
@@ -149,7 +147,6 @@ function toSnakeCaseTask(task: UnifiedTask) {
     review_reason: task.reviewReason ?? null,
     current_phase: task.current_phase ?? 0,
     priority: task.priority || "P2",
-    dev_type: task.dev_type ?? null,
     workspace_path: task.workspacePath ?? null,
     creator: task.creator ?? null,
     assignee: task.assignee ?? null,
@@ -348,7 +345,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
           assignee: input.assignee,
           priority: input.priority || "P2",
           agent: input.agent,
-          dev_type: input.dev_type,
           executor: input.executor,
           model: input.model,
           status: "backlog",
