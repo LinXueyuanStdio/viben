@@ -215,7 +215,7 @@ viben task cancel <task>     # * → cancelled
 **Utilities**
 ```bash
 viben task list              # List all tasks
-viben task context           # Get session context
+viben task context <task>    # Get session context for task
 viben task create-pr <task>  # Create PR from task
 viben task archive <task>    # Archive completed task
 ```
