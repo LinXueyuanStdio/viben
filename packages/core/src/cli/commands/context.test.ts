@@ -19,13 +19,13 @@ vi.mock("../lib/viben-workspace", () => ({
   getDeveloper: vi.fn(),
   getActiveJournalFile: vi.fn(),
   countLines: vi.fn(),
-  getCurrentTask: vi.fn(),
   getGitBranch: vi.fn(),
   getGitStatus: vi.fn(),
   getGitStatusCount: vi.fn(),
   getRecentCommits: vi.fn(),
   getActiveTasks: vi.fn(),
   readTaskJson: vi.fn(),
+  getTasksDir: vi.fn(),
   DIR_VIBEN: ".viben",
   DIR_WORKSPACE: "workspace",
   DIR_TASKS: "tasks",
@@ -55,27 +55,21 @@ import {
   getDeveloper,
   getActiveJournalFile,
   countLines,
-  getCurrentTask,
   getGitBranch,
   getGitStatus,
   getGitStatusCount,
   getRecentCommits,
   getActiveTasks,
   readTaskJson,
+  getTasksDir,
 } from "../lib/viben-workspace";
 
 /**
  * Sample task data for testing
  */
+// Tasks are sorted by dir name (getActiveTasks sorts by localeCompare)
+// 03-02 < 03-03, so 03-03-add-user-auth is the latest (last in list)
 const sampleTasks = [
-  {
-    dir: "03-03-add-user-auth",
-    name: "add-user-auth",
-    status: "in_progress",
-    assignee: "john",
-    title: "Add user authentication",
-    priority: "P1",
-  },
   {
     dir: "03-02-fix-bug",
     name: "fix-bug",
@@ -83,6 +77,14 @@ const sampleTasks = [
     assignee: "alice",
     title: "Fix login bug",
     priority: "P2",
+  },
+  {
+    dir: "03-03-add-user-auth",
+    name: "add-user-auth",
+    status: "in_progress",
+    assignee: "john",
+    title: "Add user authentication",
+    priority: "P1",
   },
 ];
 
@@ -142,7 +144,7 @@ describe("Context CLI Command", () => {
     vi.mocked(getGitStatusCount).mockReturnValue(3);
     vi.mocked(getRecentCommits).mockReturnValue(sampleCommits);
     vi.mocked(getActiveTasks).mockReturnValue(sampleTasks);
-    vi.mocked(getCurrentTask).mockReturnValue(null);
+    vi.mocked(getTasksDir).mockReturnValue("/workspace/.viben/tasks");
     vi.mocked(getActiveJournalFile).mockReturnValue("/workspace/.viben/workspace/john/journal-1.md");
     vi.mocked(countLines).mockReturnValue(1500);
     vi.mocked(readTaskJson).mockReturnValue(null);
@@ -369,13 +371,13 @@ describe("Context CLI Command", () => {
   });
 
   // ============================================================================
-  // Current task tests
+  // Latest task tests (inferred from most recent task directory)
   // ============================================================================
 
-  describe("current task", () => {
-    it("should display current task when set", async () => {
+  describe("latest task", () => {
+    it("should display latest task (last in sorted list)", async () => {
       setupStandardMocks();
-      vi.mocked(getCurrentTask).mockReturnValue(".viben/tasks/03-03-add-user-auth");
+      // sampleTasks are sorted by dir name, last one is "03-03-add-user-auth"
       vi.mocked(readTaskJson).mockReturnValue({
         name: "add-user-auth",
         status: "in_progress",
@@ -386,19 +388,19 @@ describe("Context CLI Command", () => {
       await runCommand(["context"]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
-      expect(output).toContain("## CURRENT TASK");
+      expect(output).toContain("## LATEST TASK");
       expect(output).toContain("Path: .viben/tasks/03-03-add-user-auth");
       expect(output).toContain("Name: add-user-auth");
     });
 
-    it("should display (none) when no current task", async () => {
+    it("should display (none) when no active tasks", async () => {
       setupStandardMocks();
-      vi.mocked(getCurrentTask).mockReturnValue(null);
+      vi.mocked(getActiveTasks).mockReturnValue([]);
 
       await runCommand(["context"]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
-      expect(output).toContain("## CURRENT TASK");
+      expect(output).toContain("## LATEST TASK");
       expect(output).toContain("(none)");
     });
   });
@@ -660,15 +662,15 @@ describe("Context CLI Command", () => {
       expect(output).toContain("(no commits)");
     });
 
-    it("should output CURRENT TASK section", async () => {
+    it("should output LATEST TASK section", async () => {
       setupStandardMocks();
 
       await runCommand(["context"]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
 
-      // Python: lines.append("## CURRENT TASK")
-      expect(output).toContain("## CURRENT TASK");
+      // Latest task is inferred from most recent task directory
+      expect(output).toContain("## LATEST TASK");
     });
 
     it("should output ACTIVE TASKS section with count", async () => {
@@ -801,7 +803,7 @@ describe("Context CLI Command", () => {
   describe("complete Python parity edge cases", () => {
     it("should handle task with prd.md file indicator", async () => {
       setupStandardMocks();
-      vi.mocked(getCurrentTask).mockReturnValue(".viben/tasks/03-03-add-user-auth");
+      // Latest task is inferred from getActiveTasks (last in sorted list)
       vi.mocked(readTaskJson).mockReturnValue({
         name: "add-user-auth",
         status: "in_progress",
@@ -815,13 +817,13 @@ describe("Context CLI Command", () => {
       expect(output).toContain("Path: .viben/tasks/03-03-add-user-auth");
     });
 
-    it("should filter out done tasks from MY TASKS", async () => {
+    it("should filter out completed tasks from MY TASKS", async () => {
       setupStandardMocks();
       vi.mocked(getActiveTasks).mockReturnValue([
         {
-          dir: "03-03-done-task",
-          name: "done-task",
-          status: "done",
+          dir: "03-03-completed-task",
+          name: "completed-task",
+          status: "completed",
           assignee: "john",
           title: "Completed task",
           priority: "P1",
@@ -832,7 +834,7 @@ describe("Context CLI Command", () => {
 
       const output = consoleSpy.mock.calls[0][0] as string;
 
-      // Python: if assignee == developer and status != "done"
+      // Filter out completed tasks from MY TASKS
       expect(output).toContain("(no tasks assigned to you)");
     });
 
