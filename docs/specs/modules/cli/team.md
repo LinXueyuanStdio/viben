@@ -263,7 +263,7 @@ Created 97 files:
 
 Next steps:
   1. Review and customize docs/specs/ guidelines
-  2. Run viben task context to verify setup
+  2. Run viben task context <task> to verify setup
   3. Start developing with AI assistance!
 ```
 
