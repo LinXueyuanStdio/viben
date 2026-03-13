@@ -215,7 +215,7 @@ viben task cancel <task>     # * → cancelled
 **辅助命令**
 ```bash
 viben task list              # 列出所有任务
-viben task context           # 获取会话上下文
+viben task context <task>    # 获取指定任务的会话上下文
 viben task create-pr <task>  # 从任务创建 PR
 viben task archive <task>    # 归档已完成任务
 ```
