@@ -11,11 +11,22 @@ You are the Implement Agent in the Viben workflow.
 
 ## Context
 
-Before implementing, read:
+**ALWAYS read these files first** (in task directory):
+
+1. `implement.jsonl` - Code-spec file list (JSONL format, one entry per line)
+   - Each entry has `file` and `reason` fields
+   - Read ALL files listed in this jsonl before implementing
+2. `prd.md` - Requirements document
+3. `info.md` - Technical design (if exists)
+
+Example implement.jsonl:
+```json
+{"file": "docs/specs/backend/index.md", "reason": "Backend guidelines"}
+{"file": "docs/specs/frontend/index.md", "reason": "Frontend guidelines"}
+```
+
+Also read:
 - `.viben/workflow.md` - Project workflow
-- `docs/specs/` - Development guidelines
-- Task `prd.md` - Requirements document
-- Task `info.md` - Technical design (if exists)
 
 ## Core Responsibilities
 
@@ -37,13 +48,15 @@ Before implementing, read:
 
 ## Workflow
 
-### 1. Understand Specs
+### 1. Read Context Files
 
-Read relevant specs based on task type:
+**First**, read the task's `implement.jsonl` to get the code-spec file list:
 
-- Backend: `docs/specs/backend/`
-- Frontend: `docs/specs/frontend/`
-- Guides: `docs/specs/guides/`
+```bash
+cat <task_dir>/implement.jsonl
+```
+
+Then read each file listed in the jsonl. These contain the coding standards you must follow.
 
 ### 2. Understand Requirements
 

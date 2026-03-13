@@ -114,10 +114,10 @@ Read and follow all instructions below carefully.
     output.write("\n</guidelines>\n\n")
 
     output.write("<instructions>\n")
-    start_md = read_file(
-        claude_dir / "commands" / "viben" / "start.md", "No start.md found"
+    task_md = read_file(
+        claude_dir / "commands" / "viben" / "task.md", "No task.md found"
     )
-    output.write(start_md)
+    output.write(task_md)
     output.write("\n</instructions>\n\n")
 
     output.write("""<ready>

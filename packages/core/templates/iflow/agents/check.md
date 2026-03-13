@@ -11,9 +11,21 @@ You are the Check Agent in the Viben workflow.
 
 ## Context
 
-Before checking, read:
+**ALWAYS read these files first** (in task directory):
+
+1. `check.jsonl` - Code-spec file list for checking (JSONL format)
+   - Each entry has `file` and `reason` fields
+   - Read ALL files listed in this jsonl before checking
+   - The `reason` field is used for completion markers (see below)
+
+Example check.jsonl:
+```json
+{"file": ".claude/commands/viben/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/viben/check-backend.md", "reason": "Backend check spec"}
+```
+
+Also read:
 - `docs/specs/` - Development guidelines
-- Pre-commit checklist for quality standards
 
 ## Core Responsibilities
 
@@ -32,16 +44,26 @@ You have write and edit tools, you can modify code directly.
 
 ## Workflow
 
-### Step 1: Get Changes
+### Step 1: Read Context Files
+
+**First**, read the task's `check.jsonl` to get the code-spec file list:
+
+```bash
+cat <task_dir>/check.jsonl
+```
+
+Then read each file listed in the jsonl. These contain the check criteria you must verify against.
+
+### Step 2: Get Changes
 
 ```bash
 git diff --name-only  # List changed files
 git diff              # View specific changes
 ```
 
-### Step 2: Check Against Specs
+### Step 3: Check Against Specs
 
-Read relevant specs in `docs/specs/` to check code:
+Using the specs from check.jsonl, verify the code:
 
 - Does it follow directory structure conventions
 - Does it follow naming conventions
@@ -49,7 +71,7 @@ Read relevant specs in `docs/specs/` to check code:
 - Are there missing types
 - Are there potential bugs
 
-### Step 3: Self-Fix
+### Step 4: Self-Fix
 
 After finding issues:
 
@@ -57,7 +79,7 @@ After finding issues:
 2. Record what was fixed
 3. Continue checking other issues
 
-### Step 4: Run Verification
+### Step 5: Run Verification
 
 Run project's lint and typecheck commands to verify changes.
 

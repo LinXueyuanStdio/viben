@@ -32,10 +32,10 @@ cat .viben/workflow.md
 ### Step 2: Get Current Context
 
 ```bash
-viben task context <task>
+viben team context
 ```
 
-This shows: developer identity, git status, task details, and active tasks. You must specify which task to get context for.
+This shows: developer identity, git status, current task (if any), active tasks.
 
 ### Step 3: Read Guidelines Index
 
@@ -59,13 +59,14 @@ When user describes a task, classify it:
 |------|----------|----------|
 | **Question** | User asks about code, architecture, or how something works | Answer directly |
 | **Trivial Fix** | Typo fix, comment update, single-line change, < 5 minutes | Direct Edit |
-| **Development Task** | Any code change that: modifies logic, adds features, fixes bugs, touches multiple files | **Task Workflow** |
+| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Task Workflow |
+| **Complex Task** | Vague goal, multiple files, architectural decisions | **Brainstorm → Task Workflow** |
 
 ### Decision Rule
 
-> **If in doubt, use Task Workflow.**
+> **If in doubt, use Brainstorm + Task Workflow.**
 >
-> Task Workflow ensures specs are injected to agents, resulting in higher quality code.
+> Task Workflow ensures code-spec context is injected to agents, resulting in higher quality code.
 > The overhead is minimal, but the benefit is significant.
 
 ---
@@ -79,13 +80,28 @@ For questions or trivial fixes, work directly:
 
 ---
 
+## Complex Task - Brainstorm First
+
+For complex or vague tasks, use the brainstorm process to clarify requirements.
+
+See `/viben:brainstorm` for the full process. Summary:
+
+1. **Acknowledge and classify** - State your understanding
+2. **Create task directory** - Track evolving requirements in `prd.md`
+3. **Ask questions one at a time** - Update PRD after each answer
+4. **Propose approaches** - For architectural decisions
+5. **Confirm final requirements** - Get explicit approval
+6. **Proceed to Task Workflow** - With clear requirements in PRD
+
+---
+
 ## Task Workflow (Development Tasks)
 
 **Why this workflow?**
-- Research Agent analyzes what specs are needed
-- Specs are configured in jsonl files
-- Implement Agent receives specs via Hook injection
-- Check Agent verifies against specs
+- Research Agent analyzes what code-spec files are needed
+- Code-spec files are configured in jsonl files
+- Implement Agent receives code-spec context via Hook injection
+- Check Agent verifies against code-spec requirements
 - Result: Code that follows project conventions automatically
 
 ### Overview: Two Entry Points
@@ -162,7 +178,7 @@ Trigger this requirement when the change includes any of:
 - Cross-layer payload transformations
 
 Must-have before proceeding:
-- [ ] Target spec files to update are identified
+- [ ] Target code-spec files to update are identified
 - [ ] Concrete contract is defined (signature, fields, env keys)
 - [ ] Validation and error matrix is defined
 - [ ] At least one Good/Base/Bad case is defined
@@ -179,12 +195,12 @@ Task(
   Task: <goal from PRD>
 
   Please find:
-  1. Relevant spec files in docs/specs/
+  1. Relevant code-spec files in docs/specs/
   2. Existing code patterns to follow (find 2-3 examples)
   3. Files that will likely need modification
 
   Output:
-  ## Relevant Specs
+  ## Relevant Code-Specs
   - <path>: <why it's relevant>
 
   ## Code Patterns Found
@@ -204,10 +220,10 @@ Initialize empty context files:
 viben task init-context <task-name>
 ```
 
-Add specs found by Research Agent:
+Add code-spec files found by Research Agent:
 
 ```bash
-# For each relevant spec and code pattern:
+# For each relevant code-spec and code pattern:
 viben task add-context <task-name> "<path>" --reason "<reason>"
 ```
 
@@ -225,14 +241,14 @@ This starts task execution and spawns the agent.
 
 **Step 8: Implement** `[AI]`
 
-Call Implement Agent (specs are auto-injected by hook):
+Call Implement Agent (code-spec context is auto-injected by hook):
 
 ```
 Task(
   subagent_type: "implement",
   prompt: "Implement the task described in prd.md.
 
-  Follow all specs that have been injected into your context.
+  Follow all code-spec files that have been injected into your context.
   Run lint and typecheck before finishing.",
   model: "opus"
 )
@@ -240,12 +256,12 @@ Task(
 
 **Step 9: Check Quality** `[AI]`
 
-Call Check Agent (specs are auto-injected by hook):
+Call Check Agent (code-spec context is auto-injected by hook):
 
 ```
 Task(
   subagent_type: "check",
-  prompt: "Review all code changes against the specs.
+  prompt: "Review all code changes against the code-spec requirements.
 
   Fix any issues you find directly.
   Ensure lint and typecheck pass.",
@@ -266,7 +282,7 @@ Task(
 
 ## Continuing Existing Task
 
-If `viben task list` shows an existing task you want to continue:
+If `viben team context` shows a current task:
 
 1. Read the task's `prd.md` to understand the goal
 2. Check `task.json` for current status and phase
@@ -282,8 +298,9 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | When to Use |
 |---------|-------------|
-| `/viben:task` | Begin a session |
-| `/viben:start` | Complex tasks needing isolated worktree (this command) |
+| `/viben:task` | Begin a session (this command) |
+| `/viben:brainstorm` | Clarify vague requirements (called from task) |
+| `/viben:start` | Complex tasks needing isolated worktree |
 | `/viben:finish-work` | Before committing changes |
 | `/viben:record-session` | After completing a task |
 
@@ -291,13 +308,13 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | Purpose |
 |---------|---------|
-| `viben task context <task>` | Get session context for specified task |
-| `viben task create "<title>"` | Create task directory |
-| `viben task init-context <task>` | Initialize empty jsonl files |
-| `viben task add-context <task> "<path>"` | Add spec to jsonl |
-| `viben task start <task>` | Set current task |
+| `viben team context` | Get session context |
+| `viben task create` | Create task directory |
+| `viben task init-context` | Initialize jsonl files |
+| `viben task add-context` | Add code-spec/context file to jsonl |
+| `viben task start` | Set current task |
 | `viben task finish <task>` | Finish specified task |
-| `viben task archive <task>` | Archive completed task |
+| `viben task archive` | Archive completed task |
 
 ### Sub Agents `[AI]`
 
@@ -312,7 +329,7 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 ## Key Principle
 
-> **Specs are injected, not remembered.**
+> **Code-spec context is injected, not remembered.**
 >
-> The Task Workflow ensures agents receive relevant specs automatically.
+> The Task Workflow ensures agents receive relevant code-spec context automatically.
 > This is more reliable than hoping the AI "remembers" conventions.

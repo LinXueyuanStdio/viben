@@ -214,7 +214,7 @@ viben task add-context "$TASK_DIR" check "<path>" "<reason>"
 viben task start "$TASK_DIR"
 ```
 
-This sets `.current-task` so hooks can inject context.
+This starts task execution and spawns the agent.
 
 ---
 

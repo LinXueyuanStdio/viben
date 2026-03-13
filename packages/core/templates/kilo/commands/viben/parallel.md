@@ -35,91 +35,51 @@ cat .viben/workflow.md  # Development process, conventions, and quick start guid
 ### Step 2: Get Current Status `[AI]`
 
 ```bash
-viben task context
+viben task context <task>
 ```
-
-### Step 3: Read Project Guidelines `[AI]`
-
-```bash
-cat docs/specs/frontend/index.md  # Frontend guidelines index
-cat docs/specs/backend/index.md   # Backend guidelines index
-cat docs/specs/guides/index.md    # Thinking guides
-```
-
-### Step 4: Ask User for Requirements
-
-Ask the user:
-
-1. What feature to develop?
-2. Which modules are involved?
-3. Development type? (backend / frontend / fullstack)
 
 ---
 
-## Planning: Choose Your Approach
+## Task Setup Workflow `[AI]`
 
-Based on requirement complexity, choose one of these approaches:
+After gathering requirements from the user, set up the task:
 
-### Option A: Plan Agent (Recommended for complex features) `[AI]`
-
-Use when:
-- Requirements need analysis and validation
-- Multiple modules or cross-layer changes
-- Unclear scope that needs research
+### Option A: Quick Setup (Recommended)
 
 ```bash
-viben task plan \
-  --name "<feature-name>" \
-  --type "<backend|frontend|fullstack>" \
-  --requirement "<user requirement description>" \
-  --platform opencode
-```
-
-Plan Agent will:
-1. Evaluate requirement validity (may reject if unclear/too large)
-2. Call research agent to analyze codebase
-3. Create and configure task directory
-4. Write prd.md with acceptance criteria
-5. Output ready-to-use task directory
-
-After planning completes, start the worktree agent:
-
-```bash
-viben swarm start <task-name> --platform opencode
-```
-
-### Option B: Manual Configuration (For simple/clear features) `[AI]`
-
-Use when:
-- Requirements are already clear and specific
-- You know exactly which files are involved
-- Simple, well-scoped changes
-
-#### Step 1: Create Task Directory
-
-```bash
-# title is task description, --slug for task directory name
 viben task create "<title>" --slug <task-name>
 ```
 
-#### Step 2: Configure Task
+This automatically sets up branch and default context.
+
+### Option B: Custom Setup
+
+For more control over branch and context:
 
 ```bash
-# Initialize jsonl context files
-viben task init-context <task-name> --type <dev_type>
+# 1. Create task
+viben task create "<title>" --slug <task-name>
 
-# Set branch and scope
-viben task set-branch <task-name> --branch feature/<name>
-viben task set-scope <task-name> --scope <scope>
+# 2. Initialize empty context files
+viben task init-context "$TASK_DIR"
+
+# 3. Set custom branch (optional)
+viben task set-branch "$TASK_DIR" -b feature/<name>
+
+# 4. Add context files (populated by research)
+viben task add-context "$TASK_DIR" "<path>" -r "<reason>"
+
+# 5. Validate
+viben task validate-context "$TASK_DIR"
 ```
 
-#### Step 3: Add Context (optional: use research agent)
+---
 
-```bash
-viben task add-context <task-name> "<path>" --reason "<reason>"
-```
+## Write PRD
 
-#### Step 4: Create prd.md
+Choose one approach:
+
+### Option A: Write PRD Manually `[AI]`
 
 ```bash
 cat > "$TASK_DIR/prd.md" << 'EOF'
@@ -133,11 +93,53 @@ cat > "$TASK_DIR/prd.md" << 'EOF'
 EOF
 ```
 
-#### Step 5: Validate and Start
+### Option B: Use Plan Agent `[AI]`
+
+For complex features that need research:
 
 ```bash
-viben task validate-context <task-name>
-viben swarm start <task-name> --platform opencode
+viben task plan-phase "$TASK_DIR"
+```
+
+Plan Agent will:
+1. Research codebase for relevant patterns
+2. Configure additional context files
+3. Write prd.md with acceptance criteria
+
+---
+
+## Execute in Worktree
+
+**IMPORTANT**: Do NOT use `viben task start` here (it would cause circular call).
+
+### Step 1: Create Worktree
+
+```bash
+viben task create-worktree "$TASK_DIR"
+```
+
+This creates an isolated git worktree with a new branch.
+
+### Step 2: Start Dispatch Agent
+
+```bash
+viben task work-phase "$TASK_DIR" --worktree <worktree-path>
+```
+
+The dispatch agent will automatically execute:
+1. implement → Implement feature
+2. check → Check code quality
+3. finish → Final verification
+4. create-pr → Create PR
+
+### Step 3: Monitor Progress
+
+```bash
+# Watch agent log in real-time
+viben swarm status <task> --watch
+
+# Or check status
+viben swarm status <task>
 ```
 
 ---
@@ -167,21 +169,10 @@ Tell the user they can use these commands to monitor:
 
 ```bash
 viben swarm status                    # Overview
-viben swarm status --log <name>       # View log
-viben swarm status --watch <name>     # Real-time monitoring
+viben swarm status <name> --log       # View log
+viben swarm status <name> --watch     # Real-time monitoring
 viben swarm cleanup <branch>          # Cleanup worktree
 ```
-
----
-
-## Pipeline Phases
-
-The dispatch agent in worktree will automatically execute:
-
-1. implement → Implement feature
-2. check → Check code quality
-3. finish → Final verification
-4. create-pr → Create PR
 
 ---
 
@@ -190,4 +181,4 @@ The dispatch agent in worktree will automatically execute:
 - **Don't write code directly** - delegate to agents in worktree
 - **Don't execute git commit** - agent does it via create-pr action
 - **Delegate complex analysis to research** - finding specs, analyzing code structure
-- **Subagents use globally configured model** - inherits from user's OpenCode config
+- **All sub agents use opus model** - ensure output quality

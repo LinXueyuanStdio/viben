@@ -25,12 +25,11 @@ viben
 │   ├── edit              # Edit task
 │   ├── delete            # Delete task
 │   ├── start             # Set current task
-│   ├── finish            # Clear current task
+│   ├── finish <task>     # Finish specified task
 │   ├── archive           # Archive completed task
 │   ├── list-archive      # List archived tasks
 │   ├── set-branch        # Set Git branch for task
 │   ├── set-base          # Set PR target branch
-│   ├── set-scope         # Set scope for PR title
 │   ├── set-agent         # Set associated agent
 │   ├── init-context      # Initialize context files
 │   ├── add-context       # Add context files
@@ -83,8 +82,8 @@ viben task view <task>
 # Start working on a task
 viben task start <task>
 
-# Finish current task
-viben task finish
+# Finish specified task
+viben task finish <task>
 
 # Archive completed task
 viben task archive <task>
@@ -96,11 +95,11 @@ viben task list-archive [month]
 ### Context Management
 
 ```bash
-# Get session context
-viben task context [--json]
+# Get session context for specified task
+viben task context <task> [--json]
 
-# Initialize context files for task
-viben task init-context <task> -t <type>
+# Initialize empty context files for task
+viben task init-context <task>
 
 # Add context files
 viben task add-context <task> <files...> [-r <reason>]
@@ -160,7 +159,7 @@ Most commands support `--json` flag for machine-readable output:
 
 ```bash
 viben task list --json
-viben task context --json
+viben task context <task> --json
 viben task view <task> --json
 ```
 
