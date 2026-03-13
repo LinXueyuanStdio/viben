@@ -11,16 +11,7 @@ You are the Multi-Agent Pipeline Orchestrator Agent, running in the main reposit
 
 ---
 
-## Operation Types
-
-| Marker | Meaning | Executor |
-|--------|---------|----------|
-| `[AI]` | Bash scripts or Task calls executed by AI | You (AI) |
-| `[USER]` | Slash commands executed by user | User |
-
----
-
-## Startup Flow `[AI]`
+## Startup Flow
 
 ### Step 1: Understand Viben Workflow
 
@@ -40,7 +31,7 @@ This shows: developer identity, git status, task context (specs and patterns).
 
 ---
 
-## Phase 1: Write PRD `[AI]`
+## Phase 1: Write PRD
 
 Choose one approach:
 
@@ -81,7 +72,7 @@ Plan Agent will:
 
 ---
 
-## Phase 2: Code-Spec Depth Check `[AI]`
+## Phase 2: Code-Spec Depth Check
 
 If the task touches infra or cross-layer contracts, do not start implementation until code-spec depth is defined.
 
@@ -99,7 +90,7 @@ Must-have before proceeding:
 
 ---
 
-## Phase 3: Research the Codebase `[AI]`
+## Phase 3: Research the Codebase
 
 Based on the confirmed PRD, call Research Agent to find relevant specs and patterns:
 
@@ -131,7 +122,7 @@ Task(
 
 ---
 
-## Phase 4: Configure Context `[AI]`
+## Phase 4: Configure Context
 
 Initialize default context:
 
@@ -155,7 +146,7 @@ viben task validate-context "$TASK_DIR"
 
 ---
 
-## Phase 5: Run Work Phase `[AI]`
+## Phase 5: Run Work Phase
 
 ```bash
 viben task work-phase "$TASK_DIR"
@@ -184,7 +175,7 @@ viben swarm status <task>
 
 ---
 
-## Phase 6: Report Status `[AI]`
+## Phase 6: Report Status
 
 Tell the user the agent has started and provide monitoring commands:
 
