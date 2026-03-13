@@ -54,7 +54,7 @@ viben task reject <task>      # 拒绝任务，返回 backlog
 ### 6. 结束阶段
 
 ```bash
-viben task finish [task]      # 清除当前任务
+viben task finish <task>      # 完成指定任务
 viben task retry <task>       # 重试失败的任务
 viben task cancel <task>      # 取消任务
 viben task stop <task>        # 停止任务 (cancel 别名)
@@ -72,9 +72,9 @@ viben task delete <task>      # 删除任务
 
 ```bash
 viben task list               # 列出所有任务
-viben task context            # 获取 AI Agent 会话上下文
+viben task context <task>     # 获取指定任务的 AI Agent 会话上下文
 viben task add-session        # 添加会话记录到 journal
-viben task create-pr [task]   # 从任务创建 PR
+viben task create-pr <task>   # 从指定任务创建 PR
 ```
 
 ---
