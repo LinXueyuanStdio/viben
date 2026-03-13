@@ -24,13 +24,13 @@ import {
   getDeveloper,
   getActiveJournalFile,
   countLines,
-  getCurrentTask,
   getGitBranch,
   getGitStatus,
   getGitStatusCount,
   getRecentCommits,
   getActiveTasks,
   readTaskJson,
+  getTasksDir,
   DIR_VIBEN,
   DIR_WORKSPACE,
   DIR_TASKS,
@@ -182,14 +182,17 @@ function getContextText(repoRoot: string): string {
   }
   lines.push("");
 
-  // Current task
-  lines.push("## CURRENT TASK");
-  const currentTask = getCurrentTask(repoRoot);
-  if (currentTask) {
-    const currentTaskDir = join(repoRoot, currentTask);
-    const taskData = readTaskJson(currentTaskDir);
+  // Latest task (inferred from most recent task directory by name)
+  lines.push("## LATEST TASK");
+  const tasks = getActiveTasks(repoRoot);
+  // Tasks are sorted by dir name (MM-DD-name format), last one is most recent
+  const latestTask = tasks.length > 0 ? tasks[tasks.length - 1] : null;
+  if (latestTask) {
+    const tasksDir = getTasksDir(repoRoot);
+    const latestTaskDir = join(tasksDir, latestTask.dir);
+    const taskData = readTaskJson(latestTaskDir);
 
-    lines.push(`Path: ${currentTask}`);
+    lines.push(`Path: ${DIR_VIBEN}/${DIR_TASKS}/${latestTask.dir}`);
 
     if (taskData) {
       const tName = String(taskData.name ?? taskData.id ?? "unknown");
@@ -206,7 +209,7 @@ function getContextText(repoRoot: string): string {
     }
 
     // Check for prd.md
-    const prdFile = join(currentTaskDir, "prd.md");
+    const prdFile = join(latestTaskDir, "prd.md");
     if (existsSync(prdFile)) {
       lines.push("");
       lines.push("[!] This task has prd.md - read it for task details");
@@ -218,8 +221,7 @@ function getContextText(repoRoot: string): string {
 
   // Active tasks
   lines.push("## ACTIVE TASKS");
-  const tasks = getActiveTasks(repoRoot);
-
+  // Reuse tasks from above (already fetched for latest task)
   if (tasks.length > 0) {
     for (const task of tasks) {
       lines.push(`- ${task.dir}/ (${task.status}) @${task.assignee}`);
