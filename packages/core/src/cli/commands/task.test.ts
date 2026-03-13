@@ -275,45 +275,13 @@ describe("task command", () => {
     });
   });
 
-  describe("task plan", () => {
-    it("should require --name option", () => {
-      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
-      const planCmd = taskCmd?.commands.find((cmd) => cmd.name() === "plan");
-      const options = planCmd?.options ?? [];
-      const nameOption = options.find((opt) => opt.long === "--name");
-      expect(nameOption).toBeDefined();
-      expect(nameOption?.required).toBe(true);
-    });
-
-    it("should require --type option", () => {
-      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
-      const planCmd = taskCmd?.commands.find((cmd) => cmd.name() === "plan");
-      const options = planCmd?.options ?? [];
-      const typeOption = options.find((opt) => opt.long === "--type");
-      expect(typeOption).toBeDefined();
-      expect(typeOption?.required).toBe(true);
-    });
-
-    it("should require --requirement option", () => {
-      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
-      const planCmd = taskCmd?.commands.find((cmd) => cmd.name() === "plan");
-      const options = planCmd?.options ?? [];
-      const reqOption = options.find((opt) => opt.long === "--requirement");
-      expect(reqOption).toBeDefined();
-      expect(reqOption?.required).toBe(true);
-    });
-  });
-
   describe("task context commands", () => {
-    it("init-context should require --type option", () => {
+    it("init-context should exist", () => {
       const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
       const initCmd = taskCmd?.commands.find(
         (cmd) => cmd.name() === "init-context"
       );
-      const options = initCmd?.options ?? [];
-      const typeOption = options.find((opt) => opt.long === "--type");
-      expect(typeOption).toBeDefined();
-      expect(typeOption?.required).toBe(true);
+      expect(initCmd).toBeDefined();
     });
 
     it("add-context should support --reason option", () => {

@@ -1918,22 +1918,40 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
+        const platform = options.platform || "claude";
 
-        // Resolve task directory
-        const taskDir = resolveTaskDirectory(task, repoRoot);
-        if (!taskDir || !existsSync(taskDir)) {
+        // Resolve task directory (always use absolute path)
+        const taskDirAbs = resolveTaskDirectory(task, repoRoot);
+        if (!taskDirAbs || !existsSync(taskDirAbs)) {
           throw CliError.notFound("Task", task);
         }
 
+        // Check dispatch agent exists
+        const adapter = createCLIAdapter(platform);
+        const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
+        if (!existsSync(dispatchMd)) {
+          throw CliError.operationFailed(
+            "Work Phase",
+            `dispatch agent not found at ${dispatchMd}. Platform: ${platform}`
+          );
+        }
+
         // Read task.json to get worktree_path and worktree flag
-        const taskJson = readTaskJsonFromWorkspace(taskDir) as { worktree_path?: string; worktree?: boolean; branch?: string; status?: string } | null;
+        const taskJson = readTaskJsonFromWorkspace(taskDirAbs) as {
+          id?: string;
+          name?: string;
+          worktree_path?: string;
+          worktree?: boolean;
+          branch?: string;
+          status?: string;
+        } | null;
         let worktreePath = taskJson?.worktree_path;
         const useWorktree = taskJson?.worktree ?? false;
 
         // Business logic validation (before work phase)
         // Check if task was rejected
         if (taskJson?.status === "rejected") {
-          const rejectedFile = join(taskDir, "REJECTED.md");
+          const rejectedFile = join(taskDirAbs, "REJECTED.md");
           let reason = "";
           if (existsSync(rejectedFile)) {
             reason = readFileSync(rejectedFile, "utf-8").trim();
@@ -1945,7 +1963,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         // Check prd.md exists
-        const prdFile = join(taskDir, "prd.md");
+        const prdFile = join(taskDirAbs, "prd.md");
         if (!existsSync(prdFile)) {
           throw CliError.operationFailed(
             "Work Phase",
@@ -1957,14 +1975,14 @@ export function registerTaskCommand(program: Command): void {
         let workingDir: string;
         let modeLabel: string;
         let logFileName: string;
-        let agentIdPrefix: string;
+        let isWorktreeMode: boolean;
 
         if (useWorktree || worktreePath) {
           // Check if worktree exists, create if not
           if (!worktreePath || !existsSync(worktreePath)) {
             console.log(chalk.cyan("[INFO]"), "Worktree not found, creating...");
 
-            const createResult = await runCreateWorktree(repoRoot, taskDir);
+            const createResult = await runCreateWorktree(repoRoot, taskDirAbs);
 
             if (!createResult.success) {
               throw CliError.operationFailed("Create Worktree", createResult.error || "Unknown error");
@@ -1977,18 +1995,30 @@ export function registerTaskCommand(program: Command): void {
           workingDir = worktreePath;
           modeLabel = `worktree (${worktreePath})`;
           logFileName = ".agent-log";
-          agentIdPrefix = "swarm";
+          isWorktreeMode = true;
         } else {
           workingDir = repoRoot;
           modeLabel = "current repo";
           logFileName = ".work-log";
-          agentIdPrefix = "work";
+          isWorktreeMode = false;
+        }
+
+        // Generate agent ID (same logic as swarm start)
+        let agentId: string;
+        if (taskJson?.id) {
+          agentId = taskJson.id;
+        } else if (taskJson?.branch) {
+          agentId = taskJson.branch.replace(/\//g, "-");
+        } else if (taskJson?.name) {
+          agentId = taskJson.name;
+        } else {
+          agentId = `${isWorktreeMode ? "swarm" : "work"}-${basename(taskDirAbs)}`;
         }
 
         console.log();
         console.log(chalk.blue("=== Work Phase ==="));
         console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
-        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${platform}`);
         console.log(chalk.cyan("[INFO]"), `Working Dir: ${modeLabel}`);
         console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach !== false ? "background" : "foreground"}`);
         console.log();
@@ -1996,12 +2026,15 @@ export function registerTaskCommand(program: Command): void {
         const result = await runWorkPhase({
           repoRoot,
           workingDir,
-          taskDir,
-          platform: options.platform,
+          taskDir: taskDirAbs,
+          platform,
           verbose: options.verbose,
           detach: options.detach !== false,
+          skipPermissions: true,
+          jsonOutput: true,
           logFileName,
-          agentIdPrefix,
+          agentId,
+          skipNextActionValidation: isWorktreeMode,
         });
 
         if (result.success) {

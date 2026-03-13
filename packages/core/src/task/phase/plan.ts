@@ -57,17 +57,6 @@ export interface PlanPhaseResult {
 // Validation Helpers
 // =============================================================================
 
-/**
- * Valid development types
- */
-const VALID_DEV_TYPES = ["backend", "frontend", "fullstack"];
-
-/**
- * Validate that dev_type is valid
- */
-function isValidDevType(devType: unknown): devType is string {
-  return typeof devType === "string" && VALID_DEV_TYPES.includes(devType);
-}
 
 // =============================================================================
 // Main Function
@@ -167,15 +156,6 @@ export async function runPlanPhase(
     };
   }
 
-  // Get dev_type
-  const devType = taskData.dev_type;
-  if (!isValidDevType(devType)) {
-    return {
-      success: false,
-      error: `Invalid or missing dev_type in task.json. Must be one of: ${VALID_DEV_TYPES.join(", ")}`,
-    };
-  }
-
   // Get requirement from title or description
   const requirement = String(
     taskData.title || taskData.description || ""
@@ -227,7 +207,6 @@ export async function runPlanPhase(
 
   const env = { ...process.env };
   env.PLAN_TASK_NAME = taskName;
-  env.PLAN_DEV_TYPE = devType;
   env.PLAN_TASK_DIR = taskDirRel;
   env.PLAN_REQUIREMENT = requirement;
   Object.assign(env, adapter.getNonInteractiveEnv());
@@ -292,7 +271,6 @@ export async function runPlanPhase(
 
   if (options.verbose) {
     console.log(`[plan-phase] Task: ${taskName}`);
-    console.log(`[plan-phase] Dev Type: ${devType}`);
     console.log(`[plan-phase] Requirement: ${requirement}`);
     console.log(`[plan-phase] Agent ID: ${agentId}`);
     console.log(`[plan-phase] PID: ${agentPid}`);

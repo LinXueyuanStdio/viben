@@ -5283,31 +5283,24 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         type: "object",
         properties: {
           name: { type: "string", description: "Task name (required)" },
-          type: { type: "string", description: "Dev type: backend, frontend, fullstack (required)" },
           requirement: { type: "string", description: "Requirement description (required)" },
           platform: { type: "string", description: "Platform: claude, cursor, iflow, opencode" },
         },
-        required: ["name", "type", "requirement"],
+        required: ["name", "requirement"],
       },
     },
   }, async (request, reply) => {
     const { workspace_path } = request.query;
-    const { name, type: devType, requirement, platform = "claude" } = request.body;
+    const { name, requirement, platform = "claude" } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
     }
 
-    if (!name || !devType || !requirement) {
+    if (!name || !requirement) {
       reply.code(400);
-      return { error: "name, type, and requirement are required", code: "MISSING_PARAMS" };
-    }
-
-    // Validate dev type
-    if (!["backend", "frontend", "fullstack"].includes(devType)) {
-      reply.code(400);
-      return { error: "type must be: backend, frontend, fullstack", code: "INVALID_TYPE" };
+      return { error: "name and requirement are required", code: "MISSING_PARAMS" };
     }
 
     try {
@@ -5352,7 +5345,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         title: requirement,
         description: "",
         status: "backlog",
-        dev_type: devType,
         priority: "P2",
         creator: developer,
         assignee: developer,
@@ -5381,7 +5373,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       // Build environment
       const env = { ...process.env };
       env.PLAN_TASK_NAME = name;
-      env.PLAN_DEV_TYPE = devType;
       env.PLAN_TASK_DIR = taskDirRel;
       env.PLAN_REQUIREMENT = requirement;
       Object.assign(env, adapter.getNonInteractiveEnv());
@@ -5428,7 +5419,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         data: {
           task_name: name,
           task_dir: taskDirRel,
-          dev_type: devType,
           agent_id: `plan-${name}`,
           pid: agentPid,
           log_file: logFile,
