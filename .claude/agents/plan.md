@@ -263,7 +263,7 @@ echo ""
 echo "Context summary:"
 viben task list-context "$PLAN_TASK_DIR"
 echo ""
-echo "Ready for: viben swarm start $PLAN_TASK_DIR"
+echo "Ready for: viben task work-phase $PLAN_TASK_DIR"
 ```
 
 ---
