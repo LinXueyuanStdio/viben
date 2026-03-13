@@ -682,7 +682,6 @@ interface TaskJson {
   name: string;
   description: string;
   status: string;
-  dev_type: string;
   priority: string;
   creator: string;
   assignee: string;
@@ -733,7 +732,6 @@ function getBootstrapTaskJson(
     name: "Bootstrap Guidelines",
     description: "Fill in project development guidelines for AI agents",
     status: "in_progress",
-    dev_type: "docs",
     priority: "P1",
     creator: developer,
     assignee: developer,

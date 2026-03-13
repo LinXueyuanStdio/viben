@@ -59,64 +59,6 @@ npx viben
 
 ---
 
-## 🏗️ 架构
-
-```mermaid
-graph LR
-    subgraph Clients["📱 客户端"]
-        direction LR
-        CLI["CLI"]
-        Desktop["Desktop"]
-        Web["Web"]
-    end
-
-    subgraph Core["📦 packages/core"]
-        direction TB
-
-        subgraph GW["Gateway :18790"]
-            direction LR
-            REST["REST API"]
-            WS["WebSocket"]
-        end
-
-        subgraph Svc["Services"]
-            direction LR
-            Agent["AgentService"]
-            Session["SessionStore"]
-            Cron["CronService"]
-        end
-
-        subgraph Mod["Modules"]
-            direction LR
-            Exec["Executors"]
-            MCP["MCP Client"]
-            Chan["Channels"]
-        end
-    end
-
-    subgraph Ext["🌍 外部"]
-        direction TB
-        LLM["LLM APIs"]
-        MCPSrv["MCP Servers"]
-    end
-
-    subgraph Cfg["📁 ~/.viben/"]
-        direction TB
-        YAML["*.yaml"]
-    end
-
-    Clients -->|HTTP/WS| GW
-    GW --> Svc
-    Svc --> Mod
-    Mod --> Cfg
-    Exec --> LLM
-    MCP --> MCPSrv
-```
-
-> **设计原则**: `packages/core` 是唯一边界 · file-native 配置 (YAML+Markdown) · 统一 REST/WebSocket API · 多 Provider 支持
-
----
-
 ## 📋 任务系统
 
 基于 XState 状态机的任务生命周期管理，支持看板、队列和自动化执行。
@@ -124,6 +66,7 @@ graph LR
 ### 任务生命周期
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dbeafe', 'lineColor': '#64748b', 'primaryTextColor': '#1e293b'}}}%%
 stateDiagram-v2
     [*] --> backlog: 创建
 
@@ -158,7 +101,21 @@ stateDiagram-v2
 
     completed --> [*]
     cancelled --> [*]
+
+    classDef waiting fill:#e0f2fe,stroke:#3b82f6,color:#1e40af
+    classDef active fill:#dcfce7,stroke:#22c55e,color:#166534
+    classDef review fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef done fill:#bbf7d0,stroke:#16a34a,color:#166534
+    classDef error fill:#fee2e2,stroke:#ef4444,color:#991b1b
+
+    class backlog,queue,paused waiting
+    class in_progress active
+    class human_review review
+    class completed done
+    class failed,cancelled error
 ```
+
+> **内部流程**: `in_progress` 状态内部执行 plan → implement → check → fix 循环
 
 | 状态 | 说明 | 触发命令 |
 |------|------|----------|
@@ -205,7 +162,7 @@ viben task status <task>     # 查看状态
 
 **审核与完成**
 ```bash
-viben task review <task>     # 查看待审核任务
+viben task review <task>     # 用户手动审核任务
 viben task approve <task>    # human_review → completed
 viben task reject <task>     # human_review → backlog
 viben task retry <task>      # failed → queue
@@ -216,6 +173,9 @@ viben task cancel <task>     # * → cancelled
 ```bash
 viben task list              # 列出所有任务
 viben task context <task>    # 获取指定任务的会话上下文
+viben task plan-phase <task> # 执行计划阶段
+viben task work-phase <task> # 执行工作阶段
+viben task create-worktree <task> # 创建 Git 工作树
 viben task create-pr <task>  # 从任务创建 PR
 viben task archive <task>    # 归档已完成任务
 ```

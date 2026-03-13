@@ -1,6 +1,9 @@
 /**
  * Multi-Agent Pipeline: Start Worktree Agent
  *
+ * @deprecated Use `viben task work-phase` instead of `viben swarm start`.
+ *             The work-phase command auto-creates worktree when task.json has `worktree=true` or `branch` set.
+ *
  * TypeScript implementation of packages/core/templates/viben/scripts/multi_agent/start.py
  *
  * This module:

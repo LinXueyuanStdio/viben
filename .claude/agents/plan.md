@@ -264,6 +264,7 @@ echo "Context summary:"
 viben task list-context "$PLAN_TASK_DIR"
 echo ""
 echo "Ready for: viben task work-phase $PLAN_TASK_DIR"
+echo "  (Use --worktree flag for isolated git worktree mode)"
 ```
 
 ---

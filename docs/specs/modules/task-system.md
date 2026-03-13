@@ -273,7 +273,6 @@ interface UnifiedTask {
 
   // 组织信息
   priority?: "P0" | "P1" | "P2" | "P3";
-  dev_type?: "feature" | "bugfix" | "refactor" | "docs";  // snake_case 与 API 一致
   scope?: string;
 
   // 任务关系
@@ -1021,7 +1020,9 @@ interface QueueConfig {
 
 ### Worktree 与 Task Directory 的分离设计
 
-在 Multi-Agent Pipeline 中，`viben swarm start` 会为每个任务创建独立的 git worktree，实现代码隔离。设计上需要区分两个路径：
+在 Multi-Agent Pipeline 中，`viben task work-phase` 会为每个任务创建独立的 git worktree（当 task.json 有 `worktree=true` 或 `branch` 时），实现代码隔离。设计上需要区分两个路径：
+
+> ⚠️ **注意**: `viben swarm start` 已废弃，请使用 `viben task work-phase` 代替。
 
 | 路径 | 用途 | 说明 |
 |------|------|------|
@@ -1064,15 +1065,15 @@ interface WorkPhaseOptions {
 
 | 场景 | workingDir | taskDir |
 |------|------------|---------|
-| `viben task work-phase` | 主 repo | 主 repo 的 task dir |
-| `viben swarm start` | worktree | 主 repo 的 task dir（非 worktree 副本） |
+| `viben task work-phase` (无 worktree) | 主 repo | 主 repo 的 task dir |
+| `viben task work-phase` (有 worktree) | worktree | 主 repo 的 task dir（非 worktree 副本） |
 
 ### 相关代码
 
 | 文件 | 说明 |
 |------|------|
-| `packages/core/src/task/phase/work.ts` | `runWorkPhase` 核心逻辑 |
-| `packages/core/src/cli/lib/swarm/start.ts` | `viben swarm start` 实现 |
+| `packages/core/src/task/phase/work.ts` | `runWorkPhase` 核心逻辑（`viben task work-phase` 使用） |
+| `packages/core/src/cli/lib/swarm/start.ts` | worktree 创建逻辑（已废弃的 `viben swarm start` 实现） |
 
 ## 相关文件
 

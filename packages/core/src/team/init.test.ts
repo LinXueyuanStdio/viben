@@ -350,7 +350,6 @@ describe("initTeam", () => {
     expect(taskJson.status).toBe("pending");
     expect(taskJson.priority).toBe("P1");
     expect(taskJson.assignee).toBe("test-dev");
-    expect(taskJson.dev_type).toBe("frontend");
     expect(taskJson.created_at).toBeDefined();
   });
 
