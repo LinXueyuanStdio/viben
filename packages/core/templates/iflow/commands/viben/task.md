@@ -32,21 +32,12 @@ cat .viben/workflow.md
 ### Step 2: Get Current Context
 
 ```bash
-viben task list
+viben task context <task>
 ```
 
-This shows: active tasks and current task (if any).
+This shows: developer identity, git status, task context (specs and patterns). It will also prompt you to read relevant guidelines.
 
-### Step 3: Read Guidelines Index
-
-```bash
-cat docs/specs/frontend/index.md  # Frontend guidelines
-cat docs/specs/backend/index.md   # Backend guidelines
-cat docs/specs/guides/index.md    # Thinking guides
-cat docs/specs/unit-test/index.md # Testing guidelines
-```
-
-### Step 4: Report and Ask
+### Step 3: Report and Ask
 
 Report what you learned and ask: "What would you like to work on?"
 
@@ -252,20 +243,20 @@ Task(
 Initialize empty context files:
 
 ```bash
-viben task init-context <task-name>
+viben task init-context "$TASK_DIR"
 ```
 
 Add code-spec files found by Research Agent:
 
 ```bash
 # For each relevant code-spec and code pattern:
-viben task add-context <task-name> "<path>" --reason "<reason>"
+viben task add-context "$TASK_DIR" "<path>" -r "<reason>"
 ```
 
 **Step 7: Activate Task** `[AI]`
 
 ```bash
-viben task start <task-name>
+viben task start "$TASK_DIR"
 ```
 
 This starts task execution and spawns the agent.
@@ -317,13 +308,16 @@ Task(
 
 ## Continuing Existing Task
 
-If `viben task list` shows a current task:
+When a task directory is provided in the context below, this is an existing task. Execute it directly:
 
-1. Read the task's `prd.md` to understand the goal
-2. Check `task.json` for current status and phase
-3. Ask user: "Continue working on <task-name>?"
-
-If yes, resume from the appropriate step (usually Step 7 or 8).
+1. Run `viben task context <task>` to get task context
+2. Read `prd.md` if it exists (optional - task may have requirements in task.json instead)
+3. Check `task.json` for current status, phase, and requirements
+4. **Do NOT ask for confirmation** - proceed directly with implementation
+5. Resume from the appropriate phase based on task status:
+   - If `status: backlog/queue` → Start from Phase 2 (Research)
+   - If `status: in_progress` → Continue implementation
+   - If `status: human_review` → Run check phase
 
 ---
 
@@ -343,11 +337,13 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | Purpose |
 |---------|---------|
-| `viben task list` | List tasks and current task |
-| `viben task create "<title>"` | Create task directory |
+| `viben task context <task>` | Get task context |
+| `viben task create "<title>" --slug <name>` | Create task directory |
 | `viben task init-context <task>` | Initialize empty jsonl files |
-| `viben task add-context <task> "<path>"` | Add code-spec/context file to jsonl |
-| `viben task start <task>` | Set current task |
+| `viben task add-context <task> <path> -r "<reason>"` | Add code-spec/context file to jsonl |
+| `viben task start <task>` | Start task execution (serial mode) |
+| `viben task plan-phase <task>` | Run Plan Agent (research + write prd) |
+| `viben task work-phase <task>` | Run Dispatch Agent (implement → check → pr) |
 | `viben task finish <task>` | Finish specified task |
 | `viben task archive <task>` | Archive completed task |
 
