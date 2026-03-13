@@ -59,7 +59,6 @@ export {
   xstateToTaskStatus,
   xstateToExecutionPhase,
   getStateValue,
-  createTaskActor,
   getNextState,
   type XStateValue,
   type TaskMachineContext,
@@ -201,7 +200,7 @@ export {
   runCheckPhase,
   type CheckPhaseOptions,
   type CheckPhaseResult,
-  // Work phase (dispatch agent - reusable by swarm start)
+  // Work phase (work agent - reusable by swarm start)
   runWorkPhase,
   type WorkPhaseOptions,
   type WorkPhaseResult,

@@ -1,7 +1,7 @@
 ---
 name: plan
 description: |
-  Multi-Agent Pipeline planner. Analyzes requirements and produces a fully configured task directory ready for dispatch.
+  Multi-Agent Pipeline planner. Analyzes requirements and produces a fully configured task directory ready for work.
 tools: Read, Bash, Glob, Grep, Task
 model: opus
 ---

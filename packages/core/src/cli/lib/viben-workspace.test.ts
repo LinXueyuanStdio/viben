@@ -99,8 +99,6 @@ import {
   slugify,
   findTaskByName,
   resolveTaskDirectory,
-  setCurrentTask,
-  clearCurrentTask,
   getArchiveDir,
   isSafeTaskPath,
 } from "./viben-workspace";
@@ -2064,47 +2062,6 @@ describe("Python parity - paths.py additional edge cases", () => {
     });
   });
 
-  describe("setCurrentTask validation", () => {
-    /**
-     * Reference: paths.py lines 262-289
-     */
-
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    it("should verify task directory exists before setting", () => {
-      vi.mocked(fs.existsSync).mockImplementation((path) => {
-        // Task dir doesn't exist
-        if (String(path).includes(".current-task")) return false;
-        if (String(path).includes("01-01-task")) return false;
-        return false;
-      });
-
-      // When task dir doesn't exist, setCurrentTask should fail
-      // Python: if not full_path.is_dir(): return False
-      const taskPath = ".viben/tasks/01-01-task";
-      const exists = fs.existsSync(join("/workspace", taskPath));
-      expect(exists).toBe(false);
-    });
-  });
-
-  describe("clearCurrentTask behavior", () => {
-    /**
-     * Reference: paths.py lines 292-308
-     */
-
-    it("should succeed even if .current-task doesn't exist", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-      vi.mocked(fsPromises.writeFile).mockResolvedValue();
-
-      // Python: try: if current_file.is_file(): current_file.unlink(); return True
-      // Should always return true
-      const result = clearCurrentTask("/workspace");
-
-      expect(result).toBe(true);
-    });
-  });
 });
 
 describe("Python parity - CLI argument handling", () => {

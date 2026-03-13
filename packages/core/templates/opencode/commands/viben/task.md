@@ -343,7 +343,7 @@ When a task directory is provided in the context below, this is an existing task
 | `viben task add-context <task> <path> -r "<reason>"` | Add code-spec/context file to jsonl |
 | `viben task start <task>` | Start task execution (serial mode) |
 | `viben task plan-phase <task>` | Run Plan Agent (research + write prd) |
-| `viben task work-phase <task>` | Run Dispatch Agent (implement → check → pr) |
+| `viben task work-phase <task>` | Run Work Agent (implement → check → pr) |
 | `viben task finish <task>` | Finish specified task |
 | `viben task archive <task>` | Archive completed task |
 

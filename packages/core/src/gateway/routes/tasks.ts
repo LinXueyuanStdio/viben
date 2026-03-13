@@ -102,6 +102,7 @@ import {
   FILE_TASK_JSON,
   createCLIAdapter,
 } from "../../cli/lib/viben-workspace";
+import { getContextJson, getContextText } from "../../task/ops/context-output";
 
 /**
  * Convert UnifiedTask to db Task for events
@@ -4483,9 +4484,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
   // ==========================================================================
   // POST /api/task/context - Get session context for AI agents
+  // Reuses getContextJson from task/ops/context-output.ts (same as CLI)
   // ==========================================================================
   fastify.post<{
-    Querystring: { workspace_path?: string };
+    Querystring: { workspace_path?: string; task_dir?: string };
     Body: { json?: boolean };
   }>("/api/task/context", {
     schema: {
@@ -4495,19 +4497,20 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_dir: { type: "string", description: "Task directory (optional, for current task info)" },
         },
         required: ["workspace_path"],
       },
       body: {
         type: "object",
         properties: {
-          json: { type: "boolean", description: "Return JSON format" },
+          json: { type: "boolean", description: "Return JSON format (default: true)" },
         },
       },
     },
   }, async (request, reply) => {
-    const { workspace_path } = request.query;
-    const { json: jsonFormat } = request.body || {};
+    const { workspace_path, task_dir } = request.query;
+    const { json: jsonFormat = true } = request.body || {};
 
     if (!workspace_path) {
       reply.code(400);
@@ -4515,106 +4518,20 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     try {
-      const developer = getDeveloper(workspace_path) || "";
-      const tasksDir = getTasksDir(workspace_path);
-
-      // Git info
-      const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], workspace_path);
-      const branch = branchOut.trim() || "unknown";
-
-      const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], workspace_path);
-      const statusLines = statusOut.split("\n").filter((line: string) => line.trim());
-      const gitStatusCount = statusLines.length;
-      const isClean = gitStatusCount === 0;
-
-      // Recent commits
-      const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], workspace_path);
-      const commits: Array<{ hash: string; message: string }> = [];
-      for (const line of logOut.split("\n")) {
-        if (line.trim()) {
-          const parts = line.split(" ", 1);
-          const hash = parts[0] || "";
-          const message = line.slice(hash.length + 1) || "";
-          commits.push({ hash, message });
-        }
+      // Resolve task directory if provided
+      let taskDirAbs: string | undefined;
+      if (task_dir) {
+        taskDirAbs = task_dir.startsWith("/") ? task_dir : join(workspace_path, task_dir);
       }
 
-      // Current task
-      let currentTask: {
-        path: string;
-        name: string;
-        status: string;
-        createdAt: string;
-        description: string;
-        hasPrd: boolean;
-      } | null = null;
-      const currentTaskPath = getCurrentTask(workspace_path);
-      if (currentTaskPath) {
-        const currentTaskDir = join(workspace_path, currentTaskPath);
-        const taskData = readTaskJsonFromWorkspace(currentTaskDir);
-        if (taskData) {
-          const prdFile = join(currentTaskDir, "prd.md");
-          currentTask = {
-            path: currentTaskPath,
-            name: String(taskData.name || taskData.id || "unknown"),
-            status: String(taskData.status || "unknown"),
-            createdAt: String(taskData.createdAt || "unknown"),
-            description: String(taskData.description || ""),
-            hasPrd: existsSync(prdFile),
-          };
-        }
+      if (jsonFormat) {
+        // Use shared implementation from task/ops/context-output.ts
+        const contextData = getContextJson(workspace_path, taskDirAbs);
+        return { success: true, data: contextData };
+      } else {
+        const contextText = getContextText(workspace_path, taskDirAbs);
+        return { success: true, data: { context: contextText } };
       }
-
-      // Active tasks
-      const activeTasks = getActiveTasks(workspace_path);
-
-      // My tasks (assigned to developer and not done)
-      const myTasks: Array<{ title: string; priority: string; status: string }> = [];
-      if (developer) {
-        for (const task of activeTasks) {
-          if (task.assignee === developer && task.status !== "done") {
-            myTasks.push({
-              title: task.title,
-              priority: task.priority,
-              status: task.status,
-            });
-          }
-        }
-      }
-
-      // Journal info
-      const journalInfo = getJournalInfo(workspace_path);
-      const journalRelative = journalInfo.file && developer
-        ? `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`
-        : "";
-
-      const contextData = {
-        developer,
-        git: {
-          branch,
-          isClean,
-          uncommittedChanges: gitStatusCount,
-          recentCommits: commits,
-        },
-        currentTask,
-        tasks: {
-          active: activeTasks,
-          directory: `${DIR_VIBEN}/${DIR_TASKS}`,
-        },
-        myTasks,
-        journal: {
-          file: journalRelative,
-          lines: journalInfo.lines,
-          nearLimit: journalInfo.lines > 1800,
-        },
-        paths: {
-          workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
-          tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
-          spec: "docs/specs/",
-        },
-      };
-
-      return { success: true, data: contextData };
     } catch (error) {
       reply.code(500);
       return {

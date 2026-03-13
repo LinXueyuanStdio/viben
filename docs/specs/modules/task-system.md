@@ -1016,13 +1016,92 @@ interface QueueConfig {
 2. **处理依赖阻塞**: 显示任务等待哪些依赖完成
 3. **使用优先级**: P0 > P1 > P2 > P3，合理分配优先级
 
-## Multi-Agent Pipeline (Swarm) 架构
+## Multi-Agent Pipeline 架构
+
+### 任务执行生命周期
+
+任务执行采用分层架构，`viben task start` 是标准启动入口：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           TASK EXECUTION LIFECYCLE                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  [启动] viben task start <task>                                                 │
+│       │                                                                         │
+│       ▼                                                                         │
+│  startTask() ──▶ 读取 start.md 作为 prompt ──▶ AI 执行以下流程:                  │
+│       │                                                                         │
+│       │   ┌─────────────────────────────────────────────────────────────────┐   │
+│       │   │  start.md 流程 (AI 执行)                                        │   │
+│       │   ├─────────────────────────────────────────────────────────────────┤   │
+│       │   │                                                                 │   │
+│       │   │  Phase 1: Plan                                                  │   │
+│       │   │       │                                                         │   │
+│       │   │       ▼                                                         │   │
+│       │   │  viben task plan-phase ──▶ Plan Agent                           │   │
+│       │   │       ├── Validate requirement                                  │   │
+│       │   │       ├── Research codebase                                     │   │
+│       │   │       ├── Configure context (jsonl)                             │   │
+│       │   │       └── Write prd.md                                          │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 2: Work                                                  │   │
+│       │   │       │                                                         │   │
+│       │   │       ▼                                                         │   │
+│       │   │  viben task work-phase ──▶ Work Agent                           │   │
+│       │   │       │                                                         │   │
+│       │   │       │   [自动创建 worktree 当 worktree=true 或有 branch]       │   │
+│       │   │       │                                                         │   │
+│       │   │       └── 调度子 agent (按 next_action 顺序):                    │   │
+│       │   │               ├── Task(implement) ──▶ 实现代码                  │   │
+│       │   │               ├── Task(check) ──────▶ 检查代码                  │   │
+│       │   │               ├── Task(fix) ────────▶ 修复问题                  │   │
+│       │   │               └── create-pr ────────▶ 创建 PR                   │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 3: Report Status                                         │   │
+│       │   │       └── 输出监控命令                                          │   │
+│       │   │                                                                 │   │
+│       │   └─────────────────────────────────────────────────────────────────┘   │
+│       │                                                                         │
+│       ▼                                                                         │
+│  status: in_progress → human_review                                             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  单独阶段命令 (调试/手动控制用，非标准启动入口)                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  viben task plan-phase      ──▶ 单独运行 Plan Agent                             │
+│  viben task work-phase      ──▶ 单独运行 Work Agent (需 prd.md 已存在)           │
+│  viben task implement-phase ──▶ 单独运行 Implement Agent                        │
+│  viben task check-phase     ──▶ 单独运行 Check Agent                            │
+│  viben task create-worktree ──▶ 单独创建 worktree                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  ⚠️ 废弃命令                                                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  viben swarm start ──▶ 废弃，等同于强制 worktree + 直接调用 work-phase           │
+│                        请使用 viben task start 或 viben task work-phase 代替     │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 命令分类
+
+| 命令 | 性质 | 说明 |
+|------|------|------|
+| `viben task start` | **标准启动入口** | 执行完整流程 (plan → work → report) |
+| `viben task plan-phase` | 阶段命令 | start 内部调用，也可单独使用 |
+| `viben task work-phase` | 阶段命令 | start 内部调用，也可单独使用 |
+| `viben task implement-phase` | 阶段命令 | work 内部调用，也可单独使用 |
+| `viben task check-phase` | 阶段命令 | work 内部调用，也可单独使用 |
+| `viben swarm start` | **废弃** | 请使用 `viben task start` 或 `viben task work-phase` |
 
 ### Worktree 与 Task Directory 的分离设计
 
 在 Multi-Agent Pipeline 中，`viben task work-phase` 会为每个任务创建独立的 git worktree（当 task.json 有 `worktree=true` 或 `branch` 时），实现代码隔离。设计上需要区分两个路径：
-
-> ⚠️ **注意**: `viben swarm start` 已废弃，请使用 `viben task work-phase` 代替。
 
 | 路径 | 用途 | 说明 |
 |------|------|------|
@@ -1054,7 +1133,7 @@ worktree (/worktrees/task/my-task/)
 
 ```typescript
 interface WorkPhaseOptions {
-  repoRoot: string;      // 主 repo 路径（用于 registry 和 dispatch agent 验证）
+  repoRoot: string;      // 主 repo 路径（用于 registry 和 work agent 验证）
   workingDir: string;    // agent 工作目录（主 repo 或 worktree）
   taskDir: string;       // task directory 绝对路径（始终指向主 repo）
   // ...

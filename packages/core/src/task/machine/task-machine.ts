@@ -10,7 +10,6 @@
 
 import {
   createMachine,
-  createActor,
   type AnyMachineSnapshot,
   getInitialSnapshot,
   transition,
@@ -505,27 +504,6 @@ export function resolveStateSnapshot(
   }
 
   return currentSnapshot;
-}
-
-/**
- * Create a task actor from initial state
- *
- * @param initialState - Initial XState value (default: "backlog")
- * @param context - Optional context overrides
- * @returns XState actor
- */
-export function createTaskActor(
-  initialState: XStateValue = "backlog",
-  context?: Partial<TaskMachineContext>
-) {
-  // Resolve the state to a proper snapshot
-  const snapshot = resolveStateSnapshot(initialState, context);
-
-  const actor = createActor(taskMachine, {
-    snapshot,
-  });
-
-  return actor;
 }
 
 /**

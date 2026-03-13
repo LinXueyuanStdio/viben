@@ -444,7 +444,7 @@ Error: Cannot enqueue task in 'in_progress' status. Expected: backlog
 `viben task work-phase` 会将任务状态设为 `in_progress`，与 `enqueue` 命令独立：
 
 - `enqueue` 只是入队，不启动执行
-- `work-phase` 启动 dispatch agent 并执行（自动创建 worktree，当 task.json 有 `worktree=true` 或 `branch` 时）
+- `work-phase` 启动 work agent 并执行（自动创建 worktree，当 task.json 有 `worktree=true` 或 `branch` 时）
 
 > ⚠️ **注意**: `viben swarm start` 已废弃，请使用 `viben task work-phase` 代替。
 
@@ -603,9 +603,75 @@ viben task validate-context <task>
 
 ## 任务执行与阶段命令
 
+### 执行架构概述
+
+任务执行采用分层架构：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           TASK EXECUTION LIFECYCLE                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  [启动] viben task start <task>                                                 │
+│       │                                                                         │
+│       ▼                                                                         │
+│  startTask() ──▶ 读取 start.md 作为 prompt ──▶ AI 执行以下流程:                  │
+│       │                                                                         │
+│       │   ┌─────────────────────────────────────────────────────────────────┐   │
+│       │   │  start.md 流程 (AI 执行)                                        │   │
+│       │   ├─────────────────────────────────────────────────────────────────┤   │
+│       │   │                                                                 │   │
+│       │   │  Phase 1: Plan                                                  │   │
+│       │   │       │                                                         │   │
+│       │   │       ▼                                                         │   │
+│       │   │  viben task plan-phase ──▶ Plan Agent                           │   │
+│       │   │       ├── Validate requirement                                  │   │
+│       │   │       ├── Research codebase                                     │   │
+│       │   │       ├── Configure context (jsonl)                             │   │
+│       │   │       └── Write prd.md                                          │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 2: Work                                                  │   │
+│       │   │       │                                                         │   │
+│       │   │       ▼                                                         │   │
+│       │   │  viben task work-phase ──▶ Work Agent                           │   │
+│       │   │       │                                                         │   │
+│       │   │       │   [自动创建 worktree 当 worktree=true 或有 branch]       │   │
+│       │   │       │                                                         │   │
+│       │   │       └── 调度子 agent (按 next_action 顺序):                    │   │
+│       │   │               ├── Task(implement) ──▶ 实现代码                  │   │
+│       │   │               ├── Task(check) ──────▶ 检查代码                  │   │
+│       │   │               ├── Task(fix) ────────▶ 修复问题                  │   │
+│       │   │               └── create-pr ────────▶ 创建 PR                   │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 3: Report Status                                         │   │
+│       │   │       └── 输出监控命令                                          │   │
+│       │   │                                                                 │   │
+│       │   └─────────────────────────────────────────────────────────────────┘   │
+│       │                                                                         │
+│       ▼                                                                         │
+│  status: in_progress → human_review                                             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 命令分类
+
+| 命令 | 性质 | 说明 |
+|------|------|------|
+| `viben task start` | **标准启动入口** | 执行完整流程 (plan → work → report) |
+| `viben task plan-phase` | 阶段命令 | start 内部调用，也可单独使用 |
+| `viben task work-phase` | 阶段命令 | start 内部调用，也可单独使用 |
+| `viben task implement-phase` | 阶段命令 | work 内部调用，也可单独使用 |
+| `viben task check-phase` | 阶段命令 | work 内部调用，也可单独使用 |
+| `viben task create-worktree` | 辅助命令 | 单独创建 worktree |
+
+> ⚠️ **注意**: `viben swarm start` 已废弃，请使用 `viben task start` 或 `viben task work-phase` 代替。
+
+---
+
 ### `viben task start`
 
-启动任务执行（统一入口）。
+启动任务执行（标准入口）。
 
 ```bash
 viben task start <task> [options]
@@ -620,11 +686,15 @@ viben task start <task> [options]
 | `--resume` | 恢复已有的智能体 session |
 | `--session <id>` | 指定 session-id（配合 --resume） |
 
-**流程**:
-1. 读取 `/viben:start` 命令内容
-2. 以 prompt 方式发送给 Claude
-3. `/viben:start` 会依次执行 plan-phase → work-phase
-4. 注册 agent 到 registry
+**执行流程**:
+1. 调用 `startTask()` (phase/start.ts)
+2. 读取 `/viben:start` 命令内容 (start.md)
+3. 以 prompt 方式发送给 Claude
+4. AI 执行 start.md 中定义的流程:
+   - Phase 1: `viben task plan-phase` → Plan Agent
+   - Phase 2: `viben task work-phase` → Work Agent
+   - Phase 3: Report Status
+5. 注册 agent 到 registry
 
 **示例**:
 ```bash
@@ -670,7 +740,7 @@ viben task plan-phase 03-11-user-auth --platform cursor
 
 ### `viben task work-phase`
 
-运行 Work Phase，启动 Dispatch Agent 执行任务。
+运行 Work Phase，启动 Work Agent 执行任务。
 
 ```bash
 viben task work-phase <task> [options]
@@ -686,12 +756,12 @@ viben task work-phase <task> [options]
 **前置条件**:
 - `task.json` 必须存在
 - `prd.md` 必须存在（plan phase 已完成）
-- `dispatch` agent 必须存在
+- `work` agent 必须存在
 
 **自动 worktree 创建**:
 当 task.json 有 `worktree=true` 或 `branch` 字段时，自动创建 git worktree。
 
-**Dispatch Agent 流程**:
+**Work Agent 流程**:
 1. 读取 task.json 的 `next_action` 数组
 2. 按顺序执行每个 action:
    - `implement` → 调用 implement agent
@@ -1033,7 +1103,7 @@ viben task create-pr add-user-auth --dry-run   # 预览
 - [ ] `viben task start` 启动任务执行（统一入口）
 - [ ] `viben task start --resume` 恢复智能体
 - [ ] `viben task plan-phase` 启动 Plan Agent
-- [ ] `viben task work-phase` 启动 Dispatch Agent（自动创建 worktree）
+- [ ] `viben task work-phase` 启动 Work Agent（自动创建 worktree）
 - [ ] `viben task implement-phase` 直接运行 Implement Phase
 - [ ] `viben task check-phase` 直接运行 Check Phase
 - [ ] `viben task create-worktree` 创建 git worktree
@@ -1061,12 +1131,12 @@ viben task create-pr add-user-auth --dry-run   # 预览
 | `packages/core/src/cli/lib/viben-workspace.ts` | 工具函数 (`validateStatusTransition`, `appendTaskEvent`, `updateTaskStatus`) |
 | `packages/core/src/task/phase/start.ts` | `startTask()` - 统一执行入口 |
 | `packages/core/src/task/phase/plan.ts` | `runPlanPhase()` - Plan Agent 启动 |
-| `packages/core/src/task/phase/work.ts` | `runWorkPhase()` - Dispatch Agent 启动 |
+| `packages/core/src/task/phase/work.ts` | `runWorkPhase()` - Work Agent 启动 |
 | `packages/core/src/task/phase/implement.ts` | `runImplementPhase()` - Implement Agent 启动 |
 | `packages/core/src/task/phase/check.ts` | `runCheckPhase()` - Check Agent 启动 |
 | `packages/core/src/task/phase/worktree.ts` | `runCreateWorktree()` - Git worktree 创建 |
 | `.claude/agents/plan.md` | Plan Agent 配置 |
-| `.claude/agents/dispatch.md` | Dispatch Agent 配置 |
+| `.claude/agents/work.md` | Work Agent 配置 |
 | `.claude/agents/implement.md` | Implement Agent 配置 |
 | `.claude/agents/check.md` | Check Agent 配置 |
 | `.claude/agents/fix.md` | Fix Agent 配置 |

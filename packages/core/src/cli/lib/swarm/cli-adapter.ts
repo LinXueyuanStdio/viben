@@ -19,7 +19,7 @@
  *
  *   const adapter = createCLIAdapter('opencode');
  *   const cmd = adapter.buildRunCommand({
- *     agent: 'dispatch',
+ *     agent: 'work',
  *     sessionId: 'abc123',
  *     prompt: 'Start the pipeline'
  *   });
@@ -240,7 +240,7 @@ export class CLIAdapter implements ICLIAdapter {
   /**
    * Get platform-specific agent name
    *
-   * @param agent - Original agent name (e.g., 'plan', 'dispatch')
+   * @param agent - Original agent name (e.g., 'plan', 'work')
    * @returns Platform-specific agent name (e.g., 'viben-plan' for OpenCode)
    */
   getAgentName(agent: string): string {

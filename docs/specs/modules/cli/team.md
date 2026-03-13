@@ -191,7 +191,7 @@ docs/specs/
 ├── agents/                  # 子智能体
 │   ├── check.md
 │   ├── fix.md
-│   ├── dispatch.md
+│   ├── work.md
 │   ├── implement.md
 │   ├── plan.md
 │   └── research.md

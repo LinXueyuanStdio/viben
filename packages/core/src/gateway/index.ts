@@ -96,26 +96,6 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   const fastify = (await import("fastify")).default;
   const app = fastify({ logger: true });
 
-  // Override default JSON parser to handle empty bodies gracefully
-  // This fixes "Unexpected end of JSON input" errors on POST requests with empty body
-  app.removeContentTypeParser("application/json");
-  app.addContentTypeParser(
-    "application/json",
-    { parseAs: "string" },
-    (req, body: string, done) => {
-      if (!body || body.trim() === "") {
-        done(null, {});
-        return;
-      }
-      try {
-        const json = JSON.parse(body);
-        done(null, json);
-      } catch (err) {
-        done(err as Error, undefined);
-      }
-    }
-  );
-
   // Enable CORS if configured
   if (cors) {
     const corsPlugin = await import("@fastify/cors");

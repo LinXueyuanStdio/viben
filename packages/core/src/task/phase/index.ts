@@ -46,7 +46,7 @@ export {
   type CheckPhaseResult,
 } from "./check";
 
-// Work Phase (dispatch agent - reusable by swarm start)
+// Work Phase (work agent - reusable by swarm start)
 export {
   runWorkPhase,
   type WorkPhaseOptions,

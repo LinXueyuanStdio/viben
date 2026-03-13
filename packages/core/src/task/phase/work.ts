@@ -1,13 +1,13 @@
 /**
  * Work Phase Runner
  *
- * Core logic for spawning the dispatch agent. This module is the primary entry point for:
+ * Core logic for spawning the work agent. This module is the primary entry point for:
  * - `viben task work-phase` - runs in current repo or worktree (preferred)
  *
  * NOTE: `viben swarm start` is DEPRECATED. Use `viben task work-phase` instead.
  *       The work-phase command auto-creates worktree when task.json has `worktree=true` or `branch` set.
  *
- * The dispatch agent will:
+ * The work agent will:
  *    1. Read task.json from the task directory
  *    2. Execute each action in next_action array in order
  *    3. Actions typically include: implement, check, finish, create-pr
@@ -157,7 +157,7 @@ function extractSessionIdFromLog(logContent: string): string | null {
 /**
  * Run the work phase for a task
  *
- * This is the core dispatch agent spawning logic used by `viben task work-phase`.
+ * This is the core work agent spawning logic used by `viben task work-phase`.
  *
  * - When task.json has NO worktree flag: workingDir = repoRoot
  * - When task.json has worktree=true or branch: workingDir = worktreePath (auto-created)
@@ -215,12 +215,12 @@ export async function runWorkPhase(
     };
   }
 
-  // 3. Check dispatch agent exists
-  const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
-  if (!existsSync(dispatchMd)) {
+  // 3. Check work agent exists
+  const workMd = adapter.getAgentConfigPath("work", repoRoot);
+  if (!existsSync(workMd)) {
     return {
       success: false,
-      error: `dispatch agent not found at ${dispatchMd}. Platform: ${platform}`,
+      error: `work agent not found at ${workMd}. Platform: ${platform}`,
     };
   }
 
@@ -272,7 +272,7 @@ export async function runWorkPhase(
 
   // Build CLI command using adapter
   const cliCmd = adapter.buildRunCommand({
-    agent: "dispatch",
+    agent: "work",
     prompt: `task_dir: ${taskDirRelative}
 
 Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
@@ -302,7 +302,7 @@ Follow your agent instructions to execute the task workflow. Read task.json from
   } catch (error) {
     return {
       success: false,
-      error: `Failed to spawn dispatch agent: ${error}`,
+      error: `Failed to spawn work agent: ${error}`,
     };
   }
 
