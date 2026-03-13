@@ -79,7 +79,6 @@ interface TaskData {
   title?: string;
   description?: string;
   status?: string;
-  dev_type?: string;
   session_id?: string;
   [key: string]: unknown;
 }

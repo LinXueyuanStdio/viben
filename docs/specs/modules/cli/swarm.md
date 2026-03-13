@@ -2,6 +2,10 @@
 
 > 智能体集群调度命令，管理多智能体并行开发。
 
+> ⚠️ **DEPRECATION NOTICE**: `viben swarm start` 已废弃，请使用 `viben task work-phase <task>` 代替。
+> - `viben swarm start <task>` → `viben task work-phase <task>`（自动创建 worktree，当 task.json 有 `worktree=true` 或 `branch` 时）
+> - 其他 swarm 命令（status, stop, cleanup, registry, list）保持不变
+
 ## 概述
 
 `viben swarm` 命令用于管理智能体集群，支持在独立的 Git worktree 中启动多个智能体并行工作。设计参考了 Trellis 的 `multi_agent/` 脚本。
@@ -16,11 +20,17 @@ viben swarm <subcommand> [options]
 
 ## 启动智能体
 
-### `viben swarm start`
+### `viben swarm start` (DEPRECATED)
+
+> ⚠️ **已废弃**: 请使用 `viben task work-phase <task>` 代替。
 
 启动智能体到独立 worktree 执行任务。
 
 ```bash
+# DEPRECATED - 请使用以下命令代替
+viben task work-phase <task>
+
+# 旧命令（仍可使用，但会显示废弃警告）
 viben swarm start <task> [options]
 ```
 
@@ -322,7 +332,8 @@ viben swarm cleanup --list
 │      └── registry.json                                   │
 └─────────────────────────────────────────────────────────┘
                           │
-                          │ viben swarm start
+                          │ viben task work-phase (推荐)
+                          │ viben swarm start (已废弃)
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Worktree (Isolated Branch)                  │
@@ -385,14 +396,14 @@ post_create:
 
 ## Trellis 命令映射
 
-| Trellis 命令 | viben 命令 |
-|-------------|-----------|
-| `start.py <task-dir>` | `viben swarm start <task>` |
-| `cleanup.py --list` | `viben swarm list` |
-| `cleanup.py <branch>` | `viben swarm cleanup <branch>` |
-| `cleanup.py --merged` | `viben swarm cleanup --merged` |
-| `cleanup.py --all` | `viben swarm cleanup --all` |
-| `status.py --registry` | `viben swarm registry` |
+| Trellis 命令 | viben 命令 | 备注 |
+|-------------|-----------|------|
+| `start.py <task-dir>` | `viben task work-phase <task>` | ~~`viben swarm start`~~ 已废弃 |
+| `cleanup.py --list` | `viben swarm list` | |
+| `cleanup.py <branch>` | `viben swarm cleanup <branch>` | |
+| `cleanup.py --merged` | `viben swarm cleanup --merged` | |
+| `cleanup.py --all` | `viben swarm cleanup --all` | |
+| `status.py --registry` | `viben swarm registry` | |
 
 ---
 

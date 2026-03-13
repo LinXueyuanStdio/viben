@@ -157,7 +157,6 @@ function toSnakeCaseTask(task: UnifiedTask) {
     current_phase: task.current_phase ?? 0,
     // Organization fields
     priority: task.priority || "P2",
-    dev_type: task.dev_type ?? null,
     workspace_path: task.workspacePath ?? null,
     // People
     creator: task.creator ?? null,
@@ -523,7 +522,6 @@ interface CreateTaskInput {
   prompt?: string;
   status?: string;
   priority?: string;
-  dev_type?: string;
   creator?: string;
   assignee?: string;
   sessionId?: string;
@@ -554,7 +552,6 @@ interface UpdateTaskInput {
   prompt?: string;
   status?: string;
   priority?: string;
-  dev_type?: string;
   assignee?: string;
   cost?: number;
   duration?: number;
@@ -883,7 +880,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       prompt: input.prompt ?? sourceTask?.prompt ?? input.description,
       status,
       priority: input.priority ?? sourceTask?.priority ?? "P2",
-      dev_type: input.dev_type ?? sourceTask?.dev_type,
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
       agent: input.agentId || input.agent_id || sourceTask?.agent,
@@ -959,7 +955,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         taskUpdates.status = taskService.normalizeStatus(updates.status);
       }
       if (updates.priority !== undefined) taskUpdates.priority = updates.priority;
-      if (updates.dev_type !== undefined) taskUpdates.dev_type = updates.dev_type;
       if (updates.assignee !== undefined) taskUpdates.assignee = updates.assignee;
       if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
       if (updates.duration !== undefined) taskUpdates.duration = updates.duration;
@@ -1744,24 +1739,24 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   }
 
   // POST /api/task/init-context - Initialize context files for task
+  // Creates empty jsonl files with only workflow.md as base context
+  // Use add-context endpoint to manually add specific context files
   fastify.post<{
     Body: {
       workspace_path: string;
       task_id: string;
-      dev_type: string;
     };
   }>("/api/task/init-context", {
     schema: {
-      description: "Initialize context files (implement.jsonl, check.jsonl, fix.jsonl) for a task",
+      description: "Initialize empty context files (implement.jsonl, check.jsonl, fix.jsonl) for a task. Use add-context to add specific files.",
       tags: ["tasks"],
       body: {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
           task_id: { type: "string", description: "Task ID or directory" },
-          dev_type: { type: "string", enum: ["backend", "frontend", "fullstack", "test", "docs"], description: "Development type" },
         },
-        required: ["workspace_path", "task_id", "dev_type"],
+        required: ["workspace_path", "task_id"],
       },
       response: {
         200: {
@@ -1769,7 +1764,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           properties: {
             success: { type: "boolean" },
             task_id: { type: "string" },
-            dev_type: { type: "string" },
             files_created: {
               type: "array",
               items: { type: "string" },
@@ -1791,17 +1785,11 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, task_id, dev_type } = request.body;
+    const { workspace_path, task_id } = request.body;
 
-    if (!workspace_path || !task_id || !dev_type) {
+    if (!workspace_path || !task_id) {
       reply.code(400);
-      return { error: "workspace_path, task_id, and dev_type are required" };
-    }
-
-    const validTypes = ["backend", "frontend", "fullstack", "test", "docs"];
-    if (!validTypes.includes(dev_type)) {
-      reply.code(400);
-      return { error: `dev_type must be one of: ${validTypes.join(", ")}` };
+      return { error: "workspace_path and task_id are required" };
     }
 
     const taskDir = await taskService.findTaskById(workspace_path, task_id);
@@ -1812,75 +1800,29 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
     const filesCreated: string[] = [];
 
-    // Create implement.jsonl
+    // Create implement.jsonl with only workflow.md as base context
     const implementEntries: ContextEntry[] = [
       { file: `${DIR_VIBEN}/workflow.md`, reason: "Project workflow and conventions" },
     ];
-
-    if (dev_type === "backend" || dev_type === "test" || dev_type === "fullstack") {
-      implementEntries.push({
-        file: "docs/specs/backend/index.md",
-        reason: "Backend development guide",
-      });
-    }
-    if (dev_type === "frontend" || dev_type === "fullstack") {
-      implementEntries.push({
-        file: "docs/specs/frontend/index.md",
-        reason: "Frontend development guide",
-      });
-    }
-
     const implementFile = join(taskDir, "implement.jsonl");
     writeJsonlFile(implementFile, implementEntries as unknown as Array<Record<string, unknown>>);
     filesCreated.push("implement.jsonl");
 
-    // Create check.jsonl
-    const checkEntries: ContextEntry[] = [
-      { file: ".claude/commands/viben/finish-work.md", reason: "Finish work checklist" },
-    ];
-    if (dev_type === "backend" || dev_type === "fullstack") {
-      checkEntries.push({
-        file: ".claude/commands/viben/check-backend.md",
-        reason: "Backend check spec",
-      });
-    }
-    if (dev_type === "frontend" || dev_type === "fullstack") {
-      checkEntries.push({
-        file: ".claude/commands/viben/check-frontend.md",
-        reason: "Frontend check spec",
-      });
-    }
-
+    // Create empty check.jsonl
+    const checkEntries: ContextEntry[] = [];
     const checkFile = join(taskDir, "check.jsonl");
     writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
     filesCreated.push("check.jsonl");
 
-    // Create fix.jsonl
-    const debugEntries: ContextEntry[] = [];
-    if (dev_type === "backend" || dev_type === "fullstack") {
-      debugEntries.push({
-        file: ".claude/commands/viben/check-backend.md",
-        reason: "Backend check spec",
-      });
-    }
-    if (dev_type === "frontend" || dev_type === "fullstack") {
-      debugEntries.push({
-        file: ".claude/commands/viben/check-frontend.md",
-        reason: "Frontend check spec",
-      });
-    }
-
+    // Create empty fix.jsonl
+    const fixEntries: ContextEntry[] = [];
     const fixFile = join(taskDir, "fix.jsonl");
-    writeJsonlFile(fixFile, debugEntries as unknown as Array<Record<string, unknown>>);
+    writeJsonlFile(fixFile, fixEntries as unknown as Array<Record<string, unknown>>);
     filesCreated.push("fix.jsonl");
-
-    // Update task.json with dev_type
-    updateTaskField(taskDir, "dev_type", dev_type);
 
     return {
       success: true,
       task_id,
-      dev_type,
       files_created: filesCreated,
     };
   });
@@ -4515,7 +4457,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           description: taskData.description,
           status: taskData.status,
           priority: taskData.priority,
-          dev_type: taskData.dev_type,
           branch: taskData.branch,
           base_branch: taskData.base_branch,
           pr_url: taskData.pr_url,
@@ -4838,7 +4779,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
               title: taskData.title,
               status: taskData.status,
               priority: taskData.priority,
-              dev_type: taskData.dev_type,
               branch: taskData.branch,
               pr_url: taskData.pr_url,
               current_phase: taskData.current_phase,
@@ -4967,20 +4907,9 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
       const taskName = String(taskData.name || "");
       const baseBranch = String(taskData.base_branch || "main");
-      const devType = String(taskData.dev_type || "feature");
 
-      const prefixMap: Record<string, string> = {
-        feature: "feat",
-        frontend: "feat",
-        backend: "feat",
-        fullstack: "feat",
-        bugfix: "fix",
-        fix: "fix",
-        refactor: "refactor",
-        docs: "docs",
-        test: "test",
-      };
-      const commitPrefix = prefixMap[devType] || "feat";
+      // All task branches use "feat" prefix
+      const commitPrefix = "feat";
 
       // Get current branch
       const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);

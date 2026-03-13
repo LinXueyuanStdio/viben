@@ -14,6 +14,11 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Externalize server-side only packages from @viben/core
+  // These are optional dependencies that use dynamic import with fallback
+  ssr: {
+    external: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
+  },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors
@@ -49,6 +54,8 @@ export default defineConfig(async () => ({
   build: {
     // Enable code splitting for dynamic imports
     rollupOptions: {
+      // Externalize server-side only packages
+      external: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
       output: {
         // Manual chunk splitting for better caching
         manualChunks: {
@@ -77,5 +84,7 @@ export default defineConfig(async () => ({
       "i18next",
       "react-i18next",
     ],
+    // Exclude server-side only packages from pre-bundling
+    exclude: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
   },
 }));

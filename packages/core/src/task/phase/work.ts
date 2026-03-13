@@ -1,9 +1,11 @@
 /**
  * Work Phase Runner
  *
- * Core logic for spawning the dispatch agent. This module is reused by:
- * - `viben task work-phase` - runs in current repo
- * - `viben swarm start` - runs in worktree
+ * Core logic for spawning the dispatch agent. This module is the primary entry point for:
+ * - `viben task work-phase` - runs in current repo or worktree (preferred)
+ *
+ * NOTE: `viben swarm start` is DEPRECATED. Use `viben task work-phase` instead.
+ *       The work-phase command auto-creates worktree when task.json has `worktree=true` or `branch` set.
  *
  * The dispatch agent will:
  *    1. Read task.json from the task directory
@@ -22,7 +24,7 @@
  *   platform: "claude",
  * });
  *
- * // Run in worktree (called by swarm start)
+ * // Run in worktree (auto-created by work-phase when worktree=true in task.json)
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/worktree",
@@ -155,9 +157,12 @@ function extractSessionIdFromLog(logContent: string): string | null {
 /**
  * Run the work phase for a task
  *
- * This is the core dispatch agent spawning logic, reused by:
- * - `viben task work-phase` (workingDir = repoRoot)
- * - `viben swarm start` (workingDir = worktreePath)
+ * This is the core dispatch agent spawning logic used by `viben task work-phase`.
+ *
+ * - When task.json has NO worktree flag: workingDir = repoRoot
+ * - When task.json has worktree=true or branch: workingDir = worktreePath (auto-created)
+ *
+ * NOTE: `viben swarm start` is DEPRECATED. Use `viben task work-phase` instead.
  *
  * @param options - Work phase options
  * @returns WorkPhaseResult with success status and details

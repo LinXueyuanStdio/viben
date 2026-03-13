@@ -130,7 +130,6 @@ export async function runCheckPhase(
   }
 
   const taskName = (taskData.name as string) || (taskData.id as string) || "unknown";
-  const devType = (taskData.dev_type as string) || "fullstack";
 
   // Validate prd.md exists (requirements to check against)
   const prdPath = join(taskDirAbs, "prd.md");
@@ -174,7 +173,6 @@ export async function runCheckPhase(
   const env = { ...process.env };
   env.REVIEW_TASK_NAME = taskName;
   env.REVIEW_TASK_DIR = taskDirRelative;
-  env.REVIEW_DEV_TYPE = devType;
   Object.assign(env, adapter.getNonInteractiveEnv());
 
   // Build the prompt for the check agent

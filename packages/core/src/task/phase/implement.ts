@@ -66,7 +66,6 @@ export interface ImplementPhaseResult {
 interface TaskData {
   id?: string;
   name?: string;
-  dev_type?: string;
   [key: string]: unknown;
 }
 
@@ -162,7 +161,6 @@ export async function runImplementPhase(
 
   // Get task identification
   const taskName = taskData.name || taskData.id || "unknown";
-  const devType = taskData.dev_type || "unknown";
 
   // =============================================================================
   // Set Up Environment
@@ -173,7 +171,6 @@ export async function runImplementPhase(
   // Task-specific environment variables
   env.IMPLEMENT_TASK_NAME = taskName;
   env.IMPLEMENT_TASK_DIR = taskDirRelative;
-  env.IMPLEMENT_DEV_TYPE = devType;
 
   // Proxy environment variables
   env.https_proxy = process.env.https_proxy || "";
@@ -347,7 +344,6 @@ export function runImplementPhaseSync(
 
   // Get task identification
   const taskName = taskData.name || taskData.id || "unknown";
-  const devType = taskData.dev_type || "unknown";
 
   // =============================================================================
   // Set Up Environment
@@ -358,7 +354,6 @@ export function runImplementPhaseSync(
   // Task-specific environment variables
   env.IMPLEMENT_TASK_NAME = taskName;
   env.IMPLEMENT_TASK_DIR = taskDirRelative;
-  env.IMPLEMENT_DEV_TYPE = devType;
 
   // Proxy environment variables
   env.https_proxy = process.env.https_proxy || "";

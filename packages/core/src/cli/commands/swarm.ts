@@ -798,10 +798,10 @@ export function registerSwarmCommand(program: Command): void {
       }
     });
 
-  // swarm start - start an agent
+  // swarm start - start an agent (DEPRECATED)
   swarm
     .command("start")
-    .description("Start an agent in a worktree")
+    .description("[DEPRECATED] Start an agent in a worktree. Use 'viben task work-phase <task>' instead.")
     .argument("<task>", "Task name or directory")
     .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
     .option("--detach", "Run in background")
@@ -810,6 +810,12 @@ export function registerSwarmCommand(program: Command): void {
     .action(async (task: string, options) => {
       const ctx = getOutputContext(program);
       const repoRoot = findVibenRoot();
+
+      // Show deprecation warning
+      console.log(chalk.yellow("⚠️  DEPRECATED: 'viben swarm start' is deprecated."));
+      console.log(chalk.yellow("   Please use 'viben task work-phase <task>' instead."));
+      console.log(chalk.yellow("   This command will be removed in a future version."));
+      console.log();
 
       if (!repoRoot) {
         handleCommandError(ctx, new Error("Not in a Viben workspace"));

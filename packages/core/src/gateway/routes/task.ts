@@ -315,7 +315,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
             assignee: { type: "string", description: "Assignee" },
             priority: { type: "string", enum: ["P0", "P1", "P2", "P3"] },
             agent: { type: "string", description: "Agent ID" },
-            dev_type: { type: "string", enum: ["frontend", "backend", "fullstack"] },
             executor: { type: "string", description: "Executor type" },
             model: { type: "string", description: "Model ID" },
           },
@@ -466,7 +465,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
             description: { type: "string" },
             assignee: { type: "string" },
             priority: { type: "string" },
-            dev_type: { type: "string" },
             branch: { type: "string" },
             base_branch: { type: "string" },
             agent: { type: "string" },
@@ -492,7 +490,6 @@ export function registerUnifiedTaskRoutes(fastify: FastifyInstance, state: AppSt
         if (updates.description !== undefined) taskUpdates.description = updates.description;
         if (updates.assignee !== undefined) taskUpdates.assignee = updates.assignee;
         if (updates.priority !== undefined) taskUpdates.priority = updates.priority;
-        if (updates.dev_type !== undefined) taskUpdates.dev_type = updates.dev_type;
         if (updates.branch !== undefined) taskUpdates.branch = updates.branch;
         if (updates.base_branch !== undefined) taskUpdates.base_branch = updates.base_branch;
         if (updates.agent !== undefined) taskUpdates.agent = updates.agent;
