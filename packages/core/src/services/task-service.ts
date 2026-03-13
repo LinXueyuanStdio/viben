@@ -201,8 +201,6 @@ export interface UnifiedTask {
   // === Organization/Classification ===
   /** Priority level */
   priority: string; // P0, P1, P2, P3
-  /** Development type */
-  dev_type?: string; // backend, frontend, fullstack, test, docs
 
   // === People ===
   /** Task creator */
@@ -505,7 +503,6 @@ export class TaskService {
         { phase: 4, action: "create-pr" },
       ],
       priority: task.priority || "P2",
-      dev_type: task.dev_type,
       creator: task.creator,
       assignee: task.assignee,
       branch: task.branch,

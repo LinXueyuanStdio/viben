@@ -76,7 +76,6 @@ export interface Task {
 
   // === Organization ===
   priority?: string;       // P0, P1, P2, P3
-  dev_type?: string;       // backend, frontend, fullstack, test, docs
   scope?: string;
   workspace_path: string | null;
 
