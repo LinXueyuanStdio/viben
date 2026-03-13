@@ -35,7 +35,18 @@ This shows: developer identity, git status, task context (specs and patterns).
 
 Choose one approach:
 
-### Option A: Write PRD Manually
+### Option A: Use Plan Phase (Recommended)
+
+```bash
+viben task plan-phase "$TASK_DIR"
+```
+
+Plan Agent will:
+1. Research codebase for relevant patterns
+2. Configure additional context files
+3. Write prd.md with acceptance criteria
+
+### Option B: Write PRD Manually
 
 Create `prd.md` in the task directory with:
 
@@ -56,19 +67,6 @@ Create `prd.md` in the task directory with:
 ## Technical Notes
 <Any technical decisions or constraints>
 ```
-
-### Option B: Use Plan Phase
-
-For complex features that need research:
-
-```bash
-viben task plan-phase "$TASK_DIR"
-```
-
-Plan Agent will:
-1. Research codebase for relevant patterns
-2. Configure additional context files
-3. Write prd.md with acceptance criteria
 
 ---
 
