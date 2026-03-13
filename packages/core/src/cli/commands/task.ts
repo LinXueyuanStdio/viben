@@ -1902,10 +1902,10 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task work-phase - Run dispatch agent for a task
+  // task work-phase - Run work agent for a task
   taskCmd
     .command("work-phase")
-    .description("Run work phase for a task (spawns dispatch agent)")
+    .description("Run work phase for a task (spawns work agent)")
     .argument("<task>", "Task name or directory")
     .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
     .option("-v, --verbose", "Enable verbose output")
@@ -1924,13 +1924,13 @@ export function registerTaskCommand(program: Command): void {
           throw CliError.notFound("Task", task);
         }
 
-        // Check dispatch agent exists
+        // Check work agent exists
         const adapter = createCLIAdapter(platform);
-        const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
-        if (!existsSync(dispatchMd)) {
+        const workMd = adapter.getAgentConfigPath("work", repoRoot);
+        if (!existsSync(workMd)) {
           throw CliError.operationFailed(
             "Work Phase",
-            `dispatch agent not found at ${dispatchMd}. Platform: ${platform}`
+            `work agent not found at ${workMd}. Platform: ${platform}`
           );
         }
 
@@ -2036,7 +2036,7 @@ export function registerTaskCommand(program: Command): void {
         });
 
         if (result.success) {
-          console.log(chalk.green("=== Dispatch Agent Started ==="));
+          console.log(chalk.green("=== Work Agent Started ==="));
           console.log();
           console.log(`  ID:       ${result.agentId}`);
           console.log(`  PID:      ${result.pid}`);

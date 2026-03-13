@@ -458,7 +458,6 @@ export {
   xstateToTaskStatus,
   xstateToExecutionPhase,
   getStateValue,
-  createTaskActor,
   getNextState,
   type XStateValue as TaskXStateValue,
   type TaskMachineContext,

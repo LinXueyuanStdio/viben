@@ -2,9 +2,19 @@
 
 > 智能体集群调度命令，管理多智能体并行开发。
 
-> ⚠️ **DEPRECATION NOTICE**: `viben swarm start` 已废弃，请使用 `viben task work-phase <task>` 代替。
-> - `viben swarm start <task>` → `viben task work-phase <task>`（自动创建 worktree，当 task.json 有 `worktree=true` 或 `branch` 时）
-> - 其他 swarm 命令（status, stop, cleanup, registry, list）保持不变
+> ⚠️ **DEPRECATION NOTICE**: `viben swarm start` 已废弃。
+>
+> **推荐替代命令**：
+> - 完整流程（plan → work）：`viben task start <task>`
+> - 仅执行 work 阶段（跳过 plan）：`viben task work-phase <task>`
+>
+> **迁移指南**：
+> | 旧命令 | 新命令 | 说明 |
+> |--------|--------|------|
+> | `viben swarm start <task>` | `viben task start <task>` | 完整执行流程（推荐） |
+> | `viben swarm start <task>` | `viben task work-phase <task>` | 仅 work 阶段（需 prd.md 已存在） |
+>
+> 其他 swarm 命令（status, stop, cleanup, registry, list）保持不变。
 
 ## 概述
 
@@ -45,12 +55,12 @@ viben swarm start <task> [options]
 **前置条件**:
 - `task.json` 必须存在且设置了 `branch` 字段
 - Plan Agent 已完成（prd.md 存在）
-- `agents/dispatch.md` 存在
+- `agents/work.md` 存在
 
 **流程**:
 1. 创建 worktree（如果不存在）并安装依赖
 2. 复制环境文件（从 worktree.yaml 配置）
-3. 启动 Dispatch Agent 后台运行
+3. 启动 Work Agent 后台运行
 4. 注册 agent 到 registry.json
 
 **示例**:
@@ -345,7 +355,7 @@ viben swarm cleanup --list
 │  ├── .agent-log                                          │
 │  └── .session-id                                         │
 │                                                          │
-│  [Dispatch Agent Running]                                │
+│  [Work Agent Running]                                │
 │    └── Executes task phases: implement → check → finish │
 └─────────────────────────────────────────────────────────┘
 ```

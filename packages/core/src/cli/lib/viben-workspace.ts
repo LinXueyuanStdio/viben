@@ -932,57 +932,6 @@ export function resolveTaskDirectory(
 }
 
 // =============================================================================
-// Current Task Operations
-// =============================================================================
-
-/**
- * Set the current task
- *
- * @param taskPath - Task directory path (relative to repo root)
- * @param repoRoot - Repository root path
- * @returns True on success, false on error
- */
-export function setCurrentTask(taskPath: string, repoRoot: string): boolean {
-  if (!taskPath) {
-    return false;
-  }
-
-  // Verify task directory exists
-  const fullPath = join(repoRoot, taskPath);
-  if (!existsSync(fullPath) || !statSync(fullPath).isDirectory()) {
-    return false;
-  }
-
-  const currentFile = join(repoRoot, DIR_VIBEN, FILE_CURRENT_TASK);
-
-  try {
-    writeFileSync(currentFile, taskPath, "utf-8");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Clear the current task
- *
- * @param repoRoot - Repository root path
- * @returns True on success
- */
-export function clearCurrentTask(repoRoot: string): boolean {
-  const currentFile = join(repoRoot, DIR_VIBEN, FILE_CURRENT_TASK);
-
-  try {
-    if (existsSync(currentFile)) {
-      unlinkSync(currentFile);
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// =============================================================================
 // Task Archive Operations
 // =============================================================================
 

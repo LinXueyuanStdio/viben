@@ -124,8 +124,14 @@ viben task add-session \
 ### Multi-Agent Operations
 
 ```bash
-# Start worktree agent
-viben swarm start <task> [--platform <platform>]
+# Start task (complete workflow: plan → work → report)
+viben task start <task>
+
+# Run work phase only (requires prd.md exists)
+viben task work-phase <task>
+
+# Run plan phase only
+viben task plan-phase <task>
 
 # Monitor agent status
 viben swarm status [<task>] [--detail] [--watch]
@@ -144,10 +150,9 @@ viben swarm registry
 
 # Create PR from task
 viben task create-pr [<task>] [--dry-run]
-
-# Start plan agent
-viben task plan -n <name> -t <type> -r "<requirement>"
 ```
+
+> ⚠️ **Note**: `viben swarm start` is deprecated. Use `viben task start` for complete workflow or `viben task work-phase` for work phase only.
 
 ---
 
@@ -169,7 +174,7 @@ Use `--verbose` for detailed output during debugging:
 
 ```bash
 viben task create "My Task" --verbose
-viben swarm start my-task --verbose
+viben task start my-task --verbose
 ```
 
 ---

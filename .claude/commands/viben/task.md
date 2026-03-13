@@ -49,7 +49,7 @@ viben task start <task> [options]
 | `--resume` | 恢复已有 session | false |
 | `--session <id>` | 指定要恢复的 session ID | - |
 
-这会启动 dispatch agent，自动完成：
+这会启动 start.md 工作流，自动完成：
 - Plan Agent: 分析代码库，编写 PRD
 - Implement Agent: 实现功能
 - Check Agent: 检查代码质量
@@ -78,8 +78,8 @@ viben task start <task> --resume --session <session-id>
 | `viben task create "<title>" --slug <name>` | 创建任务目录 |
 | `viben task start <task>` | 启动任务执行 |
 | `viben task list` | 列出活跃任务 |
-| `viben task list <task>` | 查看任务详情 |
+| `viben task view <task>` | 查看任务详情 |
 | `viben task context <task>` | 获取任务上下文 |
-| `viben task finish <task>` | 完成任务 |
-| `viben task work-phase <task>` | 运行 dispatch agent |
 | `viben task plan-phase <task>` | 运行 plan agent |
+| `viben task work-phase <task>` | 运行 work agent |
+| `viben task finish <task>` | 完成任务 |

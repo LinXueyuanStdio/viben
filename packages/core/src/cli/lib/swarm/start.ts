@@ -16,7 +16,7 @@
  * Prerequisites:
  *    - task.json must exist with 'branch' field
  *    - prd.md must exist (plan completed)
- *    - agents/dispatch.md must exist (in .claude/, .cursor/, .iflow/, or .opencode/)
+ *    - agents/work.md must exist (in .claude/, .cursor/, .iflow/, or .opencode/)
  *
  * Configuration: .viben/worktree.yaml
  */
@@ -203,12 +203,12 @@ export async function startAgent(
     };
   }
 
-  // Check dispatch agent exists
-  const dispatchMd = adapter.getAgentConfigPath("dispatch", repoRoot);
-  if (!existsSync(dispatchMd)) {
+  // Check work agent exists
+  const workMd = adapter.getAgentConfigPath("work", repoRoot);
+  if (!existsSync(workMd)) {
     return {
       success: false,
-      error: `dispatch.md not found at ${dispatchMd}. Platform: ${platform}`,
+      error: `work.md not found at ${workMd}. Platform: ${platform}`,
     };
   }
 
