@@ -3,7 +3,7 @@ name: plan
 description: |
   Multi-Agent Pipeline planner. Analyzes requirements and produces a fully configured task directory ready for dispatch.
 tools: Read, Bash, Glob, Grep, Task
-color: yellow
+model: opus
 ---
 # Plan Agent
 
@@ -62,34 +62,34 @@ PLAN_REQUIREMENT = <the requirement from environment>
    ```bash
    cat > "$PLAN_TASK_DIR/REJECTED.md" << 'EOF'
    # Plan Rejected
-
+   
    ## Reason
    <category from above>
-
+   
    ## Details
    <specific explanation of why this requirement cannot proceed>
-
+   
    ## Suggestions
    - <what the user should clarify or change>
    - <how to make the requirement actionable>
-
+   
    ## To Retry
 
-   1. Delete this directory:
-      rm -rf $PLAN_TASK_DIR
+   1. Delete the PRD and update task.json with clearer requirements:
+      rm -f $PLAN_TASK_DIR/prd.md
 
-   2. Run with revised requirement:
-      viben task plan --name "<name>" --type "<type>" --requirement "<revised requirement>"
+   2. Re-run plan phase:
+      viben task plan-phase "$PLAN_TASK_DIR"
    EOF
    ```
 
 3. **Print summary to stdout** (will be captured in .plan-log):
    ```
    === PLAN REJECTED ===
-
+   
    Reason: <category>
    Details: <brief explanation>
-
+   
    See: $PLAN_TASK_DIR/REJECTED.md
    ```
 
@@ -114,20 +114,18 @@ Continue to Step 1. The requirement is:
 
 ## Input
 
-You receive input via environment variables (set by `viben task plan`):
+You receive input via environment variables (set by `viben task plan-phase`):
 
 ```bash
-PLAN_TASK_NAME    # Task name (e.g., "user-auth")
-PLAN_DEV_TYPE        # Development type: backend | frontend | fullstack
+PLAN_TASK_NAME       # Task name (e.g., "user-auth")
 PLAN_REQUIREMENT     # Requirement description from user
-PLAN_TASK_DIR     # Pre-created task directory path
+PLAN_TASK_DIR        # Pre-created task directory path
 ```
 
 Read them at startup:
 
 ```bash
 echo "Task: $PLAN_TASK_NAME"
-echo "Type: $PLAN_DEV_TYPE"
 echo "Requirement: $PLAN_REQUIREMENT"
 echo "Directory: $PLAN_TASK_DIR"
 ```
@@ -138,7 +136,7 @@ A complete task directory containing:
 
 ```
 ${PLAN_TASK_DIR}/
-├── task.json      # Updated with branch, scope, dev_type
+├── task.json         # Task metadata
 ├── prd.md            # Requirements document
 ├── implement.jsonl   # Implement phase context
 ├── check.jsonl       # Check phase context
@@ -152,10 +150,10 @@ ${PLAN_TASK_DIR}/
 ### Step 1: Initialize Context Files
 
 ```bash
-viben task init-context "$PLAN_TASK_NAME" --type "$PLAN_DEV_TYPE"
+viben task init-context "$PLAN_TASK_DIR"
 ```
 
-This creates base jsonl files with standard specs for the dev type.
+This creates empty jsonl files to be populated by research.
 
 ### Step 2: Analyze Codebase with Research Agent
 
@@ -167,7 +165,6 @@ Task(
   prompt: "Analyze what specs and code patterns are needed for this task.
 
 Task: ${PLAN_REQUIREMENT}
-Dev Type: ${PLAN_DEV_TYPE}
 
 Instructions:
 1. Search docs/specs/ for relevant spec files
@@ -186,9 +183,6 @@ Output format (use exactly this format):
 ## fix.jsonl
 - path: <relative file path>, reason: <why needed>
 
-## Suggested Scope
-<single word for commit scope, e.g., auth, api, ui>
-
 ## Technical Notes
 <any important technical considerations for prd.md>",
   model: "opus"
@@ -200,8 +194,8 @@ Output format (use exactly this format):
 Parse research agent output and add entries to jsonl files:
 
 ```bash
-# For each entry from research agent:
-viben task add-context "$PLAN_TASK_NAME" "<path>" --reason "<reason>"
+# For each entry from research agent output:
+viben task add-context "$PLAN_TASK_DIR" "<path>" -r "<reason>"
 ```
 
 ### Step 4: Write prd.md
@@ -243,16 +237,13 @@ EOF
 
 ```bash
 # Set branch name
-viben task set-branch "$PLAN_TASK_NAME" --branch "feature/${PLAN_TASK_NAME}"
-
-# Set scope (from research agent suggestion)
-viben task set-scope "$PLAN_TASK_NAME" --scope "<scope>"
+viben task set-branch "$PLAN_TASK_DIR" -b "feature/${PLAN_TASK_NAME}"
 ```
 
 ### Step 6: Validate Configuration
 
 ```bash
-viben task validate-context "$PLAN_TASK_NAME"
+viben task validate-context "$PLAN_TASK_DIR"
 ```
 
 If validation fails, fix the invalid paths and re-validate.
@@ -265,13 +256,13 @@ Print a summary for the caller:
 echo "=== Plan Complete ==="
 echo "Task Directory: $PLAN_TASK_DIR"
 echo ""
-echo "Task details:"
-viben task view "$PLAN_TASK_NAME"
+echo "Files created:"
+ls -la "$PLAN_TASK_DIR"
 echo ""
 echo "Context summary:"
-viben task list-context "$PLAN_TASK_NAME"
+viben task list-context "$PLAN_TASK_DIR"
 echo ""
-echo "Ready for: viben swarm start $PLAN_TASK_NAME"
+echo "Ready for: viben swarm start $PLAN_TASK_DIR"
 ```
 
 ---
@@ -283,7 +274,6 @@ echo "Ready for: viben swarm start $PLAN_TASK_NAME"
 3. **Validate all paths** - Every file in jsonl must exist
 4. **Be specific in prd.md** - Vague requirements lead to wrong implementations
 5. **Include acceptance criteria** - Check agent needs to verify something concrete
-6. **Set appropriate scope** - This affects commit message format
 
 ---
 
@@ -318,18 +308,17 @@ If final validation fails:
 ```
 Input:
   PLAN_TASK_NAME = "add-rate-limiting"
-  PLAN_DEV_TYPE = "backend"
   PLAN_REQUIREMENT = "Add rate limiting to API endpoints using a sliding window algorithm. Limit to 100 requests per minute per IP. Return 429 status when exceeded."
 
 Result: ACCEPTED - Clear, specific, has defined behavior
 
 Output:
   .viben/tasks/02-03-add-rate-limiting/
-  ├── task.json      # branch: feature/add-rate-limiting, scope: api
+  ├── task.json         # Task metadata with branch: feature/add-rate-limiting
   ├── prd.md            # Detailed requirements with acceptance criteria
   ├── implement.jsonl   # Backend specs + existing middleware patterns
   ├── check.jsonl       # Quality guidelines + API testing specs
-  └── fix.jsonl         # Error handling specs
+  └── fix.jsonl         # Fix phase context
 ```
 
 ### Example: Rejected - Vague Requirement

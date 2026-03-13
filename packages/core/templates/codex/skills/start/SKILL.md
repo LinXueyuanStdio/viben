@@ -223,11 +223,10 @@ Use this output format:
 
 **Step 6: Configure Context** `[AI]`
 
-Initialize default context:
+Initialize empty context files:
 
 ```bash
-viben task init-context <task-name> --type <type>
-# type: backend | frontend | fullstack
+viben task init-context <task-name>
 ```
 
 Add specs found in your research pass:
@@ -243,7 +242,7 @@ viben task add-context <task-name> "<path>" --reason "<reason>"
 viben task start <task-name>
 ```
 
-This sets `.current-task` so hooks can inject context.
+This starts task execution and spawns the agent.
 
 ---
 
@@ -304,10 +303,10 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 |---------|---------|
 | `viben task list` | List active tasks |
 | `viben task create "<title>"` | Create task directory |
-| `viben task init-context <task> --type <type>` | Initialize jsonl files |
+| `viben task init-context <task>` | Initialize empty jsonl files |
 | `viben task add-context <task> "<path>"` | Add spec to jsonl |
 | `viben task start <task>` | Set current task |
-| `viben task finish` | Clear current task |
+| `viben task finish <task>` | Finish specified task |
 | `viben task archive <task>` | Archive completed task |
 
 ### Workflow Phases `[AI]`
