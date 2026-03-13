@@ -75,11 +75,11 @@ PLAN_REQUIREMENT = <the requirement from environment>
    
    ## To Retry
 
-   1. Delete this directory:
-      rm -rf $PLAN_TASK_DIR
+   1. Delete the PRD and update task.json with clearer requirements:
+      rm -f $PLAN_TASK_DIR/prd.md
 
-   2. Run with revised requirement:
-      viben task plan --name "<name>" --type "<type>" --requirement "<revised requirement>"
+   2. Re-run plan phase:
+      viben task plan-phase "$PLAN_TASK_DIR"
    EOF
    ```
 
@@ -114,20 +114,18 @@ Continue to Step 1. The requirement is:
 
 ## Input
 
-You receive input via environment variables (set by `viben task plan`):
+You receive input via environment variables (set by `viben task plan-phase`):
 
 ```bash
-PLAN_TASK_NAME    # Task name (e.g., "user-auth")
-PLAN_DEV_TYPE        # Development type: backend | frontend | fullstack
+PLAN_TASK_NAME       # Task name (e.g., "user-auth")
 PLAN_REQUIREMENT     # Requirement description from user
-PLAN_TASK_DIR     # Pre-created task directory path
+PLAN_TASK_DIR        # Pre-created task directory path
 ```
 
 Read them at startup:
 
 ```bash
 echo "Task: $PLAN_TASK_NAME"
-echo "Type: $PLAN_DEV_TYPE"
 echo "Requirement: $PLAN_REQUIREMENT"
 echo "Directory: $PLAN_TASK_DIR"
 ```
@@ -138,11 +136,11 @@ A complete task directory containing:
 
 ```
 ${PLAN_TASK_DIR}/
-├── task.json      # Updated with branch, scope, dev_type
+├── task.json         # Task metadata
 ├── prd.md            # Requirements document
 ├── implement.jsonl   # Implement phase context
 ├── check.jsonl       # Check phase context
-└── fix.jsonl       # Debug phase context
+└── fix.jsonl         # Fix phase context
 ```
 
 ---
@@ -152,10 +150,10 @@ ${PLAN_TASK_DIR}/
 ### Step 1: Initialize Context Files
 
 ```bash
-viben task init-context "$PLAN_TASK_DIR" -t "$PLAN_DEV_TYPE"
+viben task init-context "$PLAN_TASK_DIR"
 ```
 
-This creates base jsonl files with standard specs for the dev type.
+This creates empty jsonl files to be populated by research.
 
 ### Step 2: Analyze Codebase with Research Agent
 
@@ -167,7 +165,6 @@ Task(
   prompt: "Analyze what specs and code patterns are needed for this task.
 
 Task: ${PLAN_REQUIREMENT}
-Dev Type: ${PLAN_DEV_TYPE}
 
 Instructions:
 1. Search docs/specs/ for relevant spec files
@@ -185,9 +182,6 @@ Output format (use exactly this format):
 
 ## fix.jsonl
 - path: <relative file path>, reason: <why needed>
-
-## Suggested Scope
-<single word for commit scope, e.g., auth, api, ui>
 
 ## Technical Notes
 <any important technical considerations for prd.md>",
@@ -245,10 +239,6 @@ EOF
 # Set branch name
 viben task set-branch "$PLAN_TASK_DIR" -b "feature/${PLAN_TASK_NAME}"
 
-# Set scope (from research agent suggestion)
-viben task set-scope "$PLAN_TASK_DIR" -s "<scope>"
-
-# Update dev_type in task.json (already set during init-context)
 ```
 
 ### Step 6: Validate Configuration
@@ -320,18 +310,17 @@ If final validation fails:
 ```
 Input:
   PLAN_TASK_NAME = "add-rate-limiting"
-  PLAN_DEV_TYPE = "backend"
   PLAN_REQUIREMENT = "Add rate limiting to API endpoints using a sliding window algorithm. Limit to 100 requests per minute per IP. Return 429 status when exceeded."
 
 Result: ACCEPTED - Clear, specific, has defined behavior
 
 Output:
   .viben/tasks/02-03-add-rate-limiting/
-  ├── task.json      # branch: feature/add-rate-limiting, scope: api
+  ├── task.json         # Task metadata with branch: feature/add-rate-limiting
   ├── prd.md            # Detailed requirements with acceptance criteria
   ├── implement.jsonl   # Backend specs + existing middleware patterns
   ├── check.jsonl       # Quality guidelines + API testing specs
-  └── fix.jsonl       # Error handling specs
+  └── fix.jsonl         # Fix phase context
 ```
 
 ### Example: Rejected - Vague Requirement
