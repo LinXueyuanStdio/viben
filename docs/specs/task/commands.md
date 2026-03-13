@@ -15,14 +15,13 @@ viben task edit <task>                      # 编辑任务 (打开编辑器)
 ### 2. 配置阶段
 
 ```bash
-viben task init-context <task> -t <type>    # 初始化上下文 (backend/frontend/fullstack)
+viben task init-context <task>              # 初始化空上下文文件
 viben task add-context <task> <files...>    # 添加上下文文件
 viben task remove-context <task> <files...> # 移除上下文文件
 viben task list-context <task>              # 列出上下文条目
 viben task validate-context <task>          # 验证上下文文件是否存在
 viben task set-branch <task> -b <branch>    # 设置 Git 分支
 viben task set-base <task> -b <base>        # 设置 PR 目标分支
-viben task set-scope <task> -s <scope>      # 设置 PR 标题 scope
 viben task set-agent <task> -a <agent>      # 设置关联的智能体
 ```
 
@@ -36,7 +35,8 @@ viben task dequeue <task>     # 从队列移回 backlog
 ### 4. 执行阶段
 
 ```bash
-viben task plan               # 启动 Plan Agent 规划任务
+viben task plan-phase <task>  # 启动 Plan Agent 规划任务
+viben task work-phase <task>  # 启动 Work Agent 执行任务
 viben task start <task>       # 启动智能体执行任务
 viben task pause <task>       # 暂停任务执行
 viben task resume <task>      # 恢复暂停的任务
@@ -114,11 +114,10 @@ backlog → queue → in_progress → human_review → completed → archived
 | 命令 | 选项 | 说明 |
 |------|------|------|
 | `create` | `--slug <name>` | 指定任务目录名 |
-| `init-context` | `-t <type>` | 类型: backend/frontend/fullstack |
+| `init-context` | - | 初始化空 jsonl 文件 |
 | `add-context` | `-r "<reason>"` | 添加原因说明 |
 | `set-branch` | `-b <branch>` | 指定分支名 |
 | `set-base` | `-b <base>` | 指定 PR 目标分支 |
-| `set-scope` | `-s <scope>` | 指定 PR scope |
 | `set-agent` | `-a <agent>` | 指定智能体配置 |
 | `start` | `--agent <name>` | 使用指定智能体 |
 | `reject` | `-r "<reason>"` | 拒绝原因 |

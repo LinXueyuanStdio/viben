@@ -127,7 +127,6 @@ export {
   setTaskField,
   setTaskBranch,
   setTaskBaseBranch,
-  setTaskScope,
   setTaskAgent,
 } from "./config";
 
@@ -142,3 +141,11 @@ export { editTask } from "./edit";
 // PR operations
 export type { CreatePROptions, CreatePRResult } from "./create-pr";
 export { createPR } from "./create-pr";
+
+// Context prompt utilities (for phase modules)
+export {
+  formatContextList,
+  getContextListFromJsonl,
+  buildContextSection,
+  hasContextEntries,
+} from "./context-prompt";

@@ -10,7 +10,7 @@
 export type TaskStatus =
   | "backlog"       // 待办 - Tasks waiting to be started
   | "queue"         // 排队 - Tasks waiting for available capacity
-  | "in_progress"   // 执行中 - Currently running (planning/coding)
+  | "in_progress"   // 执行中 - Currently running (plan/implement/check/fix)
   | "paused"        // 暂停中 - Task paused, can be resumed
   | "ai_review"     // AI审查 - AI automatic review (legacy)
   | "human_review"  // 人工审查 - Needs human review

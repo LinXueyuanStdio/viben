@@ -38,8 +38,8 @@ viben task <command> <task>
 
 | 现有命令 | 用途 | 保持不变 |
 |---------|------|---------|
-| `start <task>` | 设置 .current-task（本地开发用） | ✓ |
-| `finish [task]` | 清除 .current-task | ✓ |
+| `start <task>` | 启动任务执行（串行或并行模式） | ✓ |
+| `finish <task>` | 标记任务完成 | ✓ |
 | `create-pr [task]` | 创建 PR 并进入 human_review | ✓ |
 | `archive <task>` | 归档到 archive/ 目录 | ✓ |
 

@@ -189,7 +189,7 @@ stateDiagram-v2
 **Create & Configure**
 ```bash
 viben task create "<title>" --slug <name>    # Create task
-viben task init-context <task> -t <type>     # Init context (backend/frontend/fullstack)
+viben task init-context <task>               # Init context files
 viben task add-context <task> <file> -r "reason"  # Add context file
 viben task set-agent <task> -a <agent>       # Set agent
 ```

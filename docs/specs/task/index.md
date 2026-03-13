@@ -31,7 +31,7 @@ backlog → queue → in_progress → human_review → completed → archived
 viben task create "<title>" --slug <name>
 
 # 配置上下文
-viben task init-context <task> -t <type>
+viben task init-context <task>
 viben task add-context <task> <files...> -r "<reason>"
 
 # 执行流程

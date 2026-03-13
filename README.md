@@ -189,7 +189,7 @@ stateDiagram-v2
 **创建与配置**
 ```bash
 viben task create "<title>" --slug <name>    # 创建任务
-viben task init-context <task> -t <type>     # 初始化上下文 (backend/frontend/fullstack)
+viben task init-context <task>               # 初始化上下文文件
 viben task add-context <task> <file> -r "原因"  # 添加上下文文件
 viben task set-agent <task> -a <agent>       # 设置智能体
 ```

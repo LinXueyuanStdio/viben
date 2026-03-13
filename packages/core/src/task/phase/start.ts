@@ -2,28 +2,19 @@
  * Start Phase Module
  *
  * Provides unified entry point for starting task execution.
- * Routes to either serial mode (/viben:start) or parallel mode (/viben:parallel)
- * based on options.
+ * Uses /viben:start workflow which handles both serial and parallel modes.
  *
- * Serial mode:
- * - Runs in current repo
- * - Direct implementation without worktree isolation
- * - Uses /viben:start workflow
- *
- * Parallel mode:
- * - Creates git worktree for isolation
- * - Spawns dispatch agent in background
- * - Uses /viben:parallel workflow
+ * The workflow:
+ * 1. Read workflow.md for context
+ * 2. Run plan-phase (research + configure + write PRD)
+ * 3. Run work-phase (auto-creates worktree if needed)
+ * 4. Report status
  *
  * @example
  * ```typescript
  * import { startTask } from "@viben/core/task/phase/start";
  *
- * // Serial mode (default)
  * const result = await startTask(repoRoot, taskDir, { platform: "claude" });
- *
- * // Parallel mode with worktree
- * const result = await startTask(repoRoot, taskDir, { parallel: true });
  * ```
  */
 
@@ -53,8 +44,6 @@ export interface StartTaskOptions {
   platform?: string;
   /** Enable verbose output (default: false) */
   verbose?: boolean;
-  /** Run in parallel mode with worktree isolation (default: false) */
-  parallel?: boolean;
   /** Detach the process (run in background, default: true) */
   detach?: boolean;
   /** Skip permission prompts (default: true) */
@@ -67,8 +56,6 @@ export interface StartTaskOptions {
 export interface StartTaskResult {
   /** Whether the task started successfully */
   success: boolean;
-  /** Execution mode used */
-  mode: "serial" | "parallel";
   /** Agent ID for tracking */
   agentId?: string;
   /** Process ID of the spawned agent */
@@ -79,8 +66,6 @@ export interface StartTaskResult {
   logFile?: string;
   /** Working directory where agent runs */
   workingDir?: string;
-  /** Worktree path (parallel mode only) */
-  worktreePath?: string;
   /** Error message if failed */
   error?: string;
 }
@@ -96,7 +81,6 @@ interface TaskData {
   status?: string;
   dev_type?: string;
   session_id?: string;
-  next_action?: Array<{ phase: number; action: string }>;
   [key: string]: unknown;
 }
 
@@ -221,21 +205,42 @@ function buildPromptCommand(
 }
 
 // =============================================================================
-// Serial Mode Implementation
+// Main Entry Point
 // =============================================================================
 
 /**
- * Start task in serial mode (runs in current repo)
+ * Start a task execution
  *
- * This follows the /viben:start workflow:
- * 1. Read task.json and validate
- * 2. Spawn agent with start prompt
- * 3. Agent executes Task Workflow (research → implement → check)
+ * Spawns an agent with the /viben:start workflow which:
+ * 1. Reads workflow.md for context
+ * 2. Runs plan-phase (research + configure + write PRD)
+ * 3. Runs work-phase (auto-creates worktree if task.json has worktree=true or branch set)
+ * 4. Reports status
+ *
+ * @param repoRoot - Repository root path (absolute)
+ * @param taskDir - Task directory path (relative or absolute)
+ * @param options - Start options
+ * @returns StartTaskResult
+ *
+ * @example
+ * ```typescript
+ * import { startTask } from "@viben/core/task/phase/start";
+ *
+ * const result = await startTask("/path/to/repo", "03-12-my-task");
+ *
+ * if (result.success) {
+ *   console.log(`Task started`);
+ *   console.log(`Agent ID: ${result.agentId}`);
+ *   console.log(`Log file: ${result.logFile}`);
+ * } else {
+ *   console.error(`Failed: ${result.error}`);
+ * }
+ * ```
  */
-async function startSerialTask(
+export async function startTask(
   repoRoot: string,
-  taskDirAbs: string,
-  options: StartTaskOptions
+  taskDir: string,
+  options: StartTaskOptions = {}
 ): Promise<StartTaskResult> {
   const {
     platform = "claude",
@@ -244,6 +249,8 @@ async function startSerialTask(
     skipPermissions = true,
   } = options;
 
+  // Resolve task directory to absolute path
+  const taskDirAbs = resolveTaskDir(repoRoot, taskDir);
   const adapter = createCLIAdapter(platform);
   const taskDirRel = relative(repoRoot, taskDirAbs);
 
@@ -256,7 +263,6 @@ async function startSerialTask(
   if (!existsSync(taskJsonPath)) {
     return {
       success: false,
-      mode: "serial",
       error: `task.json not found at ${taskJsonPath}`,
     };
   }
@@ -266,7 +272,6 @@ async function startSerialTask(
   if (!taskData) {
     return {
       success: false,
-      mode: "serial",
       error: "Failed to read task.json",
     };
   }
@@ -276,7 +281,6 @@ async function startSerialTask(
   if (!existsSync(startMd)) {
     return {
       success: false,
-      mode: "serial",
       error: `Start command not found at ${startMd}. Platform: ${platform}`,
     };
   }
@@ -305,17 +309,13 @@ async function startSerialTask(
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
   Object.assign(env, adapter.getNonInteractiveEnv());
 
-  // Set current task for context injection
-  env.VIBEN_CURRENT_TASK = taskDirRel;
-
   // Build CLI command - read /viben:start command content and send as prompt
   const taskName = taskData.name || taskData.id || "unknown";
 
   // Read the start command content
   const startCommandContent = readFileSync(startMd, "utf-8");
 
-  // Serial mode sends the start command content directly as prompt
-  // This ensures the agent follows the exact workflow defined in start.md
+  // Send the start command content directly as prompt with task context
   const prompt = `${startCommandContent}
 
 ---
@@ -352,7 +352,6 @@ Current task context:
   } catch (error) {
     return {
       success: false,
-      mode: "serial",
       error: `Failed to spawn agent: ${error}`,
     };
   }
@@ -404,15 +403,14 @@ Current task context:
   // ---------------------------------------------------------------------------
 
   if (verbose) {
-    console.log(`[start-serial] Task: ${taskName}`);
-    console.log(`[start-serial] Agent ID: ${agentId}`);
-    console.log(`[start-serial] PID: ${agentPid}`);
-    console.log(`[start-serial] Log: ${logFile}`);
+    console.log(`[start] Task: ${taskName}`);
+    console.log(`[start] Agent ID: ${agentId}`);
+    console.log(`[start] PID: ${agentPid}`);
+    console.log(`[start] Log: ${logFile}`);
   }
 
   return {
     success: true,
-    mode: "serial",
     agentId,
     pid: agentPid,
     sessionId: sessionId || undefined,
@@ -420,268 +418,3 @@ Current task context:
     workingDir: repoRoot,
   };
 }
-
-// =============================================================================
-// Parallel Mode Implementation
-// =============================================================================
-
-/**
- * Start task in parallel mode (runs in isolated worktree)
- *
- * This follows the /viben:parallel workflow:
- * 1. Create git worktree for isolation
- * 2. Spawn agent with parallel command content
- * 3. Agent executes pipeline phases (implement → check → finish → create-pr)
- */
-async function startParallelTask(
-  repoRoot: string,
-  taskDirAbs: string,
-  options: StartTaskOptions
-): Promise<StartTaskResult> {
-  const {
-    platform = "claude",
-    verbose = false,
-    detach = true,
-    skipPermissions = true,
-  } = options;
-
-  const adapter = createCLIAdapter(platform);
-  const taskDirRel = relative(repoRoot, taskDirAbs);
-
-  // ---------------------------------------------------------------------------
-  // Validation
-  // ---------------------------------------------------------------------------
-
-  // Check task.json exists
-  const taskJsonPath = join(taskDirAbs, "task.json");
-  if (!existsSync(taskJsonPath)) {
-    return {
-      success: false,
-      mode: "parallel",
-      error: `task.json not found at ${taskJsonPath}`,
-    };
-  }
-
-  // Read task.json
-  const taskData = readTaskJson(taskDirAbs) as TaskData | null;
-  if (!taskData) {
-    return {
-      success: false,
-      mode: "parallel",
-      error: "Failed to read task.json",
-    };
-  }
-
-  // Check parallel command exists
-  const parallelMd = adapter.getCommandsPath(repoRoot, "viben", "parallel.md");
-  if (!existsSync(parallelMd)) {
-    return {
-      success: false,
-      mode: "parallel",
-      error: `Parallel command not found at ${parallelMd}. Platform: ${platform}`,
-    };
-  }
-
-  // Check next_action exists for parallel mode
-  if (!taskData.next_action || taskData.next_action.length === 0) {
-    return {
-      success: false,
-      mode: "parallel",
-      error: "task.json must have next_action array for parallel mode",
-    };
-  }
-
-  // ---------------------------------------------------------------------------
-  // Prepare and Start Agent
-  // ---------------------------------------------------------------------------
-
-  // Update task status
-  taskData.status = "in_progress";
-  writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-
-  // Log file
-  const logFile = join(taskDirAbs, ".parallel-log");
-  writeFileSync(logFile, "", "utf-8");
-
-  // Generate session ID for resume support
-  let sessionId: string | null = null;
-  if (adapter.supportsSessionIdOnCreate) {
-    sessionId = randomUUID().toLowerCase();
-    taskData.session_id = sessionId;
-    writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-  }
-
-  // Build environment
-  const env: Record<string, string> = { ...process.env } as Record<string, string>;
-  Object.assign(env, adapter.getNonInteractiveEnv());
-
-  // Set current task for context injection
-  env.VIBEN_CURRENT_TASK = taskDirRel;
-
-  // Read the parallel command content
-  const parallelCommandContent = readFileSync(parallelMd, "utf-8");
-  const taskName = taskData.name || taskData.id || "unknown";
-
-  // Parallel mode sends the parallel command content directly as prompt
-  const prompt = `${parallelCommandContent}
-
----
-Current task context:
-- Task directory: ${taskDirRel}
-- Task name: ${taskName}
-- Mode: Parallel (with worktree isolation)`;
-
-  // Build CLI command without specifying agent (runs as normal session)
-  const cliCmd = buildPromptCommand(adapter, {
-    prompt,
-    sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
-    skipPermissions,
-    verbose,
-    jsonOutput: true,
-  });
-
-  // Open log file for writing
-  const logFd = openSync(logFile, "w");
-
-  // Spawn process
-  const spawnOpts: SpawnOptions = {
-    cwd: repoRoot,
-    env,
-    stdio: ["ignore", logFd, logFd],
-  };
-
-  if (detach) {
-    spawnOpts.detached = true;
-  }
-
-  let child: ChildProcess;
-  try {
-    child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  } catch (error) {
-    return {
-      success: false,
-      mode: "parallel",
-      error: `Failed to spawn agent: ${error}`,
-    };
-  }
-
-  if (detach) {
-    child.unref();
-  }
-
-  const agentPid = child.pid || 0;
-
-  // Extract session ID from logs if needed
-  if (!adapter.supportsSessionIdOnCreate) {
-    for (let i = 0; i < 10; i++) {
-      await sleep(500);
-      try {
-        const logContent = readFileSync(logFile, "utf-8");
-        const extractedSessionId = extractSessionIdFromLog(logContent);
-        if (extractedSessionId) {
-          sessionId = extractedSessionId;
-          taskData.session_id = sessionId;
-          writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-          break;
-        }
-      } catch {
-        // Continue trying
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Register to Registry
-  // ---------------------------------------------------------------------------
-
-  const agentId = `parallel-${taskName}`;
-
-  registryAddAgent(
-    {
-      agentId,
-      worktreePath: repoRoot,
-      pid: agentPid,
-      taskDir: taskDirRel,
-      platform,
-    },
-    repoRoot
-  );
-
-  // ---------------------------------------------------------------------------
-  // Return Result
-  // ---------------------------------------------------------------------------
-
-  if (verbose) {
-    console.log(`[start-parallel] Task: ${taskName}`);
-    console.log(`[start-parallel] Agent ID: ${agentId}`);
-    console.log(`[start-parallel] PID: ${agentPid}`);
-    console.log(`[start-parallel] Log: ${logFile}`);
-  }
-
-  return {
-    success: true,
-    mode: "parallel",
-    agentId,
-    pid: agentPid,
-    sessionId: sessionId || undefined,
-    logFile,
-    workingDir: repoRoot,
-  };
-}
-
-// =============================================================================
-// Main Entry Point
-// =============================================================================
-
-/**
- * Start a task execution
- *
- * Routes to either serial mode or parallel mode based on options.
- *
- * @param repoRoot - Repository root path (absolute)
- * @param taskDir - Task directory path (relative or absolute)
- * @param options - Start options
- * @returns StartTaskResult
- *
- * @example
- * ```typescript
- * import { startTask } from "@viben/core/task/phase/start";
- *
- * // Serial mode (default) - runs in current repo
- * const result = await startTask("/path/to/repo", "03-12-my-task");
- *
- * // Parallel mode - creates worktree for isolation
- * const result = await startTask("/path/to/repo", "03-12-my-task", {
- *   parallel: true,
- * });
- *
- * if (result.success) {
- *   console.log(`Task started in ${result.mode} mode`);
- *   console.log(`Agent ID: ${result.agentId}`);
- *   console.log(`Log file: ${result.logFile}`);
- * } else {
- *   console.error(`Failed: ${result.error}`);
- * }
- * ```
- */
-export async function startTask(
-  repoRoot: string,
-  taskDir: string,
-  options: StartTaskOptions = {}
-): Promise<StartTaskResult> {
-  // Resolve task directory to absolute path
-  const taskDirAbs = resolveTaskDir(repoRoot, taskDir);
-
-  // Route to appropriate mode
-  if (options.parallel) {
-    return startParallelTask(repoRoot, taskDirAbs, options);
-  } else {
-    return startSerialTask(repoRoot, taskDirAbs, options);
-  }
-}
-
-// =============================================================================
-// Convenience Exports
-// =============================================================================
-
-export { startSerialTask, startParallelTask };

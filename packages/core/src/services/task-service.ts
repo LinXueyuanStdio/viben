@@ -203,8 +203,6 @@ export interface UnifiedTask {
   priority: string; // P0, P1, P2, P3
   /** Development type */
   dev_type?: string; // backend, frontend, fullstack, test, docs
-  /** Task scope */
-  scope?: string;
 
   // === People ===
   /** Task creator */
@@ -508,7 +506,6 @@ export class TaskService {
       ],
       priority: task.priority || "P2",
       dev_type: task.dev_type,
-      scope: task.scope,
       creator: task.creator,
       assignee: task.assignee,
       branch: task.branch,

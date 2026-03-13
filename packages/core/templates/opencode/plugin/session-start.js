@@ -86,13 +86,13 @@ Read and follow all instructions below carefully.
   parts.push("</guidelines>")
 
   // 5. Session Instructions - try both .claude and .opencode
-  let startMd = ctx.readFile(join(claudeDir, "commands", "viben", "start.md"))
-  if (!startMd) {
-    startMd = ctx.readFile(join(opencodeDir, "commands", "viben", "start.md"))
+  let taskMd = ctx.readFile(join(claudeDir, "commands", "viben", "task.md"))
+  if (!taskMd) {
+    taskMd = ctx.readFile(join(opencodeDir, "commands", "viben", "task.md"))
   }
-  if (startMd) {
+  if (taskMd) {
     parts.push("<instructions>")
-    parts.push(startMd)
+    parts.push(taskMd)
     parts.push("</instructions>")
   }
 

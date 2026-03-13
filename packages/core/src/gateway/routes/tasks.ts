@@ -14,7 +14,6 @@
  * Configuration endpoints:
  * - POST /api/task/set-branch - Set Git branch for task
  * - POST /api/task/set-base - Set PR target branch
- * - POST /api/task/set-scope - Set PR title scope
  * - POST /api/task/set-agent - Set associated agent
  *
  * Context management endpoints:
@@ -159,7 +158,6 @@ function toSnakeCaseTask(task: UnifiedTask) {
     // Organization fields
     priority: task.priority || "P2",
     dev_type: task.dev_type ?? null,
-    scope: task.scope ?? null,
     workspace_path: task.workspacePath ?? null,
     // People
     creator: task.creator ?? null,
@@ -526,7 +524,6 @@ interface CreateTaskInput {
   status?: string;
   priority?: string;
   dev_type?: string;
-  scope?: string;
   creator?: string;
   assignee?: string;
   sessionId?: string;
@@ -558,7 +555,6 @@ interface UpdateTaskInput {
   status?: string;
   priority?: string;
   dev_type?: string;
-  scope?: string;
   assignee?: string;
   cost?: number;
   duration?: number;
@@ -888,7 +884,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       status,
       priority: input.priority ?? sourceTask?.priority ?? "P2",
       dev_type: input.dev_type ?? sourceTask?.dev_type,
-      scope: input.scope ?? sourceTask?.scope,
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
       agent: input.agentId || input.agent_id || sourceTask?.agent,
@@ -965,7 +960,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       }
       if (updates.priority !== undefined) taskUpdates.priority = updates.priority;
       if (updates.dev_type !== undefined) taskUpdates.dev_type = updates.dev_type;
-      if (updates.scope !== undefined) taskUpdates.scope = updates.scope;
       if (updates.assignee !== undefined) taskUpdates.assignee = updates.assignee;
       if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
       if (updates.duration !== undefined) taskUpdates.duration = updates.duration;
@@ -1668,72 +1662,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     return { success: true, task_id, base_branch };
-  });
-
-  // POST /api/task/set-scope - Set PR title scope
-  fastify.post<{
-    Body: {
-      workspace_path: string;
-      task_id: string;
-      scope: string;
-    };
-  }>("/api/task/set-scope", {
-    schema: {
-      description: "Set scope for PR title",
-      tags: ["tasks"],
-      body: {
-        type: "object",
-        properties: {
-          workspace_path: { type: "string", description: "Workspace path (required)" },
-          task_id: { type: "string", description: "Task ID or directory" },
-          scope: { type: "string", description: "Scope name for PR title" },
-        },
-        required: ["workspace_path", "task_id", "scope"],
-      },
-      response: {
-        200: {
-          type: "object",
-          properties: {
-            success: { type: "boolean" },
-            task_id: { type: "string" },
-            scope: { type: "string" },
-          },
-        },
-        400: {
-          type: "object",
-          properties: {
-            error: { type: "string" },
-          },
-        },
-        404: {
-          type: "object",
-          properties: {
-            error: { type: "string" },
-          },
-        },
-      },
-    },
-  }, async (request, reply) => {
-    const { workspace_path, task_id, scope } = request.body;
-
-    if (!workspace_path || !task_id || !scope) {
-      reply.code(400);
-      return { error: "workspace_path, task_id, and scope are required" };
-    }
-
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}` };
-    }
-
-    const success = updateTaskField(taskDir, "scope", scope);
-    if (!success) {
-      reply.code(400);
-      return { error: "Failed to update task.json" };
-    }
-
-    return { success: true, task_id, scope };
   });
 
   // POST /api/task/set-agent - Set associated agent
@@ -4588,7 +4516,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           status: taskData.status,
           priority: taskData.priority,
           dev_type: taskData.dev_type,
-          scope: taskData.scope,
           branch: taskData.branch,
           base_branch: taskData.base_branch,
           pr_url: taskData.pr_url,
@@ -5040,7 +4967,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
       const taskName = String(taskData.name || "");
       const baseBranch = String(taskData.base_branch || "main");
-      const scope = String(taskData.scope || "core");
       const devType = String(taskData.dev_type || "feature");
 
       const prefixMap: Record<string, string> = {
@@ -5090,7 +5016,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         steps.push(`Found ${unpushed} unpushed commit(s)`);
       } else {
         // Commit changes
-        const commitMsg = `${commitPrefix}(${scope}): ${taskName}`;
+        const commitMsg = `${commitPrefix}: ${taskName}`;
         if (dryRun) {
           const { stdout: stagedOut } = runGitCommand(["diff", "--cached", "--name-only"], repoRoot);
           steps.push(`[DRY-RUN] Would commit: ${commitMsg}`);
@@ -5117,7 +5043,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       }
 
       // Create PR
-      const prTitle = `${commitPrefix}(${scope}): ${taskName}`;
+      const prTitle = `${commitPrefix}: ${taskName}`;
 
       if (dryRun) {
         steps.push(`[DRY-RUN] Would create PR: ${prTitle}`);

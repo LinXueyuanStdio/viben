@@ -8,12 +8,12 @@
  *    - task.json must exist
  *    - implement agent must exist (.claude/agents/implement.md or platform equivalent)
  *    - prd.md must exist (plan phase completed)
- *    - implement.jsonl must exist (context configured)
+ *    - implement.jsonl is optional (provides code-spec file list)
  *
  * The agent will:
  *    1. Read prd.md for requirements
  *    2. Read info.md for technical design (if exists)
- *    3. Read all spec files from implement.jsonl
+ *    3. Read code-spec files listed in implement.jsonl (if exists)
  *    4. Implement the feature following specs
  *    5. Run lint and typecheck to verify
  */
@@ -27,6 +27,8 @@ import {
   createCLIAdapter,
   registryAddAgent,
 } from "../../cli/lib/viben-workspace";
+
+import { buildContextSection, hasContextEntries } from "../ops/context-prompt";
 
 // =============================================================================
 // Types
@@ -76,7 +78,7 @@ interface TaskData {
  * Run the implement phase for a task
  *
  * This function:
- * 1. Validates prerequisites (task.json, implement agent, prd.md, implement.jsonl)
+ * 1. Validates prerequisites (task.json, implement agent, prd.md)
  * 2. Sets up environment variables
  * 3. Spawns the implement agent in background
  * 4. Registers the agent to the registry
@@ -139,18 +141,12 @@ export async function runImplementPhase(
     };
   }
 
-  // 4. Check implement.jsonl exists (context configured)
-  const implementJsonl = join(taskDirAbs, "implement.jsonl");
-  if (!existsSync(implementJsonl)) {
-    // Try spec.jsonl as fallback
-    const specJsonl = join(taskDirAbs, "spec.jsonl");
-    if (!existsSync(specJsonl)) {
-      return {
-        success: false,
-        error: `implement.jsonl not found at ${implementJsonl}. Run context configuration first.`,
-      };
-    }
-  }
+  // 4. implement.jsonl is optional - build context section if it exists
+  const contextSection = buildContextSection(
+    taskDirAbs,
+    "implement.jsonl",
+    "Code-Spec Files to Read"
+  );
 
   // =============================================================================
   // Read Task Config
@@ -195,8 +191,7 @@ export async function runImplementPhase(
 
 Implement the task described in prd.md.
 
-Follow all code-spec files that have been injected into your context (implement.jsonl).
-Run lint and typecheck before finishing.`;
+${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before finishing.`;
 
   const cliCmd = adapter.buildRunCommand({
     agent: "implement",
@@ -331,18 +326,12 @@ export function runImplementPhaseSync(
     };
   }
 
-  // 4. Check implement.jsonl exists (context configured)
-  const implementJsonl = join(taskDirAbs, "implement.jsonl");
-  if (!existsSync(implementJsonl)) {
-    // Try spec.jsonl as fallback
-    const specJsonl = join(taskDirAbs, "spec.jsonl");
-    if (!existsSync(specJsonl)) {
-      return {
-        success: false,
-        error: `implement.jsonl not found at ${implementJsonl}. Run context configuration first.`,
-      };
-    }
-  }
+  // 4. implement.jsonl is optional - build context section if it exists
+  const contextSection = buildContextSection(
+    taskDirAbs,
+    "implement.jsonl",
+    "Code-Spec Files to Read"
+  );
 
   // =============================================================================
   // Read Task Config
@@ -387,8 +376,7 @@ export function runImplementPhaseSync(
 
 Implement the task described in prd.md.
 
-Follow all code-spec files that have been injected into your context (implement.jsonl).
-Run lint and typecheck before finishing.`;
+${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before finishing.`;
 
   const cliCmd = adapter.buildRunCommand({
     agent: "implement",

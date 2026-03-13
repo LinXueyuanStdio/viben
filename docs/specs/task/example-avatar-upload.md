@@ -31,13 +31,13 @@ viben task view avatar-upload
 ## 2. 配置上下文
 
 ```bash
-# 初始化前端上下文模板
-viben task init-context avatar-upload -t frontend
+# 初始化空上下文文件
+viben task init-context avatar-upload
 
 # 输出示例:
 # ✓ Created implement.jsonl
 # ✓ Created check.jsonl
-# ✓ Added default frontend specs
+# ✓ Created fix.jsonl
 
 # 添加相关的 code-spec 文件
 viben task add-context avatar-upload \
@@ -59,9 +59,6 @@ viben task list-context avatar-upload
 
 # 设置 Git 分支
 viben task set-branch avatar-upload -b feat/avatar-upload
-
-# 设置 PR scope
-viben task set-scope avatar-upload -s "desktop"
 
 # 设置 PR 目标分支
 viben task set-base avatar-upload -b main

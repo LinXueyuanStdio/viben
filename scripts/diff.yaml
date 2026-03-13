@@ -68,12 +68,12 @@ file-pairs:
     tgt: .claude/commands/viben/integrate-skill.md
   - src: .claude/commands/trellis/onboard.md
     tgt: .claude/commands/viben/onboard.md
-  - src: .claude/commands/trellis/parallel.md
-    tgt: .claude/commands/viben/parallel.md
   - src: .claude/commands/trellis/record-session.md
     tgt: .claude/commands/viben/record-session.md
   - src: .claude/commands/trellis/start.md
     tgt: .claude/commands/viben/start.md
+  - src: .claude/commands/trellis/task.md
+    tgt: .claude/commands/viben/task.md
   - src: .claude/commands/trellis/update-spec.md
     tgt: .claude/commands/viben/update-spec.md
 

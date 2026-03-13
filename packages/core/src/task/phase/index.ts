@@ -49,17 +49,20 @@ export {
 // Work Phase (dispatch agent - reusable by swarm start)
 export {
   runWorkPhase,
-  runWorkPhaseInRepo,
   type WorkPhaseOptions,
   type WorkPhaseResult,
-  type WorkPhaseSimpleOptions,
 } from "./work";
 
 // Start Phase (unified entry point for task execution)
 export {
   startTask,
-  startSerialTask,
-  startParallelTask,
   type StartTaskOptions,
   type StartTaskResult,
 } from "./start";
+
+// Worktree Phase (creates isolated git worktree)
+export {
+  runCreateWorktree,
+  type CreateWorktreeOptions,
+  type CreateWorktreeResult,
+} from "./worktree";

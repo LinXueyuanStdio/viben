@@ -200,8 +200,8 @@ viben task <command> <task>
 
 | 现有命令 | 用途 | 保持不变 |
 |---------|------|---------|
-| `start <task>` | 设置 .current-task（本地开发用） | ✓ |
-| `finish [task]` | 清除 .current-task | ✓ |
+| `start <task>` | 启动任务执行（串行或并行模式） | ✓ |
+| `finish <task>` | 标记任务完成 | ✓ |
 | `create-pr <task>` | 创建 PR 并进入 human_review | ✓ |
 | `archive <task>` | 归档到 archive/ 目录 | ✓ |
 
@@ -539,22 +539,6 @@ viben task set-base add-user-auth --branch develop
 
 ---
 
-### `viben task set-scope`
-
-设置 scope（用于 PR 标题）。
-
-```bash
-viben task set-scope <task> --scope <scope-name>
-```
-
-**示例**:
-```bash
-viben task set-scope add-user-auth --scope auth
-# PR 标题: feat(auth): add-user-auth
-```
-
----
-
 ### `viben task set-agent`
 
 设置关联的智能体配置。
@@ -569,20 +553,11 @@ viben task set-agent <task> --agent <agent-id>
 
 ### `viben task init-context`
 
-初始化上下文文件。
+初始化空上下文文件，由 research agent 填充。
 
 ```bash
-viben task init-context <task> --type <type>
+viben task init-context <task>
 ```
-
-**类型**:
-| 类型 | 说明 |
-|------|------|
-| `frontend` | 前端开发 |
-| `backend` | 后端开发 |
-| `fullstack` | 全栈开发 |
-| `test` | 测试 |
-| `docs` | 文档 |
 
 创建的文件:
 - `implement.jsonl` - 实现阶段上下文
@@ -591,7 +566,7 @@ viben task init-context <task> --type <type>
 
 **示例**:
 ```bash
-viben task init-context add-user-auth --type backend
+viben task init-context add-user-auth
 ```
 
 ---
@@ -650,28 +625,21 @@ viben task validate-context <task>
 
 ## 任务规划与监控
 
-### `viben task plan`
+### `viben task plan-phase`
 
 启动 Plan Agent 规划任务。
 
 ```bash
-viben task plan --name <task-name> --type <dev-type> --requirement "<text>"
+viben task plan-phase <task>
 ```
-
-**选项**:
-| 选项 | 说明 |
-|------|------|
-| `--name`, `-n` | 任务名称 |
-| `--type`, `-t` | 开发类型 (backend, frontend, fullstack) |
-| `--requirement`, `-r` | 需求描述 |
 
 **示例**:
 ```bash
-viben task plan --name user-auth --type backend --requirement "实现用户认证功能，包括登录、注册、JWT token"
+viben task plan-phase user-auth
 ```
 
 Plan Agent 会:
-1. 创建任务目录
+1. 分析需求
 2. 生成 prd.md
 3. 配置任务参数
 
@@ -815,7 +783,6 @@ viben task create-pr add-user-auth --dry-run   # 预览
   "description": "",
   "status": "backlog",
   "dev_type": "backend",
-  "scope": "auth",
   "priority": "P2",
   "creator": "john",
   "assignee": "john",
@@ -853,7 +820,6 @@ viben task create-pr add-user-auth --dry-run   # 预览
 | `task.py list-archive` | `viben task list-archive` |
 | `task.py set-branch` | `viben task set-branch` |
 | `task.py set-base-branch` | `viben task set-base` |
-| `task.py set-scope` | `viben task set-scope` |
 | `task.py init-context` | `viben task init-context` |
 | `task.py add-context` | `viben task add-context` |
 | `task.py list-context` | `viben task list-context` |
@@ -896,7 +862,6 @@ viben task create-pr add-user-auth --dry-run   # 预览
 ### 任务配置
 - [ ] `viben task set-branch` 设置 Git 分支
 - [ ] `viben task set-base` 设置 PR 目标分支
-- [ ] `viben task set-scope` 设置 scope
 - [ ] `viben task set-agent` 设置关联智能体
 
 ### 上下文管理
