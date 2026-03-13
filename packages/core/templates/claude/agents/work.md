@@ -102,6 +102,31 @@ Hook will auto-inject:
 - check-frontend.md
 - All spec files from check.jsonl
 
+**After check agent completes**, validate if more checks are needed:
+
+```bash
+viben task validate-check-phase-passed ${TASK_DIR}
+```
+
+This command returns JSON with `success` field:
+- `success: true` → Check phase complete, proceed to next action
+- `success: false` → Issues remain, re-run check agent (max 3 retries)
+
+Example validation loop:
+
+```
+for retry in 1..3:
+    // Run check agent
+    task_id = Task(subagent_type: "check", ...)
+    TaskOutput(task_id, ...)
+
+    // Validate completion
+    result = Bash("viben task validate-check-phase-passed ${TASK_DIR} --json")
+    if result.success:
+        break  // Check passed, proceed
+    // else: loop continues, re-run check
+```
+
 ### action: "fix"
 
 ```

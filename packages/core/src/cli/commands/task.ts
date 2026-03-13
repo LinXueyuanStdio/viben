@@ -2059,10 +2059,10 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task validate-finish-review - Validate finish/review phase completion
+  // task validate-check-phase-passed - Validate check phase passed
   taskCmd
-    .command("validate-finish-review")
-    .description("Validate finish/review phase completion (runs verify commands or checks completion markers)")
+    .command("validate-check-phase-passed")
+    .description("Validate check phase passed (runs verify commands or checks completion markers)")
     .argument("<task>", "Task name or directory")
     .option("-o, --output <output>", "Agent output text (for completion markers validation)")
     .option("-f, --output-file <file>", "File containing agent output")

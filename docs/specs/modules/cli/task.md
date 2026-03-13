@@ -776,12 +776,12 @@ viben task create-worktree 03-11-user-auth
 
 ---
 
-### `viben task validate-finish-review`
+### `viben task validate-check-phase-passed`
 
-验证 check/finish phase 是否完成。
+验证 check 通过。
 
 ```bash
-viben task validate-finish-review <task> [options]
+viben task validate-check-phase-passed <task> [options]
 ```
 
 **选项**:
@@ -796,8 +796,8 @@ viben task validate-finish-review <task> [options]
 
 **示例**:
 ```bash
-viben task validate-finish-review 03-11-user-auth
-viben task validate-finish-review 03-11-user-auth -f .check-log
+viben task validate-check-phase-passed 03-11-user-auth
+viben task validate-check-phase-passed 03-11-user-auth -f .check-log
 ```
 
 ---
@@ -1037,7 +1037,7 @@ viben task create-pr add-user-auth --dry-run   # 预览
 - [ ] `viben task implement-phase` 直接运行 Implement Phase
 - [ ] `viben task check-phase` 直接运行 Check Phase
 - [ ] `viben task create-worktree` 创建 git worktree
-- [ ] `viben task validate-finish-review` 验证 check/finish 完成
+- [ ] `viben task validate-check-phase-passed` 验证 check 通过
 
 ### 任务状态监控
 - [ ] `viben task status` 查看状态
