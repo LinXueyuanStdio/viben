@@ -35,18 +35,9 @@ cat .viben/workflow.md
 viben task context <task>
 ```
 
-This shows: developer identity, git status, task details, and active tasks. You must specify which task to get context for.
+This shows: developer identity, git status, task context (specs and patterns). It will also prompt you to read relevant guidelines.
 
-### Step 3: Read Guidelines Index
-
-```bash
-cat docs/specs/frontend/index.md  # Frontend guidelines
-cat docs/specs/backend/index.md   # Backend guidelines
-cat docs/specs/guides/index.md    # Thinking guides
-cat docs/specs/unit-test/index.md # Testing guidelines
-```
-
-### Step 4: Report and Ask
+### Step 3: Report and Ask
 
 Report what you learned and ask: "What would you like to work on?"
 
@@ -317,13 +308,16 @@ Task(
 
 ## Continuing Existing Task
 
-If `viben task list` shows an existing task you want to continue:
+When a task directory is provided in the context below, this is an existing task. Execute it directly:
 
-1. Read the task's `prd.md` to understand the goal
-2. Check `task.json` for current status and phase
-3. Ask user: "Continue working on <task-name>?"
-
-If yes, resume from the appropriate step (usually Step 7 or 8).
+1. Run `viben task context <task>` to get task context
+2. Read `prd.md` if it exists (optional - task may have requirements in task.json instead)
+3. Check `task.json` for current status, phase, and requirements
+4. **Do NOT ask for confirmation** - proceed directly with implementation
+5. Resume from the appropriate phase based on task status:
+   - If `status: backlog/queue` → Start from Phase 2 (Research)
+   - If `status: in_progress` → Continue implementation
+   - If `status: human_review` → Run check phase
 
 ---
 
@@ -343,7 +337,7 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | Purpose |
 |---------|---------|
-| `viben task context <task>` | Get session context for specified task |
+| `viben task context <task>` | Get task context |
 | `viben task create "<title>" --slug <name>` | Create task directory |
 | `viben task init-context <task>` | Initialize empty jsonl files |
 | `viben task add-context <task> <path> -r "<reason>"` | Add code-spec/context file to jsonl |
