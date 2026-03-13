@@ -32,20 +32,12 @@ cat .viben/workflow.md
 ### Step 2: Get Current Context
 
 ```bash
-viben team context
+viben task context <task>
 ```
 
-This shows: developer identity, git status, current task (if any), active tasks.
+This shows: developer identity, git status, task context (specs and patterns). It will also prompt you to read relevant guidelines.
 
-### Step 3: Read Guidelines Index
-
-```bash
-cat docs/specs/frontend/index.md  # Frontend guidelines
-cat docs/specs/backend/index.md   # Backend guidelines
-cat docs/specs/guides/index.md    # Thinking guides
-```
-
-### Step 4: Report and Ask
+### Step 3: Report and Ask
 
 Report what you learned and ask: "What would you like to work on?"
 
@@ -58,9 +50,24 @@ When user describes a task, classify it:
 | Type | Criteria | Workflow |
 |------|----------|----------|
 | **Question** | User asks about code, architecture, or how something works | Answer directly |
-| **Trivial Fix** | Typo fix, comment update, single-line change, < 5 minutes | Direct Edit |
-| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Task Workflow |
+| **Trivial Fix** | Typo fix, comment update, single-line change | Direct Edit |
+| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Implement |
 | **Complex Task** | Vague goal, multiple files, architectural decisions | **Brainstorm → Task Workflow** |
+
+### Classification Signals
+
+**Trivial/Simple indicators:**
+- User specifies exact file and change
+- "Fix the typo in X"
+- "Add field Y to component Z"
+- Clear acceptance criteria already stated
+
+**Complex indicators:**
+- "I want to add a feature for..."
+- "Can you help me improve..."
+- Mentions multiple areas or systems
+- No clear implementation path
+- User seems unsure about approach
 
 ### Decision Rule
 
@@ -80,6 +87,16 @@ For questions or trivial fixes, work directly:
 
 ---
 
+## Simple Task
+
+For simple, well-defined tasks:
+
+1. Quick confirm: "I understand you want to [goal]. Ready to proceed?"
+2. If yes, proceed to **Task Workflow Phase 1 Path B** (create task, write PRD, then research)
+3. If no, clarify and confirm again
+
+---
+
 ## Complex Task - Brainstorm First
 
 For complex or vague tasks, use the brainstorm process to clarify requirements.
@@ -92,6 +109,15 @@ See `/viben:brainstorm` for the full process. Summary:
 4. **Propose approaches** - For architectural decisions
 5. **Confirm final requirements** - Get explicit approval
 6. **Proceed to Task Workflow** - With clear requirements in PRD
+
+### Key Brainstorm Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **One question at a time** | Never overwhelm with multiple questions |
+| **Update PRD immediately** | After each answer, update the document |
+| **Prefer multiple choice** | Easier for users to answer |
+| **YAGNI** | Challenge unnecessary complexity |
 
 ---
 
@@ -217,20 +243,20 @@ Task(
 Initialize empty context files:
 
 ```bash
-viben task init-context <task-name>
+viben task init-context "$TASK_DIR"
 ```
 
 Add code-spec files found by Research Agent:
 
 ```bash
 # For each relevant code-spec and code pattern:
-viben task add-context <task-name> "<path>" --reason "<reason>"
+viben task add-context "$TASK_DIR" "<path>" -r "<reason>"
 ```
 
 **Step 7: Activate Task** `[AI]`
 
 ```bash
-viben task start <task-name>
+viben task start "$TASK_DIR"
 ```
 
 This starts task execution and spawns the agent.
@@ -282,13 +308,16 @@ Task(
 
 ## Continuing Existing Task
 
-If `viben team context` shows a current task:
+When a task directory is provided in the context below, this is an existing task. Execute it directly:
 
-1. Read the task's `prd.md` to understand the goal
-2. Check `task.json` for current status and phase
-3. Ask user: "Continue working on <task-name>?"
-
-If yes, resume from the appropriate step (usually Step 7 or 8).
+1. Run `viben task context <task>` to get task context
+2. Read `prd.md` if it exists (optional - task may have requirements in task.json instead)
+3. Check `task.json` for current status, phase, and requirements
+4. **Do NOT ask for confirmation** - proceed directly with implementation
+5. Resume from the appropriate phase based on task status:
+   - If `status: backlog/queue` → Start from Phase 2 (Research)
+   - If `status: in_progress` → Continue implementation
+   - If `status: human_review` → Run check phase
 
 ---
 
@@ -308,13 +337,15 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 
 | Command | Purpose |
 |---------|---------|
-| `viben team context` | Get session context |
-| `viben task create` | Create task directory |
-| `viben task init-context` | Initialize jsonl files |
-| `viben task add-context` | Add code-spec/context file to jsonl |
-| `viben task start` | Set current task |
+| `viben task context <task>` | Get task context |
+| `viben task create "<title>" --slug <name>` | Create task directory |
+| `viben task init-context <task>` | Initialize empty jsonl files |
+| `viben task add-context <task> <path> -r "<reason>"` | Add code-spec/context file to jsonl |
+| `viben task start <task>` | Start task execution (serial mode) |
+| `viben task plan-phase <task>` | Run Plan Agent (research + write prd) |
+| `viben task work-phase <task>` | Run Dispatch Agent (implement → check → pr) |
 | `viben task finish <task>` | Finish specified task |
-| `viben task archive` | Archive completed task |
+| `viben task archive <task>` | Archive completed task |
 
 ### Sub Agents `[AI]`
 
