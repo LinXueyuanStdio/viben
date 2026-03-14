@@ -568,12 +568,6 @@
                           "favorite": {
                             "type": "boolean"
                           },
-                          "has_in_progress_attempt": {
-                            "type": "boolean"
-                          },
-                          "last_attempt_failed": {
-                            "type": "boolean"
-                          },
                           "executor": {
                             "type": "string"
                           },
@@ -660,12 +654,6 @@
                       "type": "number"
                     },
                     "favorite": {
-                      "type": "boolean"
-                    },
-                    "has_in_progress_attempt": {
-                      "type": "boolean"
-                    },
-                    "last_attempt_failed": {
                       "type": "boolean"
                     },
                     "executor": {

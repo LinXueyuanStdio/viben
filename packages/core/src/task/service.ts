@@ -242,8 +242,6 @@ export class TaskService {
       cost: task.cost,
       duration: task.duration,
       favorite: task.favorite,
-      hasInProgressAttempt: task.hasInProgressAttempt ?? task.status === "in_progress",
-      lastAttemptFailed: task.lastAttemptFailed ?? false,
       executor: task.executor,
       workspacePath,
       createdAt: task.createdAt || today,
@@ -319,28 +317,6 @@ export class TaskService {
       existing.status !== updates.status
     ) {
       updated.completedAt = now;
-    }
-
-    // Update attempt status based on new status
-    if (updates.status !== undefined) {
-      updated.hasInProgressAttempt = updates.status === "in_progress";
-
-      // Fix: Only mark lastAttemptFailed=true for actual failures
-      // review with reviewReason "completed" is NOT a failure
-      if (updates.status === "failed") {
-        updated.lastAttemptFailed = true;
-      } else if (updates.status === "review") {
-        // Determine if this is a failure based on reviewReason
-        // Failure reasons: qa_rejected, errors, stopped
-        // Success reasons: completed, plan_review (awaiting approval, not a failure)
-        const failureReasons: ReviewReason[] = ["qa_rejected", "errors", "stopped"];
-        const currentReviewReason = updates.reviewReason ?? existing.reviewReason;
-        updated.lastAttemptFailed = currentReviewReason
-          ? failureReasons.includes(currentReviewReason)
-          : false;
-      } else {
-        updated.lastAttemptFailed = false;
-      }
     }
 
     // Write updated task.json

@@ -2836,6 +2836,15 @@
       "stop": "停止",
       "interrupted": "已中断",
       "progress": "进度",
+      "step": "步骤 {{current}}/{{total}}",
+      "action": {
+        "plan": "规划中",
+        "implement": "实现中",
+        "check": "检查中",
+        "fix": "修复中",
+        "finish": "收尾中",
+        "create-pr": "创建 PR"
+      },
       "phase": {
         "idle": "空闲",
         "plan": "规划中",

@@ -147,11 +147,11 @@ function TaskItem({
           </p>
         )}
       </div>
-      {/* Attempt status indicators */}
-      {task.has_in_progress_attempt && (
+      {/* Status indicators */}
+      {task.status === "in_progress" && (
         <Loader2 className="h-3 w-3 shrink-0 text-blue-500 animate-spin" />
       )}
-      {task.last_attempt_failed && !task.has_in_progress_attempt && (
+      {task.status === "failed" && (
         <AlertCircle className="h-3 w-3 shrink-0 text-red-500" />
       )}
     </button>

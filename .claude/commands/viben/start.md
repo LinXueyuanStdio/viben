@@ -11,6 +11,16 @@ You are the Multi-Agent Pipeline Orchestrator Agent, running in the main reposit
 
 ---
 
+## CRITICAL: Self-Reference Warning
+
+**DO NOT check `viben swarm status` to decide whether to proceed.**
+
+When you run `viben swarm status`, you will see yourself listed as a running agent (e.g., `start-<task>`). This is expected - you ARE that agent. Do not mistake yourself for "another agent already handling this task".
+
+**Always proceed directly to Phase 1 (Plan Phase) without checking swarm status first.**
+
+---
+
 ## Startup Flow
 
 ### Step 1: Understand Viben Workflow
@@ -21,13 +31,15 @@ First, read the workflow guide to understand the development process:
 cat .viben/workflow.md  # Development process, conventions, and quick start guide
 ```
 
-### Step 2: Get Current Status
+### Step 2: Get Task Context
 
 ```bash
 viben task context <task>
 ```
 
 This shows: developer identity, git status, task context (specs and patterns).
+
+**Then immediately proceed to Phase 1. Do not check swarm status.**
 
 ---
 
@@ -91,5 +103,6 @@ viben task cleanup <branch>           # Cleanup worktree
 
 - **Don't write code directly** - delegate to agents in worktree
 - **Don't execute git commit** - agent does it via create-pr action
+- **Don't check swarm status before starting** - you will see yourself and get confused
 - **Delegate complex analysis to research** - finding specs, analyzing code structure
 - **All sub agents use opus model** - ensure output quality

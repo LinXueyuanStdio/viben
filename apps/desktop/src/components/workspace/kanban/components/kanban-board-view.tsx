@@ -363,7 +363,7 @@ export const KanbanBoardView = memo(function KanbanBoardView({
                             tabIndex={selectedTaskId === task.id ? 0 : -1}
                             className={cn(
                               // Running pulse animation - blue border effect
-                              task.has_in_progress_attempt &&
+                              task.status === "in_progress" &&
                                 !task.is_stuck &&
                                 "task-running-pulse ring-2 ring-primary/50",
                               // Stuck pulse animation - warning border effect

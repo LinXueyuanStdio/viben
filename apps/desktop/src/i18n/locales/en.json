@@ -2769,6 +2769,15 @@
       "stop": "Stop",
       "interrupted": "Interrupted",
       "progress": "Progress",
+      "step": "Step {{current}}/{{total}}",
+      "action": {
+        "plan": "Planning",
+        "implement": "Implementing",
+        "check": "Checking",
+        "fix": "Fixing",
+        "finish": "Finishing",
+        "create-pr": "Creating PR"
+      },
       "phase": {
         "idle": "Idle",
         "plan": "Planning",

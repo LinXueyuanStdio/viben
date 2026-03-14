@@ -104,6 +104,7 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     // Status details
     review_reason: task.reviewReason ?? null,
     current_phase: task.current_phase ?? 0,
+    next_action: task.next_action ?? null,
     // Organization fields
     priority: task.priority || DEFAULT_PRIORITY,
     workspace_path: task.workspacePath ?? null,
@@ -125,9 +126,6 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     cost: task.cost ?? null,
     duration: task.duration ?? null,
     favorite: task.favorite ?? false,
-    // Kanban attempt status - use unified status for inference
-    has_in_progress_attempt: task.hasInProgressAttempt ?? task.status === "in_progress",
-    last_attempt_failed: task.lastAttemptFailed ?? task.status === "failed",
     executor: task.executor || "Agent",
     // Subtask visualization
     subtasks_detail: parseSubtasksDetail(task),
@@ -515,10 +513,6 @@ interface UpdateTaskInput {
   // Kanban fields
   workspacePath?: string;
   workspace_path?: string;
-  hasInProgressAttempt?: boolean;
-  has_in_progress_attempt?: boolean;
-  lastAttemptFailed?: boolean;
-  last_attempt_failed?: boolean;
   executor?: string;
   // Git fields
   branch?: string;
@@ -650,8 +644,6 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
                   cost: { type: "number" },
                   duration: { type: "number" },
                   favorite: { type: "boolean" },
-                  has_in_progress_attempt: { type: "boolean" },
-                  last_attempt_failed: { type: "boolean" },
                   executor: { type: "string" },
                   created_at: { type: "string" },
                   updated_at: { type: "string" },
@@ -733,8 +725,6 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
             cost: { type: "number" },
             duration: { type: "number" },
             favorite: { type: "boolean" },
-            has_in_progress_attempt: { type: "boolean" },
-            last_attempt_failed: { type: "boolean" },
             executor: { type: "string" },
             created_at: { type: "string" },
             updated_at: { type: "string" },
@@ -919,10 +909,6 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       // Kanban fields
       const newWorkspacePath = updates.workspacePath ?? updates.workspace_path;
       if (newWorkspacePath !== undefined) taskUpdates.workspacePath = newWorkspacePath;
-      const hasInProgressAttempt = updates.hasInProgressAttempt ?? updates.has_in_progress_attempt;
-      if (hasInProgressAttempt !== undefined) taskUpdates.hasInProgressAttempt = hasInProgressAttempt;
-      const lastAttemptFailed = updates.lastAttemptFailed ?? updates.last_attempt_failed;
-      if (lastAttemptFailed !== undefined) taskUpdates.lastAttemptFailed = lastAttemptFailed;
       if (updates.executor !== undefined) taskUpdates.executor = updates.executor;
 
       // Git fields
@@ -1433,7 +1419,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
     }
 
     // Check if task is in a running state
-    const isInProgress = task.status === "in_progress" || task.hasInProgressAttempt;
+    const isInProgress = task.status === "in_progress";
 
     if (!isInProgress) {
       // Task is not in progress, so no process should be running

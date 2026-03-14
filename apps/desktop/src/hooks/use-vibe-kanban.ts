@@ -58,7 +58,7 @@ export function useVibeKanbanTasks(workspacePath: string | undefined) {
   useEffect(() => {
     if (query.data) {
       for (const task of query.data) {
-        if (task.has_in_progress_attempt) {
+        if (task.status === "in_progress") {
           recordTaskActivity(task.id);
         }
       }

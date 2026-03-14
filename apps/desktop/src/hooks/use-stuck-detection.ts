@@ -132,7 +132,7 @@ function parseTimestampWithFallback(
  * ```tsx
  * const { isStuck, isIncomplete, stuckDuration, taskProgress, handleRecover, handleResume } = useStuckDetection({
  *   taskId: task.id,
- *   isRunning: task.has_in_progress_attempt,
+ *   isRunning: task.status === "in_progress",
  *   workspacePath: "/path/to/workspace",
  *   lastUpdated: task.updated_at,
  *   subtasks: task.subtasks_detail,
