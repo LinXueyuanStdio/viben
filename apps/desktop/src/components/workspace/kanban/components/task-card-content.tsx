@@ -20,6 +20,7 @@ import {
   Play,
   Square,
   RotateCcw,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Badge,
@@ -68,6 +69,8 @@ export const TaskCardContent = memo(function TaskCardContent({
   onStop,
   onRecover,
   onResume,
+  onApprove,
+  onReject,
   onViewPR,
   onArchive,
   isSelected,
@@ -119,6 +122,7 @@ export const TaskCardContent = memo(function TaskCardContent({
     task.dueDate ||
     isStuck ||
     isFailed ||
+    task.status === "review" ||
     (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time (for non-running tasks)
@@ -379,7 +383,39 @@ export const TaskCardContent = memo(function TaskCardContent({
                 <Play className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.resume", "Resume")}
               </Button>
-            ) : /* Priority 3: Completed with PR - Show View PR and Archive buttons */
+            ) : /* Priority 3: Review status - Show Approve and Reject buttons */
+            task.status === "review" && (onApprove || onReject) ? (
+              <div className="flex gap-1">
+                {onApprove && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-2 bg-success hover:bg-success/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onApprove();
+                    }}
+                    title={t("workspace.taskCard.approve", "Approve")}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                  </Button>
+                )}
+                {onReject && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReject();
+                    }}
+                    title={t("workspace.taskCard.reject", "Reject")}
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            ) : /* Priority 5: Completed with PR - Show View PR and Archive buttons */
             task.status === "completed" && (task.prUrl || task.pr_url) ? (
               <div className="flex gap-1">
                 {onViewPR && (
@@ -411,7 +447,7 @@ export const TaskCardContent = memo(function TaskCardContent({
                   </Button>
                 )}
               </div>
-            ) : /* Priority 4: Completed without PR - Show Archive button */
+            ) : /* Priority 6: Completed without PR - Show Archive button */
             task.status === "completed" && !isArchived && onArchive ? (
               <Button
                 variant="ghost"
@@ -426,7 +462,7 @@ export const TaskCardContent = memo(function TaskCardContent({
                 <Archive className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.archive", "Archive")}
               </Button>
-            ) : /* Priority 5: Backlog/Queue/In Progress - Show Start/Stop button */
+            ) : /* Priority 7: Backlog/Queue/In Progress - Show Start/Stop button */
             (task.status === "backlog" ||
               task.status === "queue" ||
               task.status === "in_progress") &&

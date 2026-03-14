@@ -7,7 +7,7 @@
 import { Command } from "commander";
 import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
 import chalk from "chalk";
 import type { OutputContext } from "../types";
@@ -24,12 +24,10 @@ import {
   type AgentEntry,
   type Registry,
   type StartResult,
-  type CleanupResult,
   type AgentStatus,
   // Registry functions
   getRegistryPath,
   readRegistry,
-  registrySearchAgent,
   // Start functions
   startAgent,
   // Status functions
@@ -41,9 +39,6 @@ import {
   getSessionId,
   // Cleanup functions
   listWorktrees,
-  cleanupWorktree,
-  cleanupMerged,
-  cleanupAll,
   // CLI Adapter
   createCLIAdapter,
   type Platform,
@@ -631,141 +626,6 @@ async function showRegistryCommand(
   console.log(JSON.stringify(registry, null, 2));
 }
 
-/**
- * Cleanup worktrees
- */
-async function cleanupWorktreesCommand(
-  ctx: OutputContext,
-  repoRoot: string,
-  branch: string | undefined,
-  options: {
-    keepBranch?: boolean;
-    yes?: boolean;
-    merged?: boolean;
-    all?: boolean;
-    list?: boolean;
-  }
-): Promise<void> {
-  // Handle list option
-  if (options.list) {
-    await listWorktreesCommand(ctx, repoRoot);
-    return;
-  }
-
-  // Handle merged option
-  if (options.merged) {
-    if (!ctx.quiet) {
-      console.log(chalk.blue("=== Cleaning Merged Worktrees ==="));
-      console.log();
-    }
-
-    const results = await cleanupMerged(repoRoot, {
-      keepBranch: options.keepBranch,
-      skipConfirm: options.yes,
-    });
-
-    if (ctx.json) {
-      output(ctx, successResponse({ results }));
-      return;
-    }
-
-    if (results.length === 0) {
-      console.log("No merged worktrees found");
-    } else {
-      for (const result of results) {
-        if (result.success) {
-          console.log(chalk.green(`Cleaned: ${result.branch}`));
-        } else {
-          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
-        }
-      }
-    }
-    return;
-  }
-
-  // Handle all option
-  if (options.all) {
-    if (!ctx.quiet) {
-      console.log(chalk.blue("=== Cleaning All Worktrees ==="));
-      console.log(chalk.red("WARNING: This will remove ALL worktrees!"));
-      console.log();
-    }
-
-    const results = await cleanupAll(repoRoot, {
-      keepBranch: options.keepBranch,
-      skipConfirm: options.yes,
-    });
-
-    if (ctx.json) {
-      output(ctx, successResponse({ results }));
-      return;
-    }
-
-    if (results.length === 0) {
-      console.log("No worktrees to remove");
-    } else {
-      for (const result of results) {
-        if (result.success) {
-          console.log(chalk.green(`Cleaned: ${result.branch}`));
-        } else {
-          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
-        }
-      }
-    }
-    return;
-  }
-
-  // Handle specific branch
-  if (!branch) {
-    output(ctx, errorResponse("MISSING_ARG", "Branch name or --merged/--all required"), () => {
-      console.error(chalk.red("Error: Branch name or --merged/--all required"));
-      console.log();
-      console.log("Usage:");
-      console.log(chalk.gray("  viben swarm cleanup <branch>     Remove specific worktree"));
-      console.log(chalk.gray("  viben swarm cleanup --merged     Remove merged worktrees"));
-      console.log(chalk.gray("  viben swarm cleanup --all        Remove all worktrees"));
-      console.log(chalk.gray("  viben swarm cleanup --list       List all worktrees"));
-    });
-    process.exit(1);
-    return;
-  }
-
-  if (!ctx.quiet) {
-    console.log(chalk.blue(`=== Cleaning Worktree: ${branch} ===`));
-    console.log();
-  }
-
-  const result: CleanupResult = await cleanupWorktree(repoRoot, branch, {
-    keepBranch: options.keepBranch,
-    skipConfirm: options.yes,
-  });
-
-  if (ctx.json) {
-    if (result.success) {
-      output(ctx, successResponse(result));
-    } else {
-      output(ctx, errorResponse("CLEANUP_FAILED", result.error || "Unknown error"));
-    }
-    return;
-  }
-
-  if (result.success) {
-    console.log(chalk.green(`Cleanup complete for: ${branch}`));
-    if (result.archived) {
-      console.log(`  Archived: ${result.archived}`);
-    }
-    if (result.worktreeRemoved) {
-      console.log("  Worktree removed");
-    }
-    if (result.branchDeleted) {
-      console.log("  Branch deleted");
-    }
-  } else {
-    console.error(chalk.red(`Error: ${result.error}`));
-    process.exit(1);
-  }
-}
-
 // =============================================================================
 // Command Registration
 // =============================================================================
@@ -893,38 +753,6 @@ export function registerSwarmCommand(program: Command): void {
 
       try {
         await showRegistryCommand(ctx, repoRoot);
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // swarm cleanup - cleanup worktrees (DEPRECATED)
-  swarm
-    .command("cleanup")
-    .description("[DEPRECATED] Cleanup worktrees and related resources. Use 'viben task cleanup' instead.")
-    .argument("[branch]", "Branch name to cleanup")
-    .option("--keep-branch", "Keep the git branch")
-    .option("-y, --yes", "Skip confirmation prompts")
-    .option("--merged", "Cleanup merged worktrees")
-    .option("--all", "Cleanup all worktrees")
-    .option("--list", "List all worktrees")
-    .action(async (branch: string | undefined, options) => {
-      const ctx = getOutputContext(program);
-      const repoRoot = findVibenRoot();
-
-      // Show deprecation warning
-      console.log(chalk.yellow("WARNING: 'viben swarm cleanup' is deprecated."));
-      console.log(chalk.yellow("   Please use 'viben task cleanup' instead."));
-      console.log(chalk.yellow("   This command will be removed in a future version."));
-      console.log();
-
-      if (!repoRoot) {
-        handleCommandError(ctx, new Error("Not in a Viben workspace"));
-        return;
-      }
-
-      try {
-        await cleanupWorktreesCommand(ctx, repoRoot, branch, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }

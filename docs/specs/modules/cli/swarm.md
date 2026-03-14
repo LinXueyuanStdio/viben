@@ -13,7 +13,6 @@
 > |--------|--------|------|
 > | `viben swarm start <task>` | `viben task start <task>` | 完整执行流程（推荐） |
 > | `viben swarm start <task>` | `viben task work-phase <task>` | 仅 work 阶段（需 prd.md 已存在） |
-> | `viben swarm cleanup` | `viben task cleanup` | 清理 worktree 和任务 |
 >
 > 其他 swarm 命令（status, stop, registry, list）保持不变。
 
@@ -271,68 +270,6 @@ PATH                                           COMMIT   BRANCH
 
 ---
 
-## 清理 Worktree
-
-### `viben swarm cleanup` (DEPRECATED)
-
-> **已废弃**: 请使用 `viben task cleanup` 代替。
->
-> 详细文档请参阅 [task.md - 清理任务](./task.md#清理任务)
-
-清理 worktree 和相关资源。
-
-```bash
-# DEPRECATED - 请使用以下命令代替
-viben task cleanup <branch>
-viben task cleanup --merged
-viben task cleanup --all
-viben task cleanup --list
-
-# 旧命令（仍可使用，但会显示废弃警告）
-viben swarm cleanup <branch> [--keep-branch] [--yes]
-viben swarm cleanup --merged [--yes]
-viben swarm cleanup --all [--yes]
-viben swarm cleanup --list
-```
-
-**选项**:
-| 选项 | 说明 |
-|------|------|
-| `--keep-branch` | 不删除 Git 分支 |
-| `--yes`, `-y` | 跳过确认提示 |
-| `--merged` | 清理所有已合并的 worktree |
-| `--all` | 清理所有 worktree（需确认） |
-| `--list` | 列出所有 worktree |
-
-**清理流程**:
-1. 归档任务目录到 `archive/YYYY-MM/`
-2. 从 registry 移除 agent
-3. 移除 Git worktree
-4. 删除 Git 分支（除非 `--keep-branch`）
-
-**示例**:
-```bash
-# 推荐使用新命令
-viben task cleanup feature/user-auth
-viben task cleanup feature/user-auth --keep-branch
-viben task cleanup --merged --yes
-viben task cleanup --list
-```
-
-**输出 (`--list`)**:
-```
-=== Git Worktrees ===
-
-/path/to/project                           abc1234 [main]
-/path/to/.viben/worktrees/feature/user-auth  def5678 [feature/user-auth]
-
-=== Registered Agents ===
-
-  add-user-auth: PID=12345 [~/.viben/worktrees/feature/user-auth]
-```
-
----
-
 ## 架构概述
 
 ```
@@ -415,10 +352,10 @@ post_create:
 | Trellis 命令 | viben 命令 | 备注 |
 |-------------|-----------|------|
 | `start.py <task-dir>` | `viben task work-phase <task>` | ~~`viben swarm start`~~ 已废弃 |
-| `cleanup.py --list` | `viben task cleanup --list` | ~~`viben swarm cleanup --list`~~ 已废弃 |
-| `cleanup.py <branch>` | `viben task cleanup <branch>` | ~~`viben swarm cleanup`~~ 已废弃 |
-| `cleanup.py --merged` | `viben task cleanup --merged` | ~~`viben swarm cleanup`~~ 已废弃 |
-| `cleanup.py --all` | `viben task cleanup --all` | ~~`viben swarm cleanup`~~ 已废弃 |
+| `cleanup.py --list` | `viben task cleanup --list` | 参阅 [task.md](./task.md) |
+| `cleanup.py <branch>` | `viben task cleanup <branch>` | 参阅 [task.md](./task.md) |
+| `cleanup.py --merged` | `viben task cleanup --merged` | 参阅 [task.md](./task.md) |
+| `cleanup.py --all` | `viben task cleanup --all` | 参阅 [task.md](./task.md) |
 | `status.py --registry` | `viben swarm registry` | |
 
 ---
@@ -454,15 +391,6 @@ post_create:
 ### 注册表
 - [ ] `viben swarm registry` 显示所有注册的智能体
 - [ ] 支持 `--json` 输出
-
-### 清理 (DEPRECATED - 使用 `viben task cleanup`)
-- [ ] ~~`viben swarm cleanup <branch>` 清理指定 worktree~~ -> `viben task cleanup <branch>`
-- [ ] ~~`viben swarm cleanup --merged` 清理已合并的 worktree~~ -> `viben task cleanup --merged`
-- [ ] ~~`viben swarm cleanup --all` 清理所有 worktree~~ -> `viben task cleanup --all`
-- [ ] 支持 `--keep-branch` 保留分支
-- [ ] 清理时归档任务目录
-
-> 详细文档请参阅 [task.md - 清理任务](./task.md#清理任务)
 
 ---
 

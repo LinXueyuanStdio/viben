@@ -171,6 +171,14 @@ export const TaskCard = memo(function TaskCard({
     actions.onArchive(task.id);
   }, [actions, task.id]);
 
+  const handleApprove = useCallback(() => {
+    actions.onApprove(task.id);
+  }, [actions, task.id]);
+
+  const handleReject = useCallback(() => {
+    actions.onReject(task.id);
+  }, [actions, task.id]);
+
   const handleTitleChange = useCallback(
     (title: string) => {
       actions.onTitleChange(task.id, title);
@@ -185,6 +193,8 @@ export const TaskCard = memo(function TaskCard({
   const canStop = !!task.has_in_progress_attempt;
   const canRecover = isStuck;
   const canResume = task.last_attempt_failed && !task.has_in_progress_attempt;
+  const canApprove = task.status === "review";
+  const canReject = task.status === "review";
   const canViewPR = !!(task.prUrl || task.pr_url);
   const canArchive = task.status === "completed" && !task.archivedAt;
 
@@ -220,6 +230,8 @@ export const TaskCard = memo(function TaskCard({
         onStop={canStop ? handleStop : undefined}
         onRecover={canRecover ? handleRecoverTask : undefined}
         onResume={canResume ? handleResumeTask : undefined}
+        onApprove={canApprove ? handleApprove : undefined}
+        onReject={canReject ? handleReject : undefined}
         onViewPR={canViewPR ? handleViewPR : undefined}
         onArchive={canArchive ? handleArchive : undefined}
         isSelected={isSelected}

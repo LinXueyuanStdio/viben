@@ -19,6 +19,12 @@ import {
   type KanbanColumnId,
   type TaskWithAttemptStatus,
 } from "@/lib/vibe-kanban";
+import {
+  getGatewayUrl,
+  submitTaskEvent,
+  type TaskEvent,
+} from "@/lib/gateway";
+import { toast } from "@/hooks/use-toast";
 import type { CreateTaskData } from "../create-task-dialog";
 import type { TaskActions } from "../types";
 
@@ -157,6 +163,102 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
       });
     },
     [workspacePath, updateTaskStatus]
+  );
+
+  /**
+   * Approve a task in review
+   * Submits APPROVED event to move task to completed status
+   */
+  const onApprove = useCallback(
+    async (taskId: string) => {
+      if (!workspacePath) return;
+
+      const gatewayUrl = getGatewayUrl();
+      if (!gatewayUrl) return;
+
+      try {
+        const event: TaskEvent = {
+          eventId: crypto.randomUUID(),
+          sequence: 0, // Will be validated by server
+          type: "APPROVED",
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await submitTaskEvent(
+          gatewayUrl,
+          taskId,
+          workspacePath,
+          event
+        );
+
+        if (result.success) {
+          onSuccess?.(t("workspace.taskActions.approved", "Task approved"));
+        } else {
+          const errorMessage =
+            result.error === "SEQUENCE_MISMATCH"
+              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
+              : result.error === "INVALID_TRANSITION"
+                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
+                : t("workspace.taskActions.submitFailed", "Failed to submit event");
+          onError?.(errorMessage);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
+        onError?.(message);
+        toast.error(t("workspace.taskActions.approveFailed", "Failed to approve task"), {
+          description: message,
+        });
+      }
+    },
+    [workspacePath, onSuccess, onError, t]
+  );
+
+  /**
+   * Reject a task in review
+   * Submits REJECTED event to resume task execution
+   */
+  const onReject = useCallback(
+    async (taskId: string) => {
+      if (!workspacePath) return;
+
+      const gatewayUrl = getGatewayUrl();
+      if (!gatewayUrl) return;
+
+      try {
+        const event: TaskEvent = {
+          eventId: crypto.randomUUID(),
+          sequence: 0, // Will be validated by server
+          type: "REJECTED",
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await submitTaskEvent(
+          gatewayUrl,
+          taskId,
+          workspacePath,
+          event
+        );
+
+        if (result.success) {
+          onSuccess?.(t("workspace.taskActions.rejected", "Task sent back for revision"));
+        } else {
+          const errorMessage =
+            result.error === "SEQUENCE_MISMATCH"
+              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
+              : result.error === "INVALID_TRANSITION"
+                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
+                : t("workspace.taskActions.submitFailed", "Failed to submit event");
+          onError?.(errorMessage);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
+        onError?.(message);
+        toast.error(t("workspace.taskActions.rejectFailed", "Failed to reject task"), {
+          description: message,
+        });
+      }
+    },
+    [workspacePath, onSuccess, onError, t]
   );
 
   /**
@@ -396,6 +498,8 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
     onStop,
     onRecover,
     onResume,
+    onApprove,
+    onReject,
     onArchive,
     onDelete,
     onDuplicate,

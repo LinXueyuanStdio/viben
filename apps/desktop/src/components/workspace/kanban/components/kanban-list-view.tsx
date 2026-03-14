@@ -23,6 +23,7 @@ import {
   Square,
   RotateCcw,
   GitPullRequest,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Badge,
@@ -368,6 +369,52 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          )}
+
+          {/* Review - Approve and Reject buttons */}
+          {task.status === "review" && (
+            <>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-success hover:bg-success/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        taskActions.onApprove(task.id);
+                      }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {t("workspace.taskCard.approve", "Approve")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        taskActions.onReject(task.id);
+                      }}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {t("workspace.taskCard.reject", "Reject")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
           )}
 
           {/* Backlog/Queue - Start button */}

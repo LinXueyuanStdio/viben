@@ -546,8 +546,6 @@ viben task cleanup --list
   add-user-auth: PID=12345 [~/.viben/worktrees/feature/user-auth]
 ```
 
-> **Note**: `viben swarm cleanup` 已废弃，请使用 `viben task cleanup` 代替。
-
 ---
 
 ## 任务配置

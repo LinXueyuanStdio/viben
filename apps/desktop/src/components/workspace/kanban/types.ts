@@ -70,6 +70,10 @@ export interface TaskActions {
   onRecover: (taskId: string) => void;
   /** Resume a failed/incomplete task */
   onResume: (taskId: string) => void;
+  /** Approve a task in review */
+  onApprove: (taskId: string) => void;
+  /** Reject a task in review */
+  onReject: (taskId: string) => void;
   /** Archive a completed task */
   onArchive: (taskId: string) => void;
   /** Delete a task */
@@ -250,6 +254,8 @@ export interface TaskCardContentProps {
   onStop?: () => void;
   onRecover?: () => void;
   onResume?: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
   onViewPR?: () => void;
   onArchive?: () => void;
   isSelected?: boolean;

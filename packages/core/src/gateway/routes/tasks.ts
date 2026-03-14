@@ -68,6 +68,15 @@ import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
 import { taskSSEManager } from "../sse/task-sse-manager";
 import {
+  pauseTask,
+  resumeTask,
+  approveTask,
+  rejectTask,
+  retryTask,
+  cancelTask,
+} from "../../task/ops/lifecycle";
+import { setTaskBranch, setTaskBaseBranch, setTaskAgent } from "../../task/ops/config";
+import {
   updateTaskField,
   readJsonlFile,
   writeJsonlFile,
@@ -103,6 +112,16 @@ import {
   createCLIAdapter,
 } from "../../cli/lib/viben-workspace";
 import { getContextJson, getContextText } from "../../task/ops/context-output";
+import {
+  initContext as initContextOp,
+  addContext as addContextOp,
+  removeContext as removeContextOp,
+  listContext as listContextOp,
+  validateContext as validateContextOp,
+} from "../../task/ops/context-files";
+import { finishTask, archiveTask as archiveTaskOp, listArchivedTasks } from "../../task/ops/crud";
+import { reviewTask } from "../../task/ops/review";
+import { createPR } from "../../task/ops/create-pr";
 
 /**
  * Convert UnifiedTask to db Task for events
@@ -1578,20 +1597,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path, task_id, and branch are required" };
     }
 
-    // Find task directory
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}` };
+    const result = setTaskBranch(workspace_path, task_id, branch);
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return { error: result.error };
     }
 
-    const success = updateTaskField(taskDir, "branch", branch);
-    if (!success) {
-      reply.code(400);
-      return { error: "Failed to update task.json" };
-    }
-
-    return { success: true, task_id, branch };
+    return { success: true, task_id: result.task, branch };
   });
 
   // POST /api/task/set-base - Set PR target branch
@@ -1645,19 +1658,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path, task_id, and base_branch are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}` };
+    const result = setTaskBaseBranch(workspace_path, task_id, base_branch);
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return { error: result.error };
     }
 
-    const success = updateTaskField(taskDir, "base_branch", base_branch);
-    if (!success) {
-      reply.code(400);
-      return { error: "Failed to update task.json" };
-    }
-
-    return { success: true, task_id, base_branch };
+    return { success: true, task_id: result.task, base_branch };
   });
 
   // POST /api/task/set-agent - Set associated agent
@@ -1711,19 +1719,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path, task_id, and agent_id are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}` };
+    const result = setTaskAgent(workspace_path, task_id, agent_id);
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return { error: result.error };
     }
 
-    const success = updateTaskField(taskDir, "agent", agent_id);
-    if (!success) {
-      reply.code(400);
-      return { error: "Failed to update task.json" };
-    }
-
-    return { success: true, task_id, agent_id };
+    return { success: true, task_id: result.task, agent_id };
   });
 
   // ============================================================================
@@ -1793,38 +1796,17 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path and task_id are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
+    const result = initContextOp(workspace_path, task_id);
+
+    if (!result.success) {
       reply.code(404);
-      return { error: `Task not found: ${task_id}` };
+      return { error: result.error || `Task not found: ${task_id}` };
     }
-
-    const filesCreated: string[] = [];
-
-    // Create implement.jsonl with only workflow.md as base context
-    const implementEntries: ContextEntry[] = [
-      { file: `${DIR_VIBEN}/workflow.md`, reason: "Project workflow and conventions" },
-    ];
-    const implementFile = join(taskDir, "implement.jsonl");
-    writeJsonlFile(implementFile, implementEntries as unknown as Array<Record<string, unknown>>);
-    filesCreated.push("implement.jsonl");
-
-    // Create empty check.jsonl
-    const checkEntries: ContextEntry[] = [];
-    const checkFile = join(taskDir, "check.jsonl");
-    writeJsonlFile(checkFile, checkEntries as unknown as Array<Record<string, unknown>>);
-    filesCreated.push("check.jsonl");
-
-    // Create empty fix.jsonl
-    const fixEntries: ContextEntry[] = [];
-    const fixFile = join(taskDir, "fix.jsonl");
-    writeJsonlFile(fixFile, fixEntries as unknown as Array<Record<string, unknown>>);
-    filesCreated.push("fix.jsonl");
 
     return {
       success: true,
       task_id,
-      files_created: filesCreated,
+      files_created: ["implement.jsonl", "check.jsonl", "fix.jsonl"],
     };
   });
 
@@ -1897,47 +1879,35 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path, task_id, and files are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}` };
-    }
+    let totalAdded = 0;
+    let totalSkipped = 0;
 
-    const jsonlFile = join(taskDir, `${context_type}.jsonl`);
-    let addedCount = 0;
-    let skippedCount = 0;
-
+    // Call addContextOp for each file to preserve individual reasons
     for (const fileInput of files) {
-      // Skip if already exists
-      if (jsonlEntryExists(jsonlFile, fileInput.path)) {
-        skippedCount++;
-        continue;
+      const result = addContextOp(
+        workspace_path,
+        task_id,
+        [fileInput.path],
+        {
+          reason: fileInput.reason || "Added via API",
+          contextType: context_type,
+        }
+      );
+
+      if (!result.success) {
+        reply.code(404);
+        return { error: result.error || `Task not found: ${task_id}` };
       }
 
-      // Determine type
-      let type: "file" | "directory" | undefined;
-      const fullPath = join(workspace_path, fileInput.path);
-      if (existsSync(fullPath)) {
-        type = statSync(fullPath).isDirectory() ? "directory" : "file";
-      }
-
-      const entry: ContextEntry = {
-        file: fileInput.path,
-        reason: fileInput.reason || "Added via API",
-      };
-      if (type) {
-        entry.type = type;
-      }
-
-      appendToJsonl(jsonlFile, entry as unknown as Record<string, unknown>);
-      addedCount++;
+      totalAdded += result.added;
+      totalSkipped += result.skipped;
     }
 
     return {
       success: true,
       task_id,
-      added: addedCount,
-      skipped: skippedCount,
+      added: totalAdded,
+      skipped: totalSkipped,
       total: files.length,
     };
   });
@@ -1997,39 +1967,17 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path, task_id, and files are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
+    const result = removeContextOp(workspace_path, task_id, files);
+
+    if (!result.success) {
       reply.code(404);
-      return { error: `Task not found: ${task_id}` };
-    }
-
-    let totalRemoved = 0;
-
-    // Remove from all context files
-    for (const jsonlName of ["implement.jsonl", "check.jsonl", "fix.jsonl"]) {
-      const jsonlPath = join(taskDir, jsonlName);
-      if (!existsSync(jsonlPath)) continue;
-
-      const content = readFileSync(jsonlPath, "utf-8");
-      const lines = content.split("\n").filter((line) => {
-        if (!line.trim()) return false;
-        try {
-          const entry = JSON.parse(line);
-          const shouldRemove = files.includes(entry.file);
-          if (shouldRemove) totalRemoved++;
-          return !shouldRemove;
-        } catch {
-          return true;
-        }
-      });
-
-      writeFileSync(jsonlPath, lines.join("\n") + "\n", "utf-8");
+      return { error: result.error || `Task not found: ${task_id}` };
     }
 
     return {
       success: true,
       task_id,
-      removed: totalRemoved,
+      removed: result.removed.length,
     };
   });
 
@@ -2119,26 +2067,27 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path and task_id are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
+    const result = listContextOp(workspace_path, task_id);
+
+    if (!result.success) {
       reply.code(404);
-      return { error: `Task not found: ${task_id}` };
+      return { error: result.error || `Task not found: ${task_id}` };
     }
 
+    // Transform keys from filename format to short format
+    // e.g., "implement.jsonl" -> "implement"
     const context: Record<string, ContextEntry[]> = {
       implement: [],
       check: [],
       debug: [],
     };
 
-    for (const [key, fileName] of Object.entries({
-      implement: "implement.jsonl",
-      check: "check.jsonl",
-      fix: "fix.jsonl",
-    })) {
-      const filePath = join(taskDir, fileName);
-      if (existsSync(filePath)) {
-        context[key] = readJsonlFile(filePath) as unknown as ContextEntry[];
+    for (const [fileName, entries] of Object.entries(result.context)) {
+      const key = fileName.replace(".jsonl", "");
+      // Map "fix" to "debug" to match existing API response
+      const mappedKey = key === "fix" ? "debug" : key;
+      if (mappedKey in context) {
+        context[mappedKey] = entries;
       }
     }
 
@@ -2204,38 +2153,20 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path and task_id are required" };
     }
 
-    const taskDir = await taskService.findTaskById(workspace_path, task_id);
-    if (!taskDir) {
+    const result = validateContextOp(workspace_path, task_id);
+
+    if (result.error) {
       reply.code(404);
-      return { error: `Task not found: ${task_id}` };
-    }
-
-    const contextFiles = ["implement.jsonl", "check.jsonl", "fix.jsonl"];
-    const missing: string[] = [];
-    let validCount = 0;
-
-    for (const fileName of contextFiles) {
-      const filePath = join(taskDir, fileName);
-      if (!existsSync(filePath)) continue;
-
-      const entries = readJsonlFile(filePath) as unknown as ContextEntry[];
-      for (const entry of entries) {
-        const fullPath = join(workspace_path, entry.file);
-        if (existsSync(fullPath)) {
-          validCount++;
-        } else {
-          missing.push(entry.file);
-        }
-      }
+      return { error: result.error };
     }
 
     return {
       success: true,
       task_id,
-      valid_count: validCount,
-      missing_count: missing.length,
-      missing_files: missing,
-      all_valid: missing.length === 0,
+      valid_count: result.valid.length,
+      missing_count: result.missing.length,
+      missing_files: result.missing,
+      all_valid: result.missing.length === 0,
     };
   });
 
@@ -3497,9 +3428,23 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
     }
 
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Use core finishTask function
+    const result = finishTask(workspace_path, task_id);
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error || "Failed to finish task", code: "FINISH_FAILED" };
+    }
+
     return {
       success: true,
       task_id,
+      status: "completed",
       message: "Task finish acknowledged",
     };
   });
@@ -3563,70 +3508,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
+    const result = pauseTask(workspace_path, task_id);
 
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    if (!["queue", "in_progress"].includes(task.status)) {
-      reply.code(400);
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
       return {
-        error: `Cannot pause task in '${task.status}' status. Expected: queue or in_progress`,
-        code: "INVALID_STATUS_TRANSITION",
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "PAUSE_FAILED",
       };
     }
 
-    const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "PAUSE",
-      timestamp: new Date().toISOString(),
-      payload: {
-        fromState: task.status,
-        subtaskIndex: task.current_phase ?? 0,
-        pausedAt: new Date().toISOString(),
-      },
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
-
-    if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to pause task", code: "PAUSE_FAILED" };
-    }
-
-    await taskService.updateTask(taskDir, {
-      machine_context: {
-        current_subtask_index: task.machine_context?.current_subtask_index ?? 0,
-        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
-        paused_snapshot: {
-          from_state: previousStatus,
-          subtask_index: task.current_phase ?? 0,
-          paused_at: new Date().toISOString(),
-        },
-      },
-    });
-
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -3689,66 +3592,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
+    const result = resumeTask(workspace_path, task_id);
 
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    if (task.status !== "paused") {
-      reply.code(400);
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
       return {
-        error: `Cannot resume task in '${task.status}' status. Expected: paused`,
-        code: "INVALID_STATUS_TRANSITION",
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "RESUME_FAILED",
       };
     }
 
-    const pausedSnapshot = task.machine_context?.paused_snapshot;
-    const targetStatus = pausedSnapshot?.from_state as string || "queue";
-    const previousStatus = task.status;
-
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "RESUME",
-      timestamp: new Date().toISOString(),
-      payload: { toState: targetStatus },
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
-
-    if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to resume task", code: "RESUME_FAILED" };
-    }
-
-    // Clear paused_snapshot from machine_context
-    await taskService.updateTask(taskDir, {
-      machine_context: {
-        current_subtask_index: task.machine_context?.current_subtask_index ?? 0,
-        requires_plan_review: task.machine_context?.requires_plan_review ?? false,
-        paused_snapshot: undefined,
-      },
-    });
-
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -3801,7 +3666,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, task_id, comment } = request.body;
+    const { workspace_path, task_id } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
@@ -3813,58 +3678,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
+    const result = approveTask(workspace_path, task_id);
 
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    if (task.status !== "review") {
-      reply.code(400);
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
       return {
-        error: `Cannot approve task in '${task.status}' status. Expected: review`,
-        code: "INVALID_STATUS_TRANSITION",
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "APPROVE_FAILED",
       };
     }
 
-    const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "APPROVED",
-      timestamp: new Date().toISOString(),
-      payload: comment ? { comment } : undefined,
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
-
-    if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to approve task", code: "APPROVE_FAILED" };
-    }
-
-    await taskService.updateTask(taskDir, {
-      completedAt: new Date().toISOString().split("T")[0],
-    });
-
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -3929,54 +3764,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    if (task.status !== "review") {
-      reply.code(400);
-      return {
-        error: `Cannot reject task in '${task.status}' status. Expected: review`,
-        code: "INVALID_STATUS_TRANSITION",
-      };
-    }
-
-    const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "REJECTED",
-      timestamp: new Date().toISOString(),
-      payload: reason ? { reason } : undefined,
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
+    const result = rejectTask(workspace_path, task_id, reason);
 
     if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to reject task", code: "REJECT_FAILED" };
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
+      return {
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "REJECT_FAILED",
+      };
     }
 
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -4039,55 +3848,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
+    const result = retryTask(workspace_path, task_id);
 
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    if (task.status !== "failed") {
-      reply.code(400);
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
       return {
-        error: `Cannot retry task in '${task.status}' status. Expected: failed`,
-        code: "INVALID_STATUS_TRANSITION",
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "RETRY_FAILED",
       };
     }
 
-    const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "RETRY",
-      timestamp: new Date().toISOString(),
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
-
-    if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to retry task", code: "RETRY_FAILED" };
-    }
-
-    await taskService.updateTask(taskDir, { lastAttemptFailed: false });
-
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -4099,6 +3881,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       workspace_path: string;
       task_id: string;
       reason?: string;
+      force?: boolean;
     };
   }>("/api/task/cancel", {
     schema: {
@@ -4110,6 +3893,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           workspace_path: { type: "string", description: "Workspace path (required)" },
           task_id: { type: "string", description: "Task ID or directory (required)" },
           reason: { type: "string", description: "Optional cancellation reason" },
+          force: { type: "boolean", description: "Force cancel even if task is in_progress" },
         },
         required: ["workspace_path", "task_id"],
       },
@@ -4140,7 +3924,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, task_id, reason } = request.body;
+    const { workspace_path, task_id, reason, force } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
@@ -4152,55 +3936,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const taskDir = await resolveTaskDir(task_id, workspace_path);
-    if (!taskDir) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    const task = await taskService.getTask(taskDir);
-    if (!task) {
-      reply.code(404);
-      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
-    }
-
-    const nonCancellableStates = ["completed", "cancelled", "archived"];
-    if (nonCancellableStates.includes(task.status)) {
-      reply.code(400);
-      return {
-        error: `Cannot cancel task in '${task.status}' status`,
-        code: "INVALID_STATUS_TRANSITION",
-      };
-    }
-
-    const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
-    const event: TaskEvent = {
-      eventId: randomUUID(),
-      sequence: nextSequence,
-      type: "CANCEL",
-      timestamp: new Date().toISOString(),
-      payload: reason ? { reason } : undefined,
-    };
-
-    const result = await taskEventStore.applyEvent(taskDir, event);
+    const result = cancelTask(workspace_path, task_id, { reason, force });
 
     if (!result.success) {
-      reply.code(400);
-      return { error: result.error || "Failed to cancel task", code: "CANCEL_FAILED" };
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
+      return {
+        error: result.error,
+        code: isNotFound ? "TASK_NOT_FOUND" : "CANCEL_FAILED",
+      };
     }
 
     taskSSEManager.broadcast(
       task_id,
-      { type: "STATE_CHANGED", event, new_state: result.newState },
+      { type: "STATE_CHANGED", new_state: result.status },
       workspace_path
     );
 
     return {
       success: true,
-      task_id,
-      status: result.newState,
-      previous_status: previousStatus,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
     };
   });
 
@@ -4369,10 +4126,16 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
     }
 
-    // Use CLI function for archived tasks
-    const archivedMap = getArchivedTasks(workspace_path, month);
+    // Use core listArchivedTasks function
+    const result = listArchivedTasks(workspace_path, month);
+    if (!result.success) {
+      reply.code(400);
+      return { error: "Failed to list archived tasks", code: "LIST_ARCHIVE_FAILED" };
+    }
+
+    // Convert Map to object for JSON response
     const archives: Record<string, string[]> = {};
-    for (const [monthKey, tasks] of archivedMap) {
+    for (const [monthKey, tasks] of result.archived) {
       archives[monthKey] = tasks;
     }
 
@@ -4405,45 +4168,28 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_dir is required", code: "MISSING_TASK_DIR" };
     }
 
-    // Resolve task directory
+    // Resolve task directory and determine repoRoot
     let taskDir = task_dir;
+    const repoRoot = workspace_path || (task_dir.startsWith("/") ? task_dir.split("/.viben/")[0] : "");
+
     if (!task_dir.startsWith("/") && workspace_path) {
       const resolved = resolveTaskDirectory(task_dir, workspace_path);
       if (resolved) taskDir = resolved;
     }
 
-    if (!existsSync(taskDir)) {
+    // Use core reviewTask function
+    const reviewResult = reviewTask(repoRoot, taskDir);
+
+    if (!reviewResult.success) {
       reply.code(404);
-      return { error: "Task not found", code: "TASK_NOT_FOUND" };
+      return { error: reviewResult.error || "Task not found", code: "TASK_NOT_FOUND" };
     }
 
-    const taskData = readTaskJsonFromWorkspace(taskDir);
-    if (!taskData) {
-      reply.code(404);
-      return { error: "Task not found", code: "TASK_NOT_FOUND" };
-    }
+    const taskData = reviewResult.task!;
+    const dirName = reviewResult.dirName || basename(taskDir);
+    const prInfo = reviewResult.prInfo || {};
 
-    const dirName = basename(taskDir);
-
-    // Get PR info if pr_url exists
-    let prInfo: { additions?: number; deletions?: number; changedFiles?: number } = {};
-    if (taskData.pr_url) {
-      try {
-        const prUrl = String(taskData.pr_url);
-        const prMatch = prUrl.match(/\/pull\/(\d+)/);
-        if (prMatch && workspace_path) {
-          const result = execSync(
-            `gh pr view ${prMatch[1]} --json additions,deletions,changedFiles 2>/dev/null`,
-            { cwd: workspace_path, encoding: "utf-8" }
-          );
-          prInfo = JSON.parse(result);
-        }
-      } catch {
-        // Ignore gh errors
-      }
-    }
-
-    // Get specs data
+    // Get specs data (additional functionality not in core reviewTask)
     const specsData = await taskService.getTaskSpecsData(taskDir);
 
     return {
@@ -4815,158 +4561,47 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "Task not found", code: "TASK_NOT_FOUND" };
     }
 
-    try {
-      const taskData = readTaskJsonFromWorkspace(taskDirPath);
-      if (!taskData) {
-        reply.code(404);
-        return { error: "Failed to read task.json", code: "TASK_READ_FAILED" };
-      }
+    // Use core createPR function
+    const result = createPR(repoRoot, taskDirPath, { dryRun: dryRun || false });
 
-      const taskName = String(taskData.name || "");
-      const baseBranch = String(taskData.base_branch || "main");
-
-      // All task branches use "feat" prefix
-      const commitPrefix = "feat";
-
-      // Get current branch
-      const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
-      const currentBranch = branchOut.trim();
-
-      const steps: string[] = [];
-      let prUrl = "";
-
-      // Stage changes
-      runGitCommand(["add", "-A"], repoRoot);
-      runGitCommand(["reset", `${DIR_VIBEN}/workspace/`], repoRoot);
-      runGitCommand(["reset", ".agent-log", ".session-id"], repoRoot);
-
-      // Check for staged changes
-      const { code: diffCode } = runGitCommand(["diff", "--cached", "--quiet"], repoRoot);
-      const hasStagedChanges = diffCode !== 0;
-
-      if (!hasStagedChanges) {
-        // Check for unpushed commits
-        const { stdout: logOut } = runGitCommand(
-          ["log", `origin/${currentBranch}..HEAD`, "--oneline"],
-          repoRoot
-        );
-        const unpushed = logOut.split("\n").filter((line: string) => line.trim()).length;
-
-        if (unpushed === 0) {
-          if (dryRun) {
-            runGitCommand(["reset", "HEAD"], repoRoot);
-          }
-          reply.code(400);
-          return { error: "No changes to create PR", code: "NO_CHANGES" };
-        }
-        steps.push(`Found ${unpushed} unpushed commit(s)`);
-      } else {
-        // Commit changes
-        const commitMsg = `${commitPrefix}: ${taskName}`;
-        if (dryRun) {
-          const { stdout: stagedOut } = runGitCommand(["diff", "--cached", "--name-only"], repoRoot);
-          steps.push(`[DRY-RUN] Would commit: ${commitMsg}`);
-          steps.push(`[DRY-RUN] Staged files: ${stagedOut.split("\n").filter((l: string) => l.trim()).join(", ")}`);
-        } else {
-          runGitCommand(["commit", "-m", commitMsg], repoRoot);
-          steps.push(`Committed: ${commitMsg}`);
-        }
-      }
-
-      // Push to remote
-      if (dryRun) {
-        steps.push(`[DRY-RUN] Would push to: origin/${currentBranch}`);
-      } else {
-        const { code: pushCode, stderr: pushErr } = runGitCommand(
-          ["push", "-u", "origin", currentBranch],
-          repoRoot
-        );
-        if (pushCode !== 0) {
-          reply.code(500);
-          return { error: `Failed to push: ${pushErr}`, code: "PUSH_FAILED" };
-        }
-        steps.push(`Pushed to origin/${currentBranch}`);
-      }
-
-      // Create PR
-      const prTitle = `${commitPrefix}: ${taskName}`;
-
-      if (dryRun) {
-        steps.push(`[DRY-RUN] Would create PR: ${prTitle}`);
-        prUrl = "https://github.com/example/repo/pull/DRY-RUN";
-      } else {
-        // Check if PR already exists
-        try {
-          const existingPrResult = execSync(
-            `gh pr list --head "${currentBranch}" --base "${baseBranch}" --json url --jq ".[0].url"`,
-            { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-          ).trim();
-
-          if (existingPrResult) {
-            prUrl = existingPrResult;
-            steps.push(`PR already exists: ${existingPrResult}`);
-          }
-        } catch {
-          // No existing PR
-        }
-
-        if (!prUrl) {
-          let prBody = "";
-          const prdFile = join(taskDirPath, "prd.md");
-          if (existsSync(prdFile)) {
-            prBody = readFileSync(prdFile, "utf-8");
-          }
-
-          try {
-            const createPrResult = execSync(
-              `gh pr create --draft --base "${baseBranch}" --title "${prTitle}" --body "${prBody.replace(/"/g, '\\"')}"`,
-              { cwd: repoRoot, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-            ).trim();
-
-            prUrl = createPrResult;
-            steps.push(`PR created: ${prUrl}`);
-          } catch (err) {
-            const error = err as { stderr?: string };
-            reply.code(500);
-            return { error: `Failed to create PR: ${error.stderr || "Unknown error"}`, code: "PR_CREATE_FAILED" };
-          }
-        }
-
-        // Update task.json
-        let createPrPhase = getPhaseForAction(join(taskDirPath, FILE_TASK_JSON), "create-pr");
-        if (!createPrPhase) {
-          createPrPhase = 4;
-        }
-
-        updateTaskField(taskDirPath, "status", "review");
-        updateTaskField(taskDirPath, "pr_url", prUrl);
-        updateTaskField(taskDirPath, "current_phase", createPrPhase);
-        steps.push("Task status updated to review");
-      }
-
-      // In dry-run, reset staging area
-      if (dryRun) {
-        runGitCommand(["reset", "HEAD"], repoRoot);
-      }
-
-      return {
-        success: true,
-        data: {
-          pr_url: prUrl,
-          pr_title: prTitle,
-          base_branch: baseBranch,
-          head_branch: currentBranch,
-          dry_run: dryRun || false,
-          steps,
-        },
-      };
-    } catch (error) {
-      reply.code(500);
-      return {
-        error: error instanceof Error ? error.message : "Failed to create PR",
-        code: "CREATE_PR_FAILED",
-      };
+    if (!result.success) {
+      const errorCode = result.error?.includes("No changes") ? "NO_CHANGES" :
+                        result.error?.includes("push") ? "PUSH_FAILED" :
+                        result.error?.includes("create PR") ? "PR_CREATE_FAILED" :
+                        "CREATE_PR_FAILED";
+      reply.code(errorCode === "NO_CHANGES" ? 400 : 500);
+      return { error: result.error || "Failed to create PR", code: errorCode };
     }
+
+    // Build steps array for response compatibility
+    const steps: string[] = [];
+    if (result.hadStagedChanges) {
+      steps.push(`Committed: ${result.commitMessage}`);
+    } else if (result.unpushedCommits) {
+      steps.push(`Found ${result.unpushedCommits} unpushed commit(s)`);
+    }
+    if (!dryRun && result.currentBranch) {
+      steps.push(`Pushed to origin/${result.currentBranch}`);
+    }
+    if (result.prUrl) {
+      steps.push(dryRun ? `[DRY-RUN] Would create PR` : `PR created: ${result.prUrl}`);
+    }
+    if (!dryRun) {
+      steps.push("Task status updated to review");
+    }
+
+    return {
+      success: true,
+      data: {
+        pr_url: result.prUrl,
+        pr_title: result.taskName,
+        base_branch: result.baseBranch,
+        head_branch: result.currentBranch,
+        dry_run: dryRun || false,
+        steps,
+        ...(result.dryRunInfo && { dry_run_info: result.dryRunInfo }),
+      },
+    };
   });
 
   // ==========================================================================
