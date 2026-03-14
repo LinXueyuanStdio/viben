@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ListChecks,
   Check,
@@ -68,6 +68,7 @@ export function PlanApproval({
   className,
 }: PlanApprovalProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   // Calculate plan status
   const isAllCompleted = plan.steps.every(
@@ -94,8 +95,9 @@ export function PlanApproval({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -163,7 +165,7 @@ export function PlanApproval({
                   animate={{
                     width: `${(completedCount / plan.steps.length) * 100}%`,
                   }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
                 />
               </div>
             </div>
@@ -179,9 +181,9 @@ export function PlanApproval({
                 {plan.steps.map((step, index) => (
                   <motion.li
                     key={step.id}
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: prefersReducedMotion ? 0 : -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={{ delay: prefersReducedMotion ? 0 : index * 0.05, duration: prefersReducedMotion ? 0 : 0.2 }}
                     className="flex items-start gap-2.5"
                   >
                     <StepStatusIndicator step={step} index={index} />

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Check,
   X,
@@ -40,63 +40,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-// Check if user prefers reduced motion
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
-
-// Stagger animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.08,
-      delayChildren: prefersReducedMotion ? 0 : 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 12,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.4,
-      ease: easeOutExpo,
-    },
-  },
-};
-
-// Tab content transition variants
-const tabContentVariants = {
-  initial: {
-    opacity: 0,
-    x: prefersReducedMotion ? 0 : 20,
-  },
-  animate: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: easeOutExpo,
-    },
-  },
-  exit: {
-    opacity: 0,
-    x: prefersReducedMotion ? 0 : -20,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.2,
-    },
-  },
-};
 
 type TabValue = "builtin" | "marketplace";
 
@@ -116,6 +62,7 @@ function getCategoryIcon(iconName?: string) {
 
 export function ProvidersPage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<TabValue>("builtin");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -130,6 +77,29 @@ export function ProvidersPage() {
 
   const loading = marketplaceLoading;
   const error = marketplaceError;
+
+  // Tab content transition variants
+  const tabContentVariants = {
+    initial: {
+      opacity: 0,
+      x: prefersReducedMotion ? 0 : 20,
+    },
+    animate: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.3,
+        ease: easeOutExpo,
+      },
+    },
+    exit: {
+      opacity: 0,
+      x: prefersReducedMotion ? 0 : -20,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.2,
+      },
+    },
+  };
 
   // Filter sources based on search query
   const filteredSources = useMemo(() => {
@@ -267,8 +237,36 @@ function BuiltinSourcesTab({
   loading,
 }: BuiltinSourcesTabProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const { setProviderApiKey } = useAppStore();
   const [mounted, setMounted] = useState(false);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.08,
+        delayChildren: prefersReducedMotion ? 0 : 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 12,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.4,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -632,9 +630,37 @@ function MarketplaceTab({
   loading,
 }: MarketplaceTabProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
   const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.08,
+        delayChildren: prefersReducedMotion ? 0 : 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 12,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.4,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   useEffect(() => {
     setMounted(true);

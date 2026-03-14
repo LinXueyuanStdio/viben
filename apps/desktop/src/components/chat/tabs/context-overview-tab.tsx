@@ -4,7 +4,7 @@
  */
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Folder,
   Package,
@@ -109,6 +109,7 @@ function FileTreeItem({
   depth?: number;
   onSelect?: (file: WorkingFile) => void;
 }) {
+  const prefersReducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = React.useState(file.isExpanded ?? false);
 
   const handleClick = () => {
@@ -161,7 +162,7 @@ function FileTreeItem({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
           >
             {file.children.map((child, idx) => (
               <FileTreeItem
@@ -370,6 +371,7 @@ export function ContextOverviewTabContent({
   skills,
 }: ContextOverviewTabProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   // Section expansion states
   const [workspaceExpanded, setWorkspaceExpanded] = React.useState(true);
@@ -422,7 +424,7 @@ export function ContextOverviewTabContent({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
               className="overflow-hidden"
             >
               <WorkspaceSection
@@ -453,7 +455,7 @@ export function ContextOverviewTabContent({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
               className="overflow-hidden"
             >
               {artifactsCount === 0 ? (
@@ -492,7 +494,7 @@ export function ContextOverviewTabContent({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
               className="overflow-hidden"
             >
               {toolsCount === 0 ? (
@@ -529,7 +531,7 @@ export function ContextOverviewTabContent({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
               className="overflow-hidden"
             >
               {skillsCount === 0 ? (

@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Loader2,
   X,
@@ -68,6 +68,7 @@ function formatCost(cost: number): string {
 
 function TaskItem({ task, onStop }: TaskItemProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   // Truncate prompt for display
   const displayPrompt =
@@ -75,9 +76,10 @@ function TaskItem({ task, onStop }: TaskItemProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : -10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
+      exit={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className={cn(
         "flex items-start gap-2 p-2.5 rounded-lg transition-colors",
         task.status === "running"
@@ -148,6 +150,7 @@ export function BackgroundTaskIndicator({
 }: BackgroundTaskIndicatorProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const {
     tasks,
@@ -187,8 +190,9 @@ export function BackgroundTaskIndicator({
           <Bell className="h-4 w-4" />
           {notificationCount > 0 && (
             <motion.span
-              initial={{ scale: 0 }}
+              initial={{ scale: prefersReducedMotion ? 1 : 0 }}
               animate={{ scale: 1 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
               className={cn(
                 "absolute -top-1 -right-1 h-4 w-4 rounded-full text-[10px] font-medium flex items-center justify-center",
                 runningCount > 0
@@ -201,9 +205,13 @@ export function BackgroundTaskIndicator({
           )}
           {runningCount > 0 && (
             <motion.span
-              initial={{ opacity: 0 }}
+              initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 rounded-md bg-primary/10 animate-pulse"
+              transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+              className={cn(
+                "absolute inset-0 rounded-md bg-primary/10",
+                !prefersReducedMotion && "animate-pulse"
+              )}
             />
           )}
         </Button>

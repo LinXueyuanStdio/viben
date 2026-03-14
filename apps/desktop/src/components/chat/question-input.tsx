@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { HelpCircle, Check, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ function QuestionItem({
   onToggleOther,
 }: QuestionItemProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div className="space-y-3">
@@ -142,6 +143,7 @@ function QuestionItem({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
         >
           <input
             type="text"
@@ -176,6 +178,7 @@ export function QuestionInput({
   className,
 }: QuestionInputProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [selectedAnswers, setSelectedAnswers] = useState<
     Record<number, string[]>
   >({});
@@ -260,8 +263,9 @@ export function QuestionInput({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">

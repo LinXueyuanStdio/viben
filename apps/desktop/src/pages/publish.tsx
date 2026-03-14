@@ -1,33 +1,34 @@
 import { Upload, Construction } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
-
-// Animation variants for staggered entrance
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
-    },
-  },
-};
+import { motion, useReducedMotion } from "framer-motion";
 
 export function PublishPage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Animation variants for staggered entrance
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.1,
+        delayChildren: prefersReducedMotion ? 0 : 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.3,
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number],
+      },
+    },
+  };
 
   return (
     <motion.div

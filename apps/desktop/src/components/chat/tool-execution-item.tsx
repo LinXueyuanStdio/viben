@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ChevronDown,
   ChevronRight,
@@ -34,6 +34,7 @@ export function ToolExecutionItem({
   compact = false,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = React.useState(false);
 
   const hasDetails = input || output;
@@ -101,7 +102,7 @@ export function ToolExecutionItem({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
               className="overflow-hidden"
             >
               <div className="px-3 py-2 space-y-2">
@@ -140,8 +141,9 @@ export function ToolExecutionItem({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -195,7 +197,7 @@ export function ToolExecutionItem({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
                 className="overflow-hidden"
               >
                 <div className="border-t border-border px-4 py-3 space-y-3">

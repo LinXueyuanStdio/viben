@@ -4,7 +4,7 @@
  */
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   CheckSquare,
   Circle,
@@ -172,6 +172,7 @@ function TaskGroup({
   onTaskClick?: (task: TaskWithAttemptStatus) => void;
 }) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = React.useState(true);
   const StatusIcon = getStatusIcon(status);
   const statusColor = getStatusColor(status);
@@ -206,7 +207,7 @@ function TaskGroup({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
             className="overflow-hidden"
           >
             <div className="space-y-0.5 rounded-md border border-border/30 bg-muted/20 p-1">
