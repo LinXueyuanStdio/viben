@@ -12,26 +12,31 @@
  *    2. Execute each action in next_action array in order
  *    3. Actions typically include: implement, check, finish, create-pr
  *
+ * Log files are ALWAYS written to the task directory (taskDir), not the working directory.
+ * This ensures logs are accessible from the main repo regardless of worktree usage.
+ *
  * @example
  * ```typescript
  * import { runWorkPhase } from "@viben/core/task/phase/work";
  *
- * // Run in current repo
+ * // Run in current repo - log written to taskDir/.work-log
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/repo",
- *   taskDir: ".viben/tasks/03-12-my-task",
+ *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
  * });
+ * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/.work-log
  *
- * // Run in worktree (auto-created by work-phase when worktree=true in task.json)
+ * // Run in worktree - log still written to taskDir in main repo
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/worktree",
- *   taskDir: ".viben/tasks/03-12-my-task",
+ *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
  *   logFileName: ".agent-log",
  * });
+ * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/.agent-log
  * ```
  */
 
@@ -73,7 +78,7 @@ export interface WorkPhaseOptions {
   skipPermissions?: boolean;
   /** Output in JSON format */
   jsonOutput?: boolean;
-  /** Log file name (default: ".work-log") */
+  /** Log file name, written to task directory (default: ".work-log") */
   logFileName?: string;
   /** Agent ID prefix (default: "work") */
   agentIdPrefix?: string;
@@ -242,8 +247,9 @@ export async function runWorkPhase(
   taskData.status = "in_progress";
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
-  // Log file location depends on workingDir
-  const logFile = join(workingDir, logFileName);
+  // Log file location: write to task directory (in main repo, not worktree)
+  // This ensures logs are always in the task directory regardless of worktree usage
+  const logFile = join(taskDirAbs, logFileName);
 
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");
