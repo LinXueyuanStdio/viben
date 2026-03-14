@@ -100,7 +100,7 @@ describe("lifecycle operations", () => {
         agent: "claude-agent",
         executor: "CLAUDE_CODE",
         model: "claude-3-opus",
-        priority: "P0",
+        priority: "urgent",
       });
 
       expect(result.success).toBe(true);
@@ -111,7 +111,7 @@ describe("lifecycle operations", () => {
           agent: "claude-agent",
           executor: "CLAUDE_CODE",
           model: "claude-3-opus",
-          priority: "P0",
+          priority: "urgent",
         })
       );
     });

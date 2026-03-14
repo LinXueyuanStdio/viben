@@ -88,8 +88,8 @@ describe("crud operations", () => {
   describe("listTasks", () => {
     it("should return all active tasks when no filters applied", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "P1" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "P2" },
+        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -103,8 +103,8 @@ describe("crud operations", () => {
 
     it("should filter tasks by --mine option", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "P1" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "P2" },
+        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -128,9 +128,9 @@ describe("crud operations", () => {
 
     it("should filter tasks by --status option", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "P1" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "P2" },
-        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "P3" },
+        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "low" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -144,9 +144,9 @@ describe("crud operations", () => {
 
     it("should combine --mine and --status filters", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "P1" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "P2" },
-        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "P3" },
+        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "low" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -207,11 +207,11 @@ describe("crud operations", () => {
     });
 
     it("should create task with custom priority", () => {
-      const result = createTask(mockRepoRoot, "Test Task", { priority: "P0" });
+      const result = createTask(mockRepoRoot, "Test Task", { priority: "urgent" });
 
       expect(result.success).toBe(true);
       const writeCall = vi.mocked(vibenWorkspace.writeTaskJson).mock.calls[0];
-      expect(writeCall?.[1]).toMatchObject({ priority: "P0" });
+      expect(writeCall?.[1]).toMatchObject({ priority: "urgent" });
     });
 
     it("should create task with custom branch", () => {
@@ -325,7 +325,7 @@ describe("crud operations", () => {
         name: "test-task",
         title: "Test Task",
         status: "backlog",
-        priority: "P2",
+        priority: "medium",
       };
       vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(
         join(mockRepoRoot, ".viben/tasks/03-15-test-task")

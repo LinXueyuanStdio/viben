@@ -159,8 +159,8 @@ export interface CreateTaskRequest {
   github_issue_url?: string;
   // Legacy kanban fields
   model_id?: string;
-  branch?: string;
   auto_start?: boolean;
+  worktree?: boolean;
 }
 
 // Update task request

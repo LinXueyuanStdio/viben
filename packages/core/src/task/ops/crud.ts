@@ -335,11 +335,8 @@ export function createTask(
     worktree: options.worktree || false,
   };
 
-  // If --start is provided, set status to queue directly
-  if (options.start) {
-    taskData.status = "queue";
-    taskData.queuedAt = new Date().toISOString();
-  }
+  // Note: --start flag is handled by CLI layer calling enqueueTask after creation
+  // This ensures proper status transition (backlog -> queue) with queue system submission
 
   writeTaskJson(taskDir, taskData as unknown as Record<string, unknown>);
 

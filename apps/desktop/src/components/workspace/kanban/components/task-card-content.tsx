@@ -46,10 +46,33 @@ import {
   REVIEW_REASON_COLORS,
   type ReviewReason,
 } from "@viben/kanban";
-import type { TaskCardContentProps, Subtask } from "../types";
+import type { TaskCardContentProps, Subtask, IssuePriority } from "../types";
 import { useElapsedTime, formatElapsedTime } from "../hooks";
 import { CategoryIcons } from "../constants";
 import { PhaseProgressIndicator } from "../phase-progress-indicator";
+
+// Validate priority string is a valid IssuePriority
+const validatePriority = (priority?: string): IssuePriority | undefined => {
+  if (!priority) return undefined;
+  const validPriorities: IssuePriority[] = ["urgent", "high", "medium", "low", "none"];
+  return validPriorities.includes(priority as IssuePriority)
+    ? (priority as IssuePriority)
+    : undefined;
+};
+
+// Map current_phase number to ExecutionPhase
+// Based on CLI phase system: 1=plan, 2=implement, 3=check, 4=fix
+type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete";
+const mapCurrentPhaseToExecution = (currentPhase?: number): ExecutionPhase | undefined => {
+  if (currentPhase === undefined || currentPhase === null) return undefined;
+  const mapping: Record<number, ExecutionPhase> = {
+    1: "plan",
+    2: "implement",
+    3: "check",
+    4: "fix",
+  };
+  return mapping[currentPhase];
+};
 
 /**
  * TaskCardContent - Displays task card content with all metadata and actions
@@ -92,9 +115,13 @@ export const TaskCardContent = memo(function TaskCardContent({
   const isArchived = !!task.archivedAt;
   const isFailed = task.last_attempt_failed && !isRunning;
 
+  // Validate priority is a valid IssuePriority (urgent/high/medium/low/none)
+  const effectivePriority = task.kanbanPriority ?? validatePriority(task.priority);
+
   // Determine if execution phase badge should show
   // ExecutionPhase: "plan" | "implement" | "check" | "fix" | "complete"
-  const executionPhase = task.executionPhase ?? task.execution_phase;
+  // Also map from current_phase number to ExecutionPhase if available
+  const executionPhase = task.executionPhase ?? task.execution_phase ?? mapCurrentPhaseToExecution(task.current_phase);
   const hasActiveExecution = executionPhase && executionPhase !== "complete";
 
   // Determine review reason info
@@ -116,6 +143,8 @@ export const TaskCardContent = memo(function TaskCardContent({
     task.complexity;
 
   // Check if we have footer content
+  // Show footer for: time, assignee, due date, stuck/failed indicators,
+  // review status, completed with PR, or any actionable status (backlog/queue/in_progress)
   const hasFooter =
     task.updated_at ||
     task.kanbanAssignee ||
@@ -123,6 +152,9 @@ export const TaskCardContent = memo(function TaskCardContent({
     isStuck ||
     isFailed ||
     task.status === "review" ||
+    task.status === "backlog" ||
+    task.status === "queue" ||
+    task.status === "in_progress" ||
     (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time (for non-running tasks)
@@ -150,9 +182,9 @@ export const TaskCardContent = memo(function TaskCardContent({
     >
       {/* Row 1: Title with optional priority indicator */}
       <div className="flex items-start gap-2">
-        {task.kanbanPriority && task.kanbanPriority !== "none" && (
+        {effectivePriority && effectivePriority !== "none" && (
           <div className="shrink-0 mt-0.5">
-            <PriorityIcon priority={task.kanbanPriority} size="sm" />
+            <PriorityIcon priority={effectivePriority} size="sm" />
           </div>
         )}
         <div className="flex-1 min-w-0">

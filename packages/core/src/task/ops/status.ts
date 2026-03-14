@@ -378,8 +378,8 @@ export function cmdStatusSummary(
       const assigneeCompare = a.assignee.localeCompare(b.assignee);
       if (assigneeCompare !== 0) return assigneeCompare;
 
-      const priorityOrder: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
-      const priorityCompare = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+      const priorityOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3, none: 4 };
+      const priorityCompare = (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
       if (priorityCompare !== 0) return priorityCompare;
 
       const statusOrder: Record<string, number> = { in_progress: 0, queue: 1, backlog: 2, review: 3, completed: 4 };

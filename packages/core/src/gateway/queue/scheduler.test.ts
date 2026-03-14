@@ -327,51 +327,51 @@ describe("getNextTask", () => {
   });
 
   describe("priority ordering", () => {
-    it("selects P0 over P1", () => {
-      const p0Task = createTaskInState("queue", { id: "p0", priority: "P0" });
-      const p1Task = createTaskInState("queue", { id: "p1", priority: "P1" });
+    it("selects urgent over high", () => {
+      const urgentTask = createTaskInState("queue", { id: "urgent", priority: "urgent" });
+      const highTask = createTaskInState("queue", { id: "high", priority: "high" });
 
-      const tasks = [p1Task, p0Task];
+      const tasks = [highTask, urgentTask];
       const allTasks = createTaskMap(tasks);
 
       const result = getNextTask(tasks, allTasks);
-      expect(result?.id).toBe("p0");
+      expect(result?.id).toBe("urgent");
     });
 
-    it("selects P1 over P2", () => {
-      const p1Task = createTaskInState("queue", { id: "p1", priority: "P1" });
-      const p2Task = createTaskInState("queue", { id: "p2", priority: "P2" });
+    it("selects high over medium", () => {
+      const highTask = createTaskInState("queue", { id: "high", priority: "high" });
+      const mediumTask = createTaskInState("queue", { id: "medium", priority: "medium" });
 
-      const tasks = [p2Task, p1Task];
+      const tasks = [mediumTask, highTask];
       const allTasks = createTaskMap(tasks);
 
       const result = getNextTask(tasks, allTasks);
-      expect(result?.id).toBe("p1");
+      expect(result?.id).toBe("high");
     });
 
-    it("selects P2 over P3", () => {
-      const p2Task = createTaskInState("queue", { id: "p2", priority: "P2" });
-      const p3Task = createTaskInState("queue", { id: "p3", priority: "P3" });
+    it("selects medium over low", () => {
+      const mediumTask = createTaskInState("queue", { id: "medium", priority: "medium" });
+      const lowTask = createTaskInState("queue", { id: "low", priority: "low" });
 
-      const tasks = [p3Task, p2Task];
+      const tasks = [lowTask, mediumTask];
       const allTasks = createTaskMap(tasks);
 
       const result = getNextTask(tasks, allTasks);
-      expect(result?.id).toBe("p2");
+      expect(result?.id).toBe("medium");
     });
 
-    it("handles all four priority levels correctly", () => {
-      const p0 = createTaskInState("queue", { id: "p0", priority: "P0" });
-      const p1 = createTaskInState("queue", { id: "p1", priority: "P1" });
-      const p2 = createTaskInState("queue", { id: "p2", priority: "P2" });
-      const p3 = createTaskInState("queue", { id: "p3", priority: "P3" });
+    it("handles all priority levels correctly", () => {
+      const urgent = createTaskInState("queue", { id: "urgent", priority: "urgent" });
+      const high = createTaskInState("queue", { id: "high", priority: "high" });
+      const medium = createTaskInState("queue", { id: "medium", priority: "medium" });
+      const low = createTaskInState("queue", { id: "low", priority: "low" });
 
       // Reverse order
-      const tasks = [p3, p2, p1, p0];
+      const tasks = [low, medium, high, urgent];
       const allTasks = createTaskMap(tasks);
 
       const result = getNextTask(tasks, allTasks);
-      expect(result?.id).toBe("p0");
+      expect(result?.id).toBe("urgent");
     });
   });
 
@@ -379,12 +379,12 @@ describe("getNextTask", () => {
     it("selects earlier queuedAt task", () => {
       const earlier = createTaskInState("queue", {
         id: "earlier",
-        priority: "P2",
+        priority: "medium",
         queuedAt: "2026-01-01T10:00:00.000Z",
       });
       const later = createTaskInState("queue", {
         id: "later",
-        priority: "P2",
+        priority: "medium",
         queuedAt: "2026-01-01T11:00:00.000Z",
       });
 
@@ -400,7 +400,7 @@ describe("getNextTask", () => {
       // To test createdAt fallback, we need to explicitly set queuedAt to undefined
       const older = createTaskInState("queue", {
         id: "older",
-        priority: "P2",
+        priority: "medium",
         createdAt: "2026-01-01T10:00:00.000Z",
       });
       // Explicitly clear queuedAt to test fallback
@@ -408,7 +408,7 @@ describe("getNextTask", () => {
 
       const newer = createTaskInState("queue", {
         id: "newer",
-        priority: "P2",
+        priority: "medium",
         createdAt: "2026-01-01T11:00:00.000Z",
       });
       newer.queuedAt = undefined;
@@ -457,29 +457,29 @@ describe("getNextTask", () => {
 
   describe("dependency filtering", () => {
     it("skips task with unmet dependencies even if higher priority", () => {
-      const blockedP0 = createTaskInState("queue", {
-        id: "blocked_p0",
-        priority: "P0",
+      const blockedUrgent = createTaskInState("queue", {
+        id: "blocked_urgent",
+        priority: "urgent",
         dependsOn: ["dep"],
       });
       const dep = createTaskInState("in_progress", { id: "dep" });
-      const readyP2 = createTaskInState("queue", {
-        id: "ready_p2",
-        priority: "P2",
+      const readyMedium = createTaskInState("queue", {
+        id: "ready_medium",
+        priority: "medium",
       });
 
-      const tasks = [blockedP0, dep, readyP2];
+      const tasks = [blockedUrgent, dep, readyMedium];
       const allTasks = createTaskMap(tasks);
 
       const result = getNextTask(tasks, allTasks);
-      expect(result?.id).toBe("ready_p2");
+      expect(result?.id).toBe("ready_medium");
     });
 
     it("selects task when dependencies are completed", () => {
       const completedDep = createTaskInState("completed", { id: "dep" });
       const readyTask = createTaskInState("queue", {
         id: "ready",
-        priority: "P0",
+        priority: "urgent",
         dependsOn: ["dep"],
       });
 

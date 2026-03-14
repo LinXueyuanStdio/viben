@@ -491,7 +491,7 @@ export function registerIdeaCommand(program: Command): void {
     .option("-s, --slug <name>", "Task identifier (auto-generated from idea title if not provided)")
     .option("-b, --branch <branch>", "Custom branch name (default: feature/<slug>)")
     .option("-a, --assignee <dev>", "Assignee developer name")
-    .option("-p, --priority <priority>", "Priority (P0, P1, P2, P3) - defaults to effort-based priority")
+    .option("-p, --priority <priority>", "Priority (urgent, high, medium, low, none) - defaults to effort-based priority")
     .option("-d, --description <text>", "Task description (defaults to idea description)")
     .option("--agent <agent-id>", "Associated agent configuration")
     .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
@@ -526,10 +526,11 @@ export function registerIdeaCommand(program: Command): void {
           const repoRoot = ensureVibenRoot(cwd);
 
           // Validate priority if provided
-          if (options.priority && !/^P[0-3]$/.test(options.priority)) {
+          const validPriorities = ["urgent", "high", "medium", "low", "none"];
+          if (options.priority && !validPriorities.includes(options.priority)) {
             throw CliError.invalidArgument(
               "priority",
-              "Priority must be P0, P1, P2, or P3"
+              "Priority must be one of: urgent, high, medium, low, none"
             );
           }
 
