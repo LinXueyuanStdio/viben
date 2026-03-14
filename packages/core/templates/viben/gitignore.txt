@@ -9,11 +9,11 @@
 
 # Agent runtime files
 .agents/
-.agent-log
-.session-id
+agent.log.jsonl
+session-id.txt
 
 # Task directory runtime files
-.plan-log
+*.log.jsonl
 
 # Atomic update temp files
 *.tmp

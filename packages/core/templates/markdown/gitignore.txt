@@ -8,5 +8,6 @@
 .current-task
 
 # Agent runtime files (in worktree)
-.agent-log
-.session-id
+agent.log.jsonl
+session-id.txt
+*.log.jsonl

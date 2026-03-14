@@ -19,14 +19,14 @@
  * ```typescript
  * import { runWorkPhase } from "@viben/core/task/phase/work";
  *
- * // Run in current repo - log written to taskDir/.work-log
+ * // Run in current repo - log written to taskDir/work.log.jsonl
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/repo",
  *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
  * });
- * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/.work-log
+ * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/work.log.jsonl
  *
  * // Run in worktree - log still written to taskDir in main repo
  * const result = await runWorkPhase({
@@ -34,9 +34,9 @@
  *   workingDir: "/path/to/worktree",
  *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
- *   logFileName: ".agent-log",
+ *   logFileName: "agent.log.jsonl",
  * });
- * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/.agent-log
+ * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/agent.log.jsonl
  * ```
  */
 
@@ -78,7 +78,7 @@ export interface WorkPhaseOptions {
   skipPermissions?: boolean;
   /** Output in JSON format */
   jsonOutput?: boolean;
-  /** Log file name, written to task directory (default: ".work-log") */
+  /** Log file name, written to task directory (default: "work.log.jsonl") */
   logFileName?: string;
   /** Agent ID prefix (default: "work") */
   agentIdPrefix?: string;
@@ -184,7 +184,7 @@ export async function runWorkPhase(
     detach = true,
     skipPermissions = true,
     jsonOutput = true,
-    logFileName = ".work-log",
+    logFileName = "work.log.jsonl",
     agentIdPrefix = "work",
     agentId: customAgentId,
     skipNextActionValidation = false,

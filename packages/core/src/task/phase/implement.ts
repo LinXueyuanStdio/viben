@@ -202,7 +202,7 @@ ${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before fi
   // Spawn Background Process
   // =============================================================================
 
-  const logFile = join(taskDirAbs, ".implement-log");
+  const logFile = join(taskDirAbs, "implement.log.jsonl");
 
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");
@@ -385,7 +385,7 @@ ${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before fi
   // Spawn Background Process
   // =============================================================================
 
-  const logFile = join(taskDirAbs, ".implement-log");
+  const logFile = join(taskDirAbs, "implement.log.jsonl");
 
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");

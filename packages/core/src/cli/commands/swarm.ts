@@ -431,7 +431,7 @@ async function showStatusCommand(
       return;
     }
 
-    const logFile = join(status.worktreePath, ".agent-log");
+    const logFile = join(status.worktreePath, "agent.log.jsonl");
     if (!existsSync(logFile)) {
       console.error(chalk.red(`Log file not found: ${logFile}`));
       process.exit(1);
@@ -455,7 +455,7 @@ async function showStatusCommand(
       return;
     }
 
-    const logFile = join(status.worktreePath, ".agent-log");
+    const logFile = join(status.worktreePath, "agent.log.jsonl");
     if (!existsSync(logFile)) {
       console.error(chalk.red(`Log file not found: ${logFile}`));
       process.exit(1);

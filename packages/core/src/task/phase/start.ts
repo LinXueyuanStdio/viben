@@ -293,7 +293,7 @@ export async function startTask(
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
   // Log file
-  const logFile = join(taskDirAbs, ".start-log");
+  const logFile = join(taskDirAbs, "start.log.jsonl");
   writeFileSync(logFile, "", "utf-8");
 
   // Generate session ID for resume support

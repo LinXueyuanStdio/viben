@@ -522,6 +522,59 @@ export {
   type GenerateResult,
 } from "./index-generator";
 
+// Queue (command queue system)
+// Note: Core components (CommandQueue, Promoter, Monitor) are not exported here
+// because they extend EventEmitter which causes rollup DTS issues.
+// Import directly from the queue module: import { CommandQueue } from "@viben/core/queue"
+export {
+  // Types
+  type QueueItem,
+  type RunningItem,
+  type CompletedItem,
+  type QueueItemStatus,
+  type QueueConfig,
+  DEFAULT_QUEUE_CONFIG,
+  // Operations
+  enqueue,
+  cancel,
+  cancelAllPending,
+  retry,
+  retryAllFailed,
+  status,
+  hasCapacity,
+  getRunningCount,
+  getPendingCount,
+  list,
+  listPending,
+  listRunning,
+  listCompleted,
+  listFailed,
+  inspect,
+  exists as queueItemExists,
+  getItemStatus,
+  logs,
+  followLogs,
+  getConfig,
+  updateConfig as updateQueueConfig,
+  setMaxConcurrency,
+  clean,
+  cleanAllCompleted,
+  cleanAllLogs,
+  // Result types
+  type EnqueueResult,
+  type CancelResult,
+  type RetryResult,
+  type StatusResult,
+  type ListResult,
+  type InspectResult,
+  type LogsResult,
+  type ConfigResult,
+  type CleanResult,
+  // Persistence (for advanced usage)
+  getQueueDir,
+  ensureDirectories as ensureQueueDirectories,
+} from "./queue";
+
 // CLI
 export { run, createProgram } from "./cli";
 

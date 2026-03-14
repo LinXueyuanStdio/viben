@@ -100,7 +100,7 @@ export function createPR(
 
   // Exclude workspace and temp files
   runGitCommand(["reset", `${DIR_VIBEN}/workspace/`], repoRoot);
-  runGitCommand(["reset", ".agent-log", ".session-id"], repoRoot);
+  runGitCommand(["reset", "agent.log.jsonl", "session-id.txt"], repoRoot);
 
   // Check if there are staged changes
   const { code: diffCode } = runGitCommand(["diff", "--cached", "--quiet"], repoRoot);

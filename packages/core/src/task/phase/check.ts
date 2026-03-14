@@ -166,7 +166,7 @@ export async function runCheckPhase(
   }
 
   // Create log file
-  const logFile = join(taskDirAbs, ".review-log");
+  const logFile = join(taskDirAbs, "review.log.jsonl");
   writeFileSync(logFile, "", "utf-8");
 
   // Build environment variables

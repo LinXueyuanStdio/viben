@@ -285,7 +285,7 @@ export function cmdStatusSummary(
         const taskData = readTaskJsonFromWorkspace(join(tasksDir, name));
         const branch = (taskData?.branch as string) || "N/A";
 
-        const logFile = join(worktree, ".agent-log");
+        const logFile = join(worktree, "agent.log.jsonl");
         const lastTool = getLastTool(logFile, agentPlatform);
 
         runningTasks.push({
@@ -301,7 +301,7 @@ export function cmdStatusSummary(
         });
       } else {
         // Stopped agent
-        const logFile = join(worktree, ".agent-log");
+        const logFile = join(worktree, "agent.log.jsonl");
         const taskDirPath = join(tasksDir, name);
 
         stoppedTasks.push({
@@ -548,7 +548,7 @@ export function cmdStatusWatch(target: string, repoRoot: string, _ctx?: OutputCo
   }
 
   const worktree = agent.worktree_path;
-  const logFile = join(worktree, ".agent-log");
+  const logFile = join(worktree, "agent.log.jsonl");
 
   if (!existsSync(logFile)) {
     console.log(`Log file not found: ${logFile}`);
@@ -575,7 +575,7 @@ export function cmdStatusLog(target: string, repoRoot: string, _ctx?: OutputCont
 
   const worktree = agent.worktree_path;
   const platform = agent.platform || "claude";
-  const logFile = join(worktree, ".agent-log");
+  const logFile = join(worktree, "agent.log.jsonl");
 
   if (!existsSync(logFile)) {
     console.log(`Log file not found: ${logFile}`);

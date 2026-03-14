@@ -83,7 +83,7 @@ PLAN_REQUIREMENT = <the requirement from environment>
    EOF
    ```
 
-3. **Print summary to stdout** (will be captured in .plan-log):
+3. **Print summary to stdout** (will be captured in plan.log.jsonl):
    ```
    === PLAN REJECTED ===
    
@@ -98,7 +98,7 @@ PLAN_REQUIREMENT = <the requirement from environment>
 **The task directory is kept** with:
 - `task.json` (status: "rejected")
 - `REJECTED.md` (full explanation)
-- `.plan-log` (execution log)
+- `plan.log.jsonl` (execution log)
 
 This allows the user to review why it was rejected.
 

@@ -197,7 +197,7 @@ export async function runPlanPhase(
   // Step 6: Set up log file
   // ---------------------------------------------------------------------------
 
-  const logFile = join(taskDirAbs, ".plan-log");
+  const logFile = join(taskDirAbs, "plan.log.jsonl");
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");
 

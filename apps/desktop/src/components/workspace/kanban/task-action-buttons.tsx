@@ -323,84 +323,42 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 3: review state - Show Approve, Reject, Create PR buttons
+    // Priority 3: review state - Show Approve and Reject buttons
     if (status === "review") {
-      // Show different buttons based on review reason
-      if (reviewReason === "completed") {
-        // Task completed, show Approve button
-        buttonList.push(
-          <Button
-            key="approve"
-            variant="default"
-            size={size}
-            className={cn(sizeClasses[size], "bg-success hover:bg-success/90")}
-            onClick={handleApprove}
-            disabled={isSubmitting}
-          >
-            {submittingEvent === "APPROVED" ? (
-              <LoadingIcon />
-            ) : (
-              <CheckCircle2 className={iconWithMargin} />
-            )}
-            {t("workspace.taskActions.approve", "Approve")}
-          </Button>
-        );
-      } else if (reviewReason === "plan_review") {
-        // Plan review, show Approve and Reject
-        buttonList.push(
-          <Button
-            key="approve"
-            variant="default"
-            size={size}
-            className={sizeClasses[size]}
-            onClick={handleApprove}
-            disabled={isSubmitting}
-          >
-            {submittingEvent === "APPROVED" ? (
-              <LoadingIcon />
-            ) : (
-              <CheckCircle2 className={iconWithMargin} />
-            )}
-            {t("workspace.taskActions.approvePlan", "Approve Plan")}
-          </Button>
-        );
-        buttonList.push(
-          <Button
-            key="reject"
-            variant="outline"
-            size={size}
-            className={sizeClasses[size]}
-            onClick={handleReject}
-            disabled={isSubmitting}
-          >
-            {submittingEvent === "REJECTED" ? (
-              <LoadingIcon />
-            ) : (
-              <XCircle className={iconWithMargin} />
-            )}
-            {t("workspace.taskActions.reject", "Reject")}
-          </Button>
-        );
-      } else {
-        // Other review reasons (errors, qa_rejected, stopped) - Show Resume
-        buttonList.push(
-          <Button
-            key="resume"
-            variant="default"
-            size={size}
-            className={sizeClasses[size]}
-            onClick={handleReject}
-            disabled={isSubmitting}
-          >
-            {submittingEvent === "REJECTED" ? (
-              <LoadingIcon />
-            ) : (
-              <Play className={iconWithMargin} />
-            )}
-            {t("workspace.taskActions.resume", "Resume")}
-          </Button>
-        );
-      }
+      buttonList.push(
+        <Button
+          key="approve"
+          variant="default"
+          size={size}
+          className={cn(sizeClasses[size], "bg-success hover:bg-success/90")}
+          onClick={handleApprove}
+          disabled={isSubmitting}
+        >
+          {submittingEvent === "APPROVED" ? (
+            <LoadingIcon />
+          ) : (
+            <CheckCircle2 className={iconWithMargin} />
+          )}
+          {t("workspace.taskActions.approve", "Approve")}
+        </Button>
+      );
+      buttonList.push(
+        <Button
+          key="reject"
+          variant="outline"
+          size={size}
+          className={sizeClasses[size]}
+          onClick={handleReject}
+          disabled={isSubmitting}
+        >
+          {submittingEvent === "REJECTED" ? (
+            <LoadingIcon />
+          ) : (
+            <XCircle className={iconWithMargin} />
+          )}
+          {t("workspace.taskActions.reject", "Reject")}
+        </Button>
+      );
       return buttonList;
     }
 
