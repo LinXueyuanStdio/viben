@@ -52,9 +52,9 @@ viben task work-phase "$TASK_DIR"
 ```
 
 This command:
-1. Checks if worktree exists (from task.json `worktree_path`)
-2. Creates worktree automatically if task has `worktree=true` or `branch` set
-3. Starts work agent in the worktree
+1. Checks if task.json has `worktree=true` flag
+2. If worktree mode: creates worktree automatically and runs agent there
+3. If NOT worktree mode: runs agent in current repo without switching branches
 
 The work agent will automatically execute:
 1. implement → Implement feature

@@ -1691,7 +1691,7 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
 
         // Resolve task directory
-        const taskDir = resolveTaskDirectory(repoRoot, task);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
         if (!taskDir) {
           throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }
@@ -1742,7 +1742,7 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
 
         // Resolve task directory
-        const taskDir = resolveTaskDirectory(repoRoot, task);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
         if (!taskDir) {
           throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }
@@ -1793,7 +1793,7 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
 
         // Resolve task directory
-        const taskDir = resolveTaskDirectory(repoRoot, task);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
         if (!taskDir) {
           throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }
@@ -2074,7 +2074,7 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
 
         // Resolve task directory
-        const taskDir = resolveTaskDirectory(repoRoot, task);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
         if (!taskDir) {
           throw CliError.invalidArgument("task", `Task not found: ${task}`);
         }

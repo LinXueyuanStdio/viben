@@ -247,4 +247,4 @@ If a subagent reports failure, read the output and decide:
 2. **Do not read `docs/specs/` or requirement files directly** - Let Hook inject to subagents
 3. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
 4. **All subagents should use opus model for complex tasks**
-5. **Keep dispatch logic simple** - Complex logic belongs in subagents
+5. **Keep work logic simple** - Complex logic belongs in subagents
