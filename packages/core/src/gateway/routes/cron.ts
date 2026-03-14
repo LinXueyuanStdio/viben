@@ -2,7 +2,7 @@
  * Cron routes
  */
 import type { FastifyInstance } from "fastify";
-import type { CronJob, CreateCronJob, UpdateCronJob } from "../../services/cron";
+import type { CronJob, CreateCronJob, UpdateCronJob } from "../../cron";
 import type { AppState } from "../state";
 import { trace, SpanStatusCode } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";

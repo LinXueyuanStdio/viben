@@ -105,7 +105,7 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     review_reason: task.reviewReason ?? null,
     current_phase: task.current_phase ?? 0,
     // Organization fields
-    priority: task.priority || "medium",
+    priority: task.priority || DEFAULT_PRIORITY,
     workspace_path: task.workspacePath ?? null,
     // People
     creator: task.creator ?? null,
@@ -828,7 +828,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       description: input.description ?? sourceTask?.description,
       prompt: input.prompt ?? sourceTask?.prompt ?? input.description,
       status,
-      priority: input.priority ?? sourceTask?.priority ?? "medium",
+      priority: (input.priority ?? sourceTask?.priority ?? DEFAULT_PRIORITY) as IssuePriority,
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
       agent: input.agentId || input.agent_id || sourceTask?.agent,
@@ -903,7 +903,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       if (updates.status !== undefined) {
         taskUpdates.status = taskService.normalizeStatus(updates.status);
       }
-      if (updates.priority !== undefined) taskUpdates.priority = updates.priority;
+      if (updates.priority !== undefined) taskUpdates.priority = updates.priority as IssuePriority;
       if (updates.assignee !== undefined) taskUpdates.assignee = updates.assignee;
       if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
       if (updates.duration !== undefined) taskUpdates.duration = updates.duration;

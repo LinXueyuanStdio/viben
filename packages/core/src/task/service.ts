@@ -62,6 +62,10 @@ export { TaskEventType, VALID_EVENT_TYPES, isValidEventType } from "./events/eve
 // Re-export status constants and validation
 export { VALID_TASK_STATUSES, isValidTaskStatus } from "./ops/types";
 
+// Re-export priority types and constants
+export type { IssuePriority } from "./ops/types";
+export { PRIORITY_ORDER, DEFAULT_PRIORITY } from "./ops/types";
+
 // Import types for internal use
 import type {
   UnifiedTask,

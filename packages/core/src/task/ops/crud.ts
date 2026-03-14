@@ -45,7 +45,8 @@ const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
   ANTIGRAVITY: "antigravity",
 };
 
-import type { TaskJson } from "./types";
+import type { TaskJson, IssuePriority } from "./types";
+import { DEFAULT_PRIORITY } from "./types";
 import { initContext } from "./context-files";
 
 // =============================================================================
@@ -307,7 +308,7 @@ export function createTask(
     title: title,
     description: options.description || "",
     status: "backlog",
-    priority: options.priority || "medium",
+    priority: (options.priority || DEFAULT_PRIORITY) as IssuePriority,
     creator: creator,
     assignee: assignee,
     createdAt: today,

@@ -20,6 +20,10 @@ import {
   updateConfig,
   ensureDirectories,
 } from "./persistence";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "command-queue" });
 import { status } from "../ops/status";
 import { enqueue, type EnqueueOptions } from "../ops/enqueue";
 import { cancel } from "../ops/cancel";
@@ -81,34 +85,44 @@ export class CommandQueue extends EventEmitter {
 
     // Wire up events
     this.promoter.on("item:promoted", (item) => {
+      log.info({ itemId: item.id, pid: item.pid, command: item.command }, "Item started");
       this.emit("item:started", item);
       this.emit("queue:changed");
     });
 
     this.promoter.on("item:spawn-error", (_item, error) => {
+      log.error({ itemId: _item.id, err: error }, "Item spawn failed");
       this.emit("error", error);
     });
 
     this.promoter.on("error", (error) => {
+      log.error({ err: error }, "Promoter error");
       this.emit("error", error);
     });
 
     this.monitor.on("item:completed", (item) => {
+      const duration = item.completed_at - item.started_at;
+      log.info({ itemId: item.id, exitCode: item.exit_code, durationMs: duration }, "Item completed");
       this.emit("item:completed", item);
       this.emit("queue:changed");
     });
 
     this.monitor.on("item:failed", (item) => {
+      const duration = item.completed_at - item.started_at;
+      log.warn({ itemId: item.id, exitCode: item.exit_code, durationMs: duration }, "Item failed");
       this.emit("item:failed", item);
       this.emit("queue:changed");
     });
 
     this.monitor.on("item:retried", (item) => {
+      const retryCount = item.metadata?.retry_count ?? 0;
+      log.info({ itemId: item.id, retryCount }, "Item queued for retry");
       this.emit("item:retried", item);
       this.emit("queue:changed");
     });
 
     this.monitor.on("error", (error) => {
+      log.error({ err: error }, "Monitor error");
       this.emit("error", error);
     });
   }
@@ -121,14 +135,19 @@ export class CommandQueue extends EventEmitter {
       return;
     }
 
+    log.info("Starting command queue...");
     this.started = true;
 
     // Recover from any previous state
-    await this.recoverFromRestart();
+    const { recovered } = await this.recoverFromRestart();
+    if (recovered > 0) {
+      log.info({ recovered }, "Recovered dead processes from previous run");
+    }
 
     // Start promoter and monitor
     this.promoter.start();
     this.monitor.start();
+    log.info("Command queue started");
   }
 
   /**
@@ -139,9 +158,11 @@ export class CommandQueue extends EventEmitter {
       return;
     }
 
+    log.info("Stopping command queue...");
     this.promoter.stop();
     this.monitor.stop();
     this.started = false;
+    log.info("Command queue stopped (running processes will continue)");
 
     // Note: Running processes continue to run (they're detached)
     // They will be recovered on next start
@@ -197,12 +218,15 @@ export class CommandQueue extends EventEmitter {
   enqueue(options: EnqueueOptions): EnqueueResult {
     const result = enqueue(options);
     if (result.success) {
+      log.info({ itemId: result.id, command: options.command, cwd: options.cwd }, "Item enqueued");
       // Get the item we just created
       const inspectResult = inspect({ id: result.id! });
       if (inspectResult.success && inspectResult.item) {
         this.emit("item:enqueued", inspectResult.item as QueueItem);
       }
       this.emit("queue:changed");
+    } else {
+      log.warn({ command: options.command, error: result.error }, "Failed to enqueue item");
     }
     return result;
   }
@@ -213,8 +237,11 @@ export class CommandQueue extends EventEmitter {
   cancel(id: string, force = false): CancelResult {
     const result = cancel({ id, force });
     if (result.success) {
+      log.info({ itemId: id, force }, "Item cancelled");
       this.emit("item:cancelled", id);
       this.emit("queue:changed");
+    } else {
+      log.warn({ itemId: id, error: result.error }, "Failed to cancel item");
     }
     return result;
   }
@@ -225,7 +252,10 @@ export class CommandQueue extends EventEmitter {
   retry(options: RetryOptions): RetryResult {
     const result = retry(options);
     if (result.success) {
+      log.info({ itemId: options.id }, "Item retry initiated");
       this.emit("queue:changed");
+    } else {
+      log.warn({ itemId: options.id, error: result.error }, "Failed to retry item");
     }
     return result;
   }

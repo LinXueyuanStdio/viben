@@ -22,6 +22,10 @@ import {
   createLogFile,
 } from "./persistence";
 import type { QueueItem, RunningItem } from "../ops/types";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "command-queue-promoter" });
 
 /**
  * Promoter event types
@@ -57,6 +61,8 @@ export class Promoter extends EventEmitter {
     this.running = true;
     const config = readConfig();
 
+    log.debug({ intervalMs: config.promoter_interval_ms }, "Promoter started");
+
     // Run immediately
     this.tick();
 
@@ -75,6 +81,7 @@ export class Promoter extends EventEmitter {
       this.intervalId = null;
     }
     this.running = false;
+    log.debug("Promoter stopped");
   }
 
   /**
@@ -87,6 +94,7 @@ export class Promoter extends EventEmitter {
       const availableSlots = config.max_concurrency - running.length;
 
       if (availableSlots <= 0) {
+        log.trace({ runningCount: running.length, maxConcurrency: config.max_concurrency }, "No slots available");
         return;
       }
 
@@ -95,6 +103,8 @@ export class Promoter extends EventEmitter {
         return;
       }
 
+      log.debug({ pendingCount: pending.length, availableSlots }, "Promoting pending items");
+
       // Promote up to availableSlots items
       const toPromote = pending.slice(0, availableSlots);
       const remaining = pending.slice(availableSlots);
@@ -102,9 +112,11 @@ export class Promoter extends EventEmitter {
       for (const item of toPromote) {
         try {
           const runningItem = this.spawnProcess(item);
+          log.debug({ itemId: item.id, pid: runningItem.pid }, "Process spawned");
           this.emit("item:promoted", runningItem);
         } catch (e) {
           const error = e instanceof Error ? e : new Error(String(e));
+          log.error({ itemId: item.id, err: error }, "Failed to spawn process");
           this.emit("item:spawn-error", item, error);
           // Put back in pending queue if spawn failed
           remaining.unshift(item);
@@ -115,6 +127,7 @@ export class Promoter extends EventEmitter {
       writePendingQueue(remaining);
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
+      log.error({ err: error }, "Promoter tick failed");
       this.emit("error", error);
     }
   }
