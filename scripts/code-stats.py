@@ -16,7 +16,7 @@ import os
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 try:
@@ -164,6 +164,179 @@ def get_git_tracked_files(root: Path) -> set[str]:
 def is_git_repo(root: Path) -> bool:
     """Check if directory is a git repository."""
     return (root / ".git").exists()
+
+
+def get_commit_activity(root: Path) -> list[dict]:
+    """获取最近 365 天的每日提交次数"""
+    try:
+        # Get commits from last 365 days
+        since_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+        result = subprocess.run(
+            ["git", "log", f"--since={since_date}", "--format=%ad", "--date=short"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Count commits per day
+        commit_counts = defaultdict(int)
+        if result.stdout.strip():
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    commit_counts[line] += 1
+
+        # Generate all dates in range
+        activity = []
+        today = datetime.now().date()
+        for i in range(365):
+            date = (today - timedelta(days=364-i)).strftime("%Y-%m-%d")
+            activity.append({
+                "date": date,
+                "count": commit_counts.get(date, 0)
+            })
+
+        return activity
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+
+def get_file_churn(root: Path, git_files: set) -> list[dict]:
+    """统计最近 90 天文件变更频率"""
+    try:
+        # Get file changes from last 90 days
+        since_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+        result = subprocess.run(
+            ["git", "log", f"--since={since_date}", "--name-only", "--format="],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Count changes per file
+        change_counts = defaultdict(int)
+        if result.stdout.strip():
+            for line in result.stdout.strip().split("\n"):
+                line = line.strip()
+                if line and line in git_files:
+                    # Exclude files in excluded directories
+                    if not should_exclude(Path(line)):
+                        change_counts[line] += 1
+
+        # Get last changed date for top files
+        churn_data = []
+        for path, count in sorted(change_counts.items(), key=lambda x: x[1], reverse=True)[:15]:
+            try:
+                date_result = subprocess.run(
+                    ["git", "log", "-1", "--format=%ad", "--date=short", "--", path],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                last_changed = date_result.stdout.strip() if date_result.stdout.strip() else ""
+            except subprocess.CalledProcessError:
+                last_changed = ""
+
+            churn_data.append({
+                "path": path,
+                "changes": count,
+                "lastChanged": last_changed,
+            })
+
+        return churn_data
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+
+def get_code_freshness(root: Path, git_files: set) -> list[dict]:
+    """分析文件最后修改时间分布"""
+    now = datetime.now()
+
+    # Age buckets: < 1 month, 1-3 months, 3-6 months, 6-12 months, > 1 year
+    buckets = {
+        "<1月": {"files": 0, "lines": 0, "color": "#10B981", "max_days": 30},
+        "1-3月": {"files": 0, "lines": 0, "color": "#3B82F6", "max_days": 90},
+        "3-6月": {"files": 0, "lines": 0, "color": "#F59E0B", "max_days": 180},
+        "6-12月": {"files": 0, "lines": 0, "color": "#F97316", "max_days": 365},
+        ">1年": {"files": 0, "lines": 0, "color": "#EF4444", "max_days": float('inf')},
+    }
+    bucket_order = ["<1月", "1-3月", "3-6月", "6-12月", ">1年"]
+
+    for file_path in git_files:
+        if should_exclude(Path(file_path)):
+            continue
+
+        full_path = root / file_path
+        if not full_path.exists() or full_path.is_dir():
+            continue
+
+        # Get file extension
+        ext = get_extension(file_path)
+        if not ext:
+            continue
+
+        try:
+            # Get last modification timestamp from git
+            result = subprocess.run(
+                ["git", "log", "-1", "--format=%at", "--", file_path],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            if not result.stdout.strip():
+                continue
+
+            timestamp = int(result.stdout.strip())
+            mod_date = datetime.fromtimestamp(timestamp)
+            days_old = (now - mod_date).days
+
+            # Count lines
+            try:
+                with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = sum(1 for _ in f)
+            except Exception:
+                continue
+
+            # Assign to bucket
+            for label in bucket_order:
+                if days_old < buckets[label]["max_days"]:
+                    buckets[label]["files"] += 1
+                    buckets[label]["lines"] += lines
+                    break
+        except (subprocess.CalledProcessError, ValueError):
+            continue
+
+    return [
+        {"label": label, "files": buckets[label]["files"], "lines": buckets[label]["lines"], "color": buckets[label]["color"]}
+        for label in bucket_order
+    ]
+
+
+def get_file_size_distribution(all_files: list) -> list[dict]:
+    """统计文件行数分布区间"""
+    # Size buckets
+    buckets = [
+        {"range": "0-50", "files": 0, "color": "#10B981", "min": 0, "max": 50},
+        {"range": "50-100", "files": 0, "color": "#3B82F6", "min": 50, "max": 100},
+        {"range": "100-200", "files": 0, "color": "#F59E0B", "min": 100, "max": 200},
+        {"range": "200-500", "files": 0, "color": "#F97316", "min": 200, "max": 500},
+        {"range": "500+", "files": 0, "color": "#EF4444", "min": 500, "max": float('inf')},
+    ]
+
+    for file_info in all_files:
+        lines = file_info["lines"]
+        for bucket in buckets:
+            if bucket["min"] <= lines < bucket["max"]:
+                bucket["files"] += 1
+                break
+
+    return [
+        {"range": b["range"], "files": b["files"], "color": b["color"]}
+        for b in buckets
+    ]
 
 
 def get_module_name(path: Path) -> str | None:

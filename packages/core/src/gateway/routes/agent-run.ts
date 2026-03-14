@@ -835,13 +835,15 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
         // Persist message to file system if sessionId and taskId provided
         if (persistSessionId && persistTaskId) {
+          const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
+          const timestamp = new Date().toISOString();
+
+          // 1. Save to messages.ui.jsonl (UI messages for frontend display)
           try {
-            const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
-            // Pass agentDir for workspace-level agents to find the correct session directory
             await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
               id: generateMessageId(),
               taskId: persistTaskId,
-              timestamp: new Date().toISOString(),
+              timestamp,
               type: message.type,
               content: "content" in message ? (message as SSETextMessage).content : undefined,
               toolUseId:
@@ -861,11 +863,50 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdkSessionId : undefined,
             }, agentDir);
           } catch (persistError) {
-            log.warn("persistence", "message_save_failed", {
+            log.warn("persistence", "ui_message_save_failed", {
               messageType: message.type,
               error: persistError instanceof Error ? persistError.message : String(persistError),
             });
-            // Don't fail the request, just log the error
+          }
+
+          // 2. Save to messages.rollout.jsonl (messages for agent resume)
+          // Only save text and tool_result messages as they represent the conversation flow
+          if (message.type === "text" || message.type === "tool_result") {
+            try {
+              const role = message.type === "text" ? "assistant" : "tool";
+              const content = message.type === "text"
+                ? (message as SSETextMessage).content
+                : (message as SSEToolResultMessage).output || "";
+              await sessionStoreService.appendMessage(persistAgentId, persistSessionId, {
+                timestamp,
+                role,
+                content,
+                toolResult: message.type === "tool_result" ? {
+                  toolUseId: (message as SSEToolResultMessage).toolUseId,
+                  output: (message as SSEToolResultMessage).output,
+                  isError: (message as SSEToolResultMessage).isError,
+                } : undefined,
+              }, agentDir);
+            } catch (persistError) {
+              log.warn("persistence", "rollout_message_save_failed", {
+                messageType: message.type,
+                error: persistError instanceof Error ? persistError.message : String(persistError),
+              });
+            }
+          }
+
+          // 3. Save to messages.agent.jsonl (raw agent responses for debugging)
+          try {
+            await sessionStoreService.appendAgentMessage(persistAgentId, persistSessionId, {
+              timestamp,
+              raw: message,
+              source: "sdk_chat_proxy",
+            }, agentDir);
+          } catch (persistError) {
+            log.warn("persistence", "agent_message_save_failed", {
+              messageType: message.type,
+              error: persistError instanceof Error ? persistError.message : String(persistError),
+            });
           }
         }
 

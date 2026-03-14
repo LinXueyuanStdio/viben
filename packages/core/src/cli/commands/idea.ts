@@ -383,19 +383,53 @@ export function registerIdeaCommand(program: Command): void {
               return;
             }
 
-            console.log(chalk.bold("Ideas:"));
+            console.log(chalk.bold(`Ideas (${ideas.length}):`));
             console.log();
-            outputTable(
-              ctx,
-              ["ID", "TYPE", "TITLE", "EFFORT", "STATUS"],
-              ideas.map((idea) => [
-                idea.id,
-                idea.type,
-                idea.title.length > 40 ? idea.title.substring(0, 37) + "..." : idea.title,
-                formatEffort(idea.estimatedEffort),
-                formatStatus(idea.status),
-              ])
-            );
+
+            for (const idea of ideas) {
+              // Header: ID, Type, Status, Effort
+              console.log(
+                chalk.cyan(`[${idea.id}]`) +
+                  chalk.gray(` ${idea.type}`) +
+                  `  ${formatStatus(idea.status)}` +
+                  `  ${formatEffort(idea.estimatedEffort)}`
+              );
+
+              // Title
+              console.log(chalk.bold(`  ${idea.title}`));
+
+              // Description (indent and wrap)
+              if (idea.description) {
+                const desc = idea.description.length > 200
+                  ? idea.description.substring(0, 197) + "..."
+                  : idea.description;
+                console.log(chalk.gray(`  ${desc}`));
+              }
+
+              // Rationale
+              if (idea.rationale) {
+                console.log(chalk.yellow(`  Why: `) + idea.rationale);
+              }
+
+              // Implementation approach
+              if (idea.implementationApproach) {
+                console.log(chalk.green(`  How: `) + idea.implementationApproach);
+              }
+
+              // Affected files
+              if (idea.affectedFiles && idea.affectedFiles.length > 0) {
+                const files = idea.affectedFiles.slice(0, 5);
+                console.log(chalk.blue(`  Files: `) + files.join(", ") +
+                  (idea.affectedFiles.length > 5 ? ` (+${idea.affectedFiles.length - 5} more)` : ""));
+              }
+
+              // Promoted to task
+              if (idea.promotedTo) {
+                console.log(chalk.green(`  Task: `) + idea.promotedTo);
+              }
+
+              console.log(); // Blank line between ideas
+            }
           });
         } catch (error) {
           handleCommandError(ctx, error);
