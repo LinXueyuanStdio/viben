@@ -74,7 +74,6 @@ export {
 
 // Path utilities
 export {
-  getDatePrefix,
   getIdeasDir,
   getIdeaTypesDir,
   getIdeaSessionDir,

@@ -182,10 +182,10 @@ const COLUMN_COLOR_VARS: Record<ColumnId, string> = VIBE_COLUMN_COLOR_VARS;
 
 // Extended task type to support new fields (Auto-Claude style)
 // TaskWithAttemptStatus already includes: execution_phase, is_stuck, stuck_duration, archived
-// Task already includes: review_reason, pr_url, priority (as string)
+// Task already includes: review_reason, pr_url, priority (now IssuePriority type)
 interface EnhancedTask extends TaskWithAttemptStatus {
   // Core kanban fields (extended for UI display)
-  kanbanPriority?: IssuePriority;  // UI priority type
+  // Note: priority field is now IssuePriority type from API, no mapping needed
   tags?: Tag[];
   kanbanAssignee?: Assignee;  // UI assignee type
   dueDate?: string;
@@ -309,9 +309,9 @@ const TaskCardContent = memo(function TaskCardContent({
     >
       {/* Row 1: Title with optional priority indicator */}
       <div className="flex items-start gap-2">
-        {task.kanbanPriority && task.kanbanPriority !== "none" && (
+        {task.priority && task.priority !== "none" && (
           <div className="shrink-0 mt-0.5">
-            <PriorityIcon priority={task.kanbanPriority} size="sm" />
+            <PriorityIcon priority={task.priority as IssuePriority} size="sm" />
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -1108,8 +1108,8 @@ export function WorkspaceKanbanPage() {
     (tasks ?? []).map((t) => ({
       id: t.id,
       status: t.status,
-      // priority and dueDate are UI-enriched fields, may not be present
-      priority: undefined as IssuePriority | undefined,
+      // priority is now IssuePriority type directly from API
+      priority: t.priority as IssuePriority | undefined,
       dueDate: undefined as string | undefined,
     })),
     [tasks]
@@ -1145,8 +1145,8 @@ export function WorkspaceKanbanPage() {
       title: task.title,
       description: task.description,
       status: task.status,
-      // These UI-enriched fields may not be present on backend tasks
-      priority: undefined,
+      // priority is now IssuePriority type directly from API
+      priority: task.priority as IssuePriority | undefined,
       tags: undefined,
       assignee: undefined,
       dueDate: undefined,

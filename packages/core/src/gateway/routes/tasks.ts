@@ -30,6 +30,8 @@ import {
   type UnifiedTask,
   type TaskStatus,
   type SubtaskInfo,
+  type IssuePriority,
+  DEFAULT_PRIORITY,
 } from "../../task/service";
 import { logger as globalLogger } from "../../telemetry";
 
