@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getClient } from "@/lib/viben";
 
 // ============================================================================
@@ -450,6 +451,7 @@ export function useCloudMcpPackage(
  * Categories are cached for the lifetime of the component
  */
 export function useCloudMcpCategories(): UseCloudMcpCategoriesReturn {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<CloudMcpCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -462,10 +464,10 @@ export function useCloudMcpCategories(): UseCloudMcpCategoriesReturn {
       // Categories API not available in VibenClient yet
       // For now, return some default categories
       const defaultCategories: CloudMcpCategory[] = [
-        { id: "data", name: "Data & Storage", description: "Database and storage tools", packageCount: null },
-        { id: "dev", name: "Development", description: "Development tools", packageCount: null },
-        { id: "ai", name: "AI & ML", description: "AI and machine learning tools", packageCount: null },
-        { id: "utility", name: "Utility", description: "General utility tools", packageCount: null },
+        { id: "data", name: t("marketplace.categoriesData.dataStorage"), description: t("marketplace.categoriesData.dataStorageDesc"), packageCount: null },
+        { id: "dev", name: t("marketplace.categoriesData.development"), description: t("marketplace.categoriesData.developmentDesc"), packageCount: null },
+        { id: "ai", name: t("marketplace.categoriesData.aiMl"), description: t("marketplace.categoriesData.aiMlDesc"), packageCount: null },
+        { id: "utility", name: t("marketplace.categoriesData.utility"), description: t("marketplace.categoriesData.utilityDesc"), packageCount: null },
       ];
       setCategories(defaultCategories);
     } catch (err) {
@@ -475,7 +477,7 @@ export function useCloudMcpCategories(): UseCloudMcpCategoriesReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchCategories();

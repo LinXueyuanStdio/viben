@@ -397,7 +397,7 @@ export function useGroupChat(
 
       ws.onerror = (e) => {
         console.error("[useGroupChat] WebSocket error:", e);
-        setError("WebSocket connection error");
+        setError(i18n.t("errors.websocket.connectionError"));
       };
 
       ws.onclose = () => {
@@ -408,7 +408,7 @@ export function useGroupChat(
       wsRef.current = ws;
     } catch (err) {
       console.error("[useGroupChat] Failed to connect:", err);
-      setError(err instanceof Error ? err.message : "Failed to connect");
+      setError(err instanceof Error ? err.message : i18n.t("errors.connection.failed"));
     }
   }, [client, userId, workspacePath, handleWsEvent]);
 

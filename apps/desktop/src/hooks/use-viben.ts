@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import i18n from '@/i18n';
 import {
   getClient,
   searchPackages,
@@ -77,7 +78,7 @@ export function useMcpSearch(initialQuery = '') {
       const response = await searchPackages(q, 'mcp');
       setResults(response.data as McpPackage[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(err instanceof Error ? err.message : i18n.t('errors.search.failed'));
     } finally {
       setLoading(false);
     }
@@ -124,7 +125,7 @@ export function useSkillSearch(initialQuery = '') {
       const response = await searchPackages(q, 'skill');
       setResults(response.data as SkillPackage[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Search failed');
+      setError(err instanceof Error ? err.message : i18n.t('errors.search.failed'));
     } finally {
       setLoading(false);
     }
@@ -226,7 +227,7 @@ export function usePackageList(
         totalPages: response.pagination.totalPages,
       }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load packages');
+      setError(err instanceof Error ? err.message : i18n.t('errors.packages.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -296,7 +297,7 @@ export function useInstallPackage() {
       setProgress(100);
       return path;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Install failed';
+      const message = err instanceof Error ? err.message : i18n.t('errors.packages.installFailed');
       setError(message);
       throw new Error(message);
     } finally {
@@ -316,7 +317,7 @@ export function useInstallPackage() {
         setProgress(100);
         return path;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Install failed';
+        const message = err instanceof Error ? err.message : i18n.t('errors.packages.installFailed');
         setError(message);
         throw new Error(message);
       } finally {
@@ -376,7 +377,7 @@ export function useWorkspaces() {
       const response = await getClient().workspaces.list();
       setWorkspaces(response.workspaces);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workspaces');
+      setError(err instanceof Error ? err.message : i18n.t('errors.workspaces.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -461,11 +462,11 @@ export function usePlatformAuth() {
       const success = await setApiKey(apiKey);
       setIsAuthenticated(success);
       if (!success) {
-        setError('Invalid API key');
+        setError(i18n.t('errors.auth.invalidApiKey'));
       }
       return success;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed';
+      const message = err instanceof Error ? err.message : i18n.t('errors.auth.authenticationFailed');
       setError(message);
       return false;
     } finally {
@@ -524,7 +525,7 @@ export function usePlatformUser() {
       const response = await getClient().user.me();
       setUser(response.user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch user');
+      setError(err instanceof Error ? err.message : i18n.t('errors.user.fetchFailed'));
       setUser(null);
     } finally {
       setLoading(false);
@@ -568,7 +569,7 @@ export function useFavorite(entityType: 'mcp' | 'skill', entityId: string) {
       setIsFavorited(response.favorited);
       return response.favorited;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to toggle favorite';
+      const message = err instanceof Error ? err.message : i18n.t('errors.user.toggleFavoriteFailed');
       setError(message);
       throw new Error(message);
     } finally {

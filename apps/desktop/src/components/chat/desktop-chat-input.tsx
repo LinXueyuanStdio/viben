@@ -28,6 +28,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ChatInput, type ChatInputProps, type MessageAttachment } from "@viben/chat";
@@ -107,6 +108,7 @@ export function DesktopChatInput({
   configBarLeftExtra: propConfigBarLeftExtra,
   ...props
 }: DesktopChatInputProps) {
+  const { t } = useTranslation();
   // Get global config if enabled
   const chatConfig = useChatConfig();
 
@@ -186,23 +188,23 @@ export function DesktopChatInput({
         multiple: true,
         filters: [
           {
-            name: "Images",
+            name: t("filePicker.images"),
             extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"],
           },
           {
-            name: "Documents",
+            name: t("filePicker.documents"),
             extensions: ["pdf", "doc", "docx", "txt", "md", "json", "csv"],
           },
           {
-            name: "Spreadsheets",
+            name: t("filePicker.spreadsheets"),
             extensions: ["xlsx", "xls"],
           },
           {
-            name: "Presentations",
+            name: t("filePicker.presentations"),
             extensions: ["pptx", "ppt"],
           },
           {
-            name: "All Files",
+            name: t("filePicker.allFiles"),
             extensions: ["*"],
           },
         ],

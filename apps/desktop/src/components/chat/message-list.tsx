@@ -140,7 +140,8 @@ function TaskGroupComponent({
  */
 function groupMessages(
   messages: AgentMessage[],
-  isRunning: boolean
+  isRunning: boolean,
+  executingTaskTitle: string
 ): MessageGroup[] {
   const groups: MessageGroup[] = [];
 
@@ -236,7 +237,7 @@ function groupMessages(
     if (!state.currentGroup) {
       state.currentGroup = {
         type: "task",
-        title: "Executing task",
+        title: executingTaskTitle,
         description: "",
         tools: [],
         isCompleted: false,
@@ -448,9 +449,10 @@ export function MessageList({
   const lastScrollTopRef = React.useRef(0);
 
   // Group messages for display - must be called before any conditional returns
+  const executingTaskTitle = t("chat.executingTask");
   const groups = React.useMemo(
-    () => groupMessages(messages, isStreaming || false),
-    [messages, isStreaming]
+    () => groupMessages(messages, isStreaming || false, executingTaskTitle),
+    [messages, isStreaming, executingTaskTitle]
   );
 
   // Scroll to bottom function

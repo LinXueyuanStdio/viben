@@ -47,14 +47,17 @@ function ProviderIcon({
 }
 
 // Provider display name
-function getProviderDisplayName(type: SandboxProviderType): string {
+function getProviderDisplayName(
+  type: SandboxProviderType,
+  t: (key: string) => string
+): string {
   switch (type) {
     case "codex":
-      return "Codex";
+      return t("sandbox.providerNames.codex");
     case "claude":
-      return "Claude";
+      return t("sandbox.providerNames.claude");
     case "native":
-      return "Native";
+      return t("sandbox.providerNames.native");
   }
 }
 
@@ -103,7 +106,7 @@ export function SandboxToggle({ className }: { className?: string }) {
           )}
           <span className="text-xs hidden sm:inline">
             {sandboxConfig.enabled
-              ? getProviderDisplayName(currentProvider)
+              ? getProviderDisplayName(currentProvider, t)
               : t("sandbox.off", "Sandbox")}
           </span>
           <ChevronDown className="h-3 w-3 text-muted-foreground" />

@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import i18n from "@/i18n";
 import {
   ChannelsConfig,
   TelegramConfig,
@@ -51,7 +52,7 @@ export function useChannels(): UseChannelsReturn {
       }
     } catch (e) {
       console.error("Failed to load channels config:", e);
-      setError("Failed to load channel configuration");
+      setError(i18n.t("errors.channels.loadFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +65,7 @@ export function useChannels(): UseChannelsReturn {
       setError(null);
     } catch (e) {
       console.error("Failed to save channels config:", e);
-      setError("Failed to save channel configuration");
+      setError(i18n.t("errors.channels.saveFailed"));
     }
   }, [config]);
 

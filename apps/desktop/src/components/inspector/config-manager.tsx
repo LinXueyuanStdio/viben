@@ -149,22 +149,23 @@ function sanitizeConfig(
 
 /**
  * Validate imported config structure
+ * Returns errorKey for i18n translation
  */
-function validateConfig(data: unknown): { valid: boolean; error?: string; config?: InspectorConfig } {
+function validateConfig(data: unknown): { valid: boolean; errorKey?: string; errorParam?: string; config?: InspectorConfig } {
   if (!data || typeof data !== "object") {
-    return { valid: false, error: "Invalid config: not an object" };
+    return { valid: false, errorKey: "inspector.configErrors.invalidNotObject" };
   }
 
   const config = data as Record<string, unknown>;
 
   // Check version
   if (!config.version || typeof config.version !== "string") {
-    return { valid: false, error: "Invalid config: missing version" };
+    return { valid: false, errorKey: "inspector.configErrors.missingVersion" };
   }
 
   // Check transport
   if (!config.transport || typeof config.transport !== "object") {
-    return { valid: false, error: "Invalid config: missing transport" };
+    return { valid: false, errorKey: "inspector.configErrors.missingTransport" };
   }
 
   const transport = config.transport as Record<string, unknown>;
@@ -172,25 +173,25 @@ function validateConfig(data: unknown): { valid: boolean; error?: string; config
   // Check transport type
   const validTypes = ["stdio", "sse", "http", "streamable-http"];
   if (!transport.type || !validTypes.includes(transport.type as string)) {
-    return { valid: false, error: `Invalid transport type: ${transport.type}` };
+    return { valid: false, errorKey: "inspector.configErrors.invalidTransportType", errorParam: String(transport.type) };
   }
 
   // For remote transports, URL is required
   if (["sse", "http", "streamable-http"].includes(transport.type as string)) {
     if (!transport.url || typeof transport.url !== "string") {
-      return { valid: false, error: "Remote transport requires url" };
+      return { valid: false, errorKey: "inspector.configErrors.remoteRequiresUrl" };
     }
     try {
       new URL(transport.url as string);
     } catch {
-      return { valid: false, error: `Invalid URL: ${transport.url}` };
+      return { valid: false, errorKey: "inspector.configErrors.invalidUrl", errorParam: String(transport.url) };
     }
   }
 
   // For stdio transport, command is required
   if (transport.type === "stdio") {
     if (!transport.command || typeof transport.command !== "string") {
-      return { valid: false, error: "STDIO transport requires command" };
+      return { valid: false, errorKey: "inspector.configErrors.stdioRequiresCommand" };
     }
   }
 
@@ -561,7 +562,12 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
           setValidationError(null);
         } else {
           setImportedConfig(null);
-          setValidationError(validation.error || t("inspector.invalidConfig", "Invalid configuration file"));
+          const errorMessage = validation.errorKey
+            ? (validation.errorParam
+                ? `${t(validation.errorKey)}: ${validation.errorParam}`
+                : t(validation.errorKey))
+            : t("inspector.invalidConfig", "Invalid configuration file");
+          setValidationError(errorMessage);
         }
       } catch (err) {
         setImportedConfig(null);

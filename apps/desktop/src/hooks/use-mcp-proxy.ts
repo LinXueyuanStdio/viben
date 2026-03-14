@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getGatewayClient,
   type McpProxyConfig,
@@ -35,6 +36,7 @@ const DEFAULT_CONFIG: McpProxyConfig = {
 };
 
 export function useMcpProxy(): UseMcpProxyReturn {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<McpProxyStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +127,7 @@ export function useMcpProxy(): UseMcpProxyReturn {
         } catch {
           // Ignore errors from getPortProcess
         }
-        setError(`Port ${port} is in use by another process`);
+        setError(t("errors.mcpProxy.portInUse", { port }));
         throw new Error(errorMsg);
       }
 
@@ -134,7 +136,7 @@ export function useMcpProxy(): UseMcpProxyReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [pythonPath]);
+  }, [pythonPath, t]);
 
   const stopProxy = useCallback(async () => {
     setIsLoading(true);
@@ -254,8 +256,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
       url: `http://127.0.0.1:${targetPort}`,
     });
     setPortConflict(null);
-    setError("Existing proxy detected but auth token unknown. Please restart to get a new token.");
-  }, [portConflict]);
+    setError(t("errors.mcpProxy.authTokenUnknown"));
+  }, [portConflict, t]);
 
   // Check installation and status on mount
   useEffect(() => {

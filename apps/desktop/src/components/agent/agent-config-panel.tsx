@@ -513,7 +513,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               {/* MEMORY.md */}
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
-                  <div className="text-sm font-medium">MEMORY.md</div>
+                  <div className="text-sm font-medium">{t("agent.memoryFile")}</div>
                   <div className="text-xs text-muted-foreground">
                     {t("settingsAgents.memoryDescription")}
                   </div>
@@ -688,7 +688,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                     <Input
                       value={newEnvVar}
                       onChange={(e) => setNewEnvVar(e.target.value)}
-                      placeholder="ENV_VAR_NAME"
+                      placeholder={t("agent.envVarPlaceholder")}
                       className="h-8 text-sm font-mono flex-1"
                     />
                     <Button

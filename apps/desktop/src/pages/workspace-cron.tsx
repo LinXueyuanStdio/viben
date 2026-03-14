@@ -103,6 +103,7 @@ type ScheduleType = "cron" | "interval";
 
 interface JobFormData {
   name: string;
+  description: string;
   jobType: CronJobType;
   message: string;
   script: string;
@@ -120,6 +121,7 @@ interface JobFormData {
 
 const defaultFormData: JobFormData = {
   name: "",
+  description: "",
   jobType: "agent",
   message: "",
   script: "",
@@ -234,6 +236,7 @@ export function WorkspaceCronPage() {
     if (editingJob) {
       setFormData({
         name: editingJob.name,
+        description: editingJob.description || "",
         jobType: editingJob.job_type || "agent",
         message: editingJob.message || "",
         script: editingJob.script || "",
@@ -259,6 +262,7 @@ export function WorkspaceCronPage() {
 
     const data: CreateCronJob | UpdateCronJob = {
       name: formData.name.trim(),
+      description: formData.description.trim() || undefined,
       job_type: formData.jobType,
       message: formData.message.trim() || undefined,
       script: formData.script.trim() || undefined,
@@ -823,6 +827,20 @@ export function WorkspaceCronPage() {
                     placeholder={t("cron.namePlaceholder")}
                     autoFocus
                     className="h-11"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="job-description" className="text-sm font-medium">
+                    {t("common.description")}
+                  </Label>
+                  <Textarea
+                    id="job-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder={t("cron.descriptionPlaceholder")}
+                    className="min-h-[80px] resize-none"
                   />
                 </div>
 

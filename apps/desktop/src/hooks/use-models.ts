@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import i18n from "@/i18n";
 import {
   getGatewayClient,
   type WorkspaceModel,
@@ -135,7 +136,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
       setDefaultModelIdState(defaultId);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load models";
+        err instanceof Error ? err.message : i18n.t("errors.models.loadFailed");
       setError(message);
       console.error("[useModels] Error:", err);
     } finally {

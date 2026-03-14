@@ -126,7 +126,7 @@ export function GitHubAuth({
               <div className="text-sm text-muted-foreground flex items-center gap-1">
                 @{user.login}
                 <span className="text-xs px-1.5 py-0.5 bg-muted rounded">
-                  {authType === "gh_cli" ? "gh CLI" : "PAT"}
+                  {authType === "gh_cli" ? t("workspaceSettings.github.auth.authTypes.ghCli") : t("workspaceSettings.github.auth.authTypes.pat")}
                 </span>
               </div>
             </div>

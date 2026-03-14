@@ -41,7 +41,7 @@ export function ImagePreview({ artifact }: PreviewComponentProps) {
       }
 
       if (!artifact.path) {
-        setError("No image file path available");
+        setError(t("artifacts.noImagePath"));
         setLoading(false);
         return;
       }

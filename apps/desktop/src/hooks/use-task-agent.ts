@@ -7,6 +7,7 @@ import type {
   PendingQuestion,
   ToolUsage,
 } from "@/types";
+import i18n from "@/i18n";
 
 /**
  * Mock delay to simulate network latency
@@ -166,10 +167,10 @@ Try asking about:
               ? `Implement task: ${taskContext.title}`
               : `Execute: ${content}`,
             steps: [
-              { id: "1", description: "Analyze requirements", status: "pending" },
-              { id: "2", description: "Design solution", status: "pending" },
-              { id: "3", description: "Implement changes", status: "pending" },
-              { id: "4", description: "Test and verify", status: "pending" },
+              { id: "1", description: i18n.t("taskAgent.analyzeRequirements"), status: "pending" },
+              { id: "2", description: i18n.t("taskAgent.designSolution"), status: "pending" },
+              { id: "3", description: i18n.t("taskAgent.implementChanges"), status: "pending" },
+              { id: "4", description: i18n.t("taskAgent.testAndVerify"), status: "pending" },
             ],
             notes: taskContext?.description || "Implementation plan for the task.",
           };
@@ -193,9 +194,9 @@ Try asking about:
                 header: "Implementation Preference",
                 question: "How would you like to approach this task?",
                 options: [
-                  { label: "Quick Fix", description: "Minimal changes, fast delivery" },
-                  { label: "Refactor", description: "Clean up related code" },
-                  { label: "Full Implementation", description: "Complete feature with tests" },
+                  { label: i18n.t("taskAgent.quickFix"), description: i18n.t("taskAgent.quickFixDesc") },
+                  { label: i18n.t("taskAgent.refactor"), description: i18n.t("taskAgent.refactorDesc") },
+                  { label: i18n.t("taskAgent.fullImplementation"), description: i18n.t("taskAgent.fullImplementationDesc") },
                 ],
                 multiSelect: false,
               },
@@ -259,7 +260,7 @@ Try these commands:
         const errorMessage: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: err instanceof Error ? err.message : "An unknown error occurred",
+          message: err instanceof Error ? err.message : i18n.t("taskAgent.unknownError"),
           isError: true,
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -325,12 +326,12 @@ Try these commands:
       const resultMessage: AgentMessage = {
         id: generateId(),
         type: "result",
-        content: "Plan executed successfully! All steps have been completed.",
+        content: i18n.t("taskAgent.planExecutedSuccess"),
       };
       setMessages((prev) => [...prev, resultMessage]);
       setPhase("completed");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to execute plan");
+      setError(err instanceof Error ? err.message : i18n.t("taskAgent.failedToExecutePlan"));
       setPhase("error");
     } finally {
       setIsStreaming(false);
@@ -360,7 +361,7 @@ Try these commands:
     const textMessage: AgentMessage = {
       id: generateId(),
       type: "text",
-      content: "Plan rejected. How would you like me to proceed with this task?",
+      content: i18n.t("taskAgent.planRejected"),
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
@@ -389,7 +390,7 @@ Try these commands:
         setMessages((prev) => [...prev, textMessage]);
         setPhase("completed");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to process answers");
+        setError(err instanceof Error ? err.message : i18n.t("taskAgent.failedToProcessAnswers"));
         setPhase("error");
       } finally {
         setIsStreaming(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayClient } from "@/lib/gateway";
 import type { LogSession, LogEntry } from "./use-logs";
 import type { ApiLogSession, ApiLogEntry, ApiLogSummary, ApiLogFilter } from "./use-api-logs";
@@ -31,6 +32,8 @@ export interface UnifiedSession {
  * Hook for managing unified sessions (server logs + API logs)
  */
 export function useUnifiedSessions() {
+  const { t } = useTranslation();
+
   // Session state
   const [sessions, setSessions] = useState<UnifiedSession[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -256,12 +259,12 @@ export function useUnifiedSessions() {
   const exportServerLogs = useCallback(
     async (exportPath: string) => {
       if (!selectedSession?.serverLog) {
-        throw new Error("No server log session selected");
+        throw new Error(t("errors.sessions.noServerLogSelected"));
       }
       const gateway = getGatewayClient();
       return gateway.exportSessionLogs(selectedSession.serverLog.id, exportPath);
     },
-    [selectedSession]
+    [selectedSession, t]
   );
 
   /**

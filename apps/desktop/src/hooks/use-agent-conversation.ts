@@ -504,7 +504,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         wsRef.current = ws;
 
         const timeout = setTimeout(() => {
-          reject(new Error("WebSocket connection timeout"));
+          reject(new Error(i18n.t("errors.websocket.connectionTimeout")));
           ws.close();
         }, 10000); // 10 second timeout
 
@@ -532,10 +532,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         ws.onerror = (error) => {
           clearTimeout(timeout);
           console.error("[useAgent] WebSocket error:", error);
-          setError("WebSocket connection error");
+          setError(i18n.t("errors.websocket.connectionError"));
           stopHeartbeat();
           wsConnectPromiseRef.current = null;
-          reject(new Error("WebSocket connection error"));
+          reject(new Error(i18n.t("errors.websocket.connectionError")));
         };
 
         ws.onclose = (event) => {
@@ -560,7 +560,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
               });
             }, RECONNECT_DELAY_MS * wsReconnectAttemptsRef.current);
           } else if (wsReconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-            setError("WebSocket connection failed after multiple attempts");
+            setError(i18n.t("errors.websocket.connectionFailedMultipleAttempts"));
             setGatewayConnected(false);
           }
         };
@@ -604,7 +604,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     }) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         console.error("[useAgent] WebSocket not connected");
-        setError("WebSocket not connected");
+        setError(i18n.t("errors.websocket.notConnected"));
         return false;
       }
 
@@ -652,7 +652,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       try {
         await connectWebSocket();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Connection failed");
+        setError(err instanceof Error ? err.message : i18n.t("errors.connection.failed"));
         setPhase("error");
         setIsStreaming(false);
         return;

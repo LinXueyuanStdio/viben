@@ -53,7 +53,7 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
       }
 
       if (!artifact.path) {
-        setError("No video file path available");
+        setError(t("artifacts.noVideoPath"));
         setLoading(false);
         return;
       }

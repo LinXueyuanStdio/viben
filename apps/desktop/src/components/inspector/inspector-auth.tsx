@@ -650,7 +650,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                 {t("inspector.oauthConfig", "OAuth 2.0 Configuration")}
               </span>
               <Badge variant="outline" className="text-[10px] ml-auto">
-                {usePKCE ? "PKCE" : "Standard"}
+                {usePKCE ? t("inspector.authModes.pkce") : t("inspector.authModes.standard")}
               </Badge>
             </CollapsibleTrigger>
 

@@ -18,6 +18,7 @@ function toSnakeCaseJob(job: CronJob) {
   return {
     id: job.id,
     name: job.name,
+    description: job.description,
     enabled: job.enabled,
     job_type: job.job_type,
     message: job.message,
@@ -58,6 +59,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
                 properties: {
                   id: { type: "string" },
                   name: { type: "string" },
+                  description: { type: "string" },
                   enabled: { type: "boolean" },
                   job_type: { type: "string", enum: ["agent", "script", "message"] },
                   message: { type: "string" },
@@ -119,6 +121,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
           properties: {
             id: { type: "string" },
             name: { type: "string" },
+            description: { type: "string" },
             enabled: { type: "boolean" },
             job_type: { type: "string" },
             message: { type: "string" },

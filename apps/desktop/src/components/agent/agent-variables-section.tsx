@@ -303,7 +303,7 @@ function AddCustomVariableDialog({
                 setName(e.target.value);
                 setError(null);
               }}
-              placeholder="my_variable"
+              placeholder={t("agent.variablePlaceholder", "my_variable")}
               className={cn(error && "border-destructive")}
             />
             {error && (
@@ -445,7 +445,7 @@ function AddEnvVariableDialog({
                 setName(e.target.value.toUpperCase());
                 setError(null);
               }}
-              placeholder="MY_API_KEY"
+              placeholder={t("agent.apiKeyPlaceholder", "MY_API_KEY")}
               className={cn(error && "border-destructive")}
             />
             {error && (

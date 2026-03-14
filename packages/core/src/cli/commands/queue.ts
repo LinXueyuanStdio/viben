@@ -663,7 +663,7 @@ export function registerQueueCommand(program: Command): void {
     .command("queue")
     .description("Manage command queue")
     .option("--gateway <url>", "Gateway URL (for watch/stream)", DEFAULT_GATEWAY_URL)
-    .option("--timeout <ms>", "Request timeout", String(DEFAULT_TIMEOUT));
+    .option("--timeout <ms>", "Request timeout in milliseconds (default: 30000)", String(DEFAULT_TIMEOUT));
 
   // queue status
   queueCmd
@@ -683,7 +683,7 @@ export function registerQueueCommand(program: Command): void {
     .command("list")
     .description("List queue items")
     .option("-s, --status <status>", "Filter by status (pending, running, completed, failed, cancelled)")
-    .option("-n, --limit <num>", "Limit results", (val) => parseInt(val, 10))
+    .option("-n, --limit <num>", "Limit results (default: 50)", (val) => parseInt(val, 10))
     .option("--all", "Show all items (including completed)")
     .action(async (options: { status?: string; limit?: number; all?: boolean }) => {
       const ctx = getContext(program);
@@ -784,7 +784,7 @@ export function registerQueueCommand(program: Command): void {
     .argument("<id>", "Item ID")
     .description("View item logs")
     .option("-n, --tail <num>", "Show last N lines", (val) => parseInt(val, 10))
-    .option("-f, --follow", "Follow log output (not implemented)")
+    .option("-f, --follow", "Follow log output in real-time")
     .action(async (itemId: string, options: {
       tail?: number;
       follow?: boolean;

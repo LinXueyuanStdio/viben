@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import i18n from "@/i18n";
 import { getGatewayClient } from "@/lib/gateway";
 import { useChannelStore } from "@/stores/channel-store";
 import type {
@@ -110,7 +111,7 @@ export async function syncChannels(force = false): Promise<void> {
     store.completeSync(data.channels || []);
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : "Failed to sync channels";
+      err instanceof Error ? err.message : i18n.t("errors.channels.syncFailed");
     console.error("[syncChannels] Failed:", message);
     store.failSync(message);
   }
@@ -231,7 +232,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to create channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.createFailed");
         setError(message);
         console.error("Failed to create channel instance:", err);
         return null;
@@ -258,7 +259,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to update channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.updateFailed");
         setError(message);
         console.error("Failed to update channel instance:", err);
         return null;
@@ -277,7 +278,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
       return true;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete channel";
+        err instanceof Error ? err.message : i18n.t("errors.channels.deleteFailed");
       setError(message);
       console.error("Failed to delete channel instance:", err);
       return false;
@@ -309,7 +310,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to set default channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.setDefaultFailed");
         setError(message);
         console.error("Failed to set default channel:", err);
         return null;
@@ -360,7 +361,7 @@ export function useCreateChannel() {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to create channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.createFailed");
         setError(message);
         return null;
       } finally {
@@ -400,7 +401,7 @@ export function useUpdateChannel() {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to update channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.updateFailed");
         setError(message);
         return null;
       } finally {
@@ -432,7 +433,7 @@ export function useDeleteChannel() {
       return true;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to delete channel";
+        err instanceof Error ? err.message : i18n.t("errors.channels.deleteFailed");
       setError(message);
       return false;
     } finally {
@@ -469,7 +470,7 @@ export function useTestChannel() {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to test channel";
+          err instanceof Error ? err.message : i18n.t("errors.channels.testFailed");
         setError(message);
         return { success: false, error: message };
       } finally {
@@ -515,7 +516,7 @@ export function useSendTestMessage() {
         return result;
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to send test message";
+          err instanceof Error ? err.message : i18n.t("errors.channels.sendTestFailed");
         setError(message);
         return { success: false, error: message };
       } finally {
