@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { User, Bot, AlertCircle, FileText, Image as ImageIcon } from "lucide-react";
@@ -189,10 +189,13 @@ function UserMessage({
   content: string;
   attachments?: MessageAttachment[];
 }) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex justify-end"
     >
       <div className="flex max-w-[80%] gap-3">
@@ -217,11 +220,13 @@ function UserMessage({
  */
 function ErrorMessage({ errorMessage }: { errorMessage: string }) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
@@ -251,10 +256,13 @@ function AssistantMessage({
   isResult?: boolean;
   isStreaming?: boolean;
 }) {
+  const prefersReducedMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
@@ -345,10 +353,13 @@ export function MessageItem({
 
   // Thinking message (extended thinking from Claude)
   if (message.type === "thinking") {
+    const prefersReducedMotion = useReducedMotion();
+
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
         className="flex gap-3"
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">

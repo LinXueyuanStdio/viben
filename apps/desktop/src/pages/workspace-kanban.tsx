@@ -54,7 +54,7 @@ import {
   SortAsc,
   Table2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Badge,
@@ -826,6 +826,7 @@ function ErrorState({
 export function WorkspaceKanbanPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const prefersReducedMotion = useReducedMotion();
   const {
     getWorkspace,
     isLoading: isLoadingWorkspaces,
@@ -2525,13 +2526,13 @@ export function WorkspaceKanbanPage() {
                       {columnTasks.map((task, index) => (
                         <motion.div
                           key={task.id}
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
+                          exit={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.95 }}
                           transition={{
-                            duration: 0.2,
+                            duration: prefersReducedMotion ? 0 : 0.2,
                             ease: [0.2, 0, 0, 1],
-                            delay: index * 0.02,
+                            delay: prefersReducedMotion ? 0 : index * 0.02,
                           }}
                         >
                           <SelectableCard

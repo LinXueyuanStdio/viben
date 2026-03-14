@@ -6,7 +6,7 @@
  * Right panel: Selected provider details (name, API Key, Base URL, models)
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus,
   Trash2,
@@ -67,40 +67,9 @@ import {
 } from "@/hooks/use-models";
 import { getGatewayClient, type WorkspaceModel } from "@/lib/gateway";
 
-// Check if user prefers reduced motion
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.05,
-      delayChildren: prefersReducedMotion ? 0 : 0.05,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 12,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: easeOutExpo,
-    },
-  },
-};
 
 // Provider type options
 const PROVIDER_TYPES: ProviderType[] = [
@@ -119,6 +88,7 @@ interface ExtendedModel extends DiscoveredModel {
 
 export function SettingsModelPage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const {
     providers,
     loading: providersLoading,
@@ -167,6 +137,33 @@ export function SettingsModelPage() {
   const [formBaseUrl, setFormBaseUrl] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.05,
+        delayChildren: prefersReducedMotion ? 0 : 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 12,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.3,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   // Auto-select first provider
   useEffect(() => {

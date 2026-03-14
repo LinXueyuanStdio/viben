@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   PanelRightOpen,
   PanelRightClose,
@@ -296,6 +296,7 @@ export function WorkspaceChatPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const prefersReducedMotion = useReducedMotion();
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
@@ -2041,8 +2042,9 @@ export function WorkspaceChatPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
       animate={{ opacity: 1 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
       className="flex h-full flex-col overflow-hidden"
     >
       {/* Header with breadcrumb */}

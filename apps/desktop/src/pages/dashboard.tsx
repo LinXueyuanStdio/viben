@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Search, Database, Activity, Settings, ArrowRight, TrendingUp, Calendar } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton, SkeletonCard, SkeletonChart, SkeletonHeatmap } from "@/components/ui/skeleton";
 import { BentoGrid, BentoCard } from "@/components/layout";
@@ -12,33 +12,13 @@ import { useAppStore } from "@/stores";
 import { useMemo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-// Check if user prefers reduced motion
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 // Easing curves as const tuples for Framer Motion type compatibility
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 const easeOutBack = [0.34, 1.56, 0.64, 1] as const;
 
-// Card entrance animation variants
-const cardVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 20,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.4,
-      ease: easeOutExpo,
-    },
-  },
-};
-
 export function DashboardPage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const { executors, loading: executorsLoading } = useExecutors();
   const { selectedPython, browseMcpInfo } = usePython();
   const { stats, loading: usageLoading } = useUsage();
@@ -78,6 +58,22 @@ export function DashboardPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Card entrance animation variants
+  const cardVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 20,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.4,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   return (
     <div className="p-6">
@@ -384,6 +380,7 @@ interface ActivityHeatmapProps {
 
 function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -529,6 +526,7 @@ interface UsageLineChartProps {
 
 function UsageLineChart({ data }: UsageLineChartProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -669,6 +667,7 @@ interface UsageByCategoryProps {
 }
 
 function UsageByCategory({ data, labelMap, emptyMessage }: UsageByCategoryProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
