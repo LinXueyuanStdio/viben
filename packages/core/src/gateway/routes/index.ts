@@ -5,7 +5,8 @@ import type { FastifyInstance } from "fastify";
 import type { AppState } from "../state";
 import { registerHealthRoutes } from "./health";
 import { registerAgentRoutes } from "./agents";
-import { registerTaskRoutes } from "./tasks";
+import { registerTasksRoutes } from "./tasks";
+import { registerTaskRoutes } from "./task";
 import { registerSessionRoutes } from "./sessions";
 import { registerCronRoutes } from "./cron";
 import { registerEventsRoutes } from "./events";
@@ -52,6 +53,7 @@ import { registerPreviewRoutes } from "./preview";
 export function registerRoutes(fastify: FastifyInstance, state: AppState): void {
   registerHealthRoutes(fastify);
   registerAgentRoutes(fastify, state);
+  registerTasksRoutes(fastify, state);
   registerTaskRoutes(fastify, state);
   registerSessionRoutes(fastify, state);
   registerCronRoutes(fastify, state);
@@ -97,7 +99,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
 // Re-export individual route registrations
 export { registerHealthRoutes } from "./health";
 export { registerAgentRoutes } from "./agents";
-export { registerTaskRoutes } from "./tasks";
+export { registerTasksRoutes } from "./tasks";
+export { registerTaskRoutes } from "./task";
 export { registerSessionRoutes } from "./sessions";
 export { registerCronRoutes } from "./cron";
 export { registerEventsRoutes } from "./events";

@@ -11,6 +11,10 @@ import {
   DensityChart,
   ModuleList,
   TopFilesTable,
+  CommitHeatmap,
+  CodeFreshnessChart,
+  FileSizeChart,
+  FileChurnChart,
 } from '../components/code-stats';
 import type { CodeStatsData } from '../components/code-stats';
 
@@ -91,6 +95,13 @@ export default async function CodeStatsPage() {
         <div className="relative mx-auto max-w-6xl px-6">
           <StatsHeader summary={stats.summary} generatedAt={stats.generatedAt} />
 
+          {/* Row 0: Commit Activity Heatmap (full width) */}
+          {stats.commitActivity && stats.commitActivity.length > 0 && (
+            <div className="mb-6">
+              <CommitHeatmap data={stats.commitActivity} />
+            </div>
+          )}
+
           {/* Row 1: Language & Module */}
           <div className="grid gap-6 md:grid-cols-2 mb-6">
             <LangChart languages={stats.languages} />
@@ -103,20 +114,37 @@ export default async function CodeStatsPage() {
             <AppsChart apps={stats.apps} />
           </div>
 
-          {/* Row 3: Desktop Dirs (full width) */}
+          {/* Row 3: Code Freshness & File Size Distribution */}
+          <div className="grid gap-6 md:grid-cols-2 mb-6">
+            {stats.codeFreshness && stats.codeFreshness.length > 0 && (
+              <CodeFreshnessChart data={stats.codeFreshness} />
+            )}
+            {stats.fileSizeDistribution && stats.fileSizeDistribution.length > 0 && (
+              <FileSizeChart data={stats.fileSizeDistribution} />
+            )}
+          </div>
+
+          {/* Row 4: File Churn (full width) */}
+          {stats.fileChurn && stats.fileChurn.length > 0 && (
+            <div className="mb-6">
+              <FileChurnChart data={stats.fileChurn} />
+            </div>
+          )}
+
+          {/* Row 5: Desktop Dirs (full width) */}
           {stats.desktopDirs && stats.desktopDirs.length > 0 && (
             <div className="mb-6">
               <DesktopChart desktopDirs={stats.desktopDirs} />
             </div>
           )}
 
-          {/* Row 4: Density & Module List */}
+          {/* Row 6: Density & Module List */}
           <div className="grid gap-6 md:grid-cols-2 mb-6">
             <DensityChart density={stats.density} />
             <ModuleList modules={stats.modules} />
           </div>
 
-          {/* Row 5: Top Files (full width) */}
+          {/* Row 7: Top Files (full width) */}
           <TopFilesTable files={stats.topFiles} />
         </div>
       </section>

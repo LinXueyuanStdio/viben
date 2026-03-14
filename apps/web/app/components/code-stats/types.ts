@@ -15,6 +15,10 @@ export interface CodeStatsData {
   density: DensityStat[];
   categories: CategoryStat[];
   topFiles: FileStat[];
+  commitActivity?: CommitActivity[];
+  fileChurn?: FileChurn[];
+  codeFreshness?: FreshnessStat[];
+  fileSizeDistribution?: SizeDistribution[];
 }
 
 export interface LanguageStat {
@@ -62,4 +66,28 @@ export interface FileStat {
   path: string;
   lines: number;
   ext: string;
+}
+
+export interface CommitActivity {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
+export interface FileChurn {
+  path: string;
+  changes: number;
+  lastChanged: string;
+}
+
+export interface FreshnessStat {
+  label: string;
+  files: number;
+  lines: number;
+  color: string;
+}
+
+export interface SizeDistribution {
+  range: string;
+  files: number;
+  color: string;
 }

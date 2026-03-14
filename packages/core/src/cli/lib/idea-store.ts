@@ -199,32 +199,50 @@ function parseIdeaFromFrontmatterAndBody(
     return null;
   }
 
-  // Parse affected files from body
-  const affectedFiles: string[] = [];
-  const existingPatterns: string[] = [];
-  let implementationApproach: string | undefined;
+  // Parse affected files and existing patterns from frontmatter
+  let affectedFiles: string[] = [];
+  let existingPatterns: string[] = [];
 
-  const lines = body.split("\n");
-  let currentSection = "";
+  if (Array.isArray(frontmatter.affected_files)) {
+    affectedFiles = frontmatter.affected_files.map(String);
+  }
+  if (Array.isArray(frontmatter.existing_patterns)) {
+    existingPatterns = frontmatter.existing_patterns.map(String);
+  }
 
-  for (const line of lines) {
-    if (line.startsWith("## Affected Files")) {
-      currentSection = "affected";
-    } else if (line.startsWith("## Existing Patterns")) {
-      currentSection = "patterns";
-    } else if (line.startsWith("## Implementation Approach")) {
-      currentSection = "implementation";
-    } else if (line.startsWith("## ")) {
-      currentSection = "";
-    } else if (line.startsWith("- ") && currentSection === "affected") {
-      affectedFiles.push(line.slice(2).trim());
-    } else if (line.startsWith("- ") && currentSection === "patterns") {
-      existingPatterns.push(line.slice(2).trim());
-    } else if (currentSection === "implementation" && line.trim()) {
-      implementationApproach = implementationApproach
-        ? implementationApproach + "\n" + line
-        : line;
+  // Legacy format fallback: parse affected files and patterns from body sections
+  if (affectedFiles.length === 0 || existingPatterns.length === 0) {
+    const lines = body.split("\n");
+    let currentSection = "";
+    for (const line of lines) {
+      if (line.startsWith("## Affected Files")) {
+        currentSection = "affected";
+      } else if (line.startsWith("## Existing Patterns")) {
+        currentSection = "patterns";
+      } else if (line.startsWith("## ")) {
+        currentSection = "";
+      } else if (line.startsWith("- ") && currentSection === "affected" && affectedFiles.length === 0) {
+        affectedFiles.push(line.slice(2).trim());
+      } else if (line.startsWith("- ") && currentSection === "patterns" && existingPatterns.length === 0) {
+        existingPatterns.push(line.slice(2).trim());
+      }
     }
+  }
+
+  // Body is the implementation approach (new format: raw text, legacy: after ## header)
+  let implementationApproach: string | undefined;
+  const trimmedBody = body.trim();
+
+  if (trimmedBody.startsWith("## Implementation Approach")) {
+    // Legacy format: extract content after header
+    const lines = trimmedBody.split("\n").slice(1); // Skip header line
+    const implText = lines.join("\n").trim();
+    if (implText) {
+      implementationApproach = implText;
+    }
+  } else if (trimmedBody && !trimmedBody.startsWith("## ")) {
+    // New format: body is directly the implementation approach
+    implementationApproach = trimmedBody;
   }
 
   const effortStr = String(frontmatter.estimated_effort || "medium");
@@ -732,7 +750,7 @@ export function writeIdeasToFile(filePath: string, ideas: Idea[]): void {
   const sections: string[] = [];
 
   for (const idea of ideas) {
-    const frontmatter = [
+    const frontmatter: string[] = [
       "---",
       `id: ${idea.id}`,
       `type: ${idea.type}`,
@@ -743,34 +761,30 @@ export function writeIdeasToFile(filePath: string, ideas: Idea[]): void {
       `status: ${idea.status}`,
       `promoted_to: ${idea.promotedTo || "null"}`,
       `created_at: ${idea.createdAt}`,
-      "---",
     ];
 
-    const body: string[] = [];
-
+    // Add affected files to frontmatter as YAML array
     if (idea.affectedFiles && idea.affectedFiles.length > 0) {
-      body.push("## Affected Files", "");
+      frontmatter.push("affected_files:");
       for (const file of idea.affectedFiles) {
-        body.push(`- ${file}`);
+        frontmatter.push(`  - ${file}`);
       }
-      body.push("");
     }
 
+    // Add existing patterns to frontmatter as YAML array
     if (idea.existingPatterns && idea.existingPatterns.length > 0) {
-      body.push("## Existing Patterns", "");
+      frontmatter.push("existing_patterns:");
       for (const pattern of idea.existingPatterns) {
-        body.push(`- ${pattern}`);
+        frontmatter.push(`  - ${pattern}`);
       }
-      body.push("");
     }
 
-    if (idea.implementationApproach) {
-      body.push("## Implementation Approach", "");
-      body.push(idea.implementationApproach);
-      body.push("");
-    }
+    frontmatter.push("---");
 
-    sections.push(frontmatter.join("\n") + "\n\n" + body.join("\n"));
+    // Body contains implementation approach directly
+    const body = idea.implementationApproach || "";
+
+    sections.push(frontmatter.join("\n") + "\n\n" + body);
   }
 
   const content = sections.join("\n---\n\n");
@@ -790,7 +804,7 @@ export function writeSingleIdeaToFile(sessionDir: string, idea: Idea): string {
   const filePath = getSingleIdeaFilePath(sessionDir, idea.type, ideaName);
   const fileName = getSingleIdeaFileName(idea.type, ideaName);
 
-  const frontmatter = [
+  const frontmatter: string[] = [
     "---",
     `id: ${idea.id}`,
     `type: ${idea.type}`,
@@ -802,34 +816,30 @@ export function writeSingleIdeaToFile(sessionDir: string, idea: Idea): string {
     `status: ${idea.status}`,
     `promoted_to: ${idea.promotedTo || "null"}`,
     `created_at: ${idea.createdAt}`,
-    "---",
   ];
 
-  const body: string[] = [];
-
+  // Add affected files to frontmatter as YAML array
   if (idea.affectedFiles && idea.affectedFiles.length > 0) {
-    body.push("## Affected Files", "");
+    frontmatter.push("affected_files:");
     for (const file of idea.affectedFiles) {
-      body.push(`- ${file}`);
+      frontmatter.push(`  - ${file}`);
     }
-    body.push("");
   }
 
+  // Add existing patterns to frontmatter as YAML array
   if (idea.existingPatterns && idea.existingPatterns.length > 0) {
-    body.push("## Existing Patterns", "");
+    frontmatter.push("existing_patterns:");
     for (const pattern of idea.existingPatterns) {
-      body.push(`- ${pattern}`);
+      frontmatter.push(`  - ${pattern}`);
     }
-    body.push("");
   }
 
-  if (idea.implementationApproach) {
-    body.push("## Implementation Approach", "");
-    body.push(idea.implementationApproach);
-    body.push("");
-  }
+  frontmatter.push("---");
 
-  const content = frontmatter.join("\n") + "\n\n" + body.join("\n");
+  // Body contains implementation approach directly (no header needed)
+  const body = idea.implementationApproach || "";
+
+  const content = frontmatter.join("\n") + "\n\n" + body + "\n";
   writeFileSync(filePath, content, "utf-8");
 
   return fileName;
