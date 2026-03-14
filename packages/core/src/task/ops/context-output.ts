@@ -75,11 +75,11 @@ export function getContextJson(repoRoot: string, taskDir?: string): ContextJson 
   // Active tasks
   const activeTasks = getActiveTasks(repoRoot);
 
-  // My tasks (assigned to developer and not done)
+  // My tasks (assigned to developer and not completed)
   const myTasks: Array<{ title: string; priority: string; status: string }> = [];
   if (developer) {
     for (const task of activeTasks) {
-      if (task.assignee === developer && task.status !== "done") {
+      if (task.assignee === developer && task.status !== "completed") {
         myTasks.push({
           title: task.title,
           priority: task.priority,
@@ -242,7 +242,7 @@ export function getContextText(repoRoot: string, taskDir?: string): string {
   let myTaskCount = 0;
 
   for (const t of activeTasks) {
-    if (t.assignee === developer && t.status !== "done") {
+    if (t.assignee === developer && t.status !== "completed") {
       lines.push(`- [${t.priority}] ${t.title} (${t.status})`);
       myTaskCount++;
     }

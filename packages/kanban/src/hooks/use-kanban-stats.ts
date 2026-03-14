@@ -11,7 +11,7 @@ interface StatsItem {
 
 export function useKanbanStats<T extends StatsItem>(
   items: T[],
-  completedStatuses: string[] = ["done", "completed"]
+  completedStatuses: string[] = ["completed"]
 ): KanbanStats {
   return useMemo(() => {
     const totalTasks = items.length;

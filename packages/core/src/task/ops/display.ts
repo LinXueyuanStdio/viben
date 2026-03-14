@@ -28,13 +28,6 @@ export function formatStatus(status: string): string {
     case "failed":
     case "cancelled":
       return chalk.red(status);
-    // Legacy mappings
-    case "done":
-    case "pr_created":
-      return chalk.green("completed");
-    case "plan":
-    case "error":
-      return chalk.gray(status);
     default:
       return chalk.gray(status);
   }

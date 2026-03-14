@@ -623,15 +623,15 @@ describe("Legacy State Normalization", () => {
     mockAppendFile.mockResolvedValue(undefined);
   });
 
-  it("normalizes 'done' state to 'completed'", async () => {
+  it("rejects RETRY from completed state (terminal)", async () => {
     const task = createMockTask({
       id: "task1",
       status: "completed",
-      xstateState: "done" as any, // Legacy state
+      xstateState: "completed",
     });
     mockGetTask.mockResolvedValue(task);
 
-    // Trying RETRY from 'done' should fail (completed is terminal)
+    // Trying RETRY from 'completed' should fail (completed is terminal)
     const result = await store.validateEvent(taskDir, {
       eventId: "evt_1",
       sequence: 1,
@@ -639,7 +639,7 @@ describe("Legacy State Normalization", () => {
       timestamp: "2026-01-15T10:00:00.000Z",
     });
 
-    // 'done' is normalized to 'completed' which is a terminal state
+    // 'completed' is a terminal state
     expect(result.success).toBe(false);
     expect(result.error).toBe("INVALID_TRANSITION");
   });

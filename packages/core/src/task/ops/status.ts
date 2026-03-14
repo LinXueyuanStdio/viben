@@ -344,7 +344,7 @@ export function cmdStatusSummary(
     console.log(chalk.red("Stopped Agents:"));
     for (const t of stoppedTasks) {
       // Check for completed states
-      if (t.status === "completed" || t.status === "done" || t.status === "pr_created") {
+      if (t.status === "completed") {
         console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
       } else {
         const sessionId = getSessionId(t.taskDir);

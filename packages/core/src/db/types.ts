@@ -16,11 +16,7 @@ export type TaskStatus =
   | "completed"     // 已完成 - Successfully completed
   | "failed"        // 失败 - Execution failed
   | "cancelled"     // 已取消 - Cancelled by user
-  | "archived"      // 已归档 - Archived for reference
-  // Legacy statuses (for backward compatibility)
-  | "done"          // 完成 (legacy → completed)
-  | "pr_created"    // PR已创建 (legacy → completed)
-  | "error";        // 错误 (legacy → failed)
+  | "archived";     // 已归档 - Archived for reference
 
 /**
  * Task entity
