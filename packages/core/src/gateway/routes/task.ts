@@ -82,7 +82,7 @@ import { join, basename } from "node:path";
 import {
   taskService,
   type UnifiedTask,
-} from "../../services/task-service";
+} from "../../task/service";
 import { logger as globalLogger } from "../../telemetry";
 import { taskEventStore } from "../../task/events/event-store";
 import { isValidEventType, type TaskEventType } from "../../task/events/event-types";
@@ -2622,7 +2622,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           agent: { type: "string", description: "Agent ID to execute this task" },
           executor: { type: "string", description: "Executor type (CLAUDE_CODE, CURSOR, etc.)" },
           model: { type: "string", description: "Model ID for execution" },
-          priority: { type: "string", description: "Priority (P0/P1/P2/P3)" },
+          priority: { type: "string", description: "Priority (urgent/high/medium/low/none)" },
         },
         required: ["workspace_path", "task_id"],
       },
@@ -3573,7 +3573,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         title: requirement,
         description: "",
         status: "backlog",
-        priority: "P2",
+        priority: "medium",
         creator: developer,
         assignee: developer,
         createdAt: today,
@@ -4070,7 +4070,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           slug: { type: "string", description: "Task slug (auto-generated from title if not provided)" },
           branch: { type: "string", description: "Custom branch name" },
           assignee: { type: "string", description: "Assignee developer name" },
-          priority: { type: "string", description: "Priority (P0/P1/P2/P3)", default: "P2" },
+          priority: { type: "string", description: "Priority (urgent/high/medium/low/none)", default: "medium" },
           description: { type: "string", description: "Task description" },
           agent: { type: "string", description: "Associated agent ID" },
           executor: { type: "string", description: "Executor type" },

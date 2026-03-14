@@ -1070,6 +1070,8 @@ export function WorkspaceKanbanPage() {
       id: a.id,
       name: a.name,
       description: a.description,
+      agent_dir: a.agent_dir,
+      config_path: a.config_path,
     })),
     [agents]
   );

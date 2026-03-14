@@ -30,7 +30,7 @@ import {
   type UnifiedTask,
   type TaskStatus,
   type SubtaskInfo,
-} from "../../services/task-service";
+} from "../../task/service";
 import { logger as globalLogger } from "../../telemetry";
 
 // Module-level logger
@@ -103,7 +103,7 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     review_reason: task.reviewReason ?? null,
     current_phase: task.current_phase ?? 0,
     // Organization fields
-    priority: task.priority || "P2",
+    priority: task.priority || "medium",
     workspace_path: task.workspacePath ?? null,
     // People
     creator: task.creator ?? null,
@@ -826,7 +826,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       description: input.description ?? sourceTask?.description,
       prompt: input.prompt ?? sourceTask?.prompt ?? input.description,
       status,
-      priority: input.priority ?? sourceTask?.priority ?? "P2",
+      priority: input.priority ?? sourceTask?.priority ?? "medium",
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
       agent: input.agentId || input.agent_id || sourceTask?.agent,

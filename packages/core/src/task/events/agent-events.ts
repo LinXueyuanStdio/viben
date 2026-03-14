@@ -6,7 +6,7 @@
  * agent execution reaches certain milestones.
  */
 
-import { taskService } from "../../services/task-service";
+import { taskService } from "../service";
 import { taskEventStore } from "./event-store";
 import { createTaskEvent } from "./task-event";
 import { eventService } from "../../services/events";

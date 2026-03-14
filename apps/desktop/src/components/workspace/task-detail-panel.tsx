@@ -410,6 +410,10 @@ export interface AvailableAgent {
   id: string;
   name: string;
   description?: string;
+  /** Path to agent directory for message persistence */
+  agent_dir?: string;
+  /** Path to agent config file (AGENTS.md) */
+  config_path?: string;
 }
 
 // Main TaskDetailPanel Props
@@ -591,6 +595,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
   const taskSessionId = task?.session_id || undefined;
   const taskAgentId = task?.agent_id || "default";
 
+  // Find the current agent from availableAgents to get agentDir and configPath
+  const currentAgent = useMemo(() => {
+    if (!task?.agent_id) return undefined;
+    return availableAgents.find((a) => a.id === task.agent_id);
+  }, [task?.agent_id, availableAgents]);
+
   // Agent conversation hook - reuses the main chat implementation
   const {
     messages: agentMessages,
@@ -613,6 +623,9 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     sessionId: taskSessionId,
     taskId: task?.id,
     agentConfig,
+    // Pass agentDir and agentConfigPath for message persistence
+    agentDir: currentAgent?.agent_dir,
+    agentConfigPath: currentAgent?.config_path,
   });
 
   // Track previous task ID to detect task changes

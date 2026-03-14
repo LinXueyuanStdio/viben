@@ -74,8 +74,9 @@ const BUILTIN_TYPE_DESCRIPTIONS: Record<string, string> = {
 
 /**
  * Get date prefix in MM-DD format
+ * @internal - Not exported to avoid conflicts with viben-workspace.ts
  */
-export function getDatePrefix(): string {
+function getDatePrefix(): string {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");

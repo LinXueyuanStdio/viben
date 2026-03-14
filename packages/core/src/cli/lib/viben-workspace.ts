@@ -29,10 +29,10 @@ export {
   type TaskEventType,
   type TaskEvent,
   isValidTaskStatus,
-} from "../../services/task-service";
+} from "../../task/service";
 
 // Import types for local use
-import type { TaskEventType } from "../../services/task-service";
+import type { TaskEventType } from "../../task/service";
 
 /**
  * Snapshot saved when a task is paused, used to restore state on resume

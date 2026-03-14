@@ -9,7 +9,7 @@
  */
 
 import type { FastifyInstance } from "fastify";
-import { taskService } from "../../services/task-service";
+import { taskService } from "../../task/service";
 import { taskEventStore } from "../../task/events/event-store";
 import { taskSSEManager } from "../sse/task-sse-manager";
 import type { TaskEvent } from "../../task/events/task-event";

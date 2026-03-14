@@ -495,6 +495,48 @@ export {
   type ProjectType as TeamProjectType,
 } from "./team";
 
+// Idea (viben idea)
+export {
+  // Types
+  type Idea,
+  type IdeaType,
+  type IdeaSession,
+  type IdeaStatus,
+  type EffortLevel,
+  type IdeaTypeSource,
+  type IdeaGenerateOptions,
+  type IdeaListOptions,
+  type IdeaPromoteOptions,
+  type IdeaRemoveOptions,
+  type IdeaGenerateResult,
+  type IdeaListResult,
+  type IdeaViewResult,
+  type IdeaPromoteResult,
+  type IdeaRemoveResult,
+  type IdeaListTypesResult,
+  // Constants
+  BUILTIN_IDEA_TYPES,
+  EFFORT_LEVELS,
+  IDEA_STATUSES,
+  EFFORT_PRIORITY_MAP,
+  DEFAULT_MAX_IDEAS,
+  // Operations
+  generateIdeas,
+  listIdeas,
+  listTypes as listIdeaTypes,
+  viewIdea,
+  promoteIdea,
+  removeIdeas,
+  dismissIdea,
+  validateIdeaType,
+  validateIdeaTypes,
+  // Store utilities
+  getIdeasDir,
+  getIdeaType,
+  getAllIdeas,
+  getIdeaById,
+} from "./idea";
+
 // Index Generator
 export {
   IndexBuilder,

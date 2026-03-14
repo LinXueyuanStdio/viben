@@ -58,7 +58,7 @@ import {
   validateIfReviewFinished,
 } from "../lib/viben-workspace";
 
-import type { UnifiedTask } from "../../services/task-service";
+import type { UnifiedTask } from "../../task/service";
 
 // Import swarm functions for agent management
 import {

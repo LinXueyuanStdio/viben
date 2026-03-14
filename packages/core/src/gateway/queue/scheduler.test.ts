@@ -12,7 +12,7 @@ import {
   getNextTask,
   getDependentTasks,
 } from "./scheduler";
-import type { UnifiedTask } from "../../services/task-service";
+import type { UnifiedTask } from "../../task/service";
 import { createMockTask, createTaskInState } from "../../task/__fixtures__/task-fixtures";
 
 // =============================================================================
