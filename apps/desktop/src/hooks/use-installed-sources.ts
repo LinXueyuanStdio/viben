@@ -67,7 +67,7 @@ export function useInstalledSources() {
   const installProvider = useCallback(
     async (provider: string, upgrade = false) => {
       if (!pythonPath) {
-        throw new Error("Python path not configured");
+        throw new Error(t("errors.sources.pythonPathNotConfigured"));
       }
 
       const client = getGatewayClient();

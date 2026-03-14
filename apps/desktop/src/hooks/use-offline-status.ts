@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayClient, type CacheInfo, type CacheSettings } from "@/lib/gateway";
 
 // Re-export types from gateway for consumers of this hook
@@ -8,6 +9,7 @@ export type { CacheInfo, CacheSettings };
  * Hook for managing offline status and cache operations
  */
 export function useOfflineStatus() {
+  const { t } = useTranslation();
   const [isOffline, setIsOffline] = useState(false);
   const [cacheInfo, setCacheInfo] = useState<CacheInfo | null>(null);
   const [cacheSettings, setCacheSettings] = useState<CacheSettings | null>(null);
@@ -135,18 +137,20 @@ export function useOfflineStatus() {
    * Format cache size for display
    */
   const formatCacheSize = useCallback((bytes: number): string => {
-    if (bytes === 0) return "0 B";
+    if (bytes === 0) return t("offline.sizeBytes", "{{value}} B", { value: 0 });
     const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
+    const sizeKeys = ["sizeBytes", "sizeKB", "sizeMB", "sizeGB"] as const;
+    const sizeDefaults = ["{{value}} B", "{{value}} KB", "{{value}} MB", "{{value}} GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  }, []);
+    const value = parseFloat((bytes / Math.pow(k, i)).toFixed(2));
+    return t(`offline.${sizeKeys[i]}`, sizeDefaults[i], { value });
+  }, [t]);
 
   /**
    * Format last updated time for display
    */
   const formatLastUpdated = useCallback((isoDate: string | null): string => {
-    if (!isoDate) return "Never";
+    if (!isoDate) return t("offline.never", "Never");
     try {
       const date = new Date(isoDate);
       const now = new Date();
@@ -155,16 +159,16 @@ export function useOfflineStatus() {
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffMins < 1) return t("offline.justNow", "Just now");
+      if (diffMins < 60) return t("offline.minutesAgo", "{{count}}m ago", { count: diffMins });
+      if (diffHours < 24) return t("offline.hoursAgo", "{{count}}h ago", { count: diffHours });
+      if (diffDays < 7) return t("offline.daysAgo", "{{count}}d ago", { count: diffDays });
 
       return date.toLocaleDateString();
     } catch {
-      return "Unknown";
+      return t("offline.unknown", "Unknown");
     }
-  }, []);
+  }, [t]);
 
   // Initialize on mount
   useEffect(() => {

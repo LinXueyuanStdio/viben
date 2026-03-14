@@ -57,7 +57,7 @@ import { useAppStore } from "@/stores";
 import { getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n/languages";
-import { changeLanguage, getCurrentLanguage } from "@/i18n";
+import { changeLanguage } from "@/i18n";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -387,7 +387,7 @@ export function SettingsPage() {
  * -------------------------------------------------------------------------- */
 
 function GeneralSection() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const {
     language,
@@ -411,17 +411,20 @@ function GeneralSection() {
     setLanguage(langCode);
   };
 
-  // Get current language, falling back to store value or detected value
-  const currentLanguage = getCurrentLanguage() || language || "en";
+  // Get current language using i18n.language for reactivity
+  const currentLanguage = i18n.language || language || "en";
   const isZhCN = currentLanguage === "zh-CN";
 
-  // Get timezone label
-  const getTimezoneLabel = (tz: string) => {
-    const found = TIMEZONES.find((t) => t.value === tz);
-    if (found) {
-      return isZhCN ? found.labelZh : found.label;
+  // Get timezone label based on current language
+  const getTimezoneLabel = (tz: typeof TIMEZONES[number] | string) => {
+    if (typeof tz === "string") {
+      const found = TIMEZONES.find((t) => t.value === tz);
+      if (found) {
+        return isZhCN ? found.labelZh : found.label;
+      }
+      return tz;
     }
-    return tz;
+    return isZhCN ? tz.labelZh : tz.label;
   };
 
   return (
@@ -671,7 +674,7 @@ function AccountSection() {
   const handleDevOAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oauthCode.trim()) {
-      setFormError(t("auth.oauthCodeRequired", "请输入 OAuth 授权码"));
+      setFormError(t("auth.oauthCodeRequired"));
       return;
     }
     try {
@@ -852,19 +855,19 @@ function AccountSection() {
                   <form onSubmit={handleDevOAuthSubmit} className="w-full space-y-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Terminal className="h-3 w-3" />
-                      <span>{t("auth.devModeOAuthHint", "Dev Mode: 从 URL 粘贴 OAuth 授权码")}</span>
+                      <span>{t("auth.devModeOAuthHint")}</span>
                     </div>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder={t("auth.oauthCodePlaceholder", "粘贴 viben://oauth?code=... 中的 code")}
+                        placeholder={t("auth.oauthCodePlaceholder")}
                         value={oauthCode}
                         onChange={(e) => setOauthCode(e.target.value)}
                         disabled={isLoading}
                         className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
                       />
                       <Button type="submit" size="sm" disabled={isLoading || !oauthCode.trim()}>
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit", "提交")}
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit")}
                       </Button>
                     </div>
                   </form>

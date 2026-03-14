@@ -108,7 +108,15 @@
     "noData": "无数据",
     "id": "ID",
     "openFolderFailed": "无法打开文件夹",
-    "agentPathNotAvailable": "智能体路径尚未加载"
+    "agentPathNotAvailable": "智能体路径尚未加载",
+    "defaultUserName": "用户",
+    "units": {
+      "bytes": "B",
+      "kilobytes": "KB",
+      "megabytes": "MB",
+      "gigabytes": "GB",
+      "terabytes": "TB"
+    }
   },
   "elapsedTime": {
     "justNow": "刚刚",
@@ -136,7 +144,8 @@
     "settings": "设置",
     "about": "关于",
     "observability": "可观测性",
-    "chatMonitor": "对话监控"
+    "chatMonitor": "对话监控",
+    "github": "GitHub"
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -1385,7 +1394,10 @@
     "signInRequiredDescription": "请登录以访问此功能。您的数据将在设备间同步。",
     "oauthCodeRequired": "请输入 OAuth 授权码",
     "devModeOAuthHint": "开发模式：从 URL 中粘贴 OAuth 授权码",
-    "oauthCodePlaceholder": "粘贴来自 viben://oauth?code=... 的授权码"
+    "oauthCodePlaceholder": "粘贴来自 viben://oauth?code=... 的授权码",
+    "waitingForOAuth": "等待浏览器授权...",
+    "completeInBrowser": "请在浏览器中完成授权",
+    "githubLoginDescription": "使用 GitHub 账号快速登录"
   },
   "inspector": {
     "title": "MCP 检查器",
@@ -1935,7 +1947,16 @@
     "cacheSize50": "50 MB",
     "cacheSize100": "100 MB",
     "cacheSize200": "200 MB",
-    "cacheSize500": "500 MB"
+    "cacheSize500": "500 MB",
+    "sizeBytes": "{{value}} B",
+    "sizeKB": "{{value}} KB",
+    "sizeMB": "{{value}} MB",
+    "sizeGB": "{{value}} GB",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前",
+    "unknown": "未知"
   },
   "skillsMarket": {
     "title": "技能市场",
@@ -3147,7 +3168,7 @@
     "moreSessionsHint": "更多会话请在会话列表中查看",
     "createNewSession": "新建会话",
     "messagesUnit": "条",
-    "renameSession": "重命名",
+    "renameSession": "重命名会话",
     "deleteSession": "删除",
     "pinSession": "置顶",
     "unpinSession": "取消置顶",
@@ -4097,6 +4118,9 @@
     "kanban": {
       "cannotConnectGateway": "无法连接到网关。网关是否正在运行？",
       "unknownError": "未知错误"
+    },
+    "vitePreview": {
+      "noTaskId": "未提供任务 ID"
     }
   },
   "availability": {
@@ -4164,6 +4188,7 @@
     "doneShort": "完成"
   },
   "installation": {
+    "downloading": "正在下载 {{name}}...",
     "downloadComplete": "下载完成",
     "extractingPackage": "正在解压包...",
     "extractingFiles": "正在解压文件...",
@@ -4195,6 +4220,10 @@
       "1014": "网关错误",
       "1015": "TLS 握手失败",
       "4000": "心跳超时"
+    },
+    "closeReason": {
+      "manualDisconnect": "手动断开连接",
+      "heartbeatTimeout": "心跳超时"
     },
     "closedWithCode": "WebSocket 关闭（错误码：{{code}}）"
   },

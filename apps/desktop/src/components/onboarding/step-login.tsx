@@ -121,7 +121,7 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   const handleDevOAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oauthCode.trim()) {
-      setFormError(t("auth.oauthCodeRequired", "请输入 OAuth 授权码"));
+      setFormError(t("auth.oauthCodeRequired"));
       return;
     }
     try {
@@ -263,19 +263,19 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
                   <form onSubmit={handleDevOAuthSubmit} className="w-full space-y-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Terminal className="h-3 w-3" />
-                      <span>{t("auth.devModeOAuthHint", "Dev Mode: 从 URL 粘贴 OAuth 授权码")}</span>
+                      <span>{t("auth.devModeOAuthHint")}</span>
                     </div>
                     <div className="flex gap-2">
                       <Input
                         type="text"
-                        placeholder={t("auth.oauthCodePlaceholder", "粘贴 viben://oauth?code=... 中的 code")}
+                        placeholder={t("auth.oauthCodePlaceholder")}
                         value={oauthCode}
                         onChange={(e) => setOauthCode(e.target.value)}
                         disabled={isLoading}
                         className="flex-1 text-sm"
                       />
                       <Button type="submit" size="sm" disabled={isLoading || !oauthCode.trim()}>
-                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit", "提交")}
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit")}
                       </Button>
                     </div>
                   </form>

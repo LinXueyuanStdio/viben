@@ -108,7 +108,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const handleDevOAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oauthCode.trim()) {
-      setFormError(t("auth.oauthCodeRequired", "请输入 OAuth 授权码"));
+      setFormError(t("auth.oauthCodeRequired"));
       return;
     }
     try {
@@ -156,8 +156,8 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
               <div className="flex items-center justify-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <div className="text-sm">
-                  <p className="font-medium">{t("auth.waitingForOAuth", "等待浏览器授权...")}</p>
-                  <p className="text-muted-foreground">{t("auth.completeInBrowser", "请在浏览器中完成授权")}</p>
+                  <p className="font-medium">{t("auth.waitingForOAuth")}</p>
+                  <p className="text-muted-foreground">{t("auth.completeInBrowser")}</p>
                 </div>
               </div>
 
@@ -166,19 +166,19 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
                 <form onSubmit={handleDevOAuthSubmit} className="space-y-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Terminal className="h-3 w-3" />
-                    <span>{t("auth.devModeOAuthHint", "Dev Mode: 从 URL 粘贴 OAuth 授权码")}</span>
+                    <span>{t("auth.devModeOAuthHint")}</span>
                   </div>
                   <div className="flex gap-2">
                     <Input
                       type="text"
-                      placeholder={t("auth.oauthCodePlaceholder", "粘贴 viben://oauth?code=... 中的 code")}
+                      placeholder={t("auth.oauthCodePlaceholder")}
                       value={oauthCode}
                       onChange={(e) => setOauthCode(e.target.value)}
                       disabled={isLoading}
                       className="flex-1 text-sm"
                     />
                     <Button type="submit" size="sm" disabled={isLoading || !oauthCode.trim()}>
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit", "提交")}
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit")}
                     </Button>
                   </div>
                 </form>
@@ -191,7 +191,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
                 className="w-full"
               >
                 <X className="mr-2 h-4 w-4" />
-                {t("common.cancel", "取消")}
+                {t("common.cancel")}
               </Button>
             </div>
           ) : (
@@ -202,7 +202,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
                   <Github className="h-7 w-7" />
                 </div>
                 <p className="text-center text-sm text-muted-foreground">
-                  {t("auth.githubLoginDescription", "使用 GitHub 账号快速登录")}
+                  {t("auth.githubLoginDescription")}
                 </p>
               </div>
 
