@@ -82,7 +82,7 @@ Tell the user the agent has started and provide monitoring commands:
 viben swarm status                    # Overview
 viben swarm status <name> --log       # View log
 viben swarm status <name> --watch     # Real-time monitoring
-viben swarm cleanup <branch>          # Cleanup worktree
+viben task cleanup <branch>           # Cleanup worktree
 ```
 
 ---

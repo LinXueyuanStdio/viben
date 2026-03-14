@@ -382,7 +382,7 @@ export function cmdStatusSummary(
       const priorityCompare = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
       if (priorityCompare !== 0) return priorityCompare;
 
-      const statusOrder: Record<string, number> = { in_progress: 0, queue: 1, backlog: 2, human_review: 3, completed: 4 };
+      const statusOrder: Record<string, number> = { in_progress: 0, queue: 1, backlog: 2, review: 3, completed: 4 };
       return (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2);
     });
 

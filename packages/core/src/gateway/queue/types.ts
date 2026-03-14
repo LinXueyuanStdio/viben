@@ -75,7 +75,7 @@ export function mapUnifiedStatusToQueue(unifiedStatus: UnifiedTaskStatus): Queue
     case "paused":
       return "running";
     case "completed":
-    case "human_review":
+    case "review":
       return "completed";
     case "failed":
     case "cancelled":

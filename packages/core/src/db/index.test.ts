@@ -206,10 +206,10 @@ describe("TaskModel", () => {
     it("should update only the status", async () => {
       const task = await TaskModel.create({ title: "Task" });
 
-      await TaskModel.updateStatus(task.id, "human_review");
+      await TaskModel.updateStatus(task.id, "review");
 
       const found = await TaskModel.findById(task.id);
-      expect(found?.status).toBe("human_review");
+      expect(found?.status).toBe("review");
     });
   });
 

@@ -45,7 +45,7 @@ export interface TaskActionButtonsProps {
   status: TaskStatus;
   /** XState state value */
   xstateState?: XStateValue;
-  /** Review reason (for human_review status) */
+  /** Review reason (for review status) */
   reviewReason?: ReviewReason;
   /** Whether the task is stuck */
   isStuck?: boolean;
@@ -83,7 +83,7 @@ export interface TaskActionButtonsProps {
  * - queue: Start button (begin execution)
  * - in_progress (running): Stop button
  * - in_progress (stuck): Recover button
- * - human_review: Approve, Reject, Create PR buttons
+ * - review: Approve, Reject, Create PR buttons
  * - error: Retry, Abandon buttons
  * - done: View PR button (if PR exists)
  */
@@ -314,7 +314,7 @@ export function TaskActionButtons({
     }
 
     // Priority 3: Human review state - Show Approve, Reject, Create PR buttons
-    if (status === "human_review") {
+    if (status === "review") {
       // Show different buttons based on review reason
       if (reviewReason === "completed") {
         // Task completed, show Approve button

@@ -533,7 +533,7 @@ describe("Complete State Transition Flows", () => {
     vi.useRealTimers();
   });
 
-  it("completes happy path: backlog -> queue -> plan -> implement -> check -> human_review -> completed", async () => {
+  it("completes happy path: backlog -> queue -> plan -> implement -> check -> review -> completed", async () => {
     let currentTask = createTaskInState("backlog", { id: "task1" });
 
     const eventFlow: Array<{ type: TaskEventType; expectedState: string }> = [
@@ -541,7 +541,7 @@ describe("Complete State Transition Flows", () => {
       { type: "START", expectedState: "in_progress" },
       { type: "PLAN_COMPLETE", expectedState: "in_progress" },
       { type: "ALL_SUBTASKS_DONE", expectedState: "in_progress" },
-      { type: "CHECK_PASSED", expectedState: "human_review" },
+      { type: "CHECK_PASSED", expectedState: "review" },
       { type: "APPROVED", expectedState: "completed" },
     ];
 

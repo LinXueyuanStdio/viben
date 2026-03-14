@@ -693,7 +693,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
                   name: { type: "string" },
                   title: { type: "string" },
                   description: { type: "string" },
-                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "human_review", "completed", "failed", "cancelled", "archived"] },
+                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "review", "completed", "failed", "cancelled", "archived"] },
                   workspace_path: { type: "string" },
                   agent_id: { type: "string" },
                   session_id: { type: "string" },
@@ -2475,7 +2475,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     // Update task status
     if (cancelled || task.status === "in_progress" || task.status === "queue") {
       await taskService.updateTask(taskDir, {
-        status: "human_review",
+        status: "review",
         reviewReason: "stopped",
       });
     }
@@ -3753,7 +3753,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // ============================================================================
-  // POST /api/task/approve - human_review -> completed
+  // POST /api/task/approve - review -> completed
   // ============================================================================
   fastify.post<{
     Body: {
@@ -3763,7 +3763,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     };
   }>("/api/task/approve", {
     schema: {
-      description: "Approve a task in human_review: human_review -> completed",
+      description: "Approve a task in review: review -> completed",
       tags: ["tasks"],
       body: {
         type: "object",
@@ -3825,10 +3825,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
     }
 
-    if (task.status !== "human_review") {
+    if (task.status !== "review") {
       reply.code(400);
       return {
-        error: `Cannot approve task in '${task.status}' status. Expected: human_review`,
+        error: `Cannot approve task in '${task.status}' status. Expected: review`,
         code: "INVALID_STATUS_TRANSITION",
       };
     }
@@ -3869,7 +3869,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // ============================================================================
-  // POST /api/task/reject - human_review -> backlog
+  // POST /api/task/reject - review -> backlog
   // ============================================================================
   fastify.post<{
     Body: {
@@ -3879,7 +3879,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     };
   }>("/api/task/reject", {
     schema: {
-      description: "Reject a task in human_review: human_review -> backlog",
+      description: "Reject a task in review: review -> backlog",
       tags: ["tasks"],
       body: {
         type: "object",
@@ -3941,10 +3941,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
     }
 
-    if (task.status !== "human_review") {
+    if (task.status !== "review") {
       reply.code(400);
       return {
-        error: `Cannot reject task in '${task.status}' status. Expected: human_review`,
+        error: `Cannot reject task in '${task.status}' status. Expected: review`,
         code: "INVALID_STATUS_TRANSITION",
       };
     }
@@ -4473,7 +4473,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           subtasks: specsData.subtasks,
           logs: specsData.logs,
         },
-        next_actions: taskData.status === "human_review"
+        next_actions: taskData.status === "review"
           ? ["approve", "reject"]
           : taskData.status === "failed"
             ? ["retry"]
@@ -4938,10 +4938,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           createPrPhase = 4;
         }
 
-        updateTaskField(taskDirPath, "status", "human_review");
+        updateTaskField(taskDirPath, "status", "review");
         updateTaskField(taskDirPath, "pr_url", prUrl);
         updateTaskField(taskDirPath, "current_phase", createPrPhase);
-        steps.push("Task status updated to human_review");
+        steps.push("Task status updated to review");
       }
 
       // In dry-run, reset staging area

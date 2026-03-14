@@ -240,7 +240,7 @@ export function resumeTask(repoRoot: string, taskName: string): LifecycleResult 
 }
 
 /**
- * Approve task: human_review -> completed
+ * Approve task: review -> completed
  */
 export function approveTask(repoRoot: string, taskName: string): LifecycleResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
@@ -281,7 +281,7 @@ export function approveTask(repoRoot: string, taskName: string): LifecycleResult
 }
 
 /**
- * Reject task: human_review -> backlog
+ * Reject task: review -> backlog
  */
 export function rejectTask(
   repoRoot: string,

@@ -22,7 +22,7 @@ import type { TaskWithAttemptStatus, TaskStatus } from "@/lib/vibe-kanban";
 
 /**
  * Get status icon component
- * Using unified task status system: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled, archived
+ * Using unified task status system: backlog, queue, in_progress, paused, review, completed, failed, cancelled, archived
  */
 function getStatusIcon(status: TaskStatus) {
   switch (status) {
@@ -32,7 +32,7 @@ function getStatusIcon(status: TaskStatus) {
       return Clock;
     case "in_progress":
       return Clock;
-    case "human_review":
+    case "review":
       return AlertCircle;
     case "paused":
       return Clock;
@@ -60,7 +60,7 @@ function getStatusColor(status: TaskStatus) {
       return "text-cyan-500";
     case "in_progress":
       return "text-blue-500";
-    case "human_review":
+    case "review":
       return "text-purple-500";
     case "paused":
       return "text-yellow-500";
@@ -79,15 +79,14 @@ function getStatusColor(status: TaskStatus) {
 
 /**
  * Status labels for display
- * Using unified task status system (ai_review is legacy, maps to in_progress)
+ * Using unified task status system
  */
 const STATUS_LABELS: Record<TaskStatus, { key: string; fallback: string }> = {
   backlog: { key: "workspace.column.backlog", fallback: "Backlog" },
   queue: { key: "workspace.column.queue", fallback: "Queue" },
   in_progress: { key: "workspace.column.inProgress", fallback: "In Progress" },
   paused: { key: "workspace.column.paused", fallback: "Paused" },
-  ai_review: { key: "workspace.column.inProgress", fallback: "In Progress" }, // Legacy: maps to in_progress
-  human_review: { key: "workspace.column.humanReview", fallback: "Human Review" },
+  review: { key: "workspace.column.review", fallback: "Review" },
   completed: { key: "workspace.column.completed", fallback: "Completed" },
   failed: { key: "workspace.column.failed", fallback: "Failed" },
   cancelled: { key: "workspace.column.cancelled", fallback: "Cancelled" },
@@ -243,8 +242,7 @@ export function TasksTabContent({
       queue: [],
       in_progress: [],
       paused: [],
-      ai_review: [], // Legacy: kept for backward compatibility
-      human_review: [],
+      review: [],
       completed: [],
       failed: [],
       cancelled: [],
@@ -252,10 +250,8 @@ export function TasksTabContent({
     };
 
     for (const task of tasks) {
-      // Map ai_review to in_progress for display
-      const displayStatus = task.status === "ai_review" ? "in_progress" : task.status;
-      if (groups[displayStatus]) {
-        groups[displayStatus].push(task);
+      if (groups[task.status]) {
+        groups[task.status].push(task);
       }
     }
 
@@ -263,7 +259,7 @@ export function TasksTabContent({
   }, [tasks]);
 
   // Status order for display (failed and archived shown separately)
-  const statusOrder: TaskStatus[] = ["in_progress", "paused", "queue", "human_review", "backlog", "completed", "cancelled"];
+  const statusOrder: TaskStatus[] = ["in_progress", "paused", "queue", "review", "backlog", "completed", "cancelled"];
 
   if (isLoading) {
     return (

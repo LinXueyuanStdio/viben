@@ -225,7 +225,7 @@ export function createPR(
     createPrPhase = 4; // Default fallback
   }
 
-  updateTaskField(taskDirPath, "status", "human_review");
+  updateTaskField(taskDirPath, "status", "review");
   updateTaskField(taskDirPath, "pr_url", prUrl);
   updateTaskField(taskDirPath, "current_phase", createPrPhase);
 

@@ -150,7 +150,7 @@ viben task add-session    # Record session
 # Multi-agent operations
 viben task work-phase     # Run work agent (auto-creates worktree if needed)
 viben swarm status        # Monitor agent status
-viben swarm cleanup       # Cleanup worktree
+viben task cleanup        # Cleanup worktree
 viben task create-pr      # Create PR from task
 viben task plan-phase     # Start plan agent
 ```
@@ -410,7 +410,7 @@ viben task create "<title>"  # Create task
 # Multi-agent operations
 viben task work-phase <task> # Run work agent (auto-creates worktree if needed)
 viben swarm status <task>    # Monitor agent status
-viben swarm cleanup <task>   # Cleanup worktree
+viben task cleanup <task>    # Cleanup worktree
 viben task create-pr         # Create PR from task
 
 # Slash commands

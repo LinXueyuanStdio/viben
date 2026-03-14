@@ -18,9 +18,8 @@ import { taskLock } from "../utils/async-lock";
 /**
  * Task status - unified state machine (inspired by Auto-Claude)
  *
- * State flow: backlog → queue → in_progress → human_review → completed
+ * State flow: backlog → queue → in_progress → review → completed
  *
- * Note: ai_review was removed - use executionPhase (check/fix) instead
  * Note: paused allows tasks to be paused and resumed later
  * Note: pr_created was removed - PR creation is tracked via pr_url field
  *
@@ -31,7 +30,7 @@ export type TaskStatus =
   | "queue" // Queued for execution
   | "in_progress" // Currently executing (plan or implement)
   | "paused" // Task paused, can be resumed later
-  | "human_review" // Needs human review
+  | "review" // Needs review
   | "completed" // Successfully completed
   | "failed" // Execution failed
   | "cancelled" // Cancelled by user
@@ -43,7 +42,7 @@ export type TaskStatus =
 export type LegacyTaskStatus = "done" | "error" | "pr_created";
 
 /**
- * Reason for entering human_review state
+ * Reason for entering review state
  */
 export type ReviewReason =
   | "completed" // All subtasks done, QA passed, waiting final approval
@@ -191,7 +190,7 @@ export interface UnifiedTask {
   // === Status Tracking (Auto-Claude state machine) ===
   /** Primary status */
   status: TaskStatus;
-  /** Reason for entering human_review */
+  /** Reason for entering review */
   reviewReason?: ReviewReason;
   /** Current phase number (CLI phase system) */
   current_phase?: number;
@@ -336,7 +335,7 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "queue",
   "in_progress",
   "paused",
-  "human_review",
+  "review",
   "completed",
   "failed",
   "cancelled",
@@ -604,10 +603,10 @@ export class TaskService {
       updated.hasInProgressAttempt = updates.status === "in_progress";
 
       // Fix: Only mark lastAttemptFailed=true for actual failures
-      // human_review with reviewReason "completed" is NOT a failure
+      // review with reviewReason "completed" is NOT a failure
       if (updates.status === "failed") {
         updated.lastAttemptFailed = true;
-      } else if (updates.status === "human_review") {
+      } else if (updates.status === "review") {
         // Determine if this is a failure based on reviewReason
         // Failure reasons: qa_rejected, errors, stopped
         // Success reasons: completed, plan_review (awaiting approval, not a failure)
@@ -882,7 +881,7 @@ export class TaskService {
    * Check if a status is a settled state (no automatic transitions)
    */
   isSettledState(status: TaskStatus): boolean {
-    return ["backlog", "paused", "human_review", "completed", "failed", "cancelled", "archived"].includes(status);
+    return ["backlog", "paused", "review", "completed", "failed", "cancelled", "archived"].includes(status);
   }
 
   /**
@@ -899,7 +898,7 @@ export class TaskService {
     if (task.status === "completed") {
       return true;
     }
-    if (task.status === "human_review" && task.reviewReason === "completed") {
+    if (task.status === "review" && task.reviewReason === "completed") {
       return true;
     }
     return false;

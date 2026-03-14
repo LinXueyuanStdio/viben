@@ -143,7 +143,7 @@ viben swarm list
 viben swarm stop <task>
 
 # Cleanup worktree
-viben swarm cleanup <task>
+viben task cleanup <task>
 
 # Show agent registry
 viben swarm registry

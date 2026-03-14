@@ -133,6 +133,10 @@ describe("task command", () => {
       expect(subcommandNames).toContain("edit");
       expect(subcommandNames).toContain("delete");
 
+      // Cleanup (migrated from swarm cleanup)
+      expect(subcommandNames).toContain("cleanup");
+      expect(subcommandNames).toContain("list-worktrees");
+
       // Status
       expect(subcommandNames).toContain("start");
       expect(subcommandNames).toContain("finish");
@@ -402,12 +406,12 @@ describe("task command", () => {
         expect(validateStatusTransition("paused", "in_progress", "RESUME")).toEqual({ valid: true });
       });
 
-      it("should allow APPROVED from human_review to completed", () => {
-        expect(validateStatusTransition("human_review", "completed", "APPROVED")).toEqual({ valid: true });
+      it("should allow APPROVED from review to completed", () => {
+        expect(validateStatusTransition("review", "completed", "APPROVED")).toEqual({ valid: true });
       });
 
-      it("should allow REJECTED from human_review to backlog", () => {
-        expect(validateStatusTransition("human_review", "backlog", "REJECTED")).toEqual({ valid: true });
+      it("should allow REJECTED from review to backlog", () => {
+        expect(validateStatusTransition("review", "backlog", "REJECTED")).toEqual({ valid: true });
       });
 
       it("should allow RETRY from failed to queue", () => {
@@ -419,7 +423,7 @@ describe("task command", () => {
         expect(validateStatusTransition("queue", "cancelled", "CANCEL")).toEqual({ valid: true });
         expect(validateStatusTransition("paused", "cancelled", "CANCEL")).toEqual({ valid: true });
         expect(validateStatusTransition("in_progress", "cancelled", "CANCEL")).toEqual({ valid: true });
-        expect(validateStatusTransition("human_review", "cancelled", "CANCEL")).toEqual({ valid: true });
+        expect(validateStatusTransition("review", "cancelled", "CANCEL")).toEqual({ valid: true });
       });
     });
 
@@ -484,7 +488,7 @@ describe("task command", () => {
         expect(result3.valid).toBe(false);
       });
 
-      it("should reject APPROVED from non-human_review states", () => {
+      it("should reject APPROVED from non-review states", () => {
         const result1 = validateStatusTransition("backlog", "completed", "APPROVED");
         expect(result1.valid).toBe(false);
         expect(result1.error).toContain("Cannot approved task in 'backlog'");
@@ -496,7 +500,7 @@ describe("task command", () => {
         expect(result3.valid).toBe(false);
       });
 
-      it("should reject REJECTED from non-human_review states", () => {
+      it("should reject REJECTED from non-review states", () => {
         const result1 = validateStatusTransition("queue", "backlog", "REJECTED");
         expect(result1.valid).toBe(false);
         expect(result1.error).toContain("Cannot rejected task in 'queue'");
@@ -549,13 +553,13 @@ describe("task command", () => {
       });
 
       it("should reject incorrect target for APPROVED", () => {
-        const result = validateStatusTransition("human_review", "queue", "APPROVED");
+        const result = validateStatusTransition("review", "queue", "APPROVED");
         expect(result.valid).toBe(false);
         expect(result.error).toContain("Expected: completed");
       });
 
       it("should reject incorrect target for REJECTED", () => {
-        const result = validateStatusTransition("human_review", "completed", "REJECTED");
+        const result = validateStatusTransition("review", "completed", "REJECTED");
         expect(result.valid).toBe(false);
         expect(result.error).toContain("Expected: backlog");
       });

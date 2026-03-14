@@ -139,10 +139,10 @@ describe("Task State Machine - Valid Transitions", () => {
   describe("from in_progress.check", () => {
     const checkState: XStateValue = { in_progress: "check" };
 
-    it("check + CHECK_PASSED -> human_review", () => {
+    it("check + CHECK_PASSED -> review", () => {
       const result = getNextState(checkState, { type: "CHECK_PASSED" });
       expect(result.changed).toBe(true);
-      expect(result.value).toBe("human_review");
+      expect(result.value).toBe("review");
     });
 
     it("check + CHECK_FAILED -> fix", () => {
@@ -253,21 +253,21 @@ describe("Task State Machine - Valid Transitions", () => {
   // -------------------------------------------------------------------------
   // Human Review transitions
   // -------------------------------------------------------------------------
-  describe("from human_review", () => {
-    it("human_review + APPROVED -> completed", () => {
-      const result = getNextState("human_review", { type: "APPROVED" });
+  describe("from review", () => {
+    it("review + APPROVED -> completed", () => {
+      const result = getNextState("review", { type: "APPROVED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("completed");
     });
 
-    it("human_review + REJECTED -> backlog", () => {
-      const result = getNextState("human_review", { type: "REJECTED" });
+    it("review + REJECTED -> backlog", () => {
+      const result = getNextState("review", { type: "REJECTED" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("backlog");
     });
 
-    it("human_review + CANCEL -> cancelled", () => {
-      const result = getNextState("human_review", { type: "CANCEL" });
+    it("review + CANCEL -> cancelled", () => {
+      const result = getNextState("review", { type: "CANCEL" });
       expect(result.changed).toBe(true);
       expect(result.value).toBe("cancelled");
     });
@@ -396,14 +396,14 @@ describe("Task State Machine - Invalid Transitions", () => {
     });
   });
 
-  describe("human_review invalid transitions", () => {
-    it("human_review + START should not change state", () => {
-      const result = getNextState("human_review", { type: "START" });
+  describe("review invalid transitions", () => {
+    it("review + START should not change state", () => {
+      const result = getNextState("review", { type: "START" });
       expect(result.changed).toBe(false);
     });
 
-    it("human_review + RETRY should not change state", () => {
-      const result = getNextState("human_review", { type: "RETRY" });
+    it("review + RETRY should not change state", () => {
+      const result = getNextState("review", { type: "RETRY" });
       expect(result.changed).toBe(false);
     });
   });
@@ -447,10 +447,10 @@ describe("Task State Machine - Full Paths", () => {
     expect(state).toBe("queue");
   });
 
-  it("rejection path: human_review -> backlog", () => {
-    // Go to human_review
+  it("rejection path: review -> backlog", () => {
+    // Go to review
     let state = applyEventSequence("backlog", EVENT_SEQUENCES.toHumanReview);
-    expect(state).toBe("human_review");
+    expect(state).toBe("review");
 
     // Reject
     state = applyEventSequence(state, [{ type: "REJECTED" }]);
@@ -478,7 +478,7 @@ describe("Helper Functions", () => {
       expect(xstateToTaskStatus("backlog")).toBe("backlog");
       expect(xstateToTaskStatus("queue")).toBe("queue");
       expect(xstateToTaskStatus("paused")).toBe("paused");
-      expect(xstateToTaskStatus("human_review")).toBe("human_review");
+      expect(xstateToTaskStatus("review")).toBe("review");
       expect(xstateToTaskStatus("completed")).toBe("completed");
       expect(xstateToTaskStatus("failed")).toBe("failed");
       expect(xstateToTaskStatus("cancelled")).toBe("cancelled");

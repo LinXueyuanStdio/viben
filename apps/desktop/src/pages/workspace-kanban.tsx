@@ -170,8 +170,7 @@ import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings
 import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
 
 // Kanban column IDs - 9-column layout
-// backlog → queue → in_progress → paused → human_review → completed → failed → cancelled → archived
-// Note: ai_review is a legacy status that maps to in_progress
+// backlog → queue → in_progress → paused → review → completed → failed → cancelled → archived
 type ColumnId = KanbanColumnId;
 
 // Column colors mapping (full CSS value for List View)
@@ -774,7 +773,7 @@ const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetect
 
 
 // Build column statuses with translations
-// 9-column layout: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled, archived
+// 9-column layout: backlog, queue, in_progress, paused, review, completed, failed, cancelled, archived
 function useColumnStatuses(): Status[] {
   const { t } = useTranslation();
 
@@ -784,7 +783,7 @@ function useColumnStatuses(): Status[] {
     queue: "queue",
     in_progress: "inProgress",
     paused: "paused",
-    human_review: "humanReview",
+    review: "review",
     completed: "completed",
     failed: "failed",
     cancelled: "cancelled",
@@ -1635,14 +1634,14 @@ export function WorkspaceKanbanPage() {
         },
       },
       {
-        id: "goto-human-review",
-        label: t("workspace.column.humanReview", "Human Review"),
-        description: t("workspace.commandPalette.gotoHumanReviewDesc", "Jump to first task in Human Review"),
+        id: "goto-review",
+        label: t("workspace.column.review", "Review"),
+        description: t("workspace.commandPalette.gotoReviewDesc", "Jump to first task in Review"),
         icon: <UserCheck className="h-4 w-4" />,
         category: "navigation",
-        keywords: ["go", "jump", "human", "review", "人工审核"],
+        keywords: ["go", "jump", "review", "审核"],
         action: () => {
-          const tasks = tasksByColumn["human_review"];
+          const tasks = tasksByColumn["review"];
           if (tasks && tasks.length > 0) {
             setSelectedTaskId(tasks[0].id);
           }

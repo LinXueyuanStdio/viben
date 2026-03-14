@@ -1835,10 +1835,10 @@ export function validateStatusTransition(
     DEQUEUE: { from: ["queue"], to: "backlog" },
     PAUSE: { from: ["queue", "in_progress"], to: "paused" },
     RESUME: { from: ["paused"], to: "queue" }, // Note: actual target determined by pausedSnapshot
-    APPROVED: { from: ["human_review"], to: "completed" },
-    REJECTED: { from: ["human_review"], to: "backlog" },
+    APPROVED: { from: ["review"], to: "completed" },
+    REJECTED: { from: ["review"], to: "backlog" },
     RETRY: { from: ["failed"], to: "queue" },
-    CANCEL: { from: ["backlog", "queue", "paused", "in_progress", "human_review"], to: "cancelled" },
+    CANCEL: { from: ["backlog", "queue", "paused", "in_progress", "review"], to: "cancelled" },
   };
 
   const transition = validTransitions[eventType];

@@ -474,7 +474,7 @@ flowchart TD
     D -->|执行失败| H[failed]
     H -->|viben task retry| C
     H -->|viben task archive| I[archived]
-    G -->|viben swarm cleanup| I
+    G -->|viben task cleanup| I
 
     B -->|viben task cancel| J[cancelled]
     C -->|viben task cancel| J
@@ -482,6 +482,71 @@ flowchart TD
     D -->|viben task cancel --force| J
     F -->|viben task cancel| J
 ```
+
+---
+
+## 清理任务
+
+### `viben task cleanup`
+
+清理已完成任务的 worktree 和相关资源。
+
+```bash
+# 清理指定分支的 worktree
+viben task cleanup <branch> [--keep-branch] [--yes]
+
+# 清理已合并的 worktree
+viben task cleanup --merged [--yes]
+
+# 清理所有 worktree
+viben task cleanup --all [--yes]
+
+# 列出所有 worktree
+viben task cleanup --list
+```
+
+**选项**:
+| 选项 | 说明 |
+|------|------|
+| `--keep-branch` | 不删除 Git 分支 |
+| `--yes`, `-y` | 跳过确认提示 |
+| `--merged` | 清理所有已合并的 worktree |
+| `--all` | 清理所有 worktree（需确认） |
+| `--list` | 列出所有 worktree |
+
+**清理流程**:
+1. 归档任务目录到 `archive/YYYY-MM/`
+2. 从 registry 移除 agent
+3. 移除 Git worktree
+4. 删除 Git 分支（除非 `--keep-branch`）
+
+**示例**:
+```bash
+# 清理指定分支
+viben task cleanup feature/user-auth
+viben task cleanup feature/user-auth --keep-branch
+
+# 批量清理
+viben task cleanup --merged --yes
+viben task cleanup --all --yes
+
+# 查看可清理的 worktree
+viben task cleanup --list
+```
+
+**输出 (`--list`)**:
+```
+=== Git Worktrees ===
+
+/path/to/project                           abc1234 [main]
+/path/to/.viben/worktrees/feature/user-auth  def5678 [feature/user-auth]
+
+=== Registered Agents ===
+
+  add-user-auth: PID=12345 [~/.viben/worktrees/feature/user-auth]
+```
+
+> **Note**: `viben swarm cleanup` 已废弃，请使用 `viben task cleanup` 代替。
 
 ---
 
@@ -1072,6 +1137,15 @@ viben task create-pr add-user-auth --dry-run   # 预览
 - [ ] `viben task finish <task>` 完成指定任务
 - [ ] `viben task archive` 归档任务
 - [ ] `viben task list-archive` 列出归档任务
+
+### 清理任务
+- [ ] `viben task cleanup <branch>` 清理指定 worktree
+- [ ] `viben task cleanup --merged` 清理已合并的 worktree
+- [ ] `viben task cleanup --all` 清理所有 worktree
+- [ ] `viben task cleanup --list` 列出所有 worktree
+- [ ] 支持 `--keep-branch` 保留分支
+- [ ] 支持 `-y/--yes` 跳过确认
+- [ ] 清理时归档任务目录
 
 ### 状态生命周期管理
 - [x] `viben task enqueue` 入队任务 (backlog → queue)

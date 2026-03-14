@@ -71,6 +71,39 @@ viben task start <task> --resume --session <session-id>
 
 ---
 
+### 常用示例
+
+**场景 1: 在主仓库直接开发（适合小改动）**
+
+```bash
+# 创建任务，手动启动
+viben task create "Fix button alignment" --slug fix-button
+viben task start fix-button
+
+# 或一步到位，创建后自动启动
+viben task create "Fix button alignment" --slug fix-button --start
+```
+
+**场景 2: 在 worktree 中开发（适合大功能，隔离开发）**
+
+```bash
+# 创建任务，手动启动
+viben task create "Add user authentication" --slug auth --worktree
+viben task start auth --worktree
+
+# 或一步到位
+viben task create "Add user authentication" --slug auth --worktree --start
+```
+
+**`--start` vs 手动启动的区别:**
+
+| 方式 | 命令 | 适用场景 |
+|------|------|----------|
+| 不带 `--start` | `create` + `start` 分开执行 | 需要先查看/修改任务配置 |
+| 带 `--start` | `create --start` 一步完成 | 配置明确，直接开始 |
+
+---
+
 ## 命令参考
 
 | 命令 | 用途 |
@@ -79,7 +112,4 @@ viben task start <task> --resume --session <session-id>
 | `viben task start <task>` | 启动任务执行 |
 | `viben task list` | 列出活跃任务 |
 | `viben task view <task>` | 查看任务详情 |
-| `viben task context <task>` | 获取任务上下文 |
-| `viben task plan-phase <task>` | 运行 plan agent |
-| `viben task work-phase <task>` | 运行 work agent |
 | `viben task finish <task>` | 完成任务 |

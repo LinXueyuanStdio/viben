@@ -7,7 +7,7 @@
  * - swarm stop <task> - Stop running agent
  * - swarm status - Show agent status
  * - swarm registry - Show agent registry
- * - swarm cleanup - Cleanup worktrees
+ * - swarm cleanup - Cleanup worktrees (DEPRECATED: use "task cleanup" instead)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
@@ -587,8 +587,12 @@ describe("Swarm CLI Commands", () => {
   // ============================================================================
   // swarm cleanup Tests
   // ============================================================================
+  // DEPRECATED: The "swarm cleanup" command is deprecated in favor of "task cleanup".
+  // These tests are kept to verify backward compatibility until the command is removed.
+  // See: task.ts for the new "task cleanup" command implementation.
 
-  describe("swarm cleanup", () => {
+  describe("swarm cleanup (DEPRECATED - use task cleanup instead)", () => {
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should require branch or flag", async () => {
       setupVibenWorkspace();
 
@@ -599,6 +603,7 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should call cleanup.py with branch name", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
@@ -628,6 +633,7 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should pass --merged flag", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
@@ -657,6 +663,7 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should pass --all flag", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
@@ -686,6 +693,7 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should pass --keep-branch flag", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
@@ -715,6 +723,7 @@ describe("Swarm CLI Commands", () => {
       );
     });
 
+    // @deprecated This test is for deprecated behavior - use "task cleanup" instead
     it("should pass -y/--yes flag", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {

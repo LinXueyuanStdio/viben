@@ -389,7 +389,7 @@ export interface TaskForPanel {
   xstateState?: XStateValue;    // XState state value
   lastEvent?: TaskEvent;        // Last applied event
   eventHistory?: TaskEvent[];   // Event history
-  reviewReason?: ReviewReason;  // Review reason for human_review status
+  reviewReason?: ReviewReason;  // Review reason for review status
   executionPhase?: ExecutionPhase; // Current execution phase
   isStuck?: boolean;            // Whether task is stuck
   stuckDuration?: number;       // How long task has been stuck (ms)
@@ -1066,7 +1066,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         queue: t("workspace.kanbanStatus.queue", "Queue"),
                         in_progress: t("workspace.kanbanStatus.inProgress", "In Progress"),
                         paused: t("workspace.kanbanStatus.paused", "Paused"),
-                        human_review: t("workspace.kanbanStatus.humanReview", "Human Review"),
+                        review: t("workspace.kanbanStatus.review", "Review"),
                         completed: t("workspace.kanbanStatus.completed", "Completed"),
                         failed: t("workspace.kanbanStatus.failed", "Failed"),
                         cancelled: t("workspace.kanbanStatus.cancelled", "Cancelled"),
@@ -1314,7 +1314,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                   </div>
 
                   {/* Review Reason */}
-                  {task.reviewReason && task.status === "human_review" && (
+                  {task.reviewReason && task.status === "review" && (
                     <div className="flex items-center gap-2 mt-3">
                       <span className="text-sm text-muted-foreground">
                         {t("workspace.reviewReason.label", "Review Reason")}:

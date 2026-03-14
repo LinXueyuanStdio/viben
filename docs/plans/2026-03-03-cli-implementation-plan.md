@@ -38,7 +38,7 @@ packages/core/src/cli/
 | `viben task status` | `multi_agent/status.py` |
 | `viben task create-pr` | `multi_agent/create_pr.py` |
 | `viben swarm start` | `multi_agent/start.py` |
-| `viben swarm cleanup` | `multi_agent/cleanup.py` |
+| `viben task cleanup` | `multi_agent/cleanup.py` |
 | `viben swarm status` | `multi_agent/status.py` |
 | `viben user init` | `init_developer.py` |
 | `viben user get` | `get_developer.py` |
