@@ -898,10 +898,10 @@ export function registerSwarmCommand(program: Command): void {
       }
     });
 
-  // swarm cleanup - cleanup worktrees
+  // swarm cleanup - cleanup worktrees (DEPRECATED)
   swarm
     .command("cleanup")
-    .description("Cleanup worktrees and related resources")
+    .description("[DEPRECATED] Cleanup worktrees and related resources. Use 'viben task cleanup' instead.")
     .argument("[branch]", "Branch name to cleanup")
     .option("--keep-branch", "Keep the git branch")
     .option("-y, --yes", "Skip confirmation prompts")
@@ -911,6 +911,12 @@ export function registerSwarmCommand(program: Command): void {
     .action(async (branch: string | undefined, options) => {
       const ctx = getOutputContext(program);
       const repoRoot = findVibenRoot();
+
+      // Show deprecation warning
+      console.log(chalk.yellow("WARNING: 'viben swarm cleanup' is deprecated."));
+      console.log(chalk.yellow("   Please use 'viben task cleanup' instead."));
+      console.log(chalk.yellow("   This command will be removed in a future version."));
+      console.log();
 
       if (!repoRoot) {
         handleCommandError(ctx, new Error("Not in a Viben workspace"));

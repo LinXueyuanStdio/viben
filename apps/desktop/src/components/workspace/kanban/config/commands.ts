@@ -35,8 +35,8 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-// Type for task status (ai_review is legacy, maps to in_progress)
-type TaskStatus = "backlog" | "queue" | "in_progress" | "paused" | "human_review" | "completed" | "failed" | "cancelled" | "archived";
+// Type for task status
+type TaskStatus = "backlog" | "queue" | "in_progress" | "paused" | "review" | "completed" | "failed" | "cancelled" | "archived";
 
 /**
  * Minimal task interface for commands
@@ -167,14 +167,14 @@ function createNavigationCommands(
       },
     },
     {
-      id: "goto-human-review",
-      label: t("workspace.column.humanReview", "Human Review"),
-      description: t("workspace.commandPalette.gotoHumanReviewDesc", "Jump to first task in Human Review"),
+      id: "goto-review",
+      label: t("workspace.column.review", "Review"),
+      description: t("workspace.commandPalette.gotoReviewDesc", "Jump to first task in Review"),
       icon: React.createElement(UserCheck, { className: "h-4 w-4" }),
       category: "navigation",
-      keywords: ["go", "jump", "human", "review", "人工审核"],
+      keywords: ["go", "jump", "review", "审核"],
       action: () => {
-        const tasks = tasksByColumn["human_review"];
+        const tasks = tasksByColumn["review"];
         if (tasks && tasks.length > 0) {
           setSelectedTaskId(tasks[0].id);
         }

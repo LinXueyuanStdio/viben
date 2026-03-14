@@ -8,7 +8,7 @@ import chalk from "chalk";
 
 /**
  * Format task status for display
- * Uses unified status values: backlog, queue, in_progress, paused, human_review, completed, failed, cancelled
+ * Uses unified status values: backlog, queue, in_progress, paused, review, completed, failed, cancelled
  */
 export function formatStatus(status: string): string {
   switch (status) {
@@ -21,7 +21,7 @@ export function formatStatus(status: string): string {
       return chalk.blue(status);
     // Waiting states
     case "backlog":
-    case "human_review":
+    case "review":
     case "paused":
       return chalk.yellow(status);
     // Error/terminal states

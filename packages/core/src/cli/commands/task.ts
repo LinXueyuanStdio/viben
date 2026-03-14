@@ -64,8 +64,15 @@ import type { UnifiedTask } from "../../services/task-service";
 import {
   type StartResult,
   type Platform,
+  type CleanupResult,
   startAgent,
   getSessionId,
+  listWorktrees,
+  cleanupWorktree,
+  cleanupMerged,
+  cleanupAll,
+  readRegistry,
+  isProcessRunning,
 } from "../lib/swarm";
 
 // Import phase functions
@@ -138,6 +145,196 @@ import {
   runImplementPhase,
   runCheckPhase,
 } from "../../task/phase";
+
+// =============================================================================
+// Cleanup Command Implementations (moved from swarm.ts)
+// =============================================================================
+
+/**
+ * List all worktrees and registered agents
+ */
+async function listWorktreesCommand(
+  ctx: OutputContext,
+  repoRoot: string
+): Promise<void> {
+  const worktrees = listWorktrees(repoRoot);
+  const registry = readRegistry(repoRoot);
+
+  if (ctx.json) {
+    output(ctx, successResponse({ worktrees, agents: registry.agents }));
+    return;
+  }
+
+  // Human-readable output
+  console.log(chalk.blue("=== Git Worktrees ==="));
+  console.log();
+
+  if (worktrees.length === 0) {
+    console.log("  (no worktrees)");
+  } else {
+    console.log("PATH".padEnd(50) + "COMMIT".padEnd(10) + "BRANCH");
+    for (const wt of worktrees) {
+      console.log(
+        wt.path.padEnd(50) +
+        wt.commit.substring(0, 7).padEnd(10) +
+        `[${wt.branch || "(detached)"}]`
+      );
+    }
+  }
+  console.log();
+
+  console.log(chalk.blue("=== Registered Agents ==="));
+  console.log();
+
+  if (registry.agents.length === 0) {
+    console.log("  (no agents registered)");
+  } else {
+    for (const agent of registry.agents) {
+      const statusIcon = isProcessRunning(agent.pid)
+        ? chalk.green("●")
+        : chalk.red("○");
+      console.log(`  ${statusIcon} ${agent.id} (PID: ${agent.pid})`);
+      console.log(chalk.dim(`    Worktree: ${agent.worktree_path}`));
+      console.log(chalk.dim(`    Started:  ${agent.started_at}`));
+      console.log();
+    }
+  }
+}
+
+/**
+ * Cleanup worktrees
+ */
+async function cleanupWorktreesCommand(
+  ctx: OutputContext,
+  repoRoot: string,
+  branch: string | undefined,
+  options: {
+    keepBranch?: boolean;
+    yes?: boolean;
+    merged?: boolean;
+    all?: boolean;
+    list?: boolean;
+  }
+): Promise<void> {
+  // Handle list option
+  if (options.list) {
+    await listWorktreesCommand(ctx, repoRoot);
+    return;
+  }
+
+  // Handle merged option
+  if (options.merged) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning Merged Worktrees ==="));
+      console.log();
+    }
+
+    const results = await cleanupMerged(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No merged worktrees found");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle all option
+  if (options.all) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning All Worktrees ==="));
+      console.log(chalk.red("WARNING: This will remove ALL worktrees!"));
+      console.log();
+    }
+
+    const results = await cleanupAll(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No worktrees to remove");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle specific branch
+  if (!branch) {
+    output(ctx, errorResponse("MISSING_ARG", "Branch name or --merged/--all required"), () => {
+      console.error(chalk.red("Error: Branch name or --merged/--all required"));
+      console.log();
+      console.log("Usage:");
+      console.log(chalk.gray("  viben task cleanup <branch>     Remove specific worktree"));
+      console.log(chalk.gray("  viben task cleanup --merged     Remove merged worktrees"));
+      console.log(chalk.gray("  viben task cleanup --all        Remove all worktrees"));
+      console.log(chalk.gray("  viben task cleanup --list       List all worktrees"));
+    });
+    process.exit(1);
+    return;
+  }
+
+  if (!ctx.quiet) {
+    console.log(chalk.blue(`=== Cleaning Worktree: ${branch} ===`));
+    console.log();
+  }
+
+  const result: CleanupResult = await cleanupWorktree(repoRoot, branch, {
+    keepBranch: options.keepBranch,
+    skipConfirm: options.yes,
+  });
+
+  if (ctx.json) {
+    if (result.success) {
+      output(ctx, successResponse(result));
+    } else {
+      output(ctx, errorResponse("CLEANUP_FAILED", result.error || "Unknown error"));
+    }
+    return;
+  }
+
+  if (result.success) {
+    console.log(chalk.green(`Cleanup complete for: ${branch}`));
+    if (result.archived) {
+      console.log(`  Archived: ${result.archived}`);
+    }
+    if (result.worktreeRemoved) {
+      console.log("  Worktree removed");
+    }
+    if (result.branchDeleted) {
+      console.log("  Branch deleted");
+    }
+  } else {
+    console.error(chalk.red(`Error: ${result.error}`));
+    process.exit(1);
+  }
+}
 
 // =============================================================================
 // Constants
@@ -226,7 +423,7 @@ export function registerTaskCommand(program: Command): void {
     .description("List all tasks, or view task details if task is specified")
     .argument("[task]", "Task name or directory (if specified, shows task details)")
     .option("-m, --mine", "Show only tasks assigned to current developer")
-    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, human_review, completed)")
+    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, review, completed)")
     .option("--json", "Output in JSON format")
     .action(async (task: string | undefined, options: { mine?: boolean; status?: string; json?: boolean }) => {
       const ctx = getContext(program);
@@ -1152,7 +1349,7 @@ export function registerTaskCommand(program: Command): void {
     .description("Show task status")
     .argument("[task]", "Specific task to show (shows all if not specified)")
     .option("-a, --assignee <dev>", "Filter by assignee")
-    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, human_review, completed)")
+    .option("-s, --status <status>", "Filter by status (backlog, queue, in_progress, review, completed)")
     .option("--running", "Show only tasks with running agents")
     .option("--json", "Output in JSON format")
     .option("--list", "List all worktrees and agents")
@@ -1270,7 +1467,7 @@ export function registerTaskCommand(program: Command): void {
           console.log(`  Base:  ${result.dryRunInfo.prBase}`);
           console.log(`  Head:  ${result.dryRunInfo.prHead}`);
           console.log("[DRY-RUN] Would update task.json:");
-          console.log("  status: human_review");
+          console.log("  status: review");
           console.log(`  pr_url: ${result.prUrl}`);
         } else {
           // Show actual results
@@ -1280,7 +1477,7 @@ export function registerTaskCommand(program: Command): void {
             console.log(`Found ${result.unpushedCommits} unpushed commit(s)`);
           }
           console.log(chalk.green(`Pushed to origin/${result.currentBranch}`));
-          console.log(chalk.green(`Task status updated to 'human_review'`));
+          console.log(chalk.green(`Task status updated to 'review'`));
         }
 
         console.log();
@@ -1334,7 +1531,7 @@ export function registerTaskCommand(program: Command): void {
             }
           }
 
-          if (taskData!.status === "human_review") {
+          if (taskData!.status === "review") {
             console.log(chalk.blue("Next steps:"));
             console.log(`  viben task approve ${dirName}   # Approve and complete`);
             console.log(`  viben task reject ${dirName}    # Reject and return to backlog`);
@@ -1348,7 +1545,7 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task approve - human_review -> completed
+  // task approve - review -> completed
   taskCmd
     .command("approve")
     .description("Approve task and mark as completed")
@@ -1377,7 +1574,7 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task reject - human_review -> backlog
+  // task reject - review -> backlog
   taskCmd
     .command("reject")
     .description("Reject task and return to backlog")
@@ -2131,6 +2328,38 @@ export function registerTaskCommand(program: Command): void {
         }
 
         output(ctx, successResponse(result));
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // Cleanup Commands (moved from swarm.ts)
+  // ============================================================================
+
+  // task cleanup - cleanup worktrees
+  taskCmd
+    .command("cleanup")
+    .description("Cleanup worktrees and related resources")
+    .argument("[branch]", "Branch name to cleanup")
+    .option("--keep-branch", "Keep the git branch")
+    .option("-y, --yes", "Skip confirmation prompts")
+    .option("--merged", "Cleanup merged worktrees")
+    .option("--all", "Cleanup all worktrees")
+    .option("--list", "List all worktrees")
+    .action(async (branch: string | undefined, options: {
+      keepBranch?: boolean;
+      yes?: boolean;
+      merged?: boolean;
+      all?: boolean;
+      list?: boolean;
+    }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        await cleanupWorktreesCommand(ctx, repoRoot, branch, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }

@@ -146,7 +146,7 @@ export class TaskEventStore {
       lastEvent: event,
       // Note: eventHistory is no longer stored in task.json
       // Events are stored in events.jsonl for append-only efficiency
-      // Also update reviewReason if transitioning to human_review
+      // Also update reviewReason if transitioning to review
       reviewReason: this.computeReviewReason(event, task),
     };
 
@@ -265,7 +265,7 @@ export class TaskEventStore {
       case "USER_STOPPED":
         return "stopped";
       case "PLAN_COMPLETE":
-        // Only set if going to human_review (requiresPlanReview)
+        // Only set if going to review (requiresPlanReview)
         return task.metadata?.agentConfig?.thinkingLevel === "high" ? "plan_review" : task.reviewReason;
       case "CHECK_FAILED":
         return "qa_rejected";

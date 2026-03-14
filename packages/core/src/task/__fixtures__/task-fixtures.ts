@@ -210,9 +210,9 @@ export const TASK_CHECK = createTaskInState("in_progress", {
 });
 
 /**
- * Task in human review state
+ * Task in review state
  */
-export const TASK_HUMAN_REVIEW = createTaskInState("human_review", {
+export const TASK_REVIEW = createTaskInState("review", {
   reviewReason: "completed",
   lastEvent: createMockEvent({ type: "CHECK_PASSED", sequence: 5 }),
 });

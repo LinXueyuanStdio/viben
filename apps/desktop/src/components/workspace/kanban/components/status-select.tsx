@@ -37,7 +37,7 @@ export interface StatusSelectProps {
     queue?: string;
     in_progress?: string;
     paused?: string;
-    human_review?: string;
+    review?: string;
     completed?: string;
     failed?: string;
     cancelled?: string;
@@ -58,7 +58,7 @@ const DEFAULT_LABELS: Required<StatusSelectProps["labels"]> = {
   queue: "Queue",
   in_progress: "In Progress",
   paused: "Paused",
-  human_review: "Human Review",
+  review: "Review",
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",

@@ -3,7 +3,7 @@
  *
  * Handles task recovery scenarios:
  * - Gateway restart: Restore state from task.json
- * - Stuck detection: Move inactive tasks to human_review
+ * - Stuck detection: Move inactive tasks to review
  * - Agent crash: Auto-recovery with USER_STOPPED event
  */
 
@@ -162,7 +162,7 @@ export class TaskRecoveryService {
     try {
       await this.recoverStuckTask(taskDir, task);
       result.recovered = true;
-      result.newStatus = "human_review";
+      result.newStatus = "review";
       result.reason = "stuck_detected";
 
       // Broadcast recovery event via SSE
@@ -278,7 +278,7 @@ export class TaskRecoveryService {
 
       if (applyResult.success) {
         result.recovered = true;
-        result.newStatus = "human_review";
+        result.newStatus = "review";
         result.reason = reason;
 
         // Broadcast recovery event

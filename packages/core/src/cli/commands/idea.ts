@@ -27,7 +27,9 @@ import {
   handleCommandError,
 } from "../lib";
 import { CliError } from "../types";
-import { findVibenRoot } from "../lib/viben-workspace";
+import { findVibenRoot, DIR_VIBEN, DIR_TASKS } from "../lib/viben-workspace";
+import { createTask, type CreateTaskOptions } from "../../task/ops/crud";
+import { updateIdeaStatus } from "../lib/idea-store";
 
 // Import from idea-types and idea-store modules
 import {
@@ -142,26 +144,61 @@ function validateIdeaTypeExists(type: string, repoRoot: string): IdeaType | null
 }
 
 // =============================================================================
-// Stub functions for features not yet implemented
+// Promote Idea to Task
 // =============================================================================
 
 /**
- * Stub: Promote idea to task
- * TODO: Implement with task creation integration
+ * Options for promoting an idea to a task
+ * Extends CreateTaskOptions with idea-specific fields
  */
-async function promoteIdeaStub(
-  _repoRoot: string,
-  _ideaId: string,
-  _options: {
-    slug?: string;
-    priority?: string;
-    assignee?: string;
+interface PromoteIdeaOptions extends CreateTaskOptions {
+  // Idea-specific options can be added here
+}
+
+/**
+ * Promote an idea to a task
+ *
+ * Creates a new task from an idea, using the idea's title and description.
+ * Updates the idea's status to "promoted" and links it to the created task.
+ *
+ * @param repoRoot - Repository root path
+ * @param idea - The idea to promote
+ * @param options - Task creation options (same as viben task create)
+ * @returns Created task info
+ */
+function promoteIdea(
+  repoRoot: string,
+  idea: Idea,
+  options: PromoteIdeaOptions
+): { taskId: string; taskDir: string; dirName: string } {
+  // Create task using the idea's title
+  const taskOptions: CreateTaskOptions = {
+    slug: options.slug,
+    assignee: options.assignee,
+    priority: options.priority,
+    description: options.description || idea.description,
+    branch: options.branch,
+    agent: options.agent,
+    executor: options.executor,
+    model: options.model,
+    start: options.start,
+    worktree: options.worktree,
+  };
+
+  const result = createTask(repoRoot, idea.title, taskOptions);
+
+  if (!result.success) {
+    throw CliError.operationFailed("Promote idea", result.error || "Failed to create task");
   }
-): Promise<{ taskId: string; taskDir: string }> {
-  throw CliError.operationFailed(
-    "Promote idea",
-    "Task integration not yet implemented. This feature is coming soon."
-  );
+
+  // Update idea status to promoted
+  updateIdeaStatus(repoRoot, idea.id, "promoted", result.dirName);
+
+  return {
+    taskId: result.dirName!,
+    taskDir: `${DIR_VIBEN}/${DIR_TASKS}/${result.dirName}`,
+    dirName: result.dirName!,
+  };
 }
 
 // =============================================================================
@@ -473,20 +510,39 @@ export function registerIdeaCommand(program: Command): void {
   // ============================================================================
   ideaCmd
     .command("promote <idea-id>")
-    .description("Convert idea to task")
-    .option("--slug <slug>", "Task slug override")
-    .option("--priority <priority>", "Task priority override (P0-P3)")
-    .option("--assignee <assignee>", "Task assignee")
+    .description("Convert idea to task (supports all viben task create options)")
+    .option("-s, --slug <name>", "Task identifier (auto-generated from idea title if not provided)")
+    .option("-b, --branch <branch>", "Custom branch name (default: feature/<slug>)")
+    .option("-a, --assignee <dev>", "Assignee developer name")
+    .option("-p, --priority <priority>", "Priority (P0, P1, P2, P3) - defaults to effort-based priority")
+    .option("-d, --description <text>", "Task description (defaults to idea description)")
+    .option("--agent <agent-id>", "Associated agent configuration")
+    .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
+    .option("--model <model>", "Model to use for execution")
+    .option("--start", "Auto-enqueue task for execution (status: queue)")
+    .option("--worktree", "Run agent in a git worktree (isolated branch)")
+    .option("--json", "JSON format output")
     .action(
       async (
         ideaId: string,
         options: {
           slug?: string;
-          priority?: string;
+          branch?: string;
           assignee?: string;
+          priority?: string;
+          description?: string;
+          agent?: string;
+          executor?: string;
+          model?: string;
+          start?: boolean;
+          worktree?: boolean;
+          json?: boolean;
         }
       ) => {
         const ctx = getOutputContext(program);
+        if (options.json) {
+          ctx.json = true;
+        }
         const cwd = process.cwd();
 
         try {
@@ -516,24 +572,50 @@ export function registerIdeaCommand(program: Command): void {
           // Use effort-based priority if not specified
           const priority = options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "P2";
 
-          const result = await promoteIdeaStub(repoRoot, ideaId, {
+          const result = promoteIdea(repoRoot, idea, {
             slug: options.slug,
-            priority,
+            branch: options.branch,
             assignee: options.assignee,
+            priority,
+            description: options.description,
+            agent: options.agent,
+            executor: options.executor,
+            model: options.model,
+            start: options.start,
+            worktree: options.worktree,
           });
 
-          output(ctx, successResponse(result), () => {
+          output(ctx, successResponse({
+            taskId: result.taskId,
+            taskDir: result.taskDir,
+            dirName: result.dirName,
+            ideaId: ideaId,
+            ideaTitle: idea.title,
+            priority,
+            status: options.start ? "queue" : "backlog",
+            worktree: options.worktree || false,
+          }), () => {
             outputSuccess(ctx, `Promoted idea "${ideaId}" to task`);
             console.log();
             outputKeyValue(ctx, {
+              "Idea": `${ideaId} - ${idea.title}`,
               "Task ID": result.taskId,
               "Task Directory": result.taskDir,
               "Priority": priority,
+              "Status": options.start ? "queue" : "backlog",
+              "Worktree": options.worktree ? "enabled" : "disabled",
             });
             console.log();
-            console.log(chalk.blue("Next steps:"));
-            console.log(`  1. Review the task PRD: ${result.taskDir}/prd.md`);
-            console.log(`  2. Start working: viben task start ${result.taskId}`);
+            if (options.start) {
+              console.log(chalk.green("Task enqueued for execution."));
+              console.log();
+              console.log(chalk.blue("Monitor progress:"));
+              console.log(`  viben task status ${result.taskId}`);
+            } else {
+              console.log(chalk.blue("Next steps:"));
+              console.log(`  1. Create prd.md with requirements`);
+              console.log(`  2. Start working: viben task start ${result.taskId}`);
+            }
           });
         } catch (error) {
           handleCommandError(ctx, error);

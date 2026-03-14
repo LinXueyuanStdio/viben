@@ -3,7 +3,7 @@
  *
  * Implements the task lifecycle using XState v5.
  * State flow follows Auto-Claude pattern:
- * backlog -> queue -> in_progress (plan/implement/check/fix) -> human_review -> completed
+ * backlog -> queue -> in_progress (plan/implement/check/fix) -> review -> completed
  *
  * Terminal states: completed, failed, cancelled
  */
@@ -48,7 +48,7 @@ export interface PausedSnapshot {
 export interface TaskMachineContext {
   /** Task ID */
   taskId: string;
-  /** Reason for entering human_review state */
+  /** Reason for entering review state */
   reviewReason?: ReviewReason;
   /** Current subtask index (0-based) */
   currentSubtaskIndex: number;
@@ -159,7 +159,7 @@ export const taskMachine = createMachine(
                   guard: "noPlanReviewRequired",
                 },
                 {
-                  target: "#task.human_review",
+                  target: "#task.review",
                   actions: ["setReviewReason_planReview"],
                 },
               ],
@@ -192,7 +192,7 @@ export const taskMachine = createMachine(
           check: {
             on: {
               CHECK_PASSED: {
-                target: "#task.human_review",
+                target: "#task.review",
                 actions: ["setReviewReason_completed"],
               },
               CHECK_FAILED: { target: "fix" },
@@ -224,7 +224,7 @@ export const taskMachine = createMachine(
               guard: "noProgress",
             },
             {
-              target: "human_review",
+              target: "review",
               actions: ["setReviewReason_stopped"],
             },
           ],
@@ -281,7 +281,7 @@ export const taskMachine = createMachine(
       // ==========================================================================
       // Human Review - Waiting for human approval
       // ==========================================================================
-      human_review: {
+      review: {
         on: {
           APPROVED: { target: "completed" },
           REJECTED: { target: "backlog" },
@@ -358,7 +358,7 @@ export function getStateValue(snapshot: AnyMachineSnapshot): XStateValue {
  * All in_progress substates (plan, implement, check, fix) map to in_progress.
  * The specific phase is captured in executionProgress.phase separately.
  *
- * Note: ai_review status was removed - use executionPhase to determine check/fix
+ * Note: Use executionPhase to determine check/fix phase
  *
  * @param value - XState state value
  * @returns Corresponding TaskStatus
@@ -402,7 +402,7 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
   queue: [{ type: "QUEUE" }],
   paused: [{ type: "QUEUE" }, { type: "PAUSE" }],
   failed: [{ type: "QUEUE" }, { type: "START" }, { type: "PLAN_FAILED" }],
-  human_review: [
+  review: [
     { type: "QUEUE" },
     { type: "START" },
     { type: "PLAN_COMPLETE" },

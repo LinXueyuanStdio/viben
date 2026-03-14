@@ -345,7 +345,7 @@ viben task create                        → backlog
    viben task retry                      → queue
 
 归档:
-   viben swarm cleanup / viben task archive → completed (archived)
+   viben task cleanup / viben task archive → completed (archived)
 ```
 
 ## 测试计划

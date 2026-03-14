@@ -4,7 +4,7 @@
 
 /**
  * Task status - unified status system
- * State flow: backlog → queue → in_progress → human_review → completed
+ * State flow: backlog → queue → in_progress → review → completed
  * Terminal states: completed, failed, cancelled, archived
  */
 export type TaskStatus =
@@ -12,8 +12,7 @@ export type TaskStatus =
   | "queue"         // 排队 - Tasks waiting for available capacity
   | "in_progress"   // 执行中 - Currently running (plan/implement/check/fix)
   | "paused"        // 暂停中 - Task paused, can be resumed
-  | "ai_review"     // AI审查 - AI automatic review (legacy)
-  | "human_review"  // 人工审查 - Needs human review
+  | "review"        // 审查 - Needs review
   | "completed"     // 已完成 - Successfully completed
   | "failed"        // 失败 - Execution failed
   | "cancelled"     // 已取消 - Cancelled by user

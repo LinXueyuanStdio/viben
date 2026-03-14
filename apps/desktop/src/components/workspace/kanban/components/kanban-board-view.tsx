@@ -74,10 +74,10 @@ const COLUMN_EMPTY_STATES: Record<KanbanColumnId, EmptyStateConfig> = {
     messageKey: "workspace.emptyPaused",
     hintKey: "workspace.emptyPausedHint",
   },
-  human_review: {
+  review: {
     icon: <UserCheck className="h-5 w-5 text-muted-foreground/50" />,
-    messageKey: "workspace.emptyHumanReview",
-    hintKey: "workspace.emptyHumanReviewHint",
+    messageKey: "workspace.emptyReview",
+    hintKey: "workspace.emptyReviewHint",
   },
   completed: {
     icon: <CheckCircle2 className="h-5 w-5 text-muted-foreground/50" />,
