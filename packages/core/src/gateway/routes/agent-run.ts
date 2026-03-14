@@ -438,6 +438,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       cwd,
     } = request.body;
     const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path;
+    const agentDir = request.body.agentDir || request.body.agent_dir;
     const inlineConfig = request.body.agentConfig || request.body.agent_config;
     const persistSessionId = request.body.sessionId || request.body.session_id;
     const persistTaskId = request.body.taskId || request.body.task_id;
@@ -594,18 +595,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         log.debug("persistence", "saving_user_message", {
           persistSessionId,
           persistTaskId,
-          agentConfigPath,
+          agentDir,
         });
         try {
           const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
-          // Pass agentConfigPath for workspace-level agents to find the correct session directory
+          // Pass agentDir for workspace-level agents to find the correct session directory
           await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
             id: generateMessageId(),
             taskId: persistTaskId,
             timestamp: new Date().toISOString(),
             type: "user",
             content: prompt,
-          }, agentConfigPath);
+          }, agentDir);
           log.debug("persistence", "user_message_saved");
         } catch (e) {
           // Non-fatal: log but continue
@@ -836,7 +837,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         if (persistSessionId && persistTaskId) {
           try {
             const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
-            // Pass agentConfigPath for workspace-level agents to find the correct session directory
+            // Pass agentDir for workspace-level agents to find the correct session directory
             await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
               id: generateMessageId(),
               taskId: persistTaskId,
@@ -858,7 +859,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
               // Persist SDK session ID for resume functionality
               sdkSessionId:
                 message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdkSessionId : undefined,
-            }, agentConfigPath);
+            }, agentDir);
           } catch (persistError) {
             log.warn("persistence", "message_save_failed", {
               messageType: message.type,

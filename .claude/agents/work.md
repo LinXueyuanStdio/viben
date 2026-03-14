@@ -35,7 +35,7 @@ This directory contains all context files for the current task:
 - Work directly in main repo
 - Do NOT switch branches
 - Do NOT create PR
-- After finish: notify user that changes are ready for human review
+- After finish: notify user that changes are ready for review
 
 **Worktree Mode**:
 - Work in isolated git worktree
@@ -205,7 +205,7 @@ This will:
 In Main Repo mode (no worktree), after completing all phases:
 
 1. **Do NOT run create-pr**
-2. Notify user: "Implementation complete. Changes are ready for human review."
+2. Notify user: "Implementation complete. Changes are ready for review."
 3. Update task.json status to "review"
 
 ---

@@ -787,6 +787,7 @@ export function WorkspaceChatPage() {
     checkGatewayConnection,
   } = useAgentConversation(workspace?.path || "", {
     agentConfigPath: currentAgent?.config_path,
+    agentDir: currentAgent?.agent_dir,
     agentConfig: currentAgent?.config_path ? undefined : currentAgentConfig,
     sessionId: selectedConversationId || undefined,
     sandboxConfig,

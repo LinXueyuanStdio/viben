@@ -123,7 +123,7 @@ stateDiagram-v2
 | `queue` | Queued, waiting for execution | `task enqueue` |
 | `in_progress` | Executing (plan → implement → check) | `task start` |
 | `paused` | Paused, progress preserved | `task pause` |
-| `review` | Awaiting human review | Auto (QA passed) |
+| `review` | Awaiting review | Auto (QA passed) |
 | `completed` | Completed | `task approve` |
 | `failed` | Execution failed | Auto |
 | `cancelled` | Cancelled | `task cancel` |
