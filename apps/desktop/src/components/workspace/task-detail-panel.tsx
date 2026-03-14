@@ -90,6 +90,7 @@ import { TaskActionButtons } from "./kanban/task-action-buttons";
 import { TaskWarnings } from "./kanban/task-warnings";
 import { StatusSelect } from "./kanban/components/status-select";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
+import { toast } from "@/hooks/use-toast";
 import type {
   TaskStatus,
   XStateValue,
@@ -1197,7 +1198,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     className="mb-2"
                   />
 
-                  {/* Task Action Buttons */}
+                  {/* Task Action Buttons with Status Context */}
                   <div className="mb-3">
                     <TaskActionButtons
                       taskId={task.id}
@@ -1219,9 +1220,13 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       }}
                       onEventError={(error) => {
                         console.error(`[TaskDetailPanel] Event error: ${error}`);
+                        toast.error(t("workspace.taskActions.error", "Action failed"), {
+                          description: error,
+                        });
                       }}
                       size="default"
                       showAllActions
+                      showStatusContext
                     />
                   </div>
 

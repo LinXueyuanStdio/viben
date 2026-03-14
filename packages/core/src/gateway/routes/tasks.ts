@@ -74,6 +74,8 @@ import {
   rejectTask,
   retryTask,
   cancelTask,
+  enqueueTask,
+  dequeueTask,
 } from "../../task/ops/lifecycle";
 import { setTaskBranch, setTaskBaseBranch, setTaskAgent } from "../../task/ops/config";
 import {
@@ -110,6 +112,7 @@ import {
   DIR_TASKS,
   FILE_TASK_JSON,
   createCLIAdapter,
+  validateIfReviewFinished,
 } from "../../cli/lib/viben-workspace";
 import { getContextJson, getContextText } from "../../task/ops/context-output";
 import {
@@ -119,9 +122,10 @@ import {
   listContext as listContextOp,
   validateContext as validateContextOp,
 } from "../../task/ops/context-files";
-import { finishTask, archiveTask as archiveTaskOp, listArchivedTasks } from "../../task/ops/crud";
+import { finishTask, archiveTask as archiveTaskOp, listArchivedTasks, viewTask, deleteTask, listTasks } from "../../task/ops/crud";
 import { reviewTask } from "../../task/ops/review";
 import { createPR } from "../../task/ops/create-pr";
+import { runPlanPhase, runImplementPhase, runCheckPhase, runWorkPhase, runCreateWorktree } from "../../task/phase";
 
 /**
  * Convert UnifiedTask to db Task for events
@@ -4912,6 +4916,243 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         error: error instanceof Error ? error.message : "Failed to start plan agent",
         code: "PLAN_FAILED",
       };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/plan-phase - Run plan phase for a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      platform?: string;
+      verbose?: boolean;
+    };
+  }>("/api/task/plan-phase", {
+    schema: {
+      description: "Run plan phase for a task (spawns plan agent)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          platform: { type: "string", description: "Platform (claude, cursor, iflow, opencode)", default: "claude" },
+          verbose: { type: "boolean", description: "Enable verbose output" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, platform = "claude", verbose } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Resolve task directory
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    try {
+      const result = await runPlanPhase(workspace_path, taskDir, { platform, verbose });
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error, code: "PLAN_PHASE_FAILED" };
+      }
+
+      return { success: true, ...result };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Plan phase failed", code: "PLAN_PHASE_ERROR" };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/implement-phase - Run implement phase for a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      platform?: string;
+      verbose?: boolean;
+    };
+  }>("/api/task/implement-phase", {
+    schema: {
+      description: "Run implement phase for a task (spawns implement agent)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          platform: { type: "string", description: "Platform (claude, cursor, iflow, opencode)", default: "claude" },
+          verbose: { type: "boolean", description: "Enable verbose output" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, platform = "claude", verbose } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Resolve task directory
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    try {
+      const result = await runImplementPhase(workspace_path, taskDir, { platform, verbose });
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error, code: "IMPLEMENT_PHASE_FAILED" };
+      }
+
+      return { success: true, ...result };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Implement phase failed", code: "IMPLEMENT_PHASE_ERROR" };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/check-phase - Run check phase for a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      platform?: string;
+      verbose?: boolean;
+    };
+  }>("/api/task/check-phase", {
+    schema: {
+      description: "Run check phase for a task (spawns check agent)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          platform: { type: "string", description: "Platform (claude, cursor, iflow, opencode)", default: "claude" },
+          verbose: { type: "boolean", description: "Enable verbose output" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, platform = "claude", verbose } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Resolve task directory
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    try {
+      const result = await runCheckPhase(workspace_path, taskDir, { platform, verbose });
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error, code: "CHECK_PHASE_FAILED" };
+      }
+
+      return { success: true, ...result };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Check phase failed", code: "CHECK_PHASE_ERROR" };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/work-phase - Run work phase for a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      platform?: string;
+      verbose?: boolean;
+      detach?: boolean;
+    };
+  }>("/api/task/work-phase", {
+    schema: {
+      description: "Run work phase for a task (spawns work agent)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          platform: { type: "string", description: "Platform (claude, cursor, iflow, opencode)", default: "claude" },
+          verbose: { type: "boolean", description: "Enable verbose output" },
+          detach: { type: "boolean", description: "Run in background", default: true },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, platform = "claude", verbose, detach = true } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    try {
+      const result = await runWorkPhase(workspace_path, taskDir, { platform, verbose, detach });
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error, code: "WORK_PHASE_FAILED" };
+      }
+
+      return { success: true, ...result };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Work phase failed", code: "WORK_PHASE_ERROR" };
     }
   });
 }

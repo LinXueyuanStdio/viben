@@ -19,6 +19,10 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  AlertCircle,
+  Clock,
+  FileText,
+  Archive,
 } from "lucide-react";
 import { Button, cn } from "@viben/ui";
 import { getGatewayUrl } from "@/lib/gateway";
@@ -73,6 +77,10 @@ export interface TaskActionButtonsProps {
   size?: "sm" | "default" | "lg";
   /** Whether to show all buttons or just primary */
   showAllActions?: boolean;
+  /** Whether to show status context with description (for detail panel) */
+  showStatusContext?: boolean;
+  /** Callback for archive action */
+  onArchive?: () => void;
 }
 
 /**
@@ -110,6 +118,8 @@ export function TaskActionButtons({
   className,
   size = "default",
   showAllActions = false,
+  showStatusContext = false,
+  onArchive,
 }: TaskActionButtonsProps) {
   const { t } = useTranslation();
   const gatewayUrl = getGatewayUrl();
@@ -521,12 +531,189 @@ export function TaskActionButtons({
     sizeClasses,
   ]);
 
-  if (buttons.length === 0) {
+  // Get status context info for detailed view
+  const statusContext = useMemo(() => {
+    if (!showStatusContext) return null;
+
+    // Priority 1: Stuck
+    if (isStuck) {
+      return {
+        icon: AlertCircle,
+        title: t("workspace.statusContext.stuck.title", "Task is stuck"),
+        description: t("workspace.statusContext.stuck.description", "The task execution has stalled. Click Recover to restart the task."),
+        variant: "warning" as const,
+      };
+    }
+
+    // Priority 2: Failed
+    if (status === "failed") {
+      return {
+        icon: XCircle,
+        title: t("workspace.statusContext.failed.title", "Task failed"),
+        description: t("workspace.statusContext.failed.description", "The task encountered an error. You can retry or abandon it."),
+        variant: "destructive" as const,
+      };
+    }
+
+    // Priority 3: Review
+    if (status === "review") {
+      if (reviewReason === "completed") {
+        return {
+          icon: CheckCircle2,
+          title: t("workspace.statusContext.review.completed.title", "Ready for approval"),
+          description: t("workspace.statusContext.review.completed.description", "The task has been completed. Review the changes and approve to mark as done."),
+          variant: "success" as const,
+        };
+      }
+      if (reviewReason === "plan_review") {
+        return {
+          icon: FileText,
+          title: t("workspace.statusContext.review.plan.title", "Plan needs review"),
+          description: t("workspace.statusContext.review.plan.description", "Review the implementation plan. Approve to proceed with coding, or reject to revise."),
+          variant: "info" as const,
+        };
+      }
+      if (reviewReason === "errors") {
+        return {
+          icon: AlertCircle,
+          title: t("workspace.statusContext.review.errors.title", "Errors need attention"),
+          description: t("workspace.statusContext.review.errors.description", "The task encountered errors during execution. Review and click Resume to retry."),
+          variant: "warning" as const,
+        };
+      }
+      if (reviewReason === "qa_rejected") {
+        return {
+          icon: XCircle,
+          title: t("workspace.statusContext.review.qa.title", "QA found issues"),
+          description: t("workspace.statusContext.review.qa.description", "Quality assurance has identified issues. Click Resume to address them."),
+          variant: "warning" as const,
+        };
+      }
+      if (reviewReason === "stopped") {
+        return {
+          icon: Square,
+          title: t("workspace.statusContext.review.stopped.title", "Task was stopped"),
+          description: t("workspace.statusContext.review.stopped.description", "The task was manually stopped. Click Resume to continue execution."),
+          variant: "muted" as const,
+        };
+      }
+      return {
+        icon: Clock,
+        title: t("workspace.statusContext.review.default.title", "Awaiting review"),
+        description: t("workspace.statusContext.review.default.description", "This task requires your review before proceeding."),
+        variant: "info" as const,
+      };
+    }
+
+    // Priority 4: Running
+    if (status === "in_progress" && isRunning) {
+      return {
+        icon: Loader2,
+        title: t("workspace.statusContext.running.title", "Task is running"),
+        description: t("workspace.statusContext.running.description", "The agent is currently working on this task. You can stop it if needed."),
+        variant: "info" as const,
+        iconClassName: "animate-spin",
+      };
+    }
+
+    // Priority 5: Backlog
+    if (status === "backlog") {
+      return {
+        icon: Clock,
+        title: t("workspace.statusContext.backlog.title", "In backlog"),
+        description: t("workspace.statusContext.backlog.description", "This task is waiting to be queued. Click Queue to add it to the execution queue."),
+        variant: "muted" as const,
+      };
+    }
+
+    // Priority 6: Queue
+    if (status === "queue") {
+      return {
+        icon: Play,
+        title: t("workspace.statusContext.queue.title", "Ready to start"),
+        description: t("workspace.statusContext.queue.description", "This task is queued and ready. Click Start to begin execution."),
+        variant: "info" as const,
+      };
+    }
+
+    // Priority 7: Last attempt failed
+    if (lastAttemptFailed && !isRunning) {
+      return {
+        icon: AlertCircle,
+        title: t("workspace.statusContext.lastFailed.title", "Previous attempt failed"),
+        description: t("workspace.statusContext.lastFailed.description", "The last execution attempt failed. Click Resume to try again."),
+        variant: "warning" as const,
+      };
+    }
+
+    // Priority 8: Completed
+    if (status === "completed") {
+      return {
+        icon: CheckCircle2,
+        title: t("workspace.statusContext.completed.title", "Task completed"),
+        description: t("workspace.statusContext.completed.description", "This task has been successfully completed."),
+        variant: "success" as const,
+      };
+    }
+
+    return null;
+  }, [showStatusContext, status, isStuck, isRunning, lastAttemptFailed, reviewReason, t]);
+
+  // Variant styles for status context
+  const variantStyles = {
+    success: "bg-success/10 border-success/30 text-success",
+    warning: "bg-warning/10 border-warning/30 text-warning",
+    destructive: "bg-destructive/10 border-destructive/30 text-destructive",
+    info: "bg-primary/10 border-primary/30 text-primary",
+    muted: "bg-muted/50 border-border text-muted-foreground",
+  };
+
+  if (buttons.length === 0 && !statusContext) {
     return null;
   }
 
+  // Detailed view with status context
+  if (showStatusContext && statusContext) {
+    const StatusIcon = statusContext.icon;
+    return (
+      <div className={cn("space-y-3", className)}>
+        {/* Status context card */}
+        <div className={cn(
+          "flex items-start gap-3 p-3 rounded-lg border",
+          variantStyles[statusContext.variant]
+        )}>
+          <StatusIcon className={cn("h-5 w-5 shrink-0 mt-0.5", statusContext.iconClassName)} />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm">{statusContext.title}</p>
+            <p className="text-xs opacity-80 mt-0.5">{statusContext.description}</p>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        {buttons.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {buttons}
+            {/* Archive button for completed tasks */}
+            {status === "completed" && onArchive && (
+              <Button
+                variant="outline"
+                size={size}
+                className={sizeClasses[size]}
+                onClick={onArchive}
+              >
+                <Archive className={cn(size === "sm" ? "h-3 w-3" : "h-4 w-4", "mr-1.5")} />
+                {t("workspace.taskActions.archive", "Archive")}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Simple view (just buttons)
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-2 flex-wrap", className)}>
       {buttons}
     </div>
   );
