@@ -574,11 +574,34 @@ export function registerTaskCommand(program: Command): void {
         const { dirName, status, contextInitialized } = result;
         const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
 
-        // If --start is provided, show enqueue message
-        if (options.start) {
-          output(ctx, successResponse({ taskDir: relativePath, status, contextInitialized }), () => {
+        // If --start is provided, enqueue the task to queue system
+        if (options.start && dirName) {
+          // Task was created with status "backlog", now enqueue to queue system
+          const enqueueResult = enqueueTask(repoRoot, dirName, {
+            agent: options.agent,
+            executor: options.executor,
+            model: options.model,
+            priority: options.priority,
+            skipQueue: false, // Actually submit to queue
+          });
+
+          if (!enqueueResult.success) {
+            // Task created but enqueue failed
+            output(ctx, errorResponse("ENQUEUE_FAILED", enqueueResult.error || "Failed to enqueue task"), () => {
+              console.log(chalk.yellow(`Created task: ${dirName}`));
+              console.log(chalk.red(`Failed to enqueue: ${enqueueResult.error}`));
+              console.log(chalk.gray(`Run manually: viben task enqueue ${dirName}`));
+            });
+            return;
+          }
+
+          const queueId = enqueueResult.additionalData?.queue_id;
+          output(ctx, successResponse({ taskDir: relativePath, status: "queue", contextInitialized, queueId }), () => {
             console.log(chalk.green(`Created and enqueued: ${dirName}`));
             console.log(chalk.gray(`Status: backlog -> queue`));
+            if (queueId) {
+              console.log(chalk.gray(`Queue ID: ${queueId}`));
+            }
             if (options.worktree) {
               console.log(chalk.gray(`Worktree: enabled`));
             }

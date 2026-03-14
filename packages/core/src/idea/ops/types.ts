@@ -57,11 +57,11 @@ export type IdeaStatus = (typeof IDEA_STATUSES)[number];
  * Mapping from effort level to default priority when promoting to task
  */
 export const EFFORT_PRIORITY_MAP: Record<EffortLevel, string> = {
-  trivial: "P3",
-  small: "P3",
-  medium: "P2",
-  large: "P1",
-  complex: "P1",
+  trivial: "low",
+  small: "low",
+  medium: "medium",
+  large: "high",
+  complex: "high",
 };
 
 /**

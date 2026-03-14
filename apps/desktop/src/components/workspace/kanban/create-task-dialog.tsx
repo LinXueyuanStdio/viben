@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bot,
   Settings2,
-  GitBranch,
+  FolderTree,
   ImagePlus,
   Loader2,
   Sparkles,
@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Tooltip,
@@ -59,13 +57,6 @@ export interface AvailableModel {
   provider_id?: string;
 }
 
-// Branch options (can be extended to be dynamic later)
-const BRANCH_OPTIONS = [
-  { value: "main", label: "main" },
-  { value: "develop", label: "develop" },
-  { value: "feature", label: "feature" },
-] as const;
-
 export interface CreateTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -89,8 +80,8 @@ export interface CreateTaskData {
   description?: string;
   agentId: string;
   modelId: string;
-  branch: string;
   autoStart: boolean;
+  worktree: boolean;
 }
 
 export function CreateTaskDialog({
@@ -108,12 +99,11 @@ export function CreateTaskDialog({
   const { t } = useTranslation();
 
   // Form state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [content, setContent] = useState("");
   const [agentId, setAgentId] = useState("");
   const [modelId, setModelId] = useState("");
-  const [branch, setBranch] = useState("main");
   const [autoStart, setAutoStart] = useState(false);
+  const [worktree, setWorktree] = useState(false);
 
   // Set defaults when dialog opens or defaults change
   useEffect(() => {
@@ -126,26 +116,35 @@ export function CreateTaskDialog({
   // Reset form when dialog opens
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (newOpen) {
-      setTitle("");
-      setDescription("");
-      setBranch("main");
+      setContent("");
       setAutoStart(false);
+      setWorktree(false);
     }
     onOpenChange(newOpen);
   }, [onOpenChange]);
 
+  // Parse content into title and description
+  // First line is title, rest is description
+  const parseContent = useCallback((text: string) => {
+    const lines = text.split("\n");
+    const title = lines[0]?.trim() || "";
+    const description = lines.slice(1).join("\n").trim() || undefined;
+    return { title, description };
+  }, []);
+
   // Handle form submission
   const handleSubmit = useCallback(async () => {
-    if (!title.trim()) return;
+    const { title, description } = parseContent(content);
+    if (!title) return;
 
     try {
       await onSubmit({
-        title: title.trim(),
-        description: description.trim() || undefined,
+        title,
+        description,
         agentId,
         modelId,
-        branch,
         autoStart,
+        worktree,
       });
 
       // Only close dialog on success
@@ -154,7 +153,7 @@ export function CreateTaskDialog({
       // Error handling is done by the parent component via mutation state
       console.error("Failed to create task:", error);
     }
-  }, [title, description, agentId, modelId, branch, autoStart, onSubmit, handleOpenChange]);
+  }, [content, parseContent, agentId, modelId, autoStart, worktree, onSubmit, handleOpenChange]);
 
   // Handle keyboard shortcuts
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -202,28 +201,18 @@ export function CreateTaskDialog({
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="font-medium">{t("workspace.createTaskDialog.title", "Create Task")}</span>
             </div>
-            {/* Title Input - larger and more prominent */}
-            <Input
-              placeholder={t("workspace.createTaskDialog.taskTitlePlaceholder", "Enter task title...")}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="text-xl font-semibold h-12 px-4 rounded-lg bg-muted/40 border-border/40 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 placeholder:text-muted-foreground/40"
+            {/* Combined Title + Description Input */}
+            <Textarea
+              placeholder={t("workspace.createTaskDialog.combinedPlaceholder", "What would you like me to do?")}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="min-h-[160px] resize-none text-sm rounded-lg bg-muted/40 border-border/40 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 placeholder:text-muted-foreground/40"
               autoFocus
             />
+            <p className="mt-1.5 text-xs text-muted-foreground/60">
+              {t("workspace.createTaskDialog.contentHint", "Describe your task - I'll get started right away")}
+            </p>
           </div>
-        </div>
-
-        {/* Description */}
-        <div className="px-5 pb-4">
-          <Textarea
-            placeholder={t("workspace.createTaskDialog.descriptionPlaceholder", "Add more details (optional)")}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[140px] resize-none border-border/40 bg-muted/30 text-sm rounded-lg focus-visible:ring-1 focus-visible:ring-primary/30"
-          />
-          <p className="mt-1.5 text-xs text-muted-foreground/60">
-            {t("workspace.createTaskDialog.descriptionHint", "Type @ to search for file references")}
-          </p>
         </div>
 
         {/* Options Section */}
@@ -241,7 +230,7 @@ export function CreateTaskDialog({
               {t("common.loading", "Loading...")}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {/* Agent Selector */}
               <Select value={agentId} onValueChange={setAgentId} disabled={hasNoAgents}>
                 <SelectTrigger
@@ -312,23 +301,6 @@ export function CreateTaskDialog({
                   </p>
                 )}
               </div>
-
-              {/* Branch Selector */}
-              <Select value={branch} onValueChange={setBranch}>
-                <SelectTrigger className="h-10 bg-muted/40 border-border/40 hover:bg-muted/60 transition-colors">
-                  <div className="flex items-center gap-2 text-sm">
-                    <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  {BRANCH_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           )}
 
@@ -349,24 +321,55 @@ export function CreateTaskDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-border/40 bg-muted/20">
-          {/* Left: Attachment button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                  type="button"
-                >
-                  <ImagePlus className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                {t("workspace.createTaskDialog.attachment", "Add attachment")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* Left: Attachment button + Worktree toggle */}
+          <div className="flex items-center gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                    type="button"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {t("workspace.createTaskDialog.attachment", "Add attachment")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Worktree toggle */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="worktree"
+                      checked={worktree}
+                      onCheckedChange={setWorktree}
+                      className="data-[state=checked]:bg-blue-500"
+                    />
+                    <Label
+                      htmlFor="worktree"
+                      className={cn(
+                        "text-sm cursor-pointer flex items-center gap-1.5 transition-colors",
+                        worktree ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                      )}
+                    >
+                      <FolderTree className="h-3.5 w-3.5" />
+                      {t("workspace.createTaskDialog.worktree", "Worktree")}
+                    </Label>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {t("workspace.createTaskDialog.worktreeHint", "Run task in isolated git worktree")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
 
           {/* Right: Auto-start + Create */}
           <div className="flex items-center gap-3">
@@ -402,7 +405,7 @@ export function CreateTaskDialog({
             {/* Create button */}
             <Button
               onClick={handleSubmit}
-              disabled={!title.trim() || isSubmitting || (hasNoAgents && hasNoModels)}
+              disabled={!parseContent(content).title || isSubmitting || (hasNoAgents && hasNoModels)}
               className="h-9 px-4 gap-2"
             >
               {isSubmitting ? (

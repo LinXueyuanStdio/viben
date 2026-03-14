@@ -499,7 +499,7 @@ export function getActiveTasks(repoRoot: string): Array<{
             status: String(taskData.status ?? "unknown"),
             assignee: String(taskData.assignee ?? "-"),
             title: String(taskData.title ?? taskData.name ?? "unknown"),
-            priority: String(taskData.priority ?? "P2"),
+            priority: String(taskData.priority ?? "medium"),
           });
         }
       }
@@ -1689,10 +1689,11 @@ export function getWorktreeBaseDir(repoRoot: string): string {
  * Task statistics
  */
 export interface TaskStats {
-  P0: number;
-  P1: number;
-  P2: number;
-  P3: number;
+  urgent: number;
+  high: number;
+  medium: number;
+  low: number;
+  none: number;
   Total: number;
 }
 
@@ -1704,7 +1705,7 @@ export interface TaskStats {
  */
 export function getTaskStats(repoRoot: string): TaskStats {
   const tasksDir = getTasksDir(repoRoot);
-  const stats: TaskStats = { P0: 0, P1: 0, P2: 0, P3: 0, Total: 0 };
+  const stats: TaskStats = { urgent: 0, high: 0, medium: 0, low: 0, none: 0, Total: 0 };
 
   if (!existsSync(tasksDir)) {
     return stats;
@@ -1716,7 +1717,7 @@ export function getTaskStats(repoRoot: string): TaskStats {
       if (dirent.isDirectory() && dirent.name !== DIR_ARCHIVE) {
         const taskData = readTaskJson(join(tasksDir, dirent.name));
         if (taskData) {
-          const priority = (taskData.priority as string) || "P2";
+          const priority = (taskData.priority as string) || "medium";
           if (priority in stats) {
             stats[priority as keyof Omit<TaskStats, "Total">]++;
           }
@@ -1735,10 +1736,10 @@ export function getTaskStats(repoRoot: string): TaskStats {
  * Format task stats as string
  *
  * @param stats - Stats from getTaskStats
- * @returns Formatted string like "P0:0 P1:1 P2:2 P3:0 Total:3"
+ * @returns Formatted string like "urgent:0 high:1 medium:2 low:0 none:0 Total:3"
  */
 export function formatTaskStats(stats: TaskStats): string {
-  return `P0:${stats.P0} P1:${stats.P1} P2:${stats.P2} P3:${stats.P3} Total:${stats.Total}`;
+  return `urgent:${stats.urgent} high:${stats.high} medium:${stats.medium} low:${stats.low} none:${stats.none} Total:${stats.Total}`;
 }
 
 // =============================================================================

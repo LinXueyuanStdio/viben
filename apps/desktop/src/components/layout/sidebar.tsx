@@ -250,8 +250,8 @@ export function Sidebar() {
         workspace_path: activeWorkspace.path,
         agent_id: data.agentId,
         model_id: data.modelId,
-        branch: data.branch,
         auto_start: data.autoStart,
+        worktree: data.worktree,
         status: "backlog",
       });
       toast.success(t("sidebar.taskCreated"));

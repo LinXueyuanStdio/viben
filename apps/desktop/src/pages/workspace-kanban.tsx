@@ -213,6 +213,15 @@ const CategoryIcons: Record<TaskCategory, React.ElementType> = {
   testing: TestTube,
 };
 
+// Validate priority string is a valid IssuePriority
+const validatePriority = (priority?: string): IssuePriority | undefined => {
+  if (!priority) return undefined;
+  const validPriorities: IssuePriority[] = ["urgent", "high", "medium", "low", "none"];
+  return validPriorities.includes(priority as IssuePriority)
+    ? (priority as IssuePriority)
+    : undefined;
+};
+
 // Task Card Content Component - displays vibe-kanban task with enhanced fields (Auto-Claude style)
 interface TaskCardContentProps {
   task: EnhancedTask;
@@ -1070,6 +1079,7 @@ export function WorkspaceKanbanPage() {
       id: a.id,
       name: a.name,
       description: a.description,
+      executorType: a.executor_type,
       agent_dir: a.agent_dir,
       config_path: a.config_path,
     })),
@@ -1084,6 +1094,7 @@ export function WorkspaceKanbanPage() {
         name: m.name,
         description: undefined, // WorkspaceModel doesn't have description
         provider: m.provider_id,
+        provider_id: m.provider_id,
       })),
     [vibenModels]
   );
@@ -1108,8 +1119,8 @@ export function WorkspaceKanbanPage() {
     (tasks ?? []).map((t) => ({
       id: t.id,
       status: t.status,
-      // priority is now IssuePriority type directly from API
-      priority: t.priority as IssuePriority | undefined,
+      // Validate priority is a valid IssuePriority
+      priority: validatePriority(t.priority),
       dueDate: undefined as string | undefined,
     })),
     [tasks]
@@ -1145,8 +1156,8 @@ export function WorkspaceKanbanPage() {
       title: task.title,
       description: task.description,
       status: task.status,
-      // priority is now IssuePriority type directly from API
-      priority: task.priority as IssuePriority | undefined,
+      // Validate priority is a valid IssuePriority
+      priority: validatePriority(task.priority),
       tags: undefined,
       assignee: undefined,
       dueDate: undefined,
@@ -1304,8 +1315,8 @@ export function WorkspaceKanbanPage() {
           status,
           agent_id: data.agentId,
           model_id: data.modelId,
-          branch: data.branch,
           auto_start: data.autoStart,
+          worktree: data.worktree,
         });
         toast.success(t("workspace.taskCreated", "Task created successfully"));
       } catch (error) {
@@ -2971,13 +2982,14 @@ export function WorkspaceKanbanPage() {
                 id: "priority",
                 header: t("workspace.priority.label", "Priority"),
                 accessor: (task) => {
-                  if (!task.priority || task.priority === "none") {
+                  const priority = validatePriority(task.priority);
+                  if (!priority || priority === "none") {
                     return <span className="text-muted-foreground">-</span>;
                   }
                   return (
                     <div className="flex items-center gap-1.5">
-                      <PriorityIcon priority={task.priority as IssuePriority} size="sm" />
-                      <span className="capitalize text-xs">{task.priority}</span>
+                      <PriorityIcon priority={priority} size="sm" />
+                      <span className="capitalize text-xs">{priority}</span>
                     </div>
                   );
                 },

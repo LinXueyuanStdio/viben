@@ -732,7 +732,7 @@ function getBootstrapTaskJson(
     name: "Bootstrap Guidelines",
     description: "Fill in project development guidelines for AI agents",
     status: "in_progress",
-    priority: "P1",
+    priority: "high",
     creator: developer,
     assignee: developer,
     createdAt: today,

@@ -193,7 +193,7 @@ export function promoteIdea(
 
     // Use effort-based priority if not specified
     const priority =
-      options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "P2";
+      options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "medium";
 
     // Create task using the idea's title
     const taskOptions: CreateTaskOptions = {

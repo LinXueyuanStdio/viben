@@ -477,8 +477,8 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
           status,
           agent_id: data.agentId,
           model_id: data.modelId,
-          branch: data.branch,
           auto_start: data.autoStart,
+          worktree: data.worktree,
         });
         onSuccess?.(t("workspace.taskCreated", "Task created successfully"));
       } catch (error) {
