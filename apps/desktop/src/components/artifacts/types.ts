@@ -46,9 +46,30 @@ export interface ArtifactPreviewProps {
   /** All artifacts for resolving relative imports (used for HTML with CSS/JS) */
   allArtifacts?: Artifact[];
   className?: string;
+  /** Live preview URL (e.g., http://localhost:5173) */
+  livePreviewUrl?: string | null;
+  /** Live preview status */
+  livePreviewStatus?: LivePreviewStatus;
+  /** Live preview error message */
+  livePreviewError?: string | null;
+  /** Callback to start live preview */
+  onStartLivePreview?: () => void;
+  /** Callback to stop live preview */
+  onStopLivePreview?: () => void;
 }
 
 export type ViewMode = "preview" | "code";
+
+/** Preview mode for HTML artifacts */
+export type PreviewMode = "static" | "live";
+
+/** Live preview status (matches useVitePreview hook) */
+export type LivePreviewStatus =
+  | "idle"
+  | "starting"
+  | "running"
+  | "error"
+  | "stopped";
 
 /** Props for individual preview components */
 export interface PreviewComponentProps {

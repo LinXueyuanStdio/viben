@@ -1,83 +1,83 @@
 {
-  "generatedAt": "2026-03-03T06:41:17.274933+00:00",
+  "generatedAt": "2026-03-14T14:53:05.974106+00:00",
   "summary": {
-    "totalLines": 470001,
-    "totalFiles": 1748,
-    "totalModules": 12,
-    "codeLines": 305638,
-    "docLines": 94074,
-    "configLines": 70289
+    "totalLines": 618252,
+    "totalFiles": 2135,
+    "totalModules": 20,
+    "codeLines": 381174,
+    "docLines": 166354,
+    "configLines": 70724
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 171578,
-      "files": 576,
+      "lines": 232071,
+      "files": 752,
       "color": "#3178C6"
-    },
-    {
-      "lang": "TSX",
-      "ext": "tsx",
-      "lines": 106292,
-      "files": 469,
-      "color": "#61DAFB"
     },
     {
       "lang": "Markdown",
       "ext": "md",
-      "lines": 92726,
-      "files": 350,
+      "lines": 165007,
+      "files": 558,
       "color": "#083FA1"
+    },
+    {
+      "lang": "TSX",
+      "ext": "tsx",
+      "lines": 128928,
+      "files": 515,
+      "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 52612,
-      "files": 84,
+      "lines": 54896,
+      "files": 85,
       "color": "#F59E0B"
     },
     {
       "lang": "Python",
       "ext": "py",
-      "lines": 20287,
-      "files": 84,
+      "lines": 11999,
+      "files": 60,
       "color": "#3776AB"
     },
     {
       "lang": "PNG",
       "ext": "png",
-      "lines": 6221,
-      "files": 52,
+      "lines": 9487,
+      "files": 53,
       "color": "#6B7280"
-    },
-    {
-      "lang": "Shell",
-      "ext": "sh",
-      "lines": 6038,
-      "files": 24,
-      "color": "#89E051"
     },
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 2885,
-      "files": 6,
+      "lines": 3971,
+      "files": 8,
       "color": "#E34F26"
     },
     {
       "lang": "TOML",
       "ext": "toml",
-      "lines": 1901,
+      "lines": 1899,
       "files": 18,
       "color": "#9C4121"
     },
     {
       "lang": "CSS",
       "ext": "css",
-      "lines": 1781,
+      "lines": 1850,
       "files": 7,
       "color": "#1572B6"
+    },
+    {
+      "lang": "Rust",
+      "ext": "rs",
+      "lines": 1378,
+      "files": 10,
+      "color": "#DEA584"
     },
     {
       "lang": "ICNS",
@@ -89,55 +89,55 @@
     {
       "lang": "Plain Text",
       "ext": "txt",
-      "lines": 1348,
+      "lines": 1347,
       "files": 20,
       "color": "#6B7280"
     },
     {
-      "lang": "Rust",
-      "ext": "rs",
-      "lines": 1298,
-      "files": 9,
-      "color": "#DEA584"
-    },
-    {
-      "lang": "JavaScript",
-      "ext": "js",
-      "lines": 1047,
-      "files": 6,
-      "color": "#F7DF1E"
-    },
-    {
       "lang": "YAML",
       "ext": "yml",
-      "lines": 848,
-      "files": 10,
+      "lines": 1121,
+      "files": 11,
       "color": "#CB171E"
+    },
+    {
+      "lang": "Shell",
+      "ext": "sh",
+      "lines": 688,
+      "files": 5,
+      "color": "#89E051"
+    },
+    {
+      "lang": "CJS",
+      "ext": "cjs",
+      "lines": 555,
+      "files": 2,
+      "color": "#6B7280"
     }
   ],
   "modules": [
     {
       "name": "packages/core",
-      "lines": 154529,
-      "files": 484,
+      "lines": 189805,
+      "files": 557,
       "color": "#3B82F6"
     },
     {
       "name": "apps/desktop",
-      "lines": 150096,
-      "files": 482,
+      "lines": 187662,
+      "files": 601,
       "color": "#F59E0B"
     },
     {
       "name": "apps/docs",
-      "lines": 62316,
+      "lines": 62362,
       "files": 205,
       "color": "#8B5CF6"
     },
     {
       "name": "apps/web",
-      "lines": 52714,
-      "files": 305,
+      "lines": 53775,
+      "files": 311,
       "color": "#10B981"
     },
     {
@@ -148,13 +148,13 @@
     },
     {
       "name": "packages/kanban",
-      "lines": 7757,
-      "files": 74,
+      "lines": 9431,
+      "files": 80,
       "color": "#6B7280"
     },
     {
       "name": "packages/chat",
-      "lines": 6941,
+      "lines": 6963,
       "files": 25,
       "color": "#6B7280"
     },
@@ -166,8 +166,8 @@
     },
     {
       "name": "packages/ui",
-      "lines": 2031,
-      "files": 27,
+      "lines": 2079,
+      "files": 28,
       "color": "#06B6D4"
     },
     {
@@ -183,58 +183,106 @@
       "color": "#6B7280"
     },
     {
+      "name": "packages/package-kanban.md",
+      "lines": 1031,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/patterns",
+      "lines": 703,
+      "files": 4,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/package-ui.md",
+      "lines": 645,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/core",
+      "lines": 637,
+      "files": 4,
+      "color": "#6B7280"
+    },
+    {
       "name": "apps/cli",
       "lines": 603,
       "files": 7,
       "color": "#EC4899"
+    },
+    {
+      "name": "backend/architecture",
+      "lines": 552,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/packages.md",
+      "lines": 504,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/storage.md",
+      "lines": 394,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/index.md",
+      "lines": 153,
+      "files": 1,
+      "color": "#6B7280"
     }
   ],
   "desktopDirs": [
     {
       "name": "components",
-      "lines": 49136,
-      "files": 205,
+      "lines": 72066,
+      "files": 260,
       "color": "#8B5CF6"
     },
     {
       "name": "pages",
-      "lines": 29209,
+      "lines": 30615,
       "files": 40,
       "color": "#3B82F6"
     },
     {
       "name": "i18n",
-      "lines": 23481,
+      "lines": 25493,
       "files": 22,
       "color": "#6B7280"
     },
     {
       "name": "hooks",
-      "lines": 21742,
-      "files": 65,
+      "lines": 23916,
+      "files": 71,
       "color": "#10B981"
     },
     {
       "name": "lib",
-      "lines": 11096,
-      "files": 16,
+      "lines": 17954,
+      "files": 69,
       "color": "#F59E0B"
     },
     {
       "name": "stores",
-      "lines": 2427,
-      "files": 9,
+      "lines": 3282,
+      "files": 12,
       "color": "#EC4899"
     },
     {
       "name": "types",
-      "lines": 2363,
+      "lines": 2405,
       "files": 10,
       "color": "#6366F1"
     },
     {
       "name": "features",
-      "lines": 1417,
+      "lines": 1452,
       "files": 33,
       "color": "#6B7280"
     },
@@ -246,7 +294,7 @@
     },
     {
       "name": "index.css",
-      "lines": 502,
+      "lines": 571,
       "files": 1,
       "color": "#6B7280"
     }
@@ -254,20 +302,20 @@
   "apps": [
     {
       "name": "desktop",
-      "lines": 150096,
-      "files": 482,
+      "lines": 187662,
+      "files": 601,
       "color": "#F59E0B"
     },
     {
       "name": "docs",
-      "lines": 62316,
+      "lines": 62362,
       "files": 205,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "lines": 52714,
-      "files": 305,
+      "lines": 53775,
+      "files": 311,
       "color": "#10B981"
     },
     {
@@ -286,22 +334,22 @@
   "density": [
     {
       "name": "pkg/core",
-      "density": 319.3,
+      "density": 340.8,
       "color": "#3B82F6"
     },
     {
       "name": "desktop",
-      "density": 311.4,
+      "density": 312.2,
       "color": "#F59E0B"
     },
     {
       "name": "docs",
-      "density": 304.0,
+      "density": 304.2,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "density": 172.8,
+      "density": 172.9,
       "color": "#10B981"
     },
     {
@@ -311,12 +359,12 @@
     },
     {
       "name": "pkg/kanban",
-      "density": 104.8,
+      "density": 117.9,
       "color": "#6B7280"
     },
     {
       "name": "pkg/chat",
-      "density": 277.6,
+      "density": 278.5,
       "color": "#6B7280"
     },
     {
@@ -326,31 +374,31 @@
     },
     {
       "name": "pkg/ui",
-      "density": 75.2,
+      "density": 74.2,
       "color": "#06B6D4"
     }
   ],
   "categories": [
     {
       "label": "源代码",
-      "lines": 305638,
+      "lines": 381174,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 94074,
+      "lines": 166354,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 70289,
+      "lines": 70724,
       "color": "#F59E0B"
     }
   ],
   "topFiles": [
     {
-      "path": "apps/desktop/src/lib/gateway.ts",
-      "lines": 7960,
+      "path": "packages/core/src/gateway/routes/tasks.ts",
+      "lines": 5734,
       "ext": "ts"
     },
     {
@@ -359,19 +407,39 @@
       "ext": "json"
     },
     {
-      "path": "apps/desktop/src/pages/workspace-chat.tsx",
-      "lines": 3244,
-      "ext": "tsx"
-    },
-    {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "lines": 3109,
+      "lines": 4144,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "lines": 3094,
+      "lines": 4071,
       "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/pages/workspace-chat.tsx",
+      "lines": 3421,
+      "ext": "tsx"
+    },
+    {
+      "path": "docs/specs/modules/workspace/vibe-kanban-screenshot.png",
+      "lines": 3266,
+      "ext": "png"
+    },
+    {
+      "path": "apps/desktop/src/pages/workspace-kanban.tsx",
+      "lines": 2990,
+      "ext": "tsx"
+    },
+    {
+      "path": "apps/desktop/src/lib/gateway/client.ts",
+      "lines": 2842,
+      "ext": "ts"
+    },
+    {
+      "path": "apps/desktop/src/pages/settings.tsx",
+      "lines": 2618,
+      "ext": "tsx"
     },
     {
       "path": "apps/web/lib/db/migrations/meta/0000_snapshot.json",
@@ -379,14 +447,24 @@
       "ext": "json"
     },
     {
-      "path": "apps/desktop/src/pages/settings.tsx",
-      "lines": 2588,
-      "ext": "tsx"
+      "path": "packages/core/src/cli/commands/task.ts",
+      "lines": 2368,
+      "ext": "ts"
+    },
+    {
+      "path": "packages/core/src/cli/lib/viben-workspace.ts",
+      "lines": 2219,
+      "ext": "ts"
     },
     {
       "path": "packages/core/src/gateway/routes/group-chats.ts",
       "lines": 2165,
       "ext": "ts"
+    },
+    {
+      "path": "docs/specs/roadmap/platform-upgrade-v2.md",
+      "lines": 2154,
+      "ext": "md"
     },
     {
       "path": "apps/desktop/src/components/file-browser/index.tsx",
@@ -399,53 +477,23 @@
       "ext": "ts"
     },
     {
+      "path": "packages/core/src/cli/lib/viben-workspace.test.ts",
+      "lines": 2113,
+      "ext": "ts"
+    },
+    {
       "path": "apps/desktop/src/pages/settings-channels.tsx",
       "lines": 1952,
       "ext": "tsx"
     },
     {
       "path": "apps/desktop/src/hooks/use-agent-conversation.ts",
-      "lines": 1862,
+      "lines": 1879,
       "ext": "ts"
     },
     {
-      "path": "packages/core/src/gateway/routes/executors.ts",
-      "lines": 1632,
-      "ext": "ts"
-    },
-    {
-      "path": "apps/desktop/src/components/chat/chat-input.tsx",
-      "lines": 1596,
-      "ext": "tsx"
-    },
-    {
-      "path": "packages/core/src/db/index.test.ts",
-      "lines": 1530,
-      "ext": "ts"
-    },
-    {
-      "path": "packages/core/src/gateway/routes/models.test.ts",
-      "lines": 1429,
-      "ext": "ts"
-    },
-    {
-      "path": "docs/code-stats.html",
-      "lines": 1421,
-      "ext": "html"
-    },
-    {
-      "path": "apps/desktop/src/pages/chat-monitor.tsx",
-      "lines": 1387,
-      "ext": "tsx"
-    },
-    {
-      "path": "apps/desktop/src-tauri/icons/icon.icns",
-      "lines": 1370,
-      "ext": "icns"
-    },
-    {
-      "path": "apps/desktop/src/pages/agent-detail.tsx",
-      "lines": 1346,
+      "path": "apps/desktop/src/components/workspace/task-detail-panel.tsx",
+      "lines": 1782,
       "ext": "tsx"
     }
   ]

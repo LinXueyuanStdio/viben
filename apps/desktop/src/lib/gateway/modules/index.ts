@@ -89,3 +89,6 @@ export * from "./tasks";
 
 // Telemetry module
 export * from "./telemetry";
+
+// Preview module
+export * from "./preview";

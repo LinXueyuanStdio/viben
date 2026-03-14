@@ -2,11 +2,18 @@
  * useVitePreview Hook
  *
  * Manages the lifecycle of a Vite preview server for live preview functionality.
- * Provides start/stop controls and status monitoring via Tauri commands.
+ * Provides start/stop controls and status monitoring via Gateway API.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayUrl } from "@/lib/gateway/config";
+import {
+  checkNodeAvailable as apiCheckNodeAvailable,
+  getPreviewStatus as apiGetPreviewStatus,
+  startPreview as apiStartPreview,
+  stopPreview as apiStopPreview,
+  type PreviewStatusResponse,
+} from "@/lib/gateway/modules/preview";
 
 /**
  * Preview server status
@@ -35,20 +42,9 @@ export interface UseVitePreviewReturn extends PreviewState {
   startPreview: (workingDir: string) => Promise<void>;
   stopPreview: () => Promise<void>;
   refreshPreview: () => void;
+  refreshStatus: () => Promise<void>;
   isNodeAvailable: boolean | null;
   checkNodeAvailable: () => Promise<boolean>;
-}
-
-/**
- * API response type from Tauri commands
- */
-interface TauriPreviewState {
-  id: string;
-  task_id: string;
-  status: "idle" | "starting" | "running" | "stopped" | "error";
-  url?: string | null;
-  port?: number | null;
-  error?: string | null;
 }
 
 // Poll interval for checking server startup status
@@ -91,7 +87,8 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
    */
   const checkNodeAvailable = useCallback(async (): Promise<boolean> => {
     try {
-      const available = await invoke<boolean>("check_node_available");
+      const baseUrl = getGatewayUrl();
+      const available = await apiCheckNodeAvailable(baseUrl);
       setIsNodeAvailable(available);
       return available;
     } catch (err) {
@@ -107,13 +104,13 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   }, [checkNodeAvailable]);
 
   /**
-   * Update local state from Tauri response
+   * Update local state from API response
    */
-  const updateStateFromResponse = useCallback((data: TauriPreviewState) => {
+  const updateStateFromResponse = useCallback((data: PreviewStatusResponse) => {
     const mappedStatus: PreviewStatus = data.status === "stopped" ? "idle" : data.status;
     setStatus(mappedStatus);
     setPreviewUrl(data.url || null);
-    setPort(data.port || null);
+    setPort(data.hostPort || null);
     setError(data.error || null);
 
     // Stop polling if no longer starting
@@ -124,15 +121,14 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   }, []);
 
   /**
-   * Fetch current status from Tauri
+   * Fetch current status from Gateway API
    */
   const refreshStatus = useCallback(async () => {
     if (!taskIdRef.current) return;
 
     try {
-      const data = await invoke<TauriPreviewState>("get_vite_preview_status", {
-        taskId: taskIdRef.current,
-      });
+      const baseUrl = getGatewayUrl();
+      const data = await apiGetPreviewStatus(baseUrl, taskIdRef.current);
       updateStateFromResponse(data);
     } catch (err) {
       console.warn("[useVitePreview] Error fetching status:", err);
@@ -178,11 +174,13 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
       setError(null);
 
       try {
-        const data = await invoke<TauriPreviewState>("start_vite_preview", {
-          taskId: taskIdRef.current,
-          workingDir: workingDir,
-        });
+        console.log("[useVitePreview] Starting preview for:", taskIdRef.current);
+        console.log("[useVitePreview] workingDir:", workingDir);
 
+        const baseUrl = getGatewayUrl();
+        const data = await apiStartPreview(baseUrl, taskIdRef.current, workingDir);
+
+        console.log("[useVitePreview] Start response:", data);
         updateStateFromResponse(data);
 
         // If still starting, poll for status updates
@@ -191,10 +189,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
             if (!taskIdRef.current) return;
 
             try {
-              const statusData = await invoke<TauriPreviewState>(
-                "get_vite_preview_status",
-                { taskId: taskIdRef.current }
-              );
+              const statusData = await apiGetPreviewStatus(baseUrl, taskIdRef.current);
               updateStateFromResponse(statusData);
             } catch (err) {
               console.error("[useVitePreview] Polling error:", err);
@@ -223,9 +218,10 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     }
 
     try {
-      await invoke<TauriPreviewState>("stop_vite_preview", {
-        taskId: taskIdRef.current,
-      });
+      console.log("[useVitePreview] Stopping preview for:", taskIdRef.current);
+
+      const baseUrl = getGatewayUrl();
+      await apiStopPreview(baseUrl, taskIdRef.current);
 
       setStatus("idle");
       setPreviewUrl(null);
@@ -255,6 +251,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     startPreview,
     stopPreview,
     refreshPreview,
+    refreshStatus,
     isNodeAvailable,
     checkNodeAvailable,
   };
