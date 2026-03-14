@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getClient } from "@/lib/viben";
 
 // ============================================================================
@@ -313,6 +314,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
  * Hook for fetching a single cloud skill package by ID
  */
 export function useCloudSkillPackage(id: string | null) {
+  const { t } = useTranslation();
   const [data, setData] = useState<CloudSkillPackage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -322,7 +324,7 @@ export function useCloudSkillPackage(id: string | null) {
    */
   const fetchPackage = useCallback(async (packageId: string) => {
     if (!packageId.trim()) {
-      setError("Package ID cannot be empty");
+      setError(t("skillsMarket.packageIdEmpty"));
       return null;
     }
 
@@ -424,6 +426,7 @@ const CATEGORIES_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
  * Hook for fetching cloud skill categories
  */
 export function useCloudSkillCategories() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<SkillCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -449,10 +452,10 @@ export function useCloudSkillCategories() {
       // Categories API not available in VibenClient yet
       // For now, return some default categories
       const defaultCategories: SkillCategory[] = [
-        { id: "command", name: "Commands", description: "Slash commands for agents", count: 0 },
-        { id: "workflow", name: "Workflows", description: "Multi-step workflow skills", count: 0 },
-        { id: "integration", name: "Integrations", description: "Third-party integrations", count: 0 },
-        { id: "utility", name: "Utility", description: "General utility skills", count: 0 },
+        { id: "command", name: t("skillsMarket.categoriesData.commands"), description: t("skillsMarket.categoriesData.commandsDesc"), count: 0 },
+        { id: "workflow", name: t("skillsMarket.categoriesData.workflows"), description: t("skillsMarket.categoriesData.workflowsDesc"), count: 0 },
+        { id: "integration", name: t("skillsMarket.categoriesData.integrations"), description: t("skillsMarket.categoriesData.integrationsDesc"), count: 0 },
+        { id: "utility", name: t("skillsMarket.categoriesData.utility"), description: t("skillsMarket.categoriesData.utilityDesc"), count: 0 },
       ];
 
       // Update cache
@@ -470,7 +473,7 @@ export function useCloudSkillCategories() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {

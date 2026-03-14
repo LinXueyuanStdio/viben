@@ -17,6 +17,10 @@ import {
   writePendingQueue,
 } from "./persistence";
 import type { RunningItem, CompletedItem, QueueItem } from "../ops/types";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "command-queue-monitor" });
 
 /**
  * Check if a process is running
@@ -84,6 +88,8 @@ export class Monitor extends EventEmitter {
     this.running = true;
     const config = readConfig();
 
+    log.debug({ intervalMs: config.monitor_interval_ms }, "Monitor started");
+
     // Run immediately
     this.tick();
 
@@ -102,6 +108,7 @@ export class Monitor extends EventEmitter {
       this.intervalId = null;
     }
     this.running = false;
+    log.debug("Monitor stopped");
   }
 
   /**
@@ -111,15 +118,21 @@ export class Monitor extends EventEmitter {
     try {
       const running = readRunningQueue();
 
+      if (running.length > 0) {
+        log.trace({ runningCount: running.length }, "Checking running processes");
+      }
+
       for (const item of running) {
         const info = getProcessExitInfo(item);
 
         if (!info.running) {
+          log.debug({ itemId: item.id, pid: item.pid, exitCode: info.exitCode }, "Process exited");
           this.handleCompletion(item, info.exitCode ?? 0);
         }
       }
     } catch (e) {
       const error = e instanceof Error ? e : new Error(String(e));
+      log.error({ err: error }, "Monitor tick failed");
       this.emit("error", error);
     }
   }
@@ -180,6 +193,9 @@ export class Monitor extends EventEmitter {
    */
   private retryItem(item: RunningItem): void {
     const retryCount = ((item.metadata?.retry_count as number) || 0) + 1;
+    const maxRetries = (item.metadata?.max_retries as number) || 3;
+
+    log.info({ itemId: item.id, retryCount, maxRetries }, "Queuing item for retry");
 
     // Create new pending item
     const newItem: QueueItem = {

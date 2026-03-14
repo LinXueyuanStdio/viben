@@ -5,6 +5,7 @@
  * Provides API functions for managing live preview servers with HMR support.
  */
 
+import { GatewayError } from "../error";
 import { parseErrorMessage } from "./core";
 
 // ============================================================================
@@ -141,7 +142,11 @@ export async function startPreview(
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
-    throw new Error(`Failed to start preview: ${errorMessage}`);
+    throw new GatewayError(
+      `Failed to start preview: ${errorMessage}`,
+      response.status,
+      "PREVIEW_START_FAILED"
+    );
   }
 
   return response.json();
@@ -173,7 +178,11 @@ export async function stopPreview(
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
-    throw new Error(`Failed to stop preview: ${errorMessage}`);
+    throw new GatewayError(
+      `Failed to stop preview: ${errorMessage}`,
+      response.status,
+      "PREVIEW_STOP_FAILED"
+    );
   }
 
   return response.json();
@@ -202,7 +211,11 @@ export async function getPreviewStatus(
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
-    throw new Error(`Failed to get preview status: ${errorMessage}`);
+    throw new GatewayError(
+      `Failed to get preview status: ${errorMessage}`,
+      response.status,
+      "PREVIEW_STATUS_FAILED"
+    );
   }
 
   return response.json();
@@ -226,7 +239,11 @@ export async function stopAllPreviews(
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
-    throw new Error(`Failed to stop all previews: ${errorMessage}`);
+    throw new GatewayError(
+      `Failed to stop all previews: ${errorMessage}`,
+      response.status,
+      "PREVIEW_STOP_ALL_FAILED"
+    );
   }
 
   return response.json();
@@ -250,7 +267,11 @@ export async function listPreviews(
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
-    throw new Error(`Failed to list previews: ${errorMessage}`);
+    throw new GatewayError(
+      `Failed to list previews: ${errorMessage}`,
+      response.status,
+      "PREVIEW_LIST_FAILED"
+    );
   }
 
   return response.json();

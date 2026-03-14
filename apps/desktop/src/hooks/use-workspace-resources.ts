@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import i18n from "@/i18n";
 import {
   getGatewayClient,
   type ExecutorInfo,
@@ -98,7 +99,7 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
     } catch (err) {
       if (currentPathRef.current === requestPath) {
         const message =
-          err instanceof Error ? err.message : "Failed to load executors";
+          err instanceof Error ? err.message : i18n.t("errors.executors.loadFailed");
         setError(message);
         console.error("[useExecutors] Error:", err);
       }
@@ -207,7 +208,7 @@ export function useWorkspaceModels(
       setTotal(response.total);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load models";
+        err instanceof Error ? err.message : i18n.t("errors.models.loadFailed");
       setError(message);
       console.error("[useWorkspaceModels] Error:", err);
     } finally {
@@ -353,7 +354,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     } catch (err) {
       if (currentPathRef.current === requestPath) {
         const message =
-          err instanceof Error ? err.message : "Failed to load agents";
+          err instanceof Error ? err.message : i18n.t("errors.agents.loadFailed");
         setError(message);
         console.error("[useAgents] Error:", err);
       }
@@ -562,7 +563,7 @@ export function useAgentDetail(
         setNotFound(true);
         setAgent(null);
       } else {
-        const message = err instanceof Error ? err.message : "Failed to load agent";
+        const message = err instanceof Error ? err.message : i18n.t("errors.agents.loadAgentFailed");
         setError(message);
         console.error("[useAgentDetail] Error:", err);
       }
@@ -641,7 +642,7 @@ export function useWorkspaceAgentsFromGateway(
       setTotal(response.total);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load agents";
+        err instanceof Error ? err.message : i18n.t("errors.agents.loadFailed");
       setError(message);
       console.error("[useWorkspaceAgentsFromGateway] Error:", err);
     } finally {
@@ -892,7 +893,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
       // Only update error if this request is still relevant
       if (currentPathRef.current === requestPath) {
         const message =
-          err instanceof Error ? err.message : "Failed to load agent list";
+          err instanceof Error ? err.message : i18n.t("errors.agents.loadAgentListFailed");
         setError(message);
         console.error("[useAgentList] Error:", err);
       }
@@ -1092,7 +1093,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
       // Only update error if this request is still relevant
       if (currentPathRef.current === requestPath) {
         const message =
-          err instanceof Error ? err.message : "Failed to load chat list";
+          err instanceof Error ? err.message : i18n.t("errors.agents.loadChatListFailed");
         setError(message);
         console.error("[useChatList] Error:", err);
       }

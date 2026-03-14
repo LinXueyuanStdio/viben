@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayUrl } from "@/lib/gateway";
 
 /**
@@ -97,6 +98,7 @@ export interface UseSandboxReturn {
 }
 
 export function useSandbox(): UseSandboxReturn {
+  const { t } = useTranslation();
   const [providers, setProviders] = useState<SandboxProviderType[]>([]);
   const [providerDetails, setProviderDetails] = useState<SandboxProviderDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,7 +109,7 @@ export function useSandbox(): UseSandboxReturn {
   // Fetch available providers
   const refreshProviders = useCallback(async () => {
     if (!gatewayUrl) {
-      setError("Gateway not connected");
+      setError(t("errors.sandbox.gatewayNotConnected"));
       setIsLoading(false);
       return;
     }
@@ -118,7 +120,7 @@ export function useSandbox(): UseSandboxReturn {
     try {
       const response = await fetch(`${gatewayUrl}/api/sandbox/available`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch providers: ${response.statusText}`);
+        throw new Error(t("errors.sandbox.fetchProvidersFailed", { error: response.statusText }));
       }
       const data = await response.json();
       setProviders(data.providers || []);
@@ -130,7 +132,7 @@ export function useSandbox(): UseSandboxReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [gatewayUrl]);
+  }, [gatewayUrl, t]);
 
   // Initial load
   useEffect(() => {
@@ -150,7 +152,7 @@ export function useSandbox(): UseSandboxReturn {
       }
     ): Promise<SandboxExecResult | null> => {
       if (!gatewayUrl) {
-        setError("Gateway not connected");
+        setError(t("errors.sandbox.gatewayNotConnected"));
         return null;
       }
 
@@ -169,7 +171,7 @@ export function useSandbox(): UseSandboxReturn {
         });
 
         if (!response.ok) {
-          throw new Error(`Execution failed: ${response.statusText}`);
+          throw new Error(t("errors.sandbox.executionFailed", { error: response.statusText }));
         }
 
         return await response.json();
@@ -178,7 +180,7 @@ export function useSandbox(): UseSandboxReturn {
         return null;
       }
     },
-    [gatewayUrl]
+    [gatewayUrl, t]
   );
 
   // Run a script file
@@ -195,7 +197,7 @@ export function useSandbox(): UseSandboxReturn {
       }
     ): Promise<SandboxExecResult | null> => {
       if (!gatewayUrl) {
-        setError("Gateway not connected");
+        setError(t("errors.sandbox.gatewayNotConnected"));
         return null;
       }
 
@@ -215,7 +217,7 @@ export function useSandbox(): UseSandboxReturn {
         });
 
         if (!response.ok) {
-          throw new Error(`Script execution failed: ${response.statusText}`);
+          throw new Error(t("errors.sandbox.scriptExecutionFailed", { error: response.statusText }));
         }
 
         return await response.json();
@@ -224,7 +226,7 @@ export function useSandbox(): UseSandboxReturn {
         return null;
       }
     },
-    [gatewayUrl]
+    [gatewayUrl, t]
   );
 
   // Get provider details by type

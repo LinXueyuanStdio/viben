@@ -1,4 +1,5 @@
 import { getClient } from "@/lib/viben";
+import i18n from "@/i18n";
 
 /**
  * Options for making an API request
@@ -117,7 +118,7 @@ export async function setApiBaseUrl(url: string): Promise<void> {
   try {
     new URL(url);
   } catch {
-    throw new Error("Invalid URL format");
+    throw new Error(i18n.t("gateway.invalidUrl"));
   }
 
   apiBaseUrl = url.replace(/\/$/, ""); // Remove trailing slash

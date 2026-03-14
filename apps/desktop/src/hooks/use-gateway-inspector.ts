@@ -5,6 +5,7 @@
  * instead of a separate Python proxy process.
  */
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getGatewayClient,
   getGatewayUrl,
@@ -39,6 +40,7 @@ interface UseGatewayInspectorReturn {
  * Hook to use Gateway's built-in MCP Inspector proxy
  */
 export function useGatewayInspector(): UseGatewayInspectorReturn {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<GatewayInspectorStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export function useGatewayInspector(): UseGatewayInspectorReturn {
 
   const closeSession = useCallback(async (sessionId: string) => {
     if (!status?.authToken && !status?.authDisabled) {
-      throw new Error("Not authenticated");
+      throw new Error(t("errors.gateway.notAuthenticated"));
     }
 
     try {
@@ -112,7 +114,7 @@ export function useGatewayInspector(): UseGatewayInspectorReturn {
     } catch (e) {
       throw e;
     }
-  }, [status?.authToken, status?.authDisabled, refreshSessions, refreshStatus]);
+  }, [status?.authToken, status?.authDisabled, refreshSessions, refreshStatus, t]);
 
   // Initialize on mount
   useEffect(() => {

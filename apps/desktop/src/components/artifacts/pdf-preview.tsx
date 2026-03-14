@@ -32,7 +32,7 @@ export function PdfPreview({ artifact }: PreviewComponentProps) {
       }
 
       if (!artifact.path) {
-        setError("No PDF file path available");
+        setError(t("artifacts.noPdfPath"));
         setLoading(false);
         return;
       }

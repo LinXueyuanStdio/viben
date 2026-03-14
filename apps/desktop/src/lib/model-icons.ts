@@ -19,6 +19,7 @@ import Cohere from "@lobehub/icons/es/Cohere";
 import HuggingFace from "@lobehub/icons/es/HuggingFace";
 import { Bot, Sparkles, Terminal, Github } from "lucide-react";
 import type { ExecutorType } from "@/types";
+import i18n from "@/i18n";
 
 // ============================================================================
 // Types
@@ -212,26 +213,26 @@ export function getExecutorDisplayName(
   const type = executorType?.toUpperCase();
   switch (type) {
     case "CLAUDE_CODE":
-      return "Claude Code";
+      return i18n.t("executor.displayNames.claudeCode");
     case "CODEX":
-      return "Codex";
+      return i18n.t("executor.displayNames.codex");
     case "GEMINI":
-      return "Gemini";
+      return i18n.t("executor.displayNames.gemini");
     case "CURSOR_AGENT":
     case "CURSOR":
-      return "Cursor";
+      return i18n.t("executor.displayNames.cursor");
     case "COPILOT":
-      return "GitHub Copilot";
+      return i18n.t("executor.displayNames.githubCopilot");
     case "QWEN_CODE":
-      return "Qwen Code";
+      return i18n.t("executor.displayNames.qwenCode");
     case "AMP":
-      return "Amp";
+      return i18n.t("executor.displayNames.amp");
     case "OPENCODE":
-      return "OpenCode";
+      return i18n.t("executor.displayNames.opencode");
     case "DROID":
-      return "Droid";
+      return i18n.t("executor.displayNames.droid");
     default:
-      return executorType || "Agent";
+      return executorType || i18n.t("executor.displayNames.agent");
   }
 }
 

@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import i18n from "@/i18n";
 import { subscribeTaskEvents } from "@/lib/gateway/modules/tasks";
 import { getGatewayUrl } from "@/lib/gateway";
 import { recordTaskActivity } from "@/stores/task-activity-store";
@@ -126,7 +127,7 @@ export function useTaskEvents(
       // Handle connection error
       eventSource.onerror = (e) => {
         setIsConnected(false);
-        setError("Connection error");
+        setError(i18n.t("errors.connection.error"));
         onError?.(e);
       };
 
@@ -189,7 +190,7 @@ export function useTaskEvents(
         }
       };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to connect");
+      setError(err instanceof Error ? err.message : i18n.t("errors.connection.failed"));
     }
   }, [taskId, workspacePath, gatewayUrl, cleanup, onStateChanged, onTaskRecovered, onError, onOpen]);
 

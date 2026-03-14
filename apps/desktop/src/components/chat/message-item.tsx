@@ -332,7 +332,7 @@ export function MessageItem({
   if (message.type === "tool_result") {
     return (
       <ToolExecutionItem
-        name="Tool Result"
+        name={t("chat.toolResult")}
         output={message.output}
         isError={message.isError}
       />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayClient, type LogEntry, type LogSession, type LogSessionSummary } from "@/lib/gateway";
 
 export type { LogEntry, LogSession, LogSessionSummary };
@@ -6,6 +7,7 @@ export type { LogEntry, LogSession, LogSessionSummary };
 export type LogLevelFilter = "all" | "info" | "warning" | "error" | "debug";
 
 export function useLogs() {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<LogSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -148,8 +150,8 @@ export function useLogs() {
     if (selectedSessionId) {
       return exportSession(selectedSessionId, exportPath);
     }
-    throw new Error("No session selected");
-  }, [selectedSessionId, exportSession]);
+    throw new Error(t("errors.logs.noSessionSelected"));
+  }, [selectedSessionId, exportSession, t]);
 
   const refresh = useCallback(() => {
     fetchSessions();

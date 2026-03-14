@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { parse, stringify } from "yaml";
 
 import type {
   CronJob,
@@ -58,101 +59,37 @@ export function getLogPath(job: CronJob): string {
 // =============================================================================
 
 /**
- * Parse YAML config (simple implementation)
- */
-function parseYaml(yaml: string): CronConfig {
-  try {
-    const config: CronConfig = { version: 1, jobs: {} };
-
-    // Look for jobs entries
-    const jobsMatch = yaml.match(/jobs:\s*\n([\s\S]*?)(?=\n\w|$)/);
-    if (jobsMatch) {
-      const jobLines = jobsMatch[1].split("\n");
-      let currentJob: Partial<CronJob> | null = null;
-      let currentId = "";
-
-      for (const line of jobLines) {
-        const indentMatch = line.match(/^(\s*)/);
-        const indent = indentMatch ? indentMatch[1].length : 0;
-
-        if (indent === 2 && line.includes(":")) {
-          // New job entry
-          const idMatch = line.match(/^\s+"?([^":]+)"?:/);
-          if (idMatch) {
-            if (currentJob && currentId) {
-              config.jobs[currentId] = currentJob as CronJob;
-            }
-            currentId = idMatch[1];
-            currentJob = { id: currentId };
-          }
-        } else if (indent === 4 && currentJob) {
-          // Job property
-          const propMatch = line.match(/^\s+(\w+):\s*(.+)?$/);
-          if (propMatch) {
-            const [, key, valueStr] = propMatch;
-            if (valueStr) {
-              try {
-                const value = JSON.parse(valueStr);
-                (currentJob as Record<string, unknown>)[key] = value;
-              } catch {
-                (currentJob as Record<string, unknown>)[key] = valueStr.replace(/^["']|["']$/g, "");
-              }
-            }
-          }
-        }
-      }
-
-      if (currentJob && currentId) {
-        config.jobs[currentId] = currentJob as CronJob;
-      }
-    }
-
-    return config;
-  } catch {
-    return { version: 1, jobs: {} };
-  }
-}
-
-/**
- * Convert config to YAML
- */
-function configToYaml(config: CronConfig): string {
-  const lines: string[] = [];
-  lines.push(`version: ${config.version}`);
-  lines.push("jobs:");
-
-  for (const [id, job] of Object.entries(config.jobs)) {
-    lines.push(`  "${id}":`);
-    for (const [key, value] of Object.entries(job)) {
-      if (value !== undefined && value !== null) {
-        lines.push(`    ${key}: ${JSON.stringify(value)}`);
-      }
-    }
-  }
-
-  return lines.join("\n") + "\n";
-}
-
-/**
- * Load config from file
+ * Load config from file using standard YAML parser
  */
 export async function loadConfig(configPath: string): Promise<CronConfig> {
   if (!existsSync(configPath)) {
-    return { version: 1, jobs: {} };
+    return { version: 1, jobs: [] };
   }
 
   const content = await readFile(configPath, "utf-8");
-  return parseYaml(content);
+  try {
+    const parsed = parse(content) as CronConfig | null;
+    if (!parsed) {
+      return { version: 1, jobs: [] };
+    }
+    // Ensure jobs is an array
+    return {
+      version: parsed.version || 1,
+      jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+    };
+  } catch {
+    return { version: 1, jobs: [] };
+  }
 }
 
 /**
- * Save config to file
+ * Save config to file using standard YAML stringifier
  */
 export async function saveConfig(configPath: string, config: CronConfig): Promise<void> {
   const dir = join(configPath, "..");
   await mkdir(dir, { recursive: true });
 
-  const yaml = configToYaml(config);
+  const yaml = stringify(config);
   await writeFile(configPath, yaml);
 }
 
@@ -169,7 +106,7 @@ export async function listJobs(configPath?: string): Promise<ListJobsResult> {
     const config = await loadConfig(path);
     return {
       success: true,
-      jobs: Object.values(config.jobs),
+      jobs: config.jobs,
     };
   } catch (error) {
     return {
@@ -186,7 +123,7 @@ export async function listJobs(configPath?: string): Promise<ListJobsResult> {
 export async function getJob(configPath: string, id: string): Promise<GetJobResult> {
   try {
     const config = await loadConfig(configPath);
-    const job = config.jobs[id];
+    const job = config.jobs.find((j) => j.id === id);
 
     if (!job) {
       return {
@@ -231,16 +168,14 @@ export async function createJob(
 
     const config = await loadConfig(configPath);
 
-    // Generate ID if not provided
-    const id =
-      create.id ||
-      create.name
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
+    // Generate ID if not provided - always use UUID for consistency
+    let id = create.id;
+    if (!id) {
+      id = crypto.randomUUID();
+    }
 
     // Check if already exists
-    if (config.jobs[id]) {
+    if (config.jobs.some((j) => j.id === id)) {
       return {
         success: false,
         error: `Job already exists: ${id}`,
@@ -251,6 +186,7 @@ export async function createJob(
     const job: CronJob = {
       id,
       name: create.name,
+      description: create.description,
       enabled: create.enabled ?? true,
       job_type: create.job_type || "agent",
       message: create.message,
@@ -265,8 +201,8 @@ export async function createJob(
       updated_at: now,
     };
 
-    // Store job
-    config.jobs[id] = job;
+    // Add job to array
+    config.jobs.push(job);
 
     // Save config
     await saveConfig(configPath, config);
@@ -293,17 +229,20 @@ export async function updateJob(
 ): Promise<UpdateJobResult> {
   try {
     const config = await loadConfig(configPath);
-    const job = config.jobs[id];
+    const jobIndex = config.jobs.findIndex((j) => j.id === id);
 
-    if (!job) {
+    if (jobIndex === -1) {
       return {
         success: false,
         error: `Job not found: ${id}`,
       };
     }
 
+    const job = config.jobs[jobIndex];
+
     // Apply updates
     if (update.name !== undefined) job.name = update.name;
+    if (update.description !== undefined) job.description = update.description;
     if (update.job_type !== undefined) job.job_type = update.job_type;
     if (update.message !== undefined) job.message = update.message;
     if (update.script !== undefined) job.script = update.script;
@@ -322,8 +261,8 @@ export async function updateJob(
     if (update.notifications !== undefined) job.notifications = update.notifications;
     job.updated_at = Date.now();
 
-    // Store updated job
-    config.jobs[id] = job;
+    // Update job in array
+    config.jobs[jobIndex] = job;
 
     // Save config
     await saveConfig(configPath, config);
@@ -346,16 +285,17 @@ export async function updateJob(
 export async function deleteJob(configPath: string, id: string): Promise<DeleteJobResult> {
   try {
     const config = await loadConfig(configPath);
+    const jobIndex = config.jobs.findIndex((j) => j.id === id);
 
-    if (!config.jobs[id]) {
+    if (jobIndex === -1) {
       return {
         success: false,
         error: `Job not found: ${id}`,
       };
     }
 
-    // Remove from jobs
-    delete config.jobs[id];
+    // Remove from jobs array
+    config.jobs.splice(jobIndex, 1);
 
     // Save config
     await saveConfig(configPath, config);
@@ -402,14 +342,16 @@ export async function updateJobStatus(
 ): Promise<UpdateJobResult> {
   try {
     const config = await loadConfig(configPath);
-    const job = config.jobs[id];
+    const jobIndex = config.jobs.findIndex((j) => j.id === id);
 
-    if (!job) {
+    if (jobIndex === -1) {
       return {
         success: false,
         error: `Job not found: ${id}`,
       };
     }
+
+    const job = config.jobs[jobIndex];
 
     // Update execution status fields
     job.last_run = status.last_run;
@@ -420,8 +362,8 @@ export async function updateJobStatus(
       job.next_run = status.next_run;
     }
 
-    // Store updated job
-    config.jobs[id] = job;
+    // Update job in array
+    config.jobs[jobIndex] = job;
 
     // Save config
     await saveConfig(configPath, config);

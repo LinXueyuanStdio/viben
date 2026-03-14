@@ -139,12 +139,16 @@ export type ExecutionPhase =
   | "fix"           // 修复阶段
   | "complete";     // 执行完成
 
+// Priority type (matches IssuePriority from @viben/kanban)
+export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
+
 // Create task request
 export interface CreateTaskRequest {
   title: string;
   description?: string | null;
   prompt?: string;
   status?: TaskStatus;
+  priority?: IssuePriority;
   workspace_path?: string;
   session_id?: string;
   agent_id?: string;
@@ -165,6 +169,7 @@ export interface UpdateTaskRequest {
   description?: string | null;
   prompt?: string;
   status?: TaskStatus;
+  priority?: IssuePriority;
   workspace_path?: string;
   session_id?: string;
   agent_id?: string;

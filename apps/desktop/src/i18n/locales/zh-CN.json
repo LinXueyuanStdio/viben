@@ -437,7 +437,13 @@
       },
       "preview": {
         "title": "实时预览",
-        "description": "实时预览终端设置效果"
+        "description": "实时预览终端设置效果",
+        "exampleCommand1": "$ echo \"你好，终端！\"",
+        "exampleOutput1": "你好，终端！",
+        "exampleCommand2": "$ ls -la",
+        "exampleDir1": "drwxr-xr-x  5 user  staff   160 Jan  1 12:00 .",
+        "exampleDir2": "drwxr-xr-x 10 user  staff   320 Jan  1 11:00 ..",
+        "exampleFile1": "-rw-r--r--  1 user  staff  1024 Jan  1 12:00 file.txt"
       },
       "presets": {
         "title": "快速预设",
@@ -694,9 +700,9 @@
     "codexCli": "Codex CLI",
     "claudeSandboxRuntime": "Claude 沙箱运行时",
     "providerNames": {
-      "codex": "Codex CLI 沙箱",
-      "claude": "Claude 沙箱",
-      "native": "原生（无隔离）"
+      "codex": "Codex",
+      "claude": "Claude",
+      "native": "原生"
     }
   },
   "about": {
@@ -1137,7 +1143,11 @@
     "promoteToGlobal": "提升为全局",
     "promoteTemplateConfirm": "将此模板提升为全局模板？",
     "globalTemplate": "全局",
-    "workspaceTemplate": "工作区"
+    "workspaceTemplate": "工作区",
+    "variablePlaceholder": "变量名",
+    "apiKeyPlaceholder": "API密钥名",
+    "envVarPlaceholder": "环境变量名",
+    "memoryFile": "MEMORY.md"
   },
   "agents": {
     "title": "智能体",
@@ -1246,7 +1256,10 @@
     "noServerLogs": "此会话没有服务器日志",
     "noServerLogsDesc": "此会话仅有 API 日志",
     "noApiLogsForSession": "此会话没有 API 日志",
-    "logFiles": "日志文件"
+    "logFiles": "日志文件",
+    "serverTab": "服务器",
+    "apiTab": "API",
+    "apiLogsWithCount": "API 日志 ({{count}})"
   },
   "searchService": {
     "title": "搜索服务",
@@ -1658,6 +1671,7 @@
     "taskIdLabel": "任务 ID：",
     "keyPlaceholder": "键（如 requestId）",
     "jsonPlaceholder": "{\"key\": \"value\"}",
+    "json": "JSON",
     "filterInfo": "信息",
     "filterProgress": "进度",
     "filterStderr": "错误输出",
@@ -1834,7 +1848,21 @@
     "pinConfig": "置顶",
     "unpinConfig": "取消置顶",
     "deleteConfigTitle": "删除配置",
-    "deleteConfigDesc": "确定要删除此已保存配置吗？此操作无法撤销。"
+    "deleteConfigDesc": "确定要删除此已保存配置吗？此操作无法撤销。",
+    "authModes": {
+      "pkce": "PKCE",
+      "standard": "标准"
+    },
+    "configErrors": {
+      "invalidNotObject": "无效配置：不是对象",
+      "missingVersion": "无效配置：缺少版本",
+      "missingTransport": "无效配置：缺少传输方式",
+      "invalidTransportType": "无效传输类型",
+      "remoteRequiresUrl": "远程传输需要 URL",
+      "invalidUrl": "无效 URL",
+      "stdioRequiresCommand": "STDIO 传输需要命令"
+    },
+    "enterAuthCode": "在浏览器中完成授权后，将授权码粘贴到此处："
   },
   "updates": {
     "title": "包更新",
@@ -1951,7 +1979,18 @@
     "installErrorDuplicate": "{{name}} 已经安装",
     "installErrorCorrupt": "技能包已损坏或无效",
     "installErrorNetwork": "网络错误 - 请检查网络连接后重试",
-    "installErrorPermission": "权限被拒绝 - 请检查文件系统权限"
+    "installErrorPermission": "权限被拒绝 - 请检查文件系统权限",
+    "packageIdEmpty": "包 ID 不能为空",
+    "categoriesData": {
+      "commands": "命令",
+      "commandsDesc": "用于智能体的斜杠命令",
+      "workflows": "工作流",
+      "workflowsDesc": "多步骤工作流技能",
+      "integrations": "集成",
+      "integrationsDesc": "第三方集成",
+      "utility": "工具",
+      "utilityDesc": "通用工具技能"
+    }
   },
   "marketplace": {
     "title": "MCP 市场",
@@ -2017,7 +2056,17 @@
     "descending": "降序",
     "latestOnly": "仅显示最新版",
     "clearFilters": "清除筛选",
-    "filteredResults": "{{total}} 个中的 {{filtered}} 个服务器"
+    "filteredResults": "{{total}} 个中的 {{filtered}} 个服务器",
+    "categoriesData": {
+      "dataStorage": "数据与存储",
+      "dataStorageDesc": "数据库和存储工具",
+      "development": "开发",
+      "developmentDesc": "开发工具",
+      "aiMl": "AI 与机器学习",
+      "aiMlDesc": "AI 和机器学习工具",
+      "utility": "工具",
+      "utilityDesc": "通用工具"
+    }
   },
   "workspaceSettings": {
     "sections": {
@@ -2090,7 +2139,11 @@
         "patRequired": "令牌不能为空",
         "patFailed": "PAT 认证失败",
         "createPAT": "在 GitHub 上创建新令牌",
-        "authenticate": "认证"
+        "authenticate": "认证",
+        "authTypes": {
+          "ghCli": "gh CLI",
+          "pat": "PAT"
+        }
       },
       "repo": {
         "title": "仓库",
@@ -2896,6 +2949,7 @@
   },
   "onboarding": {
     "footer": "Viben - 您的 AI 研究助手",
+    "projectPathPlaceholder": "/Users/用户名/项目",
     "steps": {
       "python": "Python",
       "claude": "AI 客户端",
@@ -2978,6 +3032,8 @@
     "toolInput": "输入",
     "toolOutput": "输出",
     "running": "运行中...",
+    "toolResult": "工具结果",
+    "executingTask": "正在执行任务",
     "executionPlan": "执行计划",
     "planApprovalPrompt": "是否执行此计划？",
     "approvePlan": "批准",
@@ -3287,7 +3343,29 @@
     "noMessagesHint": "此会话似乎为空",
     "selectSession": "选择会话",
     "selectSessionHint": "从上方下拉菜单中选择一个会话",
-    "readOnlyHint": "执行器会话为只读"
+    "readOnlyHint": "执行器会话为只读",
+    "displayNames": {
+      "claudeCode": "Claude Code",
+      "codex": "Codex",
+      "gemini": "Gemini",
+      "cursor": "Cursor",
+      "githubCopilot": "GitHub Copilot",
+      "qwenCode": "Qwen Code",
+      "amp": "Amp",
+      "opencode": "OpenCode",
+      "droid": "Droid",
+      "agent": "智能体"
+    },
+    "providerNames": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "google": "Google",
+      "azure": "Azure",
+      "ollama": "Ollama",
+      "openrouter": "OpenRouter",
+      "custom": "自定义"
+    },
+    "onlyModelsSupported": "仅支持 {{names}} 模型"
   },
   "cron": {
     "title": "定时任务",
@@ -3314,6 +3392,7 @@
     "scriptPlaceholder": "#!/bin/bash\n# 输入在发送消息给智能体前要运行的脚本...",
     "scriptHint": "可选的 Bash 脚本，在发送消息给智能体前执行",
     "namePlaceholder": "例如：每日报告",
+    "descriptionPlaceholder": "这个任务是做什么的？",
     "scheduleType": "调度方式",
     "interval": "固定间隔",
     "cronExpression": "Cron 表达式",
@@ -3698,7 +3777,19 @@
       "yaml": "YAML",
       "shell": "Shell",
       "plaintext": "纯文本"
-    }
+    },
+    "failedToReadContent": "读取文件内容失败",
+    "failedToLoadFile": "加载文件失败"
+  },
+  "filePicker": {
+    "images": "图片",
+    "documents": "文档",
+    "spreadsheets": "电子表格",
+    "presentations": "演示文稿",
+    "allFiles": "所有文件"
+  },
+  "skills": {
+    "rootFolder": "根目录"
   },
   "codeEditor": {
     "saving": "保存中...",
@@ -3739,6 +3830,9 @@
     "openInPdfViewerHint": "点击外部链接按钮在 PDF 阅读器中打开",
     "loadingVideo": "加载视频中...",
     "openInVideoPlayer": "在视频播放器中打开",
+    "noPdfPath": "没有可用的 PDF 文件路径",
+    "noVideoPath": "没有可用的视频文件路径",
+    "noImagePath": "没有可用的图片文件路径",
     "searchResults": "搜索结果",
     "results": "个结果",
     "search": "次搜索",
@@ -3851,14 +3945,27 @@
     },
     "channels": {
       "loadFailed": "加载渠道配置失败",
-      "saveFailed": "保存渠道配置失败"
+      "saveFailed": "保存渠道配置失败",
+      "syncFailed": "同步渠道失败",
+      "createFailed": "创建渠道失败",
+      "updateFailed": "更新渠道失败",
+      "deleteFailed": "删除渠道失败",
+      "setDefaultFailed": "设置默认渠道失败",
+      "testFailed": "测试渠道失败",
+      "sendTestFailed": "发送测试消息失败"
     },
     "mcp": {
       "invalidConfigMissingUrl": "配置无效：缺少 URL",
       "connectionFailed": "连接失败",
-      "invalidUrl": "无效的 URL：{{url}}"
+      "invalidUrl": "无效的 URL：{{url}}",
+      "notConnected": "未连接到 MCP 服务器"
+    },
+    "mcpProxy": {
+      "portInUse": "端口 {{port}} 已被其他进程占用",
+      "authTokenUnknown": "检测到现有代理，但认证令牌未知。请重启以获取新令牌。"
     },
     "websocket": {
+      "connectionTimeout": "WebSocket 连接超时",
       "connectionError": "WebSocket 连接错误",
       "connectionFailedMultipleAttempts": "WebSocket 多次尝试后连接失败",
       "notConnected": "WebSocket 未连接"
@@ -3868,8 +3975,12 @@
       "approvePlanFailed": "批准计划失败",
       "startAgentFailed": "启动智能体失败：{{error}}"
     },
+    "gateway": {
+      "notAuthenticated": "未认证"
+    },
     "connection": {
-      "failed": "连接失败"
+      "failed": "连接失败",
+      "error": "连接错误"
     },
     "workspace": {
       "noWorkspaceSelected": "未选择工作区"
@@ -3888,19 +3999,37 @@
       "deleted": "会话已删除",
       "deleteFailed": "删除会话失败",
       "created": "新会话已创建",
-      "createFailed": "创建会话失败"
+      "createFailed": "创建会话失败",
+      "noServerLogSelected": "未选择服务器日志会话"
     },
     "packages": {
-      "loadFailed": "加载包失败"
+      "loadFailed": "加载包失败",
+      "installFailed": "安装失败"
     },
     "workspaces": {
       "loadFailed": "加载工作区失败"
     },
+    "models": {
+      "loadFailed": "加载模型失败"
+    },
+    "executors": {
+      "loadFailed": "加载执行器失败"
+    },
     "auth": {
-      "invalidApiKey": "无效的 API 密钥"
+      "invalidApiKey": "无效的 API 密钥",
+      "authenticationFailed": "认证失败"
+    },
+    "agents": {
+      "notFound": "未找到智能体 {{id}}",
+      "cannotRemoveExecutor": "无法通过此钩子移除执行器。请直接删除配置文件。",
+      "loadFailed": "加载智能体失败",
+      "loadAgentFailed": "加载智能体失败",
+      "loadAgentListFailed": "加载智能体列表失败",
+      "loadChatListFailed": "加载对话列表失败"
     },
     "user": {
-      "fetchFailed": "获取用户信息失败"
+      "fetchFailed": "获取用户信息失败",
+      "toggleFavoriteFailed": "切换收藏状态失败"
     },
     "groupChat": {
       "notFound": "未找到群聊",
@@ -3925,6 +4054,12 @@
     },
     "gateway": {
       "notConnected": "网关未连接"
+    },
+    "sandbox": {
+      "gatewayNotConnected": "网关未连接",
+      "fetchProvidersFailed": "获取提供者失败：{{error}}",
+      "executionFailed": "执行失败：{{error}}",
+      "scriptExecutionFailed": "脚本执行失败：{{error}}"
     },
     "backgroundTasks": {
       "connectionLost": "连接丢失",
@@ -3952,6 +4087,16 @@
       "downloadComplete": "下载完成",
       "installationComplete": "安装完成",
       "installationFailed": "安装失败"
+    },
+    "logs": {
+      "noSessionSelected": "未选择会话"
+    },
+    "sources": {
+      "pythonPathNotConfigured": "Python 路径未配置"
+    },
+    "kanban": {
+      "cannotConnectGateway": "无法连接到网关。网关是否正在运行？",
+      "unknownError": "未知错误"
     }
   },
   "availability": {
@@ -3968,7 +4113,16 @@
     "refactor": "重构",
     "refactorDesc": "清理相关代码",
     "fullImplementation": "完整实现",
-    "fullImplementationDesc": "包含测试的完整功能"
+    "fullImplementationDesc": "包含测试的完整功能",
+    "planRejected": "计划被拒绝。你希望我如何继续处理这个任务？",
+    "analyzeRequirements": "分析需求",
+    "designSolution": "设计方案",
+    "implementChanges": "实现更改",
+    "testAndVerify": "测试验证",
+    "unknownError": "发生未知错误",
+    "planExecutedSuccess": "计划执行成功！所有步骤已完成。",
+    "failedToExecutePlan": "执行计划失败",
+    "failedToProcessAnswers": "处理答案失败"
   },
   "channelNames": {
     "telegram": "Telegram",

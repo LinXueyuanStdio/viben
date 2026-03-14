@@ -50,7 +50,7 @@ export function SkillsTabContent({ skills }: SkillsTabContentProps) {
         <div key={folder}>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Folder className="h-3 w-3" />
-            <span>{folder === "root" ? "Root" : folder}</span>
+            <span>{folder === "root" ? t("skills.rootFolder") : folder}</span>
           </div>
           <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2">
             {folderSkills.map((skill, idx) => (

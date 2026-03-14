@@ -436,7 +436,13 @@
       },
       "preview": {
         "title": "Live Preview",
-        "description": "Preview your terminal settings in real-time"
+        "description": "Preview your terminal settings in real-time",
+        "exampleCommand1": "$ echo \"Hello, Terminal!\"",
+        "exampleOutput1": "Hello, Terminal!",
+        "exampleCommand2": "$ ls -la",
+        "exampleDir1": "drwxr-xr-x  5 user  staff   160 Jan  1 12:00 .",
+        "exampleDir2": "drwxr-xr-x 10 user  staff   320 Jan  1 11:00 ..",
+        "exampleFile1": "-rw-r--r--  1 user  staff  1024 Jan  1 12:00 file.txt"
       },
       "presets": {
         "title": "Quick Presets",
@@ -691,7 +697,12 @@
     "allInstalled": "All providers installed",
     "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)",
     "codexCli": "Codex CLI",
-    "claudeSandboxRuntime": "Claude Sandbox Runtime"
+    "claudeSandboxRuntime": "Claude Sandbox Runtime",
+    "providerNames": {
+      "codex": "Codex",
+      "claude": "Claude",
+      "native": "Native"
+    }
   },
   "about": {
     "title": "Viben",
@@ -1130,7 +1141,11 @@
     "promoteToGlobal": "Promote to Global",
     "promoteTemplateConfirm": "Promote this template to global?",
     "globalTemplate": "Global",
-    "workspaceTemplate": "Workspace"
+    "workspaceTemplate": "Workspace",
+    "variablePlaceholder": "my_variable",
+    "apiKeyPlaceholder": "MY_API_KEY",
+    "envVarPlaceholder": "ENV_VAR_NAME",
+    "memoryFile": "MEMORY.md"
   },
   "agents": {
     "title": "Agents",
@@ -1239,7 +1254,10 @@
     "noServerLogs": "No server logs for this session",
     "noServerLogsDesc": "This session only has API logs",
     "noApiLogsForSession": "No API logs for this session",
-    "logFiles": "Log Files"
+    "logFiles": "Log Files",
+    "serverTab": "Server",
+    "apiTab": "API",
+    "apiLogsWithCount": "API logs ({{count}})"
   },
   "searchService": {
     "title": "Search Service",
@@ -1641,6 +1659,7 @@
     "taskIdLabel": "Task ID:",
     "keyPlaceholder": "Key (e.g. requestId)",
     "jsonPlaceholder": "{\"key\": \"value\"}",
+    "json": "JSON",
     "filterInfo": "Info",
     "filterProgress": "Progress",
     "filterStderr": "Stderr",
@@ -1817,7 +1836,21 @@
     "pinConfig": "Pin",
     "unpinConfig": "Unpin",
     "deleteConfigTitle": "Delete Configuration",
-    "deleteConfigDesc": "Are you sure you want to delete this saved configuration? This action cannot be undone."
+    "deleteConfigDesc": "Are you sure you want to delete this saved configuration? This action cannot be undone.",
+    "authModes": {
+      "pkce": "PKCE",
+      "standard": "Standard"
+    },
+    "configErrors": {
+      "invalidNotObject": "Invalid config: not an object",
+      "missingVersion": "Invalid config: missing version",
+      "missingTransport": "Invalid config: missing transport",
+      "invalidTransportType": "Invalid transport type",
+      "remoteRequiresUrl": "Remote transport requires url",
+      "invalidUrl": "Invalid URL",
+      "stdioRequiresCommand": "STDIO transport requires command"
+    },
+    "enterAuthCode": "After authorizing in the browser, paste the authorization code here:"
   },
   "updates": {
     "title": "Package Updates",
@@ -1934,7 +1967,18 @@
     "installErrorDuplicate": "{{name}} is already installed",
     "installErrorCorrupt": "The skill package is corrupted or invalid",
     "installErrorNetwork": "Network error - check your connection and try again",
-    "installErrorPermission": "Permission denied - check file system permissions"
+    "installErrorPermission": "Permission denied - check file system permissions",
+    "packageIdEmpty": "Package ID cannot be empty",
+    "categoriesData": {
+      "commands": "Commands",
+      "commandsDesc": "Slash commands for agents",
+      "workflows": "Workflows",
+      "workflowsDesc": "Multi-step workflow skills",
+      "integrations": "Integrations",
+      "integrationsDesc": "Third-party integrations",
+      "utility": "Utility",
+      "utilityDesc": "General utility skills"
+    }
   },
   "marketplace": {
     "title": "MCP Marketplace",
@@ -2000,7 +2044,17 @@
     "descending": "Descending",
     "latestOnly": "Latest Only",
     "clearFilters": "Clear Filters",
-    "filteredResults": "{{filtered}} of {{total}} servers"
+    "filteredResults": "{{filtered}} of {{total}} servers",
+    "categoriesData": {
+      "dataStorage": "Data & Storage",
+      "dataStorageDesc": "Database and storage tools",
+      "development": "Development",
+      "developmentDesc": "Development tools",
+      "aiMl": "AI & ML",
+      "aiMlDesc": "AI and machine learning tools",
+      "utility": "Utility",
+      "utilityDesc": "General utility tools"
+    }
   },
   "workspaceSettings": {
     "sections": {
@@ -2073,7 +2127,11 @@
         "patRequired": "Token is required",
         "patFailed": "Failed to authenticate with PAT",
         "createPAT": "Create a new token on GitHub",
-        "authenticate": "Authenticate"
+        "authenticate": "Authenticate",
+        "authTypes": {
+          "ghCli": "gh CLI",
+          "pat": "PAT"
+        }
       },
       "repo": {
         "title": "Repository",
@@ -2824,6 +2882,7 @@
   },
   "onboarding": {
     "footer": "Viben - Your AI-powered research assistant",
+    "projectPathPlaceholder": "/Users/name/projects",
     "steps": {
       "python": "Python",
       "claude": "AI Clients",
@@ -2906,6 +2965,8 @@
     "toolInput": "Input",
     "toolOutput": "Output",
     "running": "Running...",
+    "toolResult": "Tool Result",
+    "executingTask": "Executing task",
     "executionPlan": "Execution Plan",
     "planApprovalPrompt": "Would you like to proceed with this plan?",
     "approvePlan": "Approve",
@@ -3214,7 +3275,29 @@
     "noMessagesHint": "This session appears to be empty",
     "selectSession": "Select a session",
     "selectSessionHint": "Choose a session from the dropdown above",
-    "readOnlyHint": "Executor sessions are read-only"
+    "readOnlyHint": "Executor sessions are read-only",
+    "displayNames": {
+      "claudeCode": "Claude Code",
+      "codex": "Codex",
+      "gemini": "Gemini",
+      "cursor": "Cursor",
+      "githubCopilot": "GitHub Copilot",
+      "qwenCode": "Qwen Code",
+      "amp": "Amp",
+      "opencode": "OpenCode",
+      "droid": "Droid",
+      "agent": "Agent"
+    },
+    "providerNames": {
+      "anthropic": "Anthropic",
+      "openai": "OpenAI",
+      "google": "Google",
+      "azure": "Azure",
+      "ollama": "Ollama",
+      "openrouter": "OpenRouter",
+      "custom": "Custom"
+    },
+    "onlyModelsSupported": "Only {{names}} models are supported"
   },
   "cron": {
     "title": "Scheduled Tasks",
@@ -3241,6 +3324,7 @@
     "scriptPlaceholder": "#!/bin/bash\n# Enter bash script to run before agent message...",
     "scriptHint": "Optional bash script to execute before sending the message to the agent",
     "namePlaceholder": "e.g., Daily Report",
+    "descriptionPlaceholder": "What does this task do?",
     "scheduleType": "Schedule Type",
     "interval": "Fixed Interval",
     "cronExpression": "Cron Expression",
@@ -3625,7 +3709,19 @@
       "yaml": "YAML",
       "shell": "Shell",
       "plaintext": "Plain Text"
-    }
+    },
+    "failedToReadContent": "Failed to read file content",
+    "failedToLoadFile": "Failed to load file"
+  },
+  "filePicker": {
+    "images": "Images",
+    "documents": "Documents",
+    "spreadsheets": "Spreadsheets",
+    "presentations": "Presentations",
+    "allFiles": "All Files"
+  },
+  "skills": {
+    "rootFolder": "Root"
   },
   "codeEditor": {
     "saving": "Saving...",
@@ -3666,6 +3762,9 @@
     "openInPdfViewerHint": "Use the external link button to open in your PDF viewer",
     "loadingVideo": "Loading video...",
     "openInVideoPlayer": "Open in Video Player",
+    "noPdfPath": "No PDF file path available",
+    "noVideoPath": "No video file path available",
+    "noImagePath": "No image file path available",
     "searchResults": "Search Results",
     "results": "results",
     "search": "search",
@@ -3778,14 +3877,27 @@
     },
     "channels": {
       "loadFailed": "Failed to load channel configuration",
-      "saveFailed": "Failed to save channel configuration"
+      "saveFailed": "Failed to save channel configuration",
+      "syncFailed": "Failed to sync channels",
+      "createFailed": "Failed to create channel",
+      "updateFailed": "Failed to update channel",
+      "deleteFailed": "Failed to delete channel",
+      "setDefaultFailed": "Failed to set default channel",
+      "testFailed": "Failed to test channel",
+      "sendTestFailed": "Failed to send test message"
     },
     "mcp": {
       "invalidConfigMissingUrl": "Invalid config: missing url",
       "connectionFailed": "Connection failed",
-      "invalidUrl": "Invalid URL: {{url}}"
+      "invalidUrl": "Invalid URL: {{url}}",
+      "notConnected": "Not connected to MCP server"
+    },
+    "mcpProxy": {
+      "portInUse": "Port {{port}} is in use by another process",
+      "authTokenUnknown": "Existing proxy detected but auth token unknown. Please restart to get a new token."
     },
     "websocket": {
+      "connectionTimeout": "WebSocket connection timeout",
       "connectionError": "WebSocket connection error",
       "connectionFailedMultipleAttempts": "WebSocket connection failed after multiple attempts",
       "notConnected": "WebSocket not connected"
@@ -3795,8 +3907,12 @@
       "approvePlanFailed": "Failed to approve plan",
       "startAgentFailed": "Failed to start agent: {{error}}"
     },
+    "gateway": {
+      "notAuthenticated": "Not authenticated"
+    },
     "connection": {
-      "failed": "Connection failed"
+      "failed": "Connection failed",
+      "error": "Connection error"
     },
     "workspace": {
       "noWorkspaceSelected": "No workspace selected"
@@ -3815,19 +3931,37 @@
       "deleted": "Session deleted",
       "deleteFailed": "Failed to delete session",
       "created": "New session created",
-      "createFailed": "Failed to create session"
+      "createFailed": "Failed to create session",
+      "noServerLogSelected": "No server log session selected"
     },
     "packages": {
-      "loadFailed": "Failed to load packages"
+      "loadFailed": "Failed to load packages",
+      "installFailed": "Install failed"
     },
     "workspaces": {
       "loadFailed": "Failed to load workspaces"
     },
+    "models": {
+      "loadFailed": "Failed to load models"
+    },
+    "executors": {
+      "loadFailed": "Failed to load executors"
+    },
     "auth": {
-      "invalidApiKey": "Invalid API key"
+      "invalidApiKey": "Invalid API key",
+      "authenticationFailed": "Authentication failed"
+    },
+    "agents": {
+      "notFound": "Agent {{id}} not found",
+      "cannotRemoveExecutor": "Cannot remove executor via this hook. Please delete the config file directly.",
+      "loadFailed": "Failed to load agents",
+      "loadAgentFailed": "Failed to load agent",
+      "loadAgentListFailed": "Failed to load agent list",
+      "loadChatListFailed": "Failed to load chat list"
     },
     "user": {
-      "fetchFailed": "Failed to fetch user"
+      "fetchFailed": "Failed to fetch user",
+      "toggleFavoriteFailed": "Failed to toggle favorite"
     },
     "groupChat": {
       "notFound": "Group chat not found",
@@ -3852,6 +3986,12 @@
     },
     "gateway": {
       "notConnected": "Gateway not connected"
+    },
+    "sandbox": {
+      "gatewayNotConnected": "Gateway not connected",
+      "fetchProvidersFailed": "Failed to fetch providers: {{error}}",
+      "executionFailed": "Execution failed: {{error}}",
+      "scriptExecutionFailed": "Script execution failed: {{error}}"
     },
     "backgroundTasks": {
       "connectionLost": "Connection lost",
@@ -3879,6 +4019,16 @@
       "downloadComplete": "Download complete",
       "installationComplete": "Installation complete",
       "installationFailed": "Installation failed"
+    },
+    "logs": {
+      "noSessionSelected": "No session selected"
+    },
+    "sources": {
+      "pythonPathNotConfigured": "Python path not configured"
+    },
+    "kanban": {
+      "cannotConnectGateway": "Cannot connect to Gateway. Is it running?",
+      "unknownError": "Unknown error"
     }
   },
   "availability": {
@@ -3895,7 +4045,16 @@
     "refactor": "Refactor",
     "refactorDesc": "Clean up related code",
     "fullImplementation": "Full Implementation",
-    "fullImplementationDesc": "Complete feature with tests"
+    "fullImplementationDesc": "Complete feature with tests",
+    "planRejected": "Plan rejected. How would you like me to proceed with this task?",
+    "analyzeRequirements": "Analyze requirements",
+    "designSolution": "Design solution",
+    "implementChanges": "Implement changes",
+    "testAndVerify": "Test and verify",
+    "unknownError": "An unknown error occurred",
+    "planExecutedSuccess": "Plan executed successfully! All steps have been completed.",
+    "failedToExecutePlan": "Failed to execute plan",
+    "failedToProcessAnswers": "Failed to process answers"
   },
   "channelNames": {
     "telegram": "Telegram",

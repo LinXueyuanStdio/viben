@@ -1384,7 +1384,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                   {renderedResults.has(execution.id) ? (
                                     <>
                                       <Code2 className="h-3 w-3" />
-                                      <span>JSON</span>
+                                      <span>{t("inspector.json")}</span>
                                     </>
                                   ) : (
                                     <>

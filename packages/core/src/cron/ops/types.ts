@@ -36,10 +36,12 @@ export interface CronNotificationSettings {
  * All fields use snake_case naming convention
  */
 export interface CronJob {
-  /** Unique job ID */
+  /** Unique job ID (UUID) */
   id: string;
   /** Human-readable name */
   name: string;
+  /** Job description */
+  description?: string;
   /** Whether the job is enabled */
   enabled: boolean;
   /** Job type: agent or script */
@@ -84,6 +86,8 @@ export interface CreateCronJob {
   id?: string;
   /** Human-readable name */
   name: string;
+  /** Job description */
+  description?: string;
   /** Job type: agent or script */
   job_type?: CronJobType;
   /** Message to send to agent (optional - defaults to name if empty) */
@@ -111,6 +115,7 @@ export interface CreateCronJob {
  */
 export interface UpdateCronJob {
   name?: string;
+  description?: string;
   job_type?: CronJobType;
   message?: string;
   script?: string;
@@ -170,10 +175,11 @@ export interface CronExecutionLog {
 
 /**
  * YAML config structure
+ * jobs is an array of CronJob objects
  */
 export interface CronConfig {
   version: number;
-  jobs: Record<string, CronJob>;
+  jobs: CronJob[];
 }
 
 // =============================================================================

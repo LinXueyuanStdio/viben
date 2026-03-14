@@ -251,7 +251,7 @@ export function StepConfigure({
               <Input
                 value={parentPath}
                 onChange={(e) => setParentPath(e.target.value)}
-                placeholder="/Users/name/projects"
+                placeholder={t("onboarding.projectPathPlaceholder")}
                 className="flex-1"
               />
               <Button type="button" variant="outline" onClick={handleSelectParentFolder}>

@@ -6,6 +6,7 @@
  * - 智能体 (Agent): 来自 ~/.viben/agents/，Viben Agent 使用执行器作为运行后端
  */
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useAgents, useExecutors } from "./use-workspace-resources";
 import type { CreateAgentOptions, UpdateAgentOptions, AgentResponse } from "@/lib/gateway";
 import { useLocalWorkspaces } from "./use-workspaces";
@@ -71,6 +72,7 @@ export interface UseUnifiedAgentsReturn {
 // ============================================================================
 
 export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnifiedAgentsReturn {
+  const { t } = useTranslation();
   const {
     workspaceId = null,
     includeAgents = true,
@@ -151,14 +153,14 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
     async (id: string): Promise<void> => {
       const item = getItem(id);
       if (!item) {
-        throw new Error(`Agent ${id} not found`);
+        throw new Error(t("errors.agents.notFound", { id }));
       }
       if (isExecutor(item)) {
-        throw new Error("Cannot remove executor via this hook. Please delete the config file directly.");
+        throw new Error(t("errors.agents.cannotRemoveExecutor"));
       }
       await removeAgentFn(id);
     },
-    [getItem, removeAgentFn]
+    [getItem, removeAgentFn, t]
   );
 
   return {

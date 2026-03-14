@@ -391,13 +391,13 @@ export function LogsPage() {
                       {hasServerLog && (
                         <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px]">
                           <Terminal className="h-2.5 w-2.5 inline mr-0.5" />
-                          Server
+                          {t("logs.serverTab")}
                         </span>
                       )}
                       {hasApiLog && (
                         <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px]">
                           <Activity className="h-2.5 w-2.5 inline mr-0.5" />
-                          API ({selectedSession.apiLog?.entry_count || 0})
+                          {t("logs.apiTab")} ({selectedSession.apiLog?.entry_count || 0})
                         </span>
                       )}
                     </span>
@@ -703,7 +703,7 @@ function UnifiedSessionItem({ session, selected, onClick, isAlive }: UnifiedSess
           </span>
         )}
         {hasApiLog && (
-          <span title={`API logs (${session.apiLog?.entry_count || 0})`}>
+          <span title={t("logs.apiLogsWithCount", { count: session.apiLog?.entry_count || 0 })}>
             <Activity className="h-3 w-3 text-purple-500" />
           </span>
         )}

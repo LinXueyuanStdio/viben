@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayUrl } from "@/lib/gateway";
 
 // ============================================================================
@@ -99,6 +100,7 @@ const RECENT_TASKS_THRESHOLD_MS = 5 * 60 * 1000;
  * Subscribe to background task updates from Gateway
  */
 export function useBackgroundTasks(): UseBackgroundTasksReturn {
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<BackgroundTask[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -193,7 +195,7 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to stop task: ${response.statusText}`);
+        throw new Error(t("errors.backgroundTasks.failedToStopTask", { statusText: response.statusText }));
       }
 
       console.log("[useBackgroundTasks] Stopped task:", taskId);
@@ -201,7 +203,7 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
       console.error("[useBackgroundTasks] Failed to stop task:", err);
       throw err;
     }
-  }, []);
+  }, [t]);
 
   // Clear completed tasks from view
   const clearCompleted = useCallback(() => {

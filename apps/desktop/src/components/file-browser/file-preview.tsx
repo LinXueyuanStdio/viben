@@ -331,7 +331,7 @@ export function FilePreview({
             ...prev,
             content,
             isLoading: false,
-            error: content === null ? "Failed to read file content" : null,
+            error: content === null ? t("fileBrowser.failedToReadContent") : null,
           }));
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
@@ -341,7 +341,7 @@ export function FilePreview({
         setState((prev) => ({
           ...prev,
           isLoading: false,
-          error: err instanceof Error ? err.message : "Failed to load file",
+          error: err instanceof Error ? err.message : t("fileBrowser.failedToLoadFile"),
         }));
       }
     }
@@ -351,7 +351,7 @@ export function FilePreview({
     return () => {
       cancelled = true;
     };
-  }, [file, open, readFileContent, getFileInfo]);
+  }, [file, open, readFileContent, getFileInfo, t]);
 
   // Handle keyboard shortcuts
   React.useEffect(() => {

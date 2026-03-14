@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { getGatewayClient, type InstalledSource, type InstalledProviderInfo, type InstalledSourcesResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
 
@@ -12,6 +13,7 @@ export type { InstalledSource, InstalledProviderInfo, InstalledSourcesResponse }
  * and enabled sources from the local browse-mcp installation.
  */
 export function useInstalledSources() {
+  const { t } = useTranslation();
   const { selectedPython } = useAppStore();
   const pythonPath = selectedPython?.path;
   const [data, setData] = useState<InstalledSourcesResponse | null>(null);
@@ -23,7 +25,7 @@ export function useInstalledSources() {
    */
   const fetchInstalledSources = useCallback(async () => {
     if (!pythonPath) {
-      setError("Python path not configured");
+      setError(t("errors.sources.pythonPathNotConfigured"));
       return null;
     }
 
@@ -50,13 +52,13 @@ export function useInstalledSources() {
   const showProvider = useCallback(
     async (provider: string) => {
       if (!pythonPath) {
-        throw new Error("Python path not configured");
+        throw new Error(t("errors.sources.pythonPathNotConfigured"));
       }
 
       const client = getGatewayClient();
       return await client.showInstalledProvider(pythonPath, provider);
     },
-    [pythonPath]
+    [pythonPath, t]
   );
 
   /**

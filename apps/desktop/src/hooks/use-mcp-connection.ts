@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -136,6 +137,7 @@ export function useMcpConnection({
   onStdErrNotification: _onStdErrNotification, // Reserved for future use
   enabled = true,
 }: UseMcpConnectionOptions): UseMcpConnectionReturn {
+  const { t } = useTranslation();
   const [connectionStatus, setConnectionStatus] = useState<InspectorConnectionStatus>("disconnected");
   const [serverCapabilities, setServerCapabilities] = useState<McpServerCapabilities | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -150,7 +152,7 @@ export function useMcpConnection({
   ): Promise<T> => {
     const client = clientRef.current;
     if (!client) {
-      throw new Error("Not connected to MCP server");
+      throw new Error(t("errors.mcp.notConnected"));
     }
 
     try {

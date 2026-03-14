@@ -6,6 +6,7 @@
  */
 
 import type { ExecutorType } from "@/types";
+import i18n from "@/i18n";
 
 /**
  * Provider IDs that match the provider_id in WorkspaceModel
@@ -117,16 +118,8 @@ export function getProviderConstraintDescription(executorType?: string): string 
   const allowedProviders = getAllowedProviders(executorType);
   if (!allowedProviders || allowedProviders.length === 0) return undefined;
 
-  const providerNames: Record<ProviderId, string> = {
-    anthropic: "Anthropic",
-    openai: "OpenAI",
-    google: "Google",
-    azure: "Azure",
-    ollama: "Ollama",
-    openrouter: "OpenRouter",
-    custom: "Custom",
-  };
-
-  const names = allowedProviders.map((p) => providerNames[p]).join(", ");
-  return `Only ${names} models are supported`;
+  const names = allowedProviders
+    .map((p) => i18n.t(`executor.providerNames.${p}`))
+    .join(", ");
+  return i18n.t("executor.onlyModelsSupported", { names });
 }

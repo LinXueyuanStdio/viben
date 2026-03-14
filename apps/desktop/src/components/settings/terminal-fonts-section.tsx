@@ -424,12 +424,12 @@ export function TerminalFontsSection() {
             letterSpacing: `${settings.letterSpacing}px`,
           }}
         >
-          <div className="text-green-400">$ echo &quot;Hello, Terminal!&quot;</div>
-          <div className="text-white">Hello, Terminal!</div>
-          <div className="text-green-400">$ ls -la</div>
-          <div className="text-blue-400">drwxr-xr-x  5 user  staff   160 Jan  1 12:00 .</div>
-          <div className="text-blue-400">drwxr-xr-x 10 user  staff   320 Jan  1 11:00 ..</div>
-          <div className="text-white">-rw-r--r--  1 user  staff  1024 Jan  1 12:00 file.txt</div>
+          <div className="text-green-400">{t("settings.terminalFonts.preview.exampleCommand1")}</div>
+          <div className="text-white">{t("settings.terminalFonts.preview.exampleOutput1")}</div>
+          <div className="text-green-400">{t("settings.terminalFonts.preview.exampleCommand2")}</div>
+          <div className="text-blue-400">{t("settings.terminalFonts.preview.exampleDir1")}</div>
+          <div className="text-blue-400">{t("settings.terminalFonts.preview.exampleDir2")}</div>
+          <div className="text-white">{t("settings.terminalFonts.preview.exampleFile1")}</div>
           <div className="text-green-400">
             $ <span className={cn("inline-block w-2 h-4 bg-white", cursorBlink && "animate-pulse")} />
           </div>

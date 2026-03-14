@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { getGatewayUrl } from "@/lib/gateway";
 import { NETWORK_RETRY_CONFIG } from "./constants";
+import i18n from "@/i18n";
 
 // Get Gateway URL dynamically
 function getApiBaseUrl(): string {
@@ -90,12 +91,12 @@ async function makeRequest<T>(
     // Network errors
     if (error instanceof TypeError && error.message.includes("fetch")) {
       throw new VibeKanbanApiError(
-        "Cannot connect to Gateway. Is it running?"
+        i18n.t("errors.kanban.cannotConnectGateway")
       );
     }
 
     throw new VibeKanbanApiError(
-      error instanceof Error ? error.message : "Unknown error"
+      error instanceof Error ? error.message : i18n.t("errors.kanban.unknownError")
     );
   }
 }
@@ -333,7 +334,7 @@ export async function checkTaskRunningDetailed(
           console.warn(`[checkTaskRunning] Network error for task ${taskId}: ${error.message}`);
         }
       } else {
-        lastError = "Unknown error";
+        lastError = i18n.t("errors.kanban.unknownError");
       }
       // Continue to next retry attempt
     }
