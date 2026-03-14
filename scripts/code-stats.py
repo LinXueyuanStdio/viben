@@ -568,6 +568,19 @@ def analyze_codebase():
         if m["files"] > 10  # Only modules with significant files
     ]
 
+    # Get additional git-based statistics
+    print("Analyzing commit activity...")
+    commit_activity = get_commit_activity(PROJECT_ROOT) if use_git else []
+
+    print("Analyzing file churn...")
+    file_churn = get_file_churn(PROJECT_ROOT, git_files) if use_git else []
+
+    print("Analyzing code freshness...")
+    code_freshness = get_code_freshness(PROJECT_ROOT, git_files) if use_git else []
+
+    print("Analyzing file size distribution...")
+    file_size_distribution = get_file_size_distribution(all_files)
+
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "summary": {
@@ -592,6 +605,10 @@ def analyze_codebase():
             {"path": f["path"], "lines": f["lines"], "ext": f["ext"]}
             for f in top_files
         ],
+        "commitActivity": commit_activity,
+        "fileChurn": file_churn,
+        "codeFreshness": code_freshness,
+        "fileSizeDistribution": file_size_distribution,
     }
 
     return result

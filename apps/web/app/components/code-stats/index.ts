@@ -7,4 +7,8 @@ export { DesktopChart } from './desktop-chart';
 export { DensityChart } from './density-chart';
 export { ModuleList } from './module-list';
 export { TopFilesTable } from './top-files-table';
+export { CommitHeatmap } from './commit-heatmap';
+export { CodeFreshnessChart } from './code-freshness-chart';
+export { FileSizeChart } from './file-size-chart';
+export { FileChurnChart } from './file-churn-chart';
 export type * from './types';
