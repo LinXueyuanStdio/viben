@@ -269,14 +269,14 @@ export class AgentEventEmitter {
   }
 
   /**
-   * Emit when task is approved in human review
+   * Emit when task is approved in review
    */
   async emitApproved(options: AgentEventOptions): Promise<AgentEventResult> {
     return this.emit("APPROVED", options);
   }
 
   /**
-   * Emit when task is rejected in human review
+   * Emit when task is rejected in review
    */
   async emitRejected(
     options: AgentEventOptions & { feedback?: string }

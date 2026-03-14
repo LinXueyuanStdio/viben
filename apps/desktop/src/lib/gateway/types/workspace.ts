@@ -112,6 +112,8 @@ export interface AgentInfo {
   source: "global" | "workspace";
   /** The workspace path this agent belongs to (absolute path) */
   workspace_path: string;
+  /** Path to agent directory (e.g., /path/to/agents/myagent) */
+  agent_dir?: string;
   /** Path to agent config */
   config_path?: string;
   /** MCP config path (if applicable) */

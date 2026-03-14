@@ -1496,7 +1496,7 @@ export function registerTaskCommand(program: Command): void {
   // task review - display task info for review
   taskCmd
     .command("review")
-    .description("View task details for human review")
+    .description("View task details for review")
     .argument("<task>", "Task name or directory")
     .action(async (task: string) => {
       const ctx = getContext(program);

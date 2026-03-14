@@ -251,7 +251,7 @@ describe("Task State Machine - Valid Transitions", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Human Review transitions
+  // Review transitions
   // -------------------------------------------------------------------------
   describe("from review", () => {
     it("review + APPROVED -> completed", () => {

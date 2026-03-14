@@ -306,7 +306,7 @@ export interface UnifiedTask {
   machine_context?: {
     /** Current subtask index (0-based) */
     current_subtask_index: number;
-    /** Whether plan requires human review before implement */
+    /** Whether plan requires review before implement */
     requires_plan_review: boolean;
     /** Complete snapshot saved when task is paused */
     paused_snapshot?: {
