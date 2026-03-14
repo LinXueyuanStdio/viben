@@ -219,21 +219,9 @@ export class TaskEventStore {
   }
 
   /**
-   * Normalize legacy XState values to new state names
-   * Maps: done -> completed, error -> failed, pr_created -> completed
+   * Pass through XState value as-is (legacy status normalization removed)
    */
   private normalizeXStateValue(value: XStateValue): XStateValue {
-    if (typeof value === "string") {
-      switch (value) {
-        case "done":
-        case "pr_created":
-          return "completed";
-        case "error":
-          return "failed";
-        default:
-          return value;
-      }
-    }
     return value;
   }
 

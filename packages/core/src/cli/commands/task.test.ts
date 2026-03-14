@@ -135,7 +135,6 @@ describe("task command", () => {
 
       // Cleanup (migrated from swarm cleanup)
       expect(subcommandNames).toContain("cleanup");
-      expect(subcommandNames).toContain("list-worktrees");
 
       // Status
       expect(subcommandNames).toContain("start");
@@ -647,4 +646,78 @@ describe("task command", () => {
       });
     });
   });
+
+  // ============================================================================
+  // task cleanup Tests (migrated from swarm cleanup)
+  // ============================================================================
+  // Note: The "task cleanup" command replaces the deprecated "swarm cleanup" command.
+  // See swarm.test.ts for the deprecated tests with backward compatibility.
+
+  describe("task cleanup", () => {
+    it("should have cleanup subcommand", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      expect(cleanupCmd).toBeDefined();
+      expect(cleanupCmd?.description()).toBe(
+        "Cleanup worktrees and related resources"
+      );
+    });
+
+    it("should support optional branch argument", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      const args = cleanupCmd?.registeredArguments ?? [];
+      expect(args.length).toBeGreaterThan(0);
+      expect(args[0]?.name()).toBe("branch");
+      expect(args[0]?.required).toBe(false);
+    });
+
+    it("should support --keep-branch option", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      const options = cleanupCmd?.options ?? [];
+      const keepBranchOption = options.find(
+        (opt) => opt.long === "--keep-branch"
+      );
+      expect(keepBranchOption).toBeDefined();
+    });
+
+    it("should support -y/--yes option", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      const options = cleanupCmd?.options ?? [];
+      const yesOption = options.find((opt) => opt.long === "--yes");
+      expect(yesOption).toBeDefined();
+      expect(yesOption?.short).toBe("-y");
+    });
+
+    it("should support --merged option", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      const options = cleanupCmd?.options ?? [];
+      const mergedOption = options.find((opt) => opt.long === "--merged");
+      expect(mergedOption).toBeDefined();
+    });
+
+    it("should support --all option", () => {
+      const taskCmd = program.commands.find((cmd) => cmd.name() === "task");
+      const cleanupCmd = taskCmd?.commands.find(
+        (cmd) => cmd.name() === "cleanup"
+      );
+      const options = cleanupCmd?.options ?? [];
+      const allOption = options.find((opt) => opt.long === "--all");
+      expect(allOption).toBeDefined();
+    });
+  });
+
 });

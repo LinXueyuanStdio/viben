@@ -177,9 +177,9 @@ describe("TaskModel", () => {
     it("should update task status", async () => {
       const task = await TaskModel.create({ title: "Task" });
 
-      const updated = await TaskModel.update(task.id, { status: "done" });
+      const updated = await TaskModel.update(task.id, { status: "completed" });
 
-      expect(updated.status).toBe("done");
+      expect(updated.status).toBe("completed");
     });
 
     it("should update task description", async () => {

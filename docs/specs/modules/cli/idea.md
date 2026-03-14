@@ -169,19 +169,29 @@ Implementation Approach:
 
 ### `viben idea promote`
 
-将想法转为任务。
+将想法转为任务。支持所有 `viben task create` 的选项。
 
 ```bash
 viben idea promote <idea-id> [options]
 ```
 
-**选项**：
+**选项**（与 `viben task create` 一致）：
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `--slug` | 任务标识符 | 从 idea title 生成 |
-| `--priority` | 优先级 (P0-P3) | 根据 effort 映射 |
-| `--assignee` | 分配给谁 | 当前开发者 |
+| `-s, --slug <name>` | 任务标识符 | 从 idea title 生成 |
+| `-b, --branch <branch>` | 自定义分支名 | `feature/<slug>` |
+| `-a, --assignee <dev>` | 分配给谁 | 当前开发者 |
+| `-p, --priority <priority>` | 优先级 (P0-P3) | 根据 effort 映射 |
+| `-d, --description <text>` | 任务描述 | idea 的 description |
+| `--agent <agent-id>` | 关联的 agent 配置 | - |
+| `--executor <type>` | 执行器类型 | CLAUDE_CODE |
+| `--model <model>` | 使用的模型 | - |
+| `--start` | 自动加入队列 (status: queue) | false |
+| `--worktree` | 在 git worktree 中运行 | false |
+| `--json` | JSON 格式输出 | false |
+
+**执行器类型**: `CLAUDE_CODE`, `CURSOR`, `GEMINI`, `OPENCODE`, `IFLOW`, `CODEX`, `KILO`, `KIRO`, `ANTIGRAVITY`
 
 **effort → priority 默认映射**：
 
@@ -196,20 +206,35 @@ viben idea promote <idea-id> [options]
 **示例**：
 
 ```bash
-# 将想法转为任务
+# 将想法转为任务（最简方式）
 viben idea promote ci-001
 
 # 指定优先级和 slug
 viben idea promote ci-001 --slug add-retry-logic --priority P1
+
+# 创建并自动启动任务
+viben idea promote ci-001 --start
+
+# 在隔离的 worktree 中开发
+viben idea promote ci-001 --worktree --start
+
+# 完整示例：指定分支、执行器和模型
+viben idea promote ci-001 \
+  --slug add-retry-logic \
+  --branch feature/api-retry \
+  --priority P1 \
+  --executor CLAUDE_CODE \
+  --model opus \
+  --start
 ```
 
 **执行流程**：
 
 1. 读取想法详情
-2. 调用 `viben task create` 创建任务
-3. 将想法的 description、rationale、affected_files 写入任务的 `prd.md`
-4. 更新想法状态为 `promoted`
-5. 在想法中记录关联的 task id
+2. 调用 `viben task create` 创建任务（传递所有选项）
+3. 更新想法状态为 `promoted`
+4. 在想法中记录关联的 task id
+5. 如果指定了 `--start`，任务状态设为 `queue`
 
 ---
 

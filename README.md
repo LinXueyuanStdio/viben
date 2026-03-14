@@ -206,6 +206,9 @@ viben idea list
 
 # 将想法转为任务
 viben idea promote ci-001
+
+# 将想法转为任务并立即启动（支持 task create 的所有选项）
+viben idea promote ci-001 --start --worktree
 ```
 
 > 支持在 `docs/idea-types/*.md` 创建自定义类型 prompt 模板

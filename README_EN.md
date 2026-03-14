@@ -203,6 +203,9 @@ viben idea list
 
 # Promote idea to task
 viben idea promote ci-001
+
+# Promote idea and start execution (supports all task create options)
+viben idea promote ci-001 --start --worktree
 ```
 
 > Custom type prompt templates can be created in `docs/idea-types/*.md`

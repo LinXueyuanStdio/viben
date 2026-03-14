@@ -1691,13 +1691,13 @@ describe("Python parity - git_context.py get_context_text()", () => {
      * Reference: git_context.py lines 298-320
      */
 
-    it("should filter tasks assigned to developer and not done", () => {
-      // Python: if assignee == developer and status != "done":
+    it("should filter tasks assigned to developer and not completed", () => {
+      // Python: if assignee == developer and status != "completed":
       const developer = "john";
       const assignee = "john";
       const status: string = "in_progress";
 
-      expect(assignee === developer && status !== "done").toBe(true);
+      expect(assignee === developer && status !== "completed").toBe(true);
     });
 
     it("should format my tasks as: - [priority] title (status)", () => {

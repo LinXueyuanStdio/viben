@@ -37,11 +37,6 @@ export type TaskStatus =
   | "archived"; // Archived for reference
 
 /**
- * Legacy status names for backward compatibility
- */
-export type LegacyTaskStatus = "done" | "error" | "pr_created";
-
-/**
  * Reason for entering review state
  */
 export type ReviewReason =
@@ -341,15 +336,6 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
   "cancelled",
   "archived",
 ];
-
-/**
- * Legacy status mapping for backward compatibility
- */
-export const LEGACY_STATUS_MAP: Record<LegacyTaskStatus, TaskStatus> = {
-  done: "completed",
-  error: "failed",
-  pr_created: "completed",
-};
 
 /**
  * Check if a status is valid
@@ -906,17 +892,10 @@ export class TaskService {
 
   /**
    * Normalize a status value to the unified TaskStatus
-   * Handles legacy status names (done, error, pr_created) for backward compatibility
    */
   normalizeStatus(status: string): TaskStatus {
-    // Check if it's already a valid status
     if (isValidTaskStatus(status)) {
       return status;
-    }
-
-    // Check for legacy status names
-    if (status in LEGACY_STATUS_MAP) {
-      return LEGACY_STATUS_MAP[status as LegacyTaskStatus];
     }
 
     // Default for invalid status
