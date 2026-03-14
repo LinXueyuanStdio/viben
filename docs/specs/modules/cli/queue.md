@@ -1,16 +1,37 @@
 # viben queue
 
-> Gateway 任务队列管理命令，用于运维、调试和监控队列状态。
+> 命令队列管理命令，用于运维、调试和监控队列状态。
 
 ## 概述
 
-`viben queue` 命令是 Gateway TaskQueueManager 的 CLI 客户端，提供队列状态查看、任务管理和配置调整功能。主要面向 Agent 调试场景，输出信息详尽。
+`viben queue` 命令是 CommandQueue 的 CLI 客户端，与 `/api/queue/*` Gateway 端点共享同一个底层 `packages/core/src/queue/ops` 操作层。主要面向 Agent 调试场景，输出信息详尽。
 
 ## 设计原则
 
 - **调试优先**：输出详尽，便于 Agent 分析问题
-- **功能完整**：覆盖所有 REST API 功能
+- **CLI/API 一致**：所有操作与 Gateway REST API 共享底层 ops
 - **格式友好**：默认人类可读，`--json` 输出便于解析
+
+## 架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    CLI / Gateway                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐         ┌──────────────────┐              │
+│  │  viben queue *   │         │  /api/queue/*    │              │
+│  │  (CLI commands)  │         │  (REST routes)   │              │
+│  └────────┬─────────┘         └────────┬─────────┘              │
+│           │                            │                        │
+│           └────────────┬───────────────┘                        │
+│                        │                                        │
+│                        v                                        │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │              packages/core/src/queue/ops                   │ │
+│  │  enqueue, cancel, retry, status, list, logs, config, clean │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## 命令结构
 
@@ -18,18 +39,18 @@
 viben queue <subcommand> [options]
 ```
 
-| 子命令 | 说明 | 对应 API |
-|--------|------|----------|
-| `status` | 队列整体状态 | GET /api/queue/status |
-| `list` | 任务列表 | GET /api/queue/tasks |
-| `inspect` | 任务详情 | GET /api/queue/tasks/:id |
-| `enqueue` | 提交任务 | POST /api/queue/enqueue |
-| `cancel` | 取消任务 | DELETE /api/queue/tasks/:id |
-| `retry` | 重试失败任务 | POST /api/queue/tasks/:id/retry |
-| `logs` | 查看任务日志 | GET /api/queue/tasks/:id/stream |
-| `watch` | 实时监控队列 | WebSocket /ws/queue |
-| `config` | 配置管理 | GET/PUT /api/queue/config |
-| `clean` | 清理已完成任务 | DELETE /api/queue/tasks (批量) |
+| 子命令 | 说明 | 对应 ops 函数 | 对应 API |
+|--------|------|---------------|----------|
+| `status` | 队列整体状态 | `getStatus()` | GET /api/queue/status |
+| `list` | 任务列表 | `list()` | GET /api/queue/list |
+| `inspect` | 任务详情 | `getItem()` | GET /api/queue/:id |
+| `enqueue` | 提交命令 | `enqueue()` | POST /api/queue/enqueue |
+| `cancel` | 取消任务 | `cancel()` | DELETE /api/queue/:id |
+| `retry` | 重试失败任务 | `retry()` | POST /api/queue/:id/retry |
+| `logs` | 查看任务日志 | `getLogs()` | GET /api/queue/:id/logs |
+| `watch` | 实时监控队列 | (WebSocket) | WebSocket /ws/queue |
+| `config` | 配置管理 | `getConfig()`/`setConfig()` | GET/PUT /api/queue/config |
+| `clean` | 清理已完成任务 | `clean()` | DELETE /api/queue/clean |
 
 ---
 
@@ -49,10 +70,10 @@ viben queue status [--json]
 | `--json` | JSON 格式输出 |
 
 **输出内容**:
-- 队列概览：pending/running/completed/failed 数量
+- 队列概览：pending/running/completed 数量
 - 并发配置：当前并发数 / 最大并发数
-- 运行中任务：简要列表（ID、agent、耗时）
-- 队列健康：Gateway 连接状态、持久化状态
+- 运行中任务：简要列表（ID、命令、耗时）
+- 队列健康：持久化状态
 
 **示例输出**:
 ```
@@ -61,13 +82,11 @@ Queue Status
   Pending:     3 task(s)
   Running:     2 / 3 (max concurrency)
   Completed:   15 task(s)
-  Failed:      1 task(s)
 
 Running Tasks:
-  task-abc123  agent:coding-assistant  2m 15s
-  task-def456  agent:review-agent      45s
+  q_abc123  sleep 60    2m 15s
+  q_def456  claude -p   45s
 
-Gateway: connected (127.0.0.1:18790)
 Persistence: ~/.viben/queue/ (healthy)
 ```
 
@@ -84,7 +103,7 @@ viben queue list [--status <status>] [--limit <n>] [--json]
 **选项**:
 | 选项 | 说明 |
 |------|------|
-| `--status`, `-s` | 按状态过滤 (pending, running, completed, failed, retrying) |
+| `--status`, `-s` | 按状态过滤 (pending, running, completed) |
 | `--limit`, `-n` | 限制返回数量，默认 50 |
 | `--all` | 显示所有任务（包括已完成） |
 | `--json` | JSON 格式输出 |
@@ -92,21 +111,20 @@ viben queue list [--status <status>] [--limit <n>] [--json]
 **示例**:
 ```bash
 viben queue list                      # 默认显示 pending + running
-viben queue list --status failed      # 只看失败任务
+viben queue list --status completed   # 只看已完成任务
 viben queue list --all --limit 100    # 所有状态，最多 100 条
 ```
 
 **示例输出**:
 ```
-ID           STATUS    AGENT              CREATED       ELAPSED   RETRIES
-─────────────────────────────────────────────────────────────────────────
-task-abc123  running   coding-assistant   2m ago        2m 15s    0/3
-task-def456  running   review-agent       1m ago        45s       0/3
-task-ghi789  pending   coding-assistant   30s ago       -         0/3
-task-jkl012  pending   debug-agent        10s ago       -         0/3
-task-mno345  failed    coding-assistant   5m ago        -         3/3
+ID           STATUS    COMMAND                CREATED       ELAPSED   RETRIES
+─────────────────────────────────────────────────────────────────────────────
+q_abc123     running   sleep 60               2m ago        2m 15s    0/3
+q_def456     running   claude -p "hello"      1m ago        45s       0/3
+q_ghi789     pending   npm test               30s ago       -         0/3
+q_jkl012     pending   make build             10s ago       -         0/3
 
-Showing 5 of 5 tasks
+Showing 4 of 4 tasks
 ```
 
 ---
@@ -115,45 +133,47 @@ Showing 5 of 5 tasks
 
 ### `viben queue enqueue`
 
-提交任务到队列。
+提交命令到队列。
 
 ```bash
-viben queue enqueue --agent <agent-id> --input <prompt> [options]
-viben queue enqueue --agent <agent-id> --stdin [options]
+viben queue enqueue --command <cmd> --cwd <path> [options]
+viben queue enqueue --stdin --cwd <path> [options]
 ```
 
 **选项**:
 | 选项 | 说明 |
 |------|------|
-| `--agent`, `-a` | **必需** 智能体 ID |
-| `--input`, `-i` | 输入 prompt（与 --stdin 二选一） |
-| `--stdin` | 从 stdin 读取 prompt |
-| `--session`, `-s` | 关联的 session ID |
+| `--command`, `-c` | **必需** 要执行的 bash 命令 |
+| `--cwd` | **必需** 工作目录 |
+| `--stdin` | 从 stdin 读取命令（与 --command 二选一） |
+| `--metadata` | JSON 格式的元数据 |
 | `--max-retries` | 最大重试次数，默认 3 |
 | `--json` | JSON 格式输出 |
 
 **示例**:
 ```bash
-# 直接指定 prompt
-viben queue enqueue --agent coding-assistant --input "实现用户登录功能"
+# 直接指定命令
+viben queue enqueue --command "sleep 60" --cwd /tmp
 
-# 从 stdin 读取长 prompt
-cat requirements.md | viben queue enqueue --agent coding-assistant --stdin
+# 执行 Claude Code
+viben queue enqueue --command 'claude -p "实现用户登录"' --cwd /path/to/project
 
-# 指定 session 和重试次数
-viben queue enqueue --agent debug-agent --input "修复 bug" --session sess-001 --max-retries 5
+# 带元数据
+viben queue enqueue --command "npm test" --cwd /app --metadata '{"task_dir":".viben/tasks/my-task"}'
+
+# 从 stdin 读取
+echo 'npm run build && npm test' | viben queue enqueue --stdin --cwd /app
 ```
 
 **输出**:
 ```
 Task enqueued successfully
-  ID:        task-abc123
-  Agent:     coding-assistant
+  ID:        q_abc123
   Position:  4 (3 pending ahead)
   Status:    pending
 
-Use 'viben queue inspect task-abc123' to view details
-Use 'viben queue logs task-abc123 --follow' to stream output
+Use 'viben queue inspect q_abc123' to view details
+Use 'viben queue logs q_abc123 --follow' to stream output
 ```
 
 ---
@@ -163,7 +183,7 @@ Use 'viben queue logs task-abc123 --follow' to stream output
 取消任务。
 
 ```bash
-viben queue cancel <task-id> [--force] [--json]
+viben queue cancel <id> [--force] [--json]
 ```
 
 **选项**:
@@ -178,8 +198,8 @@ viben queue cancel <task-id> [--force] [--json]
 
 **示例**:
 ```bash
-viben queue cancel task-abc123           # 取消 pending 任务
-viben queue cancel task-abc123 --force   # 强制终止 running 任务
+viben queue cancel q_abc123           # 取消 pending 任务
+viben queue cancel q_abc123 --force   # 强制终止 running 任务
 ```
 
 ---
@@ -189,24 +209,22 @@ viben queue cancel task-abc123 --force   # 强制终止 running 任务
 查看任务详情。
 
 ```bash
-viben queue inspect <task-id> [--json]
+viben queue inspect <id> [--json]
 ```
 
 **输出内容**（详尽，便于调试）:
-- 基本信息：ID、类型、状态、创建时间
-- Agent 配置：agent_id、session_id
-- 执行信息：开始时间、耗时、PID
-- 重试信息：当前次数、最大次数、历史错误
-- Payload：完整的输入参数
+- 基本信息：ID、状态、创建时间
+- 执行信息：命令、工作目录、PID
+- 重试信息：当前次数、最大次数
+- 元数据：关联的 task_dir 等
 
 **示例输出**:
 ```
-Task: task-abc123
+Task: q_abc123
 ────────────────────────────────────────
 Status:      running
-Type:        agent-run
-Agent:       coding-assistant
-Session:     sess-001
+Command:     claude -p "实现用户登录"
+CWD:         /path/to/project
 
 Timeline:
   Created:   2024-03-03 14:30:00 (2m 15s ago)
@@ -215,14 +233,11 @@ Timeline:
 
 Execution:
   PID:       12345
+  Log:       ~/.viben/queue/logs/q_abc123.log
   Retries:   0 / 3
 
-Payload:
-  input: |
-    实现用户登录功能，要求：
-    1. 支持邮箱和手机号登录
-    2. JWT token 认证
-    ...
+Metadata:
+  task_dir: .viben/tasks/03-14-user-login
 ```
 
 ---
@@ -232,7 +247,7 @@ Payload:
 重试失败的任务。
 
 ```bash
-viben queue retry <task-id> [--reset-count] [--json]
+viben queue retry <id> [--reset-count] [--json]
 ```
 
 **选项**:
@@ -242,14 +257,14 @@ viben queue retry <task-id> [--reset-count] [--json]
 | `--json` | JSON 格式输出 |
 
 **行为**:
-- 只能对 `failed` 状态的任务执行
+- 只能对 `completed` 且 exit_code != 0 的任务执行
 - 默认保持当前 retryCount，任务重新入队
 - `--reset-count` 可重置计数器，获得完整重试次数
 
 **示例**:
 ```bash
-viben queue retry task-abc123                # 重试，保持计数
-viben queue retry task-abc123 --reset-count  # 重试，重置计数器
+viben queue retry q_abc123                # 重试，保持计数
+viben queue retry q_abc123 --reset-count  # 重试，重置计数器
 ```
 
 ---
@@ -261,7 +276,7 @@ viben queue retry task-abc123 --reset-count  # 重试，重置计数器
 查看任务输出日志。
 
 ```bash
-viben queue logs <task-id> [--follow] [--tail <n>] [--json]
+viben queue logs <id> [--follow] [--tail <n>] [--json]
 ```
 
 **选项**:
@@ -270,39 +285,30 @@ viben queue logs <task-id> [--follow] [--tail <n>] [--json]
 | `--follow`, `-f` | 实时跟踪输出（类似 tail -f） |
 | `--tail`, `-n` | 显示最后 N 行，默认全部 |
 | `--timestamps` | 显示时间戳 |
-| `--json` | JSON 格式输出（每行一个 JSON 对象） |
+| `--json` | JSON 格式输出 |
 
 **数据来源**:
-- 连接 `GET /api/queue/tasks/:id/stream` (SSE)
-- 包含 Agent 的 stdout/stderr 输出
+- 读取 `~/.viben/queue/logs/{id}.log` 文件
 
 **示例**:
 ```bash
-viben queue logs task-abc123              # 查看完整日志
-viben queue logs task-abc123 --tail 50    # 最后 50 行
-viben queue logs task-abc123 --follow     # 实时跟踪
-viben queue logs task-abc123 -f --json    # 实时 JSON 流
+viben queue logs q_abc123              # 查看完整日志
+viben queue logs q_abc123 --tail 50    # 最后 50 行
+viben queue logs q_abc123 --follow     # 实时跟踪
 ```
 
 **示例输出**:
 ```
-[task-abc123] Agent output stream
+[q_abc123] Log output
 ────────────────────────────────────────
-[14:30:05] Starting agent: coding-assistant
-[14:30:06] Session: sess-001
-[14:30:06] Input received (256 chars)
-[14:30:08] Tool: Read /src/auth/login.ts
-[14:30:10] Tool: Edit /src/auth/login.ts
-[14:30:15] Tool: Bash npm test
-[14:30:25] Tests passed (12/12)
-[14:30:26] Agent completed successfully
-```
-
-**--json 输出格式**:
-```json
-{"ts":1709462405,"level":"info","msg":"Starting agent: coding-assistant"}
-{"ts":1709462408,"level":"tool","tool":"Read","path":"/src/auth/login.ts"}
-{"ts":1709462410,"level":"tool","tool":"Edit","path":"/src/auth/login.ts"}
+Starting agent: work
+Session: sess-001
+Input received (256 chars)
+Tool: Read /src/auth/login.ts
+Tool: Edit /src/auth/login.ts
+Tool: Bash npm test
+Tests passed (12/12)
+Agent completed successfully
 ```
 
 ---
@@ -312,7 +318,7 @@ viben queue logs task-abc123 -f --json    # 实时 JSON 流
 实时监控队列状态变化。
 
 ```bash
-viben queue watch [--task <task-id>...] [--events <type>...] [--json]
+viben queue watch [--task <id>...] [--events <type>...] [--json]
 ```
 
 **选项**:
@@ -322,37 +328,32 @@ viben queue watch [--task <task-id>...] [--events <type>...] [--json]
 | `--events`, `-e` | 只显示指定事件类型 |
 | `--json` | JSON 格式输出 |
 
-**数据来源**:
-- WebSocket `ws://127.0.0.1:18790/ws/queue`
-
 **事件类型**:
 | 事件 | 说明 |
 |------|------|
-| `task:queued` | 任务入队 |
+| `task:enqueued` | 任务入队 |
 | `task:started` | 任务开始执行 |
-| `task:progress` | 任务进度更新 |
 | `task:completed` | 任务完成 |
 | `task:failed` | 任务失败 |
-| `queue:changed` | 队列状态变化 |
+| `queue:status_changed` | 队列状态变化 |
 
 **示例**:
 ```bash
-viben queue watch                                    # 监控所有事件
-viben queue watch --task task-abc123                 # 只监控特定任务
+viben queue watch                                      # 监控所有事件
+viben queue watch --task q_abc123                      # 只监控特定任务
 viben queue watch --events task:failed,task:completed  # 只看完成和失败
-viben queue watch --json                             # JSON 流输出
+viben queue watch --json                               # JSON 流输出
 ```
 
 **示例输出**:
 ```
 Watching queue events (Ctrl+C to stop)
 ────────────────────────────────────────
-[14:30:00] queue:changed    pending=3 running=2
-[14:30:05] task:started     task-abc123 (coding-assistant)
-[14:30:10] task:progress    task-abc123 tool=Edit file=/src/auth.ts
-[14:30:25] task:completed   task-abc123 (duration: 20s)
-[14:30:25] queue:changed    pending=2 running=2
-[14:30:26] task:started     task-def456 (review-agent)
+[14:30:00] queue:status_changed  pending=3 running=2
+[14:30:05] task:started          q_abc123 (pid: 12345)
+[14:30:25] task:completed        q_abc123 (exit: 0, duration: 20s)
+[14:30:25] queue:status_changed  pending=2 running=2
+[14:30:26] task:started          q_def456 (pid: 12346)
 ```
 
 ---
@@ -380,9 +381,11 @@ viben queue config --reset                               # 重置为默认值
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `max_concurrency` | int | 3 | 最大并发任务数 |
+| `promoter_interval_ms` | int | 5000 | Promoter 检查间隔 |
+| `monitor_interval_ms` | int | 30000 | Monitor 检查间隔 |
 | `default_max_retries` | int | 3 | 默认最大重试次数 |
-| `persist_debounce_ms` | int | 500 | 持久化防抖间隔 |
-| `shutdown_timeout_ms` | int | 30000 | 优雅关闭超时 |
+| `log_retention_days` | int | 7 | 日志保留天数 |
+| `completed_retention_days` | int | 30 | 完成记录保留天数 |
 
 **示例**:
 ```bash
@@ -396,10 +399,12 @@ viben queue config --reset                   # 重置配置
 ```
 Queue Configuration
 ────────────────────────────────────────
-  max_concurrency:       3
-  default_max_retries:   3
-  persist_debounce_ms:   500
-  shutdown_timeout_ms:   30000
+  max_concurrency:          3
+  promoter_interval_ms:     5000
+  monitor_interval_ms:      30000
+  default_max_retries:      3
+  log_retention_days:       7
+  completed_retention_days: 30
 
 Config file: ~/.viben/queue/config.yaml
 ```
@@ -410,7 +415,7 @@ Config file: ~/.viben/queue/config.yaml
 
 ### `viben queue clean`
 
-清理已完成或失败的任务。
+清理已完成的任务。
 
 ```bash
 viben queue clean [--status <status>] [--before <time>] [--dry-run] [--json]
@@ -419,7 +424,7 @@ viben queue clean [--status <status>] [--before <time>] [--dry-run] [--json]
 **选项**:
 | 选项 | 说明 |
 |------|------|
-| `--status`, `-s` | 清理指定状态的任务，默认 `completed,failed` |
+| `--status`, `-s` | 清理指定状态的任务，默认 completed |
 | `--before`, `-b` | 只清理指定时间之前的任务 |
 | `--keep`, `-k` | 保留最近 N 个任务 |
 | `--dry-run` | 预览将被清理的任务，不实际执行 |
@@ -432,8 +437,7 @@ viben queue clean [--status <status>] [--before <time>] [--dry-run] [--json]
 
 **示例**:
 ```bash
-viben queue clean                            # 清理所有 completed+failed
-viben queue clean --status failed            # 只清理失败任务
+viben queue clean                            # 清理所有 completed
 viben queue clean --before 1d                # 清理 1 天前的任务
 viben queue clean --keep 10                  # 保留最近 10 个
 viben queue clean --dry-run                  # 预览，不执行
@@ -442,14 +446,15 @@ viben queue clean --dry-run                  # 预览，不执行
 **示例输出**:
 ```
 Tasks to clean:
-  task-abc123  completed  2024-03-01 10:00
-  task-def456  failed     2024-03-01 11:30
-  task-ghi789  completed  2024-03-02 09:00
+  q_abc123  completed  2024-03-01 10:00
+  q_def456  completed  2024-03-01 11:30
+  q_ghi789  completed  2024-03-02 09:00
 
 Clean 3 task(s)? [y/N] y
 
 Cleaned 3 task(s)
-  Removed task files from ~/.viben/queue/tasks/
+  Removed from ~/.viben/queue/completed/
+  Removed logs from ~/.viben/queue/logs/
 ```
 
 ---
@@ -460,22 +465,10 @@ Cleaned 3 task(s)
 
 ### 常见错误场景
 
-**Gateway 连接失败**:
-```
-Error: Cannot connect to Gateway
-  URL:     http://127.0.0.1:18790
-  Reason:  Connection refused
-
-Troubleshooting:
-  1. Check if Gateway is running: viben gateway status
-  2. Start Gateway: viben gateway start
-  3. Check port availability: lsof -i :18790
-```
-
 **任务不存在**:
 ```
 Error: Task not found
-  ID:      task-abc123
+  ID:      q_abc123
   Reason:  No task with this ID exists
 
 Hint: Use 'viben queue list --all' to see all tasks
@@ -484,19 +477,19 @@ Hint: Use 'viben queue list --all' to see all tasks
 **无效操作**:
 ```
 Error: Invalid operation
-  Task:    task-abc123
+  Task:    q_abc123
   Status:  running
   Action:  cancel (without --force)
 
-Hint: Use 'viben queue cancel task-abc123 --force' to terminate running task
+Hint: Use 'viben queue cancel q_abc123 --force' to terminate running task
 ```
 
 **重试不可用**:
 ```
 Error: Cannot retry task
-  Task:    task-abc123
+  Task:    q_abc123
   Status:  running
-  Reason:  Only failed tasks can be retried
+  Reason:  Only completed (failed) tasks can be retried
 
 Current task status:
   Status:   running
@@ -512,49 +505,32 @@ Current task status:
 
 | 选项 | 说明 |
 |------|------|
-| `--gateway <url>` | Gateway 地址，默认 `http://127.0.0.1:18790` |
-| `--timeout <ms>` | 请求超时，默认 30000ms |
 | `--json` | JSON 格式输出 |
-| `--verbose`, `-v` | 显示详细调试信息（请求/响应） |
+| `--verbose`, `-v` | 显示详细调试信息 |
 | `--help`, `-h` | 显示帮助信息 |
 
 **示例**:
 ```bash
-# 连接远程 Gateway
-viben queue status --gateway http://192.168.1.100:18790
-
-# 调试模式，显示 HTTP 请求详情
-viben queue list --verbose
-```
-
-**--verbose 输出**:
-```
-[DEBUG] GET http://127.0.0.1:18790/api/queue/tasks
-[DEBUG] Headers: {"Content-Type": "application/json"}
-[DEBUG] Response: 200 OK (45ms)
-[DEBUG] Body: {"tasks": [...], "total": 5}
-
-ID           STATUS    AGENT              ...
-─────────────────────────────────────────────
-...
+# 调试模式，显示详细信息
+viben queue status --verbose
 ```
 
 ---
 
 ## 命令总结
 
-| 命令 | 说明 | API |
-|------|------|-----|
-| `viben queue status` | 队列整体状态 | GET /api/queue/status |
-| `viben queue list` | 任务列表 | GET /api/queue/tasks |
-| `viben queue inspect <id>` | 任务详情 | GET /api/queue/tasks/:id |
-| `viben queue enqueue` | 提交任务 | POST /api/queue/enqueue |
-| `viben queue cancel <id>` | 取消任务 | DELETE /api/queue/tasks/:id |
-| `viben queue retry <id>` | 重试任务 | POST /api/queue/tasks/:id/retry |
-| `viben queue logs <id>` | 任务日志 | GET /api/queue/tasks/:id/stream |
-| `viben queue watch` | 实时监控 | WebSocket /ws/queue |
-| `viben queue config` | 配置管理 | GET/PUT /api/queue/config |
-| `viben queue clean` | 清理任务 | DELETE /api/queue/tasks (批量) |
+| 命令 | 说明 | 对应 ops | 对应 API |
+|------|------|----------|----------|
+| `viben queue status` | 队列整体状态 | `getStatus()` | GET /api/queue/status |
+| `viben queue list` | 任务列表 | `list()` | GET /api/queue/list |
+| `viben queue inspect <id>` | 任务详情 | `getItem()` | GET /api/queue/:id |
+| `viben queue enqueue` | 提交命令 | `enqueue()` | POST /api/queue/enqueue |
+| `viben queue cancel <id>` | 取消任务 | `cancel()` | DELETE /api/queue/:id |
+| `viben queue retry <id>` | 重试任务 | `retry()` | POST /api/queue/:id/retry |
+| `viben queue logs <id>` | 任务日志 | `getLogs()` | GET /api/queue/:id/logs |
+| `viben queue watch` | 实时监控 | (events) | WebSocket /ws/queue |
+| `viben queue config` | 配置管理 | `getConfig()`/`setConfig()` | GET/PUT /api/queue/config |
+| `viben queue clean` | 清理任务 | `clean()` | DELETE /api/queue/clean |
 
 ---
 
@@ -569,17 +545,16 @@ ID           STATUS    AGENT              ...
 - [ ] `viben queue inspect <id>` 显示详尽任务信息
 
 ### 任务操作
-- [ ] `viben queue enqueue --agent <a> --input <i>` 提交任务
-- [ ] `viben queue enqueue --stdin` 从 stdin 读取 prompt
+- [ ] `viben queue enqueue --command <cmd> --cwd <path>` 提交命令
+- [ ] `viben queue enqueue --stdin` 从 stdin 读取命令
 - [ ] `viben queue cancel <id>` 取消 pending 任务
 - [ ] `viben queue cancel <id> --force` 终止 running 任务
-- [ ] `viben queue retry <id>` 重试 failed 任务
+- [ ] `viben queue retry <id>` 重试失败任务
 - [ ] `viben queue retry <id> --reset-count` 重置重试计数
 
 ### 日志和监控
 - [ ] `viben queue logs <id>` 查看任务日志
 - [ ] `viben queue logs <id> --follow` 实时跟踪
-- [ ] `viben queue logs <id> --json` JSON 流输出
 - [ ] `viben queue watch` 实时监控队列事件
 - [ ] `viben queue watch --task <id>` 过滤特定任务
 - [ ] `viben queue watch --events <e>` 过滤事件类型
@@ -592,17 +567,15 @@ ID           STATUS    AGENT              ...
 - [ ] `viben queue clean --dry-run` 预览清理
 - [ ] `viben queue clean --before <t>` 按时间清理
 
+### CLI/API 一致性
+- [ ] CLI 和 API 共享同一个 ops 层
+- [ ] 相同参数产生相同结果
+- [ ] 错误码和错误信息一致
+
 ### 错误处理
-- [ ] Gateway 连接失败时显示诊断信息
 - [ ] 任务不存在时给出提示
 - [ ] 无效操作时说明原因和解决方案
-- [ ] `--verbose` 显示请求/响应详情
-
-### 全局选项
-- [ ] `--gateway <url>` 指定 Gateway 地址
-- [ ] `--timeout <ms>` 设置请求超时
-- [ ] `--json` 所有命令支持 JSON 输出
-- [ ] `--verbose` 调试模式
+- [ ] `--verbose` 显示详细信息
 
 ---
 
@@ -610,4 +583,4 @@ ID           STATUS    AGENT              ...
 
 - [task.md](./task.md) - 任务管理命令
 - [swarm.md](./swarm.md) - 智能体集群调度
-- [Gateway 任务队列设计](../../../../docs/plans/2026-02-28-gateway-task-queue-design.md) - 底层实现设计
+- [Queue System Refactor Design](../../../plans/2026-03-15-queue-system-refactor-design.md) - 架构设计文档

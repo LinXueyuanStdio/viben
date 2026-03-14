@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { TaskEventStore, type ApplyEventResult } from "./event-store";
 import { isValidEventType, VALID_EVENT_TYPES, type TaskEventType } from "./event-types";
 import { createMockTask, createMockEvent, createTaskInState } from "../__fixtures__/task-fixtures";
-import type { UnifiedTask, TaskEvent } from "../../services/task-service";
+import type { UnifiedTask, TaskEvent } from "../ops/types";
 
 // =============================================================================
 // Mocks

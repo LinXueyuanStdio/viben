@@ -93,6 +93,7 @@ import {
   buildWorkspaceUrl,
 } from "@/hooks";
 import { useVibeKanbanTasks } from "@/hooks/use-vibe-kanban";
+import { useVitePreview } from "@/hooks/use-vite-preview";
 import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
 import { useChatConfigStore } from "@/stores/chat-config-store";
@@ -417,6 +418,24 @@ export function WorkspaceChatPage() {
 
   // Load kanban tasks for the current workspace
   const { data: tasks = [], isLoading: isTasksLoading } = useVibeKanbanTasks(workspace?.path);
+
+  // Live preview for HTML artifacts
+  // taskId is based on workspace to share preview across sessions in same workspace
+  const {
+    previewUrl: livePreviewUrl,
+    status: livePreviewStatus,
+    error: livePreviewError,
+    startPreview,
+    stopPreview,
+    isNodeAvailable,
+  } = useVitePreview(workspaceId || null);
+
+  // Callback to start live preview with workspace working directory
+  const handleStartLivePreview = React.useCallback(() => {
+    if (workspace?.path) {
+      startPreview(workspace.path);
+    }
+  }, [workspace?.path, startPreview]);
 
   // Toast notifications
   const toast = useToast();
@@ -3000,6 +3019,13 @@ export function WorkspaceChatPage() {
             // Agent deletion logic - could navigate to agents page or show confirmation
             console.log("[WorkspaceChat] Delete agent:", rightSidebarAgentDetail.id);
           } : undefined}
+          // Live preview props for HTML artifact preview
+          livePreviewUrl={livePreviewUrl}
+          livePreviewStatus={livePreviewStatus}
+          livePreviewError={livePreviewError}
+          isNodeAvailable={isNodeAvailable}
+          onStartLivePreview={handleStartLivePreview}
+          onStopLivePreview={stopPreview}
         />
       </div>
 

@@ -24,7 +24,8 @@
 import { join } from "node:path";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { taskService, type UnifiedTask, type TaskEvent } from "../../services/task-service";
+import { taskService } from "../../services/task-service";
+import type { UnifiedTask, TaskEvent } from "../ops/types";
 import {
   xstateToTaskStatus,
   getNextState,
