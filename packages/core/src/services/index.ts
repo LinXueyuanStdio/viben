@@ -90,7 +90,7 @@ export {
   type TaskLogPhaseStatus,
 } from "../task/service";
 
-// Cron service
+// Cron service (re-exported from cron module for backward compatibility)
 export {
   CronService,
   type CronJob,
@@ -99,7 +99,8 @@ export {
   type CronJobType,
   type JobStatus,
   type CronNotificationSettings,
-} from "./cron";
+  type CronExecutionLog,
+} from "../cron";
 
 // Container service
 export {

@@ -3,6 +3,9 @@
  *
  * Provides commands for managing scheduled cron jobs.
  * Jobs can be agent-based (send message to agent) or script-based (execute bash).
+ *
+ * CLI uses ops functions directly for data operations.
+ * Jobs are not scheduled until Gateway is running.
  */
 import chalk from "chalk";
 import type { Command } from "commander";
@@ -14,15 +17,10 @@ import {
   outputKeyValue,
   handleCommandError,
 } from "../lib";
-import {
-  CronService,
-  eventService,
-  type CronJob,
-  type CreateCronJob,
-} from "../../services";
 
-// Create a shared cron service instance for CLI
-const cronService = new CronService(eventService);
+// Import ops functions from cron module
+import * as cronOps from "../../cron/ops";
+import type { CronJob, CreateCronJob } from "../../cron/ops";
 
 /**
  * Format job status for display
@@ -56,25 +54,6 @@ function formatTimestamp(ts?: number): string {
 }
 
 /**
- * Format schedule for display
- */
-function formatSchedule(job: CronJob): string {
-  if (job.cron) {
-    return `cron: ${job.cron}`;
-  }
-  if (job.every) {
-    if (job.every < 60) {
-      return `every ${job.every}s`;
-    }
-    if (job.every < 3600) {
-      return `every ${Math.floor(job.every / 60)}m`;
-    }
-    return `every ${Math.floor(job.every / 3600)}h`;
-  }
-  return chalk.gray("-");
-}
-
-/**
  * Get output context from program options
  */
 function getContext(program: Command): OutputContext {
@@ -87,18 +66,23 @@ function getContext(program: Command): OutputContext {
 }
 
 /**
- * Ensure cron service is loaded
- */
-async function ensureLoaded(): Promise<void> {
-  await cronService.load();
-}
-
-/**
  * List all cron jobs
  */
 async function listJobs(ctx: OutputContext): Promise<void> {
-  await ensureLoaded();
-  const jobs = await cronService.listJobs();
+  const result = await cronOps.listJobs();
+
+  if (!result.success) {
+    output(
+      ctx,
+      { success: false, error: { code: "LOAD_ERROR", message: result.error || "Unknown error" } },
+      () => {
+        console.error(chalk.red(`Failed to load jobs: ${result.error || "Unknown error"}`));
+      }
+    );
+    return;
+  }
+
+  const jobs = result.jobs;
 
   output(
     ctx,
@@ -133,7 +117,7 @@ async function listJobs(ctx: OutputContext): Promise<void> {
         j.name,
         formatEnabled(j.enabled),
         j.job_type,
-        formatSchedule(j),
+        cronOps.formatSchedule(j),
         formatStatus(j.last_status),
         formatTimestamp(j.next_run),
       ]);
@@ -147,19 +131,21 @@ async function listJobs(ctx: OutputContext): Promise<void> {
  * Show job details
  */
 async function showJob(ctx: OutputContext, id: string): Promise<void> {
-  await ensureLoaded();
-  const job = await cronService.getJob(id);
+  const configPath = cronOps.getDefaultConfigPath();
+  const result = await cronOps.getJob(configPath, id);
 
-  if (!job) {
+  if (!result.success || !result.job) {
     output(
       ctx,
-      { success: false, error: { code: "NOT_FOUND", message: `Job not found: ${id}` } },
+      { success: false, error: { code: "NOT_FOUND", message: result.error || `Job not found: ${id}` } },
       () => {
-        console.error(chalk.red(`Job not found: ${id}`));
+        console.error(chalk.red(result.error || `Job not found: ${id}`));
       }
     );
     return;
   }
+
+  const job = result.job;
 
   output(ctx, successResponse(job), () => {
     console.log(chalk.bold(`Job: ${job.name}`));
@@ -223,8 +209,6 @@ async function addJob(
     channel?: string;
   }
 ): Promise<void> {
-  await ensureLoaded();
-
   // Validate options
   if (!options.cron && !options.every) {
     output(
@@ -253,17 +237,30 @@ async function addJob(
     enabled: true,
   };
 
-  const job = await cronService.createJob(createJob);
+  const configPath = cronOps.getDefaultConfigPath();
+  const result = await cronOps.createJob(configPath, createJob);
+
+  if (!result.success || !result.job) {
+    output(
+      ctx,
+      { success: false, error: { code: "CREATE_ERROR", message: result.error || "Unknown error" } },
+      () => {
+        console.error(chalk.red(`Failed to create job: ${result.error || "Unknown error"}`));
+      }
+    );
+    return;
+  }
+
+  const job = result.job;
 
   output(ctx, successResponse(job), () => {
     console.log(chalk.green(`Created cron job: ${job.name}`));
     console.log(`  ID: ${job.id}`);
     console.log(`  Type: ${job.job_type}`);
-    console.log(`  Schedule: ${formatSchedule(job)}`);
+    console.log(`  Schedule: ${cronOps.formatSchedule(job)}`);
     console.log(`  Agent: ${job.agent}`);
-    if (job.next_run) {
-      console.log(`  Next Run: ${formatTimestamp(job.next_run)}`);
-    }
+    console.log();
+    console.log(chalk.yellow("Note: Jobs are scheduled when Gateway is running."));
   });
 }
 
@@ -271,11 +268,11 @@ async function addJob(
  * Remove a cron job
  */
 async function removeJob(ctx: OutputContext, id: string): Promise<void> {
-  await ensureLoaded();
+  const configPath = cronOps.getDefaultConfigPath();
 
   // Check if exists
-  const job = await cronService.getJob(id);
-  if (!job) {
+  const getResult = await cronOps.getJob(configPath, id);
+  if (!getResult.success || !getResult.job) {
     output(
       ctx,
       { success: false, error: { code: "NOT_FOUND", message: `Job not found: ${id}` } },
@@ -286,7 +283,19 @@ async function removeJob(ctx: OutputContext, id: string): Promise<void> {
     return;
   }
 
-  await cronService.deleteJob(id);
+  const job = getResult.job;
+  const result = await cronOps.deleteJob(configPath, id);
+
+  if (!result.success) {
+    output(
+      ctx,
+      { success: false, error: { code: "DELETE_ERROR", message: result.error || "Unknown error" } },
+      () => {
+        console.error(chalk.red(`Failed to delete job: ${result.error || "Unknown error"}`));
+      }
+    );
+    return;
+  }
 
   output(
     ctx,
@@ -302,16 +311,27 @@ async function removeJob(ctx: OutputContext, id: string): Promise<void> {
  * Enable a cron job
  */
 async function enableJob(ctx: OutputContext, id: string): Promise<void> {
-  await ensureLoaded();
+  const configPath = cronOps.getDefaultConfigPath();
+  const result = await cronOps.enableJob(configPath, id);
 
-  const job = await cronService.enableJob(id);
+  if (!result.success || !result.job) {
+    output(
+      ctx,
+      { success: false, error: { code: "UPDATE_ERROR", message: result.error || `Failed to enable job: ${id}` } },
+      () => {
+        console.error(chalk.red(result.error || `Failed to enable job: ${id}`));
+      }
+    );
+    return;
+  }
+
+  const job = result.job;
 
   output(ctx, successResponse(job), () => {
     console.log(chalk.green(`Enabled cron job: ${job.name}`));
     console.log(`  ID: ${id}`);
-    if (job.next_run) {
-      console.log(`  Next Run: ${formatTimestamp(job.next_run)}`);
-    }
+    console.log();
+    console.log(chalk.yellow("Note: Scheduling takes effect when Gateway is running."));
   });
 }
 
@@ -319,9 +339,21 @@ async function enableJob(ctx: OutputContext, id: string): Promise<void> {
  * Disable a cron job
  */
 async function disableJob(ctx: OutputContext, id: string): Promise<void> {
-  await ensureLoaded();
+  const configPath = cronOps.getDefaultConfigPath();
+  const result = await cronOps.disableJob(configPath, id);
 
-  const job = await cronService.disableJob(id);
+  if (!result.success || !result.job) {
+    output(
+      ctx,
+      { success: false, error: { code: "UPDATE_ERROR", message: result.error || `Failed to disable job: ${id}` } },
+      () => {
+        console.error(chalk.red(result.error || `Failed to disable job: ${id}`));
+      }
+    );
+    return;
+  }
+
+  const job = result.job;
 
   output(ctx, successResponse(job), () => {
     console.log(chalk.yellow(`Disabled cron job: ${job.name}`));
@@ -331,13 +363,14 @@ async function disableJob(ctx: OutputContext, id: string): Promise<void> {
 
 /**
  * Run a cron job immediately
+ * Note: This requires the Gateway to be running
  */
 async function runJob(ctx: OutputContext, id: string): Promise<void> {
-  await ensureLoaded();
+  const configPath = cronOps.getDefaultConfigPath();
 
   // Check if exists
-  const job = await cronService.getJob(id);
-  if (!job) {
+  const result = await cronOps.getJob(configPath, id);
+  if (!result.success || !result.job) {
     output(
       ctx,
       { success: false, error: { code: "NOT_FOUND", message: `Job not found: ${id}` } },
@@ -348,37 +381,123 @@ async function runJob(ctx: OutputContext, id: string): Promise<void> {
     return;
   }
 
-  console.log(chalk.cyan(`Running job: ${job.name}...`));
+  const job = result.job;
 
-  await cronService.runJob(id);
+  // Try to trigger via Gateway API
+  try {
+    const response = await fetch(`http://127.0.0.1:18790/api/cron/${id}/run`, {
+      method: "POST",
+    });
 
-  // Get updated job status
-  const updatedJob = await cronService.getJob(id);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
+      const errorMsg = errorData.error || "Unknown error";
+      output(
+        ctx,
+        { success: false, error: { code: "API_ERROR", message: errorMsg } },
+        () => {
+          console.error(chalk.red(`Failed to run job: ${errorMsg}`));
+          console.log();
+          console.log(chalk.yellow("Ensure the Gateway is running:"));
+          console.log(chalk.cyan("  viben service start gateway"));
+        }
+      );
+      return;
+    }
+
+    output(
+      ctx,
+      successResponse({ id, name: job.name, triggered: true }),
+      () => {
+        console.log(chalk.green(`Triggered job: ${job.name}`));
+        console.log(`  ID: ${id}`);
+        console.log();
+        console.log("Check execution logs with:");
+        console.log(chalk.cyan(`  viben cron logs ${id}`));
+      }
+    );
+  } catch (error) {
+    output(
+      ctx,
+      { success: false, error: { code: "CONNECTION_ERROR", message: "Failed to connect to Gateway" } },
+      () => {
+        console.error(chalk.red("Failed to connect to Gateway"));
+        console.log();
+        console.log(chalk.yellow("Ensure the Gateway is running:"));
+        console.log(chalk.cyan("  viben service start gateway"));
+      }
+    );
+  }
+}
+
+/**
+ * Show execution logs for a cron job
+ */
+async function showLogs(
+  ctx: OutputContext,
+  id: string,
+  options: { limit?: string; offset?: string }
+): Promise<void> {
+  const configPath = cronOps.getDefaultConfigPath();
+
+  // Get job first
+  const jobResult = await cronOps.getJob(configPath, id);
+  if (!jobResult.success || !jobResult.job) {
+    output(
+      ctx,
+      { success: false, error: { code: "NOT_FOUND", message: `Job not found: ${id}` } },
+      () => {
+        console.error(chalk.red(`Job not found: ${id}`));
+      }
+    );
+    return;
+  }
+
+  const job = jobResult.job;
+  const limit = options.limit ? parseInt(options.limit, 10) : 20;
+  const offset = options.offset ? parseInt(options.offset, 10) : 0;
+
+  const logsResult = await cronOps.getExecutionLogs(job, limit, offset);
+
+  if (!logsResult.success) {
+    output(
+      ctx,
+      { success: false, error: { code: "LOAD_ERROR", message: logsResult.error || "Unknown error" } },
+      () => {
+        console.error(chalk.red(`Failed to load logs: ${logsResult.error || "Unknown error"}`));
+      }
+    );
+    return;
+  }
+
+  const logs = logsResult.logs;
 
   output(
     ctx,
-    successResponse({
-      id,
-      name: job.name,
-      status: updatedJob?.last_status,
-      output: updatedJob?.last_output,
-      error: updatedJob?.last_error,
-    }),
+    successResponse({ job_id: id, logs, count: logs.length }),
     () => {
-      if (updatedJob?.last_status === "success") {
-        console.log(chalk.green(`Job completed successfully`));
-      } else if (updatedJob?.last_status === "failure") {
-        console.log(chalk.red(`Job failed`));
-        if (updatedJob.last_error) {
-          console.log(`  Error: ${updatedJob.last_error}`);
-        }
+      console.log(chalk.bold(`Execution Logs: ${job.name}`));
+      console.log();
+
+      if (logs.length === 0) {
+        console.log(chalk.gray("  No execution logs found."));
+        return;
       }
 
-      if (updatedJob?.last_output) {
-        console.log();
-        console.log(chalk.bold("Output:"));
-        console.log(updatedJob.last_output);
-      }
+      const headers = ["Time", "Status", "Duration", "Trigger", "Output"];
+      const rows = logs.map((log) => [
+        new Date(log.started_at).toLocaleString(),
+        log.status === "success"
+          ? chalk.green(log.status)
+          : log.status === "failure"
+          ? chalk.red(log.status)
+          : chalk.yellow(log.status),
+        cronOps.formatDuration(log.duration_ms),
+        log.trigger,
+        log.error || (log.output ? log.output.slice(0, 50) + (log.output.length > 50 ? "..." : "") : "-"),
+      ]);
+
+      outputTable(ctx, headers, rows);
     }
   );
 }
@@ -494,11 +613,27 @@ export function registerCronCommand(program: Command): void {
   cronCmd
     .command("run")
     .argument("<id>", "Job ID")
-    .description("Run a job immediately")
+    .description("Run a job immediately (requires Gateway)")
     .action(async (id: string) => {
       const ctx = getContext(program);
       try {
         await runJob(ctx, id);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // cron logs <id>
+  cronCmd
+    .command("logs")
+    .argument("<id>", "Job ID")
+    .option("-l, --limit <count>", "Number of logs to show", "20")
+    .option("-o, --offset <count>", "Offset from most recent", "0")
+    .description("Show execution logs for a job")
+    .action(async (id: string, options: { limit?: string; offset?: string }) => {
+      const ctx = getContext(program);
+      try {
+        await showLogs(ctx, id, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }

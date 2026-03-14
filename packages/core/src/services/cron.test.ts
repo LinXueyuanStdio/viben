@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { CronService } from "./cron";
+import { CronService } from "../cron";
 import { EventService } from "./events";
 
 describe("CronService", () => {

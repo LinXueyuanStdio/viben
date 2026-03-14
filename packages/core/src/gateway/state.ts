@@ -5,7 +5,7 @@
  */
 import { EventService } from "../services/events";
 import { SessionStoreService } from "../services/session-store";
-import { CronService } from "../services/cron";
+import { CronService } from "../cron";
 import { ContainerService } from "../services/container";
 import { HistoryService } from "../services/history";
 import { MessageBus } from "../services/message-bus";

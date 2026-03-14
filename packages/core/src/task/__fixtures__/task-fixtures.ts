@@ -90,7 +90,7 @@ export function createMockTask(
     name: DEFAULT_TASK_NAME,
     title: DEFAULT_TASK_TITLE,
     status: "backlog",
-    priority: "P2",
+    priority: "medium",
     createdAt: DEFAULT_CREATED_AT,
     ...overrides,
   };
