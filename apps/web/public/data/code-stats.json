@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-03-14T14:53:05.974106+00:00",
+  "generatedAt": "2026-03-14T14:56:56.261716+00:00",
   "summary": {
-    "totalLines": 618252,
-    "totalFiles": 2135,
-    "totalModules": 20,
-    "codeLines": 381174,
+    "totalLines": 616582,
+    "totalFiles": 2131,
+    "totalModules": 19,
+    "codeLines": 379457,
     "docLines": 166354,
-    "configLines": 70724
+    "configLines": 70771
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 232071,
+      "lines": 231505,
       "files": 752,
       "color": "#3178C6"
     },
@@ -26,14 +26,14 @@
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 128928,
+      "lines": 129029,
       "files": 515,
       "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 54896,
+      "lines": 54944,
       "files": 85,
       "color": "#F59E0B"
     },
@@ -54,8 +54,8 @@
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 3971,
-      "files": 8,
+      "lines": 3564,
+      "files": 6,
       "color": "#E34F26"
     },
     {
@@ -64,13 +64,6 @@
       "lines": 1899,
       "files": 18,
       "color": "#9C4121"
-    },
-    {
-      "lang": "CSS",
-      "ext": "css",
-      "lines": 1850,
-      "files": 7,
-      "color": "#1572B6"
     },
     {
       "lang": "Rust",
@@ -101,6 +94,13 @@
       "color": "#CB171E"
     },
     {
+      "lang": "CSS",
+      "ext": "css",
+      "lines": 1005,
+      "files": 6,
+      "color": "#1572B6"
+    },
+    {
       "lang": "Shell",
       "ext": "sh",
       "lines": 688,
@@ -118,14 +118,14 @@
   "modules": [
     {
       "name": "packages/core",
-      "lines": 189805,
-      "files": 557,
+      "lines": 188982,
+      "files": 556,
       "color": "#3B82F6"
     },
     {
       "name": "apps/desktop",
-      "lines": 187662,
-      "files": 601,
+      "lines": 188020,
+      "files": 602,
       "color": "#F59E0B"
     },
     {
@@ -136,7 +136,7 @@
     },
     {
       "name": "apps/web",
-      "lines": 53775,
+      "lines": 53823,
       "files": 311,
       "color": "#10B981"
     },
@@ -174,12 +174,6 @@
       "name": "packages/api-client",
       "lines": 1479,
       "files": 6,
-      "color": "#6B7280"
-    },
-    {
-      "name": "apps/landingpage",
-      "lines": 1253,
-      "files": 4,
       "color": "#6B7280"
     },
     {
@@ -240,7 +234,7 @@
   "desktopDirs": [
     {
       "name": "components",
-      "lines": 72066,
+      "lines": 72167,
       "files": 260,
       "color": "#8B5CF6"
     },
@@ -264,8 +258,8 @@
     },
     {
       "name": "lib",
-      "lines": 17954,
-      "files": 69,
+      "lines": 18211,
+      "files": 70,
       "color": "#F59E0B"
     },
     {
@@ -302,8 +296,8 @@
   "apps": [
     {
       "name": "desktop",
-      "lines": 187662,
-      "files": 601,
+      "lines": 188020,
+      "files": 602,
       "color": "#F59E0B"
     },
     {
@@ -314,15 +308,9 @@
     },
     {
       "name": "web",
-      "lines": 53775,
+      "lines": 53823,
       "files": 311,
       "color": "#10B981"
-    },
-    {
-      "name": "landingpage",
-      "lines": 1253,
-      "files": 4,
-      "color": "#6B7280"
     },
     {
       "name": "cli",
@@ -334,12 +322,12 @@
   "density": [
     {
       "name": "pkg/core",
-      "density": 340.8,
+      "density": 339.9,
       "color": "#3B82F6"
     },
     {
       "name": "desktop",
-      "density": 312.2,
+      "density": 312.3,
       "color": "#F59E0B"
     },
     {
@@ -349,7 +337,7 @@
     },
     {
       "name": "web",
-      "density": 172.9,
+      "density": 173.1,
       "color": "#10B981"
     },
     {
@@ -381,7 +369,7 @@
   "categories": [
     {
       "label": "源代码",
-      "lines": 381174,
+      "lines": 379457,
       "color": "#3B82F6"
     },
     {
@@ -391,7 +379,7 @@
     },
     {
       "label": "配置",
-      "lines": 70724,
+      "lines": 70771,
       "color": "#F59E0B"
     }
   ],
