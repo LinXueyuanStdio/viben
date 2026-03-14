@@ -181,3 +181,12 @@ export {
   getMcpServersConfigPath,
   type ConfigWatcherConfig,
 } from "./config-watcher";
+
+// Preview service
+export {
+  PreviewManager,
+  getPreviewManager,
+  isNodeAvailable,
+  type PreviewConfig,
+  type PreviewStatus,
+} from "./preview";

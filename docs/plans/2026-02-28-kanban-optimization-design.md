@@ -20,7 +20,7 @@ interface Task {
   tags?: Tag[];
 
   // 新增: 6 列状态
-  status: "backlog" | "queued" | "in_progress" | "ai_review" | "human_review" | "done" | "cancelled";
+  status: "backlog" | "queued" | "in_progress" | "ai_review" | "review" | "done" | "cancelled";
 
   // 新增: 增强元数据
   category?: "feature" | "bug_fix" | "refactoring" | "documentation" | "security" | "performance" | "ui_ux" | "infrastructure" | "testing";
@@ -80,7 +80,7 @@ const DEFAULT_COLUMNS = {
   queued:       { width: 300, minWidth: 250, maxWidth: 450, collapsed: false, locked: false },
   in_progress:  { width: 320, minWidth: 280, maxWidth: 500, collapsed: false, locked: false },
   ai_review:    { width: 300, minWidth: 250, maxWidth: 450, collapsed: false, locked: false },
-  human_review: { width: 300, minWidth: 250, maxWidth: 450, collapsed: false, locked: false },
+  review: { width: 300, minWidth: 250, maxWidth: 450, collapsed: false, locked: false },
   done:         { width: 280, minWidth: 220, maxWidth: 400, collapsed: false, locked: false },
 };
 ```

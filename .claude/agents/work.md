@@ -206,7 +206,7 @@ In Main Repo mode (no worktree), after completing all phases:
 
 1. **Do NOT run create-pr**
 2. Notify user: "Implementation complete. Changes are ready for human review."
-3. Update task.json status to "human_review"
+3. Update task.json status to "review"
 
 ---
 

@@ -165,8 +165,8 @@ viben task <command> <task>
   pause <task>       in_progress → paused   暂停执行
   resume <task>      paused → 恢复          恢复执行
   review <task>      展示审查信息           查看待审任务
-  approve <task>     human_review → completed   批准完成
-  reject <task>      human_review → backlog     拒绝返工
+  approve <task>     review → completed   批准完成
+  reject <task>      review → backlog     拒绝返工
   retry <task>       failed → queue         重试失败任务
   cancel <task>      * → cancelled          取消任务
   stop <task>        cancel 的别名
@@ -178,7 +178,7 @@ viben task <command> <task>
 |---------|------|---------|
 | `start <task>` | 启动任务执行（串行或并行模式） | ✓ |
 | `finish <task>` | 标记任务完成 | ✓ |
-| `create-pr <task>` | 创建 PR 并进入 human_review | ✓ |
+| `create-pr <task>` | 创建 PR 并进入 review | ✓ |
 | `archive <task>` | 归档到 archive/ 目录 | ✓ |
 
 ---
@@ -290,7 +290,7 @@ viben task review <task>
 === Task Review: 03-10-feature-xyz ===
 
 Title:    实现用户认证功能
-Status:   human_review
+Status:   review
 Priority: P1
 
 PR URL:   https://github.com/org/repo/pull/123
@@ -322,9 +322,9 @@ viben task approve <task>
 
 **行为:**
 
-1. 验证状态为 `human_review`
+1. 验证状态为 `review`
 2. 设置 `completedAt` 为当前时间
-3. 状态变更: `human_review` → `completed`
+3. 状态变更: `review` → `completed`
 4. 写入 `APPROVED` 事件
 
 ---
@@ -342,10 +342,10 @@ Options:
 
 **行为:**
 
-1. 验证状态为 `human_review`
+1. 验证状态为 `review`
 2. 清除 `pr_url`（PR 可能需要关闭或重新提交）
 3. 记录 `reviewReason: "rejected"` 和 `rejectReason`（如指定）
-4. 状态变更: `human_review` → `backlog`
+4. 状态变更: `review` → `backlog`
 5. 写入 `REJECTED` 事件
 
 ---
@@ -383,7 +383,7 @@ Options:
 
 **行为:**
 
-1. 验证任务状态在允许列表中：`backlog`, `queue`, `paused`, `in_progress`, `human_review`
+1. 验证任务状态在允许列表中：`backlog`, `queue`, `paused`, `in_progress`, `review`
 2. 如果是 `in_progress` 且未指定 `--force`，报错退出：
    ```
    Error: Task is in_progress. Use --force to cancel a running task.
@@ -410,10 +410,10 @@ Options:
 | dequeue | queue | backlog |
 | pause | queue, in_progress | paused |
 | resume | paused | queue 或 in_progress |
-| approve | human_review | completed |
-| reject | human_review | backlog |
+| approve | review | completed |
+| reject | review | backlog |
 | retry | failed | queue |
-| cancel / stop | backlog, queue, paused, in_progress*, human_review | cancelled |
+| cancel / stop | backlog, queue, paused, in_progress*, review | cancelled |
 
 > *`in_progress` 状态需要 `--force` 参数
 
@@ -467,7 +467,7 @@ flowchart TD
     C -->|viben task work-phase| D[in_progress]
     D -->|viben task pause| E[paused]
     E -->|viben task resume| D
-    D -->|viben task create-pr| F[human_review]
+    D -->|viben task create-pr| F[review]
     F -->|viben task approve| G[completed]
     F -->|viben task reject| B
     C -->|viben task dequeue| B
@@ -712,7 +712,7 @@ viben task validate-context <task>
 │       │   └─────────────────────────────────────────────────────────────────┘   │
 │       │                                                                         │
 │       ▼                                                                         │
-│  status: in_progress → human_review                                             │
+│  status: in_progress → review                                             │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -1151,8 +1151,8 @@ viben task create-pr add-user-auth --dry-run   # 预览
 - [x] `viben task pause` 暂停任务 (queue/in_progress → paused)
 - [x] `viben task resume` 恢复任务 (paused → 原状态)
 - [x] `viben task review` 查看待审任务详情
-- [x] `viben task approve` 批准完成 (human_review → completed)
-- [x] `viben task reject` 拒绝返工 (human_review → backlog)
+- [x] `viben task approve` 批准完成 (review → completed)
+- [x] `viben task reject` 拒绝返工 (review → backlog)
 - [x] `viben task retry` 重试失败任务 (failed → queue)
 - [x] `viben task cancel` 取消任务 (* → cancelled)
 - [x] `viben task stop` cancel 的别名

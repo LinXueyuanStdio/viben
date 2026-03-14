@@ -15,7 +15,7 @@
 ### 任务状态流转
 
 ```
-backlog → queue → in_progress → human_review → completed → archived
+backlog → queue → in_progress → review → completed → archived
                        ↓              ↓
                     paused         rejected → backlog
                        ↓

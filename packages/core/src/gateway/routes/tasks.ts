@@ -11,6 +11,11 @@
  * - GET /api/agent/:agentId/sessions/:sessionId/tasks - List tasks by session
  * - GET /api/agent/:agentId/sessions/:sessionId/tasks/:taskId/messages - Get task messages
  *
+ * CRUD endpoints (POST versions for CLI consistency):
+ * - POST /api/task/list - List tasks with optional filters
+ * - POST /api/task/view - View task details
+ * - POST /api/task/delete - Delete a task
+ *
  * Configuration endpoints:
  * - POST /api/task/set-branch - Set Git branch for task
  * - POST /api/task/set-base - Set PR target branch
@@ -3966,6 +3971,116 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // ============================================================================
+  // POST /api/task/enqueue - Move task from backlog to queue
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      agent?: string;
+      executor?: string;
+      model?: string;
+      priority?: string;
+    };
+  }>("/api/task/enqueue", {
+    schema: {
+      description: "Move task from backlog to queue for execution",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          agent: { type: "string", description: "Agent ID to execute this task" },
+          executor: { type: "string", description: "Executor type (CLAUDE_CODE, CURSOR, etc.)" },
+          model: { type: "string", description: "Model ID for execution" },
+          priority: { type: "string", description: "Priority (P0/P1/P2/P3)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, agent, executor, model, priority } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const result = enqueueTask(workspace_path, task_id, { agent, executor, model, priority });
+
+    if (!result.success) {
+      const code = result.error?.includes("not found") ? 404 : 400;
+      reply.code(code);
+      return { error: result.error, code: code === 404 ? "TASK_NOT_FOUND" : "ENQUEUE_FAILED" };
+    }
+
+    taskSSEManager.broadcast(task_id, { type: "STATE_CHANGED", new_state: result.status }, workspace_path);
+
+    return {
+      success: true,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/dequeue - Move task from queue back to backlog
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/dequeue", {
+    schema: {
+      description: "Remove task from queue back to backlog",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const result = dequeueTask(workspace_path, task_id);
+
+    if (!result.success) {
+      const code = result.error?.includes("not found") ? 404 : 400;
+      reply.code(code);
+      return { error: result.error, code: code === 404 ? "TASK_NOT_FOUND" : "DEQUEUE_FAILED" };
+    }
+
+    taskSSEManager.broadcast(task_id, { type: "STATE_CHANGED", new_state: result.status }, workspace_path);
+
+    return {
+      success: true,
+      task_id: result.task,
+      status: result.status,
+      previous_status: result.fromStatus,
+    };
+  });
+
+  // ============================================================================
   // POST /api/task/archive - completed -> archived
   // ============================================================================
   fastify.post<{
@@ -4971,7 +5086,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         return { error: result.error, code: "PLAN_PHASE_FAILED" };
       }
 
-      return { success: true, ...result };
+      return result;
     } catch (error) {
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Plan phase failed", code: "PLAN_PHASE_ERROR" };
@@ -5030,7 +5145,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         return { error: result.error, code: "IMPLEMENT_PHASE_FAILED" };
       }
 
-      return { success: true, ...result };
+      return result;
     } catch (error) {
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Implement phase failed", code: "IMPLEMENT_PHASE_ERROR" };
@@ -5089,7 +5204,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         return { error: result.error, code: "CHECK_PHASE_FAILED" };
       }
 
-      return { success: true, ...result };
+      return result;
     } catch (error) {
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Check phase failed", code: "CHECK_PHASE_ERROR" };
@@ -5142,17 +5257,398 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     try {
-      const result = await runWorkPhase(workspace_path, taskDir, { platform, verbose, detach });
+      const result = await runWorkPhase({
+        repoRoot: workspace_path,
+        workingDir: workspace_path,
+        taskDir,
+        platform,
+        verbose,
+        detach,
+      });
 
       if (!result.success) {
         reply.code(400);
         return { error: result.error, code: "WORK_PHASE_FAILED" };
       }
 
-      return { success: true, ...result };
+      return result;
     } catch (error) {
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Work phase failed", code: "WORK_PHASE_ERROR" };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/view - View task details
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+    };
+  }>("/api/task/view", {
+    schema: {
+      description: "View task details",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const result = viewTask(workspace_path, task_id);
+
+    if (!result.success) {
+      const code = result.error?.includes("not found") ? 404 : 400;
+      reply.code(code);
+      return { error: result.error, code: code === 404 ? "TASK_NOT_FOUND" : "VIEW_FAILED" };
+    }
+
+    return { success: true, task: result.task };
+  });
+
+  // ============================================================================
+  // POST /api/task/delete - Delete a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      force?: boolean;
+    };
+  }>("/api/task/delete", {
+    schema: {
+      description: "Delete a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          force: { type: "boolean", description: "Force delete even if task is in progress" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, force } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const result = deleteTask(workspace_path, task_id);
+
+    if (!result.success) {
+      const code = result.error?.includes("not found") ? 404 : 400;
+      reply.code(code);
+      return { error: result.error, code: code === 404 ? "TASK_NOT_FOUND" : "DELETE_FAILED" };
+    }
+
+    // Clear cache entry if exists
+    deleteCacheEntry(task_id);
+
+    return { success: true, task_id: result.deleted };
+  });
+
+  // ============================================================================
+  // POST /api/task/list - List tasks
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      mine?: boolean;
+      status?: string;
+    };
+  }>("/api/task/list", {
+    schema: {
+      description: "List tasks",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          mine: { type: "boolean", description: "Show only my tasks" },
+          status: { type: "string", description: "Filter by status" },
+        },
+        required: ["workspace_path"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, mine, status } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    const result = listTasks(workspace_path, { mine, status });
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error, code: "LIST_FAILED" };
+    }
+
+    return { success: true, tasks: result.tasks };
+  });
+
+  // ============================================================================
+  // POST /api/task/create-worktree - Create isolated git worktree for a task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      skip_prd?: boolean;
+    };
+  }>("/api/task/create-worktree", {
+    schema: {
+      description: "Create isolated git worktree for a task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          skip_prd: { type: "boolean", description: "Skip prd.md validation" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, skip_prd } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    // Check if task was rejected
+    const taskJson = readTaskJsonFromWorkspace(taskDir) as { status?: string } | null;
+    if (taskJson?.status === "rejected") {
+      reply.code(400);
+      return { error: "Task was rejected. Check REJECTED.md for details.", code: "TASK_REJECTED" };
+    }
+
+    // Check prd.md exists (unless skipped)
+    if (!skip_prd) {
+      const prdFile = join(taskDir, "prd.md");
+      if (!existsSync(prdFile)) {
+        reply.code(400);
+        return { error: "prd.md not found - planning may not have completed. Use skip_prd to bypass.", code: "PRD_NOT_FOUND" };
+      }
+    }
+
+    try {
+      const result = await runCreateWorktree(workspace_path, taskDir);
+
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error, code: "CREATE_WORKTREE_FAILED" };
+      }
+
+      return {
+        success: true,
+        worktree_path: result.worktreePath,
+        branch: result.branch,
+        base_branch: result.baseBranch,
+      };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Create worktree failed", code: "CREATE_WORKTREE_ERROR" };
+    }
+  });
+
+  // ============================================================================
+  // POST /api/task/validate-check-phase-passed - Validate check phase passed
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      output?: string;
+      output_file?: string;
+    };
+  }>("/api/task/validate-check-phase-passed", {
+    schema: {
+      description: "Validate check phase passed (runs verify commands or checks completion markers)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          output: { type: "string", description: "Agent output text (for completion markers validation)" },
+          output_file: { type: "string", description: "File containing agent output" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, output, output_file } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    // Get agent output from option or file
+    let agentOutput: string | undefined = output;
+    if (!agentOutput && output_file && existsSync(output_file)) {
+      agentOutput = readFileSync(output_file, "utf-8");
+    }
+
+    const result = validateIfReviewFinished(workspace_path, taskDir, agentOutput);
+
+    return {
+      success: result.success,
+      method: result.method,
+      error: result.error,
+      details: result.details,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/cleanup - Cleanup worktrees and related resources
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      branch?: string;
+      keep_branch?: boolean;
+      merged?: boolean;
+      all?: boolean;
+      list?: boolean;
+    };
+  }>("/api/task/cleanup", {
+    schema: {
+      description: "Cleanup worktrees and related resources",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          branch: { type: "string", description: "Branch name to cleanup" },
+          keep_branch: { type: "boolean", description: "Keep the git branch" },
+          merged: { type: "boolean", description: "Cleanup merged worktrees" },
+          all: { type: "boolean", description: "Cleanup all worktrees" },
+          list: { type: "boolean", description: "List all worktrees" },
+        },
+        required: ["workspace_path"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, branch, keep_branch, merged, all, list } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+
+    try {
+      // List worktrees
+      const { stdout: listOutput } = runGitCommand(["worktree", "list", "--porcelain"], workspace_path);
+      const worktrees: Array<{ path: string; branch: string; commit: string }> = [];
+
+      const lines = listOutput.split("\n");
+      let current: { path?: string; branch?: string; commit?: string } = {};
+
+      for (const line of lines) {
+        if (line.startsWith("worktree ")) {
+          current.path = line.slice(9);
+        } else if (line.startsWith("HEAD ")) {
+          current.commit = line.slice(5);
+        } else if (line.startsWith("branch ")) {
+          current.branch = line.slice(7).replace("refs/heads/", "");
+        } else if (line === "") {
+          if (current.path && current.branch) {
+            worktrees.push({
+              path: current.path,
+              branch: current.branch,
+              commit: current.commit || "",
+            });
+          }
+          current = {};
+        }
+      }
+
+      if (list) {
+        return { success: true, worktrees };
+      }
+
+      // Cleanup logic
+      const cleaned: string[] = [];
+      const errors: string[] = [];
+
+      for (const wt of worktrees) {
+        // Skip main worktree
+        if (wt.path === workspace_path) continue;
+
+        const shouldClean = all ||
+          (branch && wt.branch === branch) ||
+          (merged && wt.branch.startsWith("feat/"));
+
+        if (shouldClean) {
+          try {
+            runGitCommand(["worktree", "remove", wt.path, "--force"], workspace_path);
+            if (!keep_branch) {
+              runGitCommand(["branch", "-D", wt.branch], workspace_path);
+            }
+            cleaned.push(wt.path);
+          } catch (e) {
+            errors.push(`Failed to cleanup ${wt.path}: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+      }
+
+      return {
+        success: errors.length === 0,
+        cleaned,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Cleanup failed", code: "CLEANUP_ERROR" };
     }
   });
 }

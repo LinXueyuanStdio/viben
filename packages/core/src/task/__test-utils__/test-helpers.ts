@@ -67,7 +67,7 @@ export const EVENT_SEQUENCES = {
   /**
    * To human review state (via CHECK_PASSED)
    */
-  toHumanReview: [
+  toReview: [
     { type: "QUEUE" },
     { type: "START" },
     { type: "PLAN_COMPLETE" },

@@ -30,7 +30,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 ┌─────────────────────────────────────────────────────────────────┐
 │                      XState State Machine                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │  backlog → queue → in_progress → human_review → completed │  │
+│  │  backlog → queue → in_progress → review → completed │  │
 │  │     │        ↓    (plan/implement/check)  ↑       ↑       │  │
 │  │     │     paused ─────────────────────────┘       │       │  │
 │  │     └─────→ cancelled   failed ←──────────────────┘       │  │
@@ -56,7 +56,7 @@ Viben 任务系统是一个基于事件驱动的状态机架构，用于管理 A
 | `queue` | 队列 | 任务排队等待执行容量 |
 | `in_progress` | 执行中 | 任务正在执行（含子状态） |
 | `paused` | 已暂停 | 任务暂停，保留当前进度 |
-| `human_review` | 人工审查 | 需要人工审核 |
+| `review` | 人工审查 | 需要人工审核 |
 | `completed` | 已完成 | 任务成功完成 |
 | `failed` | 失败 | 任务执行失败 |
 | `cancelled` | 已取消 | 任务被主动取消 |
@@ -95,7 +95,7 @@ stateDiagram-v2
         plan --> failed: PLAN_FAILED
         implement --> check: ALL_SUBTASKS_DONE
         implement --> failed: IMPLEMENT_FAILED
-        check --> human_review: CHECK_PASSED
+        check --> review: CHECK_PASSED
         check --> fix: CHECK_FAILED
         fix --> check: FIX_COMPLETE
         fix --> failed: FIX_FAILED
@@ -109,9 +109,9 @@ stateDiagram-v2
     paused --> backlog: ABANDON
     paused --> cancelled: CANCEL
 
-    human_review --> completed: APPROVED
-    human_review --> backlog: REJECTED
-    human_review --> cancelled: CANCEL
+    review --> completed: APPROVED
+    review --> backlog: REJECTED
+    review --> cancelled: CANCEL
 
     failed --> queue: RETRY
     failed --> backlog: ABANDON
@@ -139,8 +139,8 @@ dequeue <task>     # queue → backlog        移出队列
 pause <task>       # in_progress → paused   暂停执行
 resume <task>      # paused → 恢复          恢复执行
 review <task>      # 展示审查信息           查看待审任务
-approve <task>     # human_review → completed   批准完成
-reject <task>      # human_review → backlog     拒绝返工
+approve <task>     # review → completed   批准完成
+reject <task>      # review → backlog     拒绝返工
 retry <task>       # failed → queue         重试失败任务
 cancel <task>      # * → cancelled          取消任务
 stop <task>        # cancel 的别名
@@ -154,10 +154,10 @@ stop <task>        # cancel 的别名
 | `dequeue` | DEQUEUE | queue | backlog |
 | `pause` | PAUSE | queue, in_progress | paused |
 | `resume` | RESUME | paused | queue 或 in_progress |
-| `approve` | APPROVED | human_review | completed |
-| `reject` | REJECTED | human_review | backlog |
+| `approve` | APPROVED | review | completed |
+| `reject` | REJECTED | review | backlog |
 | `retry` | RETRY | failed | queue |
-| `cancel` / `stop` | CANCEL | backlog, queue, paused, in_progress*, human_review | cancelled |
+| `cancel` / `stop` | CANCEL | backlog, queue, paused, in_progress*, review | cancelled |
 
 > *`in_progress` 状态需要 `--force` 参数
 
@@ -170,7 +170,7 @@ flowchart TD
     C -->|viben task start| D[in_progress]
     D -->|viben task pause| E[paused]
     E -->|viben task resume| D
-    D -->|viben task create-pr| F[human_review]
+    D -->|viben task create-pr| F[review]
     F -->|viben task approve| G[completed]
     F -->|viben task reject| B
     C -->|viben task dequeue| B
@@ -213,7 +213,7 @@ flowchart TD
 #### 计划阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `PLAN_COMPLETE` | 计划完成 | plan → implement 或 human_review |
+| `PLAN_COMPLETE` | 计划完成 | plan → implement 或 review |
 | `PLAN_FAILED` | 计划失败 | plan → failed |
 
 #### 编码阶段事件
@@ -226,7 +226,7 @@ flowchart TD
 #### QA 阶段事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `CHECK_PASSED` | QA 通过 | check → human_review |
+| `CHECK_PASSED` | QA 通过 | check → review |
 | `CHECK_FAILED` | QA 发现问题 | check → fix |
 | `FIX_COMPLETE` | 修复完成 | fix → check |
 | `FIX_FAILED` | 修复失败 | fix → failed |
@@ -234,10 +234,10 @@ flowchart TD
 #### 用户交互事件
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `USER_STOPPED` | 用户手动停止 | * → backlog 或 human_review |
-| `APPROVED` | 人工批准 | human_review → completed |
-| `REJECTED` | 人工拒绝 | human_review → backlog |
-| `CANCEL` | 取消任务 | backlog/queue/paused/human_review → cancelled |
+| `USER_STOPPED` | 用户手动停止 | * → backlog 或 review |
+| `APPROVED` | 人工批准 | review → completed |
+| `REJECTED` | 人工拒绝 | review → backlog |
+| `CANCEL` | 取消任务 | backlog/queue/paused/review → cancelled |
 
 #### 暂停/恢复事件
 | 事件 | 描述 | 触发转换 |
@@ -269,7 +269,7 @@ interface UnifiedTask {
     phase: ExecutionPhase;       // 当前执行阶段
     phaseProgress?: number;      // 阶段进度 0-100
   };
-  reviewReason?: ReviewReason;   // human_review 原因
+  reviewReason?: ReviewReason;   // review 原因
 
   // 组织信息
   priority?: "P0" | "P1" | "P2" | "P3";
@@ -505,7 +505,7 @@ interface BatchEventResponse {
 | 批量入队 | `QUEUE` | `backlog` |
 | 批量暂停 | `PAUSE` | `queue`, `in_progress` |
 | 批量恢复 | `RESUME` | `paused` |
-| 批量取消 | `CANCEL` | `backlog`, `queue`, `paused`, `human_review` |
+| 批量取消 | `CANCEL` | `backlog`, `queue`, `paused`, `review` |
 | 批量移回待办 | `DEQUEUE` | `queue` |
 
 > **注意**：批量操作采用**尽力执行**策略，部分失败不影响其他任务，不支持事务回滚。
@@ -828,7 +828,7 @@ interface UpdateTaskRequest {
 恢复服务处理以下场景：
 
 1. **Gateway 重启恢复**: 从 task.json 恢复状态
-2. **卡住检测**: 将不活跃任务移至 human_review
+2. **卡住检测**: 将不活跃任务移至 review
 3. **智能体崩溃**: 使用 USER_STOPPED 事件自动恢复
 
 ### 恢复配置
@@ -1064,7 +1064,7 @@ interface QueueConfig {
 │       │   └─────────────────────────────────────────────────────────────────┘   │
 │       │                                                                         │
 │       ▼                                                                         │
-│  status: in_progress → human_review                                             │
+│  status: in_progress → review                                             │
 │                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 

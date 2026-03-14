@@ -182,7 +182,7 @@ viben task resume avatar-upload
 
 ## 6. 人工审核
 
-任务执行完成后自动进入 human_review 状态。
+任务执行完成后自动进入 review 状态。
 
 ```bash
 # 查看任务详情
@@ -192,7 +192,7 @@ viben task review avatar-upload
 # ═══════════════════════════════════════════
 # Task: avatar-upload
 # Title: 用户头像上传功能
-# Status: human_review
+# Status: review
 # Branch: feat/avatar-upload
 # ═══════════════════════════════════════════
 #
@@ -222,7 +222,7 @@ viben task approve avatar-upload
 
 # 输出示例:
 # ✓ Task approved
-# ✓ Status: human_review → completed
+# ✓ Status: review → completed
 
 # 如果需要修改，拒绝任务
 viben task reject avatar-upload -r "缺少文件大小校验的错误提示"
@@ -230,7 +230,7 @@ viben task reject avatar-upload -r "缺少文件大小校验的错误提示"
 # 输出示例:
 # ✓ Task rejected
 # ✓ Reason: 缺少文件大小校验的错误提示
-# ✓ Status: human_review → backlog
+# ✓ Status: review → backlog
 ```
 
 ---
@@ -369,14 +369,14 @@ Day 1 下午
 ├── 14:00 启动执行 (in_progress)
 ├── 14:30 暂停 (paused) - 等待 API 确认
 ├── 15:00 恢复执行 (in_progress)
-└── 17:00 执行完成 (human_review)
+└── 17:00 执行完成 (review)
 
 Day 2 上午
 ├── 09:00 人工审核
 ├── 09:30 发现问题，拒绝 (backlog)
 ├── 10:00 修复后重新排队 (queue)
 ├── 10:15 重新执行 (in_progress)
-└── 11:00 执行完成 (human_review)
+└── 11:00 执行完成 (review)
 
 Day 2 下午
 ├── 14:00 审核通过 (completed)
