@@ -130,7 +130,7 @@ export async function downloadAndInstallSkill(
     onProgress?.({
       stage: 'downloading',
       progress: 0,
-      message: `Downloading ${pkg.name}...`,
+      message: i18n.t('installation.downloading', { name: pkg.name }),
     });
 
     // Download package

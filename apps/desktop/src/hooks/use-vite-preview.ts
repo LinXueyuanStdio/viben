@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import i18n from "@/i18n";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import {
   checkNodeAvailable as apiCheckNodeAvailable,
@@ -159,7 +160,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   const startPreview = useCallback(
     async (workingDir: string) => {
       if (!taskIdRef.current) {
-        setError("No task ID provided");
+        setError(i18n.t("errors.vitePreview.noTaskId"));
         setStatus("error");
         return;
       }

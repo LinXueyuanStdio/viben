@@ -163,7 +163,7 @@ export function WorkspaceGitHubPage({
       {!embeddedMode && (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[{ label: "GitHub", href: `/workspace/${workspaceId}/github` }]}
+          segments={[{ label: t("nav.github"), href: `/workspace/${workspaceId}/github` }]}
           showRemove={false}
         />
       )}

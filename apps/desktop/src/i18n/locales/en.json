@@ -107,7 +107,15 @@
     "noData": "No data",
     "id": "ID",
     "openFolderFailed": "Failed to open folder",
-    "agentPathNotAvailable": "Agent path is not available yet"
+    "agentPathNotAvailable": "Agent path is not available yet",
+    "defaultUserName": "User",
+    "units": {
+      "bytes": "B",
+      "kilobytes": "KB",
+      "megabytes": "MB",
+      "gigabytes": "GB",
+      "terabytes": "TB"
+    }
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -135,7 +143,8 @@
     "settings": "Settings",
     "about": "About",
     "observability": "Observability",
-    "chatMonitor": "Chat Monitor"
+    "chatMonitor": "Chat Monitor",
+    "github": "GitHub"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -1383,7 +1392,10 @@
     "signInRequiredDescription": "Please sign in to access this feature. Your data will be synced across devices.",
     "oauthCodeRequired": "Please enter the OAuth code",
     "devModeOAuthHint": "Dev Mode: Paste the OAuth code from the URL",
-    "oauthCodePlaceholder": "Paste code from viben://oauth?code=..."
+    "oauthCodePlaceholder": "Paste code from viben://oauth?code=...",
+    "waitingForOAuth": "Waiting for browser authorization...",
+    "completeInBrowser": "Please complete authorization in browser",
+    "githubLoginDescription": "Sign in quickly with your GitHub account"
   },
   "inspector": {
     "title": "MCP Inspector",
@@ -1923,7 +1935,16 @@
     "cacheSize50": "50 MB",
     "cacheSize100": "100 MB",
     "cacheSize200": "200 MB",
-    "cacheSize500": "500 MB"
+    "cacheSize500": "500 MB",
+    "sizeBytes": "{{value}} B",
+    "sizeKB": "{{value}} KB",
+    "sizeMB": "{{value}} MB",
+    "sizeGB": "{{value}} GB",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "unknown": "Unknown"
   },
   "skillsMarket": {
     "title": "Skills Marketplace",
@@ -3080,7 +3101,7 @@
     "moreSessionsHint": "View more sessions in the sidebar",
     "createNewSession": "New Session",
     "messagesUnit": "msgs",
-    "renameSession": "Rename",
+    "renameSession": "Rename Session",
     "deleteSession": "Delete",
     "pinSession": "Pin",
     "unpinSession": "Unpin",
@@ -4029,6 +4050,9 @@
     "kanban": {
       "cannotConnectGateway": "Cannot connect to Gateway. Is it running?",
       "unknownError": "Unknown error"
+    },
+    "vitePreview": {
+      "noTaskId": "No task ID provided"
     }
   },
   "availability": {
@@ -4096,6 +4120,7 @@
     "doneShort": "Done"
   },
   "installation": {
+    "downloading": "Downloading {{name}}...",
     "downloadComplete": "Download complete",
     "extractingPackage": "Extracting package...",
     "extractingFiles": "Extracting files...",
@@ -4127,6 +4152,10 @@
       "1014": "Bad gateway",
       "1015": "TLS handshake failure",
       "4000": "Heartbeat timeout"
+    },
+    "closeReason": {
+      "manualDisconnect": "Manual disconnect",
+      "heartbeatTimeout": "Heartbeat timeout"
     },
     "closedWithCode": "WebSocket closed (code: {{code}})"
   },

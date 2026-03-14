@@ -213,7 +213,7 @@ export function useGroupChat(
 ): UseGroupChatReturn {
   const {
     userId = "user-1",
-    userDisplayName = "User",
+    userDisplayName = i18n.t("common.defaultUserName"),
     workspacePath: initialWorkspacePath,
     autoConnect = true,
     notificationCallbacks,

@@ -8,6 +8,8 @@
  * - Event handling
  */
 
+import i18n from "../i18n";
+
 export type WebSocketState = "connecting" | "connected" | "disconnected" | "reconnecting";
 
 export interface WebSocketManagerOptions {
@@ -122,7 +124,7 @@ export class WebSocketManager {
     this.cancelReconnect();
 
     if (this.ws) {
-      this.ws.close(1000, "Manual disconnect");
+      this.ws.close(1000, i18n.t("websocket.closeReason.manualDisconnect"));
       this.ws = null;
     }
 
@@ -238,7 +240,7 @@ export class WebSocketManager {
         // Set timeout for pong response
         this.heartbeatTimeoutTimer = setTimeout(() => {
           console.warn("[WebSocketManager] Heartbeat timeout - reconnecting");
-          this.ws?.close(4000, "Heartbeat timeout");
+          this.ws?.close(4000, i18n.t("websocket.closeReason.heartbeatTimeout"));
         }, this.options.heartbeatTimeout);
       }
     }, this.options.heartbeatInterval);

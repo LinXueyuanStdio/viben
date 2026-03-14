@@ -103,10 +103,9 @@ function getLanguageFromExtension(ext: string): string {
   return languageMap[ext] || ext.toUpperCase();
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
+function formatFileSize(bytes: number, units: string[]): string {
+  if (bytes === 0) return `0 ${units[0]}`;
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
   const k = 1024;
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -242,6 +241,14 @@ function ErrorPreview({ error }: { error: string }) {
 
 function FileMetadataPanel({ fileInfo }: { fileInfo: FileInfo | null }) {
   const { t } = useTranslation();
+  const fileSizeUnits = [
+    t("common.units.bytes"),
+    t("common.units.kilobytes"),
+    t("common.units.megabytes"),
+    t("common.units.gigabytes"),
+    t("common.units.terabytes"),
+  ];
+
   if (!fileInfo) {
     return (
       <div className="border-t border-border bg-accent/20 px-4 py-3 space-y-2">
@@ -259,7 +266,7 @@ function FileMetadataPanel({ fileInfo }: { fileInfo: FileInfo | null }) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <HardDrive className="size-3.5" />
-          <span>{formatFileSize(fileInfo.size)}</span>
+          <span>{formatFileSize(fileInfo.size, fileSizeUnits)}</span>
         </div>
         {fileInfo.modified && (
           <div className="flex items-center gap-1.5">
