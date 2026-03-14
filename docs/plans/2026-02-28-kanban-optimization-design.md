@@ -95,7 +95,7 @@ const DEFAULT_COLUMNS = {
 | Queue | ❌ | ✅ | 设置: 最大并行任务数 |
 | In Progress | ❌ | ❌ | 容量指示器 (如 "3/5") |
 | AI Review | ❌ | ❌ | — |
-| Human Review | ❌ | ❌ | — |
+| Review | ❌ | ❌ | — |
 | Done | ❌ | ❌ | "Archive All", "显示/隐藏已归档" |
 
 **所有列共有:**
@@ -384,7 +384,7 @@ const debouncedSaveSettings = useMemo(
 | Queue | "队列为空。从 Backlog 移动任务。" |
 | In Progress | "无活动任务。队列将自动提升。" |
 | AI Review | "无任务等待 AI 审核。" |
-| Human Review | "无任务需要人工审核。" |
+| Review | "无任务需要审核。" |
 | Done | "已完成的任务将显示在此。" |
 
 ### 7.4 键盘快捷键
