@@ -43,6 +43,7 @@ import {
   ToolPreview,
 } from "./tabs";
 import type { TaskWithAttemptStatus } from "@/lib/vibe-kanban";
+import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 /**
  * Resize handle component for sidebar
@@ -193,6 +194,19 @@ interface RightSidebarProps {
   onAgentSetDefault?: () => void;
   /** Called when agent is deleted */
   onAgentDelete?: () => void;
+  // Live preview props (for HTML artifact preview)
+  /** Live preview URL from Vite server */
+  livePreviewUrl?: string | null;
+  /** Live preview server status */
+  livePreviewStatus?: PreviewStatus;
+  /** Live preview error message */
+  livePreviewError?: string | null;
+  /** Whether Node.js is available for live preview */
+  isNodeAvailable?: boolean | null;
+  /** Called to start live preview server */
+  onStartLivePreview?: () => void;
+  /** Called to stop live preview server */
+  onStopLivePreview?: () => void;
 }
 
 /**
@@ -310,6 +324,13 @@ export function RightSidebar({
   onAgentUpdate,
   onAgentSetDefault,
   onAgentDelete,
+  // Live preview props
+  livePreviewUrl,
+  livePreviewStatus,
+  livePreviewError,
+  isNodeAvailable,
+  onStartLivePreview,
+  onStopLivePreview,
 }: RightSidebarProps) {
   const { t } = useTranslation();
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
@@ -658,7 +679,15 @@ export function RightSidebar({
         /* Preview tabs - need full height for Monaco Editor */
         <div className="flex-1 min-h-0">
           {currentTab?.type === "artifact" && currentTab.artifact && (
-            <ArtifactPreview artifact={currentTab.artifact} />
+            <ArtifactPreview
+              artifact={currentTab.artifact}
+              livePreviewUrl={livePreviewUrl}
+              livePreviewStatus={livePreviewStatus}
+              livePreviewError={livePreviewError}
+              isNodeAvailable={isNodeAvailable}
+              onStartLivePreview={onStartLivePreview}
+              onStopLivePreview={onStopLivePreview}
+            />
           )}
 
           {currentTab?.type === "tool" && currentTab.tool && (

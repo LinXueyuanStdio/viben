@@ -21,3 +21,4 @@ export { GroupChatTabContent } from "./group-chat-detail-tab";
 
 // Preview components
 export { ArtifactPreview, ToolPreview } from "./previews";
+export type { ArtifactPreviewProps } from "./previews";

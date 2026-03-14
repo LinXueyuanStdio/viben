@@ -14,7 +14,7 @@ import {
   getInitialSnapshot,
   transition,
 } from "xstate";
-import type { TaskStatus, ReviewReason, ExecutionPhase } from "../../services/task-service";
+import type { TaskStatus, ReviewReason, ExecutionPhase } from "../ops/types";
 import { guards } from "./guards";
 import { actions } from "./actions";
 

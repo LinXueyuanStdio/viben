@@ -5,7 +5,7 @@
  * They can update the context or perform external operations.
  */
 
-import type { ReviewReason } from "../../services/task-service";
+import type { ReviewReason } from "../ops/types";
 import type { TaskMachineContext, PausedSnapshot, XStateValue } from "./task-machine";
 
 /**

@@ -398,12 +398,9 @@ export function registerIdeaCommand(program: Command): void {
               // Title
               console.log(chalk.bold(`  ${idea.title}`));
 
-              // Description (indent and wrap)
+              // Description
               if (idea.description) {
-                const desc = idea.description.length > 200
-                  ? idea.description.substring(0, 197) + "..."
-                  : idea.description;
-                console.log(chalk.gray(`  ${desc}`));
+                console.log(chalk.gray(`  ${idea.description}`));
               }
 
               // Rationale
@@ -411,16 +408,39 @@ export function registerIdeaCommand(program: Command): void {
                 console.log(chalk.yellow(`  Why: `) + idea.rationale);
               }
 
-              // Implementation approach
-              if (idea.implementationApproach) {
-                console.log(chalk.green(`  How: `) + idea.implementationApproach);
-              }
-
               // Affected files
               if (idea.affectedFiles && idea.affectedFiles.length > 0) {
-                const files = idea.affectedFiles.slice(0, 5);
-                console.log(chalk.blue(`  Files: `) + files.join(", ") +
-                  (idea.affectedFiles.length > 5 ? ` (+${idea.affectedFiles.length - 5} more)` : ""));
+                console.log(chalk.blue(`  Files:`));
+                for (const file of idea.affectedFiles.slice(0, 8)) {
+                  console.log(chalk.gray(`    - ${file}`));
+                }
+                if (idea.affectedFiles.length > 8) {
+                  console.log(chalk.gray(`    ... +${idea.affectedFiles.length - 8} more`));
+                }
+              }
+
+              // Existing patterns
+              if (idea.existingPatterns && idea.existingPatterns.length > 0) {
+                console.log(chalk.magenta(`  Patterns:`));
+                for (const pattern of idea.existingPatterns.slice(0, 5)) {
+                  console.log(chalk.gray(`    - ${pattern}`));
+                }
+                if (idea.existingPatterns.length > 5) {
+                  console.log(chalk.gray(`    ... +${idea.existingPatterns.length - 5} more`));
+                }
+              }
+
+              // Implementation approach (can be multi-line)
+              if (idea.implementationApproach) {
+                console.log(chalk.green(`  Implementation:`));
+                const lines = idea.implementationApproach.split("\n");
+                const maxLines = 10;
+                for (const line of lines.slice(0, maxLines)) {
+                  console.log(chalk.gray(`    ${line}`));
+                }
+                if (lines.length > maxLines) {
+                  console.log(chalk.gray(`    ... +${lines.length - maxLines} more lines`));
+                }
               }
 
               // Promoted to task
@@ -492,46 +512,54 @@ export function registerIdeaCommand(program: Command): void {
         }
 
         output(ctx, successResponse({ idea }), () => {
-          console.log(chalk.bold(`Idea: ${idea.title}`));
+          // Header
+          console.log(
+            chalk.cyan(`[${idea.id}]`) +
+              chalk.gray(` ${idea.type}`) +
+              `  ${formatStatus(idea.status)}` +
+              `  ${formatEffort(idea.estimatedEffort)}`
+          );
+          console.log(chalk.bold(idea.title));
+          console.log(chalk.gray(`Created: ${idea.createdAt}`));
+          if (idea.promotedTo) {
+            console.log(chalk.green(`Task: ${idea.promotedTo}`));
+          }
           console.log();
 
-          outputKeyValue(ctx, {
-            ID: idea.id,
-            Type: idea.type,
-            Status: formatStatus(idea.status),
-            Effort: formatEffort(idea.estimatedEffort),
-            "Created At": idea.createdAt,
-            "Promoted To": idea.promotedTo || "-",
-          });
-
+          // Description
+          console.log(chalk.bold("Description"));
+          console.log(idea.description);
           console.log();
-          console.log(chalk.bold("Description:"));
-          console.log(`  ${idea.description}`);
 
-          console.log();
-          console.log(chalk.bold("Rationale:"));
-          console.log(`  ${idea.rationale}`);
+          // Rationale
+          console.log(chalk.bold("Rationale"));
+          console.log(idea.rationale);
 
+          // Affected Files
           if (idea.affectedFiles && idea.affectedFiles.length > 0) {
             console.log();
-            console.log(chalk.bold("Affected Files:"));
+            console.log(chalk.bold("Affected Files"));
             for (const file of idea.affectedFiles) {
-              console.log(`  - ${file}`);
+              console.log(chalk.gray(`  - ${file}`));
             }
           }
 
+          // Existing Patterns
           if (idea.existingPatterns && idea.existingPatterns.length > 0) {
             console.log();
-            console.log(chalk.bold("Existing Patterns:"));
+            console.log(chalk.bold("Existing Patterns"));
             for (const pattern of idea.existingPatterns) {
-              console.log(`  - ${pattern}`);
+              console.log(chalk.gray(`  - ${pattern}`));
             }
           }
 
+          // Implementation Approach (full content, no truncation)
           if (idea.implementationApproach) {
             console.log();
-            console.log(chalk.bold("Implementation Approach:"));
-            console.log(`  ${idea.implementationApproach}`);
+            console.log(chalk.bold("Implementation"));
+            for (const line of idea.implementationApproach.split("\n")) {
+              console.log(line);
+            }
           }
         });
       } catch (error) {

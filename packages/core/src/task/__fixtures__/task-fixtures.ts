@@ -10,7 +10,7 @@ import type {
   TaskStatus,
   TaskEvent,
   XStateValue,
-} from "../../services/task-service";
+} from "../ops/types";
 import type { TaskMachineContext, PausedSnapshot } from "../machine/task-machine";
 
 // =============================================================================

@@ -7,7 +7,8 @@
  * - Agent crash: Auto-recovery with USER_STOPPED event
  */
 
-import { taskService, type UnifiedTask } from "../../services/task-service";
+import { taskService } from "../../services/task-service";
+import type { UnifiedTask } from "../ops/types";
 import { TaskEventStore } from "../events/event-store";
 import { createTaskEvent } from "../events/task-event";
 import type { TaskSSEManager } from "../../gateway/sse/task-sse-manager";

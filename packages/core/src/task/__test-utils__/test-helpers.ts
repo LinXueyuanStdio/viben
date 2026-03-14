@@ -11,7 +11,7 @@ import {
   type XStateValue,
   type TaskMachineContext,
 } from "../machine/task-machine";
-import type { ExecutionPhase } from "../../services/task-service";
+import type { ExecutionPhase } from "../ops/types";
 
 // =============================================================================
 // Types

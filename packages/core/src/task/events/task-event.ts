@@ -7,8 +7,8 @@
 
 import type { TaskEventType } from "./event-types";
 
-// Re-export TaskEvent from task-service for unified type
-export type { TaskEvent } from "../../services/task-service";
+// Re-export TaskEvent from types for unified type
+export type { TaskEvent } from "../ops/types";
 
 /**
  * Create a new task event

@@ -18,9 +18,45 @@
  * - create-pr.ts      - Create pull request from task
  */
 
-// Types
+// Core Types - re-export everything from types.ts
 export type {
+  // Task Event Type (from event-types.ts via types.ts)
+  TaskEventType,
+  // Core status types
+  TaskStatus,
+  ReviewReason,
+  SubtaskStatus,
+  SubtaskInfo,
+  ExecutionPhase,
+  ExecutionProgress,
+  // XState types
+  XStateValue,
+  TaskEvent,
+  // Metadata types
+  TaskSource,
+  TaskClassification,
+  AgentConfig,
+  GitConfig,
+  TaskMetadata,
+  // Core task interface
+  UnifiedTask,
+  // Log types
+  TaskLogEntryType,
+  TaskLogEntry,
+  TaskLogPhaseStatus,
+  TaskLogPhase,
+  TaskLogs,
+  // Implementation plan types
+  ImplementationPlanSubtask,
+  ImplementationPlanFile,
+  ImplementationPlanSubtaskV2,
+  ImplementationPhase,
+  ImplementationProgress,
+  ImplementationPlanFileV2,
+  TaskSpecsData,
+  // Backward compatibility alias
   TaskJson,
+  // Context and display types
   ContextEntry,
   StatusSummaryOptions,
   RunningTaskInfo,
@@ -31,6 +67,9 @@ export type {
   IndexUpdateParams,
   JournalFileInfo,
 } from "./types";
+
+// Export status constants and validation
+export { VALID_TASK_STATUSES, isValidTaskStatus } from "./types";
 
 // Display utilities
 export {

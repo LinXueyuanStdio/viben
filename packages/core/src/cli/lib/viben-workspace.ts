@@ -18,8 +18,6 @@ import {
 } from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
-import type { TaskEventType } from "../../services/task-service";
-
 // Re-export TaskService for unified task operations
 export {
   TaskService,
@@ -32,6 +30,9 @@ export {
   type TaskEvent,
   isValidTaskStatus,
 } from "../../services/task-service";
+
+// Import types for local use
+import type { TaskEventType } from "../../services/task-service";
 
 /**
  * Snapshot saved when a task is paused, used to restore state on resume

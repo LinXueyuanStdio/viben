@@ -199,51 +199,16 @@ function parseIdeaFromFrontmatterAndBody(
     return null;
   }
 
-  // Parse affected files and existing patterns from frontmatter
-  let affectedFiles: string[] = [];
-  let existingPatterns: string[] = [];
+  // Parse from frontmatter
+  const affectedFiles = Array.isArray(frontmatter.affected_files)
+    ? frontmatter.affected_files.map(String)
+    : [];
+  const existingPatterns = Array.isArray(frontmatter.existing_patterns)
+    ? frontmatter.existing_patterns.map(String)
+    : [];
 
-  if (Array.isArray(frontmatter.affected_files)) {
-    affectedFiles = frontmatter.affected_files.map(String);
-  }
-  if (Array.isArray(frontmatter.existing_patterns)) {
-    existingPatterns = frontmatter.existing_patterns.map(String);
-  }
-
-  // Legacy format fallback: parse affected files and patterns from body sections
-  if (affectedFiles.length === 0 || existingPatterns.length === 0) {
-    const lines = body.split("\n");
-    let currentSection = "";
-    for (const line of lines) {
-      if (line.startsWith("## Affected Files")) {
-        currentSection = "affected";
-      } else if (line.startsWith("## Existing Patterns")) {
-        currentSection = "patterns";
-      } else if (line.startsWith("## ")) {
-        currentSection = "";
-      } else if (line.startsWith("- ") && currentSection === "affected" && affectedFiles.length === 0) {
-        affectedFiles.push(line.slice(2).trim());
-      } else if (line.startsWith("- ") && currentSection === "patterns" && existingPatterns.length === 0) {
-        existingPatterns.push(line.slice(2).trim());
-      }
-    }
-  }
-
-  // Body is the implementation approach (new format: raw text, legacy: after ## header)
-  let implementationApproach: string | undefined;
-  const trimmedBody = body.trim();
-
-  if (trimmedBody.startsWith("## Implementation Approach")) {
-    // Legacy format: extract content after header
-    const lines = trimmedBody.split("\n").slice(1); // Skip header line
-    const implText = lines.join("\n").trim();
-    if (implText) {
-      implementationApproach = implText;
-    }
-  } else if (trimmedBody && !trimmedBody.startsWith("## ")) {
-    // New format: body is directly the implementation approach
-    implementationApproach = trimmedBody;
-  }
+  // Body is the implementation approach
+  const implementationApproach = body.trim() || undefined;
 
   const effortStr = String(frontmatter.estimated_effort || "medium");
 

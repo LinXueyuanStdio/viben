@@ -1,13 +1,17 @@
 /**
  * Preview components for artifacts and tools
  * Uses Monaco Editor for code highlighting (read-only mode)
+ * Supports static HTML preview via Blob URL and live preview via Vite
  */
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { Code, Eye, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Artifact, ToolUsage } from "@/types";
 import { getArtifactIcon, getToolIcon, isMcpTool } from "./utils";
 import { CodeEditor } from "@/components/skill-files/code-editor";
+import { VitePreview } from "@/components/chat/vite-preview";
+import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 /**
  * Get filename from artifact for language detection
@@ -102,13 +106,195 @@ function shouldUseCodeEditor(content: string, filename: string): boolean {
 }
 
 /**
- * Artifact preview content with code highlighting
+ * Check if artifact is HTML type
  */
-export function ArtifactPreview({ artifact }: { artifact: Artifact }) {
+function isHtmlArtifact(artifact: Artifact): boolean {
+  // Check by type
+  if (artifact.type === "html") {
+    return true;
+  }
+
+  // Check by filename extension
+  const filename = getArtifactFilename(artifact);
+  const ext = filename.substring(filename.lastIndexOf(".")).toLowerCase();
+  return ext === ".html" || ext === ".htm";
+}
+
+/**
+ * View mode for HTML artifacts
+ */
+type HtmlViewMode = "preview" | "code" | "live";
+
+/**
+ * Props for ArtifactPreview with optional live preview support
+ */
+export interface ArtifactPreviewProps {
+  artifact: Artifact;
+  // Live preview props (optional)
+  livePreviewUrl?: string | null;
+  livePreviewStatus?: PreviewStatus;
+  livePreviewError?: string | null;
+  onStartLivePreview?: () => void;
+  onStopLivePreview?: () => void;
+  /** Whether Node.js is available for live preview */
+  isNodeAvailable?: boolean | null;
+}
+
+/**
+ * Artifact preview content with code highlighting
+ * For HTML artifacts, supports Static preview (Blob URL), Code view, and Live preview (Vite)
+ */
+export function ArtifactPreview({
+  artifact,
+  livePreviewUrl,
+  livePreviewStatus = "idle",
+  livePreviewError,
+  onStartLivePreview,
+  onStopLivePreview,
+  isNodeAvailable,
+}: ArtifactPreviewProps) {
+  const { t } = useTranslation();
   const filename = getArtifactFilename(artifact);
   const content = artifact.content || "";
   const useEditor = content && shouldUseCodeEditor(content, filename);
+  const isHtml = isHtmlArtifact(artifact);
 
+  // View mode state for HTML artifacts
+  const [viewMode, setViewMode] = React.useState<HtmlViewMode>("preview");
+
+  // Create blob URL for static HTML preview
+  const iframeSrc = React.useMemo(() => {
+    if (!isHtml || !content) return null;
+    const blob = new Blob([content], { type: "text/html" });
+    return URL.createObjectURL(blob);
+  }, [isHtml, content]);
+
+  // Cleanup blob URL on unmount or content change
+  React.useEffect(() => {
+    return () => {
+      if (iframeSrc) {
+        URL.revokeObjectURL(iframeSrc);
+      }
+    };
+  }, [iframeSrc]);
+
+  // Determine if live preview is available
+  const canUseLivePreview = isNodeAvailable && onStartLivePreview;
+  const isLivePreviewRunning = livePreviewStatus === "running" || livePreviewStatus === "starting";
+
+  // For HTML artifacts, use special preview UI
+  if (isHtml && content) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header with view mode toggle */}
+        <div className="flex items-center gap-2 p-4 border-b shrink-0">
+          {(() => {
+            const IconComponent = getArtifactIcon(artifact.type);
+            return <IconComponent className="h-5 w-5 text-muted-foreground" />;
+          })()}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium truncate">{artifact.name}</h3>
+            <p className="text-xs text-muted-foreground">{artifact.type}</p>
+          </div>
+
+          {/* View mode toggle buttons */}
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+            {/* Preview button (Static) */}
+            <button
+              type="button"
+              onClick={() => setViewMode("preview")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                viewMode === "preview"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title={t("preview.staticPreview", "Static Preview")}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>{t("preview.preview", "Preview")}</span>
+            </button>
+
+            {/* Code button */}
+            <button
+              type="button"
+              onClick={() => setViewMode("code")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                viewMode === "code"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title={t("preview.viewCode", "View Code")}
+            >
+              <Code className="h-3.5 w-3.5" />
+              <span>{t("preview.code", "Code")}</span>
+            </button>
+
+            {/* Live button (only if Vite preview is available) */}
+            {canUseLivePreview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("live");
+                  if (!isLivePreviewRunning && onStartLivePreview) {
+                    onStartLivePreview();
+                  }
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
+                  viewMode === "live"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title={t("preview.livePreview", "Live Preview")}
+              >
+                {isLivePreviewRunning ? (
+                  <Square className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Play className="h-3.5 w-3.5" />
+                )}
+                <span>{t("preview.live", "Live")}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Content based on view mode */}
+        <div className="flex-1 min-h-0">
+          {viewMode === "preview" && iframeSrc && (
+            <iframe
+              src={iframeSrc}
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-scripts allow-same-origin"
+              title={t("preview.staticPreview", "Static Preview")}
+            />
+          )}
+
+          {viewMode === "code" && (
+            <CodeEditor
+              value={content}
+              filename={filename}
+              readOnly
+              height="100%"
+            />
+          )}
+
+          {viewMode === "live" && (
+            <VitePreview
+              previewUrl={livePreviewUrl ?? null}
+              status={livePreviewStatus}
+              error={livePreviewError ?? null}
+              onStart={onStartLivePreview}
+              onStop={onStopLivePreview}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Non-HTML artifacts: use original code/text view
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
