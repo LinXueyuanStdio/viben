@@ -35,17 +35,20 @@ export function formatStatus(status: string): string {
 
 /**
  * Format priority for display
+ * Uses IssuePriority: urgent, high, medium, low, none
  */
 export function formatPriority(priority: string): string {
   switch (priority) {
-    case "P0":
+    case "urgent":
       return chalk.red(priority);
-    case "P1":
+    case "high":
       return chalk.yellow(priority);
-    case "P2":
+    case "medium":
       return chalk.blue(priority);
-    case "P3":
+    case "low":
       return chalk.gray(priority);
+    case "none":
+      return chalk.dim(priority);
     default:
       return priority;
   }
@@ -61,17 +64,20 @@ export function statusColor(status: string): string {
 
 /**
  * Get priority chalk color function
+ * Uses IssuePriority: urgent, high, medium, low, none
  */
 export function getPriorityColor(priority: string): typeof chalk {
   switch (priority) {
-    case "P0":
+    case "urgent":
       return chalk.red;
-    case "P1":
+    case "high":
       return chalk.yellow;
-    case "P2":
+    case "medium":
       return chalk.blue;
-    case "P3":
+    case "low":
       return chalk.gray;
+    case "none":
+      return chalk.dim;
     default:
       return chalk.white;
   }

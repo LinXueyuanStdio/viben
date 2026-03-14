@@ -364,8 +364,11 @@ export type {
 } from "./use-task-events";
 
 // Queue Auto-Promotion
+// NOTE: Auto-promotion is now handled by Gateway's CommandQueue (Promoter).
+// The frontend hook is deprecated but kept for reference.
+// See: packages/core/src/queue/core/promoter.ts
 export {
-  useQueueAutoPromotion,
+  // useQueueAutoPromotion, // DEPRECATED: Use Gateway CommandQueue instead
   registerTaskStatusChangeListener,
   notifyTaskStatusChange,
   type QueueProcessResult,

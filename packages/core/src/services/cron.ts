@@ -16,6 +16,7 @@ import { EventService, type CronJobData } from "./events";
 import { trace, SpanStatusCode, recordCronExecution } from "../telemetry";
 import { getSpanName } from "../telemetry/route-names";
 import { channelManager, sendChannelMessage } from "../channels";
+import { notifyCronCompletion } from "../notifications";
 
 // Get tracer for cron service
 const tracer = trace.getTracer("viben-cron", "1.0.0");
@@ -684,6 +685,15 @@ export class CronService {
 
     // Send channel notifications if configured
     await this.sendChannelNotifications(job, status, truncated_output, error);
+
+    // Send system notification if configured
+    if (job.notifications?.system) {
+      await notifyCronCompletion(
+        job.name,
+        status === "success" ? "success" : "failure",
+        duration_ms
+      );
+    }
   }
 
   /**

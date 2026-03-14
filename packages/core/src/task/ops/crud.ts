@@ -4,8 +4,8 @@
  * Create, Read, Update, Delete operations for tasks
  */
 
-import { existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, statSync, readdirSync, readFileSync } from "node:fs";
+import { join, basename } from "node:path";
 import { execSync } from "node:child_process";
 
 import {
@@ -85,9 +85,64 @@ export interface CreateTaskResult {
   error?: string;
 }
 
+/**
+ * File info for task view
+ */
+export interface TaskFileInfo {
+  exists: boolean;
+  size?: number;
+  modifiedAt?: string;
+}
+
+/**
+ * Worktree info for task view
+ */
+export interface TaskWorktreeInfo {
+  /** Whether worktree mode is enabled for this task */
+  enabled: boolean;
+  /** Worktree path (from task.json or detected) */
+  path?: string;
+  /** Whether the worktree directory exists */
+  exists?: boolean;
+  /** Current branch in worktree */
+  branch?: string;
+  /** Whether worktree has uncommitted changes */
+  isDirty?: boolean;
+  /** Number of uncommitted files */
+  uncommittedFiles?: number;
+}
+
+/**
+ * Extended task view result with file and runtime info
+ */
 export interface ViewTaskResult {
   success: boolean;
   task?: TaskJson;
+  /** Task directory absolute path */
+  taskDir?: string;
+  /** Task directory name */
+  dirName?: string;
+  /** Files in task directory */
+  files?: {
+    prd: TaskFileInfo;
+    implementJsonl: TaskFileInfo;
+    checkJsonl: TaskFileInfo;
+    fixJsonl: TaskFileInfo;
+    startLog: TaskFileInfo;
+    planLog: TaskFileInfo;
+    workLog: TaskFileInfo;
+    implementLog: TaskFileInfo;
+    reviewLog: TaskFileInfo;
+  };
+  /** Worktree info */
+  worktree?: TaskWorktreeInfo;
+  /** Runtime info if task is running */
+  runtime?: {
+    isRunning: boolean;
+    pid?: number;
+    sessionId?: string;
+    platform?: string;
+  };
   error?: string;
 }
 
@@ -252,7 +307,7 @@ export function createTask(
     title: title,
     description: options.description || "",
     status: "backlog",
-    priority: options.priority || "P2",
+    priority: options.priority || "medium",
     creator: creator,
     assignee: assignee,
     createdAt: today,
@@ -305,7 +360,26 @@ export function createTask(
 // =============================================================================
 
 /**
- * Get task details
+ * Get file info helper
+ */
+function getFileInfo(filePath: string): TaskFileInfo {
+  if (!existsSync(filePath)) {
+    return { exists: false };
+  }
+  try {
+    const stats = statSync(filePath);
+    return {
+      exists: true,
+      size: stats.size,
+      modifiedAt: stats.mtime.toISOString(),
+    };
+  } catch {
+    return { exists: false };
+  }
+}
+
+/**
+ * Get task details with extended information
  */
 export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
@@ -324,9 +398,84 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
     };
   }
 
+  const dirName = basename(taskDir);
+
+  // Gather file info
+  const files = {
+    prd: getFileInfo(join(taskDir, "prd.md")),
+    implementJsonl: getFileInfo(join(taskDir, "implement.jsonl")),
+    checkJsonl: getFileInfo(join(taskDir, "check.jsonl")),
+    fixJsonl: getFileInfo(join(taskDir, "fix.jsonl")),
+    startLog: getFileInfo(join(taskDir, "start.log.jsonl")),
+    planLog: getFileInfo(join(taskDir, "plan.log.jsonl")),
+    workLog: getFileInfo(join(taskDir, "work.log.jsonl")),
+    implementLog: getFileInfo(join(taskDir, "implement.log.jsonl")),
+    reviewLog: getFileInfo(join(taskDir, "review.log.jsonl")),
+  };
+
+  // Try to get runtime info from session-id.txt
+  let runtime: ViewTaskResult["runtime"] = { isRunning: false };
+  const sessionIdPath = join(taskDir, "session-id.txt");
+  if (existsSync(sessionIdPath)) {
+    try {
+      const sessionId = readFileSync(sessionIdPath, "utf-8").trim();
+      if (sessionId) {
+        runtime.sessionId = sessionId;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Check if task has a session_id in task.json
+  if (taskData.session_id) {
+    runtime.sessionId = taskData.session_id as string;
+  }
+
+  // Gather worktree info
+  const worktree: TaskWorktreeInfo = {
+    enabled: taskData.worktree === true,
+  };
+
+  // Check worktree_path from task.json
+  if (taskData.worktree_path) {
+    worktree.path = taskData.worktree_path as string;
+    worktree.exists = existsSync(worktree.path);
+
+    // If worktree exists, get git status
+    if (worktree.exists) {
+      try {
+        // Get current branch
+        const branchResult = execSync("git branch --show-current", {
+          cwd: worktree.path,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }).trim();
+        worktree.branch = branchResult || undefined;
+
+        // Check for uncommitted changes
+        const statusResult = execSync("git status --porcelain", {
+          cwd: worktree.path,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        }).trim();
+        const lines = statusResult ? statusResult.split("\n") : [];
+        worktree.uncommittedFiles = lines.length;
+        worktree.isDirty = lines.length > 0;
+      } catch {
+        // Git commands failed, worktree might not be a valid git repo
+      }
+    }
+  }
+
   return {
     success: true,
     task: taskData as unknown as TaskJson,
+    taskDir,
+    dirName,
+    files,
+    worktree,
+    runtime,
   };
 }
 

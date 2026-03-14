@@ -445,31 +445,46 @@ export function registerTaskCommand(program: Command): void {
           }
 
           const taskJson = result.task!;
+          const files = result.files!;
 
-          output(ctx, successResponse(taskJson), () => {
-            console.log(chalk.bold(`Task: ${taskJson.title}`));
+          output(ctx, successResponse({
+            task: taskJson,
+            taskDir: result.taskDir,
+            dirName: result.dirName,
+            files,
+            runtime: result.runtime,
+          }), () => {
+            // Compact view for task list <task>
+            console.log(chalk.bold.cyan(`=== ${taskJson.title} ===`));
             console.log();
 
             outputKeyValue(ctx, {
-              ID: taskJson.id,
-              Name: taskJson.name,
               Status: formatStatus(taskJson.status),
               Priority: formatPriority(taskJson.priority),
-              Creator: taskJson.creator || "-",
               Assignee: taskJson.assignee || "-",
               Branch: taskJson.branch || "-",
-              "Base Branch": taskJson.base_branch || "-",
-              "Created At": taskJson.createdAt,
-              "Completed At": taskJson.completedAt || "-",
-              "Current Phase": String(taskJson.current_phase),
-              "PR URL": taskJson.pr_url || "-",
+              Phase: `${taskJson.current_phase || 0}`,
+              "PR URL": taskJson.pr_url || chalk.gray("(none)"),
             });
+
+            // Show file status in compact form
+            const hasFiles = files.prd.exists || files.implementJsonl.exists;
+            if (hasFiles) {
+              console.log();
+              const fileStatus: string[] = [];
+              if (files.prd.exists) fileStatus.push("prd.md");
+              if (files.implementJsonl.exists) fileStatus.push("implement.jsonl");
+              if (files.checkJsonl.exists) fileStatus.push("check.jsonl");
+              console.log(chalk.gray(`Files: ${fileStatus.join(", ")}`));
+            }
 
             if (taskJson.description) {
               console.log();
-              console.log(chalk.gray("Description:"));
-              console.log(`  ${taskJson.description}`);
+              console.log(chalk.gray(taskJson.description));
             }
+
+            console.log();
+            console.log(chalk.dim(`Use 'viben task view ${result.dirName}' for full details`));
           });
           return;
         }
@@ -526,7 +541,7 @@ export function registerTaskCommand(program: Command): void {
     .option("-s, --slug <name>", "Task identifier (auto-generated from title if not provided)")
     .option("-b, --branch <branch>", "Custom branch name (default: feature/<slug>)")
     .option("-a, --assignee <dev>", "Assignee developer name")
-    .option("-p, --priority <priority>", "Priority (P0, P1, P2, P3)", "P2")
+    .option("-p, --priority <priority>", "Priority (urgent, high, medium, low, none)", "medium")
     .option("-d, --description <text>", "Task description")
     .option("--agent <agent-id>", "Associated agent configuration")
     .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, etc.)")
@@ -602,8 +617,12 @@ export function registerTaskCommand(program: Command): void {
     .command("view")
     .description("View task details")
     .argument("<task>", "Task name or directory")
-    .action(async (task: string) => {
+    .option("--json", "Output in JSON format")
+    .action(async (task: string, options: { json?: boolean }) => {
       const ctx = getContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
       const cwd = process.cwd();
 
       try {
@@ -615,37 +634,172 @@ export function registerTaskCommand(program: Command): void {
         }
 
         const taskJson = result.task!;
+        const files = result.files!;
 
-        output(ctx, successResponse(taskJson), () => {
-          console.log(chalk.bold(`Task: ${taskJson.title}`));
+        const worktree = result.worktree;
+
+        // For JSON output, include all data
+        output(ctx, successResponse({
+          task: taskJson,
+          taskDir: result.taskDir,
+          dirName: result.dirName,
+          files,
+          worktree,
+          runtime: result.runtime,
+        }), () => {
+          // Header
+          console.log(chalk.bold.cyan(`=== Task: ${taskJson.title} ===`));
           console.log();
 
+          // Basic Info Section
+          console.log(chalk.bold("Basic Info"));
           outputKeyValue(ctx, {
-            ID: taskJson.id,
-            Name: taskJson.name,
+            ID: taskJson.id || "-",
+            Directory: result.dirName || "-",
             Status: formatStatus(taskJson.status),
             Priority: formatPriority(taskJson.priority),
+          });
+          console.log();
+
+          // People Section
+          console.log(chalk.bold("People"));
+          outputKeyValue(ctx, {
             Creator: taskJson.creator || "-",
             Assignee: taskJson.assignee || "-",
+          });
+          console.log();
+
+          // Git Section
+          console.log(chalk.bold("Git"));
+          outputKeyValue(ctx, {
             Branch: taskJson.branch || "-",
             "Base Branch": taskJson.base_branch || "-",
-            "Created At": taskJson.createdAt,
+            "PR URL": taskJson.pr_url || chalk.gray("(none)"),
+          });
+          console.log();
+
+          // Worktree Section
+          console.log(chalk.bold("Worktree"));
+          if (worktree?.enabled || worktree?.path) {
+            const worktreeStatus = worktree.path
+              ? (worktree.exists
+                  ? (worktree.isDirty
+                      ? chalk.yellow("active (dirty)")
+                      : chalk.green("active (clean)"))
+                  : chalk.red("missing"))
+              : chalk.gray("(not created)");
+
+            outputKeyValue(ctx, {
+              Mode: worktree.enabled ? chalk.green("enabled") : chalk.gray("disabled"),
+              Status: worktreeStatus,
+            });
+
+            if (worktree.path) {
+              console.log(`  Path:   ${chalk.gray(worktree.path)}`);
+            }
+            if (worktree.branch) {
+              console.log(`  Branch: ${chalk.cyan(worktree.branch)}`);
+            }
+            if (worktree.isDirty && worktree.uncommittedFiles) {
+              console.log(`  Changes: ${chalk.yellow(`${worktree.uncommittedFiles} uncommitted file(s)`)}`);
+            }
+          } else {
+            console.log(chalk.gray("  (not using worktree)"));
+          }
+          console.log();
+
+          // Progress Section
+          console.log(chalk.bold("Progress"));
+          const phaseNames = ["backlog", "implement", "check", "finish", "create-pr"];
+          const currentPhase = taskJson.current_phase || 0;
+          outputKeyValue(ctx, {
+            "Current Phase": `${currentPhase}/${phaseNames.length - 1} (${phaseNames[currentPhase] || "unknown"})`,
+          });
+          // Show next actions
+          if (taskJson.next_action && taskJson.next_action.length > 0) {
+            const actions = taskJson.next_action.map(a => `${a.phase}:${a.action}`).join(" → ");
+            console.log(`  Next Actions: ${chalk.gray(actions)}`);
+          }
+          console.log();
+
+          // Files Section
+          console.log(chalk.bold("Files"));
+          const formatFile = (info: typeof files.prd, name: string) => {
+            if (!info.exists) {
+              return chalk.gray("(missing)");
+            }
+            const size = info.size ? `${(info.size / 1024).toFixed(1)}KB` : "";
+            return chalk.green("✓") + " " + chalk.gray(size);
+          };
+          console.log(`  prd.md:           ${formatFile(files.prd, "prd.md")}`);
+          console.log(`  implement.jsonl:  ${formatFile(files.implementJsonl, "implement.jsonl")}`);
+          console.log(`  check.jsonl:      ${formatFile(files.checkJsonl, "check.jsonl")}`);
+          console.log(`  fix.jsonl:        ${formatFile(files.fixJsonl, "fix.jsonl")}`);
+          console.log();
+
+          // Logs Section
+          console.log(chalk.bold("Logs"));
+          const formatLog = (info: typeof files.prd) => {
+            if (!info.exists) {
+              return chalk.gray("-");
+            }
+            const size = info.size ? `${(info.size / 1024).toFixed(1)}KB` : "";
+            const time = info.modifiedAt ? new Date(info.modifiedAt).toLocaleString() : "";
+            return `${chalk.green("✓")} ${chalk.gray(size)} ${chalk.dim(time)}`;
+          };
+          if (files.startLog.exists) {
+            console.log(`  start.log.jsonl:      ${formatLog(files.startLog)}`);
+          }
+          if (files.planLog.exists) {
+            console.log(`  plan.log.jsonl:       ${formatLog(files.planLog)}`);
+          }
+          if (files.workLog.exists) {
+            console.log(`  work.log.jsonl:       ${formatLog(files.workLog)}`);
+          }
+          if (files.implementLog.exists) {
+            console.log(`  implement.log.jsonl:  ${formatLog(files.implementLog)}`);
+          }
+          if (files.reviewLog.exists) {
+            console.log(`  review.log.jsonl:     ${formatLog(files.reviewLog)}`);
+          }
+          if (!files.startLog.exists && !files.planLog.exists && !files.workLog.exists &&
+              !files.implementLog.exists && !files.reviewLog.exists) {
+            console.log(chalk.gray("  (no logs yet)"));
+          }
+          console.log();
+
+          // Timestamps Section
+          console.log(chalk.bold("Timestamps"));
+          outputKeyValue(ctx, {
+            "Created At": taskJson.createdAt || "-",
+            "Queued At": taskJson.queuedAt || "-",
             "Completed At": taskJson.completedAt || "-",
-            "Current Phase": String(taskJson.current_phase),
-            "PR URL": taskJson.pr_url || "-",
           });
 
-          if (taskJson.description) {
+          // Session Info (if available)
+          if (result.runtime?.sessionId) {
             console.log();
-            console.log(chalk.bold("Description:"));
-            console.log(taskJson.description);
+            console.log(chalk.bold("Session"));
+            outputKeyValue(ctx, {
+              "Session ID": result.runtime.sessionId,
+            });
           }
 
+          // Description (if exists)
+          if (taskJson.description) {
+            console.log();
+            console.log(chalk.bold("Description"));
+            console.log(chalk.gray(taskJson.description));
+          }
+
+          // Notes (if exists)
           if (taskJson.notes) {
             console.log();
-            console.log(chalk.bold("Notes:"));
-            console.log(taskJson.notes);
+            console.log(chalk.bold("Notes"));
+            console.log(chalk.gray(taskJson.notes));
           }
+
+          console.log();
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -968,7 +1122,7 @@ export function registerTaskCommand(program: Command): void {
     .option("--agent <id>", "Agent ID to execute this task")
     .option("--executor <type>", "Executor type (CLAUDE_CODE, CURSOR, OPENCODE, etc.)")
     .option("--model <id>", "Model ID for execution")
-    .option("--priority <p>", "Priority (P0/P1/P2/P3)")
+    .option("--priority <p>", "Priority (urgent/high/medium/low/none)")
     .action(async (task: string, options: {
       agent?: string;
       executor?: string;

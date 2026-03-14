@@ -11,6 +11,26 @@ import type { TaskEventType } from "../events/event-types";
 export type { TaskEventType } from "../events/event-types";
 
 // =============================================================================
+// Priority Types
+// =============================================================================
+
+/**
+ * Issue priority - unified with @viben/kanban
+ * Maps to UI display: urgent (red), high (blue), medium (teal), low (gray), none (muted)
+ */
+export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
+
+/**
+ * Priority order for sorting (highest to lowest)
+ */
+export const PRIORITY_ORDER: IssuePriority[] = ["urgent", "high", "medium", "low", "none"];
+
+/**
+ * Default priority for new tasks
+ */
+export const DEFAULT_PRIORITY: IssuePriority = "medium";
+
+// =============================================================================
 // Core Status Types
 // =============================================================================
 
@@ -121,7 +141,7 @@ export interface TaskClassification {
   category: "feature" | "bugfix" | "refactor" | "docs";
   complexity: "low" | "medium" | "high";
   impact: "low" | "medium" | "high";
-  priority: "P0" | "P1" | "P2" | "P3";
+  priority: IssuePriority;
 }
 
 /**
@@ -182,7 +202,7 @@ export interface UnifiedTask {
 
   // === Organization/Classification ===
   /** Priority level */
-  priority: string; // P0, P1, P2, P3
+  priority: IssuePriority;
 
   // === People ===
   /** Task creator */
