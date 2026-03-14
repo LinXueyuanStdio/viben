@@ -59,64 +59,6 @@ npx viben
 
 ---
 
-## 🏗️ Architecture
-
-```mermaid
-graph LR
-    subgraph Clients["📱 Clients"]
-        direction TB
-        CLI["CLI"]
-        Desktop["Desktop"]
-        Web["Web"]
-    end
-
-    subgraph Core["📦 packages/core"]
-        direction TB
-
-        subgraph GW["Gateway :18790"]
-            direction LR
-            REST["REST API"]
-            WS["WebSocket"]
-        end
-
-        subgraph Svc["Services"]
-            direction TB
-            Agent["AgentService"]
-            Session["SessionStore"]
-            Cron["CronService"]
-        end
-
-        subgraph Mod["Modules"]
-            direction TB
-            Exec["Executors"]
-            MCP["MCP Client"]
-            Chan["Channels"]
-        end
-    end
-
-    subgraph Ext["🌍 External"]
-        direction TB
-        LLM["LLM APIs"]
-        MCPSrv["MCP Servers"]
-    end
-
-    subgraph Cfg["📁 ~/.viben/"]
-        direction TB
-        YAML["*.yaml"]
-    end
-
-    Clients -->|HTTP/WS| GW
-    GW --> Svc
-    Svc --> Mod
-    Mod --> Cfg
-    Exec --> LLM
-    MCP --> MCPSrv
-```
-
-> **Design Principles**: `packages/core` as single boundary · file-native config (YAML) · unified REST/WebSocket API · multi-provider support
-
----
-
 ## 📋 Task System
 
 XState-based task lifecycle management with kanban, queue, and automated execution.
@@ -124,6 +66,7 @@ XState-based task lifecycle management with kanban, queue, and automated executi
 ### Task Lifecycle
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dbeafe', 'lineColor': '#64748b', 'primaryTextColor': '#1e293b'}}}%%
 stateDiagram-v2
     [*] --> backlog: Create
 
@@ -158,7 +101,21 @@ stateDiagram-v2
 
     completed --> [*]
     cancelled --> [*]
+
+    classDef waiting fill:#e0f2fe,stroke:#3b82f6,color:#1e40af
+    classDef active fill:#dcfce7,stroke:#22c55e,color:#166534
+    classDef review fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef done fill:#bbf7d0,stroke:#16a34a,color:#166534
+    classDef error fill:#fee2e2,stroke:#ef4444,color:#991b1b
+
+    class backlog,queue,paused waiting
+    class in_progress active
+    class human_review review
+    class completed done
+    class failed,cancelled error
 ```
+
+> **Internal Flow**: `in_progress` state internally executes plan -> implement -> check -> fix loop
 
 | Status | Description | Trigger Command |
 |--------|-------------|-----------------|

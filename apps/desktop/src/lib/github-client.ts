@@ -110,6 +110,7 @@ export class GitHubClient {
   async authenticateWithGhCli(workspacePath: string): Promise<{ user: GitHubUser }> {
     return this.request(`/api/github/auth/gh-cli?workspace_path=${encodeURIComponent(workspacePath)}`, {
       method: "POST",
+      body: JSON.stringify({}),
     });
   }
 
@@ -301,7 +302,7 @@ export class GitHubClient {
   ): Promise<{ success: boolean }> {
     return this.request(
       `/api/github/autofix/tasks/${taskId}/cancel?workspace_path=${encodeURIComponent(workspacePath)}`,
-      { method: "POST" }
+      { method: "POST", body: JSON.stringify({}) }
     );
   }
 
@@ -314,7 +315,7 @@ export class GitHubClient {
   ): Promise<{ success: boolean }> {
     return this.request(
       `/api/github/autofix/tasks/${taskId}/approve?workspace_path=${encodeURIComponent(workspacePath)}`,
-      { method: "POST" }
+      { method: "POST", body: JSON.stringify({}) }
     );
   }
 

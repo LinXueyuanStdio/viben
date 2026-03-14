@@ -22,6 +22,25 @@ This directory contains all context files for the current task:
 - `check.jsonl` - Check context
 - `fix.jsonl` - Fix context
 
+## Two Working Modes
+
+**Check task.json `worktree` field to determine mode:**
+
+| Mode | worktree | Branch switching | Final action |
+|------|----------|------------------|--------------|
+| Main Repo | `false` or absent | NO switching | Notify user for review |
+| Worktree | `true` | Isolated branch | create-pr |
+
+**Main Repo Mode** (default):
+- Work directly in main repo
+- Do NOT switch branches
+- Do NOT create PR
+- After finish: notify user that changes are ready for human review
+
+**Worktree Mode**:
+- Work in isolated git worktree
+- Create PR at the end
+
 ## Core Principles
 
 1. **You are a work coordinator** - Only responsible for calling subagents in order
@@ -37,10 +56,6 @@ This directory contains all context files for the current task:
 
 The task directory is provided in your startup prompt. Extract it and store as `TASK_DIR`.
 
-```bash
-TASK_DIR=".viben/tasks/02-03-my-feature"  # Extracted from prompt
-```
-
 Example startup prompt:
 ```
 Task directory: .viben/tasks/02-03-my-feature
@@ -55,6 +70,8 @@ cat ${TASK_DIR}/task.json
 ```
 
 Get the `next_action` array, which defines the list of phases to execute.
+
+**Also check** `worktree` field to determine working mode.
 
 ### Step 3: Execute in Phase Order
 
@@ -165,7 +182,9 @@ Task(
 
 The finish agent actively updates spec docs when it detects new patterns or contracts in the changes. This is different from regular "check" which has full specs for self-fix loop.
 
-### action: "create-pr"
+### action: "create-pr" (Worktree Mode Only)
+
+> **IMPORTANT**: Only run this action if task.json has `worktree=true`. In Main Repo mode, skip this action.
 
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
@@ -180,6 +199,14 @@ This will:
 4. Update task.json with status="review", pr_url, and current_phase
 
 **Note**: This is the only action that performs git commit, as it's the final step after all implementation and checks are complete.
+
+### Main Repo Mode: After Finish
+
+In Main Repo mode (no worktree), after completing all phases:
+
+1. **Do NOT run create-pr**
+2. Notify user: "Implementation complete. Changes are ready for human review."
+3. Update task.json status to "human_review"
 
 ---
 
@@ -242,4 +269,4 @@ If a subagent reports failure, read the output and decide:
 2. **Do not read `docs/specs/` or requirement files directly** - Let Hook inject to subagents
 3. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
 4. **All subagents should use opus model for complex tasks**
-5. **Keep dispatch logic simple** - Complex logic belongs in subagents
+5. **Keep work logic simple** - Complex logic belongs in subagents
