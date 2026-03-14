@@ -28,36 +28,27 @@ import {
 } from "../lib";
 import { CliError } from "../types";
 import { findVibenRoot, DIR_VIBEN, DIR_TASKS } from "../lib/viben-workspace";
-import { createTask, type CreateTaskOptions } from "../../task/ops/crud";
-import { updateIdeaStatus } from "../lib/idea-store";
 
-// Import from idea-types and idea-store modules
+// Import from idea/ops module
 import {
-  EFFORT_LEVELS,
-  IDEA_STATUSES,
-  EFFORT_PRIORITY_MAP,
-  IDEAS_DIR,
-  isValidEffortLevel,
-  isValidIdeaStatus,
+  // Types
   type EffortLevel,
   type IdeaStatus,
-  type Idea,
-  type IdeaType,
-  type IdeaSession,
-} from "../lib/idea-types";
-
-import {
+  EFFORT_LEVELS,
+  IDEA_STATUSES,
+  IDEAS_DIR,
+  // Store operations
   getIdeasDir,
-  listIdeaTypes,
-  getIdeaType,
-  getAllIdeas,
-  getIdeaById,
-  removeIdea,
-  removeIdeasByType,
-  removeAllIdeas,
-} from "../lib/idea-store";
-
-import { generateIdeas } from "../lib/idea-generator";
+  // CRUD operations
+  listIdeas,
+  listTypes,
+  viewIdea,
+  promoteIdea,
+  removeIdeas,
+  validateIdeaTypes,
+  // Generator
+  generateIdeas,
+} from "../../idea/ops";
 
 // =============================================================================
 // Helpers
@@ -136,71 +127,6 @@ function formatEffort(effort: string): string {
   }
 }
 
-/**
- * Validate idea type exists using the idea-store module
- */
-function validateIdeaTypeExists(type: string, repoRoot: string): IdeaType | null {
-  return getIdeaType(type, repoRoot);
-}
-
-// =============================================================================
-// Promote Idea to Task
-// =============================================================================
-
-/**
- * Options for promoting an idea to a task
- * Extends CreateTaskOptions with idea-specific fields
- */
-interface PromoteIdeaOptions extends CreateTaskOptions {
-  // Idea-specific options can be added here
-}
-
-/**
- * Promote an idea to a task
- *
- * Creates a new task from an idea, using the idea's title and description.
- * Updates the idea's status to "promoted" and links it to the created task.
- *
- * @param repoRoot - Repository root path
- * @param idea - The idea to promote
- * @param options - Task creation options (same as viben task create)
- * @returns Created task info
- */
-function promoteIdea(
-  repoRoot: string,
-  idea: Idea,
-  options: PromoteIdeaOptions
-): { taskId: string; taskDir: string; dirName: string } {
-  // Create task using the idea's title
-  const taskOptions: CreateTaskOptions = {
-    slug: options.slug,
-    assignee: options.assignee,
-    priority: options.priority,
-    description: options.description || idea.description,
-    branch: options.branch,
-    agent: options.agent,
-    executor: options.executor,
-    model: options.model,
-    start: options.start,
-    worktree: options.worktree,
-  };
-
-  const result = createTask(repoRoot, idea.title, taskOptions);
-
-  if (!result.success) {
-    throw CliError.operationFailed("Promote idea", result.error || "Failed to create task");
-  }
-
-  // Update idea status to promoted
-  updateIdeaStatus(repoRoot, idea.id, "promoted", result.dirName);
-
-  return {
-    taskId: result.dirName!,
-    taskDir: `${DIR_VIBEN}/${DIR_TASKS}/${result.dirName}`,
-    dirName: result.dirName!,
-  };
-}
-
 // =============================================================================
 // Command Registration
 // =============================================================================
@@ -246,17 +172,11 @@ export function registerIdeaCommand(program: Command): void {
           const repoRoot = ensureVibenRoot(cwd);
 
           // Validate types
-          const invalidTypes: string[] = [];
-          for (const type of options.types) {
-            if (!validateIdeaTypeExists(type, repoRoot)) {
-              invalidTypes.push(type);
-            }
-          }
-
-          if (invalidTypes.length > 0) {
+          const validation = validateIdeaTypes(repoRoot, options.types);
+          if (!validation.valid) {
             throw CliError.invalidArgument(
               "types",
-              `Unknown idea type(s): ${invalidTypes.join(", ")}. Use "viben idea list-types" to see available types.`
+              `Unknown idea type(s): ${validation.invalidTypes.join(", ")}. Use "viben idea list-types" to see available types.`
             );
           }
 
@@ -353,29 +273,18 @@ export function registerIdeaCommand(program: Command): void {
         try {
           const repoRoot = ensureVibenRoot(cwd);
 
-          // Validate filters
-          if (options.effort && !isValidEffortLevel(options.effort)) {
-            throw CliError.invalidArgument(
-              "effort",
-              `Invalid effort level. Must be one of: ${EFFORT_LEVELS.join(", ")}`
-            );
-          }
-
-          if (options.status && !isValidIdeaStatus(options.status)) {
-            throw CliError.invalidArgument(
-              "status",
-              `Invalid status. Must be one of: ${IDEA_STATUSES.join(", ")}`
-            );
-          }
-
-          const ideas = getAllIdeas(repoRoot, {
+          const result = listIdeas(repoRoot, {
             type: options.type,
             effort: options.effort as EffortLevel,
             status: options.status as IdeaStatus,
           });
 
-          output(ctx, successResponse({ ideas, count: ideas.length }), () => {
-            if (ideas.length === 0) {
+          if (!result.success) {
+            throw CliError.operationFailed("List ideas", result.error || "Unknown error");
+          }
+
+          output(ctx, successResponse({ ideas: result.ideas, count: result.count }), () => {
+            if (result.ideas.length === 0) {
               console.log(chalk.gray("No ideas found."));
               console.log();
               console.log("Generate ideas with:");
@@ -383,10 +292,10 @@ export function registerIdeaCommand(program: Command): void {
               return;
             }
 
-            console.log(chalk.bold(`Ideas (${ideas.length}):`));
+            console.log(chalk.bold(`Ideas (${result.ideas.length}):`));
             console.log();
 
-            for (const idea of ideas) {
+            for (const idea of result.ideas) {
               // Header: ID, Type, Status, Effort
               console.log(
                 chalk.cyan(`[${idea.id}]`) +
@@ -473,15 +382,19 @@ export function registerIdeaCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenRoot(cwd);
-        const types = listIdeaTypes(repoRoot);
+        const result = listTypes(repoRoot);
 
-        output(ctx, successResponse({ types, count: types.length }), () => {
+        if (!result.success) {
+          throw CliError.operationFailed("List types", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({ types: result.types, count: result.count }), () => {
           console.log(chalk.bold("Available Idea Types:"));
           console.log();
           outputTable(
             ctx,
             ["TYPE", "SOURCE", "DESCRIPTION"],
-            types.map((t) => [t.name, t.source, t.description])
+            result.types.map((t) => [t.name, t.source, t.description])
           );
         });
       } catch (error) {
@@ -505,11 +418,13 @@ export function registerIdeaCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenRoot(cwd);
-        const idea = getIdeaById(repoRoot, ideaId);
+        const result = viewIdea(repoRoot, ideaId);
 
-        if (!idea) {
+        if (!result.success || !result.idea) {
           throw CliError.notFound("Idea", ideaId);
         }
+
+        const idea = result.idea;
 
         output(ctx, successResponse({ idea }), () => {
           // Header
@@ -618,27 +533,11 @@ export function registerIdeaCommand(program: Command): void {
             );
           }
 
-          // Get idea first to validate and get effort for default priority
-          const idea = getIdeaById(repoRoot, ideaId);
-          if (!idea) {
-            throw CliError.notFound("Idea", ideaId);
-          }
-
-          if (idea.status === "promoted") {
-            throw CliError.operationFailed(
-              "Promote idea",
-              `Idea "${ideaId}" has already been promoted to task "${idea.promotedTo}"`
-            );
-          }
-
-          // Use effort-based priority if not specified
-          const priority = options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "P2";
-
-          const result = promoteIdea(repoRoot, idea, {
+          const result = promoteIdea(repoRoot, ideaId, {
             slug: options.slug,
             branch: options.branch,
             assignee: options.assignee,
-            priority,
+            priority: options.priority,
             description: options.description,
             agent: options.agent,
             executor: options.executor,
@@ -647,25 +546,23 @@ export function registerIdeaCommand(program: Command): void {
             worktree: options.worktree,
           });
 
-          output(ctx, successResponse({
-            taskId: result.taskId,
-            taskDir: result.taskDir,
-            dirName: result.dirName,
-            ideaId: ideaId,
-            ideaTitle: idea.title,
-            priority,
-            status: options.start ? "queue" : "backlog",
-            worktree: options.worktree || false,
-          }), () => {
+          if (!result.success) {
+            if (result.error?.includes("not found")) {
+              throw CliError.notFound("Idea", ideaId);
+            }
+            throw CliError.operationFailed("Promote idea", result.error || "Unknown error");
+          }
+
+          output(ctx, successResponse(result), () => {
             outputSuccess(ctx, `Promoted idea "${ideaId}" to task`);
             console.log();
             outputKeyValue(ctx, {
-              "Idea": `${ideaId} - ${idea.title}`,
-              "Task ID": result.taskId,
-              "Task Directory": result.taskDir,
-              "Priority": priority,
-              "Status": options.start ? "queue" : "backlog",
-              "Worktree": options.worktree ? "enabled" : "disabled",
+              "Idea": `${result.ideaId} - ${result.ideaTitle}`,
+              "Task ID": result.taskId || "",
+              "Task Directory": result.taskDir || "",
+              "Priority": result.priority || "",
+              "Status": result.status || "",
+              "Worktree": result.worktree ? "enabled" : "disabled",
             });
             console.log();
             if (options.start) {
@@ -719,24 +616,14 @@ export function registerIdeaCommand(program: Command): void {
             outputWarning(ctx, "This will remove ALL ideas. Use with caution.");
           }
 
-          // Perform removal based on options
-          let removedCount = 0;
-          const removedIds: string[] = [];
+          const result = removeIdeas(repoRoot, ideaIds, {
+            type: options.type,
+            all: options.all,
+          });
 
-          if (options.all) {
-            removedCount = removeAllIdeas(repoRoot);
-          } else if (options.type) {
-            removedCount = removeIdeasByType(repoRoot, options.type);
-          } else if (ideaIds.length > 0) {
-            for (const id of ideaIds) {
-              if (removeIdea(repoRoot, id)) {
-                removedIds.push(id);
-                removedCount++;
-              }
-            }
+          if (!result.success) {
+            throw CliError.operationFailed("Remove ideas", result.error || "Unknown error");
           }
-
-          const result = { removed: removedIds, count: removedCount };
 
           output(ctx, successResponse(result), () => {
             if (result.count === 0) {

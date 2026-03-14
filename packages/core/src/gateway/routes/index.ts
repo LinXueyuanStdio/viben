@@ -95,7 +95,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerPreferencesRoutes(fastify);
   registerTaskEventRoutes(fastify);
   registerPreviewRoutes(fastify);
-  registerCommandQueueRoutes(fastify);
+  registerCommandQueueRoutes(fastify, state);
 }
 
 // Re-export individual route registrations

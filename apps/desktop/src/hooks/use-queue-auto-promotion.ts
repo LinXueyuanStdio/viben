@@ -1,6 +1,22 @@
 /**
  * Queue Auto-Promotion Hook
  *
+ * @deprecated This hook is deprecated. Auto-promotion is now handled by
+ * Gateway's CommandQueue (Promoter). See:
+ * - packages/core/src/queue/core/promoter.ts
+ * - packages/core/src/queue/core/command-queue.ts
+ *
+ * The backend CommandQueue automatically:
+ * - Checks pending queue every 5 seconds (configurable)
+ * - Spawns detached processes up to max_concurrency
+ * - Handles retry on failure
+ * - Persists state to ~/.viben/queue/
+ *
+ * This file is kept for reference and for the task status change listeners
+ * which may still be useful for UI updates.
+ *
+ * ---
+ * Original description:
  * Automatically promotes tasks from "queue" status to "in_progress"
  * when capacity becomes available (based on maxParallelTasks limit).
  *

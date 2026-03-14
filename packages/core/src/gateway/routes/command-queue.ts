@@ -10,19 +10,16 @@
  * Base path: /api/command-queue/*
  */
 
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
+import type { AppState } from "../state";
 
-// Import queue ops directly (no gateway state needed)
+// Import queue ops for read-only operations
 import {
-  enqueue,
-  cancel,
-  retry,
   status,
   list,
   inspect,
   logs,
   getConfig,
-  updateConfig,
   clean,
   type EnqueueOptions,
   type QueueConfig,
@@ -32,7 +29,9 @@ import {
 /**
  * Register command queue routes
  */
-export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
+export function registerCommandQueueRoutes(fastify: FastifyInstance, state: AppState): void {
+  const { commandQueue } = state;
+
   /**
    * Enqueue a new command
    * POST /api/command-queue/enqueue
@@ -51,7 +50,8 @@ export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
   fastify.post<{
     Body: EnqueueOptions;
   }>("/api/command-queue/enqueue", async (request, reply) => {
-    const result = enqueue(request.body);
+    // Use CommandQueue instance to emit events
+    const result = commandQueue.enqueue(request.body);
 
     if (!result.success) {
       reply.code(400);
@@ -155,7 +155,8 @@ export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
     const { id } = request.params;
     const { force = false } = request.body || {};
 
-    const result = cancel({ id, force });
+    // Use CommandQueue instance to emit events
+    const result = commandQueue.cancel(id, force);
 
     if (!result.success) {
       reply.code(400);
@@ -184,7 +185,8 @@ export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
     const { id } = request.params;
     const { reset_count = false } = request.body || {};
 
-    const result = retry({ id, reset_count });
+    // Use CommandQueue instance to emit events
+    const result = commandQueue.retry({ id, reset_count });
 
     if (!result.success) {
       reply.code(400);
@@ -251,7 +253,8 @@ export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
   fastify.put<{
     Body: Partial<QueueConfig>;
   }>("/api/command-queue/config", async (request, reply) => {
-    const result = updateConfig(request.body);
+    // Use CommandQueue instance to handle config updates
+    const result = commandQueue.updateConfig(request.body);
 
     if (!result.success) {
       reply.code(400);
@@ -284,6 +287,7 @@ export function registerCommandQueueRoutes(fastify: FastifyInstance): void {
       logs_only?: boolean;
     };
   }>("/api/command-queue/clean", async (request) => {
-    return clean(request.body);
+    // Use CommandQueue instance to emit events
+    return commandQueue.clean(request.body);
   });
 }

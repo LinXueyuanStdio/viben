@@ -16,6 +16,7 @@ import { TaskQueueManager } from "./queue";
 import { TaskRecoveryService } from "../task/recovery/task-recovery";
 import { taskEventStore } from "../task/events/event-store";
 import { TaskSSEManager } from "./sse/task-sse-manager";
+import { CommandQueue } from "../queue/core/command-queue";
 
 /**
  * Application state for the gateway
@@ -47,6 +48,8 @@ export interface AppState {
   taskRecovery: TaskRecoveryService;
   /** Task SSE manager for real-time task state updates */
   taskSSEManager: TaskSSEManager;
+  /** Command queue for detached shell command execution (viben task start, etc.) */
+  commandQueue: CommandQueue;
 }
 
 /**
@@ -110,6 +113,10 @@ export function createAppState(): AppState {
     autoRecover: true,
   });
 
+  // Create command queue for detached shell command execution
+  // This manages "viben task start <task>" commands in the background
+  const commandQueue = new CommandQueue();
+
   return {
     events,
     sessionStore,
@@ -124,5 +131,6 @@ export function createAppState(): AppState {
     configWatcher,
     taskRecovery,
     taskSSEManager,
+    commandQueue,
   };
 }

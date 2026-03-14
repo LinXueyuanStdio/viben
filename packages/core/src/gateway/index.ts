@@ -241,6 +241,18 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     log.warn({ err: e }, "Failed to start SSE heartbeat");
   }
 
+  // Start command queue (promoter + monitor for detached shell commands)
+  try {
+    await state.commandQueue.start();
+    const queueStatus = state.commandQueue.getStatus();
+    log.info(
+      { pending: queueStatus.pending, running: queueStatus.running, maxConcurrency: queueStatus.max_concurrency },
+      "Command queue started"
+    );
+  } catch (e) {
+    log.warn({ err: e }, "Failed to start command queue");
+  }
+
   // Run task recovery on startup for all known workspaces
   try {
     const workspaces = await workspaceManager.listWorkspaces();
@@ -295,6 +307,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     await state.cron.shutdown();
     // Gracefully shutdown task queue (waits for running tasks)
     await state.taskQueue.shutdown();
+    // Stop command queue (promoter + monitor)
+    // Note: Running detached processes continue independently
+    await state.commandQueue.stop();
     // Stop SSE heartbeat and cleanup all SSE connections
     state.taskSSEManager.stopHeartbeat();
     state.taskSSEManager.close();

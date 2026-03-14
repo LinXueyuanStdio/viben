@@ -140,7 +140,7 @@ import {
   type CreateTaskData,
   type TaskForPanel,
 } from "@/components/workspace";
-import { useLocalWorkspaces, useAgents, useModels, useQueueAutoPromotion, useStuckDetection } from "@/hooks";
+import { useLocalWorkspaces, useAgents, useModels, useStuckDetection } from "@/hooks";
 import { useElapsedTime, formatElapsedTime } from "@/components/workspace/kanban/hooks";
 import {
   useVibeKanbanTasks,
@@ -1047,25 +1047,8 @@ export function WorkspaceKanbanPage() {
   const updateTask = useUpdateVibeKanbanTask();
   const createTask = useCreateVibeKanbanTask();
 
-  // Queue auto-promotion: automatically promote queue -> in_progress when capacity available
-  const handlePromoteTask = useCallback(
-    async (taskId: string) => {
-      if (!workspace) return;
-      await updateTaskStatus.mutateAsync({
-        taskId,
-        status: "in_progress",
-        workspacePath: workspace.path,
-      });
-    },
-    [workspace, updateTaskStatus]
-  );
-
-  useQueueAutoPromotion({
-    tasks: tasks ?? [],
-    onPromoteTask: handlePromoteTask,
-    enabled: !!workspace,
-    workspacePath: workspace?.path,
-  });
+  // Note: Queue auto-promotion is now handled by Gateway's CommandQueue (Promoter)
+  // The backend automatically promotes tasks from "queue" -> "in_progress" when capacity is available
 
   // Fetch available agents and models for task creation
   // All agents from useAgents are user-created agents
