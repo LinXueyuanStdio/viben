@@ -381,6 +381,10 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       agentConfigPath?: string;
       /** Path to agent AGENTS.md config file (preferred) - snake_case */
       agent_config_path?: string;
+      /** Path to agent directory for message persistence - camelCase */
+      agentDir?: string;
+      /** Path to agent directory for message persistence - snake_case */
+      agent_dir?: string;
       /** Inline agent configuration (fallback) - camelCase */
       agentConfig?: AgentConfigPayload;
       /** Inline agent configuration (fallback) - snake_case */

@@ -52,7 +52,7 @@ export interface TaskMachineContext {
   reviewReason?: ReviewReason;
   /** Current subtask index (0-based) */
   currentSubtaskIndex: number;
-  /** Whether plan requires human review before implement */
+  /** Whether plan requires review before implement */
   requiresPlanReview: boolean;
   /**
    * @deprecated Use paused_snapshot instead for complete restoration
@@ -279,7 +279,7 @@ export const taskMachine = createMachine(
       },
 
       // ==========================================================================
-      // Human Review - Waiting for human approval
+      // Review - Waiting for approval
       // ==========================================================================
       review: {
         on: {

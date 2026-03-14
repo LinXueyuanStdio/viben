@@ -127,7 +127,7 @@ import {
   listContext as listContextOp,
   validateContext as validateContextOp,
 } from "../../task/ops/context-files";
-import { finishTask, archiveTask as archiveTaskOp, listArchivedTasks, viewTask, deleteTask, listTasks } from "../../task/ops/crud";
+import { finishTask, archiveTask as archiveTaskOp, listArchivedTasks, viewTask, deleteTask, listTasks, createTask } from "../../task/ops/crud";
 import { reviewTask } from "../../task/ops/review";
 import { createPR } from "../../task/ops/create-pr";
 import { runPlanPhase, runImplementPhase, runCheckPhase, runWorkPhase, runCreateWorktree } from "../../task/phase";
@@ -4262,13 +4262,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // ==========================================================================
-  // POST /api/task/review - View task details for human review
+  // POST /api/task/review - View task details for review
   // ==========================================================================
   fastify.post<{
     Querystring: { workspace_path?: string; task_dir?: string };
   }>("/api/task/review", {
     schema: {
-      description: "View task details for human review",
+      description: "View task details for review",
       tags: ["tasks"],
       querystring: {
         type: "object",
@@ -5410,6 +5410,86 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     return { success: true, tasks: result.tasks };
+  });
+
+  // ============================================================================
+  // POST /api/task/create - Create a new task
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      title: string;
+      slug?: string;
+      branch?: string;
+      assignee?: string;
+      priority?: string;
+      description?: string;
+      agent?: string;
+      executor?: string;
+      model?: string;
+      start?: boolean;
+      worktree?: boolean;
+    };
+  }>("/api/task/create", {
+    schema: {
+      description: "Create a new task",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          title: { type: "string", description: "Task title (required)" },
+          slug: { type: "string", description: "Task slug (auto-generated from title if not provided)" },
+          branch: { type: "string", description: "Custom branch name" },
+          assignee: { type: "string", description: "Assignee developer name" },
+          priority: { type: "string", description: "Priority (P0/P1/P2/P3)", default: "P2" },
+          description: { type: "string", description: "Task description" },
+          agent: { type: "string", description: "Associated agent ID" },
+          executor: { type: "string", description: "Executor type" },
+          model: { type: "string", description: "Model to use" },
+          start: { type: "boolean", description: "Auto-start task after creation" },
+          worktree: { type: "boolean", description: "Run in git worktree" },
+        },
+        required: ["workspace_path", "title"],
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, title, slug, branch, assignee, priority, description, agent, executor, model, start, worktree } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!title) {
+      reply.code(400);
+      return { error: "title is required", code: "MISSING_TITLE" };
+    }
+
+    const result = createTask(workspace_path, title, {
+      slug,
+      branch,
+      assignee,
+      priority,
+      description,
+      agent,
+      executor,
+      model,
+      start,
+      worktree,
+    });
+
+    if (!result.success) {
+      reply.code(400);
+      return { error: result.error, code: "CREATE_FAILED" };
+    }
+
+    return {
+      success: true,
+      task_id: result.dirName,
+      task_dir: result.taskDir,
+      status: result.status,
+      context_initialized: result.contextInitialized,
+    };
   });
 
   // ============================================================================

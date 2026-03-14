@@ -121,6 +121,8 @@ export interface AgentConfig {
 export interface UseAgentConversationOptions {
   /** Path to agent AGENTS.md config file (preferred, backend reads from disk) */
   agentConfigPath?: string;
+  /** Path to agent directory (e.g., /path/to/agents/myagent) for message persistence */
+  agentDir?: string;
   /** Inline agent configuration (fallback if agentConfigPath not provided) */
   agentConfig?: AgentConfig;
   /** Enable mock mode (for testing) */
@@ -142,6 +144,7 @@ export interface UseAgentConversationOptions {
 export function useAgentConversation(workspaceId: string, options?: UseAgentConversationOptions) {
   const {
     agentConfigPath,
+    agentDir,
     agentConfig,
     mockMode = false,
     sessionId: persistSessionId,
@@ -851,6 +854,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const requestBody: Record<string, unknown> = {
           prompt: content,
           agent_config_path: agentConfigPath || undefined,
+          // Agent directory for message persistence (e.g., /path/to/agents/myagent)
+          agent_dir: agentDir || undefined,
           agent_config: agentConfigPath ? undefined : (agentConfig || undefined),
           // Session persistence: pass session/task IDs for backend to persist messages
           session_id: persistSessionId || undefined,

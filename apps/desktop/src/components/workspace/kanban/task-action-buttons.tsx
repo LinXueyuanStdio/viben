@@ -323,7 +323,7 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 3: Human review state - Show Approve, Reject, Create PR buttons
+    // Priority 3: review state - Show Approve, Reject, Create PR buttons
     if (status === "review") {
       // Show different buttons based on review reason
       if (reviewReason === "completed") {

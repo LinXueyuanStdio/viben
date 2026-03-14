@@ -65,7 +65,7 @@ export const EVENT_SEQUENCES = {
   ] as TaskMachineEvent[],
 
   /**
-   * To human review state (via CHECK_PASSED)
+   * To review state (via CHECK_PASSED)
    */
   toReview: [
     { type: "QUEUE" },
@@ -139,7 +139,7 @@ export const EVENT_SEQUENCES = {
   ] as TaskMachineEvent[],
 
   /**
-   * User stops with progress -> human review
+   * User stops with progress -> review
    */
   USER_STOP_WITH_PROGRESS: [
     { type: "QUEUE" },
