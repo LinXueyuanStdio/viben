@@ -220,7 +220,7 @@ export class TaskService {
         { phase: 3, action: "finish" },
         { phase: 4, action: "create-pr" },
       ],
-      priority: task.priority || "P2",
+      priority: task.priority || "medium",
       creator: task.creator,
       assignee: task.assignee,
       branch: task.branch,
