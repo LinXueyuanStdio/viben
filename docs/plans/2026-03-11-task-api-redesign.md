@@ -41,8 +41,8 @@ POST /api/task/{action}?task_dir=<path>&workspace_path=<path>
 | `POST /api/task/finish` | `viben task finish <task>` | Query: `task_dir` | - | 完成指定任务 |
 | `POST /api/task/pause` | `viben task pause` | Query: `task_dir` | PAUSE | in_progress/queue → paused |
 | `POST /api/task/resume` | `viben task resume` | Query: `task_dir` | RESUME | paused → queue/in_progress |
-| `POST /api/task/approve` | `viben task approve` | Query: `task_dir` | APPROVED | human_review → completed |
-| `POST /api/task/reject` | `viben task reject` | Query: `task_dir`, Body: `reason?` | REJECTED | human_review → backlog |
+| `POST /api/task/approve` | `viben task approve` | Query: `task_dir` | APPROVED | review → completed |
+| `POST /api/task/reject` | `viben task reject` | Query: `task_dir`, Body: `reason?` | REJECTED | review → backlog |
 | `POST /api/task/retry` | `viben task retry` | Query: `task_dir` | RETRY | failed → queue |
 | `POST /api/task/cancel` | - | Query: `task_dir` | CANCEL | * → cancelled |
 | `POST /api/task/archive` | `viben task archive` | Query: `task_dir` | ARCHIVE | completed → archived |
@@ -182,7 +182,7 @@ interface QueueConfig {
      ▲                 │                   │
      │    DEQUEUE      │                   │ (内部事件)
      └─────────────────┘                   ▼
-     ▲                              human_review
+     ▲                              review
      │    REJECTED                        │
      └────────────────────────────────────┤
                                           │ APPROVED

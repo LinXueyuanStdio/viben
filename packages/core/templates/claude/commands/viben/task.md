@@ -317,7 +317,7 @@ When a task directory is provided in the context below, this is an existing task
 5. Resume from the appropriate phase based on task status:
    - If `status: backlog/queue` → Start from Phase 2 (Research)
    - If `status: in_progress` → Continue implementation
-   - If `status: human_review` → Run check phase
+   - If `status: review` → Run check phase
 
 ---
 

@@ -34,7 +34,7 @@ type TaskStatus =
   | "queue"         // 排队中
   | "in_progress"   // 执行中（含子状态）
   | "paused"        // 已暂停
-  | "human_review"  // 人工审查
+  | "review"  // 人工审查
   | "completed"     // 成功完成
   | "failed"        // 执行失败
   | "cancelled";    // 已取消
@@ -55,7 +55,7 @@ type TaskStatus =
 
 | 事件 | 描述 | 触发转换 |
 |------|------|----------|
-| `CANCEL` | 取消任务 | `backlog`/`queue`/`paused`/`human_review` → `cancelled` |
+| `CANCEL` | 取消任务 | `backlog`/`queue`/`paused`/`review` → `cancelled` |
 
 ### 移除的事件
 
@@ -67,7 +67,7 @@ type TaskStatus =
 
 | 事件 | 旧转换 | 新转换 |
 |------|--------|--------|
-| `APPROVED` | `human_review` → `done` | `human_review` → `completed` |
+| `APPROVED` | `review` → `done` | `review` → `completed` |
 | `RETRY` | `error` → `in_progress` | `failed` → `in_progress` |
 | `ABANDON` | `error`/`paused` → `backlog` | `failed`/`paused` → `backlog` |
 
@@ -85,7 +85,7 @@ type TaskStatus =
 │backlog│────────→│ queue │┼────────────┘        │
 └───┬───┘         └───┬───┘                      ▼
     │                 │                    ┌─────────────┐
-    │ CANCEL          │ PAUSE              │human_review │
+    │ CANCEL          │ PAUSE              │review │
     │                 ▼                    └──────┬──────┘
     │            ┌─────────┐                     │
     │            │ paused  │←────────────────────┤ (PAUSE)
@@ -294,7 +294,7 @@ GET /api/tasks?workspace_path=<path>&is_template=false
 | 批量入队 | `QUEUE` | `backlog` |
 | 批量暂停 | `PAUSE` | `queue`, `in_progress` |
 | 批量恢复 | `RESUME` | `paused` |
-| 批量取消 | `CANCEL` | `backlog`, `queue`, `paused`, `human_review` |
+| 批量取消 | `CANCEL` | `backlog`, `queue`, `paused`, `review` |
 | 批量移回待办 | `DEQUEUE` | `queue` |
 
 ### API 设计

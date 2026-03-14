@@ -28,7 +28,7 @@ type TaskStatus =
   | "queue"         // 排队等待执行
   | "in_progress"   // 执行中（含子状态）
   | "paused"        // 已暂停（新增）
-  | "human_review"  // 人工审查
+  | "review"  // 人工审查
   | "done"          // 完成
   | "pr_created"    // PR 已创建
   | "error";        // 错误

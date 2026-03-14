@@ -8,7 +8,7 @@
 
 - `backlog` ↔ `queue` (入队/出队)
 - `in_progress` ↔ `paused` (暂停/恢复)
-- `human_review` → `completed` / `backlog` (批准/拒绝)
+- `review` → `completed` / `backlog` (批准/拒绝)
 - `failed` → `queue` (重试)
 
 ## 设计原则
@@ -29,8 +29,8 @@ viben task <command> <task>
   pause <task>       in_progress → paused   暂停执行
   resume <task>      paused → 恢复          恢复执行
   review <task>      展示审查信息            查看待审任务
-  approve <task>     human_review → completed   批准完成
-  reject <task>      human_review → backlog     拒绝返工
+  approve <task>     review → completed   批准完成
+  reject <task>      review → backlog     拒绝返工
   retry <task>       failed → queue         重试失败任务
 ```
 
@@ -40,7 +40,7 @@ viben task <command> <task>
 |---------|------|---------|
 | `start <task>` | 启动任务执行（串行或并行模式） | ✓ |
 | `finish <task>` | 标记任务完成 | ✓ |
-| `create-pr [task]` | 创建 PR 并进入 human_review | ✓ |
+| `create-pr [task]` | 创建 PR 并进入 review | ✓ |
 | `archive <task>` | 归档到 archive/ 目录 | ✓ |
 
 ## 命令详细规格
@@ -144,7 +144,7 @@ viben task review <task>
 === Task Review: 03-10-feature-xyz ===
 
 Title:    实现用户认证功能
-Status:   human_review
+Status:   review
 Priority: P1
 
 PR URL:   https://github.com/org/repo/pull/123
@@ -174,9 +174,9 @@ viben task approve <task>
 
 **行为:**
 
-1. 验证状态为 `human_review`
+1. 验证状态为 `review`
 2. 设置 `completedAt` 为当前时间
-3. 状态变更: `human_review` → `completed`
+3. 状态变更: `review` → `completed`
 4. 写入 `APPROVED` 事件
 
 ### reject
@@ -192,10 +192,10 @@ Options:
 
 **行为:**
 
-1. 验证状态为 `human_review`
+1. 验证状态为 `review`
 2. 清除 `pr_url`（PR 可能需要关闭或重新提交）
 3. 记录 `reviewReason: "rejected"` 和 `rejectReason`（如指定）
-4. 状态变更: `human_review` → `backlog`
+4. 状态变更: `review` → `backlog`
 5. 写入 `REJECTED` 事件
 
 ### retry
@@ -224,8 +224,8 @@ viben task retry <task>
 | dequeue | queue | backlog |
 | pause | queue, in_progress | paused |
 | resume | paused | queue 或 in_progress |
-| approve | human_review | completed |
-| reject | human_review | backlog |
+| approve | review | completed |
+| reject | review | backlog |
 | retry | failed | queue |
 
 非法转换应返回错误，如:
@@ -330,7 +330,7 @@ viben task create                        → backlog
    │      │      │      │
    │      │      │      └── viben task resume → 恢复
    │      │      │
-   │      │      └── viben task create-pr → human_review
+   │      │      └── viben task create-pr → review
    │      │             │
    │      │             ├── viben task approve → completed
    │      │             │

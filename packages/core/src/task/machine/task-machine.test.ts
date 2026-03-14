@@ -449,7 +449,7 @@ describe("Task State Machine - Full Paths", () => {
 
   it("rejection path: review -> backlog", () => {
     // Go to review
-    let state = applyEventSequence("backlog", EVENT_SEQUENCES.toHumanReview);
+    let state = applyEventSequence("backlog", EVENT_SEQUENCES.toReview);
     expect(state).toBe("review");
 
     // Reject

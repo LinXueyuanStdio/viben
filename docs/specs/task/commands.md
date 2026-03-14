@@ -82,7 +82,7 @@ viben task create-pr <task>   # 从指定任务创建 PR
 ## 状态流转图
 
 ```
-backlog → queue → in_progress → human_review → completed → archived
+backlog → queue → in_progress → review → completed → archived
                        ↓              ↓
                     paused         rejected → backlog
                        ↓
@@ -99,9 +99,9 @@ backlog → queue → in_progress → human_review → completed → archived
 |------|----------|----------|
 | `backlog` | `create`, `reject`, `dequeue` | `enqueue`, `delete` |
 | `queue` | `enqueue`, `retry`, `resume` | `start`, `dequeue`, `pause` |
-| `in_progress` | `start` | `pause`, `cancel`, (自动→human_review/failed) |
+| `in_progress` | `start` | `pause`, `cancel`, (自动→review/failed) |
 | `paused` | `pause` | `resume`, `cancel` |
-| `human_review` | (自动) | `approve`, `reject` |
+| `review` | (自动) | `approve`, `reject` |
 | `completed` | `approve` | `archive` |
 | `failed` | (自动) | `retry`, `cancel` |
 | `cancelled` | `cancel` | `delete` |

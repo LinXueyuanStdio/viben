@@ -25,7 +25,7 @@
 
 ```typescript
 // 已有 - 直接复用
-export type TaskStatus = "backlog" | "queue" | "in_progress" | "ai_review" | "human_review" | "done" | "pr_created" | "error";
+export type TaskStatus = "backlog" | "queue" | "in_progress" | "ai_review" | "review" | "done" | "pr_created" | "error";
 export type ReviewReason = "completed" | "errors" | "qa_rejected" | "plan_review" | "stopped";
 export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
 export type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete";
@@ -244,7 +244,7 @@ export const taskMachine = createMachine({
           on: {
             PLAN_COMPLETE: [
               { target: 'implement', guard: 'noPlanReviewRequired' },
-              { target: '#task.human_review', actions: 'setReviewReason_planReview' }
+              { target: '#task.review', actions: 'setReviewReason_planReview' }
             ],
             PLAN_FAILED: '#task.error',
           }
@@ -258,7 +258,7 @@ export const taskMachine = createMachine({
         },
         check: {
           on: {
-            CHECK_PASSED: '#task.human_review',
+            CHECK_PASSED: '#task.review',
             CHECK_FAILED: 'fix',
           }
         },
@@ -272,12 +272,12 @@ export const taskMachine = createMachine({
       on: {
         USER_STOPPED: [
           { target: 'backlog', guard: 'noProgress' },
-          { target: 'human_review', actions: 'setReviewReason_stopped' }
+          { target: 'review', actions: 'setReviewReason_stopped' }
         ],
       }
     },
 
-    human_review: {
+    review: {
       on: {
         APPROVED: 'done',
         REJECTED: 'in_progress.implement',
@@ -731,7 +731,7 @@ export class TaskRecoveryService {
 |------|----------|
 | 序列号冲突 | 返回 409，客户端调用 resync 重新获取状态 |
 | 无效状态转换 | 返回 409，告知当前状态和拒绝的事件类型 |
-| Agent 崩溃 | stuck 检测后自动移到 human_review |
+| Agent 崩溃 | stuck 检测后自动移到 review |
 | Gateway 重启 | 从 task.json 恢复状态机，重建 SSE 连接 |
 | 客户端断连重连 | 调用 resync 获取缺失事件，追赶到最新状态 |
 

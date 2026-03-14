@@ -86,15 +86,15 @@ stateDiagram-v2
         fix --> check
     }
 
-    in_progress --> human_review: QA通过
+    in_progress --> review: QA通过
     in_progress --> paused: pause
     in_progress --> failed: 错误
 
     paused --> queue: resume
     paused --> backlog: abandon
 
-    human_review --> completed: approve
-    human_review --> backlog: reject
+    review --> completed: approve
+    review --> backlog: reject
 
     failed --> queue: retry
     failed --> backlog: abandon
@@ -110,7 +110,7 @@ stateDiagram-v2
 
     class backlog,queue,paused waiting
     class in_progress active
-    class human_review review
+    class review review
     class completed done
     class failed,cancelled error
 ```
@@ -123,7 +123,7 @@ stateDiagram-v2
 | `queue` | 已排队，等待执行 | `task enqueue` |
 | `in_progress` | 执行中 (plan → implement → check) | `task start` |
 | `paused` | 已暂停，保留进度 | `task pause` |
-| `human_review` | 等待人工审核 | 自动 (QA 通过) |
+| `review` | 等待人工审核 | 自动 (QA 通过) |
 | `completed` | 已完成 | `task approve` |
 | `failed` | 执行失败 | 自动 |
 | `cancelled` | 已取消 | `task cancel` |
@@ -163,8 +163,8 @@ viben task status <task>     # 查看状态
 **审核与完成**
 ```bash
 viben task review <task>     # 用户手动审核任务
-viben task approve <task>    # human_review → completed
-viben task reject <task>     # human_review → backlog
+viben task approve <task>    # review → completed
+viben task reject <task>     # review → backlog
 viben task retry <task>      # failed → queue
 viben task cancel <task>     # * → cancelled
 ```

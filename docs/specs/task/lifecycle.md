@@ -157,7 +157,7 @@ viben task status <task> --verbose
 queue → in_progress (start)
 in_progress → paused (pause)
 paused → queue (resume)
-in_progress → human_review (执行完成)
+in_progress → review (执行完成)
 in_progress → failed (执行失败)
 ```
 
@@ -188,8 +188,8 @@ viben task reject <task> -r "<reason>"
 ### 状态变化
 
 ```
-human_review → completed (approve)
-human_review → backlog (reject)
+review → completed (approve)
+review → backlog (reject)
 ```
 
 ---
@@ -289,7 +289,7 @@ viben task list --json
                     │                                             │
                     ▼                                             │
 ┌─────────┐    ┌─────────┐    ┌─────────────┐    ┌──────────────┐│
-│ backlog │───▶│  queue  │───▶│ in_progress │───▶│ human_review ││
+│ backlog │───▶│  queue  │───▶│ in_progress │───▶│ review ││
 └─────────┘    └─────────┘    └─────────────┘    └──────────────┘│
     ▲              │                │ ▲               │          │
     │              │                │ │               │          │
@@ -319,7 +319,7 @@ viben task list --json
 | `queue` | 已排队，等待执行 |
 | `in_progress` | 正在执行 |
 | `paused` | 已暂停 |
-| `human_review` | 等待人工审核 |
+| `review` | 等待人工审核 |
 | `completed` | 已完成 |
 | `archived` | 已归档 |
 | `failed` | 执行失败 |
@@ -334,10 +334,10 @@ viben task list --json
 | queue → in_progress | `viben task start` |
 | in_progress → paused | `viben task pause` |
 | paused → queue | `viben task resume` |
-| in_progress → human_review | (自动，执行完成) |
+| in_progress → review | (自动，执行完成) |
 | in_progress → failed | (自动，执行失败) |
-| human_review → completed | `viben task approve` |
-| human_review → backlog | `viben task reject` |
+| review → completed | `viben task approve` |
+| review → backlog | `viben task reject` |
 | failed → queue | `viben task retry` |
 | completed → archived | `viben task archive` |
 | * → cancelled | `viben task cancel` |
