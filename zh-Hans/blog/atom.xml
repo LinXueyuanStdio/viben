@@ -15,18 +15,18 @@
         <summary type="html"><![CDATA[Welcome to the Viben documentation site!]]></summary>
         <content type="html"><![CDATA[<p>Welcome to the <strong>Viben</strong> documentation site!</p>
 <p>Viben is a Python-based MCP server that makes content search easy and accessible through Claude and other MCP-compatible clients.</p>
-<h2 class="anchor anchorTargetStickyNavbar_Jy_3" id="what-is-viben">What is Viben?<a href="https://linxueyuan.online/viben/zh-Hans/blog/welcome#what-is-viben" class="hash-link" aria-label="What is Viben?的直接链接" title="What is Viben?的直接链接" translate="no">​</a></h2>
+<h2 class="anchor anchorTargetStickyNavbar_J39E" id="what-is-viben">What is Viben?<a href="https://linxueyuan.online/viben/zh-Hans/blog/welcome#what-is-viben" class="hash-link" aria-label="What is Viben?的直接链接" title="What is Viben?的直接链接" translate="no">​</a></h2>
 <p>Viben provides three main tools:</p>
 <ol>
 <li class=""><strong>browse_search</strong> - Search content across extensible sources</li>
 <li class=""><strong>browse_download</strong> - Download content files</li>
 <li class=""><strong>browse_read</strong> - Extract and read text from content</li>
 </ol>
-<h2 class="anchor anchorTargetStickyNavbar_Jy_3" id="getting-started">Getting Started<a href="https://linxueyuan.online/viben/zh-Hans/blog/welcome#getting-started" class="hash-link" aria-label="Getting Started的直接链接" title="Getting Started的直接链接" translate="no">​</a></h2>
+<h2 class="anchor anchorTargetStickyNavbar_J39E" id="getting-started">Getting Started<a href="https://linxueyuan.online/viben/zh-Hans/blog/welcome#getting-started" class="hash-link" aria-label="Getting Started的直接链接" title="Getting Started的直接链接" translate="no">​</a></h2>
 <p>Install Viben with pip:</p>
-<div class="language-bash codeBlockContainer_BTIx theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_Tv7r"><pre tabindex="0" class="prism-code language-bash codeBlock_boRj thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_xKYw"><span class="token-line" style="color:#393A34"><span class="token plain">pip </span><span class="token function" style="color:#d73a49">install</span><span class="token plain"> browse-mcp</span><br></span></code></pre></div></div>
+<div class="language-bash codeBlockContainer_SsO1 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_HJin"><pre tabindex="0" class="prism-code language-bash codeBlock_oEfN thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_IBae"><span class="token-line" style="color:#393A34"><span class="token plain">pip </span><span class="token function" style="color:#d73a49">install</span><span class="token plain"> browse-mcp</span><br></span></code></pre></div></div>
 <p>Then start the MCP server:</p>
-<div class="language-bash codeBlockContainer_BTIx theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_Tv7r"><pre tabindex="0" class="prism-code language-bash codeBlock_boRj thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_xKYw"><span class="token-line" style="color:#393A34"><span class="token plain">browse-mcp</span><br></span></code></pre></div></div>
+<div class="language-bash codeBlockContainer_SsO1 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_HJin"><pre tabindex="0" class="prism-code language-bash codeBlock_oEfN thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_IBae"><span class="token-line" style="color:#393A34"><span class="token plain">browse-mcp</span><br></span></code></pre></div></div>
 <p>Check out our <a class="" href="https://linxueyuan.online/viben/zh-Hans/user/intro">documentation</a> to learn more!</p>]]></content>
         <author>
             <name>Viben Team</name>
