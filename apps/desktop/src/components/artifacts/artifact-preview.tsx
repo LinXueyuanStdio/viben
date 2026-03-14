@@ -2,7 +2,8 @@
  * Artifact Preview Component
  *
  * Main orchestrator component that displays artifact previews
- * with view mode toggle (preview/code) and header controls.
+ * with view mode toggle (preview/code), static/live preview toggle for HTML,
+ * and header controls.
  */
 
 import * as React from "react";
@@ -17,6 +18,7 @@ import {
   FileCode2,
   FileText,
   Maximize2,
+  Radio,
   X,
 } from "lucide-react";
 
@@ -27,8 +29,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { VitePreview } from "@/components/chat/vite-preview";
+import { checkNodeAvailable } from "@/lib/gateway/modules/preview";
+import { getGatewayUrl } from "@/lib/gateway/config";
 
-import type { Artifact, ArtifactPreviewProps, ViewMode } from "./types";
+import type { Artifact, ArtifactPreviewProps, PreviewMode, ViewMode } from "./types";
 import {
   getFileExtension,
   getOpenWithApp,
@@ -56,12 +61,50 @@ export function ArtifactPreview({
   onClose,
   allArtifacts = [],
   className,
+  livePreviewUrl,
+  livePreviewStatus = "idle",
+  livePreviewError,
+  onStartLivePreview,
+  onStopLivePreview,
 }: ArtifactPreviewProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = React.useState<ViewMode>("preview");
+  const [previewMode, setPreviewMode] = React.useState<PreviewMode>("static");
   const [copied, setCopied] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isNodeAvailable, setIsNodeAvailable] = React.useState<boolean | null>(null);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  // Check if Node.js is available (required for Live Preview)
+  React.useEffect(() => {
+    async function checkNode() {
+      try {
+        const baseUrl = getGatewayUrl();
+        const available = await checkNodeAvailable(baseUrl);
+        setIsNodeAvailable(available);
+        console.log("[ArtifactPreview] Node.js available:", available);
+      } catch (error) {
+        console.error("[ArtifactPreview] Failed to check Node.js availability:", error);
+        setIsNodeAvailable(false);
+      }
+    }
+    checkNode();
+  }, []);
+
+  // Check if live preview is available for this artifact
+  // Requires: HTML artifact + onStartLivePreview handler + Node.js installed
+  const canUseLivePreview = React.useMemo(() => {
+    if (!artifact) return false;
+    if (!isNodeAvailable) return false;
+    return artifact.type === "html" && onStartLivePreview !== undefined;
+  }, [artifact, onStartLivePreview, isNodeAvailable]);
+
+  // Auto-switch to live mode if live preview is already running
+  React.useEffect(() => {
+    if (livePreviewStatus === "running" && canUseLivePreview) {
+      setPreviewMode("live");
+    }
+  }, [livePreviewStatus, canUseLivePreview]);
 
   // Reset view mode when artifact changes
   React.useEffect(() => {
@@ -174,8 +217,13 @@ export function ArtifactPreview({
   const openWithApp = artifact ? getOpenWithApp(artifact) : null;
 
   // Generate iframe content for HTML with inlined assets
+  // Only compute when in static preview mode to avoid unnecessary blob URL creation/revocation
+  const shouldShowStaticPreview =
+    viewMode === "preview" && previewMode === "static";
+
   const iframeSrc = React.useMemo(() => {
-    if (viewMode !== "preview") return null;
+    // Only create blob URL when we need to show static preview
+    if (!shouldShowStaticPreview) return null;
     if (!artifact?.content || artifact.type !== "html") return null;
 
     const enhancedHtml =
@@ -185,7 +233,7 @@ export function ArtifactPreview({
 
     const blob = new Blob([enhancedHtml], { type: "text/html" });
     return URL.createObjectURL(blob);
-  }, [artifact?.content, artifact?.type, allArtifacts, viewMode]);
+  }, [artifact?.content, artifact?.type, allArtifacts, shouldShowStaticPreview]);
 
   // Cleanup blob URL when it changes or on unmount
   React.useEffect(() => {
@@ -312,7 +360,7 @@ export function ArtifactPreview({
       </div>
 
       {/* View mode toggle */}
-      {hasCodeView && (
+      {(hasCodeView || (canUseLivePreview && viewMode === "preview")) && (
         <div className="bg-muted/20 border-border/30 flex shrink-0 items-center gap-2 border-b px-4 py-2">
           {hasPreview && hasCodeView && (
             <div className="bg-muted flex items-center gap-1 rounded-lg p-0.5">
@@ -339,6 +387,49 @@ export function ArtifactPreview({
               >
                 <Code className="size-3.5" />
                 {t("artifacts.code", "Code")}
+              </button>
+            </div>
+          )}
+
+          {/* Static/Live preview toggle for HTML */}
+          {canUseLivePreview && viewMode === "preview" && (
+            <div className="bg-muted flex items-center gap-1 rounded-lg p-0.5">
+              <button
+                onClick={() => setPreviewMode("static")}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  previewMode === "static"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Eye className="size-3.5" />
+                {t("preview.static", "Static")}
+              </button>
+              <button
+                onClick={() => {
+                  setPreviewMode("live");
+                  if (livePreviewStatus === "idle" && onStartLivePreview) {
+                    onStartLivePreview();
+                  }
+                }}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  previewMode === "live"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Radio
+                  className={cn(
+                    "size-3.5",
+                    livePreviewStatus === "running" && "text-green-500"
+                  )}
+                />
+                {t("preview.live", "Live")}
+                {livePreviewStatus === "running" && (
+                  <span className="size-1.5 animate-pulse rounded-full bg-green-500" />
+                )}
               </button>
             </div>
           )}
@@ -375,11 +466,21 @@ export function ArtifactPreview({
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {viewMode === "preview" ? (
-          <PreviewContent
-            artifact={artifact}
-            iframeSrc={iframeSrc}
-            iframeRef={iframeRef}
-          />
+          previewMode === "live" && canUseLivePreview ? (
+            <VitePreview
+              previewUrl={livePreviewUrl || null}
+              status={livePreviewStatus}
+              error={livePreviewError || null}
+              onStart={onStartLivePreview}
+              onStop={onStopLivePreview}
+            />
+          ) : (
+            <PreviewContent
+              artifact={artifact}
+              iframeSrc={iframeSrc}
+              iframeRef={iframeRef}
+            />
+          )
         ) : (
           <CodePreview artifact={artifact} />
         )}

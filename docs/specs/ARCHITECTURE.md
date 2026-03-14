@@ -151,8 +151,7 @@ viben/
 ├── apps/                    # 应用包
 │   ├── web/                 # Next.js Web 应用 (市场)
 │   ├── desktop/             # Tauri 桌面应用
-│   ├── docs/                # Docusaurus 文档站点
-│   └── landingpage/         # 落地页 (最小化)
+│   └── docs/                # Docusaurus 文档站点
 │
 ├── packages/                # 共享 TypeScript 包
 │   ├── api-client/          # API 客户端库

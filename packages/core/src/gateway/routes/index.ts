@@ -44,7 +44,6 @@ import { registerGitHubRoutes } from "./github";
 import { registerTauriMcpRoutes } from "./tauri-mcp";
 import { registerPreferencesRoutes } from "./preferences";
 import { registerTaskEventRoutes } from "./task-events";
-import { registerUnifiedTaskRoutes } from "./task";
 import { registerPreviewRoutes } from "./preview";
 
 /**
@@ -92,7 +91,6 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerTauriMcpRoutes(fastify);
   registerPreferencesRoutes(fastify);
   registerTaskEventRoutes(fastify);
-  registerUnifiedTaskRoutes(fastify, state);
   registerPreviewRoutes(fastify);
 }
 
@@ -144,7 +142,6 @@ export { registerTauriMcpRoutes, DEFAULT_SOCKET_PATH as TAURI_MCP_SOCKET_PATH } 
 export { registerPreferencesRoutes } from "./preferences";
 export type { DeveloperPreferences, PreferencesResponse } from "./preferences";
 export { registerTaskEventRoutes } from "./task-events";
-export { registerUnifiedTaskRoutes } from "./task";
 export { registerPreviewRoutes } from "./preview";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";

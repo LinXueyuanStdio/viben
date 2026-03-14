@@ -71,7 +71,6 @@ viben/
 │   ├── cli/                 # CLI 命令行工具
 │   ├── desktop/             # Tauri 桌面应用
 │   ├── docs/                # 文档站点
-│   ├── landingpage/         # 着陆页
 │   └── web/                 # Web 应用
 ├── packages/                # 共享包
 │   ├── api-client/          # API 客户端
