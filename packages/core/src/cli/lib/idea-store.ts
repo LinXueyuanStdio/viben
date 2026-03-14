@@ -44,6 +44,7 @@ import {
   getIdeaIdPrefix,
   parseRawSession,
 } from "./idea-types";
+import { generateShortUuid } from "./idea-generator";
 import { DIR_VIBEN, getDatePrefix } from "./viben-workspace";
 
 // =============================================================================
@@ -1309,68 +1310,24 @@ export const writeIdeasToMarkdown = writeIdeasToFile;
 // =============================================================================
 
 /**
- * Get the next available ID for a type in a session
+ * Generate a new idea ID (short UUID)
  *
- * @param sessionDir - Session directory
- * @param type - Idea type
- * @returns Next available ID (e.g., "ci-003")
+ * @returns 8-character short UUID
  */
-export function getNextIdeaId(sessionDir: string, type: string): string {
-  const mdPath = getIdeaMarkdownPath(sessionDir, type);
-  const ideas = readIdeasFromFile(mdPath);
-
-  const prefix = getIdeaIdPrefix(type);
-
-  // Find highest existing number
-  let maxNum = 0;
-  for (const idea of ideas) {
-    const match = idea.id.match(new RegExp(`^${prefix}-(\\d+)$`));
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) {
-        maxNum = num;
-      }
-    }
-  }
-
-  return `${prefix}-${String(maxNum + 1).padStart(3, "0")}`;
+export function getNextIdeaId(): string {
+  return generateShortUuid();
 }
 
 /**
- * Generate multiple idea IDs for a type
+ * Generate multiple idea IDs
  *
- * @param sessionDir - Session directory
- * @param type - Idea type
  * @param count - Number of IDs to generate
- * @returns Array of IDs
+ * @returns Array of short UUID strings (8 characters each)
  */
-export function generateIdeaIds(
-  sessionDir: string,
-  type: string,
-  count: number
-): string[] {
-  const mdPath = getIdeaMarkdownPath(sessionDir, type);
-  const ideas = readIdeasFromFile(mdPath);
-
-  const prefix = getIdeaIdPrefix(type);
-
-  // Find highest existing number
-  let maxNum = 0;
-  for (const idea of ideas) {
-    const match = idea.id.match(new RegExp(`^${prefix}-(\\d+)$`));
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) {
-        maxNum = num;
-      }
-    }
-  }
-
-  // Generate IDs
+export function generateIdeaIds(count: number): string[] {
   const ids: string[] = [];
-  for (let i = 1; i <= count; i++) {
-    ids.push(`${prefix}-${String(maxNum + i).padStart(3, "0")}`);
+  for (let i = 0; i < count; i++) {
+    ids.push(generateShortUuid());
   }
-
   return ids;
 }

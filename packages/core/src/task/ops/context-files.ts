@@ -113,7 +113,7 @@ export function addContext(
   repoRoot: string,
   taskName: string,
   files: string[],
-  options: { reason?: string; recursive?: boolean } = {}
+  options: { reason?: string; recursive?: boolean; contextType?: "implement" | "check" | "fix" } = {}
 ): ContextAddResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
@@ -126,7 +126,8 @@ export function addContext(
     };
   }
 
-  const implementFile = join(taskDir, "implement.jsonl");
+  const contextType = options.contextType || "implement";
+  const contextFile = join(taskDir, `${contextType}.jsonl`);
   const reason = options.reason || "Added by user";
 
   let addedCount = 0;
@@ -134,7 +135,7 @@ export function addContext(
 
   for (const file of files) {
     // Skip if already exists
-    if (jsonlEntryExists(implementFile, file)) {
+    if (jsonlEntryExists(contextFile, file)) {
       skippedCount++;
       continue;
     }
@@ -151,7 +152,7 @@ export function addContext(
       entry.type = type;
     }
 
-    appendToJsonl(implementFile, entry as unknown as Record<string, unknown>);
+    appendToJsonl(contextFile, entry as unknown as Record<string, unknown>);
     addedCount++;
   }
 

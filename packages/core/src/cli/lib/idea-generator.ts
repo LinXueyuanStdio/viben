@@ -394,7 +394,7 @@ export function parseAIResponse(response: string, type: string): Idea[] {
       if (!raw || typeof raw !== "object") continue;
 
       // Generate proper ID
-      const id = generateIdeaId(type, i);
+      const id = generateShortUuid();
 
       // Parse effort level
       let effort: EffortLevel = "medium";
@@ -443,18 +443,12 @@ export function parseAIResponse(response: string, type: string): Idea[] {
 }
 
 /**
- * Generate a unique idea ID
+ * Generate a short UUID (8 characters)
  *
- * Format: <prefix>-<number> (e.g., ci-001, sec-002)
- *
- * @param type - Idea type
- * @param index - Index in the list (0-based)
- * @returns Generated ID string
+ * @returns 8-character short UUID
  */
-export function generateIdeaId(type: string, index: number): string {
-  const prefix = getIdeaIdPrefix(type);
-  const num = String(index + 1).padStart(3, "0");
-  return `${prefix}-${num}`;
+export function generateShortUuid(): string {
+  return crypto.randomUUID().replace(/-/g, "").substring(0, 8);
 }
 
 /**
@@ -650,11 +644,10 @@ export async function generateIdeas(
         const existingFile = getIdeaFilePath(sessionDir, result.type);
         if (existsSync(existingFile)) {
           const existingIdeas = readIdeasFromFile(existingFile);
-          // Re-number new ideas to avoid ID conflicts
-          const startIndex = existingIdeas.length;
-          finalIdeas = result.ideas.map((idea, i) => ({
+          // Generate new IDs to avoid conflicts
+          finalIdeas = result.ideas.map((idea) => ({
             ...idea,
-            id: generateIdeaId(result.type, startIndex + i),
+            id: generateShortUuid(),
           }));
           finalIdeas = [...existingIdeas, ...finalIdeas];
         }

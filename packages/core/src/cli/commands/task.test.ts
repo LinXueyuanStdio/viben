@@ -133,7 +133,7 @@ describe("task command", () => {
       expect(subcommandNames).toContain("edit");
       expect(subcommandNames).toContain("delete");
 
-      // Cleanup (migrated from swarm cleanup)
+      // Cleanup
       expect(subcommandNames).toContain("cleanup");
 
       // Status
@@ -646,12 +646,6 @@ describe("task command", () => {
       });
     });
   });
-
-  // ============================================================================
-  // task cleanup Tests (migrated from swarm cleanup)
-  // ============================================================================
-  // Note: The "task cleanup" command replaces the deprecated "swarm cleanup" command.
-  // See swarm.test.ts for the deprecated tests with backward compatibility.
 
   describe("task cleanup", () => {
     it("should have cleanup subcommand", () => {
