@@ -50,7 +50,7 @@ export {
   type ArtifactType,
 } from "./session-store";
 
-// Task service (unified task storage)
+// Task service (unified task storage) - re-export from task/service
 export {
   TaskService,
   taskService,
@@ -88,7 +88,7 @@ export {
   type TaskLogEntry,
   type TaskLogEntryType,
   type TaskLogPhaseStatus,
-} from "./task-service";
+} from "../task/service";
 
 // Cron service
 export {

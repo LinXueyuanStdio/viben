@@ -20,7 +20,7 @@
  * @see packages/core/src/services/task-service.ts for UnifiedTask and TaskStatus
  */
 
-import type { TaskStatus as UnifiedTaskStatus } from "../../services/task-service";
+import type { TaskStatus as UnifiedTaskStatus } from "../../task/service";
 
 /**
  * Task status in the queue lifecycle

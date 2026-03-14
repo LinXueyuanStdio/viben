@@ -74,7 +74,7 @@ export interface Task {
   next_action?: Array<{ phase: number; action: string }>;
 
   // === Organization ===
-  priority?: string;       // P0, P1, P2, P3
+  priority?: string;       // urgent, high, medium, low, none
   scope?: string;
   workspace_path: string | null;
 
@@ -477,7 +477,7 @@ export interface TaskClassification {
   category: 'feature' | 'bugfix' | 'refactor' | 'docs';
   complexity: 'low' | 'medium' | 'high';
   impact: 'low' | 'medium' | 'high';
-  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  priority: 'urgent' | 'high' | 'medium' | 'low' | 'none';
 }
 
 /**

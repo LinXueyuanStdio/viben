@@ -10,7 +10,7 @@
  * @see docs/plans/2026-03-08-task-system-improvements-design.md Section 4
  */
 
-import type { UnifiedTask, TaskStatus } from "../../services/task-service";
+import type { UnifiedTask, TaskStatus } from "../../task/service";
 import { logger as globalLogger } from "../../telemetry";
 
 /**
@@ -21,12 +21,14 @@ const log = globalLogger.child({ module: "queue-scheduler" });
 /**
  * Priority order mapping for scheduling
  * Lower number = higher priority
+ * Uses IssuePriority values: urgent, high, medium, low, none
  */
 const PRIORITY_ORDER: Record<string, number> = {
-  P0: 0,
-  P1: 1,
-  P2: 2,
-  P3: 3,
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  none: 4,
 };
 
 /**
@@ -145,7 +147,7 @@ export function detectCyclicDependency(
  * Selection criteria (in order):
  * 1. Filter tasks with status === 'queue'
  * 2. Filter tasks with all dependencies met
- * 3. Sort by priority (P0 > P1 > P2 > P3)
+ * 3. Sort by priority (urgent > high > medium > low > none)
  * 4. Within same priority, sort by queuedAt (FIFO)
  *
  * Note: This implements "soft" priority - high priority tasks don't preempt
@@ -178,8 +180,8 @@ export function getNextTask(
   // Sort by priority, then by queuedAt (FIFO within same priority)
   const sorted = readyTasks.sort((a, b) => {
     // 1. Priority comparison (lower number = higher priority)
-    const priorityA = PRIORITY_ORDER[a.priority] ?? PRIORITY_ORDER.P2;
-    const priorityB = PRIORITY_ORDER[b.priority] ?? PRIORITY_ORDER.P2;
+    const priorityA = PRIORITY_ORDER[a.priority] ?? PRIORITY_ORDER.medium;
+    const priorityB = PRIORITY_ORDER[b.priority] ?? PRIORITY_ORDER.medium;
 
     if (priorityA !== priorityB) {
       return priorityA - priorityB;

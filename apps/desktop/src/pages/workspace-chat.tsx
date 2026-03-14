@@ -2917,6 +2917,7 @@ export function WorkspaceChatPage() {
                   showResizeHandle
                   enableWritingMode
                   useGlobalConfig
+                  hideAgentSelector
                   hideExecutorSelector
                   hideModelSelector
                   showSandboxToggle
