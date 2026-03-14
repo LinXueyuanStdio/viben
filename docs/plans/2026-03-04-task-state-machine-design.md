@@ -445,8 +445,6 @@ export interface UnifiedTask {
   cost?: number;
   duration?: number;
   favorite?: boolean;
-  hasInProgressAttempt?: boolean;
-  lastAttemptFailed?: boolean;
   executor?: string;
   workspacePath?: string;
   createdAt: string;

@@ -74,6 +74,51 @@ const mapCurrentPhaseToExecution = (currentPhase?: number): ExecutionPhase | und
   return mapping[currentPhase];
 };
 
+// Action labels for display (fallback values, i18n keys used in component)
+const ACTION_LABELS: Record<string, string> = {
+  plan: "Planning",
+  implement: "Implementing",
+  check: "Checking",
+  fix: "Fixing",
+  finish: "Finishing",
+  "create-pr": "Creating PR",
+};
+
+// Get current action info from task's next_action array
+interface ActionInfo {
+  currentAction: string;
+  currentPhase: number;
+  totalPhases: number;
+  progressPercent: number;
+}
+
+function getActionInfo(
+  currentPhase: number | undefined,
+  nextAction: Array<{ phase: number; action: string }> | undefined | null
+): ActionInfo | null {
+  if (currentPhase === undefined || currentPhase === null) return null;
+  if (!nextAction || nextAction.length === 0) return null;
+
+  const totalPhases = nextAction.length;
+  // current_phase is 0-based index into next_action array
+  // 0 means first action (e.g., "implement"), 1 means second action, etc.
+  const phaseIndex = Math.min(currentPhase, totalPhases - 1);
+  const currentActionItem = nextAction[phaseIndex];
+
+  if (!currentActionItem) return null;
+
+  // Calculate progress: current phase / total phases
+  // e.g., phase 0 of 4 = 0%, phase 1 of 4 = 25%, phase 2 of 4 = 50%
+  const progressPercent = Math.round((currentPhase / totalPhases) * 100);
+
+  return {
+    currentAction: currentActionItem.action,
+    currentPhase: currentPhase + 1,  // Display as 1-based for UI
+    totalPhases,
+    progressPercent,
+  };
+}
+
 /**
  * TaskCardContent - Displays task card content with all metadata and actions
  *
@@ -101,8 +146,9 @@ export const TaskCardContent = memo(function TaskCardContent({
 }: TaskCardContentProps) {
   const { t } = useTranslation();
 
-  // Determine card state
-  const isRunning = !!task.has_in_progress_attempt;
+  // Determine card state - use status directly
+  const isRunning = task.status === "in_progress";
+  const isFailed = task.status === "failed";
   const isStuck = task.isStuck ?? task.is_stuck ?? false;
 
   // Track elapsed time for running tasks (use hook if prop not provided)
@@ -113,7 +159,6 @@ export const TaskCardContent = memo(function TaskCardContent({
   // Use prop if provided, otherwise use hook value
   const effectiveElapsedTime = elapsedTime ?? (isRunning ? hookElapsedTime : 0);
   const isArchived = !!task.archivedAt;
-  const isFailed = task.last_attempt_failed && !isRunning;
 
   // Validate priority is a valid IssuePriority (urgent/high/medium/low/none)
   const effectivePriority = task.kanbanPriority ?? validatePriority(task.priority);
@@ -123,6 +168,12 @@ export const TaskCardContent = memo(function TaskCardContent({
   // Also map from current_phase number to ExecutionPhase if available
   const executionPhase = task.executionPhase ?? task.execution_phase ?? mapCurrentPhaseToExecution(task.current_phase);
   const hasActiveExecution = executionPhase && executionPhase !== "complete";
+
+  // Get action progress info for running tasks
+  const actionInfo = useMemo(
+    () => isRunning ? getActionInfo(task.current_phase, task.next_action) : null,
+    [isRunning, task.current_phase, task.next_action]
+  );
 
   // Determine review reason info
   const effectiveReviewReason: ReviewReason | undefined =
@@ -346,8 +397,42 @@ export const TaskCardContent = memo(function TaskCardContent({
         </div>
       )}
 
-      {/* Row 5: Phase progress indicator with subtask visualization */}
-      {((task.subtasks_detail && task.subtasks_detail.length > 0) ||
+      {/* Row 5: Action progress for running tasks */}
+      {isRunning && actionInfo && (
+        <div className="flex flex-col gap-1.5 pt-1">
+          {/* Action label with step indicator */}
+          <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span className="font-medium text-foreground">
+                {t(
+                  `workspace.taskCard.action.${actionInfo.currentAction}`,
+                  ACTION_LABELS[actionInfo.currentAction] || actionInfo.currentAction
+                )}
+              </span>
+            </div>
+            <span className="text-muted-foreground">
+              {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
+                current: actionInfo.currentPhase,
+                total: actionInfo.totalPhases,
+              })}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isStuck ? "bg-warning" : "bg-primary"
+              )}
+              style={{ width: `${actionInfo.progressPercent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Row 5b: Phase progress indicator with subtask visualization (when no action info) */}
+      {!actionInfo && ((task.subtasks_detail && task.subtasks_detail.length > 0) ||
         (executionPhase && executionPhase !== "complete" && isRunning)) && (
         <PhaseProgressIndicator
           phase={executionPhase}

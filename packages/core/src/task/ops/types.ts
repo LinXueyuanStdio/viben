@@ -253,10 +253,6 @@ export interface UnifiedTask {
   duration?: number;
   /** Whether task is favorited */
   favorite?: boolean;
-  /** Has in-progress attempt (kanban display) */
-  hasInProgressAttempt?: boolean;
-  /** Last attempt failed (kanban display) */
-  lastAttemptFailed?: boolean;
   /** Executor name */
   executor?: string;
 

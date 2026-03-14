@@ -376,8 +376,6 @@ export interface TaskForPanel {
   // Execution configuration (locked after queueing)
   model?: string | null;           // Model ID (locked after queueing)
   // Execution status (from vibe-kanban)
-  has_in_progress_attempt?: boolean;
-  last_attempt_failed?: boolean;
   executor?: string;
   // Phase 2: Subtasks and Relationships
   subtasks?: Subtask[];
@@ -476,7 +474,7 @@ export function TaskDetailPanel({
     handleResume,
   } = useStuckDetection({
     taskId: task?.id ?? "",
-    isRunning: task?.has_in_progress_attempt ?? false,
+    isRunning: task?.status === "in_progress",
     workspacePath,
     lastUpdated: task?.updated_at,
     subtasks: specsData.subtasks,
@@ -953,7 +951,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             >
               {getStatusLabel(task.status)}
             </Badge>
-            {task.has_in_progress_attempt && (
+            {task.status === "in_progress" && (
               <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
             )}
           </div>
@@ -1190,10 +1188,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               </div>
 
               {/* Execution Status (vibe-kanban specific) */}
-              {(task.has_in_progress_attempt !== undefined ||
-                task.last_attempt_failed !== undefined ||
-                task.executor ||
-                task.xstateState) && (
+              {(task.executor || task.xstateState) && (
                 <div className="border-t pt-3">
                   <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
                     {t("workspace.execution", "Execution")}
@@ -1220,8 +1215,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       xstateState={task.xstateState}
                       reviewReason={task.reviewReason}
                       isStuck={isStuck}
-                      isRunning={task.has_in_progress_attempt}
-                      lastAttemptFailed={task.last_attempt_failed}
+                      isRunning={task.status === "in_progress"}
                       executionPhase={task.executionPhase}
                       lastEventSequence={task.lastEvent?.sequence}
                       taskTitle={task.title}
@@ -1255,12 +1249,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                           <AlertTriangle className="h-3 w-3" />
                           {t("workspace.taskStatus.stuck", "Stuck")}
                         </Badge>
-                      ) : task.has_in_progress_attempt ? (
+                      ) : task.status === "in_progress" ? (
                         <Badge variant="secondary" className="gap-1.5">
                           <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
                           {t("workspace.running", "Running")}
                         </Badge>
-                      ) : task.last_attempt_failed ? (
+                      ) : task.status === "failed" ? (
                         <Badge variant="destructive">
                           {t("workspace.failed", "Failed")}
                         </Badge>
@@ -1673,7 +1667,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             error={specsData.error}
             autoScroll={true}
             onRefresh={specsData.refresh}
-            isTaskRunning={task.has_in_progress_attempt}
+            isTaskRunning={task.status === "in_progress"}
             pollingInterval={3000}
           />
         </TabsContent>

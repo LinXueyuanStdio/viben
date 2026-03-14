@@ -88,7 +88,7 @@ export const TaskCard = memo(function TaskCard({
     handleResume,
   } = useStuckDetection({
     taskId: task.id,
-    isRunning: !!task.has_in_progress_attempt,
+    isRunning: task.status === "in_progress",
     workspacePath,
     lastUpdated: task.updated_at,
     subtasks: task.subtasks_detail as Subtask[] | undefined,
@@ -98,7 +98,8 @@ export const TaskCard = memo(function TaskCard({
     checkInterval: 30000, // 30 seconds
   });
 
-  const isRunning = !!task.has_in_progress_attempt;
+  // Task is running if status is "in_progress"
+  const isRunning = task.status === "in_progress";
 
   // Track elapsed time for running tasks
   const { elapsedTime } = useElapsedTime({
@@ -187,12 +188,13 @@ export const TaskCard = memo(function TaskCard({
   );
 
   // Determine which actions to show in TaskCardContent
-  const canStart =
-    (task.status === "backlog" || task.status === "queue") &&
-    !task.has_in_progress_attempt;
-  const canStop = !!task.has_in_progress_attempt;
+  // Can start: backlog/queue tasks
+  // Can stop: tasks that are currently running (in_progress)
+  // Can resume: failed tasks
+  const canStart = task.status === "backlog" || task.status === "queue";
+  const canStop = isRunning;
   const canRecover = isStuck;
-  const canResume = task.last_attempt_failed && !task.has_in_progress_attempt;
+  const canResume = task.status === "failed";
   const canApprove = task.status === "review";
   const canReject = task.status === "review";
   const canViewPR = !!(task.prUrl || task.pr_url);

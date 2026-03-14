@@ -298,8 +298,6 @@ interface UnifiedTask {
   // 执行追踪
   cost?: number;
   duration?: number;
-  hasInProgressAttempt?: boolean;
-  lastAttemptFailed?: boolean;
 
   // XState 集成
   xstateState?: XStateValue;

@@ -235,8 +235,6 @@ export interface Task {
 }
 
 export interface TaskWithAttemptStatus extends Task {
-  has_in_progress_attempt: boolean;
-  last_attempt_failed: boolean;
   executor: string;
 }
 ```

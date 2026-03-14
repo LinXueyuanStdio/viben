@@ -55,8 +55,6 @@ export interface TaskActionButtonsProps {
   isStuck?: boolean;
   /** Whether the task has an in-progress attempt */
   isRunning?: boolean;
-  /** Whether the last attempt failed */
-  lastAttemptFailed?: boolean;
   /** Current execution phase */
   executionPhase?: ExecutionPhase;
   /** Last event sequence number */
@@ -105,7 +103,6 @@ export function TaskActionButtons({
   reviewReason,
   isStuck = false,
   isRunning = false,
-  lastAttemptFailed = false,
   // executionPhase is available for future use when we need phase-specific actions
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   executionPhase: _executionPhase,
@@ -428,29 +425,7 @@ export function TaskActionButtons({
       return buttonList;
     }
 
-    // Priority 7: Failed but not stuck - Show Resume button
-    if (lastAttemptFailed && !isRunning) {
-      buttonList.push(
-        <Button
-          key="resume"
-          variant="default"
-          size={size}
-          className={sizeClasses[size]}
-          onClick={handleStart}
-          disabled={isSubmitting}
-        >
-          {submittingEvent === "START" ? (
-            <LoadingIcon />
-          ) : (
-            <Play className={iconWithMargin} />
-          )}
-          {t("workspace.taskActions.resume", "Resume")}
-        </Button>
-      );
-      return buttonList;
-    }
-
-    // Priority 8: Completed state - Show completion indicator
+    // Priority 7: Completed state - Show completion indicator
     if (status === "completed") {
       buttonList.push(
         <div
@@ -471,7 +446,6 @@ export function TaskActionButtons({
     status,
     isStuck,
     isRunning,
-    lastAttemptFailed,
     reviewReason,
     showAllActions,
     size,
@@ -594,17 +568,7 @@ export function TaskActionButtons({
       };
     }
 
-    // Priority 7: Last attempt failed
-    if (lastAttemptFailed && !isRunning) {
-      return {
-        icon: AlertCircle,
-        title: t("workspace.statusContext.lastFailed.title", "Previous attempt failed"),
-        description: t("workspace.statusContext.lastFailed.description", "The last execution attempt failed. Click Resume to try again."),
-        variant: "warning" as const,
-      };
-    }
-
-    // Priority 8: Completed
+    // Priority 7: Completed
     if (status === "completed") {
       return {
         icon: CheckCircle2,
@@ -615,7 +579,7 @@ export function TaskActionButtons({
     }
 
     return null;
-  }, [showStatusContext, status, isStuck, isRunning, lastAttemptFailed, reviewReason, t]);
+  }, [showStatusContext, status, isStuck, isRunning, reviewReason, t]);
 
   // Variant styles for status context
   const variantStyles = {

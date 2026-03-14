@@ -95,7 +95,7 @@ export function formatElapsedTime(ms: number): string {
  * @example
  * ```tsx
  * const { elapsedTime, formattedTime } = useElapsedTime({
- *   isRunning: task.has_in_progress_attempt,
+ *   isRunning: task.status === "in_progress",
  *   startTime: task.updated_at,
  * });
  * ```

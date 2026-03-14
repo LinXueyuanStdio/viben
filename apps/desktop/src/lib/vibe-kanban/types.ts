@@ -116,8 +116,6 @@ export interface Task {
 
 // Task with attempt status - for kanban display
 export interface TaskWithAttemptStatus extends Task {
-  has_in_progress_attempt: boolean;
-  last_attempt_failed: boolean;
   executor: string;
   // Extended execution info
   is_stuck?: boolean;           // Task stuck in execution
@@ -176,8 +174,6 @@ export interface UpdateTaskRequest {
   cost?: number;
   duration?: number;
   favorite?: boolean;
-  has_in_progress_attempt?: boolean;
-  last_attempt_failed?: boolean;
   executor?: string;
 }
 

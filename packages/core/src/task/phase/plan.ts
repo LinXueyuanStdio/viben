@@ -156,10 +156,17 @@ export async function runPlanPhase(
     };
   }
 
-  // Get requirement from title or description
-  const requirement = String(
-    taskData.title || taskData.description || ""
-  ).trim();
+  // Get requirement from title AND description (both are important)
+  const title = String(taskData.title || "").trim();
+  const description = String(taskData.description || "").trim();
+
+  // Combine title and description for full context
+  let requirement = "";
+  if (title && description) {
+    requirement = `${title}\n\n${description}`;
+  } else {
+    requirement = title || description;
+  }
   if (!requirement) {
     return {
       success: false,

@@ -100,19 +100,20 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
 }: ListItemWithStuckDetectionProps) {
   const { t } = useTranslation();
 
+  // Task is running if status is "in_progress"
+  const isRunning = task.status === "in_progress";
+  const isFailed = task.status === "failed";
+  const isArchived = !!task.archivedAt;
+
   // Use the enhanced stuck detection hook for real-time detection
   const { isStuck: detectedStuck, isChecking } = useStuckDetection({
     taskId: task.id,
-    isRunning: !!task.has_in_progress_attempt,
+    isRunning,
     workspacePath,
     lastUpdated: task.updated_at,
     stuckThreshold: 60000,
     checkInterval: 30000,
   });
-
-  const isRunning = !!task.has_in_progress_attempt;
-  const isFailed = task.last_attempt_failed && !isRunning;
-  const isArchived = !!task.archivedAt;
 
   // Track elapsed time for running tasks
   const { elapsedTime } = useElapsedTime({

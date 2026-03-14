@@ -252,11 +252,11 @@ const TaskCardContent = memo(function TaskCardContent({
 }: TaskCardContentProps) {
   const { t } = useTranslation();
 
-  // Determine card state
-  const isRunning = !!task.has_in_progress_attempt;
+  // Determine card state - use status directly
+  const isRunning = task.status === "in_progress";
+  const isFailed = task.status === "failed";
   const isStuck = task.isStuck ?? task.is_stuck ?? false;
   const isArchived = !!task.archivedAt;
-  const isFailed = task.last_attempt_failed && !isRunning;
 
   // Track elapsed time for running tasks
   const { elapsedTime } = useElapsedTime({
@@ -679,18 +679,19 @@ const TaskCardWithStuckDetection = memo(function TaskCardWithStuckDetection({
   showMoreMenu,
   renderMoreMenu,
 }: TaskCardWithStuckDetectionProps) {
+  // Task is running if status is "in_progress"
+  const isRunning = task.status === "in_progress";
+
   // Use the enhanced stuck detection hook for real-time detection
   const { isStuck: detectedStuck, isChecking } = useStuckDetection({
     taskId: task.id,
-    isRunning: !!task.has_in_progress_attempt,
+    isRunning,
     workspacePath,
     lastUpdated: task.updated_at,
     // Use shorter threshold for active detection
     stuckThreshold: 60000, // 1 minute
     checkInterval: 30000, // 30 seconds
   });
-
-  const isRunning = !!task.has_in_progress_attempt;
 
   // Smart stuck status merge with useMemo
   // Priority:
@@ -768,17 +769,18 @@ const ListViewItemWithStuckDetection = memo(function ListViewItemWithStuckDetect
   renderStatus,
   children,
 }: ListViewItemWithStuckDetectionProps) {
+  // Task is running if status is "in_progress"
+  const isRunning = task.status === "in_progress";
+
   // Use the enhanced stuck detection hook for real-time detection
   const { isStuck: detectedStuck, isChecking } = useStuckDetection({
     taskId: task.id,
-    isRunning: !!task.has_in_progress_attempt,
+    isRunning,
     workspacePath,
     lastUpdated: task.updated_at,
     stuckThreshold: 60000,
     checkInterval: 30000,
   });
-
-  const isRunning = !!task.has_in_progress_attempt;
 
   // Smart stuck status merge (same logic as TaskCardWithStuckDetection)
   const isStuck = useMemo(() => {
@@ -1165,8 +1167,6 @@ export function WorkspaceKanbanPage() {
       updated_at: task.updated_at,
       session_id: task.session_id,
       agent_id: task.agent_id,
-      has_in_progress_attempt: task.has_in_progress_attempt,
-      last_attempt_failed: task.last_attempt_failed,
       executor: task.executor,
       // Git worktree/workspace paths
       worktree_path: task.worktree_path,
@@ -1880,7 +1880,7 @@ export function WorkspaceKanbanPage() {
           keywords: ["run", "start", "execute", "agent", "运行", "启动"],
           action: () => {
             const task = sortedTasks.find((t) => t.id === selectedTaskId);
-            if (task && !task.has_in_progress_attempt && task.status !== "completed") {
+            if (task && task.status !== "in_progress" && task.status !== "completed") {
               handleStartTask(selectedTaskId);
             }
           },
@@ -1894,7 +1894,7 @@ export function WorkspaceKanbanPage() {
           keywords: ["stop", "cancel", "abort", "agent", "停止", "取消"],
           action: () => {
             const task = sortedTasks.find((t) => t.id === selectedTaskId);
-            if (task?.has_in_progress_attempt) {
+            if (task?.status === "in_progress") {
               handleStopTask(selectedTaskId);
             }
           },
@@ -2683,7 +2683,7 @@ export function WorkspaceKanbanPage() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 z-50" sideOffset={5}>
                                   {/* Start task - only show for non-running tasks */}
-                                  {!task.has_in_progress_attempt && task.status !== "completed" && (
+                                  {task.status !== "in_progress" && task.status !== "completed" && (
                                     <>
                                       <DropdownMenuItem
                                         onClick={() => {
@@ -2752,12 +2752,12 @@ export function WorkspaceKanbanPage() {
                                 handleTitleChange(task.id, title)
                               }
                               onStart={
-                                (task.status === "backlog" || task.status === "queue") && !task.has_in_progress_attempt
+                                task.status === "backlog" || task.status === "queue"
                                   ? () => handleStartTask(task.id)
                                   : undefined
                               }
                               onStop={
-                                task.has_in_progress_attempt
+                                task.status === "in_progress"
                                   ? () => handleStopTask(task.id)
                                   : undefined
                               }
@@ -2767,7 +2767,7 @@ export function WorkspaceKanbanPage() {
                                   : undefined
                               }
                               onResume={
-                                task.last_attempt_failed && !task.has_in_progress_attempt
+                                task.status === "failed"
                                   ? () => handleResumeTask(task.id)
                                   : undefined
                               }
@@ -2881,12 +2881,12 @@ export function WorkspaceKanbanPage() {
                   task={item}
                   onTitleChange={(title) => handleTitleChange(item.id, title)}
                   onStart={
-                    (item.status === "backlog" || item.status === "queue") && !item.has_in_progress_attempt
+                    item.status === "backlog" || item.status === "queue"
                       ? () => handleStartTask(item.id)
                       : undefined
                   }
                   onStop={
-                    item.has_in_progress_attempt
+                    item.status === "in_progress"
                       ? () => handleStopTask(item.id)
                       : undefined
                   }
@@ -2896,7 +2896,7 @@ export function WorkspaceKanbanPage() {
                       : undefined
                   }
                   onResume={
-                    item.last_attempt_failed && !item.has_in_progress_attempt
+                    item.status === "failed"
                       ? () => handleResumeTask(item.id)
                       : undefined
                   }
@@ -2943,7 +2943,7 @@ export function WorkspaceKanbanPage() {
                 header: t("workspace.taskName", "Task"),
                 accessor: (task) => (
                   <div className="flex items-center gap-2 min-w-0">
-                    {task.has_in_progress_attempt && (
+                    {task.status === "in_progress" && (
                       <span className="relative flex h-2 w-2 shrink-0">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -3043,7 +3043,7 @@ export function WorkspaceKanbanPage() {
               },
             ] as TableColumn<EnhancedTask>[]}
             rowClassName={(task) =>
-              task.is_stuck ? "bg-destructive/5" : task.has_in_progress_attempt ? "bg-green-500/5" : ""
+              task.is_stuck ? "bg-destructive/5" : task.status === "in_progress" ? "bg-green-500/5" : ""
             }
             labels={{
               showing: t("workspace.table.showing", "Showing"),

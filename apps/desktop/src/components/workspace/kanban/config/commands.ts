@@ -45,7 +45,6 @@ export interface CommandTask {
   id: string;
   title: string;
   status: TaskStatus;
-  has_in_progress_attempt?: boolean;
   archived?: boolean;
 }
 
@@ -327,7 +326,7 @@ function createTaskOperationCommands(
       keywords: ["run", "start", "execute", "agent", "运行", "启动"],
       action: () => {
         const task = allTasks.find((t) => t.id === selectedTaskId);
-        if (task && !task.has_in_progress_attempt && task.status !== "completed") {
+        if (task && task.status !== "in_progress" && task.status !== "completed") {
           handleStartTask(selectedTaskId);
         }
       },
@@ -341,7 +340,7 @@ function createTaskOperationCommands(
       keywords: ["stop", "cancel", "abort", "agent", "停止", "取消"],
       action: () => {
         const task = allTasks.find((t) => t.id === selectedTaskId);
-        if (task?.has_in_progress_attempt) {
+        if (task?.status === "in_progress") {
           handleStopTask(selectedTaskId);
         }
       },
