@@ -1,12 +1,12 @@
 /**
- * viben queue - Task queue management commands
+ * viben queue - Command queue management
  *
- * Gateway task queue management CLI client for operations, debugging, and monitoring.
- * Provides comprehensive queue status viewing, task management, and configuration.
+ * CLI for managing the command queue system.
+ * Uses the shared ops layer directly (no Gateway required for basic operations).
+ * Uses Gateway only for streaming operations (watch, follow logs).
  */
 import chalk from "chalk";
 import type { Command } from "commander";
-import { readFileSync } from "node:fs";
 import type { OutputContext } from "../types";
 import {
   output,
@@ -17,12 +17,29 @@ import {
   handleCommandError,
 } from "../lib";
 
-// Default Gateway configuration
+// Import queue ops
+import {
+  status,
+  list,
+  inspect,
+  enqueue,
+  cancel,
+  retry,
+  logs,
+  getConfig,
+  updateConfig,
+  clean,
+  type QueueItemStatus,
+  type QueueConfig,
+} from "../../queue/ops";
+import { getQueueDir } from "../../queue/core/persistence";
+
+// Default Gateway configuration (for watch/stream operations)
 const DEFAULT_GATEWAY_URL = "http://127.0.0.1:18790";
 const DEFAULT_TIMEOUT = 30000;
 
 /**
- * Gateway HTTP client
+ * Gateway HTTP client (for streaming operations only)
  */
 class GatewayClient {
   constructor(
@@ -73,57 +90,6 @@ class GatewayClient {
   }
 
   /**
-   * Create SSE stream connection
-   */
-  async* stream(path: string): AsyncGenerator<unknown, void, unknown> {
-    const url = `${this.baseUrl}${path}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Accept: "text/event-stream",
-        "Cache-Control": "no-cache",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "done") return;
-            try {
-              yield JSON.parse(data);
-            } catch {
-              // Skip invalid JSON
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-
-  /**
    * Test Gateway connection
    */
   async testConnection(): Promise<boolean> {
@@ -139,20 +105,20 @@ class GatewayClient {
 /**
  * Format task status for display
  */
-function formatStatus(status: string): string {
-  switch (status) {
+function formatStatus(statusVal: string): string {
+  switch (statusVal) {
     case "pending":
       return chalk.yellow("pending");
     case "running":
       return chalk.blue("running");
-    case "retrying":
-      return chalk.cyan("retrying");
     case "completed":
       return chalk.green("completed");
     case "failed":
       return chalk.red("failed");
+    case "cancelled":
+      return chalk.gray("cancelled");
     default:
-      return chalk.gray(status);
+      return chalk.gray(statusVal);
   }
 }
 
@@ -197,576 +163,479 @@ function getGatewayClient(program: Command): GatewayClient {
 }
 
 /**
- * Handle Gateway connection errors with troubleshooting
+ * Show queue status (uses ops directly)
  */
-function handleConnectionError(ctx: OutputContext, error: Error, gatewayUrl: string): void {
-  if (ctx.json) {
-    output(ctx, errorResponse("GATEWAY_CONNECTION_ERROR", error.message), () => {});
+async function showQueueStatus(ctx: OutputContext): Promise<void> {
+  const result = status({ include_items: true });
+
+  if (!result.success) {
+    output(ctx, errorResponse("QUEUE_ERROR", result.error || "Failed to get queue status"), () => {
+      console.error(chalk.red(`Error: ${result.error}`));
+    });
     return;
   }
 
-  console.error(chalk.red("Error: Cannot connect to Gateway"));
-  console.error(`  URL:     ${gatewayUrl}`);
-  console.error(`  Reason:  ${error.message}`);
-  console.error();
-  console.error("Troubleshooting:");
-  console.error("  1. Check if Gateway is running: viben gateway status");
-  console.error("  2. Start Gateway: viben gateway start");
-  console.error("  3. Check port availability: lsof -i :18790");
-}
+  output(
+    ctx,
+    successResponse(result),
+    () => {
+      console.log(chalk.bold("Queue Status"));
+      console.log("────────────────────────────────────────");
+      console.log(`  Pending:     ${result.pending} task(s)`);
+      console.log(`  Running:     ${result.running} / ${result.max_concurrency} (max concurrency)`);
+      console.log(`  Completed:   ${result.completed} task(s)`);
 
-/**
- * Show queue status
- */
-async function showQueueStatus(ctx: OutputContext, client: GatewayClient): Promise<void> {
-  try {
-    const status = await client.request<{
-      pending_count: number;
-      running_count: number;
-      max_concurrency: number;
-      tasks: Array<{
-        id: string;
-        status: string;
-        agent_id: string;
-        created_at: number;
-        position?: number;
-      }>;
-    }>("GET", "/api/queue/status");
-
-    output(
-      ctx,
-      successResponse(status),
-      () => {
-        console.log(chalk.bold("Queue Status"));
-        console.log("────────────────────────────────────────");
-        console.log(`  Pending:     ${status.pending_count} task(s)`);
-        console.log(`  Running:     ${status.running_count} / ${status.max_concurrency} (max concurrency)`);
-
-        const completedTasks = status.tasks.filter(t => t.status === "completed").length;
-        const failedTasks = status.tasks.filter(t => t.status === "failed").length;
-        console.log(`  Completed:   ${completedTasks} task(s)`);
-        console.log(`  Failed:      ${failedTasks} task(s)`);
-
-        const runningTasks = status.tasks.filter(t => t.status === "running");
-        if (runningTasks.length > 0) {
-          console.log();
-          console.log("Running Tasks:");
-          for (const task of runningTasks) {
-            const elapsed = Date.now() - task.created_at;
-            console.log(`  ${task.id.slice(0, 12)}  agent:${task.agent_id}  ${formatDuration(elapsed)}`);
-          }
-        }
-
+      if (result.items?.running && result.items.running.length > 0) {
         console.log();
-        console.log(`Gateway: connected (${client["baseUrl"]})`);
-        console.log("Persistence: ~/.viben/queue/ (healthy)");
+        console.log("Running Tasks:");
+        for (const item of result.items.running) {
+          const elapsed = Date.now() - item.started_at;
+          console.log(`  ${item.id}  pid:${item.pid}  ${formatDuration(elapsed)}`);
+        }
       }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
+
+      console.log();
+      console.log(`Storage: ${getQueueDir()}`);
     }
-    throw error;
-  }
+  );
 }
 
 /**
- * List queue tasks
+ * List queue items (uses ops directly)
  */
-async function listTasks(
+async function listItems(
   ctx: OutputContext,
-  client: GatewayClient,
   options: { status?: string; limit?: number; all?: boolean }
 ): Promise<void> {
-  try {
-    const queryParams = new URLSearchParams();
-    if (options.status) {
-      queryParams.append("status", options.status);
-    }
-
-    const response = await client.request<{
-      tasks: Array<{
-        id: string;
-        status: string;
-        payload: { agent_id: string };
-        created_at: number;
-        started_at?: number;
-        retry_count: number;
-        max_retries: number;
-      }>;
-    }>("GET", `/api/queue/tasks?${queryParams}`);
-
-    let tasks = response.tasks;
-    if (!options.all) {
-      // By default, show pending + running
-      if (!options.status) {
-        tasks = tasks.filter(t => t.status === "pending" || t.status === "running");
-      }
-    }
-
-    if (options.limit) {
-      tasks = tasks.slice(0, options.limit);
-    }
-
-    output(
-      ctx,
-      successResponse({
-        tasks: tasks.map(t => ({
-          id: t.id,
-          status: t.status,
-          agent_id: t.payload.agent_id,
-          created_at: t.created_at,
-          elapsed: t.started_at ? Date.now() - t.started_at : null,
-          retries: `${t.retry_count}/${t.max_retries}`,
-        })),
-        total: tasks.length,
-      }),
-      () => {
-        if (tasks.length === 0) {
-          console.log(chalk.gray("No tasks found"));
-          return;
-        }
-
-        const headers = ["ID", "STATUS", "AGENT", "CREATED", "ELAPSED", "RETRIES"];
-        const rows = tasks.map((task) => {
-          const elapsed = task.started_at
-            ? formatDuration(Date.now() - task.started_at)
-            : "-";
-
-          return [
-            task.id.slice(0, 12),
-            formatStatus(task.status),
-            task.payload.agent_id,
-            formatTimestamp(task.created_at).split(" ")[1], // Time only
-            elapsed,
-            `${task.retry_count}/${task.max_retries}`,
-          ];
-        });
-
-        outputTable(ctx, headers, rows);
-        console.log();
-        console.log(`Showing ${tasks.length} of ${response.tasks.length} tasks`);
-      }
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
+  // Convert status string to proper filter
+  let statusFilter: QueueItemStatus[] | undefined;
+  if (options.status) {
+    statusFilter = [options.status as QueueItemStatus];
+  } else if (!options.all) {
+    // Default: show pending + running
+    statusFilter = ["pending", "running"];
   }
-}
 
-/**
- * Inspect a specific task
- */
-async function inspectTask(ctx: OutputContext, client: GatewayClient, taskId: string): Promise<void> {
-  try {
-    const task = await client.request<{
-      id: string;
-      type: string;
-      status: string;
-      payload: {
-        agent_id: string;
-        session_id?: string;
-        input: string;
-        cwd?: string;
-      };
-      retry_count: number;
-      max_retries: number;
-      created_at: number;
-      started_at?: number;
-      completed_at?: number;
-      error?: string;
-      pid?: number;
-    }>("GET", `/api/queue/tasks/${taskId}`);
+  const result = list({
+    status: statusFilter,
+    limit: options.limit || 50,
+  });
 
-    output(ctx, successResponse(task), () => {
-      console.log(chalk.bold(`Task: ${task.id}`));
-      console.log("────────────────────────────────────────");
-      console.log(`Status:      ${formatStatus(task.status)}`);
-      console.log(`Type:        ${task.type}`);
-      console.log(`Agent:       ${task.payload.agent_id}`);
-      if (task.payload.session_id) {
-        console.log(`Session:     ${task.payload.session_id}`);
-      }
-
-      console.log();
-      console.log("Timeline:");
-      console.log(`  Created:   ${formatTimestamp(task.created_at)} (${formatDuration(Date.now() - task.created_at)} ago)`);
-
-      if (task.started_at) {
-        console.log(`  Started:   ${formatTimestamp(task.started_at)} (${formatDuration(Date.now() - task.started_at)} ago)`);
-        console.log(`  Elapsed:   ${formatDuration(Date.now() - task.started_at)}`);
-      }
-
-      if (task.completed_at) {
-        console.log(`  Completed: ${formatTimestamp(task.completed_at)}`);
-        if (task.started_at) {
-          console.log(`  Duration:  ${formatDuration(task.completed_at - task.started_at)}`);
-        }
-      }
-
-      console.log();
-      console.log("Execution:");
-      if (task.pid) {
-        console.log(`  PID:       ${task.pid}`);
-      }
-      console.log(`  Retries:   ${task.retry_count} / ${task.max_retries}`);
-
-      if (task.error) {
-        console.log(`  Error:     ${task.error}`);
-      }
-
-      console.log();
-      console.log("Payload:");
-      const inputPreview = task.payload.input.length > 200
-        ? task.payload.input.slice(0, 200) + "..."
-        : task.payload.input;
-      console.log(`  input: |`);
-      console.log(`    ${inputPreview.replace(/\n/g, "\n    ")}`);
-
-      if (task.payload.cwd) {
-        console.log(`  cwd: ${task.payload.cwd}`);
-      }
+  if (!result.success) {
+    output(ctx, errorResponse("QUEUE_ERROR", result.error || "Failed to list items"), () => {
+      console.error(chalk.red(`Error: ${result.error}`));
     });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      output(
-        ctx,
-        errorResponse("NOT_FOUND", `Task not found: ${taskId}`),
-        () => {
-          console.error(chalk.red(`Task not found: ${taskId}`));
-        }
-      );
-      return;
-    }
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
+    return;
   }
+
+  output(
+    ctx,
+    successResponse(result),
+    () => {
+      if (result.items.length === 0) {
+        console.log(chalk.gray("No items found"));
+        return;
+      }
+
+      const headers = ["ID", "STATUS", "COMMAND", "CWD", "CREATED"];
+      const rows = result.items.map((item) => {
+        // Determine status based on item type
+        let itemStatus: string = "pending";
+        if ("pid" in item) {
+          if ("completed_at" in item) {
+            const completed = item as { exit_code: number };
+            itemStatus = completed.exit_code === 0 ? "completed" :
+                        completed.exit_code === -1 ? "cancelled" : "failed";
+          } else {
+            itemStatus = "running";
+          }
+        }
+
+        const cmdPreview = item.command.length > 40
+          ? item.command.slice(0, 40) + "..."
+          : item.command;
+        const cwdPreview = item.cwd.length > 30
+          ? "..." + item.cwd.slice(-27)
+          : item.cwd;
+
+        return [
+          item.id,
+          formatStatus(itemStatus),
+          cmdPreview,
+          cwdPreview,
+          formatTimestamp(item.created_at).split(" ")[1], // Time only
+        ];
+      });
+
+      outputTable(ctx, headers, rows);
+      console.log();
+      console.log(`Showing ${result.items.length} of ${result.total} items`);
+    }
+  );
 }
 
 /**
- * Enqueue a new task
+ * Inspect a specific item (uses ops directly)
  */
-async function enqueueTask(
-  ctx: OutputContext,
-  client: GatewayClient,
-  options: {
-    agentId: string;
-    input?: string;
-    sessionId?: string;
-    maxRetries?: number;
-    stdin?: boolean;
-  }
-): Promise<void> {
-  let input = options.input;
+async function inspectItem(ctx: OutputContext, itemId: string): Promise<void> {
+  const result = inspect({ id: itemId });
 
-  if (options.stdin) {
-    // Read from stdin
-    input = readFileSync(0, "utf-8").trim();
-  }
-
-  if (!input) {
+  if (!result.success) {
     output(
       ctx,
-      errorResponse("VALIDATION_ERROR", "Must specify either --input or --stdin"),
+      errorResponse("NOT_FOUND", result.error || `Item not found: ${itemId}`),
       () => {
-        console.error(chalk.red("Error: Must specify either --input or --stdin"));
-        console.log();
-        console.log("Examples:");
-        console.log(chalk.cyan('  viben queue enqueue --agent coding-assistant --input "实现用户登录功能"'));
-        console.log(chalk.cyan("  cat requirements.md | viben queue enqueue --agent coding-assistant --stdin"));
+        console.error(chalk.red(result.error || `Item not found: ${itemId}`));
       }
     );
     return;
   }
 
-  try {
-    const requestData = {
-      agent_id: options.agentId,
-      input: input,
-      session_id: options.sessionId,
-      max_retries: options.maxRetries,
-    };
+  const item = result.item!;
+  const itemStatus = result.status!;
 
-    const response = await client.request<{
-      task_id: string;
-      position: number;
-      status: string;
-    }>("POST", "/api/queue/enqueue", requestData);
+  output(ctx, successResponse({ item, status: itemStatus }), () => {
+    console.log(chalk.bold(`Item: ${item.id}`));
+    console.log("────────────────────────────────────────");
+    console.log(`Status:   ${formatStatus(itemStatus)}`);
+    console.log(`Command:  ${item.command}`);
+    console.log(`CWD:      ${item.cwd}`);
+    console.log(`Created:  ${formatTimestamp(item.created_at)}`);
 
-    output(ctx, successResponse(response), () => {
-      console.log(chalk.green("Task enqueued successfully"));
-      console.log(`  ID:        ${response.task_id}`);
-      console.log(`  Agent:     ${options.agentId}`);
-      console.log(`  Position:  ${response.position} (${response.position - 1} pending ahead)`);
-      console.log(`  Status:    ${formatStatus(response.status)}`);
+    if ("pid" in item) {
+      const runningItem = item as { pid: number; started_at: number; log_file: string };
       console.log();
-      console.log(`Use 'viben queue inspect ${response.task_id}' to view details`);
-      console.log(`Use 'viben queue logs ${response.task_id} --follow' to stream output`);
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
+      console.log("Execution:");
+      console.log(`  PID:       ${runningItem.pid}`);
+      console.log(`  Started:   ${formatTimestamp(runningItem.started_at)}`);
+      console.log(`  Log file:  ${runningItem.log_file}`);
+
+      if ("completed_at" in item) {
+        const completedItem = item as { completed_at: number; exit_code: number };
+        console.log(`  Completed: ${formatTimestamp(completedItem.completed_at)}`);
+        console.log(`  Exit code: ${completedItem.exit_code}`);
+        console.log(`  Duration:  ${formatDuration(completedItem.completed_at - runningItem.started_at)}`);
+      } else {
+        const elapsed = Date.now() - runningItem.started_at;
+        console.log(`  Elapsed:   ${formatDuration(elapsed)}`);
+      }
     }
-    throw error;
-  }
+
+    if (item.metadata && Object.keys(item.metadata).length > 0) {
+      console.log();
+      console.log("Metadata:");
+      for (const [key, value] of Object.entries(item.metadata)) {
+        console.log(`  ${key}: ${JSON.stringify(value)}`);
+      }
+    }
+  });
 }
 
 /**
- * Cancel a task
+ * Enqueue a new command (uses ops directly)
  */
-async function cancelTask(
+async function enqueueCommand(
   ctx: OutputContext,
-  client: GatewayClient,
-  taskId: string,
+  options: {
+    command: string;
+    cwd: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<void> {
+  const result = enqueue({
+    command: options.command,
+    cwd: options.cwd,
+    metadata: options.metadata,
+  });
+
+  if (!result.success) {
+    output(
+      ctx,
+      errorResponse("ENQUEUE_ERROR", result.error || "Failed to enqueue command"),
+      () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      }
+    );
+    return;
+  }
+
+  output(ctx, successResponse(result), () => {
+    console.log(chalk.green("Command enqueued successfully"));
+    console.log(`  ID:        ${result.id}`);
+    console.log(`  Position:  ${result.position}`);
+    console.log(`  Command:   ${options.command}`);
+    console.log(`  CWD:       ${options.cwd}`);
+    console.log();
+    console.log(`Use 'viben queue inspect ${result.id}' to view details`);
+    console.log(`Use 'viben queue logs ${result.id}' to view output`);
+  });
+}
+
+/**
+ * Cancel an item (uses ops directly)
+ */
+async function cancelItem(
+  ctx: OutputContext,
+  itemId: string,
   options: { force?: boolean }
 ): Promise<void> {
-  try {
-    const response = await client.request<{
-      cancelled?: boolean;
-      deleted?: boolean;
-      task_id: string;
-    }>("DELETE", `/api/queue/tasks/${taskId}`);
+  const result = cancel({ id: itemId, force: options.force });
 
-    const action = response.cancelled ? "cancelled" : "deleted";
-
-    output(ctx, successResponse(response), () => {
-      console.log(chalk.green(`Task ${action} successfully`));
-      console.log(`  ID: ${taskId}`);
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      output(
-        ctx,
-        errorResponse("NOT_FOUND", `Task not found: ${taskId}`),
-        () => {
-          console.error(chalk.red(`Task not found: ${taskId}`));
-        }
-      );
-      return;
-    }
-    if (error instanceof Error && error.message.includes("400")) {
-      output(
-        ctx,
-        errorResponse("INVALID_OPERATION", "Cannot cancel running task without --force"),
-        () => {
-          console.error(chalk.red("Error: Invalid operation"));
-          console.error("  Task:    " + taskId);
-          console.error("  Status:  running");
-          console.error("  Action:  cancel (without --force)");
-          console.error();
-          console.error(`Hint: Use 'viben queue cancel ${taskId} --force' to terminate running task`);
-        }
-      );
-      return;
-    }
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
+  if (!result.success) {
+    output(
+      ctx,
+      errorResponse("CANCEL_ERROR", result.error || `Failed to cancel: ${itemId}`),
+      () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      }
+    );
+    return;
   }
+
+  output(ctx, successResponse(result), () => {
+    console.log(chalk.green("Item cancelled successfully"));
+    console.log(`  ID: ${result.cancelled}`);
+  });
 }
 
 /**
- * Retry a failed task
+ * Retry a failed item (uses ops directly)
  */
-async function retryTask(
+async function retryItem(
   ctx: OutputContext,
-  client: GatewayClient,
-  taskId: string,
+  itemId: string,
   options: { resetCount?: boolean }
 ): Promise<void> {
-  try {
-    const response = await client.request<{
-      retried: boolean;
-      task: {
-        id: string;
-        status: string;
-        retry_count: number;
-        max_retries: number;
-      };
-    }>("POST", `/api/queue/tasks/${taskId}/retry`, {
-      reset_count: options.resetCount,
-    });
+  const result = retry({ id: itemId, reset_count: options.resetCount });
 
-    output(ctx, successResponse(response), () => {
-      console.log(chalk.green("Task retried successfully"));
-      console.log(`  ID:      ${taskId}`);
-      console.log(`  Status:  ${formatStatus(response.task.status)}`);
-      console.log(`  Retries: ${response.task.retry_count} / ${response.task.max_retries}`);
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      output(
-        ctx,
-        errorResponse("NOT_FOUND", `Task not found: ${taskId}`),
-        () => {
-          console.error(chalk.red(`Task not found: ${taskId}`));
-        }
-      );
-      return;
-    }
-    if (error instanceof Error && error.message.includes("400")) {
-      output(
-        ctx,
-        errorResponse("INVALID_OPERATION", "Cannot retry task: only failed tasks can be retried"),
-        () => {
-          console.error(chalk.red("Error: Cannot retry task"));
-          console.error("  Task:    " + taskId);
-          console.error("  Reason:  Only failed tasks can be retried");
-          console.error();
-          console.error("Current task status:");
-          console.error("  Use 'viben queue inspect " + taskId + "' to check task status");
-        }
-      );
-      return;
-    }
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
+  if (!result.success) {
+    output(
+      ctx,
+      errorResponse("RETRY_ERROR", result.error || `Failed to retry: ${itemId}`),
+      () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      }
+    );
+    return;
   }
+
+  output(ctx, successResponse(result), () => {
+    console.log(chalk.green("Item queued for retry"));
+    console.log(`  New ID:    ${result.id}`);
+    console.log(`  Position:  ${result.position}`);
+  });
 }
 
 /**
- * Stream task logs
+ * View item logs (uses ops directly)
  */
-async function streamTaskLogs(
+async function viewLogs(
   ctx: OutputContext,
-  client: GatewayClient,
-  taskId: string,
-  options: { follow?: boolean; tail?: number; timestamps?: boolean }
+  itemId: string,
+  options: { tail?: number; follow?: boolean }
 ): Promise<void> {
-  try {
-    if (ctx.json) {
-      // JSON streaming mode
-      for await (const event of client.stream(`/api/queue/tasks/${taskId}/stream`)) {
-        console.log(JSON.stringify(event));
+  const result = logs({
+    id: itemId,
+    tail: options.tail !== undefined,
+    lines: options.tail,
+  });
+
+  if (!result.success) {
+    output(
+      ctx,
+      errorResponse("LOGS_ERROR", result.error || `Failed to get logs: ${itemId}`),
+      () => {
+        console.error(chalk.red(`Error: ${result.error}`));
       }
+    );
+    return;
+  }
+
+  if (ctx.json) {
+    output(ctx, successResponse(result), () => {});
+  } else {
+    if (result.content) {
+      console.log(result.content);
     } else {
-      // Human readable mode
-      console.log(chalk.bold(`[${taskId}] Agent output stream`));
-      console.log("────────────────────────────────────────");
-
-      let lineCount = 0;
-      for await (const event of client.stream(`/api/queue/tasks/${taskId}/stream`)) {
-        if (typeof event === "object" && event && "type" in event) {
-          const typedEvent = event as { type: string; [key: string]: unknown };
-
-          if (typedEvent.type === "ping") {
-            continue; // Skip heartbeat
-          }
-
-          if (typedEvent.type === "progress" && "msg" in typedEvent) {
-            const timestamp = options.timestamps ? `[${new Date().toTimeString().split(" ")[0]}] ` : "";
-            console.log(`${timestamp}${typedEvent.msg}`);
-            lineCount++;
-
-            if (options.tail && lineCount >= options.tail && !options.follow) {
-              break;
-            }
-          }
-
-          if (typedEvent.type === "completed") {
-            console.log(chalk.green("[Agent completed successfully]"));
-            break;
-          }
-
-          if (typedEvent.type === "failed") {
-            console.log(chalk.red("[Agent failed]"));
-            break;
-          }
-
-          if (typedEvent.type === "done") {
-            break;
-          }
-        }
-      }
+      console.log(chalk.gray("No log content available"));
     }
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("404")) {
-      output(
-        ctx,
-        errorResponse("NOT_FOUND", `Task not found: ${taskId}`),
-        () => {
-          console.error(chalk.red(`Task not found: ${taskId}`));
-        }
-      );
-      return;
+
+    if (result.truncated) {
+      console.log();
+      console.log(chalk.yellow(`(Truncated - ${result.size} bytes total)`));
     }
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
   }
 }
 
 /**
- * Watch queue events (WebSocket simulation via polling)
+ * Manage queue configuration (uses ops directly)
+ */
+async function manageConfig(
+  ctx: OutputContext,
+  options: { set?: string[]; reset?: boolean }
+): Promise<void> {
+  if (options.reset) {
+    // Reset to defaults
+    const result = updateConfig({
+      max_concurrency: 3,
+      promoter_interval_ms: 5000,
+      monitor_interval_ms: 30000,
+      log_retention_days: 7,
+      completed_retention_days: 30,
+      default_max_retries: 3,
+    });
+
+    if (!result.success) {
+      output(ctx, errorResponse("CONFIG_ERROR", result.error || "Failed to reset config"), () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      });
+      return;
+    }
+
+    output(ctx, successResponse(result), () => {
+      console.log(chalk.green("Queue configuration reset to defaults"));
+      if (result.config) {
+        outputKeyValue(ctx, result.config as unknown as Record<string, string | number | boolean | undefined>);
+      }
+    });
+  } else if (options.set && options.set.length > 0) {
+    // Set configuration values
+    const updates: Partial<QueueConfig> = {};
+
+    for (const setting of options.set) {
+      const [key, value] = setting.split("=", 2);
+      if (!key || value === undefined) {
+        output(
+          ctx,
+          errorResponse("VALIDATION_ERROR", `Invalid setting format: ${setting}`),
+          () => {
+            console.error(chalk.red(`Invalid setting format: ${setting}`));
+            console.error("Expected format: key=value");
+          }
+        );
+        return;
+      }
+
+      // Convert to appropriate type
+      const numValue = Number(value);
+      (updates as Record<string, unknown>)[key] = isNaN(numValue) ? value : numValue;
+    }
+
+    const result = updateConfig(updates);
+
+    if (!result.success) {
+      output(ctx, errorResponse("CONFIG_ERROR", result.error || "Failed to update config"), () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      });
+      return;
+    }
+
+    output(ctx, successResponse(result), () => {
+      console.log(chalk.green("Queue configuration updated"));
+      if (result.config) {
+        outputKeyValue(ctx, result.config as unknown as Record<string, string | number | boolean | undefined>);
+      }
+    });
+  } else {
+    // Get current configuration
+    const result = getConfig();
+
+    if (!result.success) {
+      output(ctx, errorResponse("CONFIG_ERROR", result.error || "Failed to get config"), () => {
+        console.error(chalk.red(`Error: ${result.error}`));
+      });
+      return;
+    }
+
+    output(ctx, successResponse(result), () => {
+      console.log(chalk.bold("Queue Configuration"));
+      console.log("────────────────────────────────────────");
+      if (result.config) {
+        outputKeyValue(ctx, result.config as unknown as Record<string, string | number | boolean | undefined>);
+      }
+      console.log();
+      console.log(`Config file: ${getQueueDir()}/config.json`);
+    });
+  }
+}
+
+/**
+ * Clean old items (uses ops directly)
+ */
+async function cleanItems(
+  ctx: OutputContext,
+  options: { dryRun?: boolean; force?: boolean }
+): Promise<void> {
+  const result = clean({
+    dry_run: options.dryRun,
+  });
+
+  if (!result.success) {
+    output(ctx, errorResponse("CLEAN_ERROR", result.error || "Failed to clean items"), () => {
+      console.error(chalk.red(`Error: ${result.error}`));
+    });
+    return;
+  }
+
+  output(ctx, successResponse(result), () => {
+    if (options.dryRun) {
+      console.log("Would clean:");
+      if (result.items) {
+        for (const item of result.items) {
+          console.log(`  ${item}`);
+        }
+      }
+      console.log();
+      console.log(`Total: ${result.cleaned} item(s)`);
+    } else {
+      console.log(chalk.green(`Cleaned ${result.cleaned} item(s)`));
+      console.log(`  Removed from ${getQueueDir()}/`);
+    }
+  });
+}
+
+/**
+ * Watch queue events (uses Gateway for real-time updates)
  */
 async function watchQueue(
   ctx: OutputContext,
-  client: GatewayClient,
-  options: { tasks?: string[]; events?: string[] }
+  client: GatewayClient
 ): Promise<void> {
   if (ctx.json) {
     console.log(JSON.stringify({ type: "watch_started", timestamp: Date.now() }));
   } else {
-    console.log("Watching queue events (Ctrl+C to stop)");
+    console.log("Watching queue (Ctrl+C to stop)");
     console.log("────────────────────────────────────────");
   }
 
-  // Simple polling implementation (WebSocket would be better)
-  interface QueueStatusResponse {
-    pending_count: number;
-    running_count: number;
-    max_concurrency: number;
-  }
+  // Polling implementation using local ops
+  let lastPending = -1;
+  let lastRunning = -1;
 
-  let lastStatus: QueueStatusResponse | null = null;
+  const poll = () => {
+    const result = status();
+    if (result.success) {
+      if (lastPending >= 0 && (result.pending !== lastPending || result.running !== lastRunning)) {
+        const event = {
+          type: "queue:changed",
+          timestamp: Date.now(),
+          pending: result.pending,
+          running: result.running,
+        };
 
-  const poll = async () => {
-    try {
-      const status = await client.request<QueueStatusResponse>("GET", "/api/queue/status");
-
-      if (lastStatus) {
-        // Check for changes
-        if (status.pending_count !== lastStatus.pending_count ||
-            status.running_count !== lastStatus.running_count) {
-
-          const event = {
-            type: "queue:changed",
-            timestamp: Date.now(),
-            pending: status.pending_count,
-            running: status.running_count,
-          };
-
-          if (ctx.json) {
-            console.log(JSON.stringify(event));
-          } else {
-            const time = new Date().toTimeString().split(" ")[0];
-            console.log(`[${time}] queue:changed    pending=${status.pending_count} running=${status.running_count}`);
-          }
+        if (ctx.json) {
+          console.log(JSON.stringify(event));
+        } else {
+          const time = new Date().toTimeString().split(" ")[0];
+          console.log(`[${time}] queue:changed    pending=${result.pending} running=${result.running}`);
         }
       }
-
-      lastStatus = status;
-    } catch {
-      // Ignore polling errors
+      lastPending = result.pending;
+      lastRunning = result.running;
     }
   };
 
-  // Start polling every 2 seconds
+  // Poll every 2 seconds
   const intervalId = setInterval(poll, 2000);
 
   // Handle Ctrl+C
@@ -780,185 +649,10 @@ async function watchQueue(
   });
 
   // Initial poll
-  await poll();
+  poll();
 
   // Keep process alive
-  await new Promise(() => {}); // Never resolves
-}
-
-/**
- * Get/set queue configuration
- */
-async function manageConfig(
-  ctx: OutputContext,
-  client: GatewayClient,
-  options: { set?: string[]; reset?: boolean }
-): Promise<void> {
-  try {
-    if (options.reset) {
-      // Reset configuration
-      const defaultConfig = {
-        max_concurrency: 3,
-        default_max_retries: 3,
-        persist_debounce_ms: 500,
-        shutdown_timeout_ms: 30000,
-      };
-
-      interface QueueConfigResponse {
-        max_concurrency: number;
-        default_max_retries: number;
-        persist_debounce_ms: number;
-        shutdown_timeout_ms: number;
-      }
-
-      const config = await client.request<QueueConfigResponse>("PUT", "/api/queue/config", defaultConfig);
-
-      output(ctx, successResponse(config), () => {
-        console.log(chalk.green("Queue configuration reset to defaults"));
-        outputKeyValue(ctx, {
-          "max_concurrency": config.max_concurrency,
-          "default_max_retries": config.default_max_retries,
-          "persist_debounce_ms": config.persist_debounce_ms,
-          "shutdown_timeout_ms": config.shutdown_timeout_ms,
-        });
-      });
-
-    } else if (options.set && options.set.length > 0) {
-      // Set configuration values
-      const updates: Record<string, unknown> = {};
-
-      for (const setting of options.set) {
-        const [key, value] = setting.split("=", 2);
-        if (!key || value === undefined) {
-          output(
-            ctx,
-            errorResponse("VALIDATION_ERROR", `Invalid setting format: ${setting}`),
-            () => {
-              console.error(chalk.red(`Invalid setting format: ${setting}`));
-              console.error("Expected format: key=value");
-            }
-          );
-          return;
-        }
-
-        // Convert to appropriate type
-        const numValue = Number(value);
-        updates[key] = isNaN(numValue) ? value : numValue;
-      }
-
-      interface QueueConfigResponse {
-        max_concurrency: number;
-        default_max_retries: number;
-        persist_debounce_ms: number;
-        shutdown_timeout_ms: number;
-      }
-
-      const config = await client.request<QueueConfigResponse>("PUT", "/api/queue/config", updates);
-
-      output(ctx, successResponse(config), () => {
-        console.log(chalk.green("Queue configuration updated"));
-        outputKeyValue(ctx, {
-          max_concurrency: config.max_concurrency,
-          default_max_retries: config.default_max_retries,
-          persist_debounce_ms: config.persist_debounce_ms,
-          shutdown_timeout_ms: config.shutdown_timeout_ms,
-        });
-      });
-
-    } else {
-      // Get current configuration
-      interface QueueConfigResponse {
-        max_concurrency: number;
-        default_max_retries: number;
-        persist_debounce_ms: number;
-        shutdown_timeout_ms: number;
-      }
-
-      const config = await client.request<QueueConfigResponse>("GET", "/api/queue/config");
-
-      output(ctx, successResponse(config), () => {
-        console.log(chalk.bold("Queue Configuration"));
-        console.log("────────────────────────────────────────");
-        outputKeyValue(ctx, {
-          max_concurrency: config.max_concurrency,
-          default_max_retries: config.default_max_retries,
-          persist_debounce_ms: config.persist_debounce_ms,
-          shutdown_timeout_ms: config.shutdown_timeout_ms,
-        });
-        console.log();
-        console.log("Config file: ~/.viben/queue/config.yaml");
-      });
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
-  }
-}
-
-/**
- * Clean completed/failed tasks
- */
-async function cleanTasks(
-  ctx: OutputContext,
-  client: GatewayClient,
-  options: { dryRun?: boolean; force?: boolean }
-): Promise<void> {
-  interface TaskSummary {
-    id: string;
-    status: string;
-    created_at: number;
-  }
-
-  try {
-    if (options.dryRun) {
-      // Show what would be cleaned
-      const response = await client.request<{ tasks: TaskSummary[] }>("GET", "/api/queue/tasks");
-      const toClean = response.tasks.filter(t => t.status === "completed" || t.status === "failed");
-
-      output(ctx, successResponse({ tasks: toClean, count: toClean.length }), () => {
-        console.log("Tasks to clean:");
-        for (const task of toClean) {
-          console.log(`  ${task.id.slice(0, 12)}  ${formatStatus(task.status)}  ${formatTimestamp(task.created_at)}`);
-        }
-        console.log();
-        console.log(`Would clean ${toClean.length} task(s)`);
-      });
-
-    } else {
-      // Actually clean
-      if (!options.force && !ctx.json) {
-        // Interactive confirmation
-        process.stdout.write("Clean completed and failed tasks? [y/N] ");
-
-        const response = await new Promise<string>((resolve) => {
-          process.stdin.once("data", (data) => {
-            resolve(data.toString().trim().toLowerCase());
-          });
-        });
-
-        if (response !== "y" && response !== "yes") {
-          console.log("Cancelled");
-          return;
-        }
-      }
-
-      const response = await client.request<{ cleared: number }>("POST", "/api/queue/clear-history");
-
-      output(ctx, successResponse(response), () => {
-        console.log(chalk.green(`Cleaned ${response.cleared} task(s)`));
-        console.log("  Removed task files from ~/.viben/queue/tasks/");
-      });
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("fetch")) {
-      handleConnectionError(ctx, error, client["baseUrl"]);
-      process.exit(1);
-    }
-    throw error;
-  }
+  await new Promise(() => {});
 }
 
 /**
@@ -967,8 +661,8 @@ async function cleanTasks(
 export function registerQueueCommand(program: Command): void {
   const queueCmd = program
     .command("queue")
-    .description("Manage task queue")
-    .option("--gateway <url>", "Gateway URL", DEFAULT_GATEWAY_URL)
+    .description("Manage command queue")
+    .option("--gateway <url>", "Gateway URL (for watch/stream)", DEFAULT_GATEWAY_URL)
     .option("--timeout <ms>", "Request timeout", String(DEFAULT_TIMEOUT));
 
   // queue status
@@ -977,9 +671,8 @@ export function registerQueueCommand(program: Command): void {
     .description("Show queue status")
     .action(async () => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await showQueueStatus(ctx, client);
+        await showQueueStatus(ctx);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -988,15 +681,14 @@ export function registerQueueCommand(program: Command): void {
   // queue list
   queueCmd
     .command("list")
-    .description("List tasks")
-    .option("-s, --status <status>", "Filter by status (pending, running, completed, failed)")
+    .description("List queue items")
+    .option("-s, --status <status>", "Filter by status (pending, running, completed, failed, cancelled)")
     .option("-n, --limit <num>", "Limit results", (val) => parseInt(val, 10))
-    .option("--all", "Show all tasks")
+    .option("--all", "Show all items (including completed)")
     .action(async (options: { status?: string; limit?: number; all?: boolean }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await listTasks(ctx, client, options);
+        await listItems(ctx, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1005,13 +697,12 @@ export function registerQueueCommand(program: Command): void {
   // queue inspect <id>
   queueCmd
     .command("inspect")
-    .argument("<id>", "Task ID")
-    .description("Show task details")
-    .action(async (taskId: string) => {
+    .argument("<id>", "Item ID")
+    .description("Show item details")
+    .action(async (itemId: string) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await inspectTask(ctx, client, taskId);
+        await inspectItem(ctx, itemId);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1020,28 +711,37 @@ export function registerQueueCommand(program: Command): void {
   // queue enqueue
   queueCmd
     .command("enqueue")
-    .description("Enqueue a new task")
-    .requiredOption("-a, --agent <id>", "Agent ID")
-    .option("-i, --input <text>", "Input prompt")
-    .option("-s, --session <id>", "Session ID")
-    .option("--max-retries <num>", "Max retries", (val) => parseInt(val, 10))
-    .option("--stdin", "Read input from stdin")
+    .description("Enqueue a new command")
+    .requiredOption("-c, --command <command>", "Command to execute")
+    .requiredOption("--cwd <path>", "Working directory")
+    .option("-m, --metadata <json>", "Metadata (JSON string)")
     .action(async (options: {
-      agent: string;
-      input?: string;
-      session?: string;
-      maxRetries?: number;
-      stdin?: boolean;
+      command: string;
+      cwd: string;
+      metadata?: string;
     }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await enqueueTask(ctx, client, {
-          agentId: options.agent,
-          input: options.input,
-          sessionId: options.session,
-          maxRetries: options.maxRetries,
-          stdin: options.stdin,
+        let metadata: Record<string, unknown> | undefined;
+        if (options.metadata) {
+          try {
+            metadata = JSON.parse(options.metadata);
+          } catch {
+            output(
+              ctx,
+              errorResponse("VALIDATION_ERROR", "Invalid JSON in metadata"),
+              () => {
+                console.error(chalk.red("Invalid JSON in metadata"));
+              }
+            );
+            return;
+          }
+        }
+
+        await enqueueCommand(ctx, {
+          command: options.command,
+          cwd: options.cwd,
+          metadata,
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -1051,14 +751,13 @@ export function registerQueueCommand(program: Command): void {
   // queue cancel <id>
   queueCmd
     .command("cancel")
-    .argument("<id>", "Task ID")
-    .description("Cancel a task")
-    .option("-f, --force", "Force cancel running task")
-    .action(async (taskId: string, options: { force?: boolean }) => {
+    .argument("<id>", "Item ID")
+    .description("Cancel an item")
+    .option("-f, --force", "Force kill running process (SIGKILL)")
+    .action(async (itemId: string, options: { force?: boolean }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await cancelTask(ctx, client, taskId, options);
+        await cancelItem(ctx, itemId, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1067,14 +766,13 @@ export function registerQueueCommand(program: Command): void {
   // queue retry <id>
   queueCmd
     .command("retry")
-    .argument("<id>", "Task ID")
-    .description("Retry a failed task")
+    .argument("<id>", "Item ID")
+    .description("Retry a failed item")
     .option("--reset-count", "Reset retry counter")
-    .action(async (taskId: string, options: { resetCount?: boolean }) => {
+    .action(async (itemId: string, options: { resetCount?: boolean }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await retryTask(ctx, client, taskId, options);
+        await retryItem(ctx, itemId, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1083,20 +781,17 @@ export function registerQueueCommand(program: Command): void {
   // queue logs <id>
   queueCmd
     .command("logs")
-    .argument("<id>", "Task ID")
-    .description("View task logs")
-    .option("-f, --follow", "Follow log output")
+    .argument("<id>", "Item ID")
+    .description("View item logs")
     .option("-n, --tail <num>", "Show last N lines", (val) => parseInt(val, 10))
-    .option("--timestamps", "Show timestamps")
-    .action(async (taskId: string, options: {
-      follow?: boolean;
+    .option("-f, --follow", "Follow log output (not implemented)")
+    .action(async (itemId: string, options: {
       tail?: number;
-      timestamps?: boolean;
+      follow?: boolean;
     }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await streamTaskLogs(ctx, client, taskId, options);
+        await viewLogs(ctx, itemId, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1106,13 +801,11 @@ export function registerQueueCommand(program: Command): void {
   queueCmd
     .command("watch")
     .description("Watch queue events")
-    .option("-t, --task <id...>", "Watch specific tasks")
-    .option("-e, --events <type...>", "Watch specific event types")
-    .action(async (options: { task?: string[]; events?: string[] }) => {
+    .action(async () => {
       const ctx = getContext(program);
       const client = getGatewayClient(program);
       try {
-        await watchQueue(ctx, client, { tasks: options.task, events: options.events });
+        await watchQueue(ctx, client);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1126,9 +819,8 @@ export function registerQueueCommand(program: Command): void {
     .option("--reset", "Reset to default values")
     .action(async (options: { set?: string[]; reset?: boolean }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await manageConfig(ctx, client, options);
+        await manageConfig(ctx, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -1137,14 +829,13 @@ export function registerQueueCommand(program: Command): void {
   // queue clean
   queueCmd
     .command("clean")
-    .description("Clean completed and failed tasks")
+    .description("Clean completed and failed items")
     .option("--dry-run", "Show what would be cleaned")
     .option("-f, --force", "Skip confirmation")
     .action(async (options: { dryRun?: boolean; force?: boolean }) => {
       const ctx = getContext(program);
-      const client = getGatewayClient(program);
       try {
-        await cleanTasks(ctx, client, options);
+        await cleanItems(ctx, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }

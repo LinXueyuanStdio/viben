@@ -281,6 +281,8 @@ export interface UnifiedTask {
   autoStart?: boolean;
   /** Run agent in a git worktree (isolated branch) */
   worktree?: boolean;
+  /** Queue system task ID (when task is submitted to command queue) */
+  queue_id?: string;
 
   // === Template Support ===
   /** Whether this task is a template for creating other tasks */

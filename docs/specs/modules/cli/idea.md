@@ -101,10 +101,31 @@ viben idea list [options]
 **示例输出**：
 
 ```
-ID          TYPE                 TITLE                          EFFORT   STATUS
-ci-001      code_improvements    Add retry logic to API calls   small    draft
-ci-002      code_improvements    Extract common validators      medium   draft
-sq-001      security_hardening   Add input sanitization         small    promoted
+Ideas (3):
+
+[a1b2c3d4] code_improvements  draft  small
+  Add retry logic to API calls
+  为 API 调用添加自动重试逻辑，处理临时网络故障
+  Why: 当前代码在网络错误时直接失败，没有重试机制
+  Files:
+    - src/api/client.ts
+    - src/api/request.ts
+  Implementation:
+    使用 exponential backoff 策略，最多重试 3 次
+
+[b2c3d4e5] code_improvements  draft  medium
+  Extract common validators
+  提取公共验证逻辑到独立模块
+  Why: 多处代码存在重复的验证逻辑
+  Files:
+    - src/utils/validators.ts
+    - src/forms/*.ts
+
+[c3d4e5f6] security_hardening  promoted  small
+  Add input sanitization
+  添加输入消毒处理防止 XSS 攻击
+  Why: 用户输入未经过滤直接渲染
+  Task: 03-11-input-sanitization
 ```
 
 ---
@@ -143,24 +164,28 @@ viben idea view <idea-id> [--json]
 **示例输出**：
 
 ```
-ID:          ci-001
-Type:        code_improvements
-Title:       Add retry logic to API calls
-Status:      draft
-Effort:      small
+[a1b2c3d4] code_improvements  draft  small
+Add retry logic to API calls
+Created: 2026-03-11T14:30:00Z
 
-Description:
-  为 API 调用添加自动重试逻辑，处理临时网络故障
+Description
+为 API 调用添加自动重试逻辑，处理临时网络故障
 
-Rationale:
-  当前代码在网络错误时直接失败，没有重试机制
+Rationale
+当前代码在网络错误时直接失败，没有重试机制
 
-Affected Files:
+Affected Files
   - src/api/client.ts
   - src/api/request.ts
 
-Implementation Approach:
-  使用 exponential backoff 策略，最多重试 3 次
+Existing Patterns
+  - error handling in src/utils/error.ts
+
+Implementation
+使用 exponential backoff 策略，最多重试 3 次。
+1. 在 src/api/client.ts 中添加 retry wrapper
+2. 配置最大重试次数和退避时间
+3. 对可重试的错误码进行重试
 ```
 
 ---
@@ -278,17 +303,20 @@ viben idea remove --all
 ```
 .viben/
 └── ideas/
-    └── <date>-<slug>/           # 每次生成一个目录
-        ├── idea.json            # 元信息
-        ├── idea_code_improvements.md
-        ├── idea_security_hardening.md
-        └── idea_my_custom_type.md
+    └── <date>-<slug>/                          # 每次生成一个目录
+        ├── idea.json                           # 元信息
+        ├── idea_code_improvements_<name1>.md   # 每个 idea 单独一个文件
+        ├── idea_code_improvements_<name2>.md
+        ├── idea_security_hardening_<name1>.md
+        └── idea_my_custom_type_<name1>.md
 
 docs/
 └── idea-types/                  # 自定义类型 prompt 模板
     ├── api_design.md
     └── refactoring.md
 ```
+
+**文件命名规则**: `idea_<type>_<name>.md`，其中 `<name>` 是 idea 的 file-friendly 名称（如 `add-pagination-sessions`）。
 
 ### idea.json 格式
 
@@ -302,6 +330,11 @@ docs/
     "by_type": {"code_improvements": 5, "security_hardening": 5},
     "by_status": {"draft": 9, "promoted": 1}
   },
+  "files": [
+    "idea_code_improvements_add-retry-logic.md",
+    "idea_code_improvements_extract-validators.md",
+    "idea_security_hardening_input-sanitization.md"
+  ],
   "generated_at": "2026-03-11T14:30:00Z",
   "updated_at": "2026-03-11T14:35:00Z"
 }
@@ -309,10 +342,13 @@ docs/
 
 ### idea_*.md 格式
 
+每个 idea 单独一个文件，使用 YAML frontmatter 存储所有元数据：
+
 ```markdown
 ---
-id: ci-001
+id: a1b2c3d4
 type: code_improvements
+name: add-retry-logic
 title: Add retry logic to API calls
 description: 为 API 调用添加自动重试逻辑，处理临时网络故障
 rationale: 当前代码在网络错误时直接失败，没有重试机制
@@ -320,23 +356,25 @@ estimated_effort: small
 status: draft
 promoted_to: null
 created_at: 2026-03-11T14:30:00Z
+affected_files:
+  - src/api/client.ts
+  - src/api/request.ts
+existing_patterns:
+  - error handling in src/utils/error.ts
 ---
 
-## Affected Files
+使用 exponential backoff 策略，最多重试 3 次。
 
-- src/api/client.ts
-- src/api/request.ts
-
-## Existing Patterns
-
-- error handling in src/utils/error.ts
-
-## Implementation Approach
-
-使用 exponential backoff 策略，最多重试 3 次
+1. 在 `src/api/client.ts` 中添加 retry wrapper
+2. 配置最大重试次数和退避时间
+3. 对可重试的错误码进行重试（如 5xx、网络超时）
 ```
 
-每个 md 文件包含该类型的多个想法，用 YAML frontmatter 分隔。
+**说明**:
+- `id`: 8 字符短 UUID（如 `a1b2c3d4`）
+- `name`: 文件友好名称，用于文件命名
+- `affected_files` 和 `existing_patterns` 存储在 frontmatter 中
+- body 部分为 `implementation_approach`（实现方法）
 
 ---
 
@@ -390,20 +428,29 @@ max_ideas: 5
 
 ### 内置类型 Prompt 存放
 
+内置类型存放在 `packages/core/src/prompts/idea-types/`，构建时会复制到 `dist/prompts/idea-types/`：
+
 ```
 packages/core/src/prompts/idea-types/
-├── code_improvements.md
-├── ui_ux_improvements.md
-├── documentation_gaps.md
-├── security_hardening.md
-├── performance_optimizations.md
-└── code_quality.md
+├── code_improvements.md      # 代码改进
+├── code_quality.md           # 代码质量
+├── documentation_gaps.md     # 文档缺失
+├── performance_optimizations.md  # 性能优化
+├── security_hardening.md     # 安全加固
+└── ui_ux_improvements.md     # UI/UX 改进
 ```
 
 ### 查找顺序
 
-1. `docs/idea-types/<type>.md`（自定义优先）
-2. `packages/core/src/prompts/idea-types/<type>.md`（内置 fallback）
+CLI 按以下顺序查找 idea type prompt：
+
+1. `docs/idea-types/<type>.md`（项目自定义，优先）
+2. `packages/core/dist/prompts/idea-types/<type>.md`（内置 fallback）
+
+这意味着：
+- 即使未运行 `viben team init`，内置类型也可用
+- 项目可以在 `docs/idea-types/` 中覆盖内置类型
+- 自定义类型只需在 `docs/idea-types/` 中创建
 
 ---
 
@@ -435,10 +482,11 @@ packages/core/src/prompts/idea-types/
 │  │ AI Agent │ │ AI Agent │ │ AI Agent │                     │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘                     │
 │       ↓            ↓            ↓                           │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
-│  │ idea_    │ │ idea_    │ │ idea_    │                     │
-│  │ type1.md │ │ type2.md │ │ typen.md │                     │
-│  └──────────┘ └──────────┘ └──────────┘                     │
+│  ┌─────────────────────────────────────────────┐            │
+│  │ idea_type1_name1.md, idea_type1_name2.md... │            │
+│  │ idea_type2_name1.md, idea_type2_name2.md... │            │
+│  │ idea_typen_name1.md, idea_typen_name2.md... │            │
+│  └─────────────────────────────────────────────┘            │
 │                      ↓                                      │
 │  STEP 4: 更新元信息                                          │
 │  ┌─────────────────────────────────────┐                    │
@@ -473,8 +521,8 @@ packages/core/src/prompts/idea-types/
 
 ### 数据结构
 
-- [ ] `.viben/ideas/<date>-<slug>/idea.json` 元信息
-- [ ] `.viben/ideas/<date>-<slug>/idea_<type>.md` 想法内容
+- [ ] `.viben/ideas/<date>-<slug>/idea.json` 元信息（含 files 列表）
+- [ ] `.viben/ideas/<date>-<slug>/idea_<type>_<name>.md` 每个想法单独文件
 - [ ] `docs/idea-types/*.md` 自定义类型支持
 
 ### 集成

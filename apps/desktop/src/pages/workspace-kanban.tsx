@@ -165,6 +165,7 @@ import {
 } from "@/lib/vibe-kanban";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
+import { getGatewayUrl, submitTaskEvent, type TaskEvent } from "@/lib/gateway";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
 import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
@@ -220,6 +221,8 @@ interface TaskCardContentProps {
   onStop?: () => void;
   onRecover?: () => void;
   onResume?: () => void;
+  onApprove?: () => void;
+  onReject?: () => void;
   onViewPR?: () => void;
   onArchive?: () => void;
   isSelected?: boolean;
@@ -232,6 +235,8 @@ const TaskCardContent = memo(function TaskCardContent({
   onStop,
   onRecover,
   onResume,
+  onApprove,
+  onReject,
   onViewPR,
   onArchive,
   isSelected,
@@ -282,6 +287,7 @@ const TaskCardContent = memo(function TaskCardContent({
     task.dueDate ||
     isStuck ||
     isFailed ||
+    task.status === "review" ||
     (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time
@@ -514,7 +520,39 @@ const TaskCardContent = memo(function TaskCardContent({
                 <Play className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.resume", "Resume")}
               </Button>
-            ) : /* Priority 3: Completed with PR - Show View PR and Archive buttons */
+            ) : /* Priority 3: Review status - Show Approve and Reject buttons */
+            task.status === "review" && (onApprove || onReject) ? (
+              <div className="flex gap-1">
+                {onApprove && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-2 bg-success hover:bg-success/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onApprove();
+                    }}
+                    title={t("workspace.taskCard.approve", "Approve")}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                  </Button>
+                )}
+                {onReject && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onReject();
+                    }}
+                    title={t("workspace.taskCard.reject", "Reject")}
+                  >
+                    <XCircle className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            ) : /* Priority 4: Completed with PR - Show View PR and Archive buttons */
             task.status === "completed" && (task.prUrl || task.pr_url) ? (
               <div className="flex gap-1">
                 {onViewPR && (
@@ -546,7 +584,7 @@ const TaskCardContent = memo(function TaskCardContent({
                   </Button>
                 )}
               </div>
-            ) : /* Priority 4: Completed without PR - Show Archive button */
+            ) : /* Priority 5: Completed without PR - Show Archive button */
             task.status === "completed" && !isArchived && onArchive ? (
               <Button
                 variant="ghost"
@@ -561,7 +599,7 @@ const TaskCardContent = memo(function TaskCardContent({
                 <Archive className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.archive", "Archive")}
               </Button>
-            ) : /* Priority 5: Backlog/Queue/In Progress - Show Start/Stop button */
+            ) : /* Priority 6: Backlog/Queue/In Progress - Show Start/Stop button */
             (task.status === "backlog" || task.status === "queue" || task.status === "in_progress") && (onStart || onStop) ? (
               isRunning ? (
                 onStop && (
@@ -1585,6 +1623,94 @@ export function WorkspaceKanbanPage() {
       toast.success(t("workspace.taskRecovered", "Task recovered and restarted"));
     },
     [workspace, updateTaskStatus, toast, t]
+  );
+
+  // Approve a task in review
+  const handleApproveTask = useCallback(
+    async (taskId: string) => {
+      if (!workspace) return;
+
+      const gatewayUrl = getGatewayUrl();
+      if (!gatewayUrl) return;
+
+      try {
+        const event: TaskEvent = {
+          eventId: crypto.randomUUID(),
+          sequence: 0,
+          type: "APPROVED",
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await submitTaskEvent(
+          gatewayUrl,
+          taskId,
+          workspace.path,
+          event
+        );
+
+        if (result.success) {
+          toast.success(t("workspace.taskActions.approved", "Task approved"));
+        } else {
+          const errorMessage =
+            result.error === "SEQUENCE_MISMATCH"
+              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
+              : result.error === "INVALID_TRANSITION"
+                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
+                : t("workspace.taskActions.submitFailed", "Failed to submit event");
+          toast.error(errorMessage);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
+        toast.error(t("workspace.taskActions.approveFailed", "Failed to approve task"), {
+          description: message,
+        });
+      }
+    },
+    [workspace, toast, t]
+  );
+
+  // Reject a task in review
+  const handleRejectTask = useCallback(
+    async (taskId: string) => {
+      if (!workspace) return;
+
+      const gatewayUrl = getGatewayUrl();
+      if (!gatewayUrl) return;
+
+      try {
+        const event: TaskEvent = {
+          eventId: crypto.randomUUID(),
+          sequence: 0,
+          type: "REJECTED",
+          timestamp: new Date().toISOString(),
+        };
+
+        const result = await submitTaskEvent(
+          gatewayUrl,
+          taskId,
+          workspace.path,
+          event
+        );
+
+        if (result.success) {
+          toast.success(t("workspace.taskActions.rejected", "Task sent back for revision"));
+        } else {
+          const errorMessage =
+            result.error === "SEQUENCE_MISMATCH"
+              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
+              : result.error === "INVALID_TRANSITION"
+                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
+                : t("workspace.taskActions.submitFailed", "Failed to submit event");
+          toast.error(errorMessage);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
+        toast.error(t("workspace.taskActions.rejectFailed", "Failed to reject task"), {
+          description: message,
+        });
+      }
+    },
+    [workspace, toast, t]
   );
 
   // Command palette commands
@@ -2649,6 +2775,16 @@ export function WorkspaceKanbanPage() {
                                   ? () => handleResumeTask(task.id)
                                   : undefined
                               }
+                              onApprove={
+                                task.status === "review"
+                                  ? () => handleApproveTask(task.id)
+                                  : undefined
+                              }
+                              onReject={
+                                task.status === "review"
+                                  ? () => handleRejectTask(task.id)
+                                  : undefined
+                              }
                               onViewPR={
                                 task.pr_url
                                   ? () => handleViewPR(task.pr_url!)
@@ -2748,6 +2884,46 @@ export function WorkspaceKanbanPage() {
                 <TaskCardContent
                   task={item}
                   onTitleChange={(title) => handleTitleChange(item.id, title)}
+                  onStart={
+                    (item.status === "backlog" || item.status === "queue") && !item.has_in_progress_attempt
+                      ? () => handleStartTask(item.id)
+                      : undefined
+                  }
+                  onStop={
+                    item.has_in_progress_attempt
+                      ? () => handleStopTask(item.id)
+                      : undefined
+                  }
+                  onRecover={
+                    item.is_stuck
+                      ? () => handleRecoverTask(item.id)
+                      : undefined
+                  }
+                  onResume={
+                    item.last_attempt_failed && !item.has_in_progress_attempt
+                      ? () => handleResumeTask(item.id)
+                      : undefined
+                  }
+                  onApprove={
+                    item.status === "review"
+                      ? () => handleApproveTask(item.id)
+                      : undefined
+                  }
+                  onReject={
+                    item.status === "review"
+                      ? () => handleRejectTask(item.id)
+                      : undefined
+                  }
+                  onViewPR={
+                    item.pr_url
+                      ? () => handleViewPR(item.pr_url!)
+                      : undefined
+                  }
+                  onArchive={
+                    item.status === "completed" && !item.archived
+                      ? () => handleArchiveTask(item.id)
+                      : undefined
+                  }
                 />
               </ListViewItemWithStuckDetection>
             )}

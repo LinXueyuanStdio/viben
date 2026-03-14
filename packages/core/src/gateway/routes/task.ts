@@ -3595,7 +3595,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const taskDirRel = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
 
       // Start Plan Agent in background
-      const logFile = join(taskDir, ".plan-log");
+      const logFile = join(taskDir, "plan.log.jsonl");
       writeFileSync(logFile, "", "utf-8");
 
       // Build environment

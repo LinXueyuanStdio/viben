@@ -24,7 +24,8 @@ import {
   unlinkSync,
   rmSync,
 } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import matter from "gray-matter";
 import {
   CUSTOM_IDEA_TYPES_DIR,
@@ -142,6 +143,27 @@ export function getIdeaMarkdownPath(sessionDir: string, type: string): string {
  */
 export function getIdeaTypePromptPath(repoRoot: string, type: string): string {
   return join(getIdeaTypesDir(repoRoot), `${type}.md`);
+}
+
+/**
+ * Get the built-in prompt file path for a specific idea type
+ *
+ * Built-in prompts are located in packages/core/src/prompts/idea-types/
+ *
+ * @param type - Idea type name
+ * @returns Path to built-in prompt file
+ */
+export function getBuiltinIdeaTypePromptPath(type: string): string {
+  // Get the directory where this file is located
+  // In ESM, we need to use import.meta.url
+  // But since this might be compiled to CJS, we use a fallback approach
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  // Navigate from cli/lib to prompts/idea-types
+  // From: packages/core/dist/cli/lib/
+  // To: packages/core/src/prompts/idea-types/ (for dev)
+  // Or: packages/core/dist/prompts/idea-types/ (for prod)
+  const srcPromptsDir = resolve(currentDir, "../../prompts/idea-types");
+  return join(srcPromptsDir, `${type}.md`);
 }
 
 /**
@@ -294,14 +316,30 @@ function loadIdeaTypeFromFile(
  * @returns IdeaType object or null if not found
  */
 export function getIdeaType(typeName: string, repoRoot: string): IdeaType | null {
-  // All types are in docs/idea-types/ (copied by `viben team init`)
-  const promptPath = getIdeaTypePromptPath(repoRoot, typeName);
-  const source: IdeaTypeSource = isBuiltinTypeName(typeName) ? "builtin" : "custom";
-  return loadIdeaTypeFromFile(promptPath, source);
+  // First, try custom/project-local types in docs/idea-types/
+  const customPromptPath = getIdeaTypePromptPath(repoRoot, typeName);
+  if (existsSync(customPromptPath)) {
+    const source: IdeaTypeSource = isBuiltinTypeName(typeName) ? "builtin" : "custom";
+    return loadIdeaTypeFromFile(customPromptPath, source);
+  }
+
+  // Fallback to built-in types in packages/core/src/prompts/idea-types/
+  if (isBuiltinTypeName(typeName)) {
+    const builtinPromptPath = getBuiltinIdeaTypePromptPath(typeName);
+    if (existsSync(builtinPromptPath)) {
+      return loadIdeaTypeFromFile(builtinPromptPath, "builtin");
+    }
+  }
+
+  return null;
 }
 
 /**
  * List all available idea types
+ *
+ * Search order:
+ * 1. Custom types in docs/idea-types/ (project-local)
+ * 2. Built-in types in packages/core/src/prompts/idea-types/ (fallback)
  *
  * @param repoRoot - Repository root path
  * @returns Array of IdeaType objects
@@ -310,17 +348,15 @@ export function listIdeaTypes(repoRoot: string): IdeaType[] {
   const types: IdeaType[] = [];
   const seenNames = new Set<string>();
 
-  // Read all types from docs/idea-types/
-  // Builtin types are copied there by `viben team init`
-  const typesDir = getIdeaTypesDir(repoRoot);
-  if (existsSync(typesDir)) {
+  // First, read custom/project-local types from docs/idea-types/
+  const customTypesDir = getIdeaTypesDir(repoRoot);
+  if (existsSync(customTypesDir)) {
     try {
-      const files = readdirSync(typesDir);
+      const files = readdirSync(customTypesDir);
       for (const file of files) {
         if (file.endsWith(".md")) {
-          const promptPath = join(typesDir, file);
+          const promptPath = join(customTypesDir, file);
           const typeName = file.replace(".md", "");
-          // Determine source: builtin types have known names
           const source: IdeaTypeSource = isBuiltinTypeName(typeName) ? "builtin" : "custom";
           const ideaType = loadIdeaTypeFromFile(promptPath, source);
           if (ideaType && !seenNames.has(ideaType.name)) {
@@ -331,6 +367,29 @@ export function listIdeaTypes(repoRoot: string): IdeaType[] {
       }
     } catch {
       // Ignore errors reading types directory
+    }
+  }
+
+  // Then, add built-in types that weren't overridden
+  const builtinNames = [
+    "code_improvements",
+    "code_quality",
+    "documentation_gaps",
+    "performance_optimizations",
+    "security_hardening",
+    "ui_ux_improvements",
+  ];
+
+  for (const typeName of builtinNames) {
+    if (!seenNames.has(typeName)) {
+      const builtinPromptPath = getBuiltinIdeaTypePromptPath(typeName);
+      if (existsSync(builtinPromptPath)) {
+        const ideaType = loadIdeaTypeFromFile(builtinPromptPath, "builtin");
+        if (ideaType) {
+          types.push(ideaType);
+          seenNames.add(ideaType.name);
+        }
+      }
     }
   }
 

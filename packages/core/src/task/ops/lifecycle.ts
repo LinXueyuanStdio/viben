@@ -5,7 +5,7 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 import {
   resolveTaskDirectory,
@@ -16,6 +16,8 @@ import {
   type PausedSnapshot,
   FILE_TASK_JSON,
 } from "../../cli/lib/viben-workspace";
+
+import { enqueue as queueEnqueue } from "../../queue/ops/enqueue";
 
 import type { TaskJson } from "./types";
 
@@ -58,6 +60,9 @@ export interface LifecycleResult {
 
 /**
  * Enqueue task: backlog -> queue
+ *
+ * Submits "viben task start <task>" to the command queue system.
+ * Queue system executes the command as a detached process.
  */
 export function enqueueTask(
   repoRoot: string,
@@ -67,6 +72,8 @@ export function enqueueTask(
     executor?: string;
     model?: string;
     priority?: string;
+    /** Skip submitting to queue system (only update status) */
+    skipQueue?: boolean;
   } = {}
 ): LifecycleResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
@@ -95,6 +102,36 @@ export function enqueueTask(
   if (options.model) additionalFields.model = options.model;
   if (options.priority) additionalFields.priority = options.priority;
 
+  // Submit to command queue system (unless skipQueue is true)
+  let queueId: string | undefined;
+  if (!options.skipQueue) {
+    const taskDirRel = relative(repoRoot, taskDir);
+    const dirName = taskDir.split("/").pop() || taskName;
+
+    // Build command: viben task start <task>
+    const command = `viben task start ${dirName}`;
+
+    const queueResult = queueEnqueue({
+      command,
+      cwd: repoRoot,
+      metadata: {
+        task_dir: taskDirRel,
+        task_name: dirName,
+      },
+    });
+
+    if (!queueResult.success) {
+      return {
+        success: false,
+        task: taskName,
+        error: `Failed to submit to queue: ${queueResult.error}`,
+      };
+    }
+
+    queueId = queueResult.id;
+    additionalFields.queue_id = queueId;
+  }
+
   // Update task status
   if (!updateTaskStatus(taskDir, "queue", additionalFields)) {
     return { success: false, task: taskName, error: "Failed to update task.json" };
@@ -105,6 +142,7 @@ export function enqueueTask(
     agent: options.agent,
     executor: options.executor,
     model: options.model,
+    queue_id: queueId,
   });
 
   const dirName = taskDir.split("/").pop() || taskName;
@@ -113,7 +151,7 @@ export function enqueueTask(
     task: dirName,
     status: "queue",
     fromStatus: taskData.status,
-    additionalData: options,
+    additionalData: { ...options, queue_id: queueId },
   };
 }
 

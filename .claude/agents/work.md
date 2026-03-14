@@ -189,7 +189,7 @@ The finish agent actively updates spec docs when it detects new patterns or cont
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
 ```bash
-viben task create-pr
+viben task create-pr ${TASK_DIR}
 ```
 
 This will:

@@ -2189,12 +2189,12 @@ export function registerTaskCommand(program: Command): void {
 
           workingDir = worktreePath;
           modeLabel = `worktree (${worktreePath})`;
-          logFileName = ".agent-log";
+          logFileName = "agent.log.jsonl";
           isWorktreeMode = true;
         } else {
           workingDir = repoRoot;
           modeLabel = "current repo";
-          logFileName = ".work-log";
+          logFileName = "work.log.jsonl";
           isWorktreeMode = false;
         }
 

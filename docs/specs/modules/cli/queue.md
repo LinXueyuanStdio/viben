@@ -537,44 +537,44 @@ viben queue status --verbose
 ## Acceptance Criteria
 
 ### 状态查看
-- [ ] `viben queue status` 显示队列概览
-- [ ] `viben queue status --json` 输出 JSON
-- [ ] `viben queue list` 列出任务
-- [ ] `viben queue list --status <s>` 按状态过滤
-- [ ] `viben queue list --all` 显示所有状态
-- [ ] `viben queue inspect <id>` 显示详尽任务信息
+- [x] `viben queue status` 显示队列概览
+- [x] `viben queue status --json` 输出 JSON
+- [x] `viben queue list` 列出任务
+- [x] `viben queue list --status <s>` 按状态过滤
+- [x] `viben queue list --all` 显示所有状态
+- [x] `viben queue inspect <id>` 显示详尽任务信息
 
 ### 任务操作
-- [ ] `viben queue enqueue --command <cmd> --cwd <path>` 提交命令
+- [x] `viben queue enqueue --command <cmd> --cwd <path>` 提交命令
 - [ ] `viben queue enqueue --stdin` 从 stdin 读取命令
-- [ ] `viben queue cancel <id>` 取消 pending 任务
-- [ ] `viben queue cancel <id> --force` 终止 running 任务
-- [ ] `viben queue retry <id>` 重试失败任务
-- [ ] `viben queue retry <id> --reset-count` 重置重试计数
+- [x] `viben queue cancel <id>` 取消 pending 任务
+- [x] `viben queue cancel <id> --force` 终止 running 任务
+- [x] `viben queue retry <id>` 重试失败任务
+- [x] `viben queue retry <id> --reset-count` 重置重试计数
 
 ### 日志和监控
-- [ ] `viben queue logs <id>` 查看任务日志
-- [ ] `viben queue logs <id> --follow` 实时跟踪
-- [ ] `viben queue watch` 实时监控队列事件
+- [x] `viben queue logs <id>` 查看任务日志
+- [ ] `viben queue logs <id> --follow` 实时跟踪 (尚未实现)
+- [x] `viben queue watch` 实时监控队列事件
 - [ ] `viben queue watch --task <id>` 过滤特定任务
 - [ ] `viben queue watch --events <e>` 过滤事件类型
 
 ### 配置和清理
-- [ ] `viben queue config` 查看配置
-- [ ] `viben queue config --set <k>=<v>` 修改配置
-- [ ] `viben queue config --reset` 重置配置
-- [ ] `viben queue clean` 清理已完成任务
-- [ ] `viben queue clean --dry-run` 预览清理
+- [x] `viben queue config` 查看配置
+- [x] `viben queue config --set <k>=<v>` 修改配置
+- [x] `viben queue config --reset` 重置配置
+- [x] `viben queue clean` 清理已完成任务
+- [x] `viben queue clean --dry-run` 预览清理
 - [ ] `viben queue clean --before <t>` 按时间清理
 
 ### CLI/API 一致性
-- [ ] CLI 和 API 共享同一个 ops 层
-- [ ] 相同参数产生相同结果
-- [ ] 错误码和错误信息一致
+- [x] CLI 和 API 共享同一个 ops 层
+- [x] 相同参数产生相同结果
+- [x] 错误码和错误信息一致
 
 ### 错误处理
-- [ ] 任务不存在时给出提示
-- [ ] 无效操作时说明原因和解决方案
+- [x] 任务不存在时给出提示
+- [x] 无效操作时说明原因和解决方案
 - [ ] `--verbose` 显示详细信息
 
 ---

@@ -33,10 +33,10 @@ export default defineConfig({
     __VERSION__: JSON.stringify(VERSION),
   },
   onSuccess: async () => {
-    // Add shebang to bin.js after build
     const fs = await import("fs/promises");
     const path = await import("path");
 
+    // Add shebang to bin.js after build
     const binFiles = ["dist/cli/bin.js", "dist/cli/bin.cjs"];
     for (const file of binFiles) {
       try {
@@ -48,6 +48,18 @@ export default defineConfig({
       } catch {
         // File might not exist (cjs/esm depending on format)
       }
+    }
+
+    // Copy prompt templates to dist
+    const srcPromptsDir = path.resolve(process.cwd(), "src/prompts");
+    const distPromptsDir = path.resolve(process.cwd(), "dist/prompts");
+
+    try {
+      await fs.cp(srcPromptsDir, distPromptsDir, { recursive: true });
+      console.log("Copied prompts to dist/prompts");
+    } catch (err) {
+      // Prompts directory might not exist
+      console.warn("Could not copy prompts:", err);
     }
   },
 });
