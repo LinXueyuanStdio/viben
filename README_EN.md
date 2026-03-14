@@ -62,58 +62,72 @@ npx viben
 ## 🏗️ Architecture
 
 ```mermaid
-graph LR
-    subgraph Clients["📱 Clients"]
-        direction TB
-        CLI["CLI"]
-        Desktop["Desktop"]
-        Web["Web"]
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dbeafe', 'lineColor': '#64748b', 'primaryTextColor': '#1e293b'}}}%%
+graph TB
+    subgraph Apps["Application Layer"]
+        direction LR
+        CLI["CLI<br/>Command Line"]
+        Desktop["Desktop<br/>Tauri 2"]
+        Web["Web<br/>Next.js 15"]
     end
 
-    subgraph Core["📦 packages/core"]
+    subgraph Core["packages/core"]
         direction TB
 
-        subgraph GW["Gateway :18790"]
+        subgraph Gateway["Gateway API :18790"]
             direction LR
             REST["REST API"]
             WS["WebSocket"]
+            SSE["SSE Events"]
         end
 
-        subgraph Svc["Services"]
-            direction TB
-            Agent["AgentService"]
-            Session["SessionStore"]
-            Cron["CronService"]
+        subgraph Services["Service Layer"]
+            direction LR
+            TaskSvc["TaskService<br/>State Machine"]
+            AgentSvc["AgentService<br/>Sessions"]
+            CronSvc["CronService<br/>Scheduled Jobs"]
         end
 
-        subgraph Mod["Modules"]
-            direction TB
-            Exec["Executors"]
-            MCP["MCP Client"]
-            Chan["Channels"]
+        subgraph Modules["Feature Modules"]
+            direction LR
+            Exec["Executors<br/>9 Types"]
+            MCP["MCP Client<br/>Protocol"]
+            Chan["Channels<br/>Notifications"]
         end
     end
 
-    subgraph Ext["🌍 External"]
-        direction TB
-        LLM["LLM APIs"]
+    subgraph Storage["Storage Layer ~/.viben/"]
+        direction LR
+        Config["providers.yaml<br/>models.yaml"]
+        Agents["agents/<br/>AGENTS.md"]
+        Tasks[".viben/tasks/<br/>task.json"]
+    end
+
+    subgraph External["External Services"]
+        direction LR
+        LLM["LLM APIs<br/>Claude/GPT/Gemini"]
         MCPSrv["MCP Servers"]
     end
 
-    subgraph Cfg["📁 ~/.viben/"]
-        direction TB
-        YAML["*.yaml"]
-    end
-
-    Clients -->|HTTP/WS| GW
-    GW --> Svc
-    Svc --> Mod
-    Mod --> Cfg
+    Apps -->|HTTP/WS| Gateway
+    Gateway --> Services
+    Services --> Modules
+    Modules --> Storage
     Exec --> LLM
     MCP --> MCPSrv
+
+    classDef appLayer fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+    classDef coreLayer fill:#dcfce7,stroke:#22c55e,color:#166534
+    classDef storageLayer fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef extLayer fill:#f3e8ff,stroke:#a855f7,color:#7c3aed
+
+    class CLI,Desktop,Web appLayer
+    class REST,WS,SSE,TaskSvc,AgentSvc,CronSvc,Exec,MCP,Chan coreLayer
+    class Config,Agents,Tasks storageLayer
+    class LLM,MCPSrv extLayer
 ```
 
-> **Design Principles**: `packages/core` as single boundary · file-native config (YAML) · unified REST/WebSocket API · multi-provider support
+> **Design Principles**: `packages/core` as single boundary | file-native config (YAML/JSON) | unified REST/WebSocket API | multi-provider support
 
 ---
 
@@ -124,6 +138,7 @@ XState-based task lifecycle management with kanban, queue, and automated executi
 ### Task Lifecycle
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#dbeafe', 'lineColor': '#64748b', 'primaryTextColor': '#1e293b'}}}%%
 stateDiagram-v2
     [*] --> backlog: Create
 
@@ -158,7 +173,21 @@ stateDiagram-v2
 
     completed --> [*]
     cancelled --> [*]
+
+    classDef waiting fill:#e0f2fe,stroke:#3b82f6,color:#1e40af
+    classDef active fill:#dcfce7,stroke:#22c55e,color:#166534
+    classDef review fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    classDef done fill:#bbf7d0,stroke:#16a34a,color:#166534
+    classDef error fill:#fee2e2,stroke:#ef4444,color:#991b1b
+
+    class backlog,queue,paused waiting
+    class in_progress active
+    class human_review review
+    class completed done
+    class failed,cancelled error
 ```
+
+> **Internal Flow**: `in_progress` state internally executes plan -> implement -> check -> fix loop
 
 | Status | Description | Trigger Command |
 |--------|-------------|-----------------|
