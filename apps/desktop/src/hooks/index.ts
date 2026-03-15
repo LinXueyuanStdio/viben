@@ -356,6 +356,9 @@ export type {
   StuckDetectionSubtask,
 } from "./use-stuck-detection";
 
+// Worktree Existence Check
+export { useWorktreeExists } from "./use-worktree-exists";
+
 // Task Events (State Machine SSE)
 export { useTaskEvents } from "./use-task-events";
 export type {

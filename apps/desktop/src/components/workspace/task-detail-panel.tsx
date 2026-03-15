@@ -31,7 +31,6 @@ import {
   ShieldCheck,
   Target,
   ChevronDown,
-  ChevronUp,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -95,6 +94,7 @@ import { TaskActionButtons } from "./kanban/task-action-buttons";
 import { TaskWarnings } from "./kanban/task-warnings";
 import { StatusSelect } from "./kanban/components/status-select";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
+import { useWorktreeExists } from "@/hooks/use-worktree-exists";
 import { toast } from "@/hooks/use-toast";
 import type {
   TaskStatus,
@@ -245,6 +245,321 @@ function PropertyRow({
         <span>{label}</span>
       </div>
       <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// Action configuration with unique icons and colors
+interface ActionConfig {
+  Icon: LucideIcon;
+  color: string;           // Tailwind color class (without bg-/text-)
+  bgColor: string;         // Background color class
+  textColor: string;       // Text color class
+  ringColor: string;       // Ring color for active state
+  description: string;
+}
+
+const ACTION_CONFIGS: Record<string, ActionConfig> = {
+  plan: {
+    Icon: ClipboardList,
+    color: "blue",
+    bgColor: "bg-blue-500",
+    textColor: "text-blue-500",
+    ringColor: "ring-blue-500/20",
+    description: "Planning and requirement analysis",
+  },
+  implement: {
+    Icon: Code2,
+    color: "purple",
+    bgColor: "bg-purple-500",
+    textColor: "text-purple-500",
+    ringColor: "ring-purple-500/20",
+    description: "Writing code and implementing features",
+  },
+  check: {
+    Icon: ShieldCheck,
+    color: "green",
+    bgColor: "bg-green-500",
+    textColor: "text-green-500",
+    ringColor: "ring-green-500/20",
+    description: "Code review and quality validation",
+  },
+  finish: {
+    Icon: Target,
+    color: "orange",
+    bgColor: "bg-orange-500",
+    textColor: "text-orange-500",
+    ringColor: "ring-orange-500/20",
+    description: "Final touches and cleanup",
+  },
+  "create-pr": {
+    Icon: GitPullRequest,
+    color: "pink",
+    bgColor: "bg-pink-500",
+    textColor: "text-pink-500",
+    ringColor: "ring-pink-500/20",
+    description: "Creating pull request for review",
+  },
+};
+
+// Default config for unknown actions
+const DEFAULT_ACTION_CONFIG: ActionConfig = {
+  Icon: Activity,
+  color: "gray",
+  bgColor: "bg-gray-500",
+  textColor: "text-gray-500",
+  ringColor: "ring-gray-500/20",
+  description: "Executing action",
+};
+
+// Format duration helper
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+  return `${seconds}s`;
+}
+
+// Format time helper (short format)
+function formatTimeShort(date: Date): string {
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Enhanced Execution Progress Timeline Component
+interface ExecutionProgressTimelineProps {
+  nextAction: Array<{ phase: number; action: string; startTime?: string; endTime?: string }>;
+  currentPhase: number;
+  status: string;
+  t: (key: string, fallback: string, options?: Record<string, unknown>) => string;
+}
+
+function ExecutionProgressTimeline({
+  nextAction,
+  currentPhase,
+  status,
+  t,
+}: ExecutionProgressTimelineProps) {
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+
+  const toggleExpand = useCallback((index: number) => {
+    setExpandedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  const completedCount = Math.min(currentPhase, nextAction.length);
+  const progressPercent = Math.round((completedCount / nextAction.length) * 100);
+
+  return (
+    <div className="mt-2 p-4 rounded-lg bg-background border">
+      {/* Header with progress percentage */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">
+            {t("workspace.executionProgress", "Execution Progress")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
+              current: Math.min(currentPhase + 1, nextAction.length),
+              total: nextAction.length,
+            })}
+          </span>
+          <Badge
+            variant={status === "in_progress" ? "default" : "secondary"}
+            className="text-xs tabular-nums"
+          >
+            {progressPercent}%
+          </Badge>
+        </div>
+      </div>
+
+      {/* Vertical Timeline Steps */}
+      <div className="relative">
+        {/* Vertical connecting line - centered on step indicators */}
+        <div className="absolute left-[15px] top-4 bottom-4 w-0.5 bg-muted rounded-full" />
+
+        {/* Progress overlay on the line */}
+        <div
+          className="absolute left-[15px] top-4 w-0.5 bg-gradient-to-b from-primary via-primary to-primary/50 rounded-full transition-all duration-700 ease-out"
+          style={{
+            height: `calc(${Math.min(100, (currentPhase / Math.max(1, nextAction.length - 1)) * 100)}% - 16px)`
+          }}
+        />
+
+        <div className="space-y-1">
+          {nextAction.map((action, index) => {
+            const isCompleted = index < currentPhase;
+            const isCurrent = index === currentPhase;
+            const isPending = index > currentPhase;
+            const isExpanded = expandedSteps.has(index);
+            const isHovered = hoveredStep === index;
+
+            const config = ACTION_CONFIGS[action.action] || DEFAULT_ACTION_CONFIG;
+            const ActionIcon = config.Icon;
+
+            // Mock time data (in real usage, these would come from action.startTime/endTime)
+            const hasTimeData = action.startTime || action.endTime;
+            const startTime = action.startTime ? new Date(action.startTime) : null;
+            const endTime = action.endTime ? new Date(action.endTime) : null;
+            const duration = startTime && endTime
+              ? endTime.getTime() - startTime.getTime()
+              : null;
+
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "relative flex items-start gap-3 py-2 pl-12 pr-2 rounded-lg transition-all duration-200 cursor-pointer",
+                  isHovered && !isPending && "bg-accent/50",
+                  isExpanded && "bg-accent/30"
+                )}
+                onMouseEnter={() => setHoveredStep(index)}
+                onMouseLeave={() => setHoveredStep(null)}
+                onClick={() => toggleExpand(index)}
+              >
+                {/* Step indicator with unique icon - vertically centered with first line of content */}
+                <div className={cn(
+                  "absolute left-0 top-2 w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all duration-300 shadow-sm",
+                  isCompleted && cn(config.bgColor, "text-white"),
+                  isCurrent && status === "in_progress" && cn(config.bgColor, "text-white ring-4", config.ringColor, "animate-pulse"),
+                  isCurrent && status !== "in_progress" && cn(config.bgColor, "text-white ring-4", config.ringColor),
+                  isPending && "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
+                )}>
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : isCurrent && status === "in_progress" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ActionIcon className="h-4 w-4" />
+                  )}
+                </div>
+
+                {/* Step content - starts after the indicator */}
+                <div className={cn(
+                  "flex-1 min-w-0 pt-1 transition-opacity duration-300",
+                  isPending && "opacity-50"
+                )}>
+                  {/* Main row: action name + status badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <ActionIcon className={cn("h-4 w-4", isPending ? "text-muted-foreground" : config.textColor)} />
+                      <span className={cn(
+                        "text-sm font-medium leading-none",
+                        isCurrent && config.textColor,
+                        isCompleted && "text-foreground"
+                      )}>
+                        {t(`workspace.taskCard.action.${action.action}`, action.action)}
+                      </span>
+                    </div>
+
+                    {/* Status badges */}
+                    {isCurrent && status === "in_progress" && (
+                      <Badge className={cn("text-[10px] h-5 border-0", `bg-${config.color}-500/10`, config.textColor)}>
+                        {t("workspace.inProgress", "In Progress")}
+                      </Badge>
+                    )}
+                    {isCompleted && (
+                      <Badge variant="outline" className="text-[10px] h-5 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+                        {t("workspace.done", "Done")}
+                      </Badge>
+                    )}
+
+                    {/* Expand/collapse indicator */}
+                    <div className={cn(
+                      "ml-auto transition-transform duration-200",
+                      isExpanded && "rotate-180"
+                    )}>
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  {/* Time info row (always visible when available) */}
+                  {(hasTimeData || isCompleted || isCurrent) && (
+                    <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                      {startTime && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" />
+                          {t("workspace.started", "Started")}: {formatTimeShort(startTime)}
+                        </span>
+                      )}
+                      {endTime && (
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                          {t("workspace.completed", "Completed")}: {formatTimeShort(endTime)}
+                        </span>
+                      )}
+                      {duration && (
+                        <span className="flex items-center gap-1 font-medium">
+                          <Activity className="h-2.5 w-2.5" />
+                          {formatDuration(duration)}
+                        </span>
+                      )}
+                      {isCurrent && status === "in_progress" && !startTime && (
+                        <span className="flex items-center gap-1 animate-pulse">
+                          <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                          {t("workspace.running", "Running")}...
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded details */}
+                  <div className={cn(
+                    "overflow-hidden transition-all duration-300 ease-out",
+                    isExpanded ? "max-h-32 opacity-100 mt-2" : "max-h-0 opacity-0"
+                  )}>
+                    <div className="p-2 rounded bg-muted/50 text-xs">
+                      <p className="text-muted-foreground">
+                        {t(`workspace.taskCard.actionDesc.${action.action}`, config.description)}
+                      </p>
+                      {/* Could add more details here: logs preview, files modified, etc. */}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bottom progress bar */}
+      <div className="mt-4 pt-3 border-t">
+        <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-700 ease-out",
+              status === "in_progress"
+                ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                : "bg-gradient-to-r from-primary to-primary/80"
+            )}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+          <span>{completedCount} {t("workspace.stepsCompleted", "completed")}</span>
+          <span>{nextAction.length - completedCount} {t("workspace.stepsRemaining", "remaining")}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -506,6 +821,9 @@ export function TaskDetailPanel({
 
   // Use detected stuck status or fallback to task property
   const isStuck = detectedStuck || task?.isStuck || false;
+
+  // Check if worktree still exists (may be cleaned up after approval)
+  const { exists: worktreeExists, isChecking: isCheckingWorktree } = useWorktreeExists(task?.worktree_path);
 
   // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
   // Only depend on task?.id instead of the whole task object to prevent unnecessary re-runs
@@ -1372,131 +1690,14 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       )}
                     </div>
 
-                    {/* Execution Progress Card - Vertical Timeline */}
+                    {/* Execution Progress Card - Enhanced Vertical Timeline */}
                     {task.next_action && task.next_action.length > 0 && (
-                      <div className="mt-2 p-4 rounded-lg bg-background border">
-                        {/* Header with progress percentage */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <Activity className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium">
-                              {t("workspace.executionProgress", "Execution Progress")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
-                                current: Math.min((task.current_phase ?? 0) + 1, task.next_action.length),
-                                total: task.next_action.length,
-                              })}
-                            </span>
-                            <Badge
-                              variant={task.status === "in_progress" ? "default" : "secondary"}
-                              className="text-xs tabular-nums"
-                            >
-                              {Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {/* Vertical Timeline Steps */}
-                        <div className="relative pl-6">
-                          {/* Vertical connecting line */}
-                          <div className="absolute left-[11px] top-1 bottom-1 w-0.5 bg-muted" />
-
-                          {/* Progress overlay on the line */}
-                          <div
-                            className="absolute left-[11px] top-1 w-0.5 bg-primary transition-all duration-500"
-                            style={{
-                              height: `${Math.min(100, ((task.current_phase ?? 0) / Math.max(1, task.next_action.length - 1)) * 100)}%`
-                            }}
-                          />
-
-                          <div className="space-y-4">
-                            {task.next_action.map((action, index) => {
-                              const currentPhase = task.current_phase ?? 0;
-                              const isCompleted = index < currentPhase;
-                              const isCurrent = index === currentPhase;
-                              const isPending = index > currentPhase;
-
-                              // Action descriptions
-                              const actionDescriptions: Record<string, string> = {
-                                plan: "Planning and requirement analysis",
-                                implement: "Writing code and implementing features",
-                                check: "Code review and quality validation",
-                                finish: "Final touches and cleanup",
-                                "create-pr": "Creating pull request for review",
-                              };
-
-                              return (
-                                <div key={index} className="relative flex items-start gap-3">
-                                  {/* Step indicator */}
-                                  <div className={cn(
-                                    "absolute -left-6 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium z-10 transition-all duration-300",
-                                    isCompleted && "bg-primary text-primary-foreground",
-                                    isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-                                    isPending && "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
-                                  )}>
-                                    {isCompleted ? (
-                                      <CheckCircle2 className="h-3.5 w-3.5" />
-                                    ) : isCurrent && task.status === "in_progress" ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <span>{index + 1}</span>
-                                    )}
-                                  </div>
-
-                                  {/* Step content */}
-                                  <div className={cn(
-                                    "flex-1 min-w-0 py-0.5 transition-opacity duration-300",
-                                    isPending && "opacity-50"
-                                  )}>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className={cn(
-                                        "text-sm font-medium",
-                                        isCurrent && "text-primary",
-                                        isCompleted && "text-foreground"
-                                      )}>
-                                        {t(`workspace.taskCard.action.${action.action}`, action.action)}
-                                      </span>
-                                      {isCurrent && task.status === "in_progress" && (
-                                        <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
-                                          {t("workspace.inProgress", "In Progress")}
-                                        </Badge>
-                                      )}
-                                      {isCompleted && (
-                                        <Badge variant="outline" className="text-[10px] h-5 bg-primary/5 text-primary border-primary/20">
-                                          {t("workspace.done", "Done")}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                      {t(`workspace.taskCard.actionDesc.${action.action}`, actionDescriptions[action.action] || `Execute ${action.action}`)}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Bottom progress bar */}
-                        <div className="mt-4 pt-3 border-t">
-                          <div className="h-2 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all duration-500 ease-out",
-                                task.status === "in_progress"
-                                  ? "bg-gradient-to-r from-primary to-primary/80"
-                                  : "bg-primary"
-                              )}
-                              style={{
-                                width: `${Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <ExecutionProgressTimeline
+                        nextAction={task.next_action}
+                        currentPhase={task.current_phase ?? 0}
+                        status={task.status}
+                        t={t}
+                      />
                     )}
                   </div>
 
@@ -1520,15 +1721,50 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
                   {/* Git & Worktree Info Card */}
                   {(task.branch || task.base_branch || task.worktree_path) && (
-                    <div className="mt-3 p-3 rounded-lg bg-info/5 border border-info/20">
+                    <div className={cn(
+                      "mt-3 p-3 rounded-lg border",
+                      // Change card style if worktree is cleaned up
+                      task.worktree_path && worktreeExists === false
+                        ? "bg-muted/30 border-muted"
+                        : "bg-info/5 border-info/20"
+                    )}>
                       <div className="flex items-center gap-2 mb-2">
-                        <GitBranch className="h-4 w-4 text-info shrink-0" />
-                        <span className="text-xs font-medium text-info uppercase tracking-wide">
+                        <GitBranch className={cn(
+                          "h-4 w-4 shrink-0",
+                          task.worktree_path && worktreeExists === false
+                            ? "text-muted-foreground"
+                            : "text-info"
+                        )} />
+                        <span className={cn(
+                          "text-xs font-medium uppercase tracking-wide",
+                          task.worktree_path && worktreeExists === false
+                            ? "text-muted-foreground"
+                            : "text-info"
+                        )}>
                           {t("workspace.gitInfo", "Git Info")}
                         </span>
                         {task.worktree_path && (
-                          <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 ml-auto">
-                            {t("workspace.worktree.isolated", "Isolated Worktree")}
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs ml-auto",
+                              worktreeExists === false
+                                ? "bg-muted text-muted-foreground border-muted-foreground/30"
+                                : isCheckingWorktree
+                                  ? "bg-muted/50 text-muted-foreground border-muted-foreground/20"
+                                  : "bg-info/10 text-info border-info/30"
+                            )}
+                          >
+                            {isCheckingWorktree ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                {t("common.checking", "Checking...")}
+                              </span>
+                            ) : worktreeExists === false ? (
+                              t("workspace.worktree.cleanedUp", "Cleaned Up")
+                            ) : (
+                              t("workspace.worktree.isolated", "Isolated Worktree")
+                            )}
                           </Badge>
                         )}
                       </div>
@@ -1556,24 +1792,37 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         )}
                         {/* Worktree path */}
                         {task.worktree_path && (
-                          <div className="flex items-center gap-2 pt-1 border-t border-info/10">
+                          <div className={cn(
+                            "flex items-center gap-2 pt-1 border-t",
+                            worktreeExists === false
+                              ? "border-muted-foreground/10"
+                              : "border-info/10"
+                          )}>
                             <span className="text-xs text-muted-foreground w-14 shrink-0">
                               {t("workspace.path", "Path")}:
                             </span>
-                            <p className="text-xs text-muted-foreground font-mono truncate flex-1" title={task.worktree_path}>
+                            <p className={cn(
+                              "text-xs font-mono truncate flex-1",
+                              worktreeExists === false
+                                ? "text-muted-foreground/50 line-through"
+                                : "text-muted-foreground"
+                            )} title={task.worktree_path}>
                               {task.worktree_path}
                             </p>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 shrink-0"
-                              onClick={() => {
-                                const client = getGatewayClient();
-                                client.openFile(task.worktree_path!).catch(console.error);
-                              }}
-                            >
-                              <FolderOpen className="h-3.5 w-3.5" />
-                            </Button>
+                            {worktreeExists !== false && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 shrink-0"
+                                disabled={isCheckingWorktree || worktreeExists === null}
+                                onClick={() => {
+                                  const client = getGatewayClient();
+                                  client.openFile(task.worktree_path!).catch(console.error);
+                                }}
+                              >
+                                <FolderOpen className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
