@@ -79,6 +79,8 @@ export interface TaskActionButtonsProps {
   showStatusContext?: boolean;
   /** Callback for archive action */
   onArchive?: () => void;
+  /** Content to render between status context and action buttons */
+  renderBetween?: React.ReactNode;
 }
 
 /**
@@ -117,6 +119,7 @@ export function TaskActionButtons({
   showAllActions = false,
   showStatusContext = false,
   onArchive,
+  renderBetween,
 }: TaskActionButtonsProps) {
   const { t } = useTranslation();
   const gatewayUrl = getGatewayUrl();
@@ -610,6 +613,9 @@ export function TaskActionButtons({
             <p className="text-xs opacity-80 mt-0.5">{statusContext.description}</p>
           </div>
         </div>
+
+        {/* Content between status context and buttons (e.g., PR card) */}
+        {renderBetween}
 
         {/* Action buttons */}
         {buttons.length > 0 && (

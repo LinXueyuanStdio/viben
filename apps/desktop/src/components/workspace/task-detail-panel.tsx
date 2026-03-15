@@ -26,7 +26,13 @@ import {
   AlertTriangle,
   UserCircle,
   CheckCircle2,
-  CircleDot,
+  ClipboardList,
+  Code2,
+  ShieldCheck,
+  Target,
+  ChevronDown,
+  ChevronUp,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Button,
@@ -40,12 +46,6 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@viben/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
 import {
   PriorityIcon,
   PrioritySelect,
@@ -1191,6 +1191,42 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                   </PropertyRow>
                 )}
 
+                {/* Agent */}
+                {task.agent_id && (
+                  <PropertyRow
+                    label={t("workspace.agent", "Agent")}
+                    icon={Bot}
+                  >
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {task.agent_id}
+                    </Badge>
+                  </PropertyRow>
+                )}
+
+                {/* Executor */}
+                {task.executor && (
+                  <PropertyRow
+                    label={t("workspace.executor", "Executor")}
+                    icon={Activity}
+                  >
+                    <Badge variant="secondary" className="text-xs">
+                      {task.executor}
+                    </Badge>
+                  </PropertyRow>
+                )}
+
+                {/* Model */}
+                {task.model && (
+                  <PropertyRow
+                    label={t("workspace.model", "Model")}
+                    icon={Bot}
+                  >
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {task.model}
+                    </Badge>
+                  </PropertyRow>
+                )}
+
                 {/* Due Date */}
                 <PropertyRow
                   label={t("workspace.dueDate", "Due Date")}
@@ -1258,36 +1294,55 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       size="default"
                       showAllActions
                       showStatusContext
+                      renderBetween={
+                        task.pr_url ? (
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const url = task.pr_url!;
+                              console.log("[TaskDetailPanel] Opening PR URL:", url);
+                              try {
+                                // Use Tauri opener plugin
+                                const { openUrl } = await import("@tauri-apps/plugin-opener");
+                                await openUrl(url);
+                              } catch (err) {
+                                console.warn("[TaskDetailPanel] Tauri opener failed, trying shell:", err);
+                                try {
+                                  const { open } = await import("@tauri-apps/plugin-shell");
+                                  await open(url);
+                                } catch (err2) {
+                                  console.warn("[TaskDetailPanel] Shell failed, using window.open:", err2);
+                                  window.open(url, "_blank", "noopener,noreferrer");
+                                }
+                              }
+                            }}
+                            className="w-full text-left p-3 rounded-lg border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors group cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <GitPullRequest className="h-5 w-5 text-purple-500 shrink-0" />
+                                <span className="text-sm font-semibold text-purple-600 dark:text-purple-400 truncate">
+                                  {(() => {
+                                    const match = task.pr_url?.match(/\/pull\/(\d+)/);
+                                    return match ? `Pull Request #${match[1]}` : "View PR";
+                                  })()}
+                                </span>
+                                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/30">
+                                  Open
+                                </Badge>
+                              </div>
+                              <ExternalLink className="h-4 w-4 text-purple-500/70 group-hover:text-purple-500 transition-colors shrink-0" />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1.5 truncate font-mono">
+                              {task.pr_url}
+                            </p>
+                          </button>
+                        ) : undefined
+                      }
                     />
                   </div>
-
-                  {/* Pull Request Card - shown near action buttons */}
-                  {task.pr_url && (
-                    <button
-                      type="button"
-                      onClick={() => window.open(task.pr_url, "_blank", "noopener,noreferrer")}
-                      className="w-full text-left mb-3 p-3 rounded-lg border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors group cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <GitPullRequest className="h-5 w-5 text-purple-500 shrink-0" />
-                          <span className="text-sm font-semibold text-purple-600 dark:text-purple-400 truncate">
-                            {(() => {
-                              const match = task.pr_url?.match(/\/pull\/(\d+)/);
-                              return match ? `Pull Request #${match[1]}` : t("workspace.viewPR", "View PR");
-                            })()}
-                          </span>
-                          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/30">
-                            {t("workspace.prStatus.open", "Open")}
-                          </Badge>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-purple-500/70 group-hover:text-purple-500 transition-colors shrink-0" />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1.5 truncate font-mono">
-                        {task.pr_url}
-                      </p>
-                    </button>
-                  )}
 
                   {/* Execution Config */}
                   <div className="space-y-3 p-3 rounded-md bg-muted/30">
@@ -1317,10 +1372,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       )}
                     </div>
 
-                    {/* Progress Steps Card - Enhanced Detail View */}
+                    {/* Execution Progress Card - Vertical Timeline */}
                     {task.next_action && task.next_action.length > 0 && (
-                      <div className="mt-1 p-4 rounded-lg bg-background border">
-                        {/* Header */}
+                      <div className="mt-2 p-4 rounded-lg bg-background border">
+                        {/* Header with progress percentage */}
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <Activity className="h-4 w-4 text-primary" />
@@ -1328,100 +1383,112 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                               {t("workspace.executionProgress", "Execution Progress")}
                             </span>
                           </div>
-                          <Badge variant={task.status === "in_progress" ? "default" : "secondary"} className="text-xs">
-                            {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
-                              current: Math.min((task.current_phase ?? 0) + 1, task.next_action.length),
-                              total: task.next_action.length,
-                            })}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
+                                current: Math.min((task.current_phase ?? 0) + 1, task.next_action.length),
+                                total: task.next_action.length,
+                              })}
+                            </span>
+                            <Badge
+                              variant={task.status === "in_progress" ? "default" : "secondary"}
+                              className="text-xs tabular-nums"
+                            >
+                              {Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%
+                            </Badge>
+                          </div>
                         </div>
 
-                        {/* Vertical Steps Timeline */}
-                        <div className="space-y-0">
-                          {task.next_action.map((action, index) => {
-                            const currentPhase = task.current_phase ?? 0;
-                            const isCompleted = index < currentPhase;
-                            const isCurrent = index === currentPhase;
-                            const isPending = index > currentPhase;
-                            const isLast = index === task.next_action!.length - 1;
+                        {/* Vertical Timeline Steps */}
+                        <div className="relative pl-6">
+                          {/* Vertical connecting line */}
+                          <div className="absolute left-[11px] top-1 bottom-1 w-0.5 bg-muted" />
 
-                            return (
-                              <div key={index} className="relative">
-                                {/* Connecting line */}
-                                {!isLast && (
-                                  <div className={cn(
-                                    "absolute left-4 top-8 w-0.5 h-6",
-                                    isCompleted ? "bg-success" : "bg-muted"
-                                  )} />
-                                )}
+                          {/* Progress overlay on the line */}
+                          <div
+                            className="absolute left-[11px] top-1 w-0.5 bg-primary transition-all duration-500"
+                            style={{
+                              height: `${Math.min(100, ((task.current_phase ?? 0) / Math.max(1, task.next_action.length - 1)) * 100)}%`
+                            }}
+                          />
 
-                                {/* Step row */}
-                                <div className={cn(
-                                  "flex items-center gap-3 p-2 rounded-lg transition-all",
-                                  isCurrent && "bg-primary/5 border border-primary/20",
-                                  isCompleted && "opacity-70"
-                                )}>
+                          <div className="space-y-4">
+                            {task.next_action.map((action, index) => {
+                              const currentPhase = task.current_phase ?? 0;
+                              const isCompleted = index < currentPhase;
+                              const isCurrent = index === currentPhase;
+                              const isPending = index > currentPhase;
+
+                              // Action descriptions
+                              const actionDescriptions: Record<string, string> = {
+                                plan: "Planning and requirement analysis",
+                                implement: "Writing code and implementing features",
+                                check: "Code review and quality validation",
+                                finish: "Final touches and cleanup",
+                                "create-pr": "Creating pull request for review",
+                              };
+
+                              return (
+                                <div key={index} className="relative flex items-start gap-3">
                                   {/* Step indicator */}
                                   <div className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all shrink-0",
-                                    isCompleted && "bg-success text-success-foreground",
-                                    isCurrent && "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                                    "absolute -left-6 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium z-10 transition-all duration-300",
+                                    isCompleted && "bg-primary text-primary-foreground",
+                                    isCurrent && "bg-primary text-primary-foreground ring-4 ring-primary/20",
                                     isPending && "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
                                   )}>
                                     {isCompleted ? (
-                                      <CheckCircle2 className="h-4 w-4" />
-                                    ) : isCurrent ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                    ) : isCurrent && task.status === "in_progress" ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                     ) : (
                                       <span>{index + 1}</span>
                                     )}
                                   </div>
 
                                   {/* Step content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    "flex-1 min-w-0 py-0.5 transition-opacity duration-300",
+                                    isPending && "opacity-50"
+                                  )}>
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <span className={cn(
                                         "text-sm font-medium",
                                         isCurrent && "text-primary",
-                                        isCompleted && "text-success line-through",
-                                        isPending && "text-muted-foreground"
+                                        isCompleted && "text-foreground"
                                       )}>
                                         {t(`workspace.taskCard.action.${action.action}`, action.action)}
                                       </span>
                                       {isCurrent && task.status === "in_progress" && (
-                                        <Badge variant="outline" className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30">
+                                        <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
                                           {t("workspace.inProgress", "In Progress")}
                                         </Badge>
                                       )}
                                       {isCompleted && (
-                                        <Badge variant="outline" className="text-[10px] h-5 bg-success/10 text-success border-success/30">
+                                        <Badge variant="outline" className="text-[10px] h-5 bg-primary/5 text-primary border-primary/20">
                                           {t("workspace.done", "Done")}
                                         </Badge>
                                       )}
                                     </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      {t(`workspace.taskCard.actionDesc.${action.action}`, getActionDescription(action.action))}
-                                    </span>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {t(`workspace.taskCard.actionDesc.${action.action}`, actionDescriptions[action.action] || `Execute ${action.action}`)}
+                                    </p>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        {/* Progress bar */}
+                        {/* Bottom progress bar */}
                         <div className="mt-4 pt-3 border-t">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                            <span>{t("workspace.overallProgress", "Overall Progress")}</span>
-                            <span className="font-medium">
-                              {Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%
-                            </span>
-                          </div>
                           <div className="h-2 rounded-full bg-muted overflow-hidden">
                             <div
                               className={cn(
-                                "h-full rounded-full transition-all duration-500",
-                                task.status === "in_progress" ? "bg-primary" : "bg-success"
+                                "h-full rounded-full transition-all duration-500 ease-out",
+                                task.status === "in_progress"
+                                  ? "bg-gradient-to-r from-primary to-primary/80"
+                                  : "bg-primary"
                               )}
                               style={{
                                 width: `${Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%`
@@ -1429,89 +1496,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                             />
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Agent Selector Row */}
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-muted-foreground shrink-0">
-                        {t("workspace.agent", "Agent")}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        {task.status === "backlog" && onUpdate ? (
-                          (() => {
-                            const hasNoAgents = availableAgents.length === 0;
-                            const selectedAgent = availableAgents.find(a => a.id === task.agent_id);
-                            return (
-                              <Select
-                                value={task.agent_id || ""}
-                                onValueChange={(value) => onUpdate({ agent_id: value })}
-                                disabled={hasNoAgents}
-                              >
-                                <SelectTrigger className={cn(
-                                  "h-8 bg-background",
-                                  hasNoAgents && "opacity-60"
-                                )}>
-                                  <div className="flex items-center gap-2 text-sm truncate">
-                                    <Bot className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    {hasNoAgents ? (
-                                      <span className="text-muted-foreground">{t("chat.noAgents", "No agents")}</span>
-                                    ) : (
-                                      <span className="truncate">{selectedAgent?.name || t("workspace.selectAgent", "Select agent")}</span>
-                                    )}
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableAgents.map((agent) => (
-                                    <SelectItem key={agent.id} value={agent.id}>
-                                      <div className="flex flex-col">
-                                        <span>{agent.name}</span>
-                                        {agent.description && (
-                                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                            {agent.description}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            );
-                          })()
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {task.agent_id || "default"}
-                            </Badge>
-                            {task.status !== "backlog" && (
-                              <span className="text-xs text-muted-foreground/60">🔒</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Executor Row */}
-                    {task.executor && (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-muted-foreground shrink-0">
-                          {t("workspace.executor", "Executor")}
-                        </span>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {task.executor}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Model Row */}
-                    {task.model && (
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-muted-foreground shrink-0">
-                          {t("workspace.model", "Model")}
-                        </span>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {task.model}
-                        </Badge>
                       </div>
                     )}
                   </div>

@@ -114,6 +114,40 @@ export interface TaskWorktreeInfo {
 }
 
 /**
+ * Timing info for task duration tracking
+ */
+export interface TaskTimingInfo {
+  /** Total duration from creation to now (or completion) in ms */
+  totalDuration?: number;
+  /** Total duration formatted as human readable string */
+  totalDurationStr?: string;
+  /** Time in queue (queuedAt to start) in ms */
+  queueDuration?: number;
+  /** Queue duration formatted */
+  queueDurationStr?: string;
+  /** Planning phase duration (from plan.log first entry to last) in ms */
+  planDuration?: number;
+  /** Plan duration formatted */
+  planDurationStr?: string;
+  /** Implementation phase duration in ms */
+  implementDuration?: number;
+  /** Implement duration formatted */
+  implementDurationStr?: string;
+  /** Check/review phase duration in ms */
+  checkDuration?: number;
+  /** Check duration formatted */
+  checkDurationStr?: string;
+  /** Time since last activity in ms */
+  idleDuration?: number;
+  /** Idle duration formatted */
+  idleDurationStr?: string;
+  /** Execution duration from task started to now/completion in ms */
+  executionDuration?: number;
+  /** Execution duration formatted */
+  executionDurationStr?: string;
+}
+
+/**
  * Extended task view result with file and runtime info
  */
 export interface ViewTaskResult {
@@ -144,6 +178,8 @@ export interface ViewTaskResult {
     sessionId?: string;
     platform?: string;
   };
+  /** Timing info for duration tracking */
+  timing?: TaskTimingInfo;
   error?: string;
 }
 
@@ -174,6 +210,219 @@ export interface ListArchiveResult {
 // =============================================================================
 // Helpers
 // =============================================================================
+
+/**
+ * Format duration in milliseconds to human readable string
+ * Examples: "5s", "2m 30s", "1h 15m", "2d 3h"
+ */
+function formatDuration(ms: number): string {
+  if (ms < 0) return "-";
+
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  }
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+  return `${seconds}s`;
+}
+
+/**
+ * Get first and last timestamp from a JSONL log file
+ * Returns [firstTimestamp, lastTimestamp] or [null, null] if file doesn't exist
+ */
+function getLogTimeRange(logPath: string): [string | null, string | null] {
+  if (!existsSync(logPath)) {
+    return [null, null];
+  }
+
+  try {
+    const content = readFileSync(logPath, "utf-8").trim();
+    if (!content) {
+      return [null, null];
+    }
+
+    const lines = content.split("\n").filter((line) => line.trim());
+    if (lines.length === 0) {
+      return [null, null];
+    }
+
+    let firstTimestamp: string | null = null;
+    let lastTimestamp: string | null = null;
+
+    // Get first timestamp
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        if (entry.timestamp) {
+          firstTimestamp = entry.timestamp;
+          break;
+        }
+      } catch {
+        // Skip invalid JSON lines
+      }
+    }
+
+    // Get last timestamp (iterate from end)
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const entry = JSON.parse(lines[i]);
+        if (entry.timestamp) {
+          lastTimestamp = entry.timestamp;
+          break;
+        }
+      } catch {
+        // Skip invalid JSON lines
+      }
+    }
+
+    return [firstTimestamp, lastTimestamp];
+  } catch {
+    return [null, null];
+  }
+}
+
+/**
+ * Calculate timing info from task data and log files
+ */
+function calculateTiming(
+  taskData: Record<string, unknown>,
+  taskDir: string,
+  files: {
+    startLog: TaskFileInfo;
+    planLog: TaskFileInfo;
+    workLog: TaskFileInfo;
+    implementLog: TaskFileInfo;
+    reviewLog: TaskFileInfo;
+  }
+): TaskTimingInfo {
+  const timing: TaskTimingInfo = {};
+  const now = Date.now();
+
+  const createdAt = taskData.createdAt as string | undefined;
+  const queuedAt = taskData.queuedAt as string | undefined;
+  const startedAt = taskData.startedAt as string | undefined;
+  const checkPassedAt = taskData.checkPassedAt as string | undefined;
+  const prCreatedAt = taskData.prCreatedAt as string | undefined;
+  const completedAt = taskData.completedAt as string | undefined;
+  const status = taskData.status as string | undefined;
+
+  // 1. Total duration (creation to now or completion)
+  if (createdAt) {
+    const endTime = completedAt ? new Date(completedAt).getTime() : now;
+    const startTime = new Date(createdAt).getTime();
+    timing.totalDuration = endTime - startTime;
+    timing.totalDurationStr = formatDuration(timing.totalDuration);
+  }
+
+  // 2. Queue duration (queuedAt to startedAt or first log activity)
+  if (queuedAt) {
+    // Prefer startedAt timestamp if available
+    if (startedAt) {
+      const queueTime = new Date(queuedAt).getTime();
+      const startTime = new Date(startedAt).getTime();
+      timing.queueDuration = startTime - queueTime;
+      timing.queueDurationStr = formatDuration(timing.queueDuration);
+    } else {
+      // Fall back to log file timestamps
+      const [startLogFirst] = getLogTimeRange(join(taskDir, "start.log.jsonl"));
+      const [planLogFirst] = getLogTimeRange(join(taskDir, "plan.log.jsonl"));
+      const [workLogFirst] = getLogTimeRange(join(taskDir, "work.log.jsonl"));
+
+      const executionStart = startLogFirst || planLogFirst || workLogFirst;
+      if (executionStart) {
+        const queueTime = new Date(queuedAt).getTime();
+        const execTime = new Date(executionStart).getTime();
+        timing.queueDuration = execTime - queueTime;
+        timing.queueDurationStr = formatDuration(timing.queueDuration);
+      }
+    }
+  }
+
+  // 3. Plan phase duration
+  const [planFirst, planLast] = getLogTimeRange(join(taskDir, "plan.log.jsonl"));
+  if (planFirst && planLast) {
+    timing.planDuration = new Date(planLast).getTime() - new Date(planFirst).getTime();
+    timing.planDurationStr = formatDuration(timing.planDuration);
+  }
+
+  // 4. Implementation phase duration (from implement.log or work.log)
+  const [implFirst, implLast] = getLogTimeRange(join(taskDir, "implement.log.jsonl"));
+  const [workFirst, workLast] = getLogTimeRange(join(taskDir, "work.log.jsonl"));
+
+  // Use implement.log if exists, otherwise work.log
+  if (implFirst && implLast) {
+    timing.implementDuration = new Date(implLast).getTime() - new Date(implFirst).getTime();
+    timing.implementDurationStr = formatDuration(timing.implementDuration);
+  } else if (workFirst && workLast) {
+    timing.implementDuration = new Date(workLast).getTime() - new Date(workFirst).getTime();
+    timing.implementDurationStr = formatDuration(timing.implementDuration);
+  }
+
+  // 5. Check/review phase duration
+  const [reviewFirst, reviewLast] = getLogTimeRange(join(taskDir, "review.log.jsonl"));
+  if (reviewFirst && reviewLast) {
+    timing.checkDuration = new Date(reviewLast).getTime() - new Date(reviewFirst).getTime();
+    timing.checkDurationStr = formatDuration(timing.checkDuration);
+  }
+
+  // 6. Total execution duration (from startedAt or first activity to now/completion)
+  let executionStartTime: number | null = null;
+  if (startedAt) {
+    executionStartTime = new Date(startedAt).getTime();
+  } else {
+    const allStarts = [
+      files.startLog.modifiedAt,
+      files.planLog.modifiedAt,
+      files.workLog.modifiedAt,
+      files.implementLog.modifiedAt,
+    ]
+      .filter(Boolean)
+      .map((t) => new Date(t!).getTime());
+
+    if (allStarts.length > 0) {
+      executionStartTime = Math.min(...allStarts);
+    }
+  }
+
+  if (executionStartTime) {
+    const endTime = completedAt ? new Date(completedAt).getTime() : now;
+    timing.executionDuration = endTime - executionStartTime;
+    timing.executionDurationStr = formatDuration(timing.executionDuration);
+  }
+
+  // 7. Idle duration (time since last activity)
+  const allEnds = [
+    files.startLog.modifiedAt,
+    files.planLog.modifiedAt,
+    files.workLog.modifiedAt,
+    files.implementLog.modifiedAt,
+    files.reviewLog.modifiedAt,
+    checkPassedAt,
+    prCreatedAt,
+  ]
+    .filter(Boolean)
+    .map((t) => new Date(t!).getTime());
+
+  if (allEnds.length > 0 && status !== "completed" && status !== "archived") {
+    const lastActivity = Math.max(...allEnds);
+    timing.idleDuration = now - lastActivity;
+    timing.idleDurationStr = formatDuration(timing.idleDuration);
+  }
+
+  return timing;
+}
 
 /**
  * Ensure tasks directory exists
@@ -293,8 +542,6 @@ export function createTask(
   );
   const currentBranch = branchOut.trim() || "main";
 
-  const today = getTodayDate();
-
   // Determine executor/platform
   const executor = options.executor?.toUpperCase() || "CLAUDE_CODE";
   const _platform: Platform = EXECUTOR_TO_PLATFORM[executor] || "claude";
@@ -311,7 +558,7 @@ export function createTask(
     priority: (options.priority || DEFAULT_PRIORITY) as IssuePriority,
     creator: creator,
     assignee: assignee,
-    createdAt: today,
+    createdAt: new Date().toISOString(),
     completedAt: undefined,
     branch: branch,
     base_branch: currentBranch,
@@ -466,6 +713,9 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
     }
   }
 
+  // Calculate timing info
+  const timing = calculateTiming(taskData, taskDir, files);
+
   return {
     success: true,
     task: taskData as unknown as TaskJson,
@@ -474,6 +724,7 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
     files,
     worktree,
     runtime,
+    timing,
   };
 }
 

@@ -669,6 +669,7 @@ export function registerTaskCommand(program: Command): void {
           files,
           worktree,
           runtime: result.runtime,
+          timing: result.timing,
         }), () => {
           // Header
           console.log(chalk.bold.cyan(`=== Task: ${taskJson.title} ===`));
@@ -793,11 +794,72 @@ export function registerTaskCommand(program: Command): void {
 
           // Timestamps Section
           console.log(chalk.bold("Timestamps"));
-          outputKeyValue(ctx, {
+          const timestamps: Record<string, string> = {
             "Created At": taskJson.createdAt || "-",
-            "Queued At": taskJson.queuedAt || "-",
-            "Completed At": taskJson.completedAt || "-",
-          });
+          };
+          if (taskJson.queuedAt) {
+            timestamps["Queued At"] = taskJson.queuedAt;
+          }
+          if (taskJson.startedAt) {
+            timestamps["Started At"] = taskJson.startedAt;
+          }
+          if (taskJson.checkPassedAt) {
+            timestamps["Check Passed"] = taskJson.checkPassedAt;
+          }
+          if (taskJson.prCreatedAt) {
+            timestamps["PR Created"] = taskJson.prCreatedAt;
+          }
+          if (taskJson.completedAt) {
+            timestamps["Completed At"] = taskJson.completedAt;
+          }
+          outputKeyValue(ctx, timestamps);
+
+          // Timing Section
+          const timing = result.timing;
+          if (timing) {
+            console.log();
+            console.log(chalk.bold("Timing"));
+
+            // Build timing display
+            const timingDisplay: Record<string, string> = {};
+
+            // Total duration is most important
+            if (timing.totalDurationStr) {
+              timingDisplay["Total"] = timing.totalDurationStr;
+            }
+
+            // Execution duration (actual work time)
+            if (timing.executionDurationStr) {
+              timingDisplay["Execution"] = timing.executionDurationStr;
+            }
+
+            // Queue wait time
+            if (timing.queueDurationStr) {
+              timingDisplay["Queue Wait"] = timing.queueDurationStr;
+            }
+
+            // Phase breakdown
+            if (timing.planDurationStr) {
+              timingDisplay["Plan Phase"] = timing.planDurationStr;
+            }
+            if (timing.implementDurationStr) {
+              timingDisplay["Implement Phase"] = timing.implementDurationStr;
+            }
+            if (timing.checkDurationStr) {
+              timingDisplay["Check Phase"] = timing.checkDurationStr;
+            }
+
+            // Idle time (only for non-completed tasks)
+            if (timing.idleDurationStr && taskJson.status !== "completed" && taskJson.status !== "archived") {
+              timingDisplay["Idle"] = chalk.yellow(timing.idleDurationStr);
+            }
+
+            if (Object.keys(timingDisplay).length > 0) {
+              outputKeyValue(ctx, timingDisplay);
+            } else {
+              console.log(chalk.gray("  (no timing data yet)"));
+            }
+          }
 
           // Session Info (if available)
           if (result.runtime?.sessionId) {
@@ -2499,6 +2561,8 @@ export function registerTaskCommand(program: Command): void {
         console.log();
         if (result.success) {
           console.log(chalk.green("Check phase validation passed."));
+          // Record timestamp when check phase passes
+          updateTaskField(taskDir, "checkPassedAt", new Date().toISOString());
         } else {
           console.log(chalk.red("Check phase validation failed:"));
           console.log(chalk.red(`  ${result.error}`));

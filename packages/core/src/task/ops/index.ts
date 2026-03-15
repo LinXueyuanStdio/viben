@@ -149,6 +149,7 @@ export type {
   FinishTaskResult,
   ArchiveTaskResult,
   ListArchiveResult,
+  TaskTimingInfo,
 } from "./crud";
 export {
   listTasks,

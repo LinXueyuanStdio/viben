@@ -228,6 +228,7 @@ export function createPR(
   updateTaskField(taskDirPath, "status", "review");
   updateTaskField(taskDirPath, "pr_url", prUrl);
   updateTaskField(taskDirPath, "current_phase", createPrPhase);
+  updateTaskField(taskDirPath, "prCreatedAt", new Date().toISOString());
 
   return {
     success: true,

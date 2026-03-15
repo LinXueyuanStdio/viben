@@ -301,20 +301,16 @@ while not converged and iteration < max_iterations:
 
     # ====== ITERATION START ======
 
-    # Phase 1: Generate ideas
-    ideas = generate_optimization_ideas(
-        target=optimization_target,
-        scope=scope,
-        count=num_rollouts
-    )
+    # Phase 1: Generate ideas using viben idea
+    viben idea generate --types $OPTIMIZATION_TYPES --max-ideas $NUM_ROLLOUTS --override
 
-    # Phase 2: Parallel rollout
-    tasks = []
+    # Phase 2: Parallel rollout using viben idea promote
+    ideas = viben idea list --json | select top N by effort
     for idea in ideas:
-        task = create_and_start_task(idea, worktree=True)
-        tasks.append(task)
+        viben idea promote idea.id --worktree --start &
+    wait
 
-    wait_for_completion(tasks)
+    wait_for_completion(tasks)  # viben swarm status --wait
 
     # Phase 3: Compute rewards
     for task in tasks:
@@ -404,14 +400,18 @@ viben task add-session \
 | PPO Step | Viben Command | Description |
 |----------|---------------|-------------|
 | Initialize | `viben user init filerl-optimizer` | Set optimizer identity |
-| Create rollout | `viben task create --worktree` | Create isolated task |
-| Execute | `viben task start --detach` | Run agent in background |
-| Monitor | `viben swarm status --watch` | Watch progress |
+| List idea types | `viben idea list-types` | Show builtin + custom types |
+| Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |
+| List ideas | `viben idea list` | Show generated ideas |
+| View idea | `viben idea view <id>` | Show idea details |
+| Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
+| Monitor | `viben swarm status --watch` | Watch agent progress |
 | Get result | `viben task view --json` | Get task result |
 | Finish | `viben task finish` | Mark task complete |
 | Create PR | `viben task create-pr` | Create GitHub PR |
 | Cleanup | `viben task cleanup` | Remove worktree |
 | Record | `viben task add-session` | Log session |
+| Remove ideas | `viben idea remove <ids>` | Clean up old ideas |
 
 ---
 
