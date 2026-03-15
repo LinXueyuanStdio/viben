@@ -267,6 +267,12 @@ export interface UnifiedTask {
   updatedAt?: string;
   /** Completion timestamp */
   completedAt?: string;
+  /** Timestamp when task started execution (first time entering in_progress) */
+  startedAt?: string;
+  /** Timestamp when check phase passed validation */
+  checkPassedAt?: string;
+  /** Timestamp when PR was created */
+  prCreatedAt?: string;
 
   // === XState State Machine (Task State Machine System) ===
   /** XState state machine current state */

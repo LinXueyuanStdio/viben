@@ -80,6 +80,7 @@ interface TaskData {
   description?: string;
   status?: string;
   session_id?: string;
+  startedAt?: string;
   [key: string]: unknown;
 }
 
@@ -288,8 +289,11 @@ export async function startTask(
   // Prepare and Start Agent
   // ---------------------------------------------------------------------------
 
-  // Update task status
+  // Update task status and record start time (only if not already started)
   taskData.status = "in_progress";
+  if (!taskData.startedAt) {
+    taskData.startedAt = new Date().toISOString();
+  }
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
   // Log file
