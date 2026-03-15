@@ -198,85 +198,99 @@ viben swarm status --watch
 
 ### Phase 3: Reward Computation
 
-After tasks complete, compute rewards for each PR:
+Reward is computed automatically in work-phase via `viben task compute-reward`.
 
-```python
-def compute_reward(pr_info):
-    reward = 0.0
+**Work Phase Stages (in worktree):**
+```
+viben task work-phase <task>
+├── 1. implement-phase      → 实现代码
+├── 2. check-phase          → 检查代码质量
+├── 3. validate-check-phase → 验证通过
+├── 4. create-pr            → 创建 PR
+└── 5. compute-reward       → 评估 PR 奖励
+```
 
-    # 1. Test pass rate (weight: 0.30)
-    test_result = run_tests(pr_info.branch)
-    r_test = test_result.passed / test_result.total
-    reward += 0.30 * r_test
+**Reward config in task.json** (inherited from idea type):
+```json
+{
+  "reward_config": {
+    "types": ["test_coverage", "code_quality", "agent_review"],
+    "weights": [0.4, 0.3, 0.3]
+  }
+}
+```
 
-    # 2. Code quality (weight: 0.25)
-    lint_score = run_linter(pr_info.branch)
-    r_quality = lint_score / 100
-    reward += 0.25 * r_quality
-
-    # 3. Performance delta (weight: 0.20)
-    perf_before = benchmark(ref_codebase)
-    perf_after = benchmark(pr_info.branch)
-    r_perf = clip((perf_after - perf_before) / perf_before, -0.5, 0.5)
-    reward += 0.20 * (r_perf + 0.5)
-
-    # 4. Security (weight: 0.15)
-    security_ok = run_security_scan(pr_info.branch)
-    r_security = 1.0 if security_ok else 0.0
-    reward += 0.15 * r_security
-
-    # 5. Maintainability (weight: 0.10)
-    complexity = analyze_complexity(pr_info.diff)
-    r_maintain = 1.0 - min(complexity / 100, 1.0)
-    reward += 0.10 * r_maintain
-
-    # KL Penalty: penalize large diffs
-    diff_lines = count_diff_lines(pr_info.diff)
-    kl_penalty = KL_COEF * (diff_lines / MAX_DIFF_LINES)
-
-    return reward - kl_penalty
+**Output written to task.json:**
+```json
+{
+  "reward": {
+    "scores": {
+      "test_coverage": { "score": 0.95, "reasoning": "..." },
+      "code_quality": { "score": 0.82, "reasoning": "..." },
+      "agent_review": { "score": 0.78, "reasoning": "..." }
+    },
+    "total": 0.858,
+    "diff_lines": 120,
+    "computed_at": "2024-03-17T10:30:00Z"
+  }
+}
 ```
 
 ### Phase 4: PPO Selection
 
-Apply PPO selection to choose the best PR:
+Use `viben reward select` to aggregate rewards and select best PR:
 
-```python
-# Compute advantage
-baseline = mean([r.reward for r in rollouts])
-for rollout in rollouts:
-    rollout.advantage = rollout.reward - baseline
+```bash
+# Get completed tasks
+TASKS=$(viben task list --status completed --from-idea --json | jq -r '.[].name' | tr '\n' ' ')
 
-# PPO Clipping
-for rollout in rollouts:
-    ratio = compute_importance_ratio(rollout)
-    clipped_ratio = clip(ratio, 1 - CLIP_EPS, 1 + CLIP_EPS)
-    rollout.ppo_score = min(
-        ratio * rollout.advantage,
-        clipped_ratio * rollout.advantage
-    )
+# PPO selection
+viben reward select $TASKS --threshold 0.6 --kl-coef 0.05 --max-diff 500
+```
 
-# Select best
-best = max(rollouts, key=lambda r: r.ppo_score)
+**PPO Formulas:**
+- KL Penalty: $KL = \lambda \cdot \frac{diff\_lines}{max\_diff}$
+- Adjusted Reward: $\tilde{R} = R - KL$
+- Baseline: $\bar{R} = mean(\tilde{R})$
+- Advantage: $A = \tilde{R} - \bar{R}$
+- Selection: $task^* = \arg\max A$ where $\tilde{R} \geq threshold$
+
+**Output:**
+```
+┌─────────┬────────┬───────┬────────┬──────────┬───────────┬────────────┐
+│ Task    │ Reward │ Diff  │ KL     │ Adjusted │ Advantage │ Status     │
+├─────────┼────────┼───────┼────────┼──────────┼───────────┼────────────┤
+│ task-a  │ 0.858  │ 120   │ 0.012  │ 0.846    │ +0.130    │ ✓ SELECTED │
+│ task-b  │ 0.721  │ 450   │ 0.045  │ 0.676    │ -0.040    │ rejected   │
+│ task-c  │ 0.634  │ 80    │ 0.008  │ 0.626    │ -0.090    │ rejected   │
+└─────────┴────────┴───────┴────────┴──────────┴───────────┴────────────┘
 ```
 
 ### Phase 5: Update (Merge or Discard)
 
 ```bash
-if best.reward >= REWARD_THRESHOLD:
-    # Merge the best PR
-    viben task finish $BEST_TASK
-    viben task create-pr $BEST_TASK
-    # Manual review or auto-merge based on config
-else:
-    # No PR above threshold, log and continue
-    echo "No PR above threshold. Best: $BEST_REWARD"
+# Get selection result
+RESULT=$(viben reward select $TASKS --json)
+SELECTED=$(echo $RESULT | jq -r '.selected')
+
+if [ -n "$SELECTED" ] && [ "$SELECTED" != "null" ]; then
+    # Approve agent merges the PR
+    viben task approve $SELECTED
+else
+    echo "No PR above threshold"
 fi
 
-# Cleanup all worktrees
-for task in tasks:
+# Cleanup rejected worktrees
+REJECTED=$(echo $RESULT | jq -r '.rejected[]')
+for task in $REJECTED; do
     viben task cleanup $task
+done
 ```
+
+`viben task approve` internally:
+1. Checks PR status (CI passed, no conflicts)
+2. Executes `gh pr merge --merge`
+3. Updates task.json with `merged_at` and `merge_commit`
 
 ### Phase 6: Convergence Check
 
@@ -296,47 +310,45 @@ if len(history) >= 10:
 
 ## Continuous Loop Structure
 
-```
-while not converged and iteration < max_iterations:
+```bash
+iteration=0
 
-    # ====== ITERATION START ======
+while true; do
+    echo "=== FileRL Iteration $iteration ==="
 
-    # Phase 1: Generate ideas using viben idea
+    # Phase 1: Generate ideas
     viben idea generate --types $OPTIMIZATION_TYPES --max-ideas $NUM_ROLLOUTS --override
 
-    # Phase 2: Parallel rollout using viben idea promote
-    ideas = viben idea list --json | select top N by effort
-    for idea in ideas:
-        viben idea promote idea.id --worktree --start &
+    # Phase 2: Parallel rollout
+    for idea_id in $(viben idea list --json | jq -r '.[].id'); do
+        viben idea promote "$idea_id" --worktree --start &
+    done
     wait
 
-    wait_for_completion(tasks)  # viben swarm status --wait
-
-    # Phase 3: Compute rewards
-    for task in tasks:
-        task.reward = compute_reward(task.pr_info)
+    # Phase 3: Wait (compute-reward runs automatically in work-phase)
+    viben swarm wait --all
 
     # Phase 4: PPO selection
-    best_task = ppo_select(tasks)
+    TASKS=$(viben task list --status completed --from-idea --json | jq -r '.[].name' | tr '\n' ' ')
+    RESULT=$(viben reward select $TASKS --threshold 0.6 --json)
+    SELECTED=$(echo $RESULT | jq -r '.selected')
 
-    # Phase 5: Update codebase
-    if best_task.reward >= reward_threshold:
-        merge_pr(best_task)
-        ref_codebase = current_codebase()
-    else:
-        log("No improvement this iteration")
+    # Phase 5: Approve & merge (or skip)
+    if [ -n "$SELECTED" ] && [ "$SELECTED" != "null" ]; then
+        viben task approve $SELECTED
+    fi
 
-    # Phase 6: Cleanup & record
-    cleanup_worktrees(tasks)
-    record_iteration(iteration, best_task.reward)
+    # Phase 6: Cleanup rejected
+    for task in $(echo $RESULT | jq -r '.rejected[]'); do
+        viben task cleanup $task
+    done
 
-    # Phase 7: Check convergence
-    if check_convergence(history):
-        break
+    # Phase 7: Record & check convergence
+    viben task add-session --title "FileRL Iteration $iteration"
+    # Agent judges convergence based on reward history
 
-    iteration += 1
-
-    # ====== ITERATION END ======
+    iteration=$((iteration + 1))
+done
 ```
 
 ---
@@ -363,7 +375,32 @@ $$R(PR) = \sum_{i} w_i \cdot r_i(PR) - \lambda \cdot \text{Penalty}(PR)$$
 
 ---
 
-## Monitoring & Logging
+## Logging Results
+
+When an iteration is done, log it to `results.tsv` (tab-separated, NOT comma-separated).
+
+The TSV has a header row and 6 columns:
+
+```
+iteration	commit	reward	diff_lines	status	description
+```
+
+1. iteration number (1, 2, 3, ...)
+2. git commit hash of merged PR (7 chars) — use `-------` for no merge
+3. adjusted reward (e.g. 0.846) — use 0.000 for failures
+4. diff lines of merged change — use 0 for no merge
+5. status: `merged`, `rejected`, or `failed`
+6. short description of what this iteration tried
+
+Example:
+
+```
+iteration	commit	reward	diff_lines	status	description
+1	-------	0.716	0	baseline	initial codebase evaluation
+2	a1b2c3d	0.846	120	merged	add redis caching for user queries
+3	-------	0.000	0	failed	all PRs below threshold
+4	b2c3d4e	0.892	85	merged	optimize N+1 queries in order service
+```
 
 ### Real-time Monitoring
 
@@ -375,24 +412,6 @@ viben swarm status --watch
 viben swarm status $TASK --log
 ```
 
-### Session Recording
-
-After each iteration:
-
-```bash
-viben task add-session \
-    --title "FileRL Iteration $ITERATION" \
-    --summary "Best reward: $BEST_REWARD, Merged: $MERGED"
-```
-
-### Metrics to Track
-
-- Reward per iteration
-- Convergence curve
-- PR acceptance rate
-- Code quality trend
-- Test coverage trend
-
 ---
 
 ## Commands Reference
@@ -400,18 +419,17 @@ viben task add-session \
 | PPO Step | Viben Command | Description |
 |----------|---------------|-------------|
 | Initialize | `viben user init filerl-optimizer` | Set optimizer identity |
-| List idea types | `viben idea list-types` | Show builtin + custom types |
+| List reward types | `viben reward list-types` | Show builtin + custom reward types |
+| List idea types | `viben idea list-types` | Show builtin + custom idea types |
 | Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |
-| List ideas | `viben idea list` | Show generated ideas |
-| View idea | `viben idea view <id>` | Show idea details |
 | Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
 | Monitor | `viben swarm status --watch` | Watch agent progress |
-| Get result | `viben task view --json` | Get task result |
-| Finish | `viben task finish` | Mark task complete |
-| Create PR | `viben task create-pr` | Create GitHub PR |
-| Cleanup | `viben task cleanup` | Remove worktree |
+| Wait | `viben swarm wait --all` | Wait for all tasks |
+| Compute reward | `viben task compute-reward <task>` | Evaluate PR (auto in work-phase) |
+| PPO select | `viben reward select <tasks...>` | Aggregate + select best |
+| Approve & merge | `viben task approve <task>` | Agent merges PR |
+| Cleanup | `viben task cleanup <task>` | Remove worktree |
 | Record | `viben task add-session` | Log session |
-| Remove ideas | `viben idea remove <ids>` | Clean up old ideas |
 
 ---
 
@@ -430,37 +448,30 @@ viben task add-session \
 
 ```bash
 # Step 1: Generate performance optimization ideas
-viben idea generate --types performance_optimizations --max-ideas 5
+viben idea generate --types performance_optimizations --max-ideas 3
 
-# Step 2: Review generated ideas
-viben idea list
-viben idea view po-a1b2c3d4  # Check specific idea
+# Step 2: Promote all ideas to parallel worktree tasks
+for idea_id in $(viben idea list --json | jq -r '.[].id'); do
+    viben idea promote "$idea_id" --worktree --start &
+done
+wait
 
-# Step 3: Promote top ideas to parallel tasks
-viben idea promote po-a1b2c3d4 --worktree --start
-viben idea promote po-e5f6g7h8 --worktree --start
-viben idea promote po-i9j0k1l2 --worktree --start
+# Step 3: Wait for all tasks (including compute-reward)
+viben swarm wait --all
 
-# Step 4: Monitor execution
-viben swarm status --watch
+# Step 4: PPO select best task
+TASKS="03-17-add-caching 03-17-optimize-queries 03-17-connection-pool"
+viben reward select $TASKS --threshold 0.6
 
-# Step 5: After completion, evaluate rewards and select best
-# (Agent computes rewards based on test results, benchmarks, etc.)
+# Step 5: Approve and merge the selected task
+viben task approve 03-17-add-caching
 
-# Step 6: Merge best PR, cleanup others
-viben task finish <best-task>
-viben task create-pr <best-task>
-viben task cleanup <other-tasks>
+# Step 6: Cleanup rejected tasks
+viben task cleanup 03-17-optimize-queries
+viben task cleanup 03-17-connection-pool
 
-# Step 7: Record iteration and repeat
-viben task add-session --title "FileRL Iteration 1" --summary "Best reward: 0.85"
-
-# The agent loop will:
-# 1. Use viben idea generate to analyze codebase
-# 2. Use viben idea promote to create parallel tasks
-# 3. Evaluate rewards (tests, benchmarks, quality)
-# 4. PPO-select best PR and merge
-# 5. Repeat until convergence
+# Step 7: Record and continue
+viben task add-session --title "FileRL Iteration 1" --summary "Merged: add-caching, reward: 0.846"
 ```
 
 ### Using Custom Idea Types
