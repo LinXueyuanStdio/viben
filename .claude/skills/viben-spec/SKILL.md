@@ -116,58 +116,58 @@ packages/core/src/
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [init.md](references/modules/cli/init.md) | `viben init` | 工作区初始化 |
-| [config.md](references/modules/cli/config.md) | `viben config` | Git 风格配置管理 |
-| [workspace.md](references/modules/cli/workspace.md) | `viben workspace` | 工作区操作 |
-| [team.md](references/modules/cli/team.md) | `viben team` | 团队协作工作区初始化 |
-| [user.md](references/modules/cli/user.md) | `viben user` | 用户身份管理 |
+| [init.md](docs/specs/modules/cli/init.md) | `viben init` | 工作区初始化 |
+| [config.md](docs/specs/modules/cli/config.md) | `viben config` | Git 风格配置管理 |
+| [workspace.md](docs/specs/modules/cli/workspace.md) | `viben workspace` | 工作区操作 |
+| [team.md](docs/specs/modules/cli/team.md) | `viben team` | 团队协作工作区初始化 |
+| [user.md](docs/specs/modules/cli/user.md) | `viben user` | 用户身份管理 |
 
 ### 服务与运行时
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [service.md](references/modules/cli/service.md) | `viben service` | 后台服务管理 |
-| [gateway.md](references/modules/cli/gateway.md) | `viben gateway` | Gateway 运行时 |
+| [service.md](docs/specs/modules/cli/service.md) | `viben service` | 后台服务管理 |
+| [gateway.md](docs/specs/modules/cli/gateway.md) | `viben gateway` | Gateway 运行时 |
 
 ### 执行器与智能体
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [executor.md](references/modules/cli/executor.md) | `viben executor` | Executor 发现和管理 |
-| [executor-chat.md](references/modules/cli/executor-chat.md) | `viben executor chat` | 非交互式调用 AI coding agent |
-| [agent.md](references/modules/cli/agent.md) | `viben agent` | Agent 实例管理 |
-| [agent-chat.md](references/modules/cli/agent-chat.md) | `viben agent chat` | 基于 Agent 的对话 |
+| [executor.md](docs/specs/modules/cli/executor.md) | `viben executor` | Executor 发现和管理 |
+| [executor-chat.md](docs/specs/modules/cli/executor-chat.md) | `viben executor chat` | 非交互式调用 AI coding agent |
+| [agent.md](docs/specs/modules/cli/agent.md) | `viben agent` | Agent 实例管理 |
+| [agent-chat.md](docs/specs/modules/cli/agent-chat.md) | `viben agent chat` | 基于 Agent 的对话 |
 
 ### 任务与集群调度
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [task.md](references/modules/cli/task.md) | `viben task` | 任务管理（CRUD、上下文、规划、监控） |
-| [swarm.md](references/modules/cli/swarm.md) | `viben swarm` | 智能体集群调度 |
-| [session.md](references/modules/cli/session.md) | `viben session` | 开发会话管理 |
-| [context.md](references/modules/cli/context.md) | `viben context` | 获取当前开发上下文 |
-| [queue.md](references/modules/cli/queue.md) | `viben queue` | Gateway 任务队列管理 |
+| [task.md](docs/specs/modules/cli/task.md) | `viben task` | 任务管理（CRUD、上下文、规划、监控） |
+| [swarm.md](docs/specs/modules/cli/swarm.md) | `viben swarm` | 智能体集群调度 |
+| [session.md](docs/specs/modules/cli/session.md) | `viben session` | 开发会话管理 |
+| [context.md](docs/specs/modules/cli/context.md) | `viben context` | 获取当前开发上下文 |
+| [queue.md](docs/specs/modules/cli/queue.md) | `viben queue` | Gateway 任务队列管理 |
 
 ### 模型与服务商
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [provider.md](references/modules/cli/provider.md) | `viben provider` | API Provider 管理 |
-| [model.md](references/modules/cli/model.md) | `viben model` | Model 管理 |
+| [provider.md](docs/specs/modules/cli/provider.md) | `viben provider` | API Provider 管理 |
+| [model.md](docs/specs/modules/cli/model.md) | `viben model` | Model 管理 |
 
 ### 扩展与集成
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [mcp.md](references/modules/cli/mcp.md) | `viben mcp` | MCP Server 管理 |
-| [skill.md](references/modules/cli/skill.md) | `viben skill` | Skill 管理 |
-| [channel.md](references/modules/cli/channel.md) | `viben channel` | Chat Channel 管理 |
+| [mcp.md](docs/specs/modules/cli/mcp.md) | `viben mcp` | MCP Server 管理 |
+| [skill.md](docs/specs/modules/cli/skill.md) | `viben skill` | Skill 管理 |
+| [channel.md](docs/specs/modules/cli/channel.md) | `viben channel` | Chat Channel 管理 |
 
 ### 自动化
 
 | Document | Command | Description |
 |----------|---------|-------------|
-| [cron.md](references/modules/cli/cron.md) | `viben cron` | 定时任务管理 |
+| [cron.md](docs/specs/modules/cli/cron.md) | `viben cron` | 定时任务管理 |
 
 ## Global Options
 

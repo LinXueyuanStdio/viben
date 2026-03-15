@@ -429,20 +429,70 @@ viben task add-session \
 ## Example: Performance Optimization Loop
 
 ```bash
-# Start FileRL for performance optimization
-viben task create "FileRL: Optimize API response time" \
-    --slug filerl-perf \
-    --description "Run PPO optimization loop targeting API performance"
+# Step 1: Generate performance optimization ideas
+viben idea generate --types performance_optimizations --max-ideas 5
 
-viben task start filerl-perf
+# Step 2: Review generated ideas
+viben idea list
+viben idea view po-a1b2c3d4  # Check specific idea
 
-# The agent will:
-# 1. Analyze slow endpoints
-# 2. Generate optimization ideas (caching, query optimization, etc.)
-# 3. Create parallel tasks in worktrees
-# 4. Measure performance improvements
-# 5. Select and merge best optimizations
-# 6. Repeat until convergence
+# Step 3: Promote top ideas to parallel tasks
+viben idea promote po-a1b2c3d4 --worktree --start
+viben idea promote po-e5f6g7h8 --worktree --start
+viben idea promote po-i9j0k1l2 --worktree --start
+
+# Step 4: Monitor execution
+viben swarm status --watch
+
+# Step 5: After completion, evaluate rewards and select best
+# (Agent computes rewards based on test results, benchmarks, etc.)
+
+# Step 6: Merge best PR, cleanup others
+viben task finish <best-task>
+viben task create-pr <best-task>
+viben task cleanup <other-tasks>
+
+# Step 7: Record iteration and repeat
+viben task add-session --title "FileRL Iteration 1" --summary "Best reward: 0.85"
+
+# The agent loop will:
+# 1. Use viben idea generate to analyze codebase
+# 2. Use viben idea promote to create parallel tasks
+# 3. Evaluate rewards (tests, benchmarks, quality)
+# 4. PPO-select best PR and merge
+# 5. Repeat until convergence
+```
+
+### Using Custom Idea Types
+
+```bash
+# Create a custom idea type for your specific optimization goal
+cat > docs/idea-types/latency_reduction.md << 'EOF'
+---
+name: latency_reduction
+description: Find and fix latency issues in the request pipeline
+max_ideas: 5
+---
+
+Analyze the codebase for latency reduction opportunities:
+
+Focus areas:
+1. Database query optimization (indexes, query structure)
+2. Caching opportunities (Redis, in-memory)
+3. Async operation parallelization
+4. Connection pooling improvements
+5. Unnecessary serialization/deserialization
+
+Output format per idea:
+- title, description, rationale
+- affected_files
+- estimated_effort (trivial/small/medium/large/complex)
+- metrics: current_latency_ms, expected_latency_ms
+EOF
+
+# Use your custom type
+viben idea generate --types latency_reduction
+viben idea list --type latency_reduction
 ```
 
 ---
