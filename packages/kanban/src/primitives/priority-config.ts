@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, ArrowUp, Minus, ArrowDown, MoreHorizontal } from "lucide-react";
+import { Flame, Zap, Sun, Leaf, Snowflake } from "lucide-react";
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
@@ -16,36 +16,36 @@ export const PRIORITY_CONFIG: Record<IssuePriority, PriorityConfig> = {
     value: "urgent",
     label: "紧急",
     labelEn: "Urgent",
-    color: "var(--color-error, hsl(var(--destructive)))",
-    Icon: AlertCircle,
+    color: "#ef4444",  // Red 500 - 🔥 Fire
+    Icon: Flame,
   },
   high: {
     value: "high",
     label: "高",
     labelEn: "High",
-    color: "hsl(var(--primary))",
-    Icon: ArrowUp,
+    color: "#f59e0b",  // Amber 500 - ⚡ Lightning
+    Icon: Zap,
   },
   medium: {
     value: "medium",
     label: "中",
     labelEn: "Medium",
-    color: "hsl(var(--brand-teal-500, 195 0.14 0.65))",
-    Icon: Minus,
+    color: "#3b82f6",  // Blue 500 - ☀️ Sun
+    Icon: Sun,
   },
   low: {
     value: "low",
     label: "低",
     labelEn: "Low",
-    color: "hsl(var(--muted-foreground))",
-    Icon: ArrowDown,
+    color: "#22c55e",  // Green 500 - 🌿 Leaf
+    Icon: Leaf,
   },
   none: {
     value: "none",
     label: "无",
     labelEn: "None",
-    color: "hsl(var(--muted-foreground) / 0.5)",
-    Icon: MoreHorizontal,
+    color: "#94a3b8",  // Slate 400 - ❄️ Snowflake
+    Icon: Snowflake,
   },
 };
 

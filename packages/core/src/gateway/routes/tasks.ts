@@ -632,21 +632,64 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
                 type: "object",
                 properties: {
                   id: { type: "string" },
-                  name: { type: "string" },
+                  name: { type: "string", nullable: true },
                   title: { type: "string" },
-                  description: { type: "string" },
+                  description: { type: "string", nullable: true },
                   status: { type: "string", enum: ["backlog", "queue", "in_progress", "paused", "review", "completed", "failed", "cancelled", "archived"] },
-                  workspace_path: { type: "string" },
-                  agent_id: { type: "string" },
-                  session_id: { type: "string" },
+                  review_reason: { type: "string", nullable: true },
+                  current_phase: { type: "number", nullable: true },
+                  next_action: {
+                    type: "array",
+                    nullable: true,
+                    items: {
+                      type: "object",
+                      properties: {
+                        phase: { type: "number" },
+                        action: { type: "string" },
+                      },
+                    },
+                  },
+                  priority: { type: "string", enum: ["urgent", "high", "medium", "low", "none"] },
+                  workspace_path: { type: "string", nullable: true },
+                  // People
+                  creator: { type: "string", nullable: true },
+                  assignee: { type: "string", nullable: true },
+                  // Git integration
+                  branch: { type: "string", nullable: true },
+                  base_branch: { type: "string", nullable: true },
+                  worktree_path: { type: "string", nullable: true },
+                  commit: { type: "string", nullable: true },
+                  pr_url: { type: "string", nullable: true },
+                  // Agent/Session fields
+                  agent_id: { type: "string", nullable: true },
+                  session_id: { type: "string", nullable: true },
                   task_index: { type: "number" },
-                  prompt: { type: "string" },
-                  cost: { type: "number" },
-                  duration: { type: "number" },
+                  prompt: { type: "string", nullable: true },
+                  // Execution info
+                  cost: { type: "number", nullable: true },
+                  duration: { type: "number", nullable: true },
                   favorite: { type: "boolean" },
                   executor: { type: "string" },
+                  // Subtask visualization
+                  subtasks_detail: {
+                    type: "array",
+                    nullable: true,
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        name: { type: "string" },
+                        status: { type: "string" },
+                      },
+                    },
+                  },
+                  execution_progress: { type: "object", nullable: true },
+                  // Timestamps
                   created_at: { type: "string" },
                   updated_at: { type: "string" },
+                  completed_at: { type: "string", nullable: true },
+                  // Template flag
+                  is_template: { type: "boolean" },
                 },
               },
             },

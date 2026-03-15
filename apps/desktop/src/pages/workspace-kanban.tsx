@@ -289,14 +289,43 @@ const TaskCardContent = memo(function TaskCardContent({
     (task.impact && (task.impact === "high" || task.impact === "critical")) ||
     task.complexity;
 
+  // Validate priority
+  const effectivePriority = validatePriority(task.priority);
+
+  // Get action progress info for running tasks
+  const actionInfo = useMemo(() => {
+    if (!isRunning) return null;
+    const currentPhase = task.current_phase;
+    const nextAction = task.next_action;
+    if (currentPhase === undefined || currentPhase === null) return null;
+    if (!nextAction || nextAction.length === 0) return null;
+
+    const totalPhases = nextAction.length;
+    const phaseIndex = Math.min(currentPhase, totalPhases - 1);
+    const currentActionItem = nextAction[phaseIndex];
+    if (!currentActionItem) return null;
+
+    const progressPercent = Math.round((currentPhase / totalPhases) * 100);
+    return {
+      currentAction: currentActionItem.action,
+      currentPhase: currentPhase + 1,
+      totalPhases,
+      progressPercent,
+    };
+  }, [isRunning, task.current_phase, task.next_action]);
+
   // Check if we have footer content
   const hasFooter =
+    (effectivePriority && effectivePriority !== "none") ||
     task.updated_at ||
     task.kanbanAssignee ||
     task.dueDate ||
     isStuck ||
     isFailed ||
     task.status === "review" ||
+    task.status === "backlog" ||
+    task.status === "queue" ||
+    task.status === "in_progress" ||
     (task.status === "completed" && (task.prUrl || task.pr_url));
 
   // Memoize relative time
@@ -316,13 +345,8 @@ const TaskCardContent = memo(function TaskCardContent({
         isSelected && "bg-accent/5"
       )}
     >
-      {/* Row 1: Title with optional priority indicator */}
+      {/* Row 1: Title */}
       <div className="flex items-start gap-2">
-        {task.priority && task.priority !== "none" && (
-          <div className="shrink-0 mt-0.5">
-            <PriorityIcon priority={task.priority as IssuePriority} size="sm" />
-          </div>
-        )}
         <div className="flex-1 min-w-0">
           {onTitleChange ? (
             <EditableCardTitle
@@ -460,9 +484,43 @@ const TaskCardContent = memo(function TaskCardContent({
         </div>
       )}
 
-      {/* Row 5: Phase progress indicator with subtask visualization */}
-      {(task.subtasks_detail && task.subtasks_detail.length > 0) ||
-        (executionPhase && executionPhase !== "complete" && isRunning) ? (
+      {/* Row 5: Action progress for running tasks */}
+      {isRunning && actionInfo && (
+        <div className="flex flex-col gap-1.5 pt-1">
+          {/* Action label with step indicator */}
+          <div className="flex items-center justify-between text-[10px]">
+            <div className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span className="font-medium text-foreground">
+                {t(
+                  `workspace.taskCard.action.${actionInfo.currentAction}`,
+                  actionInfo.currentAction
+                )}
+              </span>
+            </div>
+            <span className="text-muted-foreground">
+              {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
+                current: actionInfo.currentPhase,
+                total: actionInfo.totalPhases,
+              })}
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="h-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isStuck ? "bg-warning" : "bg-primary"
+              )}
+              style={{ width: `${actionInfo.progressPercent}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Row 5b: Phase progress indicator with subtask visualization (when no action info) */}
+      {!actionInfo && ((task.subtasks_detail && task.subtasks_detail.length > 0) ||
+        (executionPhase && executionPhase !== "complete" && isRunning)) && (
         <PhaseProgressIndicator
           phase={executionPhase}
           subtasks={task.subtasks_detail as Subtask[] | undefined}
@@ -470,13 +528,18 @@ const TaskCardContent = memo(function TaskCardContent({
           isStuck={isStuck}
           isRunning={isRunning}
         />
-      ) : null}
+      )}
 
-      {/* Row 6: Footer - time, assignee, due date, and action buttons */}
+      {/* Row 6: Footer - priority, time, assignee, due date, and action buttons */}
       {hasFooter && (
         <div className="flex items-center justify-between gap-1.5 pt-1.5 mt-0.5 border-t border-border/30">
-          {/* Left side: Time, Assignee, Due Date */}
+          {/* Left side: Priority, Time, Assignee, Due Date */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {/* Priority indicator */}
+            {effectivePriority && effectivePriority !== "none" && (
+              <PriorityIcon priority={effectivePriority} size="sm" />
+            )}
+
             {/* Running elapsed time (takes precedence) or relative time */}
             {isRunning && elapsedTime > 0 ? (
               <div className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0">
@@ -1155,6 +1218,7 @@ export function WorkspaceKanbanPage() {
     if (!task) return null;
     return {
       id: task.id,
+      name: task.name,
       title: task.title,
       description: task.description,
       status: task.status,
@@ -1168,9 +1232,16 @@ export function WorkspaceKanbanPage() {
       session_id: task.session_id,
       agent_id: task.agent_id,
       executor: task.executor,
-      // Git worktree/workspace paths
+      // Git integration
+      branch: task.branch,
+      base_branch: task.base_branch,
+      pr_url: task.pr_url,
       worktree_path: task.worktree_path,
       workspace_path: task.workspace_path,
+      // Task metadata
+      creator: task.creator,
+      current_phase: task.current_phase,
+      next_action: task.next_action,
     };
   }, [selectedTaskId, tasks]);
 

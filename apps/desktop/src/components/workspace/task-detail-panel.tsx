@@ -10,6 +10,8 @@ import {
   Calendar,
   Clock,
   GitBranch,
+  GitPullRequest,
+  ExternalLink,
   ListChecks,
   MessageSquare,
   Activity,
@@ -22,6 +24,9 @@ import {
   FolderOpen,
   History,
   AlertTriangle,
+  UserCircle,
+  CheckCircle2,
+  CircleDot,
 } from "lucide-react";
 import {
   Button,
@@ -359,6 +364,7 @@ function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
 // Task interface for the panel
 export interface TaskForPanel {
   id: string;
+  name?: string;                    // URL-safe slug
   title: string;
   description?: string | null;
   status: string;
@@ -392,9 +398,17 @@ export interface TaskForPanel {
   executionPhase?: ExecutionPhase; // Current execution phase
   isStuck?: boolean;            // Whether task is stuck
   stuckDuration?: number;       // How long task has been stuck (ms)
-  // Git worktree/workspace paths
-  worktree_path?: string | null;  // Worktree path if task runs in worktree
-  workspace_path?: string | null; // Workspace path where task was created
+  // Git integration
+  branch?: string;                  // Git branch for this task
+  base_branch?: string;             // Base branch to merge into
+  pr_url?: string;                  // Pull request URL
+  worktree_path?: string | null;    // Worktree path if task runs in worktree
+  workspace_path?: string | null;   // Workspace path where task was created
+  // Task metadata
+  creator?: string;                 // Task creator
+  current_phase?: number;           // Current execution phase index
+  next_action?: Array<{ phase: number; action: string }>; // Action pipeline
+  notes?: string;                   // Task notes
 }
 
 // Available task for relationships
@@ -1167,6 +1181,16 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                   </PropertyRow>
                 )}
 
+                {/* Creator */}
+                {task.creator && (
+                  <PropertyRow
+                    label={t("workspace.creator", "Creator")}
+                    icon={UserCircle}
+                  >
+                    <span className="text-sm">{task.creator}</span>
+                  </PropertyRow>
+                )}
+
                 {/* Due Date */}
                 <PropertyRow
                   label={t("workspace.dueDate", "Due Date")}
@@ -1237,6 +1261,34 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     />
                   </div>
 
+                  {/* Pull Request Card - shown near action buttons */}
+                  {task.pr_url && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(task.pr_url, "_blank", "noopener,noreferrer")}
+                      className="w-full text-left mb-3 p-3 rounded-lg border-2 border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <GitPullRequest className="h-5 w-5 text-purple-500 shrink-0" />
+                          <span className="text-sm font-semibold text-purple-600 dark:text-purple-400 truncate">
+                            {(() => {
+                              const match = task.pr_url?.match(/\/pull\/(\d+)/);
+                              return match ? `Pull Request #${match[1]}` : t("workspace.viewPR", "View PR");
+                            })()}
+                          </span>
+                          <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/30">
+                            {t("workspace.prStatus.open", "Open")}
+                          </Badge>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-purple-500/70 group-hover:text-purple-500 transition-colors shrink-0" />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5 truncate font-mono">
+                        {task.pr_url}
+                      </p>
+                    </button>
+                  )}
+
                   {/* Execution Config */}
                   <div className="space-y-3 p-3 rounded-md bg-muted/30">
                     {/* Runtime Status Row */}
@@ -1264,6 +1316,121 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         </Badge>
                       )}
                     </div>
+
+                    {/* Progress Steps Card - Enhanced Detail View */}
+                    {task.next_action && task.next_action.length > 0 && (
+                      <div className="mt-1 p-4 rounded-lg bg-background border">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <Activity className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">
+                              {t("workspace.executionProgress", "Execution Progress")}
+                            </span>
+                          </div>
+                          <Badge variant={task.status === "in_progress" ? "default" : "secondary"} className="text-xs">
+                            {t("workspace.taskCard.step", "Step {{current}}/{{total}}", {
+                              current: Math.min((task.current_phase ?? 0) + 1, task.next_action.length),
+                              total: task.next_action.length,
+                            })}
+                          </Badge>
+                        </div>
+
+                        {/* Vertical Steps Timeline */}
+                        <div className="space-y-0">
+                          {task.next_action.map((action, index) => {
+                            const currentPhase = task.current_phase ?? 0;
+                            const isCompleted = index < currentPhase;
+                            const isCurrent = index === currentPhase;
+                            const isPending = index > currentPhase;
+                            const isLast = index === task.next_action!.length - 1;
+
+                            return (
+                              <div key={index} className="relative">
+                                {/* Connecting line */}
+                                {!isLast && (
+                                  <div className={cn(
+                                    "absolute left-4 top-8 w-0.5 h-6",
+                                    isCompleted ? "bg-success" : "bg-muted"
+                                  )} />
+                                )}
+
+                                {/* Step row */}
+                                <div className={cn(
+                                  "flex items-center gap-3 p-2 rounded-lg transition-all",
+                                  isCurrent && "bg-primary/5 border border-primary/20",
+                                  isCompleted && "opacity-70"
+                                )}>
+                                  {/* Step indicator */}
+                                  <div className={cn(
+                                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all shrink-0",
+                                    isCompleted && "bg-success text-success-foreground",
+                                    isCurrent && "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-background",
+                                    isPending && "bg-muted text-muted-foreground border-2 border-muted-foreground/20"
+                                  )}>
+                                    {isCompleted ? (
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    ) : isCurrent ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <span>{index + 1}</span>
+                                    )}
+                                  </div>
+
+                                  {/* Step content */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className={cn(
+                                        "text-sm font-medium",
+                                        isCurrent && "text-primary",
+                                        isCompleted && "text-success line-through",
+                                        isPending && "text-muted-foreground"
+                                      )}>
+                                        {t(`workspace.taskCard.action.${action.action}`, action.action)}
+                                      </span>
+                                      {isCurrent && task.status === "in_progress" && (
+                                        <Badge variant="outline" className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30">
+                                          {t("workspace.inProgress", "In Progress")}
+                                        </Badge>
+                                      )}
+                                      {isCompleted && (
+                                        <Badge variant="outline" className="text-[10px] h-5 bg-success/10 text-success border-success/30">
+                                          {t("workspace.done", "Done")}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground">
+                                      {t(`workspace.taskCard.actionDesc.${action.action}`, getActionDescription(action.action))}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="mt-4 pt-3 border-t">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                            <span>{t("workspace.overallProgress", "Overall Progress")}</span>
+                            <span className="font-medium">
+                              {Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                task.status === "in_progress" ? "bg-primary" : "bg-success"
+                              )}
+                              style={{
+                                width: `${Math.round(((task.current_phase ?? 0) / task.next_action.length) * 100)}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Agent Selector Row */}
                     <div className="flex items-center justify-between gap-3">
@@ -1323,6 +1490,30 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                         )}
                       </div>
                     </div>
+
+                    {/* Executor Row */}
+                    {task.executor && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          {t("workspace.executor", "Executor")}
+                        </span>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {task.executor}
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Model Row */}
+                    {task.model && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          {t("workspace.model", "Model")}
+                        </span>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {task.model}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
 
                   {/* Review Reason */}
@@ -1343,31 +1534,65 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     </div>
                   )}
 
-                  {/* Worktree/Branch Info */}
-                  {task.worktree_path && (
-                    <div className="flex items-center gap-2 mt-3 p-2 rounded-md bg-info/5 border border-info/20">
-                      <GitBranch className="h-4 w-4 text-info shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30">
-                            {t("workspace.worktree.isolated", "Isolated")}
+                  {/* Git & Worktree Info Card */}
+                  {(task.branch || task.base_branch || task.worktree_path) && (
+                    <div className="mt-3 p-3 rounded-lg bg-info/5 border border-info/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <GitBranch className="h-4 w-4 text-info shrink-0" />
+                        <span className="text-xs font-medium text-info uppercase tracking-wide">
+                          {t("workspace.gitInfo", "Git Info")}
+                        </span>
+                        {task.worktree_path && (
+                          <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/30 ml-auto">
+                            {t("workspace.worktree.isolated", "Isolated Worktree")}
                           </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground font-mono truncate mt-1" title={task.worktree_path}>
-                          {task.worktree_path}
-                        </p>
+                        )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 shrink-0"
-                        onClick={() => {
-                          const client = getGatewayClient();
-                          client.openFile(task.worktree_path!).catch(console.error);
-                        }}
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                      </Button>
+                      <div className="space-y-2">
+                        {/* Branch info */}
+                        {task.branch && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-14 shrink-0">
+                              {t("workspace.branch", "Branch")}:
+                            </span>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {task.branch}
+                            </Badge>
+                          </div>
+                        )}
+                        {task.base_branch && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground w-14 shrink-0">
+                              {t("workspace.baseBranch", "Base")}:
+                            </span>
+                            <Badge variant="secondary" className="font-mono text-xs">
+                              {task.base_branch}
+                            </Badge>
+                          </div>
+                        )}
+                        {/* Worktree path */}
+                        {task.worktree_path && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-info/10">
+                            <span className="text-xs text-muted-foreground w-14 shrink-0">
+                              {t("workspace.path", "Path")}:
+                            </span>
+                            <p className="text-xs text-muted-foreground font-mono truncate flex-1" title={task.worktree_path}>
+                              {task.worktree_path}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 shrink-0"
+                              onClick={() => {
+                                const client = getGatewayClient();
+                                client.openFile(task.worktree_path!).catch(console.error);
+                              }}
+                            >
+                              <FolderOpen className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1470,6 +1695,18 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                   </p>
                 )}
               </div>
+
+              {/* Notes */}
+              {task.notes && (
+                <div className="border-t pt-3">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+                    {t("workspace.notes", "Notes")}
+                  </h3>
+                  <div className="p-2 rounded bg-muted/50">
+                    <p className="text-xs whitespace-pre-wrap">{task.notes}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Timestamps - Compact inline */}
               <div className="border-t pt-3">

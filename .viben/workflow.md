@@ -138,21 +138,49 @@ All workflow operations are available through the `viben` CLI:
 viben user init <name>    # Initialize developer identity
 viben user get            # Get current developer name
 
-# Task management
+# Task lifecycle
 viben task list           # List active tasks
-viben task create         # Create new task
-viben task start          # Set current task
-viben task finish <task>  # Finish specified task
-viben task archive        # Archive completed task
-viben task context <task> # Get task context
-viben task add-session    # Record session
+viben task create "title" --slug <task-name> --description "<description>" # Create new task
+viben task view <task>    # View task details
+viben task start <task>   # Start task execution
+viben task pause <task>   # Pause execution
+viben task resume <task>  # Resume paused task
+viben task finish <task>  # Finish task
+viben task cancel <task>  # Cancel task
+viben task archive <task> # Archive completed task
 
-# Multi-agent operations
-viben task work-phase     # Run work agent (auto-creates worktree if needed)
-viben swarm status        # Monitor agent status
-viben task cleanup        # Cleanup worktree
-viben task create-pr      # Create PR from task
-viben task plan-phase     # Start plan agent
+# Task queue
+viben task enqueue <task> # Move task to queue
+viben task dequeue <task> # Remove from queue
+
+# Task context
+viben task context <task> # Get session context for AI
+viben task add-context <task> <file> # Add context files
+viben task list-context <task>   # List context entries
+
+# Review workflow
+viben task review <task>  # View for review
+viben task approve <task> # Approve and complete
+viben task reject <task>  # Reject to backlog
+viben task retry <task>   # Retry failed task
+
+# AI-assisted phases
+viben task plan-phase <task>     # Run plan agent
+viben task work-phase <task>     # Run work agent (orchestrates all phases)
+
+# Git worktree & PR
+viben task create-worktree <task> # Create isolated worktree
+viben task create-pr <task>      # Create PR from task
+viben task cleanup <task>        # Cleanup worktrees
+
+# Multi-agent monitoring (swarm)
+viben swarm list          # List worktrees and agents
+viben swarm status        # Show agent status (--watch for live)
+viben swarm stop          # Stop running agent
+viben swarm registry      # Show agent registry
+
+# Session recording
+viben task add-session    # Record session to journal
 ```
 
 ---
@@ -406,17 +434,25 @@ viben task add-session       # Record session
 # Task management
 viben task list              # List tasks
 viben task create "<title>"  # Create task
+viben task start <task>      # Start task
+viben task finish <task>     # Finish task
+
+# Review workflow
+viben task review <task>     # View for review
+viben task approve <task>    # Approve task
+viben task reject <task>     # Reject task
 
 # Multi-agent operations
-viben task work-phase <task> # Run work agent (auto-creates worktree if needed)
-viben swarm status <task>    # Monitor agent status
+viben task work-phase <task> # Run work agent (orchestrates all phases)
+viben swarm status --watch   # Monitor agent status (live)
+viben swarm stop <task>      # Stop running agent
 viben task cleanup <task>    # Cleanup worktree
-viben task create-pr         # Create PR from task
+viben task create-pr <task>  # Create PR from task
 
 # Slash commands
-/viben:finish-work          # Pre-commit checklist
-/viben:break-loop           # Post-debug analysis
-/viben:check-cross-layer    # Cross-layer verification
+/viben:finish-work           # Pre-commit checklist
+/viben:break-loop            # Post-debug analysis
+/viben:check-cross-layer     # Cross-layer verification
 ```
 
 ---
