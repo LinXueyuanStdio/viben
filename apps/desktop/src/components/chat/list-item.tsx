@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -139,8 +140,13 @@ export function getGradientByName(name: string): string {
 
 /**
  * Format timestamp to relative time
+ * @param dateStr - ISO date string to format
+ * @param t - Optional translation function for i18n support
  */
-export function formatRelativeTime(dateStr: string): string {
+export function formatRelativeTime(
+  dateStr: string,
+  t?: (key: string, options?: Record<string, unknown>) => string
+): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
@@ -148,11 +154,30 @@ export function formatRelativeTime(dateStr: string): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
-  if (hours < 24) return `${hours}h`;
-  if (days < 7) return `${days}d`;
+  // Use translation function if provided, otherwise fallback to English
+  if (t) {
+    if (minutes < 1) return t("common.now");
+    if (minutes < 60) return t("common.minutesShort", { count: minutes });
+    if (hours < 24) return t("common.hoursShort", { count: hours });
+    if (days < 7) return t("common.daysShort", { count: days });
+  } else {
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    if (days < 7) return `${days}d`;
+  }
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/**
+ * Hook for formatting relative time with i18n support
+ */
+export function useFormatRelativeTime() {
+  const { t } = useTranslation();
+  return React.useCallback(
+    (dateStr: string) => formatRelativeTime(dateStr, t),
+    [t]
+  );
 }
 
 // ============================================================================

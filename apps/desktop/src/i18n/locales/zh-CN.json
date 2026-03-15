@@ -90,6 +90,10 @@
     "minutesAgo": "分钟前",
     "hoursAgo": "小时前",
     "daysAgo": "天前",
+    "now": "刚刚",
+    "minutesShort": "{{count}}分钟",
+    "hoursShort": "{{count}}小时",
+    "daysShort": "{{count}}天",
     "comingSoon": "即将推出",
     "retry": "重试",
     "forward": "前进",
@@ -1717,6 +1721,9 @@
     "loggingLevel": "日志级别",
     "selectLoggingLevel": "选择级别...",
     "loggingLevelDesc": "设置服务器通知的最低日志级别。",
+    "loadingSuggestions": "正在加载建议...",
+    "addItem": "添加项目",
+    "itemNumber": "项目 {{number}}",
     "mcpApps": "MCP 应用",
     "searchApps": "搜索应用...",
     "noAppsFound": "没有可用的 MCP 应用",
@@ -3865,7 +3872,19 @@
     "preview": "预览",
     "code": "代码",
     "previewNotAvailable": "预览不可用",
-    "switchToCodeView": "切换到代码视图查看内容"
+    "switchToCodeView": "切换到代码视图查看内容",
+    "docxPreview": {
+      "description": "Word 文档可以在 Microsoft Word 或兼容的应用程序中打开。",
+      "openButton": "在 Word 中打开"
+    },
+    "pptxPreview": {
+      "description": "演示文稿可以在 Microsoft PowerPoint 或兼容的应用程序中打开。",
+      "openButton": "在 PowerPoint 中打开"
+    },
+    "xlsxPreview": {
+      "description": "电子表格可以在 Microsoft Excel 或兼容的应用程序中打开。",
+      "openButton": "在 Excel 中打开"
+    }
   },
   "observability": {
     "title": "可观测性",

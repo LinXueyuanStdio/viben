@@ -7,11 +7,13 @@
  */
 
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
+import { useTranslation } from "react-i18next";
 import { ExternalLink, FileSpreadsheet } from "lucide-react";
 
 import type { PreviewComponentProps } from "./types";
 
 export function XlsxPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const handleOpenExternal = async () => {
     if (artifact.path) {
       try {
@@ -32,15 +34,14 @@ export function XlsxPreview({ artifact }: PreviewComponentProps) {
           {artifact.name}
         </h3>
         <p className="text-muted-foreground mb-6 text-sm">
-          Spreadsheets can be opened in Microsoft Excel or compatible
-          applications.
+          {t("artifacts.xlsxPreview.description")}
         </p>
         <button
           onClick={handleOpenExternal}
           className="bg-primary text-primary-foreground hover:bg-primary/90 flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
         >
           <ExternalLink className="size-4" />
-          Open in Excel
+          {t("artifacts.xlsxPreview.openButton")}
         </button>
       </div>
     </div>
