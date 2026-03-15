@@ -123,12 +123,12 @@ function getActionInfo(
  * TaskCardContent - Displays task card content with all metadata and actions
  *
  * Layout:
- * - Row 1: Title with optional priority indicator
+ * - Row 1: Title
  * - Row 2: Description (truncated)
  * - Row 3: Metadata badges (stuck, failed, archived, execution phase, category, etc.)
  * - Row 4: Tags (max 3)
  * - Row 5: Phase progress indicator with subtask visualization
- * - Row 6: Footer - time, assignee, due date, and action buttons
+ * - Row 6: Footer - priority icon, time, assignee, due date, and action buttons
  */
 export const TaskCardContent = memo(function TaskCardContent({
   task,
@@ -194,9 +194,10 @@ export const TaskCardContent = memo(function TaskCardContent({
     task.complexity;
 
   // Check if we have footer content
-  // Show footer for: time, assignee, due date, stuck/failed indicators,
+  // Show footer for: priority, time, assignee, due date, stuck/failed indicators,
   // review status, completed with PR, or any actionable status (backlog/queue/in_progress)
   const hasFooter =
+    (effectivePriority && effectivePriority !== "none") ||
     task.updated_at ||
     task.kanbanAssignee ||
     task.dueDate ||
@@ -231,13 +232,8 @@ export const TaskCardContent = memo(function TaskCardContent({
         isSelected && "bg-accent/5"
       )}
     >
-      {/* Row 1: Title with optional priority indicator */}
+      {/* Row 1: Title */}
       <div className="flex items-start gap-2">
-        {effectivePriority && effectivePriority !== "none" && (
-          <div className="shrink-0 mt-0.5">
-            <PriorityIcon priority={effectivePriority} size="sm" />
-          </div>
-        )}
         <div className="flex-1 min-w-0">
           {onTitleChange ? (
             <EditableCardTitle
@@ -443,11 +439,16 @@ export const TaskCardContent = memo(function TaskCardContent({
         />
       )}
 
-      {/* Row 6: Footer - time, assignee, due date, and action buttons */}
+      {/* Row 6: Footer - priority, time, assignee, due date, and action buttons */}
       {hasFooter && (
         <div className="flex items-center justify-between gap-1.5 pt-1.5 mt-0.5 border-t border-border/30">
-          {/* Left side: Time, Assignee, Due Date */}
+          {/* Left side: Priority, Time, Assignee, Due Date */}
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {/* Priority indicator */}
+            {effectivePriority && effectivePriority !== "none" && (
+              <PriorityIcon priority={effectivePriority} size="sm" />
+            )}
+
             {/* Running elapsed time (takes precedence) or relative time */}
             {isRunning && formattedElapsedTime ? (
               <div className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0">

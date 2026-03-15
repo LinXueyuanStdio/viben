@@ -36,6 +36,12 @@ export function PriorityIcon({
   className,
 }: PriorityIconProps) {
   const config = PRIORITY_CONFIG[priority];
+
+  // Guard against invalid priority values
+  if (!config) {
+    return null;
+  }
+
   const sizeStyles = sizeConfig[size];
   const Icon = config.Icon;
 
