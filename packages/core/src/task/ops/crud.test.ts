@@ -77,7 +77,7 @@ describe("crud operations", () => {
     vi.mocked(vibenWorkspace.runGitCommand).mockReturnValue({
       stdout: "main",
       stderr: "",
-      exitCode: 0,
+      code: 0,
     });
   });
 
@@ -88,8 +88,8 @@ describe("crud operations", () => {
   describe("listTasks", () => {
     it("should return all active tasks when no filters applied", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-1", name: "task-1", title: "Task 1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", name: "task-2", title: "Task 2", status: "queue", assignee: "dev2", priority: "medium" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -103,8 +103,8 @@ describe("crud operations", () => {
 
     it("should filter tasks by --mine option", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-1", name: "task-1", title: "Task 1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", name: "task-2", title: "Task 2", status: "queue", assignee: "dev2", priority: "medium" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -128,9 +128,9 @@ describe("crud operations", () => {
 
     it("should filter tasks by --status option", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
-        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "low" },
+        { dir: "03-15-task-1", name: "task-1", title: "Task 1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", name: "task-2", title: "Task 2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-3", name: "task-3", title: "Task 3", status: "queue", assignee: "dev1", priority: "low" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -144,9 +144,9 @@ describe("crud operations", () => {
 
     it("should combine --mine and --status filters", () => {
       const mockTasks = [
-        { dir: "03-15-task-1", status: "backlog", assignee: "dev1", priority: "high" },
-        { dir: "03-15-task-2", status: "queue", assignee: "dev2", priority: "medium" },
-        { dir: "03-15-task-3", status: "queue", assignee: "dev1", priority: "low" },
+        { dir: "03-15-task-1", name: "task-1", title: "Task 1", status: "backlog", assignee: "dev1", priority: "high" },
+        { dir: "03-15-task-2", name: "task-2", title: "Task 2", status: "queue", assignee: "dev2", priority: "medium" },
+        { dir: "03-15-task-3", name: "task-3", title: "Task 3", status: "queue", assignee: "dev1", priority: "low" },
       ];
       vi.mocked(vibenWorkspace.getActiveTasks).mockReturnValue(mockTasks);
       vi.mocked(vibenWorkspace.getDeveloper).mockReturnValue("dev1");
@@ -267,7 +267,7 @@ describe("crud operations", () => {
       vi.mocked(vibenWorkspace.runGitCommand).mockReturnValue({
         stdout: "develop\n",
         stderr: "",
-        exitCode: 0,
+        code: 0,
       });
 
       const result = createTask(mockRepoRoot, "Test Task");
@@ -281,7 +281,7 @@ describe("crud operations", () => {
       vi.mocked(vibenWorkspace.runGitCommand).mockReturnValue({
         stdout: "",
         stderr: "",
-        exitCode: 0,
+        code: 0,
       });
 
       const result = createTask(mockRepoRoot, "Test Task");
