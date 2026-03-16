@@ -93,7 +93,7 @@
     "yaml": "^2.4.5"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.14.0",
     "@types/shell-quote": "^1.7.5",
     "@types/uuid": "^11.0.0",
