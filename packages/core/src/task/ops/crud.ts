@@ -75,6 +75,7 @@ export interface CreateTaskOptions {
   model?: string;
   start?: boolean;
   worktree?: boolean;
+  computeReward?: boolean;
 }
 
 export interface CreateTaskResult {
@@ -580,6 +581,14 @@ export function createTask(
     model: options.model,
     autoStart: options.start || false,
     worktree: options.worktree || false,
+    compute_reward: options.computeReward ?? false,
+    // If compute_reward is true, also add default reward_config
+    ...(options.computeReward && {
+      reward_config: {
+        types: ["test_coverage", "code_quality", "agent_review"],
+        weights: [0.34, 0.33, 0.33],
+      },
+    }),
   };
 
   // Note: --start flag is handled by CLI layer calling enqueueTask after creation
