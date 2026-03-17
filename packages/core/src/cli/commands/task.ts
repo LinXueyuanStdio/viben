@@ -75,10 +75,13 @@ import {
   isProcessRunning,
 } from "../lib/swarm";
 
+import { detectPlatform } from "../lib/swarm/cli-adapter";
+
 // Import phase functions
 import { startTask } from "../../task/phase/start";
 import { runWorkPhase } from "../../task/phase/work";
 import { runCreateWorktree } from "../../task/phase/worktree";
+import { runMergePRPhase } from "../../task/phase/merge-pr";
 
 // Import task operations from lib/task
 import {
@@ -137,6 +140,8 @@ import {
   editTask,
   // PR operations
   createPR,
+  // Stuck detection
+  checkStuck,
 } from "../../task/ops";
 
 // Import phase operations
@@ -1784,10 +1789,10 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task approve - review -> completed
+  // task approve - review -> completed (with auto PR merge detection)
   taskCmd
     .command("approve")
-    .description("Approve task and mark as completed")
+    .description("Approve task and mark as completed (auto-merges PR if exists)")
     .argument("<task>", "Task name or directory")
     .action(async (task: string) => {
       const ctx = getContext(program);
@@ -1795,19 +1800,66 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = approveTask(repoRoot, task);
+        const taskDir = resolveTaskDirectory(task, repoRoot);
 
-        if (!result.success) {
-          throw CliError.operationFailed("Approve task", result.error!);
+        if (!taskDir) {
+          throw CliError.notFound("Task", task);
         }
 
-        output(ctx, successResponse({ task: result.task, status: result.status }), () => {
-          console.log(chalk.green(`Approved: ${result.task}`));
-          console.log(chalk.gray(`Status: ${result.fromStatus} -> completed`));
-          console.log();
-          console.log(chalk.blue("Next steps:"));
-          console.log(`  viben task archive ${result.task}    # Archive completed task`);
-        });
+        const taskData = readTaskJsonFromWorkspace(taskDir);
+
+        if (!taskData) {
+          throw CliError.operationFailed("Read task", "Cannot read task.json");
+        }
+
+        // 检测是否需要合并 PR
+        if (taskData.pr_url) {
+          // 启动 merge-pr agent (异步)
+          const mergeResult = await runMergePRPhase(repoRoot, taskDir, {
+            platform: detectPlatform(repoRoot),
+            verbose: true,
+          });
+
+          if (!mergeResult.success) {
+            throw CliError.operationFailed("Start merge agent", mergeResult.error!);
+          }
+
+          const dirName = taskDir.split("/").pop() || task;
+
+          // 输出 agent 信息 (任务状态保持 review，由 agent 更新)
+          output(ctx, successResponse({
+            task: dirName,
+            action: "merge_started",
+            agentId: mergeResult.agentId,
+            pid: mergeResult.pid,
+            logFile: mergeResult.logFile,
+            pr_url: taskData.pr_url,
+          }), () => {
+            console.log(chalk.blue(`Merge agent started for: ${dirName}`));
+            console.log(chalk.gray(`PR: ${taskData.pr_url}`));
+            console.log(chalk.gray(`Agent: ${mergeResult.agentId}`));
+            console.log(chalk.gray(`PID: ${mergeResult.pid}`));
+            console.log(chalk.gray(`Log: ${mergeResult.logFile}`));
+            console.log();
+            console.log(chalk.yellow("Task status will be updated by agent upon completion."));
+            console.log(`  tail -f ${mergeResult.logFile}    # Watch progress`);
+          });
+        } else {
+          // 无 PR，简单状态转换（现有行为）
+          const result = approveTask(repoRoot, task);
+
+          if (!result.success) {
+            throw CliError.operationFailed("Approve task", result.error!);
+          }
+
+          output(ctx, successResponse({ task: result.task, status: result.status }), () => {
+            console.log(chalk.green(`Approved: ${result.task}`));
+            console.log(chalk.gray(`Status: ${result.fromStatus} -> completed`));
+            console.log();
+            console.log(chalk.blue("Next steps:"));
+            console.log(`  viben task archive ${result.task}    # Archive completed task`);
+          });
+        }
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -2601,6 +2653,103 @@ export function registerTaskCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
         await cleanupWorktreesCommand(ctx, repoRoot, branch, options);
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // Stuck Detection Commands
+  // ============================================================================
+
+  // task check-stuck - check if a task is stuck
+  taskCmd
+    .command("check-stuck")
+    .description("Check if a task is stuck (no recovery, detection only)")
+    .argument("<task>", "Task name or directory")
+    .option("-t, --threshold <ms>", "Stuck threshold in milliseconds (default: 120000 = 2min)", "120000")
+    .option("-v, --verbose", "Show detailed log analysis")
+    .option("--json", "Output in JSON format")
+    .action(async (task: string, options: {
+      threshold?: string;
+      verbose?: boolean;
+      json?: boolean;
+    }) => {
+      const ctx = getContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+        const thresholdMs = parseInt(options.threshold || "120000", 10);
+
+        const result = checkStuck(repoRoot, task, {
+          thresholdMs,
+          verbose: options.verbose,
+        });
+
+        if (!result.success) {
+          output(ctx, errorResponse("CHECK_FAILED", result.error || "Unknown error"), () => {
+            console.error(chalk.red(`Error: ${result.error}`));
+          });
+          process.exit(1);
+          return;
+        }
+
+        if (ctx.json) {
+          output(ctx, successResponse(result));
+          return;
+        }
+
+        // Human-readable output
+        console.log(chalk.bold.cyan(`=== Stuck Check: ${result.taskDir} ===`));
+        console.log();
+
+        // Overall status
+        if (result.isStuck) {
+          console.log(chalk.red.bold(`Status: STUCK`));
+          console.log(chalk.red(`  ${result.summary}`));
+        } else {
+          console.log(chalk.green.bold(`Status: OK`));
+          console.log(chalk.green(`  ${result.summary}`));
+        }
+        console.log();
+
+        // Individual checks
+        console.log(chalk.cyan("Checks:"));
+        for (const check of result.checks) {
+          const icon = check.isStuck ? chalk.red("✗") : chalk.green("✓");
+          const nameColor = check.isStuck ? chalk.red : chalk.white;
+          console.log(`  ${icon} ${nameColor(check.name)}: ${check.reason}`);
+
+          // Show additional data if verbose
+          if (options.verbose && check.data && Object.keys(check.data).length > 0) {
+            for (const [key, value] of Object.entries(check.data)) {
+              if (value !== null && value !== undefined) {
+                const displayValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+                console.log(chalk.gray(`      ${key}: ${displayValue}`));
+              }
+            }
+          }
+        }
+
+        console.log();
+
+        // Task info summary
+        if (result.task) {
+          console.log(chalk.cyan("Task Info:"));
+          console.log(`  Status:   ${formatStatus(result.task.status)}`);
+          console.log(`  Assignee: ${result.task.assignee || "-"}`);
+          if (result.task.lastEvent) {
+            console.log(`  Last Event: ${result.task.lastEvent.type} @ ${result.task.lastEvent.timestamp}`);
+          }
+          if (result.task.updatedAt) {
+            console.log(`  Updated:  ${result.task.updatedAt}`);
+          }
+        }
+
       } catch (error) {
         handleCommandError(ctx, error);
       }
