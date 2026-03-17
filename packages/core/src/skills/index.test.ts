@@ -321,9 +321,15 @@ description: First agent skill
   // ============================================================================
 
   describe("listAvailableSkills()", () => {
-    it("should return empty array (marketplace not implemented)", async () => {
+    it("should return list of available skills from marketplace", async () => {
       const skills = await manager.listAvailableSkills();
-      expect(skills).toEqual([]);
+      // Marketplace is now implemented, returns array of skill metadata
+      expect(Array.isArray(skills)).toBe(true);
+      // Each skill should have required fields
+      if (skills.length > 0) {
+        expect(skills[0]).toHaveProperty("name");
+        expect(skills[0]).toHaveProperty("description");
+      }
     });
   });
 

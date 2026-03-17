@@ -53,7 +53,7 @@ export function CategoryChart({ categories }: CategoryChartProps) {
                 borderRadius: '8px',
                 color: '#F1F5F9',
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               formatter={(value: any) =>
                 `${Number(value).toLocaleString()} 行 (${((Number(value) / total) * 100).toFixed(1)}%)`
               }

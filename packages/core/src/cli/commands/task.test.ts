@@ -340,12 +340,12 @@ describe("task command", () => {
       expect(assigneeOption?.short).toBe("-a");
     });
 
-    it("should support -p/--priority option with default P2", () => {
+    it("should support -p/--priority option with default medium", () => {
       const createCmd = findSubcommand(program, "task", "create");
       const priorityOption = findOption(createCmd, "priority");
       expect(priorityOption).toBeDefined();
       expect(priorityOption?.short).toBe("-p");
-      expect(priorityOption?.defaultValue).toBe("P2");
+      expect(priorityOption?.defaultValue).toBe("medium");
     });
 
     it("should support -d/--description option", () => {

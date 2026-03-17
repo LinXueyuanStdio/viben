@@ -12,11 +12,10 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
-import type { CronJob, JobStatus } from "../../services";
+import type { CronJob, JobStatus } from "../../cron/ops";
 
 // Hoist mock functions so they're available when vi.mock runs
-const { mockLoad, mockListJobs, mockGetJob, mockCreateJob, mockDeleteJob, mockEnableJob, mockDisableJob, mockRunJob, mockShutdown } = vi.hoisted(() => ({
-  mockLoad: vi.fn(),
+const { mockListJobs, mockGetJob, mockCreateJob, mockDeleteJob, mockEnableJob, mockDisableJob, mockRunJob, mockGetExecutionLogs, mockFormatSchedule, mockFormatDuration, mockGetDefaultConfigPath } = vi.hoisted(() => ({
   mockListJobs: vi.fn(),
   mockGetJob: vi.fn(),
   mockCreateJob: vi.fn(),
@@ -24,26 +23,25 @@ const { mockLoad, mockListJobs, mockGetJob, mockCreateJob, mockDeleteJob, mockEn
   mockEnableJob: vi.fn(),
   mockDisableJob: vi.fn(),
   mockRunJob: vi.fn(),
-  mockShutdown: vi.fn(),
+  mockGetExecutionLogs: vi.fn(),
+  mockFormatSchedule: vi.fn(),
+  mockFormatDuration: vi.fn(),
+  mockGetDefaultConfigPath: vi.fn(),
 }));
 
-// Mock the services module BEFORE importing cron module
-vi.mock("../../services", () => ({
-  CronService: vi.fn().mockImplementation(() => ({
-    load: mockLoad,
-    listJobs: mockListJobs,
-    getJob: mockGetJob,
-    createJob: mockCreateJob,
-    deleteJob: mockDeleteJob,
-    enableJob: mockEnableJob,
-    disableJob: mockDisableJob,
-    runJob: mockRunJob,
-    shutdown: mockShutdown,
-  })),
-  eventService: {
-    broadcast: vi.fn(),
-    subscribe: vi.fn().mockReturnValue(() => {}),
-  },
+// Mock the cron/ops module BEFORE importing cron module
+vi.mock("../../cron/ops", () => ({
+  listJobs: mockListJobs,
+  getJob: mockGetJob,
+  createJob: mockCreateJob,
+  deleteJob: mockDeleteJob,
+  enableJob: mockEnableJob,
+  disableJob: mockDisableJob,
+  runJob: mockRunJob,
+  getExecutionLogs: mockGetExecutionLogs,
+  formatSchedule: mockFormatSchedule,
+  formatDuration: mockFormatDuration,
+  getDefaultConfigPath: mockGetDefaultConfigPath,
 }));
 
 // Mock chalk to avoid color output in tests
@@ -98,15 +96,17 @@ describe("Cron CLI Commands", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // Reset all mocks to their default behaviors
-    mockLoad.mockResolvedValue(undefined);
-    mockListJobs.mockResolvedValue([]);
-    mockGetJob.mockResolvedValue(null);
-    mockCreateJob.mockResolvedValue(createMockJob());
-    mockDeleteJob.mockResolvedValue(undefined);
-    mockEnableJob.mockResolvedValue(createMockJob({ enabled: true }));
-    mockDisableJob.mockResolvedValue(createMockJob({ enabled: false }));
-    mockRunJob.mockResolvedValue(undefined);
-    mockShutdown.mockResolvedValue(undefined);
+    // cronOps functions return Result objects: { success: boolean, ... }
+    mockGetDefaultConfigPath.mockReturnValue("/mock/config/cron.yaml");
+    mockListJobs.mockResolvedValue({ success: true, jobs: [] });
+    mockGetJob.mockResolvedValue({ success: false, error: "Job not found" });
+    mockCreateJob.mockResolvedValue({ success: true, job: createMockJob() });
+    mockDeleteJob.mockResolvedValue({ success: true });
+    mockEnableJob.mockResolvedValue({ success: true, job: createMockJob({ enabled: true }) });
+    mockDisableJob.mockResolvedValue({ success: true, job: createMockJob({ enabled: false }) });
+    mockGetExecutionLogs.mockResolvedValue({ success: true, logs: [], total: 0 });
+    mockFormatSchedule.mockImplementation((job: CronJob) => job.cron || (job.every ? `every ${job.every}s` : "-"));
+    mockFormatDuration.mockImplementation((ms: number) => `${ms}ms`);
   });
 
   afterEach(() => {
@@ -145,17 +145,16 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
-      expect(mockLoad).toHaveBeenCalled();
       expect(mockListJobs).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no cron jobs exist", async () => {
-      mockListJobs.mockResolvedValue([]);
+      mockListJobs.mockResolvedValue({ success: true, jobs: [] });
 
       await runCommand(["cron", "list"]);
 
@@ -172,7 +171,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["--json", "cron", "list"]);
 
@@ -200,16 +199,16 @@ describe("Cron CLI Commands", () => {
         next_run: Date.now() + 86400000,
       });
 
-      mockGetJob.mockResolvedValue(mockJob);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["cron", "show", "daily-greeting"]);
 
-      expect(mockGetJob).toHaveBeenCalledWith("daily-greeting");
+      expect(mockGetJob).toHaveBeenCalledWith("/mock/config/cron.yaml", "daily-greeting");
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show error when job not found", async () => {
-      mockGetJob.mockResolvedValue(null);
+      mockGetJob.mockResolvedValue({ success: false, error: "Job not found: nonexistent" });
 
       await runCommand(["cron", "show", "nonexistent"]);
 
@@ -225,7 +224,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 * * * *",
       });
 
-      mockGetJob.mockResolvedValue(mockJob);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["--json", "cron", "show", "test-job"]);
 
@@ -244,7 +243,7 @@ describe("Cron CLI Commands", () => {
         last_output: "Backup completed successfully",
       });
 
-      mockGetJob.mockResolvedValue(mockJob);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["cron", "show", "backup-job"]);
 
@@ -265,7 +264,7 @@ describe("Cron CLI Commands", () => {
         agent: "main",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -292,7 +291,7 @@ describe("Cron CLI Commands", () => {
         agent: "monitor",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -320,7 +319,7 @@ describe("Cron CLI Commands", () => {
         message: "Summarize this week's accomplishments",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -356,7 +355,7 @@ describe("Cron CLI Commands", () => {
         agent: "main",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -382,7 +381,7 @@ describe("Cron CLI Commands", () => {
         channel: "my-telegram",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -406,7 +405,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 * * * *",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["--json", "cron", "add", "--name", "JSON Job", "--cron", "0 * * * *"]);
 
@@ -423,7 +422,7 @@ describe("Cron CLI Commands", () => {
         agent: "main",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -435,6 +434,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           agent: "main",
         })
@@ -448,7 +448,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 * * * *",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -477,19 +477,19 @@ describe("Cron CLI Commands", () => {
         name: "Job To Remove",
       });
 
-      mockGetJob.mockResolvedValue(mockJob);
-      mockDeleteJob.mockResolvedValue(undefined);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      mockDeleteJob.mockResolvedValue({ success: true });
 
       await runCommand(["cron", "remove", "job-to-remove"]);
 
-      expect(mockDeleteJob).toHaveBeenCalledWith("job-to-remove");
+      expect(mockDeleteJob).toHaveBeenCalledWith("/mock/config/cron.yaml", "job-to-remove");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Removed cron job")
       );
     });
 
     it("should show error when job not found for removal", async () => {
-      mockGetJob.mockResolvedValue(null);
+      mockGetJob.mockResolvedValue({ success: false, error: "Job not found" });
 
       await runCommand(["cron", "remove", "nonexistent"]);
 
@@ -505,8 +505,8 @@ describe("Cron CLI Commands", () => {
         name: "Job To Remove",
       });
 
-      mockGetJob.mockResolvedValue(mockJob);
-      mockDeleteJob.mockResolvedValue(undefined);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      mockDeleteJob.mockResolvedValue({ success: true });
 
       await runCommand(["--json", "cron", "remove", "job-to-remove"]);
 
@@ -529,17 +529,17 @@ describe("Cron CLI Commands", () => {
         next_run: Date.now() + 3600000,
       });
 
-      mockEnableJob.mockResolvedValue(mockJob);
+      mockEnableJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["cron", "enable", "disabled-job"]);
 
-      expect(mockEnableJob).toHaveBeenCalledWith("disabled-job");
+      expect(mockEnableJob).toHaveBeenCalledWith("/mock/config/cron.yaml", "disabled-job");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Enabled cron job")
       );
     });
 
-    it("should show next run time after enabling", async () => {
+    it("should show Gateway note after enabling", async () => {
       const nextRunTime = Date.now() + 3600000;
       const mockJob = createMockJob({
         id: "disabled-job",
@@ -548,12 +548,12 @@ describe("Cron CLI Commands", () => {
         next_run: nextRunTime,
       });
 
-      mockEnableJob.mockResolvedValue(mockJob);
+      mockEnableJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["cron", "enable", "disabled-job"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Next Run")
+        expect.stringContaining("Scheduling takes effect when Gateway is running")
       );
     });
 
@@ -564,7 +564,7 @@ describe("Cron CLI Commands", () => {
         enabled: true,
       });
 
-      mockEnableJob.mockResolvedValue(mockJob);
+      mockEnableJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["--json", "cron", "enable", "disabled-job"]);
 
@@ -586,11 +586,11 @@ describe("Cron CLI Commands", () => {
         enabled: false,
       });
 
-      mockDisableJob.mockResolvedValue(mockJob);
+      mockDisableJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["cron", "disable", "enabled-job"]);
 
-      expect(mockDisableJob).toHaveBeenCalledWith("enabled-job");
+      expect(mockDisableJob).toHaveBeenCalledWith("/mock/config/cron.yaml", "enabled-job");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Disabled cron job")
       );
@@ -603,7 +603,7 @@ describe("Cron CLI Commands", () => {
         enabled: false,
       });
 
-      mockDisableJob.mockResolvedValue(mockJob);
+      mockDisableJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand(["--json", "cron", "disable", "enabled-job"]);
 
@@ -618,6 +618,18 @@ describe("Cron CLI Commands", () => {
   // ============================================================================
 
   describe("cron run <id>", () => {
+    let fetchMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      // Mock global fetch for Gateway API calls
+      fetchMock = vi.fn();
+      global.fetch = fetchMock;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it("should run a cron job immediately", async () => {
       const mockJob = createMockJob({
         id: "run-job",
@@ -626,74 +638,66 @@ describe("Cron CLI Commands", () => {
         last_output: "Job output",
       });
 
-      // First call returns the job, second call returns updated status
-      mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce({
-        ...mockJob,
-        last_status: "success" as JobStatus,
-        last_output: "Job completed",
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
       });
-      mockRunJob.mockResolvedValue(undefined);
 
       await runCommand(["cron", "run", "run-job"]);
 
-      expect(mockRunJob).toHaveBeenCalledWith("run-job");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://127.0.0.1:18790/api/cron/run-job/run",
+        { method: "POST" }
+      );
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Running job")
+        expect.stringContaining("Triggered job")
       );
     });
 
     it("should show error when job not found for running", async () => {
-      mockGetJob.mockResolvedValue(null);
+      mockGetJob.mockResolvedValue({ success: false, error: "Job not found" });
 
       await runCommand(["cron", "run", "nonexistent"]);
 
-      expect(mockRunJob).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found")
       );
     });
 
-    it("should show failure status when job fails", async () => {
+    it("should show error when Gateway API fails", async () => {
       const mockJob = createMockJob({
         id: "failing-job",
         name: "Failing Job",
       });
 
-      const failedJob = {
-        ...mockJob,
-        last_status: "failure" as JobStatus,
-        last_error: "Script execution failed",
-      };
-
-      mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce(failedJob);
-      mockRunJob.mockResolvedValue(undefined);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      fetchMock.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Job execution failed" }),
+      });
 
       await runCommand(["cron", "run", "failing-job"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Job failed")
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to run job")
       );
     });
 
-    it("should show output when job succeeds with output", async () => {
+    it("should show error when Gateway is not running", async () => {
       const mockJob = createMockJob({
         id: "output-job",
         name: "Output Job",
       });
 
-      const completedJob = {
-        ...mockJob,
-        last_status: "success" as JobStatus,
-        last_output: "This is the job output",
-      };
-
-      mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce(completedJob);
-      mockRunJob.mockResolvedValue(undefined);
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      fetchMock.mockRejectedValue(new Error("Connection refused"));
 
       await runCommand(["cron", "run", "output-job"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Output")
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to connect")
       );
     });
 
@@ -704,11 +708,11 @@ describe("Cron CLI Commands", () => {
         last_status: "success" as JobStatus,
       });
 
-      mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce({
-        ...mockJob,
-        last_status: "success" as JobStatus,
+      mockGetJob.mockResolvedValue({ success: true, job: mockJob });
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
       });
-      mockRunJob.mockResolvedValue(undefined);
 
       await runCommand(["--json", "cron", "run", "run-job"]);
 
@@ -731,7 +735,7 @@ describe("Cron CLI Commands", () => {
         cron: "30 8 * * 1-5", // Weekdays at 8:30 AM
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -743,6 +747,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           cron: "30 8 * * 1-5",
         })
@@ -757,7 +762,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 */2 * * *",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -769,6 +774,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           cron: "0 */2 * * *",
         })
@@ -783,7 +789,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 0 1 * *",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -795,6 +801,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           cron: "0 0 1 * *",
         })
@@ -814,7 +821,7 @@ describe("Cron CLI Commands", () => {
         every: 300, // 5 minutes
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -826,6 +833,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           every: 300,
         })
@@ -839,7 +847,7 @@ describe("Cron CLI Commands", () => {
         every: 3600, // 1 hour
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -851,6 +859,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           every: 3600,
         })
@@ -953,7 +962,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -971,7 +980,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -988,7 +997,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -1005,7 +1014,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -1028,7 +1037,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -1057,7 +1066,7 @@ describe("Cron CLI Commands", () => {
         }),
       ];
 
-      mockListJobs.mockResolvedValue(mockJobs);
+      mockListJobs.mockResolvedValue({ success: true, jobs: mockJobs });
 
       await runCommand(["cron", "list"]);
 
@@ -1078,7 +1087,7 @@ describe("Cron CLI Commands", () => {
         cron: "0 * * * *",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -1090,6 +1099,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           job_type: "agent",
         })
@@ -1105,7 +1115,7 @@ describe("Cron CLI Commands", () => {
         script: "echo hello",
       });
 
-      mockCreateJob.mockResolvedValue(mockJob);
+      mockCreateJob.mockResolvedValue({ success: true, job: mockJob });
 
       await runCommand([
         "cron",
@@ -1119,6 +1129,7 @@ describe("Cron CLI Commands", () => {
       ]);
 
       expect(mockCreateJob).toHaveBeenCalledWith(
+        "/mock/config/cron.yaml",
         expect.objectContaining({
           job_type: "script",
           script: "echo hello",

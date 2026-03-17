@@ -5,6 +5,24 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Create mock functions using vi.hoisted to ensure they're available during mock hoisting
+const { mockLogFns } = vi.hoisted(() => ({
+  mockLogFns: {
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+// Mock the telemetry logger
+vi.mock("../../telemetry", () => ({
+  logger: {
+    child: () => mockLogFns,
+  },
+}));
+
 import {
   allDependenciesMet,
   detectCyclicDependency,
@@ -121,15 +139,15 @@ describe("allDependenciesMet", () => {
 
       const allTasks = createTaskMap([task]);
 
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      try {
-        expect(allDependenciesMet(task, allTasks)).toBe(false);
-        expect(consoleSpy).toHaveBeenCalledWith(
-          expect.stringContaining("non-existent task")
-        );
-      } finally {
-        consoleSpy.mockRestore();
-      }
+      mockLogFns.warn.mockClear();
+      expect(allDependenciesMet(task, allTasks)).toBe(false);
+      expect(mockLogFns.warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: "task1",
+          missingDependency: "nonexistent",
+        }),
+        expect.stringContaining("non-existent task")
+      );
     });
   });
 });

@@ -456,7 +456,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
             is_default: { type: "boolean" },
             enabled: { type: "boolean" },
             is_available: { type: "boolean" },
-            config: { type: "object" },
+            config: { type: "object", additionalProperties: true },
           },
         },
         404: {

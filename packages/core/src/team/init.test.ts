@@ -345,12 +345,12 @@ describe("initTeam", () => {
     const taskJsonPath = join(testDir, ".viben/tasks/00-bootstrap-guidelines/task.json");
     const taskJson = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
 
-    expect(taskJson.title).toBe("Bootstrap Project Guidelines");
-    expect(taskJson.slug).toBe("bootstrap-guidelines");
-    expect(taskJson.status).toBe("pending");
-    expect(taskJson.priority).toBe("P1");
+    expect(taskJson.name).toBe("Bootstrap Guidelines");
+    expect(taskJson.id).toBe("00-bootstrap-guidelines");
+    expect(taskJson.status).toBe("in_progress");
+    expect(taskJson.priority).toBe("high");
     expect(taskJson.assignee).toBe("test-dev");
-    expect(taskJson.created_at).toBeDefined();
+    expect(taskJson.createdAt).toBeDefined();
   });
 
   it("should set .current-task to bootstrap task path", async () => {

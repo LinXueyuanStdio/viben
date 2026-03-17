@@ -9,9 +9,12 @@ import type { Agent, AgentSession } from "../../types";
 // Mock the agents module
 vi.mock("../../agents", () => ({
   agentManager: {
-    listAgents: vi.fn(),
+    listAgents: vi.fn().mockResolvedValue([]),
+    listAgentsFromDir: vi.fn().mockResolvedValue([]),
+    listTemplates: vi.fn().mockResolvedValue([]),
     getAgent: vi.fn(),
     createAgent: vi.fn(),
+    createFromTemplate: vi.fn(),
     removeAgent: vi.fn(),
     updateAgent: vi.fn(),
     setDefault: vi.fn(),
@@ -257,15 +260,14 @@ describe("Agent CLI Commands", () => {
         planMode: true,
       });
 
-      vi.mocked(agentManager.createAgent).mockResolvedValue(mockAgent);
+      vi.mocked(agentManager.createFromTemplate).mockResolvedValue(mockAgent);
 
       await runCommand(["agent", "create", "My Agent", "--from-template", "coding-assistant"]);
 
-      expect(agentManager.createAgent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "My Agent",
-          fromTemplate: "coding-assistant",
-        })
+      expect(agentManager.createFromTemplate).toHaveBeenCalledWith(
+        "coding-assistant",
+        expect.any(String), // generated ID
+        expect.objectContaining({ name: "My Agent" })
       );
     });
 

@@ -428,6 +428,176 @@ viben task set-reward-config <task> \
 | `viben task compute-reward <task>` | worktree | 计算 reward 写入 task.json |
 | `viben reward select <tasks...>` | main | 聚合 + PPO 选择最优 |
 | `viben task approve <task>` | main | 调用 agent merge PR |
+| `viben swarm wait [tasks...] --all` | main | 等待所有 agent 完成 |
+
+---
+
+### 5. `viben swarm wait [tasks...] --all`
+
+**用途**：等待指定或所有 agent 完成，用于 FileRL 流程中并行任务同步点
+
+**输入**：
+```bash
+viben swarm wait [tasks...] [options]
+
+# 参数
+[tasks...]                       可选，指定等待的任务列表
+
+# 选项
+--all                            等待所有运行中的 agent
+--polling-interval-seconds <n>   轮询间隔，默认 10 秒
+--timeout-seconds <n>            单任务超时时间，默认 300 秒（5分钟）
+--quiet                          静默模式，只输出最终结果
+--verbose                        详细模式，每次轮询显示状态表格
+--json                           JSON 格式输出（继承全局选项）
+```
+
+**使用示例**：
+```bash
+# 等待所有 agent
+viben swarm wait --all
+
+# 等待指定任务
+viben swarm wait task-a task-b task-c
+
+# 自定义超时
+viben swarm wait --all --timeout-seconds 600 --polling-interval-seconds 5
+```
+
+**完成判定逻辑**：
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Wait Loop (每 N 秒轮询)                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  for each task in wait_list:                                    │
+│    ┌─────────────────────────────────────────────────────────┐  │
+│    │ 1. 检查进程状态: isProcessRunning(pid)                  │  │
+│    │ 2. 检查任务状态: task.json → status                     │  │
+│    │ 3. 检查超时: elapsed > timeout_seconds                  │  │
+│    └─────────────────────────────────────────────────────────┘  │
+│                              │                                  │
+│              ┌───────────────┼───────────────┐                  │
+│              ▼               ▼               ▼                  │
+│         [进程运行中]    [进程已退出]    [已超时]                │
+│         status=running  检查 task 状态  调用 reject            │
+│              │               │               │                  │
+│              │      ┌────────┴────────┐      │                  │
+│              │      ▼                 ▼      ▼                  │
+│              │  completed/failed   其他状态  │                  │
+│              │  → 标记完成         → 标记完成│                  │
+│              │                     (异常退出)│                  │
+│              ▼                               ▼                  │
+│         继续等待                      viben task reject <task>  │
+│                                       → 标记为 timeout          │
+│                                                                 │
+│  退出条件: wait_list 中所有任务都已完成或超时                   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**完成状态枚举**：
+- `completed` - 进程退出 + task.status 为 completed
+- `failed` - 进程退出 + task.status 为 failed
+- `timeout` - 超时 + 调用 reject
+- `exited` - 进程退出但 task.status 未更新（异常情况）
+
+**输出格式**：
+
+进度模式（默认）：
+```
+Waiting for 3 agents... [10s] 1/3 completed
+Waiting for 3 agents... [20s] 1/3 completed
+Waiting for 3 agents... [30s] 2/3 completed
+Waiting for 3 agents... [40s] 3/3 completed
+
+=== Wait Complete ===
+  ✓ task-a    completed  (35s)
+  ✓ task-b    completed  (42s)
+  ✗ task-c    timeout    (300s)
+
+Summary: 2 completed, 0 failed, 1 timeout
+```
+
+详细模式（--verbose）：
+```
+=== Polling [10s] ===
+┌──────────┬────────────┬────────┬─────────┬──────────┐
+│ Task     │ PID        │ Status │ Elapsed │ State    │
+├──────────┼────────────┼────────┼─────────┼──────────┤
+│ task-a   │ 12345      │ running│ 10s     │ waiting  │
+│ task-b   │ 12346      │ running│ 10s     │ waiting  │
+│ task-c   │ 12347      │ running│ 10s     │ waiting  │
+└──────────┴────────────┴────────┴─────────┴──────────┘
+```
+
+**退出码**：
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 所有任务完成（completed 或 failed，无 timeout） |
+| 1 | 有任务超时 |
+| 2 | 没有找到任何 agent 可等待 |
+| 3 | 执行错误（非 viben workspace 等） |
+
+**JSON 输出**（`--json`）：
+```json
+{
+  "success": true,
+  "data": {
+    "completed": ["task-a", "task-b"],
+    "failed": [],
+    "timeout": ["task-c"],
+    "results": [
+      {"task": "task-a", "status": "completed", "elapsedSeconds": 35},
+      {"task": "task-b", "status": "completed", "elapsedSeconds": 42},
+      {"task": "task-c", "status": "timeout", "elapsedSeconds": 300}
+    ]
+  }
+}
+```
+
+**实现位置**：
+```
+packages/core/src/cli/
+├── commands/
+│   └── swarm.ts              # 添加 wait 子命令注册
+└── lib/swarm/
+    ├── index.ts              # 导出新函数
+    ├── wait.ts               # 新增：wait 核心逻辑
+    └── status.ts             # 复用：isProcessRunning, getAllAgentStatuses
+```
+
+**核心函数签名**：
+```typescript
+// lib/swarm/wait.ts
+
+interface WaitOptions {
+  pollingIntervalSeconds: number;  // 默认 10
+  timeoutSeconds: number;          // 默认 300
+  verbose: boolean;
+  quiet: boolean;
+}
+
+interface WaitResult {
+  completed: string[];   // 成功完成的任务
+  failed: string[];      // 失败的任务
+  timeout: string[];     // 超时的任务
+  results: TaskWaitResult[];  // 详细结果
+}
+
+interface TaskWaitResult {
+  task: string;
+  status: 'completed' | 'failed' | 'timeout' | 'exited';
+  elapsedSeconds: number;
+  reason?: string;
+}
+
+async function waitForAgents(
+  repoRoot: string,
+  tasks: string[],        // 空数组 = --all
+  options: WaitOptions
+): Promise<WaitResult>
+```
 
 ---
 

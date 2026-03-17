@@ -56,7 +56,7 @@ export function DensityChart({ density }: DensityChartProps) {
                 borderRadius: '8px',
                 color: '#F1F5F9',
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               formatter={(value: any) => `${Number(value).toFixed(1)} 行/文件`}
             />
             <Bar
