@@ -553,6 +553,7 @@ export function registerTaskCommand(program: Command): void {
     .option("--model <model>", "Model to use for execution")
     .option("--start", "Auto-enqueue task for execution (status: queue)")
     .option("--worktree", "Run agent in a git worktree (isolated branch)")
+    .option("--compute-reward", "Enable compute-reward phase after create-pr")
     .action(async (title: string, options: {
       slug?: string;
       branch?: string;
@@ -564,6 +565,7 @@ export function registerTaskCommand(program: Command): void {
       model?: string;
       start?: boolean;
       worktree?: boolean;
+      computeReward?: boolean;
     }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
