@@ -66,3 +66,10 @@ export {
   type CreateWorktreeOptions,
   type CreateWorktreeResult,
 } from "./worktree";
+
+// Merge PR Phase (merges PR via agent)
+export {
+  runMergePRPhase,
+  type MergePRPhaseOptions,
+  type MergePRPhaseResult,
+} from "./merge-pr";
