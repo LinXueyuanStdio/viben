@@ -1047,6 +1047,151 @@ viben task create-pr add-user-auth --dry-run   # 预览
 
 ---
 
+## 卡住检测
+
+### `viben task check-stuck`
+
+检测任务是否卡住（仅检测，不执行恢复）。
+
+```bash
+viben task check-stuck <task> [options]
+```
+
+**选项**:
+| 选项 | 说明 |
+|------|------|
+| `-t, --threshold <ms>` | 卡住阈值（毫秒），默认 120000 (2分钟) |
+| `-v, --verbose` | 显示详细检测数据 |
+| `--json` | JSON 格式输出 |
+
+**检测机制**:
+
+执行 4 项检查来判断任务是否卡住：
+
+| 检查项 | 说明 | 判定卡住条件 |
+|--------|------|-------------|
+| `status` | 任务状态检查 | 仅 `in_progress`, `queue` 状态可判定卡住 |
+| `event_timestamp` | 事件时间戳 | 超过阈值无新事件 |
+| `process` | Agent 进程状态 | PID 对应进程不存在 |
+| `log_activity` | 日志活跃度 | 日志文件长时间未修改 |
+
+**卡住判定逻辑**:
+
+```
+isStuck = process_not_running OR (event_timeout AND log_inactive)
+```
+
+- 进程不运行 → 判定为卡住
+- 事件超时 **且** 日志无活动 → 判定为卡住
+
+**示例输出**:
+
+```
+=== Stuck Check: 03-11-feature-xyz ===
+
+Status: STUCK
+  Task appears stuck: process not running, no recent events
+
+Checks:
+  ✓ status: Task is in active state: in_progress
+  ✗ event_timestamp: No events for 5m 32s (threshold: 2m)
+  ✗ process: Agent process not running (PID: 12345)
+  ✗ log_activity: Log file not modified for 5m 30s
+
+Task Info:
+  Status:   in_progress
+  Assignee: john
+  Last Event: AGENT_OUTPUT_CHUNK @ 2026-03-11T10:00:00Z
+  Updated:  2026-03-11T10:00:00Z
+```
+
+**JSON 输出格式**:
+
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "taskDir": "03-11-feature-xyz",
+    "task": { ... },
+    "isStuck": true,
+    "summary": "Task appears stuck: process not running, no recent events",
+    "checks": [
+      {
+        "name": "status",
+        "isStuck": false,
+        "reason": "Task is in active state: in_progress",
+        "data": { "status": "in_progress" }
+      },
+      {
+        "name": "event_timestamp",
+        "isStuck": true,
+        "reason": "No events for 5m 32s (threshold: 2m)",
+        "data": {
+          "lastEventTime": "2026-03-11T10:00:00Z",
+          "elapsedMs": 332000,
+          "elapsedStr": "5m 32s",
+          "thresholdMs": 120000
+        }
+      },
+      {
+        "name": "process",
+        "isStuck": true,
+        "reason": "Agent process not running (PID: 12345)",
+        "data": {
+          "pid": 12345,
+          "running": false,
+          "worktreePath": "/path/to/.viben/worktrees/feature/xyz",
+          "startedAt": "2026-03-11T09:30:00Z"
+        }
+      },
+      {
+        "name": "log_activity",
+        "isStuck": true,
+        "reason": "Log file not modified for 5m 30s",
+        "data": {
+          "lastModified": "2026-03-11T10:00:00Z",
+          "elapsedMs": 330000,
+          "elapsedStr": "5m 30s"
+        }
+      }
+    ]
+  }
+}
+```
+
+**示例**:
+
+```bash
+# 基础检查
+viben task check-stuck 03-11-feature-xyz
+
+# 自定义阈值 (5分钟)
+viben task check-stuck 03-11-feature-xyz -t 300000
+
+# 详细输出
+viben task check-stuck 03-11-feature-xyz --verbose
+
+# JSON 输出 (用于脚本或 API)
+viben task check-stuck 03-11-feature-xyz --json
+```
+
+**与自动恢复的关系**:
+
+| 功能 | 位置 | 说明 |
+|------|------|------|
+| `check-stuck` 命令 | CLI | 仅检测，不恢复 |
+| `TaskRecoveryService` | Gateway | 检测 + 自动恢复 |
+
+`check-stuck` 命令适用于：
+- 手动诊断任务状态
+- 脚本集成检测
+- 了解任务为何卡住
+
+自动恢复由 Gateway 的 `TaskRecoveryService` 负责，在检测到卡住后发送 `USER_STOPPED` 事件。
+
+---
+
 ## 任务目录结构
 
 ```
@@ -1187,6 +1332,9 @@ viben task create-pr add-user-auth --dry-run   # 预览
 - [ ] `viben task status --detail/--watch/--log` 详细监控
 - [ ] `viben task create-pr` 创建 PR
 
+### 卡住检测
+- [x] `viben task check-stuck` 检测任务是否卡住（仅检测，不恢复）
+
 ---
 
 ## Related Documents
@@ -1200,6 +1348,8 @@ viben task create-pr add-user-auth --dry-run   # 预览
 | 文件 | 描述 |
 |------|------|
 | `packages/core/src/cli/commands/task.ts` | CLI 命令实现 |
+| `packages/core/src/task/ops/stuck.ts` | 卡住检测逻辑 |
+| `packages/core/src/task/recovery/task-recovery.ts` | Gateway 自动恢复服务 |
 | `packages/core/src/cli/lib/viben-workspace.ts` | 工具函数 (`validateStatusTransition`, `appendTaskEvent`, `updateTaskStatus`) |
 | `packages/core/src/task/phase/start.ts` | `startTask()` - 统一执行入口 |
 | `packages/core/src/task/phase/plan.ts` | `runPlanPhase()` - Plan Agent 启动 |

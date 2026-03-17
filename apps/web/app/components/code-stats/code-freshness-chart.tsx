@@ -62,7 +62,7 @@ export function CodeFreshnessChart({ data }: CodeFreshnessChartProps) {
                 borderRadius: '8px',
                 color: '#F1F5F9',
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               formatter={(value: any, name: any, props: any) => {
                 const percentage = ((Number(value) / totalFiles) * 100).toFixed(1);
                 const lines = props.payload.lines?.toLocaleString() || '0';

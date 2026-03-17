@@ -328,6 +328,16 @@ export interface UnifiedTask {
       paused_at: string;
     };
   };
+
+  // === FileRL Reward ===
+  /** Enable compute-reward phase in work-phase pipeline */
+  compute_reward?: boolean;
+
+  /** Reward configuration for evaluation */
+  reward_config?: import("../../reward/ops/types").RewardConfig;
+
+  /** Reward evaluation result */
+  reward?: import("../../reward/ops/types").RewardResult;
 }
 
 // =============================================================================

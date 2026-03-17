@@ -65,7 +65,7 @@ export function FileSizeChart({ data }: FileSizeChartProps) {
                 borderRadius: '8px',
                 color: '#F1F5F9',
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               formatter={(value: any) => {
                 const percentage = ((Number(value) / totalFiles) * 100).toFixed(1);
                 return [`${Number(value).toLocaleString()} 个文件 (${percentage}%)`, '文件数'];

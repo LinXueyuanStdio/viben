@@ -37,6 +37,16 @@ vi.mock("../../models", () => ({
     clearFallbacks: vi.fn(),
     getModelsByProvider: vi.fn(),
     reload: vi.fn(),
+    createModel: vi.fn(),
+    enableModel: vi.fn(),
+    disableModel: vi.fn(),
+  },
+}));
+
+// Mock the providerManager module
+vi.mock("../../providers", () => ({
+  providerManager: {
+    listProviders: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -95,12 +105,7 @@ describe("Model Routes", () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Create a new Fastify instance for each test
-    fastify = Fastify();
-    registerModelRoutes(fastify);
-    await fastify.ready();
-
-    // Setup default mock implementations
+    // Setup default mock implementations BEFORE registering routes
     vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
     vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
     vi.mocked(modelManager.resolveAlias).mockImplementation(async (id) => {
@@ -118,6 +123,11 @@ describe("Model Routes", () => {
         return mockModels.filter((m) => m.provider === provider);
       }
     );
+
+    // Create a new Fastify instance for each test
+    fastify = Fastify();
+    registerModelRoutes(fastify);
+    await fastify.ready();
   });
 
   afterEach(async () => {

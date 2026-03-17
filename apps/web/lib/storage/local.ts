@@ -25,7 +25,7 @@ export class LocalStorage implements StorageProvider {
   async upload(
     filePath: string,
     content: Buffer | string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _options?: UploadOptions
   ): Promise<UploadResult> {
     const buffer = typeof content === 'string' ? Buffer.from(content) : content;

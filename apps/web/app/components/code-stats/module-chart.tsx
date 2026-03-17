@@ -73,7 +73,7 @@ export function ModuleChart({ modules }: ModuleChartProps) {
                 borderRadius: '8px',
                 color: '#F1F5F9',
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+               
               formatter={(value: any) => `${Number(value).toLocaleString()} 行`}
             />
             <Bar

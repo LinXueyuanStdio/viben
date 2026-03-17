@@ -25,6 +25,8 @@ import {
   type Registry,
   type StartResult,
   type AgentStatus,
+  type WaitOptions,
+  type WaitResult,
   // Registry functions
   getRegistryPath,
   readRegistry,
@@ -39,6 +41,10 @@ import {
   getSessionId,
   // Cleanup functions
   listWorktrees,
+  // Wait functions
+  waitForAgents,
+  getRunningAgents,
+  formatWaitResult,
   // CLI Adapter
   createCLIAdapter,
   type Platform,
@@ -755,6 +761,151 @@ export function registerSwarmCommand(program: Command): void {
         await showRegistryCommand(ctx, repoRoot);
       } catch (error) {
         handleCommandError(ctx, error);
+      }
+    });
+
+  // swarm wait - wait for agents to complete
+  swarm
+    .command("wait")
+    .description("Wait for agents to complete")
+    .argument("[tasks...]", "Task names to wait for (empty = use --all)")
+    .option("--all", "Wait for all running agents")
+    .option("--polling-interval-seconds <n>", "Polling interval in seconds", "10")
+    .option("--timeout-seconds <n>", "Timeout per task in seconds", "300")
+    .option("--quiet", "Quiet mode - minimal output")
+    .option("--verbose", "Verbose mode - show status table each poll")
+    .option("--json", "JSON format output")
+    .action(async (tasks: string[], options: {
+      all?: boolean;
+      pollingIntervalSeconds?: string;
+      timeoutSeconds?: string;
+      quiet?: boolean;
+      verbose?: boolean;
+    }) => {
+      const ctx = getOutputContext(program);
+      const repoRoot = findVibenRoot();
+
+      if (!repoRoot) {
+        handleCommandError(ctx, new Error("Not in a Viben workspace"));
+        process.exit(3);
+        return;
+      }
+
+      try {
+        // Determine tasks to wait for
+        let tasksToWait: string[] = tasks;
+
+        if (options.all) {
+          // Wait for all running agents
+          tasksToWait = [];
+        } else if (tasks.length === 0) {
+          // No tasks specified and no --all flag
+          output(ctx, errorResponse("NO_TASKS", "No tasks specified. Use task names or --all"), () => {
+            console.error(chalk.red("Error: No tasks specified"));
+            console.log(chalk.gray("Usage: viben swarm wait <task1> <task2> ..."));
+            console.log(chalk.gray("       viben swarm wait --all"));
+          });
+          process.exit(2);
+          return;
+        }
+
+        // Parse options
+        const waitOptions: WaitOptions = {
+          pollingIntervalSeconds: parseInt(options.pollingIntervalSeconds || "10", 10),
+          timeoutSeconds: parseInt(options.timeoutSeconds || "300", 10),
+          verbose: options.verbose ?? ctx.verbose ?? false,
+          quiet: options.quiet ?? ctx.quiet ?? false,
+        };
+
+        // Check if there are any agents to wait for
+        const runningAgents = getRunningAgents(repoRoot);
+        if (runningAgents.length === 0) {
+          output(ctx, successResponse({
+            completed: [],
+            failed: [],
+            timeout: [],
+            results: [],
+          }), () => {
+            console.log(chalk.yellow("No running agents found"));
+          });
+          process.exit(2);
+          return;
+        }
+
+        // Filter to specified tasks if not --all
+        if (tasksToWait.length > 0) {
+          const registry = readRegistry(repoRoot);
+          const validTasks: string[] = [];
+          const invalidTasks: string[] = [];
+
+          for (const taskName of tasksToWait) {
+            const agent = registry.agents.find(
+              (a) => a.id === taskName || a.task_dir.includes(taskName)
+            );
+            if (agent && isProcessRunning(agent.pid)) {
+              validTasks.push(taskName);
+            } else if (agent) {
+              // Agent exists but not running
+              if (!waitOptions.quiet) {
+                console.log(chalk.yellow(`Skipping ${taskName}: agent not running`));
+              }
+            } else {
+              invalidTasks.push(taskName);
+            }
+          }
+
+          if (invalidTasks.length > 0 && !waitOptions.quiet) {
+            console.log(chalk.yellow(`Tasks not found in registry: ${invalidTasks.join(", ")}`));
+          }
+
+          if (validTasks.length === 0) {
+            output(ctx, successResponse({
+              completed: [],
+              failed: [],
+              timeout: [],
+              results: [],
+            }), () => {
+              console.log(chalk.yellow("No running agents match the specified tasks"));
+            });
+            process.exit(2);
+            return;
+          }
+
+          tasksToWait = validTasks;
+        }
+
+        // Show starting message
+        if (!waitOptions.quiet) {
+          const count = tasksToWait.length || runningAgents.length;
+          console.log(chalk.blue(`=== Waiting for ${count} agent(s) ===`));
+          console.log(chalk.dim(`Polling: ${waitOptions.pollingIntervalSeconds}s, Timeout: ${waitOptions.timeoutSeconds}s`));
+          console.log();
+        }
+
+        // Execute wait
+        const result: WaitResult = await waitForAgents(repoRoot, tasksToWait, waitOptions);
+
+        // Output result
+        if (ctx.json) {
+          const hasTimeout = result.timeout.length > 0;
+          output(ctx, {
+            success: !hasTimeout,
+            data: result,
+          });
+        } else if (!waitOptions.quiet) {
+          console.log();
+          console.log(formatWaitResult(result));
+        }
+
+        // Determine exit code
+        if (result.timeout.length > 0) {
+          process.exit(1); // Timeout
+        } else {
+          process.exit(0); // Success (completed or failed without timeout)
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+        process.exit(3);
       }
     });
 }

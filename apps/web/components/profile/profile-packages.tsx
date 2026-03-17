@@ -21,6 +21,6 @@ export async function ProfilePackages({ userId }: ProfilePackagesProps) {
   ]);
 
   // Map database results to client component props
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return <ProfilePackagesClient mcps={mcps as any} skills={skills as any} />;
 }

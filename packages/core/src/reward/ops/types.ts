@@ -129,6 +129,85 @@ export interface RewardListTypesResult {
 }
 
 // =============================================================================
+// PPO Selection Types
+// =============================================================================
+
+/**
+ * Options for PPO-based reward selection
+ */
+export interface SelectOptions {
+  /** Minimum adjusted reward threshold (default: 0.6) */
+  threshold?: number;
+
+  /** KL penalty coefficient λ (default: 0.05) */
+  klCoef?: number;
+
+  /** Maximum diff lines for KL normalization (default: 500) */
+  maxDiff?: number;
+}
+
+/**
+ * Default values for PPO selection
+ */
+export const SELECT_DEFAULTS: Required<SelectOptions> = {
+  threshold: 0.6,
+  klCoef: 0.05,
+  maxDiff: 500,
+};
+
+/**
+ * PPO metrics for a single task candidate
+ */
+export interface TaskCandidate {
+  /** Task name (directory name) */
+  task: string;
+
+  /** Original reward score (0-1) */
+  reward: number;
+
+  /** Number of lines changed */
+  diffLines: number;
+
+  /** KL penalty = λ × (diff_lines / max_diff) */
+  klPenalty: number;
+
+  /** Adjusted reward = reward - KL penalty */
+  adjustedReward: number;
+
+  /** Advantage = adjusted reward - baseline */
+  advantage: number;
+
+  /** PPO score (simplified, = advantage) */
+  ppoScore: number;
+}
+
+/**
+ * Result of PPO-based reward selection
+ */
+export interface SelectResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Baseline (mean of adjusted rewards) */
+  baseline?: number;
+
+  /** Threshold used for selection */
+  threshold?: number;
+
+  /** All task candidates with PPO metrics */
+  candidates?: TaskCandidate[];
+
+  /** Selected task name (best PPO score above threshold) */
+  selected?: string | null;
+
+  /** Rejected task names */
+  rejected?: string[];
+
+  /** Error message if failed */
+  error?: string;
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 

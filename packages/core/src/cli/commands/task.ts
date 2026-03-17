@@ -2685,6 +2685,14 @@ export function registerTaskCommand(program: Command): void {
         const repoRoot = ensureVibenDirWithRoot(cwd);
         const thresholdMs = parseInt(options.threshold || "120000", 10);
 
+        if (isNaN(thresholdMs) || thresholdMs <= 0) {
+          output(ctx, errorResponse("INVALID_THRESHOLD", "Threshold must be a positive number"), () => {
+            console.error(chalk.red("Error: --threshold must be a positive number (milliseconds)"));
+          });
+          process.exit(1);
+          return;
+        }
+
         const result = checkStuck(repoRoot, task, {
           thresholdMs,
           verbose: options.verbose,

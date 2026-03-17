@@ -222,14 +222,14 @@ describe("crud operations", () => {
       expect(writeCall?.[1]).toMatchObject({ branch: "fix/bug-123" });
     });
 
-    it("should set status to queue when --start is provided", () => {
+    it("should set autoStart to true when --start is provided", () => {
+      // Note: --start flag sets autoStart=true, CLI layer handles status transition
       const result = createTask(mockRepoRoot, "Test Task", { start: true });
 
       expect(result.success).toBe(true);
-      expect(result.status).toBe("queue");
+      expect(result.status).toBe("backlog"); // Status remains backlog, CLI handles queue transition
       const writeCall = vi.mocked(vibenWorkspace.writeTaskJson).mock.calls[0];
-      expect(writeCall?.[1]).toMatchObject({ status: "queue" });
-      expect((writeCall?.[1] as Record<string, unknown>).queuedAt).toBeDefined();
+      expect(writeCall?.[1]).toMatchObject({ autoStart: true, status: "backlog" });
     });
 
     it("should fail when no developer is set and no assignee provided", () => {

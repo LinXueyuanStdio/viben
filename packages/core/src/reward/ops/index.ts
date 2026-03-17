@@ -9,6 +9,7 @@ export {
   // Constants
   BUILTIN_REWARD_TYPES,
   CUSTOM_REWARD_TYPES_DIR,
+  SELECT_DEFAULTS,
   // Types
   type BuiltinRewardTypeName,
   type RewardTypeSource,
@@ -17,6 +18,9 @@ export {
   type RewardResult,
   type RewardConfig,
   type RewardListTypesResult,
+  type SelectOptions,
+  type SelectResult,
+  type TaskCandidate,
   // Helper functions
   isBuiltinRewardType,
 } from "./types";
@@ -28,6 +32,9 @@ export {
   loadRewardTypePrompt,
   validateRewardTypes,
 } from "./store";
+
+// Re-export select functions
+export { selectBestTask } from "./select";
 
 // =============================================================================
 // CRUD Operations (High-level wrappers with error handling)

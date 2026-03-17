@@ -189,3 +189,11 @@ export {
   buildContextSection,
   hasContextEntries,
 } from "./context-prompt";
+
+// Stuck detection operations
+export type {
+  StuckCheckDetail,
+  CheckStuckResult,
+  CheckStuckOptions,
+} from "./stuck";
+export { checkStuck } from "./stuck";
