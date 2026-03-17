@@ -16,7 +16,7 @@
  */
 
 import { spawn, type SpawnOptions, type ChildProcess } from "node:child_process";
-import { existsSync, writeFileSync, openSync } from "node:fs";
+import { existsSync, writeFileSync, openSync, closeSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 import {
@@ -227,11 +227,15 @@ Update task.json with merged_at, merge_commit, and status when done.`;
   try {
     child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
   } catch (error) {
+    closeSync(logFd);
     return {
       success: false,
       error: `Failed to spawn merge-pr agent: ${error}`,
     };
   }
+
+  // Close file descriptor - child process has inherited it
+  closeSync(logFd);
 
   // Detach process so it continues running after parent exits
   child.unref();
