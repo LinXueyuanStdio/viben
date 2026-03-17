@@ -2,9 +2,12 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement `viben task compute-reward <task>` command to evaluate PR quality using reward agents.
+**Goal:** Implement compute-reward as a work-phase action, triggered by `--compute-reward` flag on task create.
 
-**Architecture:** Single agent serial evaluation pattern matching implement-phase. The command generates reward.jsonl, spawns reward agent, and parses output to update task.json with reward scores.
+**Architecture:**
+1. `viben task create --compute-reward` sets `compute_reward: true` in task.json
+2. work.md agent handles `action: "compute-reward"` by calling reward subagent
+3. `viben task compute-reward <task>` available as manual trigger
 
 **Tech Stack:** TypeScript, Commander.js CLI, Node.js child_process spawn
 
@@ -14,11 +17,13 @@
 
 | File | Responsibility |
 |------|----------------|
-| `packages/core/src/task/ops/types.ts` | Add `reward_config` and `reward` fields to UnifiedTask |
+| `packages/core/src/task/ops/types.ts` | Add `reward_config`, `reward`, `compute_reward` fields to UnifiedTask |
+| `packages/core/src/task/ops/crud.ts` | Handle `--compute-reward` option in createTask |
 | `packages/core/src/task/phase/reward.ts` | Phase runner: validation, jsonl generation, agent spawn |
 | `packages/core/src/task/phase/index.ts` | Export reward phase |
-| `packages/core/src/cli/commands/task.ts` | CLI command: `compute-reward` subcommand |
+| `packages/core/src/cli/commands/task.ts` | CLI: `--compute-reward` option + `compute-reward` subcommand |
 | `.claude/agents/reward.md` | Agent config: evaluation workflow and output format |
+| `.claude/agents/work.md` | Add `action: "compute-reward"` handling |
 
 ---
 
@@ -33,12 +38,15 @@
 
 Find the end of `UnifiedTask` interface, after `machine_context` field (around line 330).
 
-- [ ] **Step 2: Add reward_config and reward fields**
+- [ ] **Step 2: Add compute_reward, reward_config and reward fields**
 
 Add these fields before the closing brace of `UnifiedTask`:
 
 ```typescript
   // === FileRL Reward ===
+  /** Enable compute-reward phase in work-phase pipeline */
+  compute_reward?: boolean;
+
   /** Reward configuration for evaluation */
   reward_config?: import("../../reward/ops/types").RewardConfig;
 
@@ -56,6 +64,75 @@ Expected: No errors related to UnifiedTask
 ```bash
 git add packages/core/src/task/ops/types.ts
 git commit -m "feat(task): add reward_config and reward fields to UnifiedTask"
+```
+
+---
+
+## Chunk 1.5: CLI --compute-reward Option
+
+### Task 1.5: Add --compute-reward option to task create
+
+**Files:**
+- Modify: `packages/core/src/cli/commands/task.ts` (task create command)
+- Modify: `packages/core/src/task/ops/crud.ts` (createTask function)
+
+- [ ] **Step 1: Add --compute-reward option to task create command**
+
+Find the `task create` command (around line 543) and add the option:
+
+```typescript
+    .option("--compute-reward", "Enable compute-reward phase after create-pr")
+```
+
+Add after the existing `--worktree` option.
+
+- [ ] **Step 2: Update action handler to pass compute_reward**
+
+In the action handler, add `computeReward` to options type and pass to createTask:
+
+```typescript
+// In options type (around line 556)
+computeReward?: boolean;
+
+// In createTask call (around line 573)
+const result = createTask(repoRoot, title, {
+  ...options,
+  computeReward: options.computeReward,
+});
+```
+
+- [ ] **Step 3: Update createTask in crud.ts to handle compute_reward**
+
+Find `createTask` function in `packages/core/src/task/ops/crud.ts` and add:
+
+```typescript
+// In CreateTaskOptions interface
+computeReward?: boolean;
+
+// In task object creation
+const task: UnifiedTask = {
+  // ... existing fields ...
+  compute_reward: options.computeReward ?? false,
+  // If compute_reward is true, also add default reward_config
+  ...(options.computeReward && {
+    reward_config: {
+      types: ["test_coverage", "code_quality", "agent_review"],
+      weights: [0.34, 0.33, 0.33],
+    },
+  }),
+};
+```
+
+- [ ] **Step 4: Verify typecheck passes**
+
+Run: `cd packages/core && pnpm typecheck`
+Expected: No errors
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/core/src/cli/commands/task.ts packages/core/src/task/ops/crud.ts
+git commit -m "feat(cli): add --compute-reward option to task create"
 ```
 
 ---
@@ -156,6 +233,67 @@ Expected: File exists with correct content
 ```bash
 git add .claude/agents/reward.md
 git commit -m "feat(agent): add reward agent for PR quality evaluation"
+```
+
+---
+
+### Task 2.5: Update work.md to handle compute-reward action
+
+**Files:**
+- Modify: `.claude/agents/work.md`
+
+- [ ] **Step 1: Add compute-reward action documentation**
+
+Add after the `action: "create-pr"` section (around line 200):
+
+```markdown
+### action: "compute-reward" (After create-pr, if enabled)
+
+> **IMPORTANT**: Only run this action if task.json has `compute_reward=true`. Skip if not enabled.
+
+This action evaluates PR quality using reward type prompts. Call the reward subagent:
+
+```
+Task(
+  subagent_type: "reward",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nEvaluate PR quality using reward types in reward.jsonl",
+  model: "sonnet",
+  run_in_background: true
+)
+```
+
+The reward agent will:
+1. Read reward.jsonl for configured reward types
+2. Read each reward type prompt
+3. Evaluate code changes against each type
+4. Output JSON scores
+
+After reward agent completes, the scores are written to task.json.
+
+**Workflow order**: implement → check → finish → create-pr → **compute-reward** (if enabled)
+```
+
+- [ ] **Step 2: Update the phase handling table**
+
+In the "Two Working Modes" section, update to include compute-reward:
+
+```markdown
+| Mode | worktree | Branch switching | Final actions |
+|------|----------|------------------|---------------|
+| Main Repo | `false` or absent | NO switching | Notify user for review |
+| Worktree | `true` | Isolated branch | create-pr → compute-reward (if enabled) |
+```
+
+- [ ] **Step 3: Verify work.md is valid markdown**
+
+Run: `cat .claude/agents/work.md | head -50`
+Expected: Valid markdown with new section
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add .claude/agents/work.md
+git commit -m "feat(agent): add compute-reward action to work agent"
 ```
 
 ---
@@ -606,26 +744,21 @@ git commit -m "feat(task/phase): export reward phase"
 
 ---
 
-## Chunk 4: CLI Command Implementation
+## Chunk 4: CLI Command Implementation (Manual Trigger)
 
-### Task 5: Add compute-reward subcommand
+### Task 5: Add compute-reward subcommand (manual trigger)
 
 **Files:**
 - Modify: `packages/core/src/cli/commands/task.ts`
+
+This command allows manual triggering of compute-reward outside of work-phase pipeline.
 
 - [ ] **Step 1: Add import for runRewardPhaseSync**
 
 Find the imports section (around line 143-147 where phase operations are imported) and add:
 
 ```typescript
-// Add to existing phase imports
-import {
-  runPlanPhase,
-  runImplementPhase,
-  runCheckPhase,
-} from "../../task/phase";
-
-// Add runRewardPhaseSync to a new import or existing block:
+// Add runRewardPhaseSync to existing phase imports:
 import { runRewardPhaseSync } from "../../task/phase";
 ```
 
@@ -637,11 +770,11 @@ Search for an existing subcommand like `implement-phase` or `check-phase` to und
 
 ```typescript
   // ============================================================================
-  // task compute-reward
+  // task compute-reward (manual trigger for compute-reward phase)
   // ============================================================================
   taskCmd
     .command("compute-reward")
-    .description("Evaluate PR quality using reward types")
+    .description("Manually trigger PR quality evaluation using reward types")
     .argument("<task>", "Task name or directory")
     .option("--platform <platform>", "Executor platform", "claude")
     .option("--no-detach", "Run in foreground (block until complete)")
@@ -808,11 +941,18 @@ git status
 
 | Task | Files | Description |
 |------|-------|-------------|
-| 1 | `task/ops/types.ts` | Add reward fields to UnifiedTask |
+| 1 | `task/ops/types.ts` | Add compute_reward, reward_config, reward fields to UnifiedTask |
+| 1.5 | `cli/commands/task.ts`, `task/ops/crud.ts` | Add --compute-reward option to task create |
 | 2 | `.claude/agents/reward.md` | Create reward agent config |
+| 2.5 | `.claude/agents/work.md` | Add compute-reward action handling |
 | 3 | `task/phase/reward.ts` | Create phase runner |
 | 4 | `task/phase/index.ts` | Export reward phase |
-| 5 | `cli/commands/task.ts` | Add compute-reward CLI command |
+| 5 | `cli/commands/task.ts` | Add compute-reward manual trigger command |
 | 6 | (manual test) | Integration testing |
 
-**Total estimated time:** 30-45 minutes
+**Key Integration Points:**
+- `viben task create --compute-reward` → sets `compute_reward: true` in task.json
+- work.md agent checks `compute_reward` field and runs reward phase after create-pr
+- `viben task compute-reward <task>` → manual trigger for testing/debugging
+
+**Total estimated time:** 45-60 minutes
