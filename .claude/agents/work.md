@@ -26,10 +26,10 @@ This directory contains all context files for the current task:
 
 **Check task.json `worktree` field to determine mode:**
 
-| Mode | worktree | Branch switching | Final action |
-|------|----------|------------------|--------------|
+| Mode | worktree | Branch switching | Final actions |
+|------|----------|------------------|---------------|
 | Main Repo | `false` or absent | NO switching | Notify user for review |
-| Worktree | `true` | Isolated branch | create-pr |
+| Worktree | `true` | Isolated branch | create-pr → compute-reward (if enabled) |
 
 **Main Repo Mode** (default):
 - Work directly in main repo
@@ -199,6 +199,31 @@ This will:
 4. Update task.json with status="review", pr_url, and current_phase
 
 **Note**: This is the only action that performs git commit, as it's the final step after all implementation and checks are complete.
+
+### action: "compute-reward" (After create-pr, if enabled)
+
+> **IMPORTANT**: Only run this action if task.json has `compute_reward=true`. Skip if not enabled.
+
+This action evaluates PR quality using reward type prompts. Call the reward subagent:
+
+```
+Task(
+  subagent_type: "reward",
+  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nEvaluate PR quality using reward types in reward.jsonl",
+  model: "sonnet",
+  run_in_background: true
+)
+```
+
+The reward agent will:
+1. Read reward.jsonl for configured reward types
+2. Read each reward type prompt
+3. Evaluate code changes against each type
+4. Output JSON scores
+
+After reward agent completes, the scores are written to task.json.
+
+**Workflow order**: implement → check → finish → create-pr → **compute-reward** (if enabled)
 
 ### Main Repo Mode: After Finish
 
