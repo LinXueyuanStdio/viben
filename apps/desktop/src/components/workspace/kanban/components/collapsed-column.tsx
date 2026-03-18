@@ -10,6 +10,7 @@
  * Clicking expands the column back to full width.
  */
 
+import { useTranslation } from "react-i18next";
 import { ChevronsRight } from "lucide-react";
 import { Badge, cn } from "@viben/ui";
 import type { ColumnState } from "../types";
@@ -28,6 +29,7 @@ export interface CollapsedColumnProps {
  * Shows column color, name (rotated vertically), task count, and expand icon.
  */
 export function CollapsedColumn({ column, onExpand }: CollapsedColumnProps) {
+  const { t } = useTranslation();
   const taskCount = column.tasks.length;
 
   return (
@@ -49,7 +51,7 @@ export function CollapsedColumn({ column, onExpand }: CollapsedColumnProps) {
           onExpand();
         }
       }}
-      aria-label={`Expand ${column.name} column`}
+      aria-label={t("workspace.expandColumn", { name: column.name })}
       aria-expanded={false}
     >
       {/* Column color indicator */}

@@ -6,6 +6,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -403,6 +404,7 @@ function formatFieldLabel(key: string): string {
 
 const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
   ({ schema, value, onChange, maxDepth = 4, rootSchema }, ref) => {
+    const { t } = useTranslation();
     const effectiveRootSchema = rootSchema || schema;
     const [isJsonMode, setIsJsonMode] = useState(false);
     const [jsonError, setJsonError] = useState<string | null>(null);
@@ -950,7 +952,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                   disabled={!canAdd}
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Item
+                  {t("inspector.addItem")}
                   {resolved.maxItems !== undefined && (
                     <span className="ml-1 text-muted-foreground">
                       ({arrayValue.length}/{resolved.maxItems})
@@ -971,7 +973,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                 <div key={index} className="border rounded-md p-2 bg-muted/10">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground">
-                      Item {index + 1}
+                      {t("inspector.itemNumber", { number: index + 1 })}
                     </span>
                     <Button
                       type="button"
@@ -1049,19 +1051,19 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
           <div className="flex justify-end gap-2">
             {isJsonMode && (
               <Button type="button" variant="ghost" size="sm" onClick={formatJson} className="h-6 text-xs">
-                Format
+                {t("inspector.format")}
               </Button>
             )}
             <Button type="button" variant="outline" size="sm" onClick={handleSwitchMode} className="h-6 text-xs">
               {isJsonMode ? (
                 <>
                   <FormInput className="h-3 w-3 mr-1" />
-                  Form
+                  {t("inspector.formInput")}
                 </>
               ) : (
                 <>
                   <Code2 className="h-3 w-3 mr-1" />
-                  JSON
+                  {t("inspector.jsonInput")}
                 </>
               )}
             </Button>

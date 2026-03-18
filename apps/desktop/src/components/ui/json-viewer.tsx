@@ -123,14 +123,16 @@ export const JsonViewer = memo(function JsonViewer({
 
 /**
  * Fallback component for when JSON editor fails to load
+ * @param noDataText - Text to show when no data is available. Pass translated string via t("common.noData")
  */
 export function JsonViewerFallback({
   data,
   className = "",
-  noDataText = "No data",
+  noDataText,
 }: {
   data: unknown;
   className?: string;
+  /** Text to show when no data. If not provided, defaults to "No data" */
   noDataText?: string;
 }) {
   const displayText =
@@ -143,7 +145,7 @@ export function JsonViewerFallback({
       className={`p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap overflow-auto ${className}`}
       style={{ backgroundColor: "#1e1e1e" }}
     >
-      {displayText || <span className="text-gray-500 italic">{noDataText}</span>}
+      {displayText || <span className="text-gray-500 italic">{noDataText || "No data"}</span>}
     </pre>
   );
 }
