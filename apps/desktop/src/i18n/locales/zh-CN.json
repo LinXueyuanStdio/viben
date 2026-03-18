@@ -3573,6 +3573,7 @@
     "generatingAllIdeas": "正在生成所有类型的想法",
     "generatingTypeIdeas": "正在生成 {{type}} 类型的想法",
     "generateThisType": "生成此类型的想法",
+    "createIdeaType": "创建想法类型",
     "createTaskFromIdea": "从此想法创建任务",
     "promoteToTask": "提升为任务",
     "dismiss": "忽略",
