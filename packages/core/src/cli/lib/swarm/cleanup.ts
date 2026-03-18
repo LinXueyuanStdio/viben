@@ -182,7 +182,8 @@ export function getMergedBranches(
 
   const mergedBranches: string[] = [];
   for (const line of mergedOut.split("\n")) {
-    const branch = line.trim().replace(/^\*\s*/, "");
+    // Remove prefix: * = current branch, + = worktree branch
+    const branch = line.trim().replace(/^[\*\+]\s*/, "");
     if (branch && branch !== mainBranch) {
       mergedBranches.push(branch);
     }
