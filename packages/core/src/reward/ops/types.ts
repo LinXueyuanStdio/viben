@@ -128,6 +128,108 @@ export interface RewardListTypesResult {
   error?: string;
 }
 
+/**
+ * Result of viewing a reward type
+ */
+export interface RewardViewTypeResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** The reward type */
+  rewardType?: RewardType;
+
+  /** The prompt content (body without frontmatter) */
+  promptContent?: string;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Options for creating a custom reward type
+ */
+export interface RewardCreateTypeOptions {
+  /** Type name (required) */
+  name: string;
+
+  /** Description (required) */
+  description: string;
+
+  /** Default weight (optional) */
+  weightDefault?: number;
+
+  /** Prompt content (optional, can be empty for initial creation) */
+  promptContent?: string;
+}
+
+/**
+ * Result of creating a reward type
+ */
+export interface RewardCreateTypeResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** The created reward type */
+  rewardType?: RewardType;
+
+  /** Path to the created file */
+  filePath?: string;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Result of updating a reward type
+ */
+export interface RewardUpdateTypeResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** The updated reward type */
+  rewardType?: RewardType;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Result of deleting a reward type
+ */
+export interface RewardDeleteTypeResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Name of the deleted type */
+  deletedType?: string;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Result of computing reward for a task
+ */
+export interface RewardComputeResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Agent ID for tracking */
+  agentId?: string;
+
+  /** Process ID of the spawned agent */
+  pid?: number;
+
+  /** Path to the log file */
+  logFile?: string;
+
+  /** Warning messages (non-fatal) */
+  warnings?: string[];
+
+  /** Error message if failed */
+  error?: string;
+}
+
 // =============================================================================
 // PPO Selection Types
 // =============================================================================
