@@ -37,6 +37,7 @@
     "confirm": "Confirm",
     "status": "Status",
     "name": "Name",
+    "description": "Description",
     "version": "Version",
     "actions": "Actions",
     "settings": "Settings",

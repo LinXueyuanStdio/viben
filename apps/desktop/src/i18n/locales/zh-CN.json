@@ -37,6 +37,7 @@
     "confirm": "确认",
     "status": "状态",
     "name": "名称",
+    "description": "描述",
     "version": "版本",
     "actions": "操作",
     "settings": "设置",
