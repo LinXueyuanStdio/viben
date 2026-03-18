@@ -18,6 +18,12 @@ export {
   type RewardResult,
   type RewardConfig,
   type RewardListTypesResult,
+  type RewardViewTypeResult,
+  type RewardCreateTypeOptions,
+  type RewardCreateTypeResult,
+  type RewardUpdateTypeResult,
+  type RewardDeleteTypeResult,
+  type RewardComputeResult,
   type SelectOptions,
   type SelectResult,
   type TaskCandidate,
@@ -25,7 +31,7 @@ export {
   isBuiltinRewardType,
 } from "./types";
 
-// Re-export store functions
+// Re-export store functions (low-level)
 export {
   listRewardTypes,
   getRewardType,
@@ -36,33 +42,20 @@ export {
 // Re-export select functions
 export { selectBestTask } from "./select";
 
-// =============================================================================
-// CRUD Operations (High-level wrappers with error handling)
-// =============================================================================
-
-import type { RewardListTypesResult } from "./types";
-import { listRewardTypes as listRewardTypesFromStore } from "./store";
-
-/**
- * List all available reward types
- *
- * @param repoRoot - Repository root path
- * @returns Result with types array and count
- */
-export function listTypes(repoRoot: string): RewardListTypesResult {
-  try {
-    const types = listRewardTypesFromStore(repoRoot);
-    return {
-      success: true,
-      types,
-      count: types.length,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      types: [],
-      count: 0,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
+// Re-export CRUD operations (high-level with error handling)
+export {
+  // List
+  listTypes,
+  // View
+  viewType,
+  // Create
+  createType,
+  // Update
+  updateType,
+  // Delete
+  deleteType,
+  // Compute
+  computeReward,
+  // Validate
+  validateTypes,
+} from "./crud";
