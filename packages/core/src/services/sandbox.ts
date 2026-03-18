@@ -15,6 +15,10 @@ import type {
 import { NativeProvider } from "../sandbox/providers/native";
 import { CodexProvider } from "../sandbox/providers/codex";
 import { ClaudeProvider } from "../sandbox/providers/claude";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "sandbox" });
 
 export class SandboxService {
   private providers = new Map<SandboxProviderType, ISandboxProvider>();
@@ -38,7 +42,7 @@ export class SandboxService {
       if (available) {
         await provider.init();
         this.providers.set(provider.type, provider);
-        console.log(`[SandboxService] Provider available: ${provider.name}`);
+        log.info({ providerName: provider.name, providerType: provider.type }, "Provider available");
       }
     }
 

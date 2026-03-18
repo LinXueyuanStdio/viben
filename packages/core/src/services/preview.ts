@@ -10,6 +10,10 @@ import { execSync, spawn, type ChildProcess } from "child_process";
 import * as fsSync from "fs";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "preview" });
 
 /**
  * Configuration for starting a preview server
@@ -195,7 +199,7 @@ export class PreviewManager {
 
     // Start the server asynchronously
     this.startViteServer(instance, workDir).catch((error) => {
-      console.error(`[Preview] Failed to start preview for ${taskId}:`, error);
+      log.error({ err: error, taskId }, "Failed to start preview");
       instance.status = "error";
       instance.error = error instanceof Error ? error.message : String(error);
       this.releasePort(port);
@@ -215,13 +219,11 @@ export class PreviewManager {
       // Ensure project files exist (zero-config support)
       await this.ensureProjectFiles(workDir, instance.port);
 
-      console.log(
-        `[Preview] Starting Vite server for ${instance.taskId} on port ${instance.port}`
-      );
+      log.info({ taskId: instance.taskId, port: instance.port }, "Starting Vite server");
 
       await this.startViteProcess(instance, workDir);
     } catch (error) {
-      console.error(`[Preview] Error starting Vite server:`, error);
+      log.error({ err: error }, "Error starting Vite server");
       instance.status = "error";
       instance.error = error instanceof Error ? error.message : String(error);
       throw error;
@@ -241,17 +243,17 @@ export class PreviewManager {
 
     try {
       await fs.access(viteBinPath);
-      console.log("[Preview] Vite already installed, skipping npm install");
+      log.debug("Vite already installed, skipping npm install");
     } catch {
       needsInstall = true;
     }
 
     if (needsInstall) {
-      console.log("[Preview] Vite not found, installing dependencies...");
+      log.info("Vite not found, installing dependencies...");
       const installStart = Date.now();
 
       // Use system npm (Live Preview requires Node.js to be installed)
-      console.log("[Preview] Running: npm install");
+      log.debug("Running: npm install");
 
       await new Promise<void>((resolve, reject) => {
         const npmInstall = spawn("npm", ["install"], {
@@ -266,7 +268,7 @@ export class PreviewManager {
           // Log progress
           const line = data.toString().trim();
           if (line) {
-            console.log(`[Preview:npm] ${line}`);
+            log.debug({ output: line }, "npm stdout");
           }
         });
 
@@ -275,7 +277,7 @@ export class PreviewManager {
           // npm often outputs to stderr even for non-errors
           const line = data.toString().trim();
           if (line) {
-            console.log(`[Preview:npm] ${line}`);
+            log.debug({ output: line }, "npm stderr");
           }
         });
 
@@ -289,7 +291,7 @@ export class PreviewManager {
           clearTimeout(timeout);
           const elapsed = ((Date.now() - installStart) / 1000).toFixed(1);
           if (code === 0) {
-            console.log(`[Preview] npm install completed in ${elapsed}s`);
+            log.info({ elapsed }, "npm install completed");
             resolve();
           } else {
             reject(
@@ -306,9 +308,7 @@ export class PreviewManager {
     }
 
     // Start Vite
-    console.log(
-      `[Preview] Starting Vite dev server on port ${instance.port}...`
-    );
+    log.info({ port: instance.port }, "Starting Vite dev server");
 
     // Run Vite using system Node.js (Live Preview requires Node.js to be installed)
     const viteCliPath = path.join(
@@ -326,12 +326,12 @@ export class PreviewManager {
       // Run local Vite directly with node
       viteCmd = "node";
       viteArgs = [viteCliPath];
-      console.log(`[Preview] Running: node ${viteCliPath}`);
+      log.debug({ command: `node ${viteCliPath}` }, "Running Vite");
     } else {
       // Fallback to npx
       viteCmd = "npx";
       viteArgs = ["vite"];
-      console.log("[Preview] Running: npx vite");
+      log.debug({ command: "npx vite" }, "Running Vite");
     }
 
     const viteProcess = spawn(viteCmd, viteArgs, {
@@ -347,27 +347,27 @@ export class PreviewManager {
     viteProcess.stdout?.on("data", (data: Buffer) => {
       const output = data.toString().trim();
       if (output) {
-        console.log(`[Preview:vite] ${output}`);
+        log.debug({ output }, "vite stdout");
       }
     });
 
     viteProcess.stderr?.on("data", (data: Buffer) => {
       const output = data.toString().trim();
       if (output) {
-        console.log(`[Preview:vite] ${output}`);
+        log.debug({ output }, "vite stderr");
       }
     });
 
     viteProcess.on("close", (code) => {
       if (instance.status === "running" || instance.status === "starting") {
-        console.log(`[Preview] Vite process exited with code ${code}`);
+        log.info({ code }, "Vite process exited");
         instance.status = "stopped";
         this.cleanup(instance);
       }
     });
 
     viteProcess.on("error", (error) => {
-      console.error(`[Preview] Vite process error:`, error);
+      log.error({ err: error }, "Vite process error");
       instance.status = "error";
       instance.error = error.message;
       this.cleanup(instance);
@@ -379,9 +379,7 @@ export class PreviewManager {
       instance.status = "running";
       this.startHealthCheck(instance);
       this.resetIdleTimeout(instance);
-      console.log(
-        `[Preview] Vite server running at http://localhost:${instance.port}`
-      );
+      log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Vite server running");
     } else {
       instance.status = "error";
       instance.error = "Server failed to start within timeout";
@@ -401,9 +399,7 @@ export class PreviewManager {
     const checkInterval = 1000; // Check every 1 second
     let attempts = 0;
 
-    console.log(
-      `[Preview] Waiting for server on port ${port} (timeout: ${timeout / 1000}s)...`
-    );
+    log.debug({ port, timeoutSeconds: timeout / 1000 }, "Waiting for server");
 
     while (Date.now() - startTime < timeout) {
       attempts++;
@@ -420,26 +416,21 @@ export class PreviewManager {
 
         if (response.ok || response.status === 404) {
           // 404 is OK - means server is running but no index.html
-          console.log(
-            `[Preview] Server ready on port ${port} after ${attempts} attempts (${((Date.now() - startTime) / 1000).toFixed(1)}s)`
-          );
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          log.info({ port, attempts, elapsed }, "Server ready");
           return true;
         }
       } catch {
         // Server not ready yet - only log every 10 attempts
         if (attempts % 10 === 0) {
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          console.log(
-            `[Preview] Still waiting for server... (${elapsed}s elapsed, ${attempts} attempts)`
-          );
+          log.debug({ elapsed, attempts }, "Still waiting for server...");
         }
       }
       await new Promise((resolve) => setTimeout(resolve, checkInterval));
     }
 
-    console.log(
-      `[Preview] Server failed to start within ${timeout / 1000}s (${attempts} attempts)`
-    );
+    log.warn({ timeoutSeconds: timeout / 1000, attempts }, "Server failed to start within timeout");
     return false;
   }
 
@@ -457,9 +448,9 @@ export class PreviewManager {
     const packageJsonPath = path.join(workDir, "package.json");
     try {
       await fs.access(packageJsonPath);
-      console.log("[Preview] package.json exists");
+      log.debug("package.json exists");
     } catch {
-      console.log("[Preview] Creating default package.json");
+      log.debug("Creating default package.json");
       await fs.writeFile(
         packageJsonPath,
         JSON.stringify(DEFAULT_PACKAGE_JSON, null, 2)
@@ -480,21 +471,21 @@ export class PreviewManager {
     ]) {
       try {
         await fs.unlink(configPath);
-        console.log(`[Preview] Removed conflicting config: ${configPath}`);
+        log.debug({ configPath }, "Removed conflicting config");
       } catch {
         // File doesn't exist, ignore
       }
     }
 
     const viteConfigPath = path.join(workDir, "vite.config.js");
-    console.log(`[Preview] Writing vite.config.js with port ${port}`);
+    log.debug({ port }, "Writing vite.config.js");
     await fs.writeFile(viteConfigPath, generateViteConfig(port));
 
     // Ensure index.html exists - create a minimal one if not
     const indexHtmlPath = path.join(workDir, "index.html");
     try {
       await fs.access(indexHtmlPath);
-      console.log("[Preview] index.html exists");
+      log.debug("index.html exists");
     } catch {
       // Look for any HTML file
       const files = await fs.readdir(workDir);
@@ -511,9 +502,9 @@ export class PreviewManager {
 </body>
 </html>`;
         await fs.writeFile(indexHtmlPath, redirectHtml);
-        console.log(`[Preview] Created index.html redirecting to ${htmlFile}`);
+        log.debug({ htmlFile }, "Created index.html redirecting to HTML file");
       } else {
-        console.log("[Preview] Warning: No HTML file found in workDir");
+        log.warn("No HTML file found in workDir");
       }
     }
   }
@@ -531,7 +522,7 @@ export class PreviewManager {
       };
     }
 
-    console.log(`[Preview] Stopping preview for ${taskId}`);
+    log.info({ taskId }, "Stopping preview");
     await this.cleanup(instance);
     instance.status = "stopped";
 
@@ -562,12 +553,12 @@ export class PreviewManager {
    * Stop all preview servers
    */
   async stopAll(): Promise<void> {
-    console.log("[Preview] Stopping all preview servers...");
+    log.info("Stopping all preview servers...");
     const stopPromises = Array.from(this.instances.keys()).map((taskId) =>
       this.stopPreview(taskId)
     );
     await Promise.all(stopPromises);
-    console.log("[Preview] All preview servers stopped");
+    log.info("All preview servers stopped");
   }
 
   /**
@@ -628,10 +619,7 @@ export class PreviewManager {
           throw new Error(`Health check failed: ${response.status}`);
         }
       } catch (error) {
-        console.log(
-          `[Preview] Health check failed for ${instance.taskId}:`,
-          error
-        );
+        log.warn({ err: error, taskId: instance.taskId }, "Health check failed");
         instance.status = "error";
         instance.error = "Server health check failed";
         this.cleanup(instance);
@@ -648,7 +636,7 @@ export class PreviewManager {
     }
 
     instance.idleTimeout = setTimeout(() => {
-      console.log(`[Preview] Idle timeout reached for ${instance.taskId}`);
+      log.info({ taskId: instance.taskId }, "Idle timeout reached");
       this.stopPreview(instance.taskId);
     }, IDLE_TIMEOUT_MS);
   }
@@ -691,7 +679,7 @@ export class PreviewManager {
       try {
         instance.process.kill("SIGTERM");
       } catch (error) {
-        console.error(`[Preview] Error killing process:`, error);
+        log.error({ err: error }, "Error killing process");
       }
       instance.process = undefined;
     }

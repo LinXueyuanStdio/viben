@@ -9,6 +9,10 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "agent-service" });
 
 // ============================================================================
 // Types
@@ -85,7 +89,7 @@ export class AgentService {
   registerSession(sessionId: string): AbortController {
     const controller = new AbortController();
     this.abortControllers.set(sessionId, controller);
-    console.log(`[AgentService] Registered session: ${sessionId}`);
+    log.debug({ sessionId }, "Registered session");
     return controller;
   }
 
@@ -110,7 +114,7 @@ export class AgentService {
     if (!controller) return false;
 
     controller.abort();
-    console.log(`[AgentService] Stopped session: ${sessionId}`);
+    log.info({ sessionId }, "Stopped session");
     return true;
   }
 
@@ -167,7 +171,7 @@ export class AgentService {
       createdAt: new Date(),
     };
     this.plans.set(fullPlan.id, fullPlan);
-    console.log(`[AgentService] Stored plan: ${fullPlan.id}`);
+    log.debug({ planId: fullPlan.id }, "Stored plan");
     return fullPlan;
   }
 
@@ -207,7 +211,7 @@ export class AgentService {
     if (!plan || plan.status !== "pending") return false;
 
     plan.status = "approved";
-    console.log(`[AgentService] Plan approved: ${planId}`);
+    log.info({ planId }, "Plan approved");
     return true;
   }
 
@@ -224,7 +228,7 @@ export class AgentService {
     plan.status = "rejected";
     // Also trigger abort for the associated session
     this.stopSession(plan.sessionId);
-    console.log(`[AgentService] Plan rejected: ${planId}`);
+    log.info({ planId }, "Plan rejected");
     return true;
   }
 
@@ -248,7 +252,7 @@ export class AgentService {
     if (!step) return false;
 
     step.status = status;
-    console.log(`[AgentService] Plan ${planId} step ${stepId} status: ${status}`);
+    log.debug({ planId, stepId, status }, "Plan step status updated");
     return true;
   }
 
@@ -282,7 +286,7 @@ export class AgentService {
       workspacePath: options?.workspacePath,
     };
     this.questions.set(fullQuestion.id, fullQuestion);
-    console.log(`[AgentService] Stored question: ${fullQuestion.id}`);
+    log.debug({ questionId: fullQuestion.id }, "Stored question");
     return fullQuestion;
   }
 
@@ -324,7 +328,7 @@ export class AgentService {
 
     question.status = "answered";
     question.answers = answers;
-    console.log(`[AgentService] Question answered: ${questionId}`);
+    log.debug({ questionId }, "Question answered");
     return true;
   }
 
@@ -406,7 +410,7 @@ export class AgentService {
       question.resolver = undefined;
     }
 
-    console.log(`[AgentService] Question answered and resolved: ${questionId}`);
+    log.debug({ questionId }, "Question answered and resolved");
     return true;
   }
 
@@ -425,14 +429,14 @@ export class AgentService {
     for (const [planId, plan] of this.plans) {
       if (now - plan.createdAt.getTime() > maxAgeMs && plan.status !== "pending") {
         this.plans.delete(planId);
-        console.log(`[AgentService] Cleaned up plan: ${planId}`);
+        log.debug({ planId }, "Cleaned up plan");
       }
     }
     // Cleanup old questions
     for (const [questionId, question] of this.questions) {
       if (now - question.createdAt.getTime() > maxAgeMs && question.status !== "pending") {
         this.questions.delete(questionId);
-        console.log(`[AgentService] Cleaned up question: ${questionId}`);
+        log.debug({ questionId }, "Cleaned up question");
       }
     }
   }
@@ -448,7 +452,7 @@ export class AgentService {
     this.abortControllers.clear();
     this.plans.clear();
     this.questions.clear();
-    console.log(`[AgentService] Cleared all state`);
+    log.debug("Cleared all state");
   }
 }
 

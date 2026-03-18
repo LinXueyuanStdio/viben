@@ -10,6 +10,10 @@
 import type { MessageBus, InboundMessage } from "../../services/message-bus";
 import type { Channel, DiscordChannelConfig } from "../types";
 import WebSocketImpl from "ws";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "discord-poller" });
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DEFAULT_GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
@@ -58,16 +62,16 @@ export class DiscordPoller {
    */
   async start(): Promise<void> {
     if (this.running) {
-      console.log(`[DiscordPoller] ${this.channel.name} already running`);
+      log.debug({ channelName: this.channel.name }, "Already running");
       return;
     }
 
     if (!this.config.token) {
-      console.error(`[DiscordPoller] Bot token not configured for ${this.channel.name}`);
+      log.error({ channelName: this.channel.name }, "Bot token not configured");
       return;
     }
 
-    console.log(`[DiscordPoller] Starting ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Starting...");
     this.running = true;
 
     // Notify connection status
@@ -85,7 +89,7 @@ export class DiscordPoller {
       return;
     }
 
-    console.log(`[DiscordPoller] Stopping ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Stopping...");
     this.running = false;
 
     this.stopHeartbeat();
@@ -96,7 +100,7 @@ export class DiscordPoller {
     }
 
     this.messageBus.updateConnectionStatus("discord", this.channel.name, false);
-    console.log(`[DiscordPoller] ${this.channel.name} stopped`);
+    log.info({ channelName: this.channel.name }, "Stopped");
   }
 
   /**
@@ -120,15 +124,15 @@ export class DiscordPoller {
     while (this.running) {
       try {
         const gatewayUrl = this.config.gateway_url || DEFAULT_GATEWAY_URL;
-        console.log(`[DiscordPoller] Connecting to Discord Gateway...`);
+        log.info("Connecting to Discord Gateway...");
 
         await this.connectToGateway(gatewayUrl);
       } catch (error) {
-        console.error(`[DiscordPoller] Gateway error:`, error);
+        log.error({ err: error }, "Gateway error");
       }
 
       if (this.running) {
-        console.log(`[DiscordPoller] Reconnecting in ${this.reconnectDelayMs / 1000}s...`);
+        log.info({ delaySeconds: this.reconnectDelayMs / 1000 }, "Reconnecting...");
         await this.sleep(this.reconnectDelayMs);
       }
     }
@@ -144,18 +148,18 @@ export class DiscordPoller {
         this.ws = new WebSocketImpl(url) as unknown as WebSocket;
 
         this.ws.onopen = () => {
-          console.log(`[DiscordPoller] WebSocket connected`);
+          log.info("WebSocket connected");
         };
 
         this.ws.onclose = (event) => {
-          console.log(`[DiscordPoller] WebSocket closed: code=${event.code}`);
+          log.info({ code: event.code }, "WebSocket closed");
           this.stopHeartbeat();
           this.ws = null;
           resolve();
         };
 
         this.ws.onerror = (error) => {
-          console.error(`[DiscordPoller] WebSocket error:`, error);
+          log.error({ err: error }, "WebSocket error");
           reject(error);
         };
 
@@ -182,7 +186,7 @@ export class DiscordPoller {
     try {
       data = JSON.parse(raw);
     } catch {
-      console.warn(`[DiscordPoller] Invalid JSON from Gateway`);
+      log.warn("Invalid JSON from Gateway");
       return;
     }
 
@@ -203,12 +207,12 @@ export class DiscordPoller {
         break;
 
       case 7: // RECONNECT
-        console.log(`[DiscordPoller] Gateway requested reconnect`);
+        log.info("Gateway requested reconnect");
         this.ws?.close();
         break;
 
       case 9: // INVALID_SESSION
-        console.warn(`[DiscordPoller] Invalid session`);
+        log.warn("Invalid session");
         this.ws?.close();
         break;
 
@@ -223,7 +227,7 @@ export class DiscordPoller {
    */
   private handleHello(payload: { heartbeat_interval: number }): void {
     const intervalMs = payload.heartbeat_interval;
-    console.log(`[DiscordPoller] Starting heartbeat (interval: ${intervalMs}ms)`);
+    log.debug({ intervalMs }, "Starting heartbeat");
 
     this.startHeartbeat(intervalMs);
     this.sendIdentify();
@@ -285,7 +289,7 @@ export class DiscordPoller {
 
       case "MESSAGE_CREATE":
         this.handleMessageCreate(payload).catch((err) => {
-          console.error(`[DiscordPoller] Error handling message:`, err);
+          log.error({ err }, "Error handling message");
         });
         break;
     }
@@ -298,7 +302,7 @@ export class DiscordPoller {
     const user = payload.user as { id: string; username: string } | undefined;
     if (user) {
       this.botUserId = user.id;
-      console.log(`[DiscordPoller] Bot ready: @${user.username}`);
+      log.info({ botUsername: user.username }, "Bot ready");
     }
 
     this.messageBus.updateConnectionStatus("discord", this.channel.name, true);
@@ -324,7 +328,7 @@ export class DiscordPoller {
 
     // Check allow_from list
     if (!this.isAllowed(senderId)) {
-      console.log(`[DiscordPoller] Message from ${author.username} blocked by allow_from`);
+      log.debug({ username: author.username }, "Message blocked by allow_from");
       return;
     }
 
@@ -359,7 +363,7 @@ export class DiscordPoller {
     };
 
     const msgPreview = finalContent.length > 50 ? `${finalContent.slice(0, 50)}...` : finalContent;
-    console.log(`[DiscordPoller] Message from @${author.username}: ${msgPreview}`);
+    log.info({ username: author.username, messagePreview: msgPreview }, "Message received");
 
     await this.messageBus.publishInbound(inbound);
   }

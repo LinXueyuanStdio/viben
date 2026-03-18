@@ -8,6 +8,10 @@ import { EventService } from "./events";
 import { SessionStoreService, createUserMessage, UIMessageHelpers } from "./session-store";
 import type { ExecutionEnv, SpawnedChild, StandardCodingAgentExecutor } from "../executors/types";
 import { randomUUID } from "node:crypto";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "container" });
 
 /**
  * Process running status
@@ -84,7 +88,7 @@ export class ContainerService {
       const uiUserMsg = UIMessageHelpers.user(randomUUID(), prompt);
       await this.sessionStore.appendUIMessage(agentId, sessionId, uiUserMsg);
     } catch (e) {
-      console.warn("[ContainerService] Failed to save user message:", e);
+      log.warn({ err: e }, "Failed to save user message");
     }
 
     // Set up stdout streaming
@@ -104,7 +108,7 @@ export class ContainerService {
   ): void {
     const stdout = childProcess.stdout;
     if (!stdout) {
-      console.warn("[ContainerService] No stdout available for session:", sessionId);
+      log.warn({ sessionId }, "No stdout available for session");
       this.eventService.agentCompleted(agentType, sessionId, true);
       return;
     }
@@ -159,7 +163,7 @@ export class ContainerService {
         timestamp: new Date().toISOString(),
         raw: json,
         source: agentType,
-      }).catch((e) => console.warn("[ContainerService] Failed to save agent message:", e));
+      }).catch((e) => log.warn({ err: e }, "Failed to save agent message"));
 
       // Process based on message type
       switch (msgType) {
@@ -364,7 +368,7 @@ export class ContainerService {
       if (state.status === "running") {
         state.status = "cancelled";
         this.processes.set(sessionId, state);
-        console.log(`Marking process ${sessionId} as cancelled`);
+        log.info({ sessionId }, "Marking process as cancelled");
       }
     }
   }
