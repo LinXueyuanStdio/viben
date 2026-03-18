@@ -2,17 +2,21 @@
  * KanbanListView - Vertical list view of all tasks grouped by column/status
  *
  * Features:
- * - Groups tasks by column with section headers
+ * - Groups tasks by column with collapsible sticky section headers
+ * - Collapse state syncs with kanban board view for consistent UX
+ * - Multi-row task items matching card layout (title, description, metadata badges)
  * - Shows status indicator, title, priority, category, tags
  * - Stuck detection with visual indicators
  * - Quick actions on hover
  * - Click to select
+ * - Animated expand/collapse transitions
  *
  * @see docs/plans/2026-03-08-workspace-kanban-refactor-design.md
  */
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Clock,
   AlertTriangle,
@@ -24,6 +28,8 @@ import {
   RotateCcw,
   GitPullRequest,
   CheckCircle2,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   Badge,
@@ -35,7 +41,6 @@ import {
   TooltipTrigger,
 } from "@viben/ui";
 import {
-  ListViewItem,
   PriorityIcon,
   TagBadge,
   formatRelativeTime,
@@ -73,6 +78,10 @@ export interface KanbanListViewProps {
   onSelectTask: (id: string) => void;
   /** Workspace path for API calls */
   workspacePath: string;
+  /** Map of collapsed column states (synced with kanban board) */
+  collapsedColumns?: Record<string, boolean>;
+  /** Toggle collapse state for a column */
+  onToggleCollapse?: (columnId: string) => void;
 }
 
 // ============================================
@@ -154,12 +163,26 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
   // Get category icon
   const CategoryIcon = task.category ? CategoryIcons[task.category] : null;
 
+  // Check if we have metadata badges to show
+  const hasMetadataBadges =
+    isStuck ||
+    isFailed ||
+    isArchived ||
+    hasActiveExecution ||
+    task.category;
+
+  // Check if we have tags
+  const hasTags = task.tags && task.tags.length > 0;
+
   return (
-    <ListViewItem
-      item={task}
-      onClick={onClick}
-      isSelected={isSelected}
+    <div
+      role="button"
+      tabIndex={0}
       className={cn(
+        "flex flex-col gap-2 px-4 py-3 cursor-pointer transition-all duration-200",
+        "hover:bg-muted/50",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-inset",
+        isSelected && "bg-accent",
         // Running pulse animation - blue border effect
         isRunning && !isStuck && "task-running-pulse ring-2 ring-primary/50",
         // Stuck pulse animation - warning border effect
@@ -167,10 +190,20 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
         // Archived styling
         isArchived && "opacity-60"
       )}
-      renderStatus={() => (
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+    >
+      {/* Row 1: Status badge + Title + Priority + Actions */}
+      <div className="flex items-center gap-3 w-full min-w-0">
+        {/* Status badge */}
         <Badge
           variant="outline"
-          className="text-xs whitespace-nowrap"
+          className="text-xs whitespace-nowrap shrink-0"
           style={{
             borderColor: `${columnColor}80`,
             backgroundColor: `${columnColor}1a`,
@@ -178,9 +211,7 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
         >
           {columnName}
         </Badge>
-      )}
-    >
-      <div className="flex items-center gap-3 w-full min-w-0">
+
         {/* Priority indicator */}
         {task.kanbanPriority && task.kanbanPriority !== "none" && (
           <div className="shrink-0">
@@ -188,115 +219,29 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
           </div>
         )}
 
-        {/* Title and description */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {/* Running indicator */}
-            {isRunning && !isStuck && (
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-              </span>
-            )}
-            <span className="text-sm font-medium truncate">{task.title}</span>
+        {/* Running indicator */}
+        {isRunning && !isStuck && (
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+        )}
+
+        {/* Title */}
+        <span className="text-sm font-medium truncate flex-1 min-w-0">{task.title}</span>
+
+        {/* Running elapsed time (takes precedence) or relative time */}
+        {isRunning && elapsedTime > 0 ? (
+          <div className="flex items-center gap-1 text-[10px] text-primary font-medium shrink-0">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>{formatElapsedTime(elapsedTime)}</span>
           </div>
-          {task.description && (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
-              {task.description}
-            </p>
-          )}
-        </div>
-
-        {/* Metadata badges */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Stuck indicator */}
-          {isStuck && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-warning/10 text-warning border-warning/30"
-            >
-              <AlertTriangle className="h-2.5 w-2.5" />
-              {t("workspace.taskCard.stuck", "Stuck")}
-            </Badge>
-          )}
-
-          {/* Failed indicator */}
-          {isFailed && !isStuck && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-destructive/10 text-destructive border-destructive/30"
-            >
-              <XCircle className="h-2.5 w-2.5" />
-              {t("workspace.failed")}
-            </Badge>
-          )}
-
-          {/* Archived indicator */}
-          {isArchived && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-muted text-muted-foreground border-border"
-            >
-              <Archive className="h-2.5 w-2.5" />
-              {t("workspace.taskCard.archived", "Archived")}
-            </Badge>
-          )}
-
-          {/* Execution phase badge */}
-          {hasActiveExecution && executionPhase && !isStuck && !isFailed && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1.5 py-0.5 flex items-center gap-1",
-                EXECUTION_PHASE_BADGE_COLORS[executionPhase]
-              )}
-            >
-              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-              {t(`workspace.taskCard.phase.${executionPhase}`, EXECUTION_PHASE_LABELS[executionPhase])}
-            </Badge>
-          )}
-
-          {/* Category badge */}
-          {task.category && CategoryIcon && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1.5 py-0.5 flex items-center gap-1",
-                TASK_CATEGORY_COLORS[task.category]
-              )}
-            >
-              <CategoryIcon className="h-2.5 w-2.5" />
-              {t(`workspace.taskCard.category.${task.category}`, TASK_CATEGORY_LABELS[task.category])}
-            </Badge>
-          )}
-
-          {/* Tags (max 2 in list view) */}
-          {task.tags && task.tags.length > 0 && (
-            <div className="flex items-center gap-1">
-              {task.tags.slice(0, 2).map((tag) => (
-                <TagBadge key={tag.id} tag={tag} size="sm" />
-              ))}
-              {task.tags.length > 2 && (
-                <span className="text-[10px] text-muted-foreground">
-                  +{task.tags.length - 2}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Running elapsed time (takes precedence) or relative time */}
-          {isRunning && elapsedTime > 0 ? (
-            <div className="flex items-center gap-1 text-[10px] text-primary font-medium">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>{formatElapsedTime(elapsedTime)}</span>
-            </div>
-          ) : relativeTime && (
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <span>{relativeTime}</span>
-            </div>
-          )}
-        </div>
+        ) : relativeTime && (
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+            <Clock className="h-3 w-3" />
+            <span>{relativeTime}</span>
+          </div>
+        )}
 
         {/* Quick actions - visible on touch devices, hover-to-show on desktop */}
         <div className="flex items-center gap-1 shrink-0 opacity-60 md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
@@ -491,7 +436,108 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
           )}
         </div>
       </div>
-    </ListViewItem>
+
+      {/* Row 2: Description (if present) */}
+      {task.description && (
+        <p className="text-xs text-muted-foreground/80 line-clamp-1 pl-0">
+          {task.description}
+        </p>
+      )}
+
+      {/* Row 3: Metadata badges (if present) */}
+      {hasMetadataBadges && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Stuck indicator */}
+          {isStuck && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-warning/10 text-warning border-warning/30"
+            >
+              <AlertTriangle className="h-2.5 w-2.5" />
+              {t("workspace.taskCard.stuck", "Stuck")}
+            </Badge>
+          )}
+
+          {/* Failed indicator */}
+          {isFailed && !isStuck && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-destructive/10 text-destructive border-destructive/30"
+            >
+              <XCircle className="h-2.5 w-2.5" />
+              {t("workspace.failed")}
+            </Badge>
+          )}
+
+          {/* Archived indicator */}
+          {isArchived && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0.5 flex items-center gap-1 bg-muted text-muted-foreground border-border"
+            >
+              <Archive className="h-2.5 w-2.5" />
+              {t("workspace.taskCard.archived", "Archived")}
+            </Badge>
+          )}
+
+          {/* Execution phase badge */}
+          {hasActiveExecution && executionPhase && !isStuck && !isFailed && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] px-1.5 py-0.5 flex items-center gap-1",
+                EXECUTION_PHASE_BADGE_COLORS[executionPhase]
+              )}
+            >
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              {t(`workspace.taskCard.phase.${executionPhase}`, EXECUTION_PHASE_LABELS[executionPhase])}
+            </Badge>
+          )}
+
+          {/* Category badge */}
+          {task.category && CategoryIcon && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] px-1.5 py-0.5 flex items-center gap-1",
+                TASK_CATEGORY_COLORS[task.category]
+              )}
+            >
+              <CategoryIcon className="h-2.5 w-2.5" />
+              {t(`workspace.taskCard.category.${task.category}`, TASK_CATEGORY_LABELS[task.category])}
+            </Badge>
+          )}
+
+          {/* Tags (max 3 in list view) - inline with badges */}
+          {hasTags && (
+            <>
+              {task.tags!.slice(0, 3).map((tag) => (
+                <TagBadge key={tag.id} tag={tag} size="sm" />
+              ))}
+              {task.tags!.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{task.tags!.length - 3}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Show tags alone if no metadata badges but has tags */}
+      {!hasMetadataBadges && hasTags && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {task.tags!.slice(0, 3).map((tag) => (
+            <TagBadge key={tag.id} tag={tag} size="sm" />
+          ))}
+          {task.tags!.length > 3 && (
+            <span className="text-[10px] text-muted-foreground">
+              +{task.tags!.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 });
 
@@ -503,7 +549,8 @@ const ListItemWithStuckDetection = memo(function ListItemWithStuckDetection({
  * KanbanListView - Vertical list view of tasks grouped by column
  *
  * Renders all tasks in a single scrollable list, grouped by their column status.
- * Each group has a header showing column name and task count.
+ * Each group has a collapsible sticky header showing column name and task count.
+ * Collapse state is synced with the kanban board view.
  * Tasks show status badge, title, metadata badges, and quick actions.
  */
 export function KanbanListView({
@@ -513,6 +560,8 @@ export function KanbanListView({
   selectedTaskId,
   onSelectTask,
   workspacePath,
+  collapsedColumns = {},
+  onToggleCollapse,
 }: KanbanListViewProps) {
   const { t } = useTranslation();
 
@@ -541,7 +590,7 @@ export function KanbanListView({
   }, [tasks]);
 
   // Get column info helper
-  const getColumnInfo = (columnId: KanbanColumnId) => {
+  const getColumnInfo = useCallback((columnId: KanbanColumnId) => {
     const status = columnStatuses.find((s) => s.id === columnId);
     const colorVar = COLUMN_COLOR_VARS[columnId];
     const i18nKey = COLUMN_I18N_KEYS[columnId];
@@ -550,7 +599,12 @@ export function KanbanListView({
       color: status?.color ?? `hsl(var(${colorVar}))`,
       colorVar,
     };
-  };
+  }, [columnStatuses, t]);
+
+  // Handle section header click
+  const handleHeaderClick = useCallback((columnId: string) => {
+    onToggleCollapse?.(columnId);
+  }, [onToggleCollapse]);
 
   // Check if there are any tasks
   const totalTasks = tasks.length;
@@ -564,10 +618,11 @@ export function KanbanListView({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       {KANBAN_COLUMNS.map((columnId) => {
         const columnTasks = tasksByColumn[columnId];
         const columnInfo = getColumnInfo(columnId);
+        const isCollapsed = collapsedColumns[columnId] ?? false;
 
         // Skip empty columns
         if (columnTasks.length === 0) {
@@ -575,14 +630,34 @@ export function KanbanListView({
         }
 
         return (
-          <div key={columnId} className="flex flex-col gap-1">
-            {/* Column header */}
-            <div
-              className="flex items-center gap-2 px-3 py-2 sticky top-0 z-10 backdrop-blur-sm rounded-lg"
-              style={{
-                backgroundColor: `${columnInfo.color}08`,
-              }}
+          <div key={columnId} className="flex flex-col">
+            {/* Sticky collapsible section header */}
+            <button
+              type="button"
+              className={cn(
+                "flex items-center gap-2 px-3 py-2.5 sticky top-0 z-10",
+                "bg-background/95 backdrop-blur-sm border-b",
+                "hover:bg-muted/50 transition-colors duration-150",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                "cursor-pointer select-none w-full text-left"
+              )}
+              onClick={() => handleHeaderClick(columnId)}
+              aria-expanded={!isCollapsed}
+              aria-controls={`list-section-${columnId}`}
             >
+              {/* Collapse/expand chevron */}
+              <div
+                className="shrink-0 transition-transform duration-200"
+                style={{ color: columnInfo.color }}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </div>
+
+              {/* Status indicator dot */}
               <div
                 className="h-2.5 w-2.5 rounded-full shrink-0"
                 style={{
@@ -590,12 +665,16 @@ export function KanbanListView({
                   boxShadow: `0 0 0 3px ${columnInfo.color}40`,
                 }}
               />
+
+              {/* Column name */}
               <span
-                className="text-sm font-semibold"
+                className="text-sm font-semibold flex-1"
                 style={{ color: columnInfo.color }}
               >
                 {columnInfo.name}
               </span>
+
+              {/* Task count badge */}
               <span
                 className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
                 style={{
@@ -605,30 +684,43 @@ export function KanbanListView({
               >
                 {columnTasks.length}
               </span>
-            </div>
+            </button>
 
-            {/* Tasks list */}
-            <div className="flex flex-col border rounded-lg overflow-hidden">
-              {columnTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={cn(
-                    "group border-b last:border-b-0",
-                    "hover:bg-muted/50 transition-colors duration-150"
-                  )}
+            {/* Tasks list - collapsible with animation */}
+            <AnimatePresence initial={false}>
+              {!isCollapsed && (
+                <motion.div
+                  id={`list-section-${columnId}`}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{
+                    height: { duration: 0.2, ease: [0.2, 0, 0, 1] },
+                    opacity: { duration: 0.15 },
+                  }}
+                  className="overflow-hidden"
                 >
-                  <ListItemWithStuckDetection
-                    task={task}
-                    workspacePath={workspacePath}
-                    isSelected={selectedTaskId === task.id}
-                    onClick={() => onSelectTask(task.id)}
-                    taskActions={taskActions}
-                    columnColor={columnInfo.color}
-                    columnName={columnInfo.name}
-                  />
-                </div>
-              ))}
-            </div>
+                  <div className="flex flex-col border-x border-b rounded-b-lg overflow-hidden">
+                    {columnTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="group border-b last:border-b-0"
+                      >
+                        <ListItemWithStuckDetection
+                          task={task}
+                          workspacePath={workspacePath}
+                          isSelected={selectedTaskId === task.id}
+                          onClick={() => onSelectTask(task.id)}
+                          taskActions={taskActions}
+                          columnColor={columnInfo.color}
+                          columnName={columnInfo.name}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}

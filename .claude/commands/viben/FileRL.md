@@ -52,7 +52,7 @@ filerl:
 cat .viben/workflow.md
 
 # Initialize PPO optimizer identity
-viben user init filerl-optimizer
+viben user init FileRL-optimizer
 
 # Get current codebase state
 git log --oneline -5
