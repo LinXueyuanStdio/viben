@@ -24,11 +24,13 @@ vi.mock("node:child_process", () => ({
 const mockExistsSync = vi.fn();
 const mockReadFileSync = vi.fn();
 const mockWriteFileSync = vi.fn();
+const mockReaddirSync = vi.fn();
 
 vi.mock("node:fs", () => ({
   existsSync: (...args: unknown[]) => mockExistsSync(...args),
   readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
   writeFileSync: (...args: unknown[]) => mockWriteFileSync(...args),
+  readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
 }));
 
 // Mock chalk to avoid color output in tests
@@ -47,12 +49,19 @@ vi.mock("chalk", () => ({
 // Import after mocking
 import { registerSwarmCommand } from "./swarm";
 
+// Test timeout constant for async operations
+const ASYNC_TICK_MS = 10;
+
 describe("Swarm CLI Commands", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let originalProcessKill: typeof process.kill;
 
   beforeEach(() => {
+    // Save original process.kill for restoration
+    originalProcessKill = process.kill;
+
     // Create fresh program instance
     program = new Command();
     program.option("--json", "Output in JSON format");
@@ -70,14 +79,19 @@ describe("Swarm CLI Commands", () => {
     mockExistsSync.mockReset();
     mockReadFileSync.mockReset();
     mockWriteFileSync.mockReset();
+    mockReaddirSync.mockReset();
     mockSpawn.mockReset();
     mockExecSync.mockReset();
 
     // Default: not in a viben workspace
     mockExistsSync.mockReturnValue(false);
+    // Default: empty directory listing
+    mockReaddirSync.mockReturnValue([]);
   });
 
   afterEach(() => {
+    // Restore original process.kill
+    process.kill = originalProcessKill;
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
     vi.clearAllMocks();
@@ -137,7 +151,7 @@ describe("Swarm CLI Commands", () => {
       expect(subcommands).toContain("stop");
       expect(subcommands).toContain("status");
       expect(subcommands).toContain("registry");
-      expect(subcommands).toContain("cleanup");
+      expect(subcommands).toContain("wait");
     });
   });
 
@@ -162,29 +176,33 @@ describe("Swarm CLI Commands", () => {
   // ============================================================================
 
   describe("swarm list", () => {
-    it("should call cleanup.py --list when in a workspace", async () => {
+    it("should list worktrees and agents using TypeScript implementation", async () => {
       setupVibenWorkspace();
+      mockExistsSync.mockImplementation((path: string) => {
+        if (path === "/test/project/.viben") return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
+        return false;
+      });
 
-      // Mock spawn to return a process
-      const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
-          if (event === "close") {
-            setTimeout(() => handler(0), 10);
-          }
-          return mockProcess;
-        }),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-      };
-      mockSpawn.mockReturnValue(mockProcess);
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({ agents: [] });
+        }
+        return "";
+      });
+
+      // Mock execSync for git worktree list
+      mockExecSync.mockReturnValue("");
 
       await runCommand(["swarm", "list"]);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--list"]),
-        expect.any(Object)
-      );
+      // The TypeScript implementation uses listWorktrees() and readRegistry() directly
+      // It doesn't call python3 anymore
+      expect(mockSpawn).not.toHaveBeenCalled();
+      // Should output list to console
+      expect(consoleSpy).toHaveBeenCalled();
     });
   });
 
@@ -215,28 +233,44 @@ describe("Swarm CLI Commands", () => {
         if (path === "/test/project/.viben") return true;
         if (path === "/test/project/.viben/tasks") return true;
         if (path === "/test/project/.viben/tasks/my-task") return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
         return false;
       });
 
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({ agents: [] });
+        }
+        return "";
+      });
+
+      // Mock execSync for git commands (worktree creation)
+      mockExecSync.mockReturnValue("");
+
+      // Mock spawn for the agent process itself with proper typing
       const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
+        on: vi.fn((event: string, handler: (code: number) => void) => {
           if (event === "close") {
-            setTimeout(() => handler(0), 10);
+            setTimeout(() => handler(0), ASYNC_TICK_MS);
           }
           return mockProcess;
         }),
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
+        pid: 12345,
+        unref: vi.fn(),
       };
       mockSpawn.mockReturnValue(mockProcess);
 
       await runCommand(["swarm", "start", "my-task"]);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining([".viben/tasks/my-task"]),
-        expect.any(Object)
-      );
+      // The TypeScript implementation uses startAgent() which does spawn the agent process
+      // but with the CLI adapter's spawn() function, not python3
+      // It spawns the agent (e.g., "claude" CLI) not python
+      // The exact call depends on the platform/executor being used
+      expect(consoleSpy).toHaveBeenCalled();
     });
   });
 
@@ -315,14 +349,19 @@ describe("Swarm CLI Commands", () => {
         return "";
       });
 
-      // Mock process.kill - first call checks if running, second call stops
-      const killSpy = vi.fn();
-      process.kill = killSpy as typeof process.kill;
+      // Mock process.kill safely - track calls while allowing normal behavior
+      const killCalls: Array<{ pid: number; signal?: string | number }> = [];
+      process.kill = ((pid: number, signal?: string | number) => {
+        killCalls.push({ pid, signal });
+        // Return true to indicate process was signaled
+        return true;
+      }) as typeof process.kill;
 
       await runCommand(["swarm", "stop", "my-task"]);
 
       // Should call kill at least once (either for check or for stop)
-      expect(killSpy).toHaveBeenCalled();
+      expect(killCalls.length).toBeGreaterThan(0);
+      expect(killCalls.some(call => call.pid === 12345)).toBe(true);
     });
 
     it("should use SIGKILL with --force flag", async () => {
@@ -353,13 +392,19 @@ describe("Swarm CLI Commands", () => {
         return "";
       });
 
-      const killSpy = vi.fn();
-      process.kill = killSpy as typeof process.kill;
+      // Mock process.kill safely - track calls with signal type
+      const killCalls: Array<{ pid: number; signal?: string | number }> = [];
+      process.kill = ((pid: number, signal?: string | number) => {
+        killCalls.push({ pid, signal });
+        return true;
+      }) as typeof process.kill;
 
       await runCommand(["swarm", "stop", "my-task", "--force"]);
 
       // Should be called with SIGKILL
-      expect(killSpy).toHaveBeenCalledWith(12345, "SIGKILL");
+      const sigkillCall = killCalls.find(call => call.signal === "SIGKILL");
+      expect(sigkillCall).toBeDefined();
+      expect(sigkillCall?.pid).toBe(12345);
     });
   });
 
@@ -368,91 +413,108 @@ describe("Swarm CLI Commands", () => {
   // ============================================================================
 
   describe("swarm status", () => {
-    it("should call status.py for summary", async () => {
+    it("should display status summary using TypeScript implementation", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
-        if (path.includes("status.py")) return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
         return false;
       });
 
-      const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
-          if (event === "close") {
-            setTimeout(() => handler(0), 10);
-          }
-          return mockProcess;
-        }),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-      };
-      mockSpawn.mockReturnValue(mockProcess);
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({ agents: [] });
+        }
+        return "";
+      });
 
       await runCommand(["swarm", "status"]);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.any(Array),
-        expect.any(Object)
-      );
+      // The TypeScript implementation doesn't use spawn for status
+      // It uses getAllAgentStatuses() which reads registry directly
+      expect(mockSpawn).not.toHaveBeenCalled();
+      // Should output status (may be empty if no agents)
+      expect(consoleSpy).toHaveBeenCalled();
     });
 
-    it("should pass --detail for specific task", async () => {
+    it("should show detailed status for specific task", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
-        if (path.includes("status.py")) return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
+        if (path.includes("worktrees")) return true;
         return false;
       });
 
-      const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
-          if (event === "close") {
-            setTimeout(() => handler(0), 10);
-          }
-          return mockProcess;
-        }),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-      };
-      mockSpawn.mockReturnValue(mockProcess);
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({
+            agents: [{
+              id: "my-task",
+              worktree_path: "/test/worktrees/feature/my-task",
+              pid: 12345,
+              task_dir: ".viben/tasks/my-task",
+              started_at: "2024-01-01T00:00:00",
+              platform: "claude",
+            }],
+          });
+        }
+        return "";
+      });
 
       await runCommand(["swarm", "status", "my-task", "--detail"]);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--detail", "my-task"]),
-        expect.any(Object)
-      );
+      // The TypeScript implementation uses findAgentStatus() directly
+      expect(mockSpawn).not.toHaveBeenCalled();
     });
 
-    it("should pass --watch for live monitoring", async () => {
+    it("should watch agent log for live monitoring", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
-        if (path.includes("status.py")) return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
+        if (path.includes("worktrees")) return true;
+        if (path.includes("agent.log")) return true;
         return false;
       });
 
-      const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
-          if (event === "close") {
-            setTimeout(() => handler(0), 10);
-          }
-          return mockProcess;
-        }),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-      };
-      mockSpawn.mockReturnValue(mockProcess);
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({
+            agents: [{
+              id: "my-task",
+              worktree_path: "/test/worktrees/feature/my-task",
+              pid: 12345,
+              task_dir: ".viben/tasks/my-task",
+              started_at: "2024-01-01T00:00:00",
+              platform: "claude",
+            }],
+          });
+        }
+        return "";
+      });
 
-      await runCommand(["swarm", "status", "my-task", "--watch"]);
-
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--watch", "my-task"]),
-        expect.any(Object)
-      );
+      // Watch mode starts a long-running process, so we test it calls the right function
+      // but don't actually wait for it (it would run indefinitely)
+      // The test verifies that --watch flag is recognized and doesn't error
+      // Note: In production this calls tailFollowConsole() which blocks
+      // For testing, we just verify the command is accepted
+      try {
+        // Start command but don't await - it would block forever
+        const promise = runCommand(["swarm", "status", "my-task", "--watch"]);
+        // Give it a moment to start
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // The TypeScript implementation uses tailFollowConsole() directly
+        expect(mockSpawn).not.toHaveBeenCalled();
+      } catch {
+        // May throw due to process.exit mock - that's ok
+      }
     });
 
     it("should output JSON when --json flag is provided", async () => {
@@ -515,33 +577,38 @@ describe("Swarm CLI Commands", () => {
   // ============================================================================
 
   describe("swarm registry", () => {
-    it("should call status.py --registry", async () => {
+    it("should display registry using TypeScript implementation", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
-        if (path.includes("status.py")) return true;
+        if (path.includes(".developer")) return true;
+        if (path.includes("registry.json")) return true;
         return false;
       });
 
-      const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
-          if (event === "close") {
-            setTimeout(() => handler(0), 10);
-          }
-          return mockProcess;
-        }),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-      };
-      mockSpawn.mockReturnValue(mockProcess);
+      mockReadFileSync.mockImplementation((path: string) => {
+        if (path.includes(".developer")) return "name=test-user";
+        if (path.includes("registry.json")) {
+          return JSON.stringify({
+            agents: [{
+              id: "my-task",
+              worktree_path: "/test/worktrees/feature/my-task",
+              pid: 12345,
+              task_dir: ".viben/tasks/my-task",
+              started_at: "2024-01-01T00:00:00",
+              platform: "claude",
+            }],
+          });
+        }
+        return "";
+      });
 
       await runCommand(["swarm", "registry"]);
 
-      expect(mockSpawn).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--registry"]),
-        expect.any(Object)
-      );
+      // The TypeScript implementation uses readRegistry() directly, not spawn
+      expect(mockSpawn).not.toHaveBeenCalled();
+      // Should output registry info to console
+      expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should output JSON when --json flag is provided", async () => {

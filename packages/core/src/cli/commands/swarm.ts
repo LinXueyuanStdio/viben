@@ -781,6 +781,7 @@ export function registerSwarmCommand(program: Command): void {
       timeoutSeconds?: string;
       quiet?: boolean;
       verbose?: boolean;
+      json?: boolean;
     }) => {
       const ctx = getOutputContext(program);
       const repoRoot = findVibenRoot();

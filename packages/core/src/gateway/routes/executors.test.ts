@@ -61,31 +61,26 @@ interface MockRouteHandler {
 function createMockFastify() {
   const routes: MockRouteHandler[] = [];
 
+  // Helper to handle both 2-arg (url, handler) and 3-arg (url, options, handler) forms
+  function createRouteMethod(method: string) {
+    return vi.fn(
+      (
+        url: string,
+        optionsOrHandler: unknown,
+        maybeHandler?: (req: unknown, rep: MockReply) => Promise<unknown>
+      ) => {
+        // If third argument exists, it's the handler and second is options (schema)
+        // If only two arguments, second is the handler
+        const handler = maybeHandler ?? (optionsOrHandler as (req: unknown, rep: MockReply) => Promise<unknown>);
+        routes.push({ method, url, handler });
+      }
+    );
+  }
+
   const fastify = {
-    get: vi.fn(
-      (
-        url: string,
-        handler: (req: unknown, rep: MockReply) => Promise<unknown>
-      ) => {
-        routes.push({ method: "GET", url, handler });
-      }
-    ),
-    post: vi.fn(
-      (
-        url: string,
-        handler: (req: unknown, rep: MockReply) => Promise<unknown>
-      ) => {
-        routes.push({ method: "POST", url, handler });
-      }
-    ),
-    delete: vi.fn(
-      (
-        url: string,
-        handler: (req: unknown, rep: MockReply) => Promise<unknown>
-      ) => {
-        routes.push({ method: "DELETE", url, handler });
-      }
-    ),
+    get: createRouteMethod("GET"),
+    post: createRouteMethod("POST"),
+    delete: createRouteMethod("DELETE"),
     routes,
     // Helper to find and execute a route handler
     async inject(options: { method: string; url: string; payload?: unknown }) {
@@ -247,7 +242,8 @@ describe("Executors Routes", () => {
 
       expect(claudeCode).toBeDefined();
       expect(claudeCode.name).toBe("Claude Code");
-      expect(claudeCode.available).toBe(true);
+      // availability.type is INSTALLATION_FOUND when config exists
+      expect(claudeCode.availability.type).toBe("INSTALLATION_FOUND");
     });
 
     it("should use home directory as default workspace path", async () => {

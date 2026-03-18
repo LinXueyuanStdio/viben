@@ -19,7 +19,7 @@ import type { UnifiedTask, TaskEvent } from "../ops/types";
 const mockGetTask = vi.fn<(taskDir: string) => Promise<UnifiedTask | null>>();
 const mockUpdateTask = vi.fn<(taskDir: string, updates: Partial<UnifiedTask>) => Promise<UnifiedTask>>();
 
-vi.mock("../../services/task-service", () => ({
+vi.mock("../service", () => ({
   taskService: {
     getTask: (taskDir: string) => mockGetTask(taskDir),
     updateTask: (taskDir: string, updates: Partial<UnifiedTask>) => mockUpdateTask(taskDir, updates),

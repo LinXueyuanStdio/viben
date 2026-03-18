@@ -210,7 +210,7 @@ This action evaluates PR quality using reward type prompts. Call the reward suba
 Task(
   subagent_type: "reward",
   prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nEvaluate PR quality using reward types in reward.jsonl",
-  model: "sonnet",
+  model: "opus",
   run_in_background: true
 )
 ```

@@ -116,6 +116,7 @@ function createMockSocket(): MockSocket {
 interface MockFastifyInstance {
   register: Mock;
   get: Mock;
+  hasDecorator: Mock;
   _routes: Map<string, { options: unknown; handler: Function }>;
 }
 
@@ -137,6 +138,7 @@ function createMockFastify(): MockFastifyInstance {
     get: vi.fn((path: string, options: unknown, handler: Function) => {
       routes.set(path, { options, handler });
     }),
+    hasDecorator: vi.fn().mockReturnValue(true), // Simulate websocket plugin registered
     _routes: routes,
   };
 }
@@ -208,6 +210,7 @@ describe("Terminal WebSocket Routes", () => {
           console.warn("[Terminal] node-pty not available, terminal WebSocket routes disabled");
           console.warn("[Terminal] Install node-pty to enable: npm install node-pty");
         }),
+        hasDecorator: vi.fn().mockReturnValue(true),
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,12 +228,14 @@ describe("Terminal WebSocket Routes", () => {
           // Simulate what happens when @fastify/websocket fails to import
           console.warn("[Terminal] @fastify/websocket not available, terminal WebSocket routes disabled");
         }),
+        hasDecorator: vi.fn().mockReturnValue(false), // websocket not available
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await registerTerminalRoutes(testFastify as any);
 
-      expect(testFastify.register).toHaveBeenCalled();
+      // When websocket is not available, register should NOT be called
+      expect(testFastify.register).not.toHaveBeenCalled();
     });
   });
 

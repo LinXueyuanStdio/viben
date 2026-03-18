@@ -51,6 +51,7 @@ interface MockFastify {
   patch: (path: string, handler: (req: MockRequest, reply: MockReply) => Promise<unknown>) => void;
   delete: (path: string, handler: (req: MockRequest, reply: MockReply) => Promise<unknown>) => void;
   register: (fn: (instance: MockFastify) => Promise<void>) => void;
+  hasDecorator: (name: string) => boolean;
   inject: (options: { method: string; url: string; body?: unknown }) => Promise<{ statusCode: number; json: () => unknown }>;
 }
 
@@ -73,8 +74,18 @@ function createMockFastify(): MockFastify {
       routes.push({ method: "DELETE", path, handler });
     },
     register(fn: (instance: MockFastify) => Promise<void>) {
-      // Execute registration function but ignore WebSocket routes
-      fn(instance).catch(() => {});
+      // Execute registration function; log errors for debugging
+      fn(instance).catch((err) => {
+        // WebSocket-related errors are expected when websocket plugin isn't fully mocked
+        // Only log non-WebSocket errors for debugging
+        if (!String(err).includes("websocket")) {
+          console.warn("[MockFastify] Plugin registration error:", err);
+        }
+      });
+    },
+    hasDecorator(name: string) {
+      // Simulate websocket plugin registered
+      return name === "websocketServer";
     },
     async inject(options: { method: string; url: string; body?: unknown }) {
       const [urlPath, queryString] = options.url.split("?");
