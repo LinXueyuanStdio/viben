@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { useParams } from "react-router-dom";
 import {
   Lightbulb,
@@ -225,7 +226,6 @@ export function WorkspaceIdeasPage() {
     error: ideasError,
     refresh: refreshIdeas,
     promoteIdea,
-    dismissIdea,
     removeIdea,
   } = useIdeas({
     workspacePath: workspace?.path ?? null,
@@ -499,25 +499,28 @@ export function WorkspaceIdeasPage() {
     }
   }, [selection?.id, selection?.type, selectedIdeaFromList]);
 
-  // Effect to update tab's filePath when ideaFilePath is loaded
+  // Effect to load file content when ideaFilePath is loaded for the current selection
+  // This handles the case where the tab was created before ideaFilePath was available
   useEffect(() => {
-    if (!selectedIdea || !ideaFilePath || selection?.type !== "idea") return;
-    if (selection.id !== selectedIdea.id) return;
+    // Only proceed if we have an idea selected and its filePath is loaded
+    if (selection?.type !== "idea" || !ideaFilePath) return;
 
-    const tabId = `idea-${selectedIdea.id}`;
-    const existingTab = openTabs.find((t) => t.id === tabId);
+    const tabId = `idea-${selection.id}`;
 
-    if (existingTab && existingTab.type === "idea" && !existingTab.filePath) {
-      // Update tab with the loaded filePath
-      setOpenTabs((prev) =>
-        prev.map((t) =>
-          t.id === tabId && t.type === "idea" ? { ...t, filePath: ideaFilePath } : t
-        )
-      );
-      // Load the file content
+    // Update the tab's filePath if it doesn't have one
+    setOpenTabs((prev) =>
+      prev.map((t) =>
+        t.id === tabId && t.type === "idea" && !t.filePath
+          ? { ...t, filePath: ideaFilePath }
+          : t
+      )
+    );
+
+    // Load the file content if this is the active tab
+    if (activeTabId === tabId) {
       readFile(ideaFilePath);
     }
-  }, [selectedIdea?.id, ideaFilePath, selection?.id, selection?.type]);
+  }, [selection?.type, selection?.id, ideaFilePath, activeTabId, readFile]);
 
   // Effect to switch to existing tab immediately when selection changes (for types)
   useEffect(() => {
@@ -624,19 +627,6 @@ export function WorkspaceIdeasPage() {
       }
     },
     [promoteIdea, t]
-  );
-
-  // Handle dismiss idea
-  const handleDismissIdea = useCallback(
-    async (idea: Idea) => {
-      const success = await dismissIdea(idea.id);
-      if (success) {
-        toast.success(t("ideas.dismissSuccess"));
-      } else {
-        toast.error(t("ideas.dismissFailed"));
-      }
-    },
-    [dismissIdea, t]
   );
 
   // Handle remove idea
@@ -835,6 +825,10 @@ export function WorkspaceIdeasPage() {
                         isSelected={selection?.type === "type" && selection.id === type.name}
                         onSelect={() => setSelection({ type: "type", id: type.name })}
                         onGenerate={() => openGenerateDialog(type.name)}
+                        onDelete={() => {
+                          // TODO: Implement delete idea type
+                          toast.info(t("common.featureNotImplemented"));
+                        }}
                       />
                     ))
                   )}
@@ -1090,7 +1084,7 @@ export function WorkspaceIdeasPage() {
                     <Checkbox
                       checked={selectedTypesForGenerate.has(type.name)}
                       onCheckedChange={() => toggleTypeForGenerate(type.name)}
-                      className="mt-0.5"
+                      className="mt-0.5 rounded-none"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -1150,26 +1144,6 @@ interface IdeaTypeCardProps {
 function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: IdeaTypeCardProps) {
   const { t } = useTranslation();
 
-  // Build actions for context menu
-  const actions: ListItemAction[] = [
-    {
-      label: t("ideas.generateThisType"),
-      icon: Sparkles,
-      onClick: onGenerate,
-    },
-  ];
-
-  // Only custom types can be deleted
-  if (type.source === "custom" && onDelete) {
-    actions.push({
-      label: t("common.delete"),
-      icon: Trash2,
-      onClick: onDelete,
-      destructive: true,
-      separator: true,
-    });
-  }
-
   // Build badges
   const badges: ListItemBadge[] = [
     {
@@ -1185,7 +1159,14 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: Idea
     });
   }
 
-  return (
+  // Context menu item class
+  const contextMenuItemClass = cn(
+    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+    "transition-colors focus:bg-accent focus:text-accent-foreground",
+    "data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+  );
+
+  const cardContent = (
     <div
       className={cn(
         "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
@@ -1228,35 +1209,17 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: Idea
         )}
       </div>
 
-      {/* Quick Actions - always visible generate button */}
+      {/* Floating action button - More menu (absolute positioned) */}
       <div
-        className="flex items-center gap-1 shrink-0"
+        className={cn(
+          "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+          "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                onClick={onGenerate}
-              >
-                <Sparkles className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">{t("ideas.generateThisType")}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        {/* More menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
+            <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -1265,19 +1228,42 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: Idea
               <Sparkles className="h-4 w-4 mr-2" />
               {t("ideas.generateThisType")}
             </DropdownMenuItem>
-            {type.source === "custom" && onDelete && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {t("common.delete")}
-                </DropdownMenuItem>
-              </>
-            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t("common.delete")}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </div>
+  );
+
+  return (
+    <ContextMenuPrimitive.Root>
+      <ContextMenuPrimitive.Trigger asChild>
+        {cardContent}
+      </ContextMenuPrimitive.Trigger>
+      <ContextMenuPrimitive.Portal>
+        <ContextMenuPrimitive.Content className="z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-80">
+          <ContextMenuPrimitive.Item
+            className={contextMenuItemClass}
+            onClick={onGenerate}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {t("ideas.generateThisType")}
+          </ContextMenuPrimitive.Item>
+          <ContextMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-muted" />
+          <ContextMenuPrimitive.Item
+            className={cn(contextMenuItemClass, "text-destructive focus:text-destructive")}
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t("common.delete")}
+          </ContextMenuPrimitive.Item>
+        </ContextMenuPrimitive.Content>
+      </ContextMenuPrimitive.Portal>
+    </ContextMenuPrimitive.Root>
   );
 }
 
@@ -1307,7 +1293,14 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
     });
   }
 
-  return (
+  // Context menu item class
+  const contextMenuItemClass = cn(
+    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+    "transition-colors focus:bg-accent focus:text-accent-foreground",
+    "data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+  );
+
+  const cardContent = (
     <div
       className={cn(
         "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
@@ -1357,16 +1350,18 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
         )}
       </div>
 
-      {/* Quick Actions - delete button and more menu */}
+      {/* Floating action button - More menu (absolute positioned) */}
       <div
-        className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        className={cn(
+          "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+          "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* More menu with create task option */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreHorizontal className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -1376,31 +1371,45 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
                 {t("ideas.createTaskFromIdea")}
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
+            {idea.status === "pending" && <DropdownMenuSeparator />}
             <DropdownMenuItem onClick={onRemove} className="text-destructive focus:text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
               {t("common.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Delete button */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                onClick={onRemove}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">{t("common.delete")}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
     </div>
+  );
+
+  return (
+    <ContextMenuPrimitive.Root>
+      <ContextMenuPrimitive.Trigger asChild>
+        {cardContent}
+      </ContextMenuPrimitive.Trigger>
+      <ContextMenuPrimitive.Portal>
+        <ContextMenuPrimitive.Content className="z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-80">
+          {idea.status === "pending" && (
+            <ContextMenuPrimitive.Item
+              className={contextMenuItemClass}
+              onClick={onPromote}
+            >
+              <ListTodo className="h-4 w-4 mr-2" />
+              {t("ideas.createTaskFromIdea")}
+            </ContextMenuPrimitive.Item>
+          )}
+          {idea.status === "pending" && (
+            <ContextMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-muted" />
+          )}
+          <ContextMenuPrimitive.Item
+            className={cn(contextMenuItemClass, "text-destructive focus:text-destructive")}
+            onClick={onRemove}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            {t("common.delete")}
+          </ContextMenuPrimitive.Item>
+        </ContextMenuPrimitive.Content>
+      </ContextMenuPrimitive.Portal>
+    </ContextMenuPrimitive.Root>
   );
 }
