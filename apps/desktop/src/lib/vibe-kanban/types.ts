@@ -325,14 +325,14 @@ export function getValidDropTargets(fromStatus: TaskStatus): KanbanColumnId[] {
  * CSS variable names for column colors (--xxx format)
  */
 export const COLUMN_COLOR_VARS: Record<KanbanColumnId, string> = {
-  backlog: "--muted-foreground",
+  backlog: "--zinc-500",
   queue: "--cyan-500",
   in_progress: "--info",
   paused: "--yellow-500",
   review: "--purple-500",
   completed: "--success",
-  failed: "--destructive",
-  cancelled: "--muted-foreground",
+  failed: "--red-500",
+  cancelled: "--zinc-500",
   archived: "--slate-500",
 };
 
