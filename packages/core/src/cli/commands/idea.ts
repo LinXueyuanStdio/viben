@@ -28,6 +28,7 @@ import {
 } from "../lib";
 import { CliError } from "../types";
 import { findVibenRoot, DIR_VIBEN, DIR_TASKS } from "../lib/viben-workspace";
+import { enqueueTask } from "../../task/ops/lifecycle";
 
 // Import from idea/ops module
 import {
@@ -552,6 +553,25 @@ export function registerIdeaCommand(program: Command): void {
               throw CliError.notFound("Idea", ideaId);
             }
             throw CliError.operationFailed("Promote idea", result.error || "Unknown error");
+          }
+
+          // If --start is provided, enqueue the task to queue system
+          // This matches the behavior of `viben task create --start`
+          // Note: worktree flag is already saved in task.json by createTask,
+          // and will be read by `viben task start` when executing
+          if (options.start && result.taskId) {
+            const enqueueResult = enqueueTask(repoRoot, result.taskId, {
+              agent: options.agent,
+              executor: options.executor,
+              model: options.model,
+              priority: options.priority,
+              skipQueue: false, // Actually submit to queue
+            });
+
+            if (!enqueueResult.success) {
+              // Task was created but enqueue failed - warn but don't fail
+              outputWarning(ctx, `Task created but enqueue failed: ${enqueueResult.error}`);
+            }
           }
 
           output(ctx, successResponse(result), () => {

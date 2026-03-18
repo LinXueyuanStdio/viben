@@ -3607,7 +3607,10 @@
     "noFilePath": "没有可保存的文件路径",
     "fileSaved": "文件已保存",
     "fileSaveFailed": "保存文件失败",
-    "noFileContent": "没有文件内容可显示"
+    "noFileContent": "没有文件内容可显示",
+    "cannotDeleteBuiltinType": "无法删除内置想法类型",
+    "typeDeleted": "已删除想法类型「{{name}}」",
+    "deleteTypeFailed": "删除想法类型失败"
   },
   "preview": {
     "livePreview": "实时预览",

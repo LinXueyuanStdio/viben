@@ -49,6 +49,13 @@ export interface IdeaType {
   prompt_path: string;
 }
 
+export interface IdeaTypeInput {
+  name: string;
+  description: string;
+  max_ideas?: number;
+  prompt_content: string;
+}
+
 export interface IdeaListOptions {
   type?: string;
   effort?: EffortLevel;
@@ -137,6 +144,24 @@ interface RemoveIdeasResponse {
   success: boolean;
   removed: string[];
   count: number;
+  error?: string;
+}
+
+interface CreateIdeaTypeResponse {
+  success: boolean;
+  idea_type: IdeaType | null;
+  error?: string;
+}
+
+interface UpdateIdeaTypeResponse {
+  success: boolean;
+  idea_type: IdeaType | null;
+  error?: string;
+}
+
+interface DeleteIdeaTypeResponse {
+  success: boolean;
+  name: string;
   error?: string;
 }
 
@@ -363,6 +388,9 @@ export interface UseIdeaTypesReturn {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  createType: (input: IdeaTypeInput) => Promise<IdeaType | null>;
+  updateType: (name: string, input: Partial<IdeaTypeInput>) => Promise<IdeaType | null>;
+  deleteType: (name: string) => Promise<boolean>;
 }
 
 export function useIdeaTypes(options: UseIdeaTypesOptions): UseIdeaTypesReturn {
@@ -402,11 +430,97 @@ export function useIdeaTypes(options: UseIdeaTypesOptions): UseIdeaTypesReturn {
     }
   }, [refresh, autoFetch]);
 
+  const createType = useCallback(
+    async (input: IdeaTypeInput): Promise<IdeaType | null> => {
+      if (!workspacePath) return null;
+
+      try {
+        const response = await gatewayFetch<CreateIdeaTypeResponse>("/api/idea-types", {
+          method: "POST",
+          body: JSON.stringify({
+            workspace_path: workspacePath,
+            name: input.name,
+            description: input.description,
+            max_ideas: input.max_ideas,
+            prompt_content: input.prompt_content,
+          }),
+        });
+        if (response.success && response.idea_type) {
+          await refresh();
+          return response.idea_type;
+        } else {
+          setError(response.error || "Failed to create idea type");
+          return null;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return null;
+      }
+    },
+    [workspacePath, refresh]
+  );
+
+  const updateType = useCallback(
+    async (name: string, input: Partial<IdeaTypeInput>): Promise<IdeaType | null> => {
+      if (!workspacePath) return null;
+
+      try {
+        const response = await gatewayFetch<UpdateIdeaTypeResponse>(`/api/idea-types/${name}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            workspace_path: workspacePath,
+            description: input.description,
+            max_ideas: input.max_ideas,
+            prompt_content: input.prompt_content,
+          }),
+        });
+        if (response.success && response.idea_type) {
+          await refresh();
+          return response.idea_type;
+        } else {
+          setError(response.error || "Failed to update idea type");
+          return null;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return null;
+      }
+    },
+    [workspacePath, refresh]
+  );
+
+  const deleteType = useCallback(
+    async (name: string): Promise<boolean> => {
+      if (!workspacePath) return false;
+
+      try {
+        const response = await gatewayFetch<DeleteIdeaTypeResponse>(
+          `/api/idea-types/${name}?workspace_path=${encodeURIComponent(workspacePath)}`,
+          { method: "DELETE" }
+        );
+        if (response.success) {
+          await refresh();
+          return true;
+        } else {
+          setError(response.error || "Failed to delete idea type");
+          return false;
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return false;
+      }
+    },
+    [workspacePath, refresh]
+  );
+
   return {
     types,
     loading,
     error,
     refresh,
+    createType,
+    updateType,
+    deleteType,
   };
 }
 
