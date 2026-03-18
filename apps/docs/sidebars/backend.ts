@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
     'error-handling',
     'logging-guidelines',
     'quality-guidelines',
+    'telemetry-guidelines',
     {
       type: 'category',
       label: 'Gateway',
@@ -27,6 +28,12 @@ const sidebars: SidebarsConfig = {
         'gateway/sessions',
         'gateway/tasks',
         'gateway/websocket',
+        'gateway/task',
+        'gateway/queue',
+        'gateway/idea',
+        'gateway/kanban-api',
+        'gateway/telemetry',
+        'gateway/resource-api',
       ],
     },
     {
