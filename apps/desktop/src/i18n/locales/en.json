@@ -3505,6 +3505,7 @@
     "generatingAllIdeas": "Generating ideas for all types",
     "generatingTypeIdeas": "Generating {{type}} ideas",
     "generateThisType": "Generate This Type",
+    "createIdeaType": "Create Idea Type",
     "createTaskFromIdea": "Create Task from Idea",
     "promoteToTask": "Promote to Task",
     "dismiss": "Dismiss",

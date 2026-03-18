@@ -26,8 +26,9 @@ import {
   FileText,
   Zap,
   FolderOpen,
-  Check,
   Save,
+  FilePlus,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -210,6 +211,10 @@ export function WorkspaceIdeasPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Left panel ScrollArea ref and width tracking for overflow fix
+  const leftPanelScrollRef = useRef<HTMLDivElement>(null);
+  const [leftPanelScrollWidth, setLeftPanelScrollWidth] = useState<number | null>(null);
+
   // Get workspace
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
@@ -265,6 +270,27 @@ export function WorkspaceIdeasPage() {
     console.error("Types fetch error:", typesError);
   }
 
+  // Track left panel scroll area width using ResizeObserver
+  useEffect(() => {
+    const scrollArea = leftPanelScrollRef.current;
+    if (!scrollArea) return;
+
+    const updateWidth = () => {
+      const width = scrollArea.getBoundingClientRect().width;
+      setLeftPanelScrollWidth(width);
+    };
+
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(scrollArea);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Constrain left panel content width to prevent overflow
+  const leftPanelContentStyle: React.CSSProperties = leftPanelScrollWidth
+    ? { width: leftPanelScrollWidth, maxWidth: leftPanelScrollWidth }
+    : {};
+
   // Filter ideas and types by search query
   const filteredTypes = useMemo(() => {
     if (!searchQuery) return ideaTypes;
@@ -304,6 +330,12 @@ export function WorkspaceIdeasPage() {
     if (selection?.type !== "type") return null;
     return ideaTypes.find((t) => t.name === selection.id) ?? null;
   }, [selection, ideaTypes]);
+
+  // Selected idea from the list (available immediately without API call)
+  const selectedIdeaFromList = useMemo(() => {
+    if (selection?.type !== "idea") return null;
+    return ideas.find((i) => i.id === selection.id) ?? null;
+  }, [selection, ideas]);
 
   // Active tab
   const activeTab = useMemo(() => {
@@ -441,25 +473,81 @@ export function WorkspaceIdeasPage() {
     [openTabs, activeTabId, hasUnsavedChanges, readFile, clearContent, t]
   );
 
-  // Track previous values to avoid unnecessary tab opens
-  const prevIdeaIdRef = useRef<string | null>(null);
-  const prevTypeNameRef = useRef<string | null>(null);
-
-  // Effect to open tab when idea is selected and loaded
+  // Effect to handle idea selection - switch to existing tab or create new tab
+  // Uses selectedIdeaFromList (immediately available) for tab creation,
+  // and ideaFilePath from useIdeaDetail for the file path
   useEffect(() => {
-    if (selectedIdea && selection?.type === "idea" && prevIdeaIdRef.current !== selectedIdea.id) {
-      prevIdeaIdRef.current = selectedIdea.id;
-      openIdeaTab(selectedIdea, ideaFilePath);
-    }
-  }, [selectedIdea?.id, ideaFilePath, selection?.type, openIdeaTab]);
+    if (selection?.type !== "idea" || !selectedIdeaFromList) return;
 
-  // Effect to open tab when type is selected
-  useEffect(() => {
-    if (selectedType && selection?.type === "type" && prevTypeNameRef.current !== selectedType.name) {
-      prevTypeNameRef.current = selectedType.name;
-      openTypeTab(selectedType);
+    const tabId = `idea-${selection.id}`;
+    const existingTab = openTabs.find((t) => t.id === tabId);
+
+    if (existingTab) {
+      // Tab exists, switch to it
+      if (activeTabId !== tabId) {
+        setActiveTabId(tabId);
+        if (existingTab.type === "idea" && existingTab.filePath) {
+          readFile(existingTab.filePath);
+        }
+        setHasUnsavedChanges(false);
+      }
+    } else {
+      // Create new tab using idea from list (immediately available)
+      // Use ideaFilePath if loaded, otherwise null (will be updated when loaded)
+      const filePath = selectedIdea?.id === selection.id ? ideaFilePath : null;
+      openIdeaTab(selectedIdeaFromList, filePath);
     }
-  }, [selectedType?.name, selection?.type, openTypeTab]);
+  }, [selection?.id, selection?.type, selectedIdeaFromList]);
+
+  // Effect to update tab's filePath when ideaFilePath is loaded
+  useEffect(() => {
+    if (!selectedIdea || !ideaFilePath || selection?.type !== "idea") return;
+    if (selection.id !== selectedIdea.id) return;
+
+    const tabId = `idea-${selectedIdea.id}`;
+    const existingTab = openTabs.find((t) => t.id === tabId);
+
+    if (existingTab && existingTab.type === "idea" && !existingTab.filePath) {
+      // Update tab with the loaded filePath
+      setOpenTabs((prev) =>
+        prev.map((t) =>
+          t.id === tabId && t.type === "idea" ? { ...t, filePath: ideaFilePath } : t
+        )
+      );
+      // Load the file content
+      readFile(ideaFilePath);
+    }
+  }, [selectedIdea?.id, ideaFilePath, selection?.id, selection?.type]);
+
+  // Effect to switch to existing tab immediately when selection changes (for types)
+  useEffect(() => {
+    if (selection?.type === "type") {
+      const tabId = `type-${selection.id}`;
+      const existingTab = openTabs.find((t) => t.id === tabId);
+
+      if (existingTab && activeTabId !== tabId) {
+        // Tab exists, switch to it immediately
+        setActiveTabId(tabId);
+        if (existingTab.type === "type" && existingTab.promptPath) {
+          readFile(existingTab.promptPath);
+        }
+        setHasUnsavedChanges(false);
+      }
+    }
+  }, [selection?.id, selection?.type, openTabs, activeTabId, readFile]);
+
+  // Effect to create new tab when type is selected
+  useEffect(() => {
+    if (selectedType && selection?.type === "type" && selection.id === selectedType.name) {
+      const tabId = `type-${selectedType.name}`;
+      const existingTab = openTabs.find((t) => t.id === tabId);
+
+      if (!existingTab) {
+        // Create new tab only when it doesn't exist
+        openTypeTab(selectedType);
+      }
+    }
+  }, [selectedType?.name, selection?.id, selection?.type, openTabs, openTypeTab]);
 
   // Refresh all data
   const handleRefresh = useCallback(async () => {
@@ -673,7 +761,7 @@ export function WorkspaceIdeasPage() {
           )}
         >
           {/* List Header - height matches tab bar */}
-          <div className="p-2 border-b flex items-center gap-2 h-[41px]">
+          <div className="p-2 border-b flex items-center gap-2 h-[57px]">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -700,6 +788,10 @@ export function WorkspaceIdeasPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {/* TODO: Create idea type */}}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  {t("ideas.createIdeaType")}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => openGenerateDialog()}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   {t("ideas.generateIdeas")}
@@ -714,8 +806,8 @@ export function WorkspaceIdeasPage() {
           </div>
 
           {/* List Content */}
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-4">
+          <ScrollArea className="flex-1" ref={leftPanelScrollRef}>
+            <div className="p-2 space-y-4" style={leftPanelContentStyle}>
               {/* Idea Types Section */}
               <div>
                 <div className="flex items-center justify-between px-2 py-1.5">
@@ -798,7 +890,6 @@ export function WorkspaceIdeasPage() {
                               isSelected={selection?.type === "idea" && selection.id === idea.id}
                               onSelect={() => setSelection({ type: "idea", id: idea.id })}
                               onPromote={() => handlePromoteIdea(idea)}
-                              onDismiss={() => handleDismissIdea(idea)}
                               onRemove={() => handleRemoveIdea(idea)}
                             />
                           ))}
@@ -816,7 +907,7 @@ export function WorkspaceIdeasPage() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Multi-Tab Bar - same height as left header */}
           {openTabs.length > 0 ? (
-            <div className="border-b bg-muted/20 h-[41px] flex items-center">
+            <div className="border-b bg-muted/20 h-[57px] flex items-center">
               {/* Show panel button when collapsed */}
               {isPanelCollapsed && (
                 <TooltipProvider>
@@ -896,8 +987,8 @@ export function WorkspaceIdeasPage() {
                     onClick={() => openGenerateDialog(activeTab.ideaType.name)}
                     className="h-7"
                   >
-                    <Zap className="h-3.5 w-3.5 mr-1" />
-                    {t("ideas.generate")}
+                    <Sparkles className="h-3.5 w-3.5 mr-1" />
+                    {t("ideas.generateThisType")}
                   </Button>
                 )}
                 {activeTab?.type === "idea" && activeTab.idea.status === "pending" && (
@@ -908,13 +999,13 @@ export function WorkspaceIdeasPage() {
                     className="h-7"
                   >
                     <ListTodo className="h-3.5 w-3.5 mr-1" />
-                    {t("ideas.promote")}
+                    {t("ideas.createTaskFromIdea")}
                   </Button>
                 )}
               </div>
             </div>
           ) : (
-            <div className="flex items-center border-b px-4 h-[41px]">
+            <div className="flex items-center border-b px-4 h-[57px]">
               {isPanelCollapsed && (
                 <TooltipProvider>
                   <Tooltip>
@@ -1053,19 +1144,31 @@ interface IdeaTypeCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onGenerate: () => void;
+  onDelete?: () => void;
 }
 
-function IdeaTypeCard({ type, isSelected, onSelect, onGenerate }: IdeaTypeCardProps) {
+function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: IdeaTypeCardProps) {
   const { t } = useTranslation();
 
-  // Build actions
+  // Build actions for context menu
   const actions: ListItemAction[] = [
     {
-      label: t("ideas.generateIdeas"),
+      label: t("ideas.generateThisType"),
       icon: Sparkles,
       onClick: onGenerate,
     },
   ];
+
+  // Only custom types can be deleted
+  if (type.source === "custom" && onDelete) {
+    actions.push({
+      label: t("common.delete"),
+      icon: Trash2,
+      onClick: onDelete,
+      destructive: true,
+      separator: true,
+    });
+  }
 
   // Build badges
   const badges: ListItemBadge[] = [
@@ -1083,21 +1186,97 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate }: IdeaTypeCardPr
   }
 
   return (
-    <div className="w-full overflow-hidden">
-      <ListItem
-        name={type.name}
-        description={type.description}
-        avatar={{
-          icon: FileText,
-          gradient: getGradientByName(type.name),
-        }}
-        badges={badges}
-        isSelected={isSelected}
-        onClick={onSelect}
-        actions={actions}
-        contextMenu
-        className="w-full"
-      />
+    <div
+      className={cn(
+        "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
+        isSelected ? "bg-accent" : "hover:bg-muted/50"
+      )}
+      onClick={onSelect}
+    >
+      {/* Avatar */}
+      <div
+        className={cn(
+          "relative shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+          getGradientByName(type.name)
+        )}
+      >
+        <FileText className="h-5 w-5 text-white" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 py-0.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-medium text-sm truncate">{type.name}</span>
+          {badges.map((badge, index) => (
+            <span
+              key={index}
+              className={cn(
+                "shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium",
+                badge.variant === "primary" && "bg-primary/10 text-primary",
+                badge.variant === "secondary" && "bg-secondary text-secondary-foreground",
+                badge.variant === "outline" && "border border-border bg-transparent"
+              )}
+            >
+              {badge.label}
+            </span>
+          ))}
+        </div>
+        {type.description && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {type.description}
+          </p>
+        )}
+      </div>
+
+      {/* Quick Actions - always visible generate button */}
+      <div
+        className="flex items-center gap-1 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                onClick={onGenerate}
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t("ideas.generateThisType")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* More menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={onGenerate}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              {t("ideas.generateThisType")}
+            </DropdownMenuItem>
+            {type.source === "custom" && onDelete && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t("common.delete")}
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }
@@ -1107,36 +1286,11 @@ interface IdeaCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onPromote: () => void;
-  onDismiss: () => void;
   onRemove: () => void;
 }
 
-function IdeaCard({ idea, isSelected, onSelect, onPromote, onDismiss, onRemove }: IdeaCardProps) {
+function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardProps) {
   const { t } = useTranslation();
-
-  // Build actions based on status
-  const actions: ListItemAction[] = [];
-
-  if (idea.status === "pending") {
-    actions.push({
-      label: t("ideas.promoteToTask"),
-      icon: ListTodo,
-      onClick: onPromote,
-    });
-    actions.push({
-      label: t("ideas.dismiss"),
-      icon: X,
-      onClick: onDismiss,
-    });
-  }
-
-  actions.push({
-    label: t("common.delete"),
-    icon: Trash2,
-    onClick: onRemove,
-    destructive: true,
-    separator: idea.status === "pending",
-  });
 
   // Build badges
   const badges: ListItemBadge[] = [
@@ -1154,24 +1308,99 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onDismiss, onRemove }
   }
 
   return (
-    <div className="w-full overflow-hidden">
-      <ListItem
-        name={idea.title}
-        description={idea.description}
-        avatar={{
-          icon: Lightbulb,
-          gradient: getGradientByName(idea.type),
-        }}
-        badges={badges}
-        meta={{
-          text: formatRelativeTime(idea.created_at),
-        }}
-        isSelected={isSelected}
-        onClick={onSelect}
-        actions={actions}
-        contextMenu
-        className="w-full"
-      />
+    <div
+      className={cn(
+        "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
+        isSelected ? "bg-accent" : "hover:bg-muted/50"
+      )}
+      onClick={onSelect}
+    >
+      {/* Avatar */}
+      <div
+        className={cn(
+          "relative shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+          getGradientByName(idea.type)
+        )}
+      >
+        <Lightbulb className="h-5 w-5 text-white" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 py-0.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-medium text-sm truncate">{idea.title}</span>
+            {badges.map((badge, index) => (
+              <span
+                key={index}
+                className={cn(
+                  "shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium",
+                  badge.variant === "primary" && "bg-primary/10 text-primary",
+                  badge.variant === "secondary" && "bg-secondary text-secondary-foreground",
+                  badge.variant === "default" && "bg-muted text-muted-foreground",
+                  badge.variant === "outline" && "border border-border bg-transparent",
+                  badge.variant === "destructive" && "bg-destructive/10 text-destructive"
+                )}
+              >
+                {badge.label}
+              </span>
+            ))}
+          </div>
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {formatRelativeTime(idea.created_at)}
+          </span>
+        </div>
+        {idea.description && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">
+            {idea.description}
+          </p>
+        )}
+      </div>
+
+      {/* Quick Actions - delete button and more menu */}
+      <div
+        className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* More menu with create task option */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {idea.status === "pending" && (
+              <DropdownMenuItem onClick={onPromote}>
+                <ListTodo className="h-4 w-4 mr-2" />
+                {t("ideas.createTaskFromIdea")}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRemove} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t("common.delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Delete button */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                onClick={onRemove}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t("common.delete")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </div>
   );
 }

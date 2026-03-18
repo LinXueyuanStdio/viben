@@ -1,7 +1,5 @@
 mod commands;
 
-use commands::auth::AuthState;
-use commands::common::ApiClientState;
 use commands::gateway::GatewayState;
 
 use tauri::{
@@ -261,17 +259,8 @@ pub fn run() {
 
             Ok(())
         })
-        .manage(ApiClientState::default())
-        .manage(AuthState::default())
         .manage(GatewayState::default())
         .invoke_handler(tauri::generate_handler![
-            // Auth commands (OAuth requires browser integration)
-            commands::auth::login_with_credentials,
-            commands::auth::login_with_github,
-            commands::auth::handle_oauth_callback,
-            commands::auth::logout,
-            commands::auth::get_current_user,
-            commands::auth::refresh_session,
             // Tray commands (native system tray)
             commands::tray::update_tray_status,
             commands::tray::show_tray_popup,
