@@ -47,6 +47,8 @@ import { registerPreferencesRoutes } from "./preferences";
 import { registerTaskEventRoutes } from "./task-events";
 import { registerPreviewRoutes } from "./preview";
 import { registerCommandQueueRoutes } from "./command-queue";
+import { registerIdeaRoutes } from "./ideas";
+import { registerRewardRoutes } from "./reward";
 
 /**
  * Register all routes
@@ -96,6 +98,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerTaskEventRoutes(fastify);
   registerPreviewRoutes(fastify);
   registerCommandQueueRoutes(fastify, state);
+  registerIdeaRoutes(fastify);
+  registerRewardRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -149,6 +153,8 @@ export type { DeveloperPreferences, PreferencesResponse } from "./preferences";
 export { registerTaskEventRoutes } from "./task-events";
 export { registerPreviewRoutes } from "./preview";
 export { registerCommandQueueRoutes } from "./command-queue";
+export { registerIdeaRoutes } from "./ideas";
+export { registerRewardRoutes } from "./reward";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";
 export type {
