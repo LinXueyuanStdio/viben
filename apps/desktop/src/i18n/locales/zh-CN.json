@@ -3594,7 +3594,19 @@
     "dismissFailed": "忽略想法失败",
     "removeConfirm": "确定要删除想法「{{title}}」吗？",
     "removeSuccess": "已删除想法",
-    "removeFailed": "删除想法失败"
+    "removeFailed": "删除想法失败",
+    "generate": "生成",
+    "promote": "提升",
+    "generateIdeasTitle": "生成想法",
+    "generateIdeasDescription": "选择要生成想法的类型",
+    "selectTypes": "选择类型",
+    "noTypesSelected": "请至少选择一个类型",
+    "generateSelected": "生成 ({{count}})",
+    "unsavedChangesConfirm": "有未保存的更改，确定要离开吗？",
+    "noFilePath": "没有可保存的文件路径",
+    "fileSaved": "文件已保存",
+    "fileSaveFailed": "保存文件失败",
+    "noFileContent": "没有文件内容可显示"
   },
   "preview": {
     "livePreview": "实时预览",

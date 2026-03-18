@@ -3526,7 +3526,19 @@
     "dismissFailed": "Failed to dismiss idea",
     "removeConfirm": "Are you sure you want to remove \"{{title}}\"?",
     "removeSuccess": "Idea removed",
-    "removeFailed": "Failed to remove idea"
+    "removeFailed": "Failed to remove idea",
+    "generate": "Generate",
+    "promote": "Promote",
+    "generateIdeasTitle": "Generate Ideas",
+    "generateIdeasDescription": "Select idea types to generate",
+    "selectTypes": "Select Types",
+    "noTypesSelected": "Please select at least one type",
+    "generateSelected": "Generate ({{count}})",
+    "unsavedChangesConfirm": "You have unsaved changes. Are you sure you want to leave?",
+    "noFilePath": "No file path to save",
+    "fileSaved": "File saved",
+    "fileSaveFailed": "Failed to save file",
+    "noFileContent": "No file content to display"
   },
   "preview": {
     "livePreview": "Live Preview",
