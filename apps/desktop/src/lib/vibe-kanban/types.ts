@@ -340,15 +340,15 @@ export const COLUMN_COLOR_VARS: Record<KanbanColumnId, string> = {
  * Full color values for column indicators
  */
 export const COLUMN_COLORS: Record<KanbanColumnId, string> = {
-  backlog: "hsl(var(--muted-foreground))",
-  queue: "#22d3ee",        // Cyan
-  in_progress: "hsl(var(--info))",
-  paused: "#EAB308",       // Yellow
-  review: "#A855F7",       // Purple
-  completed: "hsl(var(--success))",
-  failed: "hsl(var(--destructive))",
-  cancelled: "hsl(var(--muted-foreground))",
-  archived: "#64748b",     // Slate
+  backlog: "#71717a",      // Zinc-500 (muted)
+  queue: "#22d3ee",        // Cyan-400
+  in_progress: "#3b82f6",  // Blue-500 (info)
+  paused: "#EAB308",       // Yellow-500
+  review: "#A855F7",       // Purple-500
+  completed: "#22c55e",    // Green-500 (success)
+  failed: "#ef4444",       // Red-500 (destructive)
+  cancelled: "#71717a",    // Zinc-500 (muted)
+  archived: "#64748b",     // Slate-500
 };
 
 /**

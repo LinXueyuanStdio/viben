@@ -38,10 +38,10 @@
   --color-foreground-tertiary: var(--foreground-tertiary);
   --color-primary-hover: var(--primary-hover);
   --color-border-strong: var(--border-strong);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-error: var(--color-error);
-  --color-info: var(--color-info);
+  --color-success: oklch(0.65 0.18 145);
+  --color-warning: oklch(0.70 0.18 75);
+  --color-error: oklch(0.58 0.22 25);
+  --color-info: oklch(0.62 0.18 240);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
@@ -91,6 +91,18 @@
   --color-warning: oklch(0.70 0.18 75);
   --color-error: oklch(0.58 0.22 25);
   --color-info: oklch(0.62 0.18 240);
+
+  /* Semantic Color Aliases (for hsl(var(--xxx)) usage) */
+  --success: 145 70% 45%;
+  --warning: 45 90% 50%;
+  --error: 0 70% 50%;
+  --info: 210 70% 50%;
+
+  /* Kanban Column Colors (for hsl(var(--xxx)) usage) */
+  --cyan-500: 190 90% 50%;
+  --yellow-500: 45 95% 55%;
+  --purple-500: 280 70% 55%;
+  --slate-500: 215 15% 47%;
 
   /* ===== Typography ===== */
   --font-serif: 'Crimson Pro', 'Source Serif Pro', 'Georgia', 'Times New Roman', serif;
