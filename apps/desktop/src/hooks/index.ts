@@ -368,3 +368,27 @@ export type {
 
 // Queue Auto-Promotion is now handled by Gateway's CommandQueue (Promoter).
 // See: packages/core/src/queue/core/promoter.ts
+
+// Ideas Management
+export {
+  useIdeas,
+  useIdeaTypes,
+  useIdeaDetail,
+  useGenerateIdeas,
+} from "./use-ideas";
+export type {
+  Idea,
+  IdeaType,
+  EffortLevel,
+  IdeaStatus,
+  IdeaListOptions,
+  IdeaPromoteOptions,
+  IdeaGenerateOptions,
+  UseIdeasOptions,
+  UseIdeasReturn,
+  UseIdeaTypesOptions,
+  UseIdeaTypesReturn,
+  UseIdeaDetailOptions,
+  UseIdeaDetailReturn,
+  UseGenerateIdeasReturn,
+} from "./use-ideas";

@@ -35,7 +35,7 @@
 
 ## API Naming Convention
 
-**IMPORTANT**: All Gateway API query parameters use **snake_case** format:
+**IMPORTANT**: All Gateway API query parameters and File storage (e.g., YAML configuration files, markdown files, task.json) use **snake_case** format:
 - Use `workspace_path` NOT `workspacePath`
 - Use `include_global` NOT `includeGlobal`
 - Use `session_id` NOT `sessionId` (in query params)
