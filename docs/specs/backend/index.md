@@ -44,7 +44,7 @@ For Python MCP server development, see [Plugin Architecture](./architecture/plug
 | [Database Guidelines](./patterns/database-guidelines.md) | ORM patterns, queries, migrations | 📝 To fill |
 | [Error Handling](./patterns/error-handling.md) | Error types, handling strategies | 📝 To fill |
 | [Quality Guidelines](./core/quality-guidelines.md) | Code standards, forbidden patterns | 📝 To fill |
-| [Logging Guidelines](./patterns/logging-guidelines.md) | Structured logging, log levels | 📝 To fill |
+| [Logging Guidelines](./patterns/logging-guidelines.md) | Structured logging, log levels | ✅ Complete |
 
 ---
 

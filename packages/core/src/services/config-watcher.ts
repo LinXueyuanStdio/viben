@@ -8,6 +8,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { EventService, McpConfigChangedData } from "./events";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "config-watcher" });
 
 /** Configuration for the config watcher */
 export interface ConfigWatcherConfig {
@@ -39,7 +43,7 @@ export class ConfigWatcherService {
    */
   watch(filePath: string): void {
     if (this.watchers.has(filePath)) {
-      console.log(`[ConfigWatcher] Already watching: ${filePath}`);
+      log.debug({ filePath }, "Already watching file");
       return;
     }
 
@@ -48,7 +52,7 @@ export class ConfigWatcherService {
     const dir = path.dirname(filePath);
 
     if (!exists && !fs.existsSync(dir)) {
-      console.log(`[ConfigWatcher] Neither file nor directory exists: ${filePath}`);
+      log.debug({ filePath }, "Neither file nor directory exists");
       return;
     }
 
@@ -66,14 +70,14 @@ export class ConfigWatcherService {
       });
 
       watcher.on("error", (err) => {
-        console.error(`[ConfigWatcher] Error watching ${filePath}:`, err);
+        log.error({ err, filePath }, "Error watching file");
         this.unwatch(filePath);
       });
 
       this.watchers.set(filePath, watcher);
-      console.log(`[ConfigWatcher] Started watching: ${filePath}`);
+      log.info({ filePath }, "Started watching file");
     } catch (err) {
-      console.error(`[ConfigWatcher] Failed to watch ${filePath}:`, err);
+      log.error({ err, filePath }, "Failed to watch file");
     }
   }
 
@@ -85,7 +89,7 @@ export class ConfigWatcherService {
     if (watcher) {
       watcher.close();
       this.watchers.delete(filePath);
-      console.log(`[ConfigWatcher] Stopped watching: ${filePath}`);
+      log.info({ filePath }, "Stopped watching file");
     }
 
     // Clear any pending debounce timer
@@ -130,7 +134,7 @@ export class ConfigWatcherService {
       changeType = "modified";
     }
 
-    console.log(`[ConfigWatcher] File ${changeType}: ${filePath}`);
+    log.info({ filePath, changeType }, "Config file changed");
 
     this.events.mcpConfigChanged({
       config_path: filePath,
@@ -145,7 +149,7 @@ export class ConfigWatcherService {
   start(): void {
     if (this.isRunning) return;
     this.isRunning = true;
-    console.log("[ConfigWatcher] Started");
+    log.info("Config watcher started");
   }
 
   /**
@@ -161,7 +165,7 @@ export class ConfigWatcherService {
     }
 
     this.isRunning = false;
-    console.log("[ConfigWatcher] Stopped");
+    log.info("Config watcher stopped");
   }
 
   /**

@@ -17,6 +17,10 @@
 
 import type { MessageBus, InboundMessage } from "../../services/message-bus";
 import type { Channel, FeishuChannelConfig } from "../types";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "feishu-poller" });
 
 /**
  * Feishu poller configuration
@@ -70,7 +74,7 @@ export class FeishuPoller {
    */
   async start(): Promise<void> {
     if (this.running) {
-      console.log(`[FeishuPoller] ${this.channel.name} already running`);
+      log.debug({ channelName: this.channel.name }, "Already running");
       return;
     }
 
@@ -78,11 +82,11 @@ export class FeishuPoller {
     const appSecret = this.config.app_secret;
 
     if (!appId || !appSecret) {
-      console.error(`[FeishuPoller] app_id and app_secret are required for ${this.channel.name}`);
+      log.error({ channelName: this.channel.name }, "app_id and app_secret are required");
       return;
     }
 
-    console.log(`[FeishuPoller] Starting ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Starting...");
 
     // Try to load Feishu SDK (optional dependency)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,9 +94,7 @@ export class FeishuPoller {
     try {
       lark = await import("@larksuiteoapi/node-sdk" as string);
     } catch {
-      console.error(`[FeishuPoller] @larksuiteoapi/node-sdk not installed.`);
-      console.error(`[FeishuPoller] Run: pnpm add @larksuiteoapi/node-sdk`);
-      console.error(`[FeishuPoller] Feishu polling requires the official SDK for WebSocket support.`);
+      log.error("@larksuiteoapi/node-sdk not installed. Run: pnpm add @larksuiteoapi/node-sdk");
       return;
     }
 
@@ -119,7 +121,7 @@ export class FeishuPoller {
         "im.message.receive_v1",
         (data: unknown) => {
           this.handleMessage(data).catch((err) => {
-            console.error(`[FeishuPoller] Error handling message:`, err);
+            log.error({ err }, "Error handling message");
           });
         }
       );
@@ -127,8 +129,8 @@ export class FeishuPoller {
       // Start WebSocket connection
       await (this.wsClient as { start: () => Promise<void> }).start();
 
-      console.log(`[FeishuPoller] ${this.channel.name} connected via WebSocket`);
-      console.log(`[FeishuPoller] No public IP required - using WebSocket to receive events`);
+      log.info({ channelName: this.channel.name }, "Connected via WebSocket");
+      log.debug("No public IP required - using WebSocket to receive events");
 
       this.messageBus.updateConnectionStatus("feishu", this.channel.name, true);
 
@@ -137,8 +139,7 @@ export class FeishuPoller {
         await this.sleep(1000);
       }
     } catch (error) {
-      console.error(`[FeishuPoller] Failed to start WebSocket client:`, error);
-      console.error(`[FeishuPoller] Make sure "Long Connection" is enabled in Feishu Open Platform`);
+      log.error({ err: error }, "Failed to start WebSocket client. Make sure 'Long Connection' is enabled in Feishu Open Platform");
       this.running = false;
     }
   }
@@ -151,7 +152,7 @@ export class FeishuPoller {
       return;
     }
 
-    console.log(`[FeishuPoller] Stopping ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Stopping...");
     this.running = false;
 
     if (this.wsClient) {
@@ -165,7 +166,7 @@ export class FeishuPoller {
 
     this.client = null;
     this.messageBus.updateConnectionStatus("feishu", this.channel.name, false);
-    console.log(`[FeishuPoller] ${this.channel.name} stopped`);
+    log.info({ channelName: this.channel.name }, "Stopped");
   }
 
   /**
@@ -232,7 +233,7 @@ export class FeishuPoller {
 
     // Check allow_from
     if (!this.isAllowed(senderId)) {
-      console.log(`[FeishuPoller] Message from ${senderId} blocked by allow_from`);
+      log.debug({ senderId }, "Message blocked by allow_from");
       return;
     }
 
@@ -272,7 +273,7 @@ export class FeishuPoller {
     };
 
     const msgPreview = content.length > 50 ? `${content.slice(0, 50)}...` : content;
-    console.log(`[FeishuPoller] Message from ${senderId}: ${msgPreview}`);
+    log.info({ senderId, messagePreview: msgPreview }, "Message received");
 
     await this.messageBus.publishInbound(inbound);
   }

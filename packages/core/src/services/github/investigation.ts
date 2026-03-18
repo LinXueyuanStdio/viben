@@ -21,6 +21,10 @@ import type {
   GitHubIssueInvestigation,
   SpecFile,
 } from "../../types/github";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "github-investigation" });
 
 // ============================================================================
 // Investigation Logic
@@ -355,7 +359,7 @@ export async function investigateIssues(
       results.push(investigation);
     } catch (error) {
       // Log error but continue with other issues
-      console.error(`Failed to investigate issue #${issueNumber}:`, error);
+      log.error({ err: error, issueNumber }, "Failed to investigate issue");
     }
   }
 

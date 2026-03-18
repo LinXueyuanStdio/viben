@@ -12,6 +12,10 @@ import {
   type PreviewConfig,
   type PreviewStatus,
 } from "../../services/preview";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "preview-routes" });
 
 /**
  * Response types for API documentation
@@ -64,7 +68,7 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
     },
   }, async (): Promise<NodeAvailableResponse> => {
     const available = isNodeAvailable();
-    console.log(`[Preview API] Node.js available: ${available}`);
+    log.debug({ available }, "Node.js availability check");
     return { available };
   });
 
@@ -126,8 +130,7 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
         return reply.status(400).send({ error: "work_dir is required" });
       }
 
-      console.log(`[Preview API] Starting preview for task ${task_id}`);
-      console.log(`[Preview API] work_dir: ${work_dir}`);
+      log.info({ taskId: task_id, workDir: work_dir }, "Starting preview");
 
       const config: PreviewConfig = {
         taskId: task_id,
@@ -140,7 +143,7 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
 
       return status;
     } catch (error) {
-      console.error("[Preview API] Start error:", error);
+      log.error({ err: error }, "Start error");
       return reply.status(500).send({
         status: "error",
         error: error instanceof Error ? error.message : String(error),
@@ -198,14 +201,14 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
         return reply.status(400).send({ error: "task_id is required" });
       }
 
-      console.log(`[Preview API] Stopping preview for task ${task_id}`);
+      log.info({ taskId: task_id }, "Stopping preview");
 
       const manager = getPreviewManager();
       const status = await manager.stopPreview(task_id);
 
       return status;
     } catch (error) {
-      console.error("[Preview API] Stop error:", error);
+      log.error({ err: error }, "Stop error");
       return reply.status(500).send({
         status: "error",
         error: error instanceof Error ? error.message : String(error),
@@ -270,7 +273,7 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
 
       return status;
     } catch (error) {
-      console.error("[Preview API] Status error:", error);
+      log.error({ err: error }, "Status error");
       return reply.status(500).send({
         status: "error",
         error: error instanceof Error ? error.message : String(error),
@@ -305,14 +308,14 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
     },
   }, async (_request, reply): Promise<PreviewStopAllResponse> => {
     try {
-      console.log("[Preview API] Stopping all preview servers");
+      log.info("Stopping all preview servers");
 
       const manager = getPreviewManager();
       await manager.stopAll();
 
       return { success: true, message: "All preview servers stopped" };
     } catch (error) {
-      console.error("[Preview API] Stop-all error:", error);
+      log.error({ err: error }, "Stop-all error");
       return reply.status(500).send({
         success: false,
         error: error instanceof Error ? error.message : String(error),
