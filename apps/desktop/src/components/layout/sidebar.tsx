@@ -25,6 +25,7 @@ import {
   Trash2,
   Github,
   ExternalLink,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -117,6 +118,7 @@ const baseWorkspaceNavItems: WorkspaceNavItem[] = [
   { titleKey: "workspace.chat", path: "chat", icon: MessageSquare },
   { titleKey: "workspace.kanban", path: "kanban", icon: LayoutDashboard },
   { titleKey: "workspace.scheduledTasks", path: "cron", icon: Clock },
+  { titleKey: "workspace.ideas", path: "ideas", icon: Lightbulb },
   { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
   { titleKey: "workspace.files", path: "files", icon: FolderOpen },
 ];

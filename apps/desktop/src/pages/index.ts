@@ -11,6 +11,7 @@ export { WorkspaceChatPage } from "./workspace-chat";
 export { WorkspaceKanbanPage } from "./workspace-kanban";
 export { WorkspaceFilesPage } from "./workspace-files";
 export { WorkspaceCronPage } from "./workspace-cron";
+export { WorkspaceIdeasPage } from "./workspace-ideas";
 export { AgentDetailPage } from "./agent-detail";
 export { SkillDetailPage } from "./skill-detail";
 export { ExecutorDetailPage } from "./executor-detail";

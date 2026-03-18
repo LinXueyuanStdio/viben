@@ -53,42 +53,6 @@ viben task list                                  # Active tasks
 git status && git log --oneline -10              # Git state
 ```
 
-### Step 2: Read Project Guidelines [MANDATORY]
-
-**CRITICAL**: Read guidelines before writing any code:
-
-```bash
-# Read frontend guidelines index (if applicable)
-cat docs/specs/frontend/index.md
-
-# Read backend guidelines index (if applicable)
-cat docs/specs/backend/index.md
-```
-
-**Why read both?**
-- Understand the full project architecture
-- Know coding standards for the entire codebase
-- See how frontend and backend interact
-- Learn the overall code quality requirements
-
-### Step 3: Before Coding - Read Specific Guidelines (Required)
-
-Based on your task, read the **detailed** guidelines:
-
-**Frontend Task**:
-```bash
-cat docs/specs/frontend/hook-guidelines.md      # For hooks
-cat docs/specs/frontend/component-guidelines.md # For components
-cat docs/specs/frontend/type-safety.md          # For types
-```
-
-**Backend Task**:
-```bash
-cat docs/specs/backend/database-guidelines.md   # For DB operations
-cat docs/specs/backend/type-safety.md           # For types
-cat docs/specs/backend/logging-guidelines.md    # For logging
-```
-
 ---
 
 ## Workflow Overview
@@ -199,30 +163,6 @@ viben task context <task>
 viben task context <task> --json
 ```
 
-### Step 2: Read Development Guidelines [!] REQUIRED
-
-**[!] CRITICAL: MUST read guidelines before writing any code**
-
-Based on what you'll develop, read the corresponding guidelines:
-
-**Frontend Development** (if applicable):
-```bash
-# Read index first, then specific docs based on task
-cat docs/specs/frontend/index.md
-```
-
-**Backend Development** (if applicable):
-```bash
-# Read index first, then specific docs based on task
-cat docs/specs/backend/index.md
-```
-
-**Cross-Layer Features**:
-```bash
-# For features spanning multiple layers
-cat docs/specs/guides/cross-layer-thinking-guide.md
-```
-
 ### Step 3: Select Task to Develop
 
 Use the task management commands:
@@ -268,10 +208,6 @@ viben task create "<title>" --slug <task-name>
 - [OK] Lint checks pass (project-specific command)
 - [OK] Type checks pass (if applicable)
 - [OK] Manual feature testing passes
-
-**Project-specific checks**:
-- See `docs/specs/frontend/quality-guidelines.md` for frontend
-- See `docs/specs/backend/quality-guidelines.md` for backend
 
 ---
 

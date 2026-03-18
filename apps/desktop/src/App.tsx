@@ -16,6 +16,7 @@ import {
   WorkspaceKanbanPage,
   WorkspaceFilesPage,
   WorkspaceCronPage,
+  WorkspaceIdeasPage,
   AgentDetailPage,
   SkillDetailPage,
   ExecutorDetailPage,
@@ -153,6 +154,7 @@ function App() {
           <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
           <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
+          <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
           <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
         </Route>

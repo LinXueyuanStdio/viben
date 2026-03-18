@@ -89,30 +89,6 @@ Read and follow all instructions below carefully.
     output.write(workflow_content)
     output.write("\n</workflow>\n\n")
 
-    output.write("<guidelines>\n")
-
-    output.write("## Frontend\n")
-    frontend_index = read_file(
-        viben_dir / "spec" / "frontend" / "index.md", "Not configured"
-    )
-    output.write(frontend_index)
-    output.write("\n\n")
-
-    output.write("## Backend\n")
-    backend_index = read_file(
-        viben_dir / "spec" / "backend" / "index.md", "Not configured"
-    )
-    output.write(backend_index)
-    output.write("\n\n")
-
-    output.write("## Guides\n")
-    guides_index = read_file(
-        viben_dir / "spec" / "guides" / "index.md", "Not configured"
-    )
-    output.write(guides_index)
-
-    output.write("\n</guidelines>\n\n")
-
     output.write("<instructions>\n")
     task_md = read_file(
         claude_dir / "commands" / "viben" / "task.md", "No task.md found"
