@@ -6,6 +6,7 @@
  * selection via click or keyboard navigation.
  */
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ export function CompletionInput({
   disabled,
   showIndicator = true,
 }: CompletionInputProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -192,7 +194,7 @@ export function CompletionInput({
           {loading && filteredCompletions.length === 0 ? (
             <div className="flex items-center justify-center py-2 px-3 text-xs text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
-              Loading suggestions...
+              {t("inspector.loadingSuggestions")}
             </div>
           ) : (
             filteredCompletions.map((completion, index) => (

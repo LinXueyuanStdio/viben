@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Folder,
   File,
@@ -238,6 +239,7 @@ export function FileListView({
   onContextMenu,
   className,
 }: FileListViewProps) {
+  const { t } = useTranslation();
   const [sortField, setSortField] = React.useState<SortField>("name");
   const [sortDirection, setSortDirection] =
     React.useState<SortDirection>("asc");
@@ -310,21 +312,21 @@ export function FileListView({
               className="cursor-pointer select-none"
               onClick={() => handleSort("name")}
             >
-              Name
+              {t("fileBrowser.sortByName")}
               {renderSortIndicator("name")}
             </TableHead>
             <TableHead
               className="cursor-pointer select-none w-24 text-right"
               onClick={() => handleSort("size")}
             >
-              Size
+              {t("fileBrowser.sortBySize")}
               {renderSortIndicator("size")}
             </TableHead>
             <TableHead
               className="cursor-pointer select-none w-48"
               onClick={() => handleSort("modified")}
             >
-              Date Modified
+              {t("fileBrowser.sortByModified")}
               {renderSortIndicator("modified")}
             </TableHead>
           </TableRow>
@@ -336,7 +338,7 @@ export function FileListView({
                 colSpan={3}
                 className="h-24 text-center text-muted-foreground"
               >
-                No files
+                {t("fileBrowser.noResults")}
               </TableCell>
             </TableRow>
           ) : (

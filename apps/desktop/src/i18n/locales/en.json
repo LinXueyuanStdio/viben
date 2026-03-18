@@ -89,6 +89,10 @@
     "minutesAgo": " min ago",
     "hoursAgo": " hr ago",
     "daysAgo": " days ago",
+    "now": "now",
+    "minutesShort": "{{count}}m",
+    "hoursShort": "{{count}}h",
+    "daysShort": "{{count}}d",
     "comingSoon": "Coming Soon",
     "retry": "Retry",
     "forward": "Forward",
@@ -1705,6 +1709,9 @@
     "loggingLevel": "Logging Level",
     "selectLoggingLevel": "Select level...",
     "loggingLevelDesc": "Set the minimum logging level for server notifications.",
+    "loadingSuggestions": "Loading suggestions...",
+    "addItem": "Add Item",
+    "itemNumber": "Item {{number}}",
     "mcpApps": "MCP Apps",
     "searchApps": "Search apps...",
     "noAppsFound": "No MCP Apps available",
@@ -3806,7 +3813,19 @@
     "preview": "Preview",
     "code": "Code",
     "previewNotAvailable": "Preview not available",
-    "switchToCodeView": "Switch to Code view to see the content"
+    "switchToCodeView": "Switch to Code view to see the content",
+    "docxPreview": {
+      "description": "Word documents can be opened in Microsoft Word or compatible applications.",
+      "openButton": "Open in Word"
+    },
+    "pptxPreview": {
+      "description": "Presentations can be opened in Microsoft PowerPoint or compatible applications.",
+      "openButton": "Open in PowerPoint"
+    },
+    "xlsxPreview": {
+      "description": "Spreadsheets can be opened in Microsoft Excel or compatible applications.",
+      "openButton": "Open in Excel"
+    }
   },
   "observability": {
     "title": "Observability",
