@@ -103,6 +103,8 @@
   --yellow-500: 45 95% 55%;
   --purple-500: 280 70% 55%;
   --slate-500: 215 15% 47%;
+  --zinc-500: 240 4% 46%;
+  --red-500: 0 84% 60%;
 
   /* ===== Typography ===== */
   --font-serif: 'Crimson Pro', 'Source Serif Pro', 'Georgia', 'Times New Roman', serif;
