@@ -10,6 +10,10 @@
 import type { MessageBus, InboundMessage } from "../../services/message-bus";
 import type { Channel, WhatsAppChannelConfig } from "../types";
 import WebSocketImpl from "ws";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "whatsapp-poller" });
 
 /**
  * WhatsApp poller configuration
@@ -70,18 +74,18 @@ export class WhatsAppPoller {
    */
   async start(): Promise<void> {
     if (this.running) {
-      console.log(`[WhatsAppPoller] ${this.channel.name} already running`);
+      log.debug({ channelName: this.channel.name }, "Already running");
       return;
     }
 
     const bridgeUrl = this.config.bridge_url;
     if (!bridgeUrl) {
-      console.error(`[WhatsAppPoller] bridge_url not configured for ${this.channel.name}`);
+      log.error({ channelName: this.channel.name }, "bridge_url not configured");
       return;
     }
 
-    console.log(`[WhatsAppPoller] Starting ${this.channel.name}...`);
-    console.log(`[WhatsAppPoller] Connecting to bridge at ${bridgeUrl}`);
+    log.info({ channelName: this.channel.name }, "Starting...");
+    log.info({ bridgeUrl }, "Connecting to bridge");
     this.running = true;
 
     // Start connection loop
@@ -96,7 +100,7 @@ export class WhatsAppPoller {
       return;
     }
 
-    console.log(`[WhatsAppPoller] Stopping ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Stopping...");
     this.running = false;
     this.connected = false;
 
@@ -106,7 +110,7 @@ export class WhatsAppPoller {
     }
 
     this.messageBus.updateConnectionStatus("whatsapp", this.channel.name, false);
-    console.log(`[WhatsAppPoller] ${this.channel.name} stopped`);
+    log.info({ channelName: this.channel.name }, "Stopped");
   }
 
   /**
@@ -133,11 +137,11 @@ export class WhatsAppPoller {
       } catch (error) {
         this.connected = false;
         this.ws = null;
-        console.error(`[WhatsAppPoller] Bridge connection error:`, error);
+        log.error({ err: error }, "Bridge connection error");
       }
 
       if (this.running) {
-        console.log(`[WhatsAppPoller] Reconnecting in ${this.reconnectDelayMs / 1000}s...`);
+        log.info({ delaySeconds: this.reconnectDelayMs / 1000 }, "Reconnecting...");
         await this.sleep(this.reconnectDelayMs);
       }
     }
@@ -152,26 +156,26 @@ export class WhatsAppPoller {
         this.ws = new WebSocketImpl(this.config.bridge_url) as unknown as WebSocket;
 
         this.ws.onopen = () => {
-          console.log(`[WhatsAppPoller] Connected to WhatsApp bridge`);
+          log.info("Connected to WhatsApp bridge");
           this.connected = true;
           this.messageBus.updateConnectionStatus("whatsapp", this.channel.name, true);
         };
 
         this.ws.onclose = () => {
-          console.log(`[WhatsAppPoller] Bridge connection closed`);
+          log.info("Bridge connection closed");
           this.connected = false;
           this.messageBus.updateConnectionStatus("whatsapp", this.channel.name, false);
           resolve();
         };
 
         this.ws.onerror = (error) => {
-          console.error(`[WhatsAppPoller] Bridge WebSocket error:`, error);
+          log.error({ err: error }, "Bridge WebSocket error");
           reject(error);
         };
 
         this.ws.onmessage = (event) => {
           this.handleBridgeMessage(event.data as string).catch((err) => {
-            console.error(`[WhatsAppPoller] Error handling message:`, err);
+            log.error({ err }, "Error handling message");
           });
         };
       } catch (error) {
@@ -188,7 +192,7 @@ export class WhatsAppPoller {
     try {
       data = JSON.parse(raw);
     } catch {
-      console.warn(`[WhatsAppPoller] Invalid JSON from bridge`);
+      log.warn("Invalid JSON from bridge");
       return;
     }
 
@@ -202,11 +206,11 @@ export class WhatsAppPoller {
         break;
 
       case "qr":
-        console.log(`[WhatsAppPoller] Scan QR code in the bridge terminal to connect WhatsApp`);
+        log.info("Scan QR code in the bridge terminal to connect WhatsApp");
         break;
 
       case "error":
-        console.error(`[WhatsAppPoller] Bridge error: ${data.error}`);
+        log.error({ bridgeError: data.error }, "Bridge error");
         break;
     }
   }
@@ -226,7 +230,7 @@ export class WhatsAppPoller {
 
     // Check allow_from
     if (!this.isAllowed(senderId)) {
-      console.log(`[WhatsAppPoller] Message from ${senderId} blocked by allow_from`);
+      log.debug({ senderId }, "Message blocked by allow_from");
       return;
     }
 
@@ -250,7 +254,7 @@ export class WhatsAppPoller {
     };
 
     const msgPreview = content.length > 50 ? `${content.slice(0, 50)}...` : content;
-    console.log(`[WhatsAppPoller] Message from ${senderId}: ${msgPreview}`);
+    log.info({ senderId, messagePreview: msgPreview }, "Message received");
 
     await this.messageBus.publishInbound(inbound);
   }
@@ -260,7 +264,7 @@ export class WhatsAppPoller {
    */
   private handleStatus(data: BridgeMessage): void {
     const status = data.status;
-    console.log(`[WhatsAppPoller] WhatsApp status: ${status}`);
+    log.info({ status }, "WhatsApp status");
 
     if (status === "connected") {
       this.connected = true;

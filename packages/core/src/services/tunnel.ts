@@ -6,6 +6,10 @@
  */
 import { EventEmitter } from "node:events";
 import type { Tunnel as CloudflaredTunnel, Connection } from "cloudflared";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "tunnel" });
 
 // Dynamically import cloudflared to avoid issues if not installed
 let cloudflaredModule: typeof import("cloudflared") | null = null;
@@ -127,7 +131,7 @@ export class TunnelService extends EventEmitter {
         // Handle URL event (tunnel is ready)
         tunnel.on("url", (url: string) => {
           clearTimeout(timeout);
-          console.log(`[TunnelService] Tunnel URL received: ${url}`);
+          log.info({ url }, "Tunnel URL received");
 
           this.updateState({
             status: "connected",
@@ -142,7 +146,7 @@ export class TunnelService extends EventEmitter {
 
         // Handle connection events
         tunnel.on("connected", (connection: Connection) => {
-          console.log(`[TunnelService] Connection established: ${connection.location} (${connection.ip})`);
+          log.info({ location: connection.location, ip: connection.ip }, "Connection established");
           const connections = [...this.state.connections, {
             id: connection.id,
             ip: connection.ip,
@@ -152,14 +156,14 @@ export class TunnelService extends EventEmitter {
         });
 
         tunnel.on("disconnected", (connection: Connection) => {
-          console.log(`[TunnelService] Connection lost: ${connection.location}`);
+          log.info({ location: connection.location }, "Connection lost");
           const connections = this.state.connections.filter(c => c.id !== connection.id);
           this.updateState({ connections });
         });
 
         // Handle errors
         tunnel.on("error", (err: Error) => {
-          console.error("[TunnelService] Tunnel error:", err.message);
+          log.error({ err }, "Tunnel error");
           clearTimeout(timeout);
 
           this.updateState({
@@ -173,7 +177,7 @@ export class TunnelService extends EventEmitter {
 
         // Handle exit
         tunnel.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
-          console.log(`[TunnelService] Tunnel process exited with code ${code}, signal ${signal}`);
+          log.info({ exitCode: code, signal }, "Tunnel process exited");
 
           if (this.state.status !== "stopped") {
             this.handleDisconnect();
@@ -182,7 +186,7 @@ export class TunnelService extends EventEmitter {
       });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("[TunnelService] Failed to start tunnel:", errorMsg);
+      log.error({ err }, "Failed to start tunnel");
 
       this.updateState({
         status: "error",
@@ -198,7 +202,7 @@ export class TunnelService extends EventEmitter {
    * Stop the tunnel
    */
   stop(): void {
-    console.log("[TunnelService] Stopping tunnel...");
+    log.info("Stopping tunnel...");
 
     this.clearTimers();
 
@@ -206,7 +210,7 @@ export class TunnelService extends EventEmitter {
       try {
         this.tunnel.stop();
       } catch (e) {
-        console.warn("[TunnelService] Error stopping tunnel:", e);
+        log.warn({ err: e }, "Error stopping tunnel");
       }
       this.tunnel = null;
     }
@@ -219,7 +223,7 @@ export class TunnelService extends EventEmitter {
     });
 
     this.emit("disconnected");
-    console.log("[TunnelService] Tunnel stopped");
+    log.info("Tunnel stopped");
   }
 
   /**
@@ -241,7 +245,7 @@ export class TunnelService extends EventEmitter {
     this.reconnectAttempts++;
 
     if (this.reconnectAttempts > TunnelService.MAX_RECONNECT_ATTEMPTS) {
-      console.error(`[TunnelService] Max reconnection attempts (${TunnelService.MAX_RECONNECT_ATTEMPTS}) exceeded, giving up`);
+      log.error({ maxAttempts: TunnelService.MAX_RECONNECT_ATTEMPTS }, "Max reconnection attempts exceeded, giving up");
       this.updateState({
         status: "error",
         url: null,
@@ -252,7 +256,7 @@ export class TunnelService extends EventEmitter {
       return;
     }
 
-    console.log(`[TunnelService] Tunnel disconnected, will attempt to reconnect (${this.reconnectAttempts}/${TunnelService.MAX_RECONNECT_ATTEMPTS})...`);
+    log.info({ attempt: this.reconnectAttempts, maxAttempts: TunnelService.MAX_RECONNECT_ATTEMPTS }, "Tunnel disconnected, will attempt to reconnect...");
 
     this.updateState({
       status: "reconnecting",
@@ -271,7 +275,7 @@ export class TunnelService extends EventEmitter {
           // Reset attempts on successful connection
           this.reconnectAttempts = 0;
         } catch (e) {
-          console.error("[TunnelService] Reconnection failed:", e);
+          log.error({ err: e }, "Reconnection failed");
           // Will be called again by handleDisconnect
         }
       }
@@ -300,7 +304,7 @@ export class TunnelService extends EventEmitter {
           clearTimeout(timeout);
 
           if (!response || !response.ok) {
-            console.warn("[TunnelService] Health check failed, tunnel may be down");
+            log.warn("Health check failed, tunnel may be down");
             // Don't immediately reconnect, let the process exit handler deal with it
           }
         } catch (e) {

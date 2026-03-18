@@ -94,6 +94,10 @@ export type SSEMessage =
   | SSESdkSessionMessage;
 
 import { execSync } from "node:child_process";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "sdk-chat-proxy" });
 
 /**
  * Environment variables that interfere with SDK execution.
@@ -273,13 +277,13 @@ export class SdkChatProxy implements ChatProxy {
       // Note: This needs proper MCP server config format
       // For now, we log it in verbose mode
       if (mcpServers && mcpServers.length > 0 && verbose) {
-        console.log(`Agent MCP servers: ${mcpServers.join(", ")}`);
+        log.debug({ mcpServers }, "Agent MCP servers");
       }
 
       // Skills (if agent has custom skills)
       // Note: Skills are typically loaded from project config
       if (skills && skills.length > 0 && verbose) {
-        console.log(`Agent skills: ${skills.join(", ")}`);
+        log.debug({ skills }, "Agent skills");
       }
 
       // Execute the query - returns AsyncGenerator<SDKMessage>
@@ -302,25 +306,23 @@ export class SdkChatProxy implements ChatProxy {
       return { exitCode: 0 };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      // Always show errors to stderr
-      console.error(`SDK Error: ${errorMessage}`);
+      // Log error for debugging
+      log.error({ err: error }, "SDK execution error");
 
       // Check for common issues and provide helpful hints
       if (errorMessage.includes("exited with code 1")) {
-        console.error(`\nHint: This may happen when Claude Code runs in background mode.`);
-        console.error(`Try using --no-sdk to use spawn proxy instead:`);
-        console.error(`  viben agent chat -n <agent> -p "..." --no-sdk`);
+        log.info("Hint: This may happen when Claude Code runs in background mode. Try using --no-sdk.");
       }
 
       if (error instanceof Error) {
         // Check for cause (nested error)
         const cause = (error as Error & { cause?: Error }).cause;
         if (cause) {
-          console.error(`Cause: ${cause.message}`);
+          log.error({ cause: cause.message }, "Error cause");
         }
-        // Show stack in verbose mode
+        // Log stack in verbose mode
         if (verbose && error.stack) {
-          console.error(error.stack);
+          log.debug({ stack: error.stack }, "Error stack trace");
         }
       }
       return {
@@ -425,7 +427,7 @@ export class SdkChatProxy implements ChatProxy {
     const msg = message as Record<string, unknown>;
 
     // Log all messages with their type
-    console.log(`[${msg.type || "unknown"}]`, JSON.stringify(message, null, 2));
+    log.debug({ messageType: msg.type || "unknown", message }, "SDK message");
   }
 
   /**
@@ -459,13 +461,13 @@ export class SdkChatProxy implements ChatProxy {
       sandboxConfig,
     } = options;
 
-    // Helper for verbose logging
-    const log = verbose ? console.log.bind(console) : () => {};
-    const logError = verbose ? console.error.bind(console) : () => {};
+    // Helper for verbose logging using telemetry logger
+    const verboseLog = verbose ? (msg: string, data?: Record<string, unknown>) => log.debug(data || {}, msg) : () => {};
+    const verboseError = verbose ? (msg: string, data?: Record<string, unknown>) => log.error(data || {}, msg) : () => {};
 
     // Log sandbox configuration status
     if (sandboxConfig?.enabled) {
-      log('[SdkChatProxy] Sandbox mode enabled:', {
+      verboseLog('Sandbox mode enabled', {
         provider: sandboxConfig.provider || 'auto',
         note: 'Sandbox wrapping applied at tool execution level',
       });
@@ -477,7 +479,7 @@ export class SdkChatProxy implements ChatProxy {
     }
 
     clearInterferingEnvVars();
-    log('[SdkChatProxy] After clearInterferingEnvVars - CLAUDECODE:', process.env.CLAUDECODE);
+    verboseLog('After clearInterferingEnvVars', { CLAUDECODE: process.env.CLAUDECODE });
 
     const startTime = Date.now();
 
@@ -537,7 +539,7 @@ export class SdkChatProxy implements ChatProxy {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const hasValidResume = resume && uuidRegex.test(resume);
 
-      log("[SdkChatProxy] Session params:", {
+      verboseLog("Session params", {
         sessionId,
         resume,
         hasValidResume,
@@ -546,11 +548,11 @@ export class SdkChatProxy implements ChatProxy {
       if (hasValidResume) {
         // Resume takes priority - don't pass sessionId when resuming
         queryOptions.resume = resume;
-        log("[SdkChatProxy] Resuming session:", resume);
+        verboseLog("Resuming session", { resume });
       } else if (sessionId && uuidRegex.test(sessionId)) {
         // Only pass sessionId for new sessions (not resuming)
         queryOptions.sessionId = sessionId;
-        log("[SdkChatProxy] Starting new session:", sessionId);
+        verboseLog("Starting new session", { sessionId });
       }
 
       // Permission mode - use bypassPermissions by default for gateway usage
@@ -570,20 +572,20 @@ export class SdkChatProxy implements ChatProxy {
       this.verboseMode = verbose;
 
       // Log query options for debugging
-      log('[SdkChatProxy] Executing query with options:', JSON.stringify({
-        prompt: prompt?.slice(0, 100),
+      verboseLog('Executing query with options', {
+        promptPreview: prompt?.slice(0, 100),
         cwd: queryOptions.cwd,
         claudePath: queryOptions.pathToClaudeCodeExecutable,
         model: queryOptions.model,
         permissionMode: queryOptions.permissionMode,
         hasSystemPrompt: !!queryOptions.systemPrompt,
         settingSources: queryOptions.settingSources,
-      }, null, 2));
+      });
 
       // Capture stderr from Claude Code subprocess for debugging
       queryOptions.stderr = (data: string) => {
         stderrOutput += data;
-        logError('[SdkChatProxy] Claude stderr:', data);
+        verboseError('Claude stderr', { data });
       };
 
       // Execute query
@@ -607,13 +609,13 @@ export class SdkChatProxy implements ChatProxy {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       // Log the full error for debugging
-      logError('[SdkChatProxy] Execution error:', errorMessage);
+      verboseError('Execution error', { error: errorMessage });
       if (error instanceof Error && error.stack) {
-        logError('[SdkChatProxy] Stack:', error.stack);
+        verboseError('Stack trace', { stack: error.stack });
       }
       const cause = (error as Error & { cause?: Error }).cause;
       if (cause) {
-        logError('[SdkChatProxy] Cause:', cause.message);
+        verboseError('Error cause', { cause: cause.message });
       }
 
       // Build detailed error message including stderr output
@@ -622,7 +624,7 @@ export class SdkChatProxy implements ChatProxy {
       // Handle specific error types following WorkAny patterns
       if (errorMessage.includes("exited with code")) {
         // Claude Code process crashed - include stderr for debugging
-        logError('[SdkChatProxy] Process exit error:', errorMessage);
+        verboseError('Process exit error', { error: errorMessage });
         yield {
           type: "error",
           message: `Agent process terminated unexpectedly: ${errorMessage}${stderrInfo}`,
@@ -676,12 +678,12 @@ export class SdkChatProxy implements ChatProxy {
 
     // Debug: Log message structure to find session_id location
     if (this.verboseMode) {
-      console.log("[SdkChatProxy] Message structure:", {
+      log.debug({
         type: msg.type,
         hasSessionId: !!msg.session_id,
         sessionId: msg.session_id,
         keys: Object.keys(msg).slice(0, 10),
-      });
+      }, "Message structure");
     }
 
     // Extract SDK session_id from message and emit once
@@ -689,7 +691,7 @@ export class SdkChatProxy implements ChatProxy {
     if (msg.session_id && typeof msg.session_id === "string") {
       if (this.emittedSdkSessionId !== msg.session_id) {
         if (this.verboseMode) {
-          console.log("[SdkChatProxy] Emitting SDK session ID:", msg.session_id);
+          log.debug({ sdkSessionId: msg.session_id }, "Emitting SDK session ID");
         }
         this.emittedSdkSessionId = msg.session_id;
         yield {

@@ -18,6 +18,10 @@ import { TelegramPoller } from "./polling/telegram-poller";
 import { DiscordPoller } from "./polling/discord-poller";
 import { FeishuPoller } from "./polling/feishu-poller";
 import { WhatsAppPoller } from "./polling/whatsapp-poller";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "channel-runtime" });
 
 /**
  * Base interface for channel pollers
@@ -72,18 +76,18 @@ export class ChannelRuntime {
    */
   async start(): Promise<void> {
     if (this.running) {
-      console.log("[ChannelRuntime] Already running");
+      log.debug("Already running");
       return;
     }
 
-    console.log("[ChannelRuntime] Starting...");
+    log.info("Starting...");
     this.running = true;
 
     if (this.autoStart) {
       await this.startEnabledChannels();
     }
 
-    console.log("[ChannelRuntime] Started");
+    log.info("Started");
   }
 
   /**
@@ -96,20 +100,20 @@ export class ChannelRuntime {
       return;
     }
 
-    console.log("[ChannelRuntime] Stopping...");
+    log.info("Stopping...");
     this.running = false;
 
     // Stop all pollers in parallel
     const stopPromises: Promise<void>[] = [];
     for (const [channelId, poller] of this.pollers) {
-      console.log(`[ChannelRuntime] Stopping poller for ${channelId}`);
+      log.debug({ channelId }, "Stopping poller");
       stopPromises.push(poller.stop());
     }
 
     await Promise.all(stopPromises);
     this.pollers.clear();
 
-    console.log("[ChannelRuntime] Stopped");
+    log.info("Stopped");
   }
 
   /**
@@ -133,7 +137,7 @@ export class ChannelRuntime {
    */
   async startChannel(channelId: string): Promise<void> {
     if (this.pollers.has(channelId)) {
-      console.log(`[ChannelRuntime] Channel ${channelId} already has active poller`);
+      log.debug({ channelId }, "Channel already has active poller");
       return;
     }
 
@@ -141,22 +145,22 @@ export class ChannelRuntime {
     const channel = await this.channelManager.getChannel(channelId);
 
     if (!channel) {
-      console.error(`[ChannelRuntime] Channel not found: ${channelId}`);
+      log.error({ channelId }, "Channel not found");
       return;
     }
 
     const poller = this.createPoller(channel);
     if (!poller) {
-      console.warn(`[ChannelRuntime] No poller available for channel type: ${channel.type}`);
+      log.warn({ channelId, channelType: channel.type }, "No poller available for channel type");
       return;
     }
 
     try {
       await poller.start();
       this.pollers.set(channelId, poller);
-      console.log(`[ChannelRuntime] Started poller for ${channel.name} (${channel.type})`);
+      log.info({ channelName: channel.name, channelType: channel.type }, "Started poller");
     } catch (error) {
-      console.error(`[ChannelRuntime] Failed to start poller for ${channelId}:`, error);
+      log.error({ err: error, channelId }, "Failed to start poller");
     }
   }
 
@@ -200,13 +204,11 @@ export class ChannelRuntime {
     );
 
     if (eligibleChannels.length === 0) {
-      console.log("[ChannelRuntime] No enabled channels with agent bindings to start");
+      log.debug("No enabled channels with agent bindings to start");
       return;
     }
 
-    console.log(
-      `[ChannelRuntime] Starting ${eligibleChannels.length} channel(s) with agent bindings...`
-    );
+    log.info({ count: eligibleChannels.length }, "Starting channels with agent bindings...");
 
     // Start all eligible channels in parallel
     const startPromises = eligibleChannels.map((channel) =>
