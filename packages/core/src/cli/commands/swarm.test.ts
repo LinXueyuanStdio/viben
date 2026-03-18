@@ -472,7 +472,7 @@ describe("Swarm CLI Commands", () => {
       expect(mockSpawn).not.toHaveBeenCalled();
     });
 
-    it("should watch agent log for live monitoring", async () => {
+    it("should accept --watch flag for live monitoring", async () => {
       setupVibenWorkspace();
       mockExistsSync.mockImplementation((path: string) => {
         if (path === "/test/project/.viben") return true;
@@ -500,21 +500,23 @@ describe("Swarm CLI Commands", () => {
         return "";
       });
 
-      // Watch mode starts a long-running process, so we test it calls the right function
-      // but don't actually wait for it (it would run indefinitely)
-      // The test verifies that --watch flag is recognized and doesn't error
-      // Note: In production this calls tailFollowConsole() which blocks
-      // For testing, we just verify the command is accepted
-      try {
-        // Start command but don't await - it would block forever
-        const promise = runCommand(["swarm", "status", "my-task", "--watch"]);
-        // Give it a moment to start
-        await new Promise(resolve => setTimeout(resolve, 50));
-        // The TypeScript implementation uses tailFollowConsole() directly
-        expect(mockSpawn).not.toHaveBeenCalled();
-      } catch {
-        // May throw due to process.exit mock - that's ok
-      }
+      // Watch mode starts a long-running process (tailFollowConsole).
+      // We test that the command is recognized and starts without error.
+      // Use Promise.race with a timeout to prevent blocking.
+      const timeoutPromise = new Promise<"timeout">((resolve) =>
+        setTimeout(() => resolve("timeout"), 100)
+      );
+
+      const result = await Promise.race([
+        runCommand(["swarm", "status", "my-task", "--watch"]).then(() => "completed" as const),
+        timeoutPromise,
+      ]);
+
+      // Either completed quickly (no agent found) or timed out (watching started)
+      // Both are acceptable - the key is no unhandled error was thrown
+      expect(["completed", "timeout"]).toContain(result);
+      // The TypeScript implementation uses tailFollowConsole() directly, not spawn
+      expect(mockSpawn).not.toHaveBeenCalled();
     });
 
     it("should output JSON when --json flag is provided", async () => {
@@ -547,14 +549,14 @@ describe("Swarm CLI Commands", () => {
       });
 
       const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
+        on: vi.fn((event: string, handler: (code: number) => void) => {
           if (event === "close") {
-            setTimeout(() => handler(0), 10);
+            setTimeout(() => handler(0), ASYNC_TICK_MS);
           }
           return mockProcess;
         }),
         stdout: {
-          on: vi.fn((event: string, handler: Function) => {
+          on: vi.fn((event: string, handler: (data: Buffer) => void) => {
             if (event === "data") {
               handler(Buffer.from(""));
             }
@@ -667,9 +669,9 @@ describe("Swarm CLI Commands", () => {
       });
 
       const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
+        on: vi.fn((event: string, handler: (code: number) => void) => {
           if (event === "close") {
-            setTimeout(() => handler(0), 10);
+            setTimeout(() => handler(0), ASYNC_TICK_MS);
           }
           return mockProcess;
         }),
@@ -692,9 +694,9 @@ describe("Swarm CLI Commands", () => {
       });
 
       const mockProcess = {
-        on: vi.fn((event: string, handler: Function) => {
+        on: vi.fn((event: string, handler: (code: number) => void) => {
           if (event === "close") {
-            setTimeout(() => handler(0), 10);
+            setTimeout(() => handler(0), ASYNC_TICK_MS);
           }
           return mockProcess;
         }),

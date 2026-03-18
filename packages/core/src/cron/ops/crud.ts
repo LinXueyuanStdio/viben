@@ -77,8 +77,9 @@ export async function loadConfig(configPath: string): Promise<CronConfig> {
       version: parsed.version || 1,
       jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
     };
-  } catch {
-    return { version: 1, jobs: [] };
+  } catch (error) {
+    console.error(`[CronOps] Failed to parse cron config at ${configPath}:`, error);
+    throw new Error(`Failed to parse cron config: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

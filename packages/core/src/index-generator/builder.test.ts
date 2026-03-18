@@ -3,15 +3,21 @@
  */
 
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { IndexBuilder } from "./builder";
 
 describe("IndexBuilder", () => {
-  const testProjectDir = path.join(__dirname, "__fixtures__", "test-project");
-  const testOutputDir = path.join(__dirname, "__fixtures__", "test-output");
+  let testProjectDir: string;
+  let testOutputDir: string;
 
   beforeEach(() => {
+    // Create temporary test directories
+    const tempBase = fs.mkdtempSync(path.join(os.tmpdir(), "viben-index-builder-test-"));
+    testProjectDir = path.join(tempBase, "test-project");
+    testOutputDir = path.join(tempBase, "test-output");
+
     // Create test project structure
     fs.mkdirSync(testProjectDir, { recursive: true });
     fs.mkdirSync(path.join(testProjectDir, "packages", "core", "src"), {
@@ -76,9 +82,9 @@ Content here.
   });
 
   afterEach(() => {
-    // Cleanup
-    fs.rmSync(testProjectDir, { recursive: true, force: true });
-    fs.rmSync(testOutputDir, { recursive: true, force: true });
+    // Cleanup - remove the parent temp directory containing both test dirs
+    const tempBase = path.dirname(testProjectDir);
+    fs.rmSync(tempBase, { recursive: true, force: true });
   });
 
   it("should generate all three index files", async () => {

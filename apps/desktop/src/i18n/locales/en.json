@@ -73,6 +73,8 @@
     "search": "Search...",
     "selectAll": "Select all",
     "selected": "selected",
+    "clearSelection": "Clear selection",
+    "selectItem": "Select {{name}}",
     "noResults": "No results found",
     "rename": "Rename",
     "path": "Path",
@@ -3436,7 +3438,12 @@
     "output": "Output",
     "chars": "chars",
     "triggerManual": "Manual",
-    "triggerScheduled": "Scheduled"
+    "triggerScheduled": "Scheduled",
+    "selectedCount": "{{count}} selected",
+    "batchEnable": "Enable",
+    "batchDisable": "Disable",
+    "batchDelete": "Delete",
+    "batchDeleteConfirm": "Delete {{count}} selected task(s)? ({{names}}) This cannot be undone."
   },
   "preview": {
     "livePreview": "Live Preview",

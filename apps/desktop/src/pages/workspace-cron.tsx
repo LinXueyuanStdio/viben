@@ -211,6 +211,10 @@ export function WorkspaceCronPage() {
   // Logs dialog state
   const [logsDialogJob, setLogsDialogJob] = useState<CronJob | null>(null);
 
+  // Multi-select state
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
+
   // Real-time countdown state - update every second
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -343,6 +347,90 @@ export function WorkspaceCronPage() {
     if (!confirm(t("cron.clearLogsConfirm"))) return;
     await clearLogs(logsDialogJob.id);
   };
+
+  // Multi-select handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedJobIds(new Set(jobs.map((job) => job.id)));
+    } else {
+      setSelectedJobIds(new Set());
+    }
+  };
+
+  const handleSelectJob = (jobId: string, checked: boolean) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(jobId);
+      } else {
+        next.delete(jobId);
+      }
+      return next;
+    });
+  };
+
+  const handleBatchEnable = async () => {
+    if (selectedJobIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      await Promise.all(
+        Array.from(selectedJobIds).map((id) => enableJob(id))
+      );
+      refreshJobs();
+      setSelectedJobIds(new Set());
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  const handleBatchDisable = async () => {
+    if (selectedJobIds.size === 0) return;
+    setIsBatchProcessing(true);
+    try {
+      await Promise.all(
+        Array.from(selectedJobIds).map((id) => disableJob(id))
+      );
+      refreshJobs();
+      setSelectedJobIds(new Set());
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedJobIds.size === 0) return;
+    const selectedJobs = jobs.filter((job) => selectedJobIds.has(job.id));
+    const names = selectedJobs.map((job) => job.name).join(", ");
+    if (!confirm(t("cron.batchDeleteConfirm", { count: selectedJobIds.size, names }))) return;
+
+    setIsBatchProcessing(true);
+    try {
+      await Promise.all(
+        Array.from(selectedJobIds).map((id) => deleteJob(id))
+      );
+      refreshJobs();
+      setSelectedJobIds(new Set());
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  };
+
+  // Clear selection when jobs change (e.g., after delete)
+  useEffect(() => {
+    setSelectedJobIds((prev) => {
+      const jobIdSet = new Set(jobs.map((job) => job.id));
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (jobIdSet.has(id)) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [jobs]);
+
+  const isAllSelected = jobs.length > 0 && selectedJobIds.size === jobs.length;
+  const isIndeterminate = selectedJobIds.size > 0 && selectedJobIds.size < jobs.length;
 
   const formatLogDuration = (ms: number): string => {
     if (ms < 1000) return `${ms}ms`;
@@ -547,10 +635,81 @@ export function WorkspaceCronPage() {
           </Card>
         ) : (
           <TooltipProvider>
+            {/* Batch Actions Bar */}
+            {selectedJobIds.size > 0 && (
+              <div className="mb-4 p-3 bg-muted/50 rounded-lg border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {t("cron.selectedCount", { count: selectedJobIds.size })}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedJobIds(new Set())}
+                    className="text-xs h-7"
+                  >
+                    {t("common.clearSelection")}
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBatchEnable}
+                    disabled={isBatchProcessing}
+                    className="h-8"
+                  >
+                    {isBatchProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4 mr-2" />
+                    )}
+                    {t("cron.batchEnable")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBatchDisable}
+                    disabled={isBatchProcessing}
+                    className="h-8"
+                  >
+                    {isBatchProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Pause className="h-4 w-4 mr-2" />
+                    )}
+                    {t("cron.batchDisable")}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBatchDelete}
+                    disabled={isBatchProcessing}
+                    className="h-8"
+                  >
+                    {isBatchProcessing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    {t("cron.batchDelete")}
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={isAllSelected}
+                        onCheckedChange={handleSelectAll}
+                        aria-label={t("common.selectAll")}
+                        className={isIndeterminate ? "data-[state=checked]:bg-primary/50" : ""}
+                        data-state={isIndeterminate ? "indeterminate" : isAllSelected ? "checked" : "unchecked"}
+                      />
+                    </TableHead>
                     <TableHead className="w-[200px]">{t("common.name")}</TableHead>
                     <TableHead className="w-[100px]">{t("common.status")}</TableHead>
                     <TableHead className="w-[100px]">{t("cron.schedule")}</TableHead>
@@ -567,7 +726,14 @@ export function WorkspaceCronPage() {
                     const hasNotifications = job.notifications?.in_app || job.notifications?.system || notificationChannels.length > 0;
 
                     return (
-                      <TableRow key={job.id}>
+                      <TableRow key={job.id} className={selectedJobIds.has(job.id) ? "bg-muted/50" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedJobIds.has(job.id)}
+                            onCheckedChange={(checked) => handleSelectJob(job.id, !!checked)}
+                            aria-label={t("common.selectItem", { name: job.name })}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="flex items-center gap-1.5">
