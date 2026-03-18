@@ -73,3 +73,12 @@ export {
   type MergePRPhaseOptions,
   type MergePRPhaseResult,
 } from "./merge-pr";
+
+// Reward Phase (evaluates PR quality using reward agents)
+export {
+  runRewardPhase,
+  runRewardPhaseSync,
+  DEFAULT_REWARD_CONFIG,
+  type RewardPhaseOptions,
+  type RewardPhaseResult,
+} from "./reward";
