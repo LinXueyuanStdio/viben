@@ -18,7 +18,8 @@ import {
   handleCommandError,
 } from "../lib";
 import { CliError } from "../types";
-import { findVibenRoot } from "../lib/viben-workspace";
+import { findVibenRoot, resolveTaskDirectory } from "../lib/viben-workspace";
+import { runRewardPhaseSync } from "../../task/phase";
 
 // Import from reward/ops module
 import {
@@ -272,4 +273,63 @@ export function registerRewardCommand(program: Command): void {
         }
       }
     );
+
+  // ============================================================================
+  // reward compute-for-task (alias for `viben task compute-reward`)
+  // ============================================================================
+  rewardCmd
+    .command("compute-for-task")
+    .description("Compute reward for a task (alias for `viben task compute-reward`)")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .option("--json", "JSON format output")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean; json?: boolean }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        const result = runRewardPhaseSync(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
+        });
+
+        if (!result.success) {
+          throw CliError.operationFailed("Compute Reward", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse(result), () => {
+          console.log(chalk.green("=== Reward Agent Started ==="));
+          console.log();
+          console.log(`  ID:   ${result.agentId}`);
+          console.log(`  PID:  ${result.pid}`);
+          console.log(`  Log:  ${result.logFile}`);
+
+          if (result.warnings && result.warnings.length > 0) {
+            console.log();
+            console.log(chalk.yellow("Warnings:"));
+            for (const warning of result.warnings) {
+              console.log(`  - ${warning}`);
+            }
+          }
+
+          console.log();
+          console.log(chalk.gray("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
 }
