@@ -22,6 +22,10 @@ import { SdkChatProxy, type SSEMessage } from "../executors/chat/sdk-proxy";
 import { sendChannelMessage } from "./index";
 import { homedir } from "node:os";
 import { agentManager, type Agent } from "../agents";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "channel-router" });
 
 /**
  * Channel router errors
@@ -158,14 +162,14 @@ export class ChannelRouter {
 
         // Handle message asynchronously
         this.handleMessage(msg).catch((err) => {
-          console.error("[ChannelRouter] Error handling message:", err);
+          log.error({ err }, "Error handling message");
         });
       }
     };
 
     this.unsubscribe = this.events.subscribe(listener);
 
-    console.log("[ChannelRouter] Started, listening for channel messages...");
+    log.info("Started, listening for channel messages...");
   }
 
   /**
@@ -177,7 +181,7 @@ export class ChannelRouter {
       this.unsubscribe = undefined;
     }
     this.running = false;
-    console.log("[ChannelRouter] Stopped");
+    log.info("Stopped");
   }
 
   /**
@@ -195,10 +199,12 @@ export class ChannelRouter {
       ? `${msg.message.slice(0, 50)}...`
       : msg.message;
 
-    console.log(
-      `[ChannelRouter] Received message from ${msg.channelName} (${msg.channelType}) ` +
-      `chat_id=${msg.chatId}: ${msgPreview}`
-    );
+    log.info({
+      channelName: msg.channelName,
+      channelType: msg.channelType,
+      chatId: msg.chatId,
+      messagePreview: msgPreview,
+    }, "Received message");
 
     // Find channel by name or type
     const channel = await this.findChannel(msg.channelName, msg.channelType);
@@ -216,14 +222,13 @@ export class ChannelRouter {
           await this.sendResponse(channel, msg.chatId, response);
         }
       } else {
-        console.log(
-          `[ChannelRouter] Channel ${channel.name} has no agent binding, skipping routing`
-        );
+        log.debug({ channelName: channel.name }, "Channel has no agent binding, skipping routing");
       }
     } else {
-      console.warn(
-        `[ChannelRouter] No channel found for message from ${msg.channelName} (${msg.channelType})`
-      );
+      log.warn({
+        channelName: msg.channelName,
+        channelType: msg.channelType,
+      }, "No channel found for message");
     }
   }
 
@@ -257,7 +262,7 @@ export class ChannelRouter {
 
     switch (mode) {
       case "none":
-        console.log(`[ChannelRouter] Notifications disabled for channel ${channel.name}`);
+        log.debug({ channelName: channel.name }, "Notifications disabled for channel");
         break;
 
       case "in_app":
@@ -279,7 +284,7 @@ export class ChannelRouter {
    * Send in-app notification via event broadcast
    */
   private sendInAppNotification(channel: Channel, msg: IncomingMessage): void {
-    console.log(`[ChannelRouter] Sending in-app notification for channel ${channel.name}`);
+    log.debug({ channelName: channel.name }, "Sending in-app notification");
 
     // Broadcast notification event for frontend
     this.events.broadcast({
@@ -303,10 +308,11 @@ export class ChannelRouter {
       ? `${msg.message.slice(0, 100)}...`
       : msg.message;
 
-    console.log(
-      `[ChannelRouter] Sending system notification for channel ${channel.name}: ` +
-      `${msgPreview} from ${msg.senderName || "unknown"}`
-    );
+    log.debug({
+      channelName: channel.name,
+      senderName: msg.senderName || "unknown",
+      messagePreview: msgPreview,
+    }, "Sending system notification");
 
     // Try to use node-notifier if available
     // Note: node-notifier is an optional dependency
@@ -325,10 +331,10 @@ export class ChannelRouter {
           sound: true,
         });
       } else {
-        console.log("[ChannelRouter] node-notifier not available, skipping system notification");
+        log.debug("node-notifier not available, skipping system notification");
       }
     } catch (err) {
-      console.warn("[ChannelRouter] Failed to send system notification:", err);
+      log.warn({ err }, "Failed to send system notification");
     }
   }
 
@@ -340,9 +346,11 @@ export class ChannelRouter {
     binding: AgentBinding,
     msg: IncomingMessage
   ): Promise<string | undefined> {
-    console.log(
-      `[ChannelRouter] Routing message to ${binding.binding_type} '${binding.name}' (id=${binding.id})`
-    );
+    log.info({
+      bindingType: binding.binding_type,
+      bindingName: binding.name,
+      bindingId: binding.id,
+    }, "Routing message to agent/executor");
 
     try {
       if (binding.binding_type === "agent") {
@@ -352,7 +360,7 @@ export class ChannelRouter {
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[ChannelRouter] Error executing ${binding.binding_type}:`, errorMsg);
+      log.error({ err, bindingType: binding.binding_type }, "Error executing agent/executor");
       return `Error: ${errorMsg}`;
     }
   }
@@ -369,7 +377,7 @@ export class ChannelRouter {
     msg: IncomingMessage
   ): Promise<string | undefined> {
     const agentId = binding.id;
-    console.log(`[ChannelRouter] Executing agent '${binding.name}' (id=${agentId}) for channel message`);
+    log.info({ agentName: binding.name, agentId }, "Executing agent for channel message");
 
     // Generate session ID for tracking
     const sessionId = `channel-${channel.id}-${msg.timestamp}`;
@@ -388,22 +396,23 @@ export class ChannelRouter {
     try {
       agent = await agentManager.getAgent(agentId);
       if (agent) {
-        console.log(`[ChannelRouter] Loaded agent config: ${agent.name} (model=${agent.model})`);
+        log.debug({ agentName: agent.name, model: agent.model }, "Loaded agent config");
       } else {
-        console.warn(`[ChannelRouter] Agent '${agentId}' not found in ~/.viben/agents/`);
+        log.warn({ agentId }, "Agent not found in ~/.viben/agents/");
       }
     } catch (e) {
-      console.warn(`[ChannelRouter] Could not load agent config for '${agentId}':`, e);
+      log.warn({ err: e, agentId }, "Could not load agent config");
     }
 
     // Create SDK proxy for agent execution
     const proxy = new SdkChatProxy();
 
     try {
-      console.log(`[ChannelRouter] Starting agent execution...`);
-      console.log(`[ChannelRouter]   Prompt: ${msg.message.slice(0, 100)}${msg.message.length > 100 ? '...' : ''}`);
-      console.log(`[ChannelRouter]   Working dir: ${workdir}`);
-      console.log(`[ChannelRouter]   Model: ${agent?.model || 'default'}`);
+      log.info({
+        promptPreview: msg.message.slice(0, 100) + (msg.message.length > 100 ? "..." : ""),
+        workdir,
+        model: agent?.model || "default",
+      }, "Starting agent execution...");
 
       // Execute streaming and collect text responses
       const textParts: string[] = [];
@@ -421,7 +430,7 @@ export class ChannelRouter {
       });
 
       for await (const message of stream) {
-        console.log(`[ChannelRouter] SSE message: type=${message.type}`);
+        log.debug({ messageType: message.type }, "SSE message received");
 
         switch (message.type) {
           case "text":
@@ -438,26 +447,26 @@ export class ChannelRouter {
             break;
 
           case "tool_use":
-            console.log(`[ChannelRouter] Tool use: ${(message as { name: string }).name}`);
+            log.debug({ toolName: (message as { name: string }).name }, "Tool use");
             break;
 
           case "tool_result":
-            console.log(`[ChannelRouter] Tool result: isError=${(message as { isError?: boolean }).isError}`);
+            log.debug({ isError: (message as { isError?: boolean }).isError }, "Tool result");
             break;
 
           case "error":
             hasError = true;
             errorMessage = (message as { type: "error"; message: string }).message;
-            console.error(`[ChannelRouter] Agent error: ${errorMessage}`);
+            log.error({ errorMessage }, "Agent error");
             break;
 
           case "result":
-            console.log(`[ChannelRouter] Agent completed: subtype=${(message as { subtype?: string }).subtype}`);
+            log.info({ subtype: (message as { subtype?: string }).subtype }, "Agent completed");
             break;
 
           case "question":
             // AskUserQuestion - we can't handle interactive questions in channel mode
-            console.log(`[ChannelRouter] Agent asked a question (not supported in channel mode)`);
+            log.warn("Agent asked a question (not supported in channel mode)");
             textParts.push("\n\n(Agent needs interactive input which is not supported in channel mode)");
             break;
         }
@@ -478,13 +487,12 @@ export class ChannelRouter {
       }
 
       const response = textParts.join("");
-      console.log(`[ChannelRouter] Agent response length: ${response.length} chars`);
+      log.info({ responseLength: response.length }, "Agent response");
 
       return response || `Agent '${binding.name}' completed but produced no output.`;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[ChannelRouter] Failed to execute agent: ${errorMsg}`);
-      console.error(`[ChannelRouter] Error stack:`, err);
+      log.error({ err, errorMsg }, "Failed to execute agent");
 
       this.events.broadcast({
         type: "error",
@@ -506,7 +514,7 @@ export class ChannelRouter {
     binding: AgentBinding,
     msg: IncomingMessage
   ): Promise<string | undefined> {
-    console.log(`[ChannelRouter] Executing executor '${binding.name}' for channel message`);
+    log.info({ executorName: binding.name }, "Executing executor for channel message");
 
     // Generate session ID
     const sessionId = `executor-${channel.id}-${msg.timestamp}`;
@@ -520,7 +528,7 @@ export class ChannelRouter {
 
     // Check for container service
     if (!this.container) {
-      console.warn("[ChannelRouter] No ContainerService available for executor");
+      log.warn("No ContainerService available for executor");
 
       this.events.broadcast({
         type: "execution_log",
@@ -552,7 +560,7 @@ export class ChannelRouter {
         env
       );
 
-      console.log(`[ChannelRouter] Executor spawned successfully for session ${sessionId}`);
+      log.info({ sessionId }, "Executor spawned successfully");
 
       // Collect response from streaming events
       const collector = new ResponseCollector(sessionId, this.events);
@@ -561,7 +569,7 @@ export class ChannelRouter {
       return response || `Processing in workspace '${workdir}' with ${binding.name}...`;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[ChannelRouter] Failed to spawn executor: ${errorMsg}`);
+      log.error({ err, errorMsg }, "Failed to spawn executor");
 
       this.events.broadcast({
         type: "error",
@@ -624,7 +632,7 @@ export class ChannelRouter {
     }
 
     // Default to Claude Code
-    console.warn(`[ChannelRouter] Unknown executor '${id}', defaulting to Claude Code`);
+    log.warn({ executorId: id }, "Unknown executor, defaulting to Claude Code");
     return "CLAUDE_CODE";
   }
 
@@ -636,9 +644,11 @@ export class ChannelRouter {
       ? `${message.slice(0, 50)}...`
       : message;
 
-    console.log(
-      `[ChannelRouter] Sending response to channel ${channel.name} chat_id=${chatId}: ${msgPreview}`
-    );
+    log.info({
+      channelName: channel.name,
+      chatId,
+      messagePreview: msgPreview,
+    }, "Sending response to channel");
 
     // Build channel config for sending
     const config = this.channels.buildChannelConfig(channel.id, {
@@ -656,13 +666,9 @@ export class ChannelRouter {
     });
 
     if (result.success) {
-      console.log(
-        `[ChannelRouter] Response sent successfully to ${chatId} via ${channel.type}`
-      );
+      log.info({ chatId, channelType: channel.type }, "Response sent successfully");
     } else {
-      console.error(
-        `[ChannelRouter] Failed to send response: ${result.error || "Unknown error"}`
-      );
+      log.error({ error: result.error || "Unknown error" }, "Failed to send response");
     }
   }
 }

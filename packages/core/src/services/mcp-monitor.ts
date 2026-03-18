@@ -6,6 +6,10 @@
  */
 
 import { EventService, McpProcessStatusData, McpServerEventData } from "./events";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "mcp-monitor" });
 
 /** MCP server process status */
 export type McpProcessStatus = "running" | "stopped" | "error";
@@ -169,7 +173,7 @@ export class McpMonitorService {
       this.checkAll();
     }, this.checkInterval);
 
-    console.log(`[McpMonitor] Started with ${this.checkInterval}ms check interval`);
+    log.info({ checkIntervalMs: this.checkInterval }, "MCP Monitor started");
   }
 
   /**
@@ -184,7 +188,7 @@ export class McpMonitorService {
       this.intervalHandle = null;
     }
 
-    console.log("[McpMonitor] Stopped");
+    log.info("MCP Monitor stopped");
   }
 
   /**
@@ -228,7 +232,7 @@ export class McpMonitorService {
         error: "Process terminated unexpectedly",
       });
 
-      console.log(`[McpMonitor] Server ${server.name} (PID: ${server.pid}) terminated`);
+      log.info({ serverName: server.name, pid: server.pid }, "Server terminated");
     }
   }
 

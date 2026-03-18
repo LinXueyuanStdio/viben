@@ -5,6 +5,11 @@
  * Allows tasks to continue executing when users navigate away from the chat page.
  */
 
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "background-tasks" });
+
 /**
  * Background task state
  */
@@ -70,7 +75,7 @@ export class BackgroundTaskManager {
     this.tasks.set(task.taskId, fullTask);
     this.notifyListeners();
 
-    console.log(`[BackgroundTasks] Added task: ${task.taskId} (workspace: ${task.workspacePath || 'global'})`);
+    log.info({ taskId: task.taskId, workspacePath: task.workspacePath || "global" }, "Added task");
     return fullTask;
   }
 
@@ -114,7 +119,7 @@ export class BackgroundTaskManager {
     }
 
     this.notifyListeners();
-    console.log(`[BackgroundTasks] Updated task ${taskId}: ${update.status}`);
+    log.info({ taskId, status: update.status }, "Updated task status");
   }
 
   /**
@@ -135,7 +140,7 @@ export class BackgroundTaskManager {
     const controller = this.abortControllers.get(taskId);
     if (controller) {
       controller.abort();
-      console.log(`[BackgroundTasks] Aborted task: ${taskId}`);
+      log.info({ taskId }, "Aborted task");
     }
 
     const task = this.tasks.get(taskId);
@@ -239,7 +244,7 @@ export class BackgroundTaskManager {
       try {
         listener(tasks);
       } catch (error) {
-        console.error("[BackgroundTasks] Listener error:", error);
+        log.error({ err: error }, "Listener error");
       }
     }
   }

@@ -13,6 +13,10 @@ import {
   type TelegramUpdate,
   type TelegramMessage,
 } from "../telegram";
+import { logger as globalLogger } from "../../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "telegram-poller" });
 
 /**
  * Telegram poller configuration
@@ -64,20 +68,20 @@ export class TelegramPoller {
    */
   async start(): Promise<void> {
     if (this.running) {
-      console.log(`[TelegramPoller] ${this.channel.name} already running`);
+      log.debug({ channelName: this.channel.name }, "Already running");
       return;
     }
 
-    console.log(`[TelegramPoller] Starting ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Starting...");
 
     // Delete webhook to enable getUpdates mode
     if (this.dropPendingOnStart) {
       const result = await deleteTelegramWebhook(this.config, true);
       if (!result.success) {
-        console.error(`[TelegramPoller] Failed to delete webhook: ${result.error}`);
+        log.error({ error: result.error }, "Failed to delete webhook");
         // Continue anyway - webhook might not be set
       } else {
-        console.log(`[TelegramPoller] ${result.details}`);
+        log.debug({ details: result.details }, "Webhook deleted");
       }
     }
 
@@ -90,7 +94,7 @@ export class TelegramPoller {
       if (match) {
         this.botUsername = match[1];
       }
-      console.log(`[TelegramPoller] ${testResult.details} connected`);
+      log.info({ details: testResult.details }, "Bot connected");
     }
 
     this.running = true;
@@ -112,7 +116,7 @@ export class TelegramPoller {
       return;
     }
 
-    console.log(`[TelegramPoller] Stopping ${this.channel.name}...`);
+    log.info({ channelName: this.channel.name }, "Stopping...");
     this.running = false;
 
     // Wait for current poll to complete (with timeout)
@@ -131,7 +135,7 @@ export class TelegramPoller {
       false
     );
 
-    console.log(`[TelegramPoller] ${this.channel.name} stopped`);
+    log.info({ channelName: this.channel.name }, "Stopped");
   }
 
   /**
@@ -152,7 +156,7 @@ export class TelegramPoller {
    * Main polling loop
    */
   private async pollLoop(): Promise<void> {
-    console.log(`[TelegramPoller] ${this.channel.name} polling started`);
+    log.info({ channelName: this.channel.name }, "Polling started");
 
     while (this.running) {
       try {
@@ -163,7 +167,7 @@ export class TelegramPoller {
         });
 
         if (!result.success) {
-          console.error(`[TelegramPoller] getUpdates error: ${result.error}`);
+          log.error({ error: result.error }, "getUpdates error");
           // Wait before retrying
           await this.sleep(this.errorRetryDelayMs);
           continue;
@@ -172,7 +176,7 @@ export class TelegramPoller {
         const updates = result.updates || [];
 
         if (updates.length > 0) {
-          console.log(`[TelegramPoller] Received ${updates.length} update(s)`);
+          log.debug({ count: updates.length }, "Received updates");
 
           for (const update of updates) {
             await this.handleUpdate(update);
@@ -181,13 +185,13 @@ export class TelegramPoller {
           }
         }
       } catch (error) {
-        console.error(`[TelegramPoller] Poll error:`, error);
+        log.error({ err: error }, "Poll error");
         // Wait before retrying
         await this.sleep(this.errorRetryDelayMs);
       }
     }
 
-    console.log(`[TelegramPoller] ${this.channel.name} polling loop ended`);
+    log.info({ channelName: this.channel.name }, "Polling loop ended");
   }
 
   /**
@@ -208,9 +212,7 @@ export class TelegramPoller {
     // Check allow_from list
     if (!this.isAllowed(message)) {
       const senderInfo = this.getSenderInfo(message);
-      console.log(
-        `[TelegramPoller] Message from ${senderInfo} blocked by allow_from list`
-      );
+      log.debug({ senderInfo }, "Message blocked by allow_from list");
       return;
     }
 
@@ -240,9 +242,7 @@ export class TelegramPoller {
     };
 
     const msgPreview = content.length > 50 ? `${content.slice(0, 50)}...` : content;
-    console.log(
-      `[TelegramPoller] Message from ${senderName} (${senderId}): ${msgPreview}`
-    );
+    log.info({ senderName, senderId, messagePreview: msgPreview }, "Message received");
 
     // Publish to message bus
     await this.messageBus.publishInbound(inbound);

@@ -7,6 +7,10 @@
 import { EventEmitter } from "node:events";
 import type { ChannelType } from "../channels";
 import { EventService } from "./events";
+import { logger as globalLogger } from "../telemetry";
+
+// Module-level logger
+const log = globalLogger.child({ module: "message-bus" });
 
 /**
  * Inbound message from an external channel
@@ -115,7 +119,7 @@ export class MessageBus {
       try {
         await handler(message);
       } catch (e) {
-        console.error(`[MessageBus] Handler error for ${message.channelType}:`, e);
+        log.error({ err: e, channelType: message.channelType }, "Handler error");
       }
     }
 
@@ -125,7 +129,7 @@ export class MessageBus {
       try {
         await handler(message);
       } catch (e) {
-        console.error("[MessageBus] Wildcard handler error:", e);
+        log.error({ err: e }, "Wildcard handler error");
       }
     }
   }
