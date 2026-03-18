@@ -26,10 +26,21 @@ import {
   FileText,
   Zap,
   FolderOpen,
+  Check,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +54,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-// Tabs removed - using custom multi-tab implementation
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { PageWrapper } from "@/components/layout";
@@ -91,98 +101,6 @@ const STATUS_BADGE_VARIANTS: Record<string, ListItemBadge["variant"]> = {
   dismissed: "destructive",
 };
 
-// Format idea content as markdown for display
-function formatIdeaAsMarkdown(idea: Idea): string {
-  const lines: string[] = [];
-
-  lines.push(`# ${idea.title}`);
-  lines.push("");
-  lines.push(`**Type:** ${idea.type}`);
-  lines.push(`**Status:** ${idea.status}`);
-  lines.push(`**Effort:** ${idea.estimated_effort}`);
-  if (idea.promoted_to) {
-    lines.push(`**Promoted To:** ${idea.promoted_to}`);
-  }
-  lines.push(`**Created:** ${idea.created_at}`);
-  lines.push("");
-
-  lines.push("## Description");
-  lines.push("");
-  lines.push(idea.description);
-  lines.push("");
-
-  lines.push("## Rationale");
-  lines.push("");
-  lines.push(idea.rationale);
-  lines.push("");
-
-  if (idea.implementation_approach) {
-    lines.push("## Implementation Approach");
-    lines.push("");
-    lines.push(idea.implementation_approach);
-    lines.push("");
-  }
-
-  if (idea.affected_files && idea.affected_files.length > 0) {
-    lines.push("## Affected Files");
-    lines.push("");
-    idea.affected_files.forEach((file) => {
-      lines.push(`- ${file}`);
-    });
-    lines.push("");
-  }
-
-  if (idea.existing_patterns && idea.existing_patterns.length > 0) {
-    lines.push("## Existing Patterns");
-    lines.push("");
-    idea.existing_patterns.forEach((pattern) => {
-      lines.push(`- ${pattern}`);
-    });
-    lines.push("");
-  }
-
-  if (idea.builds_upon && idea.builds_upon.length > 0) {
-    lines.push("## Builds Upon");
-    lines.push("");
-    idea.builds_upon.forEach((item) => {
-      lines.push(`- ${item}`);
-    });
-    lines.push("");
-  }
-
-  if (idea.user_stories && idea.user_stories.length > 0) {
-    lines.push("## User Stories");
-    lines.push("");
-    idea.user_stories.forEach((story) => {
-      lines.push(`- ${story}`);
-    });
-    lines.push("");
-  }
-
-  return lines.join("\n");
-}
-
-// Format idea type as markdown for display
-function formatIdeaTypeAsMarkdown(type: IdeaType): string {
-  const lines: string[] = [];
-
-  lines.push(`# ${type.name}`);
-  lines.push("");
-  lines.push(`**Source:** ${type.source}`);
-  if (type.max_ideas) {
-    lines.push(`**Max Ideas:** ${type.max_ideas}`);
-  }
-  lines.push(`**Prompt Path:** ${type.prompt_path}`);
-  lines.push("");
-
-  lines.push("## Description");
-  lines.push("");
-  lines.push(type.description);
-  lines.push("");
-
-  return lines.join("\n");
-}
-
 // Submit command to queue
 async function submitToQueue(command: string, cwd: string): Promise<boolean> {
   try {
@@ -210,6 +128,33 @@ async function submitToQueue(command: string, cwd: string): Promise<boolean> {
   }
 }
 
+// Save file content via API
+async function saveFileContent(filePath: string, content: string): Promise<boolean> {
+  try {
+    const client = getGatewayClient();
+    const baseUrl = client.getBaseUrl();
+
+    const response = await fetch(`${baseUrl}/api/files/content`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path: filePath, content }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to save file:", response.statusText);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Failed to save file:", err);
+    return false;
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -233,6 +178,7 @@ interface TypeTab {
   id: string;
   type: "type";
   ideaType: IdeaType;
+  promptPath: string;
 }
 
 type Tab = IdeaTab | TypeTab;
@@ -254,6 +200,15 @@ export function WorkspaceIdeasPage() {
   // Multi-tab state
   const [openTabs, setOpenTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  // Generate dialog state
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [selectedTypesForGenerate, setSelectedTypesForGenerate] = useState<Set<string>>(new Set());
+
+  // Editor state
+  const [editorContent, setEditorContent] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get workspace
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
@@ -355,6 +310,14 @@ export function WorkspaceIdeasPage() {
     return openTabs.find((tab) => tab.id === activeTabId) ?? null;
   }, [openTabs, activeTabId]);
 
+  // Update editor content when file content changes
+  useEffect(() => {
+    if (fileContent !== null) {
+      setEditorContent(fileContent);
+      setHasUnsavedChanges(false);
+    }
+  }, [fileContent]);
+
   // Open a tab for idea (with file content loading)
   const openIdeaTab = useCallback(
     (idea: Idea, filePath: string | null) => {
@@ -377,12 +340,14 @@ export function WorkspaceIdeasPage() {
         readFile(filePath);
       } else {
         clearContent();
+        setEditorContent("");
       }
+      setHasUnsavedChanges(false);
     },
     [openTabs, readFile, clearContent]
   );
 
-  // Open a tab for idea type
+  // Open a tab for idea type (load prompt_path file)
   const openTypeTab = useCallback(
     (ideaType: IdeaType) => {
       const tabId = `type-${ideaType.name}`;
@@ -393,19 +358,36 @@ export function WorkspaceIdeasPage() {
           id: tabId,
           type: "type",
           ideaType,
+          promptPath: ideaType.prompt_path,
         };
         setOpenTabs((prev) => [...prev, newTab]);
       }
       setActiveTabId(tabId);
-      clearContent();
+
+      // Load prompt file content
+      if (ideaType.prompt_path) {
+        readFile(ideaType.prompt_path);
+      } else {
+        clearContent();
+        setEditorContent("");
+      }
+      setHasUnsavedChanges(false);
     },
-    [openTabs, clearContent]
+    [openTabs, readFile, clearContent]
   );
 
   // Close a tab
   const closeTab = useCallback(
     (tabId: string, e?: React.MouseEvent) => {
       e?.stopPropagation();
+
+      // Check for unsaved changes
+      if (activeTabId === tabId && hasUnsavedChanges) {
+        if (!confirm(t("ideas.unsavedChangesConfirm"))) {
+          return;
+        }
+      }
+
       const newTabs = openTabs.filter((t) => t.id !== tabId);
       setOpenTabs(newTabs);
 
@@ -415,32 +397,48 @@ export function WorkspaceIdeasPage() {
           const newActiveTab = newTabs[newTabs.length - 1];
           setActiveTabId(newActiveTab.id);
           // Load content for new active tab
-          if (newActiveTab.type === "idea" && newActiveTab.filePath) {
-            readFile(newActiveTab.filePath);
+          const filePath = newActiveTab.type === "idea"
+            ? newActiveTab.filePath
+            : newActiveTab.promptPath;
+          if (filePath) {
+            readFile(filePath);
           } else {
             clearContent();
+            setEditorContent("");
           }
         } else {
           setActiveTabId(null);
           clearContent();
+          setEditorContent("");
         }
+        setHasUnsavedChanges(false);
       }
     },
-    [openTabs, activeTabId, readFile, clearContent]
+    [openTabs, activeTabId, hasUnsavedChanges, readFile, clearContent, t]
   );
 
   // Switch to a tab
   const switchToTab = useCallback(
     (tabId: string) => {
+      // Check for unsaved changes before switching
+      if (activeTabId && activeTabId !== tabId && hasUnsavedChanges) {
+        if (!confirm(t("ideas.unsavedChangesConfirm"))) {
+          return;
+        }
+      }
+
       setActiveTabId(tabId);
       const tab = openTabs.find((t) => t.id === tabId);
-      if (tab?.type === "idea" && tab.filePath) {
-        readFile(tab.filePath);
+      const filePath = tab?.type === "idea" ? tab.filePath : tab?.type === "type" ? tab.promptPath : null;
+      if (filePath) {
+        readFile(filePath);
       } else {
         clearContent();
+        setEditorContent("");
       }
+      setHasUnsavedChanges(false);
     },
-    [openTabs, readFile, clearContent]
+    [openTabs, activeTabId, hasUnsavedChanges, readFile, clearContent, t]
   );
 
   // Track previous values to avoid unnecessary tab opens
@@ -468,29 +466,64 @@ export function WorkspaceIdeasPage() {
     await Promise.all([refreshIdeas(), refreshTypes()]);
   }, [refreshIdeas, refreshTypes]);
 
-  // Handle generate ideas for a type
-  const handleGenerateIdeas = useCallback(
-    async (typeName?: string) => {
-      if (!workspace?.path) return;
-
-      const types = typeName ? [typeName] : ideaTypes.map((t) => t.name);
-      if (types.length === 0) {
-        toast.error(t("ideas.noTypesAvailable"));
-        return;
-      }
-
-      // Submit to command queue
-      const command = `viben idea generate ${types.join(" ")}`;
-      const success = await submitToQueue(command, workspace.path);
-
-      if (success) {
-        toast.success(t("ideas.generateTaskSubmitted"));
+  // Open generate dialog with optional pre-selected type
+  const openGenerateDialog = useCallback(
+    (preSelectedType?: string) => {
+      if (preSelectedType) {
+        setSelectedTypesForGenerate(new Set([preSelectedType]));
       } else {
-        toast.error(t("ideas.generateTaskFailed"));
+        // Select all types by default
+        setSelectedTypesForGenerate(new Set(ideaTypes.map((t) => t.name)));
       }
+      setIsGenerateDialogOpen(true);
     },
-    [workspace?.path, ideaTypes, t]
+    [ideaTypes]
   );
+
+  // Handle generate ideas from dialog
+  const handleGenerateFromDialog = useCallback(async () => {
+    if (!workspace?.path) return;
+
+    const types = Array.from(selectedTypesForGenerate);
+    if (types.length === 0) {
+      toast.error(t("ideas.noTypesSelected"));
+      return;
+    }
+
+    // Submit to command queue
+    const command = `viben idea generate ${types.join(" ")}`;
+    const success = await submitToQueue(command, workspace.path);
+
+    if (success) {
+      toast.success(t("ideas.generateTaskSubmitted"));
+      setIsGenerateDialogOpen(false);
+    } else {
+      toast.error(t("ideas.generateTaskFailed"));
+    }
+  }, [workspace?.path, selectedTypesForGenerate, t]);
+
+  // Toggle type selection for generate
+  const toggleTypeForGenerate = useCallback((typeName: string) => {
+    setSelectedTypesForGenerate((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(typeName)) {
+        newSet.delete(typeName);
+      } else {
+        newSet.add(typeName);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Select/deselect all types
+  const toggleAllTypesForGenerate = useCallback(() => {
+    setSelectedTypesForGenerate((prev) => {
+      if (prev.size === ideaTypes.length) {
+        return new Set();
+      }
+      return new Set(ideaTypes.map((t) => t.name));
+    });
+  }, [ideaTypes]);
 
   // Handle promote idea to task
   const handlePromoteIdea = useCallback(
@@ -538,40 +571,41 @@ export function WorkspaceIdeasPage() {
     [removeIdea, selection, closeTab, t]
   );
 
-  // Get content for the active tab
-  const getTabContent = useCallback(
-    (tab: Tab | null): { content: string; filename: string } | null => {
-      if (!tab) return null;
+  // Handle editor content change
+  const handleEditorChange = useCallback((value: string | undefined) => {
+    if (value !== undefined) {
+      setEditorContent(value);
+      setHasUnsavedChanges(true);
+    }
+  }, []);
 
-      if (tab.type === "type") {
-        return {
-          content: formatIdeaTypeAsMarkdown(tab.ideaType),
-          filename: `${tab.ideaType.name}.md`,
-        };
-      }
+  // Handle save file
+  const handleSaveFile = useCallback(async () => {
+    if (!activeTab) return;
 
-      // For idea tabs, prefer file content if available
-      if (tab.type === "idea") {
-        if (fileContent && tab.filePath) {
-          // Use actual file content
-          return {
-            content: fileContent,
-            filename: tab.filePath.split("/").pop() || `idea_${tab.idea.id}.yaml`,
-          };
-        }
-        // Fallback to markdown format
-        return {
-          content: formatIdeaAsMarkdown(tab.idea),
-          filename: `idea_${tab.idea.id}.md`,
-        };
-      }
+    const filePath = activeTab.type === "idea" ? activeTab.filePath : activeTab.promptPath;
+    if (!filePath) {
+      toast.error(t("ideas.noFilePath"));
+      return;
+    }
 
-      return null;
-    },
-    [fileContent]
-  );
+    setIsSaving(true);
+    const success = await saveFileContent(filePath, editorContent);
+    setIsSaving(false);
 
-  const tabContent = getTabContent(activeTab);
+    if (success) {
+      toast.success(t("ideas.fileSaved"));
+      setHasUnsavedChanges(false);
+    } else {
+      toast.error(t("ideas.fileSaveFailed"));
+    }
+  }, [activeTab, editorContent, t]);
+
+  // Get current file path for active tab
+  const currentFilePath = useMemo(() => {
+    if (!activeTab) return null;
+    return activeTab.type === "idea" ? activeTab.filePath : activeTab.promptPath;
+  }, [activeTab]);
 
   // Loading state
   if (isLoadingWorkspaces && !workspace) {
@@ -621,7 +655,7 @@ export function WorkspaceIdeasPage() {
         showRemove={false}
         rightContent={
           <div className="flex items-center gap-2">
-            <Button onClick={() => handleGenerateIdeas()} variant="default">
+            <Button onClick={() => openGenerateDialog()} variant="default">
               <Sparkles className="h-4 w-4 mr-2" />
               {t("ideas.generateIdeas")}
             </Button>
@@ -638,8 +672,8 @@ export function WorkspaceIdeasPage() {
             isPanelCollapsed ? "w-0 opacity-0 overflow-hidden" : "w-80"
           )}
         >
-          {/* List Header */}
-          <div className="p-3 border-b flex items-center gap-2">
+          {/* List Header - height matches tab bar */}
+          <div className="p-2 border-b flex items-center gap-2 h-[41px]">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -666,7 +700,7 @@ export function WorkspaceIdeasPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleGenerateIdeas()}>
+                <DropdownMenuItem onClick={() => openGenerateDialog()}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   {t("ideas.generateIdeas")}
                 </DropdownMenuItem>
@@ -692,7 +726,7 @@ export function WorkspaceIdeasPage() {
                     {filteredTypes.length}
                   </Badge>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {loadingTypes ? (
                     <div className="flex items-center justify-center py-4">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -708,7 +742,7 @@ export function WorkspaceIdeasPage() {
                         type={type}
                         isSelected={selection?.type === "type" && selection.id === type.name}
                         onSelect={() => setSelection({ type: "type", id: type.name })}
-                        onGenerate={() => handleGenerateIdeas(type.name)}
+                        onGenerate={() => openGenerateDialog(type.name)}
                       />
                     ))
                   )}
@@ -740,7 +774,7 @@ export function WorkspaceIdeasPage() {
                         variant="outline"
                         size="sm"
                         className="mt-3"
-                        onClick={() => handleGenerateIdeas()}
+                        onClick={() => openGenerateDialog()}
                       >
                         <Sparkles className="h-3 w-3 mr-1.5" />
                         {t("ideas.generateIdeas")}
@@ -756,7 +790,7 @@ export function WorkspaceIdeasPage() {
                             {typeIdeas.length}
                           </Badge>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {typeIdeas.map((idea) => (
                             <IdeaCard
                               key={idea.id}
@@ -780,90 +814,107 @@ export function WorkspaceIdeasPage() {
 
         {/* Right Panel - Detail */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Multi-Tab Bar */}
+          {/* Multi-Tab Bar - same height as left header */}
           {openTabs.length > 0 ? (
-            <div className="border-b bg-muted/20">
-              <div className="flex items-center">
-                {/* Show panel button when collapsed */}
-                {isPanelCollapsed && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 shrink-0 border-r"
-                          onClick={() => setIsPanelCollapsed(false)}
-                        >
-                          <PanelLeft className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">{t("ideas.showPanel")}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+            <div className="border-b bg-muted/20 h-[41px] flex items-center">
+              {/* Show panel button when collapsed */}
+              {isPanelCollapsed && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 ml-1"
+                        onClick={() => setIsPanelCollapsed(false)}
+                      >
+                        <PanelLeft className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{t("ideas.showPanel")}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
 
-                {/* Tabs */}
-                <div className="flex overflow-x-auto flex-1">
-                  {openTabs.map((tab) => (
-                    <div
-                      key={tab.id}
-                      onClick={() => switchToTab(tab.id)}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-2 border-r cursor-pointer text-sm group",
-                        "hover:bg-accent/50 transition-colors",
-                        activeTabId === tab.id
-                          ? "bg-background border-b-2 border-b-primary"
-                          : "bg-muted/30"
-                      )}
+              {/* Tabs */}
+              <div className="flex overflow-x-auto flex-1 h-full">
+                {openTabs.map((tab) => (
+                  <div
+                    key={tab.id}
+                    onClick={() => switchToTab(tab.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 border-r cursor-pointer text-sm group h-full",
+                      "hover:bg-accent/50 transition-colors",
+                      activeTabId === tab.id
+                        ? "bg-background border-b-2 border-b-primary"
+                        : "bg-muted/30"
+                    )}
+                  >
+                    {tab.type === "idea" ? (
+                      <Lightbulb className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                    )}
+                    <span className="truncate max-w-[100px]">
+                      {tab.type === "idea" ? tab.idea.title : tab.ideaType.name}
+                    </span>
+                    {activeTabId === tab.id && hasUnsavedChanges && (
+                      <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />
+                    )}
+                    <button
+                      onClick={(e) => closeTab(tab.id, e)}
+                      className="p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                     >
-                      {tab.type === "idea" ? (
-                        <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                      ) : (
-                        <FileText className="h-3.5 w-3.5 text-blue-500" />
-                      )}
-                      <span className="truncate max-w-[120px]">
-                        {tab.type === "idea" ? tab.idea.title : tab.ideaType.name}
-                      </span>
-                      <button
-                        onClick={(e) => closeTab(tab.id, e)}
-                        className="ml-1 p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Action Buttons */}
-                {activeTab && (
-                  <div className="flex items-center gap-2 px-3 shrink-0">
-                    {activeTab.type === "type" && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleGenerateIdeas(activeTab.ideaType.name)}
-                      >
-                        <Zap className="h-3.5 w-3.5 mr-1.5" />
-                        {t("ideas.generateThisType")}
-                      </Button>
-                    )}
-                    {activeTab.type === "idea" && activeTab.idea.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handlePromoteIdea(activeTab.idea)}
-                      >
-                        <ListTodo className="h-3.5 w-3.5 mr-1.5" />
-                        {t("ideas.createTaskFromIdea")}
-                      </Button>
-                    )}
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1 px-2 shrink-0">
+                {hasUnsavedChanges && currentFilePath && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSaveFile}
+                    disabled={isSaving}
+                    className="h-7"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    <span className="ml-1.5">{t("common.save")}</span>
+                  </Button>
+                )}
+                {activeTab?.type === "type" && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => openGenerateDialog(activeTab.ideaType.name)}
+                    className="h-7"
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1" />
+                    {t("ideas.generate")}
+                  </Button>
+                )}
+                {activeTab?.type === "idea" && activeTab.idea.status === "pending" && (
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={() => handlePromoteIdea(activeTab.idea)}
+                    className="h-7"
+                  >
+                    <ListTodo className="h-3.5 w-3.5 mr-1" />
+                    {t("ideas.promote")}
+                  </Button>
                 )}
               </div>
             </div>
           ) : (
-            <div className="flex items-center border-b px-4 h-11 shrink-0">
+            <div className="flex items-center border-b px-4 h-[41px]">
               {isPanelCollapsed && (
                 <TooltipProvider>
                   <Tooltip>
@@ -891,13 +942,18 @@ export function WorkspaceIdeasPage() {
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : tabContent ? (
+            ) : currentFilePath && editorContent !== null ? (
               <CodeEditor
-                value={tabContent.content}
-                filename={tabContent.filename}
+                value={editorContent}
+                filename={currentFilePath.split("/").pop() || "file"}
                 height="100%"
-                readOnly
+                onChange={handleEditorChange}
               />
+            ) : activeTab ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <FileText className="h-16 w-16 mb-4 opacity-20" />
+                <p className="text-sm">{t("ideas.noFileContent")}</p>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <Lightbulb className="h-16 w-16 mb-4 opacity-20" />
@@ -907,6 +963,83 @@ export function WorkspaceIdeasPage() {
           </div>
         </div>
       </div>
+
+      {/* Generate Ideas Dialog */}
+      <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("ideas.generateIdeasTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("ideas.generateIdeasDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">{t("ideas.selectTypes")}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAllTypesForGenerate}
+                className="h-7 text-xs"
+              >
+                {selectedTypesForGenerate.size === ideaTypes.length
+                  ? t("common.deselectAll")
+                  : t("common.selectAll")}
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[200px] pr-4">
+              <div className="space-y-2">
+                {ideaTypes.map((type) => (
+                  <label
+                    key={type.name}
+                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={selectedTypesForGenerate.has(type.name)}
+                      onCheckedChange={() => toggleTypeForGenerate(type.name)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{type.name}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px]",
+                            type.source === "builtin"
+                              ? "border-blue-300 text-blue-600"
+                              : "border-purple-300 text-purple-600"
+                          )}
+                        >
+                          {type.source}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        {type.description}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleGenerateFromDialog}
+              disabled={selectedTypesForGenerate.size === 0}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              {t("ideas.generateSelected", { count: selectedTypesForGenerate.size })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageWrapper>
   );
 }
@@ -950,19 +1083,22 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate }: IdeaTypeCardPr
   }
 
   return (
-    <ListItem
-      name={type.name}
-      description={type.description}
-      avatar={{
-        icon: FileText,
-        gradient: getGradientByName(type.name),
-      }}
-      badges={badges}
-      isSelected={isSelected}
-      onClick={onSelect}
-      actions={actions}
-      contextMenu
-    />
+    <div className="w-full overflow-hidden">
+      <ListItem
+        name={type.name}
+        description={type.description}
+        avatar={{
+          icon: FileText,
+          gradient: getGradientByName(type.name),
+        }}
+        badges={badges}
+        isSelected={isSelected}
+        onClick={onSelect}
+        actions={actions}
+        contextMenu
+        className="w-full"
+      />
+    </div>
   );
 }
 
@@ -1018,21 +1154,24 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onDismiss, onRemove }
   }
 
   return (
-    <ListItem
-      name={idea.title}
-      description={idea.description}
-      avatar={{
-        icon: Lightbulb,
-        gradient: getGradientByName(idea.type),
-      }}
-      badges={badges}
-      meta={{
-        text: formatRelativeTime(idea.created_at),
-      }}
-      isSelected={isSelected}
-      onClick={onSelect}
-      actions={actions}
-      contextMenu
-    />
+    <div className="w-full overflow-hidden">
+      <ListItem
+        name={idea.title}
+        description={idea.description}
+        avatar={{
+          icon: Lightbulb,
+          gradient: getGradientByName(idea.type),
+        }}
+        badges={badges}
+        meta={{
+          text: formatRelativeTime(idea.created_at),
+        }}
+        isSelected={isSelected}
+        onClick={onSelect}
+        actions={actions}
+        contextMenu
+        className="w-full"
+      />
+    </div>
   );
 }
