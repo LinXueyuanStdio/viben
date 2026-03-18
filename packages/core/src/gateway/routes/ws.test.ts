@@ -78,7 +78,7 @@ function createMockState() {
 }
 
 /**
- * Create a mock Fastify instance
+ * Create a mock Fastify instance for WebSocket testing
  */
 function createMockFastify() {
   const routes: Array<{
@@ -87,26 +87,16 @@ function createMockFastify() {
     handler: (socket: MockWebSocket) => void;
   }> = [];
 
-  const registeredPlugins: Array<(instance: unknown) => Promise<void>> = [];
-
   return {
-    register: vi.fn(async (pluginFn: (instance: unknown) => Promise<void>) => {
-      registeredPlugins.push(pluginFn);
-    }),
+    register: vi.fn(),
     get: vi.fn((path: string, options: { websocket?: boolean }, handler: (socket: MockWebSocket) => void) => {
       routes.push({ path, options, handler });
     }),
+    hasDecorator: vi.fn((name: string) => name === "websocketServer"),
     _routes: routes,
-    _registeredPlugins: registeredPlugins,
-    _executePlugins: async function () {
-      for (const plugin of registeredPlugins) {
-        await plugin(this);
-      }
-    },
   } as unknown as FastifyInstance & {
     _routes: typeof routes;
-    _registeredPlugins: typeof registeredPlugins;
-    _executePlugins: () => Promise<void>;
+    hasDecorator: Mock;
   };
 }
 
@@ -114,16 +104,15 @@ describe("WebSocket Routes", () => {
   let mockFastify: ReturnType<typeof createMockFastify>;
   let mockState: ReturnType<typeof createMockState>;
   let mockSocket: MockWebSocket;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     mockFastify = createMockFastify();
     mockState = createMockState();
     mockSocket = createMockSocket();
 
-    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // Suppress console output during tests (ws.ts uses structured logger, but some paths may still log)
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -136,17 +125,13 @@ describe("WebSocket Routes", () => {
   // ============================================================================
 
   describe("Route registration", () => {
-    it("should register a plugin with fastify", () => {
+    it("should register /ws route with websocket option when decorator is present", () => {
       registerWebSocketRoutes(mockFastify, mockState);
-
-      expect(mockFastify.register).toHaveBeenCalled();
-    });
-
-    it("should register /ws route with websocket option", async () => {
-      registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
 
       expect(mockFastify.get).toHaveBeenCalledWith("/ws", { websocket: true }, expect.any(Function));
+      expect(mockFastify._routes).toHaveLength(1);
+      expect(mockFastify._routes[0].path).toBe("/ws");
+      expect(mockFastify._routes[0].options.websocket).toBe(true);
     });
   });
 
@@ -157,8 +142,7 @@ describe("WebSocket Routes", () => {
   describe("WebSocket connection", () => {
     it("should subscribe to events on connection", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       expect(route).toBeDefined();
 
@@ -170,8 +154,7 @@ describe("WebSocket Routes", () => {
 
     it("should register message, close, and error handlers", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -188,8 +171,7 @@ describe("WebSocket Routes", () => {
   describe("Client message: Ping", () => {
     it("should respond with Pong", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -212,8 +194,7 @@ describe("WebSocket Routes", () => {
   describe("Client message: Subscribe", () => {
     it("should add channels and respond with Subscribed", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -240,8 +221,7 @@ describe("WebSocket Routes", () => {
 
     it("should accumulate channels on multiple subscribes", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -276,8 +256,7 @@ describe("WebSocket Routes", () => {
 
     it("should not respond if channels is missing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -297,8 +276,7 @@ describe("WebSocket Routes", () => {
   describe("Client message: Unsubscribe", () => {
     it("should remove channels and respond with Unsubscribed", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -335,8 +313,7 @@ describe("WebSocket Routes", () => {
 
     it("should not respond if channels is missing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -356,8 +333,7 @@ describe("WebSocket Routes", () => {
   describe("Client message: SendMessage", () => {
     it("should forward message to event service", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -381,8 +357,7 @@ describe("WebSocket Routes", () => {
 
     it("should not call sessionMessage if session_id is missing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -403,8 +378,7 @@ describe("WebSocket Routes", () => {
 
     it("should not call sessionMessage if content is missing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -431,8 +405,7 @@ describe("WebSocket Routes", () => {
   describe("Server messages: event broadcasting", () => {
     it("should send events to connected clients with no subscriptions", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -452,8 +425,7 @@ describe("WebSocket Routes", () => {
 
     it("should filter events by subscribed channels", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -492,8 +464,7 @@ describe("WebSocket Routes", () => {
 
     it("should send events for all subscribed channels", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -520,8 +491,7 @@ describe("WebSocket Routes", () => {
 
     it("should pass through snake_case data fields as-is", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -557,8 +527,7 @@ describe("WebSocket Routes", () => {
   describe("Event channels", () => {
     it("should map cron events to cron channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -569,8 +538,7 @@ describe("WebSocket Routes", () => {
 
     it("should map channel events to channels channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -581,8 +549,7 @@ describe("WebSocket Routes", () => {
 
     it("should map group events to group channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -593,8 +560,7 @@ describe("WebSocket Routes", () => {
 
     it("should map task events to tasks channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -605,8 +571,7 @@ describe("WebSocket Routes", () => {
 
     it("should map session events to sessions channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -617,8 +582,7 @@ describe("WebSocket Routes", () => {
 
     it("should map execution_log to sessions channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -629,8 +593,7 @@ describe("WebSocket Routes", () => {
 
     it("should map agent events to agents channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -641,8 +604,7 @@ describe("WebSocket Routes", () => {
 
     it("should map unknown events to gateway channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -653,8 +615,7 @@ describe("WebSocket Routes", () => {
 
     it("should map error events to gateway channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -671,8 +632,7 @@ describe("WebSocket Routes", () => {
   describe("Error handling", () => {
     it("should send Error response for invalid JSON", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -689,8 +649,7 @@ describe("WebSocket Routes", () => {
 
     it("should unsubscribe on connection close", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -710,7 +669,6 @@ describe("WebSocket Routes", () => {
 
     it("should unsubscribe on connection error", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
 
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
@@ -727,32 +685,21 @@ describe("WebSocket Routes", () => {
 
       // Verify unsubscribed
       expect(mockState.events._getSubscribers().length).toBe(0);
-      expect(consoleErrorSpy).toHaveBeenCalledWith("[WebSocket] Error:", expect.any(Error));
+      // Note: error logging now uses structured logger (log.error), not console.error
     });
 
     it("should handle @fastify/websocket not available gracefully", async () => {
-      // Create a fresh mock that rejects import
+      // Create a mock fastify without websocket decorator
       const mockFastifyNoWs = {
-        register: vi.fn(async (pluginFn: (instance: unknown) => Promise<void>) => {
-          // Simulate plugin that fails to import websocket
-          const innerInstance = {
-            register: vi.fn(() => Promise.reject(new Error("Module not found"))),
-            get: vi.fn(),
-          };
-          await pluginFn(innerInstance);
-        }),
+        register: vi.fn(),
+        hasDecorator: vi.fn(() => false), // Simulate websocket plugin not registered
       } as unknown as FastifyInstance;
 
-      // This should not throw
+      // This should not throw - it should just return early
       registerWebSocketRoutes(mockFastifyNoWs, mockState);
-      await (mockFastifyNoWs.register as Mock).mock.calls[0][0]({
-        register: vi.fn(() => Promise.reject(new Error("Module not found"))),
-        get: vi.fn(),
-      });
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[Gateway] @fastify/websocket not available, WebSocket routes disabled"
-      );
+      // Should not have registered any plugins since websocket is not available
+      expect(mockFastifyNoWs.register).not.toHaveBeenCalled();
     });
   });
 
@@ -763,8 +710,7 @@ describe("WebSocket Routes", () => {
   describe("Connection lifecycle", () => {
     it("should handle multiple simultaneous connections", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
 
       // Create multiple sockets
@@ -788,8 +734,7 @@ describe("WebSocket Routes", () => {
 
     it("should only affect one connection when closing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
 
       // Create multiple sockets
@@ -827,8 +772,7 @@ describe("WebSocket Routes", () => {
   describe("ServerMessage format", () => {
     it("should format Pong message correctly", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -841,8 +785,7 @@ describe("WebSocket Routes", () => {
 
     it("should format Subscribed message with channels in data", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -865,8 +808,7 @@ describe("WebSocket Routes", () => {
 
     it("should format Event message with nested payload structure", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -884,8 +826,7 @@ describe("WebSocket Routes", () => {
 
     it("should format Error message with message in data", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -905,8 +846,7 @@ describe("WebSocket Routes", () => {
   describe("Edge cases", () => {
     it("should handle empty channels array in subscribe", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -927,8 +867,7 @@ describe("WebSocket Routes", () => {
 
     it("should handle duplicate channel subscriptions", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -952,8 +891,7 @@ describe("WebSocket Routes", () => {
 
     it("should handle unsubscribe from non-subscribed channel", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -988,8 +926,7 @@ describe("WebSocket Routes", () => {
 
     it("should handle unknown message type gracefully", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -1011,8 +948,7 @@ describe("WebSocket Routes", () => {
 
     it("should handle empty content in SendMessage", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      await mockFastify._executePlugins();
-
+      
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 

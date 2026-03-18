@@ -23,14 +23,31 @@ import { registerAgentRunRoutes } from "./agent-run";
 import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
 
+// Create mock functions using vi.hoisted to ensure they're available during mock hoisting
+const { MockSdkChatProxy, mockExecuteStreaming } = vi.hoisted(() => {
+  const mockExecuteStreaming = vi.fn();
+
+  // Use a class for proper constructor behavior with `new`
+  class MockSdkChatProxy {
+    executeStreaming = mockExecuteStreaming;
+  }
+
+  return { MockSdkChatProxy, mockExecuteStreaming };
+});
+
+/**
+ * Default mock implementation for executeStreaming
+ */
+function defaultExecuteStreaming() {
+  return (async function* () {
+    yield { type: "text", content: "Hello from mock agent" };
+    yield { type: "result", subtype: "success" };
+  })();
+}
+
 // Mock the SDK proxy
 vi.mock("../../executors/chat/sdk-proxy", () => ({
-  SdkChatProxy: vi.fn().mockImplementation(() => ({
-    executeStreaming: vi.fn(async function* () {
-      yield { type: "text", content: "Hello from mock agent" };
-      yield { type: "result", subtype: "success" };
-    }),
-  })),
+  SdkChatProxy: MockSdkChatProxy,
 }));
 
 // Mock agent service (simplified - only abort control + plans)
@@ -257,13 +274,13 @@ describe("Agent Run Routes", () => {
   let fastify: ReturnType<typeof createMockFastify>;
 
   beforeEach(() => {
+    // Clear mocks first, then set up fresh state
+    vi.clearAllMocks();
+    // Reset mock implementation to default before each test
+    mockExecuteStreaming.mockImplementation(defaultExecuteStreaming);
+    // Create fresh fastify instance and register routes
     fastify = createMockFastify();
     registerAgentRunRoutes(fastify as never);
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   // ============================================================================
@@ -649,13 +666,10 @@ describe("Agent Run Routes", () => {
 
   describe("Error Handling", () => {
     it("should handle SDK proxy errors gracefully", async () => {
-      // Mock SDK proxy to throw error
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          throw new Error("SDK execution failed");
-        }),
-      }) as never);
+      // Mock executeStreaming to throw error
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        throw new Error("SDK execution failed");
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -693,14 +707,11 @@ describe("Agent Run Routes", () => {
       });
 
       // Mock SDK to yield multiple messages
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield { type: "text", content: "Message 1" };
-          yield { type: "text", content: "Message 2" };
-          yield { type: "text", content: "Message 3" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield { type: "text", content: "Message 1" };
+        yield { type: "text", content: "Message 2" };
+        yield { type: "text", content: "Message 3" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -726,18 +737,15 @@ describe("Agent Run Routes", () => {
 
   describe("SSE Message Types", () => {
     it("should stream tool_use messages", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield {
-            type: "tool_use",
-            id: "tool-123",
-            name: "read_file",
-            input: { path: "/test.txt" },
-          };
-          yield { type: "result", subtype: "success" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield {
+          type: "tool_use",
+          id: "tool-123",
+          name: "read_file",
+          input: { path: "/test.txt" },
+        };
+        yield { type: "result", subtype: "success" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -758,18 +766,15 @@ describe("Agent Run Routes", () => {
     });
 
     it("should stream tool_result messages", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield {
-            type: "tool_result",
-            toolUseId: "tool-123",
-            output: "File contents here",
-            isError: false,
-          };
-          yield { type: "result", subtype: "success" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield {
+          type: "tool_result",
+          toolUseId: "tool-123",
+          output: "File contents here",
+          isError: false,
+        };
+        yield { type: "result", subtype: "success" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -790,24 +795,21 @@ describe("Agent Run Routes", () => {
     });
 
     it("should stream plan messages", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield {
-            type: "plan",
-            plan: {
-              id: "plan-123",
-              goal: "Implement feature",
-              steps: [
-                { id: "1", description: "Step 1", status: "pending" },
-                { id: "2", description: "Step 2", status: "pending" },
-              ],
-              notes: "Additional notes",
-            },
-          };
-          yield { type: "result", subtype: "success" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield {
+          type: "plan",
+          plan: {
+            id: "plan-123",
+            goal: "Implement feature",
+            steps: [
+              { id: "1", description: "Step 1", status: "pending" },
+              { id: "2", description: "Step 2", status: "pending" },
+            ],
+            notes: "Additional notes",
+          },
+        };
+        yield { type: "result", subtype: "success" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -829,27 +831,24 @@ describe("Agent Run Routes", () => {
     });
 
     it("should stream question messages", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield {
-            type: "question",
-            id: "question-123",
-            questions: [
-              {
-                header: "Confirm",
-                question: "Do you want to proceed?",
-                options: [
-                  { label: "Yes", description: "Continue" },
-                  { label: "No", description: "Cancel" },
-                ],
-                multiSelect: false,
-              },
-            ],
-          };
-          yield { type: "result", subtype: "success" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield {
+          type: "question",
+          id: "question-123",
+          questions: [
+            {
+              header: "Confirm",
+              question: "Do you want to proceed?",
+              options: [
+                { label: "Yes", description: "Continue" },
+                { label: "No", description: "Cancel" },
+              ],
+              multiSelect: false,
+            },
+          ],
+        };
+        yield { type: "result", subtype: "success" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -870,12 +869,9 @@ describe("Agent Run Routes", () => {
     });
 
     it("should stream error messages from SDK", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          yield { type: "error", message: "Rate limit exceeded" };
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        yield { type: "error", message: "Rate limit exceeded" };
+      });
 
       const response = await fastify.inject({
         method: "POST",
@@ -966,14 +962,10 @@ describe("Agent Run Routes", () => {
 
   describe("Request Parameters", () => {
     it("should pass cwd parameter to SDK proxy", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      const mockExecuteStreaming = vi.fn(async function* () {
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
         yield { type: "text", content: "Done" };
         yield { type: "result", subtype: "success" };
       });
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: mockExecuteStreaming,
-      }) as never);
 
       await fastify.inject({
         method: "POST",
@@ -993,14 +985,10 @@ describe("Agent Run Routes", () => {
     });
 
     it("should pass model parameter to SDK proxy via agentConfig", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      const mockExecuteStreaming = vi.fn(async function* () {
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
         yield { type: "text", content: "Done" };
         yield { type: "result", subtype: "success" };
       });
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: mockExecuteStreaming,
-      }) as never);
 
       await fastify.inject({
         method: "POST",
@@ -1022,14 +1010,10 @@ describe("Agent Run Routes", () => {
     });
 
     it("should pass generated sessionId to SDK proxy", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      const mockExecuteStreaming = vi.fn(async function* () {
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
         yield { type: "text", content: "Done" };
         yield { type: "result", subtype: "success" };
       });
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: mockExecuteStreaming,
-      }) as never);
 
       await fastify.inject({
         method: "POST",
@@ -1049,14 +1033,10 @@ describe("Agent Run Routes", () => {
     });
 
     it("should set dangerouslySkipPermissions to true", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      const mockExecuteStreaming = vi.fn(async function* () {
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
         yield { type: "text", content: "Done" };
         yield { type: "result", subtype: "success" };
       });
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: mockExecuteStreaming,
-      }) as never);
 
       await fastify.inject({
         method: "POST",
@@ -1238,12 +1218,9 @@ describe("Agent Run Routes", () => {
     });
 
     it("should unregister session even on error", async () => {
-      const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
-      vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
-        executeStreaming: vi.fn(async function* () {
-          throw new Error("Fatal error");
-        }),
-      }) as never);
+      mockExecuteStreaming.mockImplementationOnce(async function* () {
+        throw new Error("Fatal error");
+      });
 
       await fastify.inject({
         method: "POST",
