@@ -25,7 +25,6 @@ import {
   PanelLeftClose,
   PanelLeft,
   FileText,
-  Zap,
   FolderOpen,
   Save,
   FilePlus,
@@ -70,38 +69,18 @@ import {
   useIdeaFileContent,
   type Idea,
   type IdeaType,
-  type EffortLevel,
 } from "@/hooks/use-ideas";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
-  ListItem,
   getGradientByName,
   formatRelativeTime,
-  type ListItemAction,
-  type ListItemBadge,
 } from "@/components/chat/list-item";
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-// Effort level badge variants
-const EFFORT_BADGE_VARIANTS: Record<EffortLevel, ListItemBadge["variant"]> = {
-  trivial: "primary",
-  small: "secondary",
-  medium: "default",
-  large: "outline",
-  complex: "destructive",
-};
-
-// Status badge variants
-const STATUS_BADGE_VARIANTS: Record<string, ListItemBadge["variant"]> = {
-  pending: "default",
-  promoted: "primary",
-  dismissed: "destructive",
-};
 
 // Submit command to queue
 async function submitToQueue(command: string, cwd: string): Promise<boolean> {
@@ -236,6 +215,7 @@ export function WorkspaceIdeasPage() {
     loading: loadingTypes,
     error: typesError,
     refresh: refreshTypes,
+    deleteType,
   } = useIdeaTypes({
     workspacePath: workspace?.path ?? null,
   });
@@ -825,9 +805,26 @@ export function WorkspaceIdeasPage() {
                         isSelected={selection?.type === "type" && selection.id === type.name}
                         onSelect={() => setSelection({ type: "type", id: type.name })}
                         onGenerate={() => openGenerateDialog(type.name)}
-                        onDelete={() => {
-                          // TODO: Implement delete idea type
-                          toast.info(t("common.featureNotImplemented"));
+                        onDelete={async () => {
+                          // Can only delete custom types
+                          if (type.source === "builtin") {
+                            toast.error(t("ideas.cannotDeleteBuiltinType"));
+                            return;
+                          }
+                          const success = await deleteType(type.name);
+                          if (success) {
+                            toast.success(t("ideas.typeDeleted", { name: type.name }));
+                            // Clear selection if deleted type was selected
+                            if (selection?.type === "type" && selection.id === type.name) {
+                              setSelection(null);
+                            }
+                            // Close any tabs for this type
+                            setOpenTabs((prev) => prev.filter((tab) =>
+                              !(tab.type === "type" && tab.id === type.name)
+                            ));
+                          } else {
+                            toast.error(t("ideas.deleteTypeFailed"));
+                          }
                         }}
                       />
                     ))
@@ -1144,21 +1141,6 @@ interface IdeaTypeCardProps {
 function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: IdeaTypeCardProps) {
   const { t } = useTranslation();
 
-  // Build badges
-  const badges: ListItemBadge[] = [
-    {
-      label: type.source,
-      variant: type.source === "builtin" ? "primary" : "secondary",
-    },
-  ];
-
-  if (type.max_ideas) {
-    badges.push({
-      label: `max: ${type.max_ideas}`,
-      variant: "outline",
-    });
-  }
-
   // Context menu item class
   const contextMenuItemClass = cn(
     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
@@ -1169,57 +1151,61 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: Idea
   const cardContent = (
     <div
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
-        isSelected ? "bg-accent" : "hover:bg-muted/50"
+        "group relative flex items-center gap-3 px-2 py-2 cursor-pointer rounded-md border border-transparent transition-all",
+        isSelected
+          ? "bg-accent border-accent-foreground/20"
+          : "hover:bg-muted/50 hover:border-border"
       )}
       onClick={onSelect}
     >
-      {/* Avatar */}
+      {/* Icon */}
       <div
         className={cn(
-          "relative shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+          "shrink-0 w-9 h-9 rounded-md flex items-center justify-center bg-gradient-to-br",
           getGradientByName(type.name)
         )}
       >
-        <FileText className="h-5 w-5 text-white" />
+        <FileText className="h-4 w-4 text-white" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 py-0.5">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-medium text-sm truncate">{type.name}</span>
-          {badges.map((badge, index) => (
-            <span
-              key={index}
-              className={cn(
-                "shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium",
-                badge.variant === "primary" && "bg-primary/10 text-primary",
-                badge.variant === "secondary" && "bg-secondary text-secondary-foreground",
-                badge.variant === "outline" && "border border-border bg-transparent"
-              )}
-            >
-              {badge.label}
-            </span>
-          ))}
-        </div>
+      <div className="flex-1 min-w-0">
+        <span className="font-medium text-sm truncate block">{type.name}</span>
         {type.description && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
+          <p className="text-xs text-muted-foreground truncate mt-0.5 pr-8">
             {type.description}
           </p>
         )}
       </div>
 
-      {/* Floating action button - More menu (absolute positioned) */}
+      {/* Source badge - right side */}
+      <span
+        className={cn(
+          "shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium mr-1",
+          "group-hover:opacity-0 transition-opacity",
+          type.source === "builtin"
+            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        )}
+      >
+        {type.source}
+      </span>
+
+      {/* Hover actions */}
       <div
         className={cn(
-          "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-          "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
+          "absolute right-1.5 top-1/2 -translate-y-1/2",
+          "opacity-0 group-hover:opacity-100 transition-opacity"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-background/80"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -1229,7 +1215,10 @@ function IdeaTypeCard({ type, isSelected, onSelect, onGenerate, onDelete }: Idea
               {t("ideas.generateThisType")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               {t("common.delete")}
             </DropdownMenuItem>
@@ -1278,21 +1267,6 @@ interface IdeaCardProps {
 function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardProps) {
   const { t } = useTranslation();
 
-  // Build badges
-  const badges: ListItemBadge[] = [
-    {
-      label: idea.estimated_effort,
-      variant: EFFORT_BADGE_VARIANTS[idea.estimated_effort],
-    },
-  ];
-
-  if (idea.status !== "pending") {
-    badges.push({
-      label: idea.status,
-      variant: STATUS_BADGE_VARIANTS[idea.status],
-    });
-  }
-
   // Context menu item class
   const contextMenuItemClass = cn(
     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
@@ -1303,64 +1277,66 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
   const cardContent = (
     <div
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
-        isSelected ? "bg-accent" : "hover:bg-muted/50"
+        "group relative flex items-center gap-3 px-2 py-2 cursor-pointer rounded-md border border-transparent transition-all",
+        isSelected
+          ? "bg-accent border-accent-foreground/20"
+          : "hover:bg-muted/50 hover:border-border"
       )}
       onClick={onSelect}
     >
-      {/* Avatar */}
+      {/* Icon */}
       <div
         className={cn(
-          "relative shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+          "shrink-0 w-9 h-9 rounded-md flex items-center justify-center bg-gradient-to-br",
           getGradientByName(idea.type)
         )}
       >
-        <Lightbulb className="h-5 w-5 text-white" />
+        <Lightbulb className="h-4 w-4 text-white" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 py-0.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-medium text-sm truncate">{idea.title}</span>
-            {badges.map((badge, index) => (
-              <span
-                key={index}
-                className={cn(
-                  "shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium",
-                  badge.variant === "primary" && "bg-primary/10 text-primary",
-                  badge.variant === "secondary" && "bg-secondary text-secondary-foreground",
-                  badge.variant === "default" && "bg-muted text-muted-foreground",
-                  badge.variant === "outline" && "border border-border bg-transparent",
-                  badge.variant === "destructive" && "bg-destructive/10 text-destructive"
-                )}
-              >
-                {badge.label}
-              </span>
-            ))}
-          </div>
-          <span className="text-[10px] text-muted-foreground shrink-0">
+      <div className="flex-1 min-w-0">
+        <span className="font-medium text-sm truncate block">{idea.title}</span>
+        <div className="flex items-center gap-2 mt-0.5">
+          {idea.description && (
+            <p className="text-xs text-muted-foreground truncate flex-1 pr-8">
+              {idea.description}
+            </p>
+          )}
+          <span className="text-[10px] text-muted-foreground/70 shrink-0">
             {formatRelativeTime(idea.created_at)}
           </span>
         </div>
-        {idea.description && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {idea.description}
-          </p>
-        )}
       </div>
 
-      {/* Floating action button - More menu (absolute positioned) */}
+      {/* Status badge - right side */}
+      <span
+        className={cn(
+          "shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium mr-1",
+          "group-hover:opacity-0 transition-opacity",
+          idea.status === "pending" && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          idea.status === "promoted" && "bg-green-500/10 text-green-600 dark:text-green-400",
+          idea.status === "dismissed" && "bg-zinc-500/10 text-zinc-500"
+        )}
+      >
+        {idea.status}
+      </span>
+
+      {/* Hover actions */}
       <div
         className={cn(
-          "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-          "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
+          "absolute right-1.5 top-1/2 -translate-y-1/2",
+          "opacity-0 group-hover:opacity-100 transition-opacity"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-background/80"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -1370,7 +1346,10 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
               {t("ideas.createTaskFromIdea")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onRemove} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={onRemove}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               {t("common.delete")}
             </DropdownMenuItem>

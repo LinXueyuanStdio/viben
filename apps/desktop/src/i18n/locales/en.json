@@ -3539,7 +3539,10 @@
     "noFilePath": "No file path to save",
     "fileSaved": "File saved",
     "fileSaveFailed": "Failed to save file",
-    "noFileContent": "No file content to display"
+    "noFileContent": "No file content to display",
+    "cannotDeleteBuiltinType": "Cannot delete built-in idea type",
+    "typeDeleted": "Idea type \"{{name}}\" deleted",
+    "deleteTypeFailed": "Failed to delete idea type"
   },
   "preview": {
     "livePreview": "Live Preview",
