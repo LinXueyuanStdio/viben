@@ -985,7 +985,7 @@ export function WorkspaceIdeasPage() {
                     {t("ideas.generateThisType")}
                   </Button>
                 )}
-                {activeTab?.type === "idea" && activeTab.idea.status === "pending" && (
+                {activeTab?.type === "idea" && (
                   <Button
                     size="sm"
                     variant="default"
@@ -1365,13 +1365,11 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {idea.status === "pending" && (
-              <DropdownMenuItem onClick={onPromote}>
-                <ListTodo className="h-4 w-4 mr-2" />
-                {t("ideas.createTaskFromIdea")}
-              </DropdownMenuItem>
-            )}
-            {idea.status === "pending" && <DropdownMenuSeparator />}
+            <DropdownMenuItem onClick={onPromote}>
+              <ListTodo className="h-4 w-4 mr-2" />
+              {t("ideas.createTaskFromIdea")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onRemove} className="text-destructive focus:text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
               {t("common.delete")}
@@ -1389,18 +1387,14 @@ function IdeaCard({ idea, isSelected, onSelect, onPromote, onRemove }: IdeaCardP
       </ContextMenuPrimitive.Trigger>
       <ContextMenuPrimitive.Portal>
         <ContextMenuPrimitive.Content className="z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-80">
-          {idea.status === "pending" && (
-            <ContextMenuPrimitive.Item
-              className={contextMenuItemClass}
-              onClick={onPromote}
-            >
-              <ListTodo className="h-4 w-4 mr-2" />
-              {t("ideas.createTaskFromIdea")}
-            </ContextMenuPrimitive.Item>
-          )}
-          {idea.status === "pending" && (
-            <ContextMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-muted" />
-          )}
+          <ContextMenuPrimitive.Item
+            className={contextMenuItemClass}
+            onClick={onPromote}
+          >
+            <ListTodo className="h-4 w-4 mr-2" />
+            {t("ideas.createTaskFromIdea")}
+          </ContextMenuPrimitive.Item>
+          <ContextMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-muted" />
           <ContextMenuPrimitive.Item
             className={cn(contextMenuItemClass, "text-destructive focus:text-destructive")}
             onClick={onRemove}

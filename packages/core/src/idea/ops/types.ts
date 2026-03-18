@@ -550,6 +550,69 @@ export interface IdeaListTypesResult {
 }
 
 // =============================================================================
+// Idea Type CRUD Types
+// =============================================================================
+
+/**
+ * Options for creating/updating an idea type
+ */
+export interface IdeaTypeInput {
+  /** Type name (e.g., "code_improvements") - used as filename */
+  name: string;
+
+  /** Human-readable description */
+  description: string;
+
+  /** Maximum ideas to generate for this type */
+  maxIdeas?: number;
+
+  /** Prompt content (markdown body without frontmatter) */
+  promptContent: string;
+}
+
+/**
+ * Result of creating an idea type
+ */
+export interface IdeaTypeCreateResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Created idea type */
+  ideaType?: IdeaType;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Result of updating an idea type
+ */
+export interface IdeaTypeUpdateResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Updated idea type */
+  ideaType?: IdeaType;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Result of deleting an idea type
+ */
+export interface IdeaTypeDeleteResult {
+  /** Whether the operation succeeded */
+  success: boolean;
+
+  /** Deleted type name */
+  name?: string;
+
+  /** Error message if failed */
+  error?: string;
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 

@@ -27,6 +27,7 @@ import {
   type IdeaPromoteOptions,
   type IdeaRemoveOptions,
   type IdeaGenerateOptions,
+  type IdeaTypeInput,
   EFFORT_LEVELS,
   IDEA_STATUSES,
   // CRUD operations
@@ -37,6 +38,10 @@ import {
   removeIdeas,
   dismissIdea,
   validateIdeaTypes,
+  // Idea Type CRUD operations
+  createIdeaTypeOp,
+  updateIdeaTypeOp,
+  deleteIdeaTypeOp,
   // Generator
   generateIdeas,
 } from "../../idea/ops";
@@ -804,6 +809,258 @@ export function registerIdeaRoutes(fastify: FastifyInstance): void {
       success: true,
       types: result.types.map(toSnakeCaseIdeaType),
       count: result.count,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/idea-types - Create a new idea type
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      name: string;
+      description: string;
+      max_ideas?: number;
+      prompt_content: string;
+    };
+  }>("/api/idea-types", {
+    schema: {
+      description: "Create a new custom idea type",
+      tags: ["ideas"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          name: { type: "string", description: "Type name (snake_case)" },
+          description: { type: "string", description: "Human-readable description" },
+          max_ideas: { type: "number", description: "Maximum ideas to generate" },
+          prompt_content: { type: "string", description: "Prompt template content" },
+        },
+        required: ["workspace_path", "name", "description", "prompt_content"],
+      },
+      response: {
+        201: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            idea_type: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                description: { type: "string" },
+                max_ideas: { type: "number", nullable: true },
+                source: { type: "string" },
+                prompt_path: { type: "string" },
+              },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, name, description, max_ideas, prompt_content } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    log.info({ workspacePath: workspace_path, name }, "Creating idea type");
+
+    const input: IdeaTypeInput = {
+      name,
+      description,
+      maxIdeas: max_ideas,
+      promptContent: prompt_content,
+    };
+
+    const result = createIdeaTypeOp(workspace_path, input);
+
+    if (!result.success) {
+      reply.code(400);
+      return { success: false, error: result.error };
+    }
+
+    reply.code(201);
+    return {
+      success: true,
+      idea_type: result.ideaType ? toSnakeCaseIdeaType(result.ideaType) : null,
+    };
+  });
+
+  // ============================================================================
+  // PUT /api/idea-types/:name - Update an idea type
+  // ============================================================================
+  fastify.put<{
+    Params: { name: string };
+    Body: {
+      workspace_path: string;
+      description?: string;
+      max_ideas?: number;
+      prompt_content?: string;
+    };
+  }>("/api/idea-types/:name", {
+    schema: {
+      description: "Update an existing idea type",
+      tags: ["ideas"],
+      params: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Type name" },
+        },
+        required: ["name"],
+      },
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          description: { type: "string", description: "Human-readable description" },
+          max_ideas: { type: "number", description: "Maximum ideas to generate" },
+          prompt_content: { type: "string", description: "Prompt template content" },
+        },
+        required: ["workspace_path"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            idea_type: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                description: { type: "string" },
+                max_ideas: { type: "number", nullable: true },
+                source: { type: "string" },
+                prompt_path: { type: "string" },
+              },
+            },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name } = request.params;
+    const { workspace_path, description, max_ideas, prompt_content } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    log.info({ workspacePath: workspace_path, name }, "Updating idea type");
+
+    const input: Partial<IdeaTypeInput> = {
+      description,
+      maxIdeas: max_ideas,
+      promptContent: prompt_content,
+    };
+
+    const result = updateIdeaTypeOp(workspace_path, name, input);
+
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
+      return { success: false, error: result.error };
+    }
+
+    return {
+      success: true,
+      idea_type: result.ideaType ? toSnakeCaseIdeaType(result.ideaType) : null,
+    };
+  });
+
+  // ============================================================================
+  // DELETE /api/idea-types/:name - Delete an idea type
+  // ============================================================================
+  fastify.delete<{
+    Params: { name: string };
+    Querystring: { workspace_path: string };
+  }>("/api/idea-types/:name", {
+    schema: {
+      description: "Delete a custom idea type",
+      tags: ["ideas"],
+      params: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Type name" },
+        },
+        required: ["name"],
+      },
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+        },
+        required: ["workspace_path"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            name: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name } = request.params;
+    const { workspace_path } = request.query;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    log.info({ workspacePath: workspace_path, name }, "Deleting idea type");
+
+    const result = deleteIdeaTypeOp(workspace_path, name);
+
+    if (!result.success) {
+      const isNotFound = result.error?.includes("not found");
+      reply.code(isNotFound ? 404 : 400);
+      return { success: false, error: result.error };
+    }
+
+    return {
+      success: true,
+      name: result.name,
     };
   });
 }
