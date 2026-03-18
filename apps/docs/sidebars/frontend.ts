@@ -9,6 +9,9 @@ const sidebars: SidebarsConfig = {
     'chat-input-components',
     'tailwind-v4-setup',
     'marketplace-publish-flow',
+    'hook-guidelines',
+    'quality-guidelines',
+    'type-safety',
     {
       type: 'category',
       label: 'Kanban',
