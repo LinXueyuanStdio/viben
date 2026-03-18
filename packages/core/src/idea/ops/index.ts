@@ -41,6 +41,11 @@ export type {
   IdeaViewResult,
   IdeaRemoveResult,
   IdeaListTypesResult,
+  // Idea Type CRUD types
+  IdeaTypeInput,
+  IdeaTypeCreateResult,
+  IdeaTypeUpdateResult,
+  IdeaTypeDeleteResult,
 } from "./types";
 
 // Export constants
@@ -88,6 +93,9 @@ export {
   getIdeaType,
   listIdeaTypes,
   loadIdeaTypePrompt,
+  createIdeaType,
+  updateIdeaType,
+  deleteIdeaType,
 } from "./store";
 
 // Session management
@@ -153,4 +161,8 @@ export {
   dismissIdea,
   validateIdeaType,
   validateIdeaTypes,
+  // Idea Type CRUD
+  createIdeaTypeOp,
+  updateIdeaTypeOp,
+  deleteIdeaTypeOp,
 } from "./crud";

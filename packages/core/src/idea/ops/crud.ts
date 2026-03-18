@@ -17,12 +17,17 @@ import {
   type IdeaPromoteResult,
   type IdeaRemoveResult,
   type IdeaListTypesResult,
+  type IdeaTypeInput,
+  type IdeaTypeCreateResult,
+  type IdeaTypeUpdateResult,
+  type IdeaTypeDeleteResult,
   type EffortLevel,
   EFFORT_PRIORITY_MAP,
   isValidEffortLevel,
   isValidIdeaStatus,
   EFFORT_LEVELS,
   IDEA_STATUSES,
+  DEFAULT_MAX_IDEAS,
 } from "./types";
 
 import {
@@ -35,6 +40,10 @@ import {
   removeIdea,
   removeIdeasByType,
   removeAllIdeas,
+  getIdeaTypesDir,
+  createIdeaType as createIdeaTypeFile,
+  updateIdeaType as updateIdeaTypeFile,
+  deleteIdeaType as deleteIdeaTypeFile,
 } from "./store";
 
 // =============================================================================
@@ -390,4 +399,160 @@ export function validateIdeaTypes(
     valid: invalidTypes.length === 0,
     invalidTypes,
   };
+}
+
+// =============================================================================
+// Idea Type CRUD Operations
+// =============================================================================
+
+/**
+ * Create a new custom idea type
+ *
+ * Creates a new markdown file in docs/idea-types/ with YAML frontmatter.
+ *
+ * @param repoRoot - Repository root path
+ * @param input - Idea type input data
+ * @returns Creation result
+ */
+export function createIdeaTypeOp(
+  repoRoot: string,
+  input: IdeaTypeInput
+): IdeaTypeCreateResult {
+  try {
+    // Validate name (must be snake_case, no spaces)
+    if (!/^[a-z][a-z0-9_]*$/.test(input.name)) {
+      return {
+        success: false,
+        error: `Invalid type name "${input.name}". Must be lowercase letters, numbers, and underscores, starting with a letter.`,
+      };
+    }
+
+    // Check if type already exists
+    const existing = getIdeaType(input.name, repoRoot);
+    if (existing) {
+      return {
+        success: false,
+        error: `Idea type "${input.name}" already exists at ${existing.promptPath}`,
+      };
+    }
+
+    // Create the idea type
+    const ideaType = createIdeaTypeFile(repoRoot, {
+      name: input.name,
+      description: input.description,
+      maxIdeas: input.maxIdeas ?? DEFAULT_MAX_IDEAS,
+      promptContent: input.promptContent,
+    });
+
+    return {
+      success: true,
+      ideaType,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Update an existing custom idea type
+ *
+ * Only custom types (not builtin) can be updated.
+ *
+ * @param repoRoot - Repository root path
+ * @param typeName - Type name to update
+ * @param input - Updated data
+ * @returns Update result
+ */
+export function updateIdeaTypeOp(
+  repoRoot: string,
+  typeName: string,
+  input: Partial<IdeaTypeInput>
+): IdeaTypeUpdateResult {
+  try {
+    // Check if type exists
+    const existing = getIdeaType(typeName, repoRoot);
+    if (!existing) {
+      return {
+        success: false,
+        error: `Idea type "${typeName}" not found`,
+      };
+    }
+
+    // Builtin types can only be updated if they exist in docs/idea-types/
+    // (i.e., they were copied by `viben team init`)
+    const typesDir = getIdeaTypesDir(repoRoot);
+    if (!existing.promptPath.startsWith(typesDir)) {
+      return {
+        success: false,
+        error: `Cannot update builtin type "${typeName}". Copy it to docs/idea-types/ first using "viben team init".`,
+      };
+    }
+
+    // Update the idea type
+    const ideaType = updateIdeaTypeFile(repoRoot, typeName, {
+      description: input.description,
+      maxIdeas: input.maxIdeas,
+      promptContent: input.promptContent,
+    });
+
+    return {
+      success: true,
+      ideaType,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Delete a custom idea type
+ *
+ * Only custom types (not builtin from packages/core) can be deleted.
+ *
+ * @param repoRoot - Repository root path
+ * @param typeName - Type name to delete
+ * @returns Delete result
+ */
+export function deleteIdeaTypeOp(
+  repoRoot: string,
+  typeName: string
+): IdeaTypeDeleteResult {
+  try {
+    // Check if type exists
+    const existing = getIdeaType(typeName, repoRoot);
+    if (!existing) {
+      return {
+        success: false,
+        error: `Idea type "${typeName}" not found`,
+      };
+    }
+
+    // Only allow deleting types in docs/idea-types/
+    const typesDir = getIdeaTypesDir(repoRoot);
+    if (!existing.promptPath.startsWith(typesDir)) {
+      return {
+        success: false,
+        error: `Cannot delete builtin type "${typeName}". It is located in packages/core.`,
+      };
+    }
+
+    // Delete the file
+    deleteIdeaTypeFile(repoRoot, typeName);
+
+    return {
+      success: true,
+      name: typeName,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }

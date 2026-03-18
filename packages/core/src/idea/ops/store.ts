@@ -403,6 +403,141 @@ export function loadIdeaTypePrompt(ideaType: IdeaType): string | null {
 }
 
 // =============================================================================
+// Idea Type CRUD Operations
+// =============================================================================
+
+/**
+ * Input for creating/updating an idea type file
+ */
+export interface IdeaTypeFileInput {
+  name?: string;
+  description?: string;
+  maxIdeas?: number;
+  promptContent?: string;
+}
+
+/**
+ * Create a new custom idea type
+ *
+ * Creates a markdown file with YAML frontmatter in docs/idea-types/.
+ *
+ * @param repoRoot - Repository root path
+ * @param input - Idea type data
+ * @returns Created IdeaType object
+ */
+export function createIdeaType(
+  repoRoot: string,
+  input: Required<Pick<IdeaTypeFileInput, "name" | "description">> & IdeaTypeFileInput
+): IdeaType {
+  const typesDir = getIdeaTypesDir(repoRoot);
+
+  // Ensure directory exists
+  if (!existsSync(typesDir)) {
+    mkdirSync(typesDir, { recursive: true });
+  }
+
+  const promptPath = join(typesDir, `${input.name}.md`);
+
+  // Build YAML frontmatter
+  const frontmatterLines = [
+    "---",
+    `name: ${input.name}`,
+    `description: ${input.description}`,
+  ];
+
+  if (input.maxIdeas !== undefined) {
+    frontmatterLines.push(`max_ideas: ${input.maxIdeas}`);
+  }
+
+  frontmatterLines.push("---");
+
+  // Combine frontmatter with prompt content
+  const content = frontmatterLines.join("\n") + "\n\n" + (input.promptContent || "");
+  writeFileSync(promptPath, content, "utf-8");
+
+  return {
+    name: input.name,
+    description: input.description,
+    maxIdeas: input.maxIdeas ?? DEFAULT_MAX_IDEAS,
+    source: "custom",
+    promptPath,
+  };
+}
+
+/**
+ * Update an existing idea type
+ *
+ * Updates the markdown file in docs/idea-types/.
+ *
+ * @param repoRoot - Repository root path
+ * @param typeName - Name of the type to update
+ * @param input - Fields to update
+ * @returns Updated IdeaType object
+ */
+export function updateIdeaType(
+  repoRoot: string,
+  typeName: string,
+  input: IdeaTypeFileInput
+): IdeaType {
+  const promptPath = getIdeaTypePromptPath(repoRoot, typeName);
+
+  if (!existsSync(promptPath)) {
+    throw new Error(`Idea type file not found: ${promptPath}`);
+  }
+
+  // Read existing content
+  const content = readFileSync(promptPath, "utf-8");
+  const { frontmatter, body } = parseFrontmatter(content);
+
+  // Update frontmatter fields
+  const newFrontmatter = {
+    name: typeName,
+    description: input.description ?? (frontmatter.description as string) ?? "",
+    max_ideas: input.maxIdeas ?? (frontmatter.max_ideas as number) ?? DEFAULT_MAX_IDEAS,
+  };
+
+  // Build new content
+  const frontmatterLines = [
+    "---",
+    `name: ${newFrontmatter.name}`,
+    `description: ${newFrontmatter.description}`,
+    `max_ideas: ${newFrontmatter.max_ideas}`,
+    "---",
+  ];
+
+  const newBody = input.promptContent !== undefined ? input.promptContent : body;
+  const newContent = frontmatterLines.join("\n") + "\n\n" + newBody.trim() + "\n";
+
+  writeFileSync(promptPath, newContent, "utf-8");
+
+  return {
+    name: typeName,
+    description: newFrontmatter.description,
+    maxIdeas: newFrontmatter.max_ideas,
+    source: isBuiltinTypeName(typeName) ? "builtin" : "custom",
+    promptPath,
+  };
+}
+
+/**
+ * Delete a custom idea type
+ *
+ * Removes the markdown file from docs/idea-types/.
+ *
+ * @param repoRoot - Repository root path
+ * @param typeName - Name of the type to delete
+ */
+export function deleteIdeaType(repoRoot: string, typeName: string): void {
+  const promptPath = getIdeaTypePromptPath(repoRoot, typeName);
+
+  if (!existsSync(promptPath)) {
+    throw new Error(`Idea type file not found: ${promptPath}`);
+  }
+
+  unlinkSync(promptPath);
+}
+
+// =============================================================================
 // Session Management
 // =============================================================================
 
