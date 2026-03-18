@@ -71,8 +71,10 @@ export {
 // Schedule utilities
 export {
   getNextCronTime,
+  getPrevCronTime,
   getNextIntervalTime,
   calculateNextRun,
+  isValidCronExpression,
   formatSchedule,
   formatTimestamp,
   formatDuration,

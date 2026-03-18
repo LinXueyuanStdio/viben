@@ -81,8 +81,11 @@ export {
 export {
   // Time calculations
   getNextCronTime,
+  getPrevCronTime,
   getNextIntervalTime,
   calculateNextRun,
+  // Validation
+  isValidCronExpression,
   // Formatting
   formatSchedule,
   formatTimestamp,

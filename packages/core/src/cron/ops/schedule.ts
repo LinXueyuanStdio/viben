@@ -2,8 +2,10 @@
  * Cron scheduling utilities
  *
  * Pure functions for calculating next execution times and formatting schedules.
+ * Uses cron-parser for robust cron expression parsing.
  */
 
+import { CronExpressionParser } from "cron-parser";
 import type { CronJob } from "./types";
 
 // =============================================================================
@@ -11,43 +13,58 @@ import type { CronJob } from "./types";
 // =============================================================================
 
 /**
- * Get next cron time (simple implementation for common patterns)
+ * Get next cron time using cron-parser library
  *
- * Note: This is a simplified cron parser that handles basic patterns.
- * For complex cron expressions, consider using a full cron library.
+ * Supports all standard cron expressions including:
+ * - Simple patterns: "0 9 * * *" (9 AM daily)
+ * - Step patterns: "0/5 * * * *" (every 5 minutes)
+ * - Range patterns: "0 9-17 * * *" (every hour 9 AM - 5 PM)
+ * - List patterns: "0 0,12 * * *" (midnight and noon)
+ * - Day of week: "0 9 * * 1-5" (weekdays at 9 AM)
+ *
+ * @param cronExpr - Standard 5-field cron expression
+ * @returns Next execution Date or null if invalid
  */
 export function getNextCronTime(cronExpr: string): Date | null {
   try {
-    // Simple cron parser for common patterns
-    const parts = cronExpr.trim().split(/\s+/);
-    if (parts.length !== 5 && parts.length !== 6) return null;
-
-    // For now, just return a time in the near future for interval-like patterns
-    // A full cron parser would be needed for complex expressions
-    const now = new Date();
-    const next = new Date(now);
-    next.setSeconds(0);
-    next.setMilliseconds(0);
-
-    // Parse minute and hour for simple patterns
-    const minute = parts[parts.length === 6 ? 1 : 0];
-    const hour = parts[parts.length === 6 ? 2 : 1];
-
-    if (minute !== "*") {
-      next.setMinutes(parseInt(minute, 10));
-    }
-    if (hour !== "*") {
-      next.setHours(parseInt(hour, 10));
-    }
-
-    // If the calculated time is in the past, move to next day
-    if (next <= now) {
-      next.setDate(next.getDate() + 1);
-    }
-
-    return next;
+    const interval = CronExpressionParser.parse(cronExpr, {
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    return interval.next().toDate();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Get previous cron time using cron-parser library
+ *
+ * @param cronExpr - Standard 5-field cron expression
+ * @returns Previous execution Date or null if invalid
+ */
+export function getPrevCronTime(cronExpr: string): Date | null {
+  try {
+    const interval = CronExpressionParser.parse(cronExpr, {
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    return interval.prev().toDate();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validate a cron expression
+ *
+ * @param cronExpr - Cron expression to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidCronExpression(cronExpr: string): boolean {
+  try {
+    CronExpressionParser.parse(cronExpr);
+    return true;
+  } catch {
+    return false;
   }
 }
 

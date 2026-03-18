@@ -74,6 +74,8 @@
     "search": "搜索...",
     "selectAll": "全选",
     "selected": "已选",
+    "clearSelection": "清除选择",
+    "selectItem": "选择 {{name}}",
     "noResults": "未找到结果",
     "rename": "重命名",
     "path": "路径",
@@ -3504,7 +3506,12 @@
     "output": "输出",
     "chars": "字符",
     "triggerManual": "手动",
-    "triggerScheduled": "定时"
+    "triggerScheduled": "定时",
+    "selectedCount": "已选择 {{count}} 项",
+    "batchEnable": "启用",
+    "batchDisable": "禁用",
+    "batchDelete": "删除",
+    "batchDeleteConfirm": "确定删除选中的 {{count}} 个任务吗？({{names}}) 此操作无法撤销。"
   },
   "preview": {
     "livePreview": "实时预览",
