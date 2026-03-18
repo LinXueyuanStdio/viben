@@ -149,6 +149,7 @@ import {
   runPlanPhase,
   runImplementPhase,
   runCheckPhase,
+  runRewardPhaseSync,
 } from "../../task/phase";
 
 // =============================================================================
@@ -2313,6 +2314,66 @@ export function registerTaskCommand(program: Command): void {
           output(ctx, successResponse(result));
         } else {
           throw CliError.operationFailed("Check Phase", result.error || "Unknown error");
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task compute-reward - Manually trigger PR quality evaluation
+  taskCmd
+    .command("compute-reward")
+    .description("Manually trigger PR quality evaluation using reward types")
+    .argument("<task>", "Task name or directory")
+    .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
+    .option("-v, --verbose", "Enable verbose output")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Compute Reward Phase ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log();
+
+        const result = runRewardPhaseSync(repoRoot, taskDir, {
+          platform: options.platform,
+          verbose: options.verbose,
+        });
+
+        if (result.success) {
+          console.log(chalk.green("=== Reward Agent Started ==="));
+          console.log();
+          console.log(`  ID:   ${result.agentId}`);
+          console.log(`  PID:  ${result.pid}`);
+          console.log(`  Log:  ${result.logFile}`);
+
+          if (result.warnings && result.warnings.length > 0) {
+            console.log();
+            console.log(chalk.yellow("Warnings:"));
+            for (const warning of result.warnings) {
+              console.log(`  - ${warning}`);
+            }
+          }
+
+          console.log();
+          console.log(chalk.yellow("To monitor:"));
+          console.log(`  tail -f ${result.logFile}`);
+          console.log();
+
+          output(ctx, successResponse(result));
+        } else {
+          throw CliError.operationFailed("Compute Reward", result.error || "Unknown error");
         }
       } catch (error) {
         handleCommandError(ctx, error);
