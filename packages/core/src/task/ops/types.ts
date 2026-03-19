@@ -273,6 +273,10 @@ export interface UnifiedTask {
   checkPassedAt?: string;
   /** Timestamp when PR was created */
   prCreatedAt?: string;
+  /** Timestamp when PR was merged (ISO format) */
+  merged_at?: string;
+  /** Merge commit SHA */
+  merge_commit?: string;
 
   // === XState State Machine (Task State Machine System) ===
   /** XState state machine current state */

@@ -13,20 +13,24 @@
 
 import {
   spawn,
+  spawnSync,
+  execSync,
   type SpawnOptions,
   type ChildProcess,
 } from "node:child_process";
-import { existsSync, writeFileSync, openSync } from "node:fs";
+import { existsSync, writeFileSync, openSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 import {
   readTaskJson,
+  writeTaskJson,
+  readJsonlFile,
   createCLIAdapter,
   registryAddAgent,
 } from "../../cli/lib/viben-workspace";
 
 import { getRewardType } from "../../reward/ops";
-import type { RewardConfig } from "../../reward/ops/types";
+import type { RewardConfig, RewardResult, RewardScore } from "../../reward/ops/types";
 
 // =============================================================================
 // Constants
@@ -78,6 +82,7 @@ interface TaskData {
   name?: string;
   pr_url?: string;
   reward_config?: RewardConfig;
+  reward?: RewardResult;
   [key: string]: unknown;
 }
 
@@ -90,9 +95,106 @@ interface RewardJsonlEntry {
   weight: number;
 }
 
+/**
+ * Single score entry from reward agent log
+ */
+interface RewardLogScoreEntry {
+  type: string;
+  score: number;
+  reasoning: string;
+}
+
+/**
+ * Summary entry from reward agent log
+ */
+interface RewardLogSummaryEntry {
+  _summary: true;
+  scores: Record<string, { score: number; reasoning: string }>;
+  completed: boolean;
+}
+
+/**
+ * Result of parsing reward log
+ */
+export interface ParseRewardResultOutput {
+  /** Whether parsing was successful */
+  success: boolean;
+  /** Parsed reward result (if successful) */
+  reward?: RewardResult;
+  /** Error message (if failed) */
+  error?: string;
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Check if an entry is a score entry (has type, score, reasoning)
+ */
+function isScoreEntry(entry: unknown): entry is RewardLogScoreEntry {
+  if (typeof entry !== "object" || entry === null) return false;
+  const obj = entry as Record<string, unknown>;
+  return (
+    typeof obj.type === "string" &&
+    typeof obj.score === "number" &&
+    typeof obj.reasoning === "string" &&
+    !("_summary" in obj)
+  );
+}
+
+/**
+ * Check if an entry is a summary entry
+ */
+function isSummaryEntry(entry: unknown): entry is RewardLogSummaryEntry {
+  if (typeof entry !== "object" || entry === null) return false;
+  const obj = entry as Record<string, unknown>;
+  return obj._summary === true && typeof obj.scores === "object";
+}
+
+/**
+ * Get diff lines count using git diff --stat
+ *
+ * @param repoRoot - Repository root path
+ * @param baseBranch - Base branch to compare against (default: main)
+ * @returns Number of lines changed, or 0 if error
+ */
+function getDiffLines(repoRoot: string, baseBranch: string = "main"): number {
+  try {
+    // Try origin/main first, then main
+    let output: string;
+    try {
+      output = execSync(`git diff --stat origin/${baseBranch}..HEAD`, {
+        cwd: repoRoot,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    } catch {
+      // Fallback to local main
+      output = execSync(`git diff --stat ${baseBranch}..HEAD`, {
+        cwd: repoRoot,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    }
+
+    // Parse the last line of git diff --stat output
+    // Example: " 5 files changed, 120 insertions(+), 30 deletions(-)"
+    const lines = output.trim().split("\n");
+    const lastLine = lines[lines.length - 1] || "";
+
+    // Extract insertions and deletions
+    const insertionsMatch = lastLine.match(/(\d+) insertion/);
+    const deletionsMatch = lastLine.match(/(\d+) deletion/);
+
+    const insertions = insertionsMatch ? parseInt(insertionsMatch[1], 10) : 0;
+    const deletions = deletionsMatch ? parseInt(deletionsMatch[1], 10) : 0;
+
+    return insertions + deletions;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Generate reward.jsonl file from reward config
@@ -347,10 +449,16 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
 /**
  * Run reward phase synchronously (for CLI commands)
  *
+ * This function:
+ * 1. Validates prerequisites
+ * 2. Generates reward.jsonl
+ * 3. Runs reward agent SYNCHRONOUSLY (waits for completion)
+ * 4. Parses results and writes to task.json
+ *
  * @param repoRoot - Repository root path
  * @param taskDir - Task directory path
  * @param options - Phase options
- * @returns RewardPhaseResult
+ * @returns RewardPhaseResult with reward data
  */
 export function runRewardPhaseSync(
   repoRoot: string,
@@ -364,14 +472,11 @@ export function runRewardPhaseSync(
   const adapter = createCLIAdapter(platform);
 
   // Normalize paths
-  let taskDirRelative: string;
   let taskDirAbs: string;
 
   if (taskDir.startsWith("/")) {
     taskDirAbs = taskDir;
-    taskDirRelative = relative(repoRoot, taskDir);
   } else {
-    taskDirRelative = taskDir;
     taskDirAbs = resolve(repoRoot, taskDir);
   }
 
@@ -446,7 +551,7 @@ export function runRewardPhaseSync(
 
   // Task-specific environment variables
   env.REWARD_TASK_NAME = taskName;
-  env.REWARD_TASK_DIR = taskDirRelative;
+  env.REWARD_TASK_DIR = taskDirAbs;
 
   // Proxy environment variables
   env.https_proxy = process.env.https_proxy || "";
@@ -475,56 +580,51 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
   });
 
   // =============================================================================
-  // Spawn Background Process
+  // Run Agent Synchronously
   // =============================================================================
 
   const logFile = join(taskDirAbs, "reward.log.jsonl");
 
-  // Create empty log file
-  writeFileSync(logFile, "", "utf-8");
-
   // Open log file for writing
   const logFd = openSync(logFile, "w");
 
-  // Spawn options
-  const spawnOpts: SpawnOptions = {
+  // Run synchronously using spawnSync
+  const result = spawnSync(cliCmd[0], cliCmd.slice(1), {
     cwd: repoRoot,
     env,
     stdio: ["ignore", logFd, logFd],
-    detached: true,
-  };
+    maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+  });
 
-  let child: ChildProcess;
-  try {
-    child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  } catch (error) {
+  // Check for spawn errors
+  if (result.error) {
     return {
       success: false,
-      error: `Failed to spawn reward agent: ${error}`,
+      error: `Failed to run reward agent: ${result.error.message}`,
+      logFile,
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
 
-  // Detach process so it continues running after parent exits
-  child.unref();
-
-  const agentPid = child.pid || 0;
+  // Agent may exit with non-zero code but still produce valid output
+  if (result.status !== 0) {
+    warnings.push(`Agent exited with code ${result.status}`);
+  }
 
   // =============================================================================
-  // Register Agent to Registry
+  // Parse Results and Write to task.json
   // =============================================================================
 
-  const agentId = `reward-${taskName}`;
+  const parseResult = parseRewardResult(repoRoot, taskDir);
 
-  registryAddAgent(
-    {
-      agentId,
-      worktreePath: repoRoot,
-      pid: agentPid,
-      taskDir: taskDirRelative,
-      platform,
-    },
-    repoRoot
-  );
+  if (!parseResult.success) {
+    return {
+      success: false,
+      error: parseResult.error,
+      logFile,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
+  }
 
   // =============================================================================
   // Return Result
@@ -532,9 +632,183 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
 
   return {
     success: true,
-    agentId,
-    pid: agentPid,
     logFile,
     warnings: warnings.length > 0 ? warnings : undefined,
+  };
+}
+
+// =============================================================================
+// Result Parsing
+// =============================================================================
+
+/**
+ * Parse reward agent log and write results to task.json
+ *
+ * This function:
+ * 1. Reads reward.log.jsonl
+ * 2. Parses JSON lines to find score entries and summary
+ * 3. Calculates weighted total from reward.jsonl weights
+ * 4. Gets diff lines using git diff --stat
+ * 5. Writes the reward field to task.json
+ *
+ * Can be called:
+ * - After agent completes (via swarm wait callback)
+ * - Manually via CLI command
+ *
+ * @param repoRoot - Repository root path
+ * @param taskDir - Task directory path (relative or absolute)
+ * @returns ParseRewardResultOutput with success status and parsed reward
+ */
+export function parseRewardResult(
+  repoRoot: string,
+  taskDir: string
+): ParseRewardResultOutput {
+  // Normalize paths
+  let taskDirAbs: string;
+
+  if (taskDir.startsWith("/")) {
+    taskDirAbs = taskDir;
+  } else {
+    taskDirAbs = resolve(repoRoot, taskDir);
+  }
+
+  // Check task.json exists
+  const taskJsonPath = join(taskDirAbs, "task.json");
+  if (!existsSync(taskJsonPath)) {
+    return {
+      success: false,
+      error: `task.json not found at ${taskJsonPath}`,
+    };
+  }
+
+  // Check reward.log.jsonl exists
+  const logFile = join(taskDirAbs, "reward.log.jsonl");
+  if (!existsSync(logFile)) {
+    return {
+      success: false,
+      error: `reward.log.jsonl not found at ${logFile}`,
+    };
+  }
+
+  // Read task data
+  const taskData = readTaskJson(taskDirAbs) as TaskData | null;
+  if (!taskData) {
+    return {
+      success: false,
+      error: "Failed to read task.json",
+    };
+  }
+
+  // Read reward.jsonl for weights
+  const rewardJsonlPath = join(taskDirAbs, "reward.jsonl");
+  const rewardConfigRaw = readJsonlFile(rewardJsonlPath);
+
+  // Build weights map from reward.jsonl (reason -> weight)
+  const weightsMap: Record<string, number> = {};
+  for (const entry of rewardConfigRaw) {
+    // Validate entry has required fields
+    if (
+      typeof entry.reason === "string" &&
+      typeof entry.weight === "number"
+    ) {
+      weightsMap[entry.reason] = entry.weight;
+    }
+  }
+
+  // Parse reward.log.jsonl
+  // The log file contains Claude's JSON output, which may have JSON embedded in text
+  const logContent = readFileSync(logFile, "utf-8");
+  const scores: Record<string, RewardScore> = {};
+
+  // Try to find JSON objects in the log content
+  // Strategy 1: Try parsing each line as JSON directly
+  // Strategy 2: Look for JSON patterns in the content
+
+  const lines = logContent.split("\n");
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+
+    // Try to extract JSON from the line
+    // The log may contain JSONL output from Claude, which includes JSON objects
+    const jsonMatches = trimmedLine.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
+
+    if (jsonMatches) {
+      for (const jsonStr of jsonMatches) {
+        try {
+          const parsed = JSON.parse(jsonStr);
+
+          if (isSummaryEntry(parsed)) {
+            // Found summary - use its scores
+            for (const [typeName, scoreData] of Object.entries(parsed.scores)) {
+              const data = scoreData as { score: number; reasoning: string };
+              scores[typeName] = {
+                score: data.score,
+                reasoning: data.reasoning,
+              };
+            }
+          } else if (isScoreEntry(parsed)) {
+            // Individual score entry
+            scores[parsed.type] = {
+              score: parsed.score,
+              reasoning: parsed.reasoning,
+            };
+          }
+        } catch {
+          // Not valid JSON, skip
+        }
+      }
+    }
+  }
+
+  // Check if we found any scores
+  if (Object.keys(scores).length === 0) {
+    return {
+      success: false,
+      error: "No score entries found in reward.log.jsonl. Agent may not have completed evaluation.",
+    };
+  }
+
+  // Calculate weighted total
+  let total = 0;
+  let totalWeight = 0;
+
+  for (const [typeName, scoreData] of Object.entries(scores)) {
+    const weight = weightsMap[typeName] ?? (1 / Object.keys(scores).length);
+    total += scoreData.score * weight;
+    totalWeight += weight;
+  }
+
+  // Normalize if weights don't sum to 1
+  if (totalWeight > 0 && totalWeight !== 1) {
+    total = total / totalWeight;
+  }
+
+  // Get diff lines
+  const diffLines = getDiffLines(repoRoot);
+
+  // Build reward result
+  const reward: RewardResult = {
+    scores,
+    total,
+    diffLines,
+    computedAt: new Date().toISOString(),
+  };
+
+  // Update task.json with reward field
+  taskData.reward = reward;
+
+  const writeSuccess = writeTaskJson(taskDirAbs, taskData);
+  if (!writeSuccess) {
+    return {
+      success: false,
+      error: "Failed to write reward to task.json",
+    };
+  }
+
+  return {
+    success: true,
+    reward,
   };
 }

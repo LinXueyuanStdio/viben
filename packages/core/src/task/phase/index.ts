@@ -78,7 +78,9 @@ export {
 export {
   runRewardPhase,
   runRewardPhaseSync,
+  parseRewardResult,
   DEFAULT_REWARD_CONFIG,
   type RewardPhaseOptions,
   type RewardPhaseResult,
+  type ParseRewardResultOutput,
 } from "./reward";

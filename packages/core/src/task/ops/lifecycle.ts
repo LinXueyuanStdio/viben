@@ -4,7 +4,8 @@
  * Status transitions: enqueue, dequeue, pause, resume, approve, reject, retry, cancel
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import {
@@ -13,6 +14,8 @@ import {
   appendTaskEvent,
   validateStatusTransition,
   getTodayDate,
+  runGitCommand,
+  getRegistryFile,
   type PausedSnapshot,
   FILE_TASK_JSON,
 } from "../../cli/lib/viben-workspace";
@@ -38,6 +41,251 @@ function readTaskJson(taskDir: string): TaskJson | null {
     return JSON.parse(content) as TaskJson;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Agent registry entry (simplified for lifecycle operations)
+ */
+interface RegistryEntry {
+  id: string;
+  worktree_path?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Agent registry structure
+ */
+interface Registry {
+  agents: RegistryEntry[];
+}
+
+/**
+ * Remove agent from registry by worktree path
+ *
+ * @param worktreePath - Worktree path to match
+ * @param repoRoot - Repository root path
+ * @returns True on success
+ */
+function removeFromRegistryByWorktree(
+  worktreePath: string,
+  repoRoot: string
+): boolean {
+  const registryFile = getRegistryFile(repoRoot);
+  if (!registryFile || !existsSync(registryFile)) {
+    return true; // No registry, nothing to remove
+  }
+
+  try {
+    const content = readFileSync(registryFile, "utf-8");
+    const registry = JSON.parse(content) as Registry;
+
+    if (!registry.agents || registry.agents.length === 0) {
+      return true; // Empty registry
+    }
+
+    // Filter out agents with matching worktree_path
+    registry.agents = registry.agents.filter(
+      (a) => a.worktree_path !== worktreePath
+    );
+
+    writeFileSync(registryFile, JSON.stringify(registry, null, 2), "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remove worktree directory using git worktree remove
+ *
+ * @param repoRoot - Repository root path
+ * @param worktreePath - Path to worktree directory
+ * @returns Object with success status and error message
+ */
+function removeWorktree(
+  repoRoot: string,
+  worktreePath: string
+): { success: boolean; error?: string } {
+  if (!existsSync(worktreePath)) {
+    return { success: true }; // Already removed
+  }
+
+  try {
+    // Try git worktree remove first
+    const result = runGitCommand(["worktree", "remove", worktreePath, "--force"], repoRoot);
+    if (result.code === 0) {
+      return { success: true };
+    }
+
+    // If git command fails, try to remove directory manually
+    try {
+      rmSync(worktreePath, { recursive: true, force: true });
+      // Prune worktree references
+      runGitCommand(["worktree", "prune"], repoRoot);
+      return { success: true };
+    } catch (rmError) {
+      return { success: false, error: `Failed to remove worktree directory: ${rmError}` };
+    }
+  } catch (error) {
+    return { success: false, error: `Failed to remove worktree: ${error}` };
+  }
+}
+
+/**
+ * Delete local branch
+ *
+ * @param repoRoot - Repository root path
+ * @param branch - Branch name to delete
+ * @returns Object with success status and error message
+ */
+function deleteBranch(
+  repoRoot: string,
+  branch: string
+): { success: boolean; error?: string } {
+  try {
+    const result = runGitCommand(["branch", "-D", branch], repoRoot);
+    if (result.code === 0) {
+      return { success: true };
+    }
+    // Ignore "branch not found" errors
+    if (result.stderr.includes("not found")) {
+      return { success: true };
+    }
+    return { success: false, error: `Failed to delete local branch: ${result.stderr}` };
+  } catch (error) {
+    return { success: false, error: `Failed to delete branch: ${error}` };
+  }
+}
+
+/**
+ * Cleanup options for cleanupWorktree
+ */
+interface CleanupWorktreeOptions {
+  /** Keep the git branch (default: false) */
+  keepBranch?: boolean;
+}
+
+/**
+ * Cleanup worktree result
+ */
+interface CleanupWorktreeResult {
+  success: boolean;
+  worktreeRemoved: boolean;
+  branchDeleted: boolean;
+  errors: string[];
+}
+
+/**
+ * Clean up worktree for a task
+ *
+ * This function:
+ * 1. Removes the worktree directory using git worktree remove
+ * 2. Deletes the local branch (optional, controlled by keepBranch)
+ *
+ * Note: Does NOT archive task or remove from registry.
+ * For full cleanup including archive and registry, use `viben task cleanup`.
+ *
+ * @param repoRoot - Repository root path
+ * @param worktreePath - Path to worktree directory
+ * @param branch - Branch name to delete
+ * @param options - Cleanup options
+ * @returns Object with success status and any errors
+ */
+function cleanupWorktree(
+  repoRoot: string,
+  worktreePath: string | undefined,
+  branch: string | undefined,
+  options: CleanupWorktreeOptions = {}
+): CleanupWorktreeResult {
+  const { keepBranch = false } = options;
+  const errors: string[] = [];
+  let worktreeRemoved = false;
+  let branchDeleted = false;
+
+  // Step 1: Remove worktree directory
+  if (worktreePath) {
+    const result = removeWorktree(repoRoot, worktreePath);
+    worktreeRemoved = result.success;
+    if (result.error) {
+      errors.push(result.error);
+    }
+  }
+
+  // Step 2: Delete local branch (optional)
+  if (branch && !keepBranch) {
+    const result = deleteBranch(repoRoot, branch);
+    branchDeleted = result.success;
+    if (result.error) {
+      errors.push(result.error);
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    worktreeRemoved,
+    branchDeleted,
+    errors,
+  };
+}
+
+/**
+ * Merge a PR synchronously using gh CLI
+ *
+ * @param prUrl - PR URL to merge
+ * @param repoRoot - Repository root path
+ * @returns Object with success status, merge commit hash, and any errors
+ */
+function mergePR(
+  prUrl: string,
+  repoRoot: string
+): { success: boolean; mergeCommit?: string; error?: string } {
+  try {
+    // First check PR status
+    const checkResult = execSync(
+      `gh pr view "${prUrl}" --json state,mergeable,mergeCommit`,
+      { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
+    );
+    const prInfo = JSON.parse(checkResult);
+
+    // If already merged, return the merge commit
+    if (prInfo.state === "MERGED") {
+      return {
+        success: true,
+        mergeCommit: prInfo.mergeCommit?.oid || undefined,
+      };
+    }
+
+    // If closed without merge, fail
+    if (prInfo.state === "CLOSED") {
+      return { success: false, error: "PR is closed without being merged" };
+    }
+
+    // If not mergeable, fail
+    if (prInfo.mergeable === "CONFLICTING") {
+      return { success: false, error: "PR has merge conflicts" };
+    }
+
+    // Merge the PR (without --delete-branch since we already cleaned up the local branch)
+    execSync(
+      `gh pr merge "${prUrl}" --merge`,
+      { cwd: repoRoot, encoding: "utf-8", timeout: 60000 }
+    );
+
+    // Get the merge commit hash
+    const mergeResult = execSync(
+      `gh pr view "${prUrl}" --json mergeCommit`,
+      { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
+    );
+    const mergeInfo = JSON.parse(mergeResult);
+
+    return {
+      success: true,
+      mergeCommit: mergeInfo.mergeCommit?.oid || undefined,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -278,9 +526,32 @@ export function resumeTask(repoRoot: string, taskName: string): LifecycleResult 
 }
 
 /**
- * Approve task: review -> completed
+ * Options for approveTask
  */
-export function approveTask(repoRoot: string, taskName: string): LifecycleResult {
+export interface ApproveTaskOptions {
+  /** Skip PR merge (just update status) */
+  skipMerge?: boolean;
+  /** Clean up worktree and branch after PR is merged (default: false) */
+  cleanupIfMerged?: boolean;
+  /** Git pull to sync merged code to local after PR is merged (default: false) */
+  pullIfMerged?: boolean;
+}
+
+/**
+ * Approve task: review -> completed
+ *
+ * Full approve flow (when task has pr_url):
+ * 1. Merge PR using gh pr merge
+ * 2. Optionally git pull (only if --pull-if-merged)
+ * 3. Update task.json with merged_at, merge_commit, status=completed
+ *
+ * Note: Worktree cleanup is NOT done here. Use `viben task cleanup` for that.
+ */
+export function approveTask(
+  repoRoot: string,
+  taskName: string,
+  options: ApproveTaskOptions = {}
+): LifecycleResult {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -291,35 +562,128 @@ export function approveTask(repoRoot: string, taskName: string): LifecycleResult
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
+  // Extract pr_url and worktree info
+  const prUrl = (taskData as { pr_url?: string }).pr_url;
+  const worktreePath = (taskData as { worktree_path?: string }).worktree_path;
+  const branch = taskData.branch;
+  const hasPrUrl = !!prUrl;
+
+  // Validate status transition - only review -> completed is allowed
+  // No special handling for in_progress + pr_url
   const validation = validateStatusTransition(taskData.status, "completed", "APPROVED");
   if (!validation.valid) {
     return { success: false, task: taskName, error: validation.error };
   }
 
-  // Update task status
+  const dirName = taskDir.split("/").pop() || taskName;
+  const additionalData: Record<string, unknown> = {};
+
+  // Step 1: Merge PR if exists
+  let mergeCommit: string | undefined;
+  let mergedAt: string | undefined;
+  let prMerged = false;
+
+  if (hasPrUrl && !options.skipMerge) {
+    const mergeResult = mergePR(prUrl!, repoRoot);
+    additionalData.mergeResult = mergeResult;
+
+    if (!mergeResult.success) {
+      return {
+        success: false,
+        task: dirName,
+        error: `Failed to merge PR: ${mergeResult.error}`,
+        additionalData,
+      };
+    }
+
+    mergeCommit = mergeResult.mergeCommit;
+    mergedAt = new Date().toISOString();
+    prMerged = true;
+
+    // Fetch latest main after merge
+    runGitCommand(["fetch", "origin", "main"], repoRoot);
+  }
+
+  // Step 2: Optionally git pull after merge (only if --pull-if-merged)
+  if (prMerged && options.pullIfMerged) {
+    const pullResult = runGitCommand(["pull", "origin", "main"], repoRoot);
+    additionalData.pullResult = {
+      success: pullResult.code === 0,
+      output: pullResult.stdout,
+      error: pullResult.stderr,
+    };
+  }
+
+  // Step 3: Optionally clean up worktree after merge (only if --cleanup-if-merged)
+  // This follows the same logic as `viben task cleanup`:
+  // 1. Remove agent from registry
+  // 2. Remove worktree directory
+  // 3. Delete local branch
+  if (prMerged && options.cleanupIfMerged && (worktreePath || branch)) {
+    // 3a. Remove from registry (by worktree path)
+    let removedFromRegistry = false;
+    if (worktreePath) {
+      removedFromRegistry = removeFromRegistryByWorktree(worktreePath, repoRoot);
+    }
+
+    // 3b. Remove worktree and delete branch
+    const cleanupResult = cleanupWorktree(repoRoot, worktreePath, branch);
+
+    additionalData.worktreeCleanup = {
+      ...cleanupResult,
+      removedFromRegistry,
+    };
+
+    if (cleanupResult.errors.length > 0) {
+      // Log warnings but don't fail - worktree cleanup is best-effort
+      console.warn(`Worktree cleanup warnings: ${cleanupResult.errors.join(", ")}`);
+    }
+  }
+
+  // Step 4: Update task status
   const completedAt = getTodayDate();
-  if (!updateTaskStatus(taskDir, "completed", {
+  const updateFields: Record<string, unknown> = {
     completedAt,
-    reviewReason: "approved"
-  })) {
+    reviewReason: "approved",
+  };
+
+  // Note: Do NOT clear worktree_path here - it should be preserved for reference
+
+  if (mergedAt) {
+    updateFields.merged_at = mergedAt;
+  }
+  if (mergeCommit) {
+    updateFields.merge_commit = mergeCommit;
+  }
+
+  if (!updateTaskStatus(taskDir, "completed", updateFields)) {
     return { success: false, task: taskName, error: "Failed to update task.json" };
   }
 
   // Append event
-  appendTaskEvent(taskDir, "APPROVED");
+  appendTaskEvent(taskDir, "APPROVED", {
+    merge_commit: mergeCommit,
+    merged_at: mergedAt,
+  });
 
-  const dirName = taskDir.split("/").pop() || taskName;
   return {
     success: true,
     task: dirName,
     status: "completed",
     fromStatus: taskData.status,
+    additionalData: {
+      ...additionalData,
+      merge_commit: mergeCommit,
+      merged_at: mergedAt,
+    },
   };
 }
 
 /**
  * Reject task: review -> backlog
+ *
+ * Also allows: in_progress -> backlog if pr_url exists
+ * This handles cases where PR was created but status wasn't updated to review
  */
 export function rejectTask(
   repoRoot: string,
@@ -336,10 +700,20 @@ export function rejectTask(
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "backlog", "REJECTED");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
+  // Special case: allow reject from in_progress if pr_url exists
+  // This handles cases where PR was created but status wasn't updated to review
+  const hasPrUrl = !!(taskData as { pr_url?: string }).pr_url;
+  const isInProgress = taskData.status === "in_progress";
+
+  if (isInProgress && hasPrUrl) {
+    // Allow transition from in_progress with pr_url - treat as if it was in review
+    // This is a recovery path for inconsistent state
+  } else {
+    // Validate status transition normally
+    const validation = validateStatusTransition(taskData.status, "backlog", "REJECTED");
+    if (!validation.valid) {
+      return { success: false, task: taskName, error: validation.error };
+    }
   }
 
   // Build additional fields - clear pr_url, record rejection

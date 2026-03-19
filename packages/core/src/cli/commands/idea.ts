@@ -499,6 +499,7 @@ export function registerIdeaCommand(program: Command): void {
     .option("--model <model>", "Model to use for execution")
     .option("--start", "Auto-enqueue task for execution (status: queue)")
     .option("--worktree", "Run agent in a git worktree (isolated branch)")
+    .option("--compute-reward", "Enable reward computation for FileRL")
     .option("--json", "JSON format output")
     .action(
       async (
@@ -514,6 +515,7 @@ export function registerIdeaCommand(program: Command): void {
           model?: string;
           start?: boolean;
           worktree?: boolean;
+          computeReward?: boolean;
           json?: boolean;
         }
       ) => {
@@ -546,6 +548,7 @@ export function registerIdeaCommand(program: Command): void {
             model: options.model,
             start: options.start,
             worktree: options.worktree,
+            computeReward: options.computeReward,
           });
 
           if (!result.success) {

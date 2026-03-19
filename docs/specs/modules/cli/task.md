@@ -703,10 +703,12 @@ viben task validate-context <task>
 │       │   │       └── 调度子 agent (按 next_action 顺序):                    │   │
 │       │   │               ├── Task(implement) ──▶ 实现代码                  │   │
 │       │   │               ├── Task(check) ──────▶ 检查代码                  │   │
-│       │   │               ├── Task(fix) ────────▶ 修复问题                  │   │
-│       │   │               └── create-pr ────────▶ 创建 PR                   │   │
+│       │   │               └── Task(finish) ─────▶ 最终验证                  │   │
 │       │   │                                                                 │   │
-│       │   │  Phase 3: Report Status                                         │   │
+│       │   │  Phase 3: Create PR (worktree 模式)                             │   │
+│       │   │       └── viben task create-pr ──▶ 创建 PR                      │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 4: Report Status                                         │   │
 │       │   │       └── 输出监控命令                                          │   │
 │       │   │                                                                 │   │
 │       │   └─────────────────────────────────────────────────────────────────┘   │
@@ -831,7 +833,8 @@ viben task work-phase <task> [options]
    - `check` → 调用 check agent
    - `fix` → 调用 fix agent
    - `finish` → 调用 check agent（带 [finish] 标记）
-   - `create-pr` → 执行 `viben task create-pr`
+
+> **注意**: `create-pr` 和 `compute-reward` 由 **start agent** 在 main repo 中调用，不由 work agent 处理。
 
 **示例**:
 ```bash
@@ -1231,8 +1234,7 @@ viben task check-stuck 03-11-feature-xyz --json
   "next_action": [
     {"phase": 1, "action": "implement"},
     {"phase": 2, "action": "check"},
-    {"phase": 3, "action": "finish"},
-    {"phase": 4, "action": "create-pr"}
+    {"phase": 3, "action": "finish"}
   ],
   "commit": null,
   "pr_url": null,

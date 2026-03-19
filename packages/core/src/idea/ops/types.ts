@@ -380,6 +380,9 @@ export interface IdeaPromoteOptions {
 
   /** Task description override */
   description?: string;
+
+  /** Enable reward computation for FileRL */
+  computeReward?: boolean;
 }
 
 /**

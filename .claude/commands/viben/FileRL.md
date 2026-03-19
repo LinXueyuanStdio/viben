@@ -205,9 +205,13 @@ Reward is computed automatically in work-phase via `viben task compute-reward`.
 viben task work-phase <task>
 ├── 1. implement-phase      → 实现代码
 ├── 2. check-phase          → 检查代码质量
-├── 3. validate-check-phase → 验证通过
-├── 4. create-pr            → 创建 PR
-└── 5. compute-reward       → 评估 PR 奖励
+└── 3. validate-check-phase → 验证通过
+```
+
+**Post-Work Stages (by start agent in main repo):**
+```
+├── 4. create-pr            → 创建 PR (worktree 模式)
+└── 5. compute-reward       → 评估 PR 奖励 (如果启用)
 ```
 
 **Reward config in task.json** (inherited from idea type):

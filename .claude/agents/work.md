@@ -28,18 +28,18 @@ This directory contains all context files for the current task:
 
 | Mode | worktree | Branch switching | Final actions |
 |------|----------|------------------|---------------|
-| Main Repo | `false` or absent | NO switching | Notify user for review |
-| Worktree | `true` | Isolated branch | create-pr → compute-reward (if enabled) |
+| Main Repo | `false` or absent | NO switching | Notify completion |
+| Worktree | `true` | Isolated branch | Notify completion (PR created by start agent) |
 
 **Main Repo Mode** (default):
 - Work directly in main repo
 - Do NOT switch branches
-- Do NOT create PR
-- After finish: notify user that changes are ready for review
+- After finish: notify that implementation is complete
 
 **Worktree Mode**:
 - Work in isolated git worktree
-- Create PR at the end
+- After finish: notify that implementation is complete
+- **Note**: PR creation is handled by the start agent in main repo, NOT by work agent
 
 ## Core Principles
 
@@ -182,56 +182,18 @@ Task(
 
 The finish agent actively updates spec docs when it detects new patterns or contracts in the changes. This is different from regular "check" which has full specs for self-fix loop.
 
-### action: "create-pr" (Worktree Mode Only)
+**Workflow order**: implement → check → finish
 
-> **IMPORTANT**: Only run this action if task.json has `worktree=true`. In Main Repo mode, skip this action.
+> **Note**: `create-pr` and `compute-reward` are handled by the **start agent** in main repo after work agent completes. Work agent does NOT handle these actions.
 
-This action creates a Pull Request from the feature branch. Run it via Bash:
+### After Finish Phase
 
-```bash
-viben task create-pr ${TASK_DIR}
-```
+After completing all phases (implement → check → finish):
 
-This will:
-1. Stage and commit all changes (excluding workspace)
-2. Push to origin
-3. Create a Draft PR using `gh pr create`
-4. Update task.json with status="review", pr_url, and current_phase
-
-**Note**: This is the only action that performs git commit, as it's the final step after all implementation and checks are complete.
-
-### action: "compute-reward" (After create-pr, if enabled)
-
-> **IMPORTANT**: Only run this action if task.json has `compute_reward=true`. Skip if not enabled.
-
-This action evaluates PR quality using reward type prompts. Call the reward subagent:
-
-```
-Task(
-  subagent_type: "reward",
-  prompt: "task_dir: .viben/tasks/02-03-my-feature\n\nEvaluate PR quality using reward types in reward.jsonl",
-  model: "opus",
-  run_in_background: true
-)
-```
-
-The reward agent will:
-1. Read reward.jsonl for configured reward types
-2. Read each reward type prompt
-3. Evaluate code changes against each type
-4. Output JSON scores
-
-After reward agent completes, the scores are written to task.json.
-
-**Workflow order**: implement → check → finish → create-pr → **compute-reward** (if enabled)
-
-### Main Repo Mode: After Finish
-
-In Main Repo mode (no worktree), after completing all phases:
-
-1. **Do NOT run create-pr**
-2. Notify user: "Implementation complete. Changes are ready for review."
-3. Update task.json status to "review"
+1. Output completion message: "Implementation complete. Work agent finished."
+2. The start agent (in main repo) will handle:
+   - `viben task create-pr` (for worktree mode)
+   - `viben task compute-reward` (if enabled)
 
 ---
 
@@ -292,6 +254,6 @@ If a subagent reports failure, read the output and decide:
 
 1. **Always pass task_dir in subagent prompts** - First line must be `task_dir: <path>`
 2. **Do not read `docs/specs/` or requirement files directly** - Let Hook inject to subagents
-3. **Only commit via create-pr action** - Use `viben task create-pr` at the end of pipeline
+3. **Do NOT run create-pr or compute-reward** - These are handled by start agent in main repo
 4. **All subagents should use opus model for complex tasks**
 5. **Keep work logic simple** - Complex logic belongs in subagents
