@@ -6,7 +6,7 @@
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 
 import {
   resolveTaskDirectory,
@@ -353,7 +353,6 @@ export function enqueueTask(
   // Submit to command queue system (unless skipQueue is true)
   let queueId: string | undefined;
   if (!options.skipQueue) {
-    const taskDirRel = relative(repoRoot, taskDir);
     const dirName = taskDir.split("/").pop() || taskName;
 
     // Build command with absolute path: cd <repoRoot> && viben task start <task>
@@ -364,7 +363,7 @@ export function enqueueTask(
       command,
       cwd: repoRoot,
       metadata: {
-        task_dir: taskDirRel,
+        task_dir: taskDir, // Store absolute path
         task_name: dirName,
       },
     });

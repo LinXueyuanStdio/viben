@@ -10,6 +10,9 @@
 
 import type { RewardConfig } from "../../reward/ops/types";
 
+// Re-export DEFAULT_REWARD_CONFIG from reward module
+export { DEFAULT_REWARD_CONFIG } from "../../reward/ops/types";
+
 // =============================================================================
 // FileRL Target Configuration (YAML Header)
 // =============================================================================
@@ -135,13 +138,6 @@ export const DEFAULT_TASK_CONFIG: TaskConfig = {
   auto_start: true,
 };
 
-/**
- * Default reward configuration
- */
-export const DEFAULT_REWARD_CONFIG: RewardConfig = {
-  types: ["test_coverage", "code_quality", "agent_review"],
-  weights: [0.34, 0.33, 0.33],
-};
 
 // =============================================================================
 // FileRL Iteration State

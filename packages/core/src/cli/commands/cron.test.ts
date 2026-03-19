@@ -124,7 +124,9 @@ describe("Cron CLI Commands", () => {
       await ctx.run(["cron", "list"]);
 
       expect(mockListJobs).toHaveBeenCalled();
-      expect(ctx.console.logSpy).toHaveBeenCalled();
+      // Verify output contains job names and schedule info
+      expect(ctx.console.hasLog("Daily Greeting") || ctx.console.hasLog("daily-greeting")).toBe(true);
+      expect(ctx.console.hasLog("Hourly Check") || ctx.console.hasLog("hourly-check")).toBe(true);
     });
 
     it("should show message when no cron jobs exist", async () => {
@@ -169,7 +171,9 @@ describe("Cron CLI Commands", () => {
       await ctx.run(["cron", "show", "daily-greeting"]);
 
       expect(mockGetJob).toHaveBeenCalledWith("/mock/config/cron.yaml", "daily-greeting");
-      expect(ctx.console.logSpy).toHaveBeenCalled();
+      // Verify output contains job details
+      expect(ctx.console.hasLog("Daily Greeting") || ctx.console.hasLog("daily-greeting")).toBe(true);
+      expect(ctx.console.hasLog("0 9 * * *")).toBe(true);
     });
 
     it("should show error when job not found", async () => {
@@ -203,7 +207,9 @@ describe("Cron CLI Commands", () => {
 
       await ctx.run(["cron", "show", "backup-job"]);
 
-      expect(ctx.console.logSpy).toHaveBeenCalled();
+      // Verify output contains script job details
+      expect(ctx.console.hasLog("Backup Job") || ctx.console.hasLog("backup-job")).toBe(true);
+      expect(ctx.console.hasLog("script") || ctx.console.hasLog("tar")).toBe(true);
     });
   });
 
@@ -669,7 +675,11 @@ describe("Cron CLI Commands", () => {
         errorThrown = true;
       }
 
-      expect(errorThrown || ctx.console.errors.length > 0).toBe(true);
+      // Should either throw or log an error containing relevant message
+      if (!errorThrown) {
+        expect(ctx.console.errors.length).toBeGreaterThan(0);
+        expect(ctx.console.errors.some(e => e.includes("Service") || e.includes("unavailable") || e.includes("error"))).toBe(true);
+      }
     });
 
     it("should handle enable job error for non-existent job", async () => {
@@ -682,7 +692,11 @@ describe("Cron CLI Commands", () => {
         errorThrown = true;
       }
 
-      expect(errorThrown || ctx.console.errors.length > 0).toBe(true);
+      // Should either throw or log an error about job not found
+      if (!errorThrown) {
+        expect(ctx.console.errors.length).toBeGreaterThan(0);
+        expect(ctx.console.errors.some(e => e.includes("not found") || e.includes("nonexistent"))).toBe(true);
+      }
     });
 
     it("should handle disable job error for non-existent job", async () => {
@@ -695,7 +709,11 @@ describe("Cron CLI Commands", () => {
         errorThrown = true;
       }
 
-      expect(errorThrown || ctx.console.errors.length > 0).toBe(true);
+      // Should either throw or log an error about job not found
+      if (!errorThrown) {
+        expect(ctx.console.errors.length).toBeGreaterThan(0);
+        expect(ctx.console.errors.some(e => e.includes("not found") || e.includes("nonexistent"))).toBe(true);
+      }
     });
 
     it("should handle duplicate job error", async () => {
@@ -712,7 +730,11 @@ describe("Cron CLI Commands", () => {
         errorThrown = true;
       }
 
-      expect(errorThrown || ctx.console.errors.length > 0).toBe(true);
+      // Should either throw or log an error about duplicate job
+      if (!errorThrown) {
+        expect(ctx.console.errors.length).toBeGreaterThan(0);
+        expect(ctx.console.errors.some(e => e.includes("already exists") || e.includes("existing-job"))).toBe(true);
+      }
     });
 
     it("should handle delete error", async () => {
@@ -726,7 +748,11 @@ describe("Cron CLI Commands", () => {
         errorThrown = true;
       }
 
-      expect(errorThrown || ctx.console.errors.length > 0).toBe(true);
+      // Should either throw or log an error about delete failure
+      if (!errorThrown) {
+        expect(ctx.console.errors.length).toBeGreaterThan(0);
+        expect(ctx.console.errors.some(e => e.includes("delete") || e.includes("Failed") || e.includes("error"))).toBe(true);
+      }
     });
   });
 
@@ -763,7 +789,9 @@ describe("Cron CLI Commands", () => {
 
       await ctx.run(["cron", "list"]);
 
-      expect(ctx.console.logSpy).toHaveBeenCalled();
+      // Verify both jobs are listed with their IDs
+      expect(ctx.console.hasLog("enabled-job")).toBe(true);
+      expect(ctx.console.hasLog("disabled-job")).toBe(true);
     });
 
     it("should format job status correctly in list", async () => {
@@ -777,7 +805,10 @@ describe("Cron CLI Commands", () => {
 
       await ctx.run(["cron", "list"]);
 
-      expect(ctx.console.logSpy).toHaveBeenCalled();
+      // Verify all jobs are listed
+      expect(ctx.console.hasLog("success-job")).toBe(true);
+      expect(ctx.console.hasLog("failure-job")).toBe(true);
+      expect(ctx.console.hasLog("running-job")).toBe(true);
     });
   });
 

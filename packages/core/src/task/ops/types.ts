@@ -340,14 +340,18 @@ export interface UnifiedTask {
 
   /**
    * FileRL directory absolute path (e.g., /path/to/.viben/filerl/<name>)
-   * When set, reward phase reads config from here and writes results to iter<N>/<task>/
+   * When set, reward phase reads config from FileRL target and writes results to iter<N>/<task>/
    */
   filerl_dir?: string;
 
-  /** Reward configuration for evaluation (used when filerl_dir is not set) */
+  /**
+   * @deprecated Use filerl_dir instead. Reward config is now read from FileRL target file.
+   */
   reward_config?: RewardConfig;
 
-  /** Reward evaluation result (used when filerl_dir is not set) */
+  /**
+   * @deprecated Reward results are now written to FileRL directory: .viben/filerl/<name>/iter<N>/<task>/reward.json
+   */
   reward?: RewardResult;
 }
 

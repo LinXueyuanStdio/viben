@@ -10,6 +10,7 @@ import type { TelegramChannelConfig, Channel } from "../types";
 import {
   getTelegramUpdates,
   deleteTelegramWebhook,
+  testTelegramChannel,
   type TelegramUpdate,
   type TelegramMessage,
 } from "../telegram";
@@ -86,7 +87,6 @@ export class TelegramPoller {
     }
 
     // Get bot info
-    const { testTelegramChannel } = await import("../telegram");
     const testResult = await testTelegramChannel(this.config);
     if (testResult.success && testResult.details) {
       // Extract username from "Bot: @username (first_name)"

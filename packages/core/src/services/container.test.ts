@@ -2,6 +2,7 @@
  * Container Service Tests
  *
  * Tests for process management in ContainerService.
+ * For integration tests with real processes, see container.integration.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { EventEmitter } from "node:events";

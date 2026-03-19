@@ -3,6 +3,7 @@
  *
  * Tests event validation, sequencing, and persistence.
  * Uses mocks for file system and taskService dependencies.
+ * For integration tests with real file system, see event-store.integration.test.ts
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

@@ -1,12 +1,24 @@
 /**
- * Executor Chat Functionality Tests
+ * Executor Chat Functionality Unit Tests
  *
- * Tests actual behavior of chat mode including:
+ * These tests verify command construction for each executor's chat mode.
+ * The spawn function is mocked to test argument building without actually
+ * launching external processes.
+ *
+ * Tests cover:
  * - Command argument building for ClaudeCode, Gemini, Codex
- * - Environment variable handling
- * - Error cases (executable not found)
+ * - Environment variable merging (config + runtime)
+ * - Error cases (executable not found via mocked `which`)
  * - Session resume functionality
  * - Model and format options
+ *
+ * NOTE: These are UNIT tests that mock spawn and which. They verify that
+ * the correct commands would be executed, but do NOT test actual process
+ * spawning. For integration tests that verify spawn works correctly with
+ * real executables, see the E2E test suite.
+ *
+ * The spawn infrastructure itself (child_process.spawn) is part of Node.js
+ * and is assumed to work correctly. We only test our argument construction.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ChildProcess } from "node:child_process";

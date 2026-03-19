@@ -13,7 +13,7 @@ import {
   readSync,
   closeSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, isAbsolute } from "node:path";
 
 import type { OutputContext } from "../../cli/types";
 import {
@@ -474,7 +474,7 @@ export function cmdStatusDetail(target: string, repoRoot: string, _ctx?: OutputC
   const platform = agent.platform || "claude";
 
   // Get session-id from task.json
-  const taskDirAbs = join(repoRoot, taskDir);
+  const taskDirAbs = isAbsolute(taskDir) ? taskDir : join(repoRoot, taskDir);
   const sessionId = getSessionId(taskDirAbs) || "";
 
   console.log(chalk.blue(`=== Agent Detail: ${agentId} ===`));

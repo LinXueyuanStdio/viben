@@ -33,16 +33,7 @@ import {
 
 import { getRewardType } from "../../reward/ops";
 import type { RewardConfig, RewardResult, RewardScore } from "../../reward/ops/types";
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/** Default reward configuration if not specified in task.json */
-export const DEFAULT_REWARD_CONFIG: RewardConfig = {
-  types: ["test_coverage", "code_quality", "agent_review"],
-  weights: [0.34, 0.33, 0.33],
-};
+import { DEFAULT_REWARD_CONFIG } from "../../reward/ops/types";
 
 // =============================================================================
 // Types

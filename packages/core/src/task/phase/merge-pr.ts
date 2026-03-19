@@ -258,7 +258,7 @@ Update task.json with merged_at, merge_commit, and status when done.`;
       agentId,
       worktreePath: workingDir,
       pid: agentPid,
-      taskDir: taskDirRelative,
+      taskDir: taskDirAbs, // Store absolute path
       platform,
     },
     repoRoot

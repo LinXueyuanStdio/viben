@@ -8,7 +8,7 @@ import { Command } from "commander";
 import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join, basename, isAbsolute } from "node:path";
 import chalk from "chalk";
 import type { OutputContext } from "../types";
 import {
@@ -232,7 +232,7 @@ async function startAgentCommand(
     // Read session ID from task.json
     let sessionId = options.session;
     if (!sessionId) {
-      const taskDirAbs = join(repoRoot, agent.task_dir);
+      const taskDirAbs = isAbsolute(agent.task_dir) ? agent.task_dir : join(repoRoot, agent.task_dir);
       sessionId = getSessionId(taskDirAbs) || undefined;
     }
 

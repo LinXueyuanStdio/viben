@@ -5,6 +5,7 @@
  */
 
 import { investigateIssues } from "./investigation";
+import { listIssues } from "./issues";
 import type { GitHubIssueInvestigation } from "../../types/github";
 
 /**
@@ -70,9 +71,6 @@ export async function importAllOpenIssues(
   workspacePath: string,
   maxIssues: number = 50
 ): Promise<ImportResult> {
-  // Import dynamically to avoid circular dependency
-  const { listIssues } = await import("./issues");
-
   // Fetch open issues
   const { items: issues } = await listIssues(workspacePath, {
     state: "open",

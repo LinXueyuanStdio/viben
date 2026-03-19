@@ -5,7 +5,7 @@
  * agent activity across both Claude Code and OpenCode platforms.
  */
 import { existsSync, readFileSync, statSync, openSync, readSync, closeSync } from "node:fs";
-import { join } from "node:path";
+import { join, isAbsolute } from "node:path";
 import {
   runGitCommand,
   registryListAgents,
@@ -412,10 +412,10 @@ export function getAgentStatus(agent: AgentRegistryEntry, repoRoot: string): Age
   const worktree = agent.worktree_path;
   const platform = agent.platform || "claude";
   const logFile = join(worktree, ".agent-log");
-  const taskJsonPath = join(repoRoot, agent.task_dir, "task.json");
+  const taskDir = isAbsolute(agent.task_dir) ? agent.task_dir : join(repoRoot, agent.task_dir);
+  const taskJsonPath = join(taskDir, "task.json");
 
   // Get session ID from task.json
-  const taskDir = join(repoRoot, agent.task_dir);
   const sessionId = getSessionId(taskDir);
 
   // Get elapsed time

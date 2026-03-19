@@ -4,7 +4,7 @@
  * Provides functions for waiting until agents complete, with timeout handling.
  * Used in FileRL flows to synchronize parallel task execution.
  */
-import { join } from "node:path";
+import { join, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { readTaskJson, resolveTaskDirectory } from "../viben-workspace";
@@ -259,8 +259,8 @@ export async function waitForAgents(
 
   // Initialize waiting tasks
   const waitingTasks: WaitingTask[] = agentsToWait.map((agent) => {
-    const taskDir = resolveTaskDirectory(agent.task_dir, repoRoot) ||
-                    join(repoRoot, agent.task_dir);
+    const taskDir = isAbsolute(agent.task_dir) ? agent.task_dir :
+                    (resolveTaskDirectory(agent.task_dir, repoRoot) || join(repoRoot, agent.task_dir));
     return {
       task: agent.id,
       taskDir,

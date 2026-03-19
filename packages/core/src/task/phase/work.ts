@@ -354,7 +354,7 @@ Follow your agent instructions to execute the task workflow. Read task.json from
       agentId,
       worktreePath: workingDir,
       pid: agentPid,
-      taskDir: taskDirRelativeToRepo,
+      taskDir: taskDir, // Store absolute path (taskDir is already absolute)
       platform,
     },
     repoRoot

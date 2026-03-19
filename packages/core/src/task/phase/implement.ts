@@ -244,7 +244,7 @@ ${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before fi
       agentId,
       worktreePath: repoRoot,
       pid: agentPid,
-      taskDir: taskDirRelative,
+      taskDir: taskDirAbs, // Store absolute path
       platform,
     },
     repoRoot
@@ -427,7 +427,7 @@ ${contextSection ? contextSection + "\n\n" : ""}Run lint and typecheck before fi
       agentId,
       worktreePath: repoRoot,
       pid: agentPid,
-      taskDir: taskDirRelative,
+      taskDir: taskDirAbs, // Store absolute path
       platform,
     },
     repoRoot

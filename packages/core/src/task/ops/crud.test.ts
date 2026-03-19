@@ -545,8 +545,23 @@ describe("crud operations", () => {
 
   describe("deleteTask", () => {
     it("should delete task when it exists", async () => {
-      vi.mocked(execSync).mockReturnValue(Buffer.from(""));
+      // Mock execSync to actually perform the rm command using fs
+      const fs = await import("node:fs");
+      vi.mocked(execSync).mockImplementation((cmd) => {
+        // Parse the rm -rf command and delete using fs
+        if (typeof cmd === "string" && cmd.startsWith('rm -rf "')) {
+          const pathMatch = cmd.match(/^rm -rf "(.+)"$/);
+          if (pathMatch?.[1]) {
+            fs.rmSync(pathMatch[1], { recursive: true, force: true });
+          }
+        }
+        return Buffer.from("");
+      });
+
       await createTaskDir(tempDir, "03-15-test-task", { status: "backlog" });
+
+      // Verify task exists before deletion
+      expect(await tempDir.exists(".viben/tasks/03-15-test-task")).toBe(true);
 
       const result = deleteTask(tempDir.root, "test-task");
 
@@ -556,6 +571,9 @@ describe("crud operations", () => {
         expect.stringContaining("rm -rf"),
         expect.any(Object)
       );
+
+      // Verify task directory was actually deleted
+      expect(await tempDir.exists(".viben/tasks/03-15-test-task")).toBe(false);
     });
 
     it("should return error when task not found", async () => {

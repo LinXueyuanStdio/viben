@@ -1,11 +1,24 @@
 /**
- * Notifications Module Tests
+ * Notifications Module Unit Tests
  *
- * Tests are organized into:
- * 1. Unit tests for escape functions
- * 2. Command building tests (verifying spawn arguments)
- * 3. Error handling tests
- * 4. Convenience function tests
+ * These tests verify:
+ * 1. Escape functions (pure functions, fully testable)
+ * 2. Command construction for each platform (macOS, Linux, Windows)
+ * 3. Error handling when spawn fails
+ * 4. Convenience function argument formatting
+ *
+ * IMPORTANT: These are UNIT tests that mock the spawn function.
+ * They verify correct command construction but do NOT verify actual
+ * notification delivery. Actual notifications require manual testing
+ * on each platform.
+ *
+ * Manual test procedure for notification delivery:
+ * 1. macOS: Run `osascript -e 'display notification "test" with title "Viben"'`
+ * 2. Linux: Run `notify-send "Viben" "test"` (requires libnotify)
+ * 3. Windows: Run PowerShell New-BurntToastNotification (requires BurntToast module)
+ *
+ * TODO: Consider adding E2E tests that run on CI with actual OS notifications
+ * (would require platform-specific CI runners).
  */
 import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
 import { spawn } from "node:child_process";
