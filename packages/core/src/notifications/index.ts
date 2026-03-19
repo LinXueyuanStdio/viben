@@ -162,22 +162,25 @@ async function sendWindowsNotification(options: NotificationOptions): Promise<bo
 
 /**
  * Escape string for AppleScript
+ * @internal Exported for testing
  */
-function escapeAppleScript(str: string): string {
+export function escapeAppleScript(str: string): string {
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 /**
  * Escape string for PowerShell
+ * @internal Exported for testing
  */
-function escapePS(str: string): string {
+export function escapePS(str: string): string {
   return str.replace(/`/g, "``").replace(/"/g, '`"').replace(/\$/g, "`$");
 }
 
 /**
  * Escape string for XML
+ * @internal Exported for testing
  */
-function escapeXml(str: string): string {
+export function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

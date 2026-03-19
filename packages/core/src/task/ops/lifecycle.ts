@@ -356,8 +356,9 @@ export function enqueueTask(
     const taskDirRel = relative(repoRoot, taskDir);
     const dirName = taskDir.split("/").pop() || taskName;
 
-    // Build command: viben task start <task>
-    const command = `viben task start ${dirName}`;
+    // Build command with absolute path: cd <repoRoot> && viben task start <task>
+    // This ensures the command works regardless of where the queue worker executes
+    const command = `cd "${repoRoot}" && viben task start "${dirName}"`;
 
     const queueResult = queueEnqueue({
       command,

@@ -9,6 +9,12 @@ import type {
   MemberRole,
   AddMemberRequest,
 } from "@/lib/gateway";
+import type { TaskWithAttemptStatus } from "@/lib/vibe-kanban";
+import type {
+  AgentDetailData,
+  ModelOption,
+} from "@/components/chat/agent-detail-panel";
+import type { ExecutorDetailData } from "@/components/chat/executor-detail-panel";
 
 // Re-export detail data types from panel components
 export type {
@@ -69,22 +75,22 @@ export interface SkillsTabContentProps {
 
 export interface TasksTabContentProps {
   /** Tasks to display */
-  tasks: import("@/lib/vibe-kanban").TaskWithAttemptStatus[];
+  tasks: TaskWithAttemptStatus[];
   /** Whether tasks are loading */
   isLoading?: boolean;
   /** Called when a task is clicked */
-  onTaskClick?: (task: import("@/lib/vibe-kanban").TaskWithAttemptStatus) => void;
+  onTaskClick?: (task: TaskWithAttemptStatus) => void;
 }
 
 export interface AgentDetailTabContentProps {
   /** Agent data to display (uses AgentDetailData from panel) */
-  agent: import("@/components/chat/agent-detail-panel").AgentDetailData;
+  agent: AgentDetailData;
   /** Workspace path for loading capabilities */
   workspacePath?: string;
   /** Whether this is the default agent */
   isDefault?: boolean;
   /** Available models for selection */
-  models?: import("@/components/chat/agent-detail-panel").ModelOption[];
+  models?: ModelOption[];
   /** Called when agent is updated */
   onUpdate?: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
   /** Called when set as default is requested */
@@ -99,7 +105,7 @@ export interface AgentDetailTabContentProps {
 
 export interface ExecutorDetailTabContentProps {
   /** Executor data to display (uses ExecutorDetailData from panel) */
-  executor: import("@/components/chat/executor-detail-panel").ExecutorDetailData;
+  executor: ExecutorDetailData;
   /** Workspace path for loading related data (e.g., "/Users/foo/project") */
   workspacePath: string;
   /** Called when settings is clicked (navigate to edit page) */

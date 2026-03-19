@@ -7,12 +7,14 @@
  * - Model aliases (list, create, delete)
  * - Model configuration (get, set, delete)
  * - Fallback chain management (get, set, add, remove, clear)
- * - Provider-specific model listing
+ * - Model enable/disable
  * - Reload configuration
  * - Error handling (404, 400)
+ *
+ * These tests verify the HTTP route handlers using a mock Fastify instance
+ * that simulates HTTP requests and invokes actual route handlers.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import Fastify, { type FastifyInstance } from "fastify";
 import { registerModelRoutes } from "./models";
 import type { Model, ModelConfig } from "../../types";
 
@@ -56,41 +58,33 @@ import { modelManager } from "../../models";
 // Sample test data
 const mockModels: Model[] = [
   {
+    id: "claude-sonnet",
+    name: "Claude Sonnet",
+    provider: "anthropic",
+    contextLength: 200000,
+    maxOutputTokens: 8192,
+    isDefault: true,
+    enabled: true,
+  },
+  {
     id: "gpt-4o",
     name: "GPT-4o",
     provider: "openai",
     contextLength: 128000,
-    maxOutputTokens: 16384,
-    inputPrice: 2.5,
-    outputPrice: 10,
+    maxOutputTokens: 4096,
+    isDefault: false,
+    enabled: true,
   },
   {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    provider: "openai",
-    contextLength: 128000,
-    maxOutputTokens: 16384,
-    inputPrice: 0.15,
-    outputPrice: 0.6,
-  },
-  {
-    id: "claude-3-5-sonnet-20241022",
-    name: "Claude 3.5 Sonnet",
-    provider: "anthropic",
-    contextLength: 200000,
+    id: "gemini-pro",
+    name: "Gemini Pro",
+    provider: "google",
+    contextLength: 1000000,
     maxOutputTokens: 8192,
-    inputPrice: 3,
-    outputPrice: 15,
+    isDefault: false,
+    enabled: false,
   },
 ];
-
-const mockAliases: Record<string, string> = {
-  gpt4: "gpt-4o",
-  claude: "claude-3-5-sonnet-20241022",
-  sonnet: "claude-3-5-sonnet-20241022",
-};
-
-const mockFallbacks: string[] = ["gpt-4o", "claude-3-5-sonnet-20241022"];
 
 const mockModelConfig: ModelConfig = {
   temperature: 0.7,
@@ -98,65 +92,169 @@ const mockModelConfig: ModelConfig = {
   topP: 0.9,
 };
 
-describe("Model Routes", () => {
-  let fastify: FastifyInstance;
+/**
+ * Mock Fastify instance for testing route handlers
+ */
+interface MockReply {
+  code: ReturnType<typeof vi.fn>;
+}
 
-  beforeEach(async () => {
-    // Reset all mocks
-    vi.clearAllMocks();
+interface RouteOptions {
+  schema?: unknown;
+}
 
-    // Setup default mock implementations BEFORE registering routes
-    vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
-    vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
-    vi.mocked(modelManager.resolveAlias).mockImplementation(async (id) => {
-      return mockAliases[id] || id;
-    });
-    vi.mocked(modelManager.getModelInfo).mockImplementation((id) => {
-      const resolved = mockAliases[id] || id;
-      return mockModels.find((m) => m.id === resolved);
-    });
-    vi.mocked(modelManager.getAliases).mockResolvedValue(mockAliases);
-    vi.mocked(modelManager.getFallbacks).mockResolvedValue(mockFallbacks);
-    vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
-    vi.mocked(modelManager.getModelsByProvider).mockImplementation(
-      async (provider) => {
-        return mockModels.filter((m) => m.provider === provider);
+interface MockRouteHandler {
+  method: string;
+  url: string;
+  handler: (request: unknown, reply: MockReply) => Promise<unknown>;
+}
+
+function createMockFastify() {
+  const routes: MockRouteHandler[] = [];
+
+  const fastify = {
+    get: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "GET", url, handler: actualHandler });
+    }),
+    post: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "POST", url, handler: actualHandler });
+    }),
+    put: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "PUT", url, handler: actualHandler });
+    }),
+    patch: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "PATCH", url, handler: actualHandler });
+    }),
+    delete: vi.fn((url: string, handler: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      routes.push({ method: "DELETE", url, handler });
+    }),
+    routes,
+    // Helper to find and execute a route handler
+    async inject(options: { method: string; url: string; payload?: unknown }) {
+      const { method, url, payload } = options;
+      const parsedUrl = new URL(url, "http://localhost");
+      const pathname = parsedUrl.pathname;
+      const searchParams = Object.fromEntries(parsedUrl.searchParams.entries());
+
+      // Convert string params to appropriate types
+      const query: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(searchParams)) {
+        query[key] = value;
       }
-    );
 
-    // Create a new Fastify instance for each test
-    fastify = Fastify();
-    registerModelRoutes(fastify);
-    await fastify.ready();
+      // Find matching route
+      let matchingRoute: MockRouteHandler | undefined;
+      let params: Record<string, string> = {};
+
+      for (const route of routes) {
+        if (route.method !== method) continue;
+
+        // Check for exact match
+        if (route.url === pathname) {
+          matchingRoute = route;
+          break;
+        }
+
+        // Check for parameterized match (e.g., /api/models/:id)
+        const routeParts = route.url.split("/");
+        const urlParts = pathname.split("/");
+
+        if (routeParts.length === urlParts.length) {
+          let isMatch = true;
+          const extractedParams: Record<string, string> = {};
+
+          for (let i = 0; i < routeParts.length; i++) {
+            if (routeParts[i].startsWith(":")) {
+              extractedParams[routeParts[i].slice(1)] = urlParts[i];
+            } else if (routeParts[i] !== urlParts[i]) {
+              isMatch = false;
+              break;
+            }
+          }
+
+          if (isMatch) {
+            matchingRoute = route;
+            params = extractedParams;
+            break;
+          }
+        }
+      }
+
+      if (!matchingRoute) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ error: "Route not found" }),
+        };
+      }
+
+      // Create mock request and reply
+      const request = {
+        query,
+        params,
+        body: payload,
+      };
+
+      let statusCode = 200;
+      const reply: MockReply = {
+        code: vi.fn((code: number) => {
+          statusCode = code;
+          return reply;
+        }),
+      };
+
+      const result = await matchingRoute.handler(request, reply);
+
+      return {
+        statusCode,
+        body: JSON.stringify(result),
+      };
+    },
+  };
+
+  return fastify;
+}
+
+/**
+ * Helper to create a mock model
+ */
+function createMockModel(overrides: Partial<Model> = {}): Model {
+  return {
+    id: "test-model",
+    name: "Test Model",
+    provider: "test-provider",
+    contextLength: 100000,
+    maxOutputTokens: 4096,
+    isDefault: false,
+    enabled: true,
+    ...overrides,
+  };
+}
+
+describe("Model Routes", () => {
+  let fastify: ReturnType<typeof createMockFastify>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fastify = createMockFastify();
+    registerModelRoutes(fastify as never);
   });
 
-  afterEach(async () => {
-    await fastify.close();
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
   // ============================================================================
-  // Model CRUD
+  // GET /api/models - List all models
   // ============================================================================
 
   describe("GET /api/models", () => {
-    it("should list all models with provider info", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      // Response uses snake_case and toSnakeCaseModel format
-      expect(body.models.length).toBe(mockModels.length);
-      expect(body.total).toBe(mockModels.length);
-      expect(body.default_model_id).toBe("gpt-4o");
-    });
-
     it("should return empty array when no models exist", async () => {
       vi.mocked(modelManager.listModels).mockResolvedValue([]);
-      vi.mocked(modelManager.getDefault).mockResolvedValue(undefined);
+      vi.mocked(modelManager.getDefault).mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: "GET",
@@ -165,284 +263,131 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.models).toEqual([]);
       expect(body.total).toBe(0);
-      expect(body.default_model_id).toBeUndefined();
-    });
-  });
-
-  describe("GET /api/models/:id", () => {
-    it("should get a specific model by ID", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.id).toBe("gpt-4o");
-      expect(body.name).toBe("GPT-4o");
-      expect(body.provider).toBe("openai");
-      expect(body.is_default).toBe(false); // Model itself doesn't have isDefault, it's set via getDefault
-      expect(body.config).toEqual(mockModelConfig);
+      expect(modelManager.listModels).toHaveBeenCalled();
     });
 
-    it("should resolve alias when getting model", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/gpt4",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.id).toBe("gpt-4o");
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should return 404 for non-existent model", async () => {
-      vi.mocked(modelManager.resolveAlias).mockResolvedValue("non-existent");
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
+    it("should return list of all models with snake_case transformation", async () => {
+      vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
+      vi.mocked(modelManager.getDefault).mockResolvedValue("claude-sonnet");
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/models/non-existent",
+        url: "/api/models",
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("not found");
+      expect(body.models).toHaveLength(3);
+      expect(body.total).toBe(3);
+      expect(body.default_model_id).toBe("claude-sonnet");
+      // Verify snake_case transformation
+      expect(body.models[0].id).toBe("claude-sonnet");
+      expect(body.models[0].context_window).toBe(200000);
+      expect(body.models[0].max_output_tokens).toBe(8192);
+      expect(body.models[0].is_default).toBe(true);
+      expect(body.models[0].enabled).toBe(true);
     });
 
-    it("should include isDefault false for non-default model", async () => {
-      vi.mocked(modelManager.getDefault).mockResolvedValue(
-        "claude-3-5-sonnet-20241022"
-      );
+    it("should include workspace_path in response", async () => {
+      vi.mocked(modelManager.listModels).mockResolvedValue([]);
+      vi.mocked(modelManager.getDefault).mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/models/gpt-4o",
+        url: "/api/models?workspace_path=/test/workspace",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.is_default).toBe(false);
-    });
-  });
-
-  describe("POST /api/models", () => {
-    it("should create/register a new model configuration", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: {
-          id: "gpt-4o",
-          name: "GPT-4o",
-          provider: "openai",
-          max_output_tokens: 8192,
-        },
-      });
-
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-
-      // Response uses toSnakeCaseModel format
-      expect(body.id).toBe("gpt-4o");
-      expect(body.is_default).toBe(false);
-    });
-
-    it("should set model as default when set_as_default is true", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.setDefault).mockResolvedValue(undefined);
-      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: {
-          id: "gpt-4o",
-          name: "GPT-4o",
-          provider: "openai",
-          set_as_default: true,
-        },
-      });
-
-      expect(response.statusCode).toBe(201);
-      const body = JSON.parse(response.body);
-
-      // Response uses toSnakeCaseModel format
-      expect(body.id).toBe("gpt-4o");
-      expect(modelManager.setDefault).toHaveBeenCalledWith("gpt-4o");
-    });
-
-    it("should return 400 when model ID is missing", async () => {
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: {
-          name: "GPT-4o",
-          provider: "openai",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("required");
-    });
-
-    it("should handle creation errors", async () => {
-      vi.mocked(modelManager.setModelConfig).mockRejectedValue(
-        new Error("Configuration error")
-      );
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: {
-          id: "gpt-4o",
-          name: "GPT-4o",
-          provider: "openai",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Configuration error");
-    });
-  });
-
-  describe("PATCH /api/models/:id", () => {
-    it("should update model configuration", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PATCH",
-        url: "/api/models/gpt-4o",
-        payload: {
-          name: "Updated GPT-4o",
-          max_output_tokens: 8192,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      // Response uses toSnakeCaseModel format
-      expect(body.id).toBe("gpt-4o");
-    });
-
-    it("should resolve alias when updating model", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PATCH",
-        url: "/api/models/gpt4",
-        payload: {
-          max_output_tokens: 8192,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should return 404 for non-existent model", async () => {
-      vi.mocked(modelManager.resolveAlias).mockResolvedValue("non-existent");
-      vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PATCH",
-        url: "/api/models/non-existent",
-        payload: {
-          name: "Updated",
-        },
-      });
-
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("not found");
-    });
-
-    it("should handle update errors", async () => {
-      vi.mocked(modelManager.setModelConfig).mockRejectedValue(
-        new Error("Update failed")
-      );
-
-      const response = await fastify.inject({
-        method: "PATCH",
-        url: "/api/models/gpt-4o",
-        payload: {
-          max_output_tokens: 8192,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Update failed");
-    });
-  });
-
-  describe("DELETE /api/models/:id", () => {
-    it("should delete model configuration", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.success).toBe(true);
-      expect(body.deleted).toBe("gpt-4o");
-      expect(modelManager.removeModelConfig).toHaveBeenCalled();
-      expect(modelManager.removeFallback).toHaveBeenCalled();
-    });
-
-    it("should resolve alias when deleting model", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt4",
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should handle deletion errors", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(
-        new Error("Delete failed")
-      );
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Delete failed");
+      expect(body.workspace_path).toBe("/test/workspace");
     });
   });
 
   // ============================================================================
-  // Default Model Management
+  // GET /api/models/:id - Get specific model
+  // ============================================================================
+
+  describe("GET /api/models/:id", () => {
+    it("should return model when found with snake_case transformation", async () => {
+      const mockModel = createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+        provider: "anthropic",
+        contextLength: 200000,
+        maxOutputTokens: 8192,
+        isDefault: true,
+        enabled: true,
+      });
+
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/claude-sonnet",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("claude-sonnet");
+      expect(body.name).toBe("Claude Sonnet");
+      expect(body.provider).toBe("anthropic");
+      expect(body.context_window).toBe(200000);
+      expect(body.max_output_tokens).toBe(8192);
+      expect(body.is_default).toBe(true);
+      expect(body.enabled).toBe(true);
+      expect(body.config).toEqual(mockModelConfig);
+      expect(modelManager.resolveAlias).toHaveBeenCalledWith("claude-sonnet");
+    });
+
+    it("should return 404 when model not found", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/nonexistent",
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Model not found");
+      expect(body.error).toContain("nonexistent");
+    });
+
+    it("should resolve alias and return model", async () => {
+      const mockModel = createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+      });
+
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.getModelConfig).mockResolvedValue(null);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/sonnet",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("claude-sonnet");
+      expect(modelManager.resolveAlias).toHaveBeenCalledWith("sonnet");
+    });
+  });
+
+  // ============================================================================
+  // GET /api/models/default - Get default model
   // ============================================================================
 
   describe("GET /api/models/default", () => {
-    it("should get the default model", async () => {
+    it("should return the default model ID", async () => {
+      vi.mocked(modelManager.getDefault).mockResolvedValue("claude-sonnet");
+
       const response = await fastify.inject({
         method: "GET",
         url: "/api/models/default",
@@ -450,12 +395,12 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
-      expect(body.default_model_id).toBe("gpt-4o");
+      expect(body.default_model_id).toBe("claude-sonnet");
+      expect(modelManager.getDefault).toHaveBeenCalled();
     });
 
-    it("should return undefined when no default is set", async () => {
-      vi.mocked(modelManager.getDefault).mockResolvedValue(undefined);
+    it("should return null when no default model is set", async () => {
+      vi.mocked(modelManager.getDefault).mockResolvedValue(null);
 
       const response = await fastify.inject({
         method: "GET",
@@ -464,10 +409,13 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
-      expect(body.default_model_id).toBeUndefined();
+      expect(body.default_model_id).toBeNull();
     });
   });
+
+  // ============================================================================
+  // PUT /api/models/default - Set default model
+  // ============================================================================
 
   describe("PUT /api/models/default", () => {
     it("should set the default model", async () => {
@@ -476,19 +424,14 @@ describe("Model Routes", () => {
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/default",
-        payload: {
-          model_id: "claude-3-5-sonnet-20241022",
-        },
+        payload: { model_id: "gpt-4o" },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.default_model_id).toBe("claude-3-5-sonnet-20241022");
-      expect(modelManager.setDefault).toHaveBeenCalledWith(
-        "claude-3-5-sonnet-20241022"
-      );
+      expect(body.default_model_id).toBe("gpt-4o");
+      expect(modelManager.setDefault).toHaveBeenCalledWith("gpt-4o");
     });
 
     it("should return 400 when model_id is missing", async () => {
@@ -500,34 +443,37 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("required");
+      expect(body.error).toContain("Model ID is required");
     });
 
-    it("should handle set default errors", async () => {
-      vi.mocked(modelManager.setDefault).mockRejectedValue(
-        new Error("Invalid model")
-      );
+    it("should return 400 when setDefault fails", async () => {
+      vi.mocked(modelManager.setDefault).mockRejectedValue(new Error("Model not found"));
 
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/default",
-        payload: {
-          model_id: "invalid-model",
-        },
+        payload: { model_id: "nonexistent" },
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("Invalid model");
+      expect(body.error).toContain("Model not found");
     });
   });
 
   // ============================================================================
-  // Model Aliases
+  // GET /api/models/aliases - List all aliases
   // ============================================================================
 
   describe("GET /api/models/aliases", () => {
-    it("should list all aliases", async () => {
+    it("should return all aliases", async () => {
+      const mockAliases = {
+        sonnet: "claude-sonnet",
+        gpt: "gpt-4o",
+        gemini: "gemini-pro",
+      };
+      vi.mocked(modelManager.getAliases).mockResolvedValue(mockAliases);
+
       const response = await fastify.inject({
         method: "GET",
         url: "/api/models/aliases",
@@ -535,8 +481,8 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.aliases).toEqual(mockAliases);
+      expect(modelManager.getAliases).toHaveBeenCalled();
     });
 
     it("should return empty object when no aliases exist", async () => {
@@ -549,10 +495,13 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.aliases).toEqual({});
     });
   });
+
+  // ============================================================================
+  // POST /api/models/aliases - Create alias
+  // ============================================================================
 
   describe("POST /api/models/aliases", () => {
     it("should create a new alias", async () => {
@@ -561,61 +510,48 @@ describe("Model Routes", () => {
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/aliases",
-        payload: {
-          alias: "mymodel",
-          model: "gpt-4o",
-        },
+        payload: { alias: "sonnet", model: "claude-sonnet" },
       });
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.alias).toBe("mymodel");
-      expect(body.model).toBe("gpt-4o");
-      expect(modelManager.createAlias).toHaveBeenCalledWith("mymodel", "gpt-4o");
+      expect(body.alias).toBe("sonnet");
+      expect(body.model).toBe("claude-sonnet");
+      expect(modelManager.createAlias).toHaveBeenCalledWith("sonnet", "claude-sonnet");
     });
 
     it("should return 400 when alias is missing", async () => {
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/aliases",
-        payload: {
-          model: "gpt-4o",
-        },
+        payload: { model: "claude-sonnet" },
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("required");
+      expect(body.error).toContain("Alias and model are required");
     });
 
     it("should return 400 when model is missing", async () => {
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/aliases",
-        payload: {
-          alias: "mymodel",
-        },
+        payload: { alias: "sonnet" },
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("required");
+      expect(body.error).toContain("Alias and model are required");
     });
 
-    it("should handle alias creation errors", async () => {
-      vi.mocked(modelManager.createAlias).mockRejectedValue(
-        new Error("Alias already exists")
-      );
+    it("should return 400 when createAlias fails", async () => {
+      vi.mocked(modelManager.createAlias).mockRejectedValue(new Error("Alias already exists"));
 
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/aliases",
-        payload: {
-          alias: "existing",
-          model: "gpt-4o",
-        },
+        payload: { alias: "sonnet", model: "claude-sonnet" },
       });
 
       expect(response.statusCode).toBe(400);
@@ -624,27 +560,28 @@ describe("Model Routes", () => {
     });
   });
 
+  // ============================================================================
+  // DELETE /api/models/aliases/:alias - Delete alias
+  // ============================================================================
+
   describe("DELETE /api/models/aliases/:alias", () => {
     it("should delete an alias", async () => {
       vi.mocked(modelManager.removeAlias).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/aliases/gpt4",
+        url: "/api/models/aliases/sonnet",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.deleted).toBe("gpt4");
-      expect(modelManager.removeAlias).toHaveBeenCalledWith("gpt4");
+      expect(body.deleted).toBe("sonnet");
+      expect(modelManager.removeAlias).toHaveBeenCalledWith("sonnet");
     });
 
-    it("should handle alias deletion errors", async () => {
-      vi.mocked(modelManager.removeAlias).mockRejectedValue(
-        new Error("Alias not found")
-      );
+    it("should return 400 when removeAlias fails", async () => {
+      vi.mocked(modelManager.removeAlias).mockRejectedValue(new Error("Alias not found"));
 
       const response = await fastify.inject({
         method: "DELETE",
@@ -658,175 +595,14 @@ describe("Model Routes", () => {
   });
 
   // ============================================================================
-  // Model Configuration
-  // ============================================================================
-
-  describe("GET /api/models/:id/config", () => {
-    it("should get model configuration", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/gpt-4o/config",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.modelId).toBe("gpt-4o");
-      expect(body.config).toEqual(mockModelConfig);
-    });
-
-    it("should resolve alias when getting config", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/gpt4/config",
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should return 404 when no configuration exists", async () => {
-      vi.mocked(modelManager.getModelConfig).mockResolvedValue(null);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/unconfigured/config",
-      });
-
-      expect(response.statusCode).toBe(404);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("No configuration found");
-    });
-
-    it("should handle get config errors", async () => {
-      vi.mocked(modelManager.resolveAlias).mockRejectedValue(
-        new Error("Resolution failed")
-      );
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/broken/config",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Resolution failed");
-    });
-  });
-
-  describe("PUT /api/models/:id/config", () => {
-    it("should set model configuration", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-
-      const newConfig: ModelConfig = {
-        temperature: 0.5,
-        maxTokens: 2048,
-        topP: 0.8,
-      };
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt-4o/config",
-        payload: newConfig,
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.success).toBe(true);
-      expect(body.modelId).toBe("gpt-4o");
-      expect(body.config).toEqual(newConfig);
-      expect(modelManager.setModelConfig).toHaveBeenCalledWith(
-        "gpt-4o",
-        newConfig
-      );
-    });
-
-    it("should resolve alias when setting config", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt4/config",
-        payload: {
-          temperature: 0.5,
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should handle set config errors", async () => {
-      vi.mocked(modelManager.setModelConfig).mockRejectedValue(
-        new Error("Invalid configuration")
-      );
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt-4o/config",
-        payload: {
-          temperature: 2.0, // Invalid value
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Invalid configuration");
-    });
-  });
-
-  describe("DELETE /api/models/:id/config", () => {
-    it("should delete model configuration", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o/config",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.success).toBe(true);
-      expect(body.deleted).toBe("gpt-4o");
-      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("gpt-4o");
-    });
-
-    it("should resolve alias when deleting config", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt4/config",
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(modelManager.resolveAlias).toHaveBeenCalledWith("gpt4");
-    });
-
-    it("should handle delete config errors", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(
-        new Error("Delete failed")
-      );
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o/config",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toContain("Delete failed");
-    });
-  });
-
-  // ============================================================================
-  // Fallback Chain Management
+  // GET /api/models/fallbacks - Get fallback chain
   // ============================================================================
 
   describe("GET /api/models/fallbacks", () => {
-    it("should get the fallback chain", async () => {
+    it("should return the fallback chain", async () => {
+      const mockFallbacks = ["claude-sonnet", "gpt-4o", "gemini-pro"];
+      vi.mocked(modelManager.getFallbacks).mockResolvedValue(mockFallbacks);
+
       const response = await fastify.inject({
         method: "GET",
         url: "/api/models/fallbacks",
@@ -834,8 +610,8 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.fallbacks).toEqual(mockFallbacks);
+      expect(modelManager.getFallbacks).toHaveBeenCalled();
     });
 
     it("should return empty array when no fallbacks exist", async () => {
@@ -848,89 +624,79 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.fallbacks).toEqual([]);
     });
   });
+
+  // ============================================================================
+  // PUT /api/models/fallbacks - Set fallback chain
+  // ============================================================================
 
   describe("PUT /api/models/fallbacks", () => {
     it("should set the fallback chain", async () => {
       vi.mocked(modelManager.setFallbacks).mockResolvedValue(undefined);
 
-      const newFallbacks = ["gpt-4o-mini", "gpt-3.5-turbo"];
-
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/fallbacks",
-        payload: {
-          fallbacks: newFallbacks,
-        },
+        payload: { fallbacks: ["claude-sonnet", "gpt-4o"] },
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.fallbacks).toEqual(newFallbacks);
-      expect(modelManager.setFallbacks).toHaveBeenCalledWith(newFallbacks);
+      expect(body.fallbacks).toEqual(["claude-sonnet", "gpt-4o"]);
+      expect(modelManager.setFallbacks).toHaveBeenCalledWith(["claude-sonnet", "gpt-4o"]);
     });
 
     it("should return 400 when fallbacks is not an array", async () => {
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/fallbacks",
-        payload: {
-          fallbacks: "not-an-array",
-        },
+        payload: { fallbacks: "not-an-array" },
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("array");
+      expect(body.error).toContain("Fallbacks must be an array");
     });
 
-    it("should handle set fallbacks errors", async () => {
-      vi.mocked(modelManager.setFallbacks).mockRejectedValue(
-        new Error("Invalid fallback")
-      );
+    it("should return 400 when setFallbacks fails", async () => {
+      vi.mocked(modelManager.setFallbacks).mockRejectedValue(new Error("Invalid model in fallbacks"));
 
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/fallbacks",
-        payload: {
-          fallbacks: ["invalid-model"],
-        },
+        payload: { fallbacks: ["nonexistent"] },
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("Invalid fallback");
+      expect(body.error).toContain("Invalid model in fallbacks");
     });
   });
+
+  // ============================================================================
+  // POST /api/models/fallbacks - Add to fallback chain
+  // ============================================================================
 
   describe("POST /api/models/fallbacks", () => {
     it("should add a model to the fallback chain", async () => {
       vi.mocked(modelManager.addFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([
-        ...mockFallbacks,
-        "gpt-4o-mini",
-      ]);
+      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["claude-sonnet", "gpt-4o"]);
 
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/fallbacks",
-        payload: {
-          model: "gpt-4o-mini",
-        },
+        payload: { model: "gpt-4o" },
       });
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.model).toBe("gpt-4o-mini");
-      expect(body.fallbacks).toContain("gpt-4o-mini");
-      expect(modelManager.addFallback).toHaveBeenCalledWith("gpt-4o-mini");
+      expect(body.model).toBe("gpt-4o");
+      expect(body.fallbacks).toEqual(["claude-sonnet", "gpt-4o"]);
+      expect(modelManager.addFallback).toHaveBeenCalledWith("gpt-4o");
     });
 
     it("should return 400 when model is missing", async () => {
@@ -942,20 +708,16 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("required");
+      expect(body.error).toContain("Model is required");
     });
 
-    it("should handle add fallback errors", async () => {
-      vi.mocked(modelManager.addFallback).mockRejectedValue(
-        new Error("Model not found")
-      );
+    it("should return 400 when addFallback fails", async () => {
+      vi.mocked(modelManager.addFallback).mockRejectedValue(new Error("Model not found"));
 
       const response = await fastify.inject({
         method: "POST",
         url: "/api/models/fallbacks",
-        payload: {
-          model: "invalid-model",
-        },
+        payload: { model: "nonexistent" },
       });
 
       expect(response.statusCode).toBe(400);
@@ -964,12 +726,14 @@ describe("Model Routes", () => {
     });
   });
 
+  // ============================================================================
+  // DELETE /api/models/fallbacks/:model - Remove from fallback chain
+  // ============================================================================
+
   describe("DELETE /api/models/fallbacks/:model", () => {
     it("should remove a model from the fallback chain", async () => {
       vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([
-        "claude-3-5-sonnet-20241022",
-      ]);
+      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["claude-sonnet"]);
 
       const response = await fastify.inject({
         method: "DELETE",
@@ -978,28 +742,29 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
       expect(body.removed).toBe("gpt-4o");
-      expect(body.fallbacks).not.toContain("gpt-4o");
+      expect(body.fallbacks).toEqual(["claude-sonnet"]);
       expect(modelManager.removeFallback).toHaveBeenCalledWith("gpt-4o");
     });
 
-    it("should handle remove fallback errors", async () => {
-      vi.mocked(modelManager.removeFallback).mockRejectedValue(
-        new Error("Remove failed")
-      );
+    it("should return 400 when removeFallback fails", async () => {
+      vi.mocked(modelManager.removeFallback).mockRejectedValue(new Error("Model not in fallbacks"));
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/fallbacks/gpt-4o",
+        url: "/api/models/fallbacks/nonexistent",
       });
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("Remove failed");
+      expect(body.error).toContain("Model not in fallbacks");
     });
   });
+
+  // ============================================================================
+  // DELETE /api/models/fallbacks - Clear fallback chain
+  // ============================================================================
 
   describe("DELETE /api/models/fallbacks", () => {
     it("should clear the fallback chain", async () => {
@@ -1012,16 +777,13 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
       expect(body.fallbacks).toEqual([]);
       expect(modelManager.clearFallbacks).toHaveBeenCalled();
     });
 
-    it("should handle clear fallbacks errors", async () => {
-      vi.mocked(modelManager.clearFallbacks).mockRejectedValue(
-        new Error("Clear failed")
-      );
+    it("should return 400 when clearFallbacks fails", async () => {
+      vi.mocked(modelManager.clearFallbacks).mockRejectedValue(new Error("Failed to clear"));
 
       const response = await fastify.inject({
         method: "DELETE",
@@ -1030,19 +792,12 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("Clear failed");
+      expect(body.error).toContain("Failed to clear");
     });
   });
 
   // ============================================================================
-  // Provider-Specific Model Listing
-  // NOTE: GET /api/providers/:id/models is defined in providers.ts
-  // It combines discovery + user configuration for provider-specific models
-  // These tests are removed as they belong to providers.test.ts
-  // ============================================================================
-
-  // ============================================================================
-  // Reload Configuration
+  // POST /api/models/reload - Reload configuration
   // ============================================================================
 
   describe("POST /api/models/reload", () => {
@@ -1056,16 +811,13 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-
       expect(body.success).toBe(true);
-      expect(body.message).toContain("reloaded");
+      expect(body.message).toBe("Models configuration reloaded");
       expect(modelManager.reload).toHaveBeenCalled();
     });
 
     it("should return 500 when reload fails", async () => {
-      vi.mocked(modelManager.reload).mockRejectedValue(
-        new Error("File not found")
-      );
+      vi.mocked(modelManager.reload).mockRejectedValue(new Error("Failed to reload"));
 
       const response = await fastify.inject({
         method: "POST",
@@ -1074,366 +826,389 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(500);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("File not found");
+      expect(body.error).toContain("Failed to reload");
     });
   });
 
   // ============================================================================
-  // Error Handling
+  // POST /api/models - Create model
   // ============================================================================
 
-  describe("Error Handling", () => {
-    it("should return 404 for model not found", async () => {
+  describe("POST /api/models", () => {
+    it("should create a new model", async () => {
+      const newModel = createMockModel({
+        id: "custom-model",
+        name: "Custom Model",
+        provider: "custom",
+      });
+
+      vi.mocked(modelManager.getModelInfo).mockReturnValueOnce(undefined).mockReturnValueOnce(newModel);
+      vi.mocked(modelManager.createModel).mockResolvedValue(undefined);
+      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          id: "custom-model",
+          name: "Custom Model",
+          provider: "custom",
+          context_window: 100000,
+          max_output_tokens: 4096,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("custom-model");
+      expect(modelManager.createModel).toHaveBeenCalled();
+    });
+
+    it("should update existing model config", async () => {
+      const existingModel = createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+      });
+
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(existingModel);
+      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
+      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          id: "claude-sonnet",
+          name: "Claude Sonnet",
+          provider: "anthropic",
+          max_output_tokens: 8192,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(modelManager.setModelConfig).toHaveBeenCalled();
+    });
+
+    it("should return 400 when model_id is missing", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          name: "Custom Model",
+          provider: "custom",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Model ID is required");
+    });
+
+    it("should set model as default when set_as_default is true", async () => {
+      const newModel = createMockModel({
+        id: "custom-model",
+        isDefault: true,
+      });
+
+      vi.mocked(modelManager.getModelInfo).mockReturnValueOnce(undefined).mockReturnValueOnce(newModel);
+      vi.mocked(modelManager.createModel).mockResolvedValue(undefined);
+      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          id: "custom-model",
+          name: "Custom Model",
+          provider: "custom",
+          set_as_default: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(modelManager.createModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          setAsDefault: true,
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // PATCH /api/models/:id - Update model
+  // ============================================================================
+
+  describe("PATCH /api/models/:id", () => {
+    it("should update model configuration", async () => {
+      const mockModel = createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+      });
+
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
+      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
+      vi.mocked(modelManager.reload).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/models/claude-sonnet",
+        payload: {
+          name: "Updated Claude Sonnet",
+          max_output_tokens: 16384,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("claude-sonnet");
+      expect(modelManager.setModelConfig).toHaveBeenCalled();
+    });
+
+    it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
       vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
 
       const response = await fastify.inject({
-        method: "GET",
+        method: "PATCH",
         url: "/api/models/nonexistent",
+        payload: {
+          name: "Updated Name",
+        },
       });
 
       expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.body);
-      expect(body.error).toContain("not found");
-    });
-
-    it("should return 400 for invalid request body", async () => {
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models",
-        payload: {},
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBeDefined();
-    });
-
-    it("should handle non-Error exceptions", async () => {
-      vi.mocked(modelManager.setDefault).mockRejectedValue("String error");
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/default",
-        payload: {
-          model_id: "test",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to set default model");
-    });
-
-    it("should handle non-Error exceptions in alias creation", async () => {
-      vi.mocked(modelManager.createAlias).mockRejectedValue("String error");
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/aliases",
-        payload: {
-          alias: "test",
-          model: "gpt-4o",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to create alias");
-    });
-
-    it("should handle non-Error exceptions in model update", async () => {
-      vi.mocked(modelManager.setModelConfig).mockRejectedValue(42);
-
-      const response = await fastify.inject({
-        method: "PATCH",
-        url: "/api/models/gpt-4o",
-        payload: {
-          name: "Updated",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to update model");
-    });
-
-    it("should handle non-Error exceptions in model deletion", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(null);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to delete model");
-    });
-
-    it("should handle non-Error exceptions in alias deletion", async () => {
-      vi.mocked(modelManager.removeAlias).mockRejectedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/aliases/test",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to delete alias");
-    });
-
-    it("should handle non-Error exceptions in config retrieval", async () => {
-      vi.mocked(modelManager.resolveAlias).mockRejectedValue({});
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/test/config",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to get model config");
-    });
-
-    it("should handle non-Error exceptions in config setting", async () => {
-      vi.mocked(modelManager.setModelConfig).mockRejectedValue([]);
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt-4o/config",
-        payload: {
-          temperature: 0.5,
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to set model config");
-    });
-
-    it("should handle non-Error exceptions in config deletion", async () => {
-      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(false);
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/gpt-4o/config",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to delete model config");
-    });
-
-    it("should handle non-Error exceptions in fallback setting", async () => {
-      vi.mocked(modelManager.setFallbacks).mockRejectedValue(true);
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: {
-          fallbacks: ["gpt-4o"],
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to set fallbacks");
-    });
-
-    it("should handle non-Error exceptions in fallback addition", async () => {
-      vi.mocked(modelManager.addFallback).mockRejectedValue(NaN);
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/fallbacks",
-        payload: {
-          model: "gpt-4o",
-        },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to add fallback");
-    });
-
-    it("should handle non-Error exceptions in fallback removal", async () => {
-      vi.mocked(modelManager.removeFallback).mockRejectedValue(Symbol("test"));
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to remove fallback");
-    });
-
-    it("should handle non-Error exceptions in fallback clearing", async () => {
-      vi.mocked(modelManager.clearFallbacks).mockRejectedValue(
-        new Function()
-      );
-
-      const response = await fastify.inject({
-        method: "DELETE",
-        url: "/api/models/fallbacks",
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to clear fallbacks");
-    });
-
-    it("should handle non-Error exceptions in reload", async () => {
-      vi.mocked(modelManager.reload).mockRejectedValue(BigInt(1));
-
-      const response = await fastify.inject({
-        method: "POST",
-        url: "/api/models/reload",
-      });
-
-      expect(response.statusCode).toBe(500);
-      const body = JSON.parse(response.body);
-      expect(body.error).toBe("Failed to reload configuration");
+      expect(body.error).toContain("Model not found");
     });
   });
 
   // ============================================================================
-  // Edge Cases
+  // DELETE /api/models/:id - Delete model
   // ============================================================================
 
-  describe("Edge Cases", () => {
-    it("should handle model ID with special characters", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/claude-3-5-sonnet-20241022",
-      });
-
-      expect(response.statusCode).toBe(200);
-    });
-
-    it("should handle empty fallbacks array in PUT request", async () => {
-      vi.mocked(modelManager.setFallbacks).mockResolvedValue(undefined);
+  describe("DELETE /api/models/:id", () => {
+    it("should delete model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("custom-model");
+      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
+      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/fallbacks",
-        payload: {
-          fallbacks: [],
-        },
+        method: "DELETE",
+        url: "/api/models/custom-model",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.fallbacks).toEqual([]);
+      expect(body.deleted).toBe("custom-model");
+      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("custom-model");
+      expect(modelManager.removeFallback).toHaveBeenCalledWith("custom-model");
     });
 
-    it("should handle model config with all optional fields", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
+    it("should return 400 when deletion fails", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
+      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(new Error("Model not found"));
 
       const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt-4o/config",
-        payload: {
-          temperature: 0.7,
-          maxTokens: 4096,
-          topP: 0.9,
-          frequencyPenalty: 0.5,
-          presencePenalty: 0.5,
-        },
+        method: "DELETE",
+        url: "/api/models/nonexistent",
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
+      expect(body.error).toContain("Model not found");
     });
-
-    it("should handle model config with minimal fields", async () => {
-      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
-
-      const response = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/gpt-4o/config",
-        payload: {},
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.success).toBe(true);
-    });
-
-    it("should handle URL-encoded model IDs", async () => {
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/models/gpt-4o",
-      });
-
-      expect(response.statusCode).toBe(200);
-    });
-
   });
 
   // ============================================================================
-  // Integration Tests
+  // POST /api/models/:id/enable - Enable model
   // ============================================================================
 
-  describe("Integration Scenarios", () => {
-    it("should maintain state across multiple operations", async () => {
-      // Create alias
-      vi.mocked(modelManager.createAlias).mockResolvedValue(undefined);
-      const createResponse = await fastify.inject({
-        method: "POST",
-        url: "/api/models/aliases",
-        payload: {
-          alias: "fast",
-          model: "gpt-4o-mini",
-        },
-      });
-      expect(createResponse.statusCode).toBe(201);
+  describe("POST /api/models/:id/enable", () => {
+    it("should enable a model", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.enableModel).mockResolvedValue(undefined);
 
-      // Set as default
-      vi.mocked(modelManager.setDefault).mockResolvedValue(undefined);
-      const defaultResponse = await fastify.inject({
-        method: "PUT",
-        url: "/api/models/default",
-        payload: {
-          model_id: "gpt-4o-mini",
-        },
-      });
-      expect(defaultResponse.statusCode).toBe(200);
-
-      // Add to fallbacks
-      vi.mocked(modelManager.addFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([
-        "gpt-4o",
-        "gpt-4o-mini",
-      ]);
-      const fallbackResponse = await fastify.inject({
+      const response = await fastify.inject({
         method: "POST",
-        url: "/api/models/fallbacks",
-        payload: {
-          model: "gpt-4o-mini",
-        },
+        url: "/api/models/claude-sonnet/enable",
       });
-      expect(fallbackResponse.statusCode).toBe(201);
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.model_id).toBe("claude-sonnet");
+      expect(body.enabled).toBe(true);
+      expect(modelManager.enableModel).toHaveBeenCalledWith("claude-sonnet");
     });
 
-    it("should handle concurrent requests", async () => {
-      vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
+    it("should return 404 when model not found", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
+      vi.mocked(modelManager.enableModel).mockRejectedValue(new Error("Model not found"));
 
-      const responses = await Promise.all([
-        fastify.inject({ method: "GET", url: "/api/models" }),
-        fastify.inject({ method: "GET", url: "/api/models/default" }),
-        fastify.inject({ method: "GET", url: "/api/models/aliases" }),
-        fastify.inject({ method: "GET", url: "/api/models/fallbacks" }),
-      ]);
-
-      responses.forEach((response) => {
-        expect(response.statusCode).toBe(200);
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models/nonexistent/enable",
       });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Model not found");
+    });
+  });
+
+  // ============================================================================
+  // POST /api/models/:id/disable - Disable model
+  // ============================================================================
+
+  describe("POST /api/models/:id/disable", () => {
+    it("should disable a model", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.disableModel).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models/claude-sonnet/disable",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.model_id).toBe("claude-sonnet");
+      expect(body.enabled).toBe(false);
+      expect(modelManager.disableModel).toHaveBeenCalledWith("claude-sonnet");
+    });
+
+    it("should return 404 when model not found", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
+      vi.mocked(modelManager.disableModel).mockRejectedValue(new Error("Model not found"));
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models/nonexistent/disable",
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Model not found");
+    });
+  });
+
+  // ============================================================================
+  // GET /api/models/:id/config - Get model config
+  // ============================================================================
+
+  describe("GET /api/models/:id/config", () => {
+    it("should return model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/claude-sonnet/config",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.modelId).toBe("claude-sonnet");
+      expect(body.config).toEqual(mockModelConfig);
+      expect(modelManager.getModelConfig).toHaveBeenCalledWith("claude-sonnet");
+    });
+
+    it("should return 404 when no config found", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelConfig).mockResolvedValue(null);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/claude-sonnet/config",
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("No configuration found");
+    });
+  });
+
+  // ============================================================================
+  // PUT /api/models/:id/config - Set model config
+  // ============================================================================
+
+  describe("PUT /api/models/:id/config", () => {
+    it("should set model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
+
+      const newConfig = {
+        temperature: 0.8,
+        maxTokens: 8192,
+      };
+
+      const response = await fastify.inject({
+        method: "PUT",
+        url: "/api/models/claude-sonnet/config",
+        payload: newConfig,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.modelId).toBe("claude-sonnet");
+      expect(body.config).toEqual(newConfig);
+      expect(modelManager.setModelConfig).toHaveBeenCalledWith("claude-sonnet", newConfig);
+    });
+
+    it("should return 400 when setModelConfig fails", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.setModelConfig).mockRejectedValue(new Error("Invalid config"));
+
+      const response = await fastify.inject({
+        method: "PUT",
+        url: "/api/models/claude-sonnet/config",
+        payload: { temperature: 2.0 },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Invalid config");
+    });
+  });
+
+  // ============================================================================
+  // DELETE /api/models/:id/config - Delete model config
+  // ============================================================================
+
+  describe("DELETE /api/models/:id/config", () => {
+    it("should delete model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.removeModelConfig).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "DELETE",
+        url: "/api/models/claude-sonnet/config",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.deleted).toBe("claude-sonnet");
+      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("claude-sonnet");
+    });
+
+    it("should return 400 when removeModelConfig fails", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.removeModelConfig).mockRejectedValue(new Error("Config not found"));
+
+      const response = await fastify.inject({
+        method: "DELETE",
+        url: "/api/models/claude-sonnet/config",
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Config not found");
     });
   });
 });

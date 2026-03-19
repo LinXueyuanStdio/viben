@@ -17,6 +17,7 @@ import {
   type CreateAgentOptions,
   type UpdateAgentOptions,
   type AgentResponse,
+  type AvailabilityInfo,
   GatewayError,
 } from "@/lib/gateway";
 
@@ -752,7 +753,7 @@ export interface AgentListItem {
   /** Executor capabilities (executors only) */
   capabilities?: string[];
   /** Global availability info (executors only) */
-  availability?: import("@/lib/gateway").AvailabilityInfo;
+  availability?: AvailabilityInfo;
   /** Path to global config file (executors only) */
   global_config_path?: string;
   /** Path to workspace config file (executors only) */

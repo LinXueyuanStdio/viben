@@ -24,8 +24,8 @@ import {
 function getBuiltinRewardTypesDir(): string {
   // In ESM, use import.meta.url to get the current file's directory
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  // After bundling, code runs from dist/cli/bin.js
-  // Navigate to dist/prompts/reward-types
+  // After bundling with tsup, CLI code is bundled into dist/cli/bin.js
+  // So currentDir is dist/cli/, and prompts are at dist/prompts/reward-types
   return resolve(currentDir, "../prompts/reward-types");
 }
 

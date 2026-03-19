@@ -13,6 +13,8 @@ import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
+import type { FastifyInstance } from "fastify";
+import type { AppState } from "../state";
 
 // Create a unique temp directory for all tests in this file
 const testTempDir = mkdtempSync(join(tmpdir(), "viben-group-chat-test-"));
@@ -179,8 +181,8 @@ describe("Group Chat Routes", () => {
     // Import and register routes
     const { registerGroupChatRoutes } = await import("./group-chats");
     registerGroupChatRoutes(
-      fastify as unknown as import("fastify").FastifyInstance,
-      mockState as unknown as import("../state").AppState
+      fastify as unknown as FastifyInstance,
+      mockState as unknown as AppState
     );
   });
 

@@ -76,11 +76,11 @@ export {
 
 // Reward Phase (evaluates PR quality using reward agents)
 export {
-  runRewardPhase,
   runRewardPhaseSync,
   parseRewardResult,
   DEFAULT_REWARD_CONFIG,
   type RewardPhaseOptions,
   type RewardPhaseResult,
   type ParseRewardResultOutput,
+  type ParseRewardOptions,
 } from "./reward";

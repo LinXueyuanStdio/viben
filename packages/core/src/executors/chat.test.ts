@@ -1,28 +1,17 @@
 /**
  * Executor Chat Functionality Tests
  *
- * Tests for non-interactive chat mode including:
- * - ChatOptions parsing and validation
- * - ClaudeCode chat command building
- * - Gemini chat command building
- * - Codex chat command building
- * - Stream JSON output handling
+ * Tests actual behavior of chat mode including:
+ * - Command argument building for ClaudeCode, Gemini, Codex
+ * - Environment variable handling
+ * - Error cases (executable not found)
  * - Session resume functionality
- * - executorSupportsChat utility
- * - spawnChat convenience function
+ * - Model and format options
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { join } from "node:path";
-import { homedir } from "node:os";
+import type { ChildProcess } from "node:child_process";
 
 import {
-  // Types
-  type ChatFormat,
-  type ChatOptions,
-  type ChatSpawnResult,
-  type ExecutorType,
-
-  // Executors
   ClaudeCode,
   Gemini,
   Codex,
@@ -32,8 +21,6 @@ import {
   QwenCode,
   Copilot,
   Droid,
-
-  // Utilities
   CHAT_SUPPORTED_EXECUTORS,
   executorSupportsChat,
   createExecutor,
@@ -41,70 +28,418 @@ import {
 
 import { ExecutorError } from "../error";
 
+// Mock child_process module
+vi.mock("node:child_process", () => ({
+  spawn: vi.fn(),
+}));
+
+// Mock utils module for which function
+vi.mock("./utils", () => ({
+  which: vi.fn(),
+  whichSync: vi.fn(),
+  getConfigDir: vi.fn(() => "/mock/config"),
+}));
+
+import { spawn } from "node:child_process";
+import { which, whichSync } from "./utils";
+
+/**
+ * Create a mock ChildProcess for testing
+ */
+function createMockChildProcess(): ChildProcess {
+  const mockProcess = {
+    pid: 12345,
+    stdin: null,
+    stdout: null,
+    stderr: null,
+    stdio: [null, null, null, null, null],
+    killed: false,
+    exitCode: null,
+    signalCode: null,
+    spawnargs: [],
+    spawnfile: "",
+    connected: false,
+    kill: vi.fn(),
+    send: vi.fn(),
+    disconnect: vi.fn(),
+    unref: vi.fn(),
+    ref: vi.fn(),
+    on: vi.fn((event: string, callback: (...args: any[]) => void) => {
+      if (event === "exit") {
+        // Simulate exit after a tick
+        setTimeout(() => callback(0), 0);
+      }
+      return mockProcess;
+    }),
+    once: vi.fn(),
+    emit: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    removeAllListeners: vi.fn(),
+    setMaxListeners: vi.fn(),
+    getMaxListeners: vi.fn(() => 10),
+    listeners: vi.fn(() => []),
+    rawListeners: vi.fn(() => []),
+    listenerCount: vi.fn(() => 0),
+    prependListener: vi.fn(),
+    prependOnceListener: vi.fn(),
+    eventNames: vi.fn(() => []),
+    [Symbol.dispose]: vi.fn(),
+  } as unknown as ChildProcess;
+  return mockProcess;
+}
+
 // ============================================================================
-// ChatFormat Type Tests
+// ClaudeCode.spawnChat Tests
 // ============================================================================
 
-describe("ChatFormat Type", () => {
-  it("should accept 'text' as valid format", () => {
-    const format: ChatFormat = "text";
-    expect(format).toBe("text");
+describe("ClaudeCode.spawnChat", () => {
+  const mockSpawn = vi.mocked(spawn);
+  const mockWhich = vi.mocked(which);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhich.mockResolvedValue("/usr/local/bin/claude");
+    mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
-  it("should accept 'stream-json' as valid format", () => {
-    const format: ChatFormat = "stream-json";
-    expect(format).toBe("stream-json");
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("should spawn claude with basic prompt", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test prompt" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["-p", "test prompt"]),
+      expect.objectContaining({
+        stdio: "inherit",
+      })
+    );
+  });
+
+  it("should include model option when specified in config", async () => {
+    const executor = new ClaudeCode({ model: "claude-3-opus" });
+    await executor.spawnChat({ prompt: "test" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--model", "claude-3-opus"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should override config model with options model", async () => {
+    const executor = new ClaudeCode({ model: "claude-3-opus" });
+    await executor.spawnChat({ prompt: "test", model: "claude-3-sonnet" });
+
+    const [, args] = mockSpawn.mock.calls[0];
+    expect(args).toContain("--model");
+    const modelIndex = args.indexOf("--model");
+    expect(args[modelIndex + 1]).toBe("claude-3-sonnet");
+  });
+
+  it("should include verbose flag when specified", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test", verbose: true });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--verbose"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include session-id when specified", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test", sessionId: "session-123" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--session-id", "session-123"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include resume flag when specified", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "continue", resume: "prev-session" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--resume", "prev-session"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include dangerously-skip-permissions from config", async () => {
+    const executor = new ClaudeCode({ dangerouslySkipPermissions: true });
+    await executor.spawnChat({ prompt: "test" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--dangerously-skip-permissions"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include dangerously-skip-permissions from options", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test", dangerouslySkipPermissions: true });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--dangerously-skip-permissions"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include output-format when stream-json specified", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test", outputFormat: "stream-json" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--output-format", "stream-json"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include input-format when stream-json specified", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ inputFormat: "stream-json" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.arrayContaining(["--input-format", "stream-json"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should not include prompt as argument when inputFormat is stream-json", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "ignored", inputFormat: "stream-json" });
+
+    const [, args] = mockSpawn.mock.calls[0];
+    // Should have -p but not followed by the prompt text
+    expect(args).toContain("-p");
+    expect(args).not.toContain("ignored");
+  });
+
+  it("should use specified cwd", async () => {
+    const executor = new ClaudeCode();
+    await executor.spawnChat({ prompt: "test", cwd: "/custom/path" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/claude",
+      expect.any(Array),
+      expect.objectContaining({
+        cwd: "/custom/path",
+      })
+    );
+  });
+
+  it("should merge environment variables from config and options", async () => {
+    const executor = new ClaudeCode({ env: { CONFIG_VAR: "config_value" } });
+    await executor.spawnChat({
+      prompt: "test",
+      env: { OPTION_VAR: "option_value" }
+    });
+
+    const [, , options] = mockSpawn.mock.calls[0];
+    expect(options.env).toMatchObject({
+      CONFIG_VAR: "config_value",
+      OPTION_VAR: "option_value",
+    });
+  });
+
+  it("should throw ExecutorError when claude command not found", async () => {
+    mockWhich.mockResolvedValue(null);
+
+    const executor = new ClaudeCode();
+    await expect(executor.spawnChat({ prompt: "test" }))
+      .rejects
+      .toThrow(ExecutorError);
+  });
+
+  it("should return exitPromise that resolves with exit code", async () => {
+    const executor = new ClaudeCode();
+    const result = await executor.spawnChat({ prompt: "test" });
+
+    expect(result.child).toBeDefined();
+    expect(result.exitPromise).toBeInstanceOf(Promise);
   });
 });
 
 // ============================================================================
-// ChatOptions Interface Tests
+// Gemini.spawnChat Tests
 // ============================================================================
 
-describe("ChatOptions Interface", () => {
-  it("should allow minimal options with just defaults", () => {
-    const options: ChatOptions = {};
-    expect(options.prompt).toBeUndefined();
-    expect(options.cwd).toBeUndefined();
-    expect(options.inputFormat).toBeUndefined();
-    expect(options.outputFormat).toBeUndefined();
+describe("Gemini.spawnChat", () => {
+  const mockSpawn = vi.mocked(spawn);
+  const mockWhich = vi.mocked(which);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhich.mockResolvedValue("/usr/local/bin/gemini");
+    mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
-  it("should allow all options to be specified", () => {
-    const options: ChatOptions = {
-      prompt: "Test prompt",
-      cwd: "/test/dir",
-      inputFormat: "text",
-      outputFormat: "stream-json",
-      verbose: true,
-      sessionId: "session-123",
-      resume: "resume-456",
-      model: "claude-3-opus",
-      dangerouslySkipPermissions: true,
-      env: { CUSTOM_VAR: "value" },
-    };
-
-    expect(options.prompt).toBe("Test prompt");
-    expect(options.cwd).toBe("/test/dir");
-    expect(options.inputFormat).toBe("text");
-    expect(options.outputFormat).toBe("stream-json");
-    expect(options.verbose).toBe(true);
-    expect(options.sessionId).toBe("session-123");
-    expect(options.resume).toBe("resume-456");
-    expect(options.model).toBe("claude-3-opus");
-    expect(options.dangerouslySkipPermissions).toBe(true);
-    expect(options.env).toEqual({ CUSTOM_VAR: "value" });
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
-  it("should allow partial options", () => {
-    const options: ChatOptions = {
-      prompt: "Hello",
-      model: "gpt-4",
-    };
+  it("should spawn gemini with prompt using --prompt flag", async () => {
+    const executor = new Gemini();
+    await executor.spawnChat({ prompt: "test prompt" });
 
-    expect(options.prompt).toBe("Hello");
-    expect(options.model).toBe("gpt-4");
-    expect(options.verbose).toBeUndefined();
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/gemini",
+      expect.arrayContaining(["--prompt", "test prompt"]),
+      expect.objectContaining({
+        stdio: "inherit",
+      })
+    );
+  });
+
+  it("should include model option when specified", async () => {
+    const executor = new Gemini({ model: "gemini-1.5-pro" });
+    await executor.spawnChat({ prompt: "test" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/gemini",
+      expect.arrayContaining(["--model", "gemini-1.5-pro"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should convert stream-json to json for output format", async () => {
+    const executor = new Gemini();
+    await executor.spawnChat({ prompt: "test", outputFormat: "stream-json" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/gemini",
+      expect.arrayContaining(["--output-format", "json"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include verbose flag when specified", async () => {
+    const executor = new Gemini();
+    await executor.spawnChat({ prompt: "test", verbose: true });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/gemini",
+      expect.arrayContaining(["--verbose"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should throw ExecutorError when gemini command not found", async () => {
+    mockWhich.mockResolvedValue(null);
+
+    const executor = new Gemini();
+    await expect(executor.spawnChat({ prompt: "test" }))
+      .rejects
+      .toThrow(ExecutorError);
+  });
+
+  it("should merge environment variables", async () => {
+    const executor = new Gemini({ env: { CONFIG_VAR: "value1" } });
+    await executor.spawnChat({
+      prompt: "test",
+      env: { OPTION_VAR: "value2" }
+    });
+
+    const [, , options] = mockSpawn.mock.calls[0];
+    expect(options.env).toMatchObject({
+      CONFIG_VAR: "value1",
+      OPTION_VAR: "value2",
+    });
+  });
+});
+
+// ============================================================================
+// Codex.spawnChat Tests
+// ============================================================================
+
+describe("Codex.spawnChat", () => {
+  const mockSpawn = vi.mocked(spawn);
+  const mockWhich = vi.mocked(which);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhich.mockResolvedValue("/usr/local/bin/npx");
+    mockSpawn.mockReturnValue(createMockChildProcess());
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("should spawn codex via npx with correct base args", async () => {
+    const executor = new Codex();
+    await executor.spawnChat({ prompt: "test prompt" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/npx",
+      expect.arrayContaining(["-y", "codex-cli@latest", "--prompt", "test prompt"]),
+      expect.objectContaining({
+        stdio: "inherit",
+      })
+    );
+  });
+
+  it("should include model option when specified", async () => {
+    const executor = new Codex({ model: "gpt-4-turbo" });
+    await executor.spawnChat({ prompt: "test" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/npx",
+      expect.arrayContaining(["--model", "gpt-4-turbo"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include session option when specified", async () => {
+    const executor = new Codex();
+    await executor.spawnChat({ prompt: "test", sessionId: "codex-session-123" });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/npx",
+      expect.arrayContaining(["--session", "codex-session-123"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should include verbose flag when specified", async () => {
+    const executor = new Codex();
+    await executor.spawnChat({ prompt: "test", verbose: true });
+
+    expect(mockSpawn).toHaveBeenCalledWith(
+      "/usr/local/bin/npx",
+      expect.arrayContaining(["--verbose"]),
+      expect.any(Object)
+    );
+  });
+
+  it("should set NPM_CONFIG_LOGLEVEL to error", async () => {
+    const executor = new Codex();
+    await executor.spawnChat({ prompt: "test" });
+
+    const [, , options] = mockSpawn.mock.calls[0];
+    expect(options.env?.NPM_CONFIG_LOGLEVEL).toBe("error");
+  });
+
+  it("should throw ExecutorError when npx command not found", async () => {
+    mockWhich.mockResolvedValue(null);
+
+    const executor = new Codex();
+    await expect(executor.spawnChat({ prompt: "test" }))
+      .rejects
+      .toThrow(ExecutorError);
   });
 });
 
@@ -113,28 +448,19 @@ describe("ChatOptions Interface", () => {
 // ============================================================================
 
 describe("CHAT_SUPPORTED_EXECUTORS", () => {
-  it("should include CLAUDE_CODE", () => {
+  it("should include CLAUDE_CODE, GEMINI, and CODEX", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).toContain("CLAUDE_CODE");
-  });
-
-  it("should include GEMINI", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).toContain("GEMINI");
-  });
-
-  it("should include CODEX", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).toContain("CODEX");
   });
 
-  it("should not include AMP", () => {
+  it("should not include unsupported executors", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("AMP");
-  });
-
-  it("should not include OPENCODE", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("OPENCODE");
-  });
-
-  it("should not include CURSOR_AGENT", () => {
     expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("CURSOR_AGENT");
+    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("QWEN_CODE");
+    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("COPILOT");
+    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("DROID");
   });
 
   it("should have exactly 3 supported executors", () => {
@@ -147,235 +473,91 @@ describe("CHAT_SUPPORTED_EXECUTORS", () => {
 // ============================================================================
 
 describe("executorSupportsChat", () => {
-  it("should return true for CLAUDE_CODE", () => {
+  it("should return true for supported executors", () => {
     expect(executorSupportsChat("CLAUDE_CODE")).toBe(true);
-  });
-
-  it("should return true for GEMINI", () => {
     expect(executorSupportsChat("GEMINI")).toBe(true);
-  });
-
-  it("should return true for CODEX", () => {
     expect(executorSupportsChat("CODEX")).toBe(true);
   });
 
-  it("should return false for AMP", () => {
+  it("should return false for unsupported executors", () => {
     expect(executorSupportsChat("AMP")).toBe(false);
-  });
-
-  it("should return false for OPENCODE", () => {
     expect(executorSupportsChat("OPENCODE")).toBe(false);
-  });
-
-  it("should return false for CURSOR_AGENT", () => {
     expect(executorSupportsChat("CURSOR_AGENT")).toBe(false);
-  });
-
-  it("should return false for QWEN_CODE", () => {
     expect(executorSupportsChat("QWEN_CODE")).toBe(false);
-  });
-
-  it("should return false for COPILOT", () => {
     expect(executorSupportsChat("COPILOT")).toBe(false);
-  });
-
-  it("should return false for DROID", () => {
     expect(executorSupportsChat("DROID")).toBe(false);
   });
 });
 
 // ============================================================================
-// ClaudeCode Chat Support Tests
+// Executor supportsChat and getChatCommand Tests
 // ============================================================================
 
-describe("ClaudeCode Chat Support", () => {
-  describe("supportsChat", () => {
-    it("should return true", () => {
-      const executor = new ClaudeCode();
-      expect(executor.supportsChat()).toBe(true);
+describe("Executor supportsChat and getChatCommand", () => {
+  describe("ClaudeCode", () => {
+    it("supportsChat should return true", () => {
+      expect(new ClaudeCode().supportsChat()).toBe(true);
+    });
+
+    it("getChatCommand should return 'claude'", () => {
+      expect(new ClaudeCode().getChatCommand()).toBe("claude");
     });
   });
 
-  describe("getChatCommand", () => {
-    it("should return 'claude'", () => {
-      const executor = new ClaudeCode();
-      expect(executor.getChatCommand()).toBe("claude");
+  describe("Gemini", () => {
+    it("supportsChat should return true", () => {
+      expect(new Gemini().supportsChat()).toBe(true);
+    });
+
+    it("getChatCommand should return 'gemini'", () => {
+      expect(new Gemini().getChatCommand()).toBe("gemini");
     });
   });
 
-  describe("spawnChat method exists", () => {
-    it("should have spawnChat method", () => {
-      const executor = new ClaudeCode();
-      expect(typeof executor.spawnChat).toBe("function");
+  describe("Codex", () => {
+    it("supportsChat should return true", () => {
+      expect(new Codex().supportsChat()).toBe(true);
+    });
+
+    it("getChatCommand should return 'codex'", () => {
+      expect(new Codex().getChatCommand()).toBe("codex");
     });
   });
 
-  describe("config affects chat", () => {
-    it("should use model from config", () => {
-      const executor = new ClaudeCode({ model: "claude-3-opus" });
-      expect(executor.supportsChat()).toBe(true);
-      // Model will be used when spawnChat is called
-    });
-
-    it("should use dangerouslySkipPermissions from config", () => {
-      const executor = new ClaudeCode({ dangerouslySkipPermissions: true });
-      expect(executor.supportsChat()).toBe(true);
-    });
-
-    it("should use custom env from config", () => {
-      const executor = new ClaudeCode({ env: { CUSTOM: "value" } });
-      expect(executor.supportsChat()).toBe(true);
-    });
-  });
-});
-
-// ============================================================================
-// Gemini Chat Support Tests
-// ============================================================================
-
-describe("Gemini Chat Support", () => {
-  describe("supportsChat", () => {
-    it("should return true", () => {
-      const executor = new Gemini();
-      expect(executor.supportsChat()).toBe(true);
-    });
-  });
-
-  describe("getChatCommand", () => {
-    it("should return 'gemini'", () => {
-      const executor = new Gemini();
-      expect(executor.getChatCommand()).toBe("gemini");
-    });
-  });
-
-  describe("spawnChat method exists", () => {
-    it("should have spawnChat method", () => {
-      const executor = new Gemini();
-      expect(typeof executor.spawnChat).toBe("function");
-    });
-  });
-
-  describe("config affects chat", () => {
-    it("should use model from config", () => {
-      const executor = new Gemini({ model: "gemini-1.5-pro" });
-      expect(executor.supportsChat()).toBe(true);
-    });
-  });
-});
-
-// ============================================================================
-// Codex Chat Support Tests
-// ============================================================================
-
-describe("Codex Chat Support", () => {
-  describe("supportsChat", () => {
-    it("should return true", () => {
-      const executor = new Codex();
-      expect(executor.supportsChat()).toBe(true);
-    });
-  });
-
-  describe("getChatCommand", () => {
-    it("should return 'codex'", () => {
-      const executor = new Codex();
-      expect(executor.getChatCommand()).toBe("codex");
-    });
-  });
-
-  describe("spawnChat method exists", () => {
-    it("should have spawnChat method", () => {
-      const executor = new Codex();
-      expect(typeof executor.spawnChat).toBe("function");
-    });
-  });
-
-  describe("config affects chat", () => {
-    it("should use model from config", () => {
-      const executor = new Codex({ model: "gpt-4-turbo" });
-      expect(executor.supportsChat()).toBe(true);
-    });
-  });
-});
-
-// ============================================================================
-// Executors Without Chat Support Tests
-// ============================================================================
-
-describe("Executors Without Chat Support", () => {
-  describe("Amp", () => {
-    it("should return false for supportsChat", () => {
+  describe("Executors without chat support", () => {
+    it("Amp should return false and null", () => {
       const executor = new Amp();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new Amp();
       expect(executor.getChatCommand()).toBeNull();
     });
 
-    it("should not have spawnChat method", () => {
-      const executor = new Amp();
-      // Amp doesn't implement spawnChat as it doesn't support chat
-      expect("spawnChat" in (executor as any)).toBe(false);
-    });
-  });
-
-  describe("Opencode", () => {
-    it("should return false for supportsChat", () => {
+    it("Opencode should return false and null", () => {
       const executor = new Opencode();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new Opencode();
       expect(executor.getChatCommand()).toBeNull();
     });
-  });
 
-  describe("CursorAgent", () => {
-    it("should return false for supportsChat", () => {
+    it("CursorAgent should return false and null", () => {
       const executor = new CursorAgent();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new CursorAgent();
       expect(executor.getChatCommand()).toBeNull();
     });
-  });
 
-  describe("QwenCode", () => {
-    it("should return false for supportsChat", () => {
+    it("QwenCode should return false and null", () => {
       const executor = new QwenCode();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new QwenCode();
       expect(executor.getChatCommand()).toBeNull();
     });
-  });
 
-  describe("Copilot", () => {
-    it("should return false for supportsChat", () => {
+    it("Copilot should return false and null", () => {
       const executor = new Copilot();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new Copilot();
       expect(executor.getChatCommand()).toBeNull();
     });
-  });
 
-  describe("Droid", () => {
-    it("should return false for supportsChat", () => {
+    it("Droid should return false and null", () => {
       const executor = new Droid();
       expect(executor.supportsChat()).toBe(false);
-    });
-
-    it("should return null for getChatCommand", () => {
-      const executor = new Droid();
       expect(executor.getChatCommand()).toBeNull();
     });
   });
@@ -385,29 +567,29 @@ describe("Executors Without Chat Support", () => {
 // createExecutor with Chat Support Tests
 // ============================================================================
 
-describe("createExecutor with Chat Support", () => {
-  it("should create executor that supports chat for CLAUDE_CODE", () => {
+describe("createExecutor with chat support", () => {
+  it("CLAUDE_CODE executor should support chat", () => {
     const executor = createExecutor("CLAUDE_CODE");
     expect(executor.supportsChat?.()).toBe(true);
     expect(executor.getChatCommand?.()).toBe("claude");
-    expect(typeof executor.spawnChat).toBe("function");
+    expect(executor.spawnChat).toBeDefined();
   });
 
-  it("should create executor that supports chat for GEMINI", () => {
+  it("GEMINI executor should support chat", () => {
     const executor = createExecutor("GEMINI");
     expect(executor.supportsChat?.()).toBe(true);
     expect(executor.getChatCommand?.()).toBe("gemini");
-    expect(typeof executor.spawnChat).toBe("function");
+    expect(executor.spawnChat).toBeDefined();
   });
 
-  it("should create executor that supports chat for CODEX", () => {
+  it("CODEX executor should support chat", () => {
     const executor = createExecutor("CODEX");
     expect(executor.supportsChat?.()).toBe(true);
     expect(executor.getChatCommand?.()).toBe("codex");
-    expect(typeof executor.spawnChat).toBe("function");
+    expect(executor.spawnChat).toBeDefined();
   });
 
-  it("should create executor without chat support for AMP", () => {
+  it("AMP executor should not support chat", () => {
     const executor = createExecutor("AMP");
     expect(executor.supportsChat?.()).toBe(false);
     expect(executor.getChatCommand?.()).toBeNull();
@@ -415,420 +597,98 @@ describe("createExecutor with Chat Support", () => {
 });
 
 // ============================================================================
-// ExecutorError Chat Tests
+// ExecutorError Chat Errors Tests
 // ============================================================================
 
-describe("ExecutorError Chat Errors", () => {
+describe("ExecutorError chat errors", () => {
   describe("chatNotSupported", () => {
-    it("should create error with correct message", () => {
+    it("should create error with correct message and code", () => {
       const error = ExecutorError.chatNotSupported("TEST_EXECUTOR");
 
       expect(error.message).toBe("Chat mode is not supported for TEST_EXECUTOR");
       expect(error.code).toBe("CHAT_NOT_SUPPORTED");
       expect(error.executorType).toBe("TEST_EXECUTOR");
-    });
-
-    it("should be instance of ExecutorError", () => {
-      const error = ExecutorError.chatNotSupported("TEST");
-
       expect(error).toBeInstanceOf(ExecutorError);
     });
   });
 
   describe("noPromptProvided", () => {
-    it("should create error with correct message", () => {
+    it("should create error with correct message and code", () => {
       const error = ExecutorError.noPromptProvided();
 
       expect(error.message).toBe("No prompt provided and stdin is empty");
       expect(error.code).toBe("NO_PROMPT_PROVIDED");
-    });
-
-    it("should be instance of ExecutorError", () => {
-      const error = ExecutorError.noPromptProvided();
-
       expect(error).toBeInstanceOf(ExecutorError);
     });
   });
 });
 
 // ============================================================================
-// Session Resume Functionality Tests
+// Integration Tests - Full Option Combinations
 // ============================================================================
 
-describe("Session Resume Functionality", () => {
-  describe("ClaudeCode resume option", () => {
-    it("should accept resume in options", () => {
-      const options: ChatOptions = {
-        prompt: "Continue work",
-        resume: "session-abc123",
-      };
+describe("Integration: Full option combinations", () => {
+  const mockSpawn = vi.mocked(spawn);
+  const mockWhich = vi.mocked(which);
 
-      expect(options.resume).toBe("session-abc123");
-    });
-
-    it("should accept sessionId for new session", () => {
-      const options: ChatOptions = {
-        prompt: "Start new",
-        sessionId: "new-session-id",
-      };
-
-      expect(options.sessionId).toBe("new-session-id");
-    });
-
-    it("should allow both sessionId and resume (for edge cases)", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        sessionId: "new-id",
-        resume: "old-id",
-      };
-
-      // Both can be specified, executor decides priority
-      expect(options.sessionId).toBe("new-id");
-      expect(options.resume).toBe("old-id");
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhich.mockResolvedValue("/usr/local/bin/claude");
+    mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
-  describe("Codex session option", () => {
-    it("should accept sessionId in options", () => {
-      const options: ChatOptions = {
-        prompt: "Continue",
-        sessionId: "codex-session",
-      };
-
-      expect(options.sessionId).toBe("codex-session");
-    });
-  });
-});
-
-// ============================================================================
-// Stream JSON Output Format Tests
-// ============================================================================
-
-describe("Stream JSON Output Format", () => {
-  describe("output format options", () => {
-    it("should accept text output format", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        outputFormat: "text",
-      };
-
-      expect(options.outputFormat).toBe("text");
-    });
-
-    it("should accept stream-json output format", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        outputFormat: "stream-json",
-      };
-
-      expect(options.outputFormat).toBe("stream-json");
-    });
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
-  describe("input format options", () => {
-    it("should accept text input format", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        inputFormat: "text",
-      };
-
-      expect(options.inputFormat).toBe("text");
-    });
-
-    it("should accept stream-json input format", () => {
-      const options: ChatOptions = {
-        inputFormat: "stream-json",
-        // When using stream-json input, prompt is sent via stdin
-      };
-
-      expect(options.inputFormat).toBe("stream-json");
-    });
-  });
-
-  describe("combined input/output formats", () => {
-    it("should accept both text", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        inputFormat: "text",
-        outputFormat: "text",
-      };
-
-      expect(options.inputFormat).toBe("text");
-      expect(options.outputFormat).toBe("text");
-    });
-
-    it("should accept both stream-json", () => {
-      const options: ChatOptions = {
-        inputFormat: "stream-json",
-        outputFormat: "stream-json",
-      };
-
-      expect(options.inputFormat).toBe("stream-json");
-      expect(options.outputFormat).toBe("stream-json");
-    });
-
-    it("should accept mixed formats", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        inputFormat: "text",
-        outputFormat: "stream-json",
-      };
-
-      expect(options.inputFormat).toBe("text");
-      expect(options.outputFormat).toBe("stream-json");
-    });
-  });
-});
-
-// ============================================================================
-// Model Override Tests
-// ============================================================================
-
-describe("Model Override", () => {
-  describe("ClaudeCode model option", () => {
-    it("should accept model in ChatOptions", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        model: "claude-3-opus",
-      };
-
-      expect(options.model).toBe("claude-3-opus");
-    });
-
-    it("should accept any model string", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        model: "claude-3-5-sonnet-20241022",
-      };
-
-      expect(options.model).toBe("claude-3-5-sonnet-20241022");
-    });
-  });
-
-  describe("Gemini model option", () => {
-    it("should accept gemini model", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        model: "gemini-1.5-pro",
-      };
-
-      expect(options.model).toBe("gemini-1.5-pro");
-    });
-  });
-
-  describe("Codex model option", () => {
-    it("should accept codex/openai model", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        model: "gpt-4-turbo",
-      };
-
-      expect(options.model).toBe("gpt-4-turbo");
-    });
-  });
-});
-
-// ============================================================================
-// Dangerous Skip Permissions Tests
-// ============================================================================
-
-describe("Dangerous Skip Permissions", () => {
-  describe("ClaudeCode permission option", () => {
-    it("should default to false/undefined", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-      };
-
-      expect(options.dangerouslySkipPermissions).toBeUndefined();
-    });
-
-    it("should accept true to skip permissions", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        dangerouslySkipPermissions: true,
-      };
-
-      expect(options.dangerouslySkipPermissions).toBe(true);
-    });
-
-    it("should accept false to enforce permissions", () => {
-      const options: ChatOptions = {
-        prompt: "Test",
-        dangerouslySkipPermissions: false,
-      };
-
-      expect(options.dangerouslySkipPermissions).toBe(false);
-    });
-  });
-
-  describe("executor config permission", () => {
-    it("should use config dangerouslySkipPermissions", () => {
-      const executor = new ClaudeCode({
-        dangerouslySkipPermissions: true,
-      });
-
-      expect(executor.supportsChat()).toBe(true);
-      // Permission setting will be used when spawnChat is called
-    });
-  });
-});
-
-// ============================================================================
-// Working Directory Tests
-// ============================================================================
-
-describe("Working Directory (cwd)", () => {
-  it("should accept cwd in options", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      cwd: "/path/to/project",
-    };
-
-    expect(options.cwd).toBe("/path/to/project");
-  });
-
-  it("should allow undefined cwd (uses current dir)", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-    };
-
-    expect(options.cwd).toBeUndefined();
-  });
-
-  it("should accept any valid path", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      cwd: join(homedir(), "projects", "my-app"),
-    };
-
-    expect(options.cwd).toContain("projects");
-    expect(options.cwd).toContain("my-app");
-  });
-});
-
-// ============================================================================
-// Verbose Mode Tests
-// ============================================================================
-
-describe("Verbose Mode", () => {
-  it("should default to undefined/false", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-    };
-
-    expect(options.verbose).toBeUndefined();
-  });
-
-  it("should accept true for verbose output", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      verbose: true,
-    };
-
-    expect(options.verbose).toBe(true);
-  });
-
-  it("should accept false to disable verbose", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      verbose: false,
-    };
-
-    expect(options.verbose).toBe(false);
-  });
-});
-
-// ============================================================================
-// Environment Variables Tests
-// ============================================================================
-
-describe("Environment Variables", () => {
-  it("should accept env in options", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      env: {
-        API_KEY: "secret",
-        DEBUG: "true",
-      },
-    };
-
-    expect(options.env).toEqual({
-      API_KEY: "secret",
-      DEBUG: "true",
-    });
-  });
-
-  it("should allow empty env object", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-      env: {},
-    };
-
-    expect(options.env).toEqual({});
-  });
-
-  it("should allow undefined env", () => {
-    const options: ChatOptions = {
-      prompt: "Test",
-    };
-
-    expect(options.env).toBeUndefined();
-  });
-});
-
-// ============================================================================
-// Integration Tests - Chat Options Combinations
-// ============================================================================
-
-describe("Integration: Chat Options Combinations", () => {
-  it("should handle typical CLI usage options", () => {
-    const options: ChatOptions = {
-      prompt: "Analyze this code and suggest improvements",
-      cwd: "/home/user/project",
-      outputFormat: "text",
-      verbose: false,
-    };
-
-    expect(options.prompt).toContain("Analyze");
-    expect(options.cwd).toBe("/home/user/project");
-    expect(options.outputFormat).toBe("text");
-  });
-
-  it("should handle programmatic usage with JSON streaming", () => {
-    const options: ChatOptions = {
-      inputFormat: "stream-json",
-      outputFormat: "stream-json",
-      cwd: "/app",
+  it("ClaudeCode should handle all options correctly", async () => {
+    const executor = new ClaudeCode({
       model: "claude-3-opus",
-    };
-
-    expect(options.inputFormat).toBe("stream-json");
-    expect(options.outputFormat).toBe("stream-json");
-  });
-
-  it("should handle session resume with new prompt", () => {
-    const options: ChatOptions = {
-      prompt: "Continue from where we left off",
-      resume: "prev-session-123",
-      model: "claude-3-sonnet",
-    };
-
-    expect(options.prompt).toContain("Continue");
-    expect(options.resume).toBe("prev-session-123");
-  });
-
-  it("should handle dangerous mode for automation", () => {
-    const options: ChatOptions = {
-      prompt: "Automated task",
       dangerouslySkipPermissions: true,
-      outputFormat: "stream-json",
-      env: {
-        CI: "true",
-        AUTOMATION: "enabled",
-      },
-    };
+      env: { CONFIG_ENV: "config" }
+    });
 
-    expect(options.dangerouslySkipPermissions).toBe(true);
-    expect(options.env?.CI).toBe("true");
+    await executor.spawnChat({
+      prompt: "full test",
+      cwd: "/test/dir",
+      verbose: true,
+      sessionId: "sess-123",
+      outputFormat: "stream-json",
+      env: { RUNTIME_ENV: "runtime" }
+    });
+
+    const [command, args, options] = mockSpawn.mock.calls[0];
+
+    expect(command).toBe("/usr/local/bin/claude");
+    expect(args).toContain("-p");
+    expect(args).toContain("full test");
+    expect(args).toContain("--model");
+    expect(args).toContain("claude-3-opus");
+    expect(args).toContain("--verbose");
+    expect(args).toContain("--session-id");
+    expect(args).toContain("sess-123");
+    expect(args).toContain("--output-format");
+    expect(args).toContain("stream-json");
+    expect(args).toContain("--dangerously-skip-permissions");
+
+    expect(options.cwd).toBe("/test/dir");
+    expect(options.env?.CONFIG_ENV).toBe("config");
+    expect(options.env?.RUNTIME_ENV).toBe("runtime");
+    expect(options.stdio).toBe("inherit");
+  });
+
+  it("session resume should work with prompt", async () => {
+    const executor = new ClaudeCode();
+
+    await executor.spawnChat({
+      prompt: "continue working",
+      resume: "previous-session-id"
+    });
+
+    const [, args] = mockSpawn.mock.calls[0];
+    expect(args).toContain("--resume");
+    expect(args).toContain("previous-session-id");
+    expect(args).toContain("-p");
+    expect(args).toContain("continue working");
   });
 });

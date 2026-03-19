@@ -217,6 +217,7 @@ export function promoteIdea(
       start: options.start,
       worktree: options.worktree,
       computeReward: options.computeReward,
+      filerlDir: options.filerlDir,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);
@@ -234,6 +235,86 @@ export function promoteIdea(
     return {
       success: true,
       ideaId: ideaId,
+      ideaTitle: idea.title,
+      taskId: result.dirName,
+      taskDir: result.taskDir,
+      dirName: result.dirName,
+      priority,
+      status: options.start ? "queue" : "backlog",
+      worktree: options.worktree || false,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Promote an idea directly from an Idea object (without disk lookup)
+ *
+ * This is useful when you already have the Idea object in memory,
+ * such as after calling generateIdeas(). It bypasses the disk lookup
+ * that promoteIdea() does.
+ *
+ * @param repoRoot - Repository root path
+ * @param idea - Idea object to promote
+ * @param options - Task creation options
+ * @returns Promotion result
+ */
+export function promoteIdeaDirect(
+  repoRoot: string,
+  idea: Idea,
+  options: IdeaPromoteOptions = {}
+): IdeaPromoteResult {
+  try {
+    if (idea.status === "promoted") {
+      return {
+        success: false,
+        error: `Idea "${idea.id}" has already been promoted to task "${idea.promotedTo}"`,
+      };
+    }
+
+    // Use effort-based priority if not specified
+    const priority =
+      options.priority || EFFORT_PRIORITY_MAP[idea.estimatedEffort] || "medium";
+
+    // Create task using the idea's title
+    const taskOptions: CreateTaskOptions = {
+      slug: options.slug,
+      assignee: options.assignee,
+      priority,
+      description: options.description || idea.description,
+      branch: options.branch,
+      agent: options.agent,
+      executor: options.executor,
+      model: options.model,
+      start: options.start,
+      worktree: options.worktree,
+      computeReward: options.computeReward,
+      filerlDir: options.filerlDir,
+    };
+
+    const result = createTask(repoRoot, idea.title, taskOptions);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Failed to create task",
+      };
+    }
+
+    // Try to update idea status on disk (may fail if not persisted, that's OK)
+    try {
+      updateIdeaStatus(repoRoot, idea.id, "promoted", result.dirName);
+    } catch {
+      // Ignore - idea may not be on disk yet
+    }
+
+    return {
+      success: true,
+      ideaId: idea.id,
       ideaTitle: idea.title,
       taskId: result.dirName,
       taskDir: result.taskDir,
