@@ -487,7 +487,11 @@ describe("TaskEventStore.getEventHistory", () => {
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe("QUEUE");
     // Should migrate to events.jsonl
-    expect(mockWriteFile).toHaveBeenCalled();
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      expect.stringContaining("events.jsonl"),
+      expect.stringContaining('"eventId":"evt_1"'),
+      "utf-8"
+    );
   });
 
   it("returns empty array when no events exist", async () => {

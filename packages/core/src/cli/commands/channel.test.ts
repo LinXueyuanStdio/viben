@@ -642,32 +642,29 @@ describe("Channel CLI Commands", () => {
       });
     });
 
-    describe("set config --set <key> <value>", () => {
+    describe("set config: channel config -n <id> set <key> <value>", () => {
       it("should update channel configuration", async () => {
         const mockChannel = createMockChannel({ id: "my-channel" });
         mockGetChannel.mockResolvedValue(mockChannel);
         mockUpdateChannelConfig.mockResolvedValue(mockChannel);
 
-        await ctx.run(["channel", "config", "-n", "my-channel", "--set", "proxy", "http://127.0.0.1:7890"]);
+        // CLI uses positional args: channel config -n <id> set <key> <value>
+        await ctx.run(["channel", "config", "-n", "my-channel", "set", "proxy", "http://127.0.0.1:7890"]);
 
-        expect(mockUpdateChannelConfig).toHaveBeenCalledWith("my-channel", { proxy: "http://127.0.0.1:7890" });
+        expect(mockUpdateChannelConfig).toHaveBeenCalledWith("my-channel", "proxy", "http://127.0.0.1:7890");
       });
 
-      it("should handle multiple --set options", async () => {
+      it("should update timeout configuration", async () => {
         const mockChannel = createMockChannel({ id: "my-channel" });
         mockGetChannel.mockResolvedValue(mockChannel);
         mockUpdateChannelConfig.mockResolvedValue(mockChannel);
 
         await ctx.run([
           "channel", "config", "-n", "my-channel",
-          "--set", "proxy", "http://127.0.0.1:7890",
-          "--set", "timeout", "30000",
+          "set", "timeout", "30000",
         ]);
 
-        expect(mockUpdateChannelConfig).toHaveBeenCalledWith("my-channel", {
-          proxy: "http://127.0.0.1:7890",
-          timeout: "30000",
-        });
+        expect(mockUpdateChannelConfig).toHaveBeenCalledWith("my-channel", "timeout", "30000");
       });
 
       it("should output JSON when --json flag is provided", async () => {
@@ -678,7 +675,7 @@ describe("Channel CLI Commands", () => {
         await ctx.run([
           "--json",
           "channel", "config", "-n", "my-channel",
-          "--set", "proxy", "http://127.0.0.1:7890",
+          "set", "proxy", "http://127.0.0.1:7890",
         ]);
 
         expect(ctx.console.hasLog('"success": true')).toBe(true);
@@ -713,7 +710,7 @@ describe("Channel CLI Commands", () => {
       await ctx.run(["channel", "test", "my-telegram"]);
 
       expect(mockTestChannel).toHaveBeenCalled();
-      expect(ctx.console.hasLog("successful")).toBe(true);
+      expect(ctx.console.hasLog("test passed")).toBe(true);
     });
 
     it("should show error when channel not found", async () => {
@@ -750,17 +747,23 @@ describe("Channel CLI Commands", () => {
       expect(ctx.console.hasLog('"success": true')).toBe(true);
     });
 
-    describe("send test message --send", () => {
-      it("should send test message", async () => {
+    describe("send test message with chat-id", () => {
+      it("should send test message when chat-id provided", async () => {
         mockGetChannel.mockResolvedValue(createMockChannel({ id: "my-telegram" }));
         mockBuildChannelConfig.mockReturnValue(buildMockConfig("my-telegram"));
+        // Must mock testChannel to succeed first (connectivity check)
+        mockTestChannel.mockResolvedValue({
+          success: true,
+          latency: 150,
+        });
         mockSendTestMessage.mockResolvedValue({
           success: true,
           messageId: "msg123",
         });
 
-        await ctx.run(["channel", "test", "my-telegram", "--send"]);
+        await ctx.run(["channel", "test", "my-telegram", "chat123"]);
 
+        expect(mockTestChannel).toHaveBeenCalled();
         expect(mockSendTestMessage).toHaveBeenCalled();
         expect(ctx.console.hasLog("Test message sent")).toBe(true);
       });
@@ -768,12 +771,18 @@ describe("Channel CLI Commands", () => {
       it("should show error when send fails", async () => {
         mockGetChannel.mockResolvedValue(createMockChannel({ id: "my-telegram" }));
         mockBuildChannelConfig.mockReturnValue(buildMockConfig("my-telegram"));
+        // Connectivity succeeds
+        mockTestChannel.mockResolvedValue({
+          success: true,
+          latency: 150,
+        });
+        // But sending fails
         mockSendTestMessage.mockResolvedValue({
           success: false,
           error: "Chat not found",
         });
 
-        await expect(ctx.run(["channel", "test", "my-telegram", "--send"])).rejects.toThrow();
+        await expect(ctx.run(["channel", "test", "my-telegram", "chat123"])).rejects.toThrow();
 
         expect(ctx.console.hasError("Chat not found")).toBe(true);
       });
@@ -781,12 +790,16 @@ describe("Channel CLI Commands", () => {
       it("should output JSON when --json flag is provided", async () => {
         mockGetChannel.mockResolvedValue(createMockChannel({ id: "my-telegram" }));
         mockBuildChannelConfig.mockReturnValue(buildMockConfig("my-telegram"));
+        mockTestChannel.mockResolvedValue({
+          success: true,
+          latency: 150,
+        });
         mockSendTestMessage.mockResolvedValue({
           success: true,
           messageId: "msg123",
         });
 
-        await ctx.run(["--json", "channel", "test", "my-telegram", "--send"]);
+        await ctx.run(["--json", "channel", "test", "my-telegram", "chat123"]);
 
         expect(ctx.console.hasLog('"success": true')).toBe(true);
       });

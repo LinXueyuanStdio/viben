@@ -157,6 +157,7 @@ export {
   listTypes,
   viewIdea,
   promoteIdea,
+  promoteIdeaDirect,
   removeIdeas,
   dismissIdea,
   validateIdeaType,

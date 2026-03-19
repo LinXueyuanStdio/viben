@@ -2,6 +2,22 @@
  * Message Bus Tests
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Mock logger functions - hoisted
+const mockLogFns = vi.hoisted(() => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
+}));
+
+// Mock the telemetry logger
+vi.mock("../telemetry", () => ({
+  logger: {
+    child: () => mockLogFns,
+  },
+}));
+
 import { MessageBus, type InboundMessage, type OutboundMessage } from "./message-bus";
 import { EventService } from "./events";
 
@@ -370,6 +386,10 @@ describe("MessageBus", () => {
   });
 
   describe("handler error isolation", () => {
+    beforeEach(() => {
+      mockLogFns.error.mockClear();
+    });
+
     it("should continue calling other handlers when one throws sync error", async () => {
       const errorHandler = vi.fn().mockImplementation(() => {
         throw new Error("Handler error");
@@ -387,16 +407,17 @@ describe("MessageBus", () => {
         timestamp: Date.now(),
       };
 
-      // Suppress console.error for this test
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       await messageBus.publishInbound(message);
 
-      expect(errorHandler).toHaveBeenCalled();
+      expect(errorHandler).toHaveBeenCalledWith(message);
       expect(successHandler).toHaveBeenCalledWith(message);
-      expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(mockLogFns.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: expect.any(Error),
+          channelType: "telegram",
+        }),
+        "Handler error"
+      );
     });
 
     it("should continue calling other handlers when one throws async error", async () => {
@@ -416,15 +437,17 @@ describe("MessageBus", () => {
         timestamp: Date.now(),
       };
 
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       await messageBus.publishInbound(message);
 
-      expect(asyncErrorHandler).toHaveBeenCalled();
+      expect(asyncErrorHandler).toHaveBeenCalledWith(message);
       expect(successHandler).toHaveBeenCalledWith(message);
-      expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(mockLogFns.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: expect.any(Error),
+          channelType: "discord",
+        }),
+        "Handler error"
+      );
     });
 
     it("should isolate wildcard handler errors", async () => {
@@ -446,16 +469,15 @@ describe("MessageBus", () => {
         timestamp: Date.now(),
       };
 
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       await messageBus.publishInbound(message);
 
       expect(specificHandler).toHaveBeenCalledWith(message);
-      expect(errorWildcardHandler).toHaveBeenCalled();
+      expect(errorWildcardHandler).toHaveBeenCalledWith(message);
       expect(successWildcardHandler).toHaveBeenCalledWith(message);
-      expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(mockLogFns.error).toHaveBeenCalledWith(
+        expect.objectContaining({ err: expect.any(Error) }),
+        "Wildcard handler error"
+      );
     });
 
     it("should log error with channel type for specific handlers", async () => {
@@ -473,16 +495,13 @@ describe("MessageBus", () => {
         timestamp: Date.now(),
       };
 
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       await messageBus.publishInbound(message);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("feishu"),
-        expect.any(Error)
+      // Logger uses structured logging: log.error({ err, channelType }, "Handler error")
+      expect(mockLogFns.error).toHaveBeenCalledWith(
+        expect.objectContaining({ channelType: "feishu" }),
+        "Handler error"
       );
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -512,9 +531,9 @@ describe("MessageBus", () => {
 
       await messageBus.publishInbound(message);
 
-      // Both should be called
-      expect(asyncHandler).toHaveBeenCalled();
-      expect(syncHandler).toHaveBeenCalled();
+      // Both should be called with the message
+      expect(asyncHandler).toHaveBeenCalledWith(message);
+      expect(syncHandler).toHaveBeenCalledWith(message);
       // Async handler should complete before sync (sequential execution)
       expect(callOrder).toEqual(["async", "sync"]);
     });

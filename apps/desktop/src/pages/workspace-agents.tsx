@@ -53,7 +53,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useModels, useAgentList } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { Workspace } from "@/types";
+import type { Workspace, Executor, ExecutorType } from "@/types";
 import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
 import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/lib/gateway";
@@ -307,7 +307,7 @@ export function WorkspaceAgentsPage({
       id: executor.id,
       workspace_id: workspace?.id || "",
       name: executor.name,
-      type: (executor.id || "UNKNOWN") as import("@/types").ExecutorType,
+      type: (executor.id || "UNKNOWN") as ExecutorType,
       // Use workspace_config_path for workspace config, empty if none
       config_path: executor.workspace_config_path || "",
       global_config_path: executor.global_config_path,
@@ -614,11 +614,11 @@ export function WorkspaceAgentsPage({
                     {filteredExecutors.map((item) => {
                       // Convert ListItem to Executor format expected by ExecutorListItem
                       // Use item data directly since it was derived from agentListExecutors
-                      const executor: import("@/types").Executor = {
+                      const executor: Executor = {
                         id: item.id,
                         workspace_id: workspace?.id || "",
                         name: item.name,
-                        type: (item.executorType || "UNKNOWN") as import("@/types").ExecutorType,
+                        type: (item.executorType || "UNKNOWN") as ExecutorType,
                         config_path: item.path || "",
                         mcp_config_file: null,
                         skills_config_file: null,

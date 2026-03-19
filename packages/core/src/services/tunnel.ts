@@ -6,13 +6,14 @@
  */
 import { EventEmitter } from "node:events";
 import type { Tunnel as CloudflaredTunnel, Connection } from "cloudflared";
+import type * as CloudflaredTypes from "cloudflared";
 import { logger as globalLogger } from "../telemetry";
 
 // Module-level logger
 const log = globalLogger.child({ module: "tunnel" });
 
 // Dynamically import cloudflared to avoid issues if not installed
-let cloudflaredModule: typeof import("cloudflared") | null = null;
+let cloudflaredModule: typeof CloudflaredTypes | null = null;
 
 async function getCloudflared() {
   if (!cloudflaredModule) {

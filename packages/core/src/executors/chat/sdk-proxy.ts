@@ -7,6 +7,7 @@
 
 import type { ChatProxy, ChatResult } from "./types";
 import type { ChatOptions } from "../types";
+import type * as ClaudeAgentSdk from "@anthropic-ai/claude-agent-sdk";
 
 // ============================================================================
 // SSE Message Types for Streaming
@@ -138,13 +139,13 @@ function findClaudeCodeExecutable(): string | undefined {
 const DEFAULT_MAX_TURNS = 200;
 
 // Dynamic import for optional SDK dependency
-let claudeSdk: typeof import("@anthropic-ai/claude-agent-sdk") | null = null;
+let claudeSdk: typeof ClaudeAgentSdk | null = null;
 
 /**
  * Lazy load the Claude Agent SDK
  * Returns null if the SDK is not installed
  */
-async function loadClaudeSdk(): Promise<typeof import("@anthropic-ai/claude-agent-sdk") | null> {
+async function loadClaudeSdk(): Promise<typeof ClaudeAgentSdk | null> {
   if (claudeSdk !== null) {
     return claudeSdk;
   }

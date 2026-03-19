@@ -1,7 +1,7 @@
 /**
  * Task Lifecycle Operations Tests
  *
- * Tests for status transitions:
+ * Tests for status transitions using REAL file system operations:
  * - enqueueTask: backlog -> queue
  * - dequeueTask: queue -> backlog
  * - pauseTask: in_progress/queue -> paused
@@ -10,9 +10,10 @@
  * - rejectTask: review -> backlog
  * - retryTask: failed -> queue
  * - cancelTask: * -> cancelled
+ *
+ * Only external commands (gh, git) are mocked. File operations are real.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { join } from "node:path";
 import {
   enqueueTask,
   dequeueTask,
@@ -23,643 +24,694 @@ import {
   retryTask,
   cancelTask,
 } from "./lifecycle";
-
-// Mock node:fs
-vi.mock("node:fs", () => ({
-  existsSync: vi.fn(),
-  readFileSync: vi.fn(),
-  writeFileSync: vi.fn(),
-  rmSync: vi.fn(),
-}));
+import {
+  createWorkspaceTempDir,
+  createTaskDir,
+  type TempDirContext,
+} from "../../test/helpers/temp-dir";
 
 // Mock child_process.execSync for gh pr commands
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
 }));
 
-// Mock viben-workspace functions
-vi.mock("../../cli/lib/viben-workspace", () => ({
-  resolveTaskDirectory: vi.fn(),
-  updateTaskStatus: vi.fn(),
-  appendTaskEvent: vi.fn(),
-  validateStatusTransition: vi.fn(),
-  getTodayDate: vi.fn(),
-  runGitCommand: vi.fn(),
-  FILE_TASK_JSON: "task.json",
+// Mock queue enqueue to avoid writing to global queue directory
+vi.mock("../../queue/ops/enqueue", () => ({
+  enqueue: vi.fn().mockReturnValue({ success: true, id: "q_mock123", position: 1 }),
 }));
 
-// Get mocked functions
-import * as fs from "node:fs";
-import * as vibenWorkspace from "../../cli/lib/viben-workspace";
+import { execSync } from "node:child_process";
+import { enqueue as queueEnqueue } from "../../queue/ops/enqueue";
 
 describe("lifecycle operations", () => {
-  const mockRepoRoot = "/mock/repo";
-  const mockTaskDir = join(mockRepoRoot, ".viben/tasks/03-15-test-task");
+  let tempDir: TempDirContext & { vibenDir: string; tasksDir: string };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    tempDir = await createWorkspaceTempDir();
     vi.clearAllMocks();
-    vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(mockTaskDir);
-    vi.mocked(fs.existsSync).mockReturnValue(true);
-    vi.mocked(vibenWorkspace.updateTaskStatus).mockReturnValue(true);
-    vi.mocked(vibenWorkspace.getTodayDate).mockReturnValue("2024-03-15");
+    // Reset queue mock to default success
+    vi.mocked(queueEnqueue).mockReturnValue({ success: true, id: "q_mock123", position: 1 });
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  afterEach(async () => {
+    await tempDir.cleanup();
   });
-
-  // Helper to mock task.json content
-  const mockTaskJson = (data: Record<string, unknown>) => {
-    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(data));
-  };
 
   describe("enqueueTask", () => {
-    it("should enqueue task from backlog to queue", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should change status from backlog to queue", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
 
-      const result = enqueueTask(mockRepoRoot, "test-task");
+      const result = enqueueTask(tempDir.root, "test-task", { skipQueue: true });
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("queue");
       expect(result.fromStatus).toBe("backlog");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "queue",
-        expect.objectContaining({ queuedAt: expect.any(String) })
+
+      // Verify actual file was updated
+      const taskJson = await tempDir.readJson<{ status: string; queuedAt?: string }>(
+        ".viben/tasks/test-task/task.json"
       );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "QUEUE",
-        expect.any(Object)
-      );
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.queuedAt).toBeDefined();
     });
 
-    it("should set additional fields when options provided", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should append QUEUE event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
 
-      const result = enqueueTask(mockRepoRoot, "test-task", {
-        agent: "claude-agent",
-        executor: "CLAUDE_CODE",
-        model: "claude-3-opus",
-        priority: "urgent",
-      });
+      enqueueTask(tempDir.root, "test-task", { skipQueue: true });
+
+      // Verify event was logged
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const queueEvent = events.find((e) => e.type === "QUEUE");
+      expect(queueEvent).toBeDefined();
+      expect(queueEvent.eventId).toBeDefined();
+      expect(queueEvent.timestamp).toBeDefined();
+    });
+
+    it("should submit command to queue system when skipQueue is false", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
+
+      const result = enqueueTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "queue",
+      expect(vi.mocked(queueEnqueue)).toHaveBeenCalledWith(
         expect.objectContaining({
-          agent: "claude-agent",
-          executor: "CLAUDE_CODE",
-          model: "claude-3-opus",
-          priority: "urgent",
+          command: expect.stringContaining("viben task start"),
+          cwd: tempDir.root,
         })
       );
     });
 
-    it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
+    it("should fail when queue submission fails", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
+      vi.mocked(queueEnqueue).mockReturnValue({ success: false, error: "Queue full" });
 
-      const result = enqueueTask(mockRepoRoot, "nonexistent-task");
+      const result = enqueueTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Task not found");
+      expect(result.error).toContain("Failed to submit to queue");
     });
 
-    it("should fail when status transition is invalid", () => {
-      mockTaskJson({ status: "in_progress", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot queue task in 'in_progress' state",
+    it("should set additional fields when options provided", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
+
+      const result = enqueueTask(tempDir.root, "test-task", {
+        agent: "claude-agent",
+        executor: "CLAUDE_CODE",
+        model: "claude-3-opus",
+        priority: "urgent",
+        skipQueue: true,
       });
 
-      const result = enqueueTask(mockRepoRoot, "test-task");
+      expect(result.success).toBe(true);
+
+      const taskJson = await tempDir.readJson<Record<string, unknown>>(
+        ".viben/tasks/test-task/task.json"
+      );
+      expect(taskJson.agent).toBe("claude-agent");
+      expect(taskJson.executor).toBe("CLAUDE_CODE");
+      expect(taskJson.model).toBe("claude-3-opus");
+      expect(taskJson.priority).toBe("urgent");
+    });
+
+    it("should reject invalid status transition from in_progress", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "in_progress" });
+
+      const result = enqueueTask(tempDir.root, "test-task", { skipQueue: true });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot queue task");
+      expect(result.error).toContain("in_progress");
+    });
+
+    it("should reject invalid status transition from completed", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "completed" });
+
+      const result = enqueueTask(tempDir.root, "test-task", { skipQueue: true });
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot queue task");
     });
 
-    it("should fail when updateTaskStatus fails", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
-      vi.mocked(vibenWorkspace.updateTaskStatus).mockReturnValue(false);
-
-      const result = enqueueTask(mockRepoRoot, "test-task");
+    it("should fail when task not found", () => {
+      const result = enqueueTask(tempDir.root, "nonexistent-task", { skipQueue: true });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Failed to update task.json");
+      expect(result.error).toContain("Task not found");
     });
   });
 
   describe("dequeueTask", () => {
-    it("should dequeue task from queue to backlog", () => {
-      mockTaskJson({ status: "queue", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
+    it("should change status from queue to backlog", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "queue",
+        queuedAt: new Date().toISOString(),
       });
 
-      const result = dequeueTask(mockRepoRoot, "test-task");
+      const result = dequeueTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("backlog");
       expect(result.fromStatus).toBe("queue");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "backlog",
-        { queuedAt: null }
+
+      // Verify actual file was updated
+      const taskJson = await tempDir.readJson<{ status: string; queuedAt?: string }>(
+        ".viben/tasks/test-task/task.json"
       );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "DEQUEUE"
-      );
+      expect(taskJson.status).toBe("backlog");
+      expect(taskJson.queuedAt).toBeUndefined(); // Should be cleared
+    });
+
+    it("should append DEQUEUE event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
+
+      dequeueTask(tempDir.root, "test-task");
+
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const dequeueEvent = events.find((e) => e.type === "DEQUEUE");
+      expect(dequeueEvent).toBeDefined();
+    });
+
+    it("should reject invalid status transition from backlog", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
+
+      const result = dequeueTask(tempDir.root, "test-task");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot dequeue task");
+      expect(result.error).toContain("backlog");
     });
 
     it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
-
-      const result = dequeueTask(mockRepoRoot, "nonexistent-task");
+      const result = dequeueTask(tempDir.root, "nonexistent-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Task not found");
     });
-
-    it("should fail when status transition is invalid", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot dequeue task in 'backlog' state",
-      });
-
-      const result = dequeueTask(mockRepoRoot, "test-task");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Cannot dequeue task");
-    });
   });
 
   describe("pauseTask", () => {
-    it("should pause task from in_progress", () => {
-      mockTaskJson({ status: "in_progress", id: "test-task", current_phase: 2 });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
+    it("should change status from in_progress to paused", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "in_progress",
+        current_phase: 2,
       });
 
-      const result = pauseTask(mockRepoRoot, "test-task");
+      const result = pauseTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("paused");
       expect(result.fromStatus).toBe("in_progress");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "paused",
-        expect.objectContaining({
-          pausedSnapshot: expect.objectContaining({
-            fromState: "in_progress",
-            subtaskIndex: 2,
-            pausedAt: expect.any(String),
-          }),
-        })
-      );
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        pausedSnapshot?: { fromState: string; subtaskIndex: number; pausedAt: string };
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("paused");
+      expect(taskJson.pausedSnapshot).toBeDefined();
+      expect(taskJson.pausedSnapshot?.fromState).toBe("in_progress");
+      expect(taskJson.pausedSnapshot?.subtaskIndex).toBe(2);
     });
 
-    it("should pause task from queue", () => {
-      mockTaskJson({ status: "queue", id: "test-task", current_phase: 0 });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should change status from queue to paused", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
 
-      const result = pauseTask(mockRepoRoot, "test-task");
+      const result = pauseTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("paused");
       expect(result.fromStatus).toBe("queue");
     });
 
-    it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
+    it("should append PAUSE event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "in_progress" });
 
-      const result = pauseTask(mockRepoRoot, "nonexistent-task");
+      pauseTask(tempDir.root, "test-task");
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Task not found");
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const pauseEvent = events.find((e) => e.type === "PAUSE");
+      expect(pauseEvent).toBeDefined();
+      expect(pauseEvent.payload?.fromState).toBe("in_progress");
     });
 
-    it("should fail when pausing from terminal state", () => {
-      mockTaskJson({ status: "completed", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot pause task in 'completed' state",
-      });
+    it("should reject pausing from terminal state (completed)", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "completed" });
 
-      const result = pauseTask(mockRepoRoot, "test-task");
+      const result = pauseTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot pause task");
     });
+
+    it("should fail when task not found", () => {
+      const result = pauseTask(tempDir.root, "nonexistent-task");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Task not found");
+    });
   });
 
   describe("resumeTask", () => {
-    it("should resume task and restore to previous state", () => {
-      mockTaskJson({
+    it("should restore previous state from pausedSnapshot", async () => {
+      await createTaskDir(tempDir, "test-task", {
         status: "paused",
-        id: "test-task",
         pausedSnapshot: {
           fromState: "in_progress",
           subtaskIndex: 2,
           pausedAt: "2024-03-15T10:00:00Z",
         },
       });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
 
-      const result = resumeTask(mockRepoRoot, "test-task");
+      const result = resumeTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("in_progress");
       expect(result.fromStatus).toBe("paused");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "in_progress",
-        { pausedSnapshot: null }
-      );
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        pausedSnapshot?: unknown;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("in_progress");
+      expect(taskJson.pausedSnapshot).toBeUndefined(); // Should be cleared
     });
 
-    it("should resume to queue when no pausedSnapshot", () => {
-      mockTaskJson({ status: "paused", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should resume to queue when no pausedSnapshot (default)", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "paused" });
 
-      const result = resumeTask(mockRepoRoot, "test-task");
+      const result = resumeTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("queue");
     });
 
-    it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
-
-      const result = resumeTask(mockRepoRoot, "nonexistent-task");
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Task not found");
-    });
-
-    it("should fail when task is not paused", () => {
-      mockTaskJson({ status: "queue", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot resume task in 'queue' state",
+    it("should append RESUME event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "paused",
+        pausedSnapshot: { fromState: "in_progress", subtaskIndex: 1, pausedAt: "2024-03-15T10:00:00Z" },
       });
 
-      const result = resumeTask(mockRepoRoot, "test-task");
+      resumeTask(tempDir.root, "test-task");
+
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const resumeEvent = events.find((e) => e.type === "RESUME");
+      expect(resumeEvent).toBeDefined();
+      expect(resumeEvent.payload?.toState).toBe("in_progress");
+    });
+
+    it("should reject resuming non-paused task", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
+
+      const result = resumeTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot resume task");
     });
-  });
-
-  describe("approveTask", () => {
-    it("should approve task from review to completed", () => {
-      mockTaskJson({ status: "review", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
-
-      const result = approveTask(mockRepoRoot, "test-task", { skipMerge: true });
-
-      expect(result.success).toBe(true);
-      expect(result.status).toBe("completed");
-      expect(result.fromStatus).toBe("review");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "completed",
-        expect.objectContaining({
-          completedAt: "2024-03-15",
-          reviewReason: "approved",
-        })
-      );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "APPROVED",
-        expect.objectContaining({
-          merge_commit: undefined,
-          merged_at: undefined,
-        })
-      );
-    });
 
     it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
-
-      const result = approveTask(mockRepoRoot, "nonexistent-task");
+      const result = resumeTask(tempDir.root, "nonexistent-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Task not found");
     });
+  });
 
-    it("should fail when task is not in review and has no pr_url", () => {
-      mockTaskJson({ status: "in_progress", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot approved task in 'in_progress' state",
-      });
+  describe("approveTask", () => {
+    it("should change status from review to completed", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "review" });
 
-      const result = approveTask(mockRepoRoot, "test-task");
+      const result = approveTask(tempDir.root, "test-task", { skipMerge: true });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Cannot approved task");
+      expect(result.success).toBe(true);
+      expect(result.status).toBe("completed");
+      expect(result.fromStatus).toBe("review");
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        completedAt?: string;
+        reviewReason?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("completed");
+      expect(taskJson.completedAt).toBeDefined();
+      expect(taskJson.reviewReason).toBe("approved");
     });
 
-    it("should fail approve from in_progress even when pr_url exists", () => {
-      mockTaskJson({
-        status: "in_progress",
-        id: "test-task",
-        pr_url: "https://github.com/example/repo/pull/123",
-      });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot approved task in 'in_progress' status. Expected: review",
+    it("should append APPROVED event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "review" });
+
+      approveTask(tempDir.root, "test-task", { skipMerge: true });
+
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const approvedEvent = events.find((e) => e.type === "APPROVED");
+      expect(approvedEvent).toBeDefined();
+    });
+
+    it("should merge PR when pr_url exists and skipMerge is false", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "review",
+        pr_url: "https://github.com/org/repo/pull/123",
       });
 
-      const result = approveTask(mockRepoRoot, "test-task", { skipMerge: true });
+      // Mock gh pr view - first call checks status
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        if (cmd.includes("gh pr view") && cmd.includes("state,mergeable")) {
+          return JSON.stringify({ state: "OPEN", mergeable: "MERGEABLE" });
+        }
+        if (cmd.includes("gh pr merge")) {
+          return "Merged";
+        }
+        if (cmd.includes("gh pr view") && cmd.includes("mergeCommit")) {
+          return JSON.stringify({ mergeCommit: { oid: "abc123" } });
+        }
+        return "";
+      });
+
+      const result = approveTask(tempDir.root, "test-task");
+
+      expect(result.success).toBe(true);
+      expect(vi.mocked(execSync)).toHaveBeenCalledWith(
+        expect.stringContaining("gh pr merge"),
+        expect.any(Object)
+      );
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        merge_commit?: string;
+        merged_at?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("completed");
+      expect(taskJson.merge_commit).toBe("abc123");
+      expect(taskJson.merged_at).toBeDefined();
+    });
+
+    it("should fail when PR merge fails", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "review",
+        pr_url: "https://github.com/org/repo/pull/123",
+      });
+
+      vi.mocked(execSync).mockImplementation((cmd: string) => {
+        if (cmd.includes("gh pr view") && cmd.includes("state,mergeable")) {
+          return JSON.stringify({ state: "OPEN", mergeable: "CONFLICTING" });
+        }
+        return "";
+      });
+
+      const result = approveTask(tempDir.root, "test-task");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("merge conflicts");
+    });
+
+    it("should reject approval from in_progress even when pr_url exists", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "in_progress",
+        pr_url: "https://github.com/org/repo/pull/123",
+      });
+
+      const result = approveTask(tempDir.root, "test-task", { skipMerge: true });
 
       // in_progress -> completed is NOT allowed, even with pr_url
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot approved task");
     });
-  });
-
-  describe("rejectTask", () => {
-    it("should reject task from review to backlog", () => {
-      mockTaskJson({ status: "review", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
-
-      const result = rejectTask(mockRepoRoot, "test-task");
-
-      expect(result.success).toBe(true);
-      expect(result.status).toBe("backlog");
-      expect(result.fromStatus).toBe("review");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "backlog",
-        expect.objectContaining({
-          pr_url: null,
-          reviewReason: "rejected",
-        })
-      );
-    });
-
-    it("should record rejection reason when provided", () => {
-      mockTaskJson({ status: "review", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
-
-      const result = rejectTask(mockRepoRoot, "test-task", "Code quality issues");
-
-      expect(result.success).toBe(true);
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "backlog",
-        expect.objectContaining({
-          rejectReason: "Code quality issues",
-        })
-      );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "REJECTED",
-        { reason: "Code quality issues" }
-      );
-    });
 
     it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
-
-      const result = rejectTask(mockRepoRoot, "nonexistent-task");
+      const result = approveTask(tempDir.root, "nonexistent-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Task not found");
     });
+  });
 
-    it("should fail when task is not in review and has no pr_url", () => {
-      mockTaskJson({ status: "queue", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot rejected task in 'queue' state",
+  describe("rejectTask", () => {
+    it("should change status from review to backlog", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "review",
+        pr_url: "https://github.com/org/repo/pull/123",
       });
 
-      const result = rejectTask(mockRepoRoot, "test-task");
+      const result = rejectTask(tempDir.root, "test-task");
+
+      expect(result.success).toBe(true);
+      expect(result.status).toBe("backlog");
+      expect(result.fromStatus).toBe("review");
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        pr_url?: string;
+        reviewReason?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("backlog");
+      expect(taskJson.pr_url).toBeUndefined(); // Should be cleared
+      expect(taskJson.reviewReason).toBe("rejected");
+    });
+
+    it("should record rejection reason when provided", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "review" });
+
+      const result = rejectTask(tempDir.root, "test-task", "Code quality issues");
+
+      expect(result.success).toBe(true);
+
+      const taskJson = await tempDir.readJson<{
+        rejectReason?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.rejectReason).toBe("Code quality issues");
+    });
+
+    it("should append REJECTED event with reason", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "review" });
+
+      rejectTask(tempDir.root, "test-task", "Code quality issues");
+
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const rejectedEvent = events.find((e) => e.type === "REJECTED");
+      expect(rejectedEvent).toBeDefined();
+      expect(rejectedEvent.payload?.reason).toBe("Code quality issues");
+    });
+
+    it("should allow reject from in_progress when pr_url exists", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "in_progress",
+        pr_url: "https://github.com/org/repo/pull/123",
+      });
+
+      const result = rejectTask(tempDir.root, "test-task");
+
+      // This is a special case - allowed for recovery from inconsistent state
+      expect(result.success).toBe(true);
+      expect(result.status).toBe("backlog");
+      expect(result.fromStatus).toBe("in_progress");
+    });
+
+    it("should reject from queue state without pr_url", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
+
+      const result = rejectTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot rejected task");
     });
 
-    it("should reject task from in_progress when pr_url exists", () => {
-      mockTaskJson({
-        status: "in_progress",
-        id: "test-task",
-        pr_url: "https://github.com/example/repo/pull/123",
-      });
-
-      const result = rejectTask(mockRepoRoot, "test-task");
-
-      expect(result.success).toBe(true);
-      expect(result.status).toBe("backlog");
-      expect(result.fromStatus).toBe("in_progress");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "backlog",
-        expect.objectContaining({
-          pr_url: null,
-          reviewReason: "rejected",
-        })
-      );
-    });
-  });
-
-  describe("retryTask", () => {
-    it("should retry task from failed to queue", () => {
-      mockTaskJson({
-        status: "failed",
-        id: "test-task",
-        error: "Build failed",
-        errorMessage: "npm install failed",
-        failedAt: "2024-03-14T10:00:00Z",
-      });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
-
-      const result = retryTask(mockRepoRoot, "test-task");
-
-      expect(result.success).toBe(true);
-      expect(result.status).toBe("queue");
-      expect(result.fromStatus).toBe("failed");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "queue",
-        expect.objectContaining({
-          queuedAt: expect.any(String),
-          error: null,
-          errorMessage: null,
-          failedAt: null,
-        })
-      );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "RETRY"
-      );
-    });
-
     it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
-
-      const result = retryTask(mockRepoRoot, "nonexistent-task");
+      const result = rejectTask(tempDir.root, "nonexistent-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Task not found");
     });
+  });
 
-    it("should fail when task is not in failed state", () => {
-      mockTaskJson({ status: "queue", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot retry task in 'queue' state",
+  describe("retryTask", () => {
+    it("should change status from failed to queue", async () => {
+      await createTaskDir(tempDir, "test-task", {
+        status: "failed",
+        error: "Build failed",
+        errorMessage: "npm install failed",
+        failedAt: "2024-03-14T10:00:00Z",
       });
 
-      const result = retryTask(mockRepoRoot, "test-task");
+      const result = retryTask(tempDir.root, "test-task");
+
+      expect(result.success).toBe(true);
+      expect(result.status).toBe("queue");
+      expect(result.fromStatus).toBe("failed");
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        queuedAt?: string;
+        error?: string;
+        errorMessage?: string;
+        failedAt?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.queuedAt).toBeDefined();
+      expect(taskJson.error).toBeUndefined(); // Should be cleared
+      expect(taskJson.errorMessage).toBeUndefined(); // Should be cleared
+      expect(taskJson.failedAt).toBeUndefined(); // Should be cleared
+    });
+
+    it("should append RETRY event to events.jsonl", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "failed" });
+
+      retryTask(tempDir.root, "test-task");
+
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const retryEvent = events.find((e) => e.type === "RETRY");
+      expect(retryEvent).toBeDefined();
+    });
+
+    it("should reject retry from non-failed state", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
+
+      const result = retryTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot retry task");
     });
+
+    it("should fail when task not found", () => {
+      const result = retryTask(tempDir.root, "nonexistent-task");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Task not found");
+    });
   });
 
   describe("cancelTask", () => {
-    it("should cancel task from backlog", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should cancel task from backlog", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
 
-      const result = cancelTask(mockRepoRoot, "test-task");
+      const result = cancelTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("cancelled");
       expect(result.fromStatus).toBe("backlog");
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "cancelled",
-        expect.objectContaining({
-          cancelledAt: expect.any(String),
-        })
-      );
+
+      const taskJson = await tempDir.readJson<{
+        status: string;
+        cancelledAt?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.status).toBe("cancelled");
+      expect(taskJson.cancelledAt).toBeDefined();
     });
 
-    it("should cancel task from queue", () => {
-      mockTaskJson({ status: "queue", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should cancel task from queue", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "queue" });
 
-      const result = cancelTask(mockRepoRoot, "test-task");
+      const result = cancelTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("cancelled");
     });
 
-    it("should cancel task from paused", () => {
-      mockTaskJson({ status: "paused", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should cancel task from paused", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "paused" });
 
-      const result = cancelTask(mockRepoRoot, "test-task");
+      const result = cancelTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("cancelled");
     });
 
-    it("should require force option to cancel in_progress task", () => {
-      mockTaskJson({ status: "in_progress", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should require force option to cancel in_progress task", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "in_progress" });
 
-      const result = cancelTask(mockRepoRoot, "test-task");
+      const result = cancelTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Use force option to cancel a running task");
     });
 
-    it("should cancel in_progress task with force option", () => {
-      mockTaskJson({ status: "in_progress", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should cancel in_progress task with force option", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "in_progress" });
 
-      const result = cancelTask(mockRepoRoot, "test-task", { force: true });
+      const result = cancelTask(tempDir.root, "test-task", { force: true });
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("cancelled");
     });
 
-    it("should record cancellation reason when provided", () => {
-      mockTaskJson({ status: "backlog", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: true,
-      });
+    it("should record cancellation reason when provided", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
 
-      const result = cancelTask(mockRepoRoot, "test-task", {
+      const result = cancelTask(tempDir.root, "test-task", {
         reason: "No longer needed",
       });
 
       expect(result.success).toBe(true);
-      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "cancelled",
-        expect.objectContaining({
-          cancelReason: "No longer needed",
-        })
-      );
-      expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
-        mockTaskDir,
-        "CANCEL",
-        { reason: "No longer needed" }
-      );
+
+      const taskJson = await tempDir.readJson<{
+        cancelReason?: string;
+      }>(".viben/tasks/test-task/task.json");
+      expect(taskJson.cancelReason).toBe("No longer needed");
     });
 
-    it("should fail when task not found", () => {
-      vi.mocked(vibenWorkspace.resolveTaskDirectory).mockReturnValue(null);
+    it("should append CANCEL event with reason", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "backlog" });
 
-      const result = cancelTask(mockRepoRoot, "nonexistent-task");
+      cancelTask(tempDir.root, "test-task", { reason: "No longer needed" });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain("Task not found");
+      const eventsContent = await tempDir.readFile(".viben/tasks/test-task/events.jsonl");
+      const events = eventsContent
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+
+      const cancelEvent = events.find((e) => e.type === "CANCEL");
+      expect(cancelEvent).toBeDefined();
+      expect(cancelEvent.payload?.reason).toBe("No longer needed");
     });
 
-    it("should fail when cancelling from terminal state", () => {
-      mockTaskJson({ status: "completed", id: "test-task" });
-      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
-        valid: false,
-        error: "Cannot cancel task in 'completed' state",
-      });
+    it("should reject cancelling from terminal state (completed)", async () => {
+      await createTaskDir(tempDir, "test-task", { status: "completed" });
 
-      const result = cancelTask(mockRepoRoot, "test-task");
+      const result = cancelTask(tempDir.root, "test-task");
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot cancel task");
+    });
+
+    it("should fail when task not found", () => {
+      const result = cancelTask(tempDir.root, "nonexistent-task");
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Task not found");
     });
   });
 });

@@ -164,8 +164,9 @@ export function getIdeaTypePromptPath(repoRoot: string, type: string): string {
 export function getBuiltinIdeaTypePromptPath(type: string): string {
   // Get the directory where this file is located
   const currentDir = dirname(fileURLToPath(import.meta.url));
-  // Navigate from idea/ops to prompts/idea-types
-  const srcPromptsDir = resolve(currentDir, "../../prompts/idea-types");
+  // After bundling with tsup, CLI code is bundled into dist/cli/bin.js
+  // So currentDir is dist/cli/, and prompts are at dist/prompts/idea-types
+  const srcPromptsDir = resolve(currentDir, "../prompts/idea-types");
   return join(srcPromptsDir, `${type}.md`);
 }
 

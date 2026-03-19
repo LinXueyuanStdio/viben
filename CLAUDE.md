@@ -42,6 +42,25 @@
 
 This ensures consistency between frontend (gateway client) and backend (gateway routes).
 
+## TypeScript Import Style
+
+**FORBIDDEN**: Never use inline import type syntax like `import("path").TypeName`. This is ugly and hard to read.
+
+```typescript
+// ❌ BAD - Never do this
+function foo(): import("../../reward/ops/types").RewardConfig { }
+type Bar = import("../types").SomeType;
+
+// ✅ GOOD - Use explicit import statements
+import type { RewardConfig } from "../../reward/ops/types";
+import type { SomeType } from "../types";
+
+function foo(): RewardConfig { }
+type Bar = SomeType;
+```
+
+Always use explicit `import type { ... } from "..."` statements at the top of the file.
+
 ## Build Requirements
 
 **IMPORTANT**: When making changes to the codebase, ensure all packages compile successfully:

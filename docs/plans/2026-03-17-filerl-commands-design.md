@@ -11,7 +11,8 @@ FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质
 1. **FileRL 循环作为提示词** - 不是硬编码命令，而是 Agent 读取 `FileRL.md` 执行
 2. **独立子命令** - 提供可组合的原子命令，供 Agent 灵活调用
 3. **Reward Types 系统** - 类似 Idea Types，支持 builtin + custom
-4. **配置跟随 Task** - reward_config 写在 task.json 中
+4. **配置跟随 FileRL Target** - reward_config 定义在 main repo 的 FileRL target 配置中
+5. **数据写回 Main Repo** - reward 结果和日志写入 `.viben/filerl/<name>/` 目录
 
 ---
 
@@ -36,25 +37,25 @@ FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质
 │   │ 1.implement        │ 1.implement        │ 1.implement              │
 │   │ 2.check            │ 2.check            │ 2.check                  │
 │   │ 3.validate         │ 3.validate         │ 3.validate               │
-│   │ 4.create-pr        │ 4.create-pr        │ 4.create-pr              │
-│   │ 5.compute-reward   │ 5.compute-reward   │ 5.compute-reward         │
-│   │    ↓               │    ↓               │    ↓                     │
-│   │ task.json          │ task.json          │ task.json                │
-│   │ R=0.858            │ R=0.721            │ R=0.634                  │
 │   └────────────────────┴────────────────────┴──────────────────────────┘
 │                                                                         │
 │   3. viben swarm wait --all                                            │
 │                                                                         │
-│   4. viben reward select task-a task-b task-c                          │
+│   4. viben filerl reward <name> task-a  (×N, 在 main repo 执行)        │
+│      viben filerl reward <name> task-b                                 │
+│      viben filerl reward <name> task-c                                 │
+│      → 评估 worktree 代码, 写入 .viben/filerl/<name>/iter<N>/<task>/   │
+│                                                                         │
+│   5. viben filerl select <name>                                        │
 │      → 聚合 rewards, 计算 PPO, 输出: selected=task-a                   │
 │                                                                         │
-│   5. viben task approve task-a                                         │
+│   6. viben task approve task-a                                         │
 │      → approve agent 执行 merge PR                                     │
 │                                                                         │
-│   6. viben task cleanup task-b task-c                                  │
+│   7. viben task cleanup task-b task-c                                  │
 │      → 清理未选中的 worktrees                                          │
 │                                                                         │
-│   7. 检查收敛 → 继续下一轮迭代                                          │
+│   8. 检查收敛 → 继续下一轮迭代                                          │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -67,10 +68,10 @@ FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质
 viben task work-phase <task>
 ├── 1. implement-phase      → 实现代码
 ├── 2. check-phase          → 检查代码质量
-├── 3. validate-check-phase → 验证通过
-├── 4. create-pr            → 创建 PR
-└── 5. compute-reward       → 评估 PR 奖励（新增）
+└── 3. validate-check-phase → 验证通过
 ```
+
+**注意**：`compute-reward` 不再是 worktree work-phase 的一部分。Reward 评估在 main repo 中由 FileRL main task 统一调用 `viben filerl reward` 完成。
 
 ---
 
@@ -103,27 +104,33 @@ viben task work-phase <task>
 
 ---
 
-### 2. `viben task compute-reward <task>`
+### 2. `viben filerl reward <name> <task>`
 
-**用途**：在 worktree 中评估 PR 的奖励，写入 task.json
+**用途**：在 main repo 中评估 worktree 任务的奖励，写入 FileRL 目录
 
-**触发时机**：create-pr 之后，作为 work-phase 最后一个子阶段
+**触发时机**：worktree 任务完成后，由 FileRL main task 统一调用
 
 **输入**：
 ```bash
-viben task compute-reward <task>
+viben filerl reward <name> <task>
 ```
 
-Reward types 从 task.json 的 `reward_config` 字段读取。
+- `<name>`: FileRL run 名称（如 `refactor-api`）
+- `<task>`: 要评估的任务名称
 
-**task.json 中的配置**：
+Reward types 从 main repo 的 FileRL target 配置读取（`.viben/filerl/<name>/state.json`）。
+
+**FileRL state.json 中的配置**：
 ```json
 {
-  "title": "Optimize API caching",
-  "status": "in_progress",
-  "reward_config": {
-    "types": ["test_coverage", "code_quality", "agent_review"],
-    "weights": [0.4, 0.3, 0.3]
+  "name": "refactor-api",
+  "status": "running",
+  "iteration": 0,
+  "target": {
+    "reward_config": {
+      "types": ["test_coverage", "code_quality", "agent_review"],
+      "weights": [0.4, 0.3, 0.3]
+    }
   }
 }
 ```
@@ -131,13 +138,14 @@ Reward types 从 task.json 的 `reward_config` 字段读取。
 **数据链路**：
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│            viben task compute-reward <task>                         │
-│                    (executed in worktree)                           │
+│            viben filerl reward <name> <task>                        │
+│                    (executed in main repo)                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Input:                                                            │
-│  ├── task.json → reward_config.types, reward_config.weights        │
-│  ├── git diff main..HEAD → 代码变更                                │
+│  ├── .viben/filerl/<name>/state.json → reward_config               │
+│  ├── worktree path → 从 task.json 读取                             │
+│  ├── git diff main..<worktree-branch> → 代码变更                   │
 │  ├── PR info (gh pr view) → PR 描述、CI 状态                       │
 │  ├── check phase artifacts → 测试结果、lint 输出                   │
 │  └── reward-types/<type>.md → reward agent prompts                 │
@@ -147,7 +155,7 @@ Reward types 从 task.json 的 `reward_config` 字段读取。
 │  │ for type in reward_config.types:                              │ │
 │  │   prompt = load("reward-types/{type}.md")                     │ │
 │  │   context = {                                                 │ │
-│  │     diff: git diff,                                           │ │
+│  │     diff: git diff (from worktree),                           │ │
 │  │     pr_info: gh pr view,                                      │ │
 │  │     test_results: from check phase,                           │ │
 │  │     lint_output: from check phase,                            │ │
@@ -155,25 +163,49 @@ Reward types 从 task.json 的 `reward_config` 字段读取。
 │  │   }                                                           │ │
 │  │   score, reasoning = call_reward_agent(prompt, context)       │ │
 │  │   scores[type] = { score, reasoning }                         │ │
+│  │   log_to_jsonl(score, reasoning)  → reward.log.jsonl          │ │
 │  │                                                                │ │
 │  │ total = Σ (weights[i] × scores[i].score)                      │ │
 │  │ diff_lines = count(git diff --stat)                           │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                                                                     │
-│  Output → append to task.json:                                     │
+│  Output → write to .viben/filerl/<name>/iter<N>/<task>/reward.json:│
 │  {                                                                 │
-│    "reward": {                                                     │
-│      "scores": {                                                   │
-│        "test_coverage": { "score": 0.95, "reasoning": "..." },    │
-│        "code_quality": { "score": 0.82, "reasoning": "..." },     │
-│        "agent_review": { "score": 0.78, "reasoning": "..." }      │
-│      },                                                            │
-│      "total": 0.858,                                              │
-│      "diff_lines": 120,                                           │
-│      "computed_at": "2024-03-17T10:30:00Z"                        │
-│    }                                                               │
+│    "task": "<task>",                                               │
+│    "iteration": 0,                                                 │
+│    "scores": {                                                     │
+│      "test_coverage": { "score": 0.95, "reasoning": "..." },      │
+│      "code_quality": { "score": 0.82, "reasoning": "..." },       │
+│      "agent_review": { "score": 0.78, "reasoning": "..." }        │
+│    },                                                              │
+│    "total": 0.858,                                                 │
+│    "diff_lines": 120,                                              │
+│    "computed_at": "2024-03-17T10:30:00Z"                           │
 │  }                                                                 │
+│                                                                     │
+│  Log → append to .viben/filerl/<name>/iter<N>/<task>/reward.log.jsonl:
+│  {"type":"test_coverage","score":0.95,"reasoning":"...","ts":"..."}│
+│  {"type":"code_quality","score":0.82,"reasoning":"...","ts":"..."}│
+│  {"type":"agent_review","score":0.78,"reasoning":"...","ts":"..."} │
+│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+**目录结构**：
+```
+.viben/
+└── filerl/
+    └── <name>/
+        ├── state.json              # FileRL run state (包含 reward_config)
+        ├── iter0/                  # Iteration 0
+        │   ├── <task-1>/
+        │   │   ├── reward.json     # Reward result
+        │   │   └── reward.log.jsonl # Agent log
+        │   └── <task-2>/
+        │       ├── reward.json
+        │       └── reward.log.jsonl
+        └── iter1/
+            └── ...
 ```
 
 **公式**：
@@ -186,22 +218,24 @@ $$R_{task} = \sum_{i=1}^{n} w_i \cdot r_i(task)$$
 
 ---
 
-### 3. `viben reward select <tasks...>`
+### 3. `viben filerl select <name>`
 
-**用途**：聚合多个 task 的 reward，计算 PPO 指标，选择最优
+**用途**：聚合当前迭代中所有 task 的 reward，计算 PPO 指标，选择最优
 
 **输入**：
 ```bash
-viben reward select task-a task-b task-c \
+viben filerl select <name> \
   --threshold 0.6 \
   --kl-coef 0.05 \
   --max-diff 500 \
   --json
 ```
 
+- `<name>`: FileRL run 名称，自动从 `state.json` 读取当前迭代和任务列表
+
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `<tasks...>` | 已计算 reward 的任务列表 | 必填 |
+| `<name>` | FileRL run 名称 | 必填 |
 | `--threshold` | 最低 adjusted reward 阈值 | 0.6 |
 | `--kl-coef` | KL 惩罚系数 λ | 0.05 |
 | `--max-diff` | 最大 diff 行数（KL 归一化） | 500 |
@@ -210,15 +244,15 @@ viben reward select task-a task-b task-c \
 **数据链路**：
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      viben reward select                            │
+│                   viben filerl select <name>                        │
 │                    (executed in main repo)                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Step 1: Load rewards from each task.json                          │
+│  Step 1: Load rewards from FileRL directory                        │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ .viben/tasks/task-a/task.json  →  R=0.858, diff=120           │ │
-│  │ .viben/tasks/task-b/task.json  →  R=0.721, diff=450           │ │
-│  │ .viben/tasks/task-c/task.json  →  R=0.634, diff=80            │ │
+│  │ .viben/filerl/<name>/iter0/task-a/reward.json  →  R=0.858     │ │
+│  │ .viben/filerl/<name>/iter0/task-b/reward.json  →  R=0.721     │ │
+│  │ .viben/filerl/<name>/iter0/task-c/reward.json  →  R=0.634     │ │
 │  └───────────────────────────────────────────────────────────────┘ │
 │                              │                                      │
 │                              ▼                                      │
@@ -366,9 +400,42 @@ viben task approve <task>
 
 ---
 
-## Reward Types 配置继承
+## Reward Types 配置来源
 
-### Idea Type 中定义默认 reward_config
+### FileRL Target 中定义 reward_config
+
+Reward 配置定义在 FileRL run 的 target 配置中，存储于 `.viben/filerl/<name>/state.json`。
+
+**创建 FileRL run 时指定**：
+
+```bash
+viben filerl create <name> \
+  --target "Refactor API layer" \
+  --reward-types test_coverage,code_quality,agent_review \
+  --reward-weights 0.4,0.3,0.3
+```
+
+**state.json 示例**：
+```json
+{
+  "name": "refactor-api",
+  "status": "running",
+  "iteration": 0,
+  "created_at": "2024-03-17T09:00:00Z",
+  "target": {
+    "description": "Refactor API layer",
+    "reward_config": {
+      "types": ["test_coverage", "code_quality", "agent_review"],
+      "weights": [0.4, 0.3, 0.3]
+    }
+  },
+  "tasks": ["task-a", "task-b", "task-c"]
+}
+```
+
+### Idea Type 可定义建议的 reward_config
+
+Idea Type 中可以定义建议的 reward_config，作为创建 FileRL run 时的默认值。
 
 **示例**：`packages/core/src/prompts/idea-types/performance_optimizations.md`
 
@@ -377,7 +444,7 @@ viben task approve <task>
 name: performance_optimizations
 description: Performance bottlenecks and optimizations
 max_ideas: 5
-reward_config:
+suggested_reward_config:
   types:
     - test_coverage
     - code_quality
@@ -391,29 +458,10 @@ reward_config:
 Analyze the codebase for performance optimization opportunities...
 ```
 
-### Promote 时继承到 task.json
-
-```bash
-viben idea promote po-a1b2c3d4 --worktree --start
-```
-
-生成的 task.json：
-```json
-{
-  "title": "Add Redis caching for user queries",
-  "from_idea": "po-a1b2c3d4",
-  "from_idea_type": "performance_optimizations",
-  "reward_config": {
-    "types": ["test_coverage", "code_quality", "benchmark_comparison"],
-    "weights": [0.3, 0.3, 0.4]
-  }
-}
-```
-
 ### 运行时覆盖（可选）
 
 ```bash
-viben task set-reward-config <task> \
+viben filerl set-reward-config <name> \
   --types test_coverage,security_scan \
   --weights 0.5,0.5
 ```
@@ -425,8 +473,8 @@ viben task set-reward-config <task> \
 | 命令 | 执行位置 | 用途 |
 |------|----------|------|
 | `viben reward list-types` | main | 列出可用 reward types |
-| `viben task compute-reward <task>` | worktree | 计算 reward 写入 task.json |
-| `viben reward select <tasks...>` | main | 聚合 + PPO 选择最优 |
+| `viben filerl reward <name> <task>` | main | 评估 worktree 任务的 reward，写入 FileRL 目录 |
+| `viben filerl select <name>` | main | 聚合当前迭代 rewards + PPO 选择最优 |
 | `viben task approve <task>` | main | 调用 agent merge PR |
 | `viben swarm wait [tasks...] --all` | main | 等待所有 agent 完成 |
 
@@ -631,15 +679,28 @@ packages/core/
 │   │       └── benchmark_comparison.md
 │   └── cli/
 │       └── commands/
-│           ├── reward.ts         # viben reward 命令 (新增)
-│           └── task.ts           # 扩展 compute-reward, approve
+│           ├── reward.ts         # viben reward list-types 命令
+│           ├── filerl.ts         # viben filerl reward/select 命令 (新增)
+│           └── task.ts           # 扩展 approve
 
 docs/
 └── reward-types/                 # Custom reward types
     └── *.md
 
 .viben/
-└── tasks/
-    └── <task>/
-        └── task.json             # 包含 reward_config 和 reward 结果
+├── tasks/
+│   └── <task>/
+│       └── task.json             # 任务元数据（不再包含 reward 结果）
+└── filerl/
+    └── <name>/
+        ├── state.json            # FileRL run state (包含 reward_config)
+        ├── iter0/                # Iteration 0
+        │   ├── <task-1>/
+        │   │   ├── reward.json   # Reward result
+        │   │   └── reward.log.jsonl # Agent log
+        │   └── <task-2>/
+        │       ├── reward.json
+        │       └── reward.log.jsonl
+        └── iter1/
+            └── ...
 ```

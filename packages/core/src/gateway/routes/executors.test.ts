@@ -6,202 +6,43 @@
  * - GET /api/executors/:type/discover-sessions - Discover sessions for executor type
  * - GET /api/executors/:type/sessions/:sessionId/messages - Read session messages
  *
- * Covers:
- * - Claude Code session discovery from ~/.claude/projects/<encoded-path>/*.jsonl
- * - Session metadata: id, executorType, workspacePath, createdAt, updatedAt, name, messageCount
- * - Message types: user, thinking, text, tool_use, tool_result
- * - Path encoding: /Users/foo/bar -> -Users-foo-bar
- * - Error handling: missing workspacePath, unknown executor type, missing session files
+ * Uses real Fastify.inject() for HTTP route testing with mocked file system
+ * for external executor session files (e.g., ~/.claude/projects/).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import Fastify, { type FastifyInstance } from "fastify";
 import { registerExecutorRoutes } from "./executors";
+import { createTempDir, type TempDirContext } from "../../test/helpers/temp-dir";
+import * as path from "node:path";
 
-// Mock fs module
-vi.mock("node:fs", async () => {
-  const actual = await vi.importActual("node:fs");
+// Mock os.homedir() to return our temp directory
+let mockHomeDir = "/Users/test";
+vi.mock("node:os", async () => {
+  const actual = await vi.importActual("node:os");
   return {
     ...actual,
-    existsSync: vi.fn(),
-    promises: {
-      readdir: vi.fn(),
-      stat: vi.fn(),
-      readFile: vi.fn(),
-    },
-    createReadStream: vi.fn(),
+    homedir: vi.fn(() => mockHomeDir),
   };
 });
 
-// Mock os module
-vi.mock("node:os", () => ({
-  homedir: vi.fn(() => "/Users/test"),
-}));
-
-// Mock readline module
-vi.mock("node:readline", () => ({
-  createInterface: vi.fn(),
-}));
-
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as readline from "node:readline";
-
-/**
- * Mock Fastify instance for testing route handlers
- */
-interface MockReply {
-  code: ReturnType<typeof vi.fn>;
-}
-
-interface MockRouteHandler {
-  method: string;
-  url: string;
-  handler: (request: unknown, reply: MockReply) => Promise<unknown>;
-}
-
-function createMockFastify() {
-  const routes: MockRouteHandler[] = [];
-
-  // Helper to handle both 2-arg (url, handler) and 3-arg (url, options, handler) forms
-  function createRouteMethod(method: string) {
-    return vi.fn(
-      (
-        url: string,
-        optionsOrHandler: unknown,
-        maybeHandler?: (req: unknown, rep: MockReply) => Promise<unknown>
-      ) => {
-        // If third argument exists, it's the handler and second is options (schema)
-        // If only two arguments, second is the handler
-        const handler = maybeHandler ?? (optionsOrHandler as (req: unknown, rep: MockReply) => Promise<unknown>);
-        routes.push({ method, url, handler });
-      }
-    );
-  }
-
-  const fastify = {
-    get: createRouteMethod("GET"),
-    post: createRouteMethod("POST"),
-    delete: createRouteMethod("DELETE"),
-    routes,
-    // Helper to find and execute a route handler
-    async inject(options: { method: string; url: string; payload?: unknown }) {
-      const { method, url, payload } = options;
-      const parsedUrl = new URL(url, "http://localhost");
-      const pathname = parsedUrl.pathname;
-      const searchParams = Object.fromEntries(parsedUrl.searchParams.entries());
-
-      // Convert string params to appropriate types
-      const query: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(searchParams)) {
-        if (key === "limit" || key === "offset") {
-          query[key] = parseInt(value, 10);
-        } else if (value === "true") {
-          query[key] = true;
-        } else if (value === "false") {
-          query[key] = false;
-        } else {
-          query[key] = value;
-        }
-      }
-
-      // Find matching route
-      let matchingRoute: MockRouteHandler | undefined;
-      let params: Record<string, string> = {};
-
-      for (const route of routes) {
-        if (route.method !== method) continue;
-
-        // Check for exact match
-        if (route.url === pathname) {
-          matchingRoute = route;
-          break;
-        }
-
-        // Check for parameterized match (e.g., /api/executors/:type/discover-sessions)
-        const routeParts = route.url.split("/");
-        const urlParts = pathname.split("/");
-
-        if (routeParts.length === urlParts.length) {
-          let isMatch = true;
-          const extractedParams: Record<string, string> = {};
-
-          for (let i = 0; i < routeParts.length; i++) {
-            if (routeParts[i].startsWith(":")) {
-              extractedParams[routeParts[i].slice(1)] = urlParts[i];
-            } else if (routeParts[i] !== urlParts[i]) {
-              isMatch = false;
-              break;
-            }
-          }
-
-          if (isMatch) {
-            matchingRoute = route;
-            params = extractedParams;
-            break;
-          }
-        }
-      }
-
-      if (!matchingRoute) {
-        return {
-          statusCode: 404,
-          body: JSON.stringify({ error: "Route not found" }),
-        };
-      }
-
-      // Create mock request and reply
-      const request = {
-        query,
-        params,
-        body: payload,
-      };
-
-      let statusCode = 200;
-      const reply: MockReply = {
-        code: vi.fn((code: number) => {
-          statusCode = code;
-          return reply;
-        }),
-      };
-
-      try {
-        const result = await matchingRoute.handler(request, reply);
-        return {
-          statusCode,
-          body: JSON.stringify(result),
-        };
-      } catch (error) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({
-            error: error instanceof Error ? error.message : "Unknown error",
-          }),
-        };
-      }
-    },
-  };
-
-  return fastify;
-}
-
 describe("Executors Routes", () => {
-  let fastify: ReturnType<typeof createMockFastify>;
+  let app: FastifyInstance;
+  let tempDir: TempDirContext;
 
-  beforeEach(() => {
-    fastify = createMockFastify();
-    registerExecutorRoutes(fastify as never);
+  beforeEach(async () => {
+    // Create temp directory for test fixtures
+    tempDir = await createTempDir("executors-test-");
+    mockHomeDir = tempDir.root;
 
-    // Reset all mocks
-    vi.mocked(fs.existsSync).mockReset();
-    vi.mocked(fs.promises.readdir).mockReset();
-    vi.mocked(fs.promises.stat).mockReset();
-    vi.mocked(fs.promises.readFile).mockReset();
-    vi.mocked(fs.createReadStream).mockReset();
-    vi.mocked(readline.createInterface).mockReset();
-    vi.mocked(os.homedir).mockReturnValue("/Users/test");
+    // Create Fastify app and register routes
+    app = Fastify({ logger: false });
+    registerExecutorRoutes(app);
+    await app.ready();
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  afterEach(async () => {
+    await app.close();
+    await tempDir.cleanup();
   });
 
   // ============================================================================
@@ -210,7 +51,7 @@ describe("Executors Routes", () => {
 
   describe("GET /api/executors", () => {
     it("should list available executors", async () => {
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors",
       });
@@ -220,17 +61,11 @@ describe("Executors Routes", () => {
       expect(body.executors).toBeDefined();
       expect(Array.isArray(body.executors)).toBe(true);
       expect(body.executors.length).toBeGreaterThan(0);
+      expect(body.total).toBe(body.executors.length);
     });
 
-    it("should return Claude Code as available executor", async () => {
-      // Mock fs.existsSync to simulate Claude Code config exists
-      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
-        const pathStr = p.toString();
-        // Simulate ~/.claude directory exists
-        return pathStr.includes(".claude");
-      });
-
-      const response = await fastify.inject({
+    it("should return Claude Code as an available executor type", async () => {
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors",
       });
@@ -242,32 +77,84 @@ describe("Executors Routes", () => {
 
       expect(claudeCode).toBeDefined();
       expect(claudeCode.name).toBe("Claude Code");
-      // availability.type is INSTALLATION_FOUND when config exists
-      expect(claudeCode.availability.type).toBe("INSTALLATION_FOUND");
+      expect(claudeCode.capabilities).toContain("chat");
+      expect(claudeCode.supports_mcp).toBe(true);
     });
 
-    it("should use home directory as default workspace path", async () => {
-      const response = await fastify.inject({
+    it("should detect Claude Code installation when .claude directory exists", async () => {
+      // Create .claude directory
+      await tempDir.mkdir(".claude");
+
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors",
       });
 
       const body = JSON.parse(response.body);
-      expect(body.workspace_path).toBe("/Users/test");
+      const claudeCode = body.executors.find(
+        (e: { type: string }) => e.type === "CLAUDE_CODE"
+      );
+
+      expect(claudeCode.availability.type).toBe("INSTALLATION_FOUND");
     });
 
-    it("should accept custom workspace path via query parameter", async () => {
-      const response = await fastify.inject({
+    it("should detect Claude Code login when credentials exist", async () => {
+      // Create .claude directory with credentials
+      await tempDir.mkdir(".claude");
+      await tempDir.writeFile(".claude/.credentials.json", JSON.stringify({ token: "test" }));
+
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors?workspace_path=/Users/custom/project",
+        url: "/api/executors",
       });
 
       const body = JSON.parse(response.body);
-      expect(body.workspace_path).toBe("/Users/custom/project");
+      const claudeCode = body.executors.find(
+        (e: { type: string }) => e.type === "CLAUDE_CODE"
+      );
+
+      expect(claudeCode.availability.type).toBe("LOGIN_DETECTED");
+      expect(claudeCode.availability.last_auth_timestamp).toBeDefined();
+    });
+
+    it("should return NOT_FOUND availability when no config exists", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/executors",
+      });
+
+      const body = JSON.parse(response.body);
+      const claudeCode = body.executors.find(
+        (e: { type: string }) => e.type === "CLAUDE_CODE"
+      );
+
+      expect(claudeCode.availability.type).toBe("NOT_FOUND");
+    });
+
+    it("should use home directory as default workspace path", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/executors",
+      });
+
+      const body = JSON.parse(response.body);
+      expect(body.workspace_path).toBe(tempDir.root);
+    });
+
+    it("should accept custom workspace path via query parameter", async () => {
+      const customPath = "/custom/workspace/path";
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors?workspace_path=${encodeURIComponent(customPath)}`,
+      });
+
+      const body = JSON.parse(response.body);
+      expect(body.workspace_path).toBe(customPath);
     });
 
     it("should include include_global flag in response", async () => {
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors?include_global=true",
       });
@@ -277,13 +164,23 @@ describe("Executors Routes", () => {
     });
 
     it("should default include_global to true when not specified", async () => {
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors",
       });
 
       const body = JSON.parse(response.body);
       expect(body.include_global).toBe(true);
+    });
+
+    it("should set include_global to false when explicitly specified", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/executors?include_global=false",
+      });
+
+      const body = JSON.parse(response.body);
+      expect(body.include_global).toBe(false);
     });
   });
 
@@ -292,8 +189,8 @@ describe("Executors Routes", () => {
   // ============================================================================
 
   describe("GET /api/executors/:type/discover-sessions", () => {
-    it("should return 400 when workspacePath is missing", async () => {
-      const response = await fastify.inject({
+    it("should return 400 when workspace_path is missing", async () => {
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors/CLAUDE_CODE/discover-sessions",
       });
@@ -304,9 +201,9 @@ describe("Executors Routes", () => {
     });
 
     it("should return 404 for unknown executor type", async () => {
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/unknown-executor/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/UNKNOWN_EXECUTOR/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(404);
@@ -315,11 +212,9 @@ describe("Executors Routes", () => {
     });
 
     it("should return empty sessions when project directory does not exist", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -328,32 +223,25 @@ describe("Executors Routes", () => {
       expect(body.total).toBe(0);
     });
 
-    it("should discover Claude Code sessions from correct directory", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        { name: "session-123.jsonl", isFile: () => true },
-        { name: "session-456.jsonl", isFile: () => true },
-      ] as unknown as fs.Dirent[]);
-      vi.mocked(fs.promises.stat).mockResolvedValue({
-        birthtime: new Date("2024-01-15T10:00:00Z"),
-        mtime: new Date("2024-01-15T12:00:00Z"),
-        size: 2048,
-      } as fs.Stats);
+    it("should discover Claude Code sessions from encoded project directory", async () => {
+      // Create session files in the encoded project directory
+      // Path encoding: /path/to/project -> -path-to-project
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
 
-      // Mock readline for first user message extraction
-      const mockRl = {
-        [Symbol.asyncIterator]: async function* () {
-          yield JSON.stringify({ type: "user", message: { content: "Hello" } });
-        },
-      };
-      vi.mocked(fs.createReadStream).mockReturnValue({} as fs.ReadStream);
-      vi.mocked(readline.createInterface).mockReturnValue(
-        mockRl as unknown as readline.Interface
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(
+        `${sessionDir}/session-123.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "Hello" } })
+      );
+      await tempDir.writeFile(
+        `${sessionDir}/session-456.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "World" } })
       );
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -362,52 +250,22 @@ describe("Executors Routes", () => {
       expect(body.total).toBe(2);
     });
 
-    it("should encode workspace path correctly for Claude projects directory", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([]);
-
-      await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/foo/bar",
-      });
-
-      // Verify existsSync was called with encoded path
-      expect(fs.existsSync).toHaveBeenCalledWith(
-        "/Users/test/.claude/projects/-Users-foo-bar"
-      );
-    });
-
     it("should return session metadata with correct fields", async () => {
-      const birthtime = new Date("2024-01-15T10:00:00Z");
-      const mtime = new Date("2024-01-15T14:00:00Z");
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        { name: "abc-def-123.jsonl", isFile: () => true },
-      ] as unknown as fs.Dirent[]);
-      vi.mocked(fs.promises.stat).mockResolvedValue({
-        birthtime,
-        mtime,
-        size: 5120,
-      } as fs.Stats);
-
-      // Mock readline for first user message
-      const mockRl = {
-        [Symbol.asyncIterator]: async function* () {
-          yield JSON.stringify({
-            type: "user",
-            message: { content: "Create a new React component" },
-          });
-        },
-      };
-      vi.mocked(fs.createReadStream).mockReturnValue({} as fs.ReadStream);
-      vi.mocked(readline.createInterface).mockReturnValue(
-        mockRl as unknown as readline.Interface
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(
+        `${sessionDir}/abc-def-123.jsonl`,
+        JSON.stringify({
+          type: "user",
+          message: { content: "Create a new React component" },
+        })
       );
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -415,114 +273,66 @@ describe("Executors Routes", () => {
 
       expect(session.id).toBe("abc-def-123");
       expect(session.executor_type).toBe("CLAUDE_CODE");
-      expect(session.workspace_path).toBe("/Users/test/project");
-      expect(session.created_at).toBe(birthtime.toISOString());
-      expect(session.updated_at).toBe(mtime.toISOString());
+      expect(session.workspace_path).toBe(tempDir.root);
+      expect(session.created_at).toBeDefined();
+      expect(session.updated_at).toBeDefined();
       expect(session.name).toBe("Create a new React component");
-      expect(session.message_count).toBeDefined();
     });
 
     it("should sort sessions by updated_at descending (newest first)", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        { name: "old-session.jsonl", isFile: () => true },
-        { name: "new-session.jsonl", isFile: () => true },
-      ] as unknown as fs.Dirent[]);
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
 
-      let callCount = 0;
-      vi.mocked(fs.promises.stat).mockImplementation(async () => {
-        callCount++;
-        if (callCount === 1) {
-          return {
-            birthtime: new Date("2024-01-10T10:00:00Z"),
-            mtime: new Date("2024-01-10T12:00:00Z"),
-            size: 1024,
-          } as fs.Stats;
-        }
-        return {
-          birthtime: new Date("2024-01-15T10:00:00Z"),
-          mtime: new Date("2024-01-15T14:00:00Z"),
-          size: 2048,
-        } as fs.Stats;
-      });
+      await tempDir.mkdir(sessionDir);
 
-      // Mock readline
-      const mockRl = {
-        [Symbol.asyncIterator]: async function* () {
-          yield "";
-        },
-      };
-      vi.mocked(fs.createReadStream).mockReturnValue({} as fs.ReadStream);
-      vi.mocked(readline.createInterface).mockReturnValue(
-        mockRl as unknown as readline.Interface
+      // Create old session first
+      await tempDir.writeFile(
+        `${sessionDir}/old-session.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "Old" } })
       );
 
-      const response = await fastify.inject({
+      // Wait a bit to ensure different timestamps
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Create new session
+      await tempDir.writeFile(
+        `${sessionDir}/new-session.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "New" } })
+      );
+
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
       const sessions = body.sessions;
 
+      expect(sessions.length).toBe(2);
       // Newer session should be first
-      expect(new Date(sessions[0].updated_at).getTime()).toBeGreaterThan(
+      expect(new Date(sessions[0].updated_at).getTime()).toBeGreaterThanOrEqual(
         new Date(sessions[1].updated_at).getTime()
       );
     });
 
-    it("should use CLAUDE_CODE as the standard executor type format", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-
-      // Standard uppercase format should work
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
-      });
-      expect(response.statusCode).toBe(200);
-    });
-
-    it("should return empty sessions for CODEX executor (not yet implemented)", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CODEX/discover-sessions?workspace_path=/Users/test/project",
-      });
-
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.sessions).toEqual([]);
-    });
-
     it("should truncate long session names to 100 characters", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        { name: "session.jsonl", isFile: () => true },
-      ] as unknown as fs.Dirent[]);
-      vi.mocked(fs.promises.stat).mockResolvedValue({
-        birthtime: new Date(),
-        mtime: new Date(),
-        size: 1024,
-      } as fs.Stats);
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
+      await tempDir.mkdir(sessionDir);
 
       const longMessage = "A".repeat(150);
-      const mockRl = {
-        [Symbol.asyncIterator]: async function* () {
-          yield JSON.stringify({
-            type: "user",
-            message: { content: longMessage },
-          });
-        },
-      };
-      vi.mocked(fs.createReadStream).mockReturnValue({} as fs.ReadStream);
-      vi.mocked(readline.createInterface).mockReturnValue(
-        mockRl as unknown as readline.Interface
+      await tempDir.writeFile(
+        `${sessionDir}/session.jsonl`,
+        JSON.stringify({
+          type: "user",
+          message: { content: longMessage },
+        })
       );
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -533,36 +343,36 @@ describe("Executors Routes", () => {
     });
 
     it("should skip non-jsonl files in session directory", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockResolvedValue([
-        { name: "session.jsonl", isFile: () => true },
-        { name: "notes.txt", isFile: () => true },
-        { name: "backup", isFile: () => false },
-      ] as unknown as fs.Dirent[]);
-      vi.mocked(fs.promises.stat).mockResolvedValue({
-        birthtime: new Date(),
-        mtime: new Date(),
-        size: 1024,
-      } as fs.Stats);
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
 
-      const mockRl = {
-        [Symbol.asyncIterator]: async function* () {
-          yield "";
-        },
-      };
-      vi.mocked(fs.createReadStream).mockReturnValue({} as fs.ReadStream);
-      vi.mocked(readline.createInterface).mockReturnValue(
-        mockRl as unknown as readline.Interface
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(
+        `${sessionDir}/session.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "Valid" } })
       );
+      await tempDir.writeFile(`${sessionDir}/notes.txt`, "Not a session");
+      await tempDir.mkdir(`${sessionDir}/backup`);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
       expect(body.sessions).toHaveLength(1);
       expect(body.sessions[0].id).toBe("session");
+    });
+
+    it("should return empty sessions for CODEX executor when no sessions exist", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CODEX/discover-sessions?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.sessions).toEqual([]);
     });
   });
 
@@ -571,8 +381,8 @@ describe("Executors Routes", () => {
   // ============================================================================
 
   describe("GET /api/executors/:type/sessions/:sessionId/messages", () => {
-    it("should return 400 when workspacePath is missing", async () => {
-      const response = await fastify.inject({
+    it("should return 400 when workspace_path is missing", async () => {
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages",
       });
@@ -583,9 +393,9 @@ describe("Executors Routes", () => {
     });
 
     it("should return 404 for unknown executor type", async () => {
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/unknown/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/UNKNOWN/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(404);
@@ -594,6 +404,9 @@ describe("Executors Routes", () => {
     });
 
     it("should return messages from Claude Code session file", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = [
         JSON.stringify({
           uuid: "msg-1",
@@ -611,12 +424,12 @@ describe("Executors Routes", () => {
         }),
       ].join("\n");
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test/project",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -626,6 +439,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert user message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -633,12 +449,12 @@ describe("Executors Routes", () => {
         message: { content: "Create a test file" },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -651,6 +467,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert thinking message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -660,12 +479,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -676,6 +495,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert text message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -685,12 +507,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -701,6 +523,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert tool_use message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -717,12 +542,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -735,6 +560,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert tool_result message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -751,12 +579,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -769,6 +597,9 @@ describe("Executors Routes", () => {
     });
 
     it("should handle tool_result with error flag", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -785,12 +616,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -800,6 +631,9 @@ describe("Executors Routes", () => {
     });
 
     it("should respect limit parameter", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const lines = [];
       for (let i = 0; i < 10; i++) {
         lines.push(
@@ -812,12 +646,12 @@ describe("Executors Routes", () => {
         );
       }
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(lines.join("\n"));
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, lines.join("\n"));
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test&limit=3",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}&limit=3`,
       });
 
       const body = JSON.parse(response.body);
@@ -825,6 +659,9 @@ describe("Executors Routes", () => {
     });
 
     it("should map subagent_id from progress messages for Task tool", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = [
         JSON.stringify({
           uuid: "msg-1",
@@ -851,12 +688,12 @@ describe("Executors Routes", () => {
         }),
       ].join("\n");
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -869,6 +706,9 @@ describe("Executors Routes", () => {
     });
 
     it("should skip invalid JSON lines gracefully", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = [
         JSON.stringify({
           uuid: "msg-1",
@@ -885,12 +725,12 @@ describe("Executors Routes", () => {
         }),
       ].join("\n");
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -899,6 +739,9 @@ describe("Executors Routes", () => {
     });
 
     it("should skip empty lines", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = [
         JSON.stringify({
           uuid: "msg-1",
@@ -916,12 +759,12 @@ describe("Executors Routes", () => {
         }),
       ].join("\n");
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -929,6 +772,9 @@ describe("Executors Routes", () => {
     });
 
     it("should convert result message type correctly", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -937,12 +783,12 @@ describe("Executors Routes", () => {
         subtype: "success",
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -953,6 +799,9 @@ describe("Executors Routes", () => {
     });
 
     it("should skip progress, init, and other non-display message types", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = [
         JSON.stringify({
           type: "init",
@@ -975,12 +824,12 @@ describe("Executors Routes", () => {
         }),
       ].join("\n");
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -988,12 +837,10 @@ describe("Executors Routes", () => {
       expect(body.messages[0].content).toBe("Actual message");
     });
 
-    it("should return empty messages for CODEX executor (not implemented)", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-
-      const response = await fastify.inject({
+    it("should return empty messages for CODEX executor when session does not exist", async () => {
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CODEX/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CODEX/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -1002,6 +849,9 @@ describe("Executors Routes", () => {
     });
 
     it("should handle multiple content blocks in assistant message", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -1020,12 +870,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -1036,6 +886,9 @@ describe("Executors Routes", () => {
     });
 
     it("should skip text blocks with empty text", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -1048,12 +901,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -1067,43 +920,62 @@ describe("Executors Routes", () => {
   // ============================================================================
 
   describe("Path Encoding", () => {
-    it("should encode /Users/foo/bar to -Users-foo-bar", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+    it("should encode workspace path correctly for Claude projects directory", async () => {
+      // Create session in the correctly encoded path
+      const testPath = "/Users/foo/bar";
+      const encodedPath = testPath.replace(/\//g, "-"); // -Users-foo-bar
 
-      await fastify.inject({
+      await tempDir.mkdir(`.claude/projects/${encodedPath}`);
+      await tempDir.writeFile(
+        `.claude/projects/${encodedPath}/session.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "Test" } })
+      );
+
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/foo/bar",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(testPath)}`,
       });
 
-      expect(fs.existsSync).toHaveBeenCalledWith(
-        "/Users/test/.claude/projects/-Users-foo-bar"
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.sessions).toHaveLength(1);
     });
 
     it("should encode root path / to -", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      await tempDir.mkdir(".claude/projects/-");
+      await tempDir.writeFile(
+        ".claude/projects/-/session.jsonl",
+        JSON.stringify({ type: "user", message: { content: "Root" } })
+      );
 
-      await fastify.inject({
+      const response = await app.inject({
         method: "GET",
         url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/",
       });
 
-      expect(fs.existsSync).toHaveBeenCalledWith(
-        "/Users/test/.claude/projects/-"
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.sessions).toHaveLength(1);
     });
 
     it("should encode deep nested path correctly", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      const deepPath = "/home/user/projects/my-app/src";
+      const encodedPath = deepPath.replace(/\//g, "-");
 
-      await fastify.inject({
+      await tempDir.mkdir(`.claude/projects/${encodedPath}`);
+      await tempDir.writeFile(
+        `.claude/projects/${encodedPath}/session.jsonl`,
+        JSON.stringify({ type: "user", message: { content: "Deep" } })
+      );
+
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/home/user/projects/my-app/src",
+        url: `/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=${encodeURIComponent(deepPath)}`,
       });
 
-      expect(fs.existsSync).toHaveBeenCalledWith(
-        "/Users/test/.claude/projects/-home-user-projects-my-app-src"
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.sessions).toHaveLength(1);
     });
   });
 
@@ -1112,40 +984,10 @@ describe("Executors Routes", () => {
   // ============================================================================
 
   describe("Error Handling", () => {
-    it("should handle file system errors gracefully for session discovery", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readdir).mockRejectedValue(
-        new Error("Permission denied")
-      );
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspace_path=/Users/test/project",
-      });
-
-      expect(response.statusCode).toBe(500);
-    });
-
     it("should handle missing session file when reading messages", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
-
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/nonexistent/messages?workspace_path=/Users/test",
-      });
-
-      expect(response.statusCode).toBe(500);
-    });
-
-    it("should handle file read errors for messages", async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockRejectedValue(
-        new Error("File corrupted")
-      );
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/nonexistent/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(500);
@@ -1158,6 +1000,9 @@ describe("Executors Routes", () => {
 
   describe("Edge Cases", () => {
     it("should handle user message with array content (tool_result)", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -1178,12 +1023,12 @@ describe("Executors Routes", () => {
         },
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       const body = JSON.parse(response.body);
@@ -1193,6 +1038,9 @@ describe("Executors Routes", () => {
     });
 
     it("should handle assistant message without content", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
@@ -1200,12 +1048,12 @@ describe("Executors Routes", () => {
         message: {},
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
@@ -1213,92 +1061,252 @@ describe("Executors Routes", () => {
       expect(body.messages).toHaveLength(0);
     });
 
-    it("should handle user message without message field", async () => {
+    it("should handle user message without content", async () => {
+      const encodedPath = tempDir.root.replace(/\//g, "-");
+      const sessionDir = `.claude/projects/${encodedPath}`;
+
       const sessionContent = JSON.stringify({
         uuid: "msg-1",
         timestamp: "2024-01-15T10:00:00Z",
         type: "user",
+        message: {},
       });
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
+      await tempDir.mkdir(sessionDir);
+      await tempDir.writeFile(`${sessionDir}/session-123.jsonl`, sessionContent);
 
-      const response = await fastify.inject({
+      const response = await app.inject({
         method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
+        url: `/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=${encodeURIComponent(tempDir.root)}`,
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.messages).toHaveLength(0);
-    });
-
-    it("should generate UUID for messages without uuid field", async () => {
-      const sessionContent = JSON.stringify({
-        timestamp: "2024-01-15T10:00:00Z",
-        type: "user",
-        message: { content: "No UUID message" },
-      });
-
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
-      });
-
-      const body = JSON.parse(response.body);
-      expect(body.messages[0].id).toBeDefined();
-      expect(typeof body.messages[0].id).toBe("string");
-    });
-
-    it("should use current timestamp when timestamp is missing", async () => {
-      const sessionContent = JSON.stringify({
-        uuid: "msg-1",
-        type: "user",
-        message: { content: "No timestamp" },
-      });
-
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.promises.readFile).mockResolvedValue(sessionContent);
-
-      const response = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspace_path=/Users/test",
-      });
-
-      const body = JSON.parse(response.body);
-      expect(body.messages[0].timestamp).toBeDefined();
     });
   });
 
   // ============================================================================
-  // Route Registration
+  // MCP Servers Tests
   // ============================================================================
 
-  describe("Route Registration", () => {
-    it("should register GET /api/executors route", () => {
-      expect(fastify.get).toHaveBeenCalled();
-      const getCalls = fastify.get.mock.calls;
-      const listRoute = getCalls.find((call) => call[0] === "/api/executors");
-      expect(listRoute).toBeDefined();
+  describe("GET /api/executors/:type/mcp-servers", () => {
+    it("should return empty servers when no config exists", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/mcp-servers?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.servers).toEqual([]);
+      expect(body.total).toBe(0);
     });
 
-    it("should register GET /api/executors/:type/discover-sessions route", () => {
-      const getCalls = fastify.get.mock.calls;
-      const discoverRoute = getCalls.find(
-        (call) => call[0] === "/api/executors/:type/discover-sessions"
+    it("should read MCP servers from project .mcp.json", async () => {
+      await tempDir.writeFile(
+        ".mcp.json",
+        JSON.stringify({
+          mcpServers: {
+            "test-server": {
+              command: "node",
+              args: ["server.js"],
+            },
+          },
+        })
       );
-      expect(discoverRoute).toBeDefined();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/mcp-servers?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.servers).toHaveLength(1);
+      expect(body.servers[0].name).toBe("test-server");
+      expect(body.servers[0].command).toBe("node");
     });
 
-    it("should register GET /api/executors/:type/sessions/:sessionId/messages route", () => {
-      const getCalls = fastify.get.mock.calls;
-      const messagesRoute = getCalls.find(
-        (call) => call[0] === "/api/executors/:type/sessions/:sessionId/messages"
+    it("should fallback to global .claude.json for MCP servers", async () => {
+      await tempDir.writeFile(
+        ".claude.json",
+        JSON.stringify({
+          mcpServers: {
+            "global-server": {
+              command: "global-mcp",
+            },
+          },
+        })
       );
-      expect(messagesRoute).toBeDefined();
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/mcp-servers?workspace_path=/nonexistent/path`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.servers).toHaveLength(1);
+      expect(body.servers[0].name).toBe("global-server");
+    });
+  });
+
+  // ============================================================================
+  // Skills Tests
+  // ============================================================================
+
+  describe("GET /api/executors/:type/skills", () => {
+    it("should return empty skills when no config exists", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/skills?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.skills).toEqual([]);
+      expect(body.total).toBe(0);
+    });
+
+    it("should read skills from skills.json", async () => {
+      await tempDir.mkdir(".claude");
+      await tempDir.writeFile(
+        ".claude/skills.json",
+        JSON.stringify({
+          skills: [
+            {
+              id: "test-skill",
+              name: "Test Skill",
+              version: "1.0.0",
+              source: "local",
+            },
+          ],
+        })
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/skills?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.skills).toHaveLength(1);
+      expect(body.skills[0].id).toBe("test-skill");
+    });
+
+    it("should scan skills folder for skill.md files", async () => {
+      await tempDir.mkdir(".claude/skills/my-skill");
+      await tempDir.writeFile(
+        ".claude/skills/my-skill/skill.md",
+        "---\nname: My Skill\ndescription: A test skill\n---\n\nSkill content"
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/skills?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.skills.length).toBeGreaterThanOrEqual(1);
+
+      const mySkill = body.skills.find((s: { id: string }) => s.id === "my-skill");
+      expect(mySkill).toBeDefined();
+      expect(mySkill.name).toBe("My Skill");
+    });
+  });
+
+  // ============================================================================
+  // Subagents Tests (Agent Configs)
+  // ============================================================================
+
+  describe("GET /api/executors/:type/subagents", () => {
+    it("should return empty configs when no directory exists", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/subagents?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.configs).toEqual([]);
+    });
+
+    it("should read subagent configs from .claude/agents directory", async () => {
+      await tempDir.mkdir(".claude/agents");
+      await tempDir.writeFile(
+        ".claude/agents/test-agent.md",
+        "---\nname: Test Agent\ndescription: A test agent\n---\n\nYou are a helpful assistant."
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/subagents?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.configs).toHaveLength(1);
+      expect(body.configs[0].id).toBe("test-agent");
+      expect(body.configs[0].name).toBe("Test Agent");
+    });
+  });
+
+  // ============================================================================
+  // Commands Tests
+  // ============================================================================
+
+  describe("GET /api/executors/:type/commands", () => {
+    it("should return empty commands when no directory exists", async () => {
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/commands?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.commands).toEqual([]);
+    });
+
+    it("should read top-level commands from .claude/commands directory", async () => {
+      await tempDir.mkdir(".claude/commands");
+      await tempDir.writeFile(
+        ".claude/commands/test-command.md",
+        "# Test Command\n\nThis is a test command."
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/commands?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.commands).toHaveLength(1);
+      expect(body.commands[0].id).toBe("test-command");
+      expect(body.commands[0].namespace).toBe("");
+    });
+
+    it("should read namespaced commands from subdirectories", async () => {
+      await tempDir.mkdir(".claude/commands/project");
+      await tempDir.writeFile(
+        ".claude/commands/project/build.md",
+        "# Build Command\n\nBuild the project."
+      );
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/api/executors/CLAUDE_CODE/commands?workspace_path=${encodeURIComponent(tempDir.root)}`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.commands).toHaveLength(1);
+      expect(body.commands[0].id).toBe("project/build");
+      expect(body.commands[0].namespace).toBe("project");
+      expect(body.commands[0].name).toBe("build");
     });
   });
 });

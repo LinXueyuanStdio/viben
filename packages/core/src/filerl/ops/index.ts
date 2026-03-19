@@ -39,3 +39,18 @@ export {
   stop,
   resume,
 } from "./runner";
+
+// Orchestration (direct ops function calls)
+export type { OrchestrationResult } from "./runner";
+export {
+  orchestrateGenerateIdeas,
+  orchestratePromoteIdeas,
+  orchestrateStartTasks,
+  orchestrateCheckTasksStatus,
+  orchestrateComputeRewards,
+  orchestrateSelectBest,
+  orchestrateMergeAndCleanup,
+  orchestrateFullIteration,
+  waitForTasksCompletion,
+  runFileRlLoop,
+} from "./runner";

@@ -6,6 +6,7 @@
  */
 
 import type { TaskEventType } from "../events/event-types";
+import type { RewardConfig, RewardResult } from "../../reward/ops/types";
 
 // Re-export TaskEventType for convenience
 export type { TaskEventType } from "../events/event-types";
@@ -337,11 +338,17 @@ export interface UnifiedTask {
   /** Enable compute-reward phase in work-phase pipeline */
   compute_reward?: boolean;
 
-  /** Reward configuration for evaluation */
-  reward_config?: import("../../reward/ops/types").RewardConfig;
+  /**
+   * FileRL directory absolute path (e.g., /path/to/.viben/filerl/<name>)
+   * When set, reward phase reads config from here and writes results to iter<N>/<task>/
+   */
+  filerl_dir?: string;
 
-  /** Reward evaluation result */
-  reward?: import("../../reward/ops/types").RewardResult;
+  /** Reward configuration for evaluation (used when filerl_dir is not set) */
+  reward_config?: RewardConfig;
+
+  /** Reward evaluation result (used when filerl_dir is not set) */
+  reward?: RewardResult;
 }
 
 // =============================================================================

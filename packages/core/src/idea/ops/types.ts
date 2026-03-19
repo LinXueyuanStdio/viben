@@ -383,6 +383,9 @@ export interface IdeaPromoteOptions {
 
   /** Enable reward computation for FileRL */
   computeReward?: boolean;
+
+  /** FileRL directory absolute path for reward config and output */
+  filerlDir?: string;
 }
 
 /**

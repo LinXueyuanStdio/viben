@@ -31,6 +31,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command, type Option } from "commander";
 import { registerTaskCommand } from "./task";
+import type { TaskEventType } from "../lib/viben-workspace";
 
 // =============================================================================
 // Test Helpers
@@ -841,7 +842,7 @@ describe("task command", () => {
     let validateStatusTransition: (
       currentStatus: string,
       targetStatus: string,
-      eventType: import("../lib/viben-workspace").TaskEventType
+      eventType: TaskEventType
     ) => { valid: boolean; error?: string };
 
     beforeEach(async () => {

@@ -812,50 +812,88 @@ export function registerSwarmCommand(program: Command): void {
           return;
         }
 
-        // Parse options
+        // Get current PID to exclude self (prevent deadlock)
+        const currentPid = process.pid;
+
+        // Parse options (include excludePid to prevent deadlock)
         const waitOptions: WaitOptions = {
           pollingIntervalSeconds: parseInt(options.pollingIntervalSeconds || "10", 10),
           timeoutSeconds: parseInt(options.timeoutSeconds || "300", 10),
           globalTimeoutSeconds: parseInt(options.globalTimeoutSeconds || "0", 10),
           verbose: options.verbose ?? ctx.verbose ?? false,
           quiet: options.quiet ?? ctx.quiet ?? false,
+          excludePid: currentPid,
         };
 
-        // Check if there are any agents to wait for
-        const runningAgents = getRunningAgents(repoRoot);
+        // Read registry once for all operations
+        const registry = readRegistry(repoRoot);
+
+        // Helper: find agent by task with precise matching
+        const findAgentByTask = (taskName: string) => {
+          // 1. Exact ID match
+          const exactId = registry.agents.find((a) => a.id === taskName);
+          if (exactId) return exactId;
+          // 2. Exact task directory name match
+          const exactDir = registry.agents.find((a) => {
+            const dirName = a.task_dir.split("/").pop() || "";
+            return dirName === taskName;
+          });
+          if (exactDir) return exactDir;
+          // 3. Partial match
+          return registry.agents.find((a) => a.task_dir.includes(taskName));
+        };
+
+        // Get running agents (excluding self)
+        const runningAgents = registry.agents.filter(
+          (a) => isProcessRunning(a.pid) && a.pid !== currentPid
+        );
+
         if (runningAgents.length === 0) {
           output(ctx, successResponse({
             completed: [],
             failed: [],
             timeout: [],
             results: [],
+            skippedSelf: registry.agents.some((a) => a.pid === currentPid),
           }), () => {
-            console.log(chalk.yellow("No running agents found"));
+            const selfInRegistry = registry.agents.some((a) => a.pid === currentPid);
+            if (selfInRegistry) {
+              console.log(chalk.yellow("No other running agents found (excluded self to prevent deadlock)"));
+            } else {
+              console.log(chalk.yellow("No running agents found"));
+            }
           });
-          process.exit(2);
+          process.exit(0); // No agents to wait for is success
           return;
         }
 
         // Filter to specified tasks if not --all
         if (tasksToWait.length > 0) {
-          const registry = readRegistry(repoRoot);
           const validTasks: string[] = [];
           const invalidTasks: string[] = [];
+          const skippedSelf: string[] = [];
 
           for (const taskName of tasksToWait) {
-            const agent = registry.agents.find(
-              (a) => a.id === taskName || a.task_dir.includes(taskName)
-            );
-            if (agent && isProcessRunning(agent.pid)) {
-              validTasks.push(taskName);
-            } else if (agent) {
-              // Agent exists but not running
-              if (!waitOptions.quiet) {
-                console.log(chalk.yellow(`Skipping ${taskName}: agent not running`));
+            const agent = findAgentByTask(taskName);
+            if (agent) {
+              if (agent.pid === currentPid) {
+                // Skip self to prevent deadlock
+                skippedSelf.push(taskName);
+              } else if (isProcessRunning(agent.pid)) {
+                validTasks.push(taskName);
+              } else {
+                // Agent exists but not running
+                if (!waitOptions.quiet) {
+                  console.log(chalk.yellow(`Skipping ${taskName}: agent not running`));
+                }
               }
             } else {
               invalidTasks.push(taskName);
             }
+          }
+
+          if (skippedSelf.length > 0 && !waitOptions.quiet) {
+            console.log(chalk.yellow(`⚠️  Skipped self: ${skippedSelf.join(", ")} (prevents deadlock)`));
           }
 
           if (invalidTasks.length > 0 && !waitOptions.quiet) {
@@ -868,10 +906,15 @@ export function registerSwarmCommand(program: Command): void {
               failed: [],
               timeout: [],
               results: [],
+              skippedSelf: skippedSelf.length > 0,
             }), () => {
-              console.log(chalk.yellow("No running agents match the specified tasks"));
+              if (skippedSelf.length > 0 && invalidTasks.length === 0) {
+                console.log(chalk.yellow("Only self found - nothing to wait for"));
+              } else {
+                console.log(chalk.yellow("No running agents match the specified tasks"));
+              }
             });
-            process.exit(2);
+            process.exit(0); // Nothing to wait for is success
             return;
           }
 
@@ -883,6 +926,9 @@ export function registerSwarmCommand(program: Command): void {
           const count = tasksToWait.length || runningAgents.length;
           console.log(chalk.blue(`=== Waiting for ${count} agent(s) ===`));
           console.log(chalk.dim(`Polling: ${waitOptions.pollingIntervalSeconds}s, Timeout: ${waitOptions.timeoutSeconds}s`));
+          if (registry.agents.some((a) => a.pid === currentPid)) {
+            console.log(chalk.dim(`(Excluded self PID ${currentPid} to prevent deadlock)`));
+          }
           console.log();
         }
 
@@ -892,8 +938,9 @@ export function registerSwarmCommand(program: Command): void {
         // Output result
         if (ctx.json) {
           const hasTimeout = result.timeout.length > 0;
+          const hasFailed = result.failed.length > 0;
           output(ctx, {
-            success: !hasTimeout,
+            success: !hasTimeout && !hasFailed,
             data: result,
           });
         } else if (!waitOptions.quiet) {
@@ -901,11 +948,16 @@ export function registerSwarmCommand(program: Command): void {
           console.log(formatWaitResult(result));
         }
 
-        // Determine exit code
+        // Determine exit code with clear semantics:
+        // 0 = all completed successfully
+        // 1 = timeout occurred
+        // 2 = failed (no timeout)
         if (result.timeout.length > 0) {
           process.exit(1); // Timeout
+        } else if (result.failed.length > 0) {
+          process.exit(2); // Failed
         } else {
-          process.exit(0); // Success (completed or failed without timeout)
+          process.exit(0); // All completed
         }
       } catch (error) {
         handleCommandError(ctx, error);

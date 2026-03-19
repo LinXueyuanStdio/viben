@@ -2383,11 +2383,9 @@ export function registerTaskCommand(program: Command): void {
         });
 
         if (result.success) {
-          console.log(chalk.green("=== Reward Agent Started ==="));
+          console.log(chalk.green("=== Reward Computation Complete ==="));
           console.log();
-          console.log(`  ID:   ${result.agentId}`);
-          console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.logFile}`);
+          console.log(`  Log: ${result.logFile}`);
 
           if (result.warnings && result.warnings.length > 0) {
             console.log();
@@ -2398,8 +2396,8 @@ export function registerTaskCommand(program: Command): void {
           }
 
           console.log();
-          console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(chalk.gray("To view results:"));
+          console.log(`  viben task view <task>`);
           console.log();
 
           output(ctx, successResponse(result));

@@ -142,14 +142,15 @@ describe("WebSocket Routes", () => {
   describe("WebSocket connection", () => {
     it("should subscribe to events on connection", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      
+
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       expect(route).toBeDefined();
 
       // Simulate connection
       route!.handler(mockSocket);
 
-      expect(mockState.events.subscribe).toHaveBeenCalled();
+      expect(mockState.events.subscribe).toHaveBeenCalledWith(expect.any(Function));
+      expect(mockState.events.subscribe).toHaveBeenCalledTimes(1);
     });
 
     it("should register message, close, and error handlers", async () => {
@@ -405,7 +406,7 @@ describe("WebSocket Routes", () => {
   describe("Server messages: event broadcasting", () => {
     it("should send events to connected clients with no subscriptions", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      
+
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -415,12 +416,18 @@ describe("WebSocket Routes", () => {
         data: { task_id: "task-1" },
       });
 
-      expect(mockSocket.send).toHaveBeenCalled();
-      const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("Event");
-      expect(sentMessage.data.channel).toBe("tasks");
-      expect(sentMessage.data.payload.type).toBe("TaskCreated");
-      expect(sentMessage.data.payload.data).toEqual({ task_id: "task-1" });
+      const expectedMessage = JSON.stringify({
+        type: "Event",
+        data: {
+          channel: "tasks",
+          payload: {
+            type: "TaskCreated",
+            data: { task_id: "task-1" },
+          },
+        },
+      });
+      expect(mockSocket.send).toHaveBeenCalledWith(expectedMessage);
+      expect(mockSocket.send).toHaveBeenCalledTimes(1);
     });
 
     it("should filter events by subscribed channels", async () => {
@@ -452,14 +459,24 @@ describe("WebSocket Routes", () => {
       expect(mockSocket.send).not.toHaveBeenCalled();
 
       // Broadcast a cron event (should be sent)
+      const triggeredAt = Date.now();
       mockState.events._broadcast({
         type: "cron_job_triggered",
-        data: { job_id: "job-1", triggered_at: Date.now() },
+        data: { job_id: "job-1", triggered_at: triggeredAt },
       });
 
-      expect(mockSocket.send).toHaveBeenCalled();
-      const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.data.channel).toBe("cron");
+      const expectedCronMessage = JSON.stringify({
+        type: "Event",
+        data: {
+          channel: "cron",
+          payload: {
+            type: "CronJobTriggered",
+            data: { job_id: "job-1", triggered_at: triggeredAt },
+          },
+        },
+      });
+      expect(mockSocket.send).toHaveBeenCalledWith(expectedCronMessage);
+      expect(mockSocket.send).toHaveBeenCalledTimes(1);
     });
 
     it("should send events for all subscribed channels", async () => {
@@ -632,7 +649,7 @@ describe("WebSocket Routes", () => {
   describe("Error handling", () => {
     it("should send Error response for invalid JSON", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      
+
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
@@ -641,10 +658,12 @@ describe("WebSocket Routes", () => {
       // Send invalid JSON
       messageHandler(Buffer.from("not valid json"));
 
-      expect(mockSocket.send).toHaveBeenCalled();
-      const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("Error");
-      expect(sentMessage.data.message).toBe("Failed to parse message");
+      const expectedErrorMessage = JSON.stringify({
+        type: "Error",
+        data: { message: "Failed to parse message" },
+      });
+      expect(mockSocket.send).toHaveBeenCalledWith(expectedErrorMessage);
+      expect(mockSocket.send).toHaveBeenCalledTimes(1);
     });
 
     it("should unsubscribe on connection close", async () => {
@@ -710,7 +729,7 @@ describe("WebSocket Routes", () => {
   describe("Connection lifecycle", () => {
     it("should handle multiple simultaneous connections", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
-      
+
       const route = mockFastify._routes.find((r) => r.path === "/ws");
 
       // Create multiple sockets
@@ -727,9 +746,21 @@ describe("WebSocket Routes", () => {
       // Broadcast an event
       mockState.events._broadcast({ type: "task_created", data: { task_id: "task-1" } });
 
-      // Both should receive the event
-      expect(socket1.send).toHaveBeenCalled();
-      expect(socket2.send).toHaveBeenCalled();
+      // Both should receive the same event message
+      const expectedMessage = JSON.stringify({
+        type: "Event",
+        data: {
+          channel: "tasks",
+          payload: {
+            type: "TaskCreated",
+            data: { task_id: "task-1" },
+          },
+        },
+      });
+      expect(socket1.send).toHaveBeenCalledWith(expectedMessage);
+      expect(socket2.send).toHaveBeenCalledWith(expectedMessage);
+      expect(socket1.send).toHaveBeenCalledTimes(1);
+      expect(socket2.send).toHaveBeenCalledTimes(1);
     });
 
     it("should only affect one connection when closing", async () => {
@@ -760,8 +791,19 @@ describe("WebSocket Routes", () => {
       mockState.events._broadcast({ type: "task_created", data: { task_id: "task-1" } });
 
       // Only socket2 should receive
+      const expectedMessage = JSON.stringify({
+        type: "Event",
+        data: {
+          channel: "tasks",
+          payload: {
+            type: "TaskCreated",
+            data: { task_id: "task-1" },
+          },
+        },
+      });
       expect(socket1.send).not.toHaveBeenCalled();
-      expect(socket2.send).toHaveBeenCalled();
+      expect(socket2.send).toHaveBeenCalledWith(expectedMessage);
+      expect(socket2.send).toHaveBeenCalledTimes(1);
     });
   });
 

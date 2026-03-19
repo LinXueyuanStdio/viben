@@ -8,30 +8,181 @@
  * - PATCH /api/channels/:id - Update channel
  * - DELETE /api/channels/:id - Delete channel
  * - POST /api/channels/:id/default - Set channel as default
- * - POST /api/channels/send - Send message (stub)
- * - POST /api/channels/test - Test channel (stub)
- * - POST /api/channels/send-test - Send test message (stub)
+ * - POST /api/channels/send - Send message
+ * - POST /api/channels/test - Test channel configuration
+ * - POST /api/channels/send-test - Send test message
+ * - POST /api/channels/webhook - Receive webhook messages
+ * - POST /api/channels/:id/webhook - Receive webhook messages for specific channel
  *
- * These tests verify the route handler logic by testing the underlying
- * channelManager operations. Since fastify is not available as a test
- * dependency, we mock the channelManager and verify the behavior.
+ * These tests verify the HTTP route handlers using a mock Fastify instance
+ * that simulates HTTP requests and invokes actual route handlers.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import type { Channel, ChannelType, NotificationMode } from "../../channels";
+import { registerChannelRoutes } from "./channels";
 
-// Mock the channelManager
+// Mock the channelManager and channel functions
 vi.mock("../../channels", () => ({
   channelManager: {
     listChannels: vi.fn(),
     getChannel: vi.fn(),
     createChannel: vi.fn(),
     updateChannel: vi.fn(),
-    deleteChannel: vi.fn(),
-    setDefault: vi.fn(),
+    removeChannel: vi.fn(),
+    setDefaultChannel: vi.fn(),
+    load: vi.fn(),
+    buildChannelConfig: vi.fn(),
+  },
+  sendChannelMessage: vi.fn(),
+  testChannel: vi.fn(),
+  sendTestMessage: vi.fn(),
+}));
+
+// Mock telemetry
+vi.mock("../../telemetry", () => ({
+  trace: {
+    getTracer: () => ({
+      startSpan: () => ({
+        setAttributes: vi.fn(),
+        setStatus: vi.fn(),
+        recordException: vi.fn(),
+        setAttribute: vi.fn(),
+        end: vi.fn(),
+      }),
+    }),
+  },
+  SpanStatusCode: {
+    OK: 0,
+    ERROR: 1,
   },
 }));
 
-import { channelManager } from "../../channels";
+vi.mock("../../telemetry/route-names", () => ({
+  getSpanName: (name: string) => name,
+}));
+
+import { channelManager, sendChannelMessage, testChannel, sendTestMessage } from "../../channels";
+
+/**
+ * Mock Fastify instance for testing route handlers
+ */
+interface MockReply {
+  code: ReturnType<typeof vi.fn>;
+}
+
+interface RouteOptions {
+  schema?: unknown;
+}
+
+interface MockRouteHandler {
+  method: string;
+  url: string;
+  handler: (request: unknown, reply: MockReply) => Promise<unknown>;
+}
+
+function createMockFastify() {
+  const routes: MockRouteHandler[] = [];
+
+  const fastify = {
+    get: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "GET", url, handler: actualHandler });
+    }),
+    post: vi.fn((url: string, optionsOrHandler: RouteOptions | ((req: unknown, rep: MockReply) => Promise<unknown>), handler?: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      const actualHandler = typeof optionsOrHandler === "function" ? optionsOrHandler : handler!;
+      routes.push({ method: "POST", url, handler: actualHandler });
+    }),
+    patch: vi.fn((url: string, handler: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      routes.push({ method: "PATCH", url, handler });
+    }),
+    delete: vi.fn((url: string, handler: (req: unknown, rep: MockReply) => Promise<unknown>) => {
+      routes.push({ method: "DELETE", url, handler });
+    }),
+    routes,
+    // Helper to find and execute a route handler
+    async inject(options: { method: string; url: string; payload?: unknown }) {
+      const { method, url, payload } = options;
+      const parsedUrl = new URL(url, "http://localhost");
+      const pathname = parsedUrl.pathname;
+      const searchParams = Object.fromEntries(parsedUrl.searchParams.entries());
+
+      // Convert string params to appropriate types
+      const query: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(searchParams)) {
+        query[key] = value;
+      }
+
+      // Find matching route
+      let matchingRoute: MockRouteHandler | undefined;
+      let params: Record<string, string> = {};
+
+      for (const route of routes) {
+        if (route.method !== method) continue;
+
+        // Check for exact match
+        if (route.url === pathname) {
+          matchingRoute = route;
+          break;
+        }
+
+        // Check for parameterized match (e.g., /api/channels/:id)
+        const routeParts = route.url.split("/");
+        const urlParts = pathname.split("/");
+
+        if (routeParts.length === urlParts.length) {
+          let isMatch = true;
+          const extractedParams: Record<string, string> = {};
+
+          for (let i = 0; i < routeParts.length; i++) {
+            if (routeParts[i].startsWith(":")) {
+              extractedParams[routeParts[i].slice(1)] = urlParts[i];
+            } else if (routeParts[i] !== urlParts[i]) {
+              isMatch = false;
+              break;
+            }
+          }
+
+          if (isMatch) {
+            matchingRoute = route;
+            params = extractedParams;
+            break;
+          }
+        }
+      }
+
+      if (!matchingRoute) {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ error: "Route not found" }),
+        };
+      }
+
+      // Create mock request and reply
+      const request = {
+        query,
+        params,
+        body: payload,
+      };
+
+      let statusCode = 200;
+      const reply: MockReply = {
+        code: vi.fn((code: number) => {
+          statusCode = code;
+          return reply;
+        }),
+      };
+
+      const result = await matchingRoute.handler(request, reply);
+
+      return {
+        statusCode,
+        body: JSON.stringify(result),
+      };
+    },
+  };
+
+  return fastify;
+}
 
 /**
  * Helper to create a mock channel
@@ -44,16 +195,25 @@ function createMockChannel(overrides: Partial<Channel> = {}): Channel {
     enabled: true,
     is_default: false,
     created_at: Date.now(),
+    updated_at: Date.now(),
     allow_from: [],
     notification_mode: "none",
     config: {},
     ...overrides,
-  } as Channel;
+  };
 }
 
 describe("Channel Routes", () => {
+  let fastify: ReturnType<typeof createMockFastify>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    fastify = createMockFastify();
+    registerChannelRoutes(fastify as never);
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
   });
 
   // ============================================================================
@@ -64,43 +224,51 @@ describe("Channel Routes", () => {
     it("should return empty array when no channels exist", async () => {
       vi.mocked(channelManager.listChannels).mockResolvedValue([]);
 
-      const channels = await channelManager.listChannels();
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
 
-      expect(channels).toEqual([]);
-      expect(channelManager.listChannels).toHaveBeenCalled();
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.channels).toEqual([]);
+      expect(channelManager.listChannels).toHaveBeenCalledWith();
     });
 
-    it("should return list of all channels", async () => {
+    it("should return list of all channels with snake_case transformation", async () => {
       const mockChannels = [
         createMockChannel({
           id: "my-telegram",
           name: "My Telegram",
           type: "telegram",
           is_default: true,
+          created_at: 1609459200000,
+          updated_at: 1609459200000,
         }),
         createMockChannel({
           id: "my-discord",
           name: "My Discord",
           type: "discord",
         }),
-        createMockChannel({
-          id: "my-slack",
-          name: "My Slack",
-          type: "slack",
-          enabled: false,
-        }),
       ];
 
       vi.mocked(channelManager.listChannels).mockResolvedValue(mockChannels);
 
-      const channels = await channelManager.listChannels();
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
 
-      expect(channels).toHaveLength(3);
-      expect(channels[0].id).toBe("my-telegram");
-      expect(channels[0].is_default).toBe(true);
-      expect(channels[1].id).toBe("my-discord");
-      expect(channels[2].id).toBe("my-slack");
-      expect(channels[2].enabled).toBe(false);
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.channels).toHaveLength(2);
+      // Verify snake_case transformation
+      expect(body.channels[0].id).toBe("my-telegram");
+      expect(body.channels[0].channel_type).toBe("telegram");
+      expect(body.channels[0].is_default).toBe(true);
+      expect(body.channels[0].created_at).toBeDefined();
+      expect(body.channels[0].updated_at).toBeDefined();
+      expect(body.channels[1].id).toBe("my-discord");
     });
 
     it("should return channels with different types", async () => {
@@ -116,11 +284,44 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.listChannels).mockResolvedValue(mockChannels);
 
-      const channels = await channelManager.listChannels();
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
 
-      expect(channels).toHaveLength(6);
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.channels).toHaveLength(6);
       channelTypes.forEach((type, index) => {
-        expect(channels[index].type).toBe(type);
+        expect(body.channels[index].channel_type).toBe(type);
+      });
+    });
+
+    it("should include agent_binding in response when present", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        agent_binding: {
+          binding_type: "agent",
+          id: "agent-1",
+          name: "My Agent",
+          workspace_path: "/path/to/workspace",
+        },
+      });
+
+      vi.mocked(channelManager.listChannels).mockResolvedValue([mockChannel]);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.channels[0].agent_binding).toEqual({
+        binding_type: "agent",
+        id: "agent-1",
+        name: "My Agent",
+        workspace_path: "/path/to/workspace",
       });
     });
   });
@@ -130,7 +331,7 @@ describe("Channel Routes", () => {
   // ============================================================================
 
   describe("GET /api/channels/:id", () => {
-    it("should return channel when found", async () => {
+    it("should return channel when found with snake_case transformation", async () => {
       const mockChannel = createMockChannel({
         id: "my-telegram",
         name: "My Telegram",
@@ -143,24 +344,34 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
 
-      const channel = await channelManager.getChannel("my-telegram");
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/my-telegram",
+      });
 
-      expect(channel).toBeDefined();
-      expect(channel?.id).toBe("my-telegram");
-      expect(channel?.name).toBe("My Telegram");
-      expect(channel?.type).toBe("telegram");
-      expect(channel?.enabled).toBe(true);
-      expect(channel?.is_default).toBe(true);
-      expect(channel?.notification_mode).toBe("both");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("my-telegram");
+      expect(body.name).toBe("My Telegram");
+      expect(body.channel_type).toBe("telegram");
+      expect(body.enabled).toBe(true);
+      expect(body.is_default).toBe(true);
+      expect(body.notification_mode).toBe("both");
       expect(channelManager.getChannel).toHaveBeenCalledWith("my-telegram");
     });
 
-    it("should return undefined when channel not found", async () => {
+    it("should return 404 when channel not found", async () => {
       vi.mocked(channelManager.getChannel).mockResolvedValue(undefined);
 
-      const channel = await channelManager.getChannel("nonexistent");
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/nonexistent",
+      });
 
-      expect(channel).toBeUndefined();
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Channel not found");
+      expect(body.error).toContain("nonexistent");
       expect(channelManager.getChannel).toHaveBeenCalledWith("nonexistent");
     });
 
@@ -172,9 +383,14 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
 
-      const channel = await channelManager.getChannel("my-telegram-123");
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/my-telegram-123",
+      });
 
-      expect(channel?.id).toBe("my-telegram-123");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("my-telegram-123");
     });
   });
 
@@ -184,7 +400,7 @@ describe("Channel Routes", () => {
 
   describe("POST /api/channels", () => {
     describe("Telegram channel", () => {
-      it("should create telegram channel with required fields", async () => {
+      it("should create telegram channel with required fields and return 201", async () => {
         const mockChannel = createMockChannel({
           id: "my-telegram",
           name: "My Telegram",
@@ -194,19 +410,27 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        const channel = await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+          },
         });
 
-        expect(channel.id).toBe("my-telegram");
-        expect(channel.type).toBe("telegram");
-        expect(channelManager.createChannel).toHaveBeenCalledWith({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-        });
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.id).toBe("my-telegram");
+        expect(body.channel_type).toBe("telegram");
+        expect(channelManager.createChannel).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+          })
+        );
       });
 
       it("should create telegram channel with proxy option", async () => {
@@ -218,14 +442,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        const channel = await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          proxy: "http://proxy.example.com",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            proxy: "http://proxy.example.com",
+          },
         });
 
-        expect(channel).toBeDefined();
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             token: "bot-token",
@@ -245,13 +473,19 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        const channel = await channelManager.createChannel({
-          type: "discord",
-          name: "My Discord",
-          token: "discord-token",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "discord",
+            name: "My Discord",
+            token: "discord-token",
+          },
         });
 
-        expect(channel.type).toBe("discord");
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.channel_type).toBe("discord");
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             type: "discord",
@@ -269,13 +503,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "discord",
-          name: "My Discord",
-          token: "discord-token",
-          gateway_url: "wss://gateway.discord.gg",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "discord",
+            name: "My Discord",
+            token: "discord-token",
+            gateway_url: "wss://gateway.discord.gg",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             gateway_url: "wss://gateway.discord.gg",
@@ -294,13 +533,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "feishu",
-          name: "My Feishu",
-          app_id: "cli_xxx",
-          app_secret: "secret123",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "feishu",
+            name: "My Feishu",
+            app_id: "cli_xxx",
+            app_secret: "secret123",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             type: "feishu",
@@ -321,12 +565,17 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "whatsapp",
-          name: "My WhatsApp",
-          bridge_url: "ws://localhost:3001",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "whatsapp",
+            name: "My WhatsApp",
+            bridge_url: "ws://localhost:3001",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             type: "whatsapp",
@@ -346,12 +595,17 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "slack",
-          name: "My Slack",
-          token: "xoxb-slack-token",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "slack",
+            name: "My Slack",
+            token: "xoxb-slack-token",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             type: "slack",
@@ -368,13 +622,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "slack",
-          name: "My Slack",
-          token: "xoxb-slack-token",
-          channel_id: "C123456",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "slack",
+            name: "My Slack",
+            token: "xoxb-slack-token",
+            channel_id: "C123456",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             channel_id: "C123456",
@@ -393,12 +652,17 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "webhook",
-          name: "My Webhook",
-          url: "https://example.com/webhook",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "webhook",
+            name: "My Webhook",
+            url: "https://example.com/webhook",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             type: "webhook",
@@ -415,13 +679,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "webhook",
-          name: "My Webhook",
-          url: "https://example.com/webhook",
+        const response = await fastify.inject({
           method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "webhook",
+            name: "My Webhook",
+            url: "https://example.com/webhook",
+            method: "POST",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             method: "POST",
@@ -437,13 +706,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "webhook",
-          name: "My Webhook",
-          url: "https://example.com/webhook",
-          method: "PUT",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "webhook",
+            name: "My Webhook",
+            url: "https://example.com/webhook",
+            method: "PUT",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             method: "PUT",
@@ -464,13 +738,18 @@ describe("Channel Routes", () => {
           "X-Custom-Header": "custom-value",
         };
 
-        await channelManager.createChannel({
-          type: "webhook",
-          name: "My Webhook",
-          url: "https://example.com/webhook",
-          headers: customHeaders,
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "webhook",
+            name: "My Webhook",
+            url: "https://example.com/webhook",
+            headers: customHeaders,
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             headers: customHeaders,
@@ -488,13 +767,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          enabled: true,
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            enabled: true,
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             enabled: true,
@@ -510,13 +794,20 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          enabled: false,
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            enabled: false,
+          },
         });
 
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.enabled).toBe(false);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             enabled: false,
@@ -532,13 +823,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          set_as_default: true,
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            set_as_default: true,
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             set_as_default: true,
@@ -554,13 +850,18 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          notification_mode: "none",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            notification_mode: "none",
+          },
         });
 
+        expect(response.statusCode).toBe(201);
         expect(channelManager.createChannel).toHaveBeenCalledWith(
           expect.objectContaining({
             notification_mode: "none",
@@ -576,18 +877,20 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          notification_mode: "in_app",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            notification_mode: "in_app",
+          },
         });
 
-        expect(channelManager.createChannel).toHaveBeenCalledWith(
-          expect.objectContaining({
-            notification_mode: "in_app",
-          })
-        );
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.notification_mode).toBe("in_app");
       });
 
       it("should create channel with notification_mode: system", async () => {
@@ -598,18 +901,20 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          notification_mode: "system",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            notification_mode: "system",
+          },
         });
 
-        expect(channelManager.createChannel).toHaveBeenCalledWith(
-          expect.objectContaining({
-            notification_mode: "system",
-          })
-        );
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.notification_mode).toBe("system");
       });
 
       it("should create channel with notification_mode: both", async () => {
@@ -620,48 +925,98 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        await channelManager.createChannel({
-          type: "telegram",
-          name: "My Telegram",
-          token: "bot-token",
-          notification_mode: "both",
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            notification_mode: "both",
+          },
         });
 
-        expect(channelManager.createChannel).toHaveBeenCalledWith(
-          expect.objectContaining({
-            notification_mode: "both",
-          })
-        );
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.notification_mode).toBe("both");
+      });
+
+      it("should create channel with agent_binding", async () => {
+        const mockChannel = createMockChannel({
+          id: "my-telegram",
+          agent_binding: {
+            binding_type: "agent",
+            id: "agent-1",
+            name: "My Agent",
+          },
+        });
+
+        vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
+
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "My Telegram",
+            token: "bot-token",
+            agent_binding: {
+              binding_type: "agent",
+              id: "agent-1",
+              name: "My Agent",
+            },
+          },
+        });
+
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.agent_binding).toEqual({
+          binding_type: "agent",
+          id: "agent-1",
+          name: "My Agent",
+        });
       });
     });
 
     describe("Error handling", () => {
-      it("should throw error when creation fails due to missing required fields", async () => {
+      it("should return 400 when creation fails", async () => {
         vi.mocked(channelManager.createChannel).mockRejectedValue(
           new Error("Token is required for Telegram channels")
         );
 
-        await expect(
-          channelManager.createChannel({
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
             type: "telegram",
             name: "My Telegram",
             // Missing token
-          })
-        ).rejects.toThrow("Token is required for Telegram channels");
+          },
+        });
+
+        expect(response.statusCode).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(body.error).toContain("Token is required for Telegram channels");
       });
 
-      it("should throw error when channel already exists", async () => {
+      it("should return 400 when channel already exists", async () => {
         vi.mocked(channelManager.createChannel).mockRejectedValue(
           new Error('Channel "my-telegram" already exists')
         );
 
-        await expect(
-          channelManager.createChannel({
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
             type: "telegram",
             name: "My Telegram",
             token: "bot-token",
-          })
-        ).rejects.toThrow("already exists");
+          },
+        });
+
+        expect(response.statusCode).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(body.error).toContain("already exists");
       });
     });
   });
@@ -679,11 +1034,17 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
 
-      const channel = await channelManager.updateChannel("my-telegram", {
-        name: "Updated Name",
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {
+          name: "Updated Name",
+        },
       });
 
-      expect(channel.name).toBe("Updated Name");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.name).toBe("Updated Name");
       expect(channelManager.updateChannel).toHaveBeenCalledWith(
         "my-telegram",
         expect.objectContaining({ name: "Updated Name" })
@@ -698,10 +1059,17 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
 
-      await channelManager.updateChannel("my-telegram", {
-        enabled: false,
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {
+          enabled: false,
+        },
       });
 
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.enabled).toBe(false);
       expect(channelManager.updateChannel).toHaveBeenCalledWith(
         "my-telegram",
         expect.objectContaining({ enabled: false })
@@ -716,49 +1084,17 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
 
-      await channelManager.updateChannel("my-telegram", {
-        notification_mode: "both",
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {
+          notification_mode: "both",
+        },
       });
 
-      expect(channelManager.updateChannel).toHaveBeenCalledWith(
-        "my-telegram",
-        expect.objectContaining({ notification_mode: "both" })
-      );
-    });
-
-    it("should update channel token", async () => {
-      const mockChannel = createMockChannel({
-        id: "my-telegram",
-        config: { token: "new-token" },
-      });
-
-      vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
-
-      await channelManager.updateChannel("my-telegram", {
-        token: "new-token",
-      });
-
-      expect(channelManager.updateChannel).toHaveBeenCalledWith(
-        "my-telegram",
-        expect.objectContaining({ token: "new-token" })
-      );
-    });
-
-    it("should update channel proxy", async () => {
-      const mockChannel = createMockChannel({
-        id: "my-telegram",
-      });
-
-      vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
-
-      await channelManager.updateChannel("my-telegram", {
-        proxy: "http://new-proxy.example.com",
-      });
-
-      expect(channelManager.updateChannel).toHaveBeenCalledWith(
-        "my-telegram",
-        expect.objectContaining({ proxy: "http://new-proxy.example.com" })
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.notification_mode).toBe("both");
     });
 
     it("should update multiple fields at once", async () => {
@@ -771,54 +1107,38 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
 
-      await channelManager.updateChannel("my-telegram", {
-        name: "New Name",
-        enabled: false,
-        notification_mode: "system",
-      });
-
-      expect(channelManager.updateChannel).toHaveBeenCalledWith(
-        "my-telegram",
-        expect.objectContaining({
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {
           name: "New Name",
           enabled: false,
           notification_mode: "system",
-        })
-      );
-    });
-
-    it("should update webhook headers", async () => {
-      const mockChannel = createMockChannel({
-        id: "my-webhook",
-        type: "webhook",
+        },
       });
 
-      vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
-
-      const newHeaders = {
-        Authorization: "Bearer new-token",
-        "X-Custom": "value",
-      };
-
-      await channelManager.updateChannel("my-webhook", {
-        headers: newHeaders,
-      });
-
-      expect(channelManager.updateChannel).toHaveBeenCalledWith(
-        "my-webhook",
-        expect.objectContaining({ headers: newHeaders })
-      );
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.name).toBe("New Name");
+      expect(body.enabled).toBe(false);
+      expect(body.notification_mode).toBe("system");
     });
 
     describe("Error handling", () => {
-      it("should throw error when channel not found", async () => {
+      it("should return 400 when channel not found", async () => {
         vi.mocked(channelManager.updateChannel).mockRejectedValue(
           new Error('Channel "nonexistent" not found')
         );
 
-        await expect(
-          channelManager.updateChannel("nonexistent", { name: "New Name" })
-        ).rejects.toThrow("not found");
+        const response = await fastify.inject({
+          method: "PATCH",
+          url: "/api/channels/nonexistent",
+          payload: { name: "New Name" },
+        });
+
+        expect(response.statusCode).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(body.error).toContain("not found");
       });
     });
   });
@@ -828,31 +1148,47 @@ describe("Channel Routes", () => {
   // ============================================================================
 
   describe("DELETE /api/channels/:id", () => {
-    it("should delete channel", async () => {
-      vi.mocked(channelManager.deleteChannel).mockResolvedValue(undefined);
+    it("should delete channel and return deleted id", async () => {
+      vi.mocked(channelManager.removeChannel).mockResolvedValue(undefined);
 
-      await channelManager.deleteChannel("my-telegram");
+      const response = await fastify.inject({
+        method: "DELETE",
+        url: "/api/channels/my-telegram",
+      });
 
-      expect(channelManager.deleteChannel).toHaveBeenCalledWith("my-telegram");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.deleted).toBe("my-telegram");
+      expect(channelManager.removeChannel).toHaveBeenCalledWith("my-telegram");
     });
 
     it("should handle deleting channel with special characters in ID", async () => {
-      vi.mocked(channelManager.deleteChannel).mockResolvedValue(undefined);
+      vi.mocked(channelManager.removeChannel).mockResolvedValue(undefined);
 
-      await channelManager.deleteChannel("my-telegram-123");
+      const response = await fastify.inject({
+        method: "DELETE",
+        url: "/api/channels/my-telegram-123",
+      });
 
-      expect(channelManager.deleteChannel).toHaveBeenCalledWith("my-telegram-123");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.deleted).toBe("my-telegram-123");
     });
 
     describe("Error handling", () => {
-      it("should throw error when channel not found", async () => {
-        vi.mocked(channelManager.deleteChannel).mockRejectedValue(
+      it("should return 400 when channel not found", async () => {
+        vi.mocked(channelManager.removeChannel).mockRejectedValue(
           new Error('Channel "nonexistent" not found')
         );
 
-        await expect(
-          channelManager.deleteChannel("nonexistent")
-        ).rejects.toThrow("not found");
+        const response = await fastify.inject({
+          method: "DELETE",
+          url: "/api/channels/nonexistent",
+        });
+
+        expect(response.statusCode).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(body.error).toContain("not found");
       });
     });
   });
@@ -868,13 +1204,18 @@ describe("Channel Routes", () => {
         is_default: true,
       });
 
-      vi.mocked(channelManager.setDefault).mockResolvedValue(mockChannel);
+      vi.mocked(channelManager.setDefaultChannel).mockResolvedValue(mockChannel);
 
-      const channel = await channelManager.setDefault("my-telegram");
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/my-telegram/default",
+      });
 
-      expect(channel.id).toBe("my-telegram");
-      expect(channel.is_default).toBe(true);
-      expect(channelManager.setDefault).toHaveBeenCalledWith("my-telegram");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("my-telegram");
+      expect(body.is_default).toBe(true);
+      expect(channelManager.setDefaultChannel).toHaveBeenCalledWith("my-telegram");
     });
 
     it("should set disabled channel as default", async () => {
@@ -884,24 +1225,494 @@ describe("Channel Routes", () => {
         is_default: true,
       });
 
-      vi.mocked(channelManager.setDefault).mockResolvedValue(mockChannel);
+      vi.mocked(channelManager.setDefaultChannel).mockResolvedValue(mockChannel);
 
-      const channel = await channelManager.setDefault("disabled-channel");
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/disabled-channel/default",
+      });
 
-      expect(channel.enabled).toBe(false);
-      expect(channel.is_default).toBe(true);
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.enabled).toBe(false);
+      expect(body.is_default).toBe(true);
     });
 
     describe("Error handling", () => {
-      it("should throw error when channel not found", async () => {
-        vi.mocked(channelManager.setDefault).mockRejectedValue(
+      it("should return 400 when channel not found", async () => {
+        vi.mocked(channelManager.setDefaultChannel).mockRejectedValue(
           new Error('Channel "nonexistent" not found')
         );
 
-        await expect(
-          channelManager.setDefault("nonexistent")
-        ).rejects.toThrow("not found");
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels/nonexistent/default",
+        });
+
+        expect(response.statusCode).toBe(400);
+        const body = JSON.parse(response.body);
+        expect(body.error).toContain("not found");
       });
+    });
+  });
+
+  // ============================================================================
+  // POST /api/channels/send - Send message
+  // ============================================================================
+
+  describe("POST /api/channels/send", () => {
+    it("should send message successfully", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        type: "telegram",
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+      vi.mocked(channelManager.load).mockResolvedValue(undefined);
+      vi.mocked(channelManager.listChannels).mockResolvedValue([mockChannel]);
+      vi.mocked(channelManager.buildChannelConfig).mockReturnValue({
+        id: "my-telegram",
+        type: "telegram",
+        name: "My Telegram",
+        enabled: true,
+        created_at: Date.now(),
+        allow_from: [],
+        token: "bot-token",
+      });
+      vi.mocked(sendChannelMessage).mockResolvedValue({
+        success: true,
+        messageId: "msg-123",
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send",
+        payload: {
+          channelId: "my-telegram",
+          chatId: "chat-123",
+          message: "Hello, World!",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.message_id).toBe("msg-123");
+    });
+
+    it("should return 400 for missing required parameters", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send",
+        payload: {
+          channelId: "my-telegram",
+          // Missing chatId and message
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("required");
+    });
+
+    it("should return 404 when channel not found", async () => {
+      vi.mocked(channelManager.getChannel).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send",
+        payload: {
+          channelId: "nonexistent",
+          chatId: "chat-123",
+          message: "Hello",
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Channel not found");
+    });
+
+    it("should return 400 when send fails", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        type: "telegram",
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+      vi.mocked(channelManager.load).mockResolvedValue(undefined);
+      vi.mocked(channelManager.listChannels).mockResolvedValue([mockChannel]);
+      vi.mocked(channelManager.buildChannelConfig).mockReturnValue({
+        id: "my-telegram",
+        type: "telegram",
+        name: "My Telegram",
+        enabled: true,
+        created_at: Date.now(),
+        allow_from: [],
+        token: "bot-token",
+      });
+      vi.mocked(sendChannelMessage).mockResolvedValue({
+        success: false,
+        error: "Failed to send message",
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send",
+        payload: {
+          channelId: "my-telegram",
+          chatId: "chat-123",
+          message: "Hello",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Failed to send message");
+    });
+  });
+
+  // ============================================================================
+  // POST /api/channels/test - Test channel configuration
+  // ============================================================================
+
+  describe("POST /api/channels/test", () => {
+    it("should test telegram channel successfully", async () => {
+      vi.mocked(testChannel).mockResolvedValue({
+        success: true,
+        details: "Connection successful",
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/test",
+        payload: {
+          channel_type: "telegram",
+          config: {
+            type: "telegram",
+            token: "bot-token",
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.details).toBe("Connection successful");
+    });
+
+    it("should return 400 for missing required parameters", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/test",
+        payload: {
+          // Missing channel_type and config
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("required");
+    });
+
+    it("should return 400 for unknown channel type", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/test",
+        payload: {
+          channel_type: "unknown",
+          config: {
+            type: "unknown",
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Unknown channel type");
+    });
+
+    it("should test discord channel", async () => {
+      vi.mocked(testChannel).mockResolvedValue({
+        success: true,
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/test",
+        payload: {
+          channel_type: "discord",
+          config: {
+            type: "discord",
+            token: "discord-token",
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+    });
+
+    it("should handle test failure", async () => {
+      vi.mocked(testChannel).mockResolvedValue({
+        success: false,
+        error: "Invalid token",
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/test",
+        payload: {
+          channel_type: "telegram",
+          config: {
+            type: "telegram",
+            token: "invalid-token",
+          },
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(false);
+      expect(body.error).toBe("Invalid token");
+    });
+  });
+
+  // ============================================================================
+  // POST /api/channels/send-test - Send test message
+  // ============================================================================
+
+  describe("POST /api/channels/send-test", () => {
+    it("should send test message successfully", async () => {
+      vi.mocked(sendTestMessage).mockResolvedValue({
+        success: true,
+        messageId: "test-msg-123",
+      });
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send-test",
+        payload: {
+          channel_type: "telegram",
+          config: {
+            type: "telegram",
+            token: "bot-token",
+          },
+          chat_id: "chat-123",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.message_id).toBe("test-msg-123");
+    });
+
+    it("should return 400 for missing required parameters", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send-test",
+        payload: {
+          channel_type: "telegram",
+          // Missing config and chat_id
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("required");
+    });
+
+    it("should return 400 for unknown channel type", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/send-test",
+        payload: {
+          channel_type: "unknown",
+          config: {
+            type: "unknown",
+          },
+          chat_id: "chat-123",
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Unknown channel type");
+    });
+  });
+
+  // ============================================================================
+  // POST /api/channels/webhook - Receive webhook messages
+  // ============================================================================
+
+  describe("POST /api/channels/webhook", () => {
+    it("should receive webhook message successfully", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/webhook",
+        payload: {
+          chat_id: "chat-123",
+          message: "Hello from webhook",
+          channel_type: "telegram",
+          channel_name: "My Telegram",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.received.channel_type).toBe("telegram");
+      expect(body.received.chat_id).toBe("chat-123");
+    });
+
+    it("should return 400 for missing chat_id", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/webhook",
+        payload: {
+          message: "Hello",
+          // Missing chat_id
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("chat_id is required");
+    });
+
+    it("should return 400 for missing message", async () => {
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/webhook",
+        payload: {
+          chat_id: "chat-123",
+          // Missing message
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("message is required");
+    });
+
+    it("should look up channel info when channelId is provided", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        name: "My Telegram",
+        type: "telegram",
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/webhook",
+        payload: {
+          channelId: "my-telegram",
+          chat_id: "chat-123",
+          message: "Hello",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.received.channel_type).toBe("telegram");
+      expect(body.received.channel_name).toBe("My Telegram");
+    });
+  });
+
+  // ============================================================================
+  // POST /api/channels/:id/webhook - Receive webhook messages for specific channel
+  // ============================================================================
+
+  describe("POST /api/channels/:id/webhook", () => {
+    it("should receive webhook message for specific channel", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        name: "My Telegram",
+        type: "telegram",
+        enabled: true,
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/my-telegram/webhook",
+        payload: {
+          chat_id: "chat-123",
+          message: "Hello from specific channel webhook",
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.received.channel_id).toBe("my-telegram");
+      expect(body.received.channel_type).toBe("telegram");
+    });
+
+    it("should return 404 when channel not found", async () => {
+      vi.mocked(channelManager.getChannel).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/nonexistent/webhook",
+        payload: {
+          chat_id: "chat-123",
+          message: "Hello",
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("Channel not found");
+    });
+
+    it("should return 403 when channel is disabled", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        enabled: false,
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/my-telegram/webhook",
+        payload: {
+          chat_id: "chat-123",
+          message: "Hello",
+        },
+      });
+
+      expect(response.statusCode).toBe(403);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("disabled");
+    });
+
+    it("should return 400 for missing chat_id", async () => {
+      const mockChannel = createMockChannel({
+        id: "my-telegram",
+        enabled: true,
+      });
+
+      vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/my-telegram/webhook",
+        payload: {
+          message: "Hello",
+          // Missing chat_id
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toContain("chat_id is required");
     });
   });
 
@@ -913,7 +1724,7 @@ describe("Channel Routes", () => {
     const allTypes: ChannelType[] = ["telegram", "discord", "feishu", "whatsapp", "slack", "webhook"];
 
     allTypes.forEach((type) => {
-      it(`should support ${type} channel type`, async () => {
+      it(`should support ${type} channel type through HTTP API`, async () => {
         const mockChannel = createMockChannel({
           id: `test-${type}`,
           type,
@@ -921,18 +1732,31 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        const channel = await channelManager.createChannel({
+        const payload: Record<string, unknown> = {
           type,
           name: `Test ${type}`,
-          ...(type === "telegram" ? { token: "token" } : {}),
-          ...(type === "discord" ? { token: "token" } : {}),
-          ...(type === "feishu" ? { app_id: "id", app_secret: "secret" } : {}),
-          ...(type === "whatsapp" ? { bridge_url: "ws://localhost" } : {}),
-          ...(type === "slack" ? { token: "token" } : {}),
-          ...(type === "webhook" ? { url: "https://example.com" } : {}),
+        };
+
+        // Add type-specific required fields
+        if (type === "telegram") payload.token = "token";
+        if (type === "discord") payload.token = "token";
+        if (type === "feishu") {
+          payload.app_id = "id";
+          payload.app_secret = "secret";
+        }
+        if (type === "whatsapp") payload.bridge_url = "ws://localhost";
+        if (type === "slack") payload.token = "token";
+        if (type === "webhook") payload.url = "https://example.com";
+
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload,
         });
 
-        expect(channel.type).toBe(type);
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.channel_type).toBe(type);
       });
     });
   });
@@ -945,7 +1769,7 @@ describe("Channel Routes", () => {
     const allModes: NotificationMode[] = ["none", "in_app", "system", "both"];
 
     allModes.forEach((mode) => {
-      it(`should support notification_mode: ${mode}`, async () => {
+      it(`should support notification_mode: ${mode} through HTTP API`, async () => {
         const mockChannel = createMockChannel({
           id: "test-channel",
           notification_mode: mode,
@@ -953,14 +1777,20 @@ describe("Channel Routes", () => {
 
         vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-        const channel = await channelManager.createChannel({
-          type: "telegram",
-          name: "Test Channel",
-          token: "token",
-          notification_mode: mode,
+        const response = await fastify.inject({
+          method: "POST",
+          url: "/api/channels",
+          payload: {
+            type: "telegram",
+            name: "Test Channel",
+            token: "token",
+            notification_mode: mode,
+          },
         });
 
-        expect(channel.notification_mode).toBe(mode);
+        expect(response.statusCode).toBe(201);
+        const body = JSON.parse(response.body);
+        expect(body.notification_mode).toBe(mode);
       });
     });
   });
@@ -970,7 +1800,7 @@ describe("Channel Routes", () => {
   // ============================================================================
 
   describe("Integration scenarios", () => {
-    it("should handle creating, getting, and deleting a channel", async () => {
+    it("should handle creating, getting, and deleting a channel through HTTP", async () => {
       const mockChannel = createMockChannel({
         id: "integration-test",
         name: "Integration Test",
@@ -980,30 +1810,46 @@ describe("Channel Routes", () => {
       // Create channel
       vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-      const created = await channelManager.createChannel({
-        type: "telegram",
-        name: "Integration Test",
-        token: "bot-token",
+      const createResponse = await fastify.inject({
+        method: "POST",
+        url: "/api/channels",
+        payload: {
+          type: "telegram",
+          name: "Integration Test",
+          token: "bot-token",
+        },
       });
 
+      expect(createResponse.statusCode).toBe(201);
+      const created = JSON.parse(createResponse.body);
       expect(created.id).toBe("integration-test");
 
       // Get channel
       vi.mocked(channelManager.getChannel).mockResolvedValue(mockChannel);
 
-      const retrieved = await channelManager.getChannel("integration-test");
+      const getResponse = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/integration-test",
+      });
 
-      expect(retrieved?.id).toBe("integration-test");
+      expect(getResponse.statusCode).toBe(200);
+      const retrieved = JSON.parse(getResponse.body);
+      expect(retrieved.id).toBe("integration-test");
 
       // Delete channel
-      vi.mocked(channelManager.deleteChannel).mockResolvedValue(undefined);
+      vi.mocked(channelManager.removeChannel).mockResolvedValue(undefined);
 
-      await channelManager.deleteChannel("integration-test");
+      const deleteResponse = await fastify.inject({
+        method: "DELETE",
+        url: "/api/channels/integration-test",
+      });
 
-      expect(channelManager.deleteChannel).toHaveBeenCalledWith("integration-test");
+      expect(deleteResponse.statusCode).toBe(200);
+      const deleted = JSON.parse(deleteResponse.body);
+      expect(deleted.deleted).toBe("integration-test");
     });
 
-    it("should handle creating channel and setting as default", async () => {
+    it("should handle creating channel and setting as default through HTTP", async () => {
       const mockChannel = createMockChannel({
         id: "new-default",
         name: "New Default",
@@ -1014,22 +1860,33 @@ describe("Channel Routes", () => {
       // Create channel
       vi.mocked(channelManager.createChannel).mockResolvedValue(mockChannel);
 
-      await channelManager.createChannel({
-        type: "discord",
-        name: "New Default",
-        token: "discord-token",
+      const createResponse = await fastify.inject({
+        method: "POST",
+        url: "/api/channels",
+        payload: {
+          type: "discord",
+          name: "New Default",
+          token: "discord-token",
+        },
       });
+
+      expect(createResponse.statusCode).toBe(201);
 
       // Set as default
       const defaultChannel = { ...mockChannel, is_default: true };
-      vi.mocked(channelManager.setDefault).mockResolvedValue(defaultChannel);
+      vi.mocked(channelManager.setDefaultChannel).mockResolvedValue(defaultChannel);
 
-      const updated = await channelManager.setDefault("new-default");
+      const defaultResponse = await fastify.inject({
+        method: "POST",
+        url: "/api/channels/new-default/default",
+      });
 
+      expect(defaultResponse.statusCode).toBe(200);
+      const updated = JSON.parse(defaultResponse.body);
       expect(updated.is_default).toBe(true);
     });
 
-    it("should handle updating channel and listing all", async () => {
+    it("should handle updating channel and listing all through HTTP", async () => {
       const mockChannel = createMockChannel({
         id: "my-telegram",
         name: "Original Name",
@@ -1039,17 +1896,28 @@ describe("Channel Routes", () => {
       const updatedChannel = { ...mockChannel, name: "Updated Name" };
       vi.mocked(channelManager.updateChannel).mockResolvedValue(updatedChannel);
 
-      await channelManager.updateChannel("my-telegram", {
-        name: "Updated Name",
+      const updateResponse = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {
+          name: "Updated Name",
+        },
       });
+
+      expect(updateResponse.statusCode).toBe(200);
 
       // List channels
       vi.mocked(channelManager.listChannels).mockResolvedValue([updatedChannel]);
 
-      const channels = await channelManager.listChannels();
+      const listResponse = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
 
-      expect(channels).toHaveLength(1);
-      expect(channels[0].name).toBe("Updated Name");
+      expect(listResponse.statusCode).toBe(200);
+      const list = JSON.parse(listResponse.body);
+      expect(list.channels).toHaveLength(1);
+      expect(list.channels[0].name).toBe("Updated Name");
     });
   });
 
@@ -1065,12 +1933,17 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.updateChannel).mockResolvedValue(mockChannel);
 
-      await channelManager.updateChannel("my-telegram", {});
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/channels/my-telegram",
+        payload: {},
+      });
 
+      expect(response.statusCode).toBe(200);
       expect(channelManager.updateChannel).toHaveBeenCalledWith("my-telegram", {});
     });
 
-    it("should handle large number of channels in list", async () => {
+    it("should handle large number of channels in list response", async () => {
       const mockChannels = Array.from({ length: 100 }, (_, i) =>
         createMockChannel({
           id: `channel-${i}`,
@@ -1080,9 +1953,14 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.listChannels).mockResolvedValue(mockChannels);
 
-      const channels = await channelManager.listChannels();
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels",
+      });
 
-      expect(channels).toHaveLength(100);
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.channels).toHaveLength(100);
     });
 
     it("should handle channel with all optional fields undefined", async () => {
@@ -1100,10 +1978,14 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.getChannel).mockResolvedValue(minimalChannel);
 
-      const channel = await channelManager.getChannel("minimal");
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/minimal",
+      });
 
-      expect(channel).toBeDefined();
-      expect(channel?.id).toBe("minimal");
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.id).toBe("minimal");
     });
 
     it("should handle channel with complex config", async () => {
@@ -1123,9 +2005,14 @@ describe("Channel Routes", () => {
 
       vi.mocked(channelManager.getChannel).mockResolvedValue(complexChannel);
 
-      const channel = await channelManager.getChannel("complex");
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/channels/complex",
+      });
 
-      expect(channel?.config).toEqual({
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.config).toEqual({
         url: "https://example.com",
         method: "POST",
         headers: {
@@ -1138,48 +2025,83 @@ describe("Channel Routes", () => {
   });
 
   // ============================================================================
-  // Stub Endpoints behavior
+  // Route Registration
   // ============================================================================
 
-  describe("Stub endpoints behavior", () => {
-    // Note: These test cases document the expected behavior of stub endpoints.
-    // The actual route handlers return 501 Not Implemented for these endpoints.
-
-    describe("POST /api/channels/send (stub)", () => {
-      it("should document expected send message interface", () => {
-        // Expected request body structure
-        const expectedRequest = {
-          channelId: "my-telegram",
-          message: "Hello, World!",
-          parseMode: "markdown" as const, // "text" | "markdown" | "html"
-        };
-
-        expect(expectedRequest.channelId).toBeDefined();
-        expect(expectedRequest.message).toBeDefined();
-        expect(["text", "markdown", "html"]).toContain(expectedRequest.parseMode);
-      });
+  describe("Route Registration", () => {
+    it("should register GET /api/channels route", () => {
+      const getCalls = fastify.get.mock.calls;
+      const listRoute = getCalls.find((call) => call[0] === "/api/channels");
+      expect(listRoute).toBeDefined();
+      expect(listRoute![0]).toBe("/api/channels");
+      expect(typeof listRoute![1]).toBe("object"); // schema options
+      expect(typeof listRoute![2]).toBe("function"); // handler
     });
 
-    describe("POST /api/channels/test (stub)", () => {
-      it("should document expected test channel interface", () => {
-        // Expected request body structure
-        const expectedRequest = {
-          channelId: "my-telegram",
-        };
-
-        expect(expectedRequest.channelId).toBeDefined();
-      });
+    it("should register GET /api/channels/:id route", () => {
+      const getCalls = fastify.get.mock.calls;
+      const getByIdRoute = getCalls.find((call) => call[0] === "/api/channels/:id");
+      expect(getByIdRoute).toBeDefined();
     });
 
-    describe("POST /api/channels/send-test (stub)", () => {
-      it("should document expected send test message interface", () => {
-        // Expected request body structure
-        const expectedRequest = {
-          channelId: "my-telegram",
-        };
+    it("should register POST /api/channels route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const createRoute = postCalls.find((call) => call[0] === "/api/channels");
+      expect(createRoute).toBeDefined();
+      expect(createRoute![0]).toBe("/api/channels");
+      expect(typeof createRoute![1]).toBe("function"); // handler (no schema options)
+    });
 
-        expect(expectedRequest.channelId).toBeDefined();
-      });
+    it("should register PATCH /api/channels/:id route", () => {
+      const patchCalls = fastify.patch.mock.calls;
+      const updateRoute = patchCalls.find((call) => call[0] === "/api/channels/:id");
+      expect(updateRoute).toBeDefined();
+      expect(updateRoute![0]).toBe("/api/channels/:id");
+      expect(typeof updateRoute![1]).toBe("function"); // handler
+    });
+
+    it("should register DELETE /api/channels/:id route", () => {
+      const deleteCalls = fastify.delete.mock.calls;
+      const deleteByIdRoute = deleteCalls.find((call) => call[0] === "/api/channels/:id");
+      expect(deleteByIdRoute).toBeDefined();
+      expect(deleteByIdRoute![0]).toBe("/api/channels/:id");
+      expect(typeof deleteByIdRoute![1]).toBe("function"); // handler
+    });
+
+    it("should register POST /api/channels/:id/default route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const defaultRoute = postCalls.find((call) => call[0] === "/api/channels/:id/default");
+      expect(defaultRoute).toBeDefined();
+    });
+
+    it("should register POST /api/channels/send route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const sendRoute = postCalls.find((call) => call[0] === "/api/channels/send");
+      expect(sendRoute).toBeDefined();
+    });
+
+    it("should register POST /api/channels/test route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const testRoute = postCalls.find((call) => call[0] === "/api/channels/test");
+      expect(testRoute).toBeDefined();
+    });
+
+    it("should register POST /api/channels/send-test route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const sendTestRoute = postCalls.find((call) => call[0] === "/api/channels/send-test");
+      expect(sendTestRoute).toBeDefined();
+    });
+
+    it("should register POST /api/channels/webhook route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const webhookRoute = postCalls.find((call) => call[0] === "/api/channels/webhook");
+      expect(webhookRoute).toBeDefined();
+    });
+
+    it("should register POST /api/channels/:id/webhook route", () => {
+      const postCalls = fastify.post.mock.calls;
+      const channelWebhookRoute = postCalls.find((call) => call[0] === "/api/channels/:id/webhook");
+      expect(channelWebhookRoute).toBeDefined();
     });
   });
 });

@@ -30,6 +30,8 @@ export interface WaitOptions {
   verbose: boolean;
   /** Quiet mode - minimal output */
   quiet: boolean;
+  /** Current process PID to exclude from waiting (prevents deadlock) */
+  excludePid?: number;
 }
 
 /**
@@ -125,14 +127,26 @@ function sleep(ms: number): Promise<void> {
  * Note: rejectTask only works on "review" status tasks.
  * For tasks in other states (like in_progress), we'll just mark them as timeout
  * and stop the process.
+ *
+ * @returns Object with kill and reject status for verbose logging
  */
-function handleTimeout(repoRoot: string, task: string, pid: number): void {
+function handleTimeout(
+  repoRoot: string,
+  task: string,
+  pid: number,
+  verbose: boolean = false
+): { killed: boolean; rejected: boolean; rejectError?: string } {
+  const result = { killed: false, rejected: false, rejectError: undefined as string | undefined };
+
   // Try to stop the agent process first
   if (isProcessRunning(pid)) {
     try {
       process.kill(pid, "SIGTERM");
-    } catch {
-      // Ignore kill errors
+      result.killed = true;
+    } catch (e) {
+      if (verbose) {
+        result.rejectError = `Failed to kill process ${pid}: ${e}`;
+      }
     }
   }
 
@@ -144,15 +158,49 @@ function handleTimeout(repoRoot: string, task: string, pid: number): void {
       stdio: "pipe",
       encoding: "utf-8",
     });
-  } catch {
+    result.rejected = true;
+  } catch (e) {
     // Ignore errors - reject only works on review status
     // The timeout will still be recorded in the result
+    if (verbose) {
+      result.rejectError = `Task reject failed (expected if not in review status): ${e}`;
+    }
   }
+
+  return result;
 }
 
 // =============================================================================
 // Main Wait Function
 // =============================================================================
+
+/**
+ * Find agent by task name with precise matching
+ *
+ * Matching priority:
+ * 1. Exact ID match
+ * 2. Exact task directory name match (basename)
+ * 3. Task directory contains the search term
+ *
+ * @param taskName - Task name to search for
+ * @param agents - List of agents to search
+ * @returns Matching agent or undefined
+ */
+function findAgentByTask(taskName: string, agents: AgentEntry[]): AgentEntry | undefined {
+  // 1. Exact ID match (highest priority)
+  const exactId = agents.find((a) => a.id === taskName);
+  if (exactId) return exactId;
+
+  // 2. Exact task directory name match
+  const exactDir = agents.find((a) => {
+    const dirName = a.task_dir.split("/").pop() || "";
+    return dirName === taskName;
+  });
+  if (exactDir) return exactDir;
+
+  // 3. Task directory contains the search term (lowest priority)
+  return agents.find((a) => a.task_dir.includes(taskName));
+}
 
 /**
  * Wait for agents to complete
@@ -168,21 +216,29 @@ export async function waitForAgents(
   options: WaitOptions
 ): Promise<WaitResult> {
   const registry = readRegistry(repoRoot);
+  const currentPid = options.excludePid ?? process.pid;
 
-  // Build list of tasks to wait for
+  // Build list of tasks to wait for, excluding self to prevent deadlock
   let agentsToWait: AgentEntry[] = [];
 
   if (tasks.length === 0) {
-    // Wait for all running agents
-    agentsToWait = registry.agents.filter((a) => isProcessRunning(a.pid));
+    // Wait for all running agents (excluding self)
+    agentsToWait = registry.agents.filter(
+      (a) => isProcessRunning(a.pid) && a.pid !== currentPid
+    );
   } else {
     // Wait for specific tasks
     for (const taskName of tasks) {
-      // Find agent by task name or ID
-      const agent = registry.agents.find(
-        (a) => a.id === taskName || a.task_dir.includes(taskName)
-      );
+      // Find agent by task name or ID with precise matching
+      const agent = findAgentByTask(taskName, registry.agents);
       if (agent) {
+        // Skip self to prevent deadlock
+        if (agent.pid === currentPid) {
+          if (!options.quiet) {
+            console.log(`⚠️  Skipping self (${taskName}): waiting for own process would cause deadlock`);
+          }
+          continue;
+        }
         agentsToWait.push(agent);
       }
     }
@@ -221,7 +277,6 @@ export async function waitForAgents(
 
   // Polling loop
   while (waitingTasks.some((t) => !t.done)) {
-    const elapsed = Math.floor((Date.now() - waitingTasks[0].startTime) / 1000);
     const globalElapsed = Math.floor((Date.now() - globalStartTime) / 1000);
 
     // Check global timeout first
@@ -239,9 +294,12 @@ export async function waitForAgents(
         };
         result.timeout.push(wt.task);
         completedCount++;
-        handleTimeout(repoRoot, wt.task, wt.agent.pid);
+        const timeoutResult = handleTimeout(repoRoot, wt.task, wt.agent.pid, options.verbose);
         if (!options.quiet) {
           console.log(`  [GLOBAL TIMEOUT] ${wt.task} (${formatSeconds(taskElapsed)})`);
+        }
+        if (options.verbose && timeoutResult.rejectError) {
+          console.log(`    ${timeoutResult.rejectError}`);
         }
       }
       break;
@@ -268,10 +326,13 @@ export async function waitForAgents(
         completedCount++;
 
         // Handle timeout (stop process, attempt reject)
-        handleTimeout(repoRoot, wt.task, wt.agent.pid);
+        const timeoutResult = handleTimeout(repoRoot, wt.task, wt.agent.pid, options.verbose);
 
         if (!options.quiet) {
           console.log(`  [TIMEOUT] ${wt.task} (${formatSeconds(taskElapsed)})`);
+        }
+        if (options.verbose && timeoutResult.rejectError) {
+          console.log(`    ${timeoutResult.rejectError}`);
         }
         continue;
       }
@@ -370,13 +431,13 @@ export async function waitForAgents(
 
     // Progress output (if not quiet)
     if (!options.quiet && waitingTasks.some((t) => !t.done)) {
-      process.stdout.write(`\rWaiting for ${totalTasks} agents... [${formatSeconds(elapsed)}] ${completedCount}/${totalTasks} completed`);
+      process.stdout.write(`\rWaiting for ${totalTasks} agents... [${formatSeconds(globalElapsed)}] ${completedCount}/${totalTasks} completed`);
     }
 
     // Verbose output - show status table
     if (options.verbose && waitingTasks.some((t) => !t.done)) {
       console.log();
-      console.log(`=== Polling [${formatSeconds(elapsed)}] ===`);
+      console.log(`=== Polling [${formatSeconds(globalElapsed)}] ===`);
       console.log("Task".padEnd(20) + "PID".padEnd(10) + "Status".padEnd(10) + "Elapsed".padEnd(10) + "State");
       console.log("-".repeat(60));
 

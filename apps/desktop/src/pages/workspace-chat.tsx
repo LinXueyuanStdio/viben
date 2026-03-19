@@ -94,7 +94,7 @@ import {
 } from "@/hooks";
 import { useVibeKanbanTasks } from "@/hooks/use-vibe-kanban";
 import { useVitePreview } from "@/hooks/use-vite-preview";
-import type { AgentMessage } from "@/types";
+import type { AgentMessage, Artifact } from "@/types";
 import { cn } from "@/lib/utils";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
@@ -241,7 +241,7 @@ function fileSessionToConversation(session: FileSession): Conversation {
 
 // Convert Gateway UIMessage to AgentMessage
 // UIMessage is already in the correct format for frontend rendering
-function uiMessageToAgentMessage(msg: UIMessage): import("@/types").AgentMessage | null {
+function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
   switch (msg.type) {
     case "user":
       return {
@@ -1236,7 +1236,7 @@ export function WorkspaceChatPage() {
           // Convert UI messages to agent messages, filtering out null results
           const agentMessages = uiMessages
             .map(uiMessageToAgentMessage)
-            .filter((msg): msg is import("@/types").AgentMessage => msg !== null);
+            .filter((msg): msg is AgentMessage => msg !== null);
 
           // Extract SDK session ID from messages (find the last sdk_session message)
           const sdkSessionMsg = uiMessages
@@ -1427,7 +1427,7 @@ export function WorkspaceChatPage() {
   };
 
   // Handle artifact selection from sidebar - highlight artifact and its source message
-  const handleArtifactSelect = React.useCallback((artifact: import("@/types").Artifact) => {
+  const handleArtifactSelect = React.useCallback((artifact: Artifact) => {
     // Highlight the selected artifact in sidebar
     setHighlightedArtifactId(artifact.id);
 

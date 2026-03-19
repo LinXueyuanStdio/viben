@@ -37,7 +37,7 @@ import {
   validateConfig,
   generateTargetContent,
   initRun,
-  runIteration,
+  runFileRlLoop,
   stop,
   resume,
   listRuns,
@@ -267,31 +267,51 @@ export function registerFileRlCommand(program: Command): void {
           throw CliError.operationFailed("Init run", initResult.error || "Unknown error");
         }
 
-        // Start first iteration
-        const runResult = runIteration(repoRoot, config.name);
-        if (!runResult.success) {
-          throw CliError.operationFailed("Run iteration", runResult.error || "Unknown error");
+        console.log(chalk.green("=== FileRL Starting ==="));
+        console.log();
+        console.log(`  Name:         ${config.name}`);
+        console.log(`  Target:       ${target}`);
+        console.log(`  Max Iterations: ${config.ppo.max_iterations}`);
+        console.log();
+        console.log(chalk.gray("The FileRL loop will run automatically:"));
+        console.log(chalk.gray("  1. Generate ideas using configured idea types"));
+        console.log(chalk.gray("  2. Create tasks in parallel worktrees"));
+        console.log(chalk.gray("  3. Wait for task completion"));
+        console.log(chalk.gray("  4. Compute rewards and select the best"));
+        console.log(chalk.gray("  5. Merge winner and iterate until convergence"));
+        console.log();
+
+        // Run the full FileRL loop
+        const loopResult = await runFileRlLoop(repoRoot, config.name, (msg) => {
+          console.log(chalk.gray(`  ${msg}`));
+        });
+
+        if (!loopResult.success) {
+          throw CliError.operationFailed("FileRL loop", loopResult.error || "Unknown error");
         }
 
+        const resultData = loopResult.data as {
+          iterations?: number;
+          bestReward?: number;
+          bestTask?: string;
+        };
+
+        console.log();
         output(ctx, successResponse({
           name: config.name,
-          iteration: runResult.state?.current_iteration,
-          message: runResult.message,
+          phase: loopResult.phase,
+          iterations: resultData.iterations,
+          bestReward: resultData.bestReward,
+          bestTask: resultData.bestTask,
         }), () => {
-          console.log(chalk.green("=== FileRL Started ==="));
+          console.log(chalk.green("=== FileRL Complete ==="));
           console.log();
-          console.log(`  Name:      ${config.name}`);
-          console.log(`  Iteration: ${runResult.state?.current_iteration || 1}`);
-          console.log(`  Target:    ${target}`);
-          console.log();
-          console.log(chalk.gray("The FileRL loop will:"));
-          console.log(chalk.gray("  1. Generate ideas using configured idea types"));
-          console.log(chalk.gray("  2. Create tasks in parallel worktrees"));
-          console.log(chalk.gray("  3. Compute rewards and select the best"));
-          console.log(chalk.gray("  4. Merge winner and iterate until convergence"));
-          console.log();
-          console.log(chalk.gray("To monitor progress:"));
-          console.log(`  viben filerl status ${config.name}`);
+          outputKeyValue(ctx, {
+            "Status": loopResult.phase === "converged" ? chalk.green("Converged") : chalk.yellow("Max iterations reached"),
+            "Iterations": String(resultData.iterations || 0),
+            "Best Reward": resultData.bestReward?.toFixed(3) || "-",
+            "Best Task": resultData.bestTask || "-",
+          });
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -476,7 +496,7 @@ export function registerFileRlCommand(program: Command): void {
   // ============================================================================
   fileRlCmd
     .command("resume")
-    .description("Resume a paused FileRL run")
+    .description("Resume a paused FileRL run and continue the loop")
     .argument("<name>", "Name of the FileRL run to resume")
     .option("--json", "JSON format output")
     .action(async (name: string, options: { json?: boolean }) => {
@@ -489,17 +509,46 @@ export function registerFileRlCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenRoot(cwd);
 
-        const result = resume(repoRoot, name);
-        if (!result.success) {
-          throw CliError.operationFailed("Resume run", result.error || "Unknown error");
+        // First resume the run
+        const resumeResult = resume(repoRoot, name);
+        if (!resumeResult.success) {
+          throw CliError.operationFailed("Resume run", resumeResult.error || "Unknown error");
         }
 
+        console.log(chalk.green(`=== FileRL Resuming: ${name} ===`));
+        console.log();
+
+        // Then continue the loop
+        const loopResult = await runFileRlLoop(repoRoot, name, (msg) => {
+          console.log(chalk.gray(`  ${msg}`));
+        });
+
+        if (!loopResult.success) {
+          throw CliError.operationFailed("FileRL loop", loopResult.error || "Unknown error");
+        }
+
+        const resultData = loopResult.data as {
+          iterations?: number;
+          bestReward?: number;
+          bestTask?: string;
+        };
+
+        console.log();
         output(ctx, successResponse({
           name,
-          iteration: result.state?.current_iteration,
-          message: result.message,
+          phase: loopResult.phase,
+          iterations: resultData.iterations,
+          bestReward: resultData.bestReward,
+          bestTask: resultData.bestTask,
         }), () => {
-          outputSuccess(ctx, result.message || `Resumed FileRL run: ${name}`);
+          console.log(chalk.green("=== FileRL Complete ==="));
+          console.log();
+          outputKeyValue(ctx, {
+            "Status": loopResult.phase === "converged" ? chalk.green("Converged") : chalk.yellow("Max iterations reached"),
+            "Iterations": String(resultData.iterations || 0),
+            "Best Reward": resultData.bestReward?.toFixed(3) || "-",
+            "Best Task": resultData.bestTask || "-",
+          });
         });
       } catch (error) {
         handleCommandError(ctx, error);
