@@ -72,7 +72,8 @@ The work agent will automatically execute:
 1. implement → Implement feature
 2. check → Check code quality
 3. finish → Final verification
-4. create-pr → Create PR
+
+**Note**: Work agent does NOT handle create-pr or compute-reward. These are handled by start agent (you) in main repo.
 
 ### Monitor Progress
 
@@ -84,9 +85,56 @@ viben swarm status <task> --watch
 viben swarm status <task>
 ```
 
+### Wait for Completion
+
+After starting work phase, wait for the agent to complete:
+
+```bash
+viben swarm wait <task>
+```
+
+This blocks until the work agent finishes all phases (implement → check → finish).
+
 ---
 
-## Phase 3: Report Status
+## Phase 3: Create PR (Worktree Mode Only)
+
+After work phase completes, if task uses worktree mode, create PR from main repo:
+
+```bash
+# Check if task uses worktree
+cat "$TASK_DIR/task.json" | jq -r '.worktree // false'
+
+# If worktree=true, create PR
+viben task create-pr "$TASK_DIR"
+```
+
+This command:
+1. Runs git operations in the worktree (stage, commit, push)
+2. Creates draft PR via `gh pr create`
+3. Updates task.json in main repo (status → review, pr_url set)
+
+**Important**: This command must be run from main repo, NOT from worktree.
+
+---
+
+## Phase 4: Compute Reward (If Enabled)
+
+If task has reward enabled, compute reward after PR creation:
+
+```bash
+# Check if reward is enabled
+cat "$TASK_DIR/task.json" | jq -r '.reward // false'
+
+# If reward=true, run reward phase
+viben task compute-reward "$TASK_DIR"
+```
+
+This runs the reward agent to evaluate code quality and writes results to task.json.
+
+---
+
+## Phase 5: Report Status
 
 Tell the user the agent has started and provide monitoring commands:
 
@@ -102,7 +150,8 @@ viben task cleanup <branch>           # Cleanup worktree
 ## Core Rules
 
 - **Don't write code directly** - delegate to agents in worktree
-- **Don't execute git commit** - agent does it via create-pr action
+- **Don't execute git commit** - create-pr handles staging, committing, and pushing
 - **Don't check swarm status before starting** - you will see yourself and get confused
 - **Delegate complex analysis to research** - finding specs, analyzing code structure
 - **All sub agents use opus model** - ensure output quality
+- **create-pr runs from main repo** - even for worktree tasks, this command is called from main repo

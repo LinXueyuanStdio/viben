@@ -569,7 +569,6 @@ export function createTask(
       { phase: 1, action: "implement" },
       { phase: 2, action: "check" },
       { phase: 3, action: "finish" },
-      { phase: 4, action: "create-pr" },
     ],
     commit: undefined,
     pr_url: undefined,

@@ -952,7 +952,7 @@ git status
 
 **Key Integration Points:**
 - `viben task create --compute-reward` → sets `compute_reward: true` in task.json
-- work.md agent checks `compute_reward` field and runs reward phase after create-pr
+- start.md agent checks `compute_reward` field and runs reward phase after create-pr (both called from main repo)
 - `viben task compute-reward <task>` → manual trigger for testing/debugging
 
 **Total estimated time:** 45-60 minutes

@@ -427,8 +427,7 @@ viben task cleanup --list
   "next_action": [
     {"phase": 1, "action": "implement"},
     {"phase": 2, "action": "check"},
-    {"phase": 3, "action": "finish"},
-    {"phase": 4, "action": "create-pr"}
+    {"phase": 3, "action": "finish"}
   ],
   "commit": null,
   "pr_url": null,

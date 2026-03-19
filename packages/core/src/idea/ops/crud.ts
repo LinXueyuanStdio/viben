@@ -216,6 +216,7 @@ export function promoteIdea(
       model: options.model,
       start: options.start,
       worktree: options.worktree,
+      computeReward: options.computeReward,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);

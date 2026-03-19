@@ -110,7 +110,7 @@ export {
 } from "./context-output";
 
 // Lifecycle operations
-export type { LifecycleResult } from "./lifecycle";
+export type { LifecycleResult, ApproveTaskOptions } from "./lifecycle";
 export {
   enqueueTask,
   dequeueTask,

@@ -10,7 +10,7 @@
  * The work agent will:
  *    1. Read task.json from the task directory
  *    2. Execute each action in next_action array in order
- *    3. Actions typically include: implement, check, finish, create-pr
+ *    3. Actions: implement, check, finish (create-pr handled by start agent)
  *
  * Log files are ALWAYS written to the task directory (taskDir), not the working directory.
  * This ensures logs are accessible from the main repo regardless of worktree usage.
@@ -195,8 +195,9 @@ export async function runWorkPhase(
 
   // taskDir must be absolute path
   const taskDirAbs = taskDir;
-  // Calculate relative path from workingDir for the agent prompt
-  const taskDirRelative = relative(workingDir, taskDir);
+  // Calculate relative path from repoRoot for registry (not from workingDir!)
+  // This ensures task_dir in registry always points to main repo's task directory
+  const taskDirRelativeToRepo = relative(repoRoot, taskDir);
 
   // =============================================================================
   // Validation
@@ -277,9 +278,10 @@ export async function runWorkPhase(
   Object.assign(env, adapter.getNonInteractiveEnv());
 
   // Build CLI command using adapter
+  // Note: Use absolute path in prompt so agent can access task files regardless of working directory
   const cliCmd = adapter.buildRunCommand({
     agent: "work",
-    prompt: `task_dir: ${taskDirRelative}
+    prompt: `task_dir: ${taskDirAbs}
 
 Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
     sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
@@ -352,7 +354,7 @@ Follow your agent instructions to execute the task workflow. Read task.json from
       agentId,
       worktreePath: workingDir,
       pid: agentPid,
-      taskDir: taskDirRelative,
+      taskDir: taskDirRelativeToRepo,
       platform,
     },
     repoRoot

@@ -29,6 +29,12 @@ vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
+  rmSync: vi.fn(),
+}));
+
+// Mock child_process.execSync for gh pr commands
+vi.mock("node:child_process", () => ({
+  execSync: vi.fn(),
 }));
 
 // Mock viben-workspace functions
@@ -38,6 +44,7 @@ vi.mock("../../cli/lib/viben-workspace", () => ({
   appendTaskEvent: vi.fn(),
   validateStatusTransition: vi.fn(),
   getTodayDate: vi.fn(),
+  runGitCommand: vi.fn(),
   FILE_TASK_JSON: "task.json",
 }));
 
@@ -328,7 +335,7 @@ describe("lifecycle operations", () => {
         valid: true,
       });
 
-      const result = approveTask(mockRepoRoot, "test-task");
+      const result = approveTask(mockRepoRoot, "test-task", { skipMerge: true });
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("completed");
@@ -343,7 +350,11 @@ describe("lifecycle operations", () => {
       );
       expect(vi.mocked(vibenWorkspace.appendTaskEvent)).toHaveBeenCalledWith(
         mockTaskDir,
-        "APPROVED"
+        "APPROVED",
+        expect.objectContaining({
+          merge_commit: undefined,
+          merged_at: undefined,
+        })
       );
     });
 
@@ -356,7 +367,7 @@ describe("lifecycle operations", () => {
       expect(result.error).toContain("Task not found");
     });
 
-    it("should fail when task is not in review", () => {
+    it("should fail when task is not in review and has no pr_url", () => {
       mockTaskJson({ status: "in_progress", id: "test-task" });
       vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
         valid: false,
@@ -365,6 +376,24 @@ describe("lifecycle operations", () => {
 
       const result = approveTask(mockRepoRoot, "test-task");
 
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Cannot approved task");
+    });
+
+    it("should fail approve from in_progress even when pr_url exists", () => {
+      mockTaskJson({
+        status: "in_progress",
+        id: "test-task",
+        pr_url: "https://github.com/example/repo/pull/123",
+      });
+      vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
+        valid: false,
+        error: "Cannot approved task in 'in_progress' status. Expected: review",
+      });
+
+      const result = approveTask(mockRepoRoot, "test-task", { skipMerge: true });
+
+      // in_progress -> completed is NOT allowed, even with pr_url
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot approved task");
     });
@@ -424,7 +453,7 @@ describe("lifecycle operations", () => {
       expect(result.error).toContain("Task not found");
     });
 
-    it("should fail when task is not in review", () => {
+    it("should fail when task is not in review and has no pr_url", () => {
       mockTaskJson({ status: "queue", id: "test-task" });
       vi.mocked(vibenWorkspace.validateStatusTransition).mockReturnValue({
         valid: false,
@@ -435,6 +464,28 @@ describe("lifecycle operations", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Cannot rejected task");
+    });
+
+    it("should reject task from in_progress when pr_url exists", () => {
+      mockTaskJson({
+        status: "in_progress",
+        id: "test-task",
+        pr_url: "https://github.com/example/repo/pull/123",
+      });
+
+      const result = rejectTask(mockRepoRoot, "test-task");
+
+      expect(result.success).toBe(true);
+      expect(result.status).toBe("backlog");
+      expect(result.fromStatus).toBe("in_progress");
+      expect(vi.mocked(vibenWorkspace.updateTaskStatus)).toHaveBeenCalledWith(
+        mockTaskDir,
+        "backlog",
+        expect.objectContaining({
+          pr_url: null,
+          reviewReason: "rejected",
+        })
+      );
     });
   });
 

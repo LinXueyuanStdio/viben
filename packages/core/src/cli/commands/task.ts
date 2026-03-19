@@ -150,6 +150,7 @@ import {
   runImplementPhase,
   runCheckPhase,
   runRewardPhaseSync,
+  parseRewardResult,
 } from "../../task/phase";
 
 // =============================================================================
@@ -1792,12 +1793,15 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
-  // task approve - review -> completed (with auto PR merge detection)
+  // task approve - review -> completed (with optional PR merge)
   taskCmd
     .command("approve")
     .description("Approve task and mark as completed (auto-merges PR if exists)")
     .argument("<task>", "Task name or directory")
-    .action(async (task: string) => {
+    .option("--skip-merge", "Skip PR merge (just update status)")
+    .option("--cleanup-if-merged", "Clean up worktree and branch after PR is merged")
+    .option("--pull-if-merged", "Git pull to sync merged code to local after PR is merged")
+    .action(async (task: string, options: { skipMerge?: boolean; cleanupIfMerged?: boolean; pullIfMerged?: boolean }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
@@ -1815,54 +1819,81 @@ export function registerTaskCommand(program: Command): void {
           throw CliError.operationFailed("Read task", "Cannot read task.json");
         }
 
-        // 检测是否需要合并 PR
-        if (taskData.pr_url) {
-          // 启动 merge-pr agent (异步)
-          const mergeResult = await runMergePRPhase(repoRoot, taskDir, {
-            platform: detectPlatform(repoRoot),
-            verbose: true,
-          });
-
-          if (!mergeResult.success) {
-            throw CliError.operationFailed("Start merge agent", mergeResult.error!);
+        // Log what we're about to do
+        if (!ctx.quiet) {
+          console.log(chalk.blue("=== Task Approve ==="));
+          console.log(`Task: ${task}`);
+          if (taskData.pr_url) {
+            console.log(`PR: ${taskData.pr_url}`);
           }
-
-          const dirName = taskDir.split("/").pop() || task;
-
-          // 输出 agent 信息 (任务状态保持 review，由 agent 更新)
-          output(ctx, successResponse({
-            task: dirName,
-            action: "merge_started",
-            agentId: mergeResult.agentId,
-            pid: mergeResult.pid,
-            logFile: mergeResult.logFile,
-            pr_url: taskData.pr_url,
-          }), () => {
-            console.log(chalk.blue(`Merge agent started for: ${dirName}`));
-            console.log(chalk.gray(`PR: ${taskData.pr_url}`));
-            console.log(chalk.gray(`Agent: ${mergeResult.agentId}`));
-            console.log(chalk.gray(`PID: ${mergeResult.pid}`));
-            console.log(chalk.gray(`Log: ${mergeResult.logFile}`));
-            console.log();
-            console.log(chalk.yellow("Task status will be updated by agent upon completion."));
-            console.log(`  tail -f ${mergeResult.logFile}    # Watch progress`);
-          });
-        } else {
-          // 无 PR，简单状态转换（现有行为）
-          const result = approveTask(repoRoot, task);
-
-          if (!result.success) {
-            throw CliError.operationFailed("Approve task", result.error!);
+          if (taskData.worktree_path) {
+            console.log(`Worktree: ${taskData.worktree_path}`);
           }
-
-          output(ctx, successResponse({ task: result.task, status: result.status }), () => {
-            console.log(chalk.green(`Approved: ${result.task}`));
-            console.log(chalk.gray(`Status: ${result.fromStatus} -> completed`));
-            console.log();
-            console.log(chalk.blue("Next steps:"));
-            console.log(`  viben task archive ${result.task}    # Archive completed task`);
-          });
+          console.log();
         }
+
+        // Call approveTask which handles:
+        // 1. PR merge using gh pr merge
+        // 2. Optionally cleanup worktree (if --cleanup-if-merged)
+        // 3. Optionally git pull (if --pull-if-merged)
+        // 4. task.json update with merged_at, merge_commit, status=completed
+        const result = approveTask(repoRoot, task, {
+          skipMerge: options.skipMerge,
+          cleanupIfMerged: options.cleanupIfMerged,
+          pullIfMerged: options.pullIfMerged,
+        });
+
+        if (!result.success) {
+          throw CliError.operationFailed("Approve task", result.error!);
+        }
+
+        const mergeCommit = result.additionalData?.merge_commit;
+        const worktreeCleanup = result.additionalData?.worktreeCleanup as {
+          worktreeRemoved?: boolean;
+          branchDeleted?: boolean;
+        } | undefined;
+        const pullResult = result.additionalData?.pullResult as {
+          success?: boolean;
+        } | undefined;
+
+        output(ctx, successResponse({
+          task: result.task,
+          status: result.status,
+          merge_commit: mergeCommit,
+          merged_at: result.additionalData?.merged_at,
+          worktree_cleanup: worktreeCleanup,
+          pull_result: pullResult,
+        }), () => {
+          console.log(chalk.green(`Approved: ${result.task}`));
+          console.log(chalk.gray(`Status: ${result.fromStatus} -> completed`));
+
+          // Show merge details
+          if (mergeCommit) {
+            console.log(chalk.gray(`Merge commit: ${mergeCommit}`));
+          }
+
+          // Show pull result
+          if (pullResult?.success) {
+            console.log(chalk.gray("Git pull: synced"));
+          }
+
+          // Show worktree cleanup details
+          if (worktreeCleanup) {
+            if (worktreeCleanup.worktreeRemoved) {
+              console.log(chalk.gray("Worktree: removed"));
+            }
+            if (worktreeCleanup.branchDeleted) {
+              console.log(chalk.gray("Local branch: deleted"));
+            }
+          }
+
+          console.log();
+          console.log(chalk.blue("Next steps:"));
+          if (taskData.worktree_path && !options.cleanupIfMerged) {
+            console.log(`  viben task cleanup ${result.task}   # Clean up worktree`);
+          }
+          console.log(`  viben task archive ${result.task}    # Archive completed task`);
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -2374,6 +2405,56 @@ export function registerTaskCommand(program: Command): void {
           output(ctx, successResponse(result));
         } else {
           throw CliError.operationFailed("Compute Reward", result.error || "Unknown error");
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task parse-reward - Parse reward agent output and write to task.json
+  taskCmd
+    .command("parse-reward")
+    .description("Parse reward agent output from log file and write results to task.json")
+    .argument("<task>", "Task name or directory")
+    .action(async (task: string) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir) {
+          throw CliError.invalidArgument("task", `Task not found: ${task}`);
+        }
+
+        console.log();
+        console.log(chalk.blue("=== Parse Reward Result ==="));
+        console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
+        console.log();
+
+        const result = parseRewardResult(repoRoot, taskDir);
+
+        if (result.success && result.reward) {
+          console.log(chalk.green("=== Reward Parsed Successfully ==="));
+          console.log();
+          console.log(chalk.cyan("Scores:"));
+          for (const [typeName, scoreData] of Object.entries(result.reward.scores)) {
+            console.log(`  ${typeName}: ${scoreData.score.toFixed(3)}`);
+            console.log(`    ${chalk.gray(scoreData.reasoning)}`);
+          }
+          console.log();
+          console.log(chalk.cyan("Summary:"));
+          console.log(`  Total:      ${result.reward.total.toFixed(3)}`);
+          console.log(`  Diff Lines: ${result.reward.diffLines}`);
+          console.log(`  Computed:   ${result.reward.computedAt}`);
+          console.log();
+          console.log(chalk.green("Written to task.json"));
+
+          output(ctx, successResponse({ reward: result.reward }));
+        } else {
+          throw CliError.operationFailed("Parse Reward", result.error || "Unknown error");
         }
       } catch (error) {
         handleCommandError(ctx, error);
