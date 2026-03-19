@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
 import { readTaskJson, resolveTaskDirectory } from "../viben-workspace";
-import { isProcessRunning, calcElapsed } from "./status";
+import { isProcessRunning } from "./status";
 import { readRegistry } from "./registry";
 import type { AgentEntry } from "./registry";
 
@@ -24,6 +24,8 @@ export interface WaitOptions {
   pollingIntervalSeconds: number;
   /** Timeout per task in seconds (default: 300) */
   timeoutSeconds: number;
+  /** Global timeout in seconds, 0 = no global timeout (default: 0) */
+  globalTimeoutSeconds?: number;
   /** Show verbose output with status table each poll */
   verbose: boolean;
   /** Quiet mode - minimal output */
@@ -214,10 +216,36 @@ export async function waitForAgents(
 
   const totalTasks = waitingTasks.length;
   let completedCount = 0;
+  const globalStartTime = Date.now();
+  const globalTimeoutSeconds = options.globalTimeoutSeconds || 0;
 
   // Polling loop
   while (waitingTasks.some((t) => !t.done)) {
     const elapsed = Math.floor((Date.now() - waitingTasks[0].startTime) / 1000);
+    const globalElapsed = Math.floor((Date.now() - globalStartTime) / 1000);
+
+    // Check global timeout first
+    if (globalTimeoutSeconds > 0 && globalElapsed >= globalTimeoutSeconds) {
+      // Mark all remaining tasks as timeout
+      for (const wt of waitingTasks) {
+        if (wt.done) continue;
+        const taskElapsed = Math.floor((Date.now() - wt.startTime) / 1000);
+        wt.done = true;
+        wt.result = {
+          task: wt.task,
+          status: "timeout",
+          elapsedSeconds: taskElapsed,
+          reason: `Global timeout exceeded (${globalTimeoutSeconds}s)`,
+        };
+        result.timeout.push(wt.task);
+        completedCount++;
+        handleTimeout(repoRoot, wt.task, wt.agent.pid);
+        if (!options.quiet) {
+          console.log(`  [GLOBAL TIMEOUT] ${wt.task} (${formatSeconds(taskElapsed)})`);
+        }
+      }
+      break;
+    }
 
     // Check each waiting task
     for (const wt of waitingTasks) {
@@ -227,7 +255,7 @@ export async function waitForAgents(
       const processRunning = isProcessRunning(wt.agent.pid);
       const taskStatus = getTaskStatus(wt.taskDir);
 
-      // Check for timeout first
+      // Check for per-task timeout first
       if (taskElapsed >= options.timeoutSeconds) {
         wt.done = true;
         wt.result = {
@@ -298,12 +326,50 @@ export async function waitForAgents(
         continue;
       }
 
-      // Task still running - no action needed this poll
+      // Process is still running, but check if task is already in terminal state
+      // This can happen if agent finished but process is still cleaning up
+      if (isTaskCompleted(taskStatus)) {
+        wt.done = true;
+        if (taskStatus === "completed") {
+          wt.result = {
+            task: wt.task,
+            status: "completed",
+            elapsedSeconds: taskElapsed,
+            reason: "Task completed while process still running",
+          };
+          result.completed.push(wt.task);
+        } else if (taskStatus === "failed") {
+          wt.result = {
+            task: wt.task,
+            status: "failed",
+            elapsedSeconds: taskElapsed,
+            reason: "Task failed while process still running",
+          };
+          result.failed.push(wt.task);
+        } else {
+          wt.result = {
+            task: wt.task,
+            status: "exited",
+            elapsedSeconds: taskElapsed,
+            reason: `Task in ${taskStatus} status`,
+          };
+          result.completed.push(wt.task);
+        }
+        completedCount++;
+
+        if (!options.quiet) {
+          const statusIcon = wt.result.status === "completed" ? "\u2713" :
+                            wt.result.status === "failed" ? "\u2717" : "?";
+          console.log(`  [${statusIcon}] ${wt.task} ${wt.result.status} (${formatSeconds(taskElapsed)})`);
+        }
+        continue;
+      }
+
+      // Task still running and not in terminal state - continue waiting
     }
 
     // Progress output (if not quiet)
     if (!options.quiet && waitingTasks.some((t) => !t.done)) {
-      const remaining = waitingTasks.filter((t) => !t.done).length;
       process.stdout.write(`\rWaiting for ${totalTasks} agents... [${formatSeconds(elapsed)}] ${completedCount}/${totalTasks} completed`);
     }
 

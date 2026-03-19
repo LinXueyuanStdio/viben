@@ -1053,10 +1053,12 @@ interface QueueConfig {
 │       │   │       └── 调度子 agent (按 next_action 顺序):                    │   │
 │       │   │               ├── Task(implement) ──▶ 实现代码                  │   │
 │       │   │               ├── Task(check) ──────▶ 检查代码                  │   │
-│       │   │               ├── Task(fix) ────────▶ 修复问题                  │   │
-│       │   │               └── create-pr ────────▶ 创建 PR                   │   │
+│       │   │               └── Task(finish) ─────▶ 最终验证                  │   │
 │       │   │                                                                 │   │
-│       │   │  Phase 3: Report Status                                         │   │
+│       │   │  Phase 3: Create PR (worktree 模式)                             │   │
+│       │   │       └── viben task create-pr ──▶ 创建 PR                      │   │
+│       │   │                                                                 │   │
+│       │   │  Phase 4: Report Status                                         │   │
 │       │   │       └── 输出监控命令                                          │   │
 │       │   │                                                                 │   │
 │       │   └─────────────────────────────────────────────────────────────────┘   │

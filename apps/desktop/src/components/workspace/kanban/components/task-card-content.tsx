@@ -61,15 +61,15 @@ const validatePriority = (priority?: string): IssuePriority | undefined => {
 };
 
 // Map current_phase number to ExecutionPhase
-// Based on CLI phase system: 1=plan, 2=implement, 3=check, 4=fix
-type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete";
+// Based on CLI phase system: 1=implement, 2=check, 3=finish
+// Note: current_phase is 0-based index into next_action array
+type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "finish" | "complete";
 const mapCurrentPhaseToExecution = (currentPhase?: number): ExecutionPhase | undefined => {
   if (currentPhase === undefined || currentPhase === null) return undefined;
   const mapping: Record<number, ExecutionPhase> = {
-    1: "plan",
-    2: "implement",
-    3: "check",
-    4: "fix",
+    0: "implement",
+    1: "check",
+    2: "finish",
   };
   return mapping[currentPhase];
 };
@@ -108,7 +108,7 @@ function getActionInfo(
   if (!currentActionItem) return null;
 
   // Calculate progress: current phase / total phases
-  // e.g., phase 0 of 4 = 0%, phase 1 of 4 = 25%, phase 2 of 4 = 50%
+  // e.g., phase 0 of 3 = 0%, phase 1 of 3 = 33%, phase 2 of 3 = 67%
   const progressPercent = Math.round((currentPhase / totalPhases) * 100);
 
   return {

@@ -990,7 +990,7 @@ viben task status <task> --log           # 显示最近日志条目
 
 Running Agents:
 ▶ add-user-auth [running] [P1] @john
-  Phase:    implement (1/4)
+  Phase:    implement (1/3)
   Elapsed:  5m 32s
   Branch:   feature/user-auth
   Modified: 3 file(s)

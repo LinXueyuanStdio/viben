@@ -208,7 +208,7 @@ Agents: 2 running / 3 registered
 
 Running:
   ▶ add-user-auth [CLAUDE_CODE]
-    Phase:    implement (1/4)
+    Phase:    implement (1/3)
     Elapsed:  5m 32s
     Branch:   feature/user-auth
     Modified: 3 file(s)
