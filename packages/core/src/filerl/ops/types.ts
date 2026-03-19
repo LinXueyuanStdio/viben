@@ -144,11 +144,31 @@ export const DEFAULT_TASK_CONFIG: TaskConfig = {
 // =============================================================================
 
 /**
+ * Iteration phase - tracks progress through the FileRL pipeline
+ *
+ * Flow: init -> generate_ideas -> promote_ideas -> execute_tasks ->
+ *       wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
+ */
+export type IterationPhase =
+  | "init"              // Just started, no work done yet
+  | "generate_ideas"    // Phase 1: Generating ideas
+  | "promote_ideas"     // Phase 2: Promoting ideas to tasks
+  | "execute_tasks"     // Phase 2.5: Starting task executors
+  | "wait_tasks"        // Phase 3: Waiting for tasks to complete
+  | "compute_rewards"   // Phase 4: Computing rewards
+  | "select_best"       // Phase 5: Selecting best task
+  | "merge_cleanup"     // Phase 6: Merging winner, cleaning up
+  | "completed";        // Iteration finished
+
+/**
  * State of a single FileRL iteration
  */
 export interface IterationState {
   /** Iteration number (1-based) */
   iteration: number;
+
+  /** Current phase of this iteration */
+  phase: IterationPhase;
 
   /** Ideas generated in this iteration */
   ideas: string[];

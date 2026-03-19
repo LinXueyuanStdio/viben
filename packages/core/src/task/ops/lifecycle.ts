@@ -243,7 +243,7 @@ function mergePR(
   try {
     // First check PR status
     const checkResult = execSync(
-      `gh pr view "${prUrl}" --json state,mergeable,mergeCommit`,
+      `gh pr view "${prUrl}" --json state,mergeable,mergeCommit,isDraft`,
       { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
     );
     const prInfo = JSON.parse(checkResult);
@@ -264,6 +264,14 @@ function mergePR(
     // If not mergeable, fail
     if (prInfo.mergeable === "CONFLICTING") {
       return { success: false, error: "PR has merge conflicts" };
+    }
+
+    // If PR is a draft, mark it as ready for review first
+    if (prInfo.isDraft) {
+      execSync(
+        `gh pr ready "${prUrl}"`,
+        { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
+      );
     }
 
     // Merge the PR (without --delete-branch since we already cleaned up the local branch)
