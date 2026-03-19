@@ -11,6 +11,7 @@ import { join } from "node:path";
 import type {
   FileRlState,
   IterationState,
+  IterationPhase,
   ListRunsResult,
   StatusResult,
 } from "./types";
@@ -85,6 +86,7 @@ export function createInitialState(name: string, targetPath: string): FileRlStat
 export function createIterationState(iteration: number): IterationState {
   return {
     iteration,
+    phase: "init",
     ideas: [],
     tasks: [],
     rewards: {},
@@ -140,6 +142,33 @@ export function startIteration(state: FileRlState): IterationState {
 }
 
 /**
+ * Update the phase of the current iteration
+ */
+export function updateIterationPhase(
+  state: FileRlState,
+  phase: IterationPhase
+): void {
+  const currentIter = state.iterations[state.iterations.length - 1];
+  if (!currentIter) {
+    return;
+  }
+  currentIter.phase = phase;
+  state.updated_at = new Date().toISOString();
+}
+
+/**
+ * Get the current iteration's phase
+ */
+export function getCurrentPhase(state: FileRlState): IterationPhase | null {
+  const currentIter = state.iterations[state.iterations.length - 1];
+  if (!currentIter) {
+    return null;
+  }
+  // Handle legacy state without phase field
+  return currentIter.phase || "init";
+}
+
+/**
  * Complete the current iteration
  */
 export function completeIteration(
@@ -157,6 +186,7 @@ export function completeIteration(
   currentIter.rejected_tasks = rejectedTasks;
   currentIter.rewards = rewards;
   currentIter.completed = true;
+  currentIter.phase = "completed";
   currentIter.completed_at = new Date().toISOString();
 
   state.completed_iterations++;

@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import type {
   FileRlConfig,
   FileRlState,
+  IterationPhase,
   RunResult,
   StopResult,
 } from "./types";
@@ -37,6 +38,8 @@ import {
   runExists,
   isRunActive,
   getFileRlDir,
+  updateIterationPhase,
+  getCurrentPhase,
 } from "./state";
 
 // Import ops from other modules
@@ -232,8 +235,10 @@ export function createTasksFromIdeas(
   const filerlDir = getFileRlDir(repoRoot, name);
 
   for (const ideaId of ideaIds) {
+    // Use idea id as task name for consistent directory naming
+    // This ensures iter{N}/{ideaId}/ structure for rewards
     const result = createTask(repoRoot, `FileRL iteration ${state.current_iteration} - ${ideaId}`, {
-      slug: `filerl-${name}-i${state.current_iteration}-${ideaId}`,
+      slug: ideaId,  // Use idea id directly as slug
       worktree: config.task.worktree,
       executor: config.task.executor,
       model: config.task.model,
@@ -293,26 +298,24 @@ export function selectBest(
   }
 
   const taskNames = Object.keys(taskRewards);
+  const filerlDir = getFileRlDir(repoRoot, name);
   const selectResult = selectBestTask(repoRoot, taskNames, {
     threshold: config.ppo.threshold,
     klCoef: config.ppo.kl_coef,
     maxDiff: config.ppo.max_diff,
+    filerlDir,
+    iteration: state.current_iteration,
   });
 
   if (!selectResult.success) {
     return { success: false, error: selectResult.error || "Failed to select best task" };
   }
 
-  completeIteration(
-    state,
-    selectResult.selected || undefined,
-    selectResult.rejected || [],
-    taskRewards
-  );
-
-  if (checkConvergence(state, config.ppo.convergence_threshold)) {
-    markConverged(state);
-  }
+  // Save selection result to state (but don't mark iteration as completed yet)
+  // completeIteration will be called after Phase 6 (merge and cleanup)
+  currentIter.selected_task = selectResult.selected || undefined;
+  currentIter.rejected_tasks = selectResult.rejected || [];
+  currentIter.rewards = taskRewards;
 
   writeState(repoRoot, state);
 
@@ -551,7 +554,7 @@ export function orchestratePromoteIdeas(
     const filerlDir = getFileRlDir(repoRoot, name);
 
     const promoteOptions = {
-      slug: `filerl-${name}-i${state.current_iteration}-${idea.id.slice(0, 8)}`,
+      slug: idea.id,  // Use full idea id as slug for consistent naming
       worktree: config.task.worktree,
       executor: config.task.executor,
       model: config.task.model,
@@ -709,19 +712,24 @@ export function orchestrateComputeRewards(
   const results: Record<string, { success: boolean; error?: string }> = {};
   const filerlDir = getFileRlDir(repoRoot, name);
 
-  for (const taskName of taskNames) {
-    const viewResult = viewTask(repoRoot, taskName);
+  for (const taskDirName of taskNames) {
+    const viewResult = viewTask(repoRoot, taskDirName);
     if (!viewResult.success || !viewResult.task) {
-      results[taskName] = { success: false, error: "Task not found" };
+      results[taskDirName] = { success: false, error: "Task not found" };
       continue;
     }
+
+    // Get the actual task name used for reward output directory
+    // (taskData.name may differ from task directory name)
+    const taskData = viewResult.task as { name?: string; id?: string };
+    const rewardDirName = taskData.name || taskData.id || taskDirName;
 
     // Check if reward already exists - first check FileRL reward.json, then task.json
     let hasReward = false;
 
     // Check FileRL reward.json
     const iterDir = join(filerlDir, `iter${currentIteration}`);
-    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+    const rewardJsonPath = join(iterDir, rewardDirName, "reward.json");
     try {
       const rewardContent = readFileSync(rewardJsonPath, "utf-8");
       const rewardData = JSON.parse(rewardContent) as { total?: number };
@@ -734,13 +742,13 @@ export function orchestrateComputeRewards(
     }
 
     if (hasReward) {
-      results[taskName] = { success: true };
+      results[taskDirName] = { success: true };
       continue;
     }
 
-    onProgress?.(`Computing reward for task: ${taskName}`);
-    const rewardResult = computeReward(repoRoot, taskName, { verbose: false });
-    results[taskName] = rewardResult.success
+    onProgress?.(`Computing reward for task: ${taskDirName}`);
+    const rewardResult = computeReward(repoRoot, taskDirName, { verbose: false });
+    results[taskDirName] = rewardResult.success
       ? { success: true }
       : { success: false, error: rewardResult.error };
   }
@@ -789,21 +797,32 @@ export function orchestrateSelectBest(
 
   // Gather rewards from tasks
   // In FileRL mode, rewards are stored in .viben/filerl/{name}/iter{N}/{task}/reward.json
-  // Also try task.json as fallback
+  // Note: The reward directory uses taskData.name which may differ from the task directory name
   const taskRewards: Record<string, number> = {};
   const filerlDir = getFileRlDir(repoRoot, name);
 
-  for (const taskName of currentIter.tasks) {
-    // First try to read from FileRL reward.json
+  for (const taskDirName of currentIter.tasks) {
+    // First read task.json to get the actual task name used for reward directory
+    const viewResult = viewTask(repoRoot, taskDirName);
+    if (!viewResult.success || !viewResult.task) {
+      onProgress?.(`Warning: Task ${taskDirName} not found`);
+      continue;
+    }
+
+    // Get the actual task name used for reward output directory
+    const taskData = viewResult.task as { name?: string; id?: string };
+    const rewardDirName = taskData.name || taskData.id || taskDirName;
+
+    // Try to read from FileRL reward.json
     const iterDir = join(filerlDir, `iter${state.current_iteration}`);
-    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+    const rewardJsonPath = join(iterDir, rewardDirName, "reward.json");
 
     try {
       const rewardContent = readFileSync(rewardJsonPath, "utf-8");
       const rewardData = JSON.parse(rewardContent) as { total?: number };
       if (typeof rewardData.total === "number") {
-        taskRewards[taskName] = rewardData.total;
-        onProgress?.(`Task ${taskName}: reward = ${rewardData.total.toFixed(3)}`);
+        taskRewards[taskDirName] = rewardData.total;
+        onProgress?.(`Task ${taskDirName}: reward = ${rewardData.total.toFixed(3)}`);
         continue;
       }
     } catch {
@@ -811,16 +830,10 @@ export function orchestrateSelectBest(
     }
 
     // Fallback: try to read from task.json
-    const viewResult = viewTask(repoRoot, taskName);
-    if (!viewResult.success || !viewResult.task) {
-      onProgress?.(`Warning: Task ${taskName} not found`);
-      continue;
-    }
-
-    const rewardData = (viewResult.task as unknown as { reward?: { total?: number } }).reward;
-    if (rewardData && typeof rewardData.total === "number") {
-      taskRewards[taskName] = rewardData.total;
-      onProgress?.(`Task ${taskName}: reward = ${rewardData.total.toFixed(3)}`);
+    const taskReward = (viewResult.task as unknown as { reward?: { total?: number } }).reward;
+    if (taskReward && typeof taskReward.total === "number") {
+      taskRewards[taskDirName] = taskReward.total;
+      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.total.toFixed(3)}`);
     }
   }
 
@@ -984,7 +997,12 @@ function dismissFilteredIdeas(
 /**
  * Run a complete FileRL iteration (single iteration, no loop)
  *
- * This handles one iteration including waiting for task completion.
+ * Uses a state machine pattern to track progress through phases.
+ * On resume, picks up from the last completed phase.
+ *
+ * Phases:
+ *   init -> generate_ideas -> promote_ideas -> execute_tasks ->
+ *   wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
  *
  * @param repoRoot - Repository root path
  * @param name - FileRL run name
@@ -996,8 +1014,9 @@ export async function orchestrateFullIteration(
   onProgress?: (message: string) => void
 ): Promise<OrchestrationResult> {
   const debug = createDebugLogger("fullIteration");
+  const filerlDir = getFileRlDir(repoRoot, name);
 
-  // Initialize iteration state
+  // Initialize or resume iteration
   const initResult = runIteration(repoRoot, name);
   if (!initResult.success) {
     return { success: false, phase: "init", error: initResult.error };
@@ -1007,10 +1026,7 @@ export async function orchestrateFullIteration(
     return { success: true, phase: "converged", data: { converged: true } };
   }
 
-  const iterNum = initResult.state?.current_iteration || 1;
-  debug(`Starting iteration ${iterNum}`);
-
-  // Load config
+  // Load state and config
   let state = readState(repoRoot, name);
   if (!state) {
     return { success: false, phase: "init", error: `FileRL run not found: ${name}` };
@@ -1022,191 +1038,344 @@ export async function orchestrateFullIteration(
   }
 
   const config = parseResult.config;
-
-  // Check current iteration state for resume handling
   const currentIter = state.iterations[state.iterations.length - 1];
-  let tasks: string[] = [];
+  const iterNum = currentIter?.iteration || 1;
+  const currentPhase = getCurrentPhase(state) || "init";
 
-  // Resume logic: check what phase we should start from
-  // Track if we should skip waiting for tasks (already completed)
-  let skipWaitForTasks = false;
+  debug(`Iteration ${iterNum}, current phase: ${currentPhase}`);
+  onProgress?.(`[${iterNum}] Current phase: ${currentPhase}`);
 
-  if (currentIter && currentIter.tasks.length > 0) {
-    // Already have tasks - check their status
-    tasks = currentIter.tasks;
-    onProgress?.(`[${iterNum}] Resuming - found ${tasks.length} existing tasks`);
-    debug("Resuming with existing tasks", { tasks });
+  // State machine: determine which phases to run based on current phase
+  let tasks: string[] = currentIter?.tasks || [];
+  let ideas: Idea[] = [];
 
-    // Check if tasks are already running or need to be started
-    const statusResult = orchestrateCheckTasksStatus(repoRoot, tasks);
-    const statusData = statusResult.data as {
-      statuses: Record<string, { status: string }>;
-      allCompleted: boolean;
-      completedCount: number;
-    };
-
-    // If all tasks are already completed, skip directly to reward computation
-    if (statusData.allCompleted) {
-      onProgress?.(`[${iterNum}] All ${tasks.length} tasks already completed, skipping to reward computation`);
-      debug("All tasks completed, skipping wait phase", { completedCount: statusData.completedCount });
-      skipWaitForTasks = true;
+  // ==========================================================================
+  // Phase 1: Generate Ideas (skip if phase > generate_ideas)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "generate_ideas")) {
+    // Check if we already have ideas
+    if (currentIter?.ideas.length > 0) {
+      onProgress?.(`[${iterNum}] Phase 1 - Skipped (${currentIter.ideas.length} ideas exist)`);
+      const ideaResult = listIdeas(repoRoot, { status: "draft" });
+      ideas = ideaResult.ideas.filter(i => currentIter.ideas.includes(i.id));
     } else {
-      // Find tasks that haven't started yet (status is backlog or queue)
-      const notStarted = tasks.filter(t => {
-        const s = statusData.statuses[t]?.status;
-        return s === "backlog" || s === "queue";
-      });
+      // Check for existing draft ideas on disk
+      const existingIdeasResult = listIdeas(repoRoot, { status: "draft" });
+      if (existingIdeasResult.ideas.length > 0) {
+        ideas = existingIdeasResult.ideas;
+        onProgress?.(`[${iterNum}] Phase 1 - Found ${ideas.length} existing draft ideas`);
+      } else {
+        onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
+        updateIterationPhase(state, "generate_ideas");
+        writeState(repoRoot, state);
 
-      if (notStarted.length > 0) {
-        onProgress?.(`[${iterNum}] Starting ${notStarted.length} unstarted tasks`);
-        await orchestrateStartTasks(repoRoot, notStarted, onProgress);
+        const generateResult = await orchestrateGenerateIdeas(repoRoot, name, onProgress);
+        if (!generateResult.success) {
+          return generateResult;
+        }
+        const generateData = generateResult.data as { ideas: Idea[]; sessionDir?: string };
+        ideas = generateData.ideas;
       }
     }
-  } else if (currentIter && currentIter.ideas.length > 0) {
-    // Have ideas but no tasks - load ideas from disk and promote
-    onProgress?.(`[${iterNum}] Resuming - found ${currentIter.ideas.length} existing ideas`);
-    debug("Resuming with existing ideas", { ideaIds: currentIter.ideas });
 
-    // Load existing ideas from disk
-    const ideaResult = listIdeas(repoRoot, { status: "draft" });
-    const existingIdeas = ideaResult.ideas.filter(i => currentIter.ideas.includes(i.id));
+    // Update state after generating ideas
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "generate_ideas", error: "State lost after generating ideas" };
+    }
+  }
 
-    if (existingIdeas.length > 0) {
-      // Promote existing ideas
-      onProgress?.(`[${iterNum}] Phase 2 - Promote Ideas (${existingIdeas.length} existing)`);
-      const promoteResult = orchestratePromoteIdeas(repoRoot, name, existingIdeas, onProgress);
+  // ==========================================================================
+  // Phase 2: Promote Ideas to Tasks (skip if phase > promote_ideas)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "promote_ideas") && tasks.length === 0) {
+    // Load ideas if not already loaded
+    if (ideas.length === 0 && currentIter?.ideas.length > 0) {
+      const ideaResult = listIdeas(repoRoot, { status: "draft" });
+      ideas = ideaResult.ideas.filter(i => currentIter.ideas.includes(i.id));
+    }
+
+    if (ideas.length === 0) {
+      onProgress?.(`[${iterNum}] Phase 2 - Skipped (no ideas)`);
+    } else {
+      // Apply effort filter
+      let filteredIdeas = ideas;
+      if (config.idea.effort_filter && config.idea.effort_filter.length > 0) {
+        filteredIdeas = ideas.filter(idea =>
+          config.idea.effort_filter!.includes(idea.estimatedEffort)
+        );
+      }
+
+      if (filteredIdeas.length === 0) {
+        onProgress?.(`All ${ideas.length} ideas filtered out. Requesting regeneration.`);
+        dismissFilteredIdeas(repoRoot, ideas, onProgress);
+        return {
+          success: false,
+          phase: "promote_ideas",
+          error: "no_ideas_after_filter",
+          data: { needsRegeneration: true },
+        };
+      }
+
+      onProgress?.(`[${iterNum}] Phase 2 - Promote Ideas`);
+      updateIterationPhase(state, "promote_ideas");
+      writeState(repoRoot, state);
+
+      const promoteResult = orchestratePromoteIdeas(repoRoot, name, ideas, onProgress);
       if (!promoteResult.success) {
+        dismissFilteredIdeas(repoRoot, ideas, onProgress);
         return promoteResult;
       }
 
       tasks = (promoteResult.data as { tasks: string[] }).tasks;
-      debug(`Created ${tasks.length} tasks from existing ideas`);
+      debug(`Created ${tasks.length} tasks`);
+    }
 
-      // Start task execution
-      onProgress?.(`[${iterNum}] Phase 2.5 - Starting task executors`);
-      const startResult = await orchestrateStartTasks(repoRoot, tasks, onProgress);
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "promote_ideas", error: "State lost after promoting ideas" };
+    }
+  }
+
+  // ==========================================================================
+  // Phase 2.5: Execute Tasks (skip if phase > execute_tasks)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "execute_tasks") && tasks.length > 0) {
+    const statusResult = orchestrateCheckTasksStatus(repoRoot, tasks);
+    const statusData = statusResult.data as {
+      statuses: Record<string, { status: string }>;
+      allCompleted: boolean;
+    };
+
+    // Find tasks that haven't started yet
+    const notStarted = tasks.filter(t => {
+      const s = statusData.statuses[t]?.status;
+      return s === "backlog" || s === "queue";
+    });
+
+    if (notStarted.length > 0) {
+      onProgress?.(`[${iterNum}] Phase 2.5 - Starting ${notStarted.length} task executors`);
+      updateIterationPhase(state, "execute_tasks");
+      writeState(repoRoot, state);
+
+      const startResult = await orchestrateStartTasks(repoRoot, notStarted, onProgress);
       if (!startResult.success) {
         return startResult;
       }
     } else {
-      // Ideas not found on disk - fall through to generate new ones
-      onProgress?.(`[${iterNum}] Existing ideas not found on disk, generating new ones`);
+      onProgress?.(`[${iterNum}] Phase 2.5 - Skipped (all tasks already started)`);
+    }
+
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "execute_tasks", error: "State lost after starting tasks" };
     }
   }
 
-  // If we don't have tasks yet, check for existing ideas or generate new ones
-  if (tasks.length === 0) {
-    // First, check if there are already draft ideas on disk
-    const existingIdeasResult = listIdeas(repoRoot, { status: "draft" });
-    let ideas: Idea[] = [];
+  // ==========================================================================
+  // Phase 3: Wait for Tasks (skip if phase > wait_tasks)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "wait_tasks") && tasks.length > 0) {
+    const statusResult = orchestrateCheckTasksStatus(repoRoot, tasks);
+    const statusData = statusResult.data as { allCompleted: boolean; completedCount: number };
 
-    if (existingIdeasResult.ideas.length > 0) {
-      // Use existing draft ideas instead of generating new ones
-      ideas = existingIdeasResult.ideas;
-      onProgress?.(`[${iterNum}] Found ${ideas.length} existing draft ideas, skipping generation`);
-      debug("Using existing draft ideas", { count: ideas.length, ids: ideas.map(i => i.id) });
+    if (statusData.allCompleted) {
+      onProgress?.(`[${iterNum}] Phase 3 - Skipped (all ${tasks.length} tasks completed)`);
     } else {
-      // Phase 1: Generate Ideas
-      onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
-      const generateResult = await orchestrateGenerateIdeas(repoRoot, name, onProgress);
-      if (!generateResult.success) {
-        return generateResult;
+      onProgress?.(`[${iterNum}] Phase 3 - Waiting for tasks`);
+      updateIterationPhase(state, "wait_tasks");
+      writeState(repoRoot, state);
+
+      const waitResult = await waitForTasksCompletion(repoRoot, tasks, {}, onProgress);
+      if (!waitResult.success) {
+        return waitResult;
       }
-
-      const generateData = generateResult.data as { ideas: Idea[]; sessionDir?: string };
-      ideas = generateData.ideas;
     }
 
-    // Pre-check if any ideas will pass the filter
-    let filteredIdeas = ideas;
-    if (config.idea.effort_filter && config.idea.effort_filter.length > 0) {
-      filteredIdeas = ideas.filter(idea =>
-        config.idea.effort_filter!.includes(idea.estimatedEffort)
-      );
-    }
-
-    if (filteredIdeas.length === 0) {
-      onProgress?.(`All ${ideas.length} ideas filtered out. Requesting regeneration.`);
-      dismissFilteredIdeas(repoRoot, ideas, onProgress);
-      return {
-        success: false,
-        phase: "promote_ideas",
-        error: "no_ideas_after_filter",
-        data: { needsRegeneration: true },
-      };
-    }
-
-    // Phase 2: Promote Ideas to Tasks
-    onProgress?.(`[${iterNum}] Phase 2 - Promote Ideas`);
-    const promoteResult = orchestratePromoteIdeas(repoRoot, name, ideas, onProgress);
-    if (!promoteResult.success) {
-      dismissFilteredIdeas(repoRoot, ideas, onProgress);
-      return promoteResult;
-    }
-
-    tasks = (promoteResult.data as { tasks: string[] }).tasks;
-    debug(`Created ${tasks.length} tasks`);
-
-    // Phase 2.5: Start task execution (spawn agent executors)
-    onProgress?.(`[${iterNum}] Phase 2.5 - Starting task executors`);
-    const startResult = await orchestrateStartTasks(repoRoot, tasks, onProgress);
-    if (!startResult.success) {
-      return startResult;
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "wait_tasks", error: "State lost after waiting for tasks" };
     }
   }
 
-  // Phase 3: Wait for tasks to complete (skip if already completed on resume)
-  if (!skipWaitForTasks) {
-    onProgress?.(`[${iterNum}] Phase 3 - Waiting for tasks`);
-    const waitResult = await waitForTasksCompletion(repoRoot, tasks, {}, onProgress);
-    if (!waitResult.success) {
-      return waitResult;
+  // ==========================================================================
+  // Phase 4: Compute Rewards (skip if phase > compute_rewards)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "compute_rewards") && tasks.length > 0) {
+    // Check if all rewards already computed
+    const allRewardsComputed = checkAllRewardsComputed(repoRoot, filerlDir, iterNum, tasks);
+
+    if (allRewardsComputed) {
+      onProgress?.(`[${iterNum}] Phase 4 - Skipped (all rewards computed)`);
+    } else {
+      onProgress?.(`[${iterNum}] Phase 4 - Computing rewards`);
+      updateIterationPhase(state, "compute_rewards");
+      writeState(repoRoot, state);
+
+      orchestrateComputeRewards(repoRoot, name, tasks, iterNum, onProgress);
     }
-  } else {
-    onProgress?.(`[${iterNum}] Phase 3 - Skipped (tasks already completed)`);
+
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "compute_rewards", error: "State lost after computing rewards" };
+    }
   }
 
-  // Phase 4: Compute rewards
-  onProgress?.(`[${iterNum}] Phase 4 - Computing rewards`);
-  orchestrateComputeRewards(repoRoot, name, tasks, iterNum, onProgress);
+  // ==========================================================================
+  // Phase 5: Select Best Task (skip if phase > select_best)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "select_best")) {
+    // Check if already selected
+    const updatedIter = state.iterations[state.iterations.length - 1];
+    if (updatedIter?.selected_task) {
+      onProgress?.(`[${iterNum}] Phase 5 - Skipped (already selected: ${updatedIter.selected_task})`);
+    } else {
+      onProgress?.(`[${iterNum}] Phase 5 - Selecting best task`);
+      updateIterationPhase(state, "select_best");
+      writeState(repoRoot, state);
 
-  // Phase 5: Select best task
-  onProgress?.(`[${iterNum}] Phase 5 - Selecting best task`);
-  const selectResult = orchestrateSelectBest(repoRoot, name, onProgress);
-  if (!selectResult.success) {
-    return selectResult;
+      const selectResult = orchestrateSelectBest(repoRoot, name, onProgress);
+      if (!selectResult.success) {
+        return selectResult;
+      }
+    }
+
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "select_best", error: "State lost after selecting best" };
+    }
   }
 
-  const selectData = selectResult.data as {
-    selected?: string;
-    rejected?: string[];
-    converged?: boolean;
-  };
+  // ==========================================================================
+  // Phase 6: Merge and Cleanup (skip if phase is already completed)
+  // ==========================================================================
+  if (shouldRunPhase(currentPhase, "merge_cleanup")) {
+    const finalIter = state.iterations[state.iterations.length - 1];
+    const selectedTask = finalIter?.selected_task;
+    const rejectedTasks = finalIter?.rejected_tasks || [];
 
-  // Phase 6: Merge winner and cleanup losers
-  onProgress?.(`[${iterNum}] Phase 6 - Merging and cleanup`);
-  const cleanupResult = orchestrateMergeAndCleanup(
-    repoRoot,
-    name,
-    selectData.selected,
-    selectData.rejected || [],
-    onProgress
-  );
+    // Check phase instead of completed flag
+    const iterPhase = finalIter?.phase || "init";
+    if (iterPhase === "completed") {
+      onProgress?.(`[${iterNum}] Phase 6 - Skipped (phase already completed)`);
+    } else {
+      onProgress?.(`[${iterNum}] Phase 6 - Merging and cleanup`);
+      updateIterationPhase(state, "merge_cleanup");
+      writeState(repoRoot, state);
 
-  const updatedState = readState(repoRoot, name);
-  const converged = updatedState?.converged ?? false;
+      orchestrateMergeAndCleanup(repoRoot, name, selectedTask, rejectedTasks, onProgress);
 
-  debug(`Iteration ${iterNum} complete`, { selected: selectData.selected, converged });
+      // Now mark the iteration as completed
+      state = readState(repoRoot, name);
+      if (state) {
+        const parseRes = parseTarget(state.target_path, repoRoot);
+        const cfg = parseRes.config;
+        const iter = state.iterations[state.iterations.length - 1];
+
+        completeIteration(
+          state,
+          iter?.selected_task,
+          iter?.rejected_tasks || [],
+          iter?.rewards || {}
+        );
+
+        if (cfg && checkConvergence(state, cfg.ppo.convergence_threshold)) {
+          markConverged(state);
+        }
+
+        writeState(repoRoot, state);
+      }
+    }
+
+    state = readState(repoRoot, name);
+    if (!state) {
+      return { success: false, phase: "merge_cleanup", error: "State lost after merge and cleanup" };
+    }
+  }
+
+  // ==========================================================================
+  // Complete
+  // ==========================================================================
+  const finalState = readState(repoRoot, name);
+  const converged = finalState?.converged ?? false;
+  const finalIter = finalState?.iterations[finalState.iterations.length - 1];
+
+  debug(`Iteration ${iterNum} complete`, { selected: finalIter?.selected_task, converged });
   return {
     success: true,
     phase: "iteration_complete",
     data: {
       iteration: iterNum,
-      selected: selectData.selected,
+      selected: finalIter?.selected_task,
       converged,
-      cleanupResult: cleanupResult.data,
     },
   };
+}
+
+/**
+ * Check if a phase should run based on current phase
+ *
+ * Phase order: init -> generate_ideas -> promote_ideas -> execute_tasks ->
+ *              wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
+ */
+function shouldRunPhase(currentPhase: string, targetPhase: string): boolean {
+  const phaseOrder = [
+    "init",
+    "generate_ideas",
+    "promote_ideas",
+    "execute_tasks",
+    "wait_tasks",
+    "compute_rewards",
+    "select_best",
+    "merge_cleanup",
+    "completed",
+  ];
+
+  const currentIndex = phaseOrder.indexOf(currentPhase);
+  const targetIndex = phaseOrder.indexOf(targetPhase);
+
+  // Run if current phase is at or before target phase
+  return currentIndex <= targetIndex;
+}
+
+/**
+ * Check if all rewards are computed for tasks in this iteration
+ *
+ * Note: The reward output directory uses taskData.name (e.g., "filerl-ramsey_graph-i1-xxx")
+ * while the task directory name may have a date prefix (e.g., "03-20-filerl-ramsey_graph-i1-xxx").
+ * We need to read task.json to get the actual taskName used for the reward directory.
+ */
+function checkAllRewardsComputed(
+  repoRoot: string,
+  filerlDir: string,
+  iteration: number,
+  tasks: string[]
+): boolean {
+  const iterDir = join(filerlDir, `iter${iteration}`);
+
+  for (const taskDirName of tasks) {
+    // Read task.json to get the actual task name used for reward output
+    const viewResult = viewTask(repoRoot, taskDirName);
+    if (!viewResult.success || !viewResult.task) {
+      return false;
+    }
+
+    // Use the same logic as reward.ts: taskData.name || taskData.id || dirname
+    const taskData = viewResult.task as { name?: string; id?: string };
+    const taskName = taskData.name || taskData.id || taskDirName;
+
+    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+    try {
+      const content = readFileSync(rewardJsonPath, "utf-8");
+      const data = JSON.parse(content) as { total?: number };
+      if (typeof data.total !== "number") {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**

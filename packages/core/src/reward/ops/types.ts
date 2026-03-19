@@ -254,16 +254,22 @@ export interface SelectOptions {
 
   /** Maximum diff lines for KL normalization (default: 500) */
   maxDiff?: number;
+
+  /** FileRL directory path (for reading reward from iter{N}/{taskName}/reward.json) */
+  filerlDir?: string;
+
+  /** Current iteration number (required if filerlDir is set) */
+  iteration?: number;
 }
 
 /**
- * Default values for PPO selection
+ * Default values for PPO selection (core PPO parameters only)
  */
-export const SELECT_DEFAULTS: Required<SelectOptions> = {
+export const SELECT_DEFAULTS = {
   threshold: 0.6,
   klCoef: 0.05,
   maxDiff: 500,
-};
+} as const;
 
 /**
  * PPO metrics for a single task candidate

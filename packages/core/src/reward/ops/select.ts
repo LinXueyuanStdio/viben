@@ -6,7 +6,7 @@
  *
  * Based on docs/plans/2026-03-17-filerl-commands-design.md
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   resolveTaskDirectory,
@@ -98,7 +98,39 @@ function calculatePpoMetrics(
 // =============================================================================
 
 /**
- * Load reward data from a task's task.json
+ * Load reward data from FileRL reward.json
+ *
+ * @param filerlDir - FileRL directory path
+ * @param iteration - Current iteration number
+ * @param taskName - Task name (used as reward directory name)
+ * @returns Reward data or null if not found/invalid
+ */
+function loadFileRlReward(
+  filerlDir: string,
+  iteration: number,
+  taskName: string
+): { reward: number; diffLines: number } | null {
+  const rewardJsonPath = join(filerlDir, `iter${iteration}`, taskName, "reward.json");
+
+  try {
+    const content = readFileSync(rewardJsonPath, "utf-8");
+    const rewardData = JSON.parse(content) as { total?: number; diffLines?: number };
+
+    if (typeof rewardData.total !== "number") {
+      return null;
+    }
+
+    return {
+      reward: rewardData.total,
+      diffLines: typeof rewardData.diffLines === "number" ? rewardData.diffLines : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load reward data from a task's task.json (standalone mode)
  *
  * @param taskDir - Absolute path to task directory
  * @returns Reward data or null if not found/invalid
@@ -160,10 +192,13 @@ export function selectBestTask(
   taskNames: string[],
   options: SelectOptions = {}
 ): SelectResult {
-  // Merge options with defaults
-  const opts: Required<SelectOptions> = {
-    ...SELECT_DEFAULTS,
-    ...options,
+  // Merge options with defaults (exclude filerlDir and iteration from defaults)
+  const opts = {
+    threshold: options.threshold ?? SELECT_DEFAULTS.threshold,
+    klCoef: options.klCoef ?? SELECT_DEFAULTS.klCoef,
+    maxDiff: options.maxDiff ?? SELECT_DEFAULTS.maxDiff,
+    filerlDir: options.filerlDir,
+    iteration: options.iteration,
   };
 
   // Validate input
@@ -174,26 +209,43 @@ export function selectBestTask(
     };
   }
 
+  // FileRL mode: read rewards from iter{N}/{taskName}/reward.json
+  const isFileRlMode = !!opts.filerlDir && opts.iteration !== undefined;
+
   // Load reward data from each task
   const taskRewards: Array<{ task: string; reward: number; diffLines: number }> =
     [];
   const errors: string[] = [];
 
-  for (const taskName of taskNames) {
-    const taskDir = resolveTaskDirectory(taskName, repoRoot);
+  for (const taskDirName of taskNames) {
+    const taskDir = resolveTaskDirectory(taskDirName, repoRoot);
     if (!taskDir || !existsSync(taskDir)) {
-      errors.push(`Task not found: ${taskName}`);
+      errors.push(`Task not found: ${taskDirName}`);
       continue;
     }
 
-    const rewardData = loadTaskReward(taskDir);
+    let rewardData: { reward: number; diffLines: number } | null = null;
+
+    if (isFileRlMode) {
+      // FileRL mode: get task name from task.json for reward directory
+      const taskData = readTaskJson(taskDir) as { name?: string; id?: string } | null;
+      const rewardDirName = taskData?.name || taskData?.id || taskDirName;
+
+      rewardData = loadFileRlReward(opts.filerlDir!, opts.iteration!, rewardDirName);
+    }
+
+    // Fallback to task.json reward if FileRL reward not found
     if (!rewardData) {
-      errors.push(`No reward data in task: ${taskName}`);
+      rewardData = loadTaskReward(taskDir);
+    }
+
+    if (!rewardData) {
+      errors.push(`No reward data in task: ${taskDirName}`);
       continue;
     }
 
     taskRewards.push({
-      task: taskName,
+      task: taskDirName,
       ...rewardData,
     });
   }
