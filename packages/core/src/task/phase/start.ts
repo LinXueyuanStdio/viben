@@ -395,7 +395,7 @@ Current task context:
       agentId,
       worktreePath: repoRoot,
       pid: agentPid,
-      taskDir: taskDirRel,
+      taskDir: taskDirAbs, // Store absolute path
       platform,
     },
     repoRoot

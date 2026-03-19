@@ -107,6 +107,14 @@ export interface RewardConfig {
   weights: number[];
 }
 
+/**
+ * Default reward configuration
+ */
+export const DEFAULT_REWARD_CONFIG: RewardConfig = {
+  types: ["test_coverage", "code_quality", "agent_review"],
+  weights: [0.34, 0.33, 0.33],
+};
+
 // =============================================================================
 // Result Types
 // =============================================================================

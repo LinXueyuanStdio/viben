@@ -3635,7 +3635,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           agentId: `plan-${name}`,
           worktreePath: workspace_path,
           pid: agentPid,
-          taskDir: taskDirRel,
+          taskDir: taskDir, // Store absolute path
           platform,
         },
         workspace_path

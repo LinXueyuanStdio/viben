@@ -160,7 +160,10 @@ describe("Agent CLI Commands", () => {
 
       expect(agentManager.listAgents).toHaveBeenCalled();
       expect(configManager.getDefaultAgent).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains agent names
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toContain("Agent One");
+      expect(output).toContain("Agent Two");
     });
 
     it("should show message when no agents exist", async () => {
@@ -352,7 +355,10 @@ describe("Agent CLI Commands", () => {
       await runCommand(["agent", "show", "-n", "my-agent"]);
 
       expect(agentManager.getAgent).toHaveBeenCalledWith("my-agent");
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains agent details
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toContain("My Agent");
+      expect(output).toContain("CLAUDE_CODE");
     });
 
     it("should show error when agent not found", async () => {
@@ -504,7 +510,10 @@ describe("Agent CLI Commands", () => {
 
       await runCommand(["agent", "status"]);
 
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output shows no default agent state
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toContain("Agent Status");
+      expect(output).toMatch(/Total.*0|No agents/i);
     });
   });
 
@@ -660,46 +669,8 @@ describe("Agent CLI Commands", () => {
   // Template Tests
   // ============================================================================
 
-  // TODO: Update template tests for new inline template system
-  describe.skip("agent template list", () => {
-    it("should list all templates", async () => {
-      // Template support is deprecated
-    });
-
-    it("should show message when no templates exist", async () => {
-      // Template support is deprecated
-    });
-  });
-
-  describe.skip("agent template create <agent-id> <template-id>", () => {
-    it("should create template from agent", async () => {
-      // Template support is deprecated
-    });
-
-    it("should show error when source agent not found", async () => {
-      // Template support is deprecated
-    });
-  });
-
-  describe.skip("agent template show <template-id>", () => {
-    it("should show template details", async () => {
-      // Template support is deprecated
-    });
-
-    it("should show error when template not found", async () => {
-      // Template support is deprecated
-    });
-  });
-
-  describe.skip("agent template remove <template-id>", () => {
-    it("should remove template", async () => {
-      // Template support is deprecated
-    });
-
-    it("should show error when template not found", async () => {
-      // Template support is deprecated
-    });
-  });
+  // NOTE: Template tests removed - template functionality has been deprecated
+  // Templates are now agents with isTemplate=true (inline agent templates)
 
   // ============================================================================
   // Session Tests
@@ -736,7 +707,10 @@ describe("Agent CLI Commands", () => {
       await runCommand(["agent", "session", "list", "-n", "my-agent"]);
 
       expect(agentManager.listSessions).toHaveBeenCalledWith("my-agent");
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains session information (IDs may be truncated in table display)
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toContain("Feature Development");
+      expect(output).toContain("Bug Fixes");
     });
 
     it("should show message when no sessions exist", async () => {
@@ -892,7 +866,10 @@ describe("Agent CLI Commands", () => {
       expect(memoryManager.getMemory).toHaveBeenCalledWith("my-agent");
       expect(memoryManager.getMemoryStats).toHaveBeenCalledWith("my-agent");
       expect(memoryManager.getRecentLogs).toHaveBeenCalledWith("my-agent", 7);
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains memory information
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toContain("Memory");
+      expect(output).toMatch(/100|bytes|size/i);
     });
 
     it("should show memory with custom days option", async () => {

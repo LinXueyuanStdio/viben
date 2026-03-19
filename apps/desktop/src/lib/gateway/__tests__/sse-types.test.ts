@@ -2,7 +2,11 @@
  * SSE Types Integration Test
  * SSE 类型集成测试
  *
- * Tests that the SSE types match the backend's flat message format.
+ * Tests the sseEventToAgentMessage conversion function.
+ *
+ * Note: Type structure correctness is verified by TypeScript compilation.
+ * If the SSE types don't match the backend format, TypeScript will fail to compile.
+ * Therefore, we only test runtime behavior (conversion functions) here.
  */
 
 import { describe, it, expect } from "vitest";
@@ -14,7 +18,6 @@ import type {
   SSEToolUseEvent,
   SSEToolResultEvent,
   SSEPlanEvent,
-  SSEQuestionEvent,
   SSEResultEvent,
   SSEErrorEvent,
   SSEDoneEvent,
@@ -22,148 +25,6 @@ import type {
 import { sseEventToAgentMessage } from "../utils";
 
 describe("SSE Types", () => {
-  describe("Type structure matches backend format", () => {
-    it("should handle session event (flat structure)", () => {
-      const event: SSESessionEvent = {
-        type: "session",
-        sessionId: "test-session-123",
-        traceId: "trace-456",
-      };
-
-      // Verify it matches the expected flat structure
-      expect(event.type).toBe("session");
-      expect(event.sessionId).toBe("test-session-123");
-      expect(event.traceId).toBe("trace-456");
-    });
-
-    it("should handle sdk_session event", () => {
-      const event: SSESdkSessionEvent = {
-        type: "sdk_session",
-        sdkSessionId: "sdk-session-789",
-      };
-
-      expect(event.type).toBe("sdk_session");
-      expect(event.sdkSessionId).toBe("sdk-session-789");
-    });
-
-    it("should handle text event (flat - no data wrapper)", () => {
-      const event: SSETextEvent = {
-        type: "text",
-        content: "Hello, world!",
-      };
-
-      // Backend sends content directly, not nested in data
-      expect(event.type).toBe("text");
-      expect(event.content).toBe("Hello, world!");
-    });
-
-    it("should handle tool_use event (flat)", () => {
-      const event: SSEToolUseEvent = {
-        type: "tool_use",
-        id: "tool-123",
-        name: "read_file",
-        input: { path: "/test/file.txt" },
-      };
-
-      expect(event.type).toBe("tool_use");
-      expect(event.id).toBe("tool-123");
-      expect(event.name).toBe("read_file");
-      expect(event.input).toEqual({ path: "/test/file.txt" });
-    });
-
-    it("should handle tool_result event (camelCase)", () => {
-      const event: SSEToolResultEvent = {
-        type: "tool_result",
-        toolUseId: "tool-123", // camelCase, not snake_case
-        output: "File contents here",
-        isError: false,
-      };
-
-      expect(event.type).toBe("tool_result");
-      expect(event.toolUseId).toBe("tool-123");
-      expect(event.output).toBe("File contents here");
-      expect(event.isError).toBe(false);
-    });
-
-    it("should handle plan event (nested plan object)", () => {
-      const event: SSEPlanEvent = {
-        type: "plan",
-        plan: {
-          id: "plan-123",
-          goal: "Fix the bug",
-          steps: [
-            { id: "step-1", description: "Read file", status: "completed" },
-            { id: "step-2", description: "Analyze code", status: "in_progress" },
-            { id: "step-3", description: "Apply fix", status: "pending" },
-          ],
-          notes: "Additional notes",
-        },
-      };
-
-      expect(event.type).toBe("plan");
-      expect(event.plan.id).toBe("plan-123");
-      expect(event.plan.goal).toBe("Fix the bug");
-      expect(event.plan.steps).toHaveLength(3);
-      expect(event.plan.notes).toBe("Additional notes");
-    });
-
-    it("should handle question event (flat)", () => {
-      const event: SSEQuestionEvent = {
-        type: "question",
-        id: "question-123",
-        questions: [
-          {
-            header: "Auth Method",
-            question: "Which auth method should we use?",
-            options: [
-              { label: "JWT", description: "JSON Web Tokens" },
-              { label: "OAuth", description: "OAuth 2.0" },
-            ],
-            multiSelect: false,
-          },
-        ],
-      };
-
-      expect(event.type).toBe("question");
-      expect(event.id).toBe("question-123");
-      expect(event.questions).toHaveLength(1);
-      expect(event.questions[0].header).toBe("Auth Method");
-    });
-
-    it("should handle result event (cost/duration/subtype)", () => {
-      const event: SSEResultEvent = {
-        type: "result",
-        cost: 0.0125,
-        duration: 5432,
-        subtype: "success",
-      };
-
-      // Backend sends cost/duration/subtype, not content
-      expect(event.type).toBe("result");
-      expect(event.cost).toBe(0.0125);
-      expect(event.duration).toBe(5432);
-      expect(event.subtype).toBe("success");
-    });
-
-    it("should handle error event (flat)", () => {
-      const event: SSEErrorEvent = {
-        type: "error",
-        message: "Something went wrong",
-      };
-
-      expect(event.type).toBe("error");
-      expect(event.message).toBe("Something went wrong");
-    });
-
-    it("should handle done event (no data)", () => {
-      const event: SSEDoneEvent = {
-        type: "done",
-      };
-
-      expect(event.type).toBe("done");
-    });
-  });
-
   describe("sseEventToAgentMessage conversion", () => {
     it("should convert sdk_session event", () => {
       const event: SSESdkSessionEvent = {
@@ -293,6 +154,9 @@ describe("SSE Types", () => {
   });
 
   describe("SSEMessageEvent union type", () => {
+    // Note: This test verifies that the union type accepts all event types.
+    // TypeScript compilation ensures type correctness; this test documents
+    // the expected event types and verifies the array is properly formed.
     it("should accept all event types", () => {
       const events: SSEMessageEvent[] = [
         { type: "session", sessionId: "s1" },

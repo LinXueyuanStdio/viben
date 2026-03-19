@@ -201,8 +201,9 @@ describe("Swarm CLI Commands", () => {
       // The TypeScript implementation uses listWorktrees() and readRegistry() directly
       // It doesn't call python3 anymore
       expect(mockSpawn).not.toHaveBeenCalled();
-      // Should output list to console
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains expected headers or list information
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toMatch(/Worktree|Agent|Task|No worktrees/i);
     });
   });
 
@@ -270,7 +271,9 @@ describe("Swarm CLI Commands", () => {
       // but with the CLI adapter's spawn() function, not python3
       // It spawns the agent (e.g., "claude" CLI) not python
       // The exact call depends on the platform/executor being used
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output indicates agent start attempt
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toMatch(/Start|Agent|my-task|worktree/i);
     });
   });
 
@@ -435,8 +438,9 @@ describe("Swarm CLI Commands", () => {
       // The TypeScript implementation doesn't use spawn for status
       // It uses getAllAgentStatuses() which reads registry directly
       expect(mockSpawn).not.toHaveBeenCalled();
-      // Should output status (may be empty if no agents)
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains status-related information
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toMatch(/Status|Agent|Running|No agents|empty/i);
     });
 
     it("should show detailed status for specific task", async () => {
@@ -609,8 +613,9 @@ describe("Swarm CLI Commands", () => {
 
       // The TypeScript implementation uses readRegistry() directly, not spawn
       expect(mockSpawn).not.toHaveBeenCalled();
-      // Should output registry info to console
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify output contains registry information with agent details
+      const output = consoleSpy.mock.calls.flat().join(" ");
+      expect(output).toMatch(/Registry|Agent|my-task|12345/i);
     });
 
     it("should output JSON when --json flag is provided", async () => {

@@ -85,6 +85,15 @@ vi.mock("chalk", () => ({
   },
 }));
 
+// Mock queue enqueue to avoid actual queue operations
+vi.mock("../../queue/ops/enqueue", () => ({
+  enqueue: vi.fn(() => ({
+    success: true,
+    id: "mock-queue-id-12345",
+    message: "Task queued successfully",
+  })),
+}));
+
 import * as vibenWorkspace from "../lib/viben-workspace";
 
 // Store original process.exit and mock it
@@ -506,6 +515,593 @@ describe("task command execution", () => {
         ".viben/tasks/03-20-base-task/task.json"
       );
       expect(taskJson.base_branch).toBe("develop");
+    });
+  });
+
+  // ===========================================================================
+  // task finish execution
+  // ===========================================================================
+
+  describe("task finish", () => {
+    it("should finish an existing task", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-finish-task", {
+        title: "Finish Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "finish", "finish-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Finished") || log.includes("finish-task")
+      );
+      expect(hasSuccessMessage).toBe(true);
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-finish-json", {
+        title: "Finish JSON Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "finish", "finish-json"])) as {
+        success: boolean;
+        data: { finished: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "finish", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task archive execution
+  // ===========================================================================
+
+  describe("task archive", () => {
+    it("should archive a completed task", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-archive-task", {
+        title: "Archive Task",
+        status: "completed",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "archive", "archive-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Archived") || log.includes("archive")
+      );
+      expect(hasSuccessMessage).toBe(true);
+
+      // Task should be moved to archive directory
+      const activeFiles = await ctx.tempDir.listFiles(".viben/tasks");
+      expect(activeFiles.some((f) => f.includes("archive-task"))).toBe(false);
+
+      // Check archive directory exists
+      const archiveDir = await ctx.tempDir.exists(".viben/tasks/archive");
+      expect(archiveDir).toBe(true);
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-archive-json", {
+        title: "Archive JSON Task",
+        status: "completed",
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "archive", "archive-json"])) as {
+        success: boolean;
+        data: { archived: string; to: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.data?.archived).toBeDefined();
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "archive", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task enqueue execution
+  // ===========================================================================
+
+  describe("task enqueue", () => {
+    it("should enqueue a backlog task", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-task", {
+        title: "Enqueue Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "enqueue", "enqueue-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Enqueued") || log.includes("enqueue-task")
+      );
+      expect(hasSuccessMessage).toBe(true);
+
+      // Verify task status was updated to queue
+      const taskJson = await ctx.tempDir.readJson<{ status: string; queuedAt?: string }>(
+        ".viben/tasks/03-20-enqueue-task/task.json"
+      );
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.queuedAt).toBeDefined();
+    });
+
+    it("should enqueue with agent option", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-agent", {
+        title: "Enqueue Agent Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "enqueue", "enqueue-agent", "--agent", "test-agent-id"]);
+
+      const taskJson = await ctx.tempDir.readJson<{ status: string; agent?: string }>(
+        ".viben/tasks/03-20-enqueue-agent/task.json"
+      );
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.agent).toBe("test-agent-id");
+    });
+
+    it("should enqueue with executor option", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-executor", {
+        title: "Enqueue Executor Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "enqueue", "enqueue-executor", "--executor", "CLAUDE_CODE"]);
+
+      const taskJson = await ctx.tempDir.readJson<{ status: string; executor?: string }>(
+        ".viben/tasks/03-20-enqueue-executor/task.json"
+      );
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.executor).toBe("CLAUDE_CODE");
+    });
+
+    it("should enqueue with model option", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-model", {
+        title: "Enqueue Model Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "enqueue", "enqueue-model", "--model", "claude-3-opus"]);
+
+      const taskJson = await ctx.tempDir.readJson<{ status: string; model?: string }>(
+        ".viben/tasks/03-20-enqueue-model/task.json"
+      );
+      expect(taskJson.status).toBe("queue");
+      expect(taskJson.model).toBe("claude-3-opus");
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-json", {
+        title: "Enqueue JSON Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "enqueue", "enqueue-json"])) as {
+        success: boolean;
+        data: { task: string; status: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.data?.status).toBe("queue");
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "enqueue", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+
+    it("should return error for task not in backlog", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-enqueue-wrong-status", {
+        title: "Wrong Status Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "enqueue", "enqueue-wrong-status"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task dequeue execution
+  // ===========================================================================
+
+  describe("task dequeue", () => {
+    it("should dequeue a queued task back to backlog", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-dequeue-task", {
+        title: "Dequeue Task",
+        status: "queue",
+        queuedAt: new Date().toISOString(),
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "dequeue", "dequeue-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Dequeued") || log.includes("dequeue-task")
+      );
+      expect(hasSuccessMessage).toBe(true);
+
+      // Verify task status was updated to backlog
+      const taskJson = await ctx.tempDir.readJson<{ status: string; queuedAt?: string | null }>(
+        ".viben/tasks/03-20-dequeue-task/task.json"
+      );
+      expect(taskJson.status).toBe("backlog");
+      // queuedAt should be cleared (set to null or undefined)
+      expect(taskJson.queuedAt == null).toBe(true);
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-dequeue-json", {
+        title: "Dequeue JSON Task",
+        status: "queue",
+        queuedAt: new Date().toISOString(),
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "dequeue", "dequeue-json"])) as {
+        success: boolean;
+        data: { task: string; status: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.data?.status).toBe("backlog");
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "dequeue", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+
+    it("should return error for task not in queue", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-dequeue-wrong-status", {
+        title: "Wrong Status Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "dequeue", "dequeue-wrong-status"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task pause execution
+  // ===========================================================================
+
+  describe("task pause", () => {
+    it("should pause an in_progress task", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-pause-task", {
+        title: "Pause Task",
+        status: "in_progress",
+        current_phase: 1,
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "pause", "pause-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Paused") || log.includes("pause-task")
+      );
+      expect(hasSuccessMessage).toBe(true);
+
+      // Verify task status was updated to paused
+      const taskJson = await ctx.tempDir.readJson<{
+        status: string;
+        pausedSnapshot?: { fromState: string; pausedAt: string };
+      }>(".viben/tasks/03-20-pause-task/task.json");
+      expect(taskJson.status).toBe("paused");
+      expect(taskJson.pausedSnapshot).toBeDefined();
+      expect(taskJson.pausedSnapshot?.fromState).toBe("in_progress");
+      expect(taskJson.pausedSnapshot?.pausedAt).toBeDefined();
+    });
+
+    it("should pause a queue task", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-pause-queue", {
+        title: "Pause Queue Task",
+        status: "queue",
+        queuedAt: new Date().toISOString(),
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "pause", "pause-queue"]);
+
+      const taskJson = await ctx.tempDir.readJson<{
+        status: string;
+        pausedSnapshot?: { fromState: string };
+      }>(".viben/tasks/03-20-pause-queue/task.json");
+      expect(taskJson.status).toBe("paused");
+      expect(taskJson.pausedSnapshot?.fromState).toBe("queue");
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-pause-json", {
+        title: "Pause JSON Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "pause", "pause-json"])) as {
+        success: boolean;
+        data: { task: string; status: string; fromState: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.data?.status).toBe("paused");
+      expect(result?.data?.fromState).toBe("in_progress");
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "pause", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+
+    it("should return error for task not in pausable state", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-pause-wrong-status", {
+        title: "Wrong Status Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "pause", "pause-wrong-status"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task resume execution
+  // ===========================================================================
+
+  describe("task resume", () => {
+    it("should resume a paused task to in_progress", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-resume-task", {
+        title: "Resume Task",
+        status: "paused",
+        pausedSnapshot: {
+          fromState: "in_progress",
+          subtaskIndex: 2,
+          pausedAt: new Date().toISOString(),
+        },
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "resume", "resume-task"]);
+
+      // Check console output for success
+      const hasSuccessMessage = ctx.console.logs.some(
+        (log) => log.includes("Resumed") || log.includes("resume-task")
+      );
+      expect(hasSuccessMessage).toBe(true);
+
+      // Verify task status was restored
+      const taskJson = await ctx.tempDir.readJson<{
+        status: string;
+        pausedSnapshot?: unknown;
+      }>(".viben/tasks/03-20-resume-task/task.json");
+      expect(taskJson.status).toBe("in_progress");
+      // pausedSnapshot should be cleared (set to null or undefined)
+      expect(taskJson.pausedSnapshot == null).toBe(true);
+    });
+
+    it("should resume a paused task to queue", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-resume-queue", {
+        title: "Resume Queue Task",
+        status: "paused",
+        pausedSnapshot: {
+          fromState: "queue",
+          subtaskIndex: 0,
+          pausedAt: new Date().toISOString(),
+        },
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "resume", "resume-queue"]);
+
+      const taskJson = await ctx.tempDir.readJson<{ status: string }>(
+        ".viben/tasks/03-20-resume-queue/task.json"
+      );
+      expect(taskJson.status).toBe("queue");
+    });
+
+    it("should return JSON output with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-resume-json", {
+        title: "Resume JSON Task",
+        status: "paused",
+        pausedSnapshot: {
+          fromState: "in_progress",
+          subtaskIndex: 1,
+          pausedAt: new Date().toISOString(),
+        },
+        assignee: "test-developer",
+      });
+
+      const result = (await ctx.runJson(["task", "resume", "resume-json"])) as {
+        success: boolean;
+        data: { task: string; status: string };
+      };
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.data?.status).toBe("in_progress");
+    });
+
+    it("should return error for non-existent task", async () => {
+      await ctx.run(["task", "resume", "nonexistent-task"]);
+
+      expect(exitCode).toBe(1);
+    });
+
+    it("should return error for task not in paused state", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-resume-wrong-status", {
+        title: "Wrong Status Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "resume", "resume-wrong-status"]);
+
+      expect(exitCode).toBe(1);
+    });
+  });
+
+  // ===========================================================================
+  // task status execution
+  // ===========================================================================
+
+  describe("task status", () => {
+    it("should show status summary when no tasks exist", async () => {
+      await ctx.run(["task", "status"]);
+
+      // Should not error and should show some output
+      expect(exitCode).toBeUndefined();
+    });
+
+    it("should show status summary when tasks exist", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-task1", {
+        title: "Status Task 1",
+        status: "backlog",
+        assignee: "test-developer",
+        priority: "high",
+      });
+      await createTaskDir(ctx.tempDir, "03-20-status-task2", {
+        title: "Status Task 2",
+        status: "in_progress",
+        assignee: "test-developer",
+        priority: "medium",
+      });
+
+      await ctx.run(["task", "status"]);
+
+      // Should show task count or task info
+      const hasOutput = ctx.console.logs.length > 0;
+      expect(hasOutput).toBe(true);
+    });
+
+    it("should filter by status", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-backlog", {
+        title: "Backlog Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+      await createTaskDir(ctx.tempDir, "03-20-status-progress", {
+        title: "Progress Task",
+        status: "in_progress",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "status", "-s", "backlog"]);
+
+      // Should show output
+      expect(exitCode).toBeUndefined();
+    });
+
+    it("should filter by assignee", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-dev1", {
+        title: "Dev1 Task",
+        status: "backlog",
+        assignee: "developer-1",
+      });
+      await createTaskDir(ctx.tempDir, "03-20-status-dev2", {
+        title: "Dev2 Task",
+        status: "backlog",
+        assignee: "developer-2",
+      });
+
+      await ctx.run(["task", "status", "-a", "developer-1"]);
+
+      // Should show output
+      expect(exitCode).toBeUndefined();
+    });
+
+    it("should show specific task status", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-specific", {
+        title: "Specific Task",
+        status: "in_progress",
+        assignee: "test-developer",
+        priority: "high",
+        description: "Test description",
+      });
+
+      await ctx.run(["task", "status", "status-specific"]);
+
+      // Should show task details
+      const hasTaskInfo = ctx.console.logs.some(
+        (log) => log.includes("Specific Task") || log.includes("status-specific")
+      );
+      expect(hasTaskInfo).toBe(true);
+    });
+
+    it("should work with --json flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-json", {
+        title: "Status JSON Task",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      // The status command with --json flag doesn't output JSON in the same way as other commands
+      // It just runs without error
+      await ctx.run(["task", "status", "--json"]);
+
+      // Should not error
+      expect(exitCode).toBeUndefined();
+    });
+
+    it("should show list with --list flag", async () => {
+      await createTaskDir(ctx.tempDir, "03-20-status-list1", {
+        title: "List Task 1",
+        status: "backlog",
+        assignee: "test-developer",
+      });
+
+      await ctx.run(["task", "status", "--list"]);
+
+      // Should show output
+      expect(exitCode).toBeUndefined();
+    });
+
+    it("should handle non-existent task with --detail flag", async () => {
+      // The status --detail command looks for an agent in the registry, not a task
+      // When not found, it logs "Agent not found" but doesn't exit with error
+      await ctx.run(["task", "status", "nonexistent-task", "--detail"]);
+
+      // Verify it outputs something about "not found"
+      const hasNotFoundMessage = ctx.console.logs.some(
+        (log) => log.includes("not found") || log.includes("Agent not found")
+      );
+      expect(hasNotFoundMessage).toBe(true);
     });
   });
 });

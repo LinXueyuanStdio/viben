@@ -44,7 +44,7 @@ import { enqueueTask, approveTask, cancelTask } from "../../task/ops/lifecycle";
 import { startTask } from "../../task/phase/start";
 import { selectBestTask } from "../../reward/ops/select";
 import { computeReward } from "../../reward/ops/crud";
-import { generateIdeas, promoteIdeaDirect, dismissIdea } from "../../idea/ops";
+import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas } from "../../idea/ops";
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
 
 // =============================================================================
@@ -1001,7 +1001,6 @@ export async function orchestrateFullIteration(
     debug("Resuming with existing ideas", { ideaIds: currentIter.ideas });
 
     // Load existing ideas from disk
-    const { listIdeas } = await import("../../idea/ops");
     const ideaResult = listIdeas(repoRoot, { status: "draft" });
     const existingIdeas = ideaResult.ideas.filter(i => currentIter.ideas.includes(i.id));
 
@@ -1028,17 +1027,28 @@ export async function orchestrateFullIteration(
     }
   }
 
-  // If we don't have tasks yet, generate ideas and create tasks
+  // If we don't have tasks yet, check for existing ideas or generate new ones
   if (tasks.length === 0) {
-    // Phase 1: Generate Ideas
-    onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
-    const generateResult = await orchestrateGenerateIdeas(repoRoot, name, onProgress);
-    if (!generateResult.success) {
-      return generateResult;
-    }
+    // First, check if there are already draft ideas on disk
+    const existingIdeasResult = listIdeas(repoRoot, { status: "draft" });
+    let ideas: Idea[] = [];
 
-    const generateData = generateResult.data as { ideas: Idea[]; sessionDir?: string };
-    const ideas = generateData.ideas;
+    if (existingIdeasResult.ideas.length > 0) {
+      // Use existing draft ideas instead of generating new ones
+      ideas = existingIdeasResult.ideas;
+      onProgress?.(`[${iterNum}] Found ${ideas.length} existing draft ideas, skipping generation`);
+      debug("Using existing draft ideas", { count: ideas.length, ids: ideas.map(i => i.id) });
+    } else {
+      // Phase 1: Generate Ideas
+      onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
+      const generateResult = await orchestrateGenerateIdeas(repoRoot, name, onProgress);
+      if (!generateResult.success) {
+        return generateResult;
+      }
+
+      const generateData = generateResult.data as { ideas: Idea[]; sessionDir?: string };
+      ideas = generateData.ideas;
+    }
 
     // Pre-check if any ideas will pass the filter
     let filteredIdeas = ideas;

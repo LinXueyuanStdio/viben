@@ -583,15 +583,8 @@ export function createTask(
     autoStart: options.start || false,
     worktree: options.worktree || false,
     compute_reward: options.computeReward ?? false,
-    // FileRL directory for reward config and output
+    // FileRL directory for reward config and output (reward_config is read from FileRL target)
     filerl_dir: options.filerlDir,
-    // If compute_reward is true and no filerl_dir, add default reward_config
-    ...(options.computeReward && !options.filerlDir && {
-      reward_config: {
-        types: ["test_coverage", "code_quality", "agent_review"],
-        weights: [0.34, 0.33, 0.33],
-      },
-    }),
   };
 
   // Note: --start flag is handled by CLI layer calling enqueueTask after creation
