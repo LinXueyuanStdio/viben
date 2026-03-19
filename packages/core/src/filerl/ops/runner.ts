@@ -14,7 +14,8 @@
  * 7. Iterate - Process repeats until convergence
  */
 
-import { resolve } from "node:path";
+import { resolve, join } from "node:path";
+import { readFileSync } from "node:fs";
 
 import type {
   FileRlConfig,
@@ -178,6 +179,16 @@ export function runIteration(
     };
   }
 
+  // Check if current iteration is incomplete - if so, resume it instead of starting new one
+  const currentIter = state.iterations[state.iterations.length - 1];
+  if (currentIter && !currentIter.completed) {
+    // Resume existing incomplete iteration
+    state.active = true;
+    writeState(repoRoot, state);
+    return { success: true, state, message: `Resumed iteration ${currentIter.iteration} for "${name}"` };
+  }
+
+  // Start a new iteration only if no incomplete iteration exists
   const iteration = startIteration(state);
   writeState(repoRoot, state);
 
@@ -682,16 +693,21 @@ export function orchestrateCheckTasksStatus(
  * but don't have reward data yet.
  *
  * @param repoRoot - Repository root path
+ * @param name - FileRL run name (for locating reward.json)
  * @param taskNames - Task names to compute rewards for
+ * @param currentIteration - Current iteration number
  * @param onProgress - Optional progress callback
  */
 export function orchestrateComputeRewards(
   repoRoot: string,
+  name: string,
   taskNames: string[],
+  currentIteration: number,
   onProgress?: (message: string) => void
 ): OrchestrationResult {
   const debug = createDebugLogger("computeRewards");
   const results: Record<string, { success: boolean; error?: string }> = {};
+  const filerlDir = getFileRlDir(repoRoot, name);
 
   for (const taskName of taskNames) {
     const viewResult = viewTask(repoRoot, taskName);
@@ -700,7 +716,23 @@ export function orchestrateComputeRewards(
       continue;
     }
 
-    const hasReward = !!(viewResult.task as unknown as { reward?: unknown }).reward;
+    // Check if reward already exists - first check FileRL reward.json, then task.json
+    let hasReward = false;
+
+    // Check FileRL reward.json
+    const iterDir = join(filerlDir, `iter${currentIteration}`);
+    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+    try {
+      const rewardContent = readFileSync(rewardJsonPath, "utf-8");
+      const rewardData = JSON.parse(rewardContent) as { total?: number };
+      if (typeof rewardData.total === "number") {
+        hasReward = true;
+      }
+    } catch {
+      // reward.json not found, check task.json
+      hasReward = !!(viewResult.task as unknown as { reward?: unknown }).reward;
+    }
+
     if (hasReward) {
       results[taskName] = { success: true };
       continue;
@@ -756,8 +788,29 @@ export function orchestrateSelectBest(
   }
 
   // Gather rewards from tasks
+  // In FileRL mode, rewards are stored in .viben/filerl/{name}/iter{N}/{task}/reward.json
+  // Also try task.json as fallback
   const taskRewards: Record<string, number> = {};
+  const filerlDir = getFileRlDir(repoRoot, name);
+
   for (const taskName of currentIter.tasks) {
+    // First try to read from FileRL reward.json
+    const iterDir = join(filerlDir, `iter${state.current_iteration}`);
+    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+
+    try {
+      const rewardContent = readFileSync(rewardJsonPath, "utf-8");
+      const rewardData = JSON.parse(rewardContent) as { total?: number };
+      if (typeof rewardData.total === "number") {
+        taskRewards[taskName] = rewardData.total;
+        onProgress?.(`Task ${taskName}: reward = ${rewardData.total.toFixed(3)}`);
+        continue;
+      }
+    } catch {
+      // reward.json not found, try task.json fallback
+    }
+
+    // Fallback: try to read from task.json
     const viewResult = viewTask(repoRoot, taskName);
     if (!viewResult.success || !viewResult.task) {
       onProgress?.(`Warning: Task ${taskName} not found`);
@@ -975,25 +1028,39 @@ export async function orchestrateFullIteration(
   let tasks: string[] = [];
 
   // Resume logic: check what phase we should start from
+  // Track if we should skip waiting for tasks (already completed)
+  let skipWaitForTasks = false;
+
   if (currentIter && currentIter.tasks.length > 0) {
-    // Already have tasks - skip to waiting for completion
+    // Already have tasks - check their status
     tasks = currentIter.tasks;
     onProgress?.(`[${iterNum}] Resuming - found ${tasks.length} existing tasks`);
     debug("Resuming with existing tasks", { tasks });
 
     // Check if tasks are already running or need to be started
     const statusResult = orchestrateCheckTasksStatus(repoRoot, tasks);
-    const statusData = statusResult.data as { statuses: Record<string, { status: string }> };
+    const statusData = statusResult.data as {
+      statuses: Record<string, { status: string }>;
+      allCompleted: boolean;
+      completedCount: number;
+    };
 
-    // Find tasks that haven't started yet (status is backlog or queue)
-    const notStarted = tasks.filter(t => {
-      const s = statusData.statuses[t]?.status;
-      return s === "backlog" || s === "queue";
-    });
+    // If all tasks are already completed, skip directly to reward computation
+    if (statusData.allCompleted) {
+      onProgress?.(`[${iterNum}] All ${tasks.length} tasks already completed, skipping to reward computation`);
+      debug("All tasks completed, skipping wait phase", { completedCount: statusData.completedCount });
+      skipWaitForTasks = true;
+    } else {
+      // Find tasks that haven't started yet (status is backlog or queue)
+      const notStarted = tasks.filter(t => {
+        const s = statusData.statuses[t]?.status;
+        return s === "backlog" || s === "queue";
+      });
 
-    if (notStarted.length > 0) {
-      onProgress?.(`[${iterNum}] Starting ${notStarted.length} unstarted tasks`);
-      await orchestrateStartTasks(repoRoot, notStarted, onProgress);
+      if (notStarted.length > 0) {
+        onProgress?.(`[${iterNum}] Starting ${notStarted.length} unstarted tasks`);
+        await orchestrateStartTasks(repoRoot, notStarted, onProgress);
+      }
     }
   } else if (currentIter && currentIter.ideas.length > 0) {
     // Have ideas but no tasks - load ideas from disk and promote
@@ -1088,16 +1155,20 @@ export async function orchestrateFullIteration(
     }
   }
 
-  // Phase 3: Wait for tasks to complete
-  onProgress?.(`[${iterNum}] Phase 3 - Waiting for tasks`);
-  const waitResult = await waitForTasksCompletion(repoRoot, tasks, {}, onProgress);
-  if (!waitResult.success) {
-    return waitResult;
+  // Phase 3: Wait for tasks to complete (skip if already completed on resume)
+  if (!skipWaitForTasks) {
+    onProgress?.(`[${iterNum}] Phase 3 - Waiting for tasks`);
+    const waitResult = await waitForTasksCompletion(repoRoot, tasks, {}, onProgress);
+    if (!waitResult.success) {
+      return waitResult;
+    }
+  } else {
+    onProgress?.(`[${iterNum}] Phase 3 - Skipped (tasks already completed)`);
   }
 
   // Phase 4: Compute rewards
   onProgress?.(`[${iterNum}] Phase 4 - Computing rewards`);
-  orchestrateComputeRewards(repoRoot, tasks, onProgress);
+  orchestrateComputeRewards(repoRoot, name, tasks, iterNum, onProgress);
 
   // Phase 5: Select best task
   onProgress?.(`[${iterNum}] Phase 5 - Selecting best task`);

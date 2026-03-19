@@ -221,29 +221,83 @@ function extractJsonObjects(content: string): string[] {
 }
 
 /**
+ * Options for getDiffLines
+ */
+interface GetDiffLinesOptions {
+  /** Base branch to compare against (default: main) */
+  baseBranch?: string;
+  /** Feature branch to compare (if provided, uses baseBranch..featureBranch) */
+  featureBranch?: string;
+  /** Worktree path (if provided, runs git diff in worktree) */
+  worktreePath?: string;
+}
+
+/**
  * Get diff lines count using git diff --stat
  *
  * @param repoRoot - Repository root path
- * @param baseBranch - Base branch to compare against (default: main)
+ * @param options - Options for diff calculation
  * @returns Number of lines changed, or 0 if error
  */
-function getDiffLines(repoRoot: string, baseBranch: string = "main"): number {
+function getDiffLines(repoRoot: string, options: GetDiffLinesOptions = {}): number {
+  const baseBranch = options.baseBranch || "main";
+  const featureBranch = options.featureBranch;
+  const worktreePath = options.worktreePath;
+
   try {
-    // Try origin/main first, then main
     let output: string;
-    try {
-      output = execSync(`git diff --stat origin/${baseBranch}..HEAD`, {
-        cwd: repoRoot,
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-    } catch {
-      // Fallback to local main
-      output = execSync(`git diff --stat ${baseBranch}..HEAD`, {
-        cwd: repoRoot,
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-      });
+    let cwd = repoRoot;
+
+    // If worktree path is provided, run git diff in worktree
+    if (worktreePath) {
+      cwd = worktreePath;
+      // In worktree, compare origin/main..HEAD
+      try {
+        output = execSync(`git diff --stat origin/${baseBranch}..HEAD`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch {
+        // Fallback to local main
+        output = execSync(`git diff --stat ${baseBranch}..HEAD`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      }
+    } else if (featureBranch) {
+      // Compare baseBranch..featureBranch in main repo
+      try {
+        output = execSync(`git diff --stat origin/${baseBranch}..${featureBranch}`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch {
+        // Fallback without origin/
+        output = execSync(`git diff --stat ${baseBranch}..${featureBranch}`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      }
+    } else {
+      // Default: compare origin/main..HEAD
+      try {
+        output = execSync(`git diff --stat origin/${baseBranch}..HEAD`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch {
+        // Fallback to local main
+        output = execSync(`git diff --stat ${baseBranch}..HEAD`, {
+          cwd,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      }
     }
 
     // Parse the last line of git diff --stat output
@@ -782,36 +836,68 @@ export function parseRewardResult(
   }
 
   // Parse reward.log.jsonl
-  // The log file contains Claude's JSON output, which may have JSON embedded in text
+  // The log file is in JSONL format (stream-json from Claude CLI)
+  // The reward scores are embedded in the "result" field of entries with type: "result"
   const logContent = readFileSync(logFile, "utf-8");
   const scores: Record<string, RewardScore> = {};
 
-  // Extract JSON objects from content using bracket matching
-  // This handles arbitrarily nested JSON objects
-  const jsonObjects = extractJsonObjects(logContent);
+  // First, extract content to search for score JSONs
+  // This includes both direct JSON objects and the "result" field from stream-json entries
+  const contentToSearch: string[] = [];
 
-  for (const jsonStr of jsonObjects) {
+  // Parse each line as JSONL and extract relevant content
+  const lines = logContent.split("\n").filter((line) => line.trim());
+  for (const line of lines) {
     try {
-      const parsed = JSON.parse(jsonStr);
-
-      if (isSummaryEntry(parsed)) {
-        // Found summary - use its scores
-        for (const [typeName, scoreData] of Object.entries(parsed.scores)) {
-          const data = scoreData as { score: number; reasoning: string };
-          scores[typeName] = {
-            score: data.score,
-            reasoning: data.reasoning,
-          };
+      const entry = JSON.parse(line);
+      // If this is a result entry from stream-json, extract the result field
+      if (entry.type === "result" && typeof entry.result === "string") {
+        contentToSearch.push(entry.result);
+      }
+      // Also check assistant message content
+      if (entry.type === "assistant" && entry.message?.content) {
+        for (const content of entry.message.content) {
+          if (content.type === "text" && typeof content.text === "string") {
+            contentToSearch.push(content.text);
+          }
         }
-      } else if (isScoreEntry(parsed)) {
-        // Individual score entry
-        scores[parsed.type] = {
-          score: parsed.score,
-          reasoning: parsed.reasoning,
-        };
       }
     } catch {
-      // Not valid JSON, skip
+      // Not valid JSON line, add raw content for fallback search
+      contentToSearch.push(line);
+    }
+  }
+
+  // Also add raw content as fallback (for non-JSONL formats)
+  contentToSearch.push(logContent);
+
+  // Extract JSON objects from all content sources
+  for (const content of contentToSearch) {
+    const jsonObjects = extractJsonObjects(content);
+
+    for (const jsonStr of jsonObjects) {
+      try {
+        const parsed = JSON.parse(jsonStr);
+
+        if (isSummaryEntry(parsed)) {
+          // Found summary - use its scores
+          for (const [typeName, scoreData] of Object.entries(parsed.scores)) {
+            const data = scoreData as { score: number; reasoning: string };
+            scores[typeName] = {
+              score: data.score,
+              reasoning: data.reasoning,
+            };
+          }
+        } else if (isScoreEntry(parsed)) {
+          // Individual score entry
+          scores[parsed.type] = {
+            score: parsed.score,
+            reasoning: parsed.reasoning,
+          };
+        }
+      } catch {
+        // Not valid JSON, skip
+      }
     }
   }
 
@@ -838,8 +924,16 @@ export function parseRewardResult(
     total = total / totalWeight;
   }
 
-  // Get diff lines
-  const diffLines = getDiffLines(repoRoot);
+  // Get diff lines - use worktree path or feature branch if available
+  const taskBranch = (taskData as { branch?: string }).branch;
+  const taskWorktreePath = (taskData as { worktree_path?: string }).worktree_path;
+  const taskBaseBranch = (taskData as { base_branch?: string }).base_branch || "main";
+
+  const diffLines = getDiffLines(repoRoot, {
+    baseBranch: taskBaseBranch,
+    featureBranch: taskBranch,
+    worktreePath: taskWorktreePath,
+  });
 
   // Build reward result
   const taskName = taskData.name || taskData.id || basename(taskDirAbs);

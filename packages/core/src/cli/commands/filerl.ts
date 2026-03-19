@@ -15,7 +15,7 @@
 
 import chalk from "chalk";
 import type { Command } from "commander";
-import { writeFileSync, existsSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 
 import type { OutputContext } from "../types";
@@ -151,7 +151,6 @@ export function registerFileRlCommand(program: Command): void {
         // Ensure directory exists
         const dir = dirname(fullPath);
         if (!existsSync(dir)) {
-          const { mkdirSync } = await import("node:fs");
           mkdirSync(dir, { recursive: true });
         }
 
@@ -492,14 +491,14 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl resume <name>
+  // filerl resume <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("resume")
     .description("Resume a paused FileRL run and continue the loop")
-    .argument("<name>", "Name of the FileRL run to resume")
+    .argument("<name-or-target>", "Name of the FileRL run or path to target file (*.md)")
     .option("--json", "JSON format output")
-    .action(async (name: string, options: { json?: boolean }) => {
+    .action(async (nameOrTarget: string, options: { json?: boolean }) => {
       const ctx = getOutputContext(program);
       if (options.json) {
         ctx.json = true;
@@ -508,6 +507,23 @@ export function registerFileRlCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenRoot(cwd);
+
+        // Determine if input is a target file path or a run name
+        let name: string;
+        if (nameOrTarget.endsWith(".md")) {
+          // It's a target file - parse it to get the name
+          const parseResult = parseTarget(nameOrTarget, repoRoot);
+          if (!parseResult.success || !parseResult.config) {
+            throw CliError.operationFailed(
+              "Parse target",
+              parseResult.error || "Failed to parse target file"
+            );
+          }
+          name = parseResult.config.name;
+        } else {
+          // It's a run name
+          name = nameOrTarget;
+        }
 
         // First resume the run
         const resumeResult = resume(repoRoot, name);

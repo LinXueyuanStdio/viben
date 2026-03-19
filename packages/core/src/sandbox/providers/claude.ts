@@ -4,7 +4,7 @@
  * Uses Anthropic's sandbox-runtime (srt) for process-level isolation.
  * Supports network access.
  */
-import { spawn, type ChildProcess } from "child_process";
+import { spawn, execSync, type ChildProcess } from "child_process";
 import { platform } from "os";
 import * as path from "path";
 import type {
@@ -20,7 +20,6 @@ import type {
  * Find the srt executable path
  */
 async function getSrtPath(): Promise<string | undefined> {
-  const { execSync } = await import("child_process");
 
   // Try common locations
   const candidates = [
