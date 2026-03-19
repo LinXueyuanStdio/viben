@@ -10,12 +10,13 @@
  */
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { agentManager } from "../../agents";
 import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
 import type { ExecutorType } from "../../types";
-import { join } from "node:path";
 
 // ============================================================================
 // Helper Functions
@@ -226,7 +227,6 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     // 2. Load workspace agents (if workspace_path provided)
     // Workspace agents override global agents with the same ID
     if (workspace_path) {
-      const { join } = await import("node:path");
       const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
       const workspaceAgents = await agentManager.listAgentsFromDir(workspaceAgentsDir);
 
@@ -885,18 +885,15 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const upperCaseId = id.toUpperCase().replace(/-/g, "_");
       if (executorTypes.includes(upperCaseId)) {
         // Check actual availability based on executor type
-        const fs = await import("node:fs");
-        const path = await import("node:path");
-
         let availability: { type: string; last_auth_timestamp?: number } = { type: "NOT_FOUND" };
 
         switch (upperCaseId) {
           case "CLAUDE_CODE": {
-            const claudeDir = path.join(homeDir, ".claude");
-            const authFile = path.join(claudeDir, "config.json");
-            if (fs.existsSync(authFile)) {
+            const claudeDir = join(homeDir, ".claude");
+            const authFile = join(claudeDir, "config.json");
+            if (existsSync(authFile)) {
               try {
-                const stat = fs.statSync(authFile);
+                const stat = statSync(authFile);
                 availability = {
                   type: "LOGIN_DETECTED",
                   last_auth_timestamp: Math.floor(stat.mtimeMs),
@@ -904,25 +901,25 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
               } catch {
                 availability = { type: "INSTALLATION_FOUND" };
               }
-            } else if (fs.existsSync(claudeDir)) {
+            } else if (existsSync(claudeDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "CODEX": {
-            const codexDir = path.join(homeDir, ".codex");
-            if (fs.existsSync(codexDir)) {
+            const codexDir = join(homeDir, ".codex");
+            if (existsSync(codexDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "CURSOR_AGENT": {
             const cursorPaths = [
-              path.join(homeDir, ".cursor"),
-              path.join(homeDir, "Library/Application Support/Cursor"),
+              join(homeDir, ".cursor"),
+              join(homeDir, "Library/Application Support/Cursor"),
             ];
             for (const p of cursorPaths) {
-              if (fs.existsSync(p)) {
+              if (existsSync(p)) {
                 availability = { type: "INSTALLATION_FOUND" };
                 break;
               }
@@ -930,36 +927,36 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
             break;
           }
           case "AMP": {
-            const ampDir = path.join(homeDir, ".amp");
-            if (fs.existsSync(ampDir)) {
+            const ampDir = join(homeDir, ".amp");
+            if (existsSync(ampDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "GEMINI": {
-            const geminiDir = path.join(homeDir, ".gemini");
-            if (fs.existsSync(geminiDir)) {
+            const geminiDir = join(homeDir, ".gemini");
+            if (existsSync(geminiDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "WINDSURF": {
-            const windsurfDir = path.join(homeDir, ".windsurf");
-            if (fs.existsSync(windsurfDir)) {
+            const windsurfDir = join(homeDir, ".windsurf");
+            if (existsSync(windsurfDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "GOOSE": {
-            const gooseDir = path.join(homeDir, ".goose");
-            if (fs.existsSync(gooseDir)) {
+            const gooseDir = join(homeDir, ".goose");
+            if (existsSync(gooseDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
           }
           case "AIDER": {
-            const aiderDir = path.join(homeDir, ".aider");
-            if (fs.existsSync(aiderDir)) {
+            const aiderDir = join(homeDir, ".aider");
+            if (existsSync(aiderDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;
@@ -1013,7 +1010,6 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
     // 1. Check workspace first (if workspace_path provided)
     if (workspace_path) {
-      const { join } = await import("node:path");
       const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
       agent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
       if (agent) {

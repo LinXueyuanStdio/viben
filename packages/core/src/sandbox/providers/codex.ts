@@ -5,7 +5,7 @@
  * macOS uses Seatbelt, Linux uses Landlock.
  * Network access is disabled for security.
  */
-import { spawn, type ChildProcess } from "child_process";
+import { spawn, execSync, type ChildProcess } from "child_process";
 import { platform } from "os";
 import * as path from "path";
 import type {
@@ -21,7 +21,6 @@ import type {
  * Find the codex executable path
  */
 async function getCodexPath(): Promise<string | undefined> {
-  const { execSync } = await import("child_process");
 
   // Try common locations
   const candidates = [

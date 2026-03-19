@@ -442,10 +442,9 @@ export class CLIAdapter implements ICLIAdapter {
         }
 
         if (jsonOutput) {
-          cmd.push("--output-format", "stream-json");
-        }
-
-        if (verbose) {
+          // Claude CLI requires --verbose when using --output-format=stream-json
+          cmd.push("--output-format", "stream-json", "--verbose");
+        } else if (verbose) {
           cmd.push("--verbose");
         }
 

@@ -17,6 +17,7 @@
  */
 import chalk from "chalk";
 import type { Command } from "commander";
+import { existsSync } from "node:fs";
 import type { OutputContext } from "../types";
 import {
   output,
@@ -617,7 +618,6 @@ export function registerRewardCommand(program: Command): void {
           // Check if there's a custom override
           const customDir = `${repoRoot}/${CUSTOM_REWARD_TYPES_DIR}`;
           const customPath = `${customDir}/${name}.md`;
-          const { existsSync } = await import("node:fs");
           if (!existsSync(customPath)) {
             throw CliError.operationFailed(
               "Delete type",

@@ -5,7 +5,7 @@
  * Fetches from remote index and caches locally.
  */
 import type { FastifyInstance } from "fastify";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -406,7 +406,6 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
     const cachePath = getProviderCachePath();
 
     if (existsSync(cachePath)) {
-      const { unlink } = await import("node:fs/promises");
       await unlink(cachePath);
     }
 
