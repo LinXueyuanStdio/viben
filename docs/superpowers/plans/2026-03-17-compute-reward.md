@@ -237,21 +237,27 @@ git commit -m "feat(agent): add reward agent for PR quality evaluation"
 
 ---
 
-### Task 2.5: Update work.md to handle compute-reward action
+### Task 2.5: Update start.md to handle compute-reward action
+
+> **Note**: Architecture changed - `create-pr` and `compute-reward` are now handled by **start agent** in main repo, not work agent.
 
 **Files:**
-- Modify: `.claude/agents/work.md`
+- Modify: `.claude/commands/viben/start.md`
 
-- [ ] **Step 1: Add compute-reward action documentation**
+- [ ] **Step 1: Add compute-reward phase documentation**
 
-Add after the `action: "create-pr"` section (around line 200):
+Add Phase 4 after Phase 3 (Create PR):
 
 ```markdown
-### action: "compute-reward" (After create-pr, if enabled)
+## Phase 4: Compute Reward (If Enabled)
 
-> **IMPORTANT**: Only run this action if task.json has `compute_reward=true`. Skip if not enabled.
+If task has `compute_reward=true`, run reward phase after PR creation:
 
-This action evaluates PR quality using reward type prompts. Call the reward subagent:
+```bash
+viben task compute-reward "$TASK_DIR"
+```
+
+This action evaluates PR quality using reward type prompts. The reward agent will:
 
 ```
 Task(
@@ -270,7 +276,9 @@ The reward agent will:
 
 After reward agent completes, the scores are written to task.json.
 
-**Workflow order**: implement → check → finish → create-pr → **compute-reward** (if enabled)
+**Workflow order**:
+- Work agent: implement → check → finish
+- Start agent (after work completes): create-pr → **compute-reward** (if enabled)
 ```
 
 - [ ] **Step 2: Update the phase handling table**
@@ -280,8 +288,8 @@ In the "Two Working Modes" section, update to include compute-reward:
 ```markdown
 | Mode | worktree | Branch switching | Final actions |
 |------|----------|------------------|---------------|
-| Main Repo | `false` or absent | NO switching | Notify user for review |
-| Worktree | `true` | Isolated branch | create-pr → compute-reward (if enabled) |
+| Main Repo | `false` or absent | NO switching | Notify completion |
+| Worktree | `true` | Isolated branch | Notify completion (start agent handles create-pr → compute-reward) |
 ```
 
 - [ ] **Step 3: Verify work.md is valid markdown**

@@ -743,7 +743,7 @@ export function registerTaskCommand(program: Command): void {
 
           // Progress Section
           console.log(chalk.bold("Progress"));
-          const phaseNames = ["backlog", "implement", "check", "finish", "create-pr"];
+          const phaseNames = ["backlog", "implement", "check", "finish"];
           const currentPhase = taskJson.current_phase || 0;
           outputKeyValue(ctx, {
             "Current Phase": `${currentPhase}/${phaseNames.length - 1} (${phaseNames[currentPhase] || "unknown"})`,

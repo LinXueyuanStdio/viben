@@ -772,6 +772,7 @@ export function registerSwarmCommand(program: Command): void {
     .option("--all", "Wait for all running agents")
     .option("--polling-interval-seconds <n>", "Polling interval in seconds", "10")
     .option("--timeout-seconds <n>", "Timeout per task in seconds", "300")
+    .option("--global-timeout-seconds <n>", "Global timeout in seconds (0 = no global timeout)", "0")
     .option("--quiet", "Quiet mode - minimal output")
     .option("--verbose", "Verbose mode - show status table each poll")
     .option("--json", "JSON format output")
@@ -779,6 +780,7 @@ export function registerSwarmCommand(program: Command): void {
       all?: boolean;
       pollingIntervalSeconds?: string;
       timeoutSeconds?: string;
+      globalTimeoutSeconds?: string;
       quiet?: boolean;
       verbose?: boolean;
       json?: boolean;
@@ -814,6 +816,7 @@ export function registerSwarmCommand(program: Command): void {
         const waitOptions: WaitOptions = {
           pollingIntervalSeconds: parseInt(options.pollingIntervalSeconds || "10", 10),
           timeoutSeconds: parseInt(options.timeoutSeconds || "300", 10),
+          globalTimeoutSeconds: parseInt(options.globalTimeoutSeconds || "0", 10),
           verbose: options.verbose ?? ctx.verbose ?? false,
           quiet: options.quiet ?? ctx.quiet ?? false,
         };
