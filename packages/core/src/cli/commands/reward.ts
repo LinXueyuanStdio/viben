@@ -7,6 +7,13 @@
  * Subcommands:
  * - list-types: List available reward types (builtin + custom)
  * - select: Select best task using PPO metrics
+ * - compute-for-task: Compute reward for a task
+ * - type: Reward type CRUD subcommands
+ *   - type list: List reward types
+ *   - type view: View a reward type
+ *   - type create: Create a custom reward type
+ *   - type update: Update a custom reward type
+ *   - type delete: Delete a custom reward type
  */
 import chalk from "chalk";
 import type { Command } from "commander";
@@ -15,6 +22,9 @@ import {
   output,
   successResponse,
   outputTable,
+  outputKeyValue,
+  outputSuccess,
+  outputWarning,
   handleCommandError,
 } from "../lib";
 import { CliError } from "../types";
@@ -24,8 +34,13 @@ import { runRewardPhaseSync } from "../../task/phase";
 // Import from reward/ops module
 import {
   listTypes,
+  viewType,
+  createType,
+  updateType,
+  deleteType,
   selectBestTask,
   SELECT_DEFAULTS,
+  CUSTOM_REWARD_TYPES_DIR,
   type RewardType,
   type TaskCandidate,
 } from "../../reward/ops";
@@ -327,6 +342,301 @@ export function registerRewardCommand(program: Command): void {
           console.log();
           console.log(chalk.gray("To monitor:"));
           console.log(`  tail -f ${result.logFile}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // reward type - Reward type CRUD subcommands
+  // ============================================================================
+  const typeCmd = rewardCmd
+    .command("type")
+    .description("Manage reward types (list, view, create, update, delete)");
+
+  // ----------------------------------------------------------------------------
+  // reward type list
+  // ----------------------------------------------------------------------------
+  typeCmd
+    .command("list")
+    .description("List available reward types (builtin + custom)")
+    .option("--json", "JSON format output")
+    .action(async (options: { json?: boolean }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+        const result = listTypes(repoRoot);
+
+        if (!result.success) {
+          throw CliError.operationFailed("List types", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({ types: result.types, count: result.count }), () => {
+          console.log(chalk.bold("Available Reward Types:"));
+          console.log();
+          outputTable(
+            ctx,
+            ["NAME", "SOURCE", "WEIGHT", "DESCRIPTION"],
+            result.types.map((t: RewardType) => [
+              t.name,
+              formatSource(t.source),
+              t.weightDefault?.toFixed(2) || "-",
+              t.description,
+            ])
+          );
+
+          if (result.count > 0) {
+            console.log();
+            console.log(chalk.gray(`Total: ${result.count} type(s)`));
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ----------------------------------------------------------------------------
+  // reward type view <name>
+  // ----------------------------------------------------------------------------
+  typeCmd
+    .command("view")
+    .description("View details of a reward type")
+    .argument("<name>", "Reward type name")
+    .option("--json", "JSON format output")
+    .option("--show-prompt", "Show prompt content")
+    .action(async (name: string, options: { json?: boolean; showPrompt?: boolean }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+        const result = viewType(repoRoot, name);
+
+        if (!result.success) {
+          throw CliError.notFound("Reward type", name);
+        }
+
+        const rt = result.rewardType!;
+
+        output(ctx, successResponse({
+          reward_type: {
+            name: rt.name,
+            description: rt.description,
+            weight_default: rt.weightDefault,
+            source: rt.source,
+            prompt_path: rt.promptPath,
+          },
+          prompt_content: options.showPrompt ? result.promptContent : undefined,
+        }), () => {
+          console.log(chalk.bold(`Reward Type: ${rt.name}`));
+          console.log();
+          outputKeyValue(ctx, {
+            "Name": rt.name,
+            "Description": rt.description,
+            "Source": formatSource(rt.source),
+            "Default Weight": rt.weightDefault?.toString() || "(none)",
+            "Prompt Path": rt.promptPath,
+          });
+
+          if (options.showPrompt && result.promptContent) {
+            console.log();
+            console.log(chalk.bold("Prompt Content:"));
+            console.log(chalk.gray("─".repeat(60)));
+            console.log(result.promptContent);
+            console.log(chalk.gray("─".repeat(60)));
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ----------------------------------------------------------------------------
+  // reward type create <name>
+  // ----------------------------------------------------------------------------
+  typeCmd
+    .command("create")
+    .description("Create a new custom reward type")
+    .argument("<name>", "Reward type name")
+    .requiredOption("-d, --description <text>", "Description of the reward type")
+    .option("-w, --weight <number>", "Default weight (0.0 - 1.0)", parseFloat)
+    .option("--json", "JSON format output")
+    .action(async (
+      name: string,
+      options: { description: string; weight?: number; json?: boolean }
+    ) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Validate weight if provided
+        if (options.weight !== undefined) {
+          if (isNaN(options.weight) || options.weight < 0 || options.weight > 1) {
+            throw CliError.invalidArgument("weight", "must be a number between 0.0 and 1.0");
+          }
+        }
+
+        const result = createType(repoRoot, {
+          name,
+          description: options.description,
+          weightDefault: options.weight,
+        });
+
+        if (!result.success) {
+          throw CliError.operationFailed("Create type", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({
+          reward_type: result.rewardType ? {
+            name: result.rewardType.name,
+            description: result.rewardType.description,
+            weight_default: result.rewardType.weightDefault,
+            source: result.rewardType.source,
+            prompt_path: result.rewardType.promptPath,
+          } : null,
+          file_path: result.filePath,
+        }), () => {
+          outputSuccess(ctx, `Created reward type: ${name}`);
+          console.log();
+          console.log(`  File: ${result.filePath}`);
+          console.log();
+          console.log(chalk.gray(`Edit the prompt at: ${result.filePath}`));
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ----------------------------------------------------------------------------
+  // reward type update <name>
+  // ----------------------------------------------------------------------------
+  typeCmd
+    .command("update")
+    .description("Update a custom reward type")
+    .argument("<name>", "Reward type name")
+    .option("-d, --description <text>", "New description")
+    .option("-w, --weight <number>", "New default weight (0.0 - 1.0)", parseFloat)
+    .option("--json", "JSON format output")
+    .action(async (
+      name: string,
+      options: { description?: string; weight?: number; json?: boolean }
+    ) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Validate weight if provided
+        if (options.weight !== undefined) {
+          if (isNaN(options.weight) || options.weight < 0 || options.weight > 1) {
+            throw CliError.invalidArgument("weight", "must be a number between 0.0 and 1.0");
+          }
+        }
+
+        // Check if any updates provided
+        if (options.description === undefined && options.weight === undefined) {
+          throw CliError.invalidArgument("options", "must provide at least one of --description or --weight");
+        }
+
+        const updates: { description?: string; weightDefault?: number } = {};
+        if (options.description !== undefined) updates.description = options.description;
+        if (options.weight !== undefined) updates.weightDefault = options.weight;
+
+        const result = updateType(repoRoot, name, updates);
+
+        if (!result.success) {
+          if (result.error?.includes("not found")) {
+            throw CliError.notFound("Reward type", name);
+          }
+          throw CliError.operationFailed("Update type", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({
+          reward_type: result.rewardType ? {
+            name: result.rewardType.name,
+            description: result.rewardType.description,
+            weight_default: result.rewardType.weightDefault,
+            source: result.rewardType.source,
+            prompt_path: result.rewardType.promptPath,
+          } : null,
+        }), () => {
+          outputSuccess(ctx, `Updated reward type: ${name}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ----------------------------------------------------------------------------
+  // reward type delete <name>
+  // ----------------------------------------------------------------------------
+  typeCmd
+    .command("delete")
+    .description("Delete a custom reward type")
+    .argument("<name>", "Reward type name")
+    .option("--json", "JSON format output")
+    .option("-f, --force", "Skip confirmation")
+    .action(async (
+      name: string,
+      options: { json?: boolean; force?: boolean }
+    ) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Check if type exists and is deletable
+        const viewResult = viewType(repoRoot, name);
+        if (!viewResult.success) {
+          throw CliError.notFound("Reward type", name);
+        }
+
+        if (viewResult.rewardType?.source === "builtin") {
+          // Check if there's a custom override
+          const customDir = `${repoRoot}/${CUSTOM_REWARD_TYPES_DIR}`;
+          const customPath = `${customDir}/${name}.md`;
+          const { existsSync } = await import("node:fs");
+          if (!existsSync(customPath)) {
+            throw CliError.operationFailed(
+              "Delete type",
+              `Cannot delete builtin type "${name}". Builtin types are shipped with viben.`
+            );
+          }
+        }
+
+        const result = deleteType(repoRoot, name);
+
+        if (!result.success) {
+          if (result.error?.includes("not found")) {
+            throw CliError.notFound("Reward type", name);
+          }
+          throw CliError.operationFailed("Delete type", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({ deleted_type: result.deletedType }), () => {
+          outputSuccess(ctx, `Deleted reward type: ${name}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
