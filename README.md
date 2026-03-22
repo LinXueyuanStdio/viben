@@ -1,12 +1,14 @@
-<div align="center">
-
 **中文 | [English](./README_EN.md)**
 
-# 🚀 Viben
+<div align="center">
 
-### 多智能体工作空间管理器
+<img src="docs/design-system/brand-preview/viben-logo-animated.svg" alt="Viben Logo" width="120" height="120">
 
-*在本地编排 AI Agent 集群，统一管理看板、日历、时间线和任务*
+# 微本
+
+### Agent 集群 × 代码进化
+
+##### 把代码库当作模型参数，针对文件使用强化学习持续优化
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
@@ -16,6 +18,140 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/LinXueyuanStdio/viben/pulls)
 
 </div>
+
+---
+
+## 🧬 FileRL: 代码库强化学习
+
+<div align="center">
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'fontFamily': 'Georgia', 'primaryColor': '#f8fafc', 'primaryTextColor': '#0f172a', 'primaryBorderColor': '#334155', 'lineColor': '#475569'}}}%%
+flowchart LR
+    subgraph INPUT [" "]
+        direction TB
+        I1["Codebase<br/>C ∈ Σ*"]
+        I2["Target<br/>Objective"]
+    end
+
+    subgraph POLICY ["Policy Network π(PR|C)"]
+        direction TB
+        P1["Idea<br/>Generation"]
+        P2["Code<br/>Synthesis"]
+        P3["PR<br/>Creation"]
+        P1 --> P2 --> P3
+    end
+
+    subgraph PARALLEL ["Parallel Rollout (×N)"]
+        direction TB
+        R1["PR₁"]
+        R2["PR₂"]
+        R3["PR₃"]
+        RN["PRₙ"]
+        R1 ~~~ R2 ~~~ R3 ~~~ RN
+    end
+
+    subgraph REWARD ["Reward Model R(PR)"]
+        direction TB
+        W1["Coverage<br/>w₁"]
+        W2["Quality<br/>w₂"]
+        W3["Security<br/>w₃"]
+        W4["Review<br/>w₄"]
+        SUM["Σ wᵢrᵢ"]
+        W1 & W2 & W3 & W4 --> SUM
+    end
+
+    subgraph PPO ["PPO Selection"]
+        direction TB
+        KL["KL ← λ · Δlines/max"]
+        ADJ["R̃ ← R - KL"]
+        ADV["A ← R̃ - baseline"]
+        SEL["π* ← argmax(A)"]
+        KL --> ADJ --> ADV --> SEL
+    end
+
+    subgraph UPDATE ["Parameter Update"]
+        direction TB
+        U1["git merge PR*"]
+        U2["C ← C'"]
+    end
+
+    INPUT --> POLICY
+    POLICY --> PARALLEL
+    PARALLEL --> REWARD
+    REWARD --> PPO
+    PPO --> UPDATE
+    UPDATE -->|"iteration t+1"| INPUT
+
+    classDef inputStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef policyStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
+    classDef parallelStyle fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87
+    classDef rewardStyle fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#831843
+    classDef ppoStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
+    classDef updateStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+
+    class INPUT,I1,I2 inputStyle
+    class POLICY,P1,P2,P3 policyStyle
+    class PARALLEL,R1,R2,R3,RN parallelStyle
+    class REWARD,W1,W2,W3,W4,SUM rewardStyle
+    class PPO,KL,ADJ,ADV,SEL ppoStyle
+    class UPDATE,U1,U2 updateStyle
+```
+
+</div>
+
+**算法形式化定义**
+
+| 符号 | LLM PPO | FileRL | 描述 |
+|:----:|:-------:|:------:|------|
+| **θ** | 模型参数 ∈ ℝᵈ | 代码库 C ∈ Σ* | 优化目标 |
+| **π** | π_θ(y\|x) | π(PR\|C) | 生成策略 |
+| **a** | token yₜ | Pull Request | 单步动作 |
+| **∇** | ∇L | git diff | 梯度/变化 |
+| **update** | θ ← θ - η∇L | git merge | 参数更新 |
+| **R** | R(x,y) | CI + Review | 奖励函数 |
+
+**PPO 目标函数**
+
+$$L^{PPO}(\theta) = \mathbb{E}\left[\min\left(r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t\right)\right] - \lambda \cdot D_{KL}$$
+
+其中 FileRL 的 KL 散度近似为代码变更规模：$D_{KL} \approx \frac{|\Delta\text{lines}|}{\text{max\_diff}}$
+
+<details>
+<summary><b>FileRL CLI 命令</b></summary>
+
+**基础命令**
+```bash
+viben filerl create <name>       # 创建 FileRL 目标文件
+viben filerl start <target.md>   # 启动 FileRL 优化循环
+viben filerl status <name>       # 查看运行状态
+viben filerl list                # 列出所有运行
+viben filerl stop <name>         # 停止运行
+viben filerl resume <name>       # 恢复运行
+```
+
+**Idea 生成与任务转换**
+```bash
+viben idea generate --types <types>          # 生成优化想法
+viben idea list                              # 列出生成的想法
+viben idea promote <id> --worktree --start   # 转为任务并启动
+```
+
+**奖励计算与 PPO 选择**
+```bash
+viben task compute-reward <task>             # 计算 PR 奖励
+viben reward select <tasks...>               # PPO 选择最佳 PR
+viben reward list-types                      # 列出奖励类型
+```
+
+**监控与清理**
+```bash
+viben swarm status --watch    # 实时监控 Agent
+viben task approve <task>     # 批准并合并 PR
+viben task cleanup <task>     # 清理 worktree
+```
+
+</details>
 
 ---
 
