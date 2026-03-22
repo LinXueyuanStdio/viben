@@ -21,6 +21,7 @@ import {
 } from "../../cli/lib/viben-workspace";
 
 import { enqueue as queueEnqueue } from "../../queue/ops/enqueue";
+import { runMergePRPhase } from "../phase/merge-pr";
 
 import type { TaskJson } from "./types";
 
@@ -227,74 +228,6 @@ function cleanupWorktree(
     branchDeleted,
     errors,
   };
-}
-
-/**
- * Merge a PR synchronously using gh CLI
- *
- * @param prUrl - PR URL to merge
- * @param repoRoot - Repository root path
- * @returns Object with success status, merge commit hash, and any errors
- */
-function mergePR(
-  prUrl: string,
-  repoRoot: string
-): { success: boolean; mergeCommit?: string; error?: string } {
-  try {
-    // First check PR status
-    const checkResult = execSync(
-      `gh pr view "${prUrl}" --json state,mergeable,mergeCommit,isDraft`,
-      { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
-    );
-    const prInfo = JSON.parse(checkResult);
-
-    // If already merged, return the merge commit
-    if (prInfo.state === "MERGED") {
-      return {
-        success: true,
-        mergeCommit: prInfo.mergeCommit?.oid || undefined,
-      };
-    }
-
-    // If closed without merge, fail
-    if (prInfo.state === "CLOSED") {
-      return { success: false, error: "PR is closed without being merged" };
-    }
-
-    // If not mergeable, fail
-    if (prInfo.mergeable === "CONFLICTING") {
-      return { success: false, error: "PR has merge conflicts" };
-    }
-
-    // If PR is a draft, mark it as ready for review first
-    if (prInfo.isDraft) {
-      execSync(
-        `gh pr ready "${prUrl}"`,
-        { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
-      );
-    }
-
-    // Merge the PR (without --delete-branch since we already cleaned up the local branch)
-    execSync(
-      `gh pr merge "${prUrl}" --merge`,
-      { cwd: repoRoot, encoding: "utf-8", timeout: 60000 }
-    );
-
-    // Get the merge commit hash
-    const mergeResult = execSync(
-      `gh pr view "${prUrl}" --json mergeCommit`,
-      { cwd: repoRoot, encoding: "utf-8", timeout: 30000 }
-    );
-    const mergeInfo = JSON.parse(mergeResult);
-
-    return {
-      success: true,
-      mergeCommit: mergeInfo.mergeCommit?.oid || undefined,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return { success: false, error: errorMessage };
-  }
 }
 
 // =============================================================================
@@ -549,7 +482,7 @@ export interface ApproveTaskOptions {
  * Approve task: review -> completed
  *
  * Full approve flow (when task has pr_url):
- * 1. Merge PR using gh pr merge
+ * 1. Merge PR using runMergePRPhase (direct gh CLI or agent fallback)
  * 2. Optionally git pull (only if --pull-if-merged)
  * 3. Update task.json with merged_at, merge_commit, status=completed
  *
@@ -586,13 +519,15 @@ export function approveTask(
   const dirName = taskDir.split("/").pop() || taskName;
   const additionalData: Record<string, unknown> = {};
 
-  // Step 1: Merge PR if exists
+  // Step 1: Merge PR if exists (using runMergePRPhase)
   let mergeCommit: string | undefined;
   let mergedAt: string | undefined;
   let prMerged = false;
 
   if (hasPrUrl && !options.skipMerge) {
-    const mergeResult = mergePR(prUrl!, repoRoot);
+    const mergeResult = runMergePRPhase(repoRoot, taskDir, {
+      prUrl: prUrl!,
+    });
     additionalData.mergeResult = mergeResult;
 
     if (!mergeResult.success) {

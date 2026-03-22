@@ -3236,7 +3236,12 @@
       "diagnosticsNone": "None",
       "diagnosticsDefault": "Default",
       "compactPromptWithFocus": "Please compress the conversation history with this focus: {{focus}}",
-      "compactPromptDefault": "Please compress and summarize the conversation history so far, keeping only the essential context needed to continue our work. Remove redundant information while preserving key decisions, code changes, and important details."
+      "compactPromptDefault": "Please compress and summarize the conversation history so far, keeping only the essential context needed to continue our work. Remove redundant information while preserving key decisions, code changes, and important details.",
+      "reviewPromptWithTarget": "Please review the following: {{target}}\n\nProvide a thorough code review including:\n1. Code quality and readability\n2. Potential bugs or issues\n3. Performance considerations\n4. Security concerns\n5. Suggestions for improvement\n\nBe specific and actionable in your feedback.",
+      "reviewPromptDefault": "Please review the recent changes in this workspace.\n\nRun `git diff` to see unstaged changes, and `git diff --staged` for staged changes.\n\nProvide a thorough code review including:\n1. Code quality and readability\n2. Potential bugs or issues\n3. Performance considerations\n4. Security concerns\n5. Suggestions for improvement",
+      "initPrompt": "Please initialize this project by creating a CLAUDE.md file in the workspace root ({{workspacePath}}).\n\nThe CLAUDE.md should include:\n1. Project overview and architecture\n2. Key directories and their purposes\n3. Build and test commands\n4. Important conventions and patterns\n5. Any project-specific instructions for AI assistants\n\nAnalyze the existing codebase structure first to generate accurate and helpful content.",
+      "prCommentsPromptWithNumber": "Please fetch and display the comments from GitHub PR #{{prNumber}}.\n\nUse the `gh` CLI to get PR comments:\n```\ngh pr view {{prNumber}} --comments\n```\n\nSummarize the feedback and any action items.",
+      "prCommentsPromptDefault": "Please check if there's an open PR for the current branch and display its comments.\n\nUse the `gh` CLI:\n```\ngh pr view --comments\n```\n\nIf there's no PR, let me know. Otherwise, summarize the feedback and any action items."
     },
     "fileErrors": {
       "failedToReadFile": "Failed to read file",

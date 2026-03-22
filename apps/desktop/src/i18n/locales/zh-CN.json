@@ -3304,7 +3304,12 @@
       "diagnosticsNone": "无",
       "diagnosticsDefault": "默认",
       "compactPromptWithFocus": "请以此焦点压缩对话历史：{{focus}}",
-      "compactPromptDefault": "请压缩并总结目前为止的对话历史，只保留继续工作所需的重要上下文。删除冗余信息，同时保留关键决策、代码更改和重要细节。"
+      "compactPromptDefault": "请压缩并总结目前为止的对话历史，只保留继续工作所需的重要上下文。删除冗余信息，同时保留关键决策、代码更改和重要细节。",
+      "reviewPromptWithTarget": "请审查以下内容：{{target}}\n\n提供全面的代码审查，包括：\n1. 代码质量和可读性\n2. 潜在的 bug 或问题\n3. 性能考虑\n4. 安全问题\n5. 改进建议\n\n请提供具体且可操作的反馈。",
+      "reviewPromptDefault": "请审查此工作区中的最近更改。\n\n运行 `git diff` 查看未暂存的更改，运行 `git diff --staged` 查看已暂存的更改。\n\n提供全面的代码审查，包括：\n1. 代码质量和可读性\n2. 潜在的 bug 或问题\n3. 性能考虑\n4. 安全问题\n5. 改进建议",
+      "initPrompt": "请在工作区根目录 ({{workspacePath}}) 创建 CLAUDE.md 文件来初始化此项目。\n\nCLAUDE.md 应包括：\n1. 项目概述和架构\n2. 关键目录及其用途\n3. 构建和测试命令\n4. 重要的约定和模式\n5. 任何针对 AI 助手的项目特定说明\n\n请先分析现有代码库结构，以生成准确且有帮助的内容。",
+      "prCommentsPromptWithNumber": "请获取并显示 GitHub PR #{{prNumber}} 的评论。\n\n使用 `gh` CLI 获取 PR 评论：\n```\ngh pr view {{prNumber}} --comments\n```\n\n总结反馈意见和待办事项。",
+      "prCommentsPromptDefault": "请检查当前分支是否有打开的 PR 并显示其评论。\n\n使用 `gh` CLI：\n```\ngh pr view --comments\n```\n\n如果没有 PR，请告诉我。否则，请总结反馈意见和待办事项。"
     },
     "fileErrors": {
       "failedToReadFile": "读取文件失败",

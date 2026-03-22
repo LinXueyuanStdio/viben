@@ -1833,7 +1833,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         // Call approveTask which handles:
-        // 1. PR merge using gh pr merge
+        // 1. PR merge using runMergePRPhase (direct gh CLI or agent fallback)
         // 2. Optionally cleanup worktree (if --cleanup-if-merged)
         // 3. Optionally git pull (if --pull-if-merged)
         // 4. task.json update with merged_at, merge_commit, status=completed

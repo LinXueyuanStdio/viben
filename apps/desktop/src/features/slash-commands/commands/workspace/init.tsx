@@ -10,6 +10,8 @@ export const initCommand: SlashCommandDefinition = {
   category: "workspace",
   source: "builtin",
   execute: async (context) => {
+    const { t } = context;
+
     if (!context.workspacePath) {
       return {
         type: "action",
@@ -19,16 +21,7 @@ export const initCommand: SlashCommandDefinition = {
 
     return {
       type: "prompt",
-      prompt: `Please initialize this project by creating a CLAUDE.md file in the workspace root (${context.workspacePath}).
-
-The CLAUDE.md should include:
-1. Project overview and architecture
-2. Key directories and their purposes
-3. Build and test commands
-4. Important conventions and patterns
-5. Any project-specific instructions for AI assistants
-
-Analyze the existing codebase structure first to generate accurate and helpful content.`,
+      prompt: t("chat.slashCommands.initPrompt", { workspacePath: context.workspacePath }),
     };
   },
 };
