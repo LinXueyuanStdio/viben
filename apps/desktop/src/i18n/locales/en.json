@@ -2791,6 +2791,15 @@
         "finish": "Finishing",
         "create-pr": "Creating PR"
       },
+      "actionDesc": {
+        "plan": "Planning and requirement analysis",
+        "implement": "Writing code and implementing features",
+        "check": "Code review and quality validation",
+        "fix": "Fixing issues and bugs",
+        "finish": "Final touches and cleanup",
+        "create-pr": "Creating pull request for review",
+        "default": "Executing action"
+      },
       "phase": {
         "idle": "Idle",
         "plan": "Planning",
