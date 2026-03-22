@@ -17,6 +17,8 @@ export const prCommentsCommand: SlashCommandDefinition = {
     },
   ],
   execute: async (context, args) => {
+    const { t } = context;
+
     if (!context.workspacePath) {
       return {
         type: "action",
@@ -29,27 +31,13 @@ export const prCommentsCommand: SlashCommandDefinition = {
     if (prNumber) {
       return {
         type: "prompt",
-        prompt: `Please fetch and display the comments from GitHub PR #${prNumber}.
-
-Use the \`gh\` CLI to get PR comments:
-\`\`\`
-gh pr view ${prNumber} --comments
-\`\`\`
-
-Summarize the feedback and any action items.`,
+        prompt: t("chat.slashCommands.prCommentsPromptWithNumber", { prNumber }),
       };
     }
 
     return {
       type: "prompt",
-      prompt: `Please check if there's an open PR for the current branch and display its comments.
-
-Use the \`gh\` CLI:
-\`\`\`
-gh pr view --comments
-\`\`\`
-
-If there's no PR, let me know. Otherwise, summarize the feedback and any action items.`,
+      prompt: t("chat.slashCommands.prCommentsPromptDefault"),
     };
   },
 };

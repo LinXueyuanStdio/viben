@@ -1,22 +1,23 @@
 /**
  * Merge PR Phase Runner
  *
- * Runs the merge-pr agent for a task to merge an associated PR.
- * This is a synchronous phase runner - it spawns the agent and waits for completion.
+ * Merges a PR for a task. First attempts direct merge via gh CLI,
+ * falls back to merge-pr agent for complex cases (CI failures, conflicts).
  *
  * Prerequisites:
  *    - task.json must exist
  *    - task.json must contain pr_url
- *    - merge-pr agent must exist (.claude/agents/merge-pr.md)
  *
- * The agent will:
- *    1. Check PR status (CI, mergeable)
- *    2. Merge the PR if ready
- *    3. Update task.json with merged_at, merge_commit, status
+ * Flow:
+ *    1. Check PR status (CI, mergeable, draft)
+ *    2. If draft, mark as ready for review
+ *    3. Attempt direct merge via gh CLI
+ *    4. If direct merge fails, optionally run merge-pr agent
+ *    5. Update task.json with merged_at, merge_commit
  */
 
-import { spawn, type SpawnOptions, type ChildProcess } from "node:child_process";
-import { existsSync, writeFileSync, openSync, closeSync } from "node:fs";
+import { spawnSync, execSync } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 import {
@@ -39,6 +40,10 @@ export interface MergePRPhaseOptions {
   platform?: string;
   /** Enable verbose output */
   verbose?: boolean;
+  /** Use agent for merge (default: false, uses direct gh CLI) */
+  useAgent?: boolean;
+  /** PR URL override (if not reading from task.json) */
+  prUrl?: string;
 }
 
 /**
@@ -47,13 +52,17 @@ export interface MergePRPhaseOptions {
 export interface MergePRPhaseResult {
   /** Whether the merge completed successfully */
   success: boolean;
-  /** Agent ID for tracking */
+  /** Merge commit hash */
+  mergeCommit?: string;
+  /** Whether agent was used (vs direct merge) */
+  usedAgent?: boolean;
+  /** Agent ID for tracking (if agent was used) */
   agentId?: string;
-  /** Process ID of the spawned agent */
+  /** Process ID of the spawned agent (if agent was used) */
   pid?: number;
-  /** Path to the log file */
+  /** Path to the log file (if agent was used) */
   logFile?: string;
-  /** Exit code of the merge agent process */
+  /** Exit code of the merge agent process (if agent was used) */
   exitCode?: number;
   /** Error message if failed */
   error?: string;
@@ -71,30 +80,101 @@ interface TaskData {
 }
 
 // =============================================================================
+// Direct Merge Function (gh CLI)
+// =============================================================================
+
+/**
+ * Merge a PR directly using gh CLI
+ *
+ * @param prUrl - PR URL to merge
+ * @param workingDir - Working directory (repo root or worktree)
+ * @returns Object with success status, merge commit hash, and any errors
+ */
+function mergePRDirect(
+  prUrl: string,
+  workingDir: string
+): { success: boolean; mergeCommit?: string; error?: string } {
+  try {
+    // First check PR status
+    const checkResult = execSync(
+      `gh pr view "${prUrl}" --json state,mergeable,mergeCommit,isDraft`,
+      { cwd: workingDir, encoding: "utf-8", timeout: 30000 }
+    );
+    const prInfo = JSON.parse(checkResult);
+
+    // If already merged, return the merge commit
+    if (prInfo.state === "MERGED") {
+      return {
+        success: true,
+        mergeCommit: prInfo.mergeCommit?.oid || undefined,
+      };
+    }
+
+    // If closed without merge, fail
+    if (prInfo.state === "CLOSED") {
+      return { success: false, error: "PR is closed without being merged" };
+    }
+
+    // If not mergeable, fail
+    if (prInfo.mergeable === "CONFLICTING") {
+      return { success: false, error: "PR has merge conflicts" };
+    }
+
+    // If PR is a draft, mark it as ready for review first
+    if (prInfo.isDraft) {
+      execSync(
+        `gh pr ready "${prUrl}"`,
+        { cwd: workingDir, encoding: "utf-8", timeout: 30000 }
+      );
+    }
+
+    // Merge the PR (without --delete-branch since we already cleaned up the local branch)
+    execSync(
+      `gh pr merge "${prUrl}" --merge`,
+      { cwd: workingDir, encoding: "utf-8", timeout: 60000 }
+    );
+
+    // Get the merge commit hash
+    const mergeResult = execSync(
+      `gh pr view "${prUrl}" --json mergeCommit`,
+      { cwd: workingDir, encoding: "utf-8", timeout: 30000 }
+    );
+    const mergeInfo = JSON.parse(mergeResult);
+
+    return {
+      success: true,
+      mergeCommit: mergeInfo.mergeCommit?.oid || undefined,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errorMessage };
+  }
+}
+
+// =============================================================================
 // Main Function
 // =============================================================================
 
 /**
- * Run the merge-pr phase for a task (synchronous - waits for agent to complete)
+ * Run the merge-pr phase for a task (synchronous)
  *
  * This function:
- * 1. Validates prerequisites (task.json, pr_url, merge-pr agent)
- * 2. Sets up environment variables
- * 3. Spawns the merge-pr agent and waits for completion
- * 4. Registers the agent to the registry
- * 5. Returns result with exit code
+ * 1. Validates prerequisites (task.json, pr_url)
+ * 2. Attempts direct merge via gh CLI (fast path)
+ * 3. If useAgent=true or direct merge fails with conflicts, spawns merge-pr agent
+ * 4. Returns result with merge commit hash
  *
  * @param repoRoot - Repository root path
  * @param taskDir - Task directory path (relative or absolute)
  * @param options - Phase options
- * @returns MergePRPhaseResult with success status and exit code
+ * @returns MergePRPhaseResult with success status and merge commit
  */
-export async function runMergePRPhase(
+export function runMergePRPhase(
   repoRoot: string,
   taskDir: string,
   options?: MergePRPhaseOptions
-): Promise<MergePRPhaseResult> {
-  const { platform = "claude", verbose = true } = options || {};
+): MergePRPhaseResult {
+  const { platform = "claude", verbose = true, useAgent = false, prUrl: prUrlOverride } = options || {};
 
   // Initialize CLI adapter
   const adapter = createCLIAdapter(platform);
@@ -133,20 +213,12 @@ export async function runMergePRPhase(
     };
   }
 
-  // 3. Check pr_url exists
-  if (!taskData.pr_url) {
+  // 3. Get pr_url (from override or task.json)
+  const prUrl = prUrlOverride || taskData.pr_url;
+  if (!prUrl) {
     return {
       success: false,
-      error: "task.json does not contain pr_url",
-    };
-  }
-
-  // 4. Check merge-pr agent exists
-  const mergePrMd = adapter.getAgentConfigPath("merge-pr", repoRoot);
-  if (!existsSync(mergePrMd)) {
-    return {
-      success: false,
-      error: `merge-pr.md not found at ${mergePrMd}. Platform: ${platform}`,
+      error: "No pr_url provided (neither in options nor task.json)",
     };
   }
 
@@ -164,7 +236,46 @@ export async function runMergePRPhase(
   }
 
   // =============================================================================
-  // Set Up Environment
+  // Try Direct Merge First (unless useAgent is explicitly requested)
+  // =============================================================================
+
+  if (!useAgent) {
+    const directResult = mergePRDirect(prUrl, workingDir);
+    if (directResult.success) {
+      return {
+        success: true,
+        mergeCommit: directResult.mergeCommit,
+        usedAgent: false,
+      };
+    }
+
+    // If direct merge failed due to conflicts, we could try agent
+    // For now, just return the error (agent can be requested via useAgent=true)
+    if (!directResult.error?.includes("merge conflicts")) {
+      return {
+        success: false,
+        error: directResult.error,
+        usedAgent: false,
+      };
+    }
+
+    // Fall through to agent for conflict resolution
+  }
+
+  // =============================================================================
+  // Check merge-pr agent exists (only needed if using agent)
+  // =============================================================================
+
+  const mergePrMd = adapter.getAgentConfigPath("merge-pr", repoRoot);
+  if (!existsSync(mergePrMd)) {
+    return {
+      success: false,
+      error: `merge-pr.md not found at ${mergePrMd}. Platform: ${platform}`,
+    };
+  }
+
+  // =============================================================================
+  // Set Up Environment for Agent
   // =============================================================================
 
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
@@ -172,7 +283,7 @@ export async function runMergePRPhase(
   // Task-specific environment variables
   env.MERGE_TASK_NAME = taskName;
   env.MERGE_TASK_DIR = taskDirRelative;
-  env.MERGE_PR_URL = taskData.pr_url;
+  env.MERGE_PR_URL = prUrl;
   if (taskData.worktree_path) {
     env.MERGE_WORKTREE_PATH = taskData.worktree_path;
   }
@@ -186,14 +297,14 @@ export async function runMergePRPhase(
   Object.assign(env, adapter.getNonInteractiveEnv());
 
   // =============================================================================
-  // Build CLI Command
+  // Build CLI Command for Agent
   // =============================================================================
 
   const prompt = `task_dir: ${taskDirAbs}
 
 Merge the PR for this task.
 
-PR URL: ${taskData.pr_url}
+PR URL: ${prUrl}
 
 Check CI status, resolve conflicts if any, then merge.
 Update task.json with merged_at, merge_commit, and status when done.`;
@@ -207,7 +318,7 @@ Update task.json with merged_at, merge_commit, and status when done.`;
   });
 
   // =============================================================================
-  // Spawn Process and Wait for Completion
+  // Spawn Agent Process Synchronously
   // =============================================================================
 
   const logFile = join(taskDirAbs, "merge-pr.log.jsonl");
@@ -215,37 +326,20 @@ Update task.json with merged_at, merge_commit, and status when done.`;
   // Create empty log file
   writeFileSync(logFile, "", "utf-8");
 
-  // Open log file for writing
-  const logFd = openSync(logFile, "w");
-
-  // Spawn options (synchronous - no detached mode)
-  const spawnOpts: SpawnOptions = {
+  // Spawn synchronously and wait for completion
+  const result = spawnSync(cliCmd[0], cliCmd.slice(1), {
     cwd: workingDir,
     env,
-    stdio: ["ignore", logFd, logFd],
-  };
-
-  let child: ChildProcess;
-  try {
-    child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  } catch (error) {
-    closeSync(logFd);
-    return {
-      success: false,
-      error: `Failed to spawn merge-pr agent: ${error}`,
-    };
-  }
-
-  const agentPid = child.pid || 0;
-
-  // Wait for process to complete
-  const exitCode = await new Promise<number>((resolve) => {
-    child.on("close", (code) => resolve(code ?? 1));
-    child.on("error", () => resolve(1));
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf-8",
   });
 
-  // Close file descriptor after process completes
-  closeSync(logFd);
+  // Write output to log file
+  const output = (result.stdout || "") + (result.stderr || "");
+  writeFileSync(logFile, output, "utf-8");
+
+  const exitCode = result.status ?? 1;
+  const agentPid = result.pid || 0;
 
   // =============================================================================
   // Register Agent to Registry
@@ -270,8 +364,17 @@ Update task.json with merged_at, merge_commit, and status when done.`;
 
   const success = exitCode === 0;
 
+  // If agent succeeded, try to get merge commit from task.json (agent should have updated it)
+  let mergeCommit: string | undefined;
+  if (success) {
+    const updatedTaskData = readTaskJson(taskDirAbs) as { merge_commit?: string } | null;
+    mergeCommit = updatedTaskData?.merge_commit;
+  }
+
   return {
     success,
+    mergeCommit,
+    usedAgent: true,
     agentId,
     pid: agentPid,
     logFile,

@@ -45,6 +45,17 @@ const COMMAND_I18N_KEYS: Record<string, string> = {
 };
 
 /**
+ * Map of command ID + arg name to their i18n description keys
+ * Key format: "commandId:argName"
+ */
+const COMMAND_ARGS_I18N_KEYS: Record<string, string> = {
+  "compact:summary": "chat.slashCommands.compactArgDesc",
+  "model:model_name": "chat.slashCommands.modelArgDesc",
+  "review:target": "chat.slashCommands.reviewArgDesc",
+  "pr-comments:pr_number": "chat.slashCommands.prCommentsArgDesc",
+};
+
+/**
  * Hook that provides all builtin slash commands with translated descriptions
  */
 export function useBuiltinCommands(): SlashCommandDefinition[] {
@@ -81,16 +92,28 @@ export function useBuiltinCommands(): SlashCommandDefinition[] {
         logoutCommand,
       ];
 
-      // Apply translations to command descriptions
+      // Apply translations to command descriptions and args descriptions
       return commands.map((cmd) => {
-        const i18nKey = COMMAND_I18N_KEYS[cmd.id];
-        if (i18nKey) {
-          return {
-            ...cmd,
-            description: t(i18nKey, cmd.description),
-          };
-        }
-        return cmd;
+        const descKey = COMMAND_I18N_KEYS[cmd.id];
+        const translatedDesc = descKey ? t(descKey, cmd.description) : cmd.description;
+
+        // Translate args descriptions if present
+        const translatedArgs = cmd.args?.map((arg) => {
+          const argKey = COMMAND_ARGS_I18N_KEYS[`${cmd.id}:${arg.name}`];
+          if (argKey) {
+            return {
+              ...arg,
+              description: t(argKey, arg.description),
+            };
+          }
+          return arg;
+        });
+
+        return {
+          ...cmd,
+          description: translatedDesc,
+          ...(translatedArgs && { args: translatedArgs }),
+        };
       });
     },
     [t]

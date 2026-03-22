@@ -17,6 +17,8 @@ export const reviewCommand: SlashCommandDefinition = {
     },
   ],
   execute: async (context, args) => {
+    const { t } = context;
+
     if (!context.workspacePath) {
       return {
         type: "action",
@@ -29,31 +31,13 @@ export const reviewCommand: SlashCommandDefinition = {
     if (target) {
       return {
         type: "prompt",
-        prompt: `Please review the following: ${target}
-
-Provide a thorough code review including:
-1. Code quality and readability
-2. Potential bugs or issues
-3. Performance considerations
-4. Security concerns
-5. Suggestions for improvement
-
-Be specific and actionable in your feedback.`,
+        prompt: t("chat.slashCommands.reviewPromptWithTarget", { target }),
       };
     }
 
     return {
       type: "prompt",
-      prompt: `Please review the recent changes in this workspace.
-
-Run \`git diff\` to see unstaged changes, and \`git diff --staged\` for staged changes.
-
-Provide a thorough code review including:
-1. Code quality and readability
-2. Potential bugs or issues
-3. Performance considerations
-4. Security concerns
-5. Suggestions for improvement`,
+      prompt: t("chat.slashCommands.reviewPromptDefault"),
     };
   },
 };
