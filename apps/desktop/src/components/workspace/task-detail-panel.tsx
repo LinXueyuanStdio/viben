@@ -250,13 +250,13 @@ function PropertyRow({
 }
 
 // Action configuration with unique icons and colors
+// Note: descriptions are fetched from i18n (workspace.taskCard.actionDesc.*)
 interface ActionConfig {
   Icon: LucideIcon;
   color: string;           // Tailwind color class (without bg-/text-)
   bgColor: string;         // Background color class
   textColor: string;       // Text color class
   ringColor: string;       // Ring color for active state
-  description: string;
 }
 
 const ACTION_CONFIGS: Record<string, ActionConfig> = {
@@ -266,7 +266,6 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     bgColor: "bg-blue-500",
     textColor: "text-blue-500",
     ringColor: "ring-blue-500/20",
-    description: "Planning and requirement analysis",
   },
   implement: {
     Icon: Code2,
@@ -274,7 +273,6 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     bgColor: "bg-purple-500",
     textColor: "text-purple-500",
     ringColor: "ring-purple-500/20",
-    description: "Writing code and implementing features",
   },
   check: {
     Icon: ShieldCheck,
@@ -282,7 +280,6 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     bgColor: "bg-green-500",
     textColor: "text-green-500",
     ringColor: "ring-green-500/20",
-    description: "Code review and quality validation",
   },
   finish: {
     Icon: Target,
@@ -290,7 +287,6 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     bgColor: "bg-orange-500",
     textColor: "text-orange-500",
     ringColor: "ring-orange-500/20",
-    description: "Final touches and cleanup",
   },
   "create-pr": {
     Icon: GitPullRequest,
@@ -298,7 +294,6 @@ const ACTION_CONFIGS: Record<string, ActionConfig> = {
     bgColor: "bg-pink-500",
     textColor: "text-pink-500",
     ringColor: "ring-pink-500/20",
-    description: "Creating pull request for review",
   },
 };
 
@@ -309,7 +304,6 @@ const DEFAULT_ACTION_CONFIG: ActionConfig = {
   bgColor: "bg-gray-500",
   textColor: "text-gray-500",
   ringColor: "ring-gray-500/20",
-  description: "Executing action",
 };
 
 // Format duration helper
@@ -530,7 +524,7 @@ function ExecutionProgressTimeline({
                   )}>
                     <div className="p-2 rounded bg-muted/50 text-xs">
                       <p className="text-muted-foreground">
-                        {t(`workspace.taskCard.actionDesc.${action.action}`, config.description)}
+                        {t(`workspace.taskCard.actionDesc.${action.action}`, t("workspace.taskCard.actionDesc.default", "Executing action"))}
                       </p>
                       {/* Could add more details here: logs preview, files modified, etc. */}
                     </div>

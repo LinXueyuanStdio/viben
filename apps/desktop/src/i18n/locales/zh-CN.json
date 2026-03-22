@@ -2858,6 +2858,15 @@
         "finish": "收尾中",
         "create-pr": "创建 PR"
       },
+      "actionDesc": {
+        "plan": "规划和需求分析",
+        "implement": "编写代码并实现功能",
+        "check": "代码审查和质量验证",
+        "fix": "修复问题和缺陷",
+        "finish": "最后调整和清理",
+        "create-pr": "创建 Pull Request 进行审查",
+        "default": "执行操作"
+      },
       "phase": {
         "idle": "空闲",
         "plan": "规划中",
