@@ -2480,7 +2480,7 @@
     "kanbanStatus": {
       "backlog": "待办",
       "queue": "排队中",
-      "in_progress": "执行中",
+      "inProgress": "执行中",
       "paused": "暂停中",
       "review": "审查",
       "completed": "已完成",
@@ -2577,6 +2577,7 @@
     "moveToColumn": "移动到",
     "deleteTaskConfirm": "确定要删除此任务吗？",
     "setPriority": "设置优先级",
+    "setStatus": "设置状态",
     "runAgent": "运行",
     "running": "运行中",
     "failed": "失败",
@@ -2812,7 +2813,7 @@
     "kanbanStatus": {
       "backlog": "待办",
       "queue": "排队中",
-      "in_progress": "执行中",
+      "inProgress": "执行中",
       "paused": "暂停中",
       "review": "审查",
       "completed": "已完成",
