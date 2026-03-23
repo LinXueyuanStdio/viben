@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "配置概述"
-description: "Viben CLI 配置系统概述 - 文件位置、环境变量和作用域解析"
+description: "微本 CLI 配置系统概述 - 文件位置、环境变量和作用域解析"
 ---
 
 # 配置概述
 
-Viben CLI 使用分层配置系统，支持全局和工作区特定设置。配置文件采用 YAML 格式，便于阅读和编辑。
+微本 CLI 使用分层配置系统，支持全局和工作区特定设置。配置文件采用 YAML 格式，便于阅读和编辑。
 
 ## 配置文件位置
 
@@ -39,7 +39,7 @@ CLI 使用以下目录结构存储配置：
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `VIBEN_STATE_DIR` | 所有 Viben 状态文件的根目录 | `~/.viben` |
+| `VIBEN_STATE_DIR` | 所有微本状态文件的根目录 | `~/.viben` |
 | `VIBEN_CONFIG_PATH` | 全局配置文件路径 | `~/.viben/config.yaml` |
 | `VIBEN_AGENT` | 当前使用的智能体 ID | `main` |
 | `VIBEN_SCOPE` | 配置作用域（`global` 或 `workspace`） | 自动检测 |

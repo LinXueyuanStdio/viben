@@ -207,7 +207,7 @@
       "shortcuts": "快捷键"
     },
     "generalDescription": "通用应用设置",
-    "appearanceDescription": "自定义 Viben 在设备上的外观。",
+    "appearanceDescription": "自定义微本在设备上的外观。",
     "environmentDescription": "Python 和包配置",
     "storageDescription": "管理下载和缓存",
     "aboutDescription": "应用信息和更新",
@@ -270,7 +270,7 @@
     "toggleTheme": "切换主题"
   },
   "about": {
-    "title": "Viben",
+    "title": "微本",
     "version": "版本 {{version}}",
     "updateAvailable": "有可用更新",
     "versionReady": "版本 {{version}} 已准备好安装",
@@ -457,7 +457,7 @@
     "signInTitle": "欢迎回来",
     "signInDescription": "登录您的账户以继续",
     "signUpTitle": "创建账户",
-    "signUpDescription": "开始使用 Viben",
+    "signUpDescription": "开始使用微本",
     "continueWithGitHub": "使用 GitHub 登录",
     "orContinueWith": "或使用邮箱登录",
     "email": "邮箱",
@@ -1150,7 +1150,7 @@
     "preferCloud": "优先云端"
   },
   "onboarding": {
-    "footer": "Viben - 您的 AI 研究助手",
+    "footer": "微本 - 您的 AI 研究助手",
     "steps": {
       "python": "Python",
       "claude": "AI 客户端",
@@ -1158,7 +1158,7 @@
     },
     "python": {
       "title": "Python 环境",
-      "description": "Viben 需要 Python 3.10+ 才能运行。请选择或配置您的 Python 安装。",
+      "description": "微本需要 Python 3.10+ 才能运行。请选择或配置您的 Python 安装。",
       "detected": "检测到的 Python 安装",
       "detecting": "正在检测 Python 安装...",
       "noPython": "未找到 Python 安装。请安装 Python 3.10 或更高版本。",
@@ -1170,7 +1170,7 @@
     },
     "claude": {
       "title": "AI 客户端检测",
-      "description": "Viben 可以与多种 AI 助手集成。我们在您的系统上检测到以下客户端。",
+      "description": "微本可以与多种 AI 助手集成。我们在您的系统上检测到以下客户端。",
       "aiClients": "AI 客户端",
       "detecting": "正在检测 AI 客户端...",
       "download": "下载",
@@ -1309,14 +1309,14 @@
     "hero": {
       "badge": "多智能体工作空间",
       "title": "从想法到上线，再到迭代维护。让多智能体协作真正可控。",
-      "description": "Viben 不是「只会写代码」的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。",
+      "description": "微本不是「只会写代码」的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。",
       "cta": {
         "getStarted": "立即开始",
         "viewStats": "查看代码统计"
       }
     },
     "challenges": {
-      "badge": "Why Viben",
+      "badge": "为什么选微本",
       "title": "AI 能写代码，但代码不等于产品",
       "items": {
         "codeScatter": {
@@ -1387,8 +1387,8 @@
     },
     "download": {
       "badge": "Download",
-      "title": "获取 Viben",
-      "description": "选择适合你的方式开始使用 Viben，桌面应用提供完整的可视化工作台，CLI 适合命令行爱好者。",
+      "title": "获取微本",
+      "description": "选择适合你的方式开始使用微本，桌面应用提供完整的可视化工作台，CLI 适合命令行爱好者。",
       "desktopApp": "桌面应用",
       "cliTools": "命令行工具",
       "macosDesc": "Universal 版本，支持 Intel 和 Apple Silicon 芯片。",
@@ -1405,7 +1405,7 @@
       "copyCommand": "复制命令"
     },
     "agents": {
-      "title": "开发者与团队正在用 Viben 提升交付效率",
+      "title": "开发者与团队正在用微本提升交付效率",
       "description": "兼容主流智能体客户端，保留你已有的模型与工具链。"
     },
     "pricing": {
@@ -1418,12 +1418,12 @@
       "title": "常见问题",
       "items": {
         "difference": {
-          "q": "Viben 和传统 AI 编码助手有什么不同？",
-          "a": "Viben 聚焦「多智能体工作流编排」，不只生成代码，还覆盖任务管理、审查节点与持续迭代。"
+          "q": "微本和传统 AI 编码助手有什么不同？",
+          "a": "微本聚焦「多智能体工作流编排」，不只生成代码，还覆盖任务管理、审查节点与持续迭代。"
         },
         "model": {
           "q": "是否必须使用特定模型？",
-          "a": "不需要。Viben 基于 MCP 生态，可接入多种模型与客户端，按团队习惯自由组合。"
+          "a": "不需要。微本基于 MCP 生态，可接入多种模型与客户端，按团队习惯自由组合。"
         },
         "audience": {
           "q": "适合个人开发者还是团队？",

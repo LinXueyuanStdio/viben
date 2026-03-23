@@ -1,16 +1,16 @@
 ---
 sidebar_position: 3
 title: "可用插件"
-description: "Viben 官方和社区插件列表"
+description: "微本官方和社区插件列表"
 ---
 
 # 可用插件
 
-本页列出 Viben 的官方和社区插件。
+本页列出微本的官方和社区插件。
 
 ## 官方插件
 
-这些插件由 Viben 团队维护。
+这些插件由微本团队维护。
 
 ### 社交媒体插件
 
@@ -62,7 +62,7 @@ pip install browse-mcp-plugin-social-media
 ## 社区插件
 
 :::info 即将推出
-社区插件将在可用时列在此处。如果您为 Viben 创建了插件，请提交 pull request 将其添加到此列表。
+社区插件将在可用时列在此处。如果您为微本创建了插件，请提交 pull request 将其添加到此列表。
 :::
 
 ### 创建您自己的插件
@@ -140,7 +140,7 @@ backend/plugins/browse-mcp-plugin-social-media/
 
 - 插件必须发布在 PyPI 上
 - 必须有文档或 README
-- 必须遵循 Viben 插件约定
+- 必须遵循微本插件约定
 - 应包含测试
 
 ## 下一步

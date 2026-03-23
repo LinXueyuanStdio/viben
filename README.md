@@ -23,132 +23,224 @@
 
 ## 🧬 FileRL: 代码库强化学习
 
+> *将代码库视为可优化的参数空间，通过 PPO 算法迭代提升代码质量*
+
+<details open>
+<summary><b>算法概述</b></summary>
+
 <div align="center">
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'fontFamily': 'Georgia', 'primaryColor': '#f8fafc', 'primaryTextColor': '#0f172a', 'primaryBorderColor': '#334155', 'lineColor': '#475569'}}}%%
-flowchart LR
-    subgraph INPUT [" "]
-        direction TB
-        I1["Codebase<br/>C ∈ Σ*"]
-        I2["Target<br/>Objective"]
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '12px', 'fontFamily': 'Georgia'}}}%%
+flowchart TB
+    subgraph MODELS ["🧠 Model = Codebase(θ) + Agent(f)"]
+        direction LR
+
+        subgraph M1 ["π_θ Policy (Actor)"]
+            C1["📂 Worktree<br/>𝒞_θ 可变"]
+            A1["🤖 Agent<br/>生成 PR"]
+        end
+        subgraph M2 ["π_ref Reference"]
+            C2["📂 Main Branch<br/>𝒞_ref 固定"]
+            A2["🔒 Agent<br/>参考策略"]
+        end
+
+        subgraph M3 ["R Reward Model"]
+            C3["📂 Worktree<br/>Δ𝒞"]
+            A3["⚖️ Agent<br/>质量评分"]
+        end
+        subgraph M4 ["V Value (Critic)"]
+            C4["📂 Main Branch<br/>𝒞_ref (同 π_ref)"]
+            A4["📈 Agent<br/>V(𝒞) 期望回报"]
+        end
     end
 
-    subgraph POLICY ["Policy Network π(PR|C)"]
-        direction TB
-        P1["Idea<br/>Generation"]
-        P2["Code<br/>Synthesis"]
-        P3["PR<br/>Creation"]
-        P1 --> P2 --> P3
+    %% NOTE["💡 FileRL 只优化 θ (代码库)，Agent 架构 f 保持固定"]
+    %% FORMULA["🎯 L = 𝔼[min(rₜÂ, clip(rₜ,1-ε,1+ε)Â)] where rₜ = π_θ/π_ref"]
+
+    subgraph LOOP ["🔄 PPO Optimization Loop"]
+        direction LR
+
+        subgraph S1 ["① SAMPLE: Parallel Rollout"]
+            direction TB
+            FORK["git worktree add ×N"]
+            GEN["π_θ: Idea → Code → PR"]
+            PRS["PR₁ ‖ PR₂ ‖ ... ‖ PRₙ"]
+            FORK --> GEN --> PRS
+        end
+
+        subgraph S2 ["② REWARD: Multi-Objective"]
+            direction TB
+            subgraph METRICS ["R(PR) = Σ wᵢrᵢ"]
+                R1["Coverage"]
+                R2["Quality"]
+                R3["Security"]
+                R4["Review"]
+            end
+            KL["D_KL ≈ |Δlines|/max_diff"]
+            ADJ["R̃ = R − λ·D_KL"]
+            R1 & R2 & R3 & R4 --> ADJ
+            KL --> ADJ
+        end
+
+        subgraph S3 ["③ PPO: Ratio + Clip + Advantage"]
+            direction TB
+            RATIO["rₜ = π_θ(PR|𝒞) / π_ref(PR|𝒞_ref)"]
+            VALUE["V(𝒞_ref) = Critic(𝒞_ref)"]
+            ADV["Â = R̃ − V(𝒞_ref)"]
+            CLIP["L = min(rₜÂ, clip(rₜ,1-ε,1+ε)Â)"]
+            SEL["PR* = argmax L, where R̃ ≥ τ"]
+            RATIO --> CLIP
+            VALUE --> ADV --> CLIP --> SEL
+        end
+
+        subgraph S4 ["④ UPDATE: Merge Best"]
+            direction TB
+            MERGE["git merge PR* → main"]
+            UPD["θ ← θ' (𝒞 updated)"]
+            CHK{"收敛?<br/>ΔL < δ"}
+            MERGE --> UPD --> CHK
+        end
+
+        S1 --> S2 --> S3 --> S4
     end
 
-    subgraph PARALLEL ["Parallel Rollout (×N)"]
-        direction TB
-        R1["PR₁"]
-        R2["PR₂"]
-        R3["PR₃"]
-        RN["PRₙ"]
-        R1 ~~~ R2 ~~~ R3 ~~~ RN
-    end
+    C1 -.->|"生成动作"| GEN
+    C2 -.->|"计算 ratio"| RATIO
+    A3 -.->|"评估质量"| METRICS
+    A4 -.->|"估计 V(s)"| VALUE
+    CHK -->|"No, t←t+1"| S1
+    CHK -->|"Yes"| DONE["✅ θ* Optimized"]
 
-    subgraph REWARD ["Reward Model R(PR)"]
-        direction TB
-        W1["Coverage<br/>w₁"]
-        W2["Quality<br/>w₂"]
-        W3["Security<br/>w₃"]
-        W4["Review<br/>w₄"]
-        SUM["Σ wᵢrᵢ"]
-        W1 & W2 & W3 & W4 --> SUM
-    end
-
-    subgraph PPO ["PPO Selection"]
-        direction TB
-        KL["KL ← λ · Δlines/max"]
-        ADJ["R̃ ← R - KL"]
-        ADV["A ← R̃ - baseline"]
-        SEL["π* ← argmax(A)"]
-        KL --> ADJ --> ADV --> SEL
-    end
-
-    subgraph UPDATE ["Parameter Update"]
-        direction TB
-        U1["git merge PR*"]
-        U2["C ← C'"]
-    end
-
-    INPUT --> POLICY
-    POLICY --> PARALLEL
-    PARALLEL --> REWARD
-    REWARD --> PPO
-    PPO --> UPDATE
-    UPDATE -->|"iteration t+1"| INPUT
-
-    classDef inputStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
+    classDef modelBox fill:#f8fafc,stroke:#64748b,stroke-width:2px
     classDef policyStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
-    classDef parallelStyle fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87
+    classDef refStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
     classDef rewardStyle fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#831843
-    classDef ppoStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
-    classDef updateStyle fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#312e81
+    classDef valueStyle fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
+    classDef noteStyle fill:#fef9c3,stroke:#ca8a04,stroke-width:1px,color:#713f12
+    classDef loopStyle fill:#f1f5f9,stroke:#475569,stroke-width:1px
+    classDef doneStyle fill:#bbf7d0,stroke:#16a34a,stroke-width:2px,color:#166534
 
-    class INPUT,I1,I2 inputStyle
-    class POLICY,P1,P2,P3 policyStyle
-    class PARALLEL,R1,R2,R3,RN parallelStyle
-    class REWARD,W1,W2,W3,W4,SUM rewardStyle
-    class PPO,KL,ADJ,ADV,SEL ppoStyle
-    class UPDATE,U1,U2 updateStyle
+    class MODELS,ROW1,ROW2 modelBox
+    class M1,C1,A1,GEN,PRS policyStyle
+    class M2,C2,A2,RATIO refStyle
+    class M3,C3,A3,METRICS,R1,R2,R3,R4,KL,ADJ rewardStyle
+    class M4,C4,A4,VALUE,ADV,CLIP,SEL valueStyle
+    class NOTE,FORMULA noteStyle
+    class S1,S2,S3,S4,FORK,MERGE,UPD,CHK loopStyle
+    class DONE doneStyle
 ```
 
 </div>
 
-**算法形式化定义**
-
-| 符号 | LLM PPO | FileRL | 描述 |
-|:----:|:-------:|:------:|------|
-| **θ** | 模型参数 ∈ ℝᵈ | 代码库 C ∈ Σ* | 优化目标 |
-| **π** | π_θ(y\|x) | π(PR\|C) | 生成策略 |
-| **a** | token yₜ | Pull Request | 单步动作 |
-| **∇** | ∇L | git diff | 梯度/变化 |
-| **update** | θ ← θ - η∇L | git merge | 参数更新 |
-| **R** | R(x,y) | CI + Review | 奖励函数 |
-
-**PPO 目标函数**
-
-$$L^{PPO}(\theta) = \mathbb{E}\left[\min\left(r_t(\theta)\hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t\right)\right] - \lambda \cdot D_{KL}$$
-
-其中 FileRL 的 KL 散度近似为代码变更规模：$D_{KL} \approx \frac{|\Delta\text{lines}|}{\text{max\_diff}}$
+</details>
 
 <details>
-<summary><b>FileRL CLI 命令</b></summary>
+<summary><b>形式化定义</b></summary>
 
-**基础命令**
-```bash
-viben filerl create <name>       # 创建 FileRL 目标文件
-viben filerl start <target.md>   # 启动 FileRL 优化循环
-viben filerl status <name>       # 查看运行状态
-viben filerl list                # 列出所有运行
-viben filerl stop <name>         # 停止运行
-viben filerl resume <name>       # 恢复运行
+**符号映射**: LLM PPO → FileRL
+
+| 符号 | LLM PPO | FileRL |
+|:----:|:-------:|:------:|
+| **θ** | 模型参数 ∈ ℝᵈ | 代码库 $\mathcal{C} \in \Sigma^*$ |
+| **π** | $\pi_\theta(y \mid x)$ | $\pi(\text{PR} \mid \mathcal{C})$ |
+| **a** | token $y_t$ | Pull Request |
+| **∇** | $\nabla_\theta \mathcal{L}$ | `git diff` |
+| **⊕** | $\theta \leftarrow \theta - \eta \nabla \mathcal{L}$ | `git merge` |
+| **R** | $R(x, y)$ | CI + Agent Review |
+
+**目标函数**
+
+$$\mathcal{L}^{\text{FileRL}} = \mathbb{E}_{\text{PR} \sim \pi}\left[\min\left(r_t \hat{A}_t,\ \text{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon)\hat{A}_t\right)\right] - \lambda \cdot D_{\text{KL}}$$
+
+**KL 散度近似** (变更规模惩罚)
+
+$$D_{\text{KL}} \approx \frac{|\Delta\text{lines}|}{\text{max\_diff}}$$
+
+**多目标奖励函数**
+
+$$R(\text{PR}) = \sum_{i=1}^{k} w_i \cdot r_i(\text{PR}) - \lambda \cdot D_{\text{KL}}$$
+
+其中 $r_i$ 为各维度评分 (测试覆盖率、代码质量、安全性、Agent 评审等)，$\sum w_i = 1$
+
+**优势估计与选择**
+
+$$\hat{A} = \tilde{R} - \bar{R}, \quad \text{PR}^* = \arg\max_{\text{PR}} \hat{A}(\text{PR})$$
+
+</details>
+
+<details>
+<summary><b>算法伪代码</b></summary>
+
+```
+Algorithm: FileRL — Codebase Reinforcement Learning
+────────────────────────────────────────────────────
+Input:  C₀ (initial codebase), T (max iterations), N (parallel rollouts)
+        λ (KL coefficient), τ (reward threshold), δ (convergence threshold)
+Output: C* (optimized codebase)
+
+1   C ← C₀
+2   history ← []
+3   for t = 1 to T do
+4   │   // Phase 1: Parallel Rollout
+5   │   Ideas ← IdeaGeneration(C)
+6   │   PRs ← ∅
+7   │   for i = 1 to N do in parallel
+8   │   │   PRᵢ ← CodeSynthesis(C, Ideas[i])
+9   │   │   PRs ← PRs ∪ {PRᵢ}
+10  │   end
+11  │
+12  │   // Phase 2: Reward Computation
+13  │   for each PR ∈ PRs do
+14  │   │   R(PR) ← Σᵢ wᵢ · rᵢ(PR)           // multi-objective reward
+15  │   │   D_KL(PR) ← λ · |Δlines| / max_diff
+16  │   │   R̃(PR) ← R(PR) - D_KL(PR)          // adjusted reward
+17  │   end
+18  │
+19  │   // Phase 3: PPO Selection
+20  │   baseline ← mean({R̃(PR) : PR ∈ PRs})
+21  │   for each PR ∈ PRs do
+22  │   │   Â(PR) ← R̃(PR) - baseline          // advantage
+23  │   end
+24  │   PR* ← argmax_{PR: R̃(PR)≥τ} Â(PR)
+25  │
+26  │   // Phase 4: Update
+27  │   if PR* ≠ ∅ then
+28  │   │   C ← Merge(C, PR*)                  // git merge
+29  │   │   history.append(R̃(PR*))
+30  │   end
+31  │
+32  │   // Phase 5: Convergence Check
+33  │   if |mean(history[-5:]) - mean(history[-10:-5])| < δ then
+34  │   │   break                              // converged
+35  │   end
+36  end
+37  return C
 ```
 
-**Idea 生成与任务转换**
-```bash
-viben idea generate --types <types>          # 生成优化想法
-viben idea list                              # 列出生成的想法
-viben idea promote <id> --worktree --start   # 转为任务并启动
-```
+</details>
 
-**奖励计算与 PPO 选择**
-```bash
-viben task compute-reward <task>             # 计算 PR 奖励
-viben reward select <tasks...>               # PPO 选择最佳 PR
-viben reward list-types                      # 列出奖励类型
-```
+<details>
+<summary><b>CLI 命令速查</b></summary>
 
-**监控与清理**
 ```bash
-viben swarm status --watch    # 实时监控 Agent
-viben task approve <task>     # 批准并合并 PR
-viben task cleanup <task>     # 清理 worktree
+# 生命周期
+viben filerl create <name>       # 创建优化目标
+viben filerl start <target.md>   # 启动优化循环
+viben filerl status <name>       # 查看状态
+viben filerl stop <name>         # 停止
+viben filerl resume <name>       # 恢复
+
+# Idea → Task
+viben idea generate --types <t>  # 生成想法
+viben idea promote <id> --start  # 转为任务
+
+# 奖励与选择
+viben reward select <tasks...>   # PPO 选择最佳
+viben task approve <task>        # 合并 PR
+
+# 监控
+viben swarm status --watch       # 实时监控
 ```
 
 </details>

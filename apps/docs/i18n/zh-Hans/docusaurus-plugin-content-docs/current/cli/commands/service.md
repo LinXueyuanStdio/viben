@@ -1,12 +1,12 @@
 ---
 sidebar_position: 4
 title: "viben service"
-description: "管理 Viben 后台服务"
+description: "管理微本后台服务"
 ---
 
 # viben service
 
-管理 Viben 的后台服务。
+管理微本的后台服务。
 
 ## 用法
 

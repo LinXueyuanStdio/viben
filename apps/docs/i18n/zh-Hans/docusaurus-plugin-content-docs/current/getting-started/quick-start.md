@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "快速入门"
-description: "快速上手 Viben"
+description: "快速上手微本"
 ---
 
 # 快速入门
 
-本指南帮助你快速上手使用 Viben。根据你的使用场景选择合适的方式。
+本指南帮助你快速上手使用微本。根据你的使用场景选择合适的方式。
 
 :::tip 核心概念
 开始之前，建议先了解 [核心概念](./concepts)，理解智能体与执行器的区别。
@@ -20,7 +20,7 @@ description: "快速上手 Viben"
 
 1. 访问 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 2. 下载对应平台的安装包
-3. 安装并启动 Viben
+3. 安装并启动微本
 
 ### 第二步：添加工作空间
 

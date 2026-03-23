@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "模型别名"
-description: "使用 Viben CLI 为模型名称创建便捷的快捷方式"
+description: "使用微本 CLI 为模型名称创建便捷的快捷方式"
 ---
 
 # 模型别名

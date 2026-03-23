@@ -237,7 +237,7 @@
     "invalidUrlProtocol": "无效的协议，请使用 http 或 https",
     "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
-    "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
+    "installHint": "请安装微本: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
   },
   "channels": {
     "telegramBot": "Telegram 机器人",
@@ -537,7 +537,7 @@
     "onboarding": "设置向导",
     "onboardingDescription": "重新运行初始设置向导，配置 Python、AI 客户端和登录",
     "openOnboarding": "打开设置向导",
-    "appearanceDescription": "自定义 Viben 在设备上的外观。",
+    "appearanceDescription": "自定义微本在设备上的外观。",
     "environmentDescription": "Python 和包配置",
     "storageDescription": "管理下载和缓存",
     "aboutDescription": "应用信息和更新",
@@ -667,9 +667,9 @@
     "developer": {
       "devtools": "开发者工具",
       "preferredIDE": "首选 IDE",
-      "preferredIDEDescription": "Viben 将在此编辑器中打开项目",
+      "preferredIDEDescription": "微本将在此编辑器中打开项目",
       "preferredTerminal": "首选终端",
-      "preferredTerminalDescription": "Viben 将在此终端中打开会话",
+      "preferredTerminalDescription": "微本将在此终端中打开会话",
       "yoloMode": "YOLO 模式",
       "yoloModeDescription": "使用 --dangerously-skip-permissions 标志启动执行器，绕过所有安全提示。请谨慎使用。",
       "yoloModeWarning": "此模式会绕过权限系统。仅在完全信任正在执行的代码时启用。",
@@ -723,7 +723,7 @@
     }
   },
   "about": {
-    "title": "Viben",
+    "title": "微本",
     "version": "版本 {{version}}",
     "updateAvailable": "有可用更新",
     "versionReady": "版本 {{version}} 已准备好安装",
@@ -826,7 +826,7 @@
     "executors": "执行器",
     "executorsDesc": "自动发现的运行后端配置",
     "agents": "智能体",
-    "agentsDesc": "Viben 智能体，使用执行器作为运行后端",
+    "agentsDesc": "微本智能体，使用执行器作为运行后端",
     "noExecutors": "当前工作空间暂无执行器配置",
     "addFirst": "添加您的第一个智能体",
     "noAgents": "未配置智能体",
@@ -1352,7 +1352,7 @@
     "recommended": "推荐",
     "httpConfigHint": "通过 Gateway 使用 SSE 传输连接（推荐）",
     "stdioConfigHint": "需要安装 tauri-plugin-mcp-server 包",
-    "httpNote": "此配置通过 Viben Gateway 的 SSE 端点连接，无需额外的 npm 包",
+    "httpNote": "此配置通过微本 Gateway 的 SSE 端点连接，无需额外的 npm 包",
     "stdioNote": "此配置需要在项目中安装 tauri-plugin-mcp-server 包：pnpm add -D tauri-plugin-mcp-server",
     "usageNote": "使用说明",
     "usageNoteDescription": "此配置用于 Claude Code、Cursor 等 AI 工具。将配置复制到对应工具的 MCP 设置中即可使用。不要在本应用的「MCP 检查器」中测试此配置。",
@@ -3000,7 +3000,7 @@
     "preferCloud": "优先云端"
   },
   "onboarding": {
-    "footer": "Viben - 您的 AI 研究助手",
+    "footer": "微本 - 您的 AI 研究助手",
     "projectPathPlaceholder": "/Users/用户名/项目",
     "steps": {
       "python": "Python",
@@ -3009,7 +3009,7 @@
     },
     "python": {
       "title": "Python 环境",
-      "description": "Viben 需要 Python 3.10+ 才能运行。请选择或配置您的 Python 安装。",
+      "description": "微本需要 Python 3.10+ 才能运行。请选择或配置您的 Python 安装。",
       "detected": "检测到的 Python 安装",
       "detecting": "正在检测 Python 安装...",
       "noPython": "未找到 Python 安装。请安装 Python 3.10 或更高版本。",
@@ -3021,7 +3021,7 @@
     },
     "claude": {
       "title": "AI 客户端检测",
-      "description": "Viben 可以与多种 AI 助手集成。我们在您的系统上检测到以下客户端。",
+      "description": "微本可以与多种 AI 助手集成。我们在您的系统上检测到以下客户端。",
       "aiClients": "AI 客户端",
       "detecting": "正在检测 AI 客户端...",
       "download": "下载",
@@ -3727,7 +3727,7 @@
       "permissionDenied": "通知权限被拒绝",
       "permissionGranted": "通知权限已授予",
       "requestPermission": "开启通知",
-      "requestPermissionDesc": "允许 Viben 向您发送重要更新通知",
+      "requestPermissionDesc": "允许微本向您发送重要更新通知",
       "newMessage": "新消息",
       "newMessageFrom": "来自 {{name}} 的新消息",
       "taskCompleted": "任务完成",

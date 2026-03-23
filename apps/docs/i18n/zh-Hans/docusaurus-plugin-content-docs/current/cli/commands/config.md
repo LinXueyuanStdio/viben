@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "viben config"
-description: "Git 风格的 Viben 配置管理"
+description: "Git 风格的微本配置管理"
 ---
 
 # viben config

@@ -6,7 +6,7 @@ description: "工作区操作 - 列出和查看工作区信息"
 
 # viben workspace
 
-Viben 的工作区操作。
+微本的工作区操作。
 
 ## 用法
 
@@ -165,7 +165,7 @@ viben workspace current
   "success": false,
   "error": {
     "code": "NOT_IN_WORKSPACE",
-    "message": "Current directory is not a Viben workspace. Run 'viben init' to initialize."
+    "message": "Current directory is not a 微本 workspace. Run 'viben init' to initialize."
   }
 }
 ```

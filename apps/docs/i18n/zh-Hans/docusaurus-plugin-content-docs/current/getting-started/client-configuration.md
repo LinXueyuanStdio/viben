@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "客户端配置"
-description: "为 Claude Desktop、Claude Code、Cline 和 Zed 配置 Viben"
+description: "为 Claude Desktop、Claude Code、Cline 和 Zed 配置微本"
 ---
 
 import Tabs from '@theme/Tabs';
@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 # 客户端配置
 
-Viben 可与任何兼容 MCP 的客户端配合使用。本指南涵盖了常用客户端的配置方法。
+微本可与任何兼容 MCP 的客户端配合使用。本指南涵盖了常用客户端的配置方法。
 
 ## 配置概述
 

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "桌面应用"
-description: "Viben 桌面应用 - 一个原生内容搜索应用"
+description: "微本桌面应用 - 一个原生内容搜索应用"
 ---
 
 # 桌面应用
 
-Viben Desktop 是一个原生应用程序，将内容搜索的强大功能直接带到您的桌面上。它基于 Tauri 构建，在 macOS、Windows 和 Linux 上提供快速、轻量且安全的体验。
+微本 Desktop 是一个原生应用程序，将内容搜索的强大功能直接带到您的桌面上。它基于 Tauri 构建，在 macOS、Windows 和 Linux 上提供快速、轻量且安全的体验。
 
 ## 功能特点
 
@@ -48,12 +48,12 @@ Viben Desktop 是一个原生应用程序，将内容搜索的强大功能直接
 
 1. **下载**适用于您平台的安装程序
 2. **安装**，按照[平台特定说明](./installation.md)操作
-3. **启动** Viben 应用
+3. **启动**微本应用
 4. **搜索**，使用搜索栏搜索内容
 
 ## 架构
 
-Viben Desktop 使用现代技术构建：
+微本 Desktop 使用现代技术构建：
 
 - **前端**：React 19 + TypeScript + Tailwind CSS
 - **后端**：Rust + Tauri v2

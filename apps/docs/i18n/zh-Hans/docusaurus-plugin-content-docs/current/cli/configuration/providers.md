@@ -1,16 +1,16 @@
 ---
 sidebar_position: 3
 title: "Provider 配置"
-description: "为 Viben CLI 配置 API Provider - Anthropic、OpenAI、Azure、Google 等"
+description: "为微本 CLI 配置 API Provider - Anthropic、OpenAI、Azure、Google 等"
 ---
 
 # Provider 配置
 
-Provider 将 Viben 连接到 AI 服务，如 Anthropic、OpenAI、Google 等。本页介绍如何配置和管理 Provider。
+Provider 将微本连接到 AI 服务，如 Anthropic、OpenAI、Google 等。本页介绍如何配置和管理 Provider。
 
 ## 概述
 
-Provider 配置存储在 `~/.viben/providers.yaml` 中。Viben 支持多种认证方式：
+Provider 配置存储在 `~/.viben/providers.yaml` 中。微本支持多种认证方式：
 
 1. **环境变量**（推荐）- 配置文件中不存储密钥
 2. **环境变量引用** - 使用 `env:VAR_NAME` 语法
@@ -258,7 +258,7 @@ fireworks:
 
 ## 环境变量优先级
 
-解析 API key 时，Viben 按以下顺序检查：
+解析 API key 时，微本按以下顺序检查：
 
 1. **命令行参数**（`--api-key`）
 2. **配置文件中的显式值**
