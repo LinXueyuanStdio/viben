@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "Provider 管理"
-description: "使用 Viben CLI 管理 API Provider (OpenAI, Anthropic, Google, Azure 等)"
+description: "使用微本 CLI 管理 API Provider (OpenAI, Anthropic, Google, Azure 等)"
 ---
 
 # Provider 管理
 
-Provider 是与 AI 模型 API 的连接。Viben CLI 支持多种 Provider 类型，让您可以配置和切换不同的 AI 服务。
+Provider 是与 AI 模型 API 的连接。微本 CLI 支持多种 Provider 类型，让您可以配置和切换不同的 AI 服务。
 
 ## Provider 类型
 
@@ -229,7 +229,7 @@ providers:
 
 ## 环境变量
 
-您可以使用环境变量配置 Provider。Viben 会自动读取：
+您可以使用环境变量配置 Provider。微本会自动读取：
 
 | Provider | API Key 变量 | Base URL 变量 | 其他变量 |
 |----------|-------------|---------------|----------|

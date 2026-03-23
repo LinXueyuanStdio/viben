@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 title: "插件概述"
-description: "了解 Viben 插件系统和 ContentSource API"
+description: "了解微本插件系统和 ContentSource API"
 ---
 
 # 插件概述
 
-Viben 使用强大的插件系统，允许您将其功能扩展到学术论文之外。本页解释插件的工作原理以及您可以用它们做什么。
+微本使用强大的插件系统，允许您将其功能扩展到学术论文之外。本页解释插件的工作原理以及您可以用它们做什么。
 
 ## 什么是插件？
 
-插件是为 Viben 添加新内容来源的 Python 包。当您安装插件时，其来源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
+插件是为微本添加新内容来源的 Python 包。当您安装插件时，其来源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
 
 ```
 browse-mcp (核心)
@@ -28,7 +28,7 @@ browse-mcp (核心)
 
 ### Stevedore 插件发现
 
-Viben 使用 [stevedore](https://docs.openstack.org/stevedore/) 进行插件发现。当服务器启动时：
+微本使用 [stevedore](https://docs.openstack.org/stevedore/) 进行插件发现。当服务器启动时：
 
 1. Stevedore 扫描所有已安装的包，查找 `browse_mcp.searchers` 入口点
 2. 每个注册的入口点都被加载和实例化

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: "会话管理"
-description: "管理 Viben 智能体会话 - 创建、列出和管理对话历史"
+description: "管理微本智能体会话 - 创建、列出和管理对话历史"
 ---
 
 # 会话管理

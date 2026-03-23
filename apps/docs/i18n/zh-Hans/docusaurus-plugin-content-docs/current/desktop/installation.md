@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "安装"
-description: "如何在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
+description: "如何在 macOS、Windows 和 Linux 上安装微本桌面应用"
 ---
 
 # 桌面应用安装
 
-在所有支持平台上安装 Viben Desktop 的详细说明。
+在所有支持平台上安装微本 Desktop 的详细说明。
 
 ## 下载
 
@@ -30,21 +30,21 @@ description: "如何在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
 
 ### 首次启动
 
-由于 Viben 未经 Apple 公证，首次启动时您可能会看到安全警告：
+由于微本未经 Apple 公证，首次启动时您可能会看到安全警告：
 
 **方法 1：右键打开**
 1. 打开 **访达**，进入 **应用程序**
-2. 右键点击（或按住 Control 点击）**Viben**
+2. 右键点击（或按住 Control 点击）**微本**
 3. 从菜单中选择 **打开**
 4. 在对话框中点击 **打开**
 
 **方法 2：系统偏好设置**
 1. 前往 **系统偏好设置** > **安全性与隐私** > **通用**
-2. 在 Viben 警告旁边点击 **仍要打开**
+2. 在微本警告旁边点击 **仍要打开**
 
 ### 故障排除
 
-**"Viben 已损坏，无法打开"**
+**"微本已损坏，无法打开"**
 
 这发生在 macOS 隔离应用时。移除隔离标记：
 
@@ -52,7 +52,7 @@ description: "如何在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
 xattr -cr /Applications/Viben.app
 ```
 
-**"无法打开 Viben，因为无法验证开发者"**
+**"无法打开微本，因为无法验证开发者"**
 
 这对于未签名的应用是正常的。使用上述方法之一绕过 Gatekeeper。
 
@@ -82,8 +82,8 @@ xattr -cr /Applications/Viben.app
 
 ### 首次启动
 
-从以下位置启动 Viben：
-- 开始菜单 > Viben
+从以下位置启动微本：
+- 开始菜单 > 微本
 - 桌面快捷方式（如果在安装时创建）
 
 ### 故障排除
@@ -204,7 +204,7 @@ Get-Content checksums.txt | Select-String $hash
 
 ## 更新
 
-Viben 目前不支持自动更新。要更新：
+微本目前不支持自动更新。要更新：
 
 1. 从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本
 2. 覆盖现有版本安装（您的设置将被保留）
@@ -220,7 +220,7 @@ Viben 目前不支持自动更新。要更新：
 ### macOS
 
 1. 打开 **访达** > **应用程序**
-2. 将 **Viben** 拖到废纸篓
+2. 将 **微本** 拖到废纸篓
 3. 清空废纸篓
 
 要删除所有数据：
@@ -232,7 +232,7 @@ rm -rf ~/Library/Caches/com.viben.app
 ### Windows
 
 1. 打开 **设置** > **应用** > **已安装的应用**
-2. 找到 **Viben**
+2. 找到 **微本**
 3. 点击 **卸载**
 
 或使用控制面板 > 程序和功能。

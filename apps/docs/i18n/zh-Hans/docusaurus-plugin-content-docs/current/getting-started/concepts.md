@@ -1,16 +1,16 @@
 ---
 sidebar_position: 3
 title: "核心概念"
-description: "理解 Viben 的核心概念：智能体、执行器、配置系统和 Memory"
+description: "理解微本的核心概念：智能体、执行器、配置系统和 Memory"
 ---
 
 # 核心概念
 
-本文档介绍 Viben 的核心概念，帮助你理解系统的工作原理。
+本文档介绍微本的核心概念，帮助你理解系统的工作原理。
 
 ## 智能体 vs 执行器
 
-Viben 区分两种关键概念：
+微本区分两种关键概念：
 
 ### 执行器 (Executor)
 
@@ -94,7 +94,7 @@ skills:
 
 ## 配置系统
 
-Viben 使用 YAML 文件存储配置，支持多级配置合并。
+微本使用 YAML 文件存储配置，支持多级配置合并。
 
 ### 配置存储位置
 
@@ -147,7 +147,7 @@ Viben 使用 YAML 文件存储配置，支持多级配置合并。
 
 ## Memory 系统
 
-Viben 为每个智能体维护一个 Memory 系统，帮助智能体记住重要信息。
+微本为每个智能体维护一个 Memory 系统，帮助智能体记住重要信息。
 
 ### Memory 文件
 
@@ -260,12 +260,12 @@ fallbacks:
 |--------|----------|
 | Claude Code | `~/.claude/projects/<encoded-path>/<session-id>.jsonl` |
 | Codex | `~/.codex/sessions/<session-id>/` |
-| Viben Agent | `~/.viben/sessions/<agent-id>/<session-id>/` |
+| 微本 Agent | `~/.viben/sessions/<agent-id>/<session-id>/` |
 
 ---
 
 ## 下一步
 
-- [快速入门](./quick-start) - 开始使用 Viben
+- [快速入门](./quick-start) - 开始使用微本
 - [桌面应用功能](../desktop/features.md) - 了解桌面应用功能
 - [CLI 文档](/cli/) - 命令行工具参考

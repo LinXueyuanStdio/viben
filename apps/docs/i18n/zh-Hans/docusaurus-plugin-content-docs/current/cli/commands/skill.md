@@ -6,7 +6,7 @@ description: "管理技能 - 安装、卸载和列出可用技能"
 
 # viben skill
 
-管理 Viben 智能体的技能。
+管理微本智能体的技能。
 
 ## 用法
 

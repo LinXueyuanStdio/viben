@@ -1,7 +1,7 @@
 ---
 sidebar_position: 6
 title: "智能体模板"
-description: "创建和使用 Viben 智能体模板以实现可复用的配置"
+description: "创建和使用微本智能体模板以实现可复用的配置"
 ---
 
 # 智能体模板
@@ -311,7 +311,7 @@ viben agent update my-template --is-template true
 
 ## 内置模板
 
-Viben 包含几个内置模板:
+微本包含几个内置模板:
 
 ### coding-assistant
 

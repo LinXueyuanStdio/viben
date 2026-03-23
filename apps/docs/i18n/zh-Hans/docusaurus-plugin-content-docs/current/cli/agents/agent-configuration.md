@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "智能体配置"
-description: "配置 Viben 智能体 - config.yaml、MCP 服务器、技能和 RC 文件"
+description: "配置微本智能体 - config.yaml、MCP 服务器、技能和 RC 文件"
 ---
 
 # 智能体配置

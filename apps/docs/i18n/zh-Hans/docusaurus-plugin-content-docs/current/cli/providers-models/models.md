@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: "模型管理"
-description: "使用 Viben CLI 管理 AI 模型、查看可用性、配置模型设置"
+description: "使用微本 CLI 管理 AI 模型、查看可用性、配置模型设置"
 ---
 
 # 模型管理

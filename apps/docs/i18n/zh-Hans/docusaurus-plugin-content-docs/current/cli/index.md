@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 title: "CLI 概览"
-description: "Viben CLI - 用于配置应用、管理服务和查询状态的引导工具"
+description: "微本 CLI - 用于配置应用、管理服务和查询状态的引导工具"
 ---
 
-# Viben CLI
+# 微本 CLI
 
-**Viben CLI** (`viben`) 是一个用于配置应用、管理 AI 智能体实例和查询系统状态的引导工具。它同时服务于人类用户和 AI 智能体，为复杂的配置任务提供统一的接口。
+**微本 CLI** (`viben`) 是一个用于配置应用、管理 AI 智能体实例和查询系统状态的引导工具。它同时服务于人类用户和 AI 智能体，为复杂的配置任务提供统一的接口。
 
-## 什么是 Viben CLI？
+## 什么是微本 CLI？
 
-Viben CLI 针对两个主要使用场景设计：
+微本 CLI 针对两个主要使用场景设计：
 
 1. **人类使用**：命令行配置应用、启动服务、查看状态
 2. **AI 智能体使用**：智能体通过 Bash 工具调用 CLI 来配置复杂的智能体设置、MCP 服务器和技能
@@ -112,7 +112,7 @@ viben <command> [subcommand] [options]
 
 ## 配置文件格式
 
-Viben CLI 使用 YAML 格式实现人类可读的配置：
+微本 CLI 使用 YAML 格式实现人类可读的配置：
 
 ```yaml
 # ~/.viben/config.yaml
@@ -148,7 +148,7 @@ skills:
 
 ## 智能体集成
 
-AI 智能体可以通过 Bash 工具调用 Viben CLI。`--json` 标志确保输出结构化数据供智能体解析：
+AI 智能体可以通过 Bash 工具调用微本 CLI。`--json` 标志确保输出结构化数据供智能体解析：
 
 ```bash
 # 获取当前配置
@@ -188,5 +188,5 @@ viben agent config my-agent set model gpt-4 --json
 
 ## 下一步
 
-- [安装](./installation.md) - 安装 Viben CLI
+- [安装](./installation.md) - 安装微本 CLI
 - [快速开始](./quick-start.md) - 开始基本配置

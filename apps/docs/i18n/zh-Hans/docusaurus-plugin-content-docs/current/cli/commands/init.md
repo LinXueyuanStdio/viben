@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "viben init"
-description: "在当前目录初始化 Viben 工作区"
+description: "在当前目录初始化微本工作区"
 ---
 
 # viben init
 
-在当前目录初始化 Viben 工作区。
+在当前目录初始化微本工作区。
 
 ## 用法
 

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "创建智能体"
-description: "使用 CLI 创建、克隆和管理 Viben 智能体"
+description: "使用 CLI 创建、克隆和管理微本智能体"
 ---
 
 # 创建智能体
 
-本指南介绍如何使用 Viben CLI 创建、克隆和管理智能体。
+本指南介绍如何使用微本 CLI 创建、克隆和管理智能体。
 
 ## 创建新智能体
 

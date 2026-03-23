@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "命令概览"
-description: "Viben CLI 命令、全局选项和输出格式概览"
+description: "微本 CLI 命令、全局选项和输出格式概览"
 ---
 
 # 命令概览
 
-Viben CLI (`viben`) 是一个用于配置应用、管理服务和查询状态的引导工具。它设计为可供人类和 AI 智能体使用。
+微本 CLI (`viben`) 是一个用于配置应用、管理服务和查询状态的引导工具。它设计为可供人类和 AI 智能体使用。
 
 ## 命令结构
 

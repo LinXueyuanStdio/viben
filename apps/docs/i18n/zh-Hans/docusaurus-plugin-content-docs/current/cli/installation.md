@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "安装"
-description: "使用 npm、pnpm 或从源码安装 Viben CLI"
+description: "使用 npm、pnpm 或从源码安装微本 CLI"
 ---
 
 # 安装
 
-Viben CLI 可以通过 npm/pnpm 全局安装，或从源码构建用于开发。
+微本 CLI 可以通过 npm/pnpm 全局安装，或从源码构建用于开发。
 
 ## 快速安装
 
@@ -49,7 +49,7 @@ npm --version
 
 ## 验证安装
 
-安装后，验证 Viben CLI 是否正确安装：
+安装后，验证微本 CLI 是否正确安装：
 
 ```bash
 viben --help
@@ -134,7 +134,7 @@ pnpm dev
 
 ## 配置位置
 
-安装后，Viben CLI 将配置存储在：
+安装后，微本 CLI 将配置存储在：
 
 | 平台 | 位置 |
 |------|------|

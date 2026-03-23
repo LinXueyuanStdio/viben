@@ -1,14 +1,14 @@
 ---
 sidebar_position: 3
 title: "快速开始"
-description: "5 分钟内快速上手 Viben CLI"
+description: "5 分钟内快速上手微本 CLI"
 ---
 
 # 快速开始
 
-5 分钟内让 Viben CLI 运行起来。
+5 分钟内让微本 CLI 运行起来。
 
-## 步骤 1：安装 Viben CLI
+## 步骤 1：安装微本 CLI
 
 ```bash
 npm install -g @viben/cli
@@ -22,7 +22,7 @@ viben --help
 
 ## 步骤 2：初始化您的第一个工作区
 
-进入您的项目目录并初始化 Viben：
+进入您的项目目录并初始化微本：
 
 ```bash
 cd /path/to/your/project
@@ -43,7 +43,7 @@ Next steps:
 
 ## 步骤 3：配置 API Provider
 
-设置您首选的 AI Provider。Viben 支持多个 Provider，包括 Anthropic、OpenAI、Google、Azure 等。
+设置您首选的 AI Provider。微本支持多个 Provider，包括 Anthropic、OpenAI、Google、Azure 等。
 
 ### 选项 A：使用环境变量（推荐）
 
@@ -291,7 +291,7 @@ JSON 输出示例：
 
 ## 下一步
 
-现在 Viben CLI 已设置完成，您可以：
+现在微本 CLI 已设置完成，您可以：
 
 - 探索[智能体管理](./agents/)以了解完整的智能体生命周期
 - 配置额外的 [配置选项](./configuration/) 以获得更多模型选择

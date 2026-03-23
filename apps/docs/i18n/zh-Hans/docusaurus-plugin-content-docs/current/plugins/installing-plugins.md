@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "安装插件"
-description: "如何安装、更新和管理 Viben 插件"
+description: "如何安装、更新和管理微本插件"
 ---
 
 # 安装插件
 
-本指南介绍如何安装、更新和管理 Viben 插件。
+本指南介绍如何安装、更新和管理微本插件。
 
 ## 安装方法
 
