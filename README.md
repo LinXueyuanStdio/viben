@@ -158,7 +158,8 @@ git merge PR* → main<br/><br/>
 </tr>
 </table>
 
-形式化定义
+<details>
+<summary><b>形式化定义</b></summary>
 
 **多目标评分函数**
 
@@ -232,6 +233,8 @@ $$\text{PR}^* = \arg\max_{\text{PR}^*_{\text{idea}}} L(\text{PR}^*_{\text{idea}}
 | $\epsilon$ | 权重截断范围 | 0.1 ~ 0.2 | 借鉴 PPO |
 | $\tau$ | 质量阈值 | 0.5 ~ 0.7 | 未经充分验证 |
 | max_diff | 最大变更行数 | 500 | 经验估计 |
+
+</details>
 
 <details>
 <summary><b>算法伪代码</b></summary>
