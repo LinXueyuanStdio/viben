@@ -1,12 +1,23 @@
 ---
 sidebar_position: 1
 title: "Viben 简介"
-description: "Viben - 多智能体工作空间管理器，集成看板、日历、时间线和任务管理"
+description: "Viben - Agent 集群 × 代码进化，多目标带约束的迭代优化，自动提升代码质量"
 ---
 
 # Viben
 
-**Viben** 是一个多智能体工作空间管理器，帮助你统一管理 AI 助手、MCP 服务器和开发任务。无论你使用 Claude Code、Cursor、Codex 还是其他 AI 编程助手，Viben 都能让你在一个地方管理所有配置和任务。
+**Viben** (微本) 是一个 Agent 集群与代码进化平台，通过多目标带约束的迭代优化自动提升代码质量。
+
+## 核心特性
+
+| 特性 | 说明 |
+|------|------|
+| 🧬 **FileRL** | 代码迭代优化：多候选采样 + 质量评估，自动选择最优方案合并 |
+| 🤖 **多智能体** | Agent 集群编排：并行 Worktree 隔离，自动化任务分发与监控 |
+| 🔌 **MCP 协议** | Model Context Protocol：工具注册与调用，扩展 Agent 能力边界 |
+| 📋 **任务系统** | XState 状态机驱动：看板 + 队列 + 自动执行，完整的任务生命周期管理 |
+| 💡 **Idea 生成** | AI 驱动代码分析：自动发现改进点，一键转化为可执行任务 |
+| 🖥️ **跨平台** | CLI / Desktop / Web：Tauri 2 桌面应用，三端统一体验 |
 
 ## 产品架构
 
@@ -30,67 +41,111 @@ description: "Viben - 多智能体工作空间管理器，集成看板、日历�
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Viben 由以下核心产品组成：
+## FileRL: 代码迭代优化
 
-| 产品 | 描述 | 适用场景 |
+> *多目标带约束的候选选择算法，通过采样-评估-选择循环迭代提升代码质量*
+
+FileRL 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。
+
+### 系统组件
+
+| 组件 | 说明 |
+|------|------|
+| **候选生成器** | Worktree 隔离环境中，Agent 生成 PR |
+| **参考基准** | Main Branch 原始代码库，用于计算变更量 |
+| **质量评估器** | CI + Agent 多维度评分 |
+
+### 迭代优化循环
+
+1. **采样** - 批量生成 B 个想法，每个并行展开 N 次，总计 B×N 个候选
+2. **评估** - 多目标评分 + 变更量计算 + 调整后得分
+3. **选择** - 两阶段筛选：每 idea 选最优 PR，全局选最优 PR
+4. **更新** - 合并最佳 PR，更新代码库，检查停止条件
+
+### CLI 命令
+
+```bash
+# 生命周期
+viben filerl create <name>       # 创建优化目标
+viben filerl start <target.md>   # 启动优化循环
+viben filerl status <name>       # 查看状态
+
+# Idea → Task
+viben idea generate --types <t>  # 生成想法
+viben idea promote <id> --start  # 转为任务
+
+# 监控
+viben swarm status --watch       # 实时监控
+```
+
+## 任务系统
+
+基于 XState 状态机的任务生命周期管理，支持看板、队列和自动化执行。
+
+### 任务状态流转
+
+```
+backlog → queue → in_progress → review → completed
+                       ↓
+              plan → implement → check → fix (循环)
+```
+
+| 状态 | 说明 | 触发命令 |
 |------|------|----------|
-| **桌面应用** | 本地多智能体工作空间管理 | 日常开发、任务管理 |
-| **Web 应用** | MCP/Skill 包市场 | 发现和分享工具 |
-| **CLI 工具** | 命令行智能体管理 | 自动化、脚本集成 |
-| **MCP 服务器** | 学术论文搜索服务 | AI 助手扩展能力 |
+| `backlog` | 待办，等待排队 | `task create` |
+| `queue` | 已排队，等待执行 | `task enqueue` |
+| `in_progress` | 执行中 | `task start` |
+| `review` | 等待人工审核 | 自动 (QA 通过) |
+| `completed` | 已完成 | `task approve` |
 
-:::tip CLI 文档
-完整的 CLI 命令参考请查看 [CLI 文档](/cli/)，包含所有命令的详细用法和示例。
-:::
+### CLI 命令
 
-## 核心概念
-
-在深入了解功能之前，建议先理解 Viben 的核心概念。详见 [核心概念](getting-started/concepts)。
-
-### 智能体 vs 执行器
-
-Viben 区分两种类型的实体：
-
-| 概念 | 说明 | 可编辑 |
-|------|------|--------|
-| **智能体 (Agent)** | 用户创建的配置，定义系统提示词、模型参数、MCP 服务器等 | 是 |
-| **执行器 (Executor)** | 底层 AI 工具运行时 (Claude Code, Cursor, Gemini 等) | 否 |
-
-智能体通过 `executor_type` 字段指定使用哪个执行器运行。
-
-### 多工作空间管理
-
-管理多个项目工作空间，每个工作空间可以有独立的：
-- MCP 服务器配置
-- 智能体配置
-- Skills 配置
-- 任务看板
-
-### 配置优先级
-
-配置按以下优先级合并 (后者覆盖前者)：
-
-```
-全局配置 (~/.viben/) → 项目配置 (<project>/.viben/) → 命令行参数
+```bash
+viben task create "<title>" --slug <name>  # 创建任务
+viben task enqueue <task>                  # backlog → queue
+viben task start <task>                    # queue → in_progress
+viben task approve <task>                  # review → completed
+viben task list                            # 列出所有任务
 ```
 
-### 支持的执行器
+## 💡 Idea 生成
 
-| 执行器 | 类型 | CLI 命令 | MCP 支持 |
-|--------|------|----------|----------|
-| Claude Code | CLAUDE_CODE | `claude` | ✓ |
-| AMP | AMP | `amp` | ✓ |
-| Gemini | GEMINI | `gemini` | - |
-| Codex | CODEX | `codex` | - |
-| Cursor | CURSOR_AGENT | `cursor` | ✓ |
-| Qwen Code | QWEN_CODE | `qwen` | - |
-| Copilot | COPILOT | `copilot` | - |
+AI 驱动的代码库分析，自动生成改进建议并转化为任务。
+
+| 内置类型 | 说明 |
+|----------|------|
+| `code_improvements` | 基于现有模式的代码改进 |
+| `security_hardening` | 安全漏洞和加固措施 |
+| `performance_optimizations` | 性能瓶颈和优化 |
+| `documentation_gaps` | 缺失的文档 |
+| `ui_ux_improvements` | UI/UX 增强 |
+| `code_quality` | 代码质量和重构 |
+
+```bash
+# 生成代码改进建议
+viben idea generate --types code_improvements security_hardening
+
+# 将想法转为任务并立即启动
+viben idea promote ci-001 --start --worktree
+```
+
+## 配置
+
+```
+~/.viben/
+├── providers.yaml    # API Keys, Endpoints
+├── models.yaml       # 模型参数
+├── agents/           # Agent 定义
+│   └── <name>/
+│       └── AGENTS.md
+├── cron.yaml         # 定时任务
+├── channels.yaml     # 通知渠道
+└── workspaces.yaml   # 工作空间
+```
 
 ## 快速开始
 
 ### 桌面应用（推荐）
-
-下载桌面应用是最简单的方式：
 
 [![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
@@ -102,60 +157,22 @@ Viben 区分两种类型的实体：
 
 ### CLI 工具
 
-通过 npm 安装命令行工具：
-
 ```bash
+# npm
 npm install -g viben
-```
 
-或使用 npx 直接运行：
-
-```bash
+# 或直接运行
 npx viben
 ```
 
-详细的 CLI 用法请查看 [CLI 快速入门](/cli/quick-start)。
-
-### MCP 服务器
-
-安装学术搜索 MCP 服务器：
-
-```bash
-pip install browse-mcp
-```
-
-## MCP 工具
-
-Viben MCP 服务器提供三个核心工具：
-
-| 工具 | 功能 |
-|------|------|
-| `browse_search` | 搜索学术论文和内容 |
-| `browse_download` | 下载论文 PDF |
-| `browse_read` | 提取和阅读论文内容 |
-
-支持 18+ 学术数据源：
-
-**免费数据源**：arXiv、PubMed、PMC、bioRxiv、medRxiv、Semantic Scholar、CrossRef、Google Scholar、CORE、IACR
-
-**付费数据源**（需 API 密钥）：IEEE Xplore、Scopus、Springer、ScienceDirect
-
 ## Gateway API
 
-Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
-
-- RESTful API 服务
-- WebSocket 实时通信
-- Server-Sent Events (SSE) 事件流
-- 多智能体编排和协调
-
-主要端点：
+Viben Gateway 是核心后端服务，运行在端口 **18790**。
 
 | 端点 | 功能 |
 |------|------|
 | `/health` | 健康检查 |
 | `/api/agent` | 智能体管理 |
-| `/api/executors` | 执行器管理 |
 | `/api/sessions` | 会话管理 |
 | `/api/providers` | Provider 管理 |
 | `/api/models` | 模型管理 |
@@ -170,4 +187,3 @@ Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
 - [快速入门](./getting-started/quick-start.md) - 快速上手
 - [桌面应用](./desktop/) - 桌面应用完整指南
 - [CLI 文档](/cli/) - 命令行工具参考
-- [MCP 配置](./getting-started/client-configuration.md) - 配置 Claude Desktop 等客户端

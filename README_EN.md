@@ -1,12 +1,14 @@
-<div align="center">
-
 **[中文](./README.md) | English**
 
-# 🚀 Viben
+<div align="center">
 
-### Multi-Agent Workspace Manager
+<img src="docs/design-system/brand-preview/viben-logo-animated.svg" alt="Viben Logo" width="120" height="120">
 
-*Orchestrate AI Agent clusters locally, unified management of kanban, calendar, timeline and tasks*
+# Viben
+
+### Agent Swarm × Code Evolution
+
+##### Multi-objective constrained iterative optimization for automatic code quality improvement
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
@@ -21,41 +23,329 @@
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| 🤖 **Multi-Agent Orchestration** | Coordinate AI Agent clusters in local workspace |
-| 🔌 **MCP Protocol** | Full support for Model Context Protocol |
-| 🖥️ **Cross-Platform** | CLI, Desktop, and Web apps unified |
-| 📋 **Kanban Board** | Drag-and-drop task management with real-time tracking |
-| 📡 **Session Monitoring** | Real-time view of Agent conversations and tool calls |
+<table>
+<tr>
+<td align="center" width="33%">
+<h3>🧬 FileRL</h3>
+<b>Code Iterative Optimization</b><br/>
+Multi-candidate sampling + Quality evaluation<br/>
+Auto-select and merge best solution
+</td>
+<td align="center" width="33%">
+<h3>🤖 Multi-Agent</h3>
+<b>Agent Swarm Orchestration</b><br/>
+Parallel Worktree isolation<br/>
+Automated task distribution & monitoring
+</td>
+<td align="center" width="33%">
+<h3>🔌 MCP Protocol</h3>
+<b>Model Context Protocol</b><br/>
+Tool registration & invocation<br/>
+Extend Agent capabilities
+</td>
+</tr>
+<tr>
+<td align="center">
+<h3>📋 Task System</h3>
+<b>XState State Machine Driven</b><br/>
+Kanban + Queue + Auto-execution<br/>
+Complete task lifecycle management
+</td>
+<td align="center">
+<h3>💡 Idea Generation</h3>
+<b>AI-Driven Code Analysis</b><br/>
+Auto-discover improvements<br/>
+One-click convert to executable tasks
+</td>
+<td align="center">
+<h3>🖥️ Cross-Platform</h3>
+<b>CLI / Desktop / Web</b><br/>
+Tauri 2 desktop app<br/>
+Unified experience across platforms
+</td>
+</tr>
+</table>
 
 ---
 
-## 📦 Download
+## 🧬 FileRL: Code Iterative Optimization
 
-### 🖥️ Desktop App
+> *Multi-objective constrained candidate selection algorithm, improving code quality through sampling-evaluation-selection loops*
 
-| Platform | Download |
-|:--------:|----------|
-| 🍎 **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
-| 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
-| 🐧 **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+> ⚠️ **Method Positioning**: FileRL is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge". The algorithm borrows some RL concepts as design intuition, but **is not a strict RL implementation** — no state transition probabilities, no value function approximation, no theoretical convergence guarantees.
 
-### 💻 CLI
+### Algorithm Overview
+
+<table>
+<tr>
+<th colspan="3" style="text-align:center;background:#f8fafc;">🧠 System Components: Codebase + Agent + Evaluator</th>
+</tr>
+<tr>
+<td align="center" width="33%" style="background:#fef3c7;border:2px solid #d97706;">
+<b>🔀 Candidate Generator</b><br/><br/>
+📂 Worktree (Isolated Env)<br/>
+Codebase copy 𝒞'<br/><br/>
+🤖 Agent → Generate PR
+</td>
+<td align="center" width="33%" style="background:#e0f2fe;border:2px solid #0284c7;">
+<b>🔒 Reference Baseline</b><br/><br/>
+📂 Main Branch<br/>
+Original codebase 𝒞<br/><br/>
+Used to calculate diff
+</td>
+<td align="center" width="33%" style="background:#fce7f3;border:2px solid #db2777;">
+<b>⚖️ Quality Evaluator</b><br/><br/>
+📂 Worktree<br/>
+Changes Δ𝒞<br/><br/>
+CI + Agent → Multi-dimensional scoring
+</td>
+</tr>
+</table>
+
+<br/>
+
+<table>
+<tr>
+<th colspan="4" style="text-align:center;background:#f1f5f9;">🔄 Iterative Optimization Loop</th>
+</tr>
+<tr>
+<td align="center" width="25%" style="background:#fff;border:1px solid #475569;">
+<b>① Sampling</b><br/><br/>
+<b>Batch:</b> B ideas<br/>
+idea₁, idea₂, ..., idea<sub>B</sub><br/><br/>
+<b>Parallel rollout:</b> N each<br/>
+PR₁₁...PR₁ₙ<br/>
+PR₂₁...PR₂ₙ<br/>
+...<br/><br/>
+<i>Total B×N candidates</i>
+</td>
+<td align="center" width="25%" style="background:#fff;border:1px solid #475569;">
+<b>② Evaluation</b><br/><br/>
+<b>Multi-objective scoring:</b><br/>
+R = Σ wᵢ·rᵢ<br/>
+<sub>(tests, quality, security...)</sub><br/><br/>
+<b>Change magnitude:</b><br/>
+d = |Δlines| / max_diff<br/><br/>
+<b>Adjusted score:</b><br/>
+R̃ = R − λ·d
+</td>
+<td align="center" width="25%" style="background:#fff;border:1px solid #475569;">
+<b>③ Selection</b><br/><br/>
+<b>Change penalty weight:</b><br/>
+w = exp(−β·d)<br/><br/>
+<b>Relative score:</b><br/>
+S = R̃ − mean(R̃)<br/><br/>
+<b>Two-stage filtering:</b><br/>
+1. Best PR per idea<br/>
+2. Global best PR<br/>
+(Skip if R̃ < τ)
+</td>
+<td align="center" width="25%" style="background:#fff;border:1px solid #475569;">
+<b>④ Update</b><br/><br/>
+<b>Merge best PR:</b><br/>
+git merge PR* → main<br/><br/>
+<b>Update codebase:</b><br/>
+𝒞 ← 𝒞'<br/><br/>
+<b>Stop check:</b><br/>
+ΔR̃ < δ ?<br/><br/>
+✅ Yes → Return current solution<br/>
+🔄 No → Continue iteration
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>Formal Definitions</b></summary>
+
+**Multi-objective Scoring Function**
+
+$$R(\text{PR}) = \sum_{i=1}^{k} w_i \cdot r_i(\text{PR}), \quad \sum_{i=1}^{k} w_i = 1, \quad r_i \in [0, 1]$$
+
+Where $r_i$ are normalized scores for each dimension (test pass rate, code quality, security, Agent review, etc.)
+
+**Code Change Magnitude** (Scale Metric)
+
+$$d = \min\left(1,\frac{|\Delta\text{lines}|}{\text{max\_diff}}\right)$$
+
+- $|\Delta\text{lines}|$: PR code change lines (`git diff --stat`)
+- $\text{max\_diff}$: Maximum allowed change lines per PR (hyperparameter, e.g., 500 lines)
+- $d \in [0, 1]$: Normalized change magnitude, truncated to 1 when exceeding max_diff
+
+> ⚠️ **Note**: $d$ is not a strict distance metric (doesn't satisfy distance axioms), only serves as a simple indicator of change scale.
+>
+> **Known Limitations**:
+> - **Semantic blind**: Cannot distinguish renaming 1000 lines vs modifying 1 line of core logic
+> - **Asymmetric**: Adding code vs deleting code may have different impacts
+> - **Type agnostic**: Config files vs core code have same line weight
+
+**Change Penalty Weight**
+
+$$r_t = e^{-\beta \cdot d}$$
+
+- $d = 0$: $r_t = 1$ (no change, no penalty)
+- $d \to 1$: $r_t \to e^{-\beta}$ (large change, weight decreases)
+- $\beta$: Sensitivity parameter (hyperparameter, empirical value 1.0 ~ 3.0)
+
+> 📐 **Design Choice**: Using exponential decay instead of linear penalty ensures $r_t > 0$ and is tolerant to small changes while sensitive to large changes.
+
+**Adjusted Score**
+
+$$\tilde{R} = R - \lambda \cdot d$$
+
+Where $\lambda$ is the change penalty coefficient (hyperparameter, empirical value 0.01 ~ 0.1)
+
+**Relative Score** (Batch Normalization)
+
+$$S(\text{PR}) = \tilde{R}(\text{PR}) - \bar{R}, \quad \bar{R} = \frac{1}{N}\sum_{i=1}^{N}\tilde{R}(\text{PR}_i)$$
+
+**Composite Scoring Function**
+
+$$L(\text{PR}) = \min\left(r_t \cdot S,\ \text{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon) \cdot S\right)$$
+
+The clip operation limits the influence range of change penalty weight, $\epsilon$ is the truncation parameter (empirical value 0.1 ~ 0.2)
+
+**Two-stage Selection**
+
+$$\text{PR}^*\_{\text{idea}} = \arg\max\_{\text{PR} \in \text{Rollouts}\_{\text{idea}}} L(\text{PR})$$
+
+$$\text{PR}^* = \arg\max\_{\text{PR}^\*\_{\text{idea}}}  L(\text{PR}^\*\_{\text{idea}}) , \quad \text{s.t. } \tilde{R}(\text{PR}^*\_{\text{idea}}) \geq \tau$$
+
+Where $\tau$ is the quality threshold (empirical value 0.5 ~ 0.7), candidates below this threshold are not merged
+
+**Edge Case Handling**
+
+| Case | Handling |
+|------|----------|
+| $\|\Delta\text{lines}\| > \text{max\_diff}$ | $d$ truncated to 1, PR receives maximum change penalty |
+| All candidates $\tilde{R} < \tau$ | No merge this round, skip update phase |
+| 5 consecutive rounds without merge | Trigger early stop, report optimization stalled |
+
+**Hyperparameter Description**
+
+| Parameter | Meaning | Empirical Value | Source |
+|-----------|---------|-----------------|--------|
+| $\beta$ | Change penalty sensitivity | 1.0 ~ 3.0 | Not fully validated |
+| $\lambda$ | Change penalty coefficient | 0.01 ~ 0.1 | Not fully validated |
+| $\epsilon$ | Weight clipping range | 0.1 ~ 0.2 | Borrowed from PPO |
+| $\tau$ | Quality threshold | 0.5 ~ 0.7 | Not fully validated |
+| max_diff | Max change lines | 500 | Empirical estimate |
+
+</details>
+
+<details>
+<summary><b>Algorithm Pseudocode</b></summary>
+
+```
+Algorithm: FileRL — Multi-objective Constrained Iterative Optimization
+────────────────────────────────────────────────────
+Input:   C₀                  // Initial codebase
+Hyperparameters:
+        T = 50              // Max iterations
+        B = 3               // Batch size (number of ideas), constraint: B ≤ K
+        N = 2               // Candidates per direction
+        K                   // Number of idea types
+        max_diff = 500      // Max change lines per PR
+        λ = 0.05            // Change penalty coefficient
+        β = 2.0             // Change penalty sensitivity
+        ε = 0.2             // Weight clipping parameter
+        τ = 0.6             // Quality threshold
+        δ = 0.01            // Stop threshold
+Output:   C*                  // Optimized codebase (current solution, not guaranteed optimal)
+
+ 1  C ← C₀
+ 2  history ← []
+ 3  no_merge_count ← 0                        // Consecutive no-merge count
+ 4  for t = 1 to T do
+ 5  │
+ 6  │   // Phase 1: Batch sampling (generate B different types of ideas)
+ 7  │   Ideas ← SampleIdeas(C, B, K)          // |Ideas| = B, types are distinct
+ 8  │
+ 9  │   // Phase 2: Parallel rollout (B×N worktrees execute in parallel)
+10  │   PRs ← ∅
+11  │   for each idea ∈ Ideas do in parallel
+12  │   │   for j = 1 to N do in parallel     // Rollout N times per direction
+13  │   │   │   PR ← CodeSynthesis(C, idea)   // Generate code in worktree_{idea,j}
+14  │   │   │   PRs ← PRs ∪ {PR}
+15  │   │   end
+16  │   end                                   // Total B×N candidate PRs
+17  │
+18  │   // Phase 3: Scoring and change magnitude calculation
+19  │   for each PR ∈ PRs do
+20  │   │   R(PR) ← Σᵢ wᵢ · rᵢ(PR)           // Multi-objective scoring
+21  │   │   d(PR) ← min(1, |Δlines|/max_diff) // Change magnitude (truncated to [0,1])
+22  │   │   R̃(PR) ← R(PR) - λ · d(PR)         // Adjusted score
+23  │   │   w(PR) ← exp(-β · d(PR))           // Change penalty weight
+24  │   end
+25  │
+26  │   // Phase 4: Select best PR (greedy selection with penalty)
+27  │   R̄ ← mean({R̃(PR) : PR ∈ PRs})         // Batch mean (for normalization)
+28  │   for each PR ∈ PRs do
+29  │   │   S(PR) ← R̃(PR) - R̄                 // Relative score
+30  │   │   L(PR) ← min(w(PR)·S(PR), clip(w(PR),1-ε,1+ε)·S(PR))
+31  │   end
+32  │   // 4a: Select best candidate per direction
+33  │   Candidates ← ∅
+34  │   for each idea ∈ Ideas do
+35  │   │   PRs_idea ← {PR ∈ PRs : PR.idea = idea}
+36  │   │   PR_best ← argmax_{PR ∈ PRs_idea} L(PR)
+37  │   │   Candidates ← Candidates ∪ {PR_best}
+38  │   end
+39  │   // 4b: Select global best from B candidates (must meet quality threshold)
+40  │   Qualified ← {PR ∈ Candidates : R̃(PR) ≥ τ}
+41  │   if Qualified = ∅ then
+42  │   │   PR* ← ∅                            // No qualified candidate
+43  │   else
+44  │   │   PR* ← argmax_{PR ∈ Qualified} L(PR)
+45  │   end
+46  │
+47  │   // Phase 5: Update codebase (discrete selection, not gradient update)
+48  │   if PR* ≠ ∅ then
+49  │   │   C ← Merge(C, PR*)                  // git merge
+50  │   │   history.append(R̃(PR*))
+51  │   │   no_merge_count ← 0
+52  │   else
+53  │   │   no_merge_count ← no_merge_count + 1
+54  │   │   if no_merge_count ≥ 5 then
+55  │   │   │   break                          // Consecutive no-merge, early stop
+56  │   │   end
+57  │   end
+58  │
+59  │   // Phase 6: Stop condition check (no convergence guarantee)
+60  │   if len(history) ≥ 10 and
+61  │      |mean(history[-5:]) - mean(history[-10:-5])| < δ then
+62  │   │   break                              // Score improvement plateaued
+63  │   end
+64  │
+65  end
+66  return C                                   // Return current solution
+```
+
+</details>
+
+<details>
+<summary><b>CLI Command Reference</b></summary>
 
 ```bash
-# Shell (macOS/Linux)
-curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+# Lifecycle
+viben filerl create <name>       # Create optimization target
+viben filerl start <target.md>   # Start optimization loop
+viben filerl status <name>       # View status
+viben filerl stop <name>         # Stop
+viben filerl resume <name>       # Resume
 
-# npm
-npm install -g viben
+# Idea → Task
+viben idea generate --types <t>  # Generate ideas
+viben idea promote <id> --start  # Convert to task
 
-# Homebrew
-brew tap LinXueyuanStdio/viben && brew install viben
+# Evaluation & Selection
+viben reward select <tasks...>   # Select best candidate
+viben task approve <task>        # Merge PR
 
-# Or run directly (no installation)
-npx viben
+# Monitoring
+viben swarm status --watch       # Real-time monitoring
 ```
+
+</details>
 
 ---
 
@@ -115,7 +405,7 @@ stateDiagram-v2
     class failed,cancelled error
 ```
 
-> **Internal Flow**: `in_progress` state internally executes plan -> implement -> check -> fix loop
+> **Internal Flow**: `in_progress` state internally executes plan → implement → check → fix loop
 
 | Status | Description | Trigger Command |
 |--------|-------------|-----------------|
@@ -123,7 +413,7 @@ stateDiagram-v2
 | `queue` | Queued, waiting for execution | `task enqueue` |
 | `in_progress` | Executing (plan → implement → check) | `task start` |
 | `paused` | Paused, progress preserved | `task pause` |
-| `review` | Awaiting review | Auto (QA passed) |
+| `review` | Awaiting manual review | Auto (QA passed) |
 | `completed` | Completed | `task approve` |
 | `failed` | Execution failed | Auto |
 | `cancelled` | Cancelled | `task cancel` |
@@ -162,7 +452,7 @@ viben task status <task>     # View status
 
 **Review & Complete**
 ```bash
-viben task review <task>     # View task for review
+viben task review <task>     # User manually reviews task
 viben task approve <task>    # review → completed
 viben task reject <task>     # review → backlog
 viben task retry <task>      # failed → queue
@@ -173,6 +463,9 @@ viben task cancel <task>     # * → cancelled
 ```bash
 viben task list              # List all tasks
 viben task context <task>    # Get session context for task
+viben task plan-phase <task> # Execute plan phase
+viben task work-phase <task> # Execute work phase
+viben task create-worktree <task> # Create Git worktree
 viben task create-pr <task>  # Create PR from task
 viben task archive <task>    # Archive completed task
 ```
@@ -224,6 +517,34 @@ viben idea promote ci-001 --start --worktree
 ├── cron.yaml         # Scheduled tasks
 ├── channels.yaml     # Notification channels
 └── workspaces.yaml   # Workspaces
+```
+
+---
+
+## 📦 Download
+
+### 🖥️ Desktop App
+
+| Platform | Download |
+|:--------:|----------|
+| 🍎 **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
+| 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
+| 🐧 **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+
+### 💻 CLI
+
+```bash
+# Shell (macOS/Linux)
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+
+# npm
+npm install -g viben
+
+# Homebrew
+brew tap LinXueyuanStdio/viben && brew install viben
+
+# Or run directly (no installation)
+npx viben
 ```
 
 ---

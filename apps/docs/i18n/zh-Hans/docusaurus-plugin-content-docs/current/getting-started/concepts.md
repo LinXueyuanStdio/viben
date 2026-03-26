@@ -1,12 +1,92 @@
 ---
 sidebar_position: 3
 title: "核心概念"
-description: "理解微本的核心概念：智能体、执行器、配置系统和 Memory"
+description: "理解微本的核心概念：FileRL、任务系统、智能体、执行器"
 ---
 
 # 核心概念
 
 本文档介绍微本的核心概念，帮助你理解系统的工作原理。
+
+## FileRL: 代码迭代优化
+
+FileRL 是微本的核心算法，通过多目标带约束的候选选择实现代码质量的迭代提升。
+
+### 核心思想
+
+```
+生成多个候选方案 → 多维度评估 → 选择最优合并 → 迭代
+```
+
+### 系统组件
+
+| 组件 | 说明 |
+|------|------|
+| **候选生成器** | 在 Worktree 隔离环境中，Agent 生成 PR |
+| **参考基准** | Main Branch 原始代码库，用于计算变更量 |
+| **质量评估器** | CI + Agent 多维度评分 (测试、质量、安全) |
+
+### 迭代循环
+
+1. **采样** - 批量生成 B 个不同类型的想法，每个并行展开 N 次
+2. **评估** - 多目标评分 R + 变更量惩罚 d → 调整后得分 R̃
+3. **选择** - 两阶段筛选：每 idea 选最优，全局选最优
+4. **更新** - 合并最佳 PR，更新代码库
+
+### 评分机制
+
+**多目标评分**：
+
+`R = Σ wᵢ · rᵢ`
+
+其中 rᵢ 为各维度评分（测试通过率、代码质量、安全性等）
+
+**变更惩罚**：
+
+`R̃ = R - λ · d`
+
+其中 d 为归一化变更量，λ 为惩罚系数
+
+---
+
+## 任务系统
+
+基于 XState 状态机的任务生命周期管理。
+
+### 任务状态
+
+| 状态 | 说明 |
+|------|------|
+| `backlog` | 待办，等待排队 |
+| `queue` | 已排队，等待执行 |
+| `in_progress` | 执行中 (plan → implement → check → fix) |
+| `paused` | 已暂停，保留进度 |
+| `review` | 等待人工审核 |
+| `completed` | 已完成 |
+| `failed` | 执行失败 |
+| `cancelled` | 已取消 |
+
+### 内部执行流程
+
+`in_progress` 状态内部执行：
+
+```
+plan → implement → check → fix (失败时循环)
+```
+
+### 任务目录结构
+
+```
+.viben/tasks/<date>-<slug>/
+├── task.json           # 任务元数据
+├── events.jsonl        # 事件历史
+├── prd.md              # 产品需求文档
+├── implement.jsonl     # 实现阶段上下文
+├── check.jsonl         # 检查阶段上下文
+└── logs/               # 执行日志
+```
+
+---
 
 ## 智能体 vs 执行器
 
@@ -14,24 +94,24 @@ description: "理解微本的核心概念：智能体、执行器、配置系统
 
 ### 执行器 (Executor)
 
-执行器是底层的 AI coding agent 运行时，如 Claude Code、Cursor、Gemini 等。
+执行器是底层的 AI coding agent 运行时。
 
 **特点**：
 - **只读** - 执行器由系统检测，用户无法创建或修改
-- **独立安装** - 需要单独安装（如 `npm install -g @anthropic-ai/claude-code`）
+- **独立安装** - 需要单独安装
 - **运行环境** - 提供实际的 AI 推理能力
 
 **支持的执行器**：
 
-| 执行器 | 类型 | CLI 命令 | MCP 支持 | 流式输出 |
-|--------|------|----------|----------|----------|
-| Claude Code | CLAUDE_CODE | `claude` | ✓ | ✓ |
-| AMP | AMP | `amp` | ✓ | ✓ |
-| Gemini | GEMINI | `gemini` | - | ✓ |
-| Codex | CODEX | `codex` | - | ✓ |
-| Cursor | CURSOR_AGENT | `cursor` | ✓ | ✓ |
-| Qwen Code | QWEN_CODE | `qwen` | - | ✓ |
-| Copilot | COPILOT | `copilot` | - | ✓ |
+| 执行器 | 类型 | CLI 命令 | MCP 支持 |
+|--------|------|----------|----------|
+| Claude Code | CLAUDE_CODE | `claude` | ✓ |
+| AMP | AMP | `amp` | ✓ |
+| Gemini | GEMINI | `gemini` | - |
+| Codex | CODEX | `codex` | - |
+| Cursor | CURSOR_AGENT | `cursor` | ✓ |
+| Qwen Code | QWEN_CODE | `qwen` | - |
+| Copilot | COPILOT | `copilot` | - |
 
 ### 智能体 (Agent)
 
@@ -42,13 +122,6 @@ description: "理解微本的核心概念：智能体、执行器、配置系统
 - **存储在 YAML** - 配置文件存储在 `.viben/agents/` 目录
 - **引用执行器** - 通过 `executor_type` 字段指定使用哪个执行器
 
-**智能体配置内容**：
-- 系统提示词 (system_prompt)
-- 追加提示词 (append_prompt)
-- 模型和参数 (model, temperature, max_tokens)
-- MCP 服务器配置
-- Skills 配置
-
 **配置示例**：
 
 ```yaml
@@ -58,13 +131,6 @@ name: My Coding Assistant
 executor_type: CLAUDE_CODE
 model: claude-3-sonnet
 system_prompt: You are a helpful coding assistant.
-temperature: 0.7
-max_tokens: 4096
-mcp_servers:
-  - filesystem
-  - github
-skills:
-  - code-review
 ```
 
 ### 关系图
@@ -77,7 +143,6 @@ skills:
 │  │  executor_type: CLAUDE_CODE  ──────────────────┐    │   │
 │  │  model: claude-3-sonnet                        │    │   │
 │  │  system_prompt: "..."                          │    │   │
-│  │  mcp_servers: [...]                            │    │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                    │        │
 │                                                    ▼        │
@@ -85,10 +150,30 @@ skills:
 │  │               执行器 (Executor)                      │   │
 │  │  type: CLAUDE_CODE                                   │   │
 │  │  cli: claude                                         │   │
-│  │  supports_mcp: true                                  │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Idea 生成
+
+AI 驱动的代码库分析，自动发现改进点。
+
+### 内置类型
+
+| 类型 | 说明 |
+|------|------|
+| `code_improvements` | 基于现有模式的代码改进 |
+| `security_hardening` | 安全漏洞和加固措施 |
+| `performance_optimizations` | 性能瓶颈和优化 |
+| `documentation_gaps` | 缺失的文档 |
+| `ui_ux_improvements` | UI/UX 增强 |
+| `code_quality` | 代码质量和重构 |
+
+### 自定义类型
+
+在 `docs/idea-types/*.md` 创建自定义 prompt 模板。
 
 ---
 
@@ -107,16 +192,14 @@ skills:
 
 ```
 ~/.viben/
-├── agents/              # 全局智能体配置
-│   └── <agent-id>/
-│       ├── config.yaml  # 智能体配置
-│       └── MEMORY.md    # 智能体记忆
-├── providers/           # Provider 配置
-│   └── <provider-id>.yaml
-├── models.yaml          # 模型配置
-├── channels.yaml        # 通道配置 (Telegram, Discord 等)
-├── cron.yaml            # 定时任务配置
-└── sessions/            # 会话存储
+├── providers.yaml       # API Keys, Endpoints
+├── models.yaml          # 模型参数
+├── agents/              # Agent 定义
+│   └── <name>/
+│       └── AGENTS.md
+├── cron.yaml            # 定时任务
+├── channels.yaml        # 通知渠道
+└── workspaces.yaml      # 工作空间
 ```
 
 ### 项目配置结构
@@ -124,70 +207,17 @@ skills:
 ```
 <project>/.viben/
 ├── agents/              # 项目智能体
-│   └── <agent-id>/
-│       └── config.yaml
-├── group-chats/         # 群聊配置
-├── kanban/              # 看板数据
-└── config.yaml          # 项目配置
+├── tasks/               # 任务目录
+│   └── <date>-<slug>/
+│       └── task.json
+└── workspace/           # 开发者工作空间
 ```
 
 ### 配置优先级
 
-配置按以下优先级合并（后者覆盖前者）：
-
 ```
 全局配置 (~/.viben/) → 项目配置 (<project>/.viben/) → 命令行参数
 ```
-
-**示例**：
-
-假设全局配置中 `temperature: 0.7`，项目配置中 `temperature: 0.3`，最终使用 `0.3`。
-
----
-
-## Memory 系统
-
-微本为每个智能体维护一个 Memory 系统，帮助智能体记住重要信息。
-
-### Memory 文件
-
-每个智能体目录下都有一个 `MEMORY.md` 文件：
-
-```
-~/.viben/agents/<agent-id>/MEMORY.md
-```
-
-### Memory 内容
-
-Memory 文件存储智能体需要记住的长期信息：
-
-```markdown
-# Agent Memory
-
-## Project Context
-- This is a TypeScript monorepo using pnpm
-- Main frameworks: React, Next.js, Tauri
-
-## User Preferences
-- Prefer functional components over class components
-- Use TypeScript strict mode
-- Follow Conventional Commits
-
-## Learned Patterns
-- API routes are in apps/web/app/api/
-- Shared components are in packages/ui/
-```
-
-### 每日日志
-
-除了 MEMORY.md，系统还维护每日日志：
-
-```
-~/.viben/agents/<agent-id>/logs/
-└── 2024-01-15.md
-```
-
-每日日志记录当天的交互摘要和重要决策。
 
 ---
 
@@ -195,77 +225,35 @@ Memory 文件存储智能体需要记住的长期信息：
 
 ### Provider
 
-Provider 是 AI 服务提供商，如 OpenAI、Anthropic、Ollama 等。
-
-**配置示例**：
+Provider 是 AI 服务提供商。
 
 ```yaml
-# ~/.viben/providers/anthropic.yaml
-id: anthropic
-name: Anthropic
-type: anthropic
-api_key: ${ANTHROPIC_API_KEY}
-base_url: https://api.anthropic.com
+# ~/.viben/providers.yaml
+anthropic:
+  api_key: ${ANTHROPIC_API_KEY}
+  base_url: https://api.anthropic.com
 ```
 
 ### Model
 
-Model 是具体的 AI 模型，关联到特定的 Provider。
-
-**配置示例**：
+Model 是具体的 AI 模型。
 
 ```yaml
 # ~/.viben/models.yaml
 models:
   - id: claude-3-sonnet
-    name: Claude 3 Sonnet
     provider: anthropic
     model_id: claude-3-sonnet-20240229
-    context_length: 200000
-
-  - id: gpt-4
-    name: GPT-4
-    provider: openai
-    model_id: gpt-4-turbo
-    context_length: 128000
 
 aliases:
   default: claude-3-sonnet
   fast: claude-3-haiku
-
-fallbacks:
-  claude-3-sonnet:
-    - gpt-4
-    - claude-3-haiku
 ```
-
----
-
-## 会话 (Session)
-
-会话是智能体与用户的一次对话上下文。
-
-### 会话生命周期
-
-1. **创建** - 用户开始新对话时创建
-2. **活跃** - 持续交互中
-3. **暂停** - 用户离开但保留上下文
-4. **结束** - 用户关闭或超时
-
-### 会话存储
-
-不同执行器的会话存储位置不同：
-
-| 执行器 | 存储路径 |
-|--------|----------|
-| Claude Code | `~/.claude/projects/<encoded-path>/<session-id>.jsonl` |
-| Codex | `~/.codex/sessions/<session-id>/` |
-| 微本 Agent | `~/.viben/sessions/<agent-id>/<session-id>/` |
 
 ---
 
 ## 下一步
 
 - [快速入门](./quick-start) - 开始使用微本
-- [桌面应用功能](../desktop/features.md) - 了解桌面应用功能
+- [桌面应用功能](../desktop/features) - 了解桌面应用功能
 - [CLI 文档](/cli/) - 命令行工具参考

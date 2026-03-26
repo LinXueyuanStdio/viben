@@ -11,32 +11,35 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Multi-Workspace Management',
+    title: 'FileRL - Code Iterative Optimization',
     Svg: require('@site/static/img/workspace-management.svg').default,
     description: (
       <>
-        Manage multiple project workspaces with independent MCP servers,
-        agent configurations (Claude Code, Cursor, Codex), Skills, and task boards.
+        Multi-candidate sampling + quality evaluation algorithm that automatically
+        selects and merges the best solution. Heuristic iterative optimization
+        through sampling-evaluation-selection loops.
       </>
     ),
   },
   {
-    title: 'Agent Orchestration',
+    title: 'Multi-Agent Orchestration',
     Svg: require('@site/static/img/agent-orchestration.svg').default,
     description: (
       <>
-        Unified configuration management for Claude Code, Cursor, Codex and other
-        AI programming assistants. One place for all your AI tools.
+        Agent swarm orchestration with parallel worktree isolation. Automated task
+        distribution and real-time monitoring across multiple AI agents working
+        together.
       </>
     ),
   },
   {
-    title: 'Task & Kanban System',
+    title: 'XState Task System',
     Svg: require('@site/static/img/kanban-board.svg').default,
     description: (
       <>
-        Built-in kanban board with task cards, priorities, tags, subtasks,
-        dependencies, and activity tracking for your development workflow.
+        State machine-driven task lifecycle management with kanban board, queue,
+        and auto-execution. Complete workflow from backlog to completed with
+        plan → implement → check → fix loops.
       </>
     ),
   },
