@@ -158,7 +158,7 @@ git merge PR* → main<br/><br/>
 </tr>
 </table>
 
-<details open>
+<details>
 <summary><b>形式化定义</b></summary>
 
 **多目标评分函数**
@@ -212,7 +212,7 @@ clip 操作限制变更惩罚权重的影响范围，$\epsilon$ 为截断参数�
 
 $$\text{PR}^*\_{\text{idea}} = \arg\max\_{\text{PR} \in \text{Rollouts}\_{\text{idea}}} L(\text{PR})$$
 
-$$\text{PR}^* = \arg\max\\_{\text{PR}^*\\_{\text{idea}}} L(\text{PR}^*\\_{\text{idea}}), \quad \text{s.t. } \tilde{R}(\text{PR}^*\\_{\text{idea}}) \geq \tau$$
+$$\text{PR}^* = \arg\max\_{\text{PR}^\*\_{\text{idea}}}  L(\text{PR}^\*\_{\text{idea}}) , \quad \text{s.t. } \tilde{R}(\text{PR}^*\_{\text{idea}}) \geq \tau$$
 
 其中 $\tau$ 为质量阈值（经验值 0.5 ~ 0.7），低于此阈值的候选不予合并
 
