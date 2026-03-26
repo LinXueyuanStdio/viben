@@ -115,7 +115,7 @@ CI + Agent → 多维度评分
 <tr>
 <td align="center" width="25%" style="background:#fff;border:1px solid #475569;">
 <b>① 采样</b><br/><br/>
-<b>批量:</b> B 个改进方向<br/>
+<b>批量:</b> B 个想法<br/>
 idea₁, idea₂, ..., idea<sub>B</sub><br/><br/>
 <b>并行展开:</b> 每个 N 次<br/>
 PR₁₁...PR₁ₙ<br/>
@@ -183,13 +183,13 @@ $$d = \min\left(1,\ \frac{|\Delta\text{lines}|}{\text{max\_diff}}\right)$$
 
 **变更惩罚权重**
 
-$$w_d = e^{-\beta \cdot d}$$
+$$r_t = e^{-\beta \cdot d}$$
 
-- $d = 0$ 时：$w_d = 1$（无变更，无惩罚）
-- $d \to 1$ 时：$w_d \to e^{-\beta}$（大变更，权重降低）
+- $d = 0$ 时：$r_t = 1$（无变更，无惩罚）
+- $d \to 1$ 时：$r_t \to e^{-\beta}$（大变更，权重降低）
 - $\beta$：敏感度参数（超参数，经验值 1.0 ~ 3.0）
 
-> 📐 **设计选择**：采用指数衰减而非线性惩罚，保证 $w_d > 0$ 且对小变更宽容、大变更敏感。
+> 📐 **设计选择**：采用指数衰减而非线性惩罚，保证 $r_t > 0$ 且对小变更宽容、大变更敏感。
 
 **调整后得分**
 
@@ -203,7 +203,7 @@ $$S(\text{PR}) = \tilde{R}(\text{PR}) - \bar{R}, \quad \bar{R} = \frac{1}{N}\sum
 
 **综合评分函数**
 
-$$L(\text{PR}) = \min\left(w_d \cdot S,\ \text{clip}(w_d, 1{-}\epsilon, 1{+}\epsilon) \cdot S\right)$$
+$$L(\text{PR}) = \min\left(r_t \cdot S,\ \text{clip}(r_t, 1{-}\epsilon, 1{+}\epsilon) \cdot S\right)$$
 
 clip 操作限制变更惩罚权重的影响范围，$\epsilon$ 为截断参数（经验值 0.1 ~ 0.2）
 
@@ -242,9 +242,9 @@ Algorithm: FileRL — 多目标带约束的迭代优化
 输入:   C₀                  // 初始代码库
 超参数:
         T = 50              // 最大迭代次数
-        B = 3               // 批大小 (改进方向数)，约束: B ≤ K
+        B = 3               // 批大小 (想法数)，约束: B ≤ K
         N = 2               // 每个方向的候选数
-        K                   // 改进方向类型数量
+        K                   // 想法类型数量
         max_diff = 500      // 单次 PR 最大变更行数
         λ = 0.05            // 变更惩罚系数
         β = 2.0             // 变更惩罚敏感度
@@ -258,7 +258,7 @@ Algorithm: FileRL — 多目标带约束的迭代优化
  3  no_merge_count ← 0                        // 连续无合并计数
  4  for t = 1 to T do
  5  │
- 6  │   // 阶段 1: 批量采样 (生成 B 个不同类型的改进方向)
+ 6  │   // 阶段 1: 批量采样 (生成 B 个不同类型的想法)
  7  │   Ideas ← SampleIdeas(C, B, K)          // |Ideas| = B, 类型互不相同
  8  │
  9  │   // 阶段 2: 并行展开 (B×N 个 worktree 并行执行)
@@ -335,7 +335,7 @@ viben filerl stop <name>         # 停止
 viben filerl resume <name>       # 恢复
 
 # Idea → Task
-viben idea generate --types <t>  # 生成改进方向
+viben idea generate --types <t>  # 生成想法
 viben idea promote <id> --start  # 转为任务
 
 # 评估与选择
