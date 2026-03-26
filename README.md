@@ -158,7 +158,7 @@ git merge PR* → main<br/><br/>
 </tr>
 </table>
 
-<details>
+<details open>
 <summary><b>形式化定义</b></summary>
 
 **多目标评分函数**
@@ -169,10 +169,10 @@ $$R(\text{PR}) = \sum_{i=1}^{k} w_i \cdot r_i(\text{PR}), \quad \sum_{i=1}^{k} w
 
 **代码变更量** (规模度量)
 
-$$d = \min\left(1,\ \frac{|\Delta\text{lines}|}{\text{max\_diff}}\right)$$
+$$d = \min\left(1,\frac{|\Delta\text{lines}|}{\text{max\\\_diff}}\right)$$
 
 - $|\Delta\text{lines}|$：PR 的代码变更行数（`git diff --stat`）
-- $\text{max\_diff}$：单次 PR 允许的最大变更行数（超参数，如 500 行）
+- $\text{max\\\_diff}$：单次 PR 允许的最大变更行数（超参数，如 500 行）
 - $d \in [0, 1]$：归一化变更量，超过 max_diff 时截断为 1
 
 > ⚠️ **注意**：$d$ 不是严格的距离度量（不满足距离公理），仅作为变更规模的简单指标。
@@ -210,9 +210,9 @@ clip 操作限制变更惩罚权重的影响范围，$\epsilon$ 为截断参数�
 
 **两阶段选择**
 
-$$\text{PR}^*_{\text{idea}} = \arg\max_{\text{PR} \in \text{Rollouts}_{\text{idea}}} L(\text{PR})$$
+$$\text{PR}^*\_{\text{idea}} = \arg\max\_{\text{PR} \in \text{Rollouts}\_{\text{idea}}} L(\text{PR})$$
 
-$$\text{PR}^* = \arg\max_{\text{PR}^*_{\text{idea}}} L(\text{PR}^*_{\text{idea}}), \quad \text{s.t. } \tilde{R}(\text{PR}^*_{\text{idea}}) \geq \tau$$
+$$\text{PR}^* = \arg\max\\_{\text{PR}^*\\_{\text{idea}}} L(\text{PR}^*\\_{\text{idea}}), \quad \text{s.t. } \tilde{R}(\text{PR}^*\\_{\text{idea}}) \geq \tau$$
 
 其中 $\tau$ 为质量阈值（经验值 0.5 ~ 0.7），低于此阈值的候选不予合并
 
@@ -220,7 +220,7 @@ $$\text{PR}^* = \arg\max_{\text{PR}^*_{\text{idea}}} L(\text{PR}^*_{\text{idea}}
 
 | 情况 | 处理 |
 |------|------|
-| $\|\Delta\text{lines}\| > \text{max\_diff}$ | $d$ 截断为 1，PR 受最大变更惩罚 |
+| $\|\Delta\text{lines}\| > \text{max\\\_diff}$ | $d$ 截断为 1，PR 受最大变更惩罚 |
 | 所有候选 $\tilde{R} < \tau$ | 本轮不合并，跳过更新阶段 |
 | 连续 5 轮无合并 | 触发早停，报告优化停滞 |
 
