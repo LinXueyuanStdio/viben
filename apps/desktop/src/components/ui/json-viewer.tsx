@@ -5,6 +5,7 @@
  * with tree view, search, and dark theme support.
  */
 import { useRef, useEffect, memo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   createJSONEditor,
   Mode,
@@ -123,18 +124,16 @@ export const JsonViewer = memo(function JsonViewer({
 
 /**
  * Fallback component for when JSON editor fails to load
- * @param noDataText - Text to show when no data is available. Pass translated string via t("common.noData")
+ * Uses i18n for the "No data" text automatically
  */
 export function JsonViewerFallback({
   data,
   className = "",
-  noDataText,
 }: {
   data: unknown;
   className?: string;
-  /** Text to show when no data. If not provided, defaults to "No data" */
-  noDataText?: string;
 }) {
+  const { t } = useTranslation();
   const displayText =
     typeof data === "string"
       ? data
@@ -145,7 +144,7 @@ export function JsonViewerFallback({
       className={`p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap overflow-auto ${className}`}
       style={{ backgroundColor: "#1e1e1e" }}
     >
-      {displayText || <span className="text-gray-500 italic">{noDataText || "No data"}</span>}
+      {displayText || <span className="text-gray-500 italic">{t("common.noData")}</span>}
     </pre>
   );
 }
