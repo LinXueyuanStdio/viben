@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Viben',
-  tagline: 'Multi-Agent Workspace Manager for AI-Assisted Development',
+  tagline: 'Agent Swarm × Code Evolution — Multi-objective constrained iterative optimization for automatic code quality improvement',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future

@@ -1,15 +1,15 @@
 ---
 sidebar_position: 2
 title: "快速入门"
-description: "快速上手微本"
+description: "快速上手微本 - Agent 集群 × 代码进化"
 ---
 
 # 快速入门
 
-本指南帮助你快速上手使用微本。根据你的使用场景选择合适的方式。
+本指南帮助你快速上手使用微本。
 
 :::tip 核心概念
-开始之前，建议先了解 [核心概念](./concepts)，理解智能体与执行器的区别。
+开始之前，建议先了解 [核心概念](./concepts)，理解 FileRL、任务系统、智能体与执行器的区别。
 :::
 
 ## 方式一：使用桌面应用（推荐）
@@ -28,21 +28,138 @@ description: "快速上手微本"
 2. 选择"打开现有文件夹"或"创建新文件夹"
 3. 按向导完成工作空间配置
 
-### 第三步：管理智能体
+### 第三步：创建任务
 
-1. 系统自动检测工作空间中的执行器 (Claude Code、Cursor 等)
-2. 创建自定义智能体或使用内置模板
-3. 为智能体配置 MCP 服务器和 Skills
+1. 打开任务看板
+2. 创建新任务卡片
+3. 设置任务优先级和标签
 
-### 第四步：开始使用
+### 第四步：开始优化
 
-- 使用看板管理任务
-- 与智能体聊天
-- 配置 MCP 服务器
+- 使用 FileRL 自动发现代码改进点
+- 查看生成的 Idea 列表
+- 将 Idea 转化为可执行任务
 
-## 方式二：使用 MCP 服务器
+---
 
-如果你只需要 MCP 服务器功能：
+## 方式二：使用 CLI 工具
+
+CLI 工具适合自动化脚本和高级用户。
+
+:::info CLI 文档
+完整的 CLI 命令参考请查看 [CLI 文档](/cli/)。
+:::
+
+### 第一步：安装 CLI
+
+```bash
+npm install -g viben
+```
+
+或直接运行：
+
+```bash
+npx viben
+```
+
+### 第二步：初始化开发者身份
+
+```bash
+# 检查是否已初始化
+viben user get
+
+# 初始化（首次使用）
+viben user init <your-name>
+```
+
+### 第三步：创建任务
+
+```bash
+# 创建任务
+viben task create "Add user authentication" --slug auth
+
+# 查看任务列表
+viben task list
+```
+
+### 第四步：启动任务执行
+
+```bash
+# 启动任务（自动执行 plan → implement → check）
+viben task start auth
+
+# 或在 worktree 中隔离执行
+viben task start auth --worktree
+```
+
+### 第五步：监控执行
+
+```bash
+# 实时监控 Agent 状态
+viben swarm status --watch
+
+# 查看任务状态
+viben task view auth
+```
+
+### 第六步：审核与完成
+
+```bash
+# 审核任务
+viben task review auth
+
+# 批准完成
+viben task approve auth
+```
+
+---
+
+## 方式三：使用 FileRL 优化代码
+
+FileRL 通过迭代优化自动提升代码质量。
+
+### 第一步：生成 Idea
+
+```bash
+# 生成代码改进建议
+viben idea generate --types code_improvements security_hardening
+
+# 查看生成的 Idea
+viben idea list
+```
+
+### 第二步：选择并执行
+
+```bash
+# 将 Idea 转为任务并启动
+viben idea promote ci-001 --start --worktree
+```
+
+### 第三步：监控优化循环
+
+```bash
+# 查看 FileRL 状态
+viben filerl status <name>
+
+# 实时监控
+viben swarm status --watch
+```
+
+### 第四步：选择最佳方案
+
+```bash
+# 从多个候选中选择最佳
+viben reward select <tasks...>
+
+# 批准合并
+viben task approve <task>
+```
+
+---
+
+## 方式四：使用 MCP 服务器
+
+为 Claude Desktop 或其他 AI 助手添加学术搜索能力。
 
 ### 第一步：安装 MCP 服务器
 
@@ -52,12 +169,11 @@ pip install browse-mcp
 
 ### 第二步：配置 Claude Desktop
 
-打开 Claude Desktop 配置文件：
-
+打开配置文件：
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-添加以下配置：
+添加配置：
 
 ```json
 {
@@ -73,78 +189,46 @@ pip install browse-mcp
 }
 ```
 
-### 第三步：重启 Claude Desktop
+### 第三步：使用
 
-完全退出并重新打开 Claude Desktop，使配置生效。
-
-### 第四步：搜索论文
-
-在 Claude Desktop 中，尝试询问：
+重启 Claude Desktop，然后尝试：
 
 > "在 arXiv 上搜索关于大语言模型的最新论文"
 
-## 方式三：使用 CLI 工具
+---
 
-CLI 工具适合自动化脚本和高级用户。
+## 常用命令速查
 
-:::info CLI 文档
-完整的 CLI 命令参考请查看 [CLI 文档](/cli/)。
-:::
-
-### 第一步：安装 CLI
+### 任务管理
 
 ```bash
-npm install -g viben
+viben task create "<title>" --slug <name>   # 创建任务
+viben task list                              # 列出任务
+viben task start <task>                      # 启动任务
+viben task approve <task>                    # 批准完成
 ```
 
-### 第二步：启动 Gateway
+### FileRL
 
 ```bash
-viben gateway start
+viben idea generate --types <types>          # 生成 Idea
+viben idea promote <id> --start              # Idea 转任务
+viben filerl status <name>                   # 查看状态
+viben reward select <tasks...>               # 选择最佳
 ```
 
-Gateway 会在端口 18790 启动，提供 API 服务。
-
-### 第三步：发现执行器
+### 监控
 
 ```bash
-# 列出可用的执行器
-viben executor list
-
-# 检查执行器可用性
-viben executor show CLAUDE_CODE
+viben swarm status --watch                   # 实时监控
+viben task view <task>                       # 查看详情
 ```
 
-### 第四步：管理智能体
-
-```bash
-# 列出智能体
-viben agent list
-
-# 从模板创建智能体
-viben agent create --from-template coding-assistant
-
-# 查看智能体详情
-viben agent show <agent-name>
-```
-
-### 第五步：管理 MCP 服务器
-
-```bash
-# 列出 MCP 服务器
-viben mcp list
-
-# 添加 MCP 服务器
-viben mcp add
-```
-
-更多 CLI 用法请参考 [CLI 快速入门](/cli/quick-start)。
+---
 
 ## 下一步
 
-- [核心概念](./concepts) - 理解智能体、执行器、配置等核心概念
-- [客户端配置](./client-configuration) - 配置 Cline、Zed 等其他客户端
-- [桌面应用功能](../desktop/features.md) - 探索完整功能
+- [核心概念](./concepts) - 理解 FileRL、任务系统等核心概念
+- [桌面应用功能](../desktop/features) - 探索完整功能
 - [CLI 文档](/cli/) - 命令行工具参考
-- [browse_search 工具](../mcp/tools/browse-search.md) - 学习高级搜索选项
-- [MCP 配置](../mcp/configuration.md) - 配置 API 密钥启用付费数据源
+- [MCP 配置](../mcp/configuration) - 配置 API 密钥启用付费数据源

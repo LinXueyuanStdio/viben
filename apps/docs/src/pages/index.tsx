@@ -46,8 +46,8 @@ export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - Multi-Agent Workspace Manager`}
-      description="Unified management for AI assistants, MCP servers, and development tasks across Claude Code, Cursor, Codex and more">
+      title={`${siteConfig.title} - Agent Swarm × Code Evolution`}
+      description="Multi-objective constrained iterative optimization for automatic code quality improvement. FileRL, multi-agent orchestration, and XState-powered task system.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
