@@ -55,6 +55,31 @@ export interface IdeaConfig {
 }
 
 /**
+ * Rollout configuration
+ */
+export interface RolloutConfig {
+  /** Number of rollouts per idea (default: 1) */
+  n: number;
+
+  /** Use git worktree for isolation (default: true) */
+  worktree: boolean;
+}
+
+/**
+ * Convergence configuration
+ */
+export interface ConvergenceConfig {
+  /** Convergence threshold δ (default: 0.01) */
+  threshold: number;
+
+  /** Maximum iterations before stopping (default: 50) */
+  max_iterations: number;
+
+  /** Consecutive no-merge iterations before early stop (default: 5) */
+  no_merge_limit: number;
+}
+
+/**
  * Task execution configuration
  */
 export interface TaskConfig {
@@ -123,6 +148,23 @@ export const DEFAULT_IDEA_CONFIG: IdeaConfig = {
   types: ["code_improvements"],
   max_ideas: 5,
   auto_promote_count: 3,
+};
+
+/**
+ * Default rollout configuration
+ */
+export const DEFAULT_ROLLOUT_CONFIG: RolloutConfig = {
+  n: 1,
+  worktree: true,
+};
+
+/**
+ * Default convergence configuration
+ */
+export const DEFAULT_CONVERGENCE_CONFIG: ConvergenceConfig = {
+  threshold: 0.01,
+  max_iterations: 50,
+  no_merge_limit: 5,
 };
 
 /**
