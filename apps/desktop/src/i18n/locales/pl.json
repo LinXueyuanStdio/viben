@@ -2435,7 +2435,7 @@
     "kanbanStatus": {
       "backlog": "Backlog",
       "queue": "Queue",
-      "in_progress": "In Progress",
+      "inProgress": "In Progress",
       "paused": "Paused",
       "review": "Review",
       "completed": "Completed",
@@ -2531,7 +2531,8 @@
     "duplicateTask": "Duplicate Task",
     "moveToColumn": "Move to",
     "deleteTaskConfirm": "Are you sure you want to delete this task?",
-    "setPriority": "Set Priority",
+    "setPriority": "Ustaw priorytet",
+    "setStatus": "Ustaw status",
     "runAgent": "Run",
     "running": "Running",
     "failed": "Failed",

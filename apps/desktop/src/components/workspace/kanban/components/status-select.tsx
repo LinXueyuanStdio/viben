@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   cn,
   DropdownMenu,
@@ -30,7 +31,7 @@ export interface StatusSelectProps {
   size?: "sm" | "md" | "lg";
   /** Show only valid transitions based on current status */
   restrictTransitions?: boolean;
-  /** Custom labels for statuses (for i18n) */
+  /** Custom labels for statuses (for i18n) - if not provided, uses built-in i18n */
   labels?: {
     setStatus?: string;
     backlog?: string;
@@ -51,29 +52,6 @@ const triggerSizeConfig = {
   lg: "h-9 px-4 text-base",
 };
 
-// Default labels for statuses
-const DEFAULT_LABELS: Required<StatusSelectProps["labels"]> = {
-  setStatus: "Set status",
-  backlog: "Backlog",
-  queue: "Queue",
-  in_progress: "In Progress",
-  paused: "Paused",
-  review: "Review",
-  completed: "Completed",
-  failed: "Failed",
-  cancelled: "Cancelled",
-  archived: "Archived",
-};
-
-// Get status label with i18n support
-const getStatusLabel = (
-  status: TaskStatus,
-  labels?: StatusSelectProps["labels"]
-): string => {
-  const mergedLabels = { ...DEFAULT_LABELS, ...labels } as Record<string, string>;
-  return mergedLabels[status] ?? status;
-};
-
 // Get column color for status
 const getStatusColor = (status: TaskStatus): string => {
   const column = STATUS_TO_COLUMN[status];
@@ -90,6 +68,32 @@ export function StatusSelect({
   restrictTransitions = true,
   labels,
 }: StatusSelectProps) {
+  const { t } = useTranslation();
+
+  // Default labels using i18n
+  const defaultLabels = React.useMemo(() => ({
+    setStatus: t("workspace.setStatus", "Set status"),
+    backlog: t("workspace.kanbanStatus.backlog", "Backlog"),
+    queue: t("workspace.kanbanStatus.queue", "Queue"),
+    in_progress: t("workspace.kanbanStatus.inProgress", "In Progress"),
+    paused: t("workspace.kanbanStatus.paused", "Paused"),
+    review: t("workspace.kanbanStatus.review", "Review"),
+    completed: t("workspace.kanbanStatus.completed", "Completed"),
+    failed: t("workspace.kanbanStatus.failed", "Failed"),
+    cancelled: t("workspace.kanbanStatus.cancelled", "Cancelled"),
+    archived: t("workspace.kanbanStatus.archived", "Archived"),
+  }), [t]);
+
+  // Merge custom labels with defaults
+  const mergedLabels = React.useMemo(() => ({
+    ...defaultLabels,
+    ...labels,
+  }), [defaultLabels, labels]);
+
+  // Get status label
+  const getStatusLabel = React.useCallback((status: TaskStatus): string => {
+    return (mergedLabels as Record<string, string>)[status] ?? status;
+  }, [mergedLabels]);
   const [open, setOpen] = React.useState(false);
 
   const handleSelect = React.useCallback(
@@ -142,7 +146,7 @@ export function StatusSelect({
               style={{ color, fill: color }}
             />
             <span className="text-sm">
-              {getStatusLabel(value, labels)}
+              {getStatusLabel(value)}
             </span>
           </div>
           <ChevronDown
@@ -160,14 +164,14 @@ export function StatusSelect({
         sideOffset={4}
       >
         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">
-          {labels?.setStatus ?? "Set status"}
+          {mergedLabels.setStatus}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {availableStatuses.map((column) => {
           // Map column to status (for display)
           const status = column as TaskStatus;
           const isSelected = STATUS_TO_COLUMN[value] === column;
-          const label = getStatusLabel(status, labels);
+          const label = getStatusLabel(status);
           const statusColor = COLUMN_COLORS[column];
 
           return (
