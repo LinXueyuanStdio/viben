@@ -21,23 +21,20 @@ export { DEFAULT_REWARD_CONFIG } from "../../reward/ops/types";
  * PPO algorithm configuration
  */
 export interface PpoConfig {
-  /** KL penalty coefficient (default: 0.05) */
+  /** KL penalty coefficient λ (default: 0.05) */
   kl_coef: number;
 
-  /** Minimum adjusted reward threshold (default: 0.6) */
-  threshold: number;
+  /** Change sensitivity β for weight calculation (default: 2.0) */
+  change_sensitivity: number;
 
-  /** Maximum diff lines for KL normalization (default: 500) */
+  /** Clip range ε for weight clipping (default: 0.2) */
+  clip_range: number;
+
+  /** Quality threshold τ - minimum adjusted reward (default: 0.6) */
+  quality_threshold: number;
+
+  /** Maximum diff lines for normalization (default: 500) */
   max_diff: number;
-
-  /** Number of parallel variations to generate (default: 3) */
-  parallel_count: number;
-
-  /** Maximum iterations before stopping (default: 10) */
-  max_iterations: number;
-
-  /** Convergence threshold for early stopping (default: 0.01) */
-  convergence_threshold: number;
 }
 
 /**
@@ -113,11 +110,10 @@ export interface FileRlConfig {
  */
 export const DEFAULT_PPO_CONFIG: PpoConfig = {
   kl_coef: 0.05,
-  threshold: 0.6,
+  change_sensitivity: 2.0,
+  clip_range: 0.2,
+  quality_threshold: 0.6,
   max_diff: 500,
-  parallel_count: 3,
-  max_iterations: 10,
-  convergence_threshold: 0.01,
 };
 
 /**
