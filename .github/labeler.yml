@@ -1,0 +1,60 @@
+# Configuration for actions/labeler@v5
+# https://github.com/actions/labeler
+
+app:cli:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/cli/**'
+
+app:desktop:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/desktop/**'
+
+app:docs:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/docs/**'
+
+app:web:
+  - changed-files:
+      - any-glob-to-any-file: 'apps/web/**'
+
+pkg:core:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/core/**'
+
+pkg:ui:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/ui/**'
+
+pkg:chat:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/chat/**'
+
+pkg:kanban:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/kanban/**'
+
+pkg:api-client:
+  - changed-files:
+      - any-glob-to-any-file: 'packages/api-client/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '**/*.md'
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/package.json'
+          - 'pnpm-lock.yaml'
+          - '**/Cargo.toml'
+          - '**/Cargo.lock'

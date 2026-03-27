@@ -1,0 +1,77 @@
+name: Stale Issues and PRs
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Mark stale issues and PRs
+        uses: actions/stale@v9
+        with:
+          # General settings
+          operations-per-run: 30
+
+          # Issue settings
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: stale
+          exempt-issue-labels: pinned,security,bug,enhancement
+          stale-issue-message: |
+            Hey there! :wave:
+
+            This issue has been quiet for 60 days. We wanted to check in and see if it's still relevant or if you need any help.
+
+            If this issue is still important to you:
+            - Please leave a comment with any updates or additional information
+            - Let us know if you're still experiencing this problem
+            - Share any workarounds you may have found
+
+            If we don't hear back within 14 days, we'll close this issue to keep our backlog tidy. Don't worry though - you can always reopen it or create a new issue if needed!
+
+            Thanks for being part of the Viben community! :heart:
+          close-issue-message: |
+            This issue has been automatically closed due to inactivity.
+
+            If you're still experiencing this problem or have new information to share, please feel free to:
+            - Reopen this issue with an update
+            - Create a new issue with fresh details
+
+            We appreciate your contributions to Viben and look forward to hearing from you again! :sparkles:
+
+          # PR settings
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-pr-label: stale
+          exempt-pr-labels: pinned,work-in-progress,do-not-close
+          stale-pr-message: |
+            Hi! :wave:
+
+            This pull request has been inactive for 30 days. We'd love to see this contribution merged!
+
+            If you're still working on this:
+            - Let us know if you need any help or guidance
+            - Feel free to ask questions about the codebase
+            - We're happy to review any updates you push
+
+            If you've been busy or need to step away, no worries at all! Just leave a comment and we can keep this open.
+
+            Without any activity in the next 7 days, we'll close this PR to keep things organized. You can always reopen it when you're ready to continue.
+
+            Thank you for contributing to Viben! :rocket:
+          close-pr-message: |
+            This pull request has been automatically closed due to inactivity.
+
+            Your contribution is still valuable! If you'd like to continue working on this:
+            - Feel free to reopen this PR when you're ready
+            - Or create a new PR with your changes
+
+            We really appreciate you taking the time to contribute to Viben. Don't hesitate to reach out if you have any questions! :heart:
