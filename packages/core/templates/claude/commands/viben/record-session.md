@@ -55,7 +55,7 @@ viben task archive <task-name>
 
 | Command | Purpose |
 |---------|---------|
-| `viben task context <task>` | Get all context info for specified task |
+| `viben task context <task>` | Get task context |
 | `viben task add-session --title "..." --commit "..."` | **One-click add session (recommended)** |
 | `viben task create "<title>" [--slug <name>]` | Create new task directory |
 | `viben task archive <name>` | Archive completed task |

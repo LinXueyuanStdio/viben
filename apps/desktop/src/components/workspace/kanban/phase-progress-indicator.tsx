@@ -27,38 +27,54 @@ interface PhaseProgressIndicatorProps {
 
 // Phase colors configuration
 const PHASE_COLORS: Record<ExecutionPhase, { color: string; bgColor: string }> = {
+  idle: { color: "bg-muted-foreground", bgColor: "bg-muted/20" },
   plan: { color: "bg-amber-500", bgColor: "bg-amber-500/20" },
   implement: { color: "bg-info", bgColor: "bg-info/20" },
+  rate_limit_paused: { color: "bg-orange-400", bgColor: "bg-orange-400/20" },
+  auth_failure_paused: { color: "bg-red-400", bgColor: "bg-red-400/20" },
   check: { color: "bg-purple-500", bgColor: "bg-purple-500/20" },
   fix: { color: "bg-orange-500", bgColor: "bg-orange-500/20" },
   complete: { color: "bg-success", bgColor: "bg-success/20" },
+  failed: { color: "bg-destructive", bgColor: "bg-destructive/20" },
 };
 
 // Phase display labels (i18n keys)
 const PHASE_LABELS: Record<ExecutionPhase, string> = {
+  idle: "workspace.phase.idle",
   plan: "workspace.phase.plan",
   implement: "workspace.phase.implement",
+  rate_limit_paused: "workspace.phase.rateLimitPaused",
+  auth_failure_paused: "workspace.phase.authFailurePaused",
   check: "workspace.phase.check",
   fix: "workspace.phase.fix",
   complete: "workspace.phase.complete",
+  failed: "workspace.phase.failed",
 };
 
 // Phase fallback labels (i18n keys)
 const PHASE_FALLBACK_KEYS: Record<ExecutionPhase, string> = {
+  idle: "phase.idle",
   plan: "phase.plan",
   implement: "phase.implement",
+  rate_limit_paused: "phase.rateLimitPaused",
+  auth_failure_paused: "phase.authFailurePaused",
   check: "phase.check",
   fix: "phase.fix",
   complete: "phase.complete",
+  failed: "phase.failed",
 };
 
 // Phase short labels for step indicator (i18n keys)
 const PHASE_SHORT_LABEL_KEYS: Record<ExecutionPhase, string> = {
+  idle: "phase.idleShort",
   plan: "phase.planShort",
   implement: "phase.implementShort",
+  rate_limit_paused: "phase.pausedShort",
+  auth_failure_paused: "phase.authShort",
   check: "phase.checkShort",
   fix: "phase.fixShort",
   complete: "phase.doneShort",
+  failed: "phase.failedShort",
 };
 
 // Subtask status colors
