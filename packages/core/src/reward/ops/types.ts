@@ -246,19 +246,28 @@ export interface RewardComputeResult {
  * Options for PPO-based reward selection
  */
 export interface SelectOptions {
-  /** Minimum adjusted reward threshold (default: 0.6) */
+  /** Quality threshold τ (default: 0.6) */
   threshold?: number;
 
   /** KL penalty coefficient λ (default: 0.05) */
   klCoef?: number;
 
-  /** Maximum diff lines for KL normalization (default: 500) */
+  /** Change sensitivity β (default: 2.0) */
+  changeSensitivity?: number;
+
+  /** Clip range ε (default: 0.2) */
+  clipRange?: number;
+
+  /** Maximum diff lines for normalization (default: 500) */
   maxDiff?: number;
 
-  /** FileRL directory path (for reading reward from iter{N}/{taskName}/reward.json) */
+  /** Map of task -> ideaId for two-stage selection */
+  taskIdeaMap?: Record<string, string>;
+
+  /** FileRL directory path */
   filerlDir?: string;
 
-  /** Current iteration number (required if filerlDir is set) */
+  /** Current iteration number */
   iteration?: number;
 }
 
@@ -268,6 +277,8 @@ export interface SelectOptions {
 export const SELECT_DEFAULTS = {
   threshold: 0.6,
   klCoef: 0.05,
+  changeSensitivity: 2.0,
+  clipRange: 0.2,
   maxDiff: 500,
 } as const;
 
@@ -278,23 +289,32 @@ export interface TaskCandidate {
   /** Task name (directory name) */
   task: string;
 
+  /** Source idea ID */
+  ideaId?: string;
+
   /** Original reward score (0-1) */
   reward: number;
 
   /** Number of lines changed */
   diffLines: number;
 
-  /** KL penalty = λ × (diff_lines / max_diff) */
+  /** Normalized change amount d = min(1, diffLines/maxDiff) */
+  d: number;
+
+  /** Change weight w = exp(-β × d) */
+  changeWeight: number;
+
+  /** KL penalty = λ × d */
   klPenalty: number;
 
-  /** Adjusted reward = reward - KL penalty */
+  /** Adjusted reward R̃ = R - λ × d */
   adjustedReward: number;
 
-  /** Advantage = adjusted reward - baseline */
-  advantage: number;
+  /** Relative score S = R̃ - baseline */
+  relativeScore: number;
 
-  /** PPO score (simplified, = advantage) */
-  ppoScore: number;
+  /** Final score L = min(w×S, clip(w)×S) */
+  finalScore: number;
 }
 
 /**
