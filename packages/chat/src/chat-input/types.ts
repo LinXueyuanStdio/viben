@@ -6,14 +6,13 @@
  */
 
 import type { ReactNode } from "react";
-import type { ExecutorType } from "@viben/core/shared";
 import type {
   MessageAttachment,
   SlashCommand,
   ToolConfig,
   SkillConfig,
   ContextTokenBreakdown,
-  AgentTypeInfo,
+  SelectorOption,
 } from "../types";
 
 // ============================================================================
@@ -38,10 +37,11 @@ export interface ModelOption {
   icon?: ReactNode;
 }
 
-/** Executor option for selector */
+/** Executor option for selector (generic) */
 export interface ExecutorOption {
-  id: ExecutorType;
+  id: string;
   name: string;
+  description?: string;
   icon?: ReactNode;
 }
 
@@ -53,7 +53,7 @@ export interface ExecutorOption {
 export interface GlobalChatConfig {
   agentId?: string | null;
   modelId?: string | null;
-  executor?: ExecutorType | null;
+  executor?: string | null;
   enabledTools?: string[];
   enabledSkills?: string[];
 }
@@ -124,11 +124,11 @@ export interface ChatInputProps {
   /** Callback when model is selected */
   onModelChange?: (modelId: string) => void;
   /** Available executors for selection */
-  executors?: AgentTypeInfo[];
-  /** Currently selected executor */
-  selectedExecutor?: ExecutorType;
+  executors?: ExecutorOption[];
+  /** Currently selected executor ID */
+  selectedExecutor?: string;
   /** Callback when executor is selected */
-  onExecutorChange?: (executor: ExecutorType) => void;
+  onExecutorChange?: (executorId: string) => void;
 
   // === Tools/Skills ===
   /** Available tools for configuration */
@@ -210,9 +210,9 @@ export interface ChatInputConfigBarProps {
   onModelChange?: (modelId: string) => void;
   showModelSelector: boolean;
   // Executor
-  executors: AgentTypeInfo[];
-  selectedExecutor: ExecutorType;
-  onExecutorChange?: (executor: ExecutorType) => void;
+  executors: ExecutorOption[];
+  selectedExecutor: string;
+  onExecutorChange?: (executorId: string) => void;
   showExecutorSelector: boolean;
   // Tools
   tools: ToolConfig[];

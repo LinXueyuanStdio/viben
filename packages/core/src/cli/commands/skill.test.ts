@@ -632,8 +632,10 @@ describe("Skill CLI Commands", () => {
       const mockResult: InstallSkillResult = {
         success: false,
         name: "test-skill",
+        version: "",
         path: "",
         target: "global",
+        message: 'Skill "test-skill" already exists',
         error: 'Skill "test-skill" already exists',
       };
 
@@ -726,6 +728,7 @@ describe("Skill CLI Commands", () => {
       const mockResult: UninstallSkillResult = {
         success: false,
         name: "nonexistent",
+        message: 'Skill "nonexistent" not found',
         error: 'Skill "nonexistent" not found',
       };
 
@@ -749,6 +752,7 @@ describe("Skill CLI Commands", () => {
         success: true,
         skillName: "code-review",
         agentId: "my-agent",
+        enabled: true,
       };
 
       vi.mocked(enableSkill).mockResolvedValue(mockResult);
@@ -764,6 +768,7 @@ describe("Skill CLI Commands", () => {
         success: true,
         skillName: "test-skill",
         agentId: "test-agent",
+        enabled: true,
       };
 
       vi.mocked(enableSkill).mockResolvedValue(mockResult);
@@ -778,6 +783,7 @@ describe("Skill CLI Commands", () => {
         success: false,
         skillName: "code-review",
         agentId: "nonexistent",
+        enabled: false,
         error: 'Agent "nonexistent" not found',
       };
 
@@ -801,6 +807,7 @@ describe("Skill CLI Commands", () => {
         success: true,
         skillName: "code-review",
         agentId: "my-agent",
+        enabled: false,
       };
 
       vi.mocked(disableSkill).mockResolvedValue(mockResult);
@@ -816,6 +823,7 @@ describe("Skill CLI Commands", () => {
         success: true,
         skillName: "test-skill",
         agentId: "test-agent",
+        enabled: false,
       };
 
       vi.mocked(disableSkill).mockResolvedValue(mockResult);
