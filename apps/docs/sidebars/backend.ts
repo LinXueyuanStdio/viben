@@ -43,7 +43,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'api/index',
         'api/mcp-api',
-        'api/skills-api',
+        'api/skill-api',
         'api/user-api',
         'api/social-api',
         'api/collections-api',

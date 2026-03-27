@@ -75,6 +75,11 @@ import * as module from "./some-module";
 
 Dynamic imports make code harder to analyze and tree-shake. Use static imports for all module dependencies.
 
+**Exceptions** (dynamic imports allowed):
+- `initializeCore()` in `packages/core/src/index.ts` - requires lazy loading to avoid circular dependencies
+- Optional dependencies (fastify, @fastify/*, cloudflared, node-notifier, @larksuiteoapi/node-sdk)
+- Test files for mocking and isolation
+
 ## Build Requirements
 
 **IMPORTANT**: When making changes to the codebase, ensure all packages compile successfully:

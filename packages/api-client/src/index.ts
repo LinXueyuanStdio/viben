@@ -16,7 +16,7 @@
  * const { packages } = await client.mcp.list({ page: 1 });
  *
  * // Search skills
- * const { packages: skills } = await client.skills.search('git');
+ * const { packages: skills } = await client.skill.search('git');
  *
  * // Get current user
  * const { user } = await client.user.me();

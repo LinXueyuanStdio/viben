@@ -28,18 +28,18 @@
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| GET | `/api/skills` | List skills (paginated) | No |
-| GET | `/api/skills/search` | Search skills | No |
-| GET | `/api/skills/[id]` | Get skill details | No |
-| POST | `/api/skills` | Create skill | Yes (developer) |
-| PUT | `/api/skills/[id]` | Update skill | Yes (owner) |
-| DELETE | `/api/skills/[id]` | Delete skill | Yes (owner) |
+| GET | `/api/skill` | List skills (paginated) | No |
+| GET | `/api/skill/search` | Search skills | No |
+| GET | `/api/skill/[id]` | Get skill details | No |
+| POST | `/api/skill` | Create skill | Yes (developer) |
+| PUT | `/api/skill/[id]` | Update skill | Yes (owner) |
+| DELETE | `/api/skill/[id]` | Delete skill | Yes (owner) |
 
 ---
 
 ## Deliverables
 
-### 1. List & Create (`apps/web/app/api/skills/route.ts`)
+### 1. List & Create (`apps/web/app/api/skill/route.ts`)
 
 ```typescript
 import { NextResponse } from 'next/server';
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-### 2. Skill Detail (`apps/web/app/api/skills/[id]/route.ts`)
+### 2. Skill Detail (`apps/web/app/api/skill/[id]/route.ts`)
 
 ```typescript
 import { NextResponse } from 'next/server';

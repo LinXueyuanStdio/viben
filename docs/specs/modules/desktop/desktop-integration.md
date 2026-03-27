@@ -107,15 +107,15 @@ export class VibenClient {
   skills = {
     list: (params?: ListParams) =>
       this.request<PaginatedResponse<SkillPackage>>(
-        `/api/skills?${buildQuery(params)}`
+        `/api/skill?${buildQuery(params)}`
       ),
 
     get: (id: string) =>
-      this.request<{ package: SkillPackage }>(`/api/skills/${id}`),
+      this.request<{ package: SkillPackage }>(`/api/skill/${id}`),
 
     search: (query: string, params?: ListParams) =>
       this.request<PaginatedResponse<SkillPackage>>(
-        `/api/skills?q=${encodeURIComponent(query)}&${buildQuery(params)}`
+        `/api/skill?q=${encodeURIComponent(query)}&${buildQuery(params)}`
       ),
 
     download: (id: string) =>

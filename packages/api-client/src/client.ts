@@ -95,7 +95,7 @@ function buildQuery(params?: ListParams | SkillListParams): string {
  * const { packages, pagination } = await client.mcp.list({ page: 1, limit: 10 });
  *
  * // Search skills
- * const results = await client.skills.search('git', { type: 'command' });
+ * const results = await client.skill.search('git', { type: 'command' });
  *
  * // Get current user
  * const { user } = await client.user.me();
@@ -319,7 +319,7 @@ export class VibenClient {
   /**
    * Skills package endpoints
    */
-  skills = {
+  skill = {
     /**
      * List skill packages
      */

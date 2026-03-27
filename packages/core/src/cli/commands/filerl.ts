@@ -43,6 +43,7 @@ import {
   listRuns,
   getStatus,
   readState,
+  generateIdeasForFileRl,
   type FileRlConfig,
   type FileRlState,
   type IterationState,
@@ -180,16 +181,16 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl start <target>
+  // filerl start <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("start")
-    .description("Start FileRL with a target file")
-    .argument("<target>", "Path to FileRL target file (*.md)")
+    .description("Start FileRL with a target file or run name")
+    .argument("<name-or-target>", "FileRL run name or path to target file (*.md)")
     .option("--force", "Force restart even if run is active")
     .option("--dry-run", "Parse and validate without running")
     .option("--json", "JSON format output")
-    .action(async (target: string, options: {
+    .action(async (nameOrTarget: string, options: {
       force?: boolean;
       dryRun?: boolean;
       json?: boolean;
@@ -203,6 +204,24 @@ export function registerFileRlCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenRoot(cwd);
 
+        // Determine if input is a file path or run name
+        let target: string;
+
+        // Check if it's an existing run (by name)
+        const existingState = readState(repoRoot, nameOrTarget);
+        if (existingState) {
+          // Use existing run's target file
+          target = existingState.target_path;
+        } else if (nameOrTarget.endsWith(".md") || existsSync(resolve(cwd, nameOrTarget))) {
+          // It's a target file path
+          target = nameOrTarget;
+        } else {
+          throw CliError.operationFailed(
+            "Start FileRL",
+            `"${nameOrTarget}" is not a valid run name or target file`
+          );
+        }
+
         // Parse target file
         const parseResult = parseTarget(target, repoRoot);
         if (!parseResult.success || !parseResult.config) {
@@ -211,7 +230,6 @@ export function registerFileRlCommand(program: Command): void {
             parseResult.error || "Failed to parse target file"
           );
         }
-
         const config = parseResult.config;
 
         // Validate configuration
@@ -829,9 +847,6 @@ export function registerFileRlCommand(program: Command): void {
         console.log(`  Types:       ${ideaTypes.join(", ")}`);
         console.log(`  Max ideas:   ${config.idea.max_ideas}`);
         console.log();
-
-        // Import the generateIdeasForFileRl function
-        const { generateIdeasForFileRl } = await import("../../filerl/ops/idea-generator");
 
         const result = await generateIdeasForFileRl(repoRoot, name, targetIter, ideaTypes, {
           maxIdeas: config.idea.max_ideas,

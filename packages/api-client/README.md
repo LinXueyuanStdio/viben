@@ -24,7 +24,7 @@ const client = new VibenClient({
 const { packages, pagination } = await client.mcp.list({ page: 1, limit: 10 });
 
 // Search skills
-const { packages: skills } = await client.skills.search('git', { type: 'command' });
+const { packages: skills } = await client.skill.search('git', { type: 'command' });
 
 // Get current user (requires API key)
 const { user } = await client.user.me();
@@ -80,7 +80,7 @@ Main client class with the following namespaced methods:
 - `addComment(id, content, parentId?)` - Add comment
 - `rate(id, score)` - Rate package
 
-#### `client.skills`
+#### `client.skill`
 
 Same methods as `client.mcp` but for skill packages.
 

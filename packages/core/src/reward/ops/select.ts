@@ -127,15 +127,15 @@ function loadFileRlIterReward(
 
   try {
     const content = readFileSync(rewardJsonPath, "utf-8");
-    const rewardData = JSON.parse(content) as { total?: number; diffLines?: number };
+    const rewardData = JSON.parse(content) as { total_score?: number; diff_lines?: number };
 
-    if (typeof rewardData.total !== "number") {
+    if (typeof rewardData.total_score !== "number") {
       return null;
     }
 
     return {
-      reward: rewardData.total,
-      diffLines: typeof rewardData.diffLines === "number" ? rewardData.diffLines : 0,
+      reward: rewardData.total_score,
+      diffLines: typeof rewardData.diff_lines === "number" ? rewardData.diff_lines : 0,
     };
   } catch {
     return null;
@@ -145,7 +145,7 @@ function loadFileRlIterReward(
 /**
  * Load reward data from a task's reward.json file (standalone mode)
  *
- * Standard format: { total: number (0-1), diff_lines?: number, ... }
+ * Standard format: { total_score: number (0-1), diff_lines?: number, ... }
  *
  * Note: Rewards are NO LONGER stored in task.json.
  * For FileRL, use loadFileRlIterReward() which reads from iter{N}/{idea}/{task}/reward.json
@@ -160,14 +160,14 @@ function loadTaskReward(
   const rewardJsonPath = join(taskDir, "reward.json");
   try {
     const content = readFileSync(rewardJsonPath, "utf-8");
-    const rewardData = JSON.parse(content) as { total?: number; diff_lines?: number };
+    const rewardData = JSON.parse(content) as { total_score?: number; diff_lines?: number };
 
-    if (typeof rewardData.total !== "number") {
+    if (typeof rewardData.total_score !== "number") {
       return null;
     }
 
     return {
-      reward: rewardData.total,
+      reward: rewardData.total_score,
       diffLines: typeof rewardData.diff_lines === "number" ? rewardData.diff_lines : 0,
     };
   } catch {

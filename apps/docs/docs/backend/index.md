@@ -66,7 +66,7 @@ Python MCP 服务器开发请参阅[插件架构](./plugin-architecture.md)，�
 | 指南 | 描述 | 状态 |
 |------|------|------|
 | [MCP API](./api/mcp-api.md) | MCP 包 API | 完成 |
-| [Skills API](./api/skills-api.md) | Skills 包 API | 完成 |
+| [Skill API](./api/skill-api.md) | Skill 包 API | 完成 |
 | [用户 API](./api/user-api.md) | 用户管理 API | 完成 |
 | [社交 API](./api/social-api.md) | 社交功能 API | 完成 |
 | [收藏 API](./api/collections-api.md) | 收藏功能 API | 完成 |

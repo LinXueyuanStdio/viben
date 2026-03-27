@@ -769,7 +769,7 @@ pub async fn install_cloud_skill_package(
     // 1. Fetch skill metadata
     let skill_response = crate::commands::api_client::api_request(
         "GET".to_string(),
-        format!("/api/skills/{}", package_id),
+        format!("/api/skill/{}", package_id),
         None,
         auth_token.clone(),
         state.clone(),

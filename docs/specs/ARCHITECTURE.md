@@ -532,7 +532,7 @@ const client = new VibenClient({
 const { packages } = await client.mcp.list({ page: 1 });
 
 // 搜索 skills
-const { packages: skills } = await client.skills.search('git');
+const { packages: skills } = await client.skill.search('git');
 ```
 
 ---
@@ -678,7 +678,7 @@ const user = await db.query.users.findFirst({
 ```
 /api/auth/*           # 认证
 /api/mcp/*            # MCP 包 CRUD
-/api/skills/*         # Skill 包 CRUD
+/api/skill/*          # Skill 包 CRUD
 /api/workspaces/*     # 工作空间管理
 /api/collections/*    # Collections
 /api/admin/*          # 管理端点

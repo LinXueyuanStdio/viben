@@ -565,7 +565,7 @@ export function useFavorite(entityType: 'mcp' | 'skill', entityId: string) {
       const response =
         entityType === 'mcp'
           ? await api.mcp.toggleFavorite(entityId)
-          : await api.skills.toggleFavorite(entityId);
+          : await api.skill.toggleFavorite(entityId);
       setIsFavorited(response.favorited);
       return response.favorited;
     } catch (err) {
