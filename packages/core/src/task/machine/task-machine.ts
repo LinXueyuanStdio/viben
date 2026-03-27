@@ -418,15 +418,6 @@ const STATE_NAVIGATION_PATHS: Record<string, TaskMachineEvent[]> = {
     { type: "APPROVED" },
   ],
   cancelled: [{ type: "CANCEL" }],
-  // Legacy mappings for backward compatibility
-  done: [
-    { type: "QUEUE" },
-    { type: "START" },
-    { type: "PLAN_COMPLETE" },
-    { type: "ALL_SUBTASKS_DONE" },
-    { type: "CHECK_PASSED" },
-    { type: "APPROVED" },
-  ],
   error: [{ type: "QUEUE" }, { type: "START" }, { type: "PLAN_FAILED" }],
   pr_created: [
     { type: "QUEUE" },

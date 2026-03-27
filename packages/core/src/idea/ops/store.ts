@@ -154,20 +154,25 @@ export function getIdeaTypePromptPath(repoRoot: string, type: string): string {
 }
 
 /**
+ * Get the templates directory path.
+ * Templates are located in packages/core/templates/.
+ */
+function getTemplatesDir(): string {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  // Both dist and src resolve to packages/core/templates
+  return resolve(currentDir, "../../templates");
+}
+
+/**
  * Get the built-in prompt file path for a specific idea type
  *
- * Built-in prompts are located in packages/core/src/prompts/idea-types/
+ * Built-in prompts are located in packages/core/templates/viben/idea-types/
  *
  * @param type - Idea type name
  * @returns Path to built-in prompt file
  */
 export function getBuiltinIdeaTypePromptPath(type: string): string {
-  // Get the directory where this file is located
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  // After bundling with tsup, CLI code is bundled into dist/cli/bin.js
-  // So currentDir is dist/cli/, and prompts are at dist/prompts/idea-types
-  const srcPromptsDir = resolve(currentDir, "../prompts/idea-types");
-  return join(srcPromptsDir, `${type}.md`);
+  return join(getTemplatesDir(), "viben", "idea-types", `${type}.md`);
 }
 
 // =============================================================================

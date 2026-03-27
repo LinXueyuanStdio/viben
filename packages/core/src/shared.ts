@@ -51,4 +51,7 @@ export type {
   InstalledSkillsFile,
   InstalledSkillEntry,
   SkillMetadata,
-} from "./skills/types";
+  SkillTarget,
+  AvailableSkill,
+  AgentSkillConfig,
+} from "./skill/ops/types";
