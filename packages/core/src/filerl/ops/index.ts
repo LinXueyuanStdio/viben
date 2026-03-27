@@ -55,3 +55,10 @@ export {
   waitForTasksCompletion,
   runFileRlLoop,
 } from "./runner";
+
+// Idea generation for FileRL
+export type {
+  GenerateIdeasForFileRlOptions,
+  GenerateIdeasForFileRlResult,
+} from "./idea-generator";
+export { generateIdeasForFileRl } from "./idea-generator";

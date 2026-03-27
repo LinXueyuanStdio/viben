@@ -9,10 +9,11 @@
 
 | 功能 | 命令 | 覆盖场景 |
 |------|------|----------|
-| 创建 run | `viben filerl create <name> --target <file>` | 创建 FileRL run |
+| 创建 target | `viben filerl create <name>` | 创建 target.md 配置文件 |
+| 启动 run | `viben filerl start <target.md>` | 启动 FileRL 循环 |
 | 生成 idea | `viben filerl generate-ideas <name> --types <types>` | 在 iter{N}/ 下生成 |
 | 列出 idea | `viben filerl list-ideas <name>` | 当前迭代的 idea |
-| 启动迭代 | `viben filerl start <name>` | 开始执行循环 |
+| 启动迭代 | `viben filerl start <target.md>` | 开始执行循环 |
 | 恢复迭代 | `viben filerl resume <name>` | 从中断处继续 |
 | 停止迭代 | `viben filerl stop <name>` | 停止执行 |
 | 查看状态 | `viben filerl status <name>` | 当前状态 |
@@ -25,7 +26,7 @@
 
 | Phase | 命令/操作 | 验证点 |
 |-------|----------|--------|
-| init | `viben filerl create` | 创建 run、state.json |
+| init | `viben filerl start <target.md>` | 解析配置、创建 state.json |
 | fetch_ideas | `viben filerl generate-ideas` | 在 iter{N}/ 生成 idea |
 | create_rollouts | 内部逻辑 | task 创建、task_idea_map |
 | execute_tasks | `viben idea promote --start` | agent 启动、并行执行 |
@@ -276,8 +277,9 @@ git add target.md && git commit -m "add target.md"
 # 阶段 2: FileRL 运行（只能用 viben 命令）
 # ============================================
 
-# 2.1 创建 FileRL run
-viben filerl create test-basic --target target.md
+# 2.1 启动 FileRL run（解析 target.md，创建 state.json）
+viben filerl start target.md --dry-run  # 先验证配置
+viben filerl start target.md
 
 # 2.2 生成 idea（在 iter1/ 下）
 viben filerl generate-ideas test-basic --types code_improvements
@@ -285,19 +287,16 @@ viben filerl generate-ideas test-basic --types code_improvements
 # 2.3 查看生成的 idea
 viben filerl list-ideas test-basic
 
-# 2.4 启动 FileRL 循环
-viben filerl start test-basic
-
-# 2.5 监控任务执行
-viben swarm status --watch
-
-# 2.6 查看 FileRL 状态
+# 2.4 查看 FileRL 状态
 viben filerl status test-basic
 
-# 2.7 验证 reward 文件位置
+# 2.5 监控任务执行（FileRL start 会自动创建并执行 task）
+viben swarm status --watch
+
+# 2.6 验证 reward 文件位置
 ls -la .viben/filerl/test-basic/iter1/*/
 
-# 2.8 查看最终结果
+# 2.7 查看最终结果
 viben task list
 ```
 

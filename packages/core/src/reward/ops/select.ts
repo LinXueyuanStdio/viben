@@ -143,9 +143,12 @@ function loadFileRlIterReward(
 }
 
 /**
- * Load reward data from a task's task.json (standalone mode)
+ * Load reward data from a task's reward.json file (standalone mode)
  *
- * Standard format: { reward: { total_score: number (0-1), diff_lines?: number, ... } }
+ * Standard format: { total: number (0-1), diff_lines?: number, ... }
+ *
+ * Note: Rewards are NO LONGER stored in task.json.
+ * For FileRL, use loadFileRlIterReward() which reads from iter{N}/{idea}/{task}/reward.json
  *
  * @param taskDir - Absolute path to task directory
  * @returns Reward data or null if not found/invalid
@@ -153,21 +156,23 @@ function loadFileRlIterReward(
 function loadTaskReward(
   taskDir: string
 ): { reward: number; diffLines: number } | null {
-  const taskData = readTaskJson(taskDir);
-  if (!taskData) {
+  // Try reading reward.json directly in task directory (standalone mode)
+  const rewardJsonPath = join(taskDir, "reward.json");
+  try {
+    const content = readFileSync(rewardJsonPath, "utf-8");
+    const rewardData = JSON.parse(content) as { total?: number; diff_lines?: number };
+
+    if (typeof rewardData.total !== "number") {
+      return null;
+    }
+
+    return {
+      reward: rewardData.total,
+      diffLines: typeof rewardData.diff_lines === "number" ? rewardData.diff_lines : 0,
+    };
+  } catch {
     return null;
   }
-
-  // Check for reward field
-  const rewardData = taskData.reward as { total_score?: number; diff_lines?: number } | undefined;
-  if (!rewardData || typeof rewardData.total_score !== "number") {
-    return null;
-  }
-
-  return {
-    reward: rewardData.total_score,
-    diffLines: typeof rewardData.diff_lines === "number" ? rewardData.diff_lines : 0,
-  };
 }
 
 // =============================================================================
