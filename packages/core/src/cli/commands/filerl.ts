@@ -798,11 +798,13 @@ export function registerFileRlCommand(program: Command): void {
                     const effortMatch = frontmatter.match(/estimated_effort:\s*(\w+)/);
                     const statusMatch = frontmatter.match(/status:\s*(\w+)/);
                     const typeMatch = frontmatter.match(/type:\s*(\w+)/);
+                    const rationaleMatch = frontmatter.match(/rationale:\s*"?([^"\n]+)"?/);
 
                     allIdeas.push({
                       id: ideaId,
                       title: titleMatch?.[1] || "Untitled",
                       description: "",
+                      rationale: rationaleMatch?.[1] || "",
                       type: typeMatch?.[1] || "unknown",
                       estimatedEffort: (effortMatch?.[1] || "medium") as "trivial" | "small" | "medium" | "large" | "complex",
                       status: (statusMatch?.[1] || "draft") as "draft" | "promoted" | "dismissed",

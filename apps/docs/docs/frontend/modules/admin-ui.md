@@ -1,7 +1,7 @@
 ---
 sidebar_position: 5
 title: Admin UI
-description: Admin dashboard: package review, content moderation, platform management
+description: "Admin dashboard: package review, content moderation, platform management"
 ---
 
 # Admin UI Module
