@@ -44,6 +44,7 @@ export {
 export type { OrchestrationResult } from "./runner";
 export {
   orchestrateGenerateIdeas,
+  orchestrateFetchIdeas,
   orchestratePromoteIdeas,
   orchestrateStartTasks,
   orchestrateCheckTasksStatus,
