@@ -18,27 +18,47 @@ You are the FileRL Agent, responsible for running continuous reinforcement learn
 ## Configuration
 
 ```yaml
-# Default FileRL Configuration
-filerl:
-  num_rollouts: 3              # Number of parallel PRs per iteration
-  reward_threshold: 0.6        # Minimum reward to accept PR
-  max_iterations: 50           # Maximum optimization iterations
-  kl_coef: 0.05                # KL penalty coefficient (diff size penalty)
-  clip_eps: 0.2                # PPO clipping parameter
-  convergence_delta: 0.01      # Convergence threshold
+# Target Configuration (target.md YAML frontmatter)
+---
+name: my-optimization
+description: 优化 API 响应时间
 
-  # Optimization targets (weights sum to 1.0)
-  targets:
-    test_pass_rate: 0.30       # Unit/integration test pass rate
-    code_quality: 0.25         # Lint score (ESLint/Pylint/etc.)
-    performance: 0.20          # Benchmark improvement
-    security: 0.15             # Security scan results
-    maintainability: 0.10      # Complexity metrics
+# Idea 配置
+idea:
+  auto_generate: false          # 是否自动生成（默认 false，支持手动添加）
+  types: [performance_optimizations]  # 自动生成时使用的类型
+  batch_size: 3                 # 每次迭代最多处理几个 idea (B)
+  session_dir: .viben/ideas/my-optimization  # idea 存放目录
 
-  # Constraints
-  max_diff_lines: 500          # Maximum lines changed per PR
-  require_tests: true          # Require test coverage
-  auto_merge: false            # Auto-merge approved PRs
+# Rollout 配置
+rollout:
+  n: 3                          # 每个 idea 执行 N 次
+  worktree: true                # 使用 worktree 隔离
+
+# PPO 配置 (语义化变量名)
+ppo:
+  kl_coef: 0.05                 # 变更惩罚系数 (λ)
+  change_sensitivity: 2.0       # 变更惩罚敏感度 (β)
+  clip_range: 0.2               # 权重截断参数 (ε)
+  quality_threshold: 0.6        # 质量阈值 (τ)
+  max_diff: 500                 # 最大变更行数
+
+# 收敛配置
+convergence:
+  threshold: 0.01               # 收敛阈值 (δ)
+  max_iterations: 50            # 最大迭代次数
+  no_merge_limit: 5             # 连续无合并次数限制
+
+# Reward 配置
+reward:
+  types: [test_coverage, code_quality, agent_review]
+  weights: [0.34, 0.33, 0.33]
+
+# 执行器配置
+task:
+  executor: CLAUDE_CODE
+  model: sonnet
+---
 ```
 
 ---
@@ -253,11 +273,15 @@ viben reward select $TASKS --threshold 0.6 --kl-coef 0.05 --max-diff 500
 ```
 
 **PPO Formulas:**
-- KL Penalty: $KL = \lambda \cdot \frac{diff\_lines}{max\_diff}$
-- Adjusted Reward: $\tilde{R} = R - KL$
-- Baseline: $\bar{R} = mean(\tilde{R})$
-- Advantage: $A = \tilde{R} - \bar{R}$
-- Selection: $task^* = \arg\max A$ where $\tilde{R} \geq threshold$
+- 变更量: $d = \min(1, \frac{diff\_lines}{max\_diff})$
+- 变更惩罚权重: $w = e^{-\beta \cdot d}$
+- 调整后得分: $\tilde{R} = R - \lambda \cdot d$
+- 批均值: $\bar{R} = mean(\tilde{R})$
+- 相对得分: $S = \tilde{R} - \bar{R}$
+- 综合评分: $L = \min(w \cdot S, clip(w, 1-\epsilon, 1+\epsilon) \cdot S)$
+- 两阶段选择:
+  1. 每个 idea 选最优 rollout: $PR^*_{idea} = \arg\max_{PR \in Rollouts_{idea}} L(PR)$
+  2. 全局选最优: $PR^* = \arg\max L(PR^*_{idea})$ where $\tilde{R} \geq \tau$
 
 **Output:**
 ```
@@ -426,6 +450,8 @@ viben swarm status $TASK --log
 | List reward types | `viben reward list-types` | Show builtin + custom reward types |
 | List idea types | `viben idea list-types` | Show builtin + custom idea types |
 | Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |
+| Add idea manually | `viben filerl add-idea <run> <idea.md>` | Add manual idea to run |
+| List ideas | `viben filerl list-ideas <run>` | List ideas in a run |
 | Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
 | Monitor | `viben swarm status --watch` | Watch agent progress |
 | Wait | `viben swarm wait --all` | Wait for all tasks |
