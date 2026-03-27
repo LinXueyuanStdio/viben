@@ -2,12 +2,12 @@
  * Skill Installation Handler
  *
  * Desktop app utilities for downloading and installing skill packages.
- * Integrates with Viben API client for downloads and core skills manager for extraction.
+ * Uses Viben Gateway API for skill installation (not direct @viben/core import).
  */
 
 import { getClient } from './viben';
 import type { SkillPackage } from '@viben/api-client';
-import { skillsManager } from '@viben/core';
+import { getGatewayUrl } from './gateway';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
 import i18n from '@/i18n';
@@ -83,6 +83,18 @@ export interface InstallSkillResult {
   errorCode?: InstallErrorCode;
 }
 
+/**
+ * Gateway skill install response
+ */
+interface GatewayInstallResponse {
+  success: boolean;
+  name: string;
+  version: string;
+  path: string;
+  message: string;
+  error?: string;
+}
+
 // ============================================
 // Installation
 // ============================================
@@ -93,7 +105,7 @@ export interface InstallSkillResult {
  * This function:
  * 1. Downloads the skill package from the platform
  * 2. Saves it to a temporary file
- * 3. Extracts it using the core skills manager
+ * 3. Calls Gateway API to install the skill
  * 4. Tracks progress through callbacks
  * 5. Cleans up temporary files
  *
@@ -147,14 +159,10 @@ export async function downloadAndInstallSkill(
     // Get app data directory
     const dataDir = await appDataDir();
     const tempDir = await join(dataDir, 'temp');
-    const skillsDir = await join(dataDir, 'skills');
 
     // Ensure directories exist
     if (!(await exists(tempDir))) {
       await mkdir(tempDir, { recursive: true });
-    }
-    if (!(await exists(skillsDir))) {
-      await mkdir(skillsDir, { recursive: true });
     }
 
     // Save to temporary file
@@ -169,20 +177,26 @@ export async function downloadAndInstallSkill(
       message: i18n.t('installation.extractingPackage'),
     });
 
-    // Extract using core skills manager
-    const result = await skillsManager.installSkill({
-      name: pkg.slug,
-      target: 'global',
-      zipPath: tempZipPath,
-      force,
-      onProgress: (extractProgress: number) => {
-        onProgress?.({
-          stage: 'extracting',
-          progress: extractProgress,
-          message: i18n.t('installation.extractingFiles'),
-        });
+    // Call Gateway API to install the skill
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/skill/install`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        name: pkg.slug,
+        zip_path: tempZipPath,
+        force,
+        version: pkg.version,
+      }),
     });
+
+    const result: GatewayInstallResponse = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Installation failed');
+    }
 
     // Report completion
     onProgress?.({
@@ -204,15 +218,12 @@ export async function downloadAndInstallSkill(
 
     // Determine structured error code from the error
     let errorCode: InstallErrorCode = 'UNKNOWN_ERROR';
-    if (error && typeof error === 'object' && 'code' in error) {
-      const code = (error as { code: string }).code;
-      if (code === 'ALREADY_EXISTS') {
-        errorCode = 'ALREADY_EXISTS';
-      } else if (code === 'FILE_CONFLICT') {
-        errorCode = 'FILE_CONFLICT';
-      } else if (code === 'VALIDATION_ERROR') {
-        errorCode = 'VALIDATION_ERROR';
-      }
+    if (errorMessage.includes('ALREADY_EXISTS')) {
+      errorCode = 'ALREADY_EXISTS';
+    } else if (errorMessage.includes('FILE_CONFLICT')) {
+      errorCode = 'FILE_CONFLICT';
+    } else if (errorMessage.includes('VALIDATION_ERROR')) {
+      errorCode = 'VALIDATION_ERROR';
     } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('download')) {
       errorCode = 'NETWORK_ERROR';
     } else if (errorMessage.includes('permission') || errorMessage.includes('access') || errorMessage.includes('EACCES')) {
@@ -256,11 +267,10 @@ export async function downloadAndInstallSkill(
  */
 export async function isSkillInstalled(skillSlug: string): Promise<boolean> {
   try {
-    const dataDir = await appDataDir();
-    const skillsDir = await join(dataDir, 'skills');
-    const skillDir = await join(skillsDir, skillSlug);
-
-    return await exists(skillDir);
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/packages/skills`);
+    const data: { packages: Array<{ id: string }> } = await response.json();
+    return data.packages.some(pkg => pkg.id === skillSlug);
   } catch {
     return false;
   }

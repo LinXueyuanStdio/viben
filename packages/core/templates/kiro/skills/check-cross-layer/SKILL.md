@@ -1,8 +1,3 @@
----
-name: check-cross-layer
-description: "Cross-Layer Check"
----
-
 # Cross-Layer Check
 
 Check if your changes considered all dimensions. Most bugs come from "didn't think of it", not lack of technical skill.
@@ -17,7 +12,7 @@ Check if your changes considered all dimensions. Most bugs come from "didn't thi
 |----------|---------|--------|
 | [Pre-Implementation Checklist](docs/specs/guides/pre-implementation-checklist.md) | Questions before coding | **Before** writing code |
 | [Code Reuse Thinking Guide](docs/specs/guides/code-reuse-thinking-guide.md) | Pattern recognition | During implementation |
-| **`$check-cross-layer`** (this skill) | Verification check | **After** implementation |
+| **`/viben:check-cross-layer`** (this) | Verification check | **After** implementation |
 
 ---
 
@@ -61,7 +56,7 @@ Based on your change type, execute relevant checks below:
 
 ## Dimension B: Code Reuse (Required when modifying constants/config)
 
-**Trigger**: 
+**Trigger**:
 - Modifying UI constants (label, icon, color)
 - Modifying any hardcoded value
 - Seeing similar code in multiple places
@@ -123,7 +118,7 @@ Based on your change type, execute relevant checks below:
 
 ## Dimension D: Same-Layer Consistency
 
-**Trigger**: 
+**Trigger**:
 - Modifying display logic or formatting
 - Same domain concept used in multiple places
 

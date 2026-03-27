@@ -52,6 +52,28 @@ interface UpdatePackageResponse {
   message?: string;
 }
 
+/**
+ * Request body for installing a skill from zip
+ */
+interface InstallSkillBody {
+  name: string;
+  zip_path: string;
+  force?: boolean;
+  version?: string;
+}
+
+/**
+ * Response for skill installation
+ */
+interface InstallSkillResponse {
+  success: boolean;
+  name: string;
+  version: string;
+  path: string;
+  message: string;
+  error?: string;
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -216,6 +238,108 @@ export function registerPackagesRoutes(fastify: FastifyInstance): void {
       fastify.log.error(`Failed to list skill packages: ${message}`);
       return reply.status(500).send({
         packages: [],
+      });
+    }
+  });
+
+  /**
+   * POST /api/skill/install
+   * Install a skill from a zip file
+   */
+  fastify.post<{
+    Body: InstallSkillBody;
+    Reply: InstallSkillResponse;
+  }>("/api/skill/install", async (request, reply) => {
+    const { name, zip_path, force = false, version } = request.body;
+
+    if (!name || !zip_path) {
+      return reply.status(400).send({
+        success: false,
+        name: name || "",
+        version: version || "1.0.0",
+        path: "",
+        message: "Missing required fields",
+        error: "Missing required fields: name, zip_path",
+      });
+    }
+
+    try {
+      const result = await skillsManager.installSkill({
+        name,
+        target: "global",
+        zipPath: zip_path,
+        force,
+        version,
+      });
+
+      return reply.send({
+        success: result.success,
+        name: result.name,
+        version: result.version,
+        path: result.path,
+        message: result.message,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to install skill ${name}: ${message}`);
+
+      // Determine error code
+      let errorCode = "UNKNOWN_ERROR";
+      if (error && typeof error === "object" && "name" in error) {
+        const errorName = (error as { name: string }).name;
+        if (errorName === "AlreadyExistsError") {
+          errorCode = "ALREADY_EXISTS";
+        } else if (errorName === "ValidationError") {
+          errorCode = "VALIDATION_ERROR";
+        }
+      }
+
+      return reply.status(500).send({
+        success: false,
+        name,
+        version: version || "1.0.0",
+        path: "",
+        message: "Installation failed",
+        error: `${errorCode}: ${message}`,
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/skill/:name
+   * Uninstall a skill
+   */
+  fastify.delete<{
+    Params: { name: string };
+    Reply: { success: boolean; message: string; error?: string };
+  }>("/api/skill/:name", async (request, reply) => {
+    const { name } = request.params;
+
+    if (!name) {
+      return reply.status(400).send({
+        success: false,
+        message: "Missing skill name",
+        error: "Missing required parameter: name",
+      });
+    }
+
+    try {
+      const result = await skillsManager.uninstallSkill({
+        name,
+        target: "global",
+      });
+
+      return reply.send({
+        success: result.success,
+        message: result.message,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to uninstall skill ${name}: ${message}`);
+      return reply.status(500).send({
+        success: false,
+        message: "Uninstallation failed",
+        error: message,
       });
     }
   });

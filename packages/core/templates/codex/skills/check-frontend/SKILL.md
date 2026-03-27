@@ -1,8 +1,3 @@
----
-name: check-frontend
-description: "Check if the code you just wrote follows the frontend development guidelines."
----
-
 Check if the code you just wrote follows the frontend development guidelines.
 
 Execute these steps:

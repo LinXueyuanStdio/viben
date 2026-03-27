@@ -238,6 +238,7 @@ EOF
 ```bash
 # Set branch name
 viben task set-branch "$PLAN_TASK_DIR" -b "feature/${PLAN_TASK_NAME}"
+
 ```
 
 ### Step 6: Validate Configuration
@@ -263,6 +264,7 @@ echo "Context summary:"
 viben task list-context "$PLAN_TASK_DIR"
 echo ""
 echo "Ready for: viben task work-phase $PLAN_TASK_DIR"
+echo "  (Use --worktree flag for isolated git worktree mode)"
 ```
 
 ---
@@ -274,6 +276,7 @@ echo "Ready for: viben task work-phase $PLAN_TASK_DIR"
 3. **Validate all paths** - Every file in jsonl must exist
 4. **Be specific in prd.md** - Vague requirements lead to wrong implementations
 5. **Include acceptance criteria** - Check agent needs to verify something concrete
+6. **Set appropriate scope** - This affects commit message format
 
 ---
 

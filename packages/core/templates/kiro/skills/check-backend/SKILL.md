@@ -1,8 +1,3 @@
----
-name: check-backend
-description: "Check if the code you just wrote follows the backend development guidelines."
----
-
 Check if the code you just wrote follows the backend development guidelines.
 
 Execute these steps:
