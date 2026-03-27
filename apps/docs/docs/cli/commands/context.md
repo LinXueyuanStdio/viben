@@ -1,33 +1,33 @@
 ---
 sidebar_position: 21
 title: "viben context"
-description: "获取当前开发上下文，一键了解项目状态"
+description: "Get current development context to understand project status at a glance"
 ---
 
 # viben context
 
-获取当前开发上下文，一键了解项目状态。
+Get current development context to understand project status at a glance.
 
-## 概述
+## Overview
 
-`viben context` 命令用于获取当前开发上下文，包括用户身份、Git 状态、当前任务、运行中的智能体等信息。这对于 AI Agent 启动时了解项目状态非常有用。
+The `viben context` command retrieves the current development context, including user identity, Git status, current task, running agents, and other information. This is very useful for AI Agents to understand project status at startup.
 
-## 命令
+## Command
 
 ```bash
-viben context             # 显示完整上下文（文本格式）
-viben context --json      # JSON 格式输出
+viben context             # Display full context (text format)
+viben context --json      # JSON format output
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--json`, `-j` | JSON 格式输出 |
+| Option | Description |
+|--------|-------------|
+| `--json`, `-j` | JSON format output |
 
-## 输出内容
+## Output Content
 
-### 文本格式
+### Text Format
 
 ```
 ========================================
@@ -56,7 +56,7 @@ Path: .viben/tasks/03-03-add-user-auth
 Name: add-user-auth
 Status: in_progress
 Created: 2024-03-03
-Description: 实现用户认证功能
+Description: Implement user authentication feature
 
 [!] This task has prd.md - read it for task details
 
@@ -82,7 +82,7 @@ Spec: docs/specs/
 ========================================
 ```
 
-### JSON 格式
+### JSON Format
 
 ```json
 {
@@ -115,51 +115,51 @@ Spec: docs/specs/
 }
 ```
 
-## 输出字段说明
+## Output Field Descriptions
 
 ### developer
 
-当前用户身份。如果未初始化，显示错误信息并提示运行 `viben user init`。
+Current user identity. If not initialized, displays error message and prompts to run `viben user init`.
 
 ### git
 
-Git 状态信息：
-- `branch`: 当前分支
-- `isClean`: 工作目录是否干净
-- `uncommittedChanges`: 未提交变更数量
-- `recentCommits`: 最近 5 个 commit
+Git status information:
+- `branch`: Current branch
+- `isClean`: Whether working directory is clean
+- `uncommittedChanges`: Number of uncommitted changes
+- `recentCommits`: Most recent 5 commits
 
 ### tasks
 
-任务信息：
-- `active`: 活跃任务列表（排除 archive）
-- `directory`: 任务目录路径
+Task information:
+- `active`: Active task list (excluding archive)
+- `directory`: Task directory path
 
 ### journal
 
-会话日志信息：
-- `file`: 当前活跃的 journal 文件
-- `lines`: 当前行数
-- `nearLimit`: 是否接近 2000 行限制
+Session journal information:
+- `file`: Currently active journal file
+- `lines`: Current line count
+- `nearLimit`: Whether approaching 2000 line limit
 
-## 示例
+## Examples
 
 ```bash
-# 查看完整上下文
+# View full context
 viben context
 
-# JSON 格式（用于脚本处理）
+# JSON format (for script processing)
 viben context --json
 
-# 获取当前分支
+# Get current branch
 viben context --json | jq -r '.git.branch'
 
-# 检查是否有未提交变更
+# Check for uncommitted changes
 viben context --json | jq -r '.git.isClean'
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben user](./user) - 用户身份管理
-- [viben task](./task) - 任务管理
-- [viben session](./session) - 会话记录
+- [viben user](./user) - User identity management
+- [viben task](./task) - Task management
+- [viben session](./session) - Session recording

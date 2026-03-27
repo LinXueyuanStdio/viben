@@ -762,12 +762,68 @@ export function registerFileRlCommand(program: Command): void {
         }
 
         const name = config.name;
-        const ideasDir = config.idea.session_dir
+
+        // For FileRL, ideas are stored in .viben/filerl/<name>/iter{N}/<idea-id>/idea.md
+        // We need to read from the filerl directory structure, not the generic ideas directory
+        const filerlDir = join(repoRoot, ".viben", "filerl", name);
+
+        // Get all ideas from all iteration directories
+        const allIdeas: Awaited<ReturnType<typeof getAllIdeasFromSession>> = [];
+
+        // Check if filerl directory exists
+        if (existsSync(filerlDir)) {
+          const { readdirSync, statSync } = await import("node:fs");
+          const entries = readdirSync(filerlDir);
+
+          for (const entry of entries) {
+            // Look for iter{N} directories
+            if (entry.startsWith("iter") && statSync(join(filerlDir, entry)).isDirectory()) {
+              const iterDir = join(filerlDir, entry);
+              const ideaDirs = readdirSync(iterDir).filter(f =>
+                statSync(join(iterDir, f)).isDirectory()
+              );
+
+              for (const ideaId of ideaDirs) {
+                const ideaPath = join(iterDir, ideaId, "idea.md");
+                if (existsSync(ideaPath)) {
+                  // Parse idea.md to extract idea metadata
+                  const { readFileSync } = await import("node:fs");
+                  const content = readFileSync(ideaPath, "utf-8");
+
+                  // Parse YAML frontmatter
+                  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+                  if (frontmatterMatch) {
+                    const frontmatter = frontmatterMatch[1];
+                    const titleMatch = frontmatter.match(/title:\s*"?([^"\n]+)"?/);
+                    const effortMatch = frontmatter.match(/estimated_effort:\s*(\w+)/);
+                    const statusMatch = frontmatter.match(/status:\s*(\w+)/);
+                    const typeMatch = frontmatter.match(/type:\s*(\w+)/);
+
+                    allIdeas.push({
+                      id: ideaId,
+                      title: titleMatch?.[1] || "Untitled",
+                      description: "",
+                      type: typeMatch?.[1] || "unknown",
+                      estimatedEffort: (effortMatch?.[1] || "medium") as "trivial" | "small" | "medium" | "large" | "complex",
+                      status: (statusMatch?.[1] || "draft") as "draft" | "promoted" | "dismissed",
+                      createdAt: new Date().toISOString(),
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Fallback: also check the legacy ideas directory
+        const legacyIdeasDir = config.idea.session_dir
           ? resolve(repoRoot, config.idea.session_dir)
           : join(repoRoot, ".viben", "ideas", name);
 
-        // Get all ideas from the session directory
-        const allIdeas = getAllIdeasFromSession(ideasDir);
+        if (existsSync(legacyIdeasDir) && allIdeas.length === 0) {
+          const legacyIdeas = getAllIdeasFromSession(legacyIdeasDir);
+          allIdeas.push(...legacyIdeas);
+        }
 
         // Apply status filter if provided
         const filteredIdeas = options.status

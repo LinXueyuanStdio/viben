@@ -1,63 +1,63 @@
 ---
 sidebar_position: 4
-title: CLI 集成指南
-description: Viben CLI 完整命令参考
+title: CLI Integration Guide
+description: Complete Viben CLI Command Reference
 ---
 
-# CLI 集成指南
+# CLI Integration Guide
 
-本文档提供 Viben CLI 的完整命令参考，涵盖 Agent 管理、MCP 配置、Skill 管理、Executor 使用等功能。
+This document provides a complete command reference for the Viben CLI, covering Agent management, MCP configuration, Skill management, Executor usage, and more.
 
-## 命令结构
+## Command Structure
 
 ```
 viben <command> [subcommand] [options]
 
 Commands:
-  init          初始化工作区
-  config        配置管理 (git-style)
-  service       后台服务管理
-  gateway       启动 Gateway
-  executor      Executor 发现和 Chat
-  agent         Agent 管理
-  provider      API Provider 管理
-  model         Model 管理
-  mcp           MCP Server 管理
-  skill         Skill 管理
-  channel       Chat Channel 管理
-  cron          定时任务管理
-  workspace     工作区操作
-  version       显示版本
-  help          显示帮助
+  init          Initialize workspace
+  config        Configuration management (git-style)
+  service       Background service management
+  gateway       Start Gateway
+  executor      Executor discovery and Chat
+  agent         Agent management
+  provider      API Provider management
+  model         Model management
+  mcp           MCP Server management
+  skill         Skill management
+  channel       Chat Channel management
+  cron          Scheduled task management
+  workspace     Workspace operations
+  version       Show version
+  help          Show help
 ```
 
-## 全局选项
+## Global Options
 
 ```
---json              JSON 格式输出
---global, -g        使用全局配置
---workspace         使用工作区配置
--n, --name <id>     指定 agent 名称/ID
---verbose, -v       详细输出
---quiet, -q         静默模式
---help, -h          显示帮助
+--json              JSON format output
+--global, -g        Use global configuration
+--workspace         Use workspace configuration
+-n, --name <id>     Specify agent name/ID
+--verbose, -v       Verbose output
+--quiet, -q         Quiet mode
+--help, -h          Show help
 ```
 
-## Agent 管理命令
+## Agent Management Commands
 
 ### viben agent list
 
-列出所有 agents。
+List all agents.
 
 ```bash
-# 列出所有 agents
+# List all agents
 viben agent list
 
-# JSON 格式输出
+# JSON format output
 viben agent list --json
 ```
 
-输出示例：
+Example output:
 
 ```
 Agents:
@@ -70,34 +70,34 @@ Agents:
 
 ### viben agent create
 
-创建新 agent。
+Create a new agent.
 
 ```bash
-# 创建新 agent
+# Create a new agent
 viben agent create -n <id>
 viben agent create -n my-agent
 
-# 从模板创建
+# Create from template
 viben agent create -n my-agent -f <template-agent-id>
 viben agent create -n my-agent -f /path/to/config.yaml
 
-# 克隆现有 agent
+# Clone an existing agent
 viben agent create -n my-agent --clone <existing-agent-id>
 
-# 使用特定 executor
+# Use a specific executor
 viben agent create -n my-agent --executor /path/to/executor
 ```
 
 ### viben agent show
 
-查看 agent 详情。
+View agent details.
 
 ```bash
 viben agent show -n <id>
 viben agent show -n my-agent
 ```
 
-输出示例：
+Example output:
 
 ```
 Agent: my-agent
@@ -124,23 +124,23 @@ Skills: code-review, commit (2 enabled)
 
 ### viben agent remove
 
-删除 agent。
+Delete an agent.
 
 ```bash
 viben agent remove -n <id>
 viben agent remove -n my-agent
-viben agent remove -n my-agent --force  # 强制删除
+viben agent remove -n my-agent --force  # Force delete
 ```
 
 ### viben agent config
 
-配置 agent。
+Configure an agent.
 
 ```bash
-# 查看配置
+# View configuration
 viben agent config -n <id>
 
-# 设置配置
+# Set configuration
 viben agent config -n <id> --set <key>=<value>
 viben agent config -n my-agent --set model=gpt-4
 viben agent config -n my-agent --set plan=true
@@ -149,7 +149,7 @@ viben agent config -n my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
 
 ### viben agent set-default
 
-设置默认 agent。
+Set the default agent.
 
 ```bash
 viben agent set-default -n <id>
@@ -158,7 +158,7 @@ viben agent set-default -n my-agent
 
 ### viben agent status
 
-查看 agent 状态。
+View agent status.
 
 ```bash
 viben agent status
@@ -167,56 +167,56 @@ viben agent status -n <id>
 
 ### viben agent chat
 
-使用指定 Agent 进行非交互式对话。
+Use a specified Agent for non-interactive conversation.
 
 ```bash
-# 基本用法
+# Basic usage
 viben agent chat -n <agent-id> -p <prompt>
-viben agent chat -n my-agent -p "分析这段代码"
+viben agent chat -n my-agent -p "Analyze this code"
 
-# 从 stdin 读取提示词
-echo "解释这个错误" | viben agent chat -n my-agent
+# Read prompt from stdin
+echo "Explain this error" | viben agent chat -n my-agent
 
-# 指定工作目录
-viben agent chat -n my-agent -p "分析项目结构" -C /path/to/project
+# Specify working directory
+viben agent chat -n my-agent -p "Analyze project structure" -C /path/to/project
 
-# Session 管理
-viben agent chat -n my-agent -p "继续上次的工作" -s main
-viben agent chat -n my-agent -p "接着做" --resume abc123
-viben agent chat -n my-agent -p "开始新任务" --new-session
+# Session management
+viben agent chat -n my-agent -p "Continue previous work" -s main
+viben agent chat -n my-agent -p "Continue" --resume abc123
+viben agent chat -n my-agent -p "Start new task" --new-session
 
-# 高级选项
-viben agent chat -n my-agent -p "复杂推理任务" --model claude-3-opus
-viben agent chat -n my-agent -p "独立任务" --no-memory
-viben agent chat -n my-agent -p "自动化脚本" --dangerously-skip-permissions
+# Advanced options
+viben agent chat -n my-agent -p "Complex reasoning task" --model claude-3-opus
+viben agent chat -n my-agent -p "Independent task" --no-memory
+viben agent chat -n my-agent -p "Automation script" --dangerously-skip-permissions
 
-# JSON 流输入输出
-echo '{"type":"user","message":{"role":"user","content":"分析代码"}}' | \
+# JSON stream input/output
+echo '{"type":"user","message":{"role":"user","content":"Analyze code"}}' | \
   viben agent chat -n my-agent --input-format stream-json --output-format stream-json
 ```
 
-**选项说明**：
+**Option descriptions**:
 
-| 选项 | 说明 |
-|------|------|
-| `-n, --name` | Agent ID (必需) |
-| `-p, --prompt` | 提示词 (可选，无则从 stdin 读取) |
-| `-C, --cwd` | 工作目录 (默认当前目录) |
-| `-s, --session` | 指定 session ID |
-| `--resume` | 恢复已有 session |
-| `--new-session` | 强制创建新 session |
-| `--model` | 覆盖 Agent 配置的模型 |
-| `--no-memory` | 不加载 Agent 记忆 |
-| `--input-format` | 输入格式: text (默认), stream-json |
-| `--output-format` | 输出格式: text (默认), stream-json |
-| `--verbose` | 详细输出 |
-| `--dangerously-skip-permissions` | 跳过权限检查 |
+| Option | Description |
+|--------|-------------|
+| `-n, --name` | Agent ID (required) |
+| `-p, --prompt` | Prompt (optional, reads from stdin if not provided) |
+| `-C, --cwd` | Working directory (defaults to current directory) |
+| `-s, --session` | Specify session ID |
+| `--resume` | Resume an existing session |
+| `--new-session` | Force create a new session |
+| `--model` | Override the Agent's configured model |
+| `--no-memory` | Don't load Agent memory |
+| `--input-format` | Input format: text (default), stream-json |
+| `--output-format` | Output format: text (default), stream-json |
+| `--verbose` | Verbose output |
+| `--dangerously-skip-permissions` | Skip permission checks |
 
-## Agent Template 管理
+## Agent Template Management
 
 ### viben agent template list
 
-列出所有模板。
+List all templates.
 
 ```bash
 viben agent template list
@@ -225,7 +225,7 @@ viben agent template list --json
 
 ### viben agent template create
 
-从现有 agent 创建模板。
+Create a template from an existing agent.
 
 ```bash
 viben agent template create -n <template-id> --clone <agent-id>
@@ -234,7 +234,7 @@ viben agent template create -n coding-assistant --clone my-agent
 
 ### viben agent template show
 
-查看模板详情。
+View template details.
 
 ```bash
 viben agent template show -n <template-id>
@@ -242,17 +242,17 @@ viben agent template show -n <template-id>
 
 ### viben agent template remove
 
-删除模板。
+Delete a template.
 
 ```bash
 viben agent template remove -n <template-id>
 ```
 
-## Agent Session 管理
+## Agent Session Management
 
 ### viben agent session list
 
-列出 agent 的会话。
+List an agent's sessions.
 
 ```bash
 viben agent session list -n <agent-id>
@@ -261,7 +261,7 @@ viben agent session list -n my-agent
 
 ### viben agent session create
 
-创建新会话。
+Create a new session.
 
 ```bash
 viben agent session create -n <agent-id> [--session-name <name>]
@@ -270,7 +270,7 @@ viben agent session create -n my-agent --session-name "feature-auth"
 
 ### viben agent session show
 
-查看会话详情。
+View session details.
 
 ```bash
 viben agent session show -n <agent-id> -s <session-id>
@@ -278,7 +278,7 @@ viben agent session show -n <agent-id> -s <session-id>
 
 ### viben agent session remove
 
-删除会话。
+Delete a session.
 
 ```bash
 viben agent session remove -n <agent-id> -s <session-id>
@@ -286,17 +286,17 @@ viben agent session remove -n <agent-id> -s <session-id>
 
 ### viben agent session clear
 
-清空会话历史。
+Clear session history.
 
 ```bash
 viben agent session clear -n <agent-id> -s <session-id>
 ```
 
-## Agent Memory 管理
+## Agent Memory Management
 
 ### viben agent memory show
 
-查看 agent 记忆。
+View agent memory.
 
 ```bash
 viben agent memory show -n <agent-id>
@@ -305,7 +305,7 @@ viben agent memory show -n my-agent --date 2024-01-16
 
 ### viben agent memory append
 
-追加记忆到今日日志。
+Append memory to today's log.
 
 ```bash
 viben agent memory append -n <agent-id> "content to append"
@@ -313,19 +313,19 @@ viben agent memory append -n <agent-id> "content to append"
 
 ### viben agent memory edit
 
-编辑主记忆。
+Edit main memory.
 
 ```bash
 viben agent memory edit -n <agent-id>
 ```
 
-## Executor 命令
+## Executor Commands
 
-Executor 是底层 coding agent 工具 (如 Claude Code, Cursor)，Viben 只发现不安装。
+Executors are underlying coding agent tools (such as Claude Code, Cursor). Viben only discovers them, not installs.
 
 ### viben executor types
 
-列出支持的 executor 类型。
+List supported executor types.
 
 ```bash
 viben executor types
@@ -334,14 +334,14 @@ viben executor types --json
 
 ### viben executor list
 
-列出所有已发现的 executors（含安装状态）。
+List all discovered executors (with installation status).
 
 ```bash
 viben executor list
 viben executor list --json
 ```
 
-输出示例：
+Example output:
 
 ```
 Executors:
@@ -357,7 +357,7 @@ Executors:
 
 ### viben executor show
 
-查看 executor 详情。
+View executor details.
 
 ```bash
 viben executor show -n <executor-id>
@@ -367,27 +367,27 @@ viben executor show -n CURSOR --json
 
 ### viben executor chat
 
-非交互式调用 executor。
+Non-interactive executor invocation.
 
 ```bash
-# 基本用法
-viben executor chat -n CLAUDE_CODE -p "分析这段代码"
+# Basic usage
+viben executor chat -n CLAUDE_CODE -p "Analyze this code"
 
-# 从 stdin 读取
-echo "写一个排序函数" | viben executor chat -n CLAUDE_CODE
+# Read from stdin
+echo "Write a sorting function" | viben executor chat -n CLAUDE_CODE
 
-# JSON 流输入输出
+# JSON stream input/output
 viben executor chat -n CLAUDE_CODE --input-format stream-json --output-format stream-json
 
-# 恢复 session
-viben executor chat -n CLAUDE_CODE -p "继续" --resume <session-id>
+# Resume session
+viben executor chat -n CLAUDE_CODE -p "Continue" --resume <session-id>
 ```
 
-## MCP 命令
+## MCP Commands
 
 ### viben mcp list
 
-列出已安装的 MCP servers。
+List installed MCP servers.
 
 ```bash
 viben mcp list
@@ -397,7 +397,7 @@ viben mcp list --json
 
 ### viben mcp show
 
-显示 MCP server 详情。
+Show MCP server details.
 
 ```bash
 viben mcp show <name>
@@ -407,7 +407,7 @@ viben mcp show <name> --json
 
 ### viben mcp add
 
-为 agent 添加 MCP server 配置。
+Add MCP server configuration for an agent.
 
 ```bash
 viben mcp add <name> --agent <agent-id> --command <cmd>
@@ -418,7 +418,7 @@ viben mcp add filesystem --agent my-agent --command npx --disabled
 
 ### viben mcp remove
 
-从 agent 移除 MCP server 配置。
+Remove MCP server configuration from an agent.
 
 ```bash
 viben mcp remove <name> --agent <agent-id>
@@ -426,7 +426,7 @@ viben mcp remove <name> --agent <agent-id>
 
 ### viben mcp inspector
 
-启动 MCP Inspector 用于测试和调试。
+Launch MCP Inspector for testing and debugging.
 
 ```bash
 viben mcp inspector
@@ -436,11 +436,11 @@ viben mcp inspector --config mcp.json --server myserver
 viben mcp inspector --cli node build/index.js
 ```
 
-## Skill 命令
+## Skill Commands
 
 ### viben skill list
 
-列出已安装的 skills。
+List installed skills.
 
 ```bash
 viben skill list
@@ -453,7 +453,7 @@ viben skill list --json
 
 ### viben skill show
 
-显示 skill 详情。
+Show skill details.
 
 ```bash
 viben skill show <name>
@@ -463,7 +463,7 @@ viben skill show <name> --json
 
 ### viben skill install
 
-安装 skill。
+Install a skill.
 
 ```bash
 viben skill install <name>
@@ -478,7 +478,7 @@ viben skill install <name> --force
 
 ### viben skill uninstall
 
-卸载 skill。
+Uninstall a skill.
 
 ```bash
 viben skill uninstall <name>
@@ -488,7 +488,7 @@ viben skill uninstall <name> --claude
 
 ### viben skill enable/disable
 
-启用/禁用 skill。
+Enable/disable a skill.
 
 ```bash
 viben skill enable <name> --agent <agent-id>
@@ -498,7 +498,7 @@ viben skill enabled --agent <agent-id>
 
 ### viben skill path
 
-获取 skill 路径。
+Get skill path.
 
 ```bash
 viben skill path <name>
@@ -506,7 +506,7 @@ viben skill path <name> --agent <agent-id>
 viben skill path <name> --claude
 ```
 
-## 编程集成
+## Programmatic Integration
 
 ### Node.js
 
@@ -521,16 +521,16 @@ async function runVibenCommand(command: string): Promise<string> {
   return stdout;
 }
 
-// 使用示例
+// Usage example
 async function main() {
-  // 列出 agents
+  // List agents
   const agentsJson = await runVibenCommand('agent list --json');
   const agents = JSON.parse(agentsJson);
 
-  // 创建 agent
+  // Create agent
   await runVibenCommand('agent create -n test-agent');
 
-  // 执行对话
+  // Execute conversation
   const response = await runVibenCommand(
     'agent chat -n test-agent -p "Hello" --json'
   );
@@ -556,16 +556,16 @@ def run_viben_json(command: str) -> dict:
     output = run_viben_command(f"{command} --json")
     return json.loads(output)
 
-# 使用示例
+# Usage example
 if __name__ == "__main__":
-    # 列出 agents
+    # List agents
     agents = run_viben_json("agent list")
     print(agents)
 
-    # 创建 agent
+    # Create agent
     run_viben_command("agent create -n test-agent")
 
-    # 执行对话
+    # Execute conversation
     response = run_viben_json('agent chat -n test-agent -p "Hello"')
     print(response)
 ```
@@ -575,23 +575,23 @@ if __name__ == "__main__":
 ```bash
 #!/bin/bash
 
-# 列出所有 agents
+# List all agents
 agents=$(viben agent list --json | jq -r '.agents[].id')
 
-# 遍历并显示详情
+# Iterate and show details
 for agent in $agents; do
     echo "Agent: $agent"
     viben agent show -n "$agent"
     echo "---"
 done
 
-# 批量执行任务
+# Batch execute tasks
 viben agent chat -n main -p "Generate a report" --json > report.json
 ```
 
-## 相关文档
+## Related Documentation
 
-- [Agent 开发指南](./index.md)
-- [MCP 开发指南](./mcp-development.md)
-- [Skill 开发指南](./skill-development.md)
-- [最佳实践](./best-practices.md)
+- [Agent Development Guide](./index.md)
+- [MCP Development Guide](./mcp-development.md)
+- [Skill Development Guide](./skill-development.md)
+- [Best Practices](./best-practices.md)

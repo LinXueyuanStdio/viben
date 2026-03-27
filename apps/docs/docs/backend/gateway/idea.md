@@ -4,38 +4,38 @@ title: "Idea API"
 description: "AI-driven idea generation and management API"
 ---
 
-# 想法 API
+# Idea API
 
-> `/api/idea` - AI 驱动的想法生成和管理端点
+> `/api/idea` - AI-driven idea generation and management endpoints
 
-## 概述
+## Overview
 
-想法 API 提供 AI 驱动的代码改进建议生成和管理能力。支持 6 种内置类型和用户自定义类型，生成的想法可转为任务。
+The Idea API provides AI-driven code improvement suggestion generation and management capabilities. It supports 6 built-in types and user-defined custom types. Generated ideas can be promoted to tasks.
 
-## 端点列表
+## Endpoints
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/idea/generate` | 生成想法 |
-| GET | `/api/idea` | 获取想法列表 |
-| GET | `/api/idea/types` | 获取可用类型列表 |
-| GET | `/api/idea/:id` | 获取单个想法详情 |
-| POST | `/api/idea/:id/promote` | 将想法转为任务 |
-| POST | `/api/idea/:id/dismiss` | 忽略想法 |
-| DELETE | `/api/idea/:id` | 删除想法 |
-| DELETE | `/api/idea` | 批量删除想法 |
-| GET | `/api/idea/sessions` | 获取生成会话列表 |
-| GET | `/api/idea/sessions/:id` | 获取生成会话详情 |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/idea/generate` | Generate ideas |
+| GET | `/api/idea` | Get idea list |
+| GET | `/api/idea/types` | Get available type list |
+| GET | `/api/idea/:id` | Get single idea details |
+| POST | `/api/idea/:id/promote` | Promote idea to task |
+| POST | `/api/idea/:id/dismiss` | Dismiss idea |
+| DELETE | `/api/idea/:id` | Delete idea |
+| DELETE | `/api/idea` | Batch delete ideas |
+| GET | `/api/idea/sessions` | Get generation session list |
+| GET | `/api/idea/sessions/:id` | Get generation session details |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### POST /api/idea/generate
 
-生成想法。这是一个流式端点，通过 SSE 返回生成进度。
+Generate ideas. This is a streaming endpoint that returns generation progress via SSE.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -49,42 +49,42 @@ description: "AI-driven idea generation and management API"
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| types | string[] | Yes | 要生成的想法类型列表 |
-| workspace_path | string | Yes | 工作区路径 |
-| output | string | No | 输出目录，默认 `.viben/ideas` |
-| model | string | No | AI 模型，默认全局配置 |
-| max_ideas | number | No | 每类最大想法数，默认 5 |
-| append | boolean | No | 追加模式，默认 false |
-| override | boolean | No | 强制重新生成，默认 false |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| types | string[] | Yes | List of idea types to generate |
+| workspace_path | string | Yes | Workspace path |
+| output | string | No | Output directory, defaults to `.viben/ideas` |
+| model | string | No | AI model, defaults to global configuration |
+| max_ideas | number | No | Maximum ideas per type, defaults to 5 |
+| append | boolean | No | Append mode, defaults to false |
+| override | boolean | No | Force regeneration, defaults to false |
 
-**响应格式**: `text/event-stream`
+**Response Format**: `text/event-stream`
 
-**事件类型**:
+**Event Types**:
 
 ```json
-// 开始生成
+// Generation start
 {"type": "start", "session_id": "03-11-api-improvement", "types": ["code_improvements"]}
 
-// 类型开始
+// Type start
 {"type": "type_start", "idea_type": "code_improvements"}
 
-// 生成进度
+// Generation progress
 {"type": "progress", "idea_type": "code_improvements", "current": 2, "total": 5}
 
-// 单个想法生成完成
+// Single idea generation complete
 {"type": "idea_generated", "idea": {...}}
 
-// 类型完成
+// Type complete
 {"type": "type_complete", "idea_type": "code_improvements", "count": 5}
 
-// 全部完成
+// All complete
 {"type": "complete", "session_id": "03-11-api-improvement", "summary": {...}}
 
-// 错误
+// Error
 {"type": "error", "message": "Failed to generate ideas", "idea_type": "code_improvements"}
 ```
 
@@ -92,21 +92,21 @@ description: "AI-driven idea generation and management API"
 
 ### GET /api/idea
 
-获取想法列表。
+Get idea list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
-| type | string | 按类型过滤 |
-| effort | string | 按工作量过滤 |
-| status | string | 按状态过滤 (draft/promoted/dismissed) |
-| session_id | string | 按会话 ID 过滤 |
-| limit | number | 限制返回数量，默认 100 |
-| offset | number | 分页偏移量 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
+| type | string | Filter by type |
+| effort | string | Filter by effort |
+| status | string | Filter by status (draft/promoted/dismissed) |
+| session_id | string | Filter by session ID |
+| limit | number | Limit returned count, defaults to 100 |
+| offset | number | Pagination offset |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -117,8 +117,8 @@ description: "AI-driven idea generation and management API"
       "type": "code_improvements",
       "name": "add-retry-logic",
       "title": "Add retry logic to API calls",
-      "description": "为 API 调用添加自动重试逻辑",
-      "rationale": "当前代码在网络错误时直接失败",
+      "description": "Add automatic retry logic to API calls",
+      "rationale": "Current code fails directly on network errors",
       "estimated_effort": "small",
       "status": "draft",
       "promoted_to": null,
@@ -137,17 +137,17 @@ description: "AI-driven idea generation and management API"
 
 ### GET /api/idea/types
 
-获取可用的想法类型列表。
+Get available idea type list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
-| include_builtin | boolean | 包含内置类型，默认 true |
-| include_custom | boolean | 包含自定义类型，默认 true |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
+| include_builtin | boolean | Include built-in types, defaults to true |
+| include_custom | boolean | Include custom types, defaults to true |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -155,13 +155,13 @@ description: "AI-driven idea generation and management API"
   "types": [
     {
       "name": "code_improvements",
-      "description": "代码改进 - 基于现有模式的改进机会",
+      "description": "Code improvements - Improvement opportunities based on existing patterns",
       "source": "builtin",
       "max_ideas": 5
     },
     {
       "name": "api_design",
-      "description": "API 设计改进 - RESTful 规范、接口一致性",
+      "description": "API design improvements - RESTful standards, interface consistency",
       "source": "custom",
       "max_ideas": 5,
       "path": "docs/idea-types/api_design.md"
@@ -170,30 +170,30 @@ description: "AI-driven idea generation and management API"
 }
 ```
 
-**内置类型**:
+**Built-in Types**:
 
-| 类型 | 说明 |
-|------|------|
-| `code_improvements` | 代码改进 |
-| `ui_ux_improvements` | UI/UX 改进 |
-| `documentation_gaps` | 文档缺失 |
-| `security_hardening` | 安全加固 |
-| `performance_optimizations` | 性能优化 |
-| `code_quality` | 代码质量 |
+| Type | Description |
+|------|-------------|
+| `code_improvements` | Code improvements |
+| `ui_ux_improvements` | UI/UX improvements |
+| `documentation_gaps` | Documentation gaps |
+| `security_hardening` | Security hardening |
+| `performance_optimizations` | Performance optimizations |
+| `code_quality` | Code quality |
 
 ---
 
 ### GET /api/idea/:id
 
-获取单个想法详情。
+Get single idea details.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -203,15 +203,15 @@ description: "AI-driven idea generation and management API"
     "type": "code_improvements",
     "name": "add-retry-logic",
     "title": "Add retry logic to API calls",
-    "description": "为 API 调用添加自动重试逻辑，处理临时网络故障",
-    "rationale": "当前代码在网络错误时直接失败，没有重试机制",
+    "description": "Add automatic retry logic to API calls, handling temporary network failures",
+    "rationale": "Current code fails directly on network errors without retry mechanism",
     "estimated_effort": "small",
     "status": "draft",
     "promoted_to": null,
     "created_at": "2026-03-11T14:30:00Z",
     "affected_files": ["src/api/client.ts", "src/api/request.ts"],
     "existing_patterns": ["error handling in src/utils/error.ts"],
-    "implementation_approach": "使用 exponential backoff 策略...",
+    "implementation_approach": "Use exponential backoff strategy...",
     "session_id": "03-11-api-improvement",
     "file_path": ".viben/ideas/03-11-api-improvement/idea_code_improvements_add-retry-logic.md"
   }
@@ -222,9 +222,9 @@ description: "AI-driven idea generation and management API"
 
 ### POST /api/idea/:id/promote
 
-将想法转为任务。
+Promote idea to task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -240,21 +240,21 @@ description: "AI-driven idea generation and management API"
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| slug | string | No | 任务标识符 |
-| branch | string | No | 自定义分支名 |
-| assignee | string | No | 分配给谁 |
-| priority | string | No | 优先级 (P0-P3) |
-| executor | string | No | 执行器类型 |
-| model | string | No | 使用的模型 |
-| start | boolean | No | 自动启动任务 |
-| worktree | boolean | No | 在 git worktree 中运行 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| slug | string | No | Task identifier |
+| branch | string | No | Custom branch name |
+| assignee | string | No | Assignee |
+| priority | string | No | Priority (P0-P3) |
+| executor | string | No | Executor type |
+| model | string | No | Model to use |
+| start | boolean | No | Auto-start task |
+| worktree | boolean | No | Run in git worktree |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -274,18 +274,18 @@ description: "AI-driven idea generation and management API"
 
 ### POST /api/idea/:id/dismiss
 
-忽略想法。
+Dismiss an idea.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
   "workspace_path": "/path/to/project",
-  "reason": "不适用于当前项目"
+  "reason": "Not applicable to current project"
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -299,15 +299,15 @@ description: "AI-driven idea generation and management API"
 
 ### DELETE /api/idea/:id
 
-删除单个想法。
+Delete a single idea.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -320,9 +320,9 @@ description: "AI-driven idea generation and management API"
 
 ### DELETE /api/idea
 
-批量删除想法。
+Batch delete ideas.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -333,7 +333,7 @@ description: "AI-driven idea generation and management API"
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -347,17 +347,17 @@ description: "AI-driven idea generation and management API"
 
 ### GET /api/idea/sessions
 
-获取生成会话列表。
+Get generation session list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
-| limit | number | 限制返回数量，默认 20 |
-| offset | number | 分页偏移量 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
+| limit | number | Limit returned count, defaults to 20 |
+| offset | number | Pagination offset |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -385,16 +385,16 @@ description: "AI-driven idea generation and management API"
 
 ### GET /api/idea/sessions/:id
 
-获取生成会话详情。
+Get generation session details.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | **必需** 工作区路径 |
-| include_ideas | boolean | 是否包含想法列表，默认 true |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | **Required** Workspace path |
+| include_ideas | boolean | Whether to include idea list, defaults to true |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -417,41 +417,41 @@ description: "AI-driven idea generation and management API"
 
 ---
 
-## 数据结构
+## Data Structures
 
-### Idea 对象
+### Idea Object
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 8 字符短 UUID |
-| type | string | 想法类型 |
-| name | string | 文件友好名称 |
-| title | string | 简短标题 |
-| description | string | 详细描述 |
-| rationale | string | 改进原因 |
-| estimated_effort | string | 工作量估计 |
-| status | string | 状态 (draft/promoted/dismissed) |
-| promoted_to | string | 关联的任务 ID |
-| created_at | string | 创建时间 (ISO 8601) |
-| affected_files | string[] | 涉及的文件 |
-| existing_patterns | string[] | 可参考的现有模式 |
-| implementation_approach | string | 实现方法 |
-| session_id | string | 所属会话 ID |
-
----
-
-## 错误码
-
-| HTTP 状态码 | 错误类型 | 说明 |
-|-------------|----------|------|
-| 400 | ValidationError | 请求参数无效 |
-| 404 | NotFoundError | 想法或会话不存在 |
-| 409 | ConflictError | 想法已被转为任务 |
-| 500 | InternalError | 服务器内部错误 |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | 8-character short UUID |
+| type | string | Idea type |
+| name | string | File-friendly name |
+| title | string | Short title |
+| description | string | Detailed description |
+| rationale | string | Reason for improvement |
+| estimated_effort | string | Effort estimate |
+| status | string | Status (draft/promoted/dismissed) |
+| promoted_to | string | Associated task ID |
+| created_at | string | Creation time (ISO 8601) |
+| affected_files | string[] | Affected files |
+| existing_patterns | string[] | Existing patterns for reference |
+| implementation_approach | string | Implementation approach |
+| session_id | string | Parent session ID |
 
 ---
 
-## 相关端点
+## Error Codes
 
-- [任务 API](./task.md) - 任务管理
-- [智能体 API](./agents.md) - 智能体管理
+| HTTP Status | Error Type | Description |
+|-------------|------------|-------------|
+| 400 | ValidationError | Invalid request parameters |
+| 404 | NotFoundError | Idea or session not found |
+| 409 | ConflictError | Idea already promoted to task |
+| 500 | InternalError | Internal server error |
+
+---
+
+## Related Endpoints
+
+- [Task API](./task.md) - Task management
+- [Agent API](./agents.md) - Agent management

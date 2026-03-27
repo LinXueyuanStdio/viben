@@ -1,63 +1,63 @@
-# 模型 API
+# Model API
 
-> `/api/models` - 模型管理端点
+> `/api/models` - Model management endpoints
 
-## 概述
+## Overview
 
-模型 API 提供 AI 模型的配置和管理功能，支持自定义模型和提供商预定义模型。
+The Model API provides AI model configuration and management functionality, supporting custom models and provider-predefined models.
 
-## 端点列表
+## Endpoint List
 
-### 模型 CRUD
+### Model CRUD
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/models` | 列出模型 |
-| POST | `/api/models` | 创建自定义模型 |
-| GET | `/api/models/:id` | 获取模型详情 |
-| PATCH | `/api/models/:id` | 更新模型 |
-| DELETE | `/api/models/:id` | 删除模型 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/models` | List models |
+| POST | `/api/models` | Create custom model |
+| GET | `/api/models/:id` | Get model details |
+| PATCH | `/api/models/:id` | Update model |
+| DELETE | `/api/models/:id` | Delete model |
 
-### 默认模型
+### Default Model
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/models/default` | 获取默认模型 |
-| PUT | `/api/models/default` | 设置默认模型 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/models/default` | Get default model |
+| PUT | `/api/models/default` | Set default model |
 
-### 模型状态
+### Model Status
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/models/:id/enable` | 启用模型 |
-| POST | `/api/models/:id/disable` | 禁用模型 |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/models/:id/enable` | Enable model |
+| POST | `/api/models/:id/disable` | Disable model |
 
-### 提供商模型
+### Provider Models
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/providers/:id/discover-models` | 发现可用模型 |
-| GET | `/api/providers/:id/models` | 列出已启用模型 |
-| POST | `/api/providers/:pid/models/:mid/enable` | 启用模型 |
-| POST | `/api/providers/:pid/models/:mid/disable` | 禁用模型 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/providers/:id/discover-models` | Discover available models |
+| GET | `/api/providers/:id/models` | List enabled models |
+| POST | `/api/providers/:pid/models/:mid/enable` | Enable model |
+| POST | `/api/providers/:pid/models/:mid/disable` | Disable model |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/models
 
-列出所有模型。
+List all models.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
-| include_global | bool | 否 | true | 包含全局模型 |
-| include_provider_predefined | bool | 否 | true | 包含提供商预定义模型 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| workspace_path | string | No | - | Workspace path |
+| include_global | bool | No | true | Include global models |
+| include_provider_predefined | bool | No | true | Include provider-predefined models |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -94,9 +94,9 @@
 
 ### POST /api/models
 
-创建自定义模型。
+Create a custom model.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -113,24 +113,24 @@
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| id | string | 否 | 模型 ID (自动生成) |
-| name | string | ✓ | 模型名称 |
-| provider | string | ✓ | 提供商 ID |
-| base_model | string | 否 | 基础模型 |
-| system_prompt | string | 否 | 系统提示词 |
-| temperature | float | 否 | 温度参数 |
-| max_tokens | int | 否 | 最大 token 数 |
-| parameters | object | 否 | 其他参数 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| id | string | No | Model ID (auto-generated) |
+| name | string | Yes | Model name |
+| provider | string | Yes | Provider ID |
+| base_model | string | No | Base model |
+| system_prompt | string | No | System prompt |
+| temperature | float | No | Temperature parameter |
+| max_tokens | int | No | Maximum tokens |
+| parameters | object | No | Other parameters |
 
 ---
 
 ### GET /api/models/:id
 
-获取模型详情。
+Get model details.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -160,9 +160,9 @@
 
 ### GET /api/providers/:id/discover-models
 
-发现提供商可用的模型列表。
+Discover available models from a provider.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -193,9 +193,9 @@
 
 ### PUT /api/models/default
 
-设置默认模型。
+Set the default model.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -203,7 +203,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -214,9 +214,9 @@
 
 ---
 
-## 模型配置存储
+## Model Configuration Storage
 
-模型配置存储在 `~/.viben/models.yaml`:
+Model configuration is stored in `~/.viben/models.yaml`:
 
 ```yaml
 default: claude-3-sonnet
@@ -235,7 +235,7 @@ models:
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [提供商 API](./providers.md) - 提供商管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Provider API](./providers.md) - Provider management
+- [Agent API](./agents.md) - Agent management

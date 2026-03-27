@@ -1,33 +1,33 @@
-# 聊天列表 API
+# Chat List API
 
-> `/api/chat-list` - 聊天列表聚合端点
+> `/api/chat-list` - Chat list aggregation endpoint
 
-## 概述
+## Overview
 
-聊天列表 API 提供统一的聊天资源聚合视图，整合群聊、执行器会话和智能体会话。
+The Chat List API provides a unified aggregated view of chat resources, integrating group chats, executor sessions, and agent sessions.
 
-## 端点
+## Endpoint
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/chat-list` | 获取聚合聊天列表 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/chat-list` | Get aggregated chat list |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/chat-list
 
-获取工作空间下所有可聊天的资源。
+Get all chattable resources under a workspace.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
-| include_global | bool | 否 | true | 包含全局资源 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| workspace_path | string | No | - | Workspace path |
+| include_global | bool | No | true | Include global resources |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -69,9 +69,9 @@
 
 ---
 
-## 聊天项类型
+## Chat Item Types
 
-### 群聊 (group_chat)
+### Group Chat (group_chat)
 
 ```json
 {
@@ -88,7 +88,7 @@
 }
 ```
 
-### 执行器 (executor)
+### Executor (executor)
 
 ```json
 {
@@ -103,7 +103,7 @@
 }
 ```
 
-### 智能体 (agent)
+### Agent (agent)
 
 ```json
 {
@@ -122,23 +122,23 @@
 
 ---
 
-## 排序规则
+## Sorting Rules
 
-返回的项目按 `last_active` 降序排列 (最近活跃的在前)。
-
----
-
-## 使用场景
-
-聊天列表 API 主要用于：
-- 桌面应用侧边栏展示
-- 移动应用聊天列表
-- 快速切换聊天对象
+Returned items are sorted by `last_active` in descending order (most recently active first).
 
 ---
 
-## 相关端点
+## Use Cases
 
-- [群聊 API](./group-chats.md) - 群聊详情
-- [执行器 API](./executors.md) - 执行器详情
-- [智能体 API](./agents.md) - 智能体详情
+The Chat List API is primarily used for:
+- Desktop application sidebar display
+- Mobile application chat list
+- Quick switching between chat targets
+
+---
+
+## Related Endpoints
+
+- [Group Chats API](./group-chats.md) - Group chat details
+- [Executors API](./executors.md) - Executor details
+- [Agents API](./agents.md) - Agent details

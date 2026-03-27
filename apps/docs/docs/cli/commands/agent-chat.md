@@ -1,39 +1,39 @@
 # viben agent chat
 
-> 使用指定 Agent 进行非交互式对话。
+> Non-interactive conversation with a specified Agent.
 
-## 概述
+## Overview
 
-为 `viben agent` 新增 `chat` 子命令，支持非交互式方式调用 Agent 进行对话。Agent 会根据其配置的 type（如 claude-code、gemini）调用对应的底层 executor，同时自动加载 Agent 的记忆、MCP 配置和 Skills。
+Adds a `chat` subcommand to `viben agent` for non-interactive Agent conversations. The Agent calls the corresponding underlying executor based on its configured type (e.g., claude-code, gemini), while automatically loading the Agent's memory, MCP configuration, and Skills.
 
-## 命令接口
+## Command Interface
 
 ```
 viben agent chat [OPTIONS] -n <AGENT_ID>
 
 OPTIONS:
-    -n, --name <AGENT_ID>       Agent ID (必需)
-    -p, --prompt <PROMPT>       提示词（可选，无则从 stdin 读取）
-    -C, --cwd <DIR>             工作目录（默认当前目录）
+    -n, --name <AGENT_ID>       Agent ID (required)
+    -p, --prompt <PROMPT>       Prompt (optional, reads from stdin if not provided)
+    -C, --cwd <DIR>             Working directory (default: current directory)
 
-    --input-format <FORMAT>     输入格式: text (默认), stream-json
-    --output-format <FORMAT>    输出格式: text (默认), stream-json
-    --verbose                   详细输出
+    --input-format <FORMAT>     Input format: text (default), stream-json
+    --output-format <FORMAT>    Output format: text (default), stream-json
+    --verbose                   Verbose output
 
-    -s, --session <SESSION_ID>  指定 session ID
-    --resume <SESSION_ID>       恢复已有 session
-    --new-session               强制创建新 session
+    -s, --session <SESSION_ID>  Specify session ID
+    --resume <SESSION_ID>       Resume existing session
+    --new-session               Force create new session
 
-    --model <MODEL>             覆盖 Agent 配置的模型
-    --no-memory                 不加载 Agent 记忆
-    --dangerously-skip-permissions  跳过权限检查
+    --model <MODEL>             Override Agent's configured model
+    --no-memory                 Don't load Agent memory
+    --dangerously-skip-permissions  Skip permission checks
 
-    --json                      JSON 格式输出结果
+    --json                      JSON format output
 ```
 
 ---
 
-## 数据流架构
+## Data Flow Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -43,12 +43,12 @@ OPTIONS:
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      AgentChatCommand::execute()                 │
-│  1. 解析参数                                                      │
-│  2. 加载 Agent 配置 (~/.viben/agents/<id>/config.yaml)           │
-│  3. 加载 Agent 记忆 (MEMORY.md + 今日/昨日日志)                   │
-│  4. 读取 prompt (从 -p 或 stdin)                                  │
-│  5. 合并工作区配置 (<cwd>/.claude/ 等)                           │
-│  6. 根据 Agent type 选择 executor                                 │
+│  1. Parse arguments                                              │
+│  2. Load Agent config (~/.viben/agents/<id>/config.yaml)         │
+│  3. Load Agent memory (MEMORY.md + today/yesterday logs)         │
+│  4. Read prompt (from -p or stdin)                               │
+│  5. Merge workspace config (<cwd>/.claude/ etc.)                 │
+│  6. Select executor based on Agent type                          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -62,101 +62,101 @@ OPTIONS:
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     spawn_agent_chat_process()                   │
-│  构建命令: claude -p "prompt" --append-system-prompt "memory"   │
-│  - 注入 Agent 记忆作为 system prompt                             │
-│  - 根据 input/output format 添加对应参数                          │
-│  - 处理 session、model 等参数                                     │
-│  - 加载 Agent 的 MCP servers 配置                                │
+│  Build command: claude -p "prompt" --append-system-prompt "mem" │
+│  - Inject Agent memory as system prompt                          │
+│  - Add corresponding args based on input/output format           │
+│  - Handle session, model and other parameters                    │
+│  - Load Agent's MCP servers configuration                        │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      子进程 (claude/gemini/...)                  │
-│  stdin  ◄──── 继承父进程 stdin                                   │
-│  stdout ────► 继承父进程 stdout                                  │
-│  stderr ────► 继承父进程 stderr                                  │
+│                      Child process (claude/gemini/...)           │
+│  stdin  ◄──── Inherits parent stdin                              │
+│  stdout ────► Inherits parent stdout                             │
+│  stderr ────► Inherits parent stderr                             │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Post-processing                             │
-│  - 更新 Agent 每日日志 (memory/YYYY-MM-DD.md)                    │
-│  - 保存 session 到 .agent_sessions/<session_id>/                 │
+│  - Update Agent daily log (memory/YYYY-MM-DD.md)                 │
+│  - Save session to .agent_sessions/<session_id>/                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 使用示例
+## Usage Examples
 
 ```bash
 # ============================================================
-# 基本用法
+# Basic Usage
 # ============================================================
 
-# 使用默认 agent 进行对话
-viben agent chat -p "分析这段代码"
+# Conversation with default agent
+viben agent chat -p "Analyze this code"
 
-# 指定 agent
-viben agent chat -n my-agent -p "写一个排序函数"
+# Specify agent
+viben agent chat -n my-agent -p "Write a sorting function"
 
-# 从 stdin 读取提示词
-echo "解释这个错误" | viben agent chat -n my-agent
+# Read prompt from stdin
+echo "Explain this error" | viben agent chat -n my-agent
 
-# 指定工作目录
-viben agent chat -n my-agent -p "分析项目结构" -C /path/to/project
-
-# ============================================================
-# Session 管理
-# ============================================================
-
-# 使用特定 session
-viben agent chat -n my-agent -p "继续上次的工作" -s main
-
-# 恢复已有 session
-viben agent chat -n my-agent -p "接着做" --resume abc123
-
-# 强制创建新 session
-viben agent chat -n my-agent -p "开始新任务" --new-session
+# Specify working directory
+viben agent chat -n my-agent -p "Analyze project structure" -C /path/to/project
 
 # ============================================================
-# 高级选项
+# Session Management
 # ============================================================
 
-# 覆盖模型
-viben agent chat -n my-agent -p "复杂推理任务" --model claude-3-opus
+# Use specific session
+viben agent chat -n my-agent -p "Continue previous work" -s main
 
-# 不加载记忆（干净状态）
-viben agent chat -n my-agent -p "独立任务" --no-memory
+# Resume existing session
+viben agent chat -n my-agent -p "Continue" --resume abc123
 
-# 跳过权限检查
-viben agent chat -n my-agent -p "自动化脚本" --dangerously-skip-permissions
+# Force create new session
+viben agent chat -n my-agent -p "Start new task" --new-session
 
 # ============================================================
-# 程序化调用 (JSON 流)
+# Advanced Options
 # ============================================================
 
-# JSON 流输入输出
-echo '{"type":"user","message":{"role":"user","content":"分析代码"}}' | \
+# Override model
+viben agent chat -n my-agent -p "Complex reasoning task" --model claude-3-opus
+
+# Don't load memory (clean state)
+viben agent chat -n my-agent -p "Independent task" --no-memory
+
+# Skip permission checks
+viben agent chat -n my-agent -p "Automation script" --dangerously-skip-permissions
+
+# ============================================================
+# Programmatic Calls (JSON Stream)
+# ============================================================
+
+# JSON stream input/output
+echo '{"type":"user","message":{"role":"user","content":"Analyze code"}}' | \
   viben agent chat -n my-agent --input-format stream-json --output-format stream-json
 
-# JSON 格式输出结果
-viben agent chat -n my-agent -p "快速任务" --json
+# JSON format output
+viben agent chat -n my-agent -p "Quick task" --json
 ```
 
 ---
 
-## Agent 记忆注入
+## Agent Memory Injection
 
-Agent chat 会自动加载并注入 Agent 的记忆：
+Agent chat automatically loads and injects the Agent's memory:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Memory Loading                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  1. ~/.viben/agents/<id>/memory/MEMORY.md      (主记忆)         │
-│  2. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (今日日志)       │
-│  3. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (昨日日志)       │
+│  1. ~/.viben/agents/<id>/memory/MEMORY.md      (Main memory)    │
+│  2. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (Today's log)    │
+│  3. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (Yesterday's log)│
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -179,52 +179,52 @@ Agent chat 会自动加载并注入 Agent 的记忆：
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-使用 `--no-memory` 跳过记忆加载。
+Use `--no-memory` to skip memory loading.
 
 ---
 
-## 配置合并顺序
+## Configuration Merge Order
 
-Agent chat 执行时，配置按以下优先级合并：
+When agent chat executes, configuration is merged by priority:
 
 ```
-优先级从低到高:
+Priority from low to high:
 ┌─────────────────────────────────────────────────────────────────┐
-│ 1. Agent 基础配置                                                │
+│ 1. Agent Base Configuration                                      │
 │    ~/.viben/agents/<id>/config.yaml                             │
-│    - type, model, mcp, skills 等                                 │
+│    - type, model, mcp, skills, etc.                              │
 ├─────────────────────────────────────────────────────────────────┤
-│ 2. 工作区配置 (根据 agent type)                                  │
-│    <cwd>/.claude/settings.json  (如果 type=claude-code)         │
-│    <cwd>/.cursor/settings.json  (如果 type=cursor)              │
+│ 2. Workspace Configuration (based on agent type)                 │
+│    <cwd>/.claude/settings.json  (if type=claude-code)           │
+│    <cwd>/.cursor/settings.json  (if type=cursor)                │
 ├─────────────────────────────────────────────────────────────────┤
-│ 3. 命令行参数                                                    │
-│    --model, --session, --no-memory 等                           │
+│ 3. Command Line Arguments                                        │
+│    --model, --session, --no-memory, etc.                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Session 存储
+## Session Storage
 
-对话 session 存储在 Agent 目录下：
+Conversation sessions are stored in the Agent directory:
 
 ```
 ~/.viben/agents/<agent-id>/.agent_sessions/
 └── <session_id>/
-    ├── config.yaml              # Session 配置
+    ├── config.yaml              # Session configuration
     │   session_id: abc123
     │   created_at: 2024-01-16T10:30:00Z
     │   last_active: 2024-01-16T14:15:00Z
     │   cwd: /path/to/project
     │   model: claude-3-sonnet
     │
-    └── messages.rollout.jsonl   # 消息历史 (JSONL 格式)
+    └── messages.rollout.jsonl   # Message history (JSONL format)
 ```
 
 ---
 
-## 输出示例
+## Output Examples
 
 **`viben agent chat -n my-agent -p "Hello"` (Human)**:
 ```
@@ -250,7 +250,7 @@ What would you like to work on?
 }
 ```
 
-**错误: Agent 不存在**:
+**Error: Agent not found**:
 ```
 Error: Agent not found: unknown-agent
 
@@ -262,7 +262,7 @@ Available agents:
 Use `viben agent list` to see all agents.
 ```
 
-**错误: Agent 类型不支持 chat**:
+**Error: Agent type doesn't support chat**:
 ```
 Error: Chat not supported for agent type: custom
 
@@ -271,67 +271,67 @@ Supported types: claude-code, gemini, codex
 
 ---
 
-## 与 executor chat 的区别
+## Difference from executor chat
 
-| 特性 | `viben executor chat` | `viben agent chat` |
-|------|----------------------|-------------------|
-| 目标 | 直接调用底层 executor | 调用配置好的 Agent |
-| 记忆 | 无 | 自动加载 Agent 记忆 |
-| 配置 | 仅命令行参数 | Agent config + 工作区 + 命令行 |
-| Session | 临时 | 持久化到 Agent 目录 |
-| MCP | 需手动配置 | 使用 Agent 的 MCP 配置 |
-| Skills | 无 | 使用 Agent 的 Skills |
-| 适用场景 | 一次性调用、脚本集成 | 持续对话、项目开发 |
+| Feature | `viben executor chat` | `viben agent chat` |
+|---------|----------------------|-------------------|
+| Target | Directly call underlying executor | Call configured Agent |
+| Memory | None | Automatically loads Agent memory |
+| Configuration | Command line args only | Agent config + workspace + command line |
+| Session | Temporary | Persisted to Agent directory |
+| MCP | Manual configuration needed | Uses Agent's MCP configuration |
+| Skills | None | Uses Agent's Skills |
+| Use Case | One-off calls, script integration | Ongoing conversations, project development |
 
 ---
 
 ## Acceptance Criteria
 
-### 基本功能
-- [ ] `viben agent chat -n <id> -p <prompt>` 执行对话
-- [ ] 从 stdin 读取 prompt（当 -p 未提供时）
-- [ ] 根据 Agent type 选择正确的 executor
-- [ ] `-C` 指定工作目录
+### Basic Functionality
+- [ ] `viben agent chat -n <id> -p <prompt>` executes conversation
+- [ ] Read prompt from stdin (when -p not provided)
+- [ ] Select correct executor based on Agent type
+- [ ] `-C` specifies working directory
 
-### 记忆系统
-- [ ] 自动加载 `MEMORY.md`
-- [ ] 自动加载今日 + 昨日日志
-- [ ] `--no-memory` 跳过记忆加载
-- [ ] 对话后更新每日日志
+### Memory System
+- [ ] Automatically load `MEMORY.md`
+- [ ] Automatically load today + yesterday logs
+- [ ] `--no-memory` skips memory loading
+- [ ] Update daily log after conversation
 
-### Session 管理
-- [ ] `-s` 指定 session ID
-- [ ] `--resume` 恢复已有 session
-- [ ] `--new-session` 强制创建新 session
-- [ ] Session 持久化到 `.agent_sessions/`
+### Session Management
+- [ ] `-s` specifies session ID
+- [ ] `--resume` resumes existing session
+- [ ] `--new-session` forces new session creation
+- [ ] Session persisted to `.agent_sessions/`
 
-### 配置合并
-- [ ] 加载 Agent 基础配置
-- [ ] 合并工作区配置
-- [ ] 命令行参数覆盖配置
-- [ ] `--model` 覆盖模型设置
+### Configuration Merge
+- [ ] Load Agent base configuration
+- [ ] Merge workspace configuration
+- [ ] Command line args override configuration
+- [ ] `--model` overrides model setting
 
-### 输入输出格式
-- [ ] `--input-format text` (默认)
+### Input/Output Formats
+- [ ] `--input-format text` (default)
 - [ ] `--input-format stream-json`
-- [ ] `--output-format text` (默认)
+- [ ] `--output-format text` (default)
 - [ ] `--output-format stream-json`
-- [ ] `--json` 输出 JSON 结果
+- [ ] `--json` outputs JSON result
 
-### 错误处理
-- [ ] Agent 不存在时提示可用 agents
-- [ ] Agent type 不支持 chat 时报错
-- [ ] 无 prompt 且 stdin 为空时报错
+### Error Handling
+- [ ] Show available agents when Agent not found
+- [ ] Error when Agent type doesn't support chat
+- [ ] Error when no prompt and stdin is empty
 
-### 权限与安全
-- [ ] 默认需要权限检查
-- [ ] `--dangerously-skip-permissions` 跳过检查
-- [ ] `--verbose` 详细输出
+### Permissions & Security
+- [ ] Permission checks required by default
+- [ ] `--dangerously-skip-permissions` skips checks
+- [ ] `--verbose` verbose output
 
 ---
 
 ## Related Documents
 
-- [agent.md](./agent.md) - Agent 管理命令
-- [executor-chat.md](./executor-chat.md) - Executor Chat 命令
-- [executor.md](./executor.md) - Executor 管理命令
+- [agent.md](./agent.md) - Agent management commands
+- [executor-chat.md](./executor-chat.md) - Executor Chat command
+- [executor.md](./executor.md) - Executor management commands

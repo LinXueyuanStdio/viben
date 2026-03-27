@@ -1,39 +1,39 @@
-# 会话 API
+# Session API
 
-> `/api/sessions` - 会话管理端点
+> `/api/sessions` - Session management endpoints
 
-## 概述
+## Overview
 
-会话 API 提供独立的会话管理功能，用于任务执行和智能体交互。
+The Session API provides independent session management functionality for task execution and agent interaction.
 
-## 端点列表
+## Endpoint List
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/sessions` | 列出会话 |
-| POST | `/api/sessions` | 创建会话 |
-| GET | `/api/sessions/:id` | 获取会话详情 |
-| PATCH | `/api/sessions/:id` | 更新会话 |
-| DELETE | `/api/sessions/:id` | 删除会话 |
-| POST | `/api/sessions/:id/message` | 发送消息 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/sessions` | List sessions |
+| POST | `/api/sessions` | Create session |
+| GET | `/api/sessions/:id` | Get session details |
+| PATCH | `/api/sessions/:id` | Update session |
+| DELETE | `/api/sessions/:id` | Delete session |
+| POST | `/api/sessions/:id/message` | Send message |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/sessions
 
-列出会话。
+List sessions.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| task_id | string | 否 | 按任务过滤 |
-| agent_id | string | 否 | 按智能体过滤 |
-| status | string | 否 | 按状态过滤 |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| task_id | string | No | Filter by task |
+| agent_id | string | No | Filter by agent |
+| status | string | No | Filter by status |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -55,9 +55,9 @@
 
 ### POST /api/sessions
 
-创建新会话。
+Create a new session.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -67,13 +67,13 @@
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| agent_id | string | ✓ | 智能体 ID |
-| task_id | string | 否 | 关联任务 ID |
-| prompt | string | 否 | 初始提示词 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| agent_id | string | Yes | Agent ID |
+| task_id | string | No | Associated task ID |
+| prompt | string | No | Initial prompt |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -89,9 +89,9 @@
 
 ### GET /api/sessions/:id
 
-获取会话详情。
+Get session details.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -113,9 +113,9 @@
 
 ### PATCH /api/sessions/:id
 
-更新会话。
+Update a session.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -126,19 +126,19 @@
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| status | string | 会话状态 |
-| data | object | 会话数据 |
-| prompt | string | 更新提示词 |
+| Field | Type | Description |
+|-------|------|-------------|
+| status | string | Session status |
+| data | object | Session data |
+| prompt | string | Update prompt |
 
 ---
 
 ### POST /api/sessions/:id/message
 
-向会话发送消息。
+Send a message to a session.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -146,7 +146,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -158,19 +158,19 @@
 
 ---
 
-## 会话状态
+## Session Status
 
-| 状态 | 说明 |
-|------|------|
-| created | 刚创建 |
-| active | 活跃中 |
-| paused | 已暂停 |
-| completed | 已完成 |
-| failed | 已失败 |
+| Status | Description |
+|--------|-------------|
+| created | Just created |
+| active | Active |
+| paused | Paused |
+| completed | Completed |
+| failed | Failed |
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [任务 API](./tasks.md) - 任务管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Task API](./tasks.md) - Task management
+- [Agent API](./agents.md) - Agent management

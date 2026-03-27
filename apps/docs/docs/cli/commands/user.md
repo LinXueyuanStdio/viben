@@ -1,57 +1,57 @@
 ---
 sidebar_position: 22
 title: "viben user"
-description: "用户身份管理，支持多开发者/多智能体协作"
+description: "User identity management supporting multi-developer/multi-agent collaboration"
 ---
 
 # viben user
 
-用户身份管理，支持多开发者/多智能体协作。
+User identity management supporting multi-developer/multi-agent collaboration.
 
-## 概述
+## Overview
 
-`viben user` 命令用于管理用户身份，是 Viben workflow 的基础。每个开发者（人类或智能体）都需要初始化身份才能使用任务管理和会话记录功能。
+The `viben user` command is used to manage user identity and is the foundation of the Viben workflow. Each developer (human or agent) needs to initialize their identity to use task management and session recording features.
 
-## 命令结构
+## Command Structure
 
 ```bash
 viben user <subcommand> [options]
 ```
 
-## 子命令概览
+## Subcommand Overview
 
-| 子命令 | 说明 |
-|--------|------|
-| `init` | 初始化用户身份 |
-| `get` | 获取当前用户身份 |
+| Subcommand | Description |
+|------------|-------------|
+| `init` | Initialize user identity |
+| `get` | Get current user identity |
 
-## 初始化身份
+## Initialize Identity
 
 ```bash
 viben user init <name>
 ```
 
-**命名建议**:
+**Naming Suggestions**:
 
-| 类型 | 示例 |
-|------|------|
-| 人类开发者 | `john`, `alice`, `zhang-san` |
-| Claude Code 智能体 | `claude-agent`, `claude-task-001` |
-| Cursor 智能体 | `cursor-agent` |
-| Gemini 智能体 | `gemini-agent` |
+| Type | Examples |
+|------|----------|
+| Human developer | `john`, `alice`, `zhang-san` |
+| Claude Code agent | `claude-agent`, `claude-task-001` |
+| Cursor agent | `cursor-agent` |
+| Gemini agent | `gemini-agent` |
 
-**创建文件**: `.viben/.developer`（gitignored）
+**Creates File**: `.viben/.developer` (gitignored)
 
-**创建目录**: `.viben/workspace/<name>/`
+**Creates Directory**: `.viben/workspace/<name>/`
 
-**示例**:
+**Examples**:
 
 ```bash
 viben user init john
 viben user init claude-agent
 ```
 
-**输出**:
+**Output**:
 
 ```
 [INFO] Creating developer workspace...
@@ -61,7 +61,7 @@ viben user init claude-agent
 [INFO] Created: .viben/workspace/john/journal-1.md
 ```
 
-**注意**: 如果已初始化，会提示当前用户并退出：
+**Note**: If already initialized, shows current user and exits:
 
 ```
 Developer already initialized: john
@@ -69,55 +69,55 @@ Developer already initialized: john
 To reinitialize, remove .viben/.developer first
 ```
 
-## 获取身份
+## Get Identity
 
 ```bash
-viben user get           # 输出用户名
-viben user get --json    # JSON 格式输出
+viben user get           # Output username
+viben user get --json    # JSON format output
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--json` | JSON 格式输出 |
+| Option | Description |
+|--------|-------------|
+| `--json` | JSON format output |
 
-**示例**:
+**Examples**:
 
 ```bash
 viben user get
-# 输出: john
+# Output: john
 
 viben user get --json
-# 输出: {"user": "john"}
+# Output: {"user": "john"}
 ```
 
-**未初始化时**:
+**When Not Initialized**:
 
 ```
 Developer not initialized
 ```
 
-## 存储结构
+## Storage Structure
 
 ```
 .viben/
-├── .developer                    # 用户身份文件（gitignored）
-│                                 # 内容: name=john
+├── .developer                    # User identity file (gitignored)
+│                                 # Content: name=john
 └── workspace/
-    ├── index.md                  # 主索引（活跃开发者表）
-    └── john/                     # 用户工作空间
-        ├── index.md              # 个人索引
-        └── journal-1.md          # 会话日志
+    ├── index.md                  # Main index (active developers table)
+    └── john/                     # User workspace
+        ├── index.md              # Personal index
+        └── journal-1.md          # Session journal
 ```
 
-### .developer 文件格式
+### .developer File Format
 
 ```
 name=john
 ```
 
-### workspace/index.md 格式
+### workspace/index.md Format
 
 ```markdown
 # Viben Workspace Index
@@ -129,7 +129,7 @@ name=john
 | john | 2024-03-03  | 15       |
 ```
 
-### workspace/\{user\}/index.md 格式
+### workspace/\{user\}/index.md Format
 
 ```markdown
 # Workspace - john
@@ -160,8 +160,8 @@ name=john
 <!-- @@@/auto:session-history -->
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben session](./session) - 会话记录管理
-- [viben context](./context) - 上下文获取
-- [viben task](./task) - 任务管理
+- [viben session](./session) - Session record management
+- [viben context](./context) - Context retrieval
+- [viben task](./task) - Task management

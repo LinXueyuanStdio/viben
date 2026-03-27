@@ -2,64 +2,64 @@
 sidebar_position: 6
 ---
 
-# 代码质量指南
+# Code Quality Guidelines
 
-> Viben 项目代码质量标准
-
----
-
-## 概述
-
-本指南定义了 Viben 项目的代码质量标准，适用于 TypeScript 和 Python 代码。
+> Viben project code quality standards
 
 ---
 
-## TypeScript 质量要求
+## Overview
 
-### Linting & 格式化
+This guide defines the code quality standards for the Viben project, applicable to both TypeScript and Python code.
 
-| 工具 | 用途 | 命令 |
-|------|------|------|
-| ESLint | 代码检查 | `pnpm lint` |
-| Prettier | 代码格式化 | `pnpm format` |
-| TypeScript | 类型检查 | `pnpm typecheck` |
+---
 
-### 提交前检查
+## TypeScript Quality Requirements
+
+### Linting & Formatting
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| ESLint | Code linting | `pnpm lint` |
+| Prettier | Code formatting | `pnpm format` |
+| TypeScript | Type checking | `pnpm typecheck` |
+
+### Pre-commit Checks
 
 ```bash
-# 运行所有检查
+# Run all checks
 pnpm lint
 pnpm typecheck
 pnpm build
 ```
 
-### 类型安全
+### Type Safety
 
-所有公共函数必须有类型标注：
+All public functions must have type annotations:
 
 ```typescript
-// 正确
+// Correct
 function createAgent(config: AgentConfig): Promise<Agent> {
   // ...
 }
 
-// 错误 - 缺少类型
+// Incorrect - missing types
 function createAgent(config) {
   // ...
 }
 ```
 
-使用 `unknown` 而非 `any`：
+Use `unknown` instead of `any`:
 
 ```typescript
-// 正确
+// Correct
 function handleData(data: unknown): void {
   if (typeof data === 'string') {
     // ...
   }
 }
 
-// 错误
+// Incorrect
 function handleData(data: any): void {
   // ...
 }
@@ -67,17 +67,17 @@ function handleData(data: any): void {
 
 ---
 
-## Python 质量要求
+## Python Quality Requirements
 
-### Linting & 格式化
+### Linting & Formatting
 
-| 工具 | 用途 | 命令 |
-|------|------|------|
+| Tool | Purpose | Command |
+|------|---------|---------|
 | ruff | Linting | `ruff check .` |
-| ruff | 格式化 | `ruff format .` |
-| mypy | 类型检查 | `mypy browse_mcp/` |
+| ruff | Formatting | `ruff format .` |
+| mypy | Type checking | `mypy browse_mcp/` |
 
-### 提交前检查
+### Pre-commit Checks
 
 ```bash
 cd backend/browse-mcp
@@ -85,25 +85,25 @@ ruff check browse_mcp/
 ruff format --check browse_mcp/
 ```
 
-### 类型提示
+### Type Hints
 
-所有公共函数必须有类型提示：
+All public functions must have type hints:
 
 ```python
 from typing import List, Optional
 
-# 正确
+# Correct
 def search(query: str, max_results: int = 10) -> List[Paper]:
     pass
 
-# 错误 - 缺少类型
+# Incorrect - missing types
 def search(query, max_results=10):
     pass
 ```
 
 ### Docstring
 
-使用 Google 风格 docstring：
+Use Google-style docstrings:
 
 ```python
 def search(query: str, max_results: int = 10) -> List[Paper]:
@@ -124,76 +124,76 @@ def search(query: str, max_results: int = 10) -> List[Paper]:
 
 ---
 
-## 代码指标
+## Code Metrics
 
-| 指标 | 限制 |
-|------|------|
-| 函数长度 | < 50 行 |
-| 文件长度 | < 500 行 |
-| 圈复杂度 | < 10 |
-| 嵌套深度 | < 4 层 |
+| Metric | Limit |
+|--------|-------|
+| Function length | < 50 lines |
+| File length | < 500 lines |
+| Cyclomatic complexity | < 10 |
+| Nesting depth | < 4 levels |
 
 ---
 
-## 禁止的模式
+## Forbidden Patterns
 
 ### TypeScript
 
-| 模式 | 原因 | 替代方案 |
-|------|------|----------|
-| `any` 类型 | 类型不安全 | 使用 `unknown` 或具体类型 |
-| `console.log` | 不结构化 | 使用 `logger` |
-| 硬编码路径 | 不可移植 | 使用配置或 path 模块 |
-| `eval()` / `new Function()` | 安全风险 | 永不使用 |
+| Pattern | Reason | Alternative |
+|---------|--------|-------------|
+| `any` type | Type unsafe | Use `unknown` or specific types |
+| `console.log` | Unstructured | Use `logger` |
+| Hardcoded paths | Not portable | Use config or path module |
+| `eval()` / `new Function()` | Security risk | Never use |
 
 ### Python
 
-| 模式 | 原因 | 替代方案 |
-|------|------|----------|
-| `except:` (裸) | 捕获所有异常 | `except Exception:` |
-| `print()` | 不结构化 | `logger.info()` |
-| 硬编码路径 | 不可移植 | 使用 `pathlib` 或配置 |
-| `eval()` / `exec()` | 安全风险 | 永不使用 |
+| Pattern | Reason | Alternative |
+|---------|--------|-------------|
+| `except:` (bare) | Catches all exceptions | `except Exception:` |
+| `print()` | Unstructured | `logger.info()` |
+| Hardcoded paths | Not portable | Use `pathlib` or config |
+| `eval()` / `exec()` | Security risk | Never use |
 
 ---
 
-## 命名约定
+## Naming Conventions
 
-### 文件名
+### File Names
 
-| 类型 | TypeScript | Python |
+| Type | TypeScript | Python |
 |------|------------|--------|
-| 组件 | `kebab-case.tsx` | - |
-| 工具 | `kebab-case.ts` | `snake_case.py` |
-| 类型 | `types.ts` | `types.py` |
-| 测试 | `*.test.ts` | `test_*.py` |
+| Component | `kebab-case.tsx` | - |
+| Utility | `kebab-case.ts` | `snake_case.py` |
+| Types | `types.ts` | `types.py` |
+| Tests | `*.test.ts` | `test_*.py` |
 
-### 变量和函数
+### Variables and Functions
 
-| 类型 | TypeScript | Python |
+| Type | TypeScript | Python |
 |------|------------|--------|
-| 变量 | `camelCase` | `snake_case` |
-| 函数 | `camelCase` | `snake_case` |
-| 常量 | `UPPER_SNAKE_CASE` | `UPPER_SNAKE_CASE` |
-| 类 | `PascalCase` | `PascalCase` |
+| Variable | `camelCase` | `snake_case` |
+| Function | `camelCase` | `snake_case` |
+| Constant | `UPPER_SNAKE_CASE` | `UPPER_SNAKE_CASE` |
+| Class | `PascalCase` | `PascalCase` |
 
-### API 参数
+### API Parameters
 
-**重要**：所有 Gateway API 查询参数使用 **snake_case**：
+**Important**: All Gateway API query parameters use **snake_case**:
 
 ```typescript
-// 正确
+// Correct
 workspace_path, include_global, session_id
 
-// 错误
+// Incorrect
 workspacePath, includeGlobal, sessionId
 ```
 
 ---
 
-## 测试要求
+## Testing Requirements
 
-### 测试文件位置
+### Test File Location
 
 ```
 # TypeScript
@@ -211,7 +211,7 @@ backend/browse-mcp/
     └── test_arxiv.py
 ```
 
-### 测试命名
+### Test Naming
 
 ```typescript
 // TypeScript
@@ -239,30 +239,30 @@ def test_search_empty_query_raises():
 
 ---
 
-## 代码审查清单
+## Code Review Checklist
 
-### 提交前自查
+### Pre-commit Self-check
 
-- [ ] 代码通过 lint 检查
-- [ ] 代码通过类型检查
-- [ ] 新功能有测试覆盖
-- [ ] 公共 API 有文档
-- [ ] 无硬编码敏感信息
-- [ ] 错误有适当处理
-- [ ] 无 `console.log` 或 `print`
+- [ ] Code passes lint checks
+- [ ] Code passes type checks
+- [ ] New features have test coverage
+- [ ] Public APIs have documentation
+- [ ] No hardcoded sensitive information
+- [ ] Errors are properly handled
+- [ ] No `console.log` or `print`
 
-### 审查重点
+### Review Focus
 
-- 类型安全性
-- 错误处理完整性
-- 安全漏洞
-- 性能问题
-- 代码可读性
+- Type safety
+- Error handling completeness
+- Security vulnerabilities
+- Performance issues
+- Code readability
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [目录结构](./directory-structure.md)
-- [错误处理](./error-handling.md)
-- [日志指南](./logging-guidelines.md)
+- [Directory Structure](./directory-structure.md)
+- [Error Handling](./error-handling.md)
+- [Logging Guidelines](./logging-guidelines.md)

@@ -1,41 +1,41 @@
-# 通道 API
+# Channel API
 
-> `/api/channels` - 消息通道管理端点
+> `/api/channels` - Message channel management endpoints
 
-## 概述
+## Overview
 
-通道 API 提供消息通道的配置和管理功能，支持多种消息平台集成。
+The Channel API provides message channel configuration and management functionality, supporting multiple messaging platform integrations.
 
-## 端点列表
+## Endpoint List
 
-### 通道实例 CRUD
+### Channel Instance CRUD
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/channels` | 列出所有通道 |
-| POST | `/api/channels` | 创建通道 |
-| GET | `/api/channels/:id` | 获取通道详情 |
-| PATCH | `/api/channels/:id` | 更新通道 |
-| DELETE | `/api/channels/:id` | 删除通道 |
-| POST | `/api/channels/:id/default` | 设为默认通道 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/channels` | List all channels |
+| POST | `/api/channels` | Create channel |
+| GET | `/api/channels/:id` | Get channel details |
+| PATCH | `/api/channels/:id` | Update channel |
+| DELETE | `/api/channels/:id` | Delete channel |
+| POST | `/api/channels/:id/default` | Set as default channel |
 
-### 消息操作
+### Message Operations
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/channels/send` | 发送消息 |
-| POST | `/api/channels/test` | 测试通道配置 |
-| POST | `/api/channels/send-test` | 发送测试消息 |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/channels/send` | Send message |
+| POST | `/api/channels/test` | Test channel configuration |
+| POST | `/api/channels/send-test` | Send test message |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/channels
 
-列出所有配置的通道实例。
+List all configured channel instances.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -63,9 +63,9 @@
 
 ### POST /api/channels
 
-创建通道实例。
+Create a channel instance.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -77,7 +77,7 @@
 }
 ```
 
-**通道类型配置**:
+**Channel Type Configurations**:
 
 #### Telegram
 
@@ -102,7 +102,7 @@
 }
 ```
 
-#### Feishu (飞书)
+#### Feishu (Lark)
 
 ```json
 {
@@ -153,9 +153,9 @@
 
 ### POST /api/channels/send
 
-发送消息到指定通道。
+Send a message to a specified channel.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -169,15 +169,15 @@
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| channel_type | string | ✓ | 通道类型 |
-| config | object | ✓ | 通道配置 |
-| chat_id | string | ✓ | 聊天/频道 ID |
-| message | string | ✓ | 消息内容 |
-| parse_mode | string | 否 | 解析模式 (Markdown/HTML) |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| channel_type | string | Yes | Channel type |
+| config | object | Yes | Channel configuration |
+| chat_id | string | Yes | Chat/channel ID |
+| message | string | Yes | Message content |
+| parse_mode | string | No | Parse mode (Markdown/HTML) |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -190,9 +190,9 @@
 
 ### POST /api/channels/test
 
-测试通道配置是否有效。
+Test if channel configuration is valid.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -203,7 +203,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -215,7 +215,7 @@
 }
 ```
 
-**错误响应**:
+**Error Response**:
 
 ```json
 {
@@ -228,9 +228,9 @@
 
 ### POST /api/channels/send-test
 
-发送测试消息验证配置。
+Send a test message to verify configuration.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -239,7 +239,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -250,22 +250,22 @@
 
 ---
 
-## 通道类型
+## Channel Types
 
-| 类型 | 说明 | 必需配置 |
-|------|------|----------|
+| Type | Description | Required Configuration |
+|------|-------------|------------------------|
 | Telegram | Telegram Bot | `bot_token` |
 | Discord | Discord Bot | `bot_token`, `guild_id` |
-| Feishu | 飞书机器人 | `app_id`, `app_secret` |
+| Feishu | Feishu (Lark) Bot | `app_id`, `app_secret` |
 | WhatsApp | WhatsApp Business | `phone_number_id`, `access_token` |
 | Slack | Slack Bot | `bot_token` |
-| Webhook | 自定义 Webhook | `url` |
+| Webhook | Custom Webhook | `url` |
 
 ---
 
-## 通道配置存储
+## Channel Configuration Storage
 
-通道配置存储在 `~/.viben/channels.yaml`:
+Channel configuration is stored in `~/.viben/channels.yaml`:
 
 ```yaml
 default: ch-telegram-1
@@ -289,7 +289,7 @@ channels:
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [定时任务 API](./cron.md) - 定时任务管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Scheduled Task API](./cron.md) - Scheduled task management
+- [Agent API](./agents.md) - Agent management

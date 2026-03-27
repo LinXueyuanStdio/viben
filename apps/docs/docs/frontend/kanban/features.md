@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
-title: Kanban 功能规格
-description: 基于 vibe-kanban 的完整功能规格
+title: Kanban Features Specification
+description: Complete feature specification based on vibe-kanban
 ---
 
 # Kanban Features Specification
 
-> 基于 vibe-kanban 的完整功能规格，适配 Viben Design System
+> Complete feature specification based on vibe-kanban, adapted for Viben Design System
 
 ---
 
@@ -22,42 +22,42 @@ description: 基于 vibe-kanban 的完整功能规格
 
 ---
 
-## 功能清单
+## Feature List
 
-基于 vibe-kanban 的功能，按优先级分组：
+Features based on vibe-kanban, grouped by priority:
 
-### P0 - 核心功能 (必须实现)
+### P0 - Core Features (Must Implement)
 
-| # | 功能 | 描述 | 状态 |
-|---|------|------|------|
-| F1 | **优先级系统** | urgent/high/medium/low/none 五级优先级 | 🔲 |
-| F2 | **标签/Tags** | 多彩标签分类系统 | 🔲 |
-| F3 | **高级筛选** | 按优先级、标签、搜索等条件筛选 | 🔲 |
-| F4 | **任务详情增强** | 丰富的详情面板编辑功能 | 🔲 |
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| F1 | **Priority System** | Five-level priority: urgent/high/medium/low/none | 🔲 |
+| F2 | **Tags** | Colorful tag classification system | 🔲 |
+| F3 | **Advanced Filtering** | Filter by priority, tags, search, etc. | 🔲 |
+| F4 | **Enhanced Task Details** | Rich detail panel editing functionality | 🔲 |
 
-### P1 - 重要功能
+### P1 - Important Features
 
-| # | 功能 | 描述 | 状态 |
-|---|------|------|------|
-| F5 | **任务指派** | 单人/多人指派 | 🔲 |
-| F6 | **截止日期** | 任务到期时间管理 | 🔲 |
-| F7 | **子任务** | 父子任务层级关系 | 🔲 |
-| F8 | **任务关系** | 阻塞/关联/重复关系 | 🔲 |
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| F5 | **Task Assignment** | Single/multiple assignee | 🔲 |
+| F6 | **Due Date** | Task deadline management | 🔲 |
+| F7 | **Subtasks** | Parent-child task hierarchy | 🔲 |
+| F8 | **Task Relations** | Blocking/related/duplicate relations | 🔲 |
 
-### P2 - 增强功能
+### P2 - Enhanced Features
 
-| # | 功能 | 描述 | 状态 |
-|---|------|------|------|
-| F9 | **PR 集成** | GitHub PR 状态关联 | 🔲 |
-| F10 | **多视图** | Kanban 看板 / 列表视图切换 | 🔲 |
-| F11 | **排序模式** | 手动/优先级/日期/字母排序 | 🔲 |
-| F12 | **批量操作** | 多选和批量更新 | 🔲 |
+| # | Feature | Description | Status |
+|---|---------|-------------|--------|
+| F9 | **PR Integration** | GitHub PR status linking | 🔲 |
+| F10 | **Multiple Views** | Kanban board / list view switching | 🔲 |
+| F11 | **Sort Modes** | Manual/priority/date/alphabetical sorting | 🔲 |
+| F12 | **Bulk Operations** | Multi-select and batch update | 🔲 |
 
 ---
 
-## F1: 优先级系统
+## F1: Priority System
 
-### 数据模型
+### Data Model
 
 ```typescript
 // packages/kanban/src/types.ts
@@ -73,40 +73,40 @@ export interface PriorityConfig {
 export const PRIORITY_CONFIG: Record<IssuePriority, PriorityConfig> = {
   urgent: {
     value: "urgent",
-    label: "紧急",
+    label: "Urgent",
     color: "var(--color-error)",
     icon: "AlertCircle",
   },
   high: {
     value: "high",
-    label: "高",
+    label: "High",
     color: "var(--brand-amber-500)",
     icon: "ArrowUp",
   },
   medium: {
     value: "medium",
-    label: "中",
+    label: "Medium",
     color: "var(--brand-teal-500)",
     icon: "Minus",
   },
   low: {
     value: "low",
-    label: "低",
+    label: "Low",
     color: "var(--neutral-500)",
     icon: "ArrowDown",
   },
   none: {
     value: "none",
-    label: "无",
+    label: "None",
     color: "var(--neutral-400)",
     icon: "MoreHorizontal",
   },
 };
 ```
 
-### UI 组件
+### UI Components
 
-**PriorityIcon** - 优先级图标组件:
+**PriorityIcon** - Priority icon component:
 
 ```tsx
 // packages/kanban/src/primitives/priority-icon.tsx
@@ -142,7 +142,7 @@ export function PriorityIcon({ priority, size = "md", showLabel, className }: Pr
 }
 ```
 
-**PrioritySelect** - 优先级选择器:
+**PrioritySelect** - Priority selector:
 
 ```tsx
 // packages/kanban/src/primitives/priority-select.tsx
@@ -177,10 +177,10 @@ export function PrioritySelect({ value, onChange, disabled }: PrioritySelectProp
 }
 ```
 
-### 卡片集成
+### Card Integration
 
 ```tsx
-// 在 KanbanCardContent 中显示优先级
+// Display priority in KanbanCardContent
 <div className="flex items-center gap-2">
   {task.priority && task.priority !== "none" && (
     <PriorityIcon priority={task.priority} size="sm" />
@@ -189,7 +189,7 @@ export function PrioritySelect({ value, onChange, disabled }: PrioritySelectProp
 </div>
 ```
 
-### API 支持
+### API Support
 
 ```typescript
 // apps/desktop/src/hooks/use-vibe-kanban.ts
@@ -219,9 +219,9 @@ export function useUpdateVibeKanbanTask() {
 
 ---
 
-## F2: 标签/Tags 系统
+## F2: Tags System
 
-### 数据模型
+### Data Model
 
 ```typescript
 // packages/kanban/src/types.ts
@@ -235,7 +235,7 @@ export interface TaskWithTags extends KanbanItem {
   tags?: Tag[];
 }
 
-// 预设标签颜色
+// Preset tag colors
 export const TAG_COLORS = [
   { name: "Red", value: "oklch(0.65 0.2 25)" },
   { name: "Orange", value: "oklch(0.7 0.18 60)" },
@@ -248,9 +248,9 @@ export const TAG_COLORS = [
 ] as const;
 ```
 
-### UI 组件
+### UI Components
 
-**TagBadge** - 标签徽章:
+**TagBadge** - Tag badge:
 
 ```tsx
 // packages/kanban/src/primitives/tag-badge.tsx
@@ -295,7 +295,7 @@ export function TagBadge({ tag, size = "sm", onRemove, className }: TagBadgeProp
 }
 ```
 
-**TagSelect** - 标签选择器:
+**TagSelect** - Tag selector:
 
 ```tsx
 // packages/kanban/src/primitives/tag-select.tsx
@@ -363,7 +363,7 @@ export function TagSelect({ projectId, selectedTags, onChange, disabled }: TagSe
           onClick={() => setIsCreating(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
-          创建标签
+          Create Tag
         </Button>
       </PopoverContent>
     </Popover>
@@ -371,10 +371,10 @@ export function TagSelect({ projectId, selectedTags, onChange, disabled }: TagSe
 }
 ```
 
-### 卡片集成
+### Card Integration
 
 ```tsx
-// 在 KanbanCardContent 中显示标签
+// Display tags in KanbanCardContent
 {task.tags && task.tags.length > 0 && (
   <div className="flex flex-wrap gap-1 mt-2">
     {task.tags.slice(0, 3).map((tag) => (
@@ -391,9 +391,9 @@ export function TagSelect({ projectId, selectedTags, onChange, disabled }: TagSe
 
 ---
 
-## F3: 高级筛选
+## F3: Advanced Filtering
 
-### 数据模型
+### Data Model
 
 ```typescript
 // packages/kanban/src/types.ts
@@ -416,9 +416,9 @@ export interface KanbanFilterState {
 }
 ```
 
-### UI 组件
+### UI Components
 
-**KanbanFilterBar** - 筛选栏:
+**KanbanFilterBar** - Filter bar:
 
 ```tsx
 // packages/kanban/src/components/kanban-filter-bar.tsx
@@ -434,11 +434,11 @@ export function KanbanFilterBar({ filter, onChange, projectId, className }: Kanb
 
   return (
     <div className={cn("flex items-center gap-2 flex-wrap", className)}>
-      {/* 搜索框 */}
+      {/* Search box */}
       <div className="relative flex-1 min-w-[200px] max-w-[300px]">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="搜索任务..."
+          placeholder="Search tasks..."
           value={filter.search || ""}
           onChange={(e) => onChange({ ...filter, search: e.target.value })}
           className="pl-9 h-9"
@@ -453,12 +453,12 @@ export function KanbanFilterBar({ filter, onChange, projectId, className }: Kanb
         )}
       </div>
 
-      {/* 优先级筛选 */}
+      {/* Priority filter */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-9 gap-1.5">
             <Signal className="h-4 w-4" />
-            优先级
+            Priority
             {filter.priorities?.length ? (
               <Badge variant="secondary" className="ml-1 px-1.5">
                 {filter.priorities.length}
@@ -487,14 +487,14 @@ export function KanbanFilterBar({ filter, onChange, projectId, className }: Kanb
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 标签筛选 */}
+      {/* Tag filter */}
       <TagFilterDropdown
         projectId={projectId}
         selectedTags={filter.tags || []}
         onChange={(tags) => onChange({ ...filter, tags })}
       />
 
-      {/* 清除筛选 */}
+      {/* Clear filters */}
       {activeCount > 0 && (
         <Button
           variant="ghost"
@@ -503,7 +503,7 @@ export function KanbanFilterBar({ filter, onChange, projectId, className }: Kanb
           onClick={() => onChange({})}
         >
           <X className="h-4 w-4 mr-1" />
-          清除筛选 ({activeCount})
+          Clear Filters ({activeCount})
         </Button>
       )}
     </div>
@@ -521,14 +521,14 @@ function countActiveFilters(filter: KanbanFilter): number {
 }
 ```
 
-### 筛选逻辑
+### Filtering Logic
 
 ```typescript
 // packages/kanban/src/hooks/use-filtered-tasks.ts
 export function useFilteredTasks(tasks: Task[], filter: KanbanFilter): Task[] {
   return useMemo(() => {
     return tasks.filter((task) => {
-      // 搜索
+      // Search
       if (filter.search) {
         const searchLower = filter.search.toLowerCase();
         const matches =
@@ -537,28 +537,28 @@ export function useFilteredTasks(tasks: Task[], filter: KanbanFilter): Task[] {
         if (!matches) return false;
       }
 
-      // 优先级
+      // Priority
       if (filter.priorities?.length) {
         if (!filter.priorities.includes(task.priority || "none")) {
           return false;
         }
       }
 
-      // 标签
+      // Tags
       if (filter.tags?.length) {
         const taskTagIds = task.tags?.map(t => t.id) || [];
         const hasMatchingTag = filter.tags.some(id => taskTagIds.includes(id));
         if (!hasMatchingTag) return false;
       }
 
-      // 指派人
+      // Assignee
       if (filter.assignees?.length) {
         if (!filter.assignees.includes(task.assigneeId || "")) {
           return false;
         }
       }
 
-      // 截止日期范围
+      // Due date range
       if (filter.dueDateRange) {
         if (!task.dueDate) return false;
         const dueDate = new Date(task.dueDate);
@@ -578,9 +578,9 @@ export function useFilteredTasks(tasks: Task[], filter: KanbanFilter): Task[] {
 
 ---
 
-## F4: 任务详情增强
+## F4: Enhanced Task Details
 
-### 详情面板布局
+### Detail Panel Layout
 
 ```tsx
 // apps/desktop/src/components/workspace/task-detail-panel.tsx
@@ -615,43 +615,43 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
-          {/* 标题 (可编辑) */}
+          {/* Title (editable) */}
           <EditableTitle
             value={task.title}
             onChange={(title) => onUpdate({ title })}
             className="text-xl font-serif font-semibold"
           />
 
-          {/* 描述 (可编辑) */}
+          {/* Description (editable) */}
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">描述</Label>
+            <Label className="text-sm text-muted-foreground">Description</Label>
             <EditableDescription
               value={task.description || ""}
               onChange={(description) => onUpdate({ description })}
-              placeholder="添加描述..."
+              placeholder="Add description..."
             />
           </div>
 
-          {/* 属性区 */}
+          {/* Properties section */}
           <div className="space-y-3">
-            {/* 状态 */}
-            <PropertyRow label="状态" icon={Circle}>
+            {/* Status */}
+            <PropertyRow label="Status" icon={Circle}>
               <StatusSelect
                 value={task.status}
                 onChange={(status) => onUpdate({ status })}
               />
             </PropertyRow>
 
-            {/* 优先级 */}
-            <PropertyRow label="优先级" icon={Signal}>
+            {/* Priority */}
+            <PropertyRow label="Priority" icon={Signal}>
               <PrioritySelect
                 value={task.priority || "none"}
                 onChange={(priority) => onUpdate({ priority })}
               />
             </PropertyRow>
 
-            {/* 标签 */}
-            <PropertyRow label="标签" icon={Tags}>
+            {/* Tags */}
+            <PropertyRow label="Tags" icon={Tags}>
               <TagSelect
                 projectId={task.projectId}
                 selectedTags={task.tags || []}
@@ -659,16 +659,16 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
               />
             </PropertyRow>
 
-            {/* 指派人 */}
-            <PropertyRow label="指派给" icon={User}>
+            {/* Assignee */}
+            <PropertyRow label="Assignee" icon={User}>
               <AssigneeSelect
                 value={task.assigneeId}
                 onChange={(assigneeId) => onUpdate({ assigneeId })}
               />
             </PropertyRow>
 
-            {/* 截止日期 */}
-            <PropertyRow label="截止日期" icon={Calendar}>
+            {/* Due Date */}
+            <PropertyRow label="Due Date" icon={Calendar}>
               <DueDatePicker
                 value={task.dueDate}
                 onChange={(dueDate) => onUpdate({ dueDate })}
@@ -676,10 +676,10 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
             </PropertyRow>
           </div>
 
-          {/* 子任务 (F7) */}
+          {/* Subtasks (F7) */}
           {task.subtasks && (
             <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">子任务</Label>
+              <Label className="text-sm text-muted-foreground">Subtasks</Label>
               <SubtaskList
                 parentId={task.id}
                 subtasks={task.subtasks}
@@ -688,9 +688,9 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
             </div>
           )}
 
-          {/* 关联 (F8) */}
+          {/* Relations (F8) */}
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">关联</Label>
+            <Label className="text-sm text-muted-foreground">Relations</Label>
             <RelationshipList
               taskId={task.id}
               relationships={task.relationships}
@@ -702,8 +702,8 @@ export function TaskDetailPanel({ task, onClose, onUpdate, onDelete }: TaskDetai
       {/* Footer */}
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>创建于 {formatDate(task.createdAt)}</span>
-          <span>更新于 {formatDate(task.updatedAt)}</span>
+          <span>Created at {formatDate(task.createdAt)}</span>
+          <span>Updated at {formatDate(task.updatedAt)}</span>
         </div>
       </div>
     </div>
@@ -735,9 +735,9 @@ function PropertyRow({
 
 ---
 
-## F5: 任务指派
+## F5: Task Assignment
 
-### 数据模型
+### Data Model
 
 ```typescript
 // packages/kanban/src/types.ts
@@ -754,9 +754,9 @@ export interface TaskWithAssignee extends KanbanItem {
 }
 ```
 
-### UI 组件
+### UI Components
 
-**AssigneeAvatar** - 指派人头像:
+**AssigneeAvatar** - Assignee avatar:
 
 ```tsx
 // packages/kanban/src/primitives/assignee-avatar.tsx
@@ -806,11 +806,11 @@ function getInitials(name: string): string {
 
 ---
 
-## F6: 截止日期
+## F6: Due Date
 
-### UI 组件
+### UI Components
 
-**DueDateBadge** - 截止日期徽章:
+**DueDateBadge** - Due date badge:
 
 ```tsx
 // packages/kanban/src/primitives/due-date-badge.tsx
@@ -854,21 +854,21 @@ function formatDueDate(date: Date): string {
   const now = new Date();
   const diffDays = differenceInDays(date, now);
 
-  if (diffDays < 0) return `逾期 ${Math.abs(diffDays)} 天`;
-  if (diffDays === 0) return "今天";
-  if (diffDays === 1) return "明天";
-  if (diffDays < 7) return `${diffDays} 天后`;
+  if (diffDays < 0) return `Overdue ${Math.abs(diffDays)} days`;
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  if (diffDays < 7) return `In ${diffDays} days`;
   return format(date, "MM/dd");
 }
 ```
 
 ---
 
-## 样式适配规则
+## Style Adaptation Rules
 
-所有组件必须遵循 Viben Design System:
+All components must follow Viben Design System:
 
-### 颜色映射
+### Color Mapping
 
 | vibe-kanban | Viben Design System |
 |-------------|---------------------|
@@ -876,30 +876,30 @@ function formatDueDate(date: Date): string {
 | `border-border` | `border-border` |
 | `text-foreground` | `text-foreground` |
 | `text-muted-foreground` | `text-muted-foreground` |
-| 蓝色主色 | `var(--primary)` (暖琥珀色) |
-| 圆角 `rounded-lg` | `rounded-xl` |
+| Blue primary | `var(--primary)` (warm amber) |
+| Border radius `rounded-lg` | `rounded-xl` |
 
-### 动画规则
+### Animation Rules
 
 ```css
-/* 所有交互元素 */
+/* All interactive elements */
 transition: all var(--duration-fast) var(--ease-out-expo);
 
-/* 悬停效果 */
+/* Hover effects */
 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5
 ```
 
-### 组件样式模板
+### Component Style Template
 
 ```tsx
-// 标准卡片样式
+// Standard card style
 const cardClass = cn(
   "rounded-xl border border-border bg-surface p-4",
   "transition-all duration-200 ease-out-expo",
   "hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5"
 );
 
-// 标准按钮样式
+// Standard button style
 const buttonClass = cn(
   "inline-flex items-center justify-center rounded-lg font-medium",
   "transition-all duration-200 ease-out-expo",
@@ -909,65 +909,65 @@ const buttonClass = cn(
 
 ---
 
-## 实现顺序
+## Implementation Order
 
-### Phase 1: P0 功能 (并行)
+### Phase 1: P0 Features (Parallel)
 
-可同时进行的独立任务:
+Independent tasks that can be done simultaneously:
 
-| Task ID | 功能 | 文件 | 依赖 |
-|---------|------|------|------|
-| T1 | 优先级系统 | `packages/kanban/src/primitives/priority-*.tsx` | 无 |
-| T2 | 标签系统 | `packages/kanban/src/primitives/tag-*.tsx` | 无 |
-| T3 | 筛选栏 | `packages/kanban/src/components/kanban-filter-bar.tsx` | T1, T2 |
-| T4 | 详情面板增强 | `apps/desktop/src/components/workspace/task-detail-panel.tsx` | T1, T2 |
+| Task ID | Feature | Files | Dependencies |
+|---------|---------|-------|--------------|
+| T1 | Priority System | `packages/kanban/src/primitives/priority-*.tsx` | None |
+| T2 | Tag System | `packages/kanban/src/primitives/tag-*.tsx` | None |
+| T3 | Filter Bar | `packages/kanban/src/components/kanban-filter-bar.tsx` | T1, T2 |
+| T4 | Detail Panel Enhancement | `apps/desktop/src/components/workspace/task-detail-panel.tsx` | T1, T2 |
 
-### Phase 2: P1 功能 (并行)
+### Phase 2: P1 Features (Parallel)
 
-| Task ID | 功能 | 文件 | 依赖 |
-|---------|------|------|------|
-| T5 | 指派人系统 | `packages/kanban/src/primitives/assignee-*.tsx` | 无 |
-| T6 | 截止日期 | `packages/kanban/src/primitives/due-date-*.tsx` | 无 |
-| T7 | 子任务 | `packages/kanban/src/components/subtask-*.tsx` | T4 |
-| T8 | 任务关系 | `packages/kanban/src/components/relationship-*.tsx` | T4 |
+| Task ID | Feature | Files | Dependencies |
+|---------|---------|-------|--------------|
+| T5 | Assignee System | `packages/kanban/src/primitives/assignee-*.tsx` | None |
+| T6 | Due Date | `packages/kanban/src/primitives/due-date-*.tsx` | None |
+| T7 | Subtasks | `packages/kanban/src/components/subtask-*.tsx` | T4 |
+| T8 | Task Relations | `packages/kanban/src/components/relationship-*.tsx` | T4 |
 
-### Phase 3: P2 功能
+### Phase 3: P2 Features
 
-| Task ID | 功能 | 文件 | 依赖 |
-|---------|------|------|------|
-| T9 | PR 集成 | 待定 | Phase 1 |
-| T10 | 多视图 | 待定 | Phase 1 |
-| T11 | 排序模式 | 待定 | Phase 1 |
-| T12 | 批量操作 | 待定 | Phase 1 |
+| Task ID | Feature | Files | Dependencies |
+|---------|---------|-------|--------------|
+| T9 | PR Integration | TBD | Phase 1 |
+| T10 | Multiple Views | TBD | Phase 1 |
+| T11 | Sort Modes | TBD | Phase 1 |
+| T12 | Bulk Operations | TBD | Phase 1 |
 
 ---
 
-## 验收标准
+## Acceptance Criteria
 
-### F1: 优先级系统
-- [ ] PriorityIcon 显示正确的图标和颜色
-- [ ] PrioritySelect 可选择所有优先级
-- [ ] 卡片上显示非 none 优先级图标
-- [ ] 优先级更新后实时反映
+### F1: Priority System
+- [ ] PriorityIcon displays correct icon and color
+- [ ] PrioritySelect can select all priorities
+- [ ] Cards display non-none priority icons
+- [ ] Priority updates reflect in real-time
 
-### F2: 标签系统
-- [ ] TagBadge 显示正确的颜色和名称
-- [ ] TagSelect 可选择/取消选择标签
-- [ ] 可创建新标签
-- [ ] 卡片上最多显示 3 个标签
+### F2: Tag System
+- [ ] TagBadge displays correct color and name
+- [ ] TagSelect can select/deselect tags
+- [ ] Can create new tags
+- [ ] Cards display up to 3 tags
 
-### F3: 高级筛选
-- [ ] 搜索框支持标题和描述搜索
-- [ ] 优先级筛选支持多选
-- [ ] 标签筛选支持多选
-- [ ] 显示活跃筛选数量
-- [ ] 清除筛选按钮工作正常
+### F3: Advanced Filtering
+- [ ] Search box supports title and description search
+- [ ] Priority filter supports multi-select
+- [ ] Tag filter supports multi-select
+- [ ] Shows active filter count
+- [ ] Clear filters button works correctly
 
-### F4: 任务详情增强
-- [ ] 标题可内联编辑
-- [ ] 描述可内联编辑
-- [ ] 所有属性可修改
-- [ ] 显示创建/更新时间
+### F4: Enhanced Task Details
+- [ ] Title is inline editable
+- [ ] Description is inline editable
+- [ ] All properties are modifiable
+- [ ] Shows created/updated time
 
 ---
 

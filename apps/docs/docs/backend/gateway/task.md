@@ -4,47 +4,47 @@ title: "Task API"
 description: "Task management API, HTTP interface for viben task CLI"
 ---
 
-# 任务管理 API
+# Task Management API
 
-> `/api/task` - 任务管理端点，提供 CLI `viben task` 命令的 HTTP 接口版本
+> `/api/task` - Task management endpoints, providing HTTP interface version of CLI `viben task` commands
 
-## 概述
+## Overview
 
-Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP 接口。所有端点都复用 CLI 的核心实现，仅做输入输出格式转换。
+The Gateway Task API (`/api/task/*`) provides a complete HTTP interface for the `viben task` CLI commands. All endpoints reuse the CLI's core implementation, only converting input/output formats.
 
-**设计原则**:
+**Design Principles**:
 
-1. **复用 CLI 核心函数** - Gateway 端点直接调用 `task/ops/*` 中的函数
-2. **snake_case 参数** - 所有请求/响应参数使用 snake_case 格式
-3. **workspace_path 必需** - 大部分端点需要 `workspace_path` 指定工作区
-4. **POST 请求** - CLI 风格端点统一使用 POST 方法
+1. **Reuse CLI core functions** - Gateway endpoints directly call functions in `task/ops/*`
+2. **snake_case parameters** - All request/response parameters use snake_case format
+3. **workspace_path required** - Most endpoints require `workspace_path` to specify workspace
+4. **POST requests** - CLI-style endpoints uniformly use POST method
 
-## 端点列表
+## Endpoint List
 
-| 分类 | 端点 | CLI 对应命令 |
-|------|------|-------------|
+| Category | Endpoints | CLI Corresponding Commands |
+|----------|-----------|---------------------------|
 | CRUD | `list`, `create`, `view`, `delete` | `viben task list/create/view/delete` |
-| 生命周期 | `pause`, `resume`, `approve`, `reject`, `retry`, `cancel` | `viben task pause/resume/approve/reject/retry/cancel` |
-| 队列管理 | `enqueue`, `dequeue`, `queue-status`, `batch-enqueue` | `viben task enqueue/dequeue` |
-| 配置 | `set-branch`, `set-base`, `set-agent` | `viben task set-branch/set-base/set-agent` |
-| 上下文管理 | `init-context`, `add-context`, `remove-context`, `list-context`, `validate-context` | `viben task init-context/add-context/...` |
-| 执行控制 | `start`, `execute`, `stop`, `running` | `viben task start` |
-| 阶段命令 | `plan-phase`, `implement-phase`, `check-phase`, `work-phase` | `viben task plan-phase/...` |
-| 审查 | `review`, `context`, `status`, `create-pr` | `viben task review/context/status/create-pr` |
-| 归档 | `finish`, `archive`, `list-archive` | `viben task finish/archive/list-archive` |
+| Lifecycle | `pause`, `resume`, `approve`, `reject`, `retry`, `cancel` | `viben task pause/resume/approve/reject/retry/cancel` |
+| Queue Management | `enqueue`, `dequeue`, `queue-status`, `batch-enqueue` | `viben task enqueue/dequeue` |
+| Configuration | `set-branch`, `set-base`, `set-agent` | `viben task set-branch/set-base/set-agent` |
+| Context Management | `init-context`, `add-context`, `remove-context`, `list-context`, `validate-context` | `viben task init-context/add-context/...` |
+| Execution Control | `start`, `execute`, `stop`, `running` | `viben task start` |
+| Phase Commands | `plan-phase`, `implement-phase`, `check-phase`, `work-phase` | `viben task plan-phase/...` |
+| Review | `review`, `context`, `status`, `create-pr` | `viben task review/context/status/create-pr` |
+| Archive | `finish`, `archive`, `list-archive` | `viben task finish/archive/list-archive` |
 | Worktree | `create-worktree`, `validate-check-phase-passed`, `cleanup` | `viben task create-worktree/cleanup` |
-| 事件/流 | `events`, `specs`, `events-stream`, `execution-stream` | - |
-| 会话 | `add-session` | `viben task add-session` |
+| Events/Streaming | `events`, `specs`, `events-stream`, `execution-stream` | - |
+| Session | `add-session` | `viben task add-session` |
 
 ---
 
-## CRUD 端点
+## CRUD Endpoints
 
 ### POST /api/task/list
 
-列出任务。
+List tasks.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -54,15 +54,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| status | string | No | 按状态过滤 |
-| mine | boolean | No | 只显示当前开发者的任务 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| status | string | No | Filter by status |
+| mine | boolean | No | Only show current developer's tasks |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -82,9 +82,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/create
 
-创建新任务。
+Create a new task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -102,23 +102,23 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| title | string | Yes | 任务标题 |
-| slug | string | No | 任务标识符，默认从 title 生成 |
-| assignee | string | No | 分配人 |
-| priority | string | No | 优先级 (P0/P1/P2/P3) |
-| agent | string | No | 关联的智能体 ID |
-| executor | string | No | 执行器类型 |
-| model | string | No | 模型 ID |
-| branch | string | No | Git 分支名 |
-| worktree | boolean | No | 是否使用 worktree |
-| start | boolean | No | 创建后自动启动 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| title | string | Yes | Task title |
+| slug | string | No | Task identifier, defaults to generated from title |
+| assignee | string | No | Assignee |
+| priority | string | No | Priority (P0/P1/P2/P3) |
+| agent | string | No | Associated agent ID |
+| executor | string | No | Executor type |
+| model | string | No | Model ID |
+| branch | string | No | Git branch name |
+| worktree | boolean | No | Whether to use worktree |
+| start | boolean | No | Auto-start after creation |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -132,9 +132,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/view
 
-查看任务详情。
+View task details.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -143,7 +143,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -161,9 +161,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/delete
 
-删除任务。
+Delete a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -175,13 +175,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 生命周期端点
+## Lifecycle Endpoints
 
 ### POST /api/task/pause
 
-暂停任务。
+Pause a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -190,15 +190,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `queue` / `in_progress` -> `paused`
+**State Transition**: `queue` / `in_progress` -> `paused`
 
 ---
 
 ### POST /api/task/resume
 
-恢复暂停的任务。
+Resume a paused task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -207,15 +207,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `paused` -> 原状态 (`queue` 或 `in_progress`)
+**State Transition**: `paused` -> original state (`queue` or `in_progress`)
 
 ---
 
 ### POST /api/task/approve
 
-批准审查中的任务。
+Approve a task under review.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -224,33 +224,33 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `review` -> `completed`
+**State Transition**: `review` -> `completed`
 
 ---
 
 ### POST /api/task/reject
 
-拒绝任务，返回待办。
+Reject task, return to backlog.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
   "workspace_path": "/path/to/workspace",
   "task_id": "add-user-auth",
-  "reason": "需要更多测试覆盖"
+  "reason": "Needs more test coverage"
 }
 ```
 
-**状态转换**: `review` -> `backlog`
+**State Transition**: `review` -> `backlog`
 
 ---
 
 ### POST /api/task/retry
 
-重试失败的任务。
+Retry a failed task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -259,45 +259,45 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `failed` -> `queue`
+**State Transition**: `failed` -> `queue`
 
 ---
 
 ### POST /api/task/cancel
 
-取消任务。
+Cancel a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
   "workspace_path": "/path/to/workspace",
   "task_id": "add-user-auth",
-  "reason": "需求变更",
+  "reason": "Requirements changed",
   "force": false
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| reason | string | No | 取消原因 |
-| force | boolean | No | 强制取消 `in_progress` 状态的任务 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| reason | string | No | Cancellation reason |
+| force | boolean | No | Force cancel task in `in_progress` state |
 
-**状态转换**: `*` -> `cancelled`
+**State Transition**: `*` -> `cancelled`
 
 ---
 
-## 队列管理端点
+## Queue Management Endpoints
 
 ### POST /api/task/enqueue
 
-将任务加入队列。
+Add task to queue.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -310,15 +310,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `backlog` -> `queue`
+**State Transition**: `backlog` -> `queue`
 
 ---
 
 ### POST /api/task/dequeue
 
-将任务移出队列。
+Remove task from queue.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -327,15 +327,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**状态转换**: `queue` -> `backlog`
+**State Transition**: `queue` -> `backlog`
 
 ---
 
 ### POST /api/task/queue-status
 
-获取队列状态。
+Get queue status.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -343,7 +343,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -362,9 +362,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/batch-enqueue
 
-批量入队多个任务。
+Batch enqueue multiple tasks.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -376,13 +376,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 配置端点
+## Configuration Endpoints
 
 ### POST /api/task/set-branch
 
-设置任务的 Git 分支。
+Set task's Git branch.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -396,9 +396,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/set-base
 
-设置 PR 目标分支。
+Set PR target branch.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -412,9 +412,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/set-agent
 
-设置关联的智能体配置。
+Set associated agent configuration.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -426,13 +426,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 上下文管理端点
+## Context Management Endpoints
 
 ### POST /api/task/init-context
 
-初始化空上下文文件。
+Initialize empty context files.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -441,46 +441,46 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-创建的文件:
-- `implement.jsonl` - 实现阶段上下文
-- `check.jsonl` - 检查阶段上下文
-- `fix.jsonl` - 修复阶段上下文
+Created files:
+- `implement.jsonl` - Implementation phase context
+- `check.jsonl` - Check phase context
+- `fix.jsonl` - Fix phase context
 
 ---
 
 ### POST /api/task/add-context
 
-添加上下文文件。
+Add context files.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
   "workspace_path": "/path/to/workspace",
   "task_id": "add-user-auth",
   "files": ["src/auth/index.ts", "docs/api.md"],
-  "reason": "API 参考文档",
+  "reason": "API reference documentation",
   "recursive": false
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| files | string[] | Yes | 文件路径列表 |
-| reason | string | No | 添加原因 |
-| recursive | boolean | No | 递归添加目录 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| files | string[] | Yes | File path list |
+| reason | string | No | Reason for adding |
+| recursive | boolean | No | Recursively add directory |
 
 ---
 
 ### POST /api/task/remove-context
 
-移除上下文文件。
+Remove context files.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -494,9 +494,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/list-context
 
-列出上下文条目。
+List context entries.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -505,7 +505,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -513,7 +513,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
   "entries": [
     {
       "file": "src/auth/index.ts",
-      "reason": "主认证模块"
+      "reason": "Main authentication module"
     }
   ]
 }
@@ -523,9 +523,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/validate-context
 
-验证上下文文件是否存在。
+Validate that context files exist.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -534,7 +534,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -546,13 +546,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 执行控制端点
+## Execution Control Endpoints
 
 ### POST /api/task/start
 
-启动任务执行（标准入口）。
+Start task execution (standard entry point).
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -566,27 +566,27 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| executor | string | No | 执行器类型 |
-| detach | boolean | No | 后台运行（默认 true） |
-| worktree | boolean | No | 在 worktree 中运行 |
-| resume | boolean | No | 恢复已有 session |
-| session_id | string | No | 指定 session ID（配合 resume） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| executor | string | No | Executor type |
+| detach | boolean | No | Run in background (default true) |
+| worktree | boolean | No | Run in worktree |
+| resume | boolean | No | Resume existing session |
+| session_id | string | No | Specify session ID (used with resume) |
 
-**执行器类型**: `CLAUDE_CODE`, `CURSOR`, `GEMINI`, `OPENCODE`, `IFLOW`, `CODEX`, `KILO`, `KIRO`, `ANTIGRAVITY`
+**Executor Types**: `CLAUDE_CODE`, `CURSOR`, `GEMINI`, `OPENCODE`, `IFLOW`, `CODEX`, `KILO`, `KIRO`, `ANTIGRAVITY`
 
 ---
 
 ### POST /api/task/execute
 
-通过队列系统执行任务。
+Execute task through queue system.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -602,9 +602,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/stop
 
-停止任务执行。
+Stop task execution.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -617,9 +617,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/running
 
-检查任务执行状态。
+Check task execution status.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -628,7 +628,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -641,13 +641,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 阶段命令端点
+## Phase Command Endpoints
 
 ### POST /api/task/plan-phase
 
-运行 Plan 阶段。
+Run Plan phase.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -658,22 +658,22 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| platform | string | No | 平台 (claude/cursor/iflow/opencode) |
-| verbose | boolean | No | 详细输出 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| platform | string | No | Platform (claude/cursor/iflow/opencode) |
+| verbose | boolean | No | Verbose output |
 
 ---
 
 ### POST /api/task/implement-phase
 
-运行 Implement 阶段。
+Run Implement phase.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -688,9 +688,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/check-phase
 
-运行 Check 阶段。
+Run Check phase.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -705,9 +705,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/work-phase
 
-运行 Work 阶段（自动创建 worktree）。
+Run Work phase (auto-creates worktree).
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -721,13 +721,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 审查端点
+## Review Endpoints
 
 ### POST /api/task/review
 
-获取任务审查信息。
+Get task review information.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -736,7 +736,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -758,9 +758,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/context
 
-获取任务上下文（用于 AI）。
+Get task context (for AI).
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -770,21 +770,21 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| format | string | No | 输出格式 (json/text)，默认 json |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| format | string | No | Output format (json/text), default json |
 
 ---
 
 ### POST /api/task/status
 
-获取任务状态详情。
+Get task status details.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -794,7 +794,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -811,9 +811,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/create-pr
 
-创建 Pull Request。
+Create Pull Request.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -823,7 +823,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -834,13 +834,13 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ---
 
-## 归档端点
+## Archive Endpoints
 
 ### POST /api/task/finish
 
-完成任务。
+Complete a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -853,9 +853,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/archive
 
-归档已完成的任务。
+Archive a completed task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -864,15 +864,15 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-归档到 `archive/YYYY-MM/` 目录。
+Archives to `archive/YYYY-MM/` directory.
 
 ---
 
 ### POST /api/task/list-archive
 
-列出归档任务。
+List archived tasks.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -881,22 +881,22 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| month | string | No | 指定月份 (YYYY-MM)，不填列出所有 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| month | string | No | Specify month (YYYY-MM), list all if not provided |
 
 ---
 
-## Worktree 端点
+## Worktree Endpoints
 
 ### POST /api/task/create-worktree
 
-为任务创建 Git worktree。
+Create Git worktree for a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -910,9 +910,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/validate-check-phase-passed
 
-验证 Check 阶段是否通过。
+Validate if Check phase passed.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -927,9 +927,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/cleanup
 
-清理 worktree 和相关资源。
+Clean up worktree and related resources.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -943,27 +943,27 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| branch | string | No | 指定分支（与 merged/all/list 互斥） |
-| keep_branch | boolean | No | 不删除 Git 分支 |
-| yes | boolean | No | 跳过确认 |
-| merged | boolean | No | 清理所有已合并的 worktree |
-| all | boolean | No | 清理所有 worktree |
-| list | boolean | No | 仅列出 worktree |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| branch | string | No | Specify branch (mutually exclusive with merged/all/list) |
+| keep_branch | boolean | No | Don't delete Git branch |
+| yes | boolean | No | Skip confirmation |
+| merged | boolean | No | Clean all merged worktrees |
+| all | boolean | No | Clean all worktrees |
+| list | boolean | No | Only list worktrees |
 
 ---
 
-## 事件/流端点
+## Event/Streaming Endpoints
 
 ### POST /api/task/events
 
-获取任务事件历史。
+Get task event history.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -972,7 +972,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -991,9 +991,9 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### POST /api/task/specs
 
-获取任务的 PRD/子任务/日志。
+Get task PRD/subtasks/logs.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -1002,7 +1002,7 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -1017,16 +1017,16 @@ Gateway Task API (`/api/task/*`) 提供了 `viben task` CLI 命令的完整 HTTP
 
 ### GET /api/task/events-stream
 
-SSE 事件订阅。
+SSE event subscription.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | 工作区路径 |
-| task_id | string | 任务标识符 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | Workspace path |
+| task_id | string | Task identifier |
 
-**响应格式**: `text/event-stream`
+**Response Format**: `text/event-stream`
 
 ```
 data: {"type": "task", "task": {...}}
@@ -1038,76 +1038,76 @@ data: {"type": "event", "event": {...}}
 
 ### GET /api/task/execution-stream
 
-SSE 执行进度流。
+SSE execution progress stream.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| workspace_path | string | 工作区路径 |
-| task_id | string | 任务标识符 |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| workspace_path | string | Workspace path |
+| task_id | string | Task identifier |
 
 ---
 
-## 会话端点
+## Session Endpoints
 
 ### POST /api/task/add-session
 
-添加会话记录到任务日志。
+Add session record to task log.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
   "workspace_path": "/path/to/workspace",
   "task_id": "add-user-auth",
-  "title": "实现登录功能",
+  "title": "Implement login feature",
   "commit": "abc1234",
-  "summary": "完成了基本的登录流程"
+  "summary": "Completed basic login flow"
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | Yes | 工作区路径 |
-| task_id | string | Yes | 任务标识符 |
-| title | string | Yes | 会话标题 |
-| commit | string | No | 关联的 commit hash |
-| summary | string | No | 会话摘要 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| task_id | string | Yes | Task identifier |
+| title | string | Yes | Session title |
+| commit | string | No | Associated commit hash |
+| summary | string | No | Session summary |
 
 ---
 
-## 状态转换表
+## State Transition Table
 
-| 端点 | 允许的起始状态 | 目标状态 |
-|------|--------------|---------|
+| Endpoint | Allowed Starting States | Target State |
+|----------|------------------------|--------------|
 | `/api/task/enqueue` | backlog | queue |
 | `/api/task/dequeue` | queue | backlog |
 | `/api/task/pause` | queue, in_progress | paused |
-| `/api/task/resume` | paused | queue 或 in_progress |
+| `/api/task/resume` | paused | queue or in_progress |
 | `/api/task/approve` | review | completed |
 | `/api/task/reject` | review | backlog |
 | `/api/task/retry` | failed | queue |
 | `/api/task/cancel` | backlog, queue, paused, in_progress*, review | cancelled |
 
-> *`in_progress` 状态需要 `force: true` 参数
+> *`in_progress` state requires `force: true` parameter
 
 ---
 
-## 错误码
+## Error Codes
 
-| HTTP 状态码 | 错误类型 | 说明 |
-|-------------|----------|------|
-| 400 | ValidationError | 请求参数无效 |
-| 404 | NotFoundError | 任务不存在 |
-| 409 | StateError | 状态转换非法 |
-| 500 | InternalError | 服务器内部错误 |
+| HTTP Status | Error Type | Description |
+|-------------|------------|-------------|
+| 400 | ValidationError | Invalid request parameters |
+| 404 | NotFoundError | Task not found |
+| 409 | StateError | Illegal state transition |
+| 500 | InternalError | Internal server error |
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [任务队列 API](./queue.md) - 全局任务队列管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Task Queue API](./queue.md) - Global task queue management
+- [Agent API](./agents.md) - Agent management

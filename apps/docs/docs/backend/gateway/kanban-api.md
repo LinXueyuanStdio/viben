@@ -6,24 +6,24 @@ description: "Kanban board API for task visualization"
 
 # Kanban API
 
-> 任务看板功能 API
+> Task Kanban Board API
 
-## 概述
+## Overview
 
-任务看板功能基于已有的 Viben 数据模型实现，不需要单独的 kanban 数据存储：
+The task kanban board functionality is built on top of existing Viben data models and does not require separate kanban data storage:
 
-- **Workspace** = Kanban Project（工作区即项目）
-- **Background Tasks** = Kanban Task（后台运行的 Agent 任务即看板任务）
+- **Workspace** = Kanban Project (workspace as project)
+- **Background Tasks** = Kanban Task (background agent tasks as kanban tasks)
 
-## 数据复用
+## Data Reuse
 
-| Kanban 概念 | Viben 已有实现 | API 端点 |
-|------------|---------------|---------|
+| Kanban Concept | Viben Implementation | API Endpoint |
+|----------------|---------------------|--------------|
 | Project | Workspace | `GET /api/workspaces` |
 | Task | Background Task | `GET /api/agent/tasks/subscribe` (SSE) |
 | Stop Task | Stop Task | `POST /api/agent/tasks/:taskId/stop` |
 
-## 相关 API
+## Related APIs
 
 ### Workspace API
 
@@ -31,7 +31,7 @@ description: "Kanban board API for task visualization"
 GET /api/workspaces
 ```
 
-返回所有工作区，包括全局工作区。
+Returns all workspaces, including the global workspace.
 
 ### Background Tasks API
 
@@ -39,7 +39,7 @@ GET /api/workspaces
 GET /api/agent/tasks/subscribe  (SSE)
 ```
 
-订阅后台任务状态更新。返回格式：
+Subscribe to background task status updates. Response format:
 
 ```json
 {
@@ -48,7 +48,7 @@ GET /api/agent/tasks/subscribe  (SSE)
     {
       "taskId": "uuid",
       "sessionId": "agent-session-uuid",
-      "prompt": "用户输入",
+      "prompt": "user input",
       "status": "running",
       "startedAt": "ISO timestamp",
       "completedAt": "ISO timestamp (optional)",
@@ -59,38 +59,38 @@ GET /api/agent/tasks/subscribe  (SSE)
 }
 ```
 
-**任务状态**:
+**Task Status**:
 
-| 状态 | 说明 |
-|------|------|
-| `running` | 运行中 |
-| `completed` | 已完成 |
-| `error` | 错误 |
-| `cancelled` | 已取消 |
+| Status | Description |
+|--------|-------------|
+| `running` | Running |
+| `completed` | Completed |
+| `error` | Error |
+| `cancelled` | Cancelled |
 
 ```
 POST /api/agent/tasks/:taskId/stop
 ```
 
-停止后台任务。
+Stop a background task.
 
-## 看板列映射
+## Kanban Column Mapping
 
-| 列名 | Background Task Status |
-|-----|----------------------|
-| 进行中 (In Progress) | `running` |
-| 已完成 (Done) | `completed` |
-| 错误 (Error) | `error` |
-| 已取消 (Cancelled) | `cancelled` |
+| Column Name | Background Task Status |
+|-------------|----------------------|
+| In Progress | `running` |
+| Done | `completed` |
+| Error | `error` |
+| Cancelled | `cancelled` |
 
-## 前端集成
+## Frontend Integration
 
-前端使用以下 hooks 获取 kanban 数据：
+The frontend uses the following hooks to fetch kanban data:
 
-1. `useLocalWorkspaces()` - 获取工作区列表作为项目
-2. `useBackgroundTasks()` - 获取后台任务作为看板任务
+1. `useLocalWorkspaces()` - Get workspace list as projects
+2. `useBackgroundTasks()` - Get background tasks as kanban tasks
 
-## 相关端点
+## Related Endpoints
 
-- [任务 API](./tasks.md) - 任务管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Task API](./tasks.md) - Task management
+- [Agent API](./agents.md) - Agent management

@@ -4,17 +4,17 @@ sidebar_position: 1
 
 # Viben Gateway
 
-> 基于 Hono 的 HTTP/WebSocket API 服务器，提供 AI 智能体编排和管理服务。
+> Hono-based HTTP/WebSocket API server providing AI agent orchestration and management services.
 
-## 概述
+## Overview
 
-Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提供：
-- RESTful API 服务
-- WebSocket 实时通信
-- Server-Sent Events (SSE) 事件流
-- 多智能体编排和协调
+Viben Gateway is the core backend service of Viben, running on port **18790**, providing:
+- RESTful API services
+- WebSocket real-time communication
+- Server-Sent Events (SSE) streaming
+- Multi-agent orchestration and coordination
 
-## 架构
+## Architecture
 
 ```
 +-------------------------------------------------------------+
@@ -27,26 +27,26 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 |  +-- Router                                                  |
 +-------------------------------------------------------------+
 |  API Routes                                                  |
-|  +-- /health              健康检查                           |
-|  +-- /api/agent          智能体管理                         |
-|  +-- /api/executors       执行器管理                         |
-|  +-- /api/models          模型管理                           |
-|  +-- /api/providers       提供商管理                         |
-|  +-- /api/tasks           任务管理                           |
-|  +-- /api/sessions        会话管理                           |
-|  +-- /api/channels        通道管理                           |
-|  +-- /api/cron            定时任务                           |
-|  +-- /api/workspaces      工作空间管理                       |
-|  +-- /api/mcp             MCP 服务器管理                     |
-|  +-- /api/kanban          看板数据管理                       |
-|  +-- /api/group-chats     群聊管理                           |
-|  +-- /api/chat-list       聊天列表聚合                       |
-|  +-- /api/events          SSE 事件流                         |
+|  +-- /health              Health Check                       |
+|  +-- /api/agent          Agent Management                    |
+|  +-- /api/executors       Executor Management                |
+|  +-- /api/models          Model Management                   |
+|  +-- /api/providers       Provider Management                |
+|  +-- /api/tasks           Task Management                    |
+|  +-- /api/sessions        Session Management                 |
+|  +-- /api/channels        Channel Management                 |
+|  +-- /api/cron            Scheduled Tasks                    |
+|  +-- /api/workspaces      Workspace Management               |
+|  +-- /api/mcp             MCP Server Management              |
+|  +-- /api/kanban          Kanban Data Management             |
+|  +-- /api/group-chats     Group Chat Management              |
+|  +-- /api/chat-list       Chat List Aggregation              |
+|  +-- /api/events          SSE Event Stream                   |
 +-------------------------------------------------------------+
 |  WebSocket Routes                                            |
-|  +-- /ws                  通用 WebSocket                     |
-|  +-- /api/group-chats/:id/sessions/:sid/ws  群聊 WebSocket   |
-|  +-- /terminal/ws         终端 WebSocket                     |
+|  +-- /ws                  General WebSocket                  |
+|  +-- /api/group-chats/:id/sessions/:sid/ws  Group Chat WS    |
+|  +-- /terminal/ws         Terminal WebSocket                 |
 +-------------------------------------------------------------+
 |  Storage Layer                                               |
 |  +-- Global: ~/.viben/                                       |
@@ -54,62 +54,62 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 +-------------------------------------------------------------+
 ```
 
-## 服务配置
+## Service Configuration
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| 端口 | 18790 | HTTP/WebSocket 服务端口 |
-| CORS | Allow All | 跨域请求配置 |
-| 日志 | Tracing | 请求/响应日志记录 |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Port | 18790 | HTTP/WebSocket service port |
+| CORS | Allow All | Cross-origin request configuration |
+| Logging | Tracing | Request/response logging |
 
-## API 端点索引
+## API Endpoint Index
 
-| 模块 | 路径前缀 | 规范文档 |
-|------|----------|----------|
-| 健康检查 | `/health` | [health.md](./health.md) |
-| 智能体 | `/api/agent` | [agents.md](./agents.md) |
-| 执行器 | `/api/executors` | [executors.md](./executors.md) |
-| 模型 | `/api/models` | [models.md](./models.md) |
-| 提供商 | `/api/providers` | [providers.md](./providers.md) |
-| 任务 | `/api/tasks` | [tasks.md](./tasks.md) |
-| 会话 | `/api/sessions` | [sessions.md](./sessions.md) |
-| 通道 | `/api/channels` | [channels.md](./channels.md) |
-| 定时任务 | `/api/cron` | [cron.md](./cron.md) |
-| 工作空间 | `/api/workspaces` | [API 参考](/backend/api/) |
-| MCP | `/api/mcp` | [API 参考](/backend/api/) |
-| 看板 | `/api/kanban` | [API 参考](/backend/api/) |
-| 群聊 | `/api/group-chats` | [group-chats.md](./group-chats.md) |
-| 聊天列表 | `/api/chat-list` | [chat-list.md](./chat-list.md) |
-| 事件流 | `/api/events` | [events.md](./events.md) |
+| Module | Path Prefix | Specification |
+|--------|-------------|---------------|
+| Health Check | `/health` | [health.md](./health.md) |
+| Agents | `/api/agent` | [agents.md](./agents.md) |
+| Executors | `/api/executors` | [executors.md](./executors.md) |
+| Models | `/api/models` | [models.md](./models.md) |
+| Providers | `/api/providers` | [providers.md](./providers.md) |
+| Tasks | `/api/tasks` | [tasks.md](./tasks.md) |
+| Sessions | `/api/sessions` | [sessions.md](./sessions.md) |
+| Channels | `/api/channels` | [channels.md](./channels.md) |
+| Scheduled Tasks | `/api/cron` | [cron.md](./cron.md) |
+| Workspaces | `/api/workspaces` | [API Reference](/backend/api/) |
+| MCP | `/api/mcp` | [API Reference](/backend/api/) |
+| Kanban | `/api/kanban` | [API Reference](/backend/api/) |
+| Group Chats | `/api/group-chats` | [group-chats.md](./group-chats.md) |
+| Chat List | `/api/chat-list` | [chat-list.md](./chat-list.md) |
+| Event Stream | `/api/events` | [events.md](./events.md) |
 | WebSocket | `/ws`, `/terminal/ws` | [websocket.md](./websocket.md) |
 
-## 工作空间作用域
+## Workspace Scope
 
-所有资源支持两个作用域级别：
+All resources support two scope levels:
 
 ```
 +-------------------------------------------------------------+
 |  Global Scope: ~/.viben/                                     |
-|  +-- agents/              全局智能体                         |
-|  +-- providers/           提供商配置                         |
-|  +-- models.yaml          模型配置                           |
-|  +-- channels.yaml        通道配置                           |
-|  +-- sessions/            会话存储                           |
+|  +-- agents/              Global Agents                      |
+|  +-- providers/           Provider Configuration             |
+|  +-- models.yaml          Model Configuration                |
+|  +-- channels.yaml        Channel Configuration              |
+|  +-- sessions/            Session Storage                    |
 +-------------------------------------------------------------+
 |  Workspace Scope: <project>/.viben/                          |
-|  +-- agents/              工作空间智能体                     |
-|  +-- group-chats/         群聊                               |
-|  +-- config.yaml          工作空间配置                       |
+|  +-- agents/              Workspace Agents                   |
+|  +-- group-chats/         Group Chats                        |
+|  +-- config.yaml          Workspace Configuration            |
 +-------------------------------------------------------------+
 ```
 
-**查询参数**:
-- `workspace_path`: 工作空间路径 (绝对路径)
-- `include_global`: 是否包含全局资源 (默认 true)
+**Query Parameters**:
+- `workspace_path`: Workspace path (absolute path)
+- `include_global`: Whether to include global resources (default true)
 
-## 通用响应格式
+## Common Response Format
 
-### 成功响应
+### Success Response
 
 ```json
 {
@@ -123,7 +123,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 }
 ```
 
-### 错误响应
+### Error Response
 
 ```json
 {
@@ -133,18 +133,18 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 }
 ```
 
-## 启动 Gateway
+## Starting Gateway
 
 ```bash
-# 启动 Gateway
-pnpm gateway:build    # 构建并启动
-pnpm gateway:restart  # 重启现有 Gateway
+# Start Gateway
+pnpm gateway:build    # Build and start
+pnpm gateway:restart  # Restart existing Gateway
 
-# 健康检查
+# Health check
 curl http://127.0.0.1:18790/health
 ```
 
-## 相关文档
+## Related Documentation
 
-- [CLI Gateway 命令](/cli/commands/gateway) - Gateway CLI 管理命令
-- [CLI Agent 命令](/cli/commands/agent) - Agent CLI 管理命令
+- [CLI Gateway Commands](/cli/commands/gateway) - Gateway CLI management commands
+- [CLI Agent Commands](/cli/commands/agent) - Agent CLI management commands

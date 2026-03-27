@@ -1,12 +1,12 @@
 ---
 sidebar_position: 5
-title: Phase 4 - 协作功能
-description: Kanban 高级定制与协作功能
+title: Phase 4 - Collaboration Features
+description: Kanban advanced customization and collaboration features
 ---
 
-# Kanban Phase 4 - 高级定制与协作
+# Kanban Phase 4 - Advanced Customization and Collaboration
 
-> 基于 vibe-kanban 的高级功能，适配 Viben Design System
+> Advanced features based on vibe-kanban, adapted for Viben Design System
 
 ---
 
@@ -21,43 +21,43 @@ description: Kanban 高级定制与协作功能
 
 ---
 
-## 功能清单
+## Feature List
 
-### P0 - 看板定制
+### P0 - Board Customization
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F24 | **看板显示设置** | 列重排序、颜色、可见性 | KanbanDisplaySettingsContainer |
-| F25 | **列配置面板** | 列名编辑、颜色选择、WIP 限制 | ColumnSettings |
-| F26 | **用户偏好持久化** | 保存折叠状态、排序偏好 | localStorage/preferences |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F24 | **Board Display Settings** | Column reordering, colors, visibility | KanbanDisplaySettingsContainer |
+| F25 | **Column Configuration Panel** | Column name editing, color selection, WIP limits | ColumnSettings |
+| F26 | **User Preference Persistence** | Save collapsed state, sort preferences | localStorage/preferences |
 
-### P1 - 协作功能
+### P1 - Collaboration Features
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F27 | **评论系统** | 富文本评论、表情反应 | IssueCommentsSection |
-| F28 | **活动时间线** | 任务变更历史记录 | ActivityFeed |
-| F29 | **通知系统** | 评论、状态变更通知 | NotificationTypes |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F27 | **Comment System** | Rich text comments, emoji reactions | IssueCommentsSection |
+| F28 | **Activity Timeline** | Task change history records | ActivityFeed |
+| F29 | **Notification System** | Comments, status change notifications | NotificationTypes |
 
-### P2 - 增强功能
+### P2 - Enhanced Features
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F30 | **高级列表视图** | 可折叠分组、专用拖拽手柄 | IssueListView |
-| F31 | **视图导航标签** | 动态标签、URL 深链接 | ViewNavTabs |
-| F32 | **拖拽增强** | Portal 预览、多选拖拽 | DnD enhancements |
-| F33 | **看板模板** | 预设模板、快速创建 | BoardTemplates |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F30 | **Advanced List View** | Collapsible groups, dedicated drag handles | IssueListView |
+| F31 | **View Navigation Tabs** | Dynamic tabs, URL deep linking | ViewNavTabs |
+| F32 | **Drag Enhancement** | Portal preview, multi-select drag | DnD enhancements |
+| F33 | **Board Templates** | Preset templates, quick creation | BoardTemplates |
 
 ---
 
-## F24: 看板显示设置
+## F24: Board Display Settings
 
-### 功能描述
-提供可视化界面配置看板列的显示和顺序。
+### Feature Description
+Provide visual interface to configure board column display and order.
 
-### 组件设计
+### Component Design
 
-**BoardSettingsDialog** - 看板设置对话框:
+**BoardSettingsDialog** - Board settings dialog:
 
 ```tsx
 interface BoardSettingsDialogProps {
@@ -77,17 +77,17 @@ interface ColumnConfig {
 }
 ```
 
-### 交互设计
-- 拖拽重排列顺序
-- 点击颜色块选择颜色
-- 切换可见性开关
-- 编辑列名 (双击或铅笔图标)
+### Interaction Design
+- Drag to reorder columns
+- Click color block to select color
+- Toggle visibility switch
+- Edit column name (double-click or pencil icon)
 
 ---
 
-## F25: 列配置面板
+## F25: Column Configuration Panel
 
-### 组件设计
+### Component Design
 
 **ColumnSettingsPanel**:
 
@@ -99,44 +99,44 @@ interface ColumnSettingsPanelProps {
   canDelete?: boolean;
 }
 
-// 颜色预设
+// Color presets
 const COLUMN_COLORS = [
-  { name: "灰色", value: "hsl(var(--muted))" },
-  { name: "蓝色", value: "hsl(var(--primary))" },
-  { name: "黄色", value: "hsl(var(--warning))" },
-  { name: "绿色", value: "hsl(var(--success))" },
-  { name: "红色", value: "hsl(var(--destructive))" },
-  { name: "紫色", value: "hsl(280 60% 50%)" },
-  { name: "橙色", value: "hsl(25 90% 50%)" },
-  { name: "青色", value: "hsl(180 60% 45%)" },
+  { name: "Gray", value: "hsl(var(--muted))" },
+  { name: "Blue", value: "hsl(var(--primary))" },
+  { name: "Yellow", value: "hsl(var(--warning))" },
+  { name: "Green", value: "hsl(var(--success))" },
+  { name: "Red", value: "hsl(var(--destructive))" },
+  { name: "Purple", value: "hsl(280 60% 50%)" },
+  { name: "Orange", value: "hsl(25 90% 50%)" },
+  { name: "Cyan", value: "hsl(180 60% 45%)" },
 ];
 ```
 
 ---
 
-## F26: 用户偏好持久化
+## F26: User Preference Persistence
 
-### Hook 设计
+### Hook Design
 
 **useKanbanPreferences**:
 
 ```typescript
 interface KanbanPreferences {
-  // 视图偏好
+  // View preferences
   viewMode: ViewMode;
   sortMode: SortMode;
   sortDirection: SortDirection;
 
-  // 列状态
+  // Column state
   collapsedColumns: string[];
   columnOrder: string[];
   hiddenColumns: string[];
 
-  // 面板状态
+  // Panel state
   detailPanelWidth: number;
   showStats: boolean;
 
-  // 筛选器
+  // Filters
   savedFilters: KanbanFilter[];
 }
 
@@ -157,15 +157,15 @@ function useKanbanPreferences(options: UseKanbanPreferencesOptions): {
 
 ---
 
-## F27: 评论系统
+## F27: Comment System
 
-### 功能描述
-- 富文本评论输入
-- 表情反应 (👍 ❤️ 🎉 等)
-- 评论编辑/删除
-- 相对时间显示
+### Feature Description
+- Rich text comment input
+- Emoji reactions (thumbs up, heart, celebration, etc.)
+- Comment edit/delete
+- Relative time display
 
-### 组件设计
+### Component Design
 
 **CommentList** + **CommentItem** + **CommentInput**:
 
@@ -199,7 +199,7 @@ interface CommentListProps {
 }
 ```
 
-### 表情反应预设
+### Emoji Reaction Presets
 
 ```typescript
 const REACTION_EMOJIS = ["👍", "👎", "❤️", "🎉", "😄", "🤔", "👀", "🚀"];
@@ -207,12 +207,12 @@ const REACTION_EMOJIS = ["👍", "👎", "❤️", "🎉", "😄", "🤔", "👀
 
 ---
 
-## F28: 活动时间线
+## F28: Activity Timeline
 
-### 功能描述
-记录任务的所有变更历史。
+### Feature Description
+Record all change history for tasks.
 
-### 组件设计
+### Component Design
 
 **ActivityFeed**:
 
@@ -245,14 +245,14 @@ interface ActivityFeedProps {
 
 ---
 
-## F30: 高级列表视图
+## F30: Advanced List View
 
-### 功能描述
-- 按状态分组，可折叠
-- 专用拖拽手柄
-- 相对时间格式
+### Feature Description
+- Group by status, collapsible
+- Dedicated drag handles
+- Relative time format
 
-### 组件设计
+### Component Design
 
 **GroupedListView**:
 
@@ -278,14 +278,14 @@ interface GroupedListViewProps<T> {
 
 ---
 
-## F32: 拖拽增强
+## F32: Drag Enhancement
 
-### 功能描述
-- Portal 拖拽预览 (防止被裁剪)
-- 多选拖拽支持
-- 动画优化
+### Feature Description
+- Portal drag preview (prevent clipping)
+- Multi-select drag support
+- Animation optimization
 
-### Hook 设计
+### Hook Design
 
 **useDragPreview**:
 
@@ -304,58 +304,58 @@ function useDragPreview(options: UseDragPreviewOptions): {
 
 ---
 
-## 实现顺序
+## Implementation Order
 
-### Phase 4A (并行)
+### Phase 4A (Parallel)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T24 | 看板显示设置 | 无 |
-| T25 | 列配置面板 | 无 |
-| T26 | 用户偏好持久化 | 无 |
-| T27 | 评论系统类型 | 无 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T24 | Board Display Settings | None |
+| T25 | Column Configuration Panel | None |
+| T26 | User Preference Persistence | None |
+| T27 | Comment System Types | None |
 
-### Phase 4B (并行，依赖 4A)
+### Phase 4B (Parallel, depends on 4A)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T28 | 评论组件实现 | T27 |
-| T29 | 活动时间线 | 无 |
-| T30 | 高级列表视图 | 无 |
-| T31 | 拖拽增强 | 无 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T28 | Comment Component Implementation | T27 |
+| T29 | Activity Timeline | None |
+| T30 | Advanced List View | None |
+| T31 | Drag Enhancement | None |
 
-### Phase 4C (依赖 4B)
+### Phase 4C (depends on 4B)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T32 | 集成到 Desktop | T24-T31 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T32 | Desktop Integration | T24-T31 |
 
 ---
 
-## 验收标准
+## Acceptance Criteria
 
-### F24: 看板显示设置
-- [ ] 可拖拽重排列顺序
-- [ ] 颜色选择器工作正常
-- [ ] 可见性切换生效
-- [ ] 保存设置后刷新保持
+### F24: Board Display Settings
+- [ ] Can drag to reorder columns
+- [ ] Color picker works correctly
+- [ ] Visibility toggle takes effect
+- [ ] Settings persist after refresh
 
-### F25: 列配置面板
-- [ ] 双击编辑列名
-- [ ] 颜色预设选择
-- [ ] WIP 限制可配置
-- [ ] 删除有任务的列时警告
+### F25: Column Configuration Panel
+- [ ] Double-click to edit column name
+- [ ] Color preset selection
+- [ ] WIP limit configurable
+- [ ] Warning when deleting column with tasks
 
-### F26: 用户偏好持久化
-- [ ] 折叠状态持久化
-- [ ] 排序偏好持久化
-- [ ] 跨会话保持
+### F26: User Preference Persistence
+- [ ] Collapsed state persists
+- [ ] Sort preferences persist
+- [ ] Persists across sessions
 
-### F27: 评论系统
-- [ ] 可添加评论
-- [ ] 可添加表情反应
-- [ ] 可编辑/删除自己的评论
-- [ ] 显示相对时间
+### F27: Comment System
+- [ ] Can add comments
+- [ ] Can add emoji reactions
+- [ ] Can edit/delete own comments
+- [ ] Shows relative time
 
 ---
 

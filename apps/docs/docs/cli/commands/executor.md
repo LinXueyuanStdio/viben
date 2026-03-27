@@ -1,96 +1,96 @@
 ---
 sidebar_position: 7
 title: "viben executor"
-description: "发现和查看执行器（Claude Code、Cursor 等）"
+description: "Discover and view executors (Claude Code, Cursor, etc.)"
 ---
 
 # viben executor
 
-发现和查看执行器。执行器是实际运行 Agent 的 coding agent，如 Claude Code、Cursor 等。
+Discover and view executors. Executors are the coding agents that actually run Agents, such as Claude Code, Cursor, etc.
 
-## 概念说明
+## Concept Overview
 
-### 什么是 Executor？
+### What is an Executor?
 
-Executor（执行器）是运行 Agent 的底层 coding agent。Viben 通过为这些执行器配置不同的技能（skills）、提示词（prompts）、MCP 服务器等，将其组装成功能丰富的 Agent。
+An Executor is the underlying coding agent that runs an Agent. Viben assembles feature-rich Agents by configuring skills, prompts, MCP servers, etc. for these executors.
 
-| 概念 | 说明 | 示例 |
-|------|------|------|
-| **Executor** | 底层 coding agent，负责执行任务 | Claude Code, Cursor, Gemini CLI, Codex, Windsurf |
-| **Agent** | Viben 配置的智能体实例，基于某个 executor | `main` agent (基于 Claude Code) |
-| **关系** | Agent = Executor + Skills + Prompts + MCP + Memory | 一个 executor 可以支持多个 agent |
+| Concept | Description | Examples |
+|---------|-------------|----------|
+| **Executor** | Underlying coding agent responsible for task execution | Claude Code, Cursor, Gemini CLI, Codex, Windsurf |
+| **Agent** | Viben-configured agent instance based on an executor | `main` agent (based on Claude Code) |
+| **Relationship** | Agent = Executor + Skills + Prompts + MCP + Memory | One executor can support multiple agents |
 
-**Executor 的职责**：
-- 接收用户指令
-- 调用 LLM 进行推理
-- 执行工具调用（代码编写、文件操作等）
-- 与 MCP 服务器通信
+**Executor Responsibilities**:
+- Receive user instructions
+- Call LLM for reasoning
+- Execute tool calls (code writing, file operations, etc.)
+- Communicate with MCP servers
 
-**Viben 的职责**：
-- 发现本地已安装的 executors
-- 为 executor 配置 skills、prompts、MCP
-- 管理 agent 实例（基于 executor）
-- 提供统一的配置和记忆管理
+**Viben Responsibilities**:
+- Discover locally installed executors
+- Configure skills, prompts, MCP for executors
+- Manage agent instances (based on executors)
+- Provide unified configuration and memory management
 
-## 支持的 Executors
+## Supported Executors
 
-| ID | 名称 | 说明 | 检测方式 |
-|------|------|------|----------|
-| `CLAUDE_CODE` | Claude Code | Anthropic 官方 CLI | `claude --version` |
-| `CURSOR` | Cursor | AI-first 编辑器 | `cursor --version` |
+| ID | Name | Description | Detection Method |
+|----|------|-------------|------------------|
+| `CLAUDE_CODE` | Claude Code | Anthropic official CLI | `claude --version` |
+| `CURSOR` | Cursor | AI-first editor | `cursor --version` |
 | `GEMINI_CLI` | Gemini CLI | Google Gemini CLI | `gemini --version` |
 | `CODEX` | OpenAI Codex | OpenAI Codex CLI | `codex --version` |
 | `WINDSURF` | Windsurf | Codeium IDE | `windsurf --version` |
 | `AMP` | Amp | Sourcegraph Amp | `amp --version` |
-| `OPENCODE` | OpenCode | 开源 coding agent | `opencode --version` |
-| `QWEN_CODE` | Qwen Code | 阿里通义千问 coding agent | `qwen-code --version` |
+| `OPENCODE` | OpenCode | Open source coding agent | `opencode --version` |
+| `QWEN_CODE` | Qwen Code | Alibaba Qwen coding agent | `qwen-code --version` |
 | `AIDER` | Aider | AI pair programming | `aider --version` |
-| `CONTINUE` | Continue | IDE 插件 | `continue --version` |
+| `CONTINUE` | Continue | IDE plugin | `continue --version` |
 
-## 命令
+## Commands
 
 ```bash
 # ============================================================
-# Executor 发现 (Discovery Only)
+# Executor Discovery (Discovery Only)
 # ============================================================
 
-# 列出支持的 executor 类型
+# List supported executor types
 viben executor types
 viben executor types --json
 
-# 列出所有已发现的 executors（含安装状态）
+# List all discovered executors (with installation status)
 viben executor list
 viben executor list --json
 
-# 查看特定 executor 详情
+# View specific executor details
 viben executor show -n <executor-id>
 viben executor show -n CLAUDE_CODE
 viben executor show -n CURSOR --json
 
 # ============================================================
-# Executor Chat (非交互式执行)
+# Executor Chat (Non-interactive execution)
 # ============================================================
 
-# 基本用法
-viben executor chat -n CLAUDE_CODE -p "分析这段代码"
+# Basic usage
+viben executor chat -n CLAUDE_CODE -p "Analyze this code"
 
-# 从 stdin 读取
-echo "写一个排序函数" | viben executor chat -n CLAUDE_CODE
+# Read from stdin
+echo "Write a sorting function" | viben executor chat -n CLAUDE_CODE
 
-# JSON 流输入输出（用于程序化调用）
+# JSON stream input/output (for programmatic calls)
 viben executor chat -n CLAUDE_CODE --input-format stream-json --output-format stream-json
 
-# 恢复 session
-viben executor chat -n CLAUDE_CODE -p "继续" --resume <session-id>
+# Resume session
+viben executor chat -n CLAUDE_CODE -p "Continue" --resume <session-id>
 ```
 
 :::note
-发现功能不实现安装，安装应由用户通过各 executor 官方渠道完成。
+Discovery functionality does not implement installation; users should install via each executor's official channels.
 :::
 
-## 输出示例
+## Output Examples
 
-**`viben executor types`（人类可读）：**
+**`viben executor types` (Human-readable):**
 
 ```
 TYPE          DESCRIPTION
@@ -106,7 +106,7 @@ COPILOT       GitHub Copilot
 DROID         Droid
 ```
 
-**`viben executor types --json`：**
+**`viben executor types --json`:**
 
 ```json
 {
@@ -127,7 +127,7 @@ DROID         Droid
 }
 ```
 
-**`viben executor list`（人类可读）：**
+**`viben executor list` (Human-readable):**
 
 ```
 Executors:
@@ -149,7 +149,7 @@ Executors:
 Tip: Use 'viben executor show -n <id>' to see details.
 ```
 
-**`viben executor show -n CLAUDE_CODE`（人类可读）：**
+**`viben executor show -n CLAUDE_CODE` (Human-readable):**
 
 ```
 Executor: CLAUDE_CODE
@@ -177,7 +177,7 @@ Capabilities:
   - Image understanding
 ```
 
-**`viben executor list --json`：**
+**`viben executor list --json`:**
 
 ```json
 {
@@ -219,47 +219,47 @@ Capabilities:
 
 ## Executor Chat
 
-非交互式调用执行器进行对话。
+Non-interactive conversation with an executor.
 
-### 命令接口
+### Command Interface
 
 ```
 viben executor chat [OPTIONS] -n <EXECUTOR_NAME>
 
 OPTIONS:
-    -n, --name <NAME>           Executor 名称 (如 CLAUDE_CODE, GEMINI)
-    -p, --prompt <PROMPT>       提示词（可选，无则从 stdin 读取）
-    -C, --cwd <DIR>             工作目录（默认当前目录）
+    -n, --name <NAME>           Executor name (e.g., CLAUDE_CODE, GEMINI)
+    -p, --prompt <PROMPT>       Prompt (optional, reads from stdin if not provided)
+    -C, --cwd <DIR>             Working directory (default: current directory)
 
-    --input-format <FORMAT>     输入格式: text (默认), stream-json
-    --output-format <FORMAT>    输出格式: text (默认), stream-json
-    --verbose                   详细输出
+    --input-format <FORMAT>     Input format: text (default), stream-json
+    --output-format <FORMAT>    Output format: text (default), stream-json
+    --verbose                   Verbose output
 
-    --session-id <ID>           指定 session ID
-    --resume <SESSION_ID>       恢复已有 session
+    --session-id <ID>           Specify session ID
+    --resume <SESSION_ID>       Resume existing session
 
-    --model <MODEL>             指定模型（executor 支持时）
-    --dangerously-skip-permissions  跳过权限检查
+    --model <MODEL>             Specify model (if executor supports)
+    --dangerously-skip-permissions  Skip permission checks
 ```
 
-### 使用示例
+### Usage Examples
 
 ```bash
-# 基本用法
-viben executor chat -n CLAUDE_CODE -p "分析这段代码"
+# Basic usage
+viben executor chat -n CLAUDE_CODE -p "Analyze this code"
 
-# 从 stdin 读取纯文本
-echo "写一个排序函数" | viben executor chat -n CLAUDE_CODE
+# Read plain text from stdin
+echo "Write a sorting function" | viben executor chat -n CLAUDE_CODE
 
-# JSON 流输入输出（用于程序化调用）
-echo '{"type":"user","message":{"role":"user","content":"分析代码"}}' | \
+# JSON stream input/output (for programmatic calls)
+echo '{"type":"user","message":{"role":"user","content":"Analyze code"}}' | \
   viben executor chat -n CLAUDE_CODE --input-format stream-json --output-format stream-json
 
-# 恢复 session
-viben executor chat -n CLAUDE_CODE -p "继续上面的工作" --resume abc123
+# Resume session
+viben executor chat -n CLAUDE_CODE -p "Continue previous work" --resume abc123
 ```
 
-## 与 Agent 的关系
+## Relationship with Agents
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -271,51 +271,51 @@ viben executor chat -n CLAUDE_CODE -p "继续上面的工作" --resume abc123
 │  ┌─────────────┐             ┌─────────────┐                │
 │  │  Executor   │─────────────│   Agent     │                │
 │  │ CLAUDE_CODE │   1:N       │   main      │                │
-│  │  (已安装)   │             │  my-agent   │                │
+│  │ (Installed) │             │  my-agent   │                │
 │  └─────────────┘             └─────────────┘                │
 │       │                            │                        │
-│       │ 运行环境                    │ 配置                   │
+│       │ Runtime env                │ Configuration          │
 │       ↓                            ↓                        │
 │  ┌─────────────┐             ┌─────────────┐                │
 │  │  ~/.claude/ │             │ ~/.viben/   │                │
 │  │ (executor   │◄────────────│ agents/xxx/ │                │
-│  │  原生配置)  │   叠加配置   │ (skills,mcp │                │
+│  │  native cfg)│  overlay    │ (skills,mcp │                │
 │  └─────────────┘             │  memory)    │                │
 │                              └─────────────┘                │
 │                                                             │
-│  流程:                                                       │
-│  1. viben executor list  → 发现本地已安装的 executors        │
+│  Workflow:                                                  │
+│  1. viben executor list  → Discover locally installed       │
 │  2. viben agent create -n xxx -e CLAUDE_CODE                │
-│     → 创建基于 Claude Code 的 agent 实例                    │
-│  3. viben agent config → 配置 skills, mcp, prompts          │
-│  4. 运行 agent 时，executor 配置 + viben 配置叠加生效        │
+│     → Create agent instance based on Claude Code            │
+│  3. viben agent config → Configure skills, mcp, prompts     │
+│  4. When running agent, executor config + viben config merge│
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**关键区别**：
+**Key Differences**:
 
-| 维度 | Executor | Agent |
-|------|----------|-------|
-| 定义 | 底层 coding agent 工具 | Viben 配置的智能体实例 |
-| 数量 | 少 (通常 1-3 个已安装) | 多 (可创建任意数量) |
-| 管理 | 系统级安装，Viben 只发现 | Viben 创建和管理 |
-| 配置 | 原生配置 (如 ~/.claude/) | Viben 配置 (叠加到原生) |
-| 操作 | `list`, `show` (只读) | `create`, `remove`, `config` (读写) |
+| Dimension | Executor | Agent |
+|-----------|----------|-------|
+| Definition | Underlying coding agent tool | Viben-configured agent instance |
+| Quantity | Few (typically 1-3 installed) | Many (can create any number) |
+| Management | System-level install, Viben only discovers | Viben creates and manages |
+| Configuration | Native config (e.g., ~/.claude/) | Viben config (overlays native) |
+| Operations | `list`, `show` (read-only) | `create`, `remove`, `config` (read-write) |
 
 ## executor chat vs agent chat
 
-| 特性 | `viben executor chat` | `viben agent chat` |
-|------|----------------------|-------------------|
-| 目标 | 直接调用底层 executor | 调用配置好的 Agent |
-| 记忆 | 无 | 自动加载 Agent 记忆 |
-| 配置 | 仅命令行参数 | Agent config + 工作区 + 命令行 |
-| Session | 临时 | 持久化到 Agent 目录 |
-| MCP | 需手动配置 | 使用 Agent 的 MCP 配置 |
-| Skills | 无 | 使用 Agent 的 Skills |
-| 适用场景 | 一次性调用、脚本集成 | 持续对话、项目开发 |
+| Feature | `viben executor chat` | `viben agent chat` |
+|---------|----------------------|-------------------|
+| Target | Directly call underlying executor | Call configured Agent |
+| Memory | None | Automatically loads Agent memory |
+| Configuration | Command line args only | Agent config + workspace + command line |
+| Session | Temporary | Persisted to Agent directory |
+| MCP | Manual configuration needed | Uses Agent's MCP configuration |
+| Skills | None | Uses Agent's Skills |
+| Use Case | One-off calls, script integration | Ongoing conversations, project development |
 
-## 相关命令
+## Related Commands
 
-- [viben agent](./agent) - 智能体管理
-- [viben agent chat](./agent-chat) - 智能体对话
+- [viben agent](./agent) - Agent management
+- [viben agent chat](./agent-chat) - Agent chat

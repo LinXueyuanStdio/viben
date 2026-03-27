@@ -1,54 +1,54 @@
 ---
 sidebar_position: 5
 title: "viben mcp"
-description: "管理 MCP 服务器 - 添加、配置、启用/禁用"
+description: "Manage MCP servers - add, configure, enable/disable"
 ---
 
 # viben mcp
 
-管理 MCP（Model Context Protocol）服务器。
+Manage MCP (Model Context Protocol) servers.
 
-## 用法
+## Usage
 
 ```bash
 viben mcp <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `add <name>` | 为智能体添加 MCP 服务器 |
-| `remove <name>` | 从智能体移除 MCP 服务器 |
-| `list` | 列出 MCP 服务器 |
-| `enable <name>` | 启用 MCP 服务器 |
-| `disable <name>` | 禁用 MCP 服务器 |
-| `config <name>` | 查看或设置 MCP 配置 |
+| Subcommand | Description |
+|------------|-------------|
+| `add <name>` | Add an MCP server to an agent |
+| `remove <name>` | Remove an MCP server from an agent |
+| `list` | List MCP servers |
+| `enable <name>` | Enable an MCP server |
+| `disable <name>` | Disable an MCP server |
+| `config <name>` | View or set MCP configuration |
 
-## 命令
+## Commands
 
-### 添加 MCP 服务器
+### Add MCP Server
 
-为智能体添加 MCP 服务器：
+Add an MCP server to an agent:
 
 ```bash
-# 基本添加
+# Basic add
 viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem /home/user
 
-# 添加带环境变量
+# Add with environment variables
 viben mcp add github --agent my-agent --command npx --args @anthropic-ai/mcp-server-github --env GITHUB_TOKEN=xxx
 
-# 添加到全局配置
+# Add to global configuration
 viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-filesystem
 ```
 
-**输出（人类可读）：**
+**Output (Human-readable):**
 
 ```
 Added MCP server 'filesystem' to agent 'my-agent'
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```bash
 viben mcp add filesystem --agent my-agent --json
@@ -66,33 +66,33 @@ viben mcp add filesystem --agent my-agent --json
 }
 ```
 
-### 移除 MCP 服务器
+### Remove MCP Server
 
-从智能体移除 MCP 服务器：
+Remove an MCP server from an agent:
 
 ```bash
 viben mcp remove filesystem --agent my-agent
 ```
 
-**输出：**
+**Output:**
 
 ```
 Removed MCP server 'filesystem' from agent 'my-agent'
 ```
 
-### 列出 MCP 服务器
+### List MCP Servers
 
-列出智能体的 MCP 服务器：
+List MCP servers for an agent:
 
 ```bash
-# 列出特定智能体的 MCP
+# List MCP servers for a specific agent
 viben mcp list --agent my-agent
 
-# 列出全局 MCP
+# List global MCP servers
 viben mcp list --global
 ```
 
-**输出（人类可读）：**
+**Output (Human-readable):**
 
 ```
 MCP Servers for Agent: my-agent
@@ -102,7 +102,7 @@ MCP Servers for Agent: my-agent
   browser      playwright run                       no
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```bash
 viben mcp list --agent my-agent --json
@@ -131,46 +131,46 @@ viben mcp list --agent my-agent --json
 }
 ```
 
-### 启用 MCP 服务器
+### Enable MCP Server
 
 ```bash
 viben mcp enable filesystem --agent my-agent
 ```
 
-**输出：**
+**Output:**
 
 ```
 Enabled MCP server 'filesystem'
 ```
 
-### 禁用 MCP 服务器
+### Disable MCP Server
 
 ```bash
 viben mcp disable browser --agent my-agent
 ```
 
-**输出：**
+**Output:**
 
 ```
 Disabled MCP server 'browser'
 ```
 
-### 配置 MCP 服务器
+### Configure MCP Server
 
-查看或修改 MCP 服务器配置：
+View or modify MCP server configuration:
 
 ```bash
-# 查看配置
+# View configuration
 viben mcp config filesystem --agent my-agent
 
-# 设置配置值
+# Set configuration value
 viben mcp config filesystem --agent my-agent set root /path/to/dir
 
-# 设置环境变量
+# Set environment variable
 viben mcp config filesystem --agent my-agent set env.ROOT /path/to/workspace
 ```
 
-**输出（查看）：**
+**Output (View):**
 
 ```
 MCP Configuration: filesystem
@@ -185,11 +185,11 @@ env:
 enabled: true
 ```
 
-## MCP 服务器配置文件
+## MCP Server Configuration File
 
-MCP 服务器配置存储在智能体目录中：
+MCP server configurations are stored in the agent directory:
 
-### JSON 格式 (mcp_servers.json)
+### JSON Format (mcp_servers.json)
 
 ```json
 {
@@ -216,38 +216,38 @@ MCP 服务器配置存储在智能体目录中：
 }
 ```
 
-## 作用域
+## Scopes
 
-MCP 服务器可以在不同作用域配置：
+MCP servers can be configured at different scopes:
 
-| 位置 | 说明 |
-|------|------|
-| `~/.viben/agents/<id>/mcp_servers.json` | 智能体特定配置 |
-| `~/.viben/mcp/` | 全局共享 MCP 服务器 |
-| `<project>/.viben/mcp/` | 工作区特定 MCP 服务器 |
+| Location | Description |
+|----------|-------------|
+| `~/.viben/agents/<id>/mcp_servers.json` | Agent-specific configuration |
+| `~/.viben/mcp/` | Global shared MCP servers |
+| `<project>/.viben/mcp/` | Workspace-specific MCP servers |
 
 ```bash
-# 添加到智能体
+# Add to agent
 viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem
 
-# 添加到全局
+# Add to global
 viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-filesystem
 ```
 
-## 常用 MCP 服务器
+## Common MCP Servers
 
-| 名称 | 包名 | 说明 |
-|------|------|------|
-| filesystem | `@anthropic-ai/mcp-server-filesystem` | 本地文件系统访问 |
-| git | `@anthropic-ai/mcp-server-git` | Git 操作 |
+| Name | Package | Description |
+|------|---------|-------------|
+| filesystem | `@anthropic-ai/mcp-server-filesystem` | Local filesystem access |
+| git | `@anthropic-ai/mcp-server-git` | Git operations |
 | github | `@modelcontextprotocol/server-github` | GitHub API |
-| postgres | `@modelcontextprotocol/server-postgres` | PostgreSQL 数据库 |
-| sqlite | `@modelcontextprotocol/server-sqlite` | SQLite 数据库 |
-| puppeteer | `@modelcontextprotocol/server-puppeteer` | 浏览器自动化 |
+| postgres | `@modelcontextprotocol/server-postgres` | PostgreSQL database |
+| sqlite | `@modelcontextprotocol/server-sqlite` | SQLite database |
+| puppeteer | `@modelcontextprotocol/server-puppeteer` | Browser automation |
 
-## 错误处理
+## Error Handling
 
-### MCP 未找到
+### MCP Not Found
 
 ```json
 {
@@ -259,7 +259,7 @@ viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-
 }
 ```
 
-### 已存在
+### Already Exists
 
 ```json
 {
@@ -271,7 +271,7 @@ viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-
 }
 ```
 
-### 智能体未找到
+### Agent Not Found
 
 ```json
 {
@@ -283,8 +283,8 @@ viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben service](./service) - 服务管理
-- [viben config](./config) - 配置管理
-- [viben agent](./agent) - 智能体管理
+- [viben service](./service) - Service management
+- [viben config](./config) - Configuration management
+- [viben agent](./agent) - Agent management

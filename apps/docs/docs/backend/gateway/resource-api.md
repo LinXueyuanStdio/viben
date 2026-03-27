@@ -4,70 +4,70 @@ title: "Resource API"
 description: "Workspace resource discovery API"
 ---
 
-# 资源发现 API
+# Resource Discovery API
 
-> `/api/agent`, `/api/executors`, `/api/models` - 工作空间资源发现端点
+> `/api/agent`, `/api/executors`, `/api/models` - Workspace resource discovery endpoints
 
-## 概述
+## Overview
 
-Viben Gateway 提供工作空间范围内的资源发现 API，用于查询智能体、执行器、模型等资源。支持工作空间层级的资源合并和覆盖机制。
+Viben Gateway provides workspace-scoped resource discovery APIs for querying agents, executors, models, and other resources. It supports workspace-level resource merging and override mechanisms.
 
-## 核心概念
+## Core Concepts
 
-### 工作空间层级
+### Workspace Hierarchy
 
 ```
-~/.viben/              <- 全局工作空间 (Global Workspace)
-├── agents/            <- 全局智能体
-├── executors/         <- 全局执行器配置
-└── models.yaml        <- 全局模型配置
+~/.viben/              <- Global Workspace
+├── agents/            <- Global agents
+├── executors/         <- Global executor configuration
+└── models.yaml        <- Global model configuration
 
-/path/to/project/      <- 项目工作空间 (Project Workspace)
+/path/to/project/      <- Project Workspace
 ├── .viben/
-│   ├── agents/        <- 项目智能体
-│   └── models.yaml    <- 项目模型覆盖
-├── .claude/           <- Claude Code 配置
-├── .cursor/           <- Cursor 配置
+│   ├── agents/        <- Project agents
+│   └── models.yaml    <- Project model overrides
+├── .claude/           <- Claude Code configuration
+├── .cursor/           <- Cursor configuration
 └── ...
 ```
 
-### 默认行为
+### Default Behavior
 
-- **workspace_path**: 不传时默认为用户目录 `~` 的绝对路径（即全局工作空间）
-- **include_global**: 不传时默认为 `true`，返回结果包含全局工作空间的资源
+- **workspace_path**: Defaults to the absolute path of user directory `~` (global workspace) when not provided
+- **include_global**: Defaults to `true` when not provided, returns results including global workspace resources
 
-### 资源归属标识
+### Resource Ownership Identifier
 
-每个资源包含 `workspace_path` 字段，标识该资源属于哪个工作空间：
-- `"/Users/xxx"` - 全局资源
-- `"/path/to/project"` - 项目资源
-
----
-
-## 端点列表
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent` | 获取智能体列表 |
-| GET | `/api/executors` | 获取执行器列表 |
-| GET | `/api/models` | 获取模型列表 |
+Each resource contains a `workspace_path` field indicating which workspace it belongs to:
+- `"/Users/xxx"` - Global resource
+- `"/path/to/project"` - Project resource
 
 ---
 
-## 详细说明
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent` | Get agent list |
+| GET | `/api/executors` | Get executor list |
+| GET | `/api/models` | Get model list |
+
+---
+
+## Detailed Description
 
 ### GET /api/agent
 
-获取智能体列表。
+Get agent list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径 |
-| include_global | boolean | true | 是否包含全局智能体 |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| workspace_path | string | `~` absolute path | Workspace path |
+| include_global | boolean | true | Whether to include global agents |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -108,33 +108,33 @@ Viben Gateway 提供工作空间范围内的资源发现 API，用于查询智�
 }
 ```
 
-**智能体字段说明**:
+**Agent Field Description**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 智能体 ID |
-| name | string | 显示名称 |
-| agent_type | string | 类型 (viben/claude_code/cursor) |
-| source | string | 来源 (workspace/global) |
-| workspace_path | string | 所属工作空间路径 |
-| config_path | string | 配置文件路径 |
-| mcp_server_count | number | MCP 服务器数量 |
-| skill_count | number | 技能数量 |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Agent ID |
+| name | string | Display name |
+| agent_type | string | Type (viben/claude_code/cursor) |
+| source | string | Source (workspace/global) |
+| workspace_path | string | Workspace path |
+| config_path | string | Configuration file path |
+| mcp_server_count | number | MCP server count |
+| skill_count | number | Skill count |
 
 ---
 
 ### GET /api/executors
 
-获取执行器列表。
+Get executor list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径 |
-| include_global | boolean | true | 是否包含全局执行器 |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| workspace_path | string | `~` absolute path | Workspace path |
+| include_global | boolean | true | Whether to include global executors |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -170,42 +170,42 @@ Viben Gateway 提供工作空间范围内的资源发现 API，用于查询智�
 }
 ```
 
-**执行器字段说明**:
+**Executor Field Description**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 执行器 ID |
-| name | string | 显示名称 |
-| availability | object | 可用性状态 |
-| supports_mcp | boolean | 是否支持 MCP |
-| capabilities | string[] | 能力列表 |
-| has_workspace_config | boolean | 是否有工作空间配置 |
-| workspace_path | string | 所属工作空间路径 |
-| workspace_config_path | string | 工作空间配置路径 |
-| global_config_path | string | 全局配置路径 |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Executor ID |
+| name | string | Display name |
+| availability | object | Availability status |
+| supports_mcp | boolean | Whether MCP is supported |
+| capabilities | string[] | Capability list |
+| has_workspace_config | boolean | Whether workspace config exists |
+| workspace_path | string | Workspace path |
+| workspace_config_path | string | Workspace configuration path |
+| global_config_path | string | Global configuration path |
 
-**可用性类型**:
+**Availability Types**:
 
-| 类型 | 说明 |
-|------|------|
-| LOGIN_DETECTED | 已登录 |
-| INSTALLATION_FOUND | 已安装但未登录 |
-| NOT_INSTALLED | 未安装 |
+| Type | Description |
+|------|-------------|
+| LOGIN_DETECTED | Logged in |
+| INSTALLATION_FOUND | Installed but not logged in |
+| NOT_INSTALLED | Not installed |
 
 ---
 
 ### GET /api/models
 
-获取模型列表。
+Get model list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| workspace_path | string | `~` 绝对路径 | 工作空间路径 |
-| include_global | boolean | true | 是否包含全局模型 |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| workspace_path | string | `~` absolute path | Workspace path |
+| include_global | boolean | true | Whether to include global models |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -226,52 +226,52 @@ Viben Gateway 提供工作空间范围内的资源发现 API，用于查询智�
 }
 ```
 
-**模型字段说明**:
+**Model Field Description**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 模型 ID |
-| name | string | 显示名称 |
-| provider_id | string | 提供商 ID |
-| provider_name | string | 提供商名称 |
-| context_window | number | 上下文窗口大小 |
-| is_available | boolean | 是否可用 |
-| has_workspace_override | boolean | 是否有工作空间覆盖配置 |
-| workspace_path | string | 所属工作空间路径 |
-
----
-
-## 资源合并规则
-
-### 智能体 (Agents)
-
-当 `include_global=true` 时：
-1. 先加载项目工作空间的智能体
-2. 再加载全局工作空间的智能体
-3. **同名智能体**: 项目智能体优先，跳过全局同名智能体
-4. 每个智能体的 `source` 字段标识来源：`"workspace"` 或 `"global"`
-5. 每个智能体的 `workspace_path` 字段标识其所属工作空间
-
-### 执行器 (Executors)
-
-当 `include_global=true` 时：
-1. 遍历所有已知执行器类型
-2. 检查项目工作空间和全局工作空间的配置
-3. **同名执行器配置合并**:
-   - `workspace_config_path`: 项目级配置路径
-   - `global_config_path`: 全局配置路径
-   - 编辑时优先修改项目级配置
-
-### 模型 (Models)
-
-当 `include_global=true` 时：
-1. 加载全局模型列表
-2. 检查项目工作空间是否有覆盖配置
-3. `has_workspace_override` 标识是否有项目级覆盖
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Model ID |
+| name | string | Display name |
+| provider_id | string | Provider ID |
+| provider_name | string | Provider name |
+| context_window | number | Context window size |
+| is_available | boolean | Whether available |
+| has_workspace_override | boolean | Whether workspace override exists |
+| workspace_path | string | Workspace path |
 
 ---
 
-## 错误响应
+## Resource Merging Rules
+
+### Agents
+
+When `include_global=true`:
+1. Load project workspace agents first
+2. Then load global workspace agents
+3. **Same-name agents**: Project agents take priority, global agents with same name are skipped
+4. Each agent's `source` field indicates origin: `"workspace"` or `"global"`
+5. Each agent's `workspace_path` field indicates its workspace
+
+### Executors
+
+When `include_global=true`:
+1. Iterate through all known executor types
+2. Check project workspace and global workspace configurations
+3. **Same-name executor configuration merging**:
+   - `workspace_config_path`: Project-level configuration path
+   - `global_config_path`: Global configuration path
+   - Prioritize modifying project-level configuration when editing
+
+### Models
+
+When `include_global=true`:
+1. Load global model list
+2. Check if project workspace has override configuration
+3. `has_workspace_override` indicates whether project-level override exists
+
+---
+
+## Error Response
 
 ```json
 {
@@ -280,22 +280,22 @@ Viben Gateway 提供工作空间范围内的资源发现 API，用于查询智�
 }
 ```
 
-HTTP 状态码：
-- `400` - 无效的 workspace_path 或路径不存在
-- `500` - 内部错误
+HTTP Status Codes:
+- `400` - Invalid workspace_path or path does not exist
+- `500` - Internal error
 
 ---
 
-## 注意事项
+## Notes
 
-1. **workspace_path 必须是绝对路径**
-2. **不存在的路径返回 400 错误**
-3. **全局工作空间** 指用户目录 `~`，不是 `~/.viben`
-4. **IDE 配置** (如 `.claude/`, `.cursor/`) 总是属于发现它们的工作空间
+1. **workspace_path must be an absolute path**
+2. **Non-existent path returns 400 error**
+3. **Global workspace** refers to user directory `~`, not `~/.viben`
+4. **IDE configurations** (e.g., `.claude/`, `.cursor/`) always belong to the workspace where they are discovered
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [智能体 API](./agents.md) - 智能体管理
-- [任务 API](./task.md) - 任务管理
+- [Agent API](./agents.md) - Agent management
+- [Task API](./task.md) - Task management

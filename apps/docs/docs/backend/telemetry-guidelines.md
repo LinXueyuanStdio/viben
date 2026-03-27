@@ -6,36 +6,36 @@ description: "OpenTelemetry-based observability implementation guide for Viben"
 
 # Telemetry Guidelines (OpenTelemetry)
 
-> Viben 可观测性实现指南，基于 OpenTelemetry 标准
+> Viben observability implementation guide based on OpenTelemetry standards
 
-## 概述
+## Overview
 
-Viben 使用 OpenTelemetry 实现可观测性三大支柱：
+Viben uses OpenTelemetry to implement the three pillars of observability:
 
-| 支柱 | 实现状态 | 存储格式 |
-|------|---------|---------|
-| **Traces** | 完整 | JSONL 文件 (按 traceId 分目录) |
-| **Metrics** | 基础 | JSONL 文件 (按日期) |
-| **Logs** | 完整 | Pino + JSONL 文件 (按日期) |
+| Pillar | Implementation Status | Storage Format |
+|--------|----------------------|----------------|
+| **Traces** | Complete | JSONL files (by traceId directory) |
+| **Metrics** | Basic | JSONL files (by date) |
+| **Logs** | Complete | Pino + JSONL files (by date) |
 
 ---
 
-## 核心架构
+## Core Architecture
 
-### 数据存储结构
+### Data Storage Structure
 
 ```
 ~/.viben/telemetry/
 ├── traces/
 │   └── YYYY-MM-DD/
-│       └── {traceId}.jsonl      # 每个 trace 一个文件
+│       └── {traceId}.jsonl      # One file per trace
 ├── metrics/
-│   └── YYYY-MM-DD.jsonl         # 按日期聚合
+│   └── YYYY-MM-DD.jsonl         # Aggregated by date
 └── logs/
-    └── YYYY-MM-DD.jsonl         # 按日期聚合
+    └── YYYY-MM-DD.jsonl         # Aggregated by date
 ```
 
-### 依赖包
+### Dependencies
 
 ```json
 {
@@ -51,32 +51,32 @@ Viben 使用 OpenTelemetry 实现可观测性三大支柱：
 
 ---
 
-## Tracing 指南
+## Tracing Guide
 
-### 1. 获取 Tracer
+### 1. Get Tracer
 
 ```typescript
 import { trace } from "@viben/core/telemetry";
 
-// 创建命名 tracer（模块级别，在文件顶部）
+// Create named tracer (module level, at top of file)
 const tracer = trace.getTracer("viben-gateway", "1.0.0");
 ```
 
-**命名约定**：
+**Naming Conventions**:
 
-| Tracer 名称 | 用途 |
-|------------|------|
-| `viben-gateway` | Gateway API 路由 |
-| `viben-gateway-ws` | WebSocket 路由 |
-| `viben-cron` | Cron 服务 |
+| Tracer Name | Purpose |
+|-------------|---------|
+| `viben-gateway` | Gateway API routes |
+| `viben-gateway-ws` | WebSocket routes |
+| `viben-cron` | Cron service |
 
-### 2. 创建 Span
+### 2. Create Span
 
 ```typescript
 import { trace, SpanStatusCode, context } from "@viben/core/telemetry";
 import { getSpanName } from "@viben/core/telemetry/route-names";
 
-// 创建顶级 span
+// Create top-level span
 const span = tracer.startSpan(getSpanName("agent.run"), {
   attributes: {
     "agent.name": agentName,
@@ -84,7 +84,7 @@ const span = tracer.startSpan(getSpanName("agent.run"), {
   },
 });
 
-// 创建子 span（使用父 context）
+// Create child span (using parent context)
 const parentContext = trace.setSpan(context.active(), parentSpan);
 const childSpan = tracer.startSpan(
   getSpanName("agent.run.stream"),
@@ -93,74 +93,74 @@ const childSpan = tracer.startSpan(
 );
 ```
 
-### 3. Span 命名规范
+### 3. Span Naming Conventions
 
-使用 `getSpanName()` 获取中文显示名称：
+Use `getSpanName()` to get display names:
 
 ```typescript
 import { getSpanName } from "@viben/core/telemetry/route-names";
 
-// 获取显示名称（支持中文）
-getSpanName("agent.run");           // -> "执行智能体"
-getSpanName("tool.Read");           // -> "工具: Read"
-getSpanName("cron.execute");        // -> "执行定时任务"
+// Get display names
+getSpanName("agent.run");           // -> "Execute Agent"
+getSpanName("tool.Read");           // -> "Tool: Read"
+getSpanName("cron.execute");        // -> "Execute Cron Job"
 ```
 
-**已定义的 Span 名称**：
+**Defined Span Names**:
 
-| 原始名称 | 中文显示名称 |
-|---------|-------------|
-| `agent.run` | 执行智能体 |
-| `agent.run.session_create` | 创建会话 |
-| `agent.run.sdk_init` | 初始化 SDK |
-| `agent.run.stream` | 流式响应 |
-| `tool_use` | 工具调用 |
-| `tool_result` | 工具结果 |
-| `cron.execute` | 执行定时任务 |
-| `ws.session` | WebSocket 会话 |
-| `ws.message.receive` | 接收 WebSocket 消息 |
+| Original Name | Display Name |
+|---------------|--------------|
+| `agent.run` | Execute Agent |
+| `agent.run.session_create` | Create Session |
+| `agent.run.sdk_init` | Initialize SDK |
+| `agent.run.stream` | Stream Response |
+| `tool_use` | Tool Use |
+| `tool_result` | Tool Result |
+| `cron.execute` | Execute Cron Job |
+| `ws.session` | WebSocket Session |
+| `ws.message.receive` | Receive WebSocket Message |
 
-### 4. 添加属性和事件
+### 4. Add Attributes and Events
 
 ```typescript
-// 设置属性
+// Set attributes
 span.setAttributes({
   "agent.status": "completed",
   "agent.message_count": messageCount,
   "http.request.body": JSON.stringify(requestBody),
 });
 
-// 添加事件
+// Add events
 span.addEvent("sse.text", {
   "sse.message_index": index,
   "sse.type": "text",
-  "sse.payload": content.slice(0, 4000), // 截断大 payload
+  "sse.payload": content.slice(0, 4000), // Truncate large payloads
 });
 ```
 
-### 5. 设置状态和结束
+### 5. Set Status and End
 
 ```typescript
-// 成功
+// Success
 span.setStatus({ code: SpanStatusCode.OK });
 
-// 错误
+// Error
 span.setStatus({
   code: SpanStatusCode.ERROR,
   message: error.message,
 });
 span.recordException(error);
 
-// 必须调用 end()
+// Must call end()
 span.end();
 ```
 
-### 6. 工具调用的 Span 模式
+### 6. Tool Call Span Pattern
 
-工具调用需要配对 `tool_use` 和 `tool_result`：
+Tool calls require pairing `tool_use` and `tool_result`:
 
 ```typescript
-// tool_use 时创建 span
+// Create span on tool_use
 const toolSpan = tracer.startSpan(
   getSpanName(`tool.${toolName}`),
   {
@@ -174,7 +174,7 @@ const toolSpan = tracer.startSpan(
 );
 pendingToolSpans.set(toolId, toolSpan);
 
-// tool_result 时结束 span
+// End span on tool_result
 const toolSpan = pendingToolSpans.get(toolUseId);
 if (toolSpan) {
   toolSpan.setAttributes({
@@ -191,46 +191,46 @@ if (toolSpan) {
 
 ---
 
-## Metrics 指南
+## Metrics Guide
 
-### 已实现的 Metrics
+### Implemented Metrics
 
 #### Agent Metrics
 
-| 指标名称 | 类型 | Labels | 说明 |
-|---------|------|--------|------|
-| `viben_agent_requests_total` | Counter | agent_name, status, error_category | Agent 请求总数 |
-| `viben_agent_duration_seconds` | Histogram | agent_name, status | Agent 执行时长 |
-| `viben_agent_tool_calls_total` | Counter | agent_name, tool_name, status | 工具调用次数 |
-| `viben_agent_text_chars_total` | Counter | agent_name | 文本响应字符数 |
-| `viben_agent_messages_total` | Counter | agent_name, message_type | SSE 消息数量 |
-| `viben_agent_active_sessions` | Gauge | - | 当前活跃会话数 |
+| Metric Name | Type | Labels | Description |
+|-------------|------|--------|-------------|
+| `viben_agent_requests_total` | Counter | agent_name, status, error_category | Total agent requests |
+| `viben_agent_duration_seconds` | Histogram | agent_name, status | Agent execution duration |
+| `viben_agent_tool_calls_total` | Counter | agent_name, tool_name, status | Tool call count |
+| `viben_agent_text_chars_total` | Counter | agent_name | Text response character count |
+| `viben_agent_messages_total` | Counter | agent_name, message_type | SSE message count |
+| `viben_agent_active_sessions` | Gauge | - | Current active sessions |
 
 #### Cron Metrics
 
-| 指标名称 | 类型 | Labels | 说明 |
-|---------|------|--------|------|
-| `viben_cron_executions_total` | Counter | job_id, job_name, job_type, status, trigger | Cron 执行次数 |
-| `viben_cron_duration_seconds` | Histogram | job_id, job_name, job_type | Cron 执行时长 |
-| `viben_cron_jobs_total` | Gauge | enabled, job_type | Cron 作业总数 |
+| Metric Name | Type | Labels | Description |
+|-------------|------|--------|-------------|
+| `viben_cron_executions_total` | Counter | job_id, job_name, job_type, status, trigger | Cron execution count |
+| `viben_cron_duration_seconds` | Histogram | job_id, job_name, job_type | Cron execution duration |
+| `viben_cron_jobs_total` | Gauge | enabled, job_type | Total cron jobs |
 
 #### WebSocket Metrics
 
-| 指标名称 | 类型 | Labels | 说明 |
-|---------|------|--------|------|
-| `viben_ws_connections_total` | Counter | - | WebSocket 连接总数 |
-| `viben_ws_disconnects_total` | Counter | reason | WebSocket 断开总数 |
-| `viben_ws_messages_total` | Counter | direction, message_type | WebSocket 消息数量 |
-| `viben_ws_active_connections` | Gauge | - | 当前活跃连接数 |
+| Metric Name | Type | Labels | Description |
+|-------------|------|--------|-------------|
+| `viben_ws_connections_total` | Counter | - | Total WebSocket connections |
+| `viben_ws_disconnects_total` | Counter | reason | Total WebSocket disconnections |
+| `viben_ws_messages_total` | Counter | direction, message_type | WebSocket message count |
+| `viben_ws_active_connections` | Gauge | - | Current active connections |
 
-### 使用 Helper 函数
+### Using Helper Functions
 
-推荐使用预定义的 helper 函数记录 metrics：
+Recommended to use predefined helper functions for recording metrics:
 
 ```typescript
 import { recordAgentRequest, recordAgentToolCall, recordCronExecution } from "@viben/core/telemetry";
 
-// 记录 Agent 请求完成
+// Record agent request completion
 recordAgentRequest({
   agentName: "my-agent",
   status: "success",  // "success" | "error" | "cancelled"
@@ -241,14 +241,14 @@ recordAgentRequest({
   messageCount: 10,
 });
 
-// 记录工具调用
+// Record tool call
 recordAgentToolCall({
   agentName: "my-agent",
   toolName: "Read",
   status: "success",  // "success" | "error"
 });
 
-// 记录 Cron 执行
+// Record cron execution
 recordCronExecution({
   jobId: "job-123",
   jobName: "Daily Report",
@@ -261,39 +261,39 @@ recordCronExecution({
 
 ---
 
-## Logging 指南
+## Logging Guide
 
-### 使用 Pino Logger
+### Using Pino Logger
 
 ```typescript
 import { createLogger, createDualLogger } from "@viben/core/telemetry";
 
-// 创建 logger
+// Create logger
 const logger = process.env.NODE_ENV === "production"
   ? createLogger(config)
-  : createDualLogger(config);  // 同时输出到文件和控制台
+  : createDualLogger(config);  // Output to both file and console
 
-// 使用
+// Usage
 logger.info({ userId, action }, "User performed action");
 logger.error({ error: err.message, stack: err.stack }, "Operation failed");
 ```
 
-### 日志级别
+### Log Levels
 
-| 级别 | 用途 |
-|------|------|
-| `trace` | 非常详细的调试信息 |
-| `debug` | 调试信息（开发环境）|
-| `info` | 一般信息（生产环境默认）|
-| `warn` | 警告信息 |
-| `error` | 错误信息 |
-| `fatal` | 致命错误 |
+| Level | Purpose |
+|-------|---------|
+| `trace` | Very detailed debug information |
+| `debug` | Debug information (development) |
+| `info` | General information (production default) |
+| `warn` | Warning messages |
+| `error` | Error messages |
+| `fatal` | Fatal errors |
 
 ---
 
-## 初始化 Telemetry
+## Initializing Telemetry
 
-### Gateway 中的初始化
+### Initialization in Gateway
 
 ```typescript
 import { initTelemetry, getDefaultTelemetryDir } from "@viben/core/telemetry";
@@ -313,7 +313,7 @@ const telemetry = initTelemetry({
   retentionDays: 7,
 });
 
-// 关闭时清理
+// Cleanup on shutdown
 process.on("SIGTERM", async () => {
   await telemetry.shutdown();
 });
@@ -321,9 +321,9 @@ process.on("SIGTERM", async () => {
 
 ---
 
-## 常见模式
+## Common Patterns
 
-### Pattern 1: 路由级 Tracing
+### Pattern 1: Route-Level Tracing
 
 ```typescript
 fastify.post("/api/resource", async (request, reply) => {
@@ -347,19 +347,19 @@ fastify.post("/api/resource", async (request, reply) => {
 });
 ```
 
-### Pattern 2: 嵌套 Span
+### Pattern 2: Nested Spans
 
 ```typescript
 const parentSpan = tracer.startSpan("parent.operation");
 const parentContext = trace.setSpan(context.active(), parentSpan);
 
 try {
-  // 子操作 1
+  // Child operation 1
   const childSpan1 = tracer.startSpan("child.step1", {}, parentContext);
   await step1();
   childSpan1.end();
 
-  // 子操作 2
+  // Child operation 2
   const childSpan2 = tracer.startSpan("child.step2", {}, parentContext);
   await step2();
   childSpan2.end();
@@ -370,15 +370,15 @@ try {
 }
 ```
 
-### Pattern 3: SSE/流式 Tracing
+### Pattern 3: SSE/Streaming Tracing
 
 ```typescript
-// 创建流 span
+// Create stream span
 const streamSpan = tracer.startSpan("stream", {}, parentContext);
 const streamContext = trace.setSpan(context.active(), streamSpan);
 
 for await (const message of stream) {
-  // 记录每个事件
+  // Record each event
   streamSpan.addEvent(`sse.${message.type}`, {
     "sse.payload": JSON.stringify(message).slice(0, 4000),
   });
@@ -392,17 +392,17 @@ streamSpan.end();
 
 ---
 
-## 常见错误
+## Common Mistakes
 
-### Don't: 忘记结束 Span
+### Don't: Forget to End Span
 
 ```typescript
-// Bad - span 永远不会结束
+// Bad - span never ends
 const span = tracer.startSpan("operation");
 await doSomething();
-// 忘记调用 span.end()
+// Forgot to call span.end()
 
-// Good - 使用 try/finally 确保结束
+// Good - use try/finally to ensure ending
 const span = tracer.startSpan("operation");
 try {
   await doSomething();
@@ -411,53 +411,53 @@ try {
 }
 ```
 
-### Don't: 存储过大的属性
+### Don't: Store Oversized Attributes
 
 ```typescript
-// Bad - 存储完整响应
+// Bad - storing full response
 span.setAttribute("response", JSON.stringify(largeResponse));
 
-// Good - 截断大数据
+// Good - truncate large data
 span.setAttribute(
   "response",
   JSON.stringify(response).slice(0, 2000) + "...[truncated]"
 );
 ```
 
-### Don't: 在热路径创建 Tracer
+### Don't: Create Tracer in Hot Path
 
 ```typescript
-// Bad - 每次请求创建 tracer
+// Bad - creating tracer on every request
 fastify.get("/api/data", async () => {
-  const tracer = trace.getTracer("my-tracer"); // 重复创建
+  const tracer = trace.getTracer("my-tracer"); // Repeated creation
   // ...
 });
 
-// Good - 模块级别创建
+// Good - create at module level
 const tracer = trace.getTracer("my-tracer", "1.0.0");
 fastify.get("/api/data", async () => {
-  // 使用已有 tracer
+  // Use existing tracer
 });
 ```
 
 ---
 
-## API 端点
+## API Endpoints
 
-Telemetry 数据可通过 REST API 查询：
+Telemetry data can be queried via REST API:
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/telemetry/dates` | GET | 获取可用日期列表 |
-| `/api/telemetry/traces` | GET | 获取指定日期的 traces |
-| `/api/telemetry/trace/:id` | GET | 获取 trace 详情（树结构）|
-| `/api/telemetry/trace/:id/spans` | GET | 获取原始 spans |
-| `/api/telemetry/clean` | DELETE | 清理旧文件 |
-| `/api/telemetry/stats` | GET | 获取统计信息 |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/telemetry/dates` | GET | Get list of available dates |
+| `/api/telemetry/traces` | GET | Get traces for specified date |
+| `/api/telemetry/trace/:id` | GET | Get trace details (tree structure) |
+| `/api/telemetry/trace/:id/spans` | GET | Get raw spans |
+| `/api/telemetry/clean` | DELETE | Clean old files |
+| `/api/telemetry/stats` | GET | Get statistics |
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [Telemetry API](./gateway/telemetry.md) - REST API 文档
-- [Gateway 架构](./gateway/index.md) - Gateway 概述
+- [Telemetry API](./gateway/telemetry.md) - REST API documentation
+- [Gateway Architecture](./gateway/index.md) - Gateway overview

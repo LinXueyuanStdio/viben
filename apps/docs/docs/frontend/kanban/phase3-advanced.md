@@ -1,12 +1,12 @@
 ---
 sidebar_position: 4
-title: Phase 3 - 高级功能
-description: Kanban 高级功能规格
+title: Phase 3 - Advanced Features
+description: Kanban advanced features specification
 ---
 
-# Kanban Phase 3 - 高级功能规格
+# Kanban Phase 3 - Advanced Features Specification
 
-> 基于 vibe-kanban 的高级功能，适配 Viben Design System
+> Advanced features based on vibe-kanban, adapted for Viben Design System
 
 ---
 
@@ -21,43 +21,43 @@ description: Kanban 高级功能规格
 
 ---
 
-## 功能清单
+## Feature List
 
-### P0 - 核心体验
+### P0 - Core Experience
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F14 | **快速任务创建** | 内联创建、快捷键支持 | KanbanAddCard |
-| F15 | **内联任务编辑** | 双击卡片直接编辑标题 | KanbanCardContent |
-| F16 | **列折叠/展开** | 可折叠列 + WIP 限制显示 | KanbanBoard |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F14 | **Quick Task Creation** | Inline creation, keyboard shortcut support | KanbanAddCard |
+| F15 | **Inline Task Editing** | Double-click card to edit title directly | KanbanCardContent |
+| F16 | **Column Collapse/Expand** | Collapsible columns + WIP limit display | KanbanBoard |
 
-### P1 - 效率增强
+### P1 - Efficiency Enhancement
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F17 | **多排序模式** | 手动/优先级/日期/字母 | KanbanContainer |
-| F18 | **键盘导航** | 方向键导航、快捷操作 | useKanbanKeyboard |
-| F19 | **命令面板** | Cmd+K 快速操作 | CommandPalette |
-| F20 | **拖拽优化** | 拖拽预览、动画优化 | @hello-pangea/dnd |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F17 | **Multiple Sort Modes** | Manual/priority/date/alphabetical | KanbanContainer |
+| F18 | **Keyboard Navigation** | Arrow key navigation, quick actions | useKanbanKeyboard |
+| F19 | **Command Palette** | Cmd+K quick actions | CommandPalette |
+| F20 | **Drag Optimization** | Drag preview, animation optimization | @hello-pangea/dnd |
 
-### P2 - 数据洞察
+### P2 - Data Insights
 
-| # | 功能 | 描述 | vibe-kanban 参考 |
-|---|------|------|-----------------|
-| F21 | **统计面板** | 任务数、完成率、趋势 | StatsPanel |
-| F22 | **活动时间线** | 任务变更历史 | ActivityFeed |
-| F23 | **看板配置** | 列配置、显隐、颜色 | BoardSettings |
+| # | Feature | Description | vibe-kanban Reference |
+|---|---------|-------------|----------------------|
+| F21 | **Stats Panel** | Task count, completion rate, trends | StatsPanel |
+| F22 | **Activity Timeline** | Task change history | ActivityFeed |
+| F23 | **Board Configuration** | Column config, visibility, colors | BoardSettings |
 
 ---
 
-## F14: 快速任务创建
+## F14: Quick Task Creation
 
-### 功能描述
-在列底部或通过快捷键快速创建任务。
+### Feature Description
+Quickly create tasks at the bottom of columns or via keyboard shortcuts.
 
-### 组件设计
+### Component Design
 
-**QuickTaskInput** - 快速输入组件:
+**QuickTaskInput** - Quick input component:
 
 ```tsx
 interface QuickTaskInputProps {
@@ -87,7 +87,7 @@ export function QuickTaskInput({ columnId, onSubmit, placeholder, autoFocus, cla
         onClick={() => setIsOpen(true)}
       >
         <Plus className="h-4 w-4 mr-2" />
-        添加任务
+        Add Task
       </Button>
     );
   }
@@ -97,7 +97,7 @@ export function QuickTaskInput({ columnId, onSubmit, placeholder, autoFocus, cla
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder || "输入任务标题..."}
+        placeholder={placeholder || "Enter task title..."}
         autoFocus={autoFocus}
         onKeyDown={(e) => {
           if (e.key === "Enter") handleSubmit();
@@ -108,28 +108,28 @@ export function QuickTaskInput({ columnId, onSubmit, placeholder, autoFocus, cla
         }}
       />
       <div className="flex gap-2 mt-2">
-        <Button size="sm" onClick={handleSubmit}>添加</Button>
-        <Button size="sm" variant="ghost" onClick={() => setIsOpen(false)}>取消</Button>
+        <Button size="sm" onClick={handleSubmit}>Add</Button>
+        <Button size="sm" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
       </div>
     </div>
   );
 }
 ```
 
-### 快捷键
-- `n` - 在当前列创建任务
-- `Shift+N` - 打开详细创建对话框
+### Keyboard Shortcuts
+- `n` - Create task in current column
+- `Shift+N` - Open detailed creation dialog
 
 ---
 
-## F15: 内联任务编辑
+## F15: Inline Task Editing
 
-### 功能描述
-双击卡片标题直接编辑，无需打开详情面板。
+### Feature Description
+Double-click card title to edit directly without opening the detail panel.
 
-### 组件设计
+### Component Design
 
-**EditableCardTitle** - 可编辑卡片标题:
+**EditableCardTitle** - Editable card title:
 
 ```tsx
 interface EditableCardTitleProps {
@@ -164,7 +164,7 @@ export function EditableCardTitle({ value, onChange, className }: EditableCardTi
         }}
         autoFocus
         className={cn("h-auto py-0 px-1 text-sm", className)}
-        onClick={(e) => e.stopPropagation()} // 阻止冒泡到卡片点击
+        onClick={(e) => e.stopPropagation()} // Prevent bubbling to card click
       />
     );
   }
@@ -185,16 +185,16 @@ export function EditableCardTitle({ value, onChange, className }: EditableCardTi
 
 ---
 
-## F16: 列折叠/展开
+## F16: Column Collapse/Expand
 
-### 功能描述
-- 可折叠整列节省空间
-- 折叠时显示任务数量
-- 支持 WIP (Work In Progress) 限制
+### Feature Description
+- Collapse entire column to save space
+- Show task count when collapsed
+- Support WIP (Work In Progress) limits
 
-### 组件设计
+### Component Design
 
-**CollapsibleColumn** - 可折叠列:
+**CollapsibleColumn** - Collapsible column:
 
 ```tsx
 interface CollapsibleColumnProps {
@@ -268,7 +268,7 @@ export function CollapsibleColumn({
 }
 ```
 
-### CSS 支持
+### CSS Support
 
 ```css
 .writing-mode-vertical {
@@ -279,27 +279,27 @@ export function CollapsibleColumn({
 
 ---
 
-## F17: 多排序模式
+## F17: Multiple Sort Modes
 
-### 功能描述
-支持多种排序方式，可保存用户偏好。
+### Feature Description
+Support multiple sorting methods, can save user preferences.
 
-### 排序选项
+### Sort Options
 
 ```typescript
 export type SortMode = "manual" | "priority" | "dueDate" | "createdAt" | "updatedAt" | "title";
 
 export const SORT_OPTIONS: Array<{ value: SortMode; label: string; icon: string }> = [
-  { value: "manual", label: "手动排序", icon: "GripVertical" },
-  { value: "priority", label: "按优先级", icon: "Signal" },
-  { value: "dueDate", label: "按截止日期", icon: "Calendar" },
-  { value: "createdAt", label: "按创建时间", icon: "Clock" },
-  { value: "updatedAt", label: "按更新时间", icon: "RefreshCw" },
-  { value: "title", label: "按标题", icon: "ArrowDownAZ" },
+  { value: "manual", label: "Manual Sort", icon: "GripVertical" },
+  { value: "priority", label: "By Priority", icon: "Signal" },
+  { value: "dueDate", label: "By Due Date", icon: "Calendar" },
+  { value: "createdAt", label: "By Created Time", icon: "Clock" },
+  { value: "updatedAt", label: "By Updated Time", icon: "RefreshCw" },
+  { value: "title", label: "By Title", icon: "ArrowDownAZ" },
 ];
 ```
 
-### 组件设计
+### Component Design
 
 **SortModeSelect**:
 
@@ -313,23 +313,23 @@ interface SortModeSelectProps {
 
 ---
 
-## F18: 键盘导航
+## F18: Keyboard Navigation
 
-### 快捷键设计
+### Keyboard Shortcut Design
 
-| 快捷键 | 功能 |
-|--------|------|
-| `↑/↓` | 在列内导航任务 |
-| `←/→` | 切换列 |
-| `Enter` | 打开任务详情 |
-| `Space` | 切换选中 |
-| `n` | 新建任务 |
-| `e` | 编辑当前任务 |
-| `d` | 删除当前任务 |
-| `1-5` | 设置优先级 |
-| `Esc` | 取消选中/关闭面板 |
+| Shortcut | Function |
+|----------|----------|
+| `↑/↓` | Navigate tasks within column |
+| `←/→` | Switch columns |
+| `Enter` | Open task details |
+| `Space` | Toggle selection |
+| `n` | Create new task |
+| `e` | Edit current task |
+| `d` | Delete current task |
+| `1-5` | Set priority |
+| `Esc` | Cancel selection/close panel |
 
-### Hook 设计
+### Hook Design
 
 ```typescript
 interface UseKanbanKeyboardOptions {
@@ -343,25 +343,25 @@ interface UseKanbanKeyboardOptions {
 }
 
 export function useKanbanKeyboard(options: UseKanbanKeyboardOptions) {
-  // 实现键盘导航逻辑
+  // Implement keyboard navigation logic
 }
 ```
 
 ---
 
-## F19: 命令面板
+## F19: Command Palette
 
-### 功能描述
-Cmd+K 打开命令面板，快速执行操作。
+### Feature Description
+Cmd+K opens command palette for quick actions.
 
-### 命令分类
+### Command Categories
 
-1. **导航命令**: 跳转到任务、跳转到列
-2. **操作命令**: 创建任务、批量操作
-3. **视图命令**: 切换视图、筛选
-4. **设置命令**: 打开设置、帮助
+1. **Navigation Commands**: Jump to task, jump to column
+2. **Action Commands**: Create task, bulk operations
+3. **View Commands**: Switch view, filter
+4. **Settings Commands**: Open settings, help
 
-### 组件设计
+### Component Design
 
 **CommandPalette**:
 
@@ -384,12 +384,12 @@ interface CommandPaletteProps {
 
 ---
 
-## F21: 统计面板
+## F21: Stats Panel
 
-### 功能描述
-显示看板统计信息。
+### Feature Description
+Display kanban statistics.
 
-### 统计指标
+### Statistics Metrics
 
 ```typescript
 interface KanbanStats {
@@ -404,7 +404,7 @@ interface KanbanStats {
 }
 ```
 
-### 组件设计
+### Component Design
 
 **StatsPanel** / **StatCard**:
 
@@ -425,55 +425,55 @@ interface StatCardProps {
 
 ---
 
-## 实现顺序
+## Implementation Order
 
-### Phase 3A (并行)
+### Phase 3A (Parallel)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T14 | 快速任务创建 | 无 |
-| T15 | 内联任务编辑 | 无 |
-| T16 | 列折叠/展开 | 无 |
-| T17 | 多排序模式 | 无 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T14 | Quick Task Creation | None |
+| T15 | Inline Task Editing | None |
+| T16 | Column Collapse/Expand | None |
+| T17 | Multiple Sort Modes | None |
 
-### Phase 3B (并行，依赖 3A)
+### Phase 3B (Parallel, depends on 3A)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T18 | 键盘导航 | T14, T15 |
-| T19 | 命令面板 | 无 |
-| T20 | 拖拽优化 | T16 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T18 | Keyboard Navigation | T14, T15 |
+| T19 | Command Palette | None |
+| T20 | Drag Optimization | T16 |
 
-### Phase 3C (依赖 3B)
+### Phase 3C (depends on 3B)
 
-| Task ID | 功能 | 依赖 |
-|---------|------|------|
-| T21 | 统计面板 | 无 |
-| T22 | 集成到 Desktop | T14-T21 |
+| Task ID | Feature | Dependencies |
+|---------|---------|--------------|
+| T21 | Stats Panel | None |
+| T22 | Desktop Integration | T14-T21 |
 
 ---
 
-## 验收标准
+## Acceptance Criteria
 
-### F14: 快速任务创建
-- [ ] 点击 + 按钮展开输入框
-- [ ] Enter 提交，Esc 取消
-- [ ] 支持快捷键 n 创建
+### F14: Quick Task Creation
+- [ ] Click + button to expand input box
+- [ ] Enter to submit, Esc to cancel
+- [ ] Support keyboard shortcut n to create
 
-### F15: 内联任务编辑
-- [ ] 双击标题进入编辑
-- [ ] Enter 保存，Esc 取消
-- [ ] 不影响卡片点击事件
+### F15: Inline Task Editing
+- [ ] Double-click title to enter edit mode
+- [ ] Enter to save, Esc to cancel
+- [ ] Does not affect card click events
 
-### F16: 列折叠/展开
-- [ ] 点击折叠按钮收起列
-- [ ] 折叠状态显示标题和数量
-- [ ] WIP 超限显示警告
+### F16: Column Collapse/Expand
+- [ ] Click collapse button to collapse column
+- [ ] Collapsed state shows title and count
+- [ ] WIP limit exceeded shows warning
 
-### F17: 多排序模式
-- [ ] 支持 6 种排序模式
-- [ ] 支持升序/降序切换
-- [ ] 保存用户偏好
+### F17: Multiple Sort Modes
+- [ ] Support 6 sort modes
+- [ ] Support ascending/descending toggle
+- [ ] Save user preferences
 
 ---
 
