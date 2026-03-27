@@ -1,19 +1,19 @@
 # Workspace Module Specifications
 
-> 工作空间相关的所有规格文档索引
+> Index of all specification documents related to workspaces
 
 ---
 
 ## Platform Distinction
 
-> **Important**: 本项目有两个不同的 "workspace" 概念：
+> **Important**: This project has two different "workspace" concepts:
 
 | Aspect | Desktop Workspace | Web Workspace |
 |--------|-------------------|---------------|
 | **Platform** | apps/desktop (Tauri) | apps/web (Next.js) |
-| **Definition** | 本地文件夹 + 智能体配置 | 云端协作空间 |
-| **Storage** | SQLite + 本地文件系统 | PostgreSQL |
-| **Features** | MCP, Skills, Chat, Kanban | 包管理, 成员管理 |
+| **Definition** | Local folder + agent configuration | Cloud collaboration space |
+| **Storage** | SQLite + local file system | PostgreSQL |
+| **Features** | MCP, Skills, Chat, Kanban | Package management, member management |
 | **Agent Support** | .claude/, .codex/, .cursor/ | N/A |
 
 ---
@@ -24,41 +24,41 @@
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| workspace-management | Desktop 工作空间核心架构 | Done |
-| desktop-chat-workany | Chat 功能集成 (参考 workany) | Planning |
+| workspace-management | Desktop workspace core architecture | Done |
+| desktop-chat-workany | Chat feature integration (based on workany) | Planning |
 
 ### Web Workspace System
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| workspace-api | Web 端 Workspace CRUD API | Done |
-| workspace-ui | Web 端 Workspace UI 页面 | Done |
+| workspace-api | Web Workspace CRUD API | Done |
+| workspace-ui | Web Workspace UI pages | Done |
 
 ---
 
 ## Kanban System
 
-> 工作空间内的任务看板功能 (Desktop Only)
+> Task board functionality within workspaces (Desktop Only)
 
 ### Architecture & Analysis
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| kanban-integration | Kanban 整体架构 + 包设计 | Specification |
-| kanban-features | 核心功能规格 (Phase 1-2) | Specification |
-| vibe-kanban-architecture | vibe-kanban 前端架构深度分析 | Reference |
-| desktop-kanban-integration-progress | Desktop 集成进度报告 (~75%) | Report |
+| kanban-integration | Kanban overall architecture + package design | Specification |
+| kanban-features | Core feature specifications (Phase 1-2) | Specification |
+| vibe-kanban-architecture | vibe-kanban frontend architecture deep analysis | Reference |
+| desktop-kanban-integration-progress | Desktop integration progress report (~75%) | Report |
 
 ### Implementation Phases
 
 | Phase | Spec | Focus | Status |
 |-------|------|-------|--------|
-| P3 | kanban-phase3 | 高级功能 (快速创建, 键盘导航, 统计) | Planning |
-| P4 | kanban-phase4 | 协作功能 | Planning |
-| P5 | kanban-phase5 | 自动化 + 集成 | Planning |
-| P6 | kanban-phase6 | 视图 + 报告 | Planning |
-| P7 | kanban-phase7 | AI 集成 | Planning |
-| P8 | kanban-phase8 | 高级定制 | Planning |
+| P3 | kanban-phase3 | Advanced features (quick create, keyboard navigation, statistics) | Planning |
+| P4 | kanban-phase4 | Collaboration features | Planning |
+| P5 | kanban-phase5 | Automation + integration | Planning |
+| P6 | kanban-phase6 | Views + reports | Planning |
+| P7 | kanban-phase7 | AI integration | Planning |
+| P8 | kanban-phase8 | Advanced customization | Planning |
 
 ---
 

@@ -10,161 +10,161 @@ Viben CLI is the command-line interface for **Agent Swarm x Code Evolution** - o
 
 Install globally via npm/pnpm, or build from source for development.
 
-## 快速安装
+## Quick Installation
 
-### 使用 npm
+### Using npm
 
 ```bash
 npm install -g @viben/cli
 ```
 
-### 使用 pnpm
+### Using pnpm
 
 ```bash
 pnpm add -g @viben/cli
 ```
 
-### 使用 npx（无需安装）
+### Using npx (No Installation Required)
 
-直接运行而不安装：
+Run directly without installing:
 
 ```bash
 npx @viben/cli --help
 ```
 
-## 系统要求
+## System Requirements
 
-| 要求 | 版本 |
-|------|------|
-| **Node.js** | 18.0 或更高 |
-| **npm** | 9.0 或更高（或 pnpm 8.0+） |
+| Requirement | Version |
+|-------------|---------|
+| **Node.js** | 18.0 or higher |
+| **npm** | 9.0 or higher (or pnpm 8.0+) |
 
-### 检查环境
+### Check Environment
 
 ```bash
-# 检查 Node.js 版本
+# Check Node.js version
 node --version
 
-# 检查 npm 版本
+# Check npm version
 npm --version
 ```
 
-## 验证安装
+## Verify Installation
 
-安装后，验证 Viben CLI 是否正确安装：
+After installation, verify that Viben CLI is correctly installed:
 
 ```bash
 viben --help
 ```
 
-你应该看到类似以下输出：
+You should see output similar to:
 
 ```
 Usage: viben <command> [options]
 
-Bootstrap CLI for Viben - 配置应用、管理服务和查询状态。
+Bootstrap CLI for Viben - Configure apps, manage services, and query status.
 
 Commands:
-  init          在当前目录初始化工作区
-  config        配置管理（git 风格）
-  service       管理后台服务
-  gateway       启动 Gateway
-  executor      发现和查看执行器
-  agent         管理智能体实例和模板
-  provider      管理 API 提供商
-  model         管理模型、别名和回退链
-  mcp           管理 MCP 服务器
-  skill         管理技能
-  channel       管理聊天渠道
-  cron          管理定时任务
-  team          团队协作工作区管理
-  workspace     工作区操作
-  version       显示版本信息
-  help          显示帮助
+  init          Initialize workspace in current directory
+  config        Configuration management (git-style)
+  service       Manage background services
+  gateway       Start Gateway
+  executor      Discover and view executors
+  agent         Manage agent instances and templates
+  provider      Manage API providers
+  model         Manage models, aliases, and fallback chains
+  mcp           Manage MCP servers
+  skill         Manage skills
+  channel       Manage chat channels
+  cron          Manage scheduled tasks
+  team          Team collaboration workspace management
+  workspace     Workspace operations
+  version       Show version information
+  help          Show help
 
 Options:
-  --json              输出 JSON
-  --global, -g        使用全局配置
-  --workspace         使用工作区配置
-  -n, --name <id>     指定智能体名称/ID
-  --verbose, -v       详细输出
-  --quiet, -q         抑制非必要输出
-  --help, -h          显示帮助
+  --json              Output JSON
+  --global, -g        Use global configuration
+  --workspace         Use workspace configuration
+  -n, --name <id>     Specify agent name/ID
+  --verbose, -v       Verbose output
+  --quiet, -q         Suppress non-essential output
+  --help, -h          Show help
 ```
 
-检查版本：
+Check version:
 
 ```bash
 viben version
 ```
 
-## 从源码安装（开发）
+## Install from Source (Development)
 
-对于想要修改 CLI 或贡献代码的开发者：
+For developers who want to modify the CLI or contribute code:
 
-### 1. 克隆仓库
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
 cd viben
 ```
 
-### 2. 安装依赖
+### 2. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 3. 构建 CLI
+### 3. Build CLI
 
 ```bash
 pnpm build --filter=@viben/cli
 ```
 
-### 4. 链接到本地开发
+### 4. Link for Local Development
 
 ```bash
 cd apps/cli
 pnpm link --global
 ```
 
-现在你可以在全局使用 `viben` 命令，重新构建后更改会生效。
+Now you can use the `viben` command globally, and changes will take effect after rebuilding.
 
-### 5. 开发模式
+### 5. Development Mode
 
-对于活跃开发并自动重建：
+For active development with automatic rebuilding:
 
 ```bash
 cd apps/cli
 pnpm dev
 ```
 
-## 配置位置
+## Configuration Location
 
-安装后，Viben CLI 将其配置存储在：
+After installation, Viben CLI stores its configuration in:
 
-| 平台 | 位置 |
-|------|------|
+| Platform | Location |
+|----------|----------|
 | **macOS/Linux** | `~/.viben/` |
 | **Windows** | `%USERPROFILE%\.viben\` |
 
-配置目录在首次使用时自动创建。
+The configuration directory is automatically created on first use.
 
-### 目录结构
+### Directory Structure
 
 ```
 ~/.viben/
-├── config.yaml           # 全局配置
-├── providers.yaml        # API 提供商配置
-├── models.yaml           # 模型配置
-├── channels.yaml         # 渠道配置
-├── cron.yaml             # 定时任务配置
-├── agents/               # 智能体实例
-├── mcp/                  # 共享 MCP 服务器
-└── skills/               # 共享技能
+├── config.yaml           # Global configuration
+├── providers.yaml        # API provider configuration
+├── models.yaml           # Model configuration
+├── channels.yaml         # Channel configuration
+├── cron.yaml             # Scheduled task configuration
+├── agents/               # Agent instances
+├── mcp/                  # Shared MCP servers
+└── skills/               # Shared skills
 ```
 
-## 更新
+## Updating
 
 ### npm
 
@@ -178,7 +178,7 @@ npm update -g @viben/cli
 pnpm update -g @viben/cli
 ```
 
-### 从源码
+### From Source
 
 ```bash
 cd viben
@@ -187,7 +187,7 @@ pnpm install
 pnpm build --filter=@viben/cli
 ```
 
-## 卸载
+## Uninstalling
 
 ### npm
 
@@ -201,9 +201,9 @@ npm uninstall -g @viben/cli
 pnpm remove -g @viben/cli
 ```
 
-### 清理配置（可选）
+### Clean Up Configuration (Optional)
 
-要删除所有配置和数据：
+To remove all configuration and data:
 
 ```bash
 # macOS/Linux
@@ -214,58 +214,58 @@ Remove-Item -Recurse -Force $env:USERPROFILE\.viben
 ```
 
 :::warning
-删除 `.viben` 目录将删除所有智能体配置、记忆和会话。请确保先备份重要数据。
+Removing the `.viben` directory will delete all agent configurations, memory, and sessions. Make sure to backup important data first.
 :::
 
-## 故障排除
+## Troubleshooting
 
-### 命令未找到
+### Command Not Found
 
-如果安装后找不到 `viben` 命令：
+If the `viben` command is not found after installation:
 
-1. **检查 PATH**：确保 npm 全局 bin 目录在你的 PATH 中
+1. **Check PATH**: Ensure npm global bin directory is in your PATH
 
    ```bash
-   # 查找 npm 全局 bin 目录
+   # Find npm global bin directory
    npm bin -g
 
-   # 添加到 PATH（bash/zsh）
+   # Add to PATH (bash/zsh)
    export PATH="$(npm bin -g):$PATH"
    ```
 
-2. **重启终端**：安装后关闭并重新打开终端
+2. **Restart Terminal**: Close and reopen terminal after installation
 
-3. **重新安装**：尝试使用详细输出重新安装
+3. **Reinstall**: Try reinstalling with verbose output
 
    ```bash
    npm install -g @viben/cli --verbose
    ```
 
-### 权限错误
+### Permission Errors
 
-在 macOS/Linux 上，如果遇到权限错误：
+On macOS/Linux, if you encounter permission errors:
 
 ```bash
-# 选项 1：使用 sudo（不推荐）
+# Option 1: Use sudo (not recommended)
 sudo npm install -g @viben/cli
 
-# 选项 2：修复 npm 权限（推荐）
+# Option 2: Fix npm permissions (recommended)
 mkdir -p ~/.npm-global
 npm config set prefix '~/.npm-global'
 export PATH=~/.npm-global/bin:$PATH
 npm install -g @viben/cli
 ```
 
-### 版本冲突
+### Version Conflicts
 
-如果有多个 Node.js 版本，使用版本管理器：
+If you have multiple Node.js versions, use a version manager:
 
 ```bash
-# 使用 nvm
+# Using nvm
 nvm use 18
 npm install -g @viben/cli
 ```
 
-## 下一步
+## Next Steps
 
-- [快速开始](./quick-start) - 初始化并配置你的第一个工作区
+- [Quick Start](./quick-start) - Initialize and configure your first workspace

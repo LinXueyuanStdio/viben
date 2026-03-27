@@ -47,6 +47,8 @@ export interface RewardPhaseOptions {
   platform?: string;
   /** Enable verbose output */
   verbose?: boolean;
+  /** Idea ID for FileRL mode (determines output directory structure) */
+  ideaId?: string;
 }
 
 /**
@@ -427,6 +429,7 @@ function readFileRlRewardConfig(targetPath: string): RewardConfig | null {
  *
  * @param filerlDir - FileRL directory (or null for standalone mode)
  * @param iteration - Current iteration number
+ * @param ideaId - Idea ID (optional, for FileRL mode with idea grouping)
  * @param taskName - Task name
  * @param taskDirAbs - Task directory (fallback for standalone mode)
  * @returns Absolute path to output directory
@@ -434,12 +437,19 @@ function readFileRlRewardConfig(targetPath: string): RewardConfig | null {
 function getRewardOutputDir(
   filerlDir: string | undefined,
   iteration: number,
+  ideaId: string | undefined,
   taskName: string,
   taskDirAbs: string
 ): string {
   if (filerlDir) {
-    // FileRL mode: .viben/filerl/<name>/iter<N>/<task>/
-    const outputDir = join(filerlDir, `iter${iteration}`, taskName);
+    // FileRL mode: .viben/filerl/<name>/iter<N>/<idea>/<task>/ or .viben/filerl/<name>/iter<N>/<task>/
+    const pathParts = [filerlDir, `iter${iteration}`];
+    if (ideaId) {
+      pathParts.push(ideaId);
+    }
+    pathParts.push(taskName);
+
+    const outputDir = join(...pathParts);
     if (!existsSync(outputDir)) {
       mkdirSync(outputDir, { recursive: true });
     }
@@ -517,7 +527,7 @@ export function runRewardPhaseSync(
   taskDir: string,
   options?: RewardPhaseOptions
 ): RewardPhaseResult {
-  const { platform = "claude", verbose = true } = options || {};
+  const { platform = "claude", verbose = true, ideaId } = options || {};
   const warnings: string[] = [];
 
   // Initialize CLI adapter
@@ -611,8 +621,10 @@ export function runRewardPhaseSync(
       warnings.push("Could not read reward config from FileRL target, using task.json or defaults");
     }
 
-    // Output to FileRL directory
-    outputDir = getRewardOutputDir(filerlDir, currentIteration, taskName, taskDirAbs);
+    // Output to FileRL directory (with optional idea grouping)
+    // ideaId can come from: 1) options.ideaId, 2) task.json.filerl_idea
+    const effectiveIdeaId = ideaId || (taskData as { filerl_idea?: string }).filerl_idea;
+    outputDir = getRewardOutputDir(filerlDir, currentIteration, effectiveIdeaId, taskName, taskDirAbs);
   } else {
     // Standalone mode: use task.json config
     rewardConfig = taskData.reward_config || DEFAULT_REWARD_CONFIG;

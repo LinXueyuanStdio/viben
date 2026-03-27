@@ -1,112 +1,112 @@
 ---
 sidebar_position: 3
-title: "功能介绍"
-description: "Viben 桌面应用完整功能列表 - Agent Swarm x Code Evolution"
+title: "Features"
+description: "Complete feature list for Viben Desktop Application - Agent Swarm x Code Evolution"
 ---
 
-# 功能介绍
+# Features
 
-Viben Desktop 是 **Agent Swarm x Code Evolution** 平台，通过智能体集群协同和强化学习驱动代码持续进化。
+Viben Desktop is an **Agent Swarm x Code Evolution** platform that drives continuous code evolution through agent swarm collaboration and reinforcement learning.
 
-:::tip 核心概念
-在了解功能之前，建议先阅读 [核心概念](/user/getting-started/concepts)，理解智能体与执行器的区别。
+:::tip Core Concepts
+Before exploring features, we recommend reading [Core Concepts](/user/getting-started/concepts) to understand the difference between agents and executors.
 :::
 
 ---
 
-## FileRL 代码进化
+## FileRL Code Evolution
 
-FileRL 是 Viben 的核心引擎，通过强化学习驱动代码迭代优化。
+FileRL is Viben's core engine, driving code iteration optimization through reinforcement learning.
 
-### 工作原理
+### How It Works
 
 ```
-代码输入 → Reward Model 评估 → 生成优化方案 → 智能体执行 → 再次评估 → 循环
+Code Input → Reward Model Evaluation → Generate Optimization Plan → Agent Execution → Re-evaluate → Loop
 ```
 
 ### Reward Model
 
-评估代码质量并生成优化信号：
+Evaluates code quality and generates optimization signals:
 
-| 维度 | 评估内容 |
-|------|----------|
-| **正确性** | 代码是否满足功能需求 |
-| **质量** | 代码风格、可读性、可维护性 |
-| **性能** | 运行效率、资源占用 |
-| **安全性** | 潜在漏洞、安全隐患 |
+| Dimension | Evaluation Content |
+|-----------|-------------------|
+| **Correctness** | Whether code meets functional requirements |
+| **Quality** | Code style, readability, maintainability |
+| **Performance** | Runtime efficiency, resource usage |
+| **Security** | Potential vulnerabilities, security risks |
 
 ### Evolution Loop
 
-迭代优化直至满足目标：
+Iterative optimization until objectives are met:
 
-1. **初始评估** - Reward Model 分析当前代码
-2. **生成方案** - 根据评估结果生成优化建议
-3. **智能体执行** - Agent Swarm 执行代码修改
-4. **验证结果** - 重新评估，检查是否达标
-5. **继续迭代** - 未达标则继续优化
+1. **Initial Evaluation** - Reward Model analyzes current code
+2. **Generate Plan** - Generate optimization suggestions based on evaluation results
+3. **Agent Execution** - Agent Swarm executes code modifications
+4. **Verify Results** - Re-evaluate to check if objectives are met
+5. **Continue Iteration** - Continue optimizing if not meeting objectives
 
 ### History Tracking
 
-追踪代码演进历史：
-- 每次迭代的代码快照
-- 决策过程和理由记录
-- 评分变化趋势
-- 可回滚到任意版本
+Track code evolution history:
+- Code snapshots for each iteration
+- Decision process and reasoning records
+- Score change trends
+- Rollback to any version
 
 ---
 
-## Agent Swarm 集群编排
+## Agent Swarm Orchestration
 
-编排多个智能体协同完成复杂任务。
+Orchestrate multiple agents to collaboratively complete complex tasks.
 
-### 支持的执行器
+### Supported Executors
 
-Viben 自动检测系统中已安装的执行器：
+Viben automatically detects installed executors on your system:
 
-| 执行器 | 检测方式 | MCP 支持 |
-|--------|----------|----------|
+| Executor | Detection Method | MCP Support |
+|----------|-----------------|-------------|
 | **Claude Code** | `which claude` | ✓ |
 | **AMP** | `which amp` | ✓ |
 | **Cursor** | `which cursor` | ✓ |
 | **Gemini** | `which gemini` | - |
 | **Codex** | `which codex` | - |
 
-### 协作模式
+### Collaboration Modes
 
-智能体之间的协作方式：
+Ways agents collaborate with each other:
 
-| 模式 | 说明 |
-|------|------|
-| **串行执行** | 一个智能体完成后，下一个接续 |
-| **并行执行** | 多个智能体同时处理不同子任务 |
-| **审查模式** | 一个智能体生成，另一个审查 |
-| **竞争模式** | 多个智能体独立生成，选择最优 |
+| Mode | Description |
+|------|-------------|
+| **Sequential Execution** | Next agent continues after one completes |
+| **Parallel Execution** | Multiple agents process different subtasks simultaneously |
+| **Review Mode** | One agent generates, another reviews |
+| **Competition Mode** | Multiple agents generate independently, best one selected |
 
-### 智能体配置
+### Agent Configuration
 
-每个智能体可以配置：
-- **执行器类型** (executor_type) - 使用哪个执行器运行
-- **系统提示词** - 定义智能体行为
-- **模型参数** - temperature、max_tokens 等
-- **MCP 服务器** - 扩展智能体能力
-- **Skills** - 可复用的能力包
+Each agent can be configured with:
+- **Executor Type** (executor_type) - Which executor to use for running
+- **System Prompt** - Define agent behavior
+- **Model Parameters** - temperature, max_tokens, etc.
+- **MCP Servers** - Extend agent capabilities
+- **Skills** - Reusable capability packages
 
-### 全局 vs 项目智能体
+### Global vs Project Agents
 
-| 范围 | 存储位置 | 说明 |
-|------|----------|------|
-| **全局** | `~/.viben/agents/` | 所有项目可用 |
-| **项目** | `<project>/.viben/agents/` | 仅当前项目可用 |
+| Scope | Storage Location | Description |
+|-------|-----------------|-------------|
+| **Global** | `~/.viben/agents/` | Available to all projects |
+| **Project** | `<project>/.viben/agents/` | Only available to current project |
 
 ---
 
-## Task System 任务系统
+## Task System
 
-基于 XState 状态机的工作流管理系统。
+XState state machine-based workflow management system.
 
-### 状态机
+### State Machine
 
-任务在以下状态间流转：
+Tasks flow through these states:
 
 ```
 backlog → queue → in_progress → review → completed
@@ -114,121 +114,121 @@ backlog → queue → in_progress → review → completed
                    archived
 ```
 
-| 状态 | 说明 |
-|------|------|
-| `backlog` | 待规划，尚未进入执行队列 |
-| `queue` | 排队等待智能体处理 |
-| `in_progress` | 智能体正在执行 |
-| `review` | 等待人工审核 |
-| `completed` | 任务完成 |
-| `archived` | 已归档 |
+| Status | Description |
+|--------|-------------|
+| `backlog` | Pending planning, not yet in execution queue |
+| `queue` | Queued waiting for agent processing |
+| `in_progress` | Agent is executing |
+| `review` | Awaiting human review |
+| `completed` | Task completed |
+| `archived` | Archived |
 
-### 核心命令
+### Core Commands
 
-通过 CLI 管理任务：
+Manage tasks via CLI:
 
 ```bash
-viben task create "实现用户登录功能"
+viben task create "Implement user login feature"
 viben task enqueue <task-id>
 viben task start <task-id>
 viben task finish <task-id>
 viben task archive <task-id>
 ```
 
-### 看板视图
+### Kanban View
 
-桌面应用提供可视化看板：
+Desktop application provides visual kanban board:
 
-- **列管理**：按状态分列显示任务
-- **卡片拖拽**：拖拽卡片改变状态
-- **优先级**：设置任务优先级
-- **标签**：为任务添加标签分类
+- **Column Management**: Display tasks in columns by status
+- **Card Drag & Drop**: Drag cards to change status
+- **Priority**: Set task priority
+- **Labels**: Add labels to categorize tasks
 
-### 任务详情
+### Task Details
 
-每个任务支持：
-- 标题和描述
-- 负责人分配
-- 截止日期
-- 子任务管理
-- 依赖关系
-- 评论和活动记录
-
----
-
-## Idea Generation 创意生成
-
-从项目上下文自动生成优化建议。
-
-### 生成类型
-
-| 类型 | 说明 |
-|------|------|
-| **代码重构** | 识别可重构的代码模式 |
-| **性能优化** | 发现性能瓶颈和优化点 |
-| **架构改进** | 提出架构层面的改进建议 |
-| **技术债务** | 识别和量化技术债务 |
-| **功能增强** | 基于现有代码的功能扩展建议 |
-
-### 工作流程
-
-1. **上下文分析** - 扫描项目代码和配置
-2. **模式识别** - 识别常见问题和改进机会
-3. **方案生成** - 生成具体的优化建议
-4. **优先级排序** - 按影响和难度排序
-5. **一键转任务** - 将建议转为 Task 执行
+Each task supports:
+- Title and description
+- Assignee
+- Due date
+- Subtask management
+- Dependencies
+- Comments and activity log
 
 ---
 
-## 工作空间管理
+## Idea Generation
 
-### 多工作空间支持
+Automatically generate optimization suggestions from project context.
 
-管理多个项目工作空间：
+### Generation Types
 
-- **全局工作空间**：默认存在，代表 `~` 目录下的全局配置，不可删除
-- **自定义工作空间**：用户添加的项目目录，可以添加和移除
+| Type | Description |
+|------|-------------|
+| **Code Refactoring** | Identify refactorable code patterns |
+| **Performance Optimization** | Discover performance bottlenecks and optimization points |
+| **Architecture Improvement** | Propose architecture-level improvements |
+| **Technical Debt** | Identify and quantify technical debt |
+| **Feature Enhancement** | Feature extension suggestions based on existing code |
 
-### 添加工作空间
+### Workflow
 
-通过向导式流程添加工作空间：
+1. **Context Analysis** - Scan project code and configuration
+2. **Pattern Recognition** - Identify common issues and improvement opportunities
+3. **Plan Generation** - Generate specific optimization suggestions
+4. **Priority Ranking** - Rank by impact and difficulty
+5. **One-Click Task Creation** - Convert suggestions to Tasks for execution
 
-1. **选择方式**
-   - 打开现有文件夹 - 选择已有的项目目录
-   - 创建新文件夹 - 在指定位置创建新目录
+---
 
-2. **配置选项**
-   - 工作空间名称
-   - 存储位置
-   - 初始化 Git 仓库（如果不存在）
-   - 初始化 .viben 配置
+## Workspace Management
 
-3. **高级选项**
-   - 开发者名称
-   - 项目类型（全栈/前端/后端）
-   - 包含 Cursor 配置
+### Multi-Workspace Support
 
-### 配置优先级
+Manage multiple project workspaces:
 
-配置按以下优先级合并（后者覆盖前者）：
+- **Global Workspace**: Exists by default, represents global configuration under `~` directory, cannot be deleted
+- **Custom Workspace**: Project directories added by users, can be added and removed
+
+### Adding Workspaces
+
+Add workspaces through a wizard:
+
+1. **Choose Method**
+   - Open Existing Folder - Select an existing project directory
+   - Create New Folder - Create a new directory at specified location
+
+2. **Configuration Options**
+   - Workspace name
+   - Storage location
+   - Initialize Git repository (if not exists)
+   - Initialize .viben configuration
+
+3. **Advanced Options**
+   - Developer name
+   - Project type (Full-stack/Frontend/Backend)
+   - Include Cursor configuration
+
+### Configuration Priority
+
+Configuration is merged in this priority order (later overrides earlier):
 
 ```
-全局配置 (~/.viben/) → 项目配置 (<project>/.viben/) → 运行时设置
+Global Config (~/.viben/) → Project Config (<project>/.viben/) → Runtime Settings
 ```
 
 ---
 
-## MCP 服务器管理
+## MCP Server Management
 
-### 添加 MCP 服务器
+### Adding MCP Servers
 
-为智能体添加 MCP 服务器：
-- 服务器名称
-- 执行命令
-- 命令参数
-- 环境变量
+Add MCP servers for agents:
+- Server name
+- Execution command
+- Command arguments
+- Environment variables
 
-### 配置示例
+### Configuration Example
 
 ```json
 {
@@ -251,174 +251,174 @@ viben task archive <task-id>
 
 ---
 
-## MCP 市场
+## MCP Marketplace
 
-### 浏览和搜索
+### Browse and Search
 
-- 浏览官方和社区 MCP 服务器
-- 按类别筛选
-- 搜索特定功能
+- Browse official and community MCP servers
+- Filter by category
+- Search for specific functionality
 
-### 一键安装
+### One-Click Install
 
-- 查看 MCP 服务器详情
-- 一键添加到工作空间
-- 自动配置
-
----
-
-## Skills 管理
-
-### Skills 概念
-
-Skills 是可复用的能力包，可以为智能体添加特定功能。
-
-### 来源
-
-- **市场 Skills**：从 Skills 市场安装
-- **本地 Skills**：自定义的本地能力包
-
-### 管理操作
-
-- 添加 Skills
-- 查看已安装的 Skills
-- 移除 Skills
+- View MCP server details
+- One-click add to workspace
+- Automatic configuration
 
 ---
 
-## AI 聊天
+## Skills Management
 
-### 智能体对话
+### Skills Concept
 
-与工作空间中的智能体进行对话：
-- 选择智能体或执行器
-- 发送消息
-- 接收流式响应
+Skills are reusable capability packages that add specific functionality to agents.
 
-### Provider 支持
+### Sources
 
-支持多种 AI Provider：
+- **Marketplace Skills**: Install from Skills marketplace
+- **Local Skills**: Custom local capability packages
 
-| Provider | 说明 |
-|----------|------|
-| **OpenAI** | GPT-4、GPT-3.5 等 |
-| **Anthropic** | Claude 3、Claude 2 等 |
-| **Ollama** | 本地模型 |
-| **自定义** | OpenAI 兼容 API |
+### Management Operations
 
-### 模型配置
-
-- 选择模型
-- 调整温度、最大 Token 等参数
-- 查看 Token 使用情况
-- 配置模型别名和回退策略
-
-### Memory 系统
-
-每个智能体维护独立的 Memory 系统：
-
-| 文件 | 说明 |
-|------|------|
-| `MEMORY.md` | 长期记忆，存储项目上下文和用户偏好 |
-| `logs/<date>.md` | 每日日志，记录当天的交互摘要 |
+- Add Skills
+- View installed Skills
+- Remove Skills
 
 ---
 
-## 用户界面
+## AI Chat
 
-### 深色模式
+### Agent Conversations
 
-完整支持浅色和深色主题：
-- 自动跟随系统主题
-- 手动切换主题
-- 所有组件样式一致
+Converse with agents in your workspace:
+- Select agent or executor
+- Send messages
+- Receive streaming responses
 
-### 键盘快捷键
+### Provider Support
 
-| 操作 | macOS | Windows/Linux |
-|------|-------|---------------|
-| 新建搜索 | Cmd + K | Ctrl + K |
-| 设置 | Cmd + , | Ctrl + , |
-| 退出 | Cmd + Q | Alt + F4 |
+Support for multiple AI Providers:
 
-### 多语言支持
+| Provider | Description |
+|----------|-------------|
+| **OpenAI** | GPT-4, GPT-3.5, etc. |
+| **Anthropic** | Claude 3, Claude 2, etc. |
+| **Ollama** | Local models |
+| **Custom** | OpenAI-compatible API |
 
-- 英文 (English)
-- 中文 (简体)
+### Model Configuration
 
----
+- Select model
+- Adjust temperature, max tokens, and other parameters
+- View token usage
+- Configure model aliases and fallback strategies
 
-## 隐私与安全
+### Memory System
 
-### 本地优先
+Each agent maintains an independent Memory system:
 
-- 所有数据存储在本地
-- 无需账户
-- 无遥测或追踪
-
-### 安全通信
-
-- API 请求使用 HTTPS
-- 凭证不以明文存储
-
-### 敏感数据
-
-- 支持环境变量引用（如 `${GITHUB_TOKEN}`）
-- 不在日志中显示 API 密钥
+| File | Description |
+|------|-------------|
+| `MEMORY.md` | Long-term memory, stores project context and user preferences |
+| `logs/<date>.md` | Daily logs, records interaction summaries for the day |
 
 ---
 
-## 数据存储
+## User Interface
 
-### 存储位置
+### Dark Mode
 
-| 平台 | 位置 |
-|------|------|
+Full support for light and dark themes:
+- Automatically follow system theme
+- Manual theme switching
+- Consistent styling across all components
+
+### Keyboard Shortcuts
+
+| Action | macOS | Windows/Linux |
+|--------|-------|---------------|
+| New Search | Cmd + K | Ctrl + K |
+| Settings | Cmd + , | Ctrl + , |
+| Quit | Cmd + Q | Alt + F4 |
+
+### Multi-Language Support
+
+- English
+- Chinese (Simplified)
+
+---
+
+## Privacy & Security
+
+### Local First
+
+- All data stored locally
+- No account required
+- No telemetry or tracking
+
+### Secure Communication
+
+- API requests use HTTPS
+- Credentials not stored in plain text
+
+### Sensitive Data
+
+- Support environment variable references (e.g., `${GITHUB_TOKEN}`)
+- API keys not displayed in logs
+
+---
+
+## Data Storage
+
+### Storage Locations
+
+| Platform | Location |
+|----------|----------|
 | macOS | `~/Library/Application Support/com.viben.app` |
 | Windows | `%APPDATA%\com.viben.app` |
 | Linux | `~/.config/viben` |
 
-### Viben 配置
+### Viben Configuration
 
-全局配置存储在 `~/.viben/`：
+Global configuration stored in `~/.viben/`:
 
 ```
 ~/.viben/
-├── agents/              # 全局智能体配置
-├── providers/           # Provider 配置
-├── models.yaml          # 模型配置
-├── channels.yaml        # 通道配置
-├── tasks/               # 任务存储
-├── queue/               # 命令队列
-└── sessions/            # 会话存储
+├── agents/              # Global agent configurations
+├── providers/           # Provider configurations
+├── models.yaml          # Model configuration
+├── channels.yaml        # Channel configuration
+├── tasks/               # Task storage
+├── queue/               # Command queue
+└── sessions/            # Session storage
 ```
 
-### 工作空间配置
+### Workspace Configuration
 
-每个工作空间的配置存储在 `<project>/.viben/`：
+Each workspace configuration stored in `<project>/.viben/`:
 
 ```
 <project>/.viben/
-├── agents/              # 工作空间智能体
-├── tasks/               # 项目任务
-├── group-chats/         # 群聊
-└── config.yaml          # 工作空间配置
+├── agents/              # Workspace agents
+├── tasks/               # Project tasks
+├── group-chats/         # Group chats
+└── config.yaml          # Workspace configuration
 ```
 
 ---
 
-## 即将推出
+## Coming Soon
 
-以下功能正在计划中：
+The following features are planned:
 
-- **自动更新** - 应用自动更新
-- **插件系统** - 通过插件扩展功能
-- **云同步** - 可选的设置和收藏云同步
-- **高级 FileRL** - 更强大的代码进化策略
-- **Swarm 模板** - 预定义的智能体协作模板
+- **Auto Updates** - Automatic application updates
+- **Plugin System** - Extend functionality through plugins
+- **Cloud Sync** - Optional cloud sync for settings and favorites
+- **Advanced FileRL** - More powerful code evolution strategies
+- **Swarm Templates** - Pre-defined agent collaboration templates
 
 ---
 
-## 功能请求
+## Feature Requests
 
-有功能建议？在 [GitHub](https://github.com/LinXueyuanStdio/viben/issues/new?template=feature_request.md) 上提交 Issue。
+Have a feature suggestion? Submit an issue on [GitHub](https://github.com/LinXueyuanStdio/viben/issues/new?template=feature_request.md).

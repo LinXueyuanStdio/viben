@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
-title: "CLI 概述"
-description: "Viben CLI - Agent Swarm x Code Evolution 的命令行界面"
+title: "CLI Overview"
+description: "Viben CLI - Command-line interface for Agent Swarm x Code Evolution"
 ---
 
 # Viben CLI
@@ -249,4 +249,4 @@ Error responses include error codes for programmatic handling:
 - [Installation](./installation.md) - Install Viben CLI
 - [Quick Start](./quick-start.md) - Begin basic configuration
 - [Task System](./commands/task.md) - Learn about XState-powered task management
-- [Agent Swarm](agents/) - Understand multi-agent orchestration
+- [Agent Swarm](/cli/agents/) - Understand multi-agent orchestration

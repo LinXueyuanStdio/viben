@@ -1,12 +1,12 @@
 ---
 sidebar_position: 4
 title: Profile UI
-description: 用户资料页面和 API 密钥管理
+description: User profile pages and API key management
 ---
 
 # Profile UI
 
-> 实现用户资料页面和 API 密钥管理功能。
+> Implement user profile pages and API key management features.
 
 ---
 
