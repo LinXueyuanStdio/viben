@@ -105,7 +105,7 @@ export function useCloudSkillPackages(options: UseCloudSkillPackagesOptions = {}
 
     try {
       const client = getClient();
-      const response = await client.skills.list({
+      const response = await client.skill.list({
         page,
         limit,
         sort: sort ?? undefined,
@@ -206,7 +206,7 @@ export function useCloudSkillSearch(query: string, debounceMs = 300) {
 
       try {
         const client = getClient();
-        const response = await client.skills.search(searchQuery, {
+        const response = await client.skill.search(searchQuery, {
           page,
           limit,
         });
@@ -340,7 +340,7 @@ export function useCloudSkillPackage(id: string | null) {
 
     try {
       const client = getClient();
-      const response = await client.skills.get(packageId);
+      const response = await client.skill.get(packageId);
       const pkg = response.package;
 
       // Map to CloudSkillPackage format

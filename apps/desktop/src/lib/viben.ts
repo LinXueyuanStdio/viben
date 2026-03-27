@@ -106,7 +106,7 @@ export async function searchPackages(
   if (type === 'mcp') {
     return api.mcp.search(query);
   }
-  return api.skills.search(query);
+  return api.skill.search(query);
 }
 
 /**
@@ -129,7 +129,7 @@ export async function listPackages(
   if (type === 'mcp') {
     return api.mcp.list(params);
   }
-  return api.skills.list(params);
+  return api.skill.list(params);
 }
 
 // ============================================
@@ -187,7 +187,7 @@ export async function installMcpPackage(pkg: McpPackage): Promise<string> {
 export async function installSkillPackage(pkg: SkillPackage): Promise<string> {
   const api = getClient();
 
-  const blob = await api.skills.download(pkg.id);
+  const blob = await api.skill.download(pkg.id);
 
   const dataDir = await appDataDir();
   const packagesDir = await join(dataDir, 'packages', 'skills');

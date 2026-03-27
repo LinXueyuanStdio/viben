@@ -89,7 +89,7 @@
 **格式**:
 ```json
 {
-  "total": 0.825,
+  "total_score": 0.825,
   "diff_lines": 50,
   "scores": {
     "code_quality": { "score": 0.85, "reasoning": "..." },
@@ -441,7 +441,7 @@ ls -la .viben/filerl/test-basic/iter2/
 
 ```json
 {
-  "total": 0.825,
+  "total_score": 0.825,
   "diff_lines": 50,
   "scores": {
     "code_quality": { "score": 0.85, "reasoning": "Clean code structure" },
@@ -455,7 +455,7 @@ ls -la .viben/filerl/test-basic/iter2/
 
 | 字段 | 类型 | 范围 | 说明 |
 |------|------|------|------|
-| `total` | number | 0-1 | 加权总分 |
+| `total_score` | number | 0-1 | 加权总分 |
 | `diff_lines` | number | >= 0 | 代码变更行数 |
 | `scores` | object | - | 各维度得分 |
 | `computed_at` | string | ISO 8601 | 计算时间 |
@@ -480,7 +480,7 @@ ls -la .viben/filerl/test-basic/iter2/
 - [ ] `viben filerl start` 启动 task 实际运行
 - [ ] Task 状态只有合法值（无 "done"）
 - [ ] reward.json 在 `iter{N}/{idea}/{task}/` 下生成
-- [ ] Reward 格式为 `{ total: 0-1, diff_lines: N }`
+- [ ] Reward 格式为 `{ total_score: 0-1, diff_lines: N }`
 - [ ] `viben reward select` PPO 选择正确
 - [ ] `viben task approve` 合并 winner 成功
 

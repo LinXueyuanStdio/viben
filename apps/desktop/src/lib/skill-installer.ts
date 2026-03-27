@@ -147,7 +147,7 @@ export async function downloadAndInstallSkill(
 
     // Download package
     const api = getClient();
-    const blob = await api.skills.download(pkg.id);
+    const blob = await api.skill.download(pkg.id);
 
     // Report download complete
     onProgress?.({

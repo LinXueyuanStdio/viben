@@ -34,7 +34,7 @@
 | DELETE | `/api/mcp/[id]/comments/[commentId]` | Delete comment | Yes |
 | POST | `/api/mcp/[id]/rating` | Add/update rating | Yes |
 
-Same endpoints for `/api/skills/[id]/...`
+Same endpoints for `/api/skill/[id]/...`
 
 ---
 

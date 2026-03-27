@@ -885,10 +885,10 @@ export function orchestrateSelectBest(
 
     try {
       const rewardContent = readFileSync(rewardJsonPath, "utf-8");
-      const rewardData = JSON.parse(rewardContent) as { total?: number };
-      if (typeof rewardData.total === "number") {
-        taskRewards[taskDirName] = rewardData.total;
-        onProgress?.(`Task ${taskDirName}: reward = ${rewardData.total.toFixed(3)}`);
+      const rewardData = JSON.parse(rewardContent) as { total_score?: number };
+      if (typeof rewardData.total_score === "number") {
+        taskRewards[taskDirName] = rewardData.total_score;
+        onProgress?.(`Task ${taskDirName}: reward = ${rewardData.total_score.toFixed(3)}`);
       }
     } catch {
       // Reward not found at iter{N}/{idea}/{task}/reward.json

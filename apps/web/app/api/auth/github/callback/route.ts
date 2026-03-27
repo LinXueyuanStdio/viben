@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
 import { setSessionCookie } from '@/lib/auth/cookies';
+import { encryptSession } from '@/lib/auth/jwe';
 import { generateId } from '@/lib/utils';
 import { eq, and } from 'drizzle-orm';
 
@@ -154,8 +155,6 @@ export async function GET(request: NextRequest) {
     if (desktopRedirectUri?.startsWith('viben://')) {
       // For desktop client, generate JWT and redirect with session data
       // This avoids the issue of OAuth code being single-use
-      const { encryptSession } = await import('@/lib/auth/jwe');
-
       const desktopAccessToken = await encryptSession({
         userId: user.id,
         username: user.username,
