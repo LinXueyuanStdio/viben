@@ -282,17 +282,19 @@ export function registerFileRlCommand(program: Command): void {
 
         console.log(chalk.green("=== FileRL Starting ==="));
         console.log();
-        console.log(`  Name:         ${config.name}`);
-        console.log(`  Target:       ${target}`);
-        console.log(`  Max Iterations: ${config.convergence.max_iterations}`);
+        console.log(`  Name:              ${config.name}`);
+        console.log(`  Target:            ${target}`);
+        console.log(`  Auto-generate:     ${config.idea.auto_generate ? "yes" : "no"}`);
+        console.log(`  Batch size:        ${config.idea.batch_size} ideas`);
+        console.log(`  Rollouts per idea: ${config.rollout.n}`);
+        console.log(`  Max iterations:    ${config.convergence.max_iterations}`);
         console.log();
-        console.log(chalk.gray("The FileRL loop will run automatically:"));
-        console.log(chalk.gray("  1. Generate ideas using configured idea types"));
-        console.log(chalk.gray("  2. Create tasks in parallel worktrees"));
-        console.log(chalk.gray("  3. Wait for task completion"));
-        console.log(chalk.gray("  4. Compute rewards and select the best"));
-        console.log(chalk.gray("  5. Merge winner and iterate until convergence"));
-        console.log();
+
+        if (!config.idea.auto_generate) {
+          console.log(chalk.yellow("Note: auto_generate is off. Add ideas manually:"));
+          console.log(chalk.yellow(`  viben filerl add-idea ${config.name} path/to/idea.md`));
+          console.log();
+        }
 
         // Run the full FileRL loop
         const loopResult = await runFileRlLoop(repoRoot, config.name, (msg) => {
@@ -375,9 +377,22 @@ export function registerFileRlCommand(program: Command): void {
                 : chalk.yellow("paused"),
             "Iteration": `${state.current_iteration} / ${config?.convergence.max_iterations || "?"}`,
             "Completed": state.completed_iterations.toString(),
+            "No-merge streak": `${state.no_merge_count} / ${config?.convergence.no_merge_limit || "?"}`,
             "Best Reward": state.best_reward.toFixed(3),
             "Best Task": state.best_task || "-",
           });
+
+          // Show config summary
+          if (config) {
+            console.log();
+            console.log(chalk.bold("Configuration:"));
+            outputKeyValue(ctx, {
+              "Auto-generate": config.idea.auto_generate ? "yes" : "no",
+              "Batch size": config.idea.batch_size.toString(),
+              "Rollouts per idea": config.rollout.n.toString(),
+              "Quality threshold": config.ppo.quality_threshold.toString(),
+            });
+          }
 
           if (state.iterations.length > 0) {
             console.log();
