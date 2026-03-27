@@ -1,36 +1,36 @@
-# 共享文档
+# Shared Documentation
 
-本目录包含多个受众分类共用的文档。
+This directory contains documentation shared across multiple audience categories.
 
-## 目录结构
+## Directory Structure
 
-| 子目录 | 内容 | 相关受众 |
-|-------|------|---------|
-| [architecture/](./architecture/overview.md) | 系统架构、核心集成 | backend, frontend, agent |
-| [guides/](./guides/index.md) | 开发思维指南 | backend, frontend, agent |
-| [data-models/](./data-models/workspace.md) | 数据模型定义 | backend, frontend |
+| Subdirectory | Content | Related Audiences |
+|--------------|---------|-------------------|
+| [architecture/](./architecture/overview.md) | System architecture, core integrations | backend, frontend, agent |
+| [guides/](./guides/index.md) | Development philosophy guides | backend, frontend, agent |
+| [data-models/](./data-models/workspace.md) | Data model definitions | backend, frontend |
 
-## 核心文档
+## Core Documentation
 
-| 文档 | 描述 | 相关受众 |
-|------|------|---------|
-| [Provider System](./provider-system.md) | Provider 系统设计 | frontend, backend |
-| [Plugin Architecture](./plugin-architecture.md) | 插件架构设计 | backend, agent |
+| Document | Description | Related Audiences |
+|----------|-------------|-------------------|
+| [Provider System](./provider-system.md) | Provider system design | frontend, backend |
+| [Plugin Architecture](./plugin-architecture.md) | Plugin architecture design | backend, agent |
 
-## 使用说明
+## Usage Guide
 
-- **前端开发者** 查看 architecture/ 和 data-models/
-- **后端开发者** 查看 architecture/ 和 data-models/
-- **Agent 开发者** 查看 architecture/ 和 guides/
-- **CLI 文档** 已移至独立的 [CLI](/cli/) 分类
+- **Frontend developers** refer to architecture/ and data-models/
+- **Backend developers** refer to architecture/ and data-models/
+- **Agent developers** refer to architecture/ and guides/
+- **CLI documentation** has been moved to the standalone [CLI](/cli/) category
 
-## 各分类如何引用
+## How to Reference from Categories
 
-在各分类的 index.md 中添加对 shared/ 的引用链接：
+Add reference links to shared/ in each category's index.md:
 
 ```markdown
-## 相关共享文档
+## Related Shared Documentation
 
-- [架构概览](../shared/architecture/overview.md)
-- [数据模型](../shared/data-models/)
+- [Architecture Overview](../shared/architecture/overview.md)
+- [Data Models](../shared/data-models/)
 ```

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: UI Shell
-description: 应用外壳：布局、导航、主题系统
+description: Application shell: layout, navigation, theming system
 ---
 
 # UI Shell
 
-> 构建应用外壳，包含布局、导航和主题系统。
+> Build the application shell, including layout, navigation, and theming system.
 
 ---
 

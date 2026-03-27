@@ -12,7 +12,6 @@ import type {
   ToolConfig,
   SkillConfig,
   ContextTokenBreakdown,
-  SelectorOption,
 } from "../types";
 
 // ============================================================================

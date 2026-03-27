@@ -1,53 +1,53 @@
-# 设计指南
+# Design Guide
 
-> 此文档包含从 Notion 导出的设计参考。图片资源待迁移。
+> This document contains design references exported from Notion. Image assets are pending migration.
 
-## 概述
+## Overview
 
-本文档涵盖 Viben 平台的设计规范和用户界面指南。
+This document covers design specifications and user interface guidelines for the Viben platform.
 
-## 章节
+## Sections
 
-### 仪表盘
+### Dashboard
 
-统计信息展示
+Statistics display
 
-### 提供商
+### Providers
 
-搜索引擎管理：
-- 知识库
-- 商业搜索引擎
-- 本地 searcher mcp_server
+Search engine management:
+- Knowledge base
+- Commercial search engines
+- Local searcher mcp_server
 - url2searcher
 
-### 搜索服务配置
+### Search Service Configuration
 
-将搜索引擎配置为一个 MCP Server。
+Configure search engines as an MCP Server.
 
-### 智能体
+### Agents
 
-自动识别已安装的智能体，配置对应的 MCP Server。
+Automatically detect installed agents and configure corresponding MCP Servers.
 
-### API 密钥
+### API Keys
 
-将搜索服务共享出去。
+Share search services externally.
 
-### 日志
+### Logs
 
-查看模型请求。
+View model requests.
 
-### 设置
+### Settings
 
-应用设置。
+Application settings.
 
-### 文档
+### Documentation
 
-使用文档。
+Usage documentation.
 
-### 关于
+### About
 
-自动更新。
+Auto-update.
 
 ---
 
-*注：原设计图片待从 Notion 迁移。*
+*Note: Original design images are pending migration from Notion.*

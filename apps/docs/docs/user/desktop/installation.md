@@ -1,231 +1,231 @@
 ---
 sidebar_position: 2
-title: "桌面应用安装"
-description: "安装 Viben Desktop - Agent Swarm x Code Evolution 平台"
+title: "Desktop Installation"
+description: "Install Viben Desktop - Agent Swarm x Code Evolution Platform"
 ---
 
-# 桌面应用安装
+# Desktop Installation
 
-详细的 Viben Desktop 安装指南。Viben Desktop 是 Agent Swarm x Code Evolution 平台，通过智能体集群和强化学习驱动代码持续进化。
+Detailed installation guide for Viben Desktop. Viben Desktop is an Agent Swarm x Code Evolution platform that drives continuous code evolution through agent swarms and reinforcement learning.
 
-## 下载
+## Download
 
-[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+[![Latest Version](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本。
+Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop).
 
 ---
 
 ## macOS
 
-### 系统要求
+### System Requirements
 
-- macOS 10.15 (Catalina) 或更高
-- Apple Silicon (M1/M2/M3/M4) 或 Intel 处理器
+- macOS 10.15 (Catalina) or higher
+- Apple Silicon (M1/M2/M3/M4) or Intel processor
 
-### 安装步骤
+### Installation Steps
 
-1. 下载 `Viben_x.x.x_universal.dmg` 文件
-2. 双击打开磁盘映像
-3. 拖动 **Viben** 到 **Applications** 文件夹
-4. 推出磁盘映像
+1. Download the `Viben_x.x.x_universal.dmg` file
+2. Double-click to open the disk image
+3. Drag **Viben** to the **Applications** folder
+4. Eject the disk image
 
-### 首次启动
+### First Launch
 
-由于 Viben 未经 Apple 公证，首次启动时可能会看到安全警告：
+Since Viben is not notarized by Apple, you may see a security warning on first launch:
 
-**方法一：右键打开**
-1. 打开 **Finder** 并进入 **Applications**
-2. 右键点击（或 Control + 点击）**Viben**
-3. 从菜单中选择 **打开**
-4. 在对话框中点击 **打开**
+**Method 1: Right-click to Open**
+1. Open **Finder** and navigate to **Applications**
+2. Right-click (or Control + click) **Viben**
+3. Select **Open** from the menu
+4. Click **Open** in the dialog
 
-**方法二：系统偏好设置**
-1. 前往 **系统偏好设置** > **安全性与隐私** > **通用**
-2. 点击 Viben 警告旁边的 **仍要打开**
+**Method 2: System Preferences**
+1. Go to **System Preferences** > **Security & Privacy** > **General**
+2. Click **Open Anyway** next to the Viben warning
 
-### 故障排除
+### Troubleshooting
 
-**"Viben 已损坏，无法打开"**
+**"Viben is damaged and can't be opened"**
 
-这是 macOS 隔离应用导致的。移除隔离标志：
+This is caused by macOS quarantine. Remove the quarantine flag:
 
 ```bash
 xattr -cr /Applications/Viben.app
 ```
 
-**"无法打开 Viben，因为无法验证开发者"**
+**"Cannot open Viben because the developer cannot be verified"**
 
-这是未签名应用的正常提示。使用上述方法绕过 Gatekeeper。
+This is a normal prompt for unsigned applications. Use the methods above to bypass Gatekeeper.
 
 ---
 
 ## Windows
 
-### 系统要求
+### System Requirements
 
-- Windows 10 或 Windows 11 (64 位)
-- WebView2 Runtime（通常已预装在 Windows 10/11 上）
+- Windows 10 or Windows 11 (64-bit)
+- WebView2 Runtime (usually pre-installed on Windows 10/11)
 
-### 安装步骤
+### Installation Steps
 
-**使用 MSI 安装程序（推荐）：**
+**Using MSI Installer (Recommended):**
 
-1. 下载 `Viben_x.x.x_x64_en-US.msi`
-2. 双击运行安装程序
-3. 按照安装向导操作
-4. 完成后点击 **完成**
+1. Download `Viben_x.x.x_x64_en-US.msi`
+2. Double-click to run the installer
+3. Follow the installation wizard
+4. Click **Finish** when complete
 
-**使用 EXE 安装程序：**
+**Using EXE Installer:**
 
-1. 下载 `Viben_x.x.x_x64-setup.exe`
-2. 双击运行
-3. 按照提示操作
+1. Download `Viben_x.x.x_x64-setup.exe`
+2. Double-click to run
+3. Follow the prompts
 
-### 首次启动
+### First Launch
 
-从以下位置启动 Viben：
-- 开始菜单 > Viben
-- 桌面快捷方式（如果安装时创建）
+Launch Viben from:
+- Start Menu > Viben
+- Desktop shortcut (if created during installation)
 
-### 故障排除
+### Troubleshooting
 
-**SmartScreen 警告**
+**SmartScreen Warning**
 
-Windows 可能会对未签名应用显示 SmartScreen 警告：
+Windows may show a SmartScreen warning for unsigned applications:
 
-1. 点击 **更多信息**
-2. 点击 **仍要运行**
+1. Click **More info**
+2. Click **Run anyway**
 
-**缺少 WebView2**
+**Missing WebView2**
 
-如果看到 WebView2 错误，请下载安装：
+If you see a WebView2 error, download and install it:
 https://developer.microsoft.com/en-us/microsoft-edge/webview2/
 
 ---
 
 ## Linux
 
-### 系统要求
+### System Requirements
 
-- 64 位 Linux 发行版
-- GTK 3 和 WebKitGTK（用于 WebView）
-- glibc 2.31 或更高
+- 64-bit Linux distribution
+- GTK 3 and WebKitGTK (for WebView)
+- glibc 2.31 or higher
 
-### AppImage（通用）
+### AppImage (Universal)
 
-AppImage 无需安装即可在大多数 Linux 发行版上运行：
+AppImage runs on most Linux distributions without installation:
 
 ```bash
-# 下载 AppImage
+# Download AppImage
 wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.AppImage
 
-# 添加执行权限
+# Add execute permission
 chmod +x Viben_*.AppImage
 
-# 运行
+# Run
 ./Viben_*.AppImage
 ```
 
 :::tip
-为方便访问，可以将 AppImage 移动到 `~/.local/bin/` 并将该目录添加到 PATH。
+For easy access, you can move the AppImage to `~/.local/bin/` and add that directory to your PATH.
 :::
 
 ### Debian/Ubuntu (.deb)
 
-适用于 Debian、Ubuntu、Linux Mint 等基于 Debian 的发行版：
+For Debian-based distributions like Debian, Ubuntu, Linux Mint:
 
 ```bash
-# 下载 .deb 包
+# Download .deb package
 wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.deb
 
-# 安装
+# Install
 sudo dpkg -i Viben_*_amd64.deb
 
-# 修复缺失的依赖
+# Fix missing dependencies
 sudo apt-get install -f
 ```
 
-从应用菜单启动或运行：
+Launch from the application menu or run:
 
 ```bash
 viben
 ```
 
-### 依赖
+### Dependencies
 
-如果遇到依赖问题，安装以下包：
+If you encounter dependency issues, install these packages:
 
-**Ubuntu/Debian：**
+**Ubuntu/Debian:**
 ```bash
 sudo apt-get install libwebkit2gtk-4.1-0 libappindicator3-1
 ```
 
-**Fedora：**
+**Fedora:**
 ```bash
 sudo dnf install webkit2gtk4.1 libappindicator-gtk3
 ```
 
-**Arch Linux：**
+**Arch Linux:**
 ```bash
 sudo pacman -S webkit2gtk-4.1 libappindicator-gtk3
 ```
 
 ---
 
-## 验证下载
+## Verify Download
 
-所有发布版本都包含 SHA256 校验和用于验证。
+All releases include SHA256 checksums for verification.
 
-### 下载校验和
+### Download Checksums
 
-1. 从发布页面下载 `checksums.txt`
-2. 下载对应平台的安装包
+1. Download `checksums.txt` from the release page
+2. Download the installer for your platform
 
-### macOS/Linux 验证
+### macOS/Linux Verification
 
 ```bash
-# 进入下载目录
+# Navigate to download directory
 cd ~/Downloads
 
-# 验证校验和
+# Verify checksum
 sha256sum -c checksums.txt 2>/dev/null | grep -E "Viben.*OK"
 ```
 
-### Windows (PowerShell) 验证
+### Windows (PowerShell) Verification
 
 ```powershell
-# 获取下载文件的哈希
+# Get hash of downloaded file
 $hash = (Get-FileHash "Viben_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
 
-# 与 checksums.txt 比较
+# Compare with checksums.txt
 Get-Content checksums.txt | Select-String $hash
 ```
 
 ---
 
-## 更新
+## Updates
 
-Viben 目前不支持自动更新。要更新：
+Viben currently does not support automatic updates. To update:
 
-1. 从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本
-2. 覆盖安装（你的设置会保留）
+1. Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+2. Install over the existing version (your settings will be preserved)
 
 :::info
-自动更新功能计划在未来版本中推出。
+Automatic update functionality is planned for a future release.
 :::
 
 ---
 
-## 卸载
+## Uninstall
 
 ### macOS
 
-1. 打开 **Finder** > **Applications**
-2. 将 **Viben** 拖到废纸篓
-3. 清空废纸篓
+1. Open **Finder** > **Applications**
+2. Drag **Viben** to Trash
+3. Empty Trash
 
-要删除所有数据：
+To remove all data:
 ```bash
 rm -rf ~/Library/Application\ Support/com.viben.app
 rm -rf ~/Library/Caches/com.viben.app
@@ -233,22 +233,22 @@ rm -rf ~/Library/Caches/com.viben.app
 
 ### Windows
 
-1. 打开 **设置** > **应用** > **已安装的应用**
-2. 找到 **Viben**
-3. 点击 **卸载**
+1. Open **Settings** > **Apps** > **Installed apps**
+2. Find **Viben**
+3. Click **Uninstall**
 
-或使用控制面板 > 程序和功能。
+Or use Control Panel > Programs and Features.
 
 ### Linux
 
-**AppImage：** 直接删除 AppImage 文件。
+**AppImage:** Simply delete the AppImage file.
 
-**Debian 包：**
+**Debian package:**
 ```bash
 sudo apt-get remove viben
 ```
 
-要删除配置：
+To remove configuration:
 ```bash
 rm -rf ~/.config/viben
 rm -rf ~/.local/share/viben
@@ -256,8 +256,8 @@ rm -rf ~/.local/share/viben
 
 ---
 
-## 下一步
+## Next Steps
 
-- [功能介绍](./features) - 探索完整功能
-- [快速入门](../getting-started/quick-start) - 2 分钟上手
-- [客户端配置](../getting-started/client-configuration) - 配置 MCP 客户端
+- [Features](./features) - Explore the complete feature set
+- [Quick Start](../getting-started/quick-start) - Get started in 2 minutes
+- [Client Configuration](../getting-started/client-configuration) - Configure MCP clients
