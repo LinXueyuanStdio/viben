@@ -1,0 +1,675 @@
+name: Release All (Unified)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.2.0). Leave empty to use version from package.json'
+        required: false
+        type: string
+      release_cli:
+        description: 'Release CLI (npm publish, homebrew update)'
+        type: boolean
+        default: true
+      release_desktop:
+        description: 'Release Desktop (multi-platform build)'
+        type: boolean
+        default: true
+      draft:
+        description: 'Create as draft release'
+        type: boolean
+        default: false
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-all-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  # =============================================================================
+  # PREPARE: Extract version and sync all package files
+  # =============================================================================
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag: ${{ steps.get-version.outputs.tag }}
+      release_cli: ${{ steps.get-version.outputs.release_cli }}
+      release_desktop: ${{ steps.get-version.outputs.release_desktop }}
+      is_draft: ${{ steps.get-version.outputs.is_draft }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get version and determine release targets
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+            else
+              VERSION=$(jq -r '.version' package.json)
+            fi
+            RELEASE_CLI="${{ inputs.release_cli }}"
+            RELEASE_DESKTOP="${{ inputs.release_desktop }}"
+            IS_DRAFT="${{ inputs.draft }}"
+          else
+            # Tag trigger (v0.2.0 -> 0.2.0)
+            VERSION="${GITHUB_REF_NAME#v}"
+            RELEASE_CLI="true"
+            RELEASE_DESKTOP="true"
+            IS_DRAFT="false"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "release_cli=${RELEASE_CLI}" >> $GITHUB_OUTPUT
+          echo "release_desktop=${RELEASE_DESKTOP}" >> $GITHUB_OUTPUT
+          echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
+
+          echo "=========================================="
+          echo "Release Configuration:"
+          echo "  Version: ${VERSION}"
+          echo "  Tag: v${VERSION}"
+          echo "  Release CLI: ${RELEASE_CLI}"
+          echo "  Release Desktop: ${RELEASE_DESKTOP}"
+          echo "  Draft: ${IS_DRAFT}"
+          echo "=========================================="
+
+      - name: Verify version sync requirements
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          echo "Will sync version ${VERSION} to:"
+          echo "  - package.json (root)"
+          echo "  - apps/cli/package.json"
+          echo "  - apps/desktop/src-tauri/tauri.conf.json"
+
+  # =============================================================================
+  # CLI RELEASE: npm publish and homebrew update
+  # =============================================================================
+  release-cli:
+    needs: prepare
+    if: needs.prepare.outputs.release_cli == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha256: ${{ steps.get-sha256.outputs.sha256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync version to all package files
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # Update root package.json
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          echo "Updated root package.json to: $(jq -r '.version' package.json)"
+
+          # Update apps/cli/package.json
+          cd apps/cli
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          echo "Updated apps/cli/package.json to: $(jq -r '.version' package.json)"
+          cd ../..
+
+          # Update apps/desktop/src-tauri/tauri.conf.json
+          cd apps/desktop/src-tauri
+          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Updated tauri.conf.json to: $(jq -r '.version' tauri.conf.json)"
+
+      - name: Build CLI package and dependencies
+        run: pnpm --filter viben... build
+
+      - name: Publish to npm
+        run: |
+          cd apps/cli
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Wait for npm propagation
+        run: sleep 30
+
+      - name: Get package SHA256
+        id: get-sha256
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SHA256=$(curl -sL "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz" | shasum -a 256 | cut -d' ' -f1)
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          echo "Package SHA256: ${SHA256}"
+
+      - name: Prepare install.sh for release
+        run: |
+          chmod +x scripts/install.sh
+          mkdir -p release-assets
+          cp scripts/install.sh release-assets/install.sh
+
+      - name: Upload CLI assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-assets
+          path: release-assets/
+          retention-days: 1
+
+  # =============================================================================
+  # HOMEBREW UPDATE
+  # =============================================================================
+  update-homebrew:
+    needs: [prepare, release-cli]
+    runs-on: ubuntu-latest
+    if: needs.prepare.outputs.release_cli == 'true' && needs.release-cli.outputs.sha256 != ''
+    steps:
+      - name: Checkout homebrew-viben
+        uses: actions/checkout@v6
+        with:
+          repository: LinXueyuanStdio/homebrew-viben
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-viben
+        continue-on-error: true
+
+      - name: Check if tap exists
+        id: check-tap
+        run: |
+          if [ -d "homebrew-viben" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::Homebrew tap repository not found. Skipping formula update."
+          fi
+
+      - name: Update formula
+        if: steps.check-tap.outputs.exists == 'true'
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SHA256="${{ needs.release-cli.outputs.sha256 }}"
+
+          cd homebrew-viben
+          mkdir -p Formula
+
+          cat > Formula/viben.rb << 'EOF'
+          class Viben < Formula
+            desc "Orchestrate AI agent clusters in your local workspace"
+            homepage "https://github.com/LinXueyuanStdio/viben"
+            url "https://registry.npmjs.org/viben/-/viben-VERSION_PLACEHOLDER.tgz"
+            sha256 "SHA256_PLACEHOLDER"
+            license "MIT"
+
+            depends_on "node@20"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+            end
+
+            test do
+              assert_match "Viben CLI", shell_output("#{bin}/viben --help")
+            end
+          end
+          EOF
+
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" Formula/viben.rb
+          sed -i "s/SHA256_PLACEHOLDER/${SHA256}/g" Formula/viben.rb
+
+          echo "Updated formula:"
+          cat Formula/viben.rb
+
+      - name: Commit and push
+        if: steps.check-tap.outputs.exists == 'true'
+        run: |
+          cd homebrew-viben
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/viben.rb
+          git diff --cached --quiet || git commit -m "Update viben to ${{ needs.prepare.outputs.version }}"
+          git push
+
+  # =============================================================================
+  # DESKTOP BUILD: Multi-platform builds
+  # =============================================================================
+  build-desktop:
+    needs: prepare
+    if: needs.prepare.outputs.release_desktop == 'true'
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: windows-latest
+            args: --target x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
+          - platform: ubuntu-22.04
+            args: ''
+            rust_targets: x86_64-unknown-linux-gnu
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: ${{ matrix.platform }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm turbo build --filter=@viben/desktop^...
+
+      - name: Sync version to tauri.conf.json
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd apps/desktop/src-tauri
+          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          # Don't create release here - we'll create a unified release later
+          tagName: ''
+          releaseName: ''
+          args: ${{ matrix.args }}
+
+      - name: Find and upload build artifacts
+        shell: bash
+        run: |
+          mkdir -p desktop-artifacts
+
+          # Find artifacts based on platform
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            find apps/desktop/src-tauri/target -name "*.dmg" -exec cp {} desktop-artifacts/ \;
+          elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            find apps/desktop/src-tauri/target -name "*.msi" -exec cp {} desktop-artifacts/ \;
+            find apps/desktop/src-tauri/target -name "*-setup.exe" -exec cp {} desktop-artifacts/ \;
+          elif [[ "${{ matrix.platform }}" == "ubuntu-22.04" ]]; then
+            find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} desktop-artifacts/ \;
+            find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} desktop-artifacts/ \;
+          fi
+
+          echo "Found artifacts:"
+          ls -la desktop-artifacts/
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: desktop-artifacts/
+          retention-days: 1
+
+  # =============================================================================
+  # CREATE UNIFIED RELEASE
+  # =============================================================================
+  create-unified-release:
+    needs: [prepare, release-cli, build-desktop]
+    # Run if at least one of CLI or Desktop was released
+    if: |
+      always() &&
+      (needs.release-cli.result == 'success' || needs.build-desktop.result == 'success') &&
+      needs.prepare.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Create release directory
+        run: mkdir -p release-assets
+
+      - name: Download CLI assets
+        if: needs.release-cli.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-assets
+          path: release-assets/
+        continue-on-error: true
+
+      - name: Download macOS desktop artifacts
+        if: needs.build-desktop.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-macos-latest
+          path: release-assets/
+        continue-on-error: true
+
+      - name: Download Windows desktop artifacts
+        if: needs.build-desktop.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-windows-latest
+          path: release-assets/
+        continue-on-error: true
+
+      - name: Download Linux desktop artifacts
+        if: needs.build-desktop.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-ubuntu-22.04
+          path: release-assets/
+        continue-on-error: true
+
+      - name: List all release assets
+        run: |
+          echo "Release assets:"
+          ls -la release-assets/ || echo "No assets found"
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          if ls * 1> /dev/null 2>&1; then
+            sha256sum * > checksums.txt 2>/dev/null || true
+            echo "Generated checksums:"
+            cat checksums.txt
+          else
+            echo "No files to checksum"
+          fi
+
+      - name: Determine release components
+        id: components
+        run: |
+          CLI_RELEASED="${{ needs.release-cli.result == 'success' }}"
+          DESKTOP_RELEASED="${{ needs.build-desktop.result == 'success' }}"
+
+          if [[ "$CLI_RELEASED" == "true" && "$DESKTOP_RELEASED" == "true" ]]; then
+            RELEASE_NAME="Viben v${{ needs.prepare.outputs.version }}"
+            COMPONENTS="CLI + Desktop"
+          elif [[ "$CLI_RELEASED" == "true" ]]; then
+            RELEASE_NAME="Viben CLI v${{ needs.prepare.outputs.version }}"
+            COMPONENTS="CLI only"
+          else
+            RELEASE_NAME="Viben Desktop v${{ needs.prepare.outputs.version }}"
+            COMPONENTS="Desktop only"
+          fi
+
+          echo "release_name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+          echo "components=${COMPONENTS}" >> $GITHUB_OUTPUT
+          echo "cli_released=${CLI_RELEASED}" >> $GITHUB_OUTPUT
+          echo "desktop_released=${DESKTOP_RELEASED}" >> $GITHUB_OUTPUT
+
+      - name: Generate release body
+        id: release-body
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+          CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
+          DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
+        run: |
+          cat > release-body.md << 'EOFBODY'
+          ## Viben v${VERSION}
+
+          EOFBODY
+
+          # CLI section
+          if [[ "$CLI_RELEASED" == "true" ]]; then
+            cat >> release-body.md << 'EOFCLI'
+          ### CLI Installation
+
+          #### Shell Script (macOS/Linux)
+          ```bash
+          curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+          ```
+
+          #### npx (Node.js 18+)
+          ```bash
+          npx viben
+          ```
+
+          #### npm Global Install
+          ```bash
+          npm install -g viben
+          viben
+          ```
+
+          #### Homebrew (macOS/Linux)
+          ```bash
+          brew tap LinXueyuanStdio/viben
+          brew install viben
+          ```
+
+          EOFCLI
+          fi
+
+          # Desktop section
+          if [[ "$DESKTOP_RELEASED" == "true" ]]; then
+            cat >> release-body.md << 'EOFDESKTOP'
+          ### Desktop Installation
+
+          #### macOS
+          Download the `.dmg` file and drag Viben to Applications.
+          - First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
+          - Or run: `xattr -cr /Applications/Viben.app`
+
+          #### Windows
+          Download the `.msi` or `.exe` installer and run it.
+
+          #### Linux
+          - **AppImage** (portable): Download and run `chmod +x` then execute
+          - **Debian/Ubuntu**: Download `.deb` and install with `sudo dpkg -i`
+
+          EOFDESKTOP
+          fi
+
+          # Common footer
+          cat >> release-body.md << 'EOFFOOTER'
+          ### Checksums
+
+          See `checksums.txt` attached to this release for SHA256 checksums of all artifacts.
+
+          ### Requirements
+
+          - **CLI**: Node.js 18+
+          - **Desktop**: No additional requirements
+
+          ### Links
+
+          - [Documentation](https://github.com/LinXueyuanStdio/viben)
+          - [npm Package](https://www.npmjs.com/package/viben)
+          - [Changelog](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md)
+          EOFFOOTER
+
+          # Substitute VERSION in the header
+          sed -i "s/\${VERSION}/${VERSION}/g" release-body.md
+
+          echo "Generated release body:"
+          cat release-body.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: ${{ steps.components.outputs.release_name }}
+          body_path: release-body.md
+          files: release-assets/*
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate unified releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+          CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
+          DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
+        run: |
+          # Wait for release to be fully available
+          sleep 5
+
+          # Get release assets from GitHub API
+          RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME 2>/dev/null || echo '{"assets":[]}')
+          ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
+
+          # Find URLs for desktop assets
+          DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
+          MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
+          EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
+          APPIMAGE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
+          DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
+          INSTALL_SH_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "install.sh") | .browser_download_url' | head -1)
+
+          # Get file names
+          DMG_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .name' | head -1)
+          MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
+          EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
+          APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
+          DEB_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .name' | head -1)
+
+          # Create releases.json
+          cat > release-assets/releases.json << EOF
+          {
+            "version": "${VERSION}",
+            "tag": "${TAG_NAME}",
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "components": {
+              "cli": ${CLI_RELEASED},
+              "desktop": ${DESKTOP_RELEASED}
+            },
+            "cli": {
+              "install_methods": {
+                "shell": {
+                  "command": "curl -fsSL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | bash",
+                  "platforms": ["macos", "linux"]
+                },
+                "npx": {
+                  "command": "npx viben",
+                  "platforms": ["macos", "linux", "windows"]
+                },
+                "npm": {
+                  "command": "npm install -g viben",
+                  "platforms": ["macos", "linux", "windows"]
+                },
+                "homebrew": {
+                  "command": "brew tap LinXueyuanStdio/viben && brew install viben",
+                  "platforms": ["macos", "linux"]
+                }
+              },
+              "assets": {
+                "install_sh": {
+                  "url": "${INSTALL_SH_URL}",
+                  "name": "install.sh"
+                }
+              }
+            },
+            "desktop": {
+              "assets": {
+                "macos": {
+                  "dmg": {
+                    "url": "${DMG_URL}",
+                    "name": "${DMG_NAME}"
+                  }
+                },
+                "windows": {
+                  "msi": {
+                    "url": "${MSI_URL}",
+                    "name": "${MSI_NAME}"
+                  },
+                  "exe": {
+                    "url": "${EXE_URL}",
+                    "name": "${EXE_NAME}"
+                  }
+                },
+                "linux": {
+                  "appimage": {
+                    "url": "${APPIMAGE_URL}",
+                    "name": "${APPIMAGE_NAME}"
+                  },
+                  "deb": {
+                    "url": "${DEB_URL}",
+                    "name": "${DEB_NAME}"
+                  }
+                }
+              }
+            },
+            "links": {
+              "npm": "https://www.npmjs.com/package/viben",
+              "documentation": "https://github.com/${{ github.repository }}",
+              "changelog": "https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md"
+            }
+          }
+          EOF
+
+          echo "Generated releases.json:"
+          cat release-assets/releases.json
+
+      - name: Upload releases.json to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

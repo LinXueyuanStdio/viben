@@ -45,6 +45,7 @@ import {
   REVIEW_REASON_LABELS,
   REVIEW_REASON_COLORS,
   type ReviewReason,
+  type ExecutionPhase,
 } from "@viben/kanban";
 import type { TaskCardContentProps, Subtask, IssuePriority } from "../types";
 import { useElapsedTime, formatElapsedTime } from "../hooks";
@@ -61,15 +62,14 @@ const validatePriority = (priority?: string): IssuePriority | undefined => {
 };
 
 // Map current_phase number to ExecutionPhase
-// Based on CLI phase system: 1=implement, 2=check, 3=finish
+// Based on CLI phase system: 1=implement, 2=check, 3=complete
 // Note: current_phase is 0-based index into next_action array
-type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "finish" | "complete";
 const mapCurrentPhaseToExecution = (currentPhase?: number): ExecutionPhase | undefined => {
   if (currentPhase === undefined || currentPhase === null) return undefined;
   const mapping: Record<number, ExecutionPhase> = {
     0: "implement",
     1: "check",
-    2: "finish",
+    2: "complete",
   };
   return mapping[currentPhase];
 };
