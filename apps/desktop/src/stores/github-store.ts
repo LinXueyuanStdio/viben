@@ -11,7 +11,7 @@ import type {
   GitHubIssue,
   GitHubIssueInvestigation,
   GitHubRepositoryConfig,
-} from "@viben/core";
+} from "@viben/core/shared";
 
 // ============================================================================
 // Types
