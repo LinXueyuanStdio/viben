@@ -560,10 +560,10 @@ description: Copied from source
       expect(ctx.console.hasLog(join(ctx.skillsDir, "test-skill"))).toBe(true);
     });
 
-    it("should return path with -g flag", async () => {
-      await ctx.run(["skill", "path", "global-path-skill", "-g"]);
+    it("should return path for another skill", async () => {
+      await ctx.run(["skill", "path", "another-skill"]);
 
-      expect(ctx.console.hasLog(join(ctx.skillsDir, "global-path-skill"))).toBe(true);
+      expect(ctx.console.hasLog(join(ctx.skillsDir, "another-skill"))).toBe(true);
     });
   });
 

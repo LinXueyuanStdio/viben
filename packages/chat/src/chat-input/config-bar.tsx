@@ -34,8 +34,9 @@ import { getModelIcon } from "../model-icons";
 import type {
   AgentOption,
   ModelOption,
+  ExecutorOption,
 } from "./types";
-import type { ExecutorType, ToolConfig, SkillConfig, ContextTokenBreakdown, AgentTypeInfo } from "../types";
+import type { ToolConfig, SkillConfig, ContextTokenBreakdown } from "../types";
 
 export interface ChatInputConfigBarProps {
   // Agent
@@ -51,9 +52,9 @@ export interface ChatInputConfigBarProps {
   onModelChange?: (modelId: string) => void;
   showModelSelector: boolean;
   // Executor
-  executors: AgentTypeInfo[];
-  selectedExecutor: ExecutorType;
-  onExecutorChange?: (executor: ExecutorType) => void;
+  executors: ExecutorOption[];
+  selectedExecutor: string;
+  onExecutorChange?: (executorId: string) => void;
   showExecutorSelector: boolean;
   // Tools
   tools: ToolConfig[];
