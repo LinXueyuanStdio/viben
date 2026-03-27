@@ -102,7 +102,7 @@ export type IdeaTypeSource = "builtin" | "custom";
  * Represents an idea type (prompt template)
  *
  * Idea types define how ideas are generated. They can be:
- * - Built-in: shipped with viben in packages/core/src/prompts/idea-types/
+ * - Built-in: shipped with viben in packages/core/templates/viben/idea-types/
  * - Custom: user-defined in docs/idea-types/
  */
 export interface IdeaType {

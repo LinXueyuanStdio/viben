@@ -310,7 +310,7 @@ function isBuiltinTypeName(name: string): boolean {
  *
  * Search order:
  * 1. Custom types (docs/idea-types/*.md)
- * 2. Built-in types (packages/core/src/prompts/idea-types/*.md)
+ * 2. Built-in types (packages/core/templates/viben/idea-types/*.md)
  *
  * @param typeName - Name of the idea type
  * @param repoRoot - Repository root path
@@ -324,7 +324,7 @@ export function getIdeaType(typeName: string, repoRoot: string): IdeaType | null
     return loadIdeaTypeFromFile(customPromptPath, source);
   }
 
-  // Fallback to built-in types in packages/core/src/prompts/idea-types/
+  // Fallback to built-in types in packages/core/templates/viben/idea-types/
   if (isBuiltinTypeName(typeName)) {
     const builtinPromptPath = getBuiltinIdeaTypePromptPath(typeName);
     if (existsSync(builtinPromptPath)) {
@@ -340,7 +340,7 @@ export function getIdeaType(typeName: string, repoRoot: string): IdeaType | null
  *
  * Search order:
  * 1. Custom types in docs/idea-types/ (project-local)
- * 2. Built-in types in packages/core/src/prompts/idea-types/ (fallback)
+ * 2. Built-in types in packages/core/templates/viben/idea-types/ (fallback)
  *
  * @param repoRoot - Repository root path
  * @returns Array of IdeaType objects

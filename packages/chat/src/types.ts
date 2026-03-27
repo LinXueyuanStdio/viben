@@ -2,9 +2,6 @@
  * Chat and Agent types for @viben/chat package
  */
 
-// Re-export ExecutorType from @viben/core for convenience
-export type { ExecutorType } from "@viben/core/shared";
-
 // ============================================================================
 // Message Attachment Types
 // ============================================================================
@@ -136,16 +133,13 @@ export interface ContextTokenBreakdown {
 }
 
 // ============================================================================
-// Agent/Executor Types
+// Selector Option Types (Generic)
 // ============================================================================
 
-import type { ExecutorType } from "@viben/core/shared";
-
-/** Agent type metadata for UI display */
-export interface AgentTypeInfo {
-  id: ExecutorType;
+/** Generic selector option for dropdowns */
+export interface SelectorOption {
+  id: string;
   name: string;
-  description: string;
+  description?: string;
   icon?: string;
-  docsUrl?: string;
 }

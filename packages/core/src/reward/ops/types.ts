@@ -44,7 +44,7 @@ export type RewardTypeSource = "builtin" | "custom";
  * Represents a reward type (prompt template)
  *
  * Reward types define how PR quality is evaluated. They can be:
- * - Built-in: shipped with viben in packages/core/src/prompts/reward-types/
+ * - Built-in: shipped with viben in packages/core/templates/viben/reward-types/
  * - Custom: user-defined in docs/reward-types/
  */
 export interface RewardType {

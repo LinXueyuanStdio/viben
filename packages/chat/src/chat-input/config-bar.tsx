@@ -35,8 +35,7 @@ import type {
   AgentOption,
   ModelOption,
 } from "./types";
-import type { ExecutorType } from "@viben/core/shared";
-import type { ToolConfig, SkillConfig, ContextTokenBreakdown, AgentTypeInfo } from "../types";
+import type { ExecutorType, ToolConfig, SkillConfig, ContextTokenBreakdown, AgentTypeInfo } from "../types";
 
 export interface ChatInputConfigBarProps {
   // Agent
