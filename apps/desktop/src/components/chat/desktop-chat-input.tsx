@@ -31,9 +31,10 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { ChatInput, type ChatInputProps, type MessageAttachment } from "@viben/chat";
+import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
 import { useChatConfig } from "@/hooks";
 import { SandboxToggle } from "./sandbox-toggle";
+import type { ExecutorType } from "@viben/core/shared";
 
 // ============================================================================
 // Types
@@ -115,19 +116,21 @@ export function DesktopChatInput({
   // Merge props with global config (props take precedence)
   const agents = propAgents ?? (useGlobalConfig ? chatConfig.agents : []);
   const models = propModels ?? (useGlobalConfig ? chatConfig.models : []);
-  // Convert ExecutorInfo[] to AgentTypeInfo[] for ChatInput
-  const executors = propExecutors ?? (useGlobalConfig ? chatConfig.executors.map((e) => ({
+  // Convert ExecutorInfo[] to ExecutorOption[] for ChatInput
+  const executors: ExecutorOption[] = propExecutors ?? (useGlobalConfig ? chatConfig.executors.map((e) => ({
     id: e.type,
     name: e.name,
     description: e.description,
-    docsUrl: e.docs_url,
   })) : []);
   const selectedAgentId = propSelectedAgentId ?? (useGlobalConfig ? chatConfig.selectedAgentId : null);
   const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
   const selectedExecutor = propSelectedExecutor ?? (useGlobalConfig ? chatConfig.selectedExecutor : "CLAUDE_CODE");
   const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
   const onModelChange = propOnModelChange ?? (useGlobalConfig ? chatConfig.setSelectedModelId : undefined);
-  const onExecutorChange = propOnExecutorChange ?? (useGlobalConfig ? chatConfig.setSelectedExecutor : undefined);
+  // Wrap the executor change handler to convert string to ExecutorType
+  const onExecutorChange = propOnExecutorChange ?? (useGlobalConfig
+    ? (executorId: string) => chatConfig.setSelectedExecutor(executorId as ExecutorType)
+    : undefined);
 
   // Determine selector visibility (props override global config visibility)
   // Only apply visibility rules when useGlobalConfig is true and no prop override
