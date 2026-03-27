@@ -129,13 +129,18 @@ export interface TaskWithAttemptStatus extends Task {
 
 /**
  * Execution phase for running tasks
+ * Matches @viben/kanban ExecutionPhase type
  */
 export type ExecutionPhase =
-  | "plan"          // 规划阶段
-  | "implement"     // 实现阶段
-  | "check"         // 检查阶段
-  | "fix"           // 修复阶段
-  | "complete";     // 执行完成
+  | "idle"                  // 空闲
+  | "plan"                  // 规划阶段
+  | "implement"             // 实现阶段
+  | "rate_limit_paused"     // 速率限制暂停
+  | "auth_failure_paused"   // 认证失败暂停
+  | "check"                 // 检查阶段
+  | "fix"                   // 修复阶段
+  | "complete"              // 执行完成
+  | "failed";               // 执行失败
 
 // Priority type (matches IssuePriority from @viben/kanban)
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";

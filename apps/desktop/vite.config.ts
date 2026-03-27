@@ -6,6 +6,53 @@ import path from "path";
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+// Node.js-only packages that should be externalized for browser builds
+const nodeOnlyPackages = [
+  // Viben core (uses Node.js fs, os, path, child_process, etc.)
+  // Desktop app should use Gateway API instead of direct imports
+  "@viben/core",
+  // Server-side optional dependencies
+  "node-notifier",
+  "@larksuiteoapi/node-sdk",
+  "node-pty",
+  // OpenTelemetry packages (use Node.js-specific modules like stream, zlib, http)
+  "@opentelemetry/api",
+  "@opentelemetry/instrumentation-fastify",
+  "@opentelemetry/instrumentation-http",
+  "@opentelemetry/sdk-metrics",
+  "@opentelemetry/sdk-node",
+  "@opentelemetry/sdk-trace-base",
+  "@opentelemetry/semantic-conventions",
+  "@opentelemetry/otlp-exporter-base",
+  "@opentelemetry/exporter-trace-otlp-grpc",
+  "@opentelemetry/exporter-trace-otlp-http",
+  "@opentelemetry/exporter-metrics-otlp-grpc",
+  "@opentelemetry/exporter-metrics-otlp-http",
+  // gRPC (used by OpenTelemetry OTLP exporters)
+  "@grpc/grpc-js",
+  "@grpc/proto-loader",
+  // Fastify and server packages
+  "fastify",
+  "@fastify/cors",
+  "@fastify/multipart",
+  "@fastify/swagger",
+  "@fastify/swagger-ui",
+  "@fastify/websocket",
+  // MCP SDK (uses Node.js streams for stdio transport)
+  "@modelcontextprotocol/sdk",
+  // Anthropic SDKs (use Node.js child_process, fs, etc.)
+  "@anthropic-ai/claude-agent-sdk",
+  "@anthropic-ai/sdk",
+  // CLI tools
+  "commander",
+  // Other Node.js-specific packages
+  "pino",
+  "cloudflared",
+  "undici",
+  "adm-zip",
+  "cross-spawn",
+];
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
@@ -17,7 +64,7 @@ export default defineConfig(async () => ({
   // Externalize server-side only packages from @viben/core
   // These are optional dependencies that use dynamic import with fallback
   ssr: {
-    external: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
+    external: nodeOnlyPackages,
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -54,8 +101,13 @@ export default defineConfig(async () => ({
   build: {
     // Enable code splitting for dynamic imports
     rollupOptions: {
-      // Externalize server-side only packages
-      external: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
+      // Externalize server-side only packages (including deep imports)
+      external: (id: string) => {
+        // Match exact package names or deep imports (e.g., @pkg/name/dist/file.js)
+        return nodeOnlyPackages.some(
+          (pkg) => id === pkg || id.startsWith(`${pkg}/`)
+        );
+      },
       output: {
         // Manual chunk splitting for better caching
         manualChunks: {
@@ -85,6 +137,6 @@ export default defineConfig(async () => ({
       "react-i18next",
     ],
     // Exclude server-side only packages from pre-bundling
-    exclude: ["node-notifier", "@larksuiteoapi/node-sdk", "node-pty"],
+    exclude: nodeOnlyPackages,
   },
 }));

@@ -160,12 +160,19 @@ export function registerFileRlCommand(program: Command): void {
         // Write file
         writeFileSync(fullPath, content, "utf-8");
 
+        // Initialize the run state so add-idea and list-ideas work immediately
+        const initResult = initRun(repoRoot, outputPath, { force: false });
+        if (!initResult.success) {
+          throw CliError.operationFailed("Init run", initResult.error || "Unknown error");
+        }
+
         output(ctx, successResponse({ name, path: outputPath }), () => {
           outputSuccess(ctx, `Created FileRL target: ${outputPath}`);
           console.log();
           console.log("Next steps:");
           console.log(`  1. Edit ${outputPath} to configure your optimization goals`);
-          console.log(`  2. Run: viben filerl start ${outputPath}`);
+          console.log(`  2. Add ideas: viben filerl add-idea ${outputPath} path/to/idea.md`);
+          console.log(`  3. Start run: viben filerl start ${outputPath}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -601,15 +608,15 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl add-idea <name> <idea-path>
+  // filerl add-idea <name-or-target> <idea-path>
   // ============================================================================
   fileRlCmd
     .command("add-idea")
-    .description("Add an idea file to a FileRL run's idea pool")
-    .argument("<name>", "Name of the FileRL run")
+    .description("Add an idea file to a FileRL target's idea pool")
+    .argument("<name-or-target>", "Run name or path to FileRL target file (*.md)")
     .argument("<idea-path>", "Path to the idea file (.md)")
     .option("--json", "JSON format output")
-    .action(async (name: string, ideaPath: string, options: { json?: boolean }) => {
+    .action(async (nameOrTarget: string, ideaPath: string, options: { json?: boolean }) => {
       const ctx = getOutputContext(program);
       if (options.json) {
         ctx.json = true;
@@ -619,19 +626,34 @@ export function registerFileRlCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenRoot(cwd);
 
-        // Check run exists
-        const state = readState(repoRoot, name);
-        if (!state) {
-          throw CliError.notFound("FileRL run", name);
+        // Try to get config from run state first, then fallback to target file
+        let config: FileRlConfig | null = null;
+
+        if (nameOrTarget.endsWith(".md")) {
+          // It's a target file path - parse directly
+          const parseResult = parseTarget(nameOrTarget, repoRoot);
+          config = parseResult.config ?? null;
+        } else {
+          // It's a run name - try run state first
+          const state = readState(repoRoot, nameOrTarget);
+          if (state) {
+            const parseResult = parseTarget(state.target_path, repoRoot);
+            config = parseResult.config ?? null;
+          } else {
+            // Fallback: try to find target file named {name}.md
+            const targetPath = resolve(cwd, `${nameOrTarget}.md`);
+            if (existsSync(targetPath)) {
+              const parseResult = parseTarget(targetPath, repoRoot);
+              config = parseResult.config ?? null;
+            }
+          }
         }
 
-        // Get config to find ideas directory
-        const parseResult = parseTarget(state.target_path, repoRoot);
-        if (!parseResult.success || !parseResult.config) {
-          throw CliError.operationFailed("Parse target", parseResult.error || "Failed");
+        if (!config) {
+          throw CliError.notFound("FileRL run or target file", nameOrTarget);
         }
 
-        const config = parseResult.config;
+        const name = config.name;
         const ideasDir = config.idea.session_dir
           ? resolve(repoRoot, config.idea.session_dir)
           : join(repoRoot, ".viben", "ideas", name);
@@ -659,15 +681,15 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl list-ideas <name>
+  // filerl list-ideas <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("list-ideas")
-    .description("List ideas in a FileRL run's pool")
-    .argument("<name>", "Name of the FileRL run")
+    .description("List ideas in a FileRL target's pool")
+    .argument("<name-or-target>", "Run name or path to FileRL target file (*.md)")
     .option("--status <status>", "Filter by status (draft, promoted, dismissed)")
     .option("--json", "JSON format output")
-    .action(async (name: string, options: { status?: string; json?: boolean }) => {
+    .action(async (nameOrTarget: string, options: { status?: string; json?: boolean }) => {
       const ctx = getOutputContext(program);
       if (options.json) {
         ctx.json = true;
@@ -677,18 +699,34 @@ export function registerFileRlCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenRoot(cwd);
 
-        // Check run exists and get config
-        const state = readState(repoRoot, name);
-        if (!state) {
-          throw CliError.notFound("FileRL run", name);
+        // Try to get config from run state first, then fallback to target file
+        let config: FileRlConfig | null = null;
+
+        if (nameOrTarget.endsWith(".md")) {
+          // It's a target file path - parse directly
+          const parseResult = parseTarget(nameOrTarget, repoRoot);
+          config = parseResult.config ?? null;
+        } else {
+          // It's a run name - try run state first
+          const state = readState(repoRoot, nameOrTarget);
+          if (state) {
+            const parseResult = parseTarget(state.target_path, repoRoot);
+            config = parseResult.config ?? null;
+          } else {
+            // Fallback: try to find target file named {name}.md
+            const targetPath = resolve(cwd, `${nameOrTarget}.md`);
+            if (existsSync(targetPath)) {
+              const parseResult = parseTarget(targetPath, repoRoot);
+              config = parseResult.config ?? null;
+            }
+          }
         }
 
-        const parseResult = parseTarget(state.target_path, repoRoot);
-        if (!parseResult.success || !parseResult.config) {
-          throw CliError.operationFailed("Parse target", parseResult.error || "Failed");
+        if (!config) {
+          throw CliError.notFound("FileRL run or target file", nameOrTarget);
         }
 
-        const config = parseResult.config;
+        const name = config.name;
         const ideasDir = config.idea.session_dir
           ? resolve(repoRoot, config.idea.session_dir)
           : join(repoRoot, ".viben", "ideas", name);
@@ -706,7 +744,7 @@ export function registerFileRlCommand(program: Command): void {
             console.log(chalk.gray("No ideas found."));
             console.log();
             console.log("To add ideas:");
-            console.log(`  viben filerl add-idea ${name} path/to/idea.md`);
+            console.log(`  viben filerl add-idea ${nameOrTarget} path/to/idea.md`);
             return;
           }
 
