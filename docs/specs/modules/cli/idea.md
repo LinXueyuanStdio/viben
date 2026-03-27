@@ -428,10 +428,10 @@ max_ideas: 5
 
 ### 内置类型 Prompt 存放
 
-内置类型存放在 `packages/core/src/prompts/idea-types/`，构建时会复制到 `dist/prompts/idea-types/`：
+内置类型存放在 `packages/core/templates/viben/idea-types/`，运行时直接从此目录加载：
 
 ```
-packages/core/src/prompts/idea-types/
+packages/core/templates/viben/idea-types/
 ├── code_improvements.md      # 代码改进
 ├── code_quality.md           # 代码质量
 ├── documentation_gaps.md     # 文档缺失
@@ -445,7 +445,7 @@ packages/core/src/prompts/idea-types/
 CLI 按以下顺序查找 idea type prompt：
 
 1. `docs/idea-types/<type>.md`（项目自定义，优先）
-2. `packages/core/dist/prompts/idea-types/<type>.md`（内置 fallback）
+2. `packages/core/templates/viben/idea-types/<type>.md`（内置 fallback）
 
 这意味着：
 - 即使未运行 `viben team init`，内置类型也可用

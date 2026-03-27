@@ -122,7 +122,7 @@ function loadRewardTypeFromFile(
  *
  * Search order:
  * 1. Custom types in docs/reward-types/ (project-local)
- * 2. Built-in types in packages/core/src/prompts/reward-types/ (fallback)
+ * 2. Built-in types in packages/core/templates/viben/reward-types/ (fallback)
  *
  * @param repoRoot - Repository root path
  * @returns Array of RewardType objects

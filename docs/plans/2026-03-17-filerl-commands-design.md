@@ -99,7 +99,7 @@ viben task work-phase <task>
 ```
 
 **数据来源**：
-- Builtin: `packages/core/src/prompts/reward-types/*.md`
+- Builtin: `packages/core/templates/viben/reward-types/*.md`
 - Custom: `docs/reward-types/*.md`
 
 ---
@@ -437,7 +437,7 @@ viben filerl create <name> \
 
 Idea Type 中可以定义建议的 reward_config，作为创建 FileRL run 时的默认值。
 
-**示例**：`packages/core/src/prompts/idea-types/performance_optimizations.md`
+**示例**：`packages/core/templates/viben/idea-types/performance_optimizations.md`
 
 ```yaml
 ---
