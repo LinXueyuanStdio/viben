@@ -41,17 +41,23 @@ export interface PpoConfig {
  * Idea generation configuration
  */
 export interface IdeaConfig {
+  /** Whether to auto-generate ideas when pool is empty (default: false) */
+  auto_generate: boolean;
+
   /** Idea types to generate */
   types: string[];
 
   /** Maximum ideas per type (default: 5) */
   max_ideas: number;
 
+  /** Number of ideas to process per iteration - batch size B (default: 3) */
+  batch_size: number;
+
   /** Filter by effort level */
   effort_filter?: string[];
 
-  /** Auto-promote top N ideas to tasks (default: 3) */
-  auto_promote_count: number;
+  /** Custom session directory for ideas (default: .viben/ideas/<name>) */
+  session_dir?: string;
 }
 
 /**
@@ -83,17 +89,11 @@ export interface ConvergenceConfig {
  * Task execution configuration
  */
 export interface TaskConfig {
-  /** Use git worktree for isolation (default: true) */
-  worktree: boolean;
-
   /** Executor type (default: CLAUDE_CODE) */
   executor: string;
 
   /** Model to use for task execution */
   model?: string;
-
-  /** Auto-start tasks after creation (default: true) */
-  auto_start: boolean;
 }
 
 /**
@@ -110,6 +110,12 @@ export interface FileRlConfig {
 
   /** PPO algorithm configuration */
   ppo: PpoConfig;
+
+  /** Rollout configuration */
+  rollout: RolloutConfig;
+
+  /** Convergence configuration */
+  convergence: ConvergenceConfig;
 
   /** Reward configuration for evaluation */
   reward: RewardConfig;
@@ -145,9 +151,10 @@ export const DEFAULT_PPO_CONFIG: PpoConfig = {
  * Default idea configuration
  */
 export const DEFAULT_IDEA_CONFIG: IdeaConfig = {
+  auto_generate: false,
   types: ["code_improvements"],
   max_ideas: 5,
-  auto_promote_count: 3,
+  batch_size: 3,
 };
 
 /**
@@ -171,9 +178,8 @@ export const DEFAULT_CONVERGENCE_CONFIG: ConvergenceConfig = {
  * Default task configuration
  */
 export const DEFAULT_TASK_CONFIG: TaskConfig = {
-  worktree: true,
   executor: "CLAUDE_CODE",
-  auto_start: true,
+  model: undefined,
 };
 
 

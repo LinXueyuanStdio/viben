@@ -57,7 +57,7 @@ function calculateKlPenalty(
  */
 function calculatePpoMetrics(
   taskRewards: Array<{ task: string; reward: number; diffLines: number }>,
-  options: Required<SelectOptions>
+  options: Required<Pick<SelectOptions, 'threshold' | 'klCoef' | 'maxDiff'>>
 ): TaskCandidate[] {
   const { klCoef, maxDiff } = options;
 

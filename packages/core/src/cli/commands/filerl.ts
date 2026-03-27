@@ -227,11 +227,23 @@ export function registerFileRlCommand(program: Command): void {
             console.log(chalk.bold("PPO Configuration:"));
             outputKeyValue(ctx, {
               "KL Coefficient": config.ppo.kl_coef.toString(),
-              "Threshold": config.ppo.threshold.toString(),
+              "Change Sensitivity": config.ppo.change_sensitivity.toString(),
+              "Clip Range": config.ppo.clip_range.toString(),
+              "Quality Threshold": config.ppo.quality_threshold.toString(),
               "Max Diff": config.ppo.max_diff.toString(),
-              "Parallel Count": config.ppo.parallel_count.toString(),
-              "Max Iterations": config.ppo.max_iterations.toString(),
-              "Convergence Threshold": config.ppo.convergence_threshold.toString(),
+            });
+            console.log();
+            console.log(chalk.bold("Rollout Configuration:"));
+            outputKeyValue(ctx, {
+              "Rollouts per Idea": config.rollout.n.toString(),
+              "Use Worktree": formatStatus(config.rollout.worktree, "yes", "no"),
+            });
+            console.log();
+            console.log(chalk.bold("Convergence Configuration:"));
+            outputKeyValue(ctx, {
+              "Threshold": config.convergence.threshold.toString(),
+              "Max Iterations": config.convergence.max_iterations.toString(),
+              "No-merge Limit": config.convergence.no_merge_limit.toString(),
             });
             console.log();
             console.log(chalk.bold("Reward Configuration:"));
@@ -242,17 +254,16 @@ export function registerFileRlCommand(program: Command): void {
             console.log();
             console.log(chalk.bold("Idea Configuration:"));
             outputKeyValue(ctx, {
+              "Auto Generate": config.idea.auto_generate ? "yes" : "no",
               "Types": config.idea.types.join(", "),
               "Max Ideas": config.idea.max_ideas.toString(),
-              "Auto Promote": config.idea.auto_promote_count.toString(),
+              "Batch Size": config.idea.batch_size.toString(),
             });
             console.log();
             console.log(chalk.bold("Task Configuration:"));
             outputKeyValue(ctx, {
-              "Worktree": formatStatus(config.task.worktree, "yes", "no"),
               "Executor": config.task.executor,
               "Model": config.task.model || "-",
-              "Auto Start": formatStatus(config.task.auto_start, "yes", "no"),
             });
             console.log();
             outputSuccess(ctx, "Configuration is valid");
@@ -270,7 +281,7 @@ export function registerFileRlCommand(program: Command): void {
         console.log();
         console.log(`  Name:         ${config.name}`);
         console.log(`  Target:       ${target}`);
-        console.log(`  Max Iterations: ${config.ppo.max_iterations}`);
+        console.log(`  Max Iterations: ${config.convergence.max_iterations}`);
         console.log();
         console.log(chalk.gray("The FileRL loop will run automatically:"));
         console.log(chalk.gray("  1. Generate ideas using configured idea types"));
@@ -359,7 +370,7 @@ export function registerFileRlCommand(program: Command): void {
               : state.active
                 ? chalk.cyan("active")
                 : chalk.yellow("paused"),
-            "Iteration": `${state.current_iteration} / ${config?.ppo.max_iterations || "?"}`,
+            "Iteration": `${state.current_iteration} / ${config?.convergence.max_iterations || "?"}`,
             "Completed": state.completed_iterations.toString(),
             "Best Reward": state.best_reward.toFixed(3),
             "Best Task": state.best_task || "-",
