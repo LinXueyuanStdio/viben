@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: UI Shell
-description: Application shell: layout, navigation, theming system
+description: "Application shell: layout, navigation, theming system"
 ---
 
 # UI Shell

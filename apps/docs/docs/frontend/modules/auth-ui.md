@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: Auth UI
-description: Authentication UI: login, registration, OAuth components
+description: "Authentication UI: login, registration, OAuth components"
 ---
 
 # Auth UI

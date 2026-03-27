@@ -624,7 +624,9 @@ export function runRewardPhaseSync(
     // Output to FileRL directory (with optional idea grouping)
     // ideaId can come from: 1) options.ideaId, 2) task.json.filerl_idea
     const effectiveIdeaId = ideaId || (taskData as { filerl_idea?: string }).filerl_idea;
-    outputDir = getRewardOutputDir(filerlDir, currentIteration, effectiveIdeaId, taskName, taskDirAbs);
+    // Use task directory name (not taskData.name/id) for output path to avoid using idea ID
+    const taskDirName = basename(taskDirAbs);
+    outputDir = getRewardOutputDir(filerlDir, currentIteration, effectiveIdeaId, taskDirName, taskDirAbs);
   } else {
     // Standalone mode: use task.json config
     rewardConfig = taskData.reward_config || DEFAULT_REWARD_CONFIG;
