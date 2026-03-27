@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
-title: Phase 6 - UI 修复
-description: Kanban UI 修复与布局调整
+title: Phase 6 - UI Fixes
+description: Kanban UI Fixes and Layout Adjustments
 ---
 
 # Kanban Phase 6: UI Polish & Layout Fixes
@@ -12,7 +12,7 @@ Fix UI issues in the desktop workspace kanban based on user screenshot feedback 
 ## Issues Identified from Screenshot
 
 ### Issue 1: Right Detail Panel Too Narrow
-**Problem**: Task detail panel is truncated, content like "研究vibe-kanb..." shows incompletely
+**Problem**: Task detail panel is truncated, content like "Research vibe-kanb..." shows incompletely
 **Solution**: Increase default panel size from 30% to 40%, and decrease minSize from 20% to 25%
 
 **Location**: `apps/desktop/src/pages/workspace-kanban.tsx` line 992
@@ -23,13 +23,13 @@ Fix UI issues in the desktop workspace kanban based on user screenshot feedback 
 ```
 
 ### Issue 2: Duplicate Column Headers
-**Problem**: Screenshot shows two rows of column headers - one with counts/collapse buttons (待办 0 «, 进行中 0 «) and another simpler row below (待办 +, 进行中 +)
+**Problem**: Screenshot shows two rows of column headers - one with counts/collapse buttons (Todo 0 <<, In Progress 0 <<) and another simpler row below (Todo +, In Progress +)
 **Root Cause**: The StatisticsPanel or some collapsed state view is showing column summary, while KanbanHeader shows the actual column headers
 
 **Solution**: The collapsed columns feature (Phase 3) may be conflicting. Need to review and fix the StatisticsPanel integration.
 
-### Issue 3: Redundant "添加任务" Buttons
-**Problem**: Multiple "添加任务" buttons appear per column
+### Issue 3: Redundant "Add Task" Buttons
+**Problem**: Multiple "Add Task" buttons appear per column
 **Solution**: Ensure only one add task button per column (in KanbanHeader)
 
 ### Issue 4: Filter Bar Layout Issues

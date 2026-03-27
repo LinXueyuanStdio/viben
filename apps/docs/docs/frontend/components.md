@@ -1,81 +1,81 @@
 ---
 sidebar_position: 3
-title: 组件指南
-description: Viben 桌面应用中的 React 组件约定与模式
+title: Component Guide
+description: React component conventions and patterns in the Viben desktop application
 ---
 
-# 前端组件指南
+# Frontend Component Guide
 
-> Viben 桌面应用中 React 组件的约定与模式。
-
----
-
-## 目录
-
-1. [目录结构](#目录结构)
-2. [组件分类](#组件分类)
-3. [核心模式](#核心模式)
-4. [UI 组件（原语）](#ui-组件原语)
-5. [布局组件](#布局组件)
-6. [功能组件](#功能组件)
-7. [创建新组件](#创建新组件)
-8. [禁止模式](#禁止模式)
+> Conventions and patterns for React components in the Viben desktop application.
 
 ---
 
-## 目录结构
+## Table of Contents
+
+1. [Directory Structure](#directory-structure)
+2. [Component Categories](#component-categories)
+3. [Core Patterns](#core-patterns)
+4. [UI Components (Primitives)](#ui-components-primitives)
+5. [Layout Components](#layout-components)
+6. [Feature Components](#feature-components)
+7. [Creating New Components](#creating-new-components)
+8. [Anti-Patterns](#anti-patterns)
+
+---
+
+## Directory Structure
 
 ```
 apps/desktop/src/components/
-├── ui/              # 原语 UI 组件 (shadcn/ui 风格)
+├── ui/              # Primitive UI components (shadcn/ui style)
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── skeleton.tsx
 │   ├── scroll-area.tsx
 │   ├── separator.tsx
 │   └── tooltip.tsx
-├── layout/          # 应用布局组件
+├── layout/          # Application layout components
 │   ├── app-layout.tsx
 │   ├── sidebar.tsx
 │   ├── bento-grid.tsx
 │   └── page-wrapper.tsx
-├── workspace/       # 工作空间相关组件
+├── workspace/       # Workspace-related components
 │   ├── workspace-breadcrumb.tsx
 │   ├── workspace-header.tsx
 │   └── index.ts
-└── settings/        # 功能特定组件
+└── settings/        # Feature-specific components
     └── theme-switcher.tsx
 ```
 
-**组织规则**:
-- `ui/` - 带变体的可复用原语（按钮、卡片、输入框）
-- `layout/` - 应用级结构组件
-- `{feature}/` - 功能特定组件（设置、搜索等）
+**Organization Rules**:
+- `ui/` - Reusable primitives with variants (buttons, cards, inputs)
+- `layout/` - Application-level structural components
+- `{feature}/` - Feature-specific components (settings, search, etc.)
 
 ---
 
-## 组件分类
+## Component Categories
 
-| 分类 | 位置 | 示例 | 复杂度 |
-|------|------|------|--------|
-| **原语** | `ui/` | Button, Card, Skeleton | 低 - 单一职责 |
-| **布局** | `layout/` | BentoGrid, PageWrapper, Sidebar | 中 - 组合 |
-| **功能** | `{feature}/` | ThemeSwitcher, SearchForm | 高 - 业务逻辑 |
-| **页面** | `pages/` | Dashboard, Settings | 最高 - 完整页面 |
+| Category | Location | Examples | Complexity |
+|----------|----------|----------|------------|
+| **Primitives** | `ui/` | Button, Card, Skeleton | Low - single responsibility |
+| **Layout** | `layout/` | BentoGrid, PageWrapper, Sidebar | Medium - composition |
+| **Feature** | `{feature}/` | ThemeSwitcher, SearchForm | High - business logic |
+| **Page** | `pages/` | Dashboard, Settings | Highest - complete pages |
 
 ---
 
-## 核心模式
+## Core Patterns
 
-### 1. CVA 变体模式
+### 1. CVA Variant Pattern
 
-所有具有多种视觉变体的组件使用 `class-variance-authority`:
+All components with multiple visual variants use `class-variance-authority`:
 
 ```tsx
 import { cva, type VariantProps } from "class-variance-authority";
 
 const buttonVariants = cva(
-  // 基础样式（始终应用）
+  // Base styles (always applied)
   [
     "inline-flex items-center justify-center",
     "transition-all duration-200",
@@ -101,25 +101,25 @@ const buttonVariants = cva(
   }
 );
 
-// 导出供外部使用
+// Export for external use
 export { buttonVariants };
 ```
 
-### 2. Props 接口模式
+### 2. Props Interface Pattern
 
-扩展 HTML 属性 + 添加变体 props:
+Extend HTML attributes + add variant props:
 
 ```tsx
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  asChild?: boolean;  // 可选：多态支持
+  asChild?: boolean;  // Optional: polymorphic support
 }
 ```
 
-### 3. forwardRef 模式
+### 3. forwardRef Pattern
 
-所有原语组件必须使用 forwardRef:
+All primitive components must use forwardRef:
 
 ```tsx
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -137,23 +137,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 Button.displayName = "Button";
 ```
 
-### 4. cn() 工具函数
+### 4. cn() Utility Function
 
-始终使用 `cn()` 合并类名:
+Always use `cn()` to merge class names:
 
 ```tsx
 import { cn } from "@/lib/utils";
 
-// 正确: cn() 合并并去重类名
+// Correct: cn() merges and deduplicates class names
 <div className={cn(baseClasses, conditionalClass && "active", className)} />
 
-// 错误: 字符串拼接
+// Wrong: string concatenation
 <div className={`${baseClasses} ${className}`} />
 ```
 
-### 5. 复合组件模式
+### 5. Compound Component Pattern
 
-对于复杂组件，导出多个相关部分:
+For complex components, export multiple related parts:
 
 ```tsx
 // card.tsx
@@ -171,96 +171,96 @@ export {
   CardDescription,
   CardContent,
   CardFooter,
-  cardVariants,  // 导出变体供外部使用
+  cardVariants,  // Export variants for external use
 };
 ```
 
-使用方式:
+Usage:
 ```tsx
 <Card size="medium" interactive>
   <CardHeader>
-    <CardTitle>标题</CardTitle>
-    <CardDescription>描述</CardDescription>
+    <CardTitle>Title</CardTitle>
+    <CardDescription>Description</CardDescription>
   </CardHeader>
-  <CardContent>内容</CardContent>
-  <CardFooter>操作</CardFooter>
+  <CardContent>Content</CardContent>
+  <CardFooter>Actions</CardFooter>
 </Card>
 ```
 
 ---
 
-## UI 组件（原语）
+## UI Components (Primitives)
 
-### Button 按钮
+### Button
 
-**文件**: `components/ui/button.tsx`
+**File**: `components/ui/button.tsx`
 
-| 变体 | 用途 |
-|------|------|
-| `default` | 主要操作（琥珀色带悬停抬升） |
-| `secondary` | 次要操作 |
-| `destructive` | 危险操作（删除、移除） |
-| `outline` | 边框按钮 |
-| `ghost` | 最小视觉权重 |
-| `link` | 文本链接外观 |
+| Variant | Purpose |
+|---------|---------|
+| `default` | Primary actions (amber with hover lift) |
+| `secondary` | Secondary actions |
+| `destructive` | Dangerous actions (delete, remove) |
+| `outline` | Border button |
+| `ghost` | Minimal visual weight |
+| `link` | Text link appearance |
 
-| 尺寸 | 尺寸值 |
-|------|--------|
+| Size | Dimensions |
+|------|------------|
 | `sm` | h-8 px-3 text-xs |
 | `default` | h-9 px-4 text-sm |
 | `lg` | h-10 px-8 |
-| `icon` | h-9 w-9 (正方形) |
+| `icon` | h-9 w-9 (square) |
 
-**多态性** 使用 `asChild`:
+**Polymorphism** with `asChild`:
 ```tsx
-// 渲染为 Link 而非 button
+// Renders as Link instead of button
 <Button asChild>
-  <Link to="/settings">设置</Link>
+  <Link to="/settings">Settings</Link>
 </Button>
 ```
 
-### Card 卡片
+### Card
 
-**文件**: `components/ui/card.tsx`
+**File**: `components/ui/card.tsx`
 
-| 尺寸 | 网格跨度 | 用途 |
-|------|----------|------|
-| `small` | 3 列 | 统计、快捷操作 |
-| `medium` | 6 列 | 图表、列表 |
-| `large` | 9 列 | 主要内容 |
-| `full` | 12 列 | 英雄区块 |
+| Size | Grid Span | Purpose |
+|------|-----------|---------|
+| `small` | 3 columns | Stats, quick actions |
+| `medium` | 6 columns | Charts, lists |
+| `large` | 9 columns | Main content |
+| `full` | 12 columns | Hero sections |
 
-| 高度 | 最小高度 | 用途 |
-|------|----------|------|
-| `short` | 200px | 统计 |
-| `default` | auto | 标准 |
-| `tall` | 400px | 图表、数据可视化 |
+| Height | Min Height | Purpose |
+|--------|------------|---------|
+| `short` | 200px | Stats |
+| `default` | auto | Standard |
+| `tall` | 400px | Charts, data visualizations |
 
-| 标志 | 效果 |
-|------|------|
-| `gradient` | 添加微妙的琥珀渐变叠加 |
-| `interactive` | 添加悬停效果（抬升 + 边框发光） |
+| Flag | Effect |
+|------|--------|
+| `gradient` | Adds subtle amber gradient overlay |
+| `interactive` | Adds hover effects (lift + border glow) |
 
-### Skeleton 骨架屏
+### Skeleton
 
-**文件**: `components/ui/skeleton.tsx`
+**File**: `components/ui/skeleton.tsx`
 
-预置骨架变体:
-- `SkeletonText` - 文本行占位符
-- `SkeletonCard` - 完整卡片骨架
-- `SkeletonChart` - 图表区域骨架
-- `SkeletonHeatmap` - 热力图网格骨架
+Pre-built skeleton variants:
+- `SkeletonText` - Text line placeholder
+- `SkeletonCard` - Complete card skeleton
+- `SkeletonChart` - Chart area skeleton
+- `SkeletonHeatmap` - Heatmap grid skeleton
 
 ```tsx
-// 加载状态
+// Loading state
 {isLoading ? <SkeletonCard /> : <ActualCard />}
 ```
 
-### Tooltip 提示
+### Tooltip
 
-**文件**: `components/ui/tooltip.tsx`
+**File**: `components/ui/tooltip.tsx`
 
-基于 Radix 的提示，带设计系统样式:
+Radix-based tooltip with design system styling:
 
 ```tsx
 <TooltipProvider>
@@ -269,7 +269,7 @@ export {
       <Button variant="icon"><Settings /></Button>
     </TooltipTrigger>
     <TooltipContent>
-      设置
+      Settings
     </TooltipContent>
   </Tooltip>
 </TooltipProvider>
@@ -277,13 +277,13 @@ export {
 
 ---
 
-## 布局组件
+## Layout Components
 
 ### BentoGrid
 
-**文件**: `components/layout/bento-grid.tsx`
+**File**: `components/layout/bento-grid.tsx`
 
-用于仪表盘布局的 12 列网格容器:
+12-column grid container for dashboard layouts:
 
 ```tsx
 <BentoGrid gap="md">
@@ -299,30 +299,30 @@ export {
 </BentoGrid>
 ```
 
-| 间距 | 值 |
-|------|-----|
+| Gap | Value |
+|-----|-------|
 | `sm` | 16px |
-| `md` | 24px (默认) |
+| `md` | 24px (default) |
 | `lg` | 32px |
 | `xl` | 48px |
 
 ### PageWrapper
 
-**文件**: `components/layout/page-wrapper.tsx`
+**File**: `components/layout/page-wrapper.tsx`
 
-提供 Framer Motion 页面过渡:
+Provides Framer Motion page transitions:
 
 ```tsx
 <PageWrapper>
-  <h1>页面标题</h1>
-  {/* 页面内容 */}
+  <h1>Page Title</h1>
+  {/* Page content */}
 </PageWrapper>
 ```
 
-同时导出:
-- `StaggerContainer` - 用于子元素交错动画的容器
-- `StaggerItem` - 带交错入场的项
-- `AnimatedCard` - 带缩放+淡入入场的卡片
+Also exports:
+- `StaggerContainer` - Container for staggered child animations
+- `StaggerItem` - Item with staggered entrance
+- `AnimatedCard` - Card with scale+fade entrance
 
 ```tsx
 <StaggerContainer delay={0.1}>
@@ -334,44 +334,44 @@ export {
 
 ### Sidebar
 
-**文件**: `components/layout/sidebar.tsx`
+**File**: `components/layout/sidebar.tsx`
 
-导航侧边栏，包含:
-- 基于图标的导航
-- 提示标签
-- 设置状态指示器
-- 折叠支持
+Navigation sidebar with:
+- Icon-based navigation
+- Tooltip labels
+- Settings status indicator
+- Collapse support
 
 ---
 
-## 功能组件
+## Feature Components
 
 ### ThemeSwitcher
 
-**文件**: `components/settings/theme-switcher.tsx`
+**File**: `components/settings/theme-switcher.tsx`
 
-用于主题选择的单选组，包含:
-- 完整键盘导航（方向键）
-- ARIA 可访问性
-- 视觉预览卡片
-- 平滑过渡
+Radio group for theme selection with:
+- Full keyboard navigation (arrow keys)
+- ARIA accessibility
+- Visual preview cards
+- Smooth transitions
 
-主题: `light`, `dark`, `system`
+Themes: `light`, `dark`, `system`
 
 ---
 
-## 创建新组件
+## Creating New Components
 
-### 检查清单
+### Checklist
 
-创建新组件前:
+Before creating a new component:
 
-- [ ] 检查现有组件是否可以通过变体扩展
-- [ ] 确定分类: `ui/`, `layout/`, 或 `{feature}/`
-- [ ] 规划变体（如有 2+ 视觉变体则使用 CVA）
-- [ ] 考虑复杂组件使用复合模式
+- [ ] Check if an existing component can be extended with variants
+- [ ] Determine category: `ui/`, `layout/`, or `{feature}/`
+- [ ] Plan variants (use CVA if 2+ visual variants)
+- [ ] Consider compound pattern for complex components
 
-### 模板: 原语组件
+### Template: Primitive Component
 
 ```tsx
 import * as React from "react";
@@ -379,7 +379,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const componentVariants = cva(
-  // 基础样式
+  // Base styles
   ["base-class"],
   {
     variants: {
@@ -417,7 +417,7 @@ Component.displayName = "Component";
 export { Component, componentVariants };
 ```
 
-### 模板: 功能组件
+### Template: Feature Component
 
 ```tsx
 import * as React from "react";
@@ -425,19 +425,19 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores";
 
 interface FeatureComponentProps {
-  // Props 定义
+  // Props definition
 }
 
 export function FeatureComponent({ ...props }: FeatureComponentProps) {
-  // 如需访问 store
+  // Access store if needed
   const { someState, setSomeState } = useAppStore();
 
-  // 本地状态
+  // Local state
   const [localState, setLocalState] = React.useState(false);
 
   return (
     <div>
-      {/* 组件 JSX */}
+      {/* Component JSX */}
     </div>
   );
 }
@@ -445,27 +445,27 @@ export function FeatureComponent({ ...props }: FeatureComponentProps) {
 
 ---
 
-## 禁止模式
+## Anti-Patterns
 
-### 不要：硬编码颜色
+### Don't: Hardcode Colors
 
 ```tsx
-// 错误
+// Wrong
 <div className="bg-[#f59e0b]">
 
-// 正确
+// Correct
 <div className="bg-primary">
 ```
 
-### 不要：原语组件跳过 forwardRef
+### Don't: Skip forwardRef for Primitives
 
 ```tsx
-// 错误 - 破坏组合
+// Wrong - breaks composition
 function Button({ className, ...props }) {
   return <button className={className} {...props} />;
 }
 
-// 正确
+// Correct
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, ...props }, ref) => {
     return <button ref={ref} className={className} {...props} />;
@@ -473,39 +473,39 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 );
 ```
 
-### 不要：内联样式处理动画
+### Don't: Inline Styles for Animations
 
 ```tsx
-// 错误
+// Wrong
 <div style={{ animation: 'fadeIn 300ms' }}>
 
-// 正确 - 使用 CSS 类或 Framer Motion
+// Correct - use CSS classes or Framer Motion
 <div className="animate-fade-in">
-// 或
+// or
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
 ```
 
-### 不要：字符串拼接类名
+### Don't: String Concatenation for Class Names
 
 ```tsx
-// 错误
+// Wrong
 <div className={`base-class ${isActive ? 'active' : ''}`}>
 
-// 正确
+// Correct
 <div className={cn("base-class", isActive && "active")}>
 ```
 
-### 不要：不使用 CVA 创建变体
+### Don't: Create Variants Without CVA
 
 ```tsx
-// 错误 - 手动处理变体
+// Wrong - manual variant handling
 const getButtonClass = (variant) => {
   if (variant === 'primary') return 'bg-primary';
   if (variant === 'secondary') return 'bg-secondary';
   return 'bg-primary';
 };
 
-// 正确 - 使用 CVA
+// Correct - use CVA
 const buttonVariants = cva([...], {
   variants: {
     variant: {
@@ -516,14 +516,14 @@ const buttonVariants = cva([...], {
 });
 ```
 
-### 不要：忘记 displayName
+### Don't: Forget displayName
 
 ```tsx
-// 错误 - 没有 displayName
+// Wrong - no displayName
 const Button = React.forwardRef<...>(...);
 export { Button };
 
-// 正确
+// Correct
 const Button = React.forwardRef<...>(...);
 Button.displayName = "Button";
 export { Button };
@@ -531,20 +531,20 @@ export { Button };
 
 ---
 
-## 状态访问模式
+## State Access Patterns
 
-### 本地状态
+### Local State
 
-使用 `useState` 处理仅 UI 状态:
+Use `useState` for UI-only state:
 
 ```tsx
 const [isOpen, setIsOpen] = useState(false);
 const [searchQuery, setSearchQuery] = useState("");
 ```
 
-### 全局状态 (Zustand)
+### Global State (Zustand)
 
-通过 `useAppStore` hook 访问:
+Access via `useAppStore` hook:
 
 ```tsx
 import { useAppStore } from "@/stores";
@@ -555,9 +555,9 @@ function MyComponent() {
 }
 ```
 
-### 自定义 Hooks
+### Custom Hooks
 
-对于复杂逻辑，在 `hooks/` 中创建自定义 hooks:
+For complex logic, create custom hooks in `hooks/`:
 
 ```tsx
 // hooks/use-feature.ts
@@ -565,7 +565,7 @@ export function useFeature() {
   const store = useAppStore();
   const [localState, setLocalState] = useState();
 
-  // 复杂逻辑
+  // Complex logic
 
   return {
     value,
@@ -578,78 +578,78 @@ export function useFeature() {
 
 ---
 
-## 工作空间组件
+## Workspace Components
 
 ### WorkspaceBreadcrumb
 
-**文件**: `components/workspace/workspace-breadcrumb.tsx`
+**File**: `components/workspace/workspace-breadcrumb.tsx`
 
-工作空间页面的面包屑导航，带悬停预览卡片。
+Breadcrumb navigation for workspace pages with hover preview cards.
 
-**功能**:
-- 根段 = 工作空间名称 + 图标 (Folder/Globe)
-- 悬停显示完整路径提示 + 复制按钮
-- 子页面的额外段
-- 当前页面高亮，不可点击
+**Features**:
+- Root segment = workspace name + icon (Folder/Globe)
+- Hover shows full path tooltip + copy button
+- Additional segments for sub-pages
+- Current page highlighted, not clickable
 
 ```tsx
 import { WorkspaceBreadcrumb } from "@/components/workspace";
 
-// 根页面（无段）
+// Root page (no segments)
 <WorkspaceBreadcrumb workspace={workspace} />
 
-// 带段的子页面
+// Sub-page with segments
 <WorkspaceBreadcrumb
   workspace={workspace}
   segments={[
-    { label: "对话", href: `/workspace/${workspaceId}/chat` },
+    { label: "Chat", href: `/workspace/${workspaceId}/chat` },
   ]}
 />
 ```
 
-**层级结构**:
+**Hierarchy Structure**:
 ```
-层级结构:
-  Workspace名                           → 工作空间根页面
-    ├─ 对话                             → Chat 页面
-    ├─ 任务看板                          → Kanban 页面
-    └─ {Agent名}                        → Agent 详情页
-         └─ {Skill名}                   → Skill 详情页
+Hierarchy:
+  Workspace Name                         → Workspace root page
+    ├─ Chat                              → Chat page
+    ├─ Task Board                        → Kanban page
+    └─ {Agent Name}                      → Agent detail page
+         └─ {Skill Name}                 → Skill detail page
 
-示例:
-- Viben                                 (根页面，显示对话/看板入口+智能体列表)
-- Viben > 对话                          (Chat 页面)
-- Viben > 任务看板                       (Kanban 页面)
-- Viben > Claude Code                   (Agent 详情页，显示 MCP/Skills/Agents/Commands)
-- Viben > Claude Code > PDF Tools       (Skill 详情页，文件浏览器)
+Examples:
+- Viben                                 (root page, shows chat/kanban entry + agent list)
+- Viben > Chat                          (Chat page)
+- Viben > Task Board                    (Kanban page)
+- Viben > Claude Code                   (Agent detail page, shows MCP/Skills/Agents/Commands)
+- Viben > Claude Code > PDF Tools       (Skill detail page, file browser)
 ```
 
-**路由映射**:
-| 路由 | 面包屑 |
-|------|--------|
+**Route Mapping**:
+| Route | Breadcrumb |
+|-------|------------|
 | `/workspace/:id` | `{Workspace}` |
-| `/workspace/:id/chat` | `{Workspace} > 对话` |
-| `/workspace/:id/kanban` | `{Workspace} > 任务看板` |
+| `/workspace/:id/chat` | `{Workspace} > Chat` |
+| `/workspace/:id/kanban` | `{Workspace} > Task Board` |
 | `/workspace/:id/agent/:agentId` | `{Workspace} > {Agent}` |
 | `/workspace/:id/agent/:agentId/skill/:skillId` | `{Workspace} > {Agent} > {Skill}` |
 
 ### WorkspaceHeader
 
-**文件**: `components/workspace/workspace-header.tsx`
+**File**: `components/workspace/workspace-header.tsx`
 
-所有工作空间页面的统一头部，包含面包屑 + 操作。
+Unified header for all workspace pages with breadcrumb + actions.
 
 **Props**:
-| Prop | 类型 | 描述 |
-|------|------|------|
-| `workspace` | `Workspace` | 当前工作空间 |
-| `segments` | `BreadcrumbSegment[]` | 面包屑路径段 |
-| `onRefresh` | `() => void` | 刷新回调 |
-| `onRemove` | `() => Promise<void>` | 移除工作空间回调 |
-| `isRefreshing` | `boolean` | 显示加载旋转器 |
-| `showRefresh` | `boolean` | 显示刷新按钮 |
-| `showRemove` | `boolean` | 显示移除按钮 |
-| `rightContent` | `ReactNode` | 额外的右侧内容 |
+| Prop | Type | Description |
+|------|------|-------------|
+| `workspace` | `Workspace` | Current workspace |
+| `segments` | `BreadcrumbSegment[]` | Breadcrumb path segments |
+| `onRefresh` | `() => void` | Refresh callback |
+| `onRemove` | `() => Promise<void>` | Remove workspace callback |
+| `isRefreshing` | `boolean` | Show loading spinner |
+| `showRefresh` | `boolean` | Show refresh button |
+| `showRemove` | `boolean` | Show remove button |
+| `rightContent` | `ReactNode` | Additional right content |
 
 ```tsx
 <WorkspaceHeader
@@ -659,31 +659,31 @@ import { WorkspaceBreadcrumb } from "@/components/workspace";
   onRemove={handleRemove}
   isRefreshing={isLoading}
   rightContent={
-    <Button onClick={handleAdd}>添加任务</Button>
+    <Button onClick={handleAdd}>Add Task</Button>
   }
 />
 ```
 
-**设计原则**:
-1. **常驻显示** - 始终可见（子页面失败时的后备）
-2. **无返回按钮** - 使用面包屑导航，无返回按钮
-3. **根页面无图标** - 根面包屑仅显示工作空间图标+名称
-4. **悬停预览** - 悬停工作空间名称显示完整路径 + 复制
+**Design Principles**:
+1. **Always Visible** - Always visible (fallback when sub-page fails)
+2. **No Back Button** - Use breadcrumb navigation, no back button
+3. **No Icon for Root** - Root breadcrumb only shows workspace icon + name
+4. **Hover Preview** - Hover workspace name shows full path + copy
 
-### AddWorkspaceModal（向导）
+### AddWorkspaceModal (Wizard)
 
-**文件**: `components/workspace/add-workspace-modal.tsx`
+**File**: `components/workspace/add-workspace-modal.tsx`
 
-创建工作空间的多步骤向导。使用居中 Dialog（约 480px）。
+Multi-step wizard for creating workspaces. Uses centered Dialog (~480px).
 
-**向导步骤**:
-| 步骤 | 组件 | 目的 |
-|------|------|------|
-| 1 | `step-choose-method.tsx` | 选择：打开现有文件夹 / 创建新文件夹 |
-| 2 | `step-configure.tsx` | 名称、位置、Git/Viben 初始化选项 |
-| 3 | `step-complete.tsx` | 成功摘要 + "前往工作空间" / "继续添加" |
+**Wizard Steps**:
+| Step | Component | Purpose |
+|------|-----------|---------|
+| 1 | `step-choose-method.tsx` | Choose: open existing folder / create new folder |
+| 2 | `step-configure.tsx` | Name, location, Git/Viben initialization options |
+| 3 | `step-complete.tsx` | Success summary + "Go to Workspace" / "Continue Adding" |
 
-**状态管理**:
+**State Management**:
 ```typescript
 type CreationMethod = 'open-existing' | 'create-new';
 type WizardStep = 'choose' | 'configure' | 'complete';
@@ -692,7 +692,7 @@ interface WizardState {
   step: WizardStep;
   method: CreationMethod | null;
   selectedPath: string | null;
-  folderStatus: FolderStatus | null;  // 智能检测结果
+  folderStatus: FolderStatus | null;  // Smart detection result
 }
 
 interface FolderStatus {
@@ -702,45 +702,45 @@ interface FolderStatus {
 }
 ```
 
-**智能检测逻辑**:
-- 如果 `.git` 存在 → 隐藏 "初始化 Git" 选项
-- 如果 `.viben` 存在 → 显示警告 + "重新初始化（覆盖）" 复选框
+**Smart Detection Logic**:
+- If `.git` exists → hide "Initialize Git" option
+- If `.viben` exists → show warning + "Reinitialize (overwrite)" checkbox
 
-**高级选项**（可折叠）:
-- 开发者名称（用于 `viben team init`）
-- 项目类型：fullstack / frontend / backend
-- 包含 Cursor 配置
+**Advanced Options** (collapsible):
+- Developer name (for `viben team init`)
+- Project type: fullstack / frontend / backend
+- Include Cursor configuration
 
-**API 集成**:
-- `GET /api/workspaces/detect?path=xxx` - 检测文件夹状态
-- `POST /api/workspaces/create` - 使用选项创建工作空间
+**API Integration**:
+- `GET /api/workspaces/detect?path=xxx` - Detect folder status
+- `POST /api/workspaces/create` - Create workspace with options
 
 ---
 
-## 待添加组件
+## Components to Add
 
-以下组件常用但尚未在 `ui/` 中:
+The following components are commonly used but not yet in `ui/`:
 
-| 组件 | 优先级 | 备注 |
-|------|--------|------|
-| Input | 高 | 带变体的文本输入 |
-| Select | 高 | 下拉选择 |
-| ~~Breadcrumb~~ | ~~高~~ | ✅ 已在 `workspace/` 中实现 |
-| Dialog/Modal | 中 | Radix Dialog |
-| Toast | 中 | 通知 |
-| Dropdown | 中 | Radix DropdownMenu |
-| Checkbox | 低 | 表单控件 |
-| Switch | 低 | 开关切换 |
-| Tabs | 低 | Radix Tabs |
+| Component | Priority | Notes |
+|-----------|----------|-------|
+| Input | High | Text input with variants |
+| Select | High | Dropdown select |
+| ~~Breadcrumb~~ | ~~High~~ | Implemented in `workspace/` |
+| Dialog/Modal | Medium | Radix Dialog |
+| Toast | Medium | Notifications |
+| Dropdown | Medium | Radix DropdownMenu |
+| Checkbox | Low | Form control |
+| Switch | Low | Toggle switch |
+| Tabs | Low | Radix Tabs |
 
-添加这些时，遵循 shadcn/ui 模式并确保:
-- CVA 变体
+When adding these, follow shadcn/ui patterns and ensure:
+- CVA variants
 - forwardRef
-- 设计系统颜色
-- 键盘可访问性
+- Design system colors
+- Keyboard accessibility
 
 ---
 
-**最后更新**: 2026-02-28
-**版本**: 1.1.0
-**状态**: 完成 - 可供使用
+**Last Updated**: 2026-02-28
+**Version**: 1.1.0
+**Status**: Complete - Ready for use

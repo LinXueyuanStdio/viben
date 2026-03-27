@@ -1,33 +1,33 @@
 ---
 sidebar_position: 3
-title: "客户端配置"
-description: "为 Claude Desktop、Claude Code、Cline 和 Zed 配置 Viben MCP 服务器"
+title: "Client Configuration"
+description: "Configure Viben MCP server for Claude Desktop, Claude Code, Cline, and Zed"
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# 客户端配置
+# Client Configuration
 
-Viben MCP 服务器兼容任何支持 MCP 协议的客户端。本指南涵盖主流客户端的配置方法。
+The Viben MCP server is compatible with any client that supports the MCP protocol. This guide covers configuration methods for popular clients.
 
-## 配置概览
+## Configuration Overview
 
-所有 MCP 客户端需要相同的基本信息：
-- **命令**: `python`（或 Python 的完整路径）
-- **参数**: `["-m", "browse_mcp"]`
-- **环境变量**: API 密钥和设置（可选）
+All MCP clients require the same basic information:
+- **Command**: `python` (or the full path to Python)
+- **Arguments**: `["-m", "browse_mcp"]`
+- **Environment Variables**: API keys and settings (optional)
 
 <Tabs>
   <TabItem value="claude-desktop" label="Claude Desktop" default>
 
 ## Claude Desktop
 
-**配置文件位置：**
+**Configuration file location:**
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-**最小配置**（仅免费数据源）：
+**Minimal configuration** (free data sources only):
 
 ```json
 {
@@ -43,7 +43,7 @@ Viben MCP 服务器兼容任何支持 MCP 协议的客户端。本指南涵盖�
 }
 ```
 
-**完整配置**（含可选 API 密钥）：
+**Full configuration** (with optional API keys):
 
 ```json
 {
@@ -67,14 +67,14 @@ Viben MCP 服务器兼容任何支持 MCP 协议的客户端。本指南涵盖�
 }
 ```
 
-编辑后，**完全重启 Claude Desktop** 以使更改生效。
+After editing, **completely restart Claude Desktop** for changes to take effect.
 
   </TabItem>
   <TabItem value="claude-code" label="Claude Code (CLI)">
 
 ## Claude Code (CLI)
 
-**配置文件位置：** `~/.claude/mcp.json`
+**Configuration file location:** `~/.claude/mcp.json`
 
 ```json
 {
@@ -98,31 +98,31 @@ Viben MCP 服务器兼容任何支持 MCP 协议的客户端。本指南涵盖�
 }
 ```
 
-**验证安装：**
+**Verify installation:**
 
 ```bash
-# 检查 browse-mcp 是否已加载
+# Check if browse-mcp is loaded
 claude mcp list
 
-# 测试服务器
+# Test the server
 claude mcp test browse-mcp
 ```
 
   </TabItem>
   <TabItem value="cline" label="Cline (VS Code)">
 
-## Cline (VS Code 扩展)
+## Cline (VS Code Extension)
 
-**方法一：通过 VS Code 设置界面**
+**Method 1: Via VS Code Settings UI**
 
-1. 打开 VS Code 设置（`Cmd/Ctrl + ,`）
-2. 搜索 "Cline MCP"
-3. 点击"在 settings.json 中编辑"
-4. 添加以下配置
+1. Open VS Code Settings (`Cmd/Ctrl + ,`)
+2. Search for "Cline MCP"
+3. Click "Edit in settings.json"
+4. Add the following configuration
 
-**方法二：直接编辑 settings.json**
+**Method 2: Edit settings.json directly**
 
-编辑 VS Code 设置文件：
+Edit the VS Code settings file:
 - **macOS/Linux**: `~/.config/Code/User/settings.json`
 - **Windows**: `%APPDATA%\Code\User\settings.json`
 
@@ -148,14 +148,14 @@ claude mcp test browse-mcp
 }
 ```
 
-添加配置后，重新加载 VS Code。
+After adding the configuration, reload VS Code.
 
   </TabItem>
-  <TabItem value="zed" label="Zed 编辑器">
+  <TabItem value="zed" label="Zed Editor">
 
-## Zed 编辑器
+## Zed Editor
 
-**配置文件位置：** `~/.config/zed/settings.json`
+**Configuration file location:** `~/.config/zed/settings.json`
 
 ```json
 {
@@ -188,7 +188,7 @@ claude mcp test browse-mcp
 
 ## Cursor
 
-**配置文件位置：** `~/.cursor/mcp.json`
+**Configuration file location:** `~/.cursor/mcp.json`
 
 ```json
 {
@@ -206,60 +206,60 @@ claude mcp test browse-mcp
 ```
 
   </TabItem>
-  <TabItem value="custom" label="自定义客户端">
+  <TabItem value="custom" label="Custom Client">
 
-## 自定义 MCP 客户端
+## Custom MCP Client
 
-对于其他 MCP 客户端，使用以下连接信息：
+For other MCP clients, use the following connection information:
 
-**服务器命令：**
+**Server command:**
 ```bash
 python -m browse_mcp
 ```
 
-**传输方式：** stdio（默认）
+**Transport method:** stdio (default)
 
-**协议：** MCP 1.0
+**Protocol:** MCP 1.0
 
-**可用工具：**
-- `browse_search` - 搜索学术论文
-- `browse_download` - 下载论文 PDF
-- `browse_read` - 提取论文文本
+**Available tools:**
+- `browse_search` - Search academic papers
+- `browse_download` - Download paper PDFs
+- `browse_read` - Extract paper text
 
-**环境变量**（全部可选）：
+**Environment variables** (all optional):
 
-| 变量 | 说明 |
-|------|------|
-| `BROWSE_MCP_DOWNLOAD_PATH` | PDF 下载目录（默认：`./downloads`）|
-| `BROWSE_MCP_ENABLED_SOURCES` | 启用的数据源（逗号分隔）|
-| `BROWSE_MCP_DISABLED_SOURCES` | 禁用的数据源（逗号分隔）|
-| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API 密钥 |
-| `SCIENCEDIRECT_API_KEY` | ScienceDirect API 密钥 |
-| `SPRINGER_API_KEY` | Springer Link API 密钥 |
-| `IEEE_API_KEY` | IEEE Xplore API 密钥 |
-| `SCOPUS_API_KEY` | Scopus API 密钥 |
-| `CORE_API_KEY` | CORE API 密钥 |
+| Variable | Description |
+|----------|-------------|
+| `BROWSE_MCP_DOWNLOAD_PATH` | PDF download directory (default: `./downloads`) |
+| `BROWSE_MCP_ENABLED_SOURCES` | Enabled data sources (comma-separated) |
+| `BROWSE_MCP_DISABLED_SOURCES` | Disabled data sources (comma-separated) |
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API key |
+| `SCIENCEDIRECT_API_KEY` | ScienceDirect API key |
+| `SPRINGER_API_KEY` | Springer Link API key |
+| `IEEE_API_KEY` | IEEE Xplore API key |
+| `SCOPUS_API_KEY` | Scopus API key |
+| `CORE_API_KEY` | CORE API key |
 
   </TabItem>
 </Tabs>
 
-## 使用 Viben 桌面应用管理 MCP 配置
+## Managing MCP Configuration with Viben Desktop App
 
-如果你安装了 Viben 桌面应用，可以通过图形界面管理 MCP 服务器配置：
+If you have the Viben desktop app installed, you can manage MCP server configurations through a graphical interface:
 
-1. 打开 Viben 桌面应用
-2. 选择工作空间
-3. 点击要配置的智能体（如 Claude Code）
-4. 在 MCP 服务器列表中添加、编辑或删除服务器
-5. 更改会自动保存到对应的配置文件
+1. Open the Viben desktop app
+2. Select a workspace
+3. Click on the agent you want to configure (e.g., Claude Code)
+4. Add, edit, or delete servers in the MCP server list
+5. Changes are automatically saved to the corresponding configuration file
 
-这比手动编辑 JSON 文件更加方便和安全。
+This is more convenient and safer than manually editing JSON files.
 
-## 故障排除
+## Troubleshooting
 
-### Python 未找到
+### Python Not Found
 
-如果出现"python not found"错误，使用 Python 的完整路径：
+If you encounter a "python not found" error, use the full path to Python:
 
 ```json
 {
@@ -272,36 +272,36 @@ python -m browse_mcp
 }
 ```
 
-查找 Python 路径：
+Find your Python path:
 ```bash
 which python3
 ```
 
-### 模块未找到
+### Module Not Found
 
-如果出现"No module named browse_mcp"，确保包已安装在同一 Python 环境中：
+If you encounter "No module named browse_mcp", ensure the package is installed in the same Python environment:
 
 ```bash
 pip install browse-mcp
 ```
 
-### 服务器无法启动
+### Server Won't Start
 
-检查 MCP 客户端的日志。对于 macOS 上的 Claude Desktop：
+Check the MCP client logs. For Claude Desktop on macOS:
 ```bash
 tail -f ~/Library/Logs/Claude/mcp*.log
 ```
 
-### 检查已加载的数据源
+### Check Loaded Data Sources
 
-运行调试模式查看已加载的数据源：
+Run debug mode to see loaded data sources:
 
 ```bash
 browse-mcp --debug
 ```
 
-## 下一步
+## Next Steps
 
-- [MCP 配置](../mcp/configuration) - 配置数据源和 API 密钥
-- [browse_search 工具](../mcp/tools/browse-search) - 学习搜索参数
-- [插件配置](../plugins/configuration) - 高级插件设置
+- [MCP Configuration](../mcp/configuration) - Configure data sources and API keys
+- [browse_search Tool](../mcp/tools/browse-search) - Learn search parameters
+- [Plugin Configuration](../plugins/configuration) - Advanced plugin settings

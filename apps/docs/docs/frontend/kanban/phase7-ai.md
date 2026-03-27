@@ -1,7 +1,7 @@
 ---
 sidebar_position: 8
-title: Phase 7 - 布局修复
-description: Kanban 关键布局修复
+title: Phase 7 - Layout Fixes
+description: Kanban Critical Layout Fixes
 ---
 
 # Kanban Phase 7: Critical Layout Fixes
@@ -9,7 +9,7 @@ description: Kanban 关键布局修复
 ## Issues from Screenshot
 
 ### Issue 1: Right Detail Panel Too Narrow
-**Problem**: When clicking a task, the detail panel is extremely narrow. Title "研究 vibe-kanban" breaks character-by-character vertically.
+**Problem**: When clicking a task, the detail panel is extremely narrow. Title "Research vibe-kanban" breaks character-by-character vertically.
 
 **Root Cause**:
 - Kanban board panel has `defaultSize={isPanelOpen ? 70 : 100}`
@@ -19,7 +19,7 @@ description: Kanban 关键布局修复
 **Solution**: Change board panel to `defaultSize={isPanelOpen ? 60 : 100}` so detail gets full 40%.
 
 ### Issue 2: Collapsed Columns Not Fully Collapsed
-**Problem**: Collapsed columns (待办, 进行中) still take ~200px width each.
+**Problem**: Collapsed columns (Todo, In Progress) still take ~200px width each.
 
 **Root Cause**:
 - `KanbanProvider` uses CSS grid with `gridAutoColumns: "minmax(200px, 400px)"`

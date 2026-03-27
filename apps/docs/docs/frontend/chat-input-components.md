@@ -1,59 +1,59 @@
 ---
 sidebar_position: 6
-title: 聊天输入组件
-description: ChatInput 和 MessageList 统一组件规范
+title: Chat Input Components
+description: ChatInput and MessageList unified component specification
 ---
 
-# 聊天输入组件规格
+# Chat Input Component Specification
 
-本文档定义了 viben 应用中统一的聊天输入组件 `ChatInput` 和消息列表组件 `MessageList`。
+This document defines the unified chat input component `ChatInput` and message list component `MessageList` in the viben application.
 
-## 架构概览
+## Architecture Overview
 
 ```
-@viben/chat (packages/chat/)          # 跨平台共享包
+@viben/chat (packages/chat/)          # Cross-platform shared package
 ├── src/
-│   ├── chat-input/                   # ChatInput 组件目录
-│   │   ├── index.tsx                 # 主组件
-│   │   ├── types.ts                  # 类型定义
-│   │   ├── hooks.ts                  # 可复用 hooks
-│   │   ├── toolbar.tsx               # 顶部工具栏
-│   │   ├── config-bar.tsx            # 底部配置栏
-│   │   ├── writing-mode.tsx          # 全屏写作模式
-│   │   ├── attachment-preview.tsx    # 附件预览
-│   │   └── slash-command-menu.tsx    # Slash 命令菜单
-│   ├── message-list.tsx              # 消息列表
-│   ├── message-item.tsx              # 消息项
-│   └── index.ts                      # 导出入口
+│   ├── chat-input/                   # ChatInput component directory
+│   │   ├── index.tsx                 # Main component
+│   │   ├── types.ts                  # Type definitions
+│   │   ├── hooks.ts                  # Reusable hooks
+│   │   ├── toolbar.tsx               # Top toolbar
+│   │   ├── config-bar.tsx            # Bottom config bar
+│   │   ├── writing-mode.tsx          # Fullscreen writing mode
+│   │   ├── attachment-preview.tsx    # Attachment preview
+│   │   └── slash-command-menu.tsx    # Slash command menu
+│   ├── message-list.tsx              # Message list
+│   ├── message-item.tsx              # Message item
+│   └── index.ts                      # Export entry
 
-apps/desktop/src/components/chat/     # Desktop 平台适配
-├── desktop-chat-input.tsx            # Tauri 封装 (截图、文件对话框)
-├── desktop-message-list.tsx          # Tauri 封装 (链接打开)
-└── index.ts                          # 导出
+apps/desktop/src/components/chat/     # Desktop platform adapter
+├── desktop-chat-input.tsx            # Tauri wrapper (screenshot, file dialog)
+├── desktop-message-list.tsx          # Tauri wrapper (link opening)
+└── index.ts                          # Export
 ```
 
-## 组件概览
+## Component Overview
 
-| 组件 | 包 | 用途 |
-|------|-----|------|
-| `ChatInput` | `@viben/chat` | 跨平台聊天输入组件 |
-| `MessageList` | `@viben/chat` | 跨平台消息列表组件 |
-| `MessageItem` | `@viben/chat` | 跨平台消息项组件 |
-| `DesktopChatInput` | desktop | Tauri 特定封装 |
-| `DesktopMessageList` | desktop | Tauri 特定封装 |
+| Component | Package | Purpose |
+|-----------|---------|---------|
+| `ChatInput` | `@viben/chat` | Cross-platform chat input component |
+| `MessageList` | `@viben/chat` | Cross-platform message list component |
+| `MessageItem` | `@viben/chat` | Cross-platform message item component |
+| `DesktopChatInput` | desktop | Tauri-specific wrapper |
+| `DesktopMessageList` | desktop | Tauri-specific wrapper |
 
-通过 Props 控制不同的布局和功能：
+Control different layouts and features via Props:
 
-| 配置 | 用途 | 主要 Props |
-|------|------|-----------|
-| 基础模式 | 简单对话输入 | (默认) |
-| 工作空间模式 | 完整功能 | `showTopToolbar` `showConfigBar` `showResizeHandle` `enableWritingMode` |
+| Configuration | Purpose | Main Props |
+|---------------|---------|------------|
+| Basic mode | Simple conversation input | (default) |
+| Workspace mode | Full functionality | `showTopToolbar` `showConfigBar` `showResizeHandle` `enableWritingMode` |
 
-## Props 接口
+## Props Interface
 
 ```typescript
 export interface ChatInputProps {
-  // 基础 Props
+  // Basic Props
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel?: () => void;
   isLoading?: boolean;
@@ -62,26 +62,26 @@ export interface ChatInputProps {
   className?: string;
   autoFocus?: boolean;
 
-  // 布局控制
-  /** 显示顶部工具栏 (表情、文件、截图、展开) */
+  // Layout control
+  /** Show top toolbar (emoji, file, screenshot, expand) */
   showTopToolbar?: boolean;
-  /** 显示底部配置栏 (智能体、模型、工具、技能、上下文) */
+  /** Show bottom config bar (agent, model, tools, skills, context) */
   showConfigBar?: boolean;
-  /** 显示可调高度手柄 */
+  /** Show resizable height handle */
   showResizeHandle?: boolean;
-  /** 启用全屏写作模式 */
+  /** Enable fullscreen writing mode */
   enableWritingMode?: boolean;
 
-  // 全局配置模式
+  // Global config mode
   /**
-   * 使用 useChatConfig hook 的全局配置。
-   * 启用时，智能体/模型从全局 store 加载，
-   * 选择器显隐由当前路由上下文决定。
-   * Props 覆盖仍可用于灵活性。
+   * Use global config from useChatConfig hook.
+   * When enabled, agent/model loaded from global store,
+   * selector visibility determined by current route context.
+   * Props override still available for flexibility.
    */
   useGlobalConfig?: boolean;
 
-  // 智能体/模型选择 (用于配置栏，props 覆盖优先于全局配置)
+  // Agent/Model selection (for config bar, props override takes priority over global config)
   agents?: Array<{ id: string; name: string }>;
   selectedAgentId?: string | null;
   onAgentChange?: (agentId: string) => void;
@@ -89,158 +89,158 @@ export interface ChatInputProps {
   selectedModelId?: string | null;
   onModelChange?: (modelId: string) => void;
 
-  // 工具/技能 (用于配置栏)
+  // Tools/Skills (for config bar)
   enabledToolsCount?: number;
   enabledSkillsCount?: number;
   onToolsClick?: () => void;
   onSkillsClick?: () => void;
-  /** 可用工具列表 (用于工具配置弹窗) */
+  /** Available tools list (for tools config popover) */
   tools?: ToolConfig[];
-  /** 切换工具启用状态回调 */
+  /** Toggle tool enabled state callback */
   onToggleTool?: (toolId: string, enabled: boolean) => void;
-  /** 可用技能列表 (用于技能配置弹窗) */
+  /** Available skills list (for skills config popover) */
   skills?: SkillConfig[];
-  /** 切换技能启用状态回调 */
+  /** Toggle skill enabled state callback */
   onToggleSkill?: (skillId: string, enabled: boolean) => void;
 
-  // 上下文 (用于配置栏)
+  // Context (for config bar)
   contextTokens?: number;
   onContextClick?: () => void;
-  /** 上下文 Token 分布详情 */
+  /** Context token breakdown details */
   contextBreakdown?: ContextTokenBreakdown;
 
-  // 截图 (用于顶部工具栏)
+  // Screenshot (for top toolbar)
   onScreenshot?: (hideWindow?: boolean) => void;
 
-  // 选择器显隐覆盖
-  /** 强制隐藏智能体选择器 */
+  // Selector visibility override
+  /** Force hide agent selector */
   hideAgentSelector?: boolean;
-  /** 强制隐藏模型选择器 */
+  /** Force hide model selector */
   hideModelSelector?: boolean;
 
-  // 斜杠命令
-  /** 可用斜杠命令列表 */
+  // Slash commands
+  /** Available slash commands list */
   slashCommands?: SlashCommand[];
-  /** 命令选择回调 */
+  /** Command selection callback */
   onSlashCommand?: (command: SlashCommand) => void;
 }
 ```
 
-## 功能特性
+## Features
 
-| 特性 | 支持 | 说明 |
-|------|------|------|
-| 文本输入 | ✅ | 自动调整高度的 textarea |
-| 图片附件 | ✅ | 支持粘贴和选择图片 |
-| 文件附件 | ✅ | 支持 PDF、DOC、TXT 等 |
-| IME 输入 | ✅ | 中文输入法兼容 |
-| 快捷键发送 | ✅ | Enter 发送，Shift+Enter 换行 |
-| 取消/停止 | ✅ | 加载时显示停止按钮 |
-| 顶部工具栏 | ✅ | 表情、文件、截图、展开 (showTopToolbar) |
-| 底部配置栏 | ✅ | 智能体、模型、工具等选择器 (showConfigBar) |
-| 可调高度 | ✅ | 拖拽调整，保存到 localStorage (showResizeHandle) |
-| 写作模式 | ✅ | 全屏展开模式 (enableWritingMode) |
-| 斜杠命令 | ✅ | 输入 "/" 显示命令菜单 (slashCommands) |
-| 选择器隐藏 | ✅ | 可强制隐藏智能体/模型选择器 (hideAgentSelector, hideModelSelector) |
+| Feature | Supported | Description |
+|---------|-----------|-------------|
+| Text input | ✅ | Auto-resizing textarea |
+| Image attachments | ✅ | Support paste and select images |
+| File attachments | ✅ | Support PDF, DOC, TXT, etc. |
+| IME input | ✅ | Chinese input method compatible |
+| Keyboard shortcut send | ✅ | Enter to send, Shift+Enter for newline |
+| Cancel/Stop | ✅ | Show stop button when loading |
+| Top toolbar | ✅ | Emoji, file, screenshot, expand (showTopToolbar) |
+| Bottom config bar | ✅ | Agent, model, tools selectors (showConfigBar) |
+| Resizable height | ✅ | Drag to resize, saved to localStorage (showResizeHandle) |
+| Writing mode | ✅ | Fullscreen expand mode (enableWritingMode) |
+| Slash commands | ✅ | Show command menu on "/" input (slashCommands) |
+| Selector hiding | ✅ | Force hide agent/model selectors (hideAgentSelector, hideModelSelector) |
 
-## 布局结构
+## Layout Structure
 
-### 基础模式 (默认)
+### Basic Mode (Default)
 
-所有场景使用统一的基础输入样式：
-- 自动调整高度的 textarea (40-200px)
-- 附件预览区
-- 底部操作栏：添加按钮 + 发送按钮
-- 无圆角边框和阴影（填充父容器）
+All scenarios use unified basic input style:
+- Auto-resizing textarea (40-200px)
+- Attachment preview area
+- Bottom action bar: Add button + Send button
+- No rounded borders or shadows (fills parent container)
 
 ```
 ┌─────────────────────────────────────┐
-│ [附件预览区]                         │
+│ [Attachment Preview Area]           │
 ├─────────────────────────────────────┤
 │                                     │
-│ [文本输入区] (自动调整高度)            │
+│ [Text Input Area] (auto-resize)     │
 │                                     │
 ├─────────────────────────────────────┤
-│ [+添加] ←──────────────────→ [发送] │
+│ [+Add] ←────────────────────→ [Send]│
 └─────────────────────────────────────┘
 ```
 
-### 工作空间模式 (带工具栏和配置栏)
+### Workspace Mode (with Toolbar and Config Bar)
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│ [拖拽调整手柄]                       (showResizeHandle) │
+│ [Drag Resize Handle]                 (showResizeHandle) │
 ├─────────────────────────────────────────────────────┤
-│ [表情] [文件] [截图 ▼] ←───────────→ [展开]        │ ← showTopToolbar
+│ [Emoji] [File] [Screenshot ▼] ←─────────→ [Expand]  │ ← showTopToolbar
 ├─────────────────────────────────────────────────────┤
-│ [附件预览区]                                         │
+│ [Attachment Preview Area]                           │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
-│ [文本输入区] (可调高度: 80px - 400px)                │
+│ [Text Input Area] (resizable: 80px - 400px)         │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
-│ [智能体▼] [模型▼] [工具] [技能] [2.5k] [发送]      │ ← showConfigBar
+│ [Agent▼] [Model▼] [Tools] [Skills] [2.5k] [Send]    │ ← showConfigBar
 └─────────────────────────────────────────────────────┘
 ```
 
-**配置栏按钮样式**:
-- **智能体/模型按钮**: 显示 icon + 名称 + 下拉箭头
-- **工具/技能按钮**: 仅显示 icon + 角标数字（启用数量 > 0 时）
-- **上下文按钮**: 仅显示 icon + token 数量（如 "2.5k"，无 "tokens" 文字）
+**Config bar button styles**:
+- **Agent/Model buttons**: Show icon + name + dropdown arrow
+- **Tools/Skills buttons**: Show only icon + badge number (when enabled count > 0)
+- **Context button**: Show only icon + token count (e.g., "2.5k", no "tokens" text)
 
-**无卡片样式**: 当启用 `showTopToolbar` 或 `showConfigBar` 时，组件不显示圆角边框和阴影，填满父容器
+**No card style**: When `showTopToolbar` or `showConfigBar` is enabled, component shows no rounded borders or shadows, fills parent container
 
-## 样式说明
+## Style Notes
 
-| 属性 | 值 |
-|------|-----|
-| 边框圆角 | 无 (由父容器提供) |
-| 边框阴影 | 无 (由父容器提供) |
-| 最小高度 | 40px (基础模式) / 80px (带工具栏模式) |
-| 最大高度 | 200px (基础模式) / 400px (带工具栏模式) |
-| 按钮大小 | size-8 |
+| Property | Value |
+|----------|-------|
+| Border radius | None (provided by parent container) |
+| Box shadow | None (provided by parent container) |
+| Min height | 40px (basic mode) / 80px (with toolbar mode) |
+| Max height | 200px (basic mode) / 400px (with toolbar mode) |
+| Button size | size-8 |
 
-**重要**: ChatInput 组件**不**提供卡片样式（边框、圆角、阴影）。父组件负责提供所需的容器样式。
+**Important**: ChatInput component does **not** provide card styles (border, radius, shadow). Parent component is responsible for providing required container styles.
 
-基础模式使用示例：
+Basic mode usage example:
 ```tsx
-{/* 父容器提供卡片样式 */}
+{/* Parent container provides card style */}
 <div className="rounded-2xl border border-border/50 shadow-lg overflow-hidden">
   <ChatInput onSend={handleSend} />
 </div>
 ```
 
-带工具栏模式使用示例：
+With toolbar mode usage example:
 ```tsx
-{/* 父容器仅提供边框分隔 */}
+{/* Parent container only provides border separator */}
 <div className="border-t border-border">
   <ChatInput showTopToolbar showConfigBar onSend={handleSend} />
 </div>
 ```
 
-## 高度调整 (showResizeHandle)
+## Height Adjustment (showResizeHandle)
 
-| 属性 | 值 |
-|------|-----|
-| 最小高度 | 80px |
-| 最大高度 | 400px |
-| 默认高度 | 80px |
-| 存储键 | `chat_input_height` |
+| Property | Value |
+|----------|-------|
+| Min height | 80px |
+| Max height | 400px |
+| Default height | 80px |
+| Storage key | `chat_input_height` |
 
-## 写作模式 (enableWritingMode)
+## Writing Mode (enableWritingMode)
 
-当点击展开按钮时：
-- 组件变为全屏固定定位 (`fixed inset-4 z-50`)
-- 输入区高度自动计算 (`calc(100% - 140px)`)
-- ESC 键可退出写作模式
+When expand button is clicked:
+- Component becomes fullscreen fixed position (`fixed inset-4 z-50`)
+- Input area height auto-calculated (`calc(100% - 140px)`)
+- ESC key exits writing mode
 
 ---
 
-## 使用指南
+## Usage Guide
 
-### Desktop App 使用
+### Desktop App Usage
 
-**必须使用 Desktop* 封装组件**，它们自动注入 Tauri 特定功能：
+**Must use Desktop* wrapper components**, they automatically inject Tauri-specific features:
 
 ```tsx
 import { DesktopChatInput, DesktopMessageList } from "@/components/chat";
@@ -263,9 +263,9 @@ function WorkspaceChat() {
 }
 ```
 
-### Web App 使用
+### Web App Usage
 
-直接使用 `@viben/chat` 包，传入回调处理平台功能：
+Use `@viben/chat` package directly, pass callbacks for platform features:
 
 ```tsx
 import { ChatInput, MessageList } from "@viben/chat";
@@ -280,35 +280,35 @@ function WebChat() {
       <ChatInput
         onSend={handleSend}
         showConfigBar
-        // 不传 onScreenshot，按钮自动隐藏
+        // Don't pass onScreenshot, button auto-hides
       />
     </div>
   );
 }
 ```
 
-### 场景与配置
+### Scenarios and Configuration
 
-| 场景 | Props 配置 |
-|------|-----------|
-| 简单消息回复 | (默认，无额外 props) |
-| 基础对话框 | (默认) |
-| 工作空间对话 | `showTopToolbar showConfigBar showResizeHandle enableWritingMode` |
-| 带配置的对话 | `showConfigBar` + agent/model props |
+| Scenario | Props Configuration |
+|----------|---------------------|
+| Simple message reply | (default, no extra props) |
+| Basic dialog | (default) |
+| Workspace conversation | `showTopToolbar showConfigBar showResizeHandle enableWritingMode` |
+| Conversation with config | `showConfigBar` + agent/model props |
 
-### 示例代码
+### Example Code
 
-#### 基础用法
+#### Basic Usage
 
 ```tsx
 <ChatInput
   onSend={handleSend}
-  placeholder="输入消息..."
+  placeholder="Type a message..."
   autoFocus
 />
 ```
 
-#### 简单回复框
+#### Simple Reply Box
 
 ```tsx
 <ChatInput
@@ -319,7 +319,7 @@ function WebChat() {
 />
 ```
 
-#### 完整工作空间模式
+#### Full Workspace Mode
 
 ```tsx
 <ChatInput
@@ -348,9 +348,9 @@ function WebChat() {
 
 ---
 
-## 共享模式
+## Shared Patterns
 
-### 附件类型定义
+### Attachment Type Definition
 
 ```typescript
 interface MessageAttachment {
@@ -363,7 +363,7 @@ interface MessageAttachment {
 }
 ```
 
-### 图片文件检测
+### Image File Detection
 
 ```typescript
 const isImageFile = (file: File): boolean => {
@@ -373,7 +373,7 @@ const isImageFile = (file: File): boolean => {
 };
 ```
 
-### IME 输入处理
+### IME Input Handling
 
 ```typescript
 const isComposingRef = React.useRef(false);
@@ -389,7 +389,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => {
 // onCompositionEnd={() => setTimeout(() => isComposingRef.current = false, 10)}
 ```
 
-### 文件读取
+### File Reading
 
 ```typescript
 const createFilePreview = (file: File): Promise<string> => {
@@ -406,7 +406,7 @@ const createFilePreview = (file: File): Promise<string> => {
 };
 ```
 
-### 粘贴图片处理
+### Paste Image Handling
 
 ```typescript
 const handlePaste = async (e: React.ClipboardEvent) => {
@@ -429,59 +429,59 @@ const handlePaste = async (e: React.ClipboardEvent) => {
 
 ---
 
-## 国际化键
+## Internationalization Keys
 
-| 键 | 说明 |
-|----|------|
-| `chat.inputPlaceholder` | 输入框占位符 |
-| `chat.attachImage` | 附加图片 |
-| `chat.attachFile` | 附加文件 |
-| `chat.emoji` | 表情 |
-| `chat.screenshot` | 截图 |
-| `chat.screenshotDirect` | 直接截图 |
-| `chat.screenshotHideWindow` | 隐藏窗口截图 |
-| `chat.expand` | 展开 |
-| `chat.collapse` | 收起 |
-| `chat.selectAgent` | 智能体 |
-| `chat.selectModel` | 模型 |
-| `chat.tools` | 工具 |
-| `chat.skills` | 技能 |
-| `chat.noAgents` | 暂无智能体 |
-| `chat.noModels` | 暂无模型 |
-| `chat.configureTools` | 配置工具 |
-| `chat.configureSkills` | 配置技能 |
-| `chat.contextDetails` | 上下文明细 |
-| `chat.noCommandsFound` | 未找到命令 |
-| `chat.slashCommands.clear` | 清空 |
-| `chat.slashCommands.clearDesc` | 清空对话历史 |
-| `chat.slashCommands.help` | 帮助 |
-| `chat.slashCommands.helpDesc` | 显示可用命令 |
-| `chat.slashCommands.stop` | 停止 |
-| `chat.slashCommands.stopDesc` | 停止当前执行 |
+| Key | Description |
+|-----|-------------|
+| `chat.inputPlaceholder` | Input placeholder |
+| `chat.attachImage` | Attach image |
+| `chat.attachFile` | Attach file |
+| `chat.emoji` | Emoji |
+| `chat.screenshot` | Screenshot |
+| `chat.screenshotDirect` | Direct screenshot |
+| `chat.screenshotHideWindow` | Screenshot with hidden window |
+| `chat.expand` | Expand |
+| `chat.collapse` | Collapse |
+| `chat.selectAgent` | Agent |
+| `chat.selectModel` | Model |
+| `chat.tools` | Tools |
+| `chat.skills` | Skills |
+| `chat.noAgents` | No agents available |
+| `chat.noModels` | No models available |
+| `chat.configureTools` | Configure tools |
+| `chat.configureSkills` | Configure skills |
+| `chat.contextDetails` | Context details |
+| `chat.noCommandsFound` | No commands found |
+| `chat.slashCommands.clear` | Clear |
+| `chat.slashCommands.clearDesc` | Clear conversation history |
+| `chat.slashCommands.help` | Help |
+| `chat.slashCommands.helpDesc` | Show available commands |
+| `chat.slashCommands.stop` | Stop |
+| `chat.slashCommands.stopDesc` | Stop current execution |
 
 ---
 
-## 迁移指南
+## Migration Guide
 
-从旧组件迁移到统一 `ChatInput`:
+Migrate from old components to unified `ChatInput`:
 
-### AgentChatInput 迁移
+### AgentChatInput Migration
 
-旧代码:
+Old code:
 ```tsx
 <AgentChatInput onSend={...} models={...} />
 ```
 
-新代码:
+New code:
 ```tsx
 <ChatInput onSend={...} />
 ```
 
-注意：AgentChatInput 的高级功能（模型参数调节、Token 统计弹窗等）已简化为基础的 showConfigBar 配置栏。如需完整功能，可在 showConfigBar 基础上扩展。
+Note: Advanced features of AgentChatInput (model parameter adjustment, token statistics popover, etc.) have been simplified to basic showConfigBar config bar. For full functionality, extend based on showConfigBar.
 
-### WorkspaceChatInput 迁移
+### WorkspaceChatInput Migration
 
-旧代码:
+Old code:
 ```tsx
 <WorkspaceChatInput
   onSend={...}
@@ -491,7 +491,7 @@ const handlePaste = async (e: React.ClipboardEvent) => {
 />
 ```
 
-新代码:
+New code:
 ```tsx
 <ChatInput
   onSend={...}
@@ -507,11 +507,11 @@ const handlePaste = async (e: React.ClipboardEvent) => {
 
 ---
 
-## 辅助组件
+## Helper Components
 
 ### EmojiPicker
 
-表情选择器组件，显示常用表情分类网格。
+Emoji picker component, displays common emoji category grid.
 
 ```tsx
 interface EmojiPickerProps {
@@ -520,17 +520,17 @@ interface EmojiPickerProps {
 }
 ```
 
-**分类**:
-- Smileys (笑脸)
-- Gestures (手势)
-- Objects (物品)
-- Nature (自然)
-- Food (食物)
-- Symbols (符号)
+**Categories**:
+- Smileys
+- Gestures
+- Objects
+- Nature
+- Food
+- Symbols
 
 ### ToolsConfigPopover
 
-工具配置弹窗，显示可用工具列表，支持启用/禁用切换。
+Tools configuration popover, displays available tools list with enable/disable toggle.
 
 ```tsx
 interface ToolConfig {
@@ -549,7 +549,7 @@ interface ToolsConfigPopoverProps {
 
 ### SkillsConfigPopover
 
-技能配置弹窗，与工具配置类似。
+Skills configuration popover, similar to tools configuration.
 
 ```tsx
 interface SkillConfig {
@@ -568,15 +568,15 @@ interface SkillsConfigPopoverProps {
 
 ### ContextDetailsPopover
 
-上下文详情弹窗，显示 Token 使用分布。
+Context details popover, displays token usage breakdown.
 
 ```tsx
 interface ContextTokenBreakdown {
-  assistantProfile: number;    // 助理档案
-  skillSettings: number;       // 技能设定
-  historySummary: number;      // 历史总结
-  conversationMessages: number; // 会话消息
-  totalContext: number;        // 总上下文窗口
+  assistantProfile: number;    // Assistant profile
+  skillSettings: number;       // Skill settings
+  historySummary: number;      // History summary
+  conversationMessages: number; // Conversation messages
+  totalContext: number;        // Total context window
 }
 
 interface ContextDetailsPopoverProps {
@@ -587,57 +587,57 @@ interface ContextDetailsPopoverProps {
 
 ---
 
-## 全局配置模式
+## Global Config Mode
 
 ### useChatConfig Hook
 
-当 `useGlobalConfig` prop 为 true 时，ChatInput 使用 `useChatConfig` hook 来获取智能体/模型列表和控制选择器显隐。
+When `useGlobalConfig` prop is true, ChatInput uses `useChatConfig` hook to get agent/model lists and control selector visibility.
 
-**Hook 特性**:
-- 从全局 store 加载智能体和模型列表
-- 根据当前路由上下文决定选择器显隐
-- Props 覆盖优先于全局配置
+**Hook Features**:
+- Load agent and model lists from global store
+- Determine selector visibility based on current route context
+- Props override takes priority over global config
 
-**路由上下文检测**:
+**Route Context Detection**:
 
-| 路由模式 | 上下文类型 | 智能体选择器 | 模型选择器 |
-|---------|----------|------------|----------|
-| `/agents/:id` | agent-debug | 隐藏 | 隐藏 |
-| `/workspace/:id/chat` | workspace | 显示 | 显示 |
-| 其他路由 | default | 显示 | 显示 |
+| Route Pattern | Context Type | Agent Selector | Model Selector |
+|---------------|--------------|----------------|----------------|
+| `/agents/:id` | agent-debug | Hidden | Hidden |
+| `/workspace/:id/chat` | workspace | Visible | Visible |
+| Other routes | default | Visible | Visible |
 
-**使用示例**:
+**Usage Example**:
 
 ```tsx
-// 使用全局配置（自动加载智能体/模型，自动检测路由上下文）
+// Use global config (auto-load agents/models, auto-detect route context)
 <ChatInput
   onSend={handleSend}
   showConfigBar
   useGlobalConfig
 />
 
-// Props 覆盖（即使启用全局配置，props 优先）
+// Props override (even with global config enabled, props take priority)
 <ChatInput
   onSend={handleSend}
   showConfigBar
   useGlobalConfig
-  agents={customAgents}  // 覆盖全局智能体列表
+  agents={customAgents}  // Override global agent list
 />
 ```
 
-### 相关文件
+### Related Files
 
-| 文件 | 说明 |
-|------|------|
-| `types/chat-config.ts` | 类型定义 |
+| File | Description |
+|------|-------------|
+| `types/chat-config.ts` | Type definitions |
 | `stores/chat-config-store.ts` | Zustand store |
-| `hooks/use-chat-config.ts` | 配置 hook |
+| `hooks/use-chat-config.ts` | Config hook |
 
 ---
 
-## 斜杠命令
+## Slash Commands
 
-### SlashCommand 类型
+### SlashCommand Type
 
 ```typescript
 interface SlashCommand {
@@ -648,15 +648,15 @@ interface SlashCommand {
 }
 ```
 
-### 行为
+### Behavior
 
-- 用户输入 "/" 时在输入框上方显示命令菜单
-- 继续输入过滤命令列表 (e.g., "/cl" 匹配 "clear")
-- 方向键导航，Enter/Tab 选择，Escape 关闭
-- 选择后调用 `onSlashCommand` 回调并清空斜杠输入
-- 无匹配时显示 "No commands found"
+- Command menu appears above input when user types "/"
+- Continue typing to filter command list (e.g., "/cl" matches "clear")
+- Arrow keys to navigate, Enter/Tab to select, Escape to close
+- On selection, calls `onSlashCommand` callback and clears slash input
+- Shows "No commands found" when no matches
 
-### 使用示例
+### Usage Example
 
 ```tsx
 const slashCommands: SlashCommand[] = [
@@ -685,70 +685,70 @@ const slashCommands: SlashCommand[] = [
 
 ---
 
-## 选择器隐藏
+## Selector Hiding
 
-当在特定上下文中（如智能体调试页）时，可能不需要显示智能体/模型选择器。使用以下 props 强制隐藏：
+When in specific contexts (e.g., agent debug page), you may not need to show agent/model selectors. Use these props to force hide:
 
 ```tsx
 <ChatInput
   showConfigBar
-  hideAgentSelector  // 隐藏智能体选择器
-  hideModelSelector  // 隐藏模型选择器
+  hideAgentSelector  // Hide agent selector
+  hideModelSelector  // Hide model selector
   // ... other props
 />
 ```
 
-这些 props 优先级高于 `useGlobalConfig` 的自动检测。
+These props take priority over `useGlobalConfig` auto-detection.
 
 ---
 
-## 更新日志
+## Changelog
 
-- **2026-02-08**: 移除 ChatInput 卡片样式，父容器负责样式
-  - ChatInput 不再提供任何卡片样式（边框、圆角、阴影）
-  - 父组件负责提供所需的容器样式
-  - 斜杠命令菜单 z-index 提升至 z-[100] 确保可见性
-  - workspace-chat.tsx 基础模式添加卡片容器包裹
+- **2026-02-08**: Remove ChatInput card styles, parent container responsible for styling
+  - ChatInput no longer provides any card styles (border, radius, shadow)
+  - Parent component responsible for providing required container styles
+  - Slash command menu z-index raised to z-[100] for visibility
+  - workspace-chat.tsx basic mode adds card container wrapper
 
-- **2026-02-08**: 添加斜杠命令和选择器隐藏功能
-  - 新增 `slashCommands` 和 `onSlashCommand` props
-  - 新增 `hideAgentSelector` 和 `hideModelSelector` props
-  - 简化写作模式布局（独立渲染）
-  - 统一所有使用场景配置
+- **2026-02-08**: Add slash commands and selector hiding features
+  - Added `slashCommands` and `onSlashCommand` props
+  - Added `hideAgentSelector` and `hideModelSelector` props
+  - Simplified writing mode layout (standalone rendering)
+  - Unified all usage scenario configurations
 
-- **2026-02-08**: 移除 variant prop，统一基础样式
-  - 移除 `variant="compact"` 选项
-  - 所有场景使用统一基础样式
-  - 功能完全由 props 控制 (showTopToolbar, showConfigBar 等)
-  - 更新所有使用处：task-detail-panel, debug-chat-panel, agent-detail, workspace-chat
+- **2026-02-08**: Remove variant prop, unify base styles
+  - Removed `variant="compact"` option
+  - All scenarios use unified base styles
+  - Features fully controlled by props (showTopToolbar, showConfigBar, etc.)
+  - Updated all usages: task-detail-panel, debug-chat-panel, agent-detail, workspace-chat
 
-- **2026-02-08**: 优化按钮样式和容器样式
-  - 移除 workspace 模式下的卡片样式（无圆角、边框、阴影）
-  - Tools/Skills 按钮改为仅显示 icon + 角标数字
-  - Context 按钮改为仅显示 icon + token 数量（无 "tokens" 文字）
-  - Agent/Model 按钮保持 icon + 名称 + 下拉箭头
+- **2026-02-08**: Optimize button styles and container styles
+  - Remove card styles in workspace mode (no radius, border, shadow)
+  - Tools/Skills buttons changed to show only icon + badge number
+  - Context button changed to show only icon + token count (no "tokens" text)
+  - Agent/Model buttons keep icon + name + dropdown arrow
 
-- **2026-02-08**: 实现动态智能体/模型选择 (Phase 3)
-  - 新增 useChatConfig hook 和 chat-config store
-  - 支持路由上下文检测，智能体调试页隐藏选择器
-  - ChatInput 新增 useGlobalConfig prop
-  - Props 覆盖优先于全局配置
+- **2026-02-08**: Implement dynamic agent/model selection (Phase 3)
+  - Added useChatConfig hook and chat-config store
+  - Support route context detection, hide selectors on agent debug page
+  - ChatInput added useGlobalConfig prop
+  - Props override takes priority over global config
 
-- **2026-02-08**: 实现按钮功能组件 (Phase 2)
-  - 新增 EmojiPicker 表情选择器
-  - 新增 ToolsConfigPopover 工具配置弹窗
-  - 新增 SkillsConfigPopover 技能配置弹窗
-  - 新增 ContextDetailsPopover 上下文详情弹窗
-  - ChatInput 集成所有弹窗组件
+- **2026-02-08**: Implement button feature components (Phase 2)
+  - Added EmojiPicker emoji selector
+  - Added ToolsConfigPopover tools config popover
+  - Added SkillsConfigPopover skills config popover
+  - Added ContextDetailsPopover context details popover
+  - ChatInput integrated all popover components
 
-- **2026-02-08**: 迁移到 @viben/chat 包，实现跨平台复用
-  - ChatInput 迁移到 `packages/chat/src/chat-input/`，拆分为模块化子组件
-  - MessageList/MessageItem 统一到 package，使用回调 props 支持平台特定功能
-  - 创建 Desktop 适配层：`DesktopChatInput` 和 `DesktopMessageList`
-  - 平台特定功能通过回调注入：`onScreenshot`, `onOpenFile`, `onLinkClick`
-  - 所有消费者迁移到使用 Desktop* 组件
+- **2026-02-08**: Migrate to @viben/chat package, enable cross-platform reuse
+  - ChatInput migrated to `packages/chat/src/chat-input/`, split into modular subcomponents
+  - MessageList/MessageItem unified in package, using callback props for platform-specific features
+  - Created Desktop adapter layer: `DesktopChatInput` and `DesktopMessageList`
+  - Platform-specific features injected via callbacks: `onScreenshot`, `onOpenFile`, `onLinkClick`
+  - All consumers migrated to use Desktop* components
 
-- **2026-02-08**: 合并 ChatInput, AgentChatInput, WorkspaceChatInput 为统一组件
-  - 使用 Props 控制功能显隐
-  - 删除 agent-chat-input.tsx 和 workspace-chat-input.tsx
-  - 添加 showTopToolbar, showConfigBar, showResizeHandle, enableWritingMode props
+- **2026-02-08**: Merge ChatInput, AgentChatInput, WorkspaceChatInput into unified component
+  - Use Props to control feature visibility
+  - Deleted agent-chat-input.tsx and workspace-chat-input.tsx
+  - Added showTopToolbar, showConfigBar, showResizeHandle, enableWritingMode props

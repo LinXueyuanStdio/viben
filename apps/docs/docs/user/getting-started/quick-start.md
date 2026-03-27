@@ -1,179 +1,179 @@
 ---
 sidebar_position: 2
-title: "快速入门"
-description: "快速上手 Viben - Agent 集群 × 代码进化"
+title: "Quick Start"
+description: "Get started with Viben - Agent Cluster × Code Evolution"
 ---
 
-# 快速入门
+# Quick Start
 
-本指南帮助你快速上手使用 Viben。
+This guide helps you quickly get started with Viben.
 
-:::tip 核心概念
-开始之前，建议先了解 [核心概念](./concepts)，理解 FileRL、任务系统、智能体与执行器的区别。
+:::tip Core Concepts
+Before you begin, we recommend understanding the [Core Concepts](./concepts), including FileRL, Task System, and the differences between Agents and Executors.
 :::
 
-## 方式一：使用桌面应用（推荐）
+## Option 1: Using the Desktop Application (Recommended)
 
-桌面应用提供完整的图形界面，适合日常开发使用。
+The desktop application provides a complete graphical interface, ideal for daily development use.
 
-### 第一步：下载安装
+### Step 1: Download and Install
 
-1. 访问 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
-2. 下载对应平台的安装包
-3. 安装并启动 Viben
+1. Visit [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+2. Download the installer for your platform
+3. Install and launch Viben
 
-### 第二步：添加工作空间
+### Step 2: Add a Workspace
 
-1. 点击侧边栏的 **+** 按钮
-2. 选择"打开现有文件夹"或"创建新文件夹"
-3. 按向导完成工作空间配置
+1. Click the **+** button in the sidebar
+2. Select "Open Existing Folder" or "Create New Folder"
+3. Follow the wizard to complete workspace configuration
 
-### 第三步：创建任务
+### Step 3: Create a Task
 
-1. 打开任务看板
-2. 创建新任务卡片
-3. 设置任务优先级和标签
+1. Open the task board
+2. Create a new task card
+3. Set task priority and labels
 
-### 第四步：开始优化
+### Step 4: Start Optimization
 
-- 使用 FileRL 自动发现代码改进点
-- 查看生成的 Idea 列表
-- 将 Idea 转化为可执行任务
+- Use FileRL to automatically discover code improvements
+- View the generated Idea list
+- Convert Ideas into executable tasks
 
 ---
 
-## 方式二：使用 CLI 工具
+## Option 2: Using CLI Tools
 
-CLI 工具适合自动化脚本和高级用户。
+CLI tools are suitable for automation scripts and advanced users.
 
-:::info CLI 文档
-完整的 CLI 命令参考请查看 [CLI 文档](/cli/)。
+:::info CLI Documentation
+For complete CLI command reference, see the [CLI Documentation](/cli/).
 :::
 
-### 第一步：安装 CLI
+### Step 1: Install CLI
 
 ```bash
 npm install -g viben
 ```
 
-或直接运行：
+Or run directly:
 
 ```bash
 npx viben
 ```
 
-### 第二步：初始化开发者身份
+### Step 2: Initialize Developer Identity
 
 ```bash
-# 检查是否已初始化
+# Check if already initialized
 viben user get
 
-# 初始化（首次使用）
+# Initialize (first time use)
 viben user init <your-name>
 ```
 
-### 第三步：创建任务
+### Step 3: Create a Task
 
 ```bash
-# 创建任务
+# Create a task
 viben task create "Add user authentication" --slug auth
 
-# 查看任务列表
+# View task list
 viben task list
 ```
 
-### 第四步：启动任务执行
+### Step 4: Start Task Execution
 
 ```bash
-# 启动任务（自动执行 plan → implement → check）
+# Start task (automatically executes plan → implement → check)
 viben task start auth
 
-# 或在 worktree 中隔离执行
+# Or execute in isolation using worktree
 viben task start auth --worktree
 ```
 
-### 第五步：监控执行
+### Step 5: Monitor Execution
 
 ```bash
-# 实时监控 Agent 状态
+# Monitor Agent status in real-time
 viben swarm status --watch
 
-# 查看任务状态
+# View task status
 viben task view auth
 ```
 
-### 第六步：审核与完成
+### Step 6: Review and Complete
 
 ```bash
-# 审核任务
+# Review task
 viben task review auth
 
-# 批准完成
+# Approve completion
 viben task approve auth
 ```
 
 ---
 
-## 方式三：使用 FileRL 优化代码
+## Option 3: Using FileRL to Optimize Code
 
-FileRL 通过迭代优化自动提升代码质量。
+FileRL automatically improves code quality through iterative optimization.
 
-### 第一步：生成 Idea
+### Step 1: Generate Ideas
 
 ```bash
-# 生成代码改进建议
+# Generate code improvement suggestions
 viben idea generate --types code_improvements security_hardening
 
-# 查看生成的 Idea
+# View generated Ideas
 viben idea list
 ```
 
-### 第二步：选择并执行
+### Step 2: Select and Execute
 
 ```bash
-# 将 Idea 转为任务并启动
+# Convert Idea to task and start
 viben idea promote ci-001 --start --worktree
 ```
 
-### 第三步：监控优化循环
+### Step 3: Monitor Optimization Loop
 
 ```bash
-# 查看 FileRL 状态
+# View FileRL status
 viben filerl status <name>
 
-# 实时监控
+# Real-time monitoring
 viben swarm status --watch
 ```
 
-### 第四步：选择最佳方案
+### Step 4: Select the Best Solution
 
 ```bash
-# 从多个候选中选择最佳
+# Select the best from multiple candidates
 viben reward select <tasks...>
 
-# 批准合并
+# Approve merge
 viben task approve <task>
 ```
 
 ---
 
-## 方式四：使用 MCP 服务器
+## Option 4: Using MCP Server
 
-为 Claude Desktop 或其他 AI 助手添加学术搜索能力。
+Add academic search capabilities to Claude Desktop or other AI assistants.
 
-### 第一步：安装 MCP 服务器
+### Step 1: Install MCP Server
 
 ```bash
 pip install browse-mcp
 ```
 
-### 第二步：配置 Claude Desktop
+### Step 2: Configure Claude Desktop
 
-打开配置文件：
+Open the configuration file:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-添加配置：
+Add configuration:
 
 ```json
 {
@@ -189,46 +189,46 @@ pip install browse-mcp
 }
 ```
 
-### 第三步：使用
+### Step 3: Use
 
-重启 Claude Desktop，然后尝试：
+Restart Claude Desktop, then try:
 
-> "在 arXiv 上搜索关于大语言模型的最新论文"
+> "Search for the latest papers on large language models on arXiv"
 
 ---
 
-## 常用命令速查
+## Quick Command Reference
 
-### 任务管理
+### Task Management
 
 ```bash
-viben task create "<title>" --slug <name>   # 创建任务
-viben task list                              # 列出任务
-viben task start <task>                      # 启动任务
-viben task approve <task>                    # 批准完成
+viben task create "<title>" --slug <name>   # Create task
+viben task list                              # List tasks
+viben task start <task>                      # Start task
+viben task approve <task>                    # Approve completion
 ```
 
 ### FileRL
 
 ```bash
-viben idea generate --types <types>          # 生成 Idea
-viben idea promote <id> --start              # Idea 转任务
-viben filerl status <name>                   # 查看状态
-viben reward select <tasks...>               # 选择最佳
+viben idea generate --types <types>          # Generate Ideas
+viben idea promote <id> --start              # Convert Idea to task
+viben filerl status <name>                   # View status
+viben reward select <tasks...>               # Select best
 ```
 
-### 监控
+### Monitoring
 
 ```bash
-viben swarm status --watch                   # 实时监控
-viben task view <task>                       # 查看详情
+viben swarm status --watch                   # Real-time monitoring
+viben task view <task>                       # View details
 ```
 
 ---
 
-## 下一步
+## Next Steps
 
-- [核心概念](./concepts) - 理解 FileRL、任务系统等核心概念
-- [桌面应用功能](../desktop/features) - 探索完整功能
-- [CLI 文档](/cli/) - 命令行工具参考
-- [MCP 配置](../mcp/configuration) - 配置 API 密钥启用付费数据源
+- [Core Concepts](./concepts) - Understand core concepts like FileRL, Task System
+- [Desktop Application Features](../desktop/features) - Explore full features
+- [CLI Documentation](/cli/) - Command line tool reference
+- [MCP Configuration](../mcp/configuration) - Configure API keys to enable paid data sources

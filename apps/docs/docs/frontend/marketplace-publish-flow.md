@@ -1,256 +1,256 @@
 ---
 sidebar_position: 4
-title: Marketplace 发布流程
-description: MCP Market 和 Skills Market 的发布向导规范
+title: Marketplace Publish Flow
+description: Specification for MCP Market and Skills Market publish wizards
 ---
 
-# Marketplace 发布流程
+# Marketplace Publish Flow
 
-> MCP Market 和 Skills Market 页面中"Publish My MCP"和"Publish My Skill"功能的规范。
-
----
-
-## 概述
-
-MCP Market 和 Skills Market 页面都应该在页面头部右上角有一个发布按钮（仅在登录后可见）。点击按钮导航到多步骤发布向导。
+> Specification for "Publish My MCP" and "Publish My Skill" features in MCP Market and Skills Market pages.
 
 ---
 
-## 入口点
+## Overview
+
+Both MCP Market and Skills Market pages should have a publish button in the top-right corner of the page header (visible only when logged in). Clicking the button navigates to a multi-step publish wizard.
+
+---
+
+## Entry Points
 
 ### MCP Market (`/mcp-market`)
 
-| 元素 | 规范 |
-|------|------|
-| 按钮文本 | "Publish My MCP" |
-| 位置 | 页面头部右上角 |
-| 可见性 | 仅当用户已认证时 |
-| 导航 | `/mcp-market/publish` |
+| Element | Specification |
+|---------|---------------|
+| Button Text | "Publish My MCP" |
+| Position | Top-right corner of page header |
+| Visibility | Only when user is authenticated |
+| Navigation | `/mcp-market/publish` |
 
 ### Skills Market (`/skills-market`)
 
-| 元素 | 规范 |
-|------|------|
-| 按钮文本 | "Publish My Skill" |
-| 位置 | 页面头部右上角 |
-| 可见性 | 仅当用户已认证时 |
-| 导航 | `/skills-market/publish` |
+| Element | Specification |
+|---------|---------------|
+| Button Text | "Publish My Skill" |
+| Position | Top-right corner of page header |
+| Visibility | Only when user is authenticated |
+| Navigation | `/skills-market/publish` |
 
 ---
 
-## MCP 发布流程
+## MCP Publish Flow
 
-### 流程步骤
+### Flow Steps
 
 ```
-步骤 1: 基本信息 → 步骤 2: 代码/配置 → 步骤 3: 预览 → 步骤 4: 发布
+Step 1: Basic Info → Step 2: Code/Config → Step 3: Preview → Step 4: Publish
 ```
 
-### 步骤 1: 基本信息
+### Step 1: Basic Info
 
-必填字段：
+Required fields:
 
-| 字段 | 类型 | 必填 | 描述 |
-|------|------|------|------|
-| 名称 | text | 是 | MCP 包名称 |
-| 描述 | textarea | 是 | 简短描述（最多 280 字符） |
-| 图标 | file upload | 是 | 方形图片（推荐 512x512） |
-| 分类 | select | 是 | 主要分类 |
-| 标签 | multi-select | 否 | 最多 5 个标签 |
-| 版本 | text | 是 | 语义化版本（如 1.0.0） |
-| 许可证 | select | 是 | MIT、Apache-2.0、GPL-3.0 等 |
-| 主页 | url | 否 | 项目主页或仓库 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Name | text | Yes | MCP package name |
+| Description | textarea | Yes | Short description (max 280 characters) |
+| Icon | file upload | Yes | Square image (512x512 recommended) |
+| Category | select | Yes | Primary category |
+| Tags | multi-select | No | Up to 5 tags |
+| Version | text | Yes | Semantic version (e.g., 1.0.0) |
+| License | select | Yes | MIT, Apache-2.0, GPL-3.0, etc. |
+| Homepage | url | No | Project homepage or repository |
 
-### 步骤 2: 代码/配置
+### Step 2: Code/Config
 
-- 上传 MCP 配置文件
-- 定义入口点和命令
-- 指定依赖和要求
+- Upload MCP configuration file
+- Define entry points and commands
+- Specify dependencies and requirements
 
-### 步骤 3: 预览
+### Step 3: Preview
 
-- 显示 MCP 在市场中的展示效果
-- 以卡片格式显示所有元数据
-- 允许编辑（返回上一步）
+- Show how the MCP will appear in the marketplace
+- Display all metadata in card format
+- Allow editing (go back to previous step)
 
-### 步骤 4: 发布
+### Step 4: Publish
 
-- 最终确认
-- 服务条款协议
-- 提交审核或立即发布
+- Final confirmation
+- Terms of service agreement
+- Submit for review or publish immediately
 
 ---
 
-## Skill 发布流程
+## Skill Publish Flow
 
-### 流程步骤
+### Flow Steps
 
 ```
-步骤 1: 导入来源 → 步骤 2: 编辑 → 步骤 3: 预览 → 步骤 4: 发布
+Step 1: Import Source → Step 2: Edit → Step 3: Preview → Step 4: Publish
 ```
 
-### 步骤 1: 导入来源
+### Step 1: Import Source
 
-三种导入方法可用：
+Three import methods available:
 
-#### 类型 1: 上传 ZIP 文件
+#### Type 1: Upload ZIP File
 
-| 规范 | 详情 |
-|------|------|
-| 输入 | 多个 ZIP 文件选择 |
-| 验证 | 每个 ZIP 必须在根目录包含 `SKILL.md` |
-| UI | 拖放区域 + 文件浏览器 |
-| 反馈 | 显示每个文件的验证状态 |
+| Specification | Details |
+|---------------|---------|
+| Input | Multiple ZIP file selection |
+| Validation | Each ZIP must contain `SKILL.md` at root |
+| UI | Drag-and-drop zone + file browser |
+| Feedback | Show validation status for each file |
 
-#### 类型 2: 选择本地目录
+#### Type 2: Select Local Directory
 
-| 规范 | 详情 |
-|------|------|
-| 输入 | 目录选择器（多选） |
-| 验证 | 每个目录必须在根目录包含 `SKILL.md` |
-| UI | 带复选框的文件夹浏览器 |
-| 反馈 | 显示每个目录的验证状态 |
+| Specification | Details |
+|---------------|---------|
+| Input | Directory selector (multi-select) |
+| Validation | Each directory must contain `SKILL.md` at root |
+| UI | Folder browser with checkboxes |
+| Feedback | Show validation status for each directory |
 
-#### 类型 3: 从 GitHub 导入
+#### Type 3: Import from GitHub
 
-| 规范 | 详情 |
-|------|------|
-| 认证 | 连接 GitHub 账户（OAuth） |
-| 步骤 1 | 列出用户的仓库 |
-| 步骤 2 | 选择仓库 |
-| 检测 | 自动检测 `skills/` 文件夹或根级 `SKILL.md` |
-| 步骤 3 | 列出可用技能并带复选框 |
-| 选择 | 支持多个技能选择 |
+| Specification | Details |
+|---------------|---------|
+| Authentication | Connect GitHub account (OAuth) |
+| Step 1 | List user's repositories |
+| Step 2 | Select repository |
+| Detection | Auto-detect `skills/` folder or root-level `SKILL.md` |
+| Step 3 | List available skills with checkboxes |
+| Selection | Support multiple skill selection |
 
-### 步骤 2: 编辑
+### Step 2: Edit
 
-对于每个导入的技能：
+For each imported skill:
 
-- 预览 `SKILL.md` 内容
-- 编辑元数据（名称、描述、标签）
-- 添加/修改示例
-- 配置可见性（公开/私有）
+- Preview `SKILL.md` content
+- Edit metadata (name, description, tags)
+- Add/modify examples
+- Configure visibility (public/private)
 
-### 步骤 3: 预览
+### Step 3: Preview
 
-- 显示每个技能在市场中的展示效果
-- 显示技能卡片预览
-- 允许批量审核多个技能
+- Show how each skill will appear in the marketplace
+- Display skill card preview
+- Allow batch review of multiple skills
 
-### 步骤 4: 发布
+### Step 4: Publish
 
-- 所有选中技能的最终确认
-- 服务条款协议
-- 发布全部或选择性发布单个技能
+- Final confirmation for all selected skills
+- Terms of service agreement
+- Publish all or selectively publish individual skills
 
 ---
 
-## 自动保存（草稿模式）
+## Auto-save (Draft Mode)
 
-| 功能 | 规范 |
-|------|------|
-| 触发 | 字段变更时自动保存（防抖 2 秒） |
-| 存储 | 本地存储 + 在线时同步到后端 |
-| 恢复 | 返回时显示"继续草稿？"提示 |
-| 过期 | 草稿 30 天后过期 |
-| 指示器 | 显示"草稿已保存"吐司通知 |
+| Feature | Specification |
+|---------|---------------|
+| Trigger | Auto-save on field change (debounced 2 seconds) |
+| Storage | Local storage + sync to backend when online |
+| Recovery | Show "Continue draft?" prompt when returning |
+| Expiration | Drafts expire after 30 days |
+| Indicator | Show "Draft saved" toast notification |
 
 ---
 
-## UI 组件
+## UI Components
 
-### 进度指示器
+### Progress Indicator
 
 ```
 [1] ─── [2] ─── [3] ─── [4]
  ●      ○       ○       ○
-基本   配置    预览    发布
+Basic  Config  Preview Publish
 ```
 
-- 带连接线的编号步骤
-- 当前步骤高亮
-- 已完成步骤显示勾选
-- 可点击导航（如果步骤可访问）
+- Numbered steps with connecting lines
+- Current step highlighted
+- Completed steps show checkmark
+- Clickable navigation (if step is accessible)
 
-### 导航按钮
+### Navigation Buttons
 
-| 位置 | 按钮 |
-|------|------|
-| 左下 | "返回"（步骤 1 时禁用） |
-| 右下 | "继续" / "发布"（最后一步） |
-| 右上 | "保存草稿" / "取消" |
+| Position | Button |
+|----------|--------|
+| Bottom-left | "Back" (disabled on step 1) |
+| Bottom-right | "Continue" / "Publish" (on last step) |
+| Top-right | "Save Draft" / "Cancel" |
 
-### 验证
+### Validation
 
-- 字段失焦时内联验证
-- 继续前进行步骤完成验证
-- 提交失败时在步骤顶部显示所有错误
-
----
-
-## 错误处理
-
-| 场景 | 行为 |
-|------|------|
-| 上传失败 | 显示重试按钮，保留其他上传 |
-| GitHub 认证失败 | 显示重新认证选项，保留选择 |
-| 验证错误 | 高亮字段，滚动到第一个错误 |
-| 网络错误 | 指数退避自动重试 |
-| 草稿保存失败 | 显示警告，提供手动保存选项 |
+- Inline validation on field blur
+- Step completion validation before proceeding
+- Show all errors at top of step on submit failure
 
 ---
 
-## 路由
+## Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| Upload failure | Show retry button, preserve other uploads |
+| GitHub auth failure | Show re-authenticate option, preserve selection |
+| Validation error | Highlight field, scroll to first error |
+| Network error | Auto-retry with exponential backoff |
+| Draft save failure | Show warning, offer manual save option |
+
+---
+
+## Routes
 
 ```
-/mcp-market/publish           # MCP 发布向导
-/mcp-market/publish/:draftId  # 恢复草稿
+/mcp-market/publish           # MCP publish wizard
+/mcp-market/publish/:draftId  # Resume draft
 
-/skills-market/publish           # Skill 发布向导
-/skills-market/publish/:draftId  # 恢复草稿
+/skills-market/publish           # Skill publish wizard
+/skills-market/publish/:draftId  # Resume draft
 ```
 
 ---
 
-## 实现清单
+## Implementation Checklist
 
-### 阶段 1: 基础
-- [ ] 在 MCP Market 页面头部添加发布按钮
-- [ ] 在 Skills Market 页面头部添加发布按钮
-- [ ] 创建发布页面的路由结构
-- [ ] 实现按钮可见性的认证检查
+### Phase 1: Foundation
+- [ ] Add publish button to MCP Market page header
+- [ ] Add publish button to Skills Market page header
+- [ ] Create route structure for publish pages
+- [ ] Implement authentication check for button visibility
 
-### 阶段 2: MCP 发布
-- [ ] 步骤 1: 基本信息表单
-- [ ] 步骤 2: 代码/配置上传
-- [ ] 步骤 3: 预览组件
-- [ ] 步骤 4: 发布确认
-- [ ] 自动保存功能
+### Phase 2: MCP Publish
+- [ ] Step 1: Basic info form
+- [ ] Step 2: Code/config upload
+- [ ] Step 3: Preview component
+- [ ] Step 4: Publish confirmation
+- [ ] Auto-save functionality
 
-### 阶段 3: Skill 发布
-- [ ] 步骤 1a: ZIP 文件上传及验证
-- [ ] 步骤 1b: 目录选择及验证
-- [ ] 步骤 1c: GitHub OAuth 集成
-- [ ] 步骤 1c: 仓库浏览器
-- [ ] 步骤 1c: 技能检测和选择
-- [ ] 步骤 2: 技能编辑器
-- [ ] 步骤 3: 批量预览
-- [ ] 步骤 4: 批量发布
+### Phase 3: Skill Publish
+- [ ] Step 1a: ZIP file upload with validation
+- [ ] Step 1b: Directory selection with validation
+- [ ] Step 1c: GitHub OAuth integration
+- [ ] Step 1c: Repository browser
+- [ ] Step 1c: Skill detection and selection
+- [ ] Step 2: Skill editor
+- [ ] Step 3: Batch preview
+- [ ] Step 4: Batch publish
 
-### 阶段 4: 润色
-- [ ] 进度指示器动画
-- [ ] 步骤间过渡动画
-- [ ] 加载状态
-- [ ] 错误恢复流程
-- [ ] 移动端响应式
+### Phase 4: Polish
+- [ ] Progress indicator animation
+- [ ] Step transition animations
+- [ ] Loading states
+- [ ] Error recovery flows
+- [ ] Mobile responsiveness
 
 ---
 
-## 设计说明
+## Design Notes
 
-遵循[设计系统](./design-system.md)：
+Follow the [Design System](./design-system.md):
 
-- 主要操作使用温暖的琥珀色调色板
-- 标题使用衬线字体
-- 步骤过渡使用交错动画
-- 预览卡片匹配市场卡片设计
+- Use warm amber color palette for primary actions
+- Use serif font for headings
+- Use staggered animations for step transitions
+- Preview cards match marketplace card design

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9
-title: Phase 8 - 精确布局
-description: 匹配 vibe-kanban 布局规格
+title: Phase 8 - Precise Layout
+description: Match vibe-kanban Layout Specification
 ---
 
 # Kanban Phase 8: Match vibe-kanban Layout Exactly

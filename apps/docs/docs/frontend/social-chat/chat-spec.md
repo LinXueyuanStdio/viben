@@ -1,45 +1,45 @@
 ---
 sidebar_position: 3
-title: 聊天功能开发规范
-description: Desktop 聊天页面实现指南
+title: Chat Feature Development Guide
+description: Desktop Chat Page Implementation Guide
 ---
 
-# 聊天功能开发规范
+# Chat Feature Development Guide
 
-> 开发规范：Desktop 聊天页面实现指南
+> Development Guide: Desktop Chat Page Implementation Guide
 
 ---
 
-## 1. 文件结构
+## 1. File Structure
 
 ```
 apps/desktop/src/
 ├── pages/
-│   └── social-chat.tsx              # 聊天主页面
+│   └── social-chat.tsx              # Main chat page
 ├── components/
 │   └── social-chat/
-│       ├── index.ts                 # 导出入口
-│       ├── conversation-list.tsx    # 对话列表
-│       ├── conversation-item.tsx    # 对话列表项
-│       ├── conversation-panel.tsx   # 对话面板（右侧）
-│       ├── conversation-header.tsx  # 对话标题栏
-│       ├── social-message-list.tsx  # 消息列表
-│       ├── social-message-item.tsx  # 消息项
-│       ├── search-bar.tsx           # 搜索框
-│       └── context-menu.tsx         # 右键菜单
+│       ├── index.ts                 # Export entry
+│       ├── conversation-list.tsx    # Conversation list
+│       ├── conversation-item.tsx    # Conversation list item
+│       ├── conversation-panel.tsx   # Conversation panel (right side)
+│       ├── conversation-header.tsx  # Conversation header
+│       ├── social-message-list.tsx  # Message list
+│       ├── social-message-item.tsx  # Message item
+│       ├── search-bar.tsx           # Search bar
+│       └── context-menu.tsx         # Context menu
 ├── hooks/
-│   └── use-social-chat.ts           # 聊天业务逻辑 Hook
+│   └── use-social-chat.ts           # Chat business logic Hook
 ├── stores/
-│   └── social-chat-store.ts         # Zustand Store（见 data-model.md）
+│   └── social-chat-store.ts         # Zustand Store (see data-model.md)
 └── types/
-    └── social-chat.ts               # 类型定义（见 data-model.md）
+    └── social-chat.ts               # Type definitions (see data-model.md)
 ```
 
 ---
 
-## 2. 主页面实现
+## 2. Main Page Implementation
 
-### 2.1 页面布局
+### 2.1 Page Layout
 
 ```tsx
 // apps/desktop/src/pages/social-chat.tsx
@@ -55,7 +55,7 @@ export default function SocialChatPage() {
 
   return (
     <div className="flex h-full">
-      {/* 左侧对话列表 */}
+      {/* Left conversation list */}
       <div
         className="flex-shrink-0 border-r border-border"
         style={{ width: listWidth }}
@@ -66,7 +66,7 @@ export default function SocialChatPage() {
         />
       </div>
 
-      {/* 右侧对话面板 */}
+      {/* Right conversation panel */}
       <div className="flex-1 min-w-0">
         {activeConversationId ? (
           <ConversationPanel conversationId={activeConversationId} />
@@ -82,23 +82,23 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
       <MessageSquare className="w-12 h-12 mb-4" />
-      <p>选择一个对话开始聊天</p>
+      <p>Select a conversation to start chatting</p>
     </div>
   );
 }
 ```
 
-### 2.2 响应式处理
+### 2.2 Responsive Handling
 
 ```tsx
-// 使用 useMediaQuery 处理响应式
+// Use useMediaQuery for responsive handling
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function SocialChatPage() {
   const isMobile = useMediaQuery("(max-width: 800px)");
   const { activeConversationId, setActiveConversation } = useSocialChatStore();
 
-  // 移动端：单栏模式
+  // Mobile: Single column mode
   if (isMobile) {
     return activeConversationId ? (
       <ConversationPanel
@@ -111,10 +111,10 @@ export default function SocialChatPage() {
     );
   }
 
-  // 桌面端：双栏模式
+  // Desktop: Two column mode
   return (
     <div className="flex h-full">
-      {/* ... 同上 */}
+      {/* ... same as above */}
     </div>
   );
 }
@@ -122,7 +122,7 @@ export default function SocialChatPage() {
 
 ---
 
-## 3. 对话列表组件
+## 3. Conversation List Components
 
 ### 3.1 ConversationList
 
@@ -147,25 +147,25 @@ export function ConversationList({ onSelect, activeId }: ConversationListProps) 
 
   const conversations = getSortedConversations();
 
-  // 过滤搜索结果
+  // Filter search results
   const filteredConversations = searchQuery
     ? conversations.filter((c) =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : conversations;
 
-  // 分组：置顶 + 普通
+  // Group: Pinned + Regular
   const pinned = filteredConversations.filter((c) => c.is_pinned);
   const unpinned = filteredConversations.filter((c) => !c.is_pinned);
 
   return (
     <div className="flex flex-col h-full">
-      {/* 搜索框 */}
+      {/* Search box */}
       <div className="p-3 border-b border-border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="搜索对话..."
+            placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -173,9 +173,9 @@ export function ConversationList({ onSelect, activeId }: ConversationListProps) 
         </div>
       </div>
 
-      {/* 对话列表 */}
+      {/* Conversation list */}
       <ScrollArea className="flex-1">
-        {/* 置顶对话 */}
+        {/* Pinned conversations */}
         {pinned.length > 0 && (
           <div className="py-2">
             {pinned.map((conversation) => (
@@ -189,12 +189,12 @@ export function ConversationList({ onSelect, activeId }: ConversationListProps) 
           </div>
         )}
 
-        {/* 分隔线 */}
+        {/* Divider */}
         {pinned.length > 0 && unpinned.length > 0 && (
           <div className="h-px bg-border mx-3" />
         )}
 
-        {/* 普通对话 */}
+        {/* Regular conversations */}
         <div className="py-2">
           {unpinned.map((conversation) => (
             <ConversationItem
@@ -206,10 +206,10 @@ export function ConversationList({ onSelect, activeId }: ConversationListProps) 
           ))}
         </div>
 
-        {/* 空状态 */}
+        {/* Empty state */}
         {filteredConversations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <p>暂无对话</p>
+            <p>No conversations</p>
           </div>
         )}
       </ScrollArea>
@@ -265,7 +265,7 @@ export function ConversationItem({
   }, [conversation.id, conversation.is_muted, muteConversation]);
 
   const handleDelete = useCallback(() => {
-    // TODO: 添加确认对话框
+    // TODO: Add confirmation dialog
     deleteConversation(conversation.id);
   }, [conversation.id, deleteConversation]);
 
@@ -273,7 +273,7 @@ export function ConversationItem({
     markAsRead(conversation.id);
   }, [conversation.id, markAsRead]);
 
-  // 对话类型图标
+  // Conversation type icon
   const typeIcon = getConversationTypeIcon(conversation.type);
 
   return (
@@ -287,7 +287,7 @@ export function ConversationItem({
           )}
           onClick={onClick}
         >
-          {/* 头像 */}
+          {/* Avatar */}
           <Avatar className="w-10 h-10 flex-shrink-0">
             <AvatarImage src={conversation.avatar} />
             <AvatarFallback>
@@ -295,7 +295,7 @@ export function ConversationItem({
             </AvatarFallback>
           </Avatar>
 
-          {/* 内容 */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="font-medium truncate">{conversation.name}</span>
@@ -306,7 +306,7 @@ export function ConversationItem({
             </div>
             <div className="flex items-center justify-between mt-0.5">
               <span className="text-sm text-muted-foreground truncate">
-                {conversation.last_message?.content || "暂无消息"}
+                {conversation.last_message?.content || "No messages"}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {conversation.is_pinned && (
@@ -329,21 +329,21 @@ export function ConversationItem({
       <ContextMenuContent>
         <ContextMenuItem onClick={handlePin}>
           <Pin className="w-4 h-4 mr-2" />
-          {conversation.is_pinned ? "取消置顶" : "置顶"}
+          {conversation.is_pinned ? "Unpin" : "Pin"}
         </ContextMenuItem>
         <ContextMenuItem onClick={handleMute}>
           <BellOff className="w-4 h-4 mr-2" />
-          {conversation.is_muted ? "取消静音" : "静音"}
+          {conversation.is_muted ? "Unmute" : "Mute"}
         </ContextMenuItem>
         {conversation.unread_count > 0 && (
           <ContextMenuItem onClick={handleMarkAsRead}>
             <Check className="w-4 h-4 mr-2" />
-            标记为已读
+            Mark as read
           </ContextMenuItem>
         )}
         <ContextMenuItem onClick={handleDelete} className="text-destructive">
           <Trash2 className="w-4 h-4 mr-2" />
-          删除对话
+          Delete conversation
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -366,7 +366,7 @@ function getConversationTypeIcon(type: Conversation["type"]) {
 
 ---
 
-## 4. 对话面板组件
+## 4. Conversation Panel Components
 
 ### 4.1 ConversationPanel
 
@@ -379,7 +379,7 @@ import { SocialMessageList } from "./social-message-list";
 import { useSocialChat } from "@/hooks/use-social-chat";
 import { useSocialChatStore } from "@/stores/social-chat-store";
 
-// 复用现有的 ChatInput 组件
+// Reuse existing ChatInput component
 import { ChatInput } from "@/components/chat/chat-input";
 import { AgentChatInput } from "@/components/chat/agent-chat-input";
 
@@ -413,23 +413,23 @@ export function ConversationPanel({
   );
 
   if (!conversation) {
-    return <div>对话不存在</div>;
+    return <div>Conversation not found</div>;
   }
 
-  // 根据对话类型选择输入组件
+  // Select input component based on conversation type
   const InputComponent =
     conversation.type === "agent" ? AgentChatInput : ChatInput;
 
   return (
     <div className="flex flex-col h-full">
-      {/* 标题栏 */}
+      {/* Header */}
       <ConversationHeader
         conversation={conversation}
         onBack={onBack}
         showBackButton={showBackButton}
       />
 
-      {/* 消息列表 */}
+      {/* Message list */}
       <div className="flex-1 overflow-hidden">
         <SocialMessageList
           messages={conversationMessages}
@@ -438,13 +438,13 @@ export function ConversationPanel({
         />
       </div>
 
-      {/* 输入区域 */}
+      {/* Input area */}
       <div className="border-t border-border">
         {conversation.type === "agent" ? (
           <AgentChatInput
             onSend={handleSend}
             isLoading={isLoading}
-            // 智能体特定 props
+            // Agent-specific props
           />
         ) : (
           <ChatInput
@@ -452,8 +452,8 @@ export function ConversationPanel({
             isLoading={isLoading}
             placeholder={
               conversation.type === "group"
-                ? "输入消息，@智能体 可触发响应..."
-                : "输入消息..."
+                ? "Type a message, @agent to trigger response..."
+                : "Type a message..."
             }
           />
         )}
@@ -490,7 +490,7 @@ export function ConversationHeader({
   onBack,
   showBackButton,
 }: ConversationHeaderProps) {
-  // 副标题
+  // Subtitle
   const subtitle = getSubtitle(conversation);
 
   return (
@@ -527,16 +527,16 @@ export function ConversationHeader({
           {conversation.type === "group" && (
             <DropdownMenuItem>
               <UserPlus className="w-4 h-4 mr-2" />
-              邀请成员
+              Invite members
             </DropdownMenuItem>
           )}
           <DropdownMenuItem>
             <Settings className="w-4 h-4 mr-2" />
-            设置
+            Settings
           </DropdownMenuItem>
           <DropdownMenuItem className="text-destructive">
             <Trash2 className="w-4 h-4 mr-2" />
-            {conversation.type === "group" ? "退出群聊" : "删除对话"}
+            {conversation.type === "group" ? "Leave group" : "Delete conversation"}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -547,12 +547,12 @@ export function ConversationHeader({
 function getSubtitle(conversation: Conversation): string | null {
   switch (conversation.type) {
     case "agent":
-      // 显示模型信息
-      return "Claude 3.5 Sonnet";  // TODO: 从 agent 信息获取
+      // Display model information
+      return "Claude 3.5 Sonnet";  // TODO: Get from agent info
     case "group":
-      return `${conversation.participants.length} 位成员`;
+      return `${conversation.participants.length} members`;
     case "workspace":
-      return "工作空间对话";
+      return "Workspace conversation";
     default:
       return null;
   }
@@ -561,7 +561,7 @@ function getSubtitle(conversation: Conversation): string | null {
 
 ---
 
-## 5. 消息列表组件
+## 5. Message List Components
 
 ### 5.1 SocialMessageList
 
@@ -588,12 +588,12 @@ export function SocialMessageList({
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // 自动滚动到底部
+  // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // 按时间分组，插入日期分隔
+  // Group by time, insert date separators
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
@@ -601,14 +601,14 @@ export function SocialMessageList({
       <div className="flex flex-col gap-2 p-4">
         {groupedMessages.map((group, groupIndex) => (
           <div key={group.date}>
-            {/* 日期分隔 */}
+            {/* Date separator */}
             <div className="flex justify-center my-4">
               <span className="px-3 py-1 text-xs text-muted-foreground bg-muted rounded-full">
                 {formatDate(group.date)}
               </span>
             </div>
 
-            {/* 消息列表 */}
+            {/* Message list */}
             {group.messages.map((message, messageIndex) => {
               const prevMessage = messageIndex > 0
                 ? group.messages[messageIndex - 1]
@@ -616,7 +616,7 @@ export function SocialMessageList({
                   ? groupedMessages[groupIndex - 1].messages.slice(-1)[0]
                   : null;
 
-              // 是否显示时间戳（超过 5 分钟）
+              // Whether to show timestamp (over 5 minutes)
               const showTimestamp = shouldShowTimestamp(message, prevMessage);
 
               return (
@@ -663,7 +663,7 @@ function shouldShowTimestamp(
   const currentTime = new Date(current.created_at).getTime();
   const prevTime = new Date(prev.created_at).getTime();
 
-  // 超过 5 分钟显示时间
+  // Show time if over 5 minutes
   return currentTime - prevTime > 5 * 60 * 1000;
 }
 ```
@@ -678,7 +678,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SocialMessage, ConversationType, ConversationParticipant } from "@/types/social-chat";
 import { formatTime } from "@/lib/utils";
 
-// 复用现有的消息渲染组件
+// Reuse existing message rendering components
 import { MessageContent } from "@/components/chat/message-content";
 import { ToolExecutionItem } from "@/components/chat/tool-execution-item";
 
@@ -698,7 +698,7 @@ export function SocialMessageItem({
   const isOwnMessage = message.sender_type === "user";
   const isSystemMessage = message.sender_type === "system";
 
-  // 系统消息
+  // System message
   if (isSystemMessage) {
     return (
       <div className="flex justify-center my-2">
@@ -709,7 +709,7 @@ export function SocialMessageItem({
     );
   }
 
-  // 获取发送者信息
+  // Get sender info
   const sender = participants.find((p) => p.contact_id === message.sender_id);
 
   return (
@@ -719,7 +719,7 @@ export function SocialMessageItem({
         isOwnMessage ? "flex-row-reverse" : "flex-row"
       )}
     >
-      {/* 头像 - 非自己的消息显示 */}
+      {/* Avatar - show for messages from others */}
       {!isOwnMessage && (
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarFallback>
@@ -728,21 +728,21 @@ export function SocialMessageItem({
         </Avatar>
       )}
 
-      {/* 消息内容 */}
+      {/* Message content */}
       <div
         className={cn(
           "flex flex-col max-w-[70%]",
           isOwnMessage ? "items-end" : "items-start"
         )}
       >
-        {/* 发送者名称 - 群聊中显示 */}
+        {/* Sender name - show in group chats */}
         {conversationType === "group" && !isOwnMessage && sender && (
           <span className="text-xs text-muted-foreground mb-1">
             {sender.nickname || message.sender_id}
           </span>
         )}
 
-        {/* 消息气泡 */}
+        {/* Message bubble */}
         <div
           className={cn(
             "rounded-lg px-3 py-2",
@@ -751,11 +751,11 @@ export function SocialMessageItem({
               : "bg-muted"
           )}
         >
-          {/* 根据消息类型渲染 */}
+          {/* Render based on message type */}
           {renderMessageContent(message)}
         </div>
 
-        {/* 时间戳 */}
+        {/* Timestamp */}
         {showTimestamp && (
           <span className="text-xs text-muted-foreground mt-1">
             {formatTime(message.created_at)}
@@ -826,7 +826,7 @@ function renderMessageContent(message: SocialMessage) {
 
 ---
 
-## 6. 业务逻辑 Hook
+## 6. Business Logic Hook
 
 ### 6.1 useSocialChat
 
@@ -851,21 +851,21 @@ export function useSocialChat(conversationId: string) {
   const conversation = getConversation(conversationId);
   const conversationMessages = messages[conversationId] || [];
 
-  // 对于智能体对话，复用现有的 useAgent hook
+  // For agent conversations, reuse existing useAgent hook
   const agentHook = conversation?.type === "agent" ? useAgent() : null;
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // 发送消息
+  // Send message
   const sendMessage = useCallback(
     async (content: string, attachments?: MessageAttachment[]) => {
       if (!conversation) return;
 
-      // 创建用户消息
+      // Create user message
       const userMessage: SocialMessage = {
         id: nanoid(),
         conversation_id: conversationId,
-        sender_id: "current-user", // TODO: 从 auth store 获取
+        sender_id: "current-user", // TODO: Get from auth store
         sender_type: "user",
         type: "text",
         content,
@@ -880,7 +880,7 @@ export function useSocialChat(conversationId: string) {
       setIsLoading(true);
 
       try {
-        // 根据对话类型处理
+        // Handle based on conversation type
         switch (conversation.type) {
           case "agent":
             await handleAgentMessage(content, attachments);
@@ -899,11 +899,11 @@ export function useSocialChat(conversationId: string) {
             break;
         }
 
-        // 更新对话的最后消息
+        // Update conversation's last message
         updateConversation(conversationId, {
           last_message: {
             id: userMessage.id,
-            sender_name: "我",
+            sender_name: "Me",
             content: content.slice(0, 50),
             timestamp: userMessage.created_at,
           },
@@ -918,29 +918,29 @@ export function useSocialChat(conversationId: string) {
     [conversation, conversationId, addMessage, updateMessage, updateConversation]
   );
 
-  // 处理智能体消息
+  // Handle agent message
   const handleAgentMessage = async (
     content: string,
     attachments?: MessageAttachment[]
   ) => {
     if (!agentHook) return;
 
-    // 使用现有的 agent hook 发送消息
+    // Use existing agent hook to send message
     await agentHook.sendMessage(content, attachments);
 
-    // 监听 agent 响应并转换为 SocialMessage
-    // ... 处理 agentHook.messages 的变化
+    // Listen to agent response and convert to SocialMessage
+    // ... handle changes in agentHook.messages
   };
 
-  // 处理群聊消息 - 检测 @提及
+  // Handle group message - detect @mentions
   const handleGroupMessage = async (
     content: string,
     attachments?: MessageAttachment[]
   ) => {
-    // 解析 @提及
+    // Parse @mentions
     const mentions = parseMentions(content);
 
-    // 如果提及了智能体，触发智能体响应
+    // If an agent is mentioned, trigger agent response
     for (const mention of mentions) {
       if (mention.contact_type === "agent") {
         await triggerAgentInGroup(mention.contact_id, content);
@@ -948,16 +948,16 @@ export function useSocialChat(conversationId: string) {
     }
   };
 
-  // 触发群内智能体响应
+  // Trigger agent response in group
   const triggerAgentInGroup = async (agentId: string, context: string) => {
-    // TODO: 调用智能体 API，传入群聊上下文
+    // TODO: Call agent API, pass group chat context
     const agentResponse: SocialMessage = {
       id: nanoid(),
       conversation_id: conversationId,
       sender_id: agentId,
       sender_type: "agent",
       type: "agent_response",
-      content: "智能体响应...", // 实际从 API 获取
+      content: "Agent response...", // Actually get from API
       status: "sent",
       created_at: new Date().toISOString(),
     };
@@ -965,15 +965,15 @@ export function useSocialChat(conversationId: string) {
     addMessage(conversationId, agentResponse);
   };
 
-  // 处理私聊消息
+  // Handle private message
   const handlePrivateMessage = async (
     content: string,
     attachments?: MessageAttachment[]
   ) => {
-    // TODO: 发送到服务器 / P2P
+    // TODO: Send to server / P2P
   };
 
-  // 处理 Workspace 消息 - 复用现有逻辑
+  // Handle Workspace message - reuse existing logic
   const handleWorkspaceMessage = async (
     content: string,
     attachments?: MessageAttachment[]
@@ -992,17 +992,17 @@ export function useSocialChat(conversationId: string) {
   };
 }
 
-// 解析 @提及
+// Parse @mentions
 function parseMentions(content: string) {
   const mentions: { contact_id: string; contact_type: "user" | "agent" }[] = [];
   const regex = /@(\w+)/g;
   let match;
 
   while ((match = regex.exec(content)) !== null) {
-    // TODO: 根据名称查找联系人
+    // TODO: Look up contact by name
     mentions.push({
       contact_id: match[1],
-      contact_type: "agent", // 需要实际查询
+      contact_type: "agent", // Need actual query
     });
   }
 
@@ -1012,35 +1012,35 @@ function parseMentions(content: string) {
 
 ---
 
-## 7. 导航集成
+## 7. Navigation Integration
 
-### 7.1 侧边栏配置
+### 7.1 Sidebar Configuration
 
 ```tsx
 // apps/desktop/src/components/layout/sidebar.tsx
 
-// 添加聊天和联系人导航项
+// Add chat and contacts navigation items
 const navigationItems = [
   {
     id: "chat",
-    label: "聊天",
+    label: "Chat",
     icon: MessageSquare,
     href: "/chat",
   },
   {
     id: "contacts",
-    label: "联系人",
+    label: "Contacts",
     icon: Users,
     href: "/contacts",
   },
-  // ... 其他导航项
+  // ... other navigation items
 ];
 ```
 
-### 7.2 路由配置
+### 7.2 Route Configuration
 
 ```tsx
-// apps/desktop/src/App.tsx 或路由配置文件
+// apps/desktop/src/App.tsx or route configuration file
 
 import SocialChatPage from "@/pages/social-chat";
 import ContactsPage from "@/pages/contacts";
@@ -1060,32 +1060,32 @@ const routes = [
 
 ---
 
-## 8. 样式规范
+## 8. Style Guidelines
 
-### 8.1 颜色使用
+### 8.1 Color Usage
 
 ```css
-/* 遵循 Design System */
+/* Follow Design System */
 .message-own {
-  /* 使用主题色 */
+  /* Use theme color */
   @apply bg-primary text-primary-foreground;
 }
 
 .message-other {
-  /* 使用 muted 背景 */
+  /* Use muted background */
   @apply bg-muted text-foreground;
 }
 
 .unread-badge {
-  /* 使用 destructive 颜色 */
+  /* Use destructive color */
   @apply bg-destructive text-destructive-foreground;
 }
 ```
 
-### 8.2 动画
+### 8.2 Animations
 
 ```css
-/* 消息出现动画 */
+/* Message appearance animation */
 .message-enter {
   animation: message-slide-in 0.2s ease-out;
 }
@@ -1104,9 +1104,9 @@ const routes = [
 
 ---
 
-## 9. 测试要点
+## 9. Testing Points
 
-### 9.1 单元测试
+### 9.1 Unit Tests
 
 ```typescript
 // __tests__/components/social-chat/conversation-item.test.tsx
@@ -1126,7 +1126,7 @@ describe("ConversationItem", () => {
 });
 ```
 
-### 9.2 集成测试
+### 9.2 Integration Tests
 
 ```typescript
 // __tests__/hooks/use-social-chat.test.tsx
@@ -1144,11 +1144,11 @@ describe("useSocialChat", () => {
 
 ---
 
-## 10. 性能优化
+## 10. Performance Optimization
 
-### 10.1 虚拟列表
+### 10.1 Virtual List
 
-对于大量消息，使用虚拟滚动：
+For large numbers of messages, use virtual scrolling:
 
 ```tsx
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -1167,15 +1167,15 @@ function VirtualMessageList({ messages }: { messages: SocialMessage[] }) {
 }
 ```
 
-### 10.2 消息分页加载
+### 10.2 Message Pagination
 
 ```typescript
-// 加载更多历史消息
+// Load more history messages
 const loadMoreMessages = async (beforeMessageId: string) => {
   const olderMessages = await fetchMessages(conversationId, {
     before: beforeMessageId,
     limit: 50,
   });
-  // 合并到现有消息
+  // Merge with existing messages
 };
 ```
