@@ -1,14 +1,14 @@
 ---
 sidebar_position: 3
 title: "快速开始"
-description: "5 分钟内快速上手微本 CLI"
+description: "5 分钟内开始使用 Viben CLI"
 ---
 
 # 快速开始
 
-5 分钟内让微本 CLI 运行起来。
+5 分钟内让 Viben CLI 运行起来。
 
-## 步骤 1：安装微本 CLI
+## 步骤 1：安装 Viben CLI
 
 ```bash
 npm install -g @viben/cli
@@ -20,9 +20,9 @@ npm install -g @viben/cli
 viben --help
 ```
 
-## 步骤 2：初始化您的第一个工作区
+## 步骤 2：初始化你的第一个工作区
 
-进入您的项目目录并初始化微本：
+导航到你的项目目录并初始化 Viben：
 
 ```bash
 cd /path/to/your/project
@@ -36,14 +36,14 @@ Initialized Viben workspace in /path/to/your/project
   Created .viben/config.yaml
 
 Next steps:
-  viben provider create -t anthropic    # 设置 API Provider
+  viben provider create -t anthropic    # 设置 API 提供商
   viben mcp install <name>              # 安装 MCP 服务器
   viben skill install <name>            # 安装技能
 ```
 
-## 步骤 3：配置 API Provider
+## 步骤 3：配置 API 提供商
 
-设置您首选的 AI Provider。微本支持多个 Provider，包括 Anthropic、OpenAI、Google、Azure 等。
+设置你首选的 AI 提供商。Viben 支持多种提供商，包括 Anthropic、OpenAI、Google、Azure 等。
 
 ### 选项 A：使用环境变量（推荐）
 
@@ -57,7 +57,7 @@ export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
 ```
 
-然后创建 Provider：
+然后创建提供商：
 
 ```bash
 viben provider create -t anthropic
@@ -70,12 +70,12 @@ viben provider create -t anthropic --api-key "sk-ant-xxx"
 ```
 
 :::tip
-直接提供 API 密钥时，它将被加密并安全存储在 `~/.viben/providers.yaml` 中。
+当直接提供 API 密钥时，它将被加密并安全存储在 `~/.viben/providers.yaml` 中。
 :::
 
-### 验证 Provider
+### 验证提供商
 
-检查 Provider 连通性：
+检查提供商连通性：
 
 ```bash
 viben provider status
@@ -88,7 +88,7 @@ Provider Status:
   anthropic-main   anthropic   ✓ connected   latency: 120ms
 ```
 
-## 步骤 4：创建您的第一个智能体
+## 步骤 4：创建你的第一个智能体
 
 创建一个 AI 智能体实例：
 
@@ -111,10 +111,10 @@ Paths:
 
 ### 配置智能体
 
-为您的智能体设置模型：
+为你的智能体设置模型：
 
 ```bash
-viben agent config -n my-agent set model claude-sonnet-4-20250514
+viben agent config -n my-agent --set model=claude-sonnet-4-20250514
 ```
 
 ### 设为默认
@@ -131,24 +131,25 @@ viben agent set-default -n my-agent
 
 ```bash
 # 文件系统访问
-viben mcp install filesystem
+viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem /home/user
 
 # Git 操作
-viben mcp install git
+viben mcp add git --agent my-agent --command npx --args @anthropic-ai/mcp-server-git
 ```
 
 列出已安装的 MCP 服务器：
 
 ```bash
-viben mcp list
+viben mcp list --agent my-agent
 ```
 
 输出：
 
 ```
-Installed MCP Servers:
-  filesystem    v1.2.0    enabled    Local filesystem access
-  git           v2.0.1    enabled    Git operations
+MCP Servers for Agent: my-agent
+  Name         Command                              Enabled
+  filesystem   npx @anthropic-ai/mcp-server-fs      yes
+  git          npx @anthropic-ai/mcp-server-git     yes
 ```
 
 ## 步骤 6：验证设置
@@ -212,26 +213,24 @@ viben agent set-default -n research-bot
 设置便捷的模型别名：
 
 ```bash
-# 创建别名以便快速引用
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n smart -f claude-sonnet-4-20250514
-viben model aliases create -n best -f claude-opus-4-20250514
+# 创建快速引用的别名
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n smart -m claude-sonnet-4-20250514
+viben model alias create -n best -m claude-opus-4-20250514
 ```
 
-现在您可以使用 `fast`、`smart` 或 `best` 代替完整的模型名称：
+现在你可以使用 `fast`、`smart` 或 `best` 代替完整的模型名称：
 
 ```bash
-viben agent config -n my-agent set model smart
+viben agent config -n my-agent --set model=smart
 ```
 
 ### 设置模型回退链
 
-配置主模型不可用时的回退模型：
+配置备用模型，以防主模型不可用：
 
 ```bash
-viben model fallbacks create -n claude-sonnet-4-20250514
-viben model fallbacks create -n gpt-4-turbo
-viben model fallbacks create -n claude-3-5-haiku-latest
+viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
 ```
 
 ### 工作区特定配置
@@ -239,23 +238,23 @@ viben model fallbacks create -n claude-3-5-haiku-latest
 为特定项目覆盖全局设置：
 
 ```bash
-# 在您的项目目录中
+# 在你的项目目录中
 viben config set --workspace mcp.enabled '["filesystem", "git", "browser"]'
 ```
 
-## 用于自动化的 JSON 输出
+## 自动化的 JSON 输出
 
 所有命令都支持 `--json` 标志，用于脚本和 AI 智能体集成：
 
 ```bash
-# 以 JSON 格式获取智能体列表
+# 获取智能体列表的 JSON
 viben agent list --json
 
-# 以 JSON 格式获取 Provider 状态
+# 获取提供商状态的 JSON
 viben provider status --json
 ```
 
-JSON 输出示例：
+示例 JSON 输出：
 
 ```json
 {
@@ -279,20 +278,23 @@ JSON 输出示例：
 | 任务 | 命令 |
 |------|------|
 | 初始化工作区 | `viben init` |
-| 创建 Provider | `viben provider create -t <type>` |
+| 创建提供商 | `viben provider create -t <type>` |
 | 创建智能体 | `viben agent create -n <name>` |
-| 配置智能体 | `viben agent config -n <name> set <key> <value>` |
-| 安装 MCP | `viben mcp install <name>` |
+| 配置智能体 | `viben agent config -n <name> --set <key>=<value>` |
+| 添加 MCP | `viben mcp add <name> --agent <id> --command <cmd>` |
 | 安装技能 | `viben skill install <name>` |
 | 检查状态 | `viben agent status` |
 | 列出智能体 | `viben agent list` |
-| 列出 Provider | `viben provider list` |
+| 列出提供商 | `viben provider list` |
 | 列出模型 | `viben model list` |
+| 启动 Gateway | `viben gateway start` |
+| 查看执行器 | `viben executor list` |
 
 ## 下一步
 
-现在微本 CLI 已设置完成，您可以：
+现在你已经设置好了 Viben CLI，你可以：
 
-- 探索[智能体管理](./agents/)以了解完整的智能体生命周期
-- 配置额外的 [配置选项](./configuration/) 以获得更多模型选择
-- 安装更多 [MCP 服务器](/user/mcp/configuration) 以扩展功能
+- 探索 [智能体管理](agents/) 了解完整的智能体生命周期
+- 配置额外的 [API 提供商](./configuration/) 获取更多模型选择
+- 安装更多 [MCP 服务器](/user/mcp/configuration) 扩展功能
+- 了解 [Gateway](./commands/gateway.md) 运行时架构

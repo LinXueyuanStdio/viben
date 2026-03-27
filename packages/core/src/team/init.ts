@@ -545,7 +545,7 @@ function getBootstrapPrdContent(projectType: ProjectType): string {
 
 ## Purpose
 
-Welcome to Viben! This is your first task.
+Welcome to Viben - Agent Swarm × Code Evolution! This is your first task.
 
 AI agents use \`docs/specs/\` to understand YOUR project's coding conventions.
 **Empty templates = AI writes generic code that doesn't match your project style.**

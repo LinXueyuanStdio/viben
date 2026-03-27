@@ -1,12 +1,14 @@
 ---
 sidebar_position: 2
-title: "安装"
-description: "使用 npm、pnpm 或从源码安装 Viben CLI"
+title: "Installation"
+description: "Install Viben CLI using npm, pnpm, or from source"
 ---
 
-# 安装
+# Installation
 
-Viben CLI 可以通过 npm/pnpm 全局安装，或从源码构建进行开发。
+Viben CLI is the command-line interface for **Agent Swarm x Code Evolution** - orchestrating AI agent swarms for continuous code improvement through FileRL, intelligent task management, and idea generation.
+
+Install globally via npm/pnpm, or build from source for development.
 
 ## 快速安装
 

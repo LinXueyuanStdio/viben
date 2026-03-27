@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "桌面应用安装"
-description: "在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
+description: "安装 Viben Desktop - Agent Swarm x Code Evolution 平台"
 ---
 
 # 桌面应用安装
 
-详细的 Viben Desktop 安装指南，适用于所有支持的平台。
+详细的 Viben Desktop 安装指南。Viben Desktop 是 Agent Swarm x Code Evolution 平台，通过智能体集群和强化学习驱动代码持续进化。
 
 ## 下载
 

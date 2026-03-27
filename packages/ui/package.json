@@ -1,7 +1,7 @@
 {
   "name": "@viben/ui",
   "version": "1.0.0",
-  "description": "Viben shared UI component library",
+  "description": "Shared UI component library for Viben",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

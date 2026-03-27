@@ -6,19 +6,37 @@ description: "安装 Viben 桌面应用、CLI 工具或 MCP 服务器"
 
 # 安装指南
 
+## Viben: Agent Swarm x Code Evolution
+
+Viben 是一个 AI 驱动的代码迭代优化和智能体集群编排平台，核心能力包括：
+
+- **FileRL (File Reinforcement Learning)** - 基于反馈的代码迭代优化系统
+- **Agent Swarm** - 多智能体集群编排与协作
+- **Task System (XState)** - 基于状态机的任务工作流管理
+- **Idea Generation** - AI 辅助的创意生成与知识探索
+
+---
+
+## 产品形态
+
 Viben 提供多种产品形态，你可以根据需求选择安装：
 
 | 产品 | 安装方式 | 适用场景 |
 |------|----------|----------|
-| **桌面应用** | 下载安装包 | 可视化管理工作空间和任务 |
-| **CLI 工具** | npm/npx | 命令行操作、自动化脚本 |
-| **MCP 服务器** | pip/uv | AI 助手集成学术搜索 |
+| **桌面应用** | 下载安装包 | Agent Swarm 编排、FileRL 代码优化、任务管理 |
+| **CLI 工具** | npm/npx | 命令行自动化、任务状态机、Queue 系统 |
+| **MCP 服务器** | pip/uv | AI 助手集成学术搜索、知识获取 |
 
 ---
 
 ## 桌面应用（推荐）
 
-桌面应用是使用 Viben 最简单的方式，提供完整的图形界面。
+桌面应用是体验 **Agent Swarm x Code Evolution** 最直观的方式，提供完整的图形界面：
+
+- **Agent Swarm** - 可视化编排和管理智能体集群
+- **FileRL** - 代码迭代优化的可视化反馈界面
+- **Task System** - 基于 XState 的任务状态机管理
+- **Idea Generation** - AI 辅助的知识探索与创意生成
 
 ### 下载
 
@@ -71,7 +89,11 @@ sudo apt-get install -f  # 修复依赖
 
 ## CLI 工具
 
-Viben CLI 提供命令行管理能力，适合自动化和脚本集成。
+Viben CLI 是 **Agent Swarm x Code Evolution** 的命令行入口，适合自动化和脚本集成：
+
+- **Task System** - `viben task` 管理任务状态机工作流
+- **Queue System** - `viben queue` 后台命令执行队列
+- **Agent Management** - 命令行管理智能体集群
 
 ### 使用 npx（推荐）
 
@@ -106,7 +128,9 @@ viben <command> [options]
 
 Commands:
   gateway       启动 Gateway 服务
-  agent         管理智能体
+  agent         管理智能体 (Agent Swarm)
+  task          任务状态机工作流 (Task System)
+  queue         后台命令执行队列 (Queue System)
   provider      管理 API Provider
   model         管理模型配置
   mcp           管理 MCP 服务器
@@ -120,7 +144,7 @@ Commands:
 
 ## MCP 服务器
 
-MCP 服务器为 AI 助手提供学术搜索能力。
+MCP 服务器为 **Agent Swarm** 提供知识获取能力，支持学术论文搜索和多元数据源访问，是 **Idea Generation** 和 **FileRL** 的重要知识来源。
 
 ### 快速安装
 

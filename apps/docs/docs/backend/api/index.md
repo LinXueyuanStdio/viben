@@ -6,7 +6,12 @@ description: "Viben Gateway RESTful API 完整参考文档"
 
 # Gateway API 参考
 
-Viben Gateway 提供 RESTful API 用于智能体编排和多智能体工作空间管理。
+Viben Gateway 是 **Agent Swarm x Code Evolution** 平台的核心服务，提供 RESTful API 用于：
+
+- **Agent Swarm** - 智能体集群编排与协作管理
+- **FileRL** - 代码迭代优化的 API 支持
+- **Task System** - 基于 XState 的任务状态机工作流
+- **Session Management** - 智能体会话与上下文管理
 
 ## 基本信息
 

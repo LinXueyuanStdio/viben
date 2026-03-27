@@ -1,8 +1,8 @@
 # Viben 项目架构报告
 
 > **版本**: 0.1.0
-> **更新日期**: 2026-02-07
-> **项目描述**: Multi-agent workspace manager with kanban, calendar, timeline, and task management
+> **更新日期**: 2026-03-27
+> **项目描述**: Agent Swarm x Code Evolution - AI-driven code iteration and intelligent agent orchestration platform
 
 ---
 
@@ -23,13 +23,20 @@
 
 ### 1.1 项目定位
 
-**Viben** 是一个多智能体工作空间管理器，包含以下核心产品：
+**Viben** 是一个 **Agent Swarm x Code Evolution** 平台，专注于 AI 驱动的代码迭代优化和智能体集群编排。核心能力包括：
+
+- **FileRL (File Reinforcement Learning)** - 基于反馈的代码迭代优化系统
+- **Agent Swarm** - 多智能体集群编排与协作
+- **Task System (XState)** - 基于状态机的任务工作流管理
+- **Idea Generation** - AI 辅助的创意生成与知识探索
+
+核心产品：
 
 | 产品 | 描述 | 技术 |
 |------|------|------|
 | **Web 应用** | MCP/Skill 包市场，社交功能 | Next.js 15 + PostgreSQL |
-| **桌面应用** | 本地智能体编排与任务管理 | Tauri 2 + React 19 |
-| **CLI 工具** | 命令行智能体管理 | TypeScript + Commander |
+| **桌面应用** | Agent Swarm 编排、FileRL 代码优化、任务状态机 | Tauri 2 + React 19 |
+| **CLI 工具** | 命令行智能体集群管理与自动化 | TypeScript + Commander |
 | **MCP 服务器** | 学术论文搜索服务 (18 个数据源) | Python + FastMCP |
 
 ### 1.2 核心架构特点
@@ -252,11 +259,14 @@ apps/web/
 
 ### 4.2 apps/desktop (@viben/desktop)
 
-**定位**: 本地多智能体工作空间管理桌面应用
+**定位**: Agent Swarm x Code Evolution 桌面客户端
 
 **核心功能**:
+- **Agent Swarm** - 智能体集群编排与协作
+- **FileRL** - 基于反馈的代码迭代优化
+- **Task System (XState)** - 状态机驱动的任务工作流
+- **Idea Generation** - AI 辅助创意生成
 - MCP 服务器管理 (启动/停止/监控)
-- 智能体配置与编排
 - Provider/Model 管理
 - 看板任务管理
 - AI 智能体聊天界面
@@ -444,7 +454,13 @@ const { packages: skills } = await client.skills.search('git');
 
 ### 5.5 viben (CLI)
 
-**定位**: AI 智能体集群编排 CLI
+**定位**: Agent Swarm x Code Evolution 命令行工具
+
+**核心能力**:
+- **Agent Swarm** - 命令行管理智能体集群
+- **Task System** - 任务状态机工作流 (`viben task`)
+- **Queue System** - 后台命令执行队列 (`viben queue`)
+- **FileRL** - 代码迭代优化自动化
 
 **依赖**: `commander`, `chalk`, `yaml`
 

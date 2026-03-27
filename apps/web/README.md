@@ -1,6 +1,6 @@
 # Viben Web
 
-Viben 官方 Web 应用，基于 Next.js 15 构建，提供 MCP 服务和技能的市场平台、用户认证、包管理等功能。
+Agent Swarm × Code Evolution - 智能体集群与代码进化平台。基于 Next.js 15 构建，提供 MCP 服务和技能的市场平台、用户认证、包管理等功能。
 
 ## 技术栈
 

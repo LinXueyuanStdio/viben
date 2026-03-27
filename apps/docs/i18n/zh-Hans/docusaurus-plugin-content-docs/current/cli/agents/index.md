@@ -1,19 +1,28 @@
 ---
 sidebar_position: 1
 title: "智能体管理"
-description: "微本 CLI 智能体管理概述 - 概念、架构和命令"
+description: "Viben CLI 智能体管理概述 - Agent Swarm 概念、架构和命令"
 ---
 
 # 智能体管理
 
-微本 CLI 提供了全面的智能体管理工具。**智能体**是一个独立的 AI 助手实例，拥有自己的配置、记忆和会话。
+Viben CLI 提供了全面的智能体管理工具，支持 **Agent Swarm**（智能体集群）的编排和协调。**智能体**是一个独立的 AI 助手实例，拥有自己的配置、记忆和会话。
+
+## Agent Swarm 概念
+
+**Agent Swarm** 是 Viben 的核心理念之一，它允许多个智能体协同工作，各司其职：
+
+- **专业化分工**：不同智能体可以专注于不同任务（如代码审查、测试、文档生成）
+- **协同编排**：通过 Task System 协调多个智能体的工作流
+- **共享上下文**：智能体之间可以共享项目上下文和知识
+- **弹性扩展**：根据任务复杂度动态调整智能体数量
 
 ## 关键概念
 
 | 概念 | 说明 |
 |------|------|
 | **智能体 (Agent)** | 独立的 AI 助手实例，拥有自己的配置、记忆和会话 |
-| **模板 (Template)** | 可复用的智能体配置模板，用于创建新智能体 |
+| **模板 (Template)** | 带有 `isTemplate: true` 标记的普通智能体，用作创建新智能体的蓝图 |
 | **记忆 (Memory)** | 智能体的长期记忆 (MEMORY.md + 每日日志) |
 | **会话 (Session)** | 智能体的对话历史和状态 |
 | **工作区配置 (Workspace Config)** | 项目特定的智能体类型配置 (如 `.claude/`) |
@@ -74,14 +83,15 @@ description: "微本 CLI 智能体管理概述 - 概念、架构和命令"
 
 ## 智能体 vs 模板
 
+模板是带有 `isTemplate: true` 标记的普通智能体。它们作为创建新智能体的蓝图。
+
 | 方面 | 智能体 | 模板 |
 |------|--------|------|
 | **用途** | 活跃的 AI 助手实例 | 可复用的配置蓝图 |
-| **存储** | `~/.viben/agents/<id>/` | `~/.viben/agents/<id>/` (带 `isTemplate: true` 标记) |
-| **记忆** | 有记忆和会话 | 无运行时状态 |
-| **使用** | 直接交互 | 创建新智能体 |
-
-模板本质上是一个带有 `isTemplate: true` 标记的普通智能体。这种设计简化了管理，模板和智能体共享相同的目录结构。
+| **存储** | `~/.viben/agents/<id>/` | `~/.viben/agents/<id>/`（相同位置） |
+| **配置标记** | `isTemplate: false`（默认） | `isTemplate: true` |
+| **记忆** | 有记忆和会话 | 仅初始结构 |
+| **使用** | 直接交互 | 通过 `--from-template` 创建新智能体 |
 
 ## 快速命令
 
@@ -89,26 +99,32 @@ description: "微本 CLI 智能体管理概述 - 概念、架构和命令"
 # 列出所有智能体
 viben agent list
 
+# 仅列出模板
+viben agent list --templates
+
 # 创建新智能体
-viben agent create -n my-agent
+viben agent create my-agent
 
 # 从模板创建
 viben agent create my-agent --from-template coding-assistant
 
 # 克隆现有智能体
-viben agent create -n my-agent --clone existing-agent
+viben agent create my-agent --clone existing-agent
+
+# 将智能体标记为模板
+viben agent update my-agent --is-template true
 
 # 查看智能体详情
-viben agent show -n my-agent
+viben agent show my-agent
 
 # 配置智能体
-viben agent config -n my-agent set model gpt-4
+viben agent config my-agent set model gpt-4
 
 # 删除智能体
-viben agent remove -n my-agent
+viben agent remove my-agent
 
 # 设置默认智能体
-viben agent set-default -n my-agent
+viben agent set-default my-agent
 
 # 查看智能体状态
 viben agent status
@@ -116,7 +132,7 @@ viben agent status
 
 ## 命令输出格式
 
-所有智能体命令都支持 `--json` 标志以获得机器可读的输出:
+所有智能体命令都支持 `--json` 标志以获得机器可读的输出：
 
 **人类可读输出:**
 ```
@@ -159,7 +175,7 @@ Agents:
 | `windsurf` | Windsurf |
 | `amp` | Amp |
 | `opencode` | OpenCode |
-| `qwen-code` | 通义灵码 |
+| `qwen-code` | Qwen Code |
 | `droid` | Droid |
 
 ## 下一步
