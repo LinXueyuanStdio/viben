@@ -961,11 +961,15 @@ export function parseRewardResult(
   // Write output based on mode
   if (isFileRlMode) {
     // FileRL mode: write to reward.json in output directory
+    // Use snake_case for FileRL format (total_score, diff_lines)
     const rewardJsonPath = join(outputDir, "reward.json");
     const rewardOutput = {
       task: taskName,
       iteration: options?.iteration ?? 0,
-      ...reward,
+      scores,
+      total_score: total,
+      diff_lines: diffLines,
+      computed_at: new Date().toISOString(),
     };
 
     try {

@@ -23,7 +23,7 @@ Fix UI issues in the desktop workspace kanban based on user screenshot feedback 
 ```
 
 ### Issue 2: Duplicate Column Headers
-**Problem**: Screenshot shows two rows of column headers - one with counts/collapse buttons (Todo 0 <<, In Progress 0 <<) and another simpler row below (Todo +, In Progress +)
+**Problem**: Screenshot shows two rows of column headers - one with counts/collapse buttons (Todo 0 `<<`, In Progress 0 `<<`) and another simpler row below (Todo +, In Progress +)
 **Root Cause**: The StatisticsPanel or some collapsed state view is showing column summary, while KanbanHeader shows the actual column headers
 
 **Solution**: The collapsed columns feature (Phase 3) may be conflicting. Need to review and fix the StatisticsPanel integration.
@@ -37,7 +37,7 @@ Fix UI issues in the desktop workspace kanban based on user screenshot feedback 
 **Solution**: Improve toolbar layout, ensure Stats button integrates well
 
 ### Issue 5: Column Collapse State Confusion
-**Problem**: The `<<` buttons suggest collapsible columns but the UI seems inconsistent
+**Problem**: The collapse (`<<`) buttons suggest collapsible columns but the UI seems inconsistent
 **Solution**: Either remove the collapse buttons or properly implement column collapse
 
 ## Feature Specifications
