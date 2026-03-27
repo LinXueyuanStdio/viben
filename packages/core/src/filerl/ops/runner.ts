@@ -896,13 +896,11 @@ export function orchestrateSelectBest(
     }
 
     // Fallback: task.json reward field
-    const taskReward = (viewResult.task as unknown as { reward?: number | { total?: number } }).reward;
-    if (typeof taskReward === "number") {
-      taskRewards[taskDirName] = taskReward;
-      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.toFixed(3)}`);
-    } else if (taskReward && typeof taskReward.total === "number") {
-      taskRewards[taskDirName] = taskReward.total;
-      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.total.toFixed(3)}`);
+    // Standard format: { reward: { total_score: number (0-1), diff_lines?: number, ... } }
+    const taskReward = (viewResult.task as unknown as { reward?: { total_score?: number } }).reward;
+    if (taskReward && typeof taskReward.total_score === "number") {
+      taskRewards[taskDirName] = taskReward.total_score;
+      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.total_score.toFixed(3)}`);
     }
   }
 

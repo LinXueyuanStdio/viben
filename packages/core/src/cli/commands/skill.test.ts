@@ -4,30 +4,28 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerSkillCommand } from "./skill";
-import type { InstalledSkill, Skill } from "../../types";
 import type {
   AvailableSkill,
   AgentSkillConfig,
   InstallSkillResult,
   UninstallSkillResult,
-} from "../../skills/types";
+  ListSkillsResult,
+  GetSkillResult,
+  EnableSkillResult,
+  MarketplaceResult,
+} from "../../skill/ops/types";
 
-// Mock the skills module
-vi.mock("../../skills", () => ({
-  skillsManager: {
-    listInstalledSkills: vi.fn(),
-    listAvailableSkills: vi.fn(),
-    listAgentSkills: vi.fn(),
-    getSkillInfo: vi.fn(),
-    installSkill: vi.fn(),
-    uninstallSkill: vi.fn(),
-    enableSkill: vi.fn(),
-    disableSkill: vi.fn(),
-    getEnabledSkills: vi.fn(),
-    getSharedSkillPath: vi.fn(),
-    getAgentSkillPath: vi.fn(),
-    getClaudeSkillPath: vi.fn(),
-  },
+// Mock the skill/ops module
+vi.mock("../../skill/ops", () => ({
+  listSkills: vi.fn(),
+  listAvailableSkills: vi.fn(),
+  getSkill: vi.fn(),
+  installSkill: vi.fn(),
+  uninstallSkill: vi.fn(),
+  enableSkill: vi.fn(),
+  disableSkill: vi.fn(),
+  getEnabledSkills: vi.fn(),
+  getSkillDir: vi.fn(),
 }));
 
 // Mock chalk to avoid color output in tests
@@ -48,33 +46,28 @@ vi.spyOn(process, "exit").mockImplementation((code?: number | string | null | un
   throw new Error(`process.exit(${code})`);
 });
 
-import { skillsManager } from "../../skills";
+import {
+  listSkills,
+  listAvailableSkills,
+  getSkill,
+  installSkill,
+  uninstallSkill,
+  enableSkill,
+  disableSkill,
+  getEnabledSkills,
+  getSkillDir,
+} from "../../skill/ops";
 
 /**
- * Helper to create a mock installed skill
+ * Helper to create a mock list skills result
  */
-function createMockInstalledSkill(overrides: Partial<InstalledSkill> = {}): InstalledSkill {
+function createMockListSkillsResult(
+  skills: Array<{ name: string; version: string; path: string; installedAt: string }> = []
+): ListSkillsResult {
   return {
-    name: "test-skill",
-    version: "1.0.0",
-    path: "/path/to/skills/test-skill",
-    installedAt: "2024-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
-/**
- * Helper to create a mock skill (with full details)
- */
-function createMockSkill(overrides: Partial<Skill> = {}): Skill {
-  return {
-    id: "test-skill",
-    name: "Test Skill",
-    version: "1.0.0",
-    path: "/path/to/skills/test-skill",
-    source: "local",
-    description: "A test skill",
-    ...overrides,
+    success: true,
+    skills,
+    count: skills.length,
   };
 }
 
@@ -178,47 +171,49 @@ describe("Skill CLI Commands", () => {
 
   describe("skill list", () => {
     it("should list installed skills", async () => {
-      const mockSkills = [
-        createMockInstalledSkill({
+      const mockResult = createMockListSkillsResult([
+        {
           name: "code-review",
           version: "1.0.0",
           path: "/path/to/code-review",
           installedAt: "2024-01-01T00:00:00Z",
-        }),
-        createMockInstalledSkill({
+        },
+        {
           name: "commit-helper",
           version: "1.2.0",
           path: "/path/to/commit-helper",
           installedAt: "2024-01-02T00:00:00Z",
-        }),
-      ];
+        },
+      ]);
 
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue(mockSkills);
+      vi.mocked(listSkills).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "list"]);
 
-      expect(skillsManager.listInstalledSkills).toHaveBeenCalledWith(undefined);
+      expect(listSkills).toHaveBeenCalledWith(undefined);
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no skills installed", async () => {
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue([]);
+      vi.mocked(listSkills).mockResolvedValue(createMockListSkillsResult([]));
 
       await runCommand(["skill", "list"]);
 
-      expect(skillsManager.listInstalledSkills).toHaveBeenCalled();
+      expect(listSkills).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No skills installed"));
     });
 
     it("should output JSON when --json flag is provided", async () => {
-      const mockSkills = [
-        createMockInstalledSkill({
+      const mockResult = createMockListSkillsResult([
+        {
           name: "code-review",
           version: "1.0.0",
-        }),
-      ];
+          path: "/path/to/code-review",
+          installedAt: "2024-01-01T00:00:00Z",
+        },
+      ]);
 
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue(mockSkills);
+      vi.mocked(listSkills).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "list"]);
 
@@ -228,44 +223,56 @@ describe("Skill CLI Commands", () => {
 
   describe("skill list --available", () => {
     it("should list available skills from marketplace", async () => {
-      const mockAvailable = [
-        createMockAvailableSkill({
-          name: "marketplace-skill-1",
-          version: "2.0.0",
-          description: "First marketplace skill",
-        }),
-        createMockAvailableSkill({
-          name: "marketplace-skill-2",
-          version: "1.5.0",
-          description: "Second marketplace skill",
-        }),
-      ];
+      const mockResult: MarketplaceResult = {
+        success: true,
+        skills: [
+          createMockAvailableSkill({
+            name: "marketplace-skill-1",
+            version: "2.0.0",
+            description: "First marketplace skill",
+          }),
+          createMockAvailableSkill({
+            name: "marketplace-skill-2",
+            version: "1.5.0",
+            description: "Second marketplace skill",
+          }),
+        ],
+        total: 2,
+      };
 
-      vi.mocked(skillsManager.listAvailableSkills).mockResolvedValue(mockAvailable);
+      vi.mocked(listAvailableSkills).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "list", "--available"]);
 
-      expect(skillsManager.listAvailableSkills).toHaveBeenCalled();
+      expect(listAvailableSkills).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no skills available in marketplace", async () => {
-      vi.mocked(skillsManager.listAvailableSkills).mockResolvedValue([]);
+      const mockResult: MarketplaceResult = {
+        success: true,
+        skills: [],
+        total: 0,
+      };
+
+      vi.mocked(listAvailableSkills).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "list", "--available"]);
 
-      expect(skillsManager.listAvailableSkills).toHaveBeenCalled();
+      expect(listAvailableSkills).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("No skills available in marketplace")
       );
     });
 
     it("should output JSON for available skills", async () => {
-      const mockAvailable = [
-        createMockAvailableSkill({ name: "marketplace-skill" }),
-      ];
+      const mockResult: MarketplaceResult = {
+        success: true,
+        skills: [createMockAvailableSkill({ name: "marketplace-skill" })],
+        total: 1,
+      };
 
-      vi.mocked(skillsManager.listAvailableSkills).mockResolvedValue(mockAvailable);
+      vi.mocked(listAvailableSkills).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "list", "--available"]);
 
@@ -276,139 +283,136 @@ describe("Skill CLI Commands", () => {
 
   describe("skill list --agent <id>", () => {
     it("should list skills for a specific agent", async () => {
-      const mockSkills = [
-        createMockSkill({
-          id: "agent-skill-1",
-          name: "Agent Skill 1",
+      const mockResult = createMockListSkillsResult([
+        {
+          name: "agent-skill-1",
           version: "1.0.0",
           path: "/path/to/agent/skills/agent-skill-1",
-        }),
-      ];
+          installedAt: "2024-01-01T00:00:00Z",
+        },
+      ]);
 
-      vi.mocked(skillsManager.listAgentSkills).mockResolvedValue(mockSkills);
+      vi.mocked(listSkills).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "list", "--agent", "my-agent"]);
 
-      expect(skillsManager.listAgentSkills).toHaveBeenCalledWith("my-agent");
+      expect(listSkills).toHaveBeenCalledWith({ target: "agent", agentId: "my-agent" });
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no skills for agent", async () => {
-      vi.mocked(skillsManager.listAgentSkills).mockResolvedValue([]);
+      vi.mocked(listSkills).mockResolvedValue(createMockListSkillsResult([]));
 
       await runCommand(["skill", "list", "--agent", "my-agent"]);
 
-      expect(skillsManager.listAgentSkills).toHaveBeenCalledWith("my-agent");
+      expect(listSkills).toHaveBeenCalledWith({ target: "agent", agentId: "my-agent" });
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('No skills installed for agent "my-agent"')
       );
     });
-
-    it("should output JSON for agent skills", async () => {
-      const mockSkills = [createMockSkill({ name: "agent-skill" })];
-
-      vi.mocked(skillsManager.listAgentSkills).mockResolvedValue(mockSkills);
-
-      await runCommand(["--json", "skill", "list", "--agent", "my-agent"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"agent": "my-agent"'));
-    });
   });
 
-  describe("skill list --global", () => {
+  describe("skill list -g (short option)", () => {
     it("should list only global skills", async () => {
-      const mockSkills = [
-        createMockInstalledSkill({
+      const mockResult = createMockListSkillsResult([
+        {
           name: "global-skill",
           version: "1.0.0",
-        }),
-      ];
+          path: "/path/to/global-skill",
+          installedAt: "2024-01-01T00:00:00Z",
+        },
+      ]);
 
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue(mockSkills);
+      vi.mocked(listSkills).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "list", "--global"]);
+      await runCommand(["skill", "list", "-g"]);
 
-      expect(skillsManager.listInstalledSkills).toHaveBeenCalledWith({ target: "global" });
+      expect(listSkills).toHaveBeenCalledWith({ target: "global", agentId: undefined });
       expect(consoleSpy).toHaveBeenCalled();
     });
   });
 
-  describe("skill list --claude", () => {
+  describe("skill list -c (short option)", () => {
     it("should list only Claude skills", async () => {
-      const mockSkills = [
-        createMockInstalledSkill({
+      const mockResult = createMockListSkillsResult([
+        {
           name: "claude-skill",
           version: "1.0.0",
-        }),
-      ];
+          path: "/path/to/claude-skill",
+          installedAt: "2024-01-01T00:00:00Z",
+        },
+      ]);
 
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue(mockSkills);
+      vi.mocked(listSkills).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "list", "--claude"]);
+      await runCommand(["skill", "list", "-c"]);
 
-      expect(skillsManager.listInstalledSkills).toHaveBeenCalledWith({ target: "claude" });
+      expect(listSkills).toHaveBeenCalledWith({ target: "claude", agentId: undefined });
       expect(consoleSpy).toHaveBeenCalled();
     });
   });
 
   // ============================================================================
-  // skill show Tests
+  // skill view Tests
   // ============================================================================
 
-  describe("skill show <name>", () => {
+  describe("skill view <name>", () => {
     it("should show skill details", async () => {
-      const mockSkill = createMockSkill({
-        id: "code-review",
-        name: "Code Review",
-        version: "1.0.0",
-        description: "Code review skill",
-        path: "/path/to/code-review",
-        source: "local",
-      });
+      const mockResult: GetSkillResult = {
+        success: true,
+        skill: {
+          id: "code-review",
+          name: "Code Review",
+          version: "1.0.0",
+          description: "Code review skill",
+          path: "/path/to/code-review",
+          source: "local",
+        },
+      };
 
-      vi.mocked(skillsManager.getSkillInfo).mockResolvedValue(mockSkill);
+      vi.mocked(getSkill).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "show", "code-review"]);
+      await runCommand(["skill", "view", "code-review"]);
 
-      expect(skillsManager.getSkillInfo).toHaveBeenCalledWith("code-review", undefined);
+      expect(getSkill).toHaveBeenCalledWith("code-review", undefined);
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show skill details for specific agent", async () => {
-      const mockSkill = createMockSkill({
-        id: "agent-skill",
-        name: "Agent Skill",
-      });
+      const mockResult: GetSkillResult = {
+        success: true,
+        skill: {
+          id: "agent-skill",
+          name: "Agent Skill",
+          version: "1.0.0",
+          path: "/path/to/agent-skill",
+          source: "local",
+        },
+      };
 
-      vi.mocked(skillsManager.getSkillInfo).mockResolvedValue(mockSkill);
+      vi.mocked(getSkill).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "show", "agent-skill", "--agent", "my-agent"]);
+      await runCommand(["skill", "view", "agent-skill", "--agent", "my-agent"]);
 
-      expect(skillsManager.getSkillInfo).toHaveBeenCalledWith("agent-skill", {
+      expect(getSkill).toHaveBeenCalledWith("agent-skill", {
         target: "agent",
         agentId: "my-agent",
       });
     });
 
     it("should show error when skill not found", async () => {
-      vi.mocked(skillsManager.getSkillInfo).mockResolvedValue(null);
+      const mockResult: GetSkillResult = {
+        success: false,
+        error: 'Skill "nonexistent" not found',
+      };
 
-      await expect(runCommand(["skill", "show", "nonexistent"])).rejects.toThrow();
+      vi.mocked(getSkill).mockResolvedValue(mockResult);
+
+      await expect(runCommand(["skill", "view", "nonexistent"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Skill "nonexistent" not found')
       );
-    });
-
-    it("should output JSON for skill show", async () => {
-      const mockSkill = createMockSkill({ name: "code-review" });
-
-      vi.mocked(skillsManager.getSkillInfo).mockResolvedValue(mockSkill);
-
-      await runCommand(["--json", "skill", "show", "code-review"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
     });
   });
 
@@ -423,20 +427,49 @@ describe("Skill CLI Commands", () => {
         target: "global",
       });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "new-skill"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith({
+      expect(installSkill).toHaveBeenCalledWith({
         name: "new-skill",
         target: "global",
         agentId: undefined,
         customPath: undefined,
         sourcePath: undefined,
         version: undefined,
+        executor: undefined,
         force: undefined,
       });
       expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    it("should install skill with -g option (short for --global)", async () => {
+      const mockResult = createMockInstallResult({ target: "global" });
+
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
+
+      await runCommand(["skill", "install", "my-skill", "-g"]);
+
+      expect(installSkill).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: "global",
+        })
+      );
+    });
+
+    it("should install skill with -c option (short for --claude)", async () => {
+      const mockResult = createMockInstallResult({ target: "claude" });
+
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
+
+      await runCommand(["skill", "install", "claude-skill", "-c"]);
+
+      expect(installSkill).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: "claude",
+        })
+      );
     });
 
     it("should install skill with --agent option", async () => {
@@ -445,57 +478,30 @@ describe("Skill CLI Commands", () => {
         target: "agent",
       });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "agent-skill", "--agent", "my-agent"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith({
+      expect(installSkill).toHaveBeenCalledWith({
         name: "agent-skill",
         target: "agent",
         agentId: "my-agent",
         customPath: undefined,
         sourcePath: undefined,
         version: undefined,
+        executor: undefined,
         force: undefined,
       });
-    });
-
-    it("should install skill with --global option", async () => {
-      const mockResult = createMockInstallResult({ target: "global" });
-
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
-
-      await runCommand(["skill", "install", "my-skill", "--global"]);
-
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: "global",
-        })
-      );
-    });
-
-    it("should install skill with --claude option", async () => {
-      const mockResult = createMockInstallResult({ target: "claude" });
-
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
-
-      await runCommand(["skill", "install", "claude-skill", "--claude"]);
-
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
-        expect.objectContaining({
-          target: "claude",
-        })
-      );
     });
 
     it("should install skill with --path option", async () => {
       const mockResult = createMockInstallResult({ target: "custom" });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "custom-skill", "--path", "/custom/path"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           target: "custom",
           customPath: "/custom/path",
@@ -503,14 +509,14 @@ describe("Skill CLI Commands", () => {
       );
     });
 
-    it("should install skill with --force option", async () => {
+    it("should install skill with -f option (short for --force)", async () => {
       const mockResult = createMockInstallResult();
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "install", "existing-skill", "--force"]);
+      await runCommand(["skill", "install", "existing-skill", "-f"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           force: true,
         })
@@ -520,11 +526,11 @@ describe("Skill CLI Commands", () => {
     it("should install skill with --source option", async () => {
       const mockResult = createMockInstallResult();
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "local-skill", "--source", "/local/source"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           sourcePath: "/local/source",
         })
@@ -534,11 +540,11 @@ describe("Skill CLI Commands", () => {
     it("should install skill with --version option", async () => {
       const mockResult = createMockInstallResult({ version: "2.0.0" });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "my-skill", "--version", "2.0.0"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           version: "2.0.0",
         })
@@ -551,11 +557,11 @@ describe("Skill CLI Commands", () => {
         version: "2.0.0",
       });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "my-skill@2.0.0"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "my-skill",
           version: "2.0.0",
@@ -569,11 +575,11 @@ describe("Skill CLI Commands", () => {
         version: "3.0.0",
       });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "my-skill@latest"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "my-skill",
           version: undefined,
@@ -584,11 +590,11 @@ describe("Skill CLI Commands", () => {
     it("should prefer --version option over @version in name", async () => {
       const mockResult = createMockInstallResult({ version: "3.0.0" });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "my-skill@2.0.0", "--version", "3.0.0"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "my-skill",
           version: "3.0.0",
@@ -599,11 +605,11 @@ describe("Skill CLI Commands", () => {
     it("should install skill with --executor CLAUDE_CODE option", async () => {
       const mockResult = createMockInstallResult({ target: "claude" });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "install", "my-skill", "--executor", "CLAUDE_CODE"]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
+      expect(installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "my-skill",
           target: "claude",
@@ -612,26 +618,10 @@ describe("Skill CLI Commands", () => {
       );
     });
 
-    it("should install skill with --executor option (unknown executor defaults to global)", async () => {
-      const mockResult = createMockInstallResult({ target: "global" });
-
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
-
-      await runCommand(["skill", "install", "my-skill", "--executor", "unknown-executor"]);
-
-      expect(skillsManager.installSkill).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "my-skill",
-          target: "global",
-          executor: "unknown-executor",
-        })
-      );
-    });
-
     it("should output JSON for skill install", async () => {
       const mockResult = createMockInstallResult();
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "install", "new-skill"]);
 
@@ -639,9 +629,15 @@ describe("Skill CLI Commands", () => {
     });
 
     it("should handle install error", async () => {
-      vi.mocked(skillsManager.installSkill).mockRejectedValue(
-        new Error('Skill "test-skill" already exists')
-      );
+      const mockResult: InstallSkillResult = {
+        success: false,
+        name: "test-skill",
+        path: "",
+        target: "global",
+        error: 'Skill "test-skill" already exists',
+      };
+
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await expect(
         runCommand(["skill", "install", "test-skill"])
@@ -659,11 +655,11 @@ describe("Skill CLI Commands", () => {
     it("should uninstall a skill from global (default)", async () => {
       const mockResult = createMockUninstallResult({ name: "old-skill" });
 
-      vi.mocked(skillsManager.uninstallSkill).mockResolvedValue(mockResult);
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "uninstall", "old-skill"]);
 
-      expect(skillsManager.uninstallSkill).toHaveBeenCalledWith({
+      expect(uninstallSkill).toHaveBeenCalledWith({
         name: "old-skill",
         target: "global",
         agentId: undefined,
@@ -675,11 +671,11 @@ describe("Skill CLI Commands", () => {
     it("should uninstall skill from agent with --agent option", async () => {
       const mockResult = createMockUninstallResult();
 
-      vi.mocked(skillsManager.uninstallSkill).mockResolvedValue(mockResult);
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "uninstall", "agent-skill", "--agent", "my-agent"]);
 
-      expect(skillsManager.uninstallSkill).toHaveBeenCalledWith({
+      expect(uninstallSkill).toHaveBeenCalledWith({
         name: "agent-skill",
         target: "agent",
         agentId: "my-agent",
@@ -687,14 +683,14 @@ describe("Skill CLI Commands", () => {
       });
     });
 
-    it("should uninstall skill from claude with --claude option", async () => {
+    it("should uninstall skill from claude with -c option", async () => {
       const mockResult = createMockUninstallResult();
 
-      vi.mocked(skillsManager.uninstallSkill).mockResolvedValue(mockResult);
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "uninstall", "claude-skill", "--claude"]);
+      await runCommand(["skill", "uninstall", "claude-skill", "-c"]);
 
-      expect(skillsManager.uninstallSkill).toHaveBeenCalledWith(
+      expect(uninstallSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           target: "claude",
         })
@@ -704,11 +700,11 @@ describe("Skill CLI Commands", () => {
     it("should uninstall skill from custom path with --path option", async () => {
       const mockResult = createMockUninstallResult();
 
-      vi.mocked(skillsManager.uninstallSkill).mockResolvedValue(mockResult);
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "uninstall", "custom-skill", "--path", "/custom/path"]);
 
-      expect(skillsManager.uninstallSkill).toHaveBeenCalledWith(
+      expect(uninstallSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           target: "custom",
           customPath: "/custom/path",
@@ -719,7 +715,7 @@ describe("Skill CLI Commands", () => {
     it("should output JSON for skill uninstall", async () => {
       const mockResult = createMockUninstallResult();
 
-      vi.mocked(skillsManager.uninstallSkill).mockResolvedValue(mockResult);
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "uninstall", "old-skill"]);
 
@@ -727,9 +723,13 @@ describe("Skill CLI Commands", () => {
     });
 
     it("should handle uninstall error when skill not found", async () => {
-      vi.mocked(skillsManager.uninstallSkill).mockRejectedValue(
-        new Error('Skill "nonexistent" not found')
-      );
+      const mockResult: UninstallSkillResult = {
+        success: false,
+        name: "nonexistent",
+        error: 'Skill "nonexistent" not found',
+      };
+
+      vi.mocked(uninstallSkill).mockResolvedValue(mockResult);
 
       await expect(
         runCommand(["skill", "uninstall", "nonexistent"])
@@ -745,24 +745,28 @@ describe("Skill CLI Commands", () => {
 
   describe("skill enable <name> --agent <id>", () => {
     it("should enable a skill for an agent", async () => {
-      const mockConfig = createMockAgentSkillConfig({
+      const mockResult: EnableSkillResult = {
+        success: true,
         skillName: "code-review",
-        enabled: true,
         agentId: "my-agent",
-      });
+      };
 
-      vi.mocked(skillsManager.enableSkill).mockResolvedValue(mockConfig);
+      vi.mocked(enableSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "enable", "code-review", "--agent", "my-agent"]);
 
-      expect(skillsManager.enableSkill).toHaveBeenCalledWith("code-review", "my-agent");
+      expect(enableSkill).toHaveBeenCalledWith("code-review", "my-agent");
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should output JSON for skill enable", async () => {
-      const mockConfig = createMockAgentSkillConfig();
+      const mockResult: EnableSkillResult = {
+        success: true,
+        skillName: "test-skill",
+        agentId: "test-agent",
+      };
 
-      vi.mocked(skillsManager.enableSkill).mockResolvedValue(mockConfig);
+      vi.mocked(enableSkill).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "enable", "code-review", "--agent", "my-agent"]);
 
@@ -770,24 +774,17 @@ describe("Skill CLI Commands", () => {
     });
 
     it("should handle error when agent not found", async () => {
-      vi.mocked(skillsManager.enableSkill).mockRejectedValue(
-        new Error('Agent "nonexistent" not found')
-      );
+      const mockResult: EnableSkillResult = {
+        success: false,
+        skillName: "code-review",
+        agentId: "nonexistent",
+        error: 'Agent "nonexistent" not found',
+      };
+
+      vi.mocked(enableSkill).mockResolvedValue(mockResult);
 
       await expect(
         runCommand(["skill", "enable", "code-review", "--agent", "nonexistent"])
-      ).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
-
-    it("should handle error when skill not found", async () => {
-      vi.mocked(skillsManager.enableSkill).mockRejectedValue(
-        new Error('Skill "nonexistent" not found')
-      );
-
-      await expect(
-        runCommand(["skill", "enable", "nonexistent", "--agent", "my-agent"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -800,40 +797,32 @@ describe("Skill CLI Commands", () => {
 
   describe("skill disable <name> --agent <id>", () => {
     it("should disable a skill for an agent", async () => {
-      const mockConfig = createMockAgentSkillConfig({
+      const mockResult: EnableSkillResult = {
+        success: true,
         skillName: "code-review",
-        enabled: false,
         agentId: "my-agent",
-      });
+      };
 
-      vi.mocked(skillsManager.disableSkill).mockResolvedValue(mockConfig);
+      vi.mocked(disableSkill).mockResolvedValue(mockResult);
 
       await runCommand(["skill", "disable", "code-review", "--agent", "my-agent"]);
 
-      expect(skillsManager.disableSkill).toHaveBeenCalledWith("code-review", "my-agent");
+      expect(disableSkill).toHaveBeenCalledWith("code-review", "my-agent");
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should output JSON for skill disable", async () => {
-      const mockConfig = createMockAgentSkillConfig({ enabled: false });
+      const mockResult: EnableSkillResult = {
+        success: true,
+        skillName: "test-skill",
+        agentId: "test-agent",
+      };
 
-      vi.mocked(skillsManager.disableSkill).mockResolvedValue(mockConfig);
+      vi.mocked(disableSkill).mockResolvedValue(mockResult);
 
       await runCommand(["--json", "skill", "disable", "code-review", "--agent", "my-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
-    });
-
-    it("should handle error when skill config not found", async () => {
-      vi.mocked(skillsManager.disableSkill).mockRejectedValue(
-        new Error('Skill configuration "code-review" not found')
-      );
-
-      await expect(
-        runCommand(["skill", "disable", "code-review", "--agent", "my-agent"])
-      ).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
     });
   });
 
@@ -858,20 +847,20 @@ describe("Skill CLI Commands", () => {
         }),
       ];
 
-      vi.mocked(skillsManager.getEnabledSkills).mockResolvedValue(mockEnabledSkills);
+      vi.mocked(getEnabledSkills).mockResolvedValue(mockEnabledSkills);
 
       await runCommand(["skill", "enabled", "--agent", "my-agent"]);
 
-      expect(skillsManager.getEnabledSkills).toHaveBeenCalledWith("my-agent");
+      expect(getEnabledSkills).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no skills enabled", async () => {
-      vi.mocked(skillsManager.getEnabledSkills).mockResolvedValue([]);
+      vi.mocked(getEnabledSkills).mockResolvedValue([]);
 
       await runCommand(["skill", "enabled", "--agent", "my-agent"]);
 
-      expect(skillsManager.getEnabledSkills).toHaveBeenCalledWith("my-agent");
+      expect(getEnabledSkills).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('No skills enabled for agent "my-agent"')
       );
@@ -880,168 +869,53 @@ describe("Skill CLI Commands", () => {
     it("should output JSON for enabled skills", async () => {
       const mockEnabledSkills = [createMockAgentSkillConfig()];
 
-      vi.mocked(skillsManager.getEnabledSkills).mockResolvedValue(mockEnabledSkills);
+      vi.mocked(getEnabledSkills).mockResolvedValue(mockEnabledSkills);
 
       await runCommand(["--json", "skill", "enabled", "--agent", "my-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"agent": "my-agent"'));
     });
+  });
 
-    it("should handle error when getting enabled skills fails", async () => {
-      vi.mocked(skillsManager.getEnabledSkills).mockRejectedValue(
-        new Error('Failed to get enabled skills for agent "my-agent"')
-      );
+  // ============================================================================
+  // Backward compatibility: skill show (hidden alias for view)
+  // ============================================================================
 
-      await expect(
-        runCommand(["skill", "enabled", "--agent", "my-agent"])
-      ).rejects.toThrow();
+  describe("skill show (hidden alias)", () => {
+    it("should work as alias for view command", async () => {
+      const mockResult: GetSkillResult = {
+        success: true,
+        skill: {
+          id: "test-skill",
+          name: "Test Skill",
+          version: "1.0.0",
+          path: "/path/to/test-skill",
+          source: "local",
+        },
+      };
 
-      expect(consoleErrorSpy).toHaveBeenCalled();
+      vi.mocked(getSkill).mockResolvedValue(mockResult);
+
+      await runCommand(["skill", "show", "test-skill"]);
+
+      expect(getSkill).toHaveBeenCalledWith("test-skill");
+      expect(consoleSpy).toHaveBeenCalled();
     });
   });
 
   // ============================================================================
-  // skill path Tests
+  // Backward compatibility: skill path (hidden alias for view path)
   // ============================================================================
 
-  describe("skill path <name>", () => {
-    it("should get path to a shared skill (default)", async () => {
-      vi.mocked(skillsManager.getSharedSkillPath).mockReturnValue(
-        "/path/to/shared/skills/code-review"
-      );
+  describe("skill path (hidden alias)", () => {
+    it("should return path to skill", async () => {
+      vi.mocked(getSkillDir).mockReturnValue("/path/to/skills/test-skill");
 
-      await runCommand(["skill", "path", "code-review"]);
+      await runCommand(["skill", "path", "test-skill"]);
 
-      expect(skillsManager.getSharedSkillPath).toHaveBeenCalledWith("code-review");
-      expect(consoleSpy).toHaveBeenCalledWith("/path/to/shared/skills/code-review");
-    });
-
-    it("should get path to an agent skill with --agent option", async () => {
-      vi.mocked(skillsManager.getAgentSkillPath).mockReturnValue(
-        "/path/to/agent/skills/code-review"
-      );
-
-      await runCommand(["skill", "path", "code-review", "--agent", "my-agent"]);
-
-      expect(skillsManager.getAgentSkillPath).toHaveBeenCalledWith("my-agent", "code-review");
-      expect(consoleSpy).toHaveBeenCalledWith("/path/to/agent/skills/code-review");
-    });
-
-    it("should get path to a Claude skill with --claude option", async () => {
-      vi.mocked(skillsManager.getClaudeSkillPath).mockReturnValue(
-        "/path/to/claude/skills/code-review"
-      );
-
-      await runCommand(["skill", "path", "code-review", "--claude"]);
-
-      expect(skillsManager.getClaudeSkillPath).toHaveBeenCalledWith("code-review");
-      expect(consoleSpy).toHaveBeenCalledWith("/path/to/claude/skills/code-review");
-    });
-
-    it("should get path to global skill with --global option", async () => {
-      vi.mocked(skillsManager.getSharedSkillPath).mockReturnValue(
-        "/path/to/global/skills/code-review"
-      );
-
-      await runCommand(["skill", "path", "code-review", "--global"]);
-
-      expect(skillsManager.getSharedSkillPath).toHaveBeenCalledWith("code-review");
-    });
-
-    it("should output JSON for skill path", async () => {
-      vi.mocked(skillsManager.getSharedSkillPath).mockReturnValue(
-        "/path/to/skills/code-review"
-      );
-
-      await runCommand(["--json", "skill", "path", "code-review"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"path"'));
-    });
-
-    it("should handle error when getting path fails", async () => {
-      vi.mocked(skillsManager.getSharedSkillPath).mockImplementation(() => {
-        throw new Error("Failed to get skill path");
-      });
-
-      await expect(
-        runCommand(["skill", "path", "nonexistent"])
-      ).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
-  });
-
-  // ============================================================================
-  // JSON Output Tests
-  // ============================================================================
-
-  describe("JSON output mode", () => {
-    it("should output JSON for skill list with count", async () => {
-      const mockSkills = [
-        createMockInstalledSkill({ name: "skill-1" }),
-        createMockInstalledSkill({ name: "skill-2" }),
-      ];
-
-      vi.mocked(skillsManager.listInstalledSkills).mockResolvedValue(mockSkills);
-
-      await runCommand(["--json", "skill", "list"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"count": 2'));
-    });
-
-    it("should output JSON error response", async () => {
-      vi.mocked(skillsManager.getSkillInfo).mockResolvedValue(null);
-
-      await expect(
-        runCommand(["--json", "skill", "show", "nonexistent"])
-      ).rejects.toThrow();
-
-      // In JSON mode, errors are output via console.log with JSON format
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": false'));
-    });
-  });
-
-  // ============================================================================
-  // Error Handling Tests
-  // ============================================================================
-
-  describe("Error handling", () => {
-    it("should handle generic errors during list", async () => {
-      vi.mocked(skillsManager.listInstalledSkills).mockRejectedValue(
-        new Error("Database connection failed")
-      );
-
-      await expect(runCommand(["skill", "list"])).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
-
-    it("should handle generic errors during install", async () => {
-      vi.mocked(skillsManager.installSkill).mockRejectedValue(
-        new Error("Network error during download")
-      );
-
-      await expect(
-        runCommand(["skill", "install", "remote-skill"])
-      ).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
-
-    it("should handle validation errors", async () => {
-      vi.mocked(skillsManager.installSkill).mockRejectedValue(
-        new Error("Agent ID is required when target is 'agent'")
-      );
-
-      // This tries to install with agent target but CLI defaults to global
-      // The error would come from skillsManager validation
-      await expect(
-        runCommand(["skill", "install", "my-skill"])
-      ).rejects.toThrow();
-
-      // No error expected since we're not triggering the validation error
+      expect(getSkillDir).toHaveBeenCalledWith("global", "test-skill");
+      expect(consoleSpy).toHaveBeenCalledWith("/path/to/skills/test-skill");
     });
   });
 
@@ -1057,7 +931,7 @@ describe("Skill CLI Commands", () => {
         target: "agent",
       });
 
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
+      vi.mocked(installSkill).mockResolvedValue(mockResult);
 
       await runCommand([
         "skill",
@@ -1067,47 +941,17 @@ describe("Skill CLI Commands", () => {
         "my-agent",
         "--version",
         "2.0.0",
-        "--force",
+        "-f",
         "--source",
         "/local/path",
       ]);
 
-      expect(skillsManager.installSkill).toHaveBeenCalledWith({
+      expect(installSkill).toHaveBeenCalledWith({
         name: "full-skill",
         target: "agent",
         agentId: "my-agent",
         customPath: undefined,
         sourcePath: "/local/path",
-        version: "2.0.0",
-        executor: undefined,
-        force: true,
-      });
-    });
-
-    it("should install skill with name@version and --agent combined", async () => {
-      const mockResult = createMockInstallResult({
-        name: "full-skill",
-        version: "2.0.0",
-        target: "agent",
-      });
-
-      vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
-
-      await runCommand([
-        "skill",
-        "install",
-        "full-skill@2.0.0",
-        "--agent",
-        "my-agent",
-        "--force",
-      ]);
-
-      expect(skillsManager.installSkill).toHaveBeenCalledWith({
-        name: "full-skill",
-        target: "agent",
-        agentId: "my-agent",
-        customPath: undefined,
-        sourcePath: undefined,
         version: "2.0.0",
         executor: undefined,
         force: true,

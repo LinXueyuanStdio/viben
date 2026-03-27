@@ -20,14 +20,20 @@ import {
 // =============================================================================
 
 /**
+ * Get the templates directory path.
+ * Templates are located in packages/core/templates/.
+ */
+function getTemplatesDir(): string {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  // Both dist and src resolve to packages/core/templates
+  return resolve(currentDir, "../../templates");
+}
+
+/**
  * Get the directory containing built-in reward type prompts
  */
 function getBuiltinRewardTypesDir(): string {
-  // In ESM, use import.meta.url to get the current file's directory
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  // After bundling with tsup, CLI code is bundled into dist/cli/bin.js
-  // So currentDir is dist/cli/, and prompts are at dist/prompts/reward-types
-  return resolve(currentDir, "../prompts/reward-types");
+  return join(getTemplatesDir(), "viben", "reward-types");
 }
 
 /**

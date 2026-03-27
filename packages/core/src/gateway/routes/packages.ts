@@ -7,8 +7,8 @@
  */
 import type { FastifyInstance } from "fastify";
 import { mcpManager } from "../../mcp";
-import { skillsManager } from "../../skills";
-import type { InstalledMcp, InstalledSkill } from "../../types";
+import { listSkills } from "../../skill/ops";
+import type { InstalledMcp } from "../../types";
 
 // ============================================================================
 // Types
@@ -70,20 +70,6 @@ function mcpToPackage(mcp: InstalledMcp): InstalledPackage {
   };
 }
 
-/**
- * Convert InstalledSkill to API response format
- */
-function skillToPackage(skill: InstalledSkill): InstalledPackage {
-  return {
-    id: skill.name,
-    name: skill.name,
-    version: skill.version,
-    package_type: "skill",
-    install_path: skill.path,
-    installed_at: skill.installedAt,
-  };
-}
-
 // ============================================================================
 // Route Registration
 // ============================================================================
@@ -104,11 +90,19 @@ export function registerPackagesRoutes(fastify: FastifyInstance): void {
       const installedMcps = await mcpManager.listInstalled();
 
       // Get installed Skills (from all targets)
-      const installedSkills = await skillsManager.listInstalledSkills();
+      const skillsResult = await listSkills();
+      const installedSkills = skillsResult.success ? skillsResult.skills : [];
 
       return reply.send({
         mcp: installedMcps.map(mcpToPackage),
-        skills: installedSkills.map(skillToPackage),
+        skills: installedSkills.map((skill) => ({
+          id: skill.name,
+          name: skill.name,
+          version: skill.version,
+          package_type: "skill" as const,
+          install_path: skill.path,
+          installed_at: skill.installedAt,
+        })),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -209,9 +203,17 @@ export function registerPackagesRoutes(fastify: FastifyInstance): void {
     Reply: { packages: InstalledPackage[] };
   }>("/api/packages/skills", async (_request, reply) => {
     try {
-      const installedSkills = await skillsManager.listInstalledSkills();
+      const skillsResult = await listSkills();
+      const installedSkills = skillsResult.success ? skillsResult.skills : [];
       return reply.send({
-        packages: installedSkills.map(skillToPackage),
+        packages: installedSkills.map((skill) => ({
+          id: skill.name,
+          name: skill.name,
+          version: skill.version,
+          package_type: "skill" as const,
+          install_path: skill.path,
+          installed_at: skill.installedAt,
+        })),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

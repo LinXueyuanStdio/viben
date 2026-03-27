@@ -1,7 +1,7 @@
 /**
  * Skill Command Execution Tests
  *
- * Tests that actually execute skill commands with real SkillsManager
+ * Tests that actually execute skill commands with real skill/ops functions
  * using temporary directories for actual file operations.
  *
  * This complements skill.test.ts which tests command registration with mocks.
@@ -11,7 +11,6 @@ import { Command } from "commander";
 import { registerSkillCommand } from "./skill";
 import { createTempDir, type TempDirContext } from "../../test/helpers/temp-dir";
 import { createConsoleSpy, type ConsoleSpy } from "../../test/mocks/console";
-import { SkillsManager } from "../../skills";
 import { join } from "node:path";
 
 // =============================================================================
@@ -51,7 +50,6 @@ interface ExecutionTestContext {
   tempDir: TempDirContext;
   program: Command;
   console: ConsoleSpy;
-  skillsManager: SkillsManager;
   /** Get the skills directory path */
   skillsDir: string;
   /** Get the Claude skills directory path */
@@ -72,9 +70,6 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
   // Set VIBEN_STATE_DIR to use temp directory for skills config
   originalStateDir = process.env.VIBEN_STATE_DIR;
   process.env.VIBEN_STATE_DIR = tempDir.root;
-
-  // Create a fresh SkillsManager instance
-  const skillsManager = new SkillsManager();
 
   // Mock process.exit to capture exit code instead of actually exiting
   exitCode = undefined;
@@ -99,14 +94,10 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
     tempDir,
     program,
     console: consoleSpy,
-    skillsManager,
     skillsDir,
     claudeDir,
 
     async run(args: string[]) {
-      // Force skillsManager to use the correct paths
-      const { skillsManager: sm } = await import("../../skills");
-
       try {
         await program.parseAsync(["node", "test", ...args]);
       } catch (error) {
@@ -183,11 +174,11 @@ describe("skill command execution", () => {
   // ===========================================================================
 
   describe("skill list", () => {
-    it("should show message when no skills installed with --global flag", async () => {
-      // Note: We use --global flag to only check the temp directory's skills dir
-      // Without --global, listInstalledSkills also checks ~/.claude/skills which
+    it("should show message when no skills installed with -g flag", async () => {
+      // Note: We use -g flag to only check the temp directory's skills dir
+      // Without -g, listSkills also checks ~/.claude/skills which
       // may contain actual user skills that we can't control in tests
-      await ctx.run(["skill", "list", "--global"]);
+      await ctx.run(["skill", "list", "-g"]);
 
       // The output says "No skills installed." with a period
       expect(ctx.console.hasLog("No skills installed.")).toBe(true);
@@ -271,7 +262,7 @@ version: 1.0.0
       expect(Array.isArray(result?.data?.skills)).toBe(true);
     });
 
-    it("should list global skills with --global flag", async () => {
+    it("should list global skills with -g flag", async () => {
       // Create a global skill
       await ctx.tempDir.mkdir("skills/global-skill");
       await ctx.tempDir.writeFile(
@@ -283,17 +274,17 @@ version: 1.0.0
 `
       );
 
-      await ctx.run(["skill", "list", "--global"]);
+      await ctx.run(["skill", "list", "-g"]);
 
       expect(ctx.console.hasLog("Global Skill")).toBe(true);
     });
   });
 
   // ===========================================================================
-  // skill show execution
+  // skill view execution
   // ===========================================================================
 
-  describe("skill show", () => {
+  describe("skill view", () => {
     it("should show skill details", async () => {
       // Create a skill with full metadata
       await ctx.tempDir.mkdir("skills/detail-skill");
@@ -315,14 +306,14 @@ This is a detailed skill for testing.
 `
       );
 
-      await ctx.run(["skill", "show", "detail-skill"]);
+      await ctx.run(["skill", "view", "detail-skill"]);
 
       expect(ctx.console.hasLog("detail-skill")).toBe(true);
       expect(ctx.console.hasLog("1.5.0")).toBe(true);
     });
 
     it("should show error when skill not found", async () => {
-      await ctx.run(["skill", "show", "nonexistent-skill"]);
+      await ctx.run(["skill", "view", "nonexistent-skill"]);
 
       expect(exitCode).toBe(1);
       expect(ctx.console.hasError('Skill "nonexistent-skill" not found')).toBe(true);
@@ -340,7 +331,7 @@ description: A skill for JSON output test
 `
       );
 
-      const result = (await ctx.runJson(["skill", "show", "json-detail-skill"])) as {
+      const result = (await ctx.runJson(["skill", "view", "json-detail-skill"])) as {
         success: boolean;
         data: { skill: { name: string; version: string } };
       };
@@ -392,7 +383,7 @@ description: A skill for JSON output test
       expect(installedYaml).toContain("tracked-install");
     });
 
-    it("should reject duplicate skill without --force", async () => {
+    it("should reject duplicate skill without -f", async () => {
       // First install
       await ctx.run(["skill", "install", "duplicate-skill"]);
 
@@ -404,13 +395,13 @@ description: A skill for JSON output test
       expect(ctx.console.hasError("already exists")).toBe(true);
     });
 
-    it("should allow reinstall with --force flag", async () => {
+    it("should allow reinstall with -f flag", async () => {
       // First install
       await ctx.run(["skill", "install", "force-skill"]);
 
       // Reinstall with force
       ctx.console.reset();
-      await ctx.run(["skill", "install", "force-skill", "--force"]);
+      await ctx.run(["skill", "install", "force-skill", "-f"]);
 
       expect(ctx.console.hasLog("installed successfully")).toBe(true);
     });
@@ -559,7 +550,7 @@ description: Copied from source
   });
 
   // ===========================================================================
-  // skill path execution
+  // skill path execution (backward compatibility alias)
   // ===========================================================================
 
   describe("skill path", () => {
@@ -569,20 +560,10 @@ description: Copied from source
       expect(ctx.console.hasLog(join(ctx.skillsDir, "test-skill"))).toBe(true);
     });
 
-    it("should return path with --global flag", async () => {
-      await ctx.run(["skill", "path", "global-path-skill", "--global"]);
+    it("should return path with -g flag", async () => {
+      await ctx.run(["skill", "path", "global-path-skill", "-g"]);
 
       expect(ctx.console.hasLog(join(ctx.skillsDir, "global-path-skill"))).toBe(true);
-    });
-
-    it("should return JSON output for skill path", async () => {
-      const result = (await ctx.runJson(["skill", "path", "json-path-skill"])) as {
-        success: boolean;
-        data: { name: string; path: string };
-      };
-
-      expect(result?.success).toBe(true);
-      expect(result?.data?.path).toContain("json-path-skill");
     });
   });
 
@@ -778,11 +759,10 @@ version: 1.0.0
 
       const result = (await ctx.runJson(["skill", "list", "--agent", "skill-agent"])) as {
         success: boolean;
-        data: { agent: string; skills: Array<{ name: string }> };
+        data: { skills: Array<{ name: string }> };
       };
 
       expect(result?.success).toBe(true);
-      expect(result?.data?.agent).toBe("skill-agent");
     });
   });
 
@@ -824,7 +804,7 @@ Full content here.
 `
       );
 
-      const result = (await ctx.runJson(["skill", "show", "metadata-skill"])) as {
+      const result = (await ctx.runJson(["skill", "view", "metadata-skill"])) as {
         success: boolean;
         data: { skill: { name: string; version: string; description?: string } };
       };

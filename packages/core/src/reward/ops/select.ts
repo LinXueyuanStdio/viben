@@ -145,6 +145,8 @@ function loadFileRlIterReward(
 /**
  * Load reward data from a task's task.json (standalone mode)
  *
+ * Standard format: { reward: { total_score: number (0-1), diff_lines?: number, ... } }
+ *
  * @param taskDir - Absolute path to task directory
  * @returns Reward data or null if not found/invalid
  */
@@ -157,29 +159,14 @@ function loadTaskReward(
   }
 
   // Check for reward field
-  const rewardData = taskData.reward as RewardResult | undefined;
-  if (!rewardData) {
+  const rewardData = taskData.reward as { total_score?: number; diff_lines?: number } | undefined;
+  if (!rewardData || typeof rewardData.total_score !== "number") {
     return null;
   }
-
-  // Validate required fields
-  if (typeof rewardData.total !== "number") {
-    return null;
-  }
-
-  // diff_lines might be stored as diffLines (camelCase) or diff_lines (snake_case)
-  // Use type assertion to access potential snake_case property
-  const rewardDataAny = rewardData as unknown as Record<string, unknown>;
-  const diffLines =
-    typeof rewardData.diffLines === "number"
-      ? rewardData.diffLines
-      : typeof rewardDataAny.diff_lines === "number"
-        ? rewardDataAny.diff_lines
-        : 0;
 
   return {
-    reward: rewardData.total,
-    diffLines,
+    reward: rewardData.total_score,
+    diffLines: typeof rewardData.diff_lines === "number" ? rewardData.diff_lines : 0,
   };
 }
 

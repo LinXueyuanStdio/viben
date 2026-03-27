@@ -40,11 +40,10 @@ export {
   getAgentDir,
   getAgentConfigPath,
   getAgentMcpServersPath,
-  getAgentSkillsDir,
+  // Note: getAgentSkillsDir and getSharedSkillsDir are exported from skill/ops
   getAgentMemoryDir,
   getAgentSessionsDir,
   getSharedMcpDir,
-  getSharedSkillsDir,
   readYaml,
   writeYaml,
   readJson,
@@ -121,10 +120,32 @@ export {
   type InstalledMcpEntry,
 } from "./mcp";
 
-// Skills management
+// Skills management (skill/ops)
 export {
-  SkillsManager,
-  skillsManager,
+  // CRUD operations
+  installSkill,
+  uninstallSkill,
+  listSkills,
+  getSkill,
+  // Config operations
+  enableSkill,
+  disableSkill,
+  getEnabledSkills,
+  // Marketplace operations
+  listAvailableSkills,
+  searchSkills,
+  // Path utilities
+  getSkillsBaseDir,
+  getSharedSkillsDir,
+  getClaudeSkillsDir,
+  getAgentSkillsDir,
+  getSkillDir,
+  resolveTargetDir,
+  // Extract utilities
+  extractZipToDirectory,
+  parseSkillMetadataFromContent,
+  getZipRootDirectory,
+  // Types
   type InstalledSkillsFile,
   type InstalledSkillEntry,
   type SkillMetadata,
@@ -134,9 +155,16 @@ export {
   type UninstallSkillOptions,
   type UninstallSkillResult,
   type ListSkillsOptions,
+  type ListSkillsResult,
+  type GetSkillResult,
   type AvailableSkill,
   type AgentSkillConfig,
-} from "./skills";
+  type EnableSkillResult,
+  type MarketplaceResult,
+  type SkillResult,
+  type InstalledSkillInfo,
+  type SkillInfo,
+} from "./skill/ops";
 
 // Workspace management
 export {
