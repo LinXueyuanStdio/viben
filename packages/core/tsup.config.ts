@@ -50,15 +50,27 @@ export default defineConfig({
       }
     }
 
-    // Copy prompt templates to dist
-    const srcPromptsDir = path.resolve(process.cwd(), "src/prompts");
+    // Copy prompt templates from templates/viben/ to dist/prompts/
+    // templates/viben/ is the single source of truth for idea-types and reward-types
+    const templatesDir = path.resolve(process.cwd(), "templates/viben");
     const distPromptsDir = path.resolve(process.cwd(), "dist/prompts");
 
     try {
-      await fs.cp(srcPromptsDir, distPromptsDir, { recursive: true });
-      console.log("Copied prompts to dist/prompts");
+      // Copy idea-types
+      const ideaTypesDir = path.join(templatesDir, "idea-types");
+      const distIdeaTypesDir = path.join(distPromptsDir, "idea-types");
+      await fs.mkdir(distIdeaTypesDir, { recursive: true });
+      await fs.cp(ideaTypesDir, distIdeaTypesDir, { recursive: true });
+
+      // Copy reward-types
+      const rewardTypesDir = path.join(templatesDir, "reward-types");
+      const distRewardTypesDir = path.join(distPromptsDir, "reward-types");
+      await fs.mkdir(distRewardTypesDir, { recursive: true });
+      await fs.cp(rewardTypesDir, distRewardTypesDir, { recursive: true });
+
+      console.log("Copied prompts from templates/viben/ to dist/prompts/");
     } catch (err) {
-      // Prompts directory might not exist
+      // Templates directory might not exist
       console.warn("Could not copy prompts:", err);
     }
   },

@@ -6,6 +6,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import matter from "gray-matter";
 import {
   type RewardType,
   type RewardTypeSource,
@@ -53,45 +54,18 @@ interface FrontmatterResult {
 }
 
 /**
- * Parse YAML frontmatter from markdown content
+ * Parse YAML frontmatter from markdown content using gray-matter
  */
 function parseFrontmatter(content: string): FrontmatterResult {
-  const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
-  const match = content.match(frontmatterRegex);
-
-  if (!match) {
+  try {
+    const parsed = matter(content);
+    return {
+      data: parsed.data as Record<string, unknown>,
+      body: parsed.content,
+    };
+  } catch {
     return { data: {}, body: content };
   }
-
-  const yamlContent = match[1];
-  const body = match[2];
-
-  // Simple YAML parsing for frontmatter
-  const data: Record<string, unknown> = {};
-  const lines = yamlContent.split("\n");
-
-  for (const line of lines) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex > 0) {
-      const key = line.slice(0, colonIndex).trim();
-      let value: unknown = line.slice(colonIndex + 1).trim();
-
-      // Parse numbers
-      if (!isNaN(Number(value)) && value !== "") {
-        value = Number(value);
-      }
-      // Parse booleans
-      else if (value === "true") {
-        value = true;
-      } else if (value === "false") {
-        value = false;
-      }
-
-      data[key] = value;
-    }
-  }
-
-  return { data, body };
 }
 
 // =============================================================================
