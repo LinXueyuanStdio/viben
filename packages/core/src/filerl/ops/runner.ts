@@ -889,18 +889,10 @@ export function orchestrateSelectBest(
       if (typeof rewardData.total === "number") {
         taskRewards[taskDirName] = rewardData.total;
         onProgress?.(`Task ${taskDirName}: reward = ${rewardData.total.toFixed(3)}`);
-        continue;
       }
     } catch {
-      // Not found in FileRL directory
-    }
-
-    // Fallback: task.json reward field
-    // Standard format: { reward: { total_score: number (0-1), diff_lines?: number, ... } }
-    const taskReward = (viewResult.task as unknown as { reward?: { total_score?: number } }).reward;
-    if (taskReward && typeof taskReward.total_score === "number") {
-      taskRewards[taskDirName] = taskReward.total_score;
-      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.total_score.toFixed(3)}`);
+      // Reward not found at iter{N}/{idea}/{task}/reward.json
+      onProgress?.(`Task ${taskDirName}: no reward.json found`);
     }
   }
 

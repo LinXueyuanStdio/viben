@@ -108,7 +108,7 @@ export function PublishWizard() {
     try {
       // Create the package first
       const createEndpoint =
-        state.packageType === 'mcp' ? '/api/mcp' : '/api/skills';
+        state.packageType === 'mcp' ? '/api/mcp' : '/api/skill';
 
       const packageData =
         state.packageType === 'mcp'

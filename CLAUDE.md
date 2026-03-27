@@ -61,6 +61,20 @@ type Bar = SomeType;
 
 Always use explicit `import type { ... } from "..."` statements at the top of the file.
 
+**FORBIDDEN**: Never use dynamic imports with `= await import()`. Use static imports instead.
+
+```typescript
+// ❌ BAD - Never do this
+const module = await import("./some-module");
+const { foo } = await import("./utils");
+
+// ✅ GOOD - Use static imports
+import { foo } from "./utils";
+import * as module from "./some-module";
+```
+
+Dynamic imports make code harder to analyze and tree-shake. Use static imports for all module dependencies.
+
 ## Build Requirements
 
 **IMPORTANT**: When making changes to the codebase, ensure all packages compile successfully:

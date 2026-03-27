@@ -97,13 +97,13 @@ Agent Swarm × Code Evolution - 智能体集群与代码进化平台。基于 Ne
 
 ### 技能 API
 
-- `GET /api/skills` - 获取技能列表
-- `GET /api/skills/:id` - 获取技能详情
-- `GET /api/skills/search` - 搜索技能
-- `POST /api/skills/:id/favorite` - 收藏/取消收藏
-- `GET /api/skills/:id/comments` - 获取评论
-- `POST /api/skills/:id/comments` - 发表评论
-- `POST /api/skills/:id/rating` - 评分
+- `GET /api/skill` - 获取技能列表
+- `GET /api/skill/:id` - 获取技能详情
+- `GET /api/skill/search` - 搜索技能
+- `POST /api/skill/:id/favorite` - 收藏/取消收藏
+- `GET /api/skill/:id/comments` - 获取评论
+- `POST /api/skill/:id/comments` - 发表评论
+- `POST /api/skill/:id/rating` - 评分
 
 ### 包管理 API
 

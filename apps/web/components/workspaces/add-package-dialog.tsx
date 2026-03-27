@@ -52,7 +52,7 @@ export function AddPackageDialog({
     try {
       const [mcpRes, skillRes] = await Promise.all([
         fetch('/api/mcp?limit=100'),
-        fetch('/api/skills?limit=100'),
+        fetch('/api/skill?limit=100'),
       ]);
 
       if (mcpRes.ok) {

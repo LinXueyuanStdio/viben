@@ -71,7 +71,7 @@ export function AddItemDialog({
   const fetchPackages = useCallback(async (itemType: 'mcp' | 'skill') => {
     setLoading(true);
     try {
-      const endpoint = itemType === 'mcp' ? '/api/mcp' : '/api/skills';
+      const endpoint = itemType === 'mcp' ? '/api/mcp' : '/api/skill';
       const params = new URLSearchParams();
       if (search) {
         params.set('q', search);

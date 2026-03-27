@@ -763,4 +763,113 @@ export function registerFileRlCommand(program: Command): void {
         handleCommandError(ctx, error);
       }
     });
+
+  // ============================================================================
+  // filerl generate-ideas <name>
+  // ============================================================================
+  fileRlCmd
+    .command("generate-ideas")
+    .description("Generate ideas for a FileRL run iteration")
+    .argument("<name>", "FileRL run name")
+    .option("--iter <N>", "Target iteration number (default: current iteration from state.json)")
+    .option("--types <types...>", "Idea types to generate (e.g., code_improvements, refactoring)")
+    .option("--json", "JSON format output")
+    .action(async (name: string, options: {
+      iter?: string;
+      types?: string[];
+      json?: boolean;
+    }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Load state
+        const state = readState(repoRoot, name);
+        if (!state) {
+          throw CliError.notFound("FileRL run", name);
+        }
+
+        // Parse target to get config
+        const parseResult = parseTarget(state.target_path, repoRoot);
+        if (!parseResult.success || !parseResult.config) {
+          throw CliError.operationFailed(
+            "Parse target",
+            parseResult.error || "Failed to parse target file"
+          );
+        }
+
+        const config = parseResult.config;
+
+        // Determine target iteration
+        const targetIter = options.iter
+          ? parseInt(options.iter, 10)
+          : state.current_iteration || 1;
+
+        if (isNaN(targetIter) || targetIter < 1) {
+          throw CliError.invalidArgument("iter", "Must be a positive integer");
+        }
+
+        // Determine idea types (from CLI or config)
+        const ideaTypes = options.types && options.types.length > 0
+          ? options.types
+          : config.idea.types;
+
+        if (ideaTypes.length === 0) {
+          throw CliError.invalidArgument("types", "No idea types specified");
+        }
+
+        console.log(chalk.bold(`Generating ideas for FileRL: ${name}`));
+        console.log();
+        console.log(`  Iteration:   ${targetIter}`);
+        console.log(`  Types:       ${ideaTypes.join(", ")}`);
+        console.log(`  Max ideas:   ${config.idea.max_ideas}`);
+        console.log();
+
+        // Import the generateIdeasForFileRl function
+        const { generateIdeasForFileRl } = await import("../../filerl/ops/idea-generator");
+
+        const result = await generateIdeasForFileRl(repoRoot, name, targetIter, ideaTypes, {
+          maxIdeas: config.idea.max_ideas,
+          model: config.task.model || "sonnet",
+          onProgress: (msg) => console.log(chalk.gray(`  ${msg}`)),
+        });
+
+        if (!result.success) {
+          throw CliError.operationFailed("Generate ideas", result.error || "Unknown error");
+        }
+
+        output(ctx, successResponse({
+          name,
+          iteration: targetIter,
+          ideas: result.ideas,
+          count: result.ideas.length,
+        }), () => {
+          console.log();
+          outputSuccess(ctx, `Generated ${result.ideas.length} ideas for iteration ${targetIter}`);
+          console.log();
+
+          if (result.ideas.length > 0) {
+            outputTable(
+              ctx,
+              ["ID", "TITLE", "EFFORT", "TYPE"],
+              result.ideas.map(idea => [
+                idea.id,
+                idea.title.slice(0, 40) + (idea.title.length > 40 ? "..." : ""),
+                idea.estimatedEffort,
+                idea.type,
+              ])
+            );
+            console.log();
+            console.log(chalk.gray(`Ideas saved to: .viben/filerl/${name}/iter${targetIter}/`));
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
 }

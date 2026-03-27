@@ -325,14 +325,14 @@ export class VibenClient {
      */
     list: (params?: SkillListParams): Promise<PaginatedResponse<SkillPackage>> =>
       this.request<PaginatedResponse<SkillPackage>>(
-        `/api/skills${buildQuery(params)}`
+        `/api/skill${buildQuery(params)}`
       ),
 
     /**
      * Get a specific skill package by ID
      */
     get: (id: string): Promise<SkillPackageResponse> =>
-      this.request<SkillPackageResponse>(`/api/skills/${id}`),
+      this.request<SkillPackageResponse>(`/api/skill/${id}`),
 
     /**
      * Search skill packages
@@ -342,7 +342,7 @@ export class VibenClient {
       params?: SkillListParams
     ): Promise<PaginatedResponse<SkillPackage>> =>
       this.request<PaginatedResponse<SkillPackage>>(
-        `/api/skills/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
+        `/api/skill/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
       ),
 
     /**
@@ -351,14 +351,14 @@ export class VibenClient {
      */
     download: (id: string, version?: string): Promise<Blob> =>
       this.downloadFile(
-        `/api/packages/skills/${id}/download${version ? `?version=${encodeURIComponent(version)}` : ''}`
+        `/api/packages/skill/${id}/download${version ? `?version=${encodeURIComponent(version)}` : ''}`
       ),
 
     /**
      * Toggle favorite on skill package
      */
     toggleFavorite: (id: string): Promise<{ favorited: boolean }> =>
-      this.request<{ favorited: boolean }>(`/api/skills/${id}/favorite`, {
+      this.request<{ favorited: boolean }>(`/api/skill/${id}/favorite`, {
         method: 'POST',
       }),
 
@@ -366,7 +366,7 @@ export class VibenClient {
      * Get comments on skill package
      */
     comments: (id: string): Promise<CommentsResponse> =>
-      this.request<CommentsResponse>(`/api/skills/${id}/comments`),
+      this.request<CommentsResponse>(`/api/skill/${id}/comments`),
 
     /**
      * Add comment to skill package
@@ -376,7 +376,7 @@ export class VibenClient {
       content: string,
       parentId?: string
     ): Promise<{ success: boolean; id: string }> =>
-      this.request<{ success: boolean; id: string }>(`/api/skills/${id}/comments`, {
+      this.request<{ success: boolean; id: string }>(`/api/skill/${id}/comments`, {
         method: 'POST',
         body: JSON.stringify({ content, parentId }),
       }),
@@ -385,7 +385,7 @@ export class VibenClient {
      * Rate skill package (1-5)
      */
     rate: (id: string, score: number): Promise<{ success: boolean }> =>
-      this.request<{ success: boolean }>(`/api/skills/${id}/rating`, {
+      this.request<{ success: boolean }>(`/api/skill/${id}/rating`, {
         method: 'POST',
         body: JSON.stringify({ score }),
       }),
