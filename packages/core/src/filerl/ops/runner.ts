@@ -174,11 +174,11 @@ export function runIteration(
     };
   }
 
-  if (state.current_iteration >= config.ppo.max_iterations) {
+  if (state.current_iteration >= config.convergence.max_iterations) {
     return {
       success: true,
       state,
-      message: `Run "${name}" reached max iterations (${config.ppo.max_iterations}). Best reward: ${state.best_reward.toFixed(3)}`,
+      message: `Run "${name}" reached max iterations (${config.convergence.max_iterations}). Best reward: ${state.best_reward.toFixed(3)}`,
     };
   }
 
@@ -239,7 +239,7 @@ export function createTasksFromIdeas(
     // This ensures iter{N}/{ideaId}/ structure for rewards
     const result = createTask(repoRoot, `FileRL iteration ${state.current_iteration} - ${ideaId}`, {
       slug: ideaId,  // Use idea id directly as slug
-      worktree: config.task.worktree,
+      worktree: config.rollout.worktree,
       executor: config.task.executor,
       model: config.task.model,
       computeReward: true,
@@ -248,9 +248,8 @@ export function createTasksFromIdeas(
 
     if (result.success && result.dirName) {
       taskNames.push(result.dirName);
-      if (config.task.auto_start) {
-        enqueueTask(repoRoot, result.dirName, {});
-      }
+      // Always auto-start tasks in FileRL loop
+      enqueueTask(repoRoot, result.dirName, {});
     } else {
       errors.push(`Failed to create task for idea ${ideaId}: ${result.error}`);
     }
@@ -300,7 +299,7 @@ export function selectBest(
   const taskNames = Object.keys(taskRewards);
   const filerlDir = getFileRlDir(repoRoot, name);
   const selectResult = selectBestTask(repoRoot, taskNames, {
-    threshold: config.ppo.threshold,
+    threshold: config.ppo.quality_threshold,
     klCoef: config.ppo.kl_coef,
     maxDiff: config.ppo.max_diff,
     filerlDir,
@@ -536,7 +535,7 @@ export function orchestratePromoteIdeas(
   );
 
   // Take top N ideas
-  const topIdeas = filteredIdeas.slice(0, config.idea.auto_promote_count);
+  const topIdeas = filteredIdeas.slice(0, config.idea.batch_size);
   debug("Selected ideas", topIdeas.map(i => ({ id: i.id, effort: i.estimatedEffort })));
   onProgress?.(`Selected top ${topIdeas.length} ideas for promotion`);
 
@@ -555,10 +554,10 @@ export function orchestratePromoteIdeas(
 
     const promoteOptions = {
       slug: idea.id,  // Use full idea id as slug for consistent naming
-      worktree: config.task.worktree,
+      worktree: config.rollout.worktree,
       executor: config.task.executor,
       model: config.task.model,
-      start: config.task.auto_start,
+      start: true,  // Always auto-start tasks in FileRL loop
       computeReward: true,
       filerlDir,
     };
@@ -1279,7 +1278,7 @@ export async function orchestrateFullIteration(
           iter?.rewards || {}
         );
 
-        if (cfg && checkConvergence(state, cfg.ppo.convergence_threshold)) {
+        if (cfg && checkConvergence(state, cfg.convergence.threshold)) {
           markConverged(state);
         }
 
@@ -1410,7 +1409,7 @@ export async function runFileRlLoop(
   }
 
   const config = parseResult.config;
-  const maxIterations = config.ppo.max_iterations;
+  const maxIterations = config.convergence.max_iterations;
   let regenerationAttempts = 0;
   const maxRegenerationAttempts = 3;
 
