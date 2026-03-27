@@ -1,21 +1,16 @@
----
-name: create-command
-description: "Create New Skill"
----
+# Create New Slash Command
 
-# Create New Skill
-
-Create a new Kiro skill in `.kiro/skills/<skill-name>/SKILL.md` based on user requirements.
+Create a new slash command in both `.cursor/commands/` (with `viben-` prefix) and `.claude/commands/viben/` directories based on user requirements.
 
 ## Usage
 
-```bash
-$create-command <skill-name> <description>
+```
+/viben:create-command <command-name> <description>
 ```
 
 **Example**:
-```bash
-$create-command review-pr Check PR code changes against project guidelines
+```
+/viben:create-command review-pr Check PR code changes against project guidelines
 ```
 
 ## Execution Steps
@@ -23,59 +18,72 @@ $create-command review-pr Check PR code changes against project guidelines
 ### 1. Parse Input
 
 Extract from user input:
-- **Skill name**: Use kebab-case (e.g., `review-pr`)
-- **Description**: What the skill should accomplish
+- **Command name**: Use kebab-case (e.g., `review-pr`)
+- **Description**: What the command should accomplish
 
 ### 2. Analyze Requirements
 
-Determine skill type based on description:
+Determine command type based on description:
 - **Initialization**: Read docs, establish context
 - **Pre-development**: Read guidelines, check dependencies
 - **Code check**: Validate code quality and guideline compliance
 - **Recording**: Record progress, questions, structure changes
-- **Generation**: Generate docs or code templates
+- **Generation**: Generate docs, code templates
 
-### 3. Generate Skill Content
+### 3. Generate Command Content
 
-Minimum `SKILL.md` structure:
+Based on command type, generate appropriate content:
 
+**Simple command** (1-3 lines):
 ```markdown
----
-name: <skill-name>
-description: "<description>"
----
+Concise instruction describing what to do
+```
 
-# <Skill Title>
+**Complex command** (with steps):
+```markdown
+# Command Title
 
-<Instructions for when and how to use this skill>
+Command description
+
+## Steps
+
+### 1. First Step
+Specific action
+
+### 2. Second Step
+Specific action
+
+## Output Format (if needed)
+
+Template
 ```
 
 ### 4. Create Files
 
-Create:
-- `.kiro/skills/<skill-name>/SKILL.md`
+Create in both directories:
+- `.cursor/commands/viben-<command-name>.md`
+- `.claude/commands/viben/<command-name>.md`
 
 ### 5. Confirm Creation
 
 Output result:
+```
+[OK] Created Slash Command: /<command-name>
 
-```text
-[OK] Created Skill: <skill-name>
-
-File path:
-- .kiro/skills/<skill-name>/SKILL.md
+File paths:
+- .cursor/commands/viben-<command-name>.md
+- .claude/commands/viben/<command-name>.md
 
 Usage:
-- Trigger directly with $<skill-name>
-- Or open /skills and select it
+/viben:<command-name>
 
 Description:
 <description>
 ```
 
-## Skill Content Guidelines
+## Command Content Guidelines
 
-### [OK] Good skill content
+### [OK] Good command content
 
 1. **Clear and concise**: Immediately understandable
 2. **Executable**: AI can follow steps directly
@@ -85,13 +93,13 @@ Description:
 ### [X] Avoid
 
 1. **Too vague**: e.g., "optimize code"
-2. **Too complex**: Single skill should not exceed 100 lines
-3. **Duplicate functionality**: Check if similar skill exists first
+2. **Too complex**: Single command should not exceed 100 lines
+3. **Duplicate functionality**: Check if similar command exists first
 
 ## Naming Conventions
 
-| Skill Type | Prefix | Example |
-|------------|--------|---------|
+| Command Type | Prefix | Example |
+|--------------|--------|---------|
 | Session Start | `start` | `start` |
 | Pre-development | `before-` | `before-frontend-dev` |
 | Check | `check-` | `check-frontend` |
@@ -99,3 +107,48 @@ Description:
 | Generate | `generate-` | `generate-api-doc` |
 | Update | `update-` | `update-changelog` |
 | Other | Verb-first | `review-code`, `sync-data` |
+
+## Example
+
+### Input
+```
+/viben:create-command review-pr Check PR code changes against project guidelines
+```
+
+### Generated Command Content
+```markdown
+# PR Code Review
+
+Check current PR code changes against project guidelines.
+
+## Steps
+
+### 1. Get Changed Files
+```bash
+git diff main...HEAD --name-only
+```
+
+### 2. Categorized Review
+
+**Frontend files** (`apps/web/`):
+- Reference `docs/specs/frontend/index.md`
+
+**Backend files** (`packages/api/`):
+- Reference `docs/specs/backend/index.md`
+
+### 3. Output Review Report
+
+Format:
+
+## PR Review Report
+
+### Changed Files
+- [file list]
+
+### Check Results
+- [OK] Passed items
+- [X] Issues found
+
+### Suggestions
+- [improvement suggestions]
+```

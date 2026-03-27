@@ -31,8 +31,9 @@ export {
   isValidTaskStatus,
 } from "../../task/service";
 
-// Import types for local use
+// Import types and utilities for local use
 import type { TaskEventType } from "../../task/service";
+import { isValidTaskStatus } from "../../task/service";
 
 /**
  * Snapshot saved when a task is paused, used to restore state on resume
@@ -1051,6 +1052,21 @@ export function writeTaskJson(
 ): boolean {
   const taskJsonPath = join(taskDir, FILE_TASK_JSON);
   try {
+    // Validate and normalize status to prevent invalid values like "done" (SSE message type)
+    // Valid statuses: backlog, queue, in_progress, paused, review, completed, failed, cancelled, archived
+    if (typeof data.status === "string" && !isValidTaskStatus(data.status)) {
+      const invalidStatus = data.status;
+      // "done" is an SSE message type, not a task status - map it to "completed"
+      if (invalidStatus === "done") {
+        data = { ...data, status: "completed" };
+        console.warn(`[writeTaskJson] Invalid status "done" normalized to "completed" for task: ${taskDir}`);
+      } else {
+        // Unknown invalid status - default to "backlog"
+        data = { ...data, status: "backlog" };
+        console.warn(`[writeTaskJson] Invalid status "${invalidStatus}" normalized to "backlog" for task: ${taskDir}`);
+      }
+    }
+
     writeFileSync(
       taskJsonPath,
       JSON.stringify(data, null, 2),
@@ -1886,7 +1902,22 @@ export function updateTaskStatus(
 
   try {
     const taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
-    taskData.status = newStatus;
+
+    // Validate and normalize status to prevent invalid values like "done" (SSE message type)
+    // Valid statuses: backlog, queue, in_progress, paused, review, completed, failed, cancelled, archived
+    let normalizedStatus = newStatus;
+    if (!isValidTaskStatus(newStatus)) {
+      // "done" is an SSE message type, not a task status - map it to "completed"
+      if (newStatus === "done") {
+        normalizedStatus = "completed";
+        console.warn(`[updateTaskStatus] Invalid status "done" normalized to "completed" for task: ${taskDir}`);
+      } else {
+        // Unknown invalid status - default to "backlog"
+        normalizedStatus = "backlog";
+        console.warn(`[updateTaskStatus] Invalid status "${newStatus}" normalized to "backlog" for task: ${taskDir}`);
+      }
+    }
+    taskData.status = normalizedStatus;
 
     // Merge additional fields
     if (additionalFields) {

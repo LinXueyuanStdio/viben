@@ -284,6 +284,23 @@ export class TaskService {
       throw new Error(`Task not found: ${taskDir}`);
     }
 
+    // Validate and normalize status to prevent invalid values like "done" (SSE message type)
+    // Even though the type system says TaskStatus, runtime values could be invalid
+    if (updates.status !== undefined) {
+      const statusAsString = updates.status as string;
+      if (!isValidTaskStatus(statusAsString)) {
+        // "done" is an SSE message type, not a task status - map it to "completed"
+        if (statusAsString === "done") {
+          updates = { ...updates, status: "completed" };
+          console.warn(`[TaskService.updateTask] Invalid status "done" normalized to "completed" for task: ${taskDir}`);
+        } else {
+          // Unknown invalid status - default to "backlog"
+          updates = { ...updates, status: "backlog" };
+          console.warn(`[TaskService.updateTask] Invalid status "${statusAsString}" normalized to "backlog" for task: ${taskDir}`);
+        }
+      }
+    }
+
     // Configuration locking: agent/sessionId/executor/model cannot be changed after task is queued
     // See: .trellis/spec/modules/task-system.md "配置锁定规则"
     if (existing.status !== "backlog") {

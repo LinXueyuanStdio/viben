@@ -106,17 +106,24 @@ function calculatePpoMetrics(
 /**
  * Load reward data from FileRL reward.json
  *
+ * Directory structure: iter{N}/{ideaId}/{taskName}/reward.json
+ *
  * @param filerlDir - FileRL directory path
  * @param iteration - Current iteration number
+ * @param ideaId - Idea ID (optional, for grouping)
  * @param taskName - Task name (used as reward directory name)
  * @returns Reward data or null if not found/invalid
  */
-function loadFileRlReward(
+function loadFileRlIterReward(
   filerlDir: string,
   iteration: number,
-  taskName: string
+  taskName: string,
+  ideaId?: string
 ): { reward: number; diffLines: number } | null {
-  const rewardJsonPath = join(filerlDir, `iter${iteration}`, taskName, "reward.json");
+  // Build path: iter{N}/{ideaId}/{taskName}/reward.json or iter{N}/{taskName}/reward.json
+  const rewardJsonPath = ideaId
+    ? join(filerlDir, `iter${iteration}`, ideaId, taskName, "reward.json")
+    : join(filerlDir, `iter${iteration}`, taskName, "reward.json");
 
   try {
     const content = readFileSync(rewardJsonPath, "utf-8");
@@ -220,7 +227,7 @@ export function selectBestTask(
     };
   }
 
-  // FileRL mode: read rewards from iter{N}/{taskName}/reward.json
+  // FileRL mode: read rewards from iter{N}/{ideaId}/{taskName}/reward.json
   const isFileRlMode = !!opts.filerlDir && opts.iteration !== undefined;
 
   // Load reward data from each task
@@ -237,12 +244,16 @@ export function selectBestTask(
 
     let rewardData: { reward: number; diffLines: number } | null = null;
 
+    // Get ideaId from taskIdeaMap
+    const ideaId = opts.taskIdeaMap?.[taskDirName];
+
     if (isFileRlMode) {
       // FileRL mode: get task name from task.json for reward directory
       const taskData = readTaskJson(taskDir) as { name?: string; id?: string } | null;
       const rewardDirName = taskData?.name || taskData?.id || taskDirName;
 
-      rewardData = loadFileRlReward(opts.filerlDir!, opts.iteration!, rewardDirName);
+      // Read from iter{N}/{ideaId}/{taskName}/reward.json
+      rewardData = loadFileRlIterReward(opts.filerlDir!, opts.iteration!, rewardDirName, ideaId);
     }
 
     // Fallback to task.json reward if FileRL reward not found
@@ -254,9 +265,6 @@ export function selectBestTask(
       errors.push(`No reward data in task: ${taskDirName}`);
       continue;
     }
-
-    // Get ideaId from taskIdeaMap or fallback to task name
-    const ideaId = opts.taskIdeaMap?.[taskDirName];
 
     taskRewards.push({
       task: taskDirName,

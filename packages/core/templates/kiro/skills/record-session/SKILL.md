@@ -1,9 +1,4 @@
----
-name: record-session
-description: "Method 1: Simple parameters"
----
-
-[!] **Prerequisite**: This skill should only be used AFTER the human has tested and committed the code.
+[!] **Prerequisite**: This command should only be used AFTER the human has tested and committed the code.
 
 **AI must NOT execute git commit** - only read history (`git log`, `git status`, `git diff`).
 
@@ -14,7 +9,7 @@ description: "Method 1: Simple parameters"
 ### Step 1: Get Context
 
 ```bash
-viben task list
+viben task context <task>
 ```
 
 ### Step 2: One-Click Add Session
@@ -60,8 +55,8 @@ viben task archive <task-name>
 
 | Command | Purpose |
 |---------|---------|
-| `viben task list` | List active tasks |
+| `viben task context <task>` | Get task context |
 | `viben task add-session --title "..." --commit "..."` | **One-click add session (recommended)** |
 | `viben task create "<title>" [--slug <name>]` | Create new task directory |
 | `viben task archive <name>` | Archive completed task |
-| `viben task view <name>` | View task details |
+| `viben task list` | List active tasks |

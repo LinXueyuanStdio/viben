@@ -148,7 +148,7 @@ git merge PR* → main<br/><br/>
 𝒞 ← 𝒞'<br/><br/>
 <b>Stop check:</b><br/>
 ΔR̃ < δ ?<br/><br/>
-✅ Yes → Return current solution<br/>
+✅ Yes → Stop iteration<br/>
 🔄 No → Continue iteration
 </td>
 </tr>
