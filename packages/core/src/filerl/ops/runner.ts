@@ -48,7 +48,7 @@ import { enqueueTask, approveTask, cancelTask } from "../../task/ops/lifecycle";
 import { startTask } from "../../task/phase/start";
 import { selectBestTask } from "../../reward/ops/select";
 import { computeReward } from "../../reward/ops/crud";
-import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas } from "../../idea/ops";
+import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas, getAllIdeasFromSession } from "../../idea/ops";
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
 
 // =============================================================================
@@ -479,6 +479,60 @@ export async function orchestrateGenerateIdeas(
 }
 
 /**
+ * Phase: Fetch Ideas from pool
+ *
+ * Gets pending ideas from the idea directory for this run.
+ * Returns up to batch_size ideas.
+ */
+export function orchestrateFetchIdeas(
+  repoRoot: string,
+  name: string,
+  onProgress?: (message: string) => void
+): OrchestrationResult {
+  const debug = createDebugLogger("fetchIdeas");
+
+  const state = readState(repoRoot, name);
+  if (!state) {
+    return { success: false, phase: "fetch_ideas", error: `FileRL run not found: ${name}` };
+  }
+
+  const parseResult = parseTarget(state.target_path, repoRoot);
+  if (!parseResult.success || !parseResult.config) {
+    return { success: false, phase: "fetch_ideas", error: parseResult.error };
+  }
+
+  const config = parseResult.config;
+
+  // Determine ideas directory
+  const ideasDir = config.idea.session_dir
+    ? resolve(repoRoot, config.idea.session_dir)
+    : join(repoRoot, ".viben", "ideas", name);
+
+  // Get all ideas from the session directory
+  const allIdeas = getAllIdeasFromSession(ideasDir);
+
+  // Filter for draft ideas only
+  const draftIdeas = allIdeas.filter(idea => idea.status === "draft");
+
+  // Take up to batch_size ideas
+  const ideas = draftIdeas.slice(0, config.idea.batch_size);
+
+  debug(`Found ${ideas.length} draft ideas (batch_size: ${config.idea.batch_size})`);
+  onProgress?.(`Found ${ideas.length} pending ideas`);
+
+  return {
+    success: true,
+    phase: "fetch_ideas",
+    data: {
+      ideas,
+      ideasDir,
+      hasMore: draftIdeas.length > config.idea.batch_size,
+      autoGenerate: config.idea.auto_generate,
+    },
+  };
+}
+
+/**
  * Phase 2: Promote Top Ideas to Tasks
  *
  * Selects the top N ideas (based on effort and priority) and
@@ -566,6 +620,8 @@ export function orchestratePromoteIdeas(
     const result = promoteIdeaDirect(repoRoot, idea, promoteOptions);
     if (result.success && result.dirName) {
       taskNames.push(result.dirName);
+      // Track which idea each task came from
+      currentIter.task_idea_map[result.dirName] = idea.id;
       debug(`Promoted ${idea.id} -> ${result.dirName}`);
     } else {
       debug(`Failed to promote ${idea.id}`, { error: result.error });
@@ -879,7 +935,21 @@ export function orchestrateMergeAndCleanup(
   const results: {
     merged?: { success: boolean; error?: string };
     cleanedUp: Array<{ task: string; success: boolean; error?: string }>;
-  } = { cleanedUp: [] };
+    dismissedIdeas: string[];
+  } = { cleanedUp: [], dismissedIdeas: [] };
+
+  // Get current iteration to access task_idea_map
+  const state = readState(repoRoot, name);
+  if (!state) {
+    return { success: false, phase: "merge_and_cleanup", error: `FileRL run not found: ${name}` };
+  }
+
+  const currentIter = state.iterations[state.iterations.length - 1];
+  const taskIdeaMap = currentIter?.task_idea_map || {};
+
+  // Track which ideas should be dismissed (loser ideas)
+  const loserIdeaIds = new Set<string>();
+  const winnerIdeaId = selectedTask ? taskIdeaMap[selectedTask] : undefined;
 
   // Approve and merge the winning task
   if (selectedTask) {
@@ -894,11 +964,17 @@ export function orchestrateMergeAndCleanup(
       onProgress?.(`Merged PR for task: ${selectedTask}`);
     } else {
       onProgress?.(`Warning: Failed to merge PR: ${approveResult.error}`);
+      // Don't dismiss winner idea on merge failure - allow retry
     }
   }
 
-  // Cleanup rejected tasks
+  // Cleanup rejected tasks and collect loser idea IDs
   for (const taskName of rejectedTasks) {
+    const ideaId = taskIdeaMap[taskName];
+    if (ideaId && ideaId !== winnerIdeaId) {
+      loserIdeaIds.add(ideaId);
+    }
+
     cancelTask(repoRoot, taskName, {
       reason: `Rejected in FileRL iteration for run "${name}"`,
       force: true,
@@ -912,7 +988,22 @@ export function orchestrateMergeAndCleanup(
     });
   }
 
-  debug("Complete", { merged: results.merged?.success, cleanedUp: results.cleanedUp.length });
+  // Dismiss loser ideas
+  for (const ideaId of Array.from(loserIdeaIds)) {
+    onProgress?.(`Dismissing loser idea: ${ideaId}`);
+    const dismissResult = dismissIdea(repoRoot, ideaId);
+    if (dismissResult.success) {
+      results.dismissedIdeas.push(ideaId);
+    } else {
+      debug(`Failed to dismiss idea ${ideaId}`, { error: dismissResult.error });
+    }
+  }
+
+  debug("Complete", {
+    merged: results.merged?.success,
+    cleanedUp: results.cleanedUp.length,
+    dismissedIdeas: results.dismissedIdeas.length,
+  });
   return { success: true, phase: "merge_and_cleanup", data: results };
 }
 

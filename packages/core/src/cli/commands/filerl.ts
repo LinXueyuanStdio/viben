@@ -15,7 +15,7 @@
 
 import chalk from "chalk";
 import type { Command } from "commander";
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 
 import type { OutputContext } from "../types";
@@ -47,6 +47,9 @@ import {
   type FileRlState,
   type IterationState,
 } from "../../filerl/ops";
+
+// Import idea ops
+import { getAllIdeasFromSession, type IdeaStatus } from "../../idea/ops";
 
 // =============================================================================
 // Helpers
@@ -576,6 +579,132 @@ export function registerFileRlCommand(program: Command): void {
             "Best Reward": resultData.bestReward?.toFixed(3) || "-",
             "Best Task": resultData.bestTask || "-",
           });
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // filerl add-idea <name> <idea-path>
+  // ============================================================================
+  fileRlCmd
+    .command("add-idea")
+    .description("Add an idea file to a FileRL run's idea pool")
+    .argument("<name>", "Name of the FileRL run")
+    .argument("<idea-path>", "Path to the idea file (.md)")
+    .option("--json", "JSON format output")
+    .action(async (name: string, ideaPath: string, options: { json?: boolean }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Check run exists
+        const state = readState(repoRoot, name);
+        if (!state) {
+          throw CliError.notFound("FileRL run", name);
+        }
+
+        // Get config to find ideas directory
+        const parseResult = parseTarget(state.target_path, repoRoot);
+        if (!parseResult.success || !parseResult.config) {
+          throw CliError.operationFailed("Parse target", parseResult.error || "Failed");
+        }
+
+        const config = parseResult.config;
+        const ideasDir = config.idea.session_dir
+          ? resolve(repoRoot, config.idea.session_dir)
+          : join(repoRoot, ".viben", "ideas", name);
+
+        // Ensure ideas directory exists
+        if (!existsSync(ideasDir)) {
+          mkdirSync(ideasDir, { recursive: true });
+        }
+
+        // Copy idea file to ideas directory
+        const srcPath = resolve(cwd, ideaPath);
+        if (!existsSync(srcPath)) {
+          throw CliError.notFound("Idea file", ideaPath);
+        }
+
+        const destPath = join(ideasDir, basename(ideaPath));
+        copyFileSync(srcPath, destPath);
+
+        output(ctx, successResponse({ name, ideaPath: destPath }), () => {
+          outputSuccess(ctx, `Added idea to ${name}: ${basename(ideaPath)}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ============================================================================
+  // filerl list-ideas <name>
+  // ============================================================================
+  fileRlCmd
+    .command("list-ideas")
+    .description("List ideas in a FileRL run's pool")
+    .argument("<name>", "Name of the FileRL run")
+    .option("--status <status>", "Filter by status (draft, promoted, dismissed)")
+    .option("--json", "JSON format output")
+    .action(async (name: string, options: { status?: string; json?: boolean }) => {
+      const ctx = getOutputContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenRoot(cwd);
+
+        // Check run exists and get config
+        const state = readState(repoRoot, name);
+        if (!state) {
+          throw CliError.notFound("FileRL run", name);
+        }
+
+        const parseResult = parseTarget(state.target_path, repoRoot);
+        if (!parseResult.success || !parseResult.config) {
+          throw CliError.operationFailed("Parse target", parseResult.error || "Failed");
+        }
+
+        const config = parseResult.config;
+        const ideasDir = config.idea.session_dir
+          ? resolve(repoRoot, config.idea.session_dir)
+          : join(repoRoot, ".viben", "ideas", name);
+
+        // Get all ideas from the session directory
+        const allIdeas = getAllIdeasFromSession(ideasDir);
+
+        // Apply status filter if provided
+        const filteredIdeas = options.status
+          ? allIdeas.filter(idea => idea.status === options.status)
+          : allIdeas;
+
+        output(ctx, successResponse({ ideas: filteredIdeas, count: filteredIdeas.length }), () => {
+          if (filteredIdeas.length === 0) {
+            console.log(chalk.gray("No ideas found."));
+            console.log();
+            console.log("To add ideas:");
+            console.log(`  viben filerl add-idea ${name} path/to/idea.md`);
+            return;
+          }
+
+          outputTable(
+            ctx,
+            ["ID", "TITLE", "EFFORT", "STATUS"],
+            filteredIdeas.map(idea => [
+              idea.id,
+              idea.title.slice(0, 40) + (idea.title.length > 40 ? "..." : ""),
+              idea.estimatedEffort,
+              idea.status,
+            ])
+          );
         });
       } catch (error) {
         handleCommandError(ctx, error);
