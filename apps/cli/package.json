@@ -1,7 +1,7 @@
 {
   "name": "viben",
   "version": "0.1.0",
-  "description": "CLI for Viben - Orchestrate AI agent clusters in your local workspace",
+  "description": "CLI for Viben - Agent Swarm × Code Evolution platform",
   "keywords": [
     "viben",
     "browse-mcp",

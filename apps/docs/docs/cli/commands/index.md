@@ -1,59 +1,75 @@
 ---
 sidebar_position: 1
-title: "命令概览"
-description: "Viben CLI 命令、全局选项和输出格式概览"
+title: "Commands Overview"
+description: "Viben CLI commands for Agent Swarm x Code Evolution"
 ---
 
-# 命令概览
+# Commands Overview
 
-Viben CLI (`viben`) 是一个用于配置应用、管理服务和查询状态的引导工具。它既可供人类使用，也可供 AI 智能体使用。
+Viben CLI (`viben`) is the command-line interface for **Agent Swarm x Code Evolution**. It enables orchestration of AI agent swarms for continuous code improvement and intelligent task management.
 
-## 命令结构
+## Command Structure
 
 ```
 viben <command> [subcommand] [options]
 ```
 
-## 可用命令
+## Core Commands (Agent Swarm x Code Evolution)
 
-| 命令 | 说明 |
-|------|------|
-| [`init`](./init.md) | 在当前目录初始化工作区 |
-| [`config`](./config.md) | 配置管理（git 风格） |
-| [`service`](./service.md) | 管理后台服务 |
-| [`gateway`](./gateway.md) | 启动 Gateway（消息总线 + agent 循环） |
-| [`executor`](./executor.md) | 发现和查看执行器（Claude Code、Cursor 等） |
-| [`agent`](./agent.md) | 管理智能体实例和模板 |
-| [`provider`](./provider.md) | 管理 API 提供商（OpenAI、Anthropic 等） |
-| [`model`](./model.md) | 管理模型、别名和回退链 |
-| [`mcp`](./mcp.md) | 管理 MCP 服务器 |
-| [`skill`](./skill.md) | 管理技能 |
-| [`channel`](./channel.md) | 管理聊天渠道（Telegram、Discord 等） |
-| [`cron`](./cron.md) | 管理定时任务 |
-| [`team`](./team.md) | 团队协作工作区管理 |
-| [`workspace`](./workspace.md) | 工作区操作 |
-| `version` | 显示版本信息 |
-| `help` | 显示帮助 |
+These commands represent the primary workflow for code evolution:
 
-## 全局选项
+| Command | Description |
+|---------|-------------|
+| [`task`](./task.md) | XState-powered task management with state machine workflows |
+| [`swarm`](./swarm.md) | Orchestrate multiple agents working in parallel |
+| [`idea`](./idea.md) | AI-driven ideation for features and improvements |
+| [`queue`](./queue.md) | Background command execution with concurrency control |
 
-这些选项适用于所有命令：
+## Agent & Configuration Commands
 
-| 选项 | 简写 | 说明 |
-|------|------|------|
-| `--json` | | 输出 JSON（供智能体解析） |
-| `--global` | `-g` | 使用全局配置 |
-| `--workspace` | | 使用工作区配置（当前目录） |
-| `--name <id>` | `-n` | 指定智能体名称/ID（默认：当前或 'main'） |
-| `--verbose` | `-v` | 详细输出 |
-| `--quiet` | `-q` | 抑制非必要输出 |
-| `--help` | `-h` | 显示帮助 |
+| Command | Description |
+|---------|-------------|
+| [`agent`](./agent.md) | Manage agent instances and templates |
+| [`provider`](./provider.md) | Manage API providers (OpenAI, Anthropic, etc.) |
+| [`model`](./model.md) | Manage models, aliases, and fallback chains |
+| [`executor`](./executor.md) | Discover and view executors (Claude Code, Cursor, etc.) |
+| [`mcp`](./mcp.md) | Manage MCP servers |
+| [`skill`](./skill.md) | Manage skills |
 
-## JSON 输出格式
+## Workspace & Service Commands
 
-所有命令都支持 `--json` 标志以获取结构化输出，这对 AI 智能体和脚本很有用。
+| Command | Description |
+|---------|-------------|
+| [`init`](./init.md) | Initialize workspace in current directory |
+| [`config`](./config.md) | Configuration management (git-style) |
+| [`service`](./service.md) | Manage background services |
+| [`gateway`](./gateway.md) | Start Gateway (message bus + agent loop) |
+| [`channel`](./channel.md) | Manage chat channels (Telegram, Discord, etc.) |
+| [`cron`](./cron.md) | Manage scheduled tasks |
+| [`team`](./team.md) | Team collaboration workspace management |
+| [`workspace`](./workspace.md) | Workspace operations |
+| `version` | Show version information |
+| `help` | Show help |
 
-### 响应结构
+## Global Options
+
+These options apply to all commands:
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--json` | | Output JSON (for agent parsing) |
+| `--global` | `-g` | Use global configuration |
+| `--workspace` | | Use workspace configuration (current directory) |
+| `--name <id>` | `-n` | Specify agent name/ID (default: current or 'main') |
+| `--verbose` | `-v` | Verbose output |
+| `--quiet` | `-q` | Suppress non-essential output |
+| `--help` | `-h` | Show help |
+
+## JSON Output Format
+
+All commands support the `--json` flag for structured output, useful for AI agents and scripts.
+
+### Response Structure
 
 ```typescript
 interface CLIResponse {
@@ -66,54 +82,57 @@ interface CLIResponse {
 }
 ```
 
-### 成功响应
+### Success Response
 
 ```json
 {
   "success": true,
   "data": {
-    "path": "/path/to/project/.viben",
-    "files": ["config.yaml"]
+    "task": {
+      "id": "implement-auth",
+      "state": "in_progress",
+      "swarm": ["architect", "implementer"]
+    }
   }
 }
 ```
 
-### 错误响应
+### Error Response
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "MCP_NOT_FOUND",
-    "message": "MCP server 'unknown-mcp' not found in marketplace"
+    "code": "TASK_NOT_FOUND",
+    "message": "Task 'unknown-task' not found in workspace"
   }
 }
 ```
 
-## 作用域解析
+## Scope Resolution
 
-CLI 根据当前目录自动检测作用域（全局或工作区）：
+CLI automatically detects scope (global or workspace) based on current directory:
 
-| 优先级 | 来源 | 说明 |
-|--------|------|------|
-| 1 | 命令行标志 | `--global` 或 `--workspace` |
-| 2 | 环境变量 | `VIBEN_SCOPE` |
-| 3 | 自动检测 | 如果当前或父目录存在 `.viben/`：工作区；否则：全局 |
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | Command line flag | `--global` or `--workspace` |
+| 2 | Environment variable | `VIBEN_SCOPE` |
+| 3 | Auto-detect | If `.viben/` exists in current or parent directory: workspace; otherwise: global |
 
-## 环境变量
+## Environment Variables
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `VIBEN_STATE_DIR` | 状态目录 | `~/.viben` |
-| `VIBEN_CONFIG_PATH` | 配置文件路径 | `~/.viben/config.yaml` |
-| `VIBEN_AGENT` | 当前智能体 ID | `main` |
-| `VIBEN_SCOPE` | 配置作用域 | 自动检测 |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VIBEN_STATE_DIR` | State directory | `~/.viben` |
+| `VIBEN_CONFIG_PATH` | Configuration file path | `~/.viben/config.yaml` |
+| `VIBEN_AGENT` | Current agent ID | `main` |
+| `VIBEN_SCOPE` | Configuration scope | Auto-detect |
 
-## 配置文件
+## Configuration Files
 
-### 全局配置
+### Global Configuration
 
-位于 `~/.viben/config.yaml`：
+Located at `~/.viben/config.yaml`:
 
 ```yaml
 version: 1
@@ -123,16 +142,26 @@ settings:
   pager: less
   color: auto
 
-agents:
-  - claude-code
-  - cursor
+# Swarm configuration
+swarm:
+  default_roles:
+    - architect
+    - implementer
+    - reviewer
+  max_parallel_agents: 4
+
+# FileRL settings
+filerl:
+  enabled: true
+  metrics:
+    - code_quality
+    - test_coverage
+    - complexity
 
 mcp:
   enabled:
     - filesystem
     - git
-  disabled:
-    - browser
 
 skills:
   enabled:
@@ -140,32 +169,37 @@ skills:
     - commit
 ```
 
-### 工作区配置
+### Workspace Configuration
 
-位于 `<project>/.viben/config.yaml`，覆盖工作区的全局设置。
+Located at `<project>/.viben/config.yaml`, overrides global settings for the workspace.
 
-## 智能体集成
+## Agent Integration
 
-AI 智能体可以通过 Bash 工具使用 CLI：
+AI agents can use CLI through Bash tools:
 
 ```bash
-# 获取当前配置
+# Task workflow (primary use case)
+viben task create "implement-auth" --json
+viben task enqueue implement-auth --json
+viben task start implement-auth --json
+
+# Swarm orchestration
+viben swarm start --task implement-auth --json
+viben swarm status --json
+
+# Idea generation
+viben idea generate --context "improve auth" --json
+
+# Configuration
 viben config list --json
-
-# 为工作区安装 MCP
-viben mcp install filesystem --workspace --json
-
-# 配置智能体 MCP
-viben agent config claude-code mcp add filesystem --json
-
-# 同步到智能体
 viben agent sync claude-code --json
 ```
 
-## 下一步
+## Next Steps
 
-- [viben init](./init.md) - 初始化工作区
-- [viben config](./config.md) - 管理配置
-- [viben agent](./agent.md) - 管理智能体
-- [viben mcp](./mcp.md) - 管理 MCP 服务器
-- [viben gateway](./gateway.md) - 启动 Gateway
+- [viben task](./task.md) - XState-powered task management
+- [viben swarm](./swarm.md) - Multi-agent orchestration
+- [viben idea](./idea.md) - AI-driven ideation
+- [viben queue](./queue.md) - Background command execution
+- [viben agent](./agent.md) - Manage agents
+- [viben gateway](./gateway.md) - Start Gateway

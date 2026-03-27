@@ -2,7 +2,7 @@
   "name": "viben",
   "version": "0.1.0",
   "private": true,
-  "description": "Multi-agent workspace manager with kanban, calendar, timeline, and task management",
+  "description": "Agent Swarm × Code Evolution - FileRL optimization, Multi-Agent orchestration, MCP Protocol, XState Task System, and Idea Generation",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

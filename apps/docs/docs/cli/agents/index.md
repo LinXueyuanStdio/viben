@@ -1,18 +1,67 @@
 ---
 sidebar_position: 1
 title: "Agent Management"
-description: "Overview of Viben CLI agent management - concepts, architecture, and commands"
+description: "Overview of Viben CLI agent management - swarm orchestration, concepts, and commands"
 ---
 
 # Agent Management
 
-Viben CLI provides comprehensive tools for managing AI agents. An **agent** is an independent AI assistant instance with its own configuration, memory, and sessions.
+Viben CLI provides comprehensive tools for managing AI agents and orchestrating **Agent Swarms** - coordinated groups of specialized agents that work together to evolve your codebase.
+
+## Multi-Agent Orchestration
+
+In the **Agent Swarm x Code Evolution** paradigm, multiple agents collaborate with different specializations:
+
+| Agent Role | Description |
+|------------|-------------|
+| **Architect** | Designs system structure and evaluates architectural decisions |
+| **Implementer** | Writes and modifies code based on task specifications |
+| **Reviewer** | Reviews code changes and provides quality feedback |
+| **Tester** | Generates and runs tests, validates implementations |
+| **Optimizer** | Applies FileRL to iteratively improve code quality metrics |
+
+### Swarm Coordination
+
+```
+                    Task Queue
+                        |
+                        v
+    +-------------------------------------------+
+    |              Swarm Orchestrator           |
+    |  (Distributes work, collects feedback)    |
+    +-------------------------------------------+
+         |          |          |          |
+         v          v          v          v
+    +--------+ +--------+ +--------+ +--------+
+    |Architect| |Implement| |Reviewer| | Tester |
+    +--------+ +--------+ +--------+ +--------+
+         |          |          |          |
+         +----------+----------+----------+
+                        |
+                        v
+                   FileRL Loop
+              (Learn from outcomes)
+```
+
+### Quick Swarm Commands
+
+```bash
+# Start a swarm session for a task
+viben swarm start --task "implement-auth"
+
+# List active swarm agents
+viben swarm status
+
+# Configure swarm roles
+viben swarm config --roles architect,implementer,reviewer
+```
 
 ## Key Concepts
 
 | Concept | Description |
 |---------|-------------|
 | **Agent** | An independent AI assistant instance with its own configuration, memory, and sessions |
+| **Swarm** | A coordinated group of agents working together on related tasks |
 | **Template** | A regular agent marked with `isTemplate: true`, used as a blueprint for creating new agents |
 | **Memory** | Agent's long-term memory (MEMORY.md + daily logs) |
 | **Session** | Agent's conversation history and state |

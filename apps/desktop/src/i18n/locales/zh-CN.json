@@ -3001,7 +3001,7 @@
     "preferCloud": "优先云端"
   },
   "onboarding": {
-    "footer": "微本 - 您的 AI 研究助手",
+    "footer": "微本 - Agent Swarm × Code Evolution",
     "projectPathPlaceholder": "/Users/用户名/项目",
     "steps": {
       "python": "Python",

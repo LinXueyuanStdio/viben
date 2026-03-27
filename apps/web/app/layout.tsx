@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     default: 'Viben',
     template: '%s | Viben',
   },
-  description: 'AI Tool Platform - MCP & Skills Marketplace',
+  description: 'Agent Swarm × Code Evolution - Multi-agent collaboration platform for controllable AI workflows',
 };
 
 export default function RootLayout({

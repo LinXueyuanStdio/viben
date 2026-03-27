@@ -1,44 +1,57 @@
 ---
 sidebar_position: 1
 title: "插件概述"
-description: "了解微本插件系统和 ContentSource API"
+description: "了解 Viben 插件系统和 ContentSource API"
 ---
 
 # 插件概述
 
-微本使用强大的插件系统，允许您将其功能扩展到学术论文之外。本页解释插件的工作原理以及您可以用它们做什么。
+Viben 使用强大的插件系统，让你可以将其能力扩展到学术论文之外。本页解释插件的工作原理以及你可以用它们做什么。
+
+## 插件在 Agent Swarm 中的角色
+
+在 Viben 的 **Agent Swarm x Code Evolution** 架构中，插件扮演着关键角色：
+
+| 用途 | 说明 |
+|------|------|
+| **数据源扩展** | 为智能体提供更多信息来源 |
+| **能力增强** | 通过 MCP 服务器扩展智能体能力 |
+| **工具集成** | 集成外部工具和服务 |
+| **自定义工作流** | 支持特定领域的工作流程 |
+
+插件使智能体能够访问更广泛的知识和工具，从而在代码进化过程中做出更好的决策。
 
 ## 什么是插件？
 
-插件是为微本添加新内容来源的 Python 包。当您安装插件时，其来源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
+插件是为 Viben 添加新内容源的 Python 包。安装插件后，其数据源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
 
 ```
 browse-mcp (核心)
     |
-    +-- 内置来源 (arxiv, pubmed, semantic...)
+    +-- 内置数据源 (arxiv, pubmed, semantic...)
     |
     +-- browse-mcp-plugin-social-media (github, twitter, zhihu...)
     |
     +-- browse-mcp-plugin-news (rss, hackernews...)
     |
-    +-- your-custom-plugin (您的来源...)
+    +-- 你的自定义插件 (你的数据源...)
 ```
 
 ## 插件工作原理
 
 ### Stevedore 插件发现
 
-微本使用 [stevedore](https://docs.openstack.org/stevedore/) 进行插件发现。当服务器启动时：
+Viben 使用 [stevedore](https://docs.openstack.org/stevedore/) 进行插件发现。服务器启动时：
 
-1. Stevedore 扫描所有已安装的包，查找 `browse_mcp.searchers` 入口点
-2. 每个注册的入口点都被加载和实例化
-3. 这些来源可用于搜索、下载和阅读
+1. Stevedore 扫描所有已安装包中的 `browse_mcp.searchers` 入口点
+2. 每个注册的入口点被加载和实例化
+3. 数据源变得可用于搜索、下载和阅读
 
-这意味着您不需要修改任何配置文件 - 只需安装插件并重启服务器即可。
+这意味着你不需要修改任何配置文件 - 只需安装插件并重启服务器。
 
 ### 入口点注册
 
-插件在 `pyproject.toml` 中注册其来源：
+插件在 `pyproject.toml` 中注册其数据源：
 
 ```toml
 [tool.poetry.plugins."browse_mcp.searchers"]
@@ -61,7 +74,7 @@ entry_points={
 
 所有插件都实现 `ContentSource[T]` 接口，其中 `T` 是它们返回的内容类型。
 
-### 通用内容来源
+### 通用内容源
 
 对于非论文内容，实现 `ContentSource[T]`：
 
@@ -99,13 +112,13 @@ class TwitterSearcher(ContentSource[SocialPost]):
         start_page: Optional[int] = None,
         end_page: Optional[int] = None,
     ) -> str:
-        # 读取实现
+        # 阅读实现
         pass
 ```
 
-### 论文来源
+### 论文数据源
 
-对于学术论文来源，扩展 `PaperSource`：
+对于学术论文数据源，扩展 `PaperSource`：
 
 ```python
 from browse_mcp.types import PaperSource, Paper
@@ -138,17 +151,17 @@ class MyPaperSource(PaperSource):
 每个插件定义自己的内容类型，带有 `to_text()` 方法：
 
 | 插件 | 内容类型 | 字段 |
-|--------|--------------|--------|
+|------|----------|------|
 | 核心 | `Paper` | title, authors, abstract, doi, pdf_url... |
 | 社交媒体 | `SocialPost` | title, content, author, platform, likes... |
-| 自定义 | 您的类型 | 您的字段... |
+| 自定义 | 你的类型 | 你的字段... |
 
 ### 统一工具
 
 无论内容类型如何，用户都通过相同的工具进行交互：
 
 ```python
-# 搜索任何来源
+# 搜索任何数据源
 browse_search([{"searcher": "github", "query": "machine learning"}])
 
 # 下载任何内容
@@ -158,31 +171,31 @@ browse_download(searcher="github", paper_id="owner/repo")
 browse_read(searcher="github", paper_id="owner/repo")
 ```
 
-### 来源命名
+### 数据源命名
 
-来源使用扁平名称，如 `arxiv`、`github`、`twitter`。插件系统还支持层级命名：
+数据源使用扁平名称如 `arxiv`、`github`、`twitter`。插件系统也支持层级命名：
 
 | 扁平名称 | 层级名称 |
-|-----------|-------------------|
+|----------|----------|
 | `arxiv` | `academic/arxiv` |
 | `github` | `social/github` |
 | `twitter` | `social/twitter` |
 
-两种格式都可以工作，但建议使用扁平名称以简化操作。
+两种格式都可用，但推荐使用扁平名称以简化使用。
 
 ## 插件优势
 
-### 对于用户
+### 对用户
 
-- **易于安装** - 只需 `pip install` 并重启
-- **一致的接口** - 所有内容类型使用相同的工具
-- **选择性来源** - 通过环境变量启用/禁用单个来源
+- **轻松安装** - 只需 `pip install` 然后重启
+- **一致接口** - 所有内容类型使用相同的工具
+- **选择性数据源** - 通过环境变量启用/禁用单个数据源
 
-### 对于开发者
+### 对开发者
 
-- **类型安全的 API** - 带有类型提示的泛型 `ContentSource[T]`
+- **类型安全 API** - 带类型提示的泛型 `ContentSource[T]`
 - **自动发现** - 无需编辑配置文件
-- **独立开发** - 插件可以单独开发和发布
+- **独立开发** - 插件可以独立开发和发布
 
 ## 下一步
 

@@ -3,7 +3,17 @@
 [![npm version](https://img.shields.io/npm/v/viben.svg)](https://www.npmjs.com/package/viben)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Command-line interface for Viben - orchestrate AI agent clusters in your local workspace.
+**Agent Swarm × Code Evolution** - Command-line interface for Viben.
+
+## Overview
+
+Viben CLI enables autonomous code evolution through multi-agent orchestration:
+
+- **FileRL** - Reinforcement learning for code iteration and optimization
+- **Multi-Agent Swarm** - Coordinate multiple AI agents working in parallel
+- **MCP Protocol** - Model Context Protocol for seamless tool integration
+- **XState Task System** - State machine-driven task workflow management
+- **Idea Generation** - Transform ideas into executable development tasks
 
 ## Installation
 

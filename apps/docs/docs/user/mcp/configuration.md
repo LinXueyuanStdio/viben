@@ -6,6 +6,18 @@ description: "配置 Viben MCP 服务器的数据源、API 密钥和设置"
 
 # MCP 配置
 
+## Viben: Agent Swarm x Code Evolution
+
+Viben 是一个 AI 驱动的代码迭代优化和智能体集群编排平台。MCP 服务器是平台的重要组成部分，为 Agent Swarm 提供知识获取能力：
+
+- **FileRL** - 通过学术论文和技术文档获取最佳实践，优化代码迭代
+- **Idea Generation** - 从多元数据源获取灵感，激发创新思路
+- **Agent Swarm** - 智能体集群可统一调用 MCP 工具进行知识搜索
+
+---
+
+## 环境变量配置
+
 Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可用的配置选项。
 
 ## 环境变量概览

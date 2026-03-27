@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
-title: "快速开始"
-description: "5 分钟内开始使用 Viben CLI"
+title: "Quick Start"
+description: "Get started with Viben CLI in 5 minutes"
 ---
 
-# 快速开始
+# Quick Start
 
-5 分钟内让 Viben CLI 运行起来。
+Get **Agent Swarm x Code Evolution** running in 5 minutes. Viben CLI enables AI agent swarms to continuously evolve and optimize your codebase through FileRL, intelligent task management, and collaborative agent orchestration.
 
 ## 步骤 1：安装 Viben CLI
 
@@ -294,7 +294,7 @@ viben provider status --json
 
 现在你已经设置好了 Viben CLI，你可以：
 
-- 探索 [智能体管理](./agents/) 了解完整的智能体生命周期
+- 探索 [智能体管理](agents/) 了解完整的智能体生命周期
 - 配置额外的 [API 提供商](./configuration/) 获取更多模型选择
 - 安装更多 [MCP 服务器](/user/mcp/configuration) 扩展功能
 - 了解 [Gateway](./commands/gateway.md) 运行时架构

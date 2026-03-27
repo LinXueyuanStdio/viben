@@ -1,37 +1,46 @@
 ---
 sidebar_position: 1
 title: "CLI 概览"
-description: "微本 CLI - 用于配置应用、管理服务和查询状态的引导工具"
+description: "Viben CLI - Agent Swarm x Code Evolution 的命令行工具"
 ---
 
-# 微本 CLI
+# Viben CLI
 
-**微本 CLI** (`viben`) 是一个用于配置应用、管理 AI 智能体实例和查询系统状态的引导工具。它同时服务于人类用户和 AI 智能体，为复杂的配置任务提供统一的接口。
+**Viben CLI** (`viben`) 是 **Agent Swarm x Code Evolution** 的命令行接口。它为智能体集群编排、代码迭代优化和任务状态管理提供统一的命令行入口。
 
-## 什么是微本 CLI？
+## 什么是 Viben CLI？
 
-微本 CLI 针对两个主要使用场景设计：
+Viben CLI 是连接人类开发者和 AI 智能体集群的桥梁：
 
-1. **人类使用**：命令行配置应用、启动服务、查看状态
-2. **AI 智能体使用**：智能体通过 Bash 工具调用 CLI 来配置复杂的智能体设置、MCP 服务器和技能
+1. **面向人类**：通过命令行配置应用、启动服务和查看状态
+2. **面向 AI 智能体**：智能体通过 Bash 工具调用 CLI 来配置复杂的 agent 设置、MCP 服务器和技能
 
 ## 核心功能
 
-| 功能 | 描述 |
+| 功能 | 说明 |
 |------|------|
-| **智能体管理** | 创建、配置和管理多个 AI 智能体实例 |
-| **Provider 配置** | 设置 API Provider（OpenAI、Anthropic、Google、Azure 等） |
-| **模型管理** | 配置模型别名、回退链和每个模型的设置 |
+| **Agent Swarm** | 智能体集群编排，协调多个 AI 智能体协同工作 |
+| **FileRL (代码迭代优化)** | 基于文件的强化学习，通过反馈循环持续优化代码质量 |
+| **Task System** | XState 状态机驱动的任务管理，支持 backlog → queue → in_progress → review → completed 工作流 |
+| **Idea Generation** | 创意生成系统，激发和捕捉开发灵感 |
+| **Agent 管理** | 创建、配置和管理多个 AI 智能体实例 |
+| **Provider 配置** | 设置 API 提供商（OpenAI、Anthropic、Google、Azure 等） |
+| **Model 管理** | 配置模型别名、回退链和模型级设置 |
+| **Executor 发现** | 发现本地已安装的执行器（Claude Code、Cursor 等） |
 | **MCP 服务器管理** | 安装、启用和配置 MCP 服务器 |
-| **技能管理** | 安装和管理智能体技能 |
+| **Skill 管理** | 安装和管理智能体技能 |
+| **Gateway 运行时** | 启动连接 channels 到 agent loop 的核心运行时 |
+| **Channel 管理** | 配置聊天渠道（Telegram、Discord、飞书等） |
+| **Cron 定时任务** | 管理智能体的定时任务 |
+| **Team 协作** | 初始化团队协作工作区 |
 | **服务控制** | 启动、停止和监控后台服务 |
 | **作用域感知** | 自动检测工作区，支持全局/工作区配置 |
 
 ## 设计原则
 
-### 简单且专注
+### 简单且聚焦
 
-CLI 不处理复杂的交互任务。它专注于：
+CLI 不处理复杂的交互式任务。它专注于：
 - 配置管理
 - 状态查询
 - 服务生命周期
@@ -39,13 +48,13 @@ CLI 不处理复杂的交互任务。它专注于：
 ### 人机友好
 
 - **人类模式**：彩色、格式化的终端输出（默认）
-- **机器模式**：使用 `--json` 标志输出结构化 JSON，供 AI 智能体解析
+- **机器模式**：使用 `--json` 标志输出结构化 JSON，便于 AI 智能体解析
 
 ### 作用域感知
 
-CLI 自动检测您的工作区上下文：
-- 如果您在包含 `.viben/` 的目录中，使用工作区配置
-- 否则，使用全局配置（`~/.viben/`）
+CLI 自动检测你的工作区上下文：
+- 如果当前目录包含 `.viben/`，则使用工作区配置
+- 否则使用全局配置（`~/.viben/`）
 - 可通过 `--global` 或 `--workspace` 标志覆盖
 
 ## 技术栈
@@ -62,15 +71,20 @@ CLI 自动检测您的工作区上下文：
 ```
 viben <command> [subcommand] [options]
 
-命令:
+Commands:
   init          在当前目录初始化工作区
   config        配置管理（git 风格）
   service       管理后台服务
+  gateway       启动 Gateway（消息总线 + agent 循环）
+  executor      发现和查看执行器（Claude Code、Cursor 等）
   agent         管理智能体实例和模板
-  provider      管理 API Provider（OpenAI、Anthropic 等）
+  provider      管理 API 提供商（OpenAI、Anthropic 等）
   model         管理模型、别名和回退链
   mcp           管理 MCP 服务器
   skill         管理技能
+  channel       管理聊天渠道（Telegram、Discord、WhatsApp、飞书）
+  cron          管理定时任务
+  team          团队协作工作区管理
   workspace     工作区操作
   version       显示版本信息
   help          显示帮助
@@ -80,9 +94,9 @@ viben <command> [subcommand] [options]
 
 所有命令都支持以下全局选项：
 
-| 选项 | 描述 |
+| 选项 | 说明 |
 |------|------|
-| `--json` | 输出为 JSON（供智能体解析） |
+| `--json` | 输出 JSON（供智能体解析） |
 | `--global`, `-g` | 使用全局配置 |
 | `--workspace` | 使用工作区配置（当前目录） |
 | `-n`, `--name <id>` | 指定智能体名称/ID（默认：当前或 'main'） |
@@ -100,9 +114,16 @@ viben <command> [subcommand] [options]
 │       ├── config.yaml                      # 智能体配置
 │       ├── mcp_servers.json                 # MCP 服务器配置
 │       ├── skills/                          # 智能体专属技能
-│       └── memory/                          # 智能体记忆
-├── providers.yaml                           # API Provider 配置
+│       ├── memory/                          # 智能体记忆
+│       │   ├── MEMORY.md                    # 主记忆文件
+│       │   └── YYYY-MM-DD.md                # 每日日志
+│       ├── .agentrc                         # 启动配置
+│       ├── .agent_history                   # 命令历史
+│       └── .agent_sessions/                 # 会话存储
+├── providers.yaml                           # API 提供商配置
 ├── models.yaml                              # 模型配置
+├── channels.yaml                            # 渠道配置
+├── cron.yaml                                # 定时任务配置
 ├── mcp/                                     # 共享 MCP 服务器
 └── skills/                                  # 共享技能
 
@@ -112,7 +133,7 @@ viben <command> [subcommand] [options]
 
 ## 配置文件格式
 
-微本 CLI 使用 YAML 格式实现人类可读的配置：
+Viben CLI 使用 YAML 进行人类可读的配置：
 
 ```yaml
 # ~/.viben/config.yaml
@@ -148,7 +169,7 @@ skills:
 
 ## 智能体集成
 
-AI 智能体可以通过 Bash 工具调用微本 CLI。`--json` 标志确保输出结构化数据供智能体解析：
+AI 智能体可以通过 Bash 工具调用使用 Viben CLI。`--json` 标志确保输出结构化，便于智能体解析：
 
 ```bash
 # 获取当前配置
@@ -174,7 +195,7 @@ viben agent config my-agent set model gpt-4 --json
 }
 ```
 
-错误响应包含错误代码，便于程序化处理：
+错误响应包含错误码，便于程序化处理：
 
 ```json
 {
@@ -188,5 +209,5 @@ viben agent config my-agent set model gpt-4 --json
 
 ## 下一步
 
-- [安装](./installation.md) - 安装微本 CLI
+- [安装](./installation.md) - 安装 Viben CLI
 - [快速开始](./quick-start.md) - 开始基本配置

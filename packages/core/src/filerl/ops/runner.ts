@@ -301,7 +301,10 @@ export function selectBest(
   const selectResult = selectBestTask(repoRoot, taskNames, {
     threshold: config.ppo.quality_threshold,
     klCoef: config.ppo.kl_coef,
+    changeSensitivity: config.ppo.change_sensitivity,
+    clipRange: config.ppo.clip_range,
     maxDiff: config.ppo.max_diff,
+    taskIdeaMap: currentIter.task_idea_map,
     filerlDir,
     iteration: state.current_iteration,
   });
@@ -845,6 +848,7 @@ export function orchestrateSelectBest(
     return { success: false, phase: "select_best", error: parseResult.error || "Failed to parse target file" };
   }
 
+  const config = parseResult.config;
   const currentIter = state.iterations[state.iterations.length - 1];
   if (!currentIter) {
     return { success: false, phase: "select_best", error: "No active iteration found" };

@@ -16,7 +16,7 @@ export function createProgram(): Command {
 
   program
     .name("viben")
-    .description("Viben - AI Agent Orchestration Platform")
+    .description("Viben - Agent Swarm × Code Evolution")
     .version(VERSION, "-v, --version", "Output the version number");
 
   // Global options

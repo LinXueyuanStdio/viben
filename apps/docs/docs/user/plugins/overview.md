@@ -6,11 +6,15 @@ description: "了解 Viben 插件系统和 ContentSource API"
 
 # 插件概述
 
-Viben 使用强大的插件系统，让你可以将其能力扩展到学术论文之外。本页解释插件的工作原理以及你可以用它们做什么。
+Viben 的插件系统是 **Agent Swarm x Code Evolution** 平台的重要扩展机制。通过插件，智能体集群可以访问更广泛的知识源和工具，支持：
+
+- **Idea Generation** - 从多元数据源获取灵感和知识
+- **FileRL** - 为代码优化提供参考资料和最佳实践
+- **Agent Swarm** - 扩展智能体的工具集和能力边界
 
 ## 什么是插件？
 
-插件是为 Viben 添加新内容源的 Python 包。安装插件后，其数据源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
+插件是为 Viben 添加新内容源的 Python 包。安装插件后，其数据源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用，为智能体集群提供统一的知识获取接口。
 
 ```
 browse-mcp (核心)
@@ -177,12 +181,14 @@ browse_read(searcher="github", paper_id="owner/repo")
 - **轻松安装** - 只需 `pip install` 然后重启
 - **一致接口** - 所有内容类型使用相同的工具
 - **选择性数据源** - 通过环境变量启用/禁用单个数据源
+- **增强 Agent Swarm** - 为智能体集群提供更丰富的知识来源
 
 ### 对开发者
 
 - **类型安全 API** - 带类型提示的泛型 `ContentSource[T]`
 - **自动发现** - 无需编辑配置文件
 - **独立开发** - 插件可以独立开发和发布
+- **集成 FileRL** - 插件数据可作为代码优化的参考输入
 
 ## 下一步
 

@@ -1,7 +1,7 @@
 {
   "name": "@viben/api-client",
   "version": "1.0.0",
-  "description": "API client for Viben platform",
+  "description": "API client for Viben - Agent Swarm × Code Evolution platform",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
