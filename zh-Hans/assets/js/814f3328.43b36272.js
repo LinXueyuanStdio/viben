@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[7472],{55513(e){e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Viben: Agent Swarm \xd7 Code Evolution","permalink":"/viben/zh-Hans/blog/welcome","unlisted":false,"date":"2025-02-01T00:00:00.000Z"}]}')}}]);
