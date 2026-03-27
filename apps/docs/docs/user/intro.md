@@ -1,29 +1,29 @@
 ---
 sidebar_position: 1
-title: "Viben 简介"
-description: "Viben - Agent 集群 × 代码进化，多目标带约束的迭代优化，自动提升代码质量"
+title: "Introduction to Viben"
+description: "Viben - Agent Swarm × Code Evolution, multi-objective constrained iterative optimization, automatically improving code quality"
 ---
 
 # Viben
 
-**Viben** (微本) 是一个 Agent 集群与代码进化平台，通过多目标带约束的迭代优化自动提升代码质量。
+**Viben** is an Agent Swarm and Code Evolution platform that automatically improves code quality through multi-objective constrained iterative optimization.
 
-## 核心特性
+## Core Features
 
-| 特性 | 说明 |
-|------|------|
-| 🧬 **FileRL** | 代码迭代优化：多候选采样 + 质量评估，自动选择最优方案合并 |
-| 🤖 **多智能体** | Agent 集群编排：并行 Worktree 隔离，自动化任务分发与监控 |
-| 🔌 **MCP 协议** | Model Context Protocol：工具注册与调用，扩展 Agent 能力边界 |
-| 📋 **任务系统** | XState 状态机驱动：看板 + 队列 + 自动执行，完整的任务生命周期管理 |
-| 💡 **Idea 生成** | AI 驱动代码分析：自动发现改进点，一键转化为可执行任务 |
-| 🖥️ **跨平台** | CLI / Desktop / Web：Tauri 2 桌面应用，三端统一体验 |
+| Feature | Description |
+|---------|-------------|
+| 🧬 **FileRL** | Code iterative optimization: multi-candidate sampling + quality evaluation, automatically selects optimal solution to merge |
+| 🤖 **Multi-Agent** | Agent swarm orchestration: parallel Worktree isolation, automated task distribution and monitoring |
+| 🔌 **MCP Protocol** | Model Context Protocol: tool registration and invocation, extends Agent capability boundaries |
+| 📋 **Task System** | XState state machine driven: Kanban + Queue + Auto-execution, complete task lifecycle management |
+| 💡 **Idea Generation** | AI-driven code analysis: automatically discovers improvement points, one-click conversion to executable tasks |
+| 🖥️ **Cross-Platform** | CLI / Desktop / Web: Tauri 2 desktop app, unified experience across all three |
 
-## 产品架构
+## Product Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Viben 架构概览                            │
+│                      Viben Architecture Overview                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
@@ -41,149 +41,149 @@ description: "Viben - Agent 集群 × 代码进化，多目标带约束的迭代
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## FileRL: 代码迭代优化
+## FileRL: Code Iterative Optimization
 
-> *多目标带约束的候选选择算法，通过采样-评估-选择循环迭代提升代码质量*
+> *Multi-objective constrained candidate selection algorithm, iteratively improving code quality through sampling-evaluation-selection cycles*
 
-FileRL 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。
+FileRL is a **heuristic iterative optimization method**, with the core idea of "generate multiple candidate solutions → multi-dimensional evaluation → select optimal to merge".
 
-### 系统组件
+### System Components
 
-| 组件 | 说明 |
-|------|------|
-| **候选生成器** | Worktree 隔离环境中，Agent 生成 PR |
-| **参考基准** | Main Branch 原始代码库，用于计算变更量 |
-| **质量评估器** | CI + Agent 多维度评分 |
+| Component | Description |
+|-----------|-------------|
+| **Candidate Generator** | Agent generates PRs in Worktree isolated environments |
+| **Reference Baseline** | Main Branch original codebase, used to calculate change volume |
+| **Quality Evaluator** | CI + Agent multi-dimensional scoring |
 
-### 迭代优化循环
+### Iterative Optimization Loop
 
-1. **采样** - 批量生成 B 个想法，每个并行展开 N 次，总计 B×N 个候选
-2. **评估** - 多目标评分 + 变更量计算 + 调整后得分
-3. **选择** - 两阶段筛选：每 idea 选最优 PR，全局选最优 PR
-4. **更新** - 合并最佳 PR，更新代码库，检查停止条件
+1. **Sampling** - Batch generate B ideas, each expanded N times in parallel, total B×N candidates
+2. **Evaluation** - Multi-objective scoring + change volume calculation + adjusted score
+3. **Selection** - Two-phase filtering: select best PR per idea, select best PR globally
+4. **Update** - Merge best PR, update codebase, check stop conditions
 
-### CLI 命令
+### CLI Commands
 
 ```bash
-# 生命周期
-viben filerl create <name>       # 创建优化目标
-viben filerl start <target.md>   # 启动优化循环
-viben filerl status <name>       # 查看状态
+# Lifecycle
+viben filerl create <name>       # Create optimization target
+viben filerl start <target.md>   # Start optimization loop
+viben filerl status <name>       # View status
 
 # Idea → Task
-viben idea generate --types <t>  # 生成想法
-viben idea promote <id> --start  # 转为任务
+viben idea generate --types <t>  # Generate ideas
+viben idea promote <id> --start  # Convert to task
 
-# 监控
-viben swarm status --watch       # 实时监控
+# Monitoring
+viben swarm status --watch       # Real-time monitoring
 ```
 
-## 任务系统
+## Task System
 
-基于 XState 状态机的任务生命周期管理，支持看板、队列和自动化执行。
+Task lifecycle management based on XState state machine, supporting Kanban, queue, and automated execution.
 
-### 任务状态流转
+### Task State Transitions
 
 ```
 backlog → queue → in_progress → review → completed
                        ↓
-              plan → implement → check → fix (循环)
+              plan → implement → check → fix (loop)
 ```
 
-| 状态 | 说明 | 触发命令 |
-|------|------|----------|
-| `backlog` | 待办，等待排队 | `task create` |
-| `queue` | 已排队，等待执行 | `task enqueue` |
-| `in_progress` | 执行中 | `task start` |
-| `review` | 等待人工审核 | 自动 (QA 通过) |
-| `completed` | 已完成 | `task approve` |
+| State | Description | Trigger Command |
+|-------|-------------|-----------------|
+| `backlog` | Pending, waiting to be queued | `task create` |
+| `queue` | Queued, waiting for execution | `task enqueue` |
+| `in_progress` | In progress | `task start` |
+| `review` | Awaiting human review | Auto (QA passed) |
+| `completed` | Completed | `task approve` |
 
-### CLI 命令
+### CLI Commands
 
 ```bash
-viben task create "<title>" --slug <name>  # 创建任务
+viben task create "<title>" --slug <name>  # Create task
 viben task enqueue <task>                  # backlog → queue
 viben task start <task>                    # queue → in_progress
 viben task approve <task>                  # review → completed
-viben task list                            # 列出所有任务
+viben task list                            # List all tasks
 ```
 
-## 💡 Idea 生成
+## 💡 Idea Generation
 
-AI 驱动的代码库分析，自动生成改进建议并转化为任务。
+AI-driven codebase analysis, automatically generating improvement suggestions and converting to tasks.
 
-| 内置类型 | 说明 |
-|----------|------|
-| `code_improvements` | 基于现有模式的代码改进 |
-| `security_hardening` | 安全漏洞和加固措施 |
-| `performance_optimizations` | 性能瓶颈和优化 |
-| `documentation_gaps` | 缺失的文档 |
-| `ui_ux_improvements` | UI/UX 增强 |
-| `code_quality` | 代码质量和重构 |
+| Built-in Type | Description |
+|---------------|-------------|
+| `code_improvements` | Code improvements based on existing patterns |
+| `security_hardening` | Security vulnerabilities and hardening measures |
+| `performance_optimizations` | Performance bottlenecks and optimizations |
+| `documentation_gaps` | Missing documentation |
+| `ui_ux_improvements` | UI/UX enhancements |
+| `code_quality` | Code quality and refactoring |
 
 ```bash
-# 生成代码改进建议
+# Generate code improvement suggestions
 viben idea generate --types code_improvements security_hardening
 
-# 将想法转为任务并立即启动
+# Convert idea to task and start immediately
 viben idea promote ci-001 --start --worktree
 ```
 
-## 配置
+## Configuration
 
 ```
 ~/.viben/
 ├── providers.yaml    # API Keys, Endpoints
-├── models.yaml       # 模型参数
-├── agents/           # Agent 定义
+├── models.yaml       # Model parameters
+├── agents/           # Agent definitions
 │   └── <name>/
 │       └── AGENTS.md
-├── cron.yaml         # 定时任务
-├── channels.yaml     # 通知渠道
-└── workspaces.yaml   # 工作空间
+├── cron.yaml         # Scheduled tasks
+├── channels.yaml     # Notification channels
+└── workspaces.yaml   # Workspaces
 ```
 
-## 快速开始
+## Quick Start
 
-### 桌面应用（推荐）
+### Desktop App (Recommended)
 
-[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+[![Latest Version](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-| 平台 | 下载格式 |
-|------|----------|
+| Platform | Download Format |
+|----------|-----------------|
 | **macOS** | `.dmg` (Universal) |
-| **Windows** | `.msi` 或 `.exe` |
-| **Linux** | `.AppImage` 或 `.deb` |
+| **Windows** | `.msi` or `.exe` |
+| **Linux** | `.AppImage` or `.deb` |
 
-### CLI 工具
+### CLI Tool
 
 ```bash
 # npm
 npm install -g viben
 
-# 或直接运行
+# Or run directly
 npx viben
 ```
 
 ## Gateway API
 
-Viben Gateway 是核心后端服务，运行在端口 **18790**。
+Viben Gateway is the core backend service, running on port **18790**.
 
-| 端点 | 功能 |
-|------|------|
-| `/health` | 健康检查 |
-| `/api/agent` | 智能体管理 |
-| `/api/sessions` | 会话管理 |
-| `/api/providers` | Provider 管理 |
-| `/api/models` | 模型管理 |
+| Endpoint | Function |
+|----------|----------|
+| `/health` | Health check |
+| `/api/agent` | Agent management |
+| `/api/sessions` | Session management |
+| `/api/providers` | Provider management |
+| `/api/models` | Model management |
 
-:::info API 文档
-完整的 Gateway API 文档请查看 [API 参考](/backend/api/)。
+:::info API Documentation
+For complete Gateway API documentation, see [API Reference](/backend/api/).
 :::
 
-## 下一步
+## Next Steps
 
-- [核心概念](./getting-started/concepts.md) - 理解 Viben 的核心概念
-- [快速入门](./getting-started/quick-start.md) - 快速上手
-- [桌面应用](./desktop/) - 桌面应用完整指南
-- [CLI 文档](/cli/) - 命令行工具参考
+- [Core Concepts](./getting-started/concepts.md) - Understand Viben's core concepts
+- [Quick Start](./getting-started/quick-start.md) - Get started quickly
+- [Desktop App](./desktop/) - Complete desktop app guide
+- [CLI Documentation](/cli/) - Command line tool reference
