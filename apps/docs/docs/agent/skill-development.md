@@ -1,73 +1,73 @@
 ---
 sidebar_position: 3
-title: Skill 开发指南
-description: 为 Agent 开发可复用的 Skill
+title: Skill Development Guide
+description: Develop reusable Skills for Agents
 ---
 
-# Skill 开发指南
+# Skill Development Guide
 
-Skill 是 Agent 的可复用能力单元，可以在多个 Agent 之间共享。本文档介绍如何为 Viben 平台开发和管理 Skill。
+Skills are reusable capability units for Agents that can be shared across multiple Agents. This document explains how to develop and manage Skills for the Viben platform.
 
-## 概述
+## Overview
 
-### 什么是 Skill?
+### What is a Skill?
 
-Skill 是一组预定义的提示词和配置，用于增强 Agent 在特定任务上的能力。例如：
+A Skill is a set of predefined prompts and configurations that enhance an Agent's capabilities for specific tasks. For example:
 
-- `code-review`: 代码审查技能
-- `commit`: Git 提交消息生成技能
-- `test-runner`: 测试执行技能
-- `paper-search`: 论文搜索技能
+- `code-review`: Code review skill
+- `commit`: Git commit message generation skill
+- `test-runner`: Test execution skill
+- `paper-search`: Paper search skill
 
-### Skill 类型
+### Skill Types
 
-| 类型 | 存储位置 | 作用域 |
-|------|----------|--------|
-| 全局 Skill | `~/.viben/skills/` | 所有 Agent 可用 |
-| Agent Skill | `~/.viben/agents/<id>/skills/` | 仅特定 Agent 可用 |
-| Claude Skill | `~/.claude/commands/` | Claude Code 专用 |
+| Type | Storage Location | Scope |
+|------|------------------|-------|
+| Global Skill | `~/.viben/skills/` | Available to all Agents |
+| Agent Skill | `~/.viben/agents/<id>/skills/` | Available only to specific Agent |
+| Claude Skill | `~/.claude/commands/` | Claude Code specific |
 
-## 快速开始
+## Quick Start
 
-### 1. 安装 Skill
+### 1. Install a Skill
 
 ```bash
-# 全局安装
+# Global installation
 viben skill install code-review
 
-# 安装到指定 agent
+# Install to a specific agent
 viben skill install code-review --agent my-agent
 
-# 安装指定版本
+# Install a specific version
 viben skill install code-review@1.0.0
 
-# 安装到 Claude skills 目录
+# Install to Claude skills directory
 viben skill install code-review --claude
 ```
 
-### 2. 列出已安装的 Skills
+### 2. List Installed Skills
 
 ```bash
-# 列出所有已安装的 skills
+# List all installed skills
 viben skill list
 
-# 列出特定 agent 的 skills
+# List skills for a specific agent
 viben skill list --agent my-agent
 
-# 仅列出全局 skills
+# List only global skills
 viben skill list --global
 
-# 仅列出 Claude skills
+# List only Claude skills
 viben skill list --claude
 ```
 
-### 3. 查看 Skill 详情
+### 3. View Skill Details
 
 ```bash
 viben skill show code-review
 ```
 
-输出示例：
+Example output:
 
 ```
 Skill: Code Review
@@ -80,22 +80,22 @@ Skill: Code Review
   Source:       local
 ```
 
-## 创建自定义 Skill
+## Creating Custom Skills
 
-### 目录结构
+### Directory Structure
 
 ```
 my-skill/
-├── skill.yaml          # Skill 配置文件
-├── README.md           # 使用说明
+├── skill.yaml          # Skill configuration file
+├── README.md           # Usage documentation
 ├── prompts/
-│   ├── main.md         # 主提示词
-│   └── examples.md     # 示例提示词
+│   ├── main.md         # Main prompt
+│   └── examples.md     # Example prompts
 └── examples/
-    └── usage.md        # 使用示例
+    └── usage.md        # Usage examples
 ```
 
-### Skill 配置文件
+### Skill Configuration File
 
 ```yaml
 # skill.yaml
@@ -104,33 +104,33 @@ version: 1.0.0
 description: My custom skill for specific tasks
 author: your-name
 
-# 触发词 - 用户说这些词时激活此 skill
+# Triggers - activate this skill when user says these words
 triggers:
   - "my skill"
   - "do something"
   - "/myskill"
 
-# 提示词文件
+# Prompt files
 prompts:
   - prompts/main.md
   - prompts/examples.md
 
-# 依赖的其他 skills
+# Dependencies on other skills
 dependencies:
   - other-skill
 
-# 所需的 MCP servers
+# Required MCP servers
 requires_mcp:
   - filesystem
   - git
 
-# 标签
+# Tags
 tags:
   - productivity
   - coding
 ```
 
-### 主提示词文件
+### Main Prompt File
 
 ```markdown
 <!-- prompts/main.md -->
@@ -163,90 +163,90 @@ Input: [example input]
 Output: [example output]
 ```
 
-### 初始化 Skill 项目
+### Initialize a Skill Project
 
 ```bash
-# 创建新 skill
+# Create a new skill
 viben skill create my-skill
 
-# 这会生成基础目录结构
+# This will generate the basic directory structure
 ```
 
-## Skill CLI 命令
+## Skill CLI Commands
 
-### 安装 Skill
+### Install Skill
 
 ```bash
-# 基础安装 (全局)
+# Basic installation (global)
 viben skill install <name>
 
-# 安装指定版本
+# Install a specific version
 viben skill install <name>@<version>
 viben skill install <name>@latest
 
-# 安装到指定 agent
+# Install to a specific agent
 viben skill install <name> --agent <agent-id>
 
-# 全局安装 (默认)
+# Global installation (default)
 viben skill install <name> --global
 
-# 安装到 Claude skills 目录 (.claude/commands/)
+# Install to Claude skills directory (.claude/commands/)
 viben skill install <name> --claude
 
-# 安装到自定义路径
+# Install to a custom path
 viben skill install <name> --path /custom/path
 
-# 从本地路径安装
+# Install from a local path
 viben skill install <name> --source /local/skill/path
 
-# 强制重新安装
+# Force reinstall
 viben skill install <name> --force
 ```
 
-### 卸载 Skill
+### Uninstall Skill
 
 ```bash
-# 从全局卸载 (默认)
+# Uninstall from global (default)
 viben skill uninstall <name>
 
-# 从 agent 卸载
+# Uninstall from agent
 viben skill uninstall <name> --agent <agent-id>
 
-# 从 Claude skills 目录卸载
+# Uninstall from Claude skills directory
 viben skill uninstall <name> --claude
 ```
 
-### 启用/禁用 Skill
+### Enable/Disable Skill
 
 ```bash
-# 为 agent 启用 skill
+# Enable skill for agent
 viben skill enable <name> --agent <agent-id>
 
-# 为 agent 禁用 skill
+# Disable skill for agent
 viben skill disable <name> --agent <agent-id>
 
-# 列出 agent 已启用的 skills
+# List enabled skills for agent
 viben skill enabled --agent <agent-id>
 ```
 
-### 获取 Skill 路径
+### Get Skill Path
 
 ```bash
-# 获取全局 skill 路径
+# Get global skill path
 viben skill path <name>
 
-# 获取 agent skill 路径
+# Get agent skill path
 viben skill path <name> --agent <agent-id>
 
-# 获取 Claude skill 路径
+# Get Claude skill path
 viben skill path <name> --claude
 ```
 
-## Skill 开发最佳实践
+## Skill Development Best Practices
 
-### 1. 提示词设计
+### 1. Prompt Design
 
-**保持简洁明确**
+**Keep it concise and clear**
 
 ```markdown
 <!-- Good -->
@@ -257,26 +257,26 @@ You are a code reviewer. Review the provided code for:
 
 <!-- Bad -->
 You are an expert code reviewer with years of experience...
-[过长的描述]
+[overly long description]
 ```
 
-**使用结构化格式**
+**Use structured format**
 
 ```markdown
 ## Task
-[明确的任务描述]
+[Clear task description]
 
 ## Input
-[输入格式说明]
+[Input format specification]
 
 ## Output
-[输出格式要求]
+[Output format requirements]
 
 ## Examples
-[具体示例]
+[Specific examples]
 ```
 
-**包含示例**
+**Include examples**
 
 ```markdown
 ## Example
@@ -293,45 +293,45 @@ Output:
 - Function is well-named
 ```
 
-### 2. 版本管理
+### 2. Version Management
 
-遵循语义化版本：
+Follow semantic versioning:
 
 ```yaml
-# 主版本号：不兼容的 API 变更
-# 次版本号：向下兼容的功能新增
-# 修订号：向下兼容的问题修正
+# Major version: incompatible API changes
+# Minor version: backward-compatible feature additions
+# Patch version: backward-compatible bug fixes
 version: 1.2.3
 ```
 
-### 3. 文档规范
+### 3. Documentation Standards
 
-每个 Skill 应包含 README.md：
+Each Skill should include a README.md:
 
 ```markdown
 # Skill Name
 
-## 功能描述
-[描述 skill 的功能]
+## Description
+[Describe the skill's functionality]
 
-## 安装
+## Installation
 ```bash
 viben skill install my-skill
 ```
 
-## 使用方法
-[使用说明和示例]
+## Usage
+[Usage instructions and examples]
 
-## 配置选项
-[可配置项说明]
+## Configuration Options
+[Configurable options description]
 
-## 限制
-[已知限制和注意事项]
+## Limitations
+[Known limitations and caveats]
 ```
 
-### 4. 依赖管理
+### 4. Dependency Management
 
-明确声明依赖：
+Explicitly declare dependencies:
 
 ```yaml
 # skill.yaml
@@ -345,16 +345,16 @@ requires_mcp:
 
 ## Claude Code Skills
 
-### 安装到 Claude Code
+### Install to Claude Code
 
 ```bash
-# 安装到 Claude Code 的 commands 目录
+# Install to Claude Code's commands directory
 viben skill install my-skill --claude
 ```
 
-这会将 skill 安装到 `~/.claude/commands/` 目录，使其可以作为 Claude Code 的自定义命令使用。
+This will install the skill to the `~/.claude/commands/` directory, making it available as a custom command in Claude Code.
 
-### Claude Code 命令格式
+### Claude Code Command Format
 
 ```markdown
 <!-- ~/.claude/commands/my-skill.md -->
@@ -372,7 +372,7 @@ Use this command by typing `/my-skill` in the chat.
 [Instructions for Claude Code]
 ```
 
-## 示例 Skills
+## Example Skills
 
 ### Code Review Skill
 
@@ -470,9 +470,9 @@ footer
 - Reference issues in footer
 ```
 
-## 相关文档
+## Related Documentation
 
-- [Agent 开发指南](./index.md)
-- [MCP 开发指南](./mcp-development.md)
-- [CLI 集成指南](./cli-integration.md)
-- [最佳实践](./best-practices.md)
+- [Agent Development Guide](./index.md)
+- [MCP Development Guide](./mcp-development.md)
+- [CLI Integration Guide](./cli-integration.md)
+- [Best Practices](./best-practices.md)

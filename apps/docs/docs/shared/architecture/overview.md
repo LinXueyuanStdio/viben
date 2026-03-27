@@ -1,49 +1,49 @@
-# Viben 项目架构报告
+# Viben Project Architecture Report
 
-> **版本**: 0.1.0
-> **更新日期**: 2026-03-27
-> **项目描述**: Agent Swarm x Code Evolution - AI-driven code iteration and intelligent agent orchestration platform
-
----
-
-## 目录
-
-1. [项目概览](#1-项目概览)
-2. [技术栈](#2-技术栈)
-3. [项目结构](#3-项目结构)
-4. [应用分析](#4-应用分析)
-5. [共享包分析](#5-共享包分析)
-6. [后端服务](#6-后端服务)
-7. [数据流与架构模式](#7-数据流与架构模式)
-8. [构建与部署](#8-构建与部署)
+> **Version**: 0.1.0
+> **Updated**: 2026-03-27
+> **Project Description**: Agent Swarm x Code Evolution - AI-driven code iteration and intelligent agent orchestration platform
 
 ---
 
-## 1. 项目概览
+## Table of Contents
 
-### 1.1 项目定位
+1. [Project Overview](#1-project-overview)
+2. [Technology Stack](#2-technology-stack)
+3. [Project Structure](#3-project-structure)
+4. [Application Analysis](#4-application-analysis)
+5. [Shared Packages Analysis](#5-shared-packages-analysis)
+6. [Backend Services](#6-backend-services)
+7. [Data Flow and Architecture Patterns](#7-data-flow-and-architecture-patterns)
+8. [Build and Deployment](#8-build-and-deployment)
 
-**Viben** 是一个 **Agent Swarm x Code Evolution** 平台，专注于 AI 驱动的代码迭代优化和智能体集群编排。核心能力包括：
+---
 
-- **FileRL (File Reinforcement Learning)** - 基于反馈的代码迭代优化系统
-- **Agent Swarm** - 多智能体集群编排与协作
-- **Task System (XState)** - 基于状态机的任务工作流管理
-- **Idea Generation** - AI 辅助的创意生成与知识探索
+## 1. Project Overview
 
-核心产品：
+### 1.1 Project Positioning
 
-| 产品 | 描述 | 技术 |
-|------|------|------|
-| **Web 应用** | MCP/Skill 包市场，社交功能 | Next.js 15 + PostgreSQL |
-| **桌面应用** | Agent Swarm 编排、FileRL 代码优化、任务状态机 | Tauri 2 + React 19 |
-| **CLI 工具** | 命令行智能体集群管理与自动化 | TypeScript + Commander |
-| **MCP 服务器** | 学术论文搜索服务 (18 个数据源) | Python + FastMCP |
+**Viben** is an **Agent Swarm x Code Evolution** platform focused on AI-driven code iteration optimization and intelligent agent cluster orchestration. Core capabilities include:
 
-### 1.2 核心架构特点
+- **FileRL (File Reinforcement Learning)** - Feedback-based code iteration optimization system
+- **Agent Swarm** - Multi-agent cluster orchestration and collaboration
+- **Task System (XState)** - State machine-based task workflow management
+- **Idea Generation** - AI-assisted idea generation and knowledge exploration
+
+Core Products:
+
+| Product | Description | Technology |
+|---------|-------------|------------|
+| **Web Application** | MCP/Skill package marketplace, social features | Next.js 15 + PostgreSQL |
+| **Desktop Application** | Agent Swarm orchestration, FileRL code optimization, task state machine | Tauri 2 + React 19 |
+| **CLI Tool** | Command-line agent cluster management and automation | TypeScript + Commander |
+| **MCP Server** | Academic paper search service (18 data sources) | Python + FastMCP |
+
+### 1.2 Core Architecture Features
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Viben 架构概览                            │
+│                    Viben Architecture Overview                   │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
@@ -54,7 +54,7 @@
 │        └───────────────┼───────────────┘                        │
 │                        │                                        │
 │              ┌─────────┴─────────┐                              │
-│              │   共享包层         │                              │
+│              │   Shared Packages │                              │
 │   ┌──────────┼──────────┬────────┼──────────┐                   │
 │   │          │          │        │          │                   │
 │   │  @viben  │  @viben  │ @viben │  @viben  │                   │
@@ -63,8 +63,8 @@
 │   └──────────┴──────────┴────────┴──────────┘                   │
 │                                                                 │
 │   ┌─────────────────────────────────────────────────────────┐   │
-│   │                  Python 后端服务                         │   │
-│   │   browse-mcp (学术搜索)                                   │   │
+│   │                  Python Backend Services                 │   │
+│   │   browse-mcp (Academic Search)                           │   │
 │   └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -72,105 +72,105 @@
 
 ---
 
-## 2. 技术栈
+## 2. Technology Stack
 
-### 2.1 前端技术
+### 2.1 Frontend Technologies
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **React** | ^19.0.0 / ^19.1.0 | 所有应用的 UI 框架 |
-| **Next.js** | ^15.5.11 | Web 应用 (apps/web) |
-| **React Router DOM** | ^7.13.0 | 桌面应用路由 |
-| **Docusaurus** | ^3.7.0 | 文档站点 |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **React** | ^19.0.0 / ^19.1.0 | UI framework for all applications |
+| **Next.js** | ^15.5.11 | Web application (apps/web) |
+| **React Router DOM** | ^7.13.0 | Desktop application routing |
+| **Docusaurus** | ^3.7.0 | Documentation site |
 
-### 2.2 桌面框架
+### 2.2 Desktop Framework
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Tauri** | 2.x | 原生桌面应用 |
-| **tauri-plugin-sql** | 2 (SQLite) | 本地数据库 |
-| **tauri-plugin-fs** | 2.4.5 | 文件系统访问 |
-| **tauri-plugin-shell** | 2.3.4 | Shell 命令执行 |
-| **tauri-plugin-deep-link** | 2 | OAuth 回调处理 |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| **Tauri** | 2.x | Native desktop application |
+| **tauri-plugin-sql** | 2 (SQLite) | Local database |
+| **tauri-plugin-fs** | 2.4.5 | File system access |
+| **tauri-plugin-shell** | 2.3.4 | Shell command execution |
+| **tauri-plugin-deep-link** | 2 | OAuth callback handling |
 
-### 2.3 构建工具
+### 2.3 Build Tools
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| **Turborepo** | ^2.3.0 | Monorepo 构建编排 |
-| **Vite** | ^7.0.4 | 桌面应用打包 |
-| **tsup** | ^8.0.0 | 包打包 |
-| **pnpm** | 9.15.0 | 包管理器 |
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Turborepo** | ^2.3.0 | Monorepo build orchestration |
+| **Vite** | ^7.0.4 | Desktop application bundling |
+| **tsup** | ^8.0.0 | Package bundling |
+| **pnpm** | 9.15.0 | Package manager |
 
-### 2.4 数据库与存储
+### 2.4 Database and Storage
 
-| 技术 | 位置 | 用途 |
-|------|------|------|
-| **PostgreSQL + Drizzle ORM** | apps/web | Web 应用数据库 (Neon serverless) |
-| **SQLite** | apps/desktop | 桌面本地存储 |
-| **Zustand** | apps/desktop | 客户端状态持久化 |
+| Technology | Location | Purpose |
+|------------|----------|---------|
+| **PostgreSQL + Drizzle ORM** | apps/web | Web application database (Neon serverless) |
+| **SQLite** | apps/desktop | Desktop local storage |
+| **Zustand** | apps/desktop | Client-side state persistence |
 
-### 2.5 状态管理
+### 2.5 State Management
 
-| 技术 | 用途 |
-|------|------|
-| **Zustand** | 桌面应用全局状态 + 持久化 |
-| **TanStack Query** | 桌面应用异步状态/缓存管理 |
-| **React Context** | 组件局部状态共享 |
+| Technology | Purpose |
+|------------|---------|
+| **Zustand** | Desktop application global state + persistence |
+| **TanStack Query** | Desktop application async state/cache management |
+| **React Context** | Component local state sharing |
 
-### 2.6 样式方案
+### 2.6 Styling Solutions
 
-| 技术 | 用途 |
-|------|------|
+| Technology | Purpose |
+|------------|---------|
 | **TailwindCSS** | v3.4 (web), v4.1 (desktop) |
-| **Radix UI** | 无障碍组件原语 |
-| **CVA** | 变体样式管理 |
-| **tailwind-merge** | 类名合并 |
-| **Framer Motion** | 动画 |
+| **Radix UI** | Accessible component primitives |
+| **CVA** | Variant style management |
+| **tailwind-merge** | Class name merging |
+| **Framer Motion** | Animations |
 
-### 2.7 后端技术
+### 2.7 Backend Technologies
 
-| 技术 | 语言 | 用途 |
-|------|------|------|
-| **FastMCP** | Python | MCP 服务器实现 |
-| **Poetry** | Python | 依赖管理 |
-| **Rust** | Rust | Tauri 桌面应用后端 |
+| Technology | Language | Purpose |
+|------------|----------|---------|
+| **FastMCP** | Python | MCP server implementation |
+| **Poetry** | Python | Dependency management |
+| **Rust** | Rust | Tauri desktop application backend |
 
 ---
 
-## 3. 项目结构
+## 3. Project Structure
 
-### 3.1 根目录组织
+### 3.1 Root Directory Organization
 
 ```
 viben/
-├── apps/                    # 应用包
-│   ├── web/                 # Next.js Web 应用 (市场)
-│   ├── desktop/             # Tauri 桌面应用
-│   └── docs/                # Docusaurus 文档站点
+├── apps/                    # Application packages
+│   ├── web/                 # Next.js Web application (marketplace)
+│   ├── desktop/             # Tauri desktop application
+│   └── docs/                # Docusaurus documentation site
 │
-├── packages/                # 共享 TypeScript 包
-│   ├── api-client/          # API 客户端库
-│   ├── cli/                 # 命令行界面
-│   ├── core/                # 核心配置/智能体管理
-│   ├── kanban/              # 看板组件库
-│   ├── ui/                  # 共享 UI 组件库
-│   └── vibe-kanban/         # 外部看板组件符号链接
+├── packages/                # Shared TypeScript packages
+│   ├── api-client/          # API client library
+│   ├── cli/                 # Command-line interface
+│   ├── core/                # Core configuration/agent management
+│   ├── kanban/              # Kanban component library
+│   ├── ui/                  # Shared UI component library
+│   └── vibe-kanban/         # External kanban component symlink
 │
-├── backend/                 # Python 后端服务
-│   ├── browse-mcp/          # 学术论文搜索 MCP 服务器
-│   └── plugins/             # 插件系统
+├── backend/                 # Python backend services
+│   ├── browse-mcp/          # Academic paper search MCP server
+│   └── plugins/             # Plugin system
 │
-├── homebrew/                # Homebrew tap 支持
-├── scripts/                 # 构建/发布脚本
-├── design-system/           # 设计系统资源
+├── homebrew/                # Homebrew tap support
+├── scripts/                 # Build/release scripts
+├── design-system/           # Design system assets
 │
-├── package.json             # 根包配置
-├── pnpm-workspace.yaml      # pnpm 工作空间配置
-└── turbo.json               # Turborepo 配置
+├── package.json             # Root package configuration
+├── pnpm-workspace.yaml      # pnpm workspace configuration
+└── turbo.json               # Turborepo configuration
 ```
 
-### 3.2 Monorepo 配置
+### 3.2 Monorepo Configuration
 
 **pnpm-workspace.yaml**:
 ```yaml
@@ -205,127 +205,127 @@ packages:
 
 ---
 
-## 4. 应用分析
+## 4. Application Analysis
 
 ### 4.1 apps/web (@viben/web)
 
-**定位**: Web 端市场和包注册中心
+**Positioning**: Web-based marketplace and package registry
 
-**核心功能**:
-- MCP 包市场 (搜索、浏览、发布)
-- Skill 包市场
-- 用户认证 (邮箱 + GitHub OAuth)
-- 工作空间管理
-- Collections (精选包列表)
-- 社交功能 (收藏、评分、评论)
-- 管理面板 (审核)
+**Core Features**:
+- MCP package marketplace (search, browse, publish)
+- Skill package marketplace
+- User authentication (email + GitHub OAuth)
+- Workspace management
+- Collections (curated package lists)
+- Social features (favorites, ratings, comments)
+- Admin panel (moderation)
 
-**目录结构**:
+**Directory Structure**:
 ```
 apps/web/
 ├── app/
-│   ├── (admin)/              # 管理路由
-│   ├── (auth)/               # 认证路由 (登录、注册)
-│   ├── (dashboard)/          # 用户仪表盘
-│   └── api/                  # API 路由
-│       ├── auth/             # 认证端点
-│       ├── mcp/              # MCP 包 CRUD
-│       ├── skills/           # Skill 包 CRUD
-│       ├── workspaces/       # 工作空间管理
-│       ├── collections/      # Collection 管理
-│       └── admin/            # 管理端点
-├── components/               # React 组件
+│   ├── (admin)/              # Admin routes
+│   ├── (auth)/               # Auth routes (login, register)
+│   ├── (dashboard)/          # User dashboard
+│   └── api/                  # API routes
+│       ├── auth/             # Auth endpoints
+│       ├── mcp/              # MCP package CRUD
+│       ├── skills/           # Skill package CRUD
+│       ├── workspaces/       # Workspace management
+│       ├── collections/      # Collection management
+│       └── admin/            # Admin endpoints
+├── components/               # React components
 ├── lib/
-│   └── db/                   # Drizzle schema & 迁移
-└── hooks/                    # 自定义 React hooks
+│   └── db/                   # Drizzle schema & migrations
+└── hooks/                    # Custom React hooks
 ```
 
-**数据库 Schema** 核心表:
+**Database Schema** Core Tables:
 
-| 表名 | 描述 |
-|------|------|
-| `users` | 用户账户 (角色: user, developer, admin, super_admin, moderator, support) |
-| `apiKeys` | API 密钥 (程序化访问) |
-| `oauthConnections` | OAuth 提供商连接 |
-| `organizations` | 组织账户 |
-| `mcpPackages` | MCP 包注册表 |
-| `skillPackages` | Skill 包注册表 |
-| `collections` | 精选包合集 |
-| `favorites`, `ratings`, `comments` | 社交功能 |
-| `workspaces` | 用户工作空间 |
-| `reports`, `moderationLogs` | 管理/审核 |
+| Table Name | Description |
+|------------|-------------|
+| `users` | User accounts (roles: user, developer, admin, super_admin, moderator, support) |
+| `apiKeys` | API keys (programmatic access) |
+| `oauthConnections` | OAuth provider connections |
+| `organizations` | Organization accounts |
+| `mcpPackages` | MCP package registry |
+| `skillPackages` | Skill package registry |
+| `collections` | Curated package collections |
+| `favorites`, `ratings`, `comments` | Social features |
+| `workspaces` | User workspaces |
+| `reports`, `moderationLogs` | Admin/moderation |
 
 ---
 
 ### 4.2 apps/desktop (@viben/desktop)
 
-**定位**: Agent Swarm x Code Evolution 桌面客户端
+**Positioning**: Agent Swarm x Code Evolution desktop client
 
-**核心功能**:
-- **Agent Swarm** - 智能体集群编排与协作
-- **FileRL** - 基于反馈的代码迭代优化
-- **Task System (XState)** - 状态机驱动的任务工作流
-- **Idea Generation** - AI 辅助创意生成
-- MCP 服务器管理 (启动/停止/监控)
-- Provider/Model 管理
-- 看板任务管理
-- AI 智能体聊天界面
-- Skills 市场集成
-- 离线缓存
-- 系统托盘集成
-- OAuth 认证流程
+**Core Features**:
+- **Agent Swarm** - Intelligent agent cluster orchestration and collaboration
+- **FileRL** - Feedback-based code iteration optimization
+- **Task System (XState)** - State machine-driven task workflow
+- **Idea Generation** - AI-assisted idea generation
+- MCP server management (start/stop/monitor)
+- Provider/Model management
+- Kanban task management
+- AI agent chat interface
+- Skills marketplace integration
+- Offline caching
+- System tray integration
+- OAuth authentication flow
 
-**目录结构**:
+**Directory Structure**:
 ```
 apps/desktop/
 ├── src/
 │   ├── components/
-│   │   ├── chat/             # 聊天 UI 组件
-│   │   ├── kanban/           # 看板
-│   │   ├── settings/         # 设置面板
-│   │   ├── marketplace/      # 包浏览器
-│   │   ├── workspace/        # 工作空间管理
-│   │   └── ui/               # 基础 UI 组件
-│   ├── pages/                # 路由页面
+│   │   ├── chat/             # Chat UI components
+│   │   ├── kanban/           # Kanban
+│   │   ├── settings/         # Settings panel
+│   │   ├── marketplace/      # Package browser
+│   │   ├── workspace/        # Workspace management
+│   │   └── ui/               # Base UI components
+│   ├── pages/                # Route pages
 │   ├── stores/               # Zustand stores
-│   ├── hooks/                # 自定义 hooks
-│   ├── db/                   # SQLite 数据库层
-│   ├── i18n/                 # 国际化
-│   └── lib/                  # 工具函数
+│   ├── hooks/                # Custom hooks
+│   ├── db/                   # SQLite database layer
+│   ├── i18n/                 # Internationalization
+│   └── lib/                  # Utility functions
 ├── src-tauri/
 │   ├── src/
-│   │   ├── commands/         # Tauri IPC 命令
-│   │   └── lib.rs            # Tauri 主入口
-│   └── Cargo.toml            # Rust 依赖
-└── public/                   # 静态资源
+│   │   ├── commands/         # Tauri IPC commands
+│   │   └── lib.rs            # Tauri main entry
+│   └── Cargo.toml            # Rust dependencies
+└── public/                   # Static assets
 ```
 
-**Tauri IPC 命令** (核心):
+**Tauri IPC Commands** (Core):
 
-| 命令模块 | 功能 |
-|----------|------|
-| `commands::mcp` | MCP 服务器生命周期 (启动、停止、状态) |
-| `commands::agents` | 智能体配置读写 |
-| `commands::viben_agents` | Viben 智能体列表管理 |
-| `commands::auth` | 凭证管理, GitHub OAuth |
-| `commands::kanban` | 看板数据持久化 |
-| `commands::sync` | 云同步 (工作空间、包) |
-| `commands::cache` | 离线缓存 |
+| Command Module | Function |
+|----------------|----------|
+| `commands::mcp` | MCP server lifecycle (start, stop, status) |
+| `commands::agents` | Agent configuration read/write |
+| `commands::viben_agents` | Viben agent list management |
+| `commands::auth` | Credential management, GitHub OAuth |
+| `commands::kanban` | Kanban data persistence |
+| `commands::sync` | Cloud sync (workspaces, packages) |
+| `commands::cache` | Offline cache |
 
-**状态管理** (Zustand Store):
+**State Management** (Zustand Store):
 
 ```typescript
 // apps/desktop/src/stores/app-store.ts
 interface AppState {
-  selectedPython: string | null;       // Python 解释器选择
-  providers: DataProvider[];           // 数据源提供商 (18 个学术源)
-  apiKeys: Record<string, string>;     // API 密钥存储
-  mcpServers: McpServerState[];        // 多个 MCP 服务器实例
-  agentAssignments: Record<string, string>; // 智能体-服务器映射
-  theme: 'light' | 'dark' | 'system';  // UI 主题
-  language: 'en' | 'zh-CN';            // 语言
-  shortcuts: Record<string, string>;   // 键盘快捷键
-  onboardingCompleted: boolean;        // 引导完成状态
+  selectedPython: string | null;       // Python interpreter selection
+  providers: DataProvider[];           // Data source providers (18 academic sources)
+  apiKeys: Record<string, string>;     // API key storage
+  mcpServers: McpServerState[];        // Multiple MCP server instances
+  agentAssignments: Record<string, string>; // Agent-server mapping
+  theme: 'light' | 'dark' | 'system';  // UI theme
+  language: 'en' | 'zh-CN';            // Language
+  shortcuts: Record<string, string>;   // Keyboard shortcuts
+  onboardingCompleted: boolean;        // Onboarding completion status
 }
 ```
 
@@ -333,66 +333,66 @@ interface AppState {
 
 ### 4.3 apps/docs (@viben/docs)
 
-**定位**: 文档站点
+**Positioning**: Documentation site
 
-**核心功能**:
-- 多语言支持 (英文、中文)
-- Mermaid 图表支持
-- 博客
-- API 文档
+**Core Features**:
+- Multi-language support (English, Chinese)
+- Mermaid diagram support
+- Blog
+- API documentation
 
-**技术**: Docusaurus 3.7.0
+**Technology**: Docusaurus 3.7.0
 
 ---
 
-## 5. 共享包分析
+## 5. Shared Packages Analysis
 
 ### 5.1 @viben/core
 
-**定位**: 配置、智能体、Provider、Model 的共享核心库
+**Positioning**: Shared core library for configuration, agents, providers, and models
 
-**导出模块**:
+**Exported Modules**:
 ```typescript
-// 配置管理
+// Configuration management
 export { ConfigManager, getStateDir, getConfigPath, ... }
 
-// 智能体管理
+// Agent management
 export { AgentManager, agentManager }
 
-// Provider 管理
+// Provider management
 export { ProviderManager, providerManager }
 
-// Model 管理
+// Model management
 export { ModelManager, modelManager, KNOWN_MODELS }
 
-// MCP 管理
+// MCP management
 export { McpManager, mcpManager }
 
-// Skills 管理
+// Skills management
 export { SkillsManager, skillsManager }
 ```
 
-**目录结构**:
+**Directory Structure**:
 ```
 packages/core/src/
-├── agents/       # 智能体配置与管理
-├── config/       # 配置文件管理
-├── mcp/          # MCP 服务器配置
-├── models/       # 模型定义
-├── providers/    # Provider 配置
-├── skills/       # Skills 管理
-├── types/        # 共享类型定义
-├── browser.ts    # 浏览器安全导出
-└── index.ts      # 主导出
+├── agents/       # Agent configuration and management
+├── config/       # Configuration file management
+├── mcp/          # MCP server configuration
+├── models/       # Model definitions
+├── providers/    # Provider configuration
+├── skills/       # Skills management
+├── types/        # Shared type definitions
+├── browser.ts    # Browser-safe exports
+└── index.ts      # Main exports
 ```
 
 ---
 
 ### 5.2 @viben/api-client
 
-**定位**: Viben 平台 TypeScript API 客户端
+**Positioning**: TypeScript API client for Viben platform
 
-**使用示例**:
+**Usage Example**:
 ```typescript
 import { VibenClient } from '@viben/api-client';
 
@@ -401,10 +401,10 @@ const client = new VibenClient({
   apiKey: 'viben_xxx...',
 });
 
-// 列出 MCP 包
+// List MCP packages
 const { packages } = await client.mcp.list({ page: 1 });
 
-// 搜索 skills
+// Search skills
 const { packages: skills } = await client.skill.search('git');
 ```
 
@@ -412,35 +412,35 @@ const { packages: skills } = await client.skill.search('git');
 
 ### 5.3 @viben/kanban
 
-**定位**: 功能丰富的看板组件库
+**Positioning**: Feature-rich kanban component library
 
-**核心组件**:
+**Core Components**:
 
-| 组件 | 描述 |
-|------|------|
-| `KanbanProvider` | 看板上下文提供者 |
-| `KanbanBoard` | 看板主组件 |
-| `KanbanCard` | 任务卡片 |
-| `PrioritySelector` | 优先级选择器 |
-| `AssigneeManager` | 负责人管理 |
-| `DueDatePicker` | 截止日期选择 |
-| `TagManager` | 标签系统 |
-| `FilterSystem` | 过滤系统 |
-| `SubtaskManager` | 子任务管理 |
-| `BulkActions` | 批量操作 |
-| `RelationshipTracker` | 关系追踪 (阻塞关系) |
-| `ActivityFeed` | 活动流 |
-| `CommentList` | 评论列表 |
+| Component | Description |
+|-----------|-------------|
+| `KanbanProvider` | Kanban context provider |
+| `KanbanBoard` | Main kanban component |
+| `KanbanCard` | Task card |
+| `PrioritySelector` | Priority selector |
+| `AssigneeManager` | Assignee management |
+| `DueDatePicker` | Due date picker |
+| `TagManager` | Tag system |
+| `FilterSystem` | Filter system |
+| `SubtaskManager` | Subtask management |
+| `BulkActions` | Bulk actions |
+| `RelationshipTracker` | Relationship tracker (blocking relationships) |
+| `ActivityFeed` | Activity feed |
+| `CommentList` | Comment list |
 
-**依赖**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@viben/ui`
+**Dependencies**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@viben/ui`
 
 ---
 
 ### 5.4 @viben/ui
 
-**定位**: 共享 UI 组件库 (基于 Radix)
+**Positioning**: Shared UI component library (Radix-based)
 
-**组件列表**:
+**Component List**:
 - Avatar, Badge, Breadcrumb
 - Button, Card, Dialog
 - Dropdown Menu, Input, Label
@@ -448,47 +448,47 @@ const { packages: skills } = await client.skill.search('git');
 - Skeleton, Switch, Tabs
 - Textarea, Tooltip
 
-**构建基础**: Radix UI 原语 + TailwindCSS
+**Build Foundation**: Radix UI primitives + TailwindCSS
 
 ---
 
 ### 5.5 viben (CLI)
 
-**定位**: Agent Swarm x Code Evolution 命令行工具
+**Positioning**: Agent Swarm x Code Evolution command-line tool
 
-**核心能力**:
-- **Agent Swarm** - 命令行管理智能体集群
-- **Task System** - 任务状态机工作流 (`viben task`)
-- **Queue System** - 后台命令执行队列 (`viben queue`)
-- **FileRL** - 代码迭代优化自动化
+**Core Capabilities**:
+- **Agent Swarm** - Command-line agent cluster management
+- **Task System** - Task state machine workflow (`viben task`)
+- **Queue System** - Background command execution queue (`viben queue`)
+- **FileRL** - Code iteration optimization automation
 
-**依赖**: `commander`, `chalk`, `yaml`
+**Dependencies**: `commander`, `chalk`, `yaml`
 
-**二进制**: `viben` (通过 npm 全局安装)
+**Binary**: `viben` (installed globally via npm)
 
 ---
 
-## 6. 后端服务
+## 6. Backend Services
 
 ### 6.1 browse-mcp
 
-**定位**: 学术论文搜索 Python MCP 服务器
+**Positioning**: Academic paper search Python MCP server
 
-**支持的数据源** (18 个):
+**Supported Data Sources** (18):
 
-| 类别 | 数据源 |
-|------|--------|
-| **免费** | arXiv, PubMed, PMC, bioRxiv, medRxiv, Google Scholar, Semantic Scholar, CORE, Crossref, IACR |
-| **需 API Key** | ScienceDirect, Springer, IEEE Xplore, Scopus |
-| **机构访问** | ACM, Web of Science, JSTOR, ResearchGate |
+| Category | Data Sources |
+|----------|--------------|
+| **Free** | arXiv, PubMed, PMC, bioRxiv, medRxiv, Google Scholar, Semantic Scholar, CORE, Crossref, IACR |
+| **API Key Required** | ScienceDirect, Springer, IEEE Xplore, Scopus |
+| **Institutional Access** | ACM, Web of Science, JSTOR, ResearchGate |
 
-**架构**: 使用 `stevedore` 的插件化搜索器
+**Architecture**: Plugin-based searchers using `stevedore`
 
 ---
 
-## 7. 数据流与架构模式
+## 7. Data Flow and Architecture Patterns
 
-### 7.1 包依赖关系图
+### 7.1 Package Dependency Graph
 
 ```
                     @viben/core
@@ -506,163 +506,163 @@ const { packages: skills } = await client.skill.search('git');
      @viben/web                 @viben/desktop
 ```
 
-### 7.2 数据流模式
+### 7.2 Data Flow Patterns
 
-**桌面应用数据流**:
+**Desktop Application Data Flow**:
 ```
-用户操作 → React 组件 → Zustand Store → Tauri 命令 (IPC)
+User Action → React Component → Zustand Store → Tauri Command (IPC)
                 ↓                              ↓
-           React Query ←────── 响应 ←──── Rust 后端
+           React Query ←────── Response ←──── Rust Backend
                 ↓
-           UI 状态更新
+           UI State Update
 ```
 
-**Web 应用数据流**:
+**Web Application Data Flow**:
 ```
-用户操作 → React 组件 → API 路由处理器 → Drizzle ORM → PostgreSQL
+User Action → React Component → API Route Handler → Drizzle ORM → PostgreSQL
                 ↓                                        ↓
-          服务器响应 ←─────────────────────────────────┘
+          Server Response ←─────────────────────────────┘
 ```
 
-### 7.3 状态管理模式
+### 7.3 State Management Patterns
 
-**桌面应用 (Zustand + 持久化)**:
+**Desktop Application (Zustand + Persistence)**:
 ```typescript
 // apps/desktop/src/stores/app-store.ts
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // 带 getters/setters 的状态
+      // State with getters/setters
     }),
     {
       name: "viben-storage",
-      partialize: (state) => ({ /* 持久化的键 */ }),
+      partialize: (state) => ({ /* Keys to persist */ }),
     }
   )
 );
 ```
 
-**Web 应用 (服务端 + Drizzle)**:
+**Web Application (Server-side + Drizzle)**:
 ```typescript
-// 通过 Drizzle ORM 进行数据库操作
+// Database operations via Drizzle ORM
 const user = await db.query.users.findFirst({
   where: eq(users.id, userId),
   with: { workspaces: true }
 });
 ```
 
-### 7.4 API 模式
+### 7.4 API Patterns
 
-**Web API 路由** (Next.js App Router):
+**Web API Routes** (Next.js App Router):
 ```
-/api/auth/*           # 认证
-/api/mcp/*            # MCP 包 CRUD
-/api/skill/*          # Skill 包 CRUD
-/api/workspaces/*     # 工作空间管理
+/api/auth/*           # Authentication
+/api/mcp/*            # MCP package CRUD
+/api/skill/*          # Skill package CRUD
+/api/workspaces/*     # Workspace management
 /api/collections/*    # Collections
-/api/admin/*          # 管理端点
+/api/admin/*          # Admin endpoints
 ```
 
-**桌面 IPC 命令** (Tauri):
+**Desktop IPC Commands** (Tauri):
 ```rust
-// 通过 invoke_handler 暴露的命令
+// Commands exposed via invoke_handler
 commands::mcp::start_mcp_server
 commands::agents::read_agent_config
 commands::viben_agents::viben_list_agents
 ```
 
-### 7.5 核心架构模式
+### 7.5 Core Architecture Patterns
 
-| 模式 | 描述 |
-|------|------|
-| **Monorepo + Turborepo** | 共享包、并行构建、缓存 |
-| **混合应用架构** | Web (Next.js) + Desktop (Tauri + Vite) |
-| **共享核心库** | TypeScript (@viben/core) 提供统一的配置和服务管理 |
-| **插件架构** | browse-mcp 使用 stevedore 实现可扩展搜索器 |
-| **离线优先桌面** | SQLite 本地存储 + 云同步 |
-| **组件库模式** | Radix 原语封装为 @viben/ui |
+| Pattern | Description |
+|---------|-------------|
+| **Monorepo + Turborepo** | Shared packages, parallel builds, caching |
+| **Hybrid Application Architecture** | Web (Next.js) + Desktop (Tauri + Vite) |
+| **Shared Core Library** | TypeScript (@viben/core) provides unified configuration and service management |
+| **Plugin Architecture** | browse-mcp uses stevedore for extensible searchers |
+| **Offline-First Desktop** | SQLite local storage + cloud sync |
+| **Component Library Pattern** | Radix primitives wrapped as @viben/ui |
 
 ---
 
-## 8. 构建与部署
+## 8. Build and Deployment
 
-### 8.1 构建命令
+### 8.1 Build Commands
 
 ```bash
-# 全量构建
+# Full build
 pnpm build
 
-# 类型检查
+# Type checking
 pnpm typecheck
 
-# 开发模式
+# Development mode
 pnpm dev
 
-# 清理
+# Clean
 pnpm clean
 
-# 格式化
+# Format
 pnpm format
 ```
 
-### 8.2 应用特定命令
+### 8.2 Application-Specific Commands
 
-**Web 应用**:
+**Web Application**:
 ```bash
 cd apps/web
-pnpm dev          # 开发服务器
-pnpm build        # 生产构建
-pnpm db:push      # 推送数据库 schema
-pnpm db:studio    # 打开 Drizzle Studio
+pnpm dev          # Development server
+pnpm build        # Production build
+pnpm db:push      # Push database schema
+pnpm db:studio    # Open Drizzle Studio
 ```
 
-**桌面应用**:
+**Desktop Application**:
 ```bash
 cd apps/desktop
-pnpm dev          # 开发模式 (Vite + Tauri)
-pnpm build        # 生产构建
-pnpm tauri dev    # Tauri 开发模式
-pnpm tauri build  # Tauri 生产构建
+pnpm dev          # Development mode (Vite + Tauri)
+pnpm build        # Production build
+pnpm tauri dev    # Tauri development mode
+pnpm tauri build  # Tauri production build
 ```
 
-### 8.3 发布流程
+### 8.3 Release Process
 
-- **Web**: Vercel 自动部署
-- **桌面**: GitHub Actions + Tauri 构建
+- **Web**: Vercel automatic deployment
+- **Desktop**: GitHub Actions + Tauri build
 - **CLI**: npm publish + Homebrew tap
 
 ---
 
-## 附录
+## Appendix
 
-### A. 关键配置文件
+### A. Key Configuration Files
 
-| 文件 | 用途 |
-|------|------|
-| `package.json` | 根包配置 |
-| `pnpm-workspace.yaml` | 工作空间定义 |
-| `turbo.json` | Turborepo 任务配置 |
-| `tsconfig.json` | TypeScript 配置 |
-| `apps/web/drizzle.config.ts` | Drizzle ORM 配置 |
-| `apps/desktop/src-tauri/Cargo.toml` | Rust 依赖 |
-| `apps/desktop/src-tauri/tauri.conf.json` | Tauri 配置 |
+| File | Purpose |
+|------|---------|
+| `package.json` | Root package configuration |
+| `pnpm-workspace.yaml` | Workspace definition |
+| `turbo.json` | Turborepo task configuration |
+| `tsconfig.json` | TypeScript configuration |
+| `apps/web/drizzle.config.ts` | Drizzle ORM configuration |
+| `apps/desktop/src-tauri/Cargo.toml` | Rust dependencies |
+| `apps/desktop/src-tauri/tauri.conf.json` | Tauri configuration |
 
-### B. 环境变量
+### B. Environment Variables
 
-**Web 应用** (apps/web/.env):
+**Web Application** (apps/web/.env):
 ```
-DATABASE_URL=           # PostgreSQL 连接字符串
-NEXTAUTH_SECRET=        # NextAuth 密钥
+DATABASE_URL=           # PostgreSQL connection string
+NEXTAUTH_SECRET=        # NextAuth secret
 GITHUB_CLIENT_ID=       # GitHub OAuth
 GITHUB_CLIENT_SECRET=   # GitHub OAuth
 ```
 
-**桌面应用**: 通过 Tauri 安全存储管理敏感信息
+**Desktop Application**: Sensitive information managed via Tauri secure storage
 
-### C. 版本信息
+### C. Version Information
 
-| 组件 | 版本 |
-|------|------|
+| Component | Version |
+|-----------|---------|
 | Node.js | >=20.0.0 |
 | pnpm | 9.15.0 |
 | React | ^19.0.0 |

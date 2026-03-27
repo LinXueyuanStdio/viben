@@ -1,56 +1,56 @@
 ---
 sidebar_position: 2
-title: MCP 开发指南
-description: 为 Agent 开发 MCP Server
+title: MCP Development Guide
+description: Developing MCP Servers for Agents
 ---
 
-# MCP 开发指南
+# MCP Development Guide
 
-MCP (Model Context Protocol) Server 是 Agent 与外部数据源、工具交互的桥梁。本文档介绍如何为 Viben 平台开发和配置 MCP Server。
+MCP (Model Context Protocol) Server is the bridge between Agents and external data sources and tools. This document introduces how to develop and configure MCP Servers for the Viben platform.
 
-## 概述
+## Overview
 
-### 什么是 MCP?
+### What is MCP?
 
-MCP (Model Context Protocol) 是一个开放协议，用于标准化 AI 模型与外部工具、数据源的交互方式。通过 MCP，Agent 可以：
+MCP (Model Context Protocol) is an open protocol for standardizing the interaction between AI models and external tools and data sources. Through MCP, Agents can:
 
-- 访问文件系统
-- 执行 Git 操作
-- 查询数据库
-- 调用外部 API
-- 执行自定义工具
+- Access the file system
+- Execute Git operations
+- Query databases
+- Call external APIs
+- Execute custom tools
 
-### MCP 架构
+### MCP Architecture
 
 ```
-┌─────────────┐     MCP 协议     ┌─────────────┐
-│   Agent     │ ◄──────────────► │ MCP Server  │
-│ (Claude等)  │                  │ (工具提供者) │
-└─────────────┘                  └─────────────┘
+┌─────────────┐     MCP Protocol    ┌─────────────┐
+│   Agent     │ ◄──────────────────► │ MCP Server  │
+│ (Claude,etc)│                      │(Tool Provider)│
+└─────────────┘                      └─────────────┘
 ```
 
-## 快速开始
+## Quick Start
 
-### 1. 使用现有 MCP Server
+### 1. Using Existing MCP Servers
 
 ```bash
-# 为 agent 添加 filesystem MCP
+# Add filesystem MCP to an agent
 viben mcp add filesystem --agent my-agent \
   --command npx \
   --args @anthropic-ai/mcp-server-filesystem /home/user
 
-# 为 agent 添加 git MCP
+# Add git MCP to an agent
 viben mcp add git --agent my-agent \
   --command npx \
   --args @anthropic-ai/mcp-server-git
 
-# 查看已配置的 MCP servers
+# View configured MCP servers
 viben mcp list --agent my-agent
 ```
 
-### 2. MCP 配置文件
+### 2. MCP Configuration File
 
-MCP 配置存储在 Agent 目录下：
+MCP configuration is stored in the Agent directory:
 
 ```json
 // ~/.viben/agents/my-agent/mcp_servers.json
@@ -76,9 +76,9 @@ MCP 配置存储在 Agent 目录下：
 }
 ```
 
-## 开发自定义 MCP Server
+## Developing Custom MCP Servers
 
-### 目录结构
+### Directory Structure
 
 ```
 my-mcp-server/
@@ -90,7 +90,7 @@ my-mcp-server/
     └── server.test.ts
 ```
 
-### TypeScript 实现
+### TypeScript Implementation
 
 ```typescript
 // src/index.ts
@@ -113,19 +113,19 @@ const server = new Server(
   }
 );
 
-// 注册工具列表
+// Register tool list
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
         name: 'search',
-        description: '搜索数据',
+        description: 'Search data',
         inputSchema: {
           type: 'object',
           properties: {
             query: {
               type: 'string',
-              description: '搜索关键词',
+              description: 'Search keyword',
             },
           },
           required: ['query'],
@@ -135,13 +135,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// 处理工具调用
+// Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   if (name === 'search') {
     const query = args?.query as string;
-    // 实现搜索逻辑
+    // Implement search logic
     const results = await performSearch(query);
     return {
       content: [
@@ -157,11 +157,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 async function performSearch(query: string) {
-  // 实现你的搜索逻辑
+  // Implement your search logic
   return [{ title: 'Result 1', url: 'https://example.com' }];
 }
 
-// 启动服务器
+// Start server
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
@@ -170,7 +170,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-### Python 实现
+### Python Implementation
 
 ```python
 # server.py
@@ -186,13 +186,13 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="search",
-            description="搜索数据",
+            description="Search data",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "搜索关键词"
+                        "description": "Search keyword"
                     }
                 },
                 "required": ["query"]
@@ -204,7 +204,7 @@ async def list_tools() -> list[types.Tool]:
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     if name == "search":
         query = arguments.get("query", "")
-        # 实现搜索逻辑
+        # Implement search logic
         results = await perform_search(query)
         return [types.TextContent(
             type="text",
@@ -213,7 +213,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     raise ValueError(f"Unknown tool: {name}")
 
 async def perform_search(query: str):
-    # 实现你的搜索逻辑
+    # Implement your search logic
     return [{"title": "Result 1", "url": "https://example.com"}]
 
 async def main():
@@ -236,32 +236,32 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-## MCP CLI 命令
+## MCP CLI Commands
 
-### 列出 MCP Servers
+### List MCP Servers
 
 ```bash
-# 列出全局已安装的 MCP servers
+# List globally installed MCP servers
 viben mcp list
 
-# 列出特定 agent 配置的 MCP servers
+# List MCP servers configured for a specific agent
 viben mcp list --agent my-agent
 
-# JSON 格式输出
+# JSON format output
 viben mcp list --json
 ```
 
-### 查看 MCP Server 详情
+### View MCP Server Details
 
 ```bash
-# 查看 MCP server 详情
+# View MCP server details
 viben mcp show filesystem --agent my-agent
 
-# JSON 输出
+# JSON output
 viben mcp show filesystem --json
 ```
 
-输出示例：
+Output example:
 
 ```
 MCP Server: filesystem
@@ -277,32 +277,32 @@ Environment Variables:
   DEBUG:         true
 ```
 
-> **注意**: 包含 `secret`、`token`、`key` 的环境变量值会自动脱敏显示。
+> **Note**: Environment variable values containing `secret`, `token`, or `key` are automatically masked in the display.
 
-### 添加 MCP Server
+### Add MCP Server
 
 ```bash
-# 基础用法
+# Basic usage
 viben mcp add <name> --agent <agent-id> --command <cmd>
 
-# 带参数
+# With arguments
 viben mcp add filesystem --agent my-agent \
   --command npx \
   --args @anthropic-ai/mcp-server-filesystem /home/user
 
-# 带环境变量
+# With environment variables
 viben mcp add api-mcp --agent my-agent \
   --command node \
   --env API_KEY=secret123 \
   --env DEBUG=true
 
-# 添加为禁用状态
+# Add in disabled state
 viben mcp add filesystem --agent my-agent \
   --command npx \
   --disabled
 ```
 
-### 移除 MCP Server
+### Remove MCP Server
 
 ```bash
 viben mcp remove <name> --agent <agent-id>
@@ -310,37 +310,37 @@ viben mcp remove <name> --agent <agent-id>
 
 ### MCP Inspector
 
-使用 MCP Inspector 测试和调试 MCP servers：
+Use MCP Inspector to test and debug MCP servers:
 
 ```bash
-# 启动 Inspector
+# Start Inspector
 viben mcp inspector
 
-# 指定 MCP server 命令
+# Specify MCP server command
 viben mcp inspector node build/index.js
 
-# 传递环境变量
+# Pass environment variables
 viben mcp inspector -e API_KEY=value node build/index.js
 
-# 使用配置文件
+# Use configuration file
 viben mcp inspector --config mcp.json --server myserver
 ```
 
-启动后访问输出的 URL 即可使用 Web UI 进行调试。
+After starting, access the output URL to use the Web UI for debugging.
 
-## 常用 MCP Servers
+## Common MCP Servers
 
-### 官方 MCP Servers
+### Official MCP Servers
 
-| 名称 | 包名 | 说明 |
-|------|------|------|
-| Filesystem | `@anthropic-ai/mcp-server-filesystem` | 文件系统访问 |
-| Git | `@anthropic-ai/mcp-server-git` | Git 操作 |
+| Name | Package | Description |
+|------|---------|-------------|
+| Filesystem | `@anthropic-ai/mcp-server-filesystem` | File system access |
+| Git | `@anthropic-ai/mcp-server-git` | Git operations |
 | GitHub | `@anthropic-ai/mcp-server-github` | GitHub API |
-| Slack | `@anthropic-ai/mcp-server-slack` | Slack 集成 |
-| PostgreSQL | `@anthropic-ai/mcp-server-postgres` | PostgreSQL 查询 |
+| Slack | `@anthropic-ai/mcp-server-slack` | Slack integration |
+| PostgreSQL | `@anthropic-ai/mcp-server-postgres` | PostgreSQL queries |
 
-### 安装官方 MCP Server
+### Installing Official MCP Servers
 
 ```bash
 # Filesystem
@@ -353,25 +353,25 @@ viben mcp add git --agent my-agent \
   --command npx \
   --args -y @anthropic-ai/mcp-server-git
 
-# GitHub (需要 token)
+# GitHub (requires token)
 viben mcp add github --agent my-agent \
   --command npx \
   --args -y @anthropic-ai/mcp-server-github \
   --env GITHUB_TOKEN=${GITHUB_TOKEN}
 ```
 
-## 最佳实践
+## Best Practices
 
-### 错误处理
+### Error Handling
 
 ```typescript
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const { name, arguments: args } = request.params;
-    // 工具逻辑
+    // Tool logic
     return { content: [{ type: 'text', text: 'Success' }] };
   } catch (error) {
-    // 返回错误信息给 Agent
+    // Return error message to Agent
     return {
       content: [
         {
@@ -385,17 +385,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-### 配置管理
+### Configuration Management
 
 ```typescript
-// 使用环境变量管理敏感信息
+// Use environment variables to manage sensitive information
 const apiKey = process.env.MY_API_KEY;
 if (!apiKey) {
   throw new Error('MY_API_KEY environment variable is required');
 }
 ```
 
-### 日志记录
+### Logging
 
 ```typescript
 import { Logger } from '@modelcontextprotocol/sdk/logging.js';
@@ -408,7 +408,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-### 输入验证
+### Input Validation
 
 ```typescript
 import { z } from 'zod';
@@ -421,35 +421,35 @@ const SearchArgsSchema = z.object({
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === 'search') {
     const args = SearchArgsSchema.parse(request.params.arguments);
-    // 使用验证后的参数
+    // Use validated arguments
   }
 });
 ```
 
-## 调试技巧
+## Debugging Tips
 
-### 1. 使用 Inspector
+### 1. Using Inspector
 
 ```bash
 viben mcp inspector node ./my-server/index.js
 ```
 
-### 2. 查看日志
+### 2. Viewing Logs
 
 ```bash
-# 启用详细日志
+# Enable verbose logging
 DEBUG=mcp:* node ./my-server/index.js
 ```
 
-### 3. 测试单个工具
+### 3. Testing Individual Tools
 
 ```bash
-# 在 Inspector 中直接调用工具测试
+# Call tools directly in Inspector for testing
 ```
 
-## 相关文档
+## Related Documentation
 
-- [MCP 官方规范](https://spec.modelcontextprotocol.io/)
-- [MCP SDK 文档](https://github.com/modelcontextprotocol/sdk)
-- [Agent 开发指南](./index.md)
-- [CLI 集成指南](./cli-integration.md)
+- [MCP Official Specification](https://spec.modelcontextprotocol.io/)
+- [MCP SDK Documentation](https://github.com/modelcontextprotocol/sdk)
+- [Agent Development Guide](./index.md)
+- [CLI Integration Guide](./cli-integration.md)

@@ -1,143 +1,144 @@
 ---
 sidebar_position: 1
-title: Social Chat 模块
-description: Desktop 应用的社交聊天功能模块
+title: Social Chat Module
+description: Social chat feature module for the Desktop application
 ---
 
-# Social Chat 模块规范
+# Social Chat Module Specification
 
-> Desktop 应用的社交聊天功能，包含【聊天】和【联系人】两个核心页面。
-
----
-
-## 概述
-
-本模块为 Viben Desktop 新增类微信的社交聊天能力，统一所有对话入口（智能体对话、联系人私聊、群聊），并提供联系人管理功能。
-
-### 核心特性
-
-- **统一聊天入口**：整合 Workspace Chat、智能体对话、私聊、群聊
-- **类微信 UI**：左列表右对话/详情的经典布局
-- **智能体深度集成**：智能体可作为联系人、可加入群聊、可组成团队
+> Social chat feature for Desktop application, including two core pages: [Chat] and [Contacts].
 
 ---
 
-## 文档索引
+## Overview
 
-| 文档 | 描述 | 状态 |
-|------|------|------|
-| 模块概述（本文档） | 模块概述与架构 | ✅ 完成 |
-| [聊天功能 PRD](./chat-prd.md) | 聊天功能产品需求 | ✅ 完成 |
-| [聊天功能规范](./chat-spec.md) | 聊天功能开发规范 | ✅ 完成 |
-| [联系人功能规范](./contacts-spec.md) | 联系人功能开发规范 | ✅ 完成 |
-| 联系人功能 PRD | 联系人功能产品需求 | 📋 计划中 |
-| 智能体团队 PRD | 智能体团队产品需求 | 📋 计划中 |
-| 数据模型设计 | 数据模型详细设计 | 📋 计划中 |
+This module adds WeChat-like social chat capabilities to Viben Desktop, unifying all conversation entry points (agent conversations, contact private chats, group chats) and providing contact management functionality.
+
+### Core Features
+
+- **Unified Chat Entry**: Integrates Workspace Chat, agent conversations, private chats, and group chats
+- **WeChat-like UI**: Classic layout with list on the left and conversation/details on the right
+- **Deep Agent Integration**: Agents can be contacts, join group chats, and form teams
 
 ---
 
-## 功能架构
+## Documentation Index
+
+| Document | Description | Status |
+|----------|-------------|--------|
+| Module Overview (this document) | Module overview and architecture | ✅ Complete |
+| [Chat Feature PRD](./chat-prd.md) | Chat feature product requirements | ✅ Complete |
+| [Chat Feature Spec](./chat-spec.md) | Chat feature development specification | ✅ Complete |
+| [Contacts Feature Spec](./contacts-spec.md) | Contacts feature development specification | ✅ Complete |
+| Contacts Feature PRD | Contacts feature product requirements | 📋 Planned |
+| Agent Teams PRD | Agent teams product requirements | 📋 Planned |
+| Data Model Design | Detailed data model design | 📋 Planned |
+
+---
+
+## Feature Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Desktop 左侧导航栏                      │
+│                    Desktop Left Navigation              │
 ├─────────────────────────────────────────────────────────┤
-│  [聊天]  [联系人]  [看板]  [Marketplace]  [设置]  ...      │
+│  [Chat]  [Contacts]  [Kanban]  [Marketplace]  [Settings]  ...      │
 └─────────────────────────────────────────────────────────┘
          │          │
          ▼          ▼
 ┌─────────────┐ ┌─────────────────────────────────────────┐
-│   聊天页面    │ │              联系人页面                   │
+│   Chat Page   │ │              Contacts Page              │
 ├─────────────┤ ├─────────────────────────────────────────┤
-│ 对话列表     │ │ 分组列表                                  │
-│ - 智能体对话  │ │ ├─ 智能体（可折叠）                        │
-│ - 私聊       │ │ │   └─ 本地创建的智能体                    │
-│ - 群聊       │ │ ├─ 群聊（可折叠）                          │
-│ - Workspace │ │ │   └─ 创建的群聊列表                      │
-│             │ │ └─ 智能体团队（可折叠）                     │
-│ [可置顶排序] │ │     └─ 编排的工作流团队                    │
+│ Conversation │ │ Group List                              │
+│ List         │ │ ├─ Agents (collapsible)                 │
+│ - Agent Chat │ │ │   └─ Locally created agents           │
+│ - Private    │ │ ├─ Group Chats (collapsible)            │
+│ - Group Chat │ │ │   └─ Created group chat list          │
+│ - Workspace  │ │ └─ Agent Teams (collapsible)            │
+│              │ │     └─ Orchestrated workflow teams      │
+│ [Pinnable]   │ │                                         │
 └─────────────┘ └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 与现有功能的关系
+## Relationship with Existing Features
 
-### Workspace Chat 集成
+### Workspace Chat Integration
 
-现有的 Workspace Chat 将作为一种特殊的对话类型集成到统一聊天入口：
+The existing Workspace Chat will be integrated as a special conversation type into the unified chat entry:
 
 ```
-聊天列表
-├─ 置顶对话
-│   └─ Workspace: My Project  ← Workspace Chat 对话
-├─ 普通对话
-│   ├─ 智能体: Claude Assistant
-│   ├─ 私聊: 张三
-│   └─ 群聊: 开发团队
+Chat List
+├─ Pinned Conversations
+│   └─ Workspace: My Project  ← Workspace Chat conversation
+├─ Regular Conversations
+│   ├─ Agent: Claude Assistant
+│   ├─ Private: John Doe
+│   └─ Group: Development Team
 ```
 
-### 智能体系统集成
+### Agent System Integration
 
-智能体在本模块中有三种存在形式：
+Agents exist in three forms within this module:
 
-1. **作为联系人**：出现在联系人-智能体分组中
-2. **作为对话对象**：可直接发起对话
-3. **作为群成员**：可被邀请加入群聊，通过 @提及 触发响应
-
----
-
-## 设计原则
-
-1. **熟悉的交互**：采用微信式布局，降低用户学习成本
-2. **智能体优先**：智能体是一等公民，与真人联系人同等地位
-3. **上下文统一**：所有对话共享同一套消息组件和交互逻辑
-4. **渐进式复杂度**：基础聊天简单易用，高级功能（团队编排）可选
+1. **As Contacts**: Appear in the Contacts - Agents group
+2. **As Conversation Partners**: Can initiate direct conversations
+3. **As Group Members**: Can be invited to join group chats, triggered by @mentions
 
 ---
 
-## 技术决策
+## Design Principles
 
-| 决策点 | 选择 | 理由 |
-|--------|------|------|
-| 消息组件 | 复用现有 Chat 组件 | 保持一致性，减少重复代码 |
-| 状态管理 | Zustand store | 与现有架构一致 |
-| 实时通信 | WebSocket | 支持多端同步（未来） |
-| 工作流编排 | 可视化拖拽 | 类 n8n/Dify 体验 |
+1. **Familiar Interaction**: Adopts WeChat-style layout to reduce user learning curve
+2. **Agent First**: Agents are first-class citizens, with equal status to human contacts
+3. **Unified Context**: All conversations share the same message components and interaction logic
+4. **Progressive Complexity**: Basic chat is simple and easy to use, advanced features (team orchestration) are optional
 
 ---
 
-## 实现阶段
+## Technical Decisions
 
-### Phase 1: 基础聊天（MVP）
-
-- [ ] 聊天页面布局（左列表右对话）
-- [ ] 智能体对话（复用现有能力）
-- [ ] 对话列表（置顶 + 时间排序）
-
-### Phase 2: 联系人管理
-
-- [ ] 联系人页面布局（左列表右详情）
-- [ ] 智能体列表（本地创建）
-- [ ] 群聊列表与管理
-
-### Phase 3: 群聊功能
-
-- [ ] 创建群聊
-- [ ] 邀请智能体入群
-- [ ] @提及 触发智能体响应
-
-### Phase 4: 智能体团队
-
-- [ ] 团队创建与编排
-- [ ] 可视化工作流编辑器
-- [ ] 团队执行与监控
+| Decision Point | Choice | Rationale |
+|----------------|--------|-----------|
+| Message Components | Reuse existing Chat components | Maintain consistency, reduce duplicate code |
+| State Management | Zustand store | Consistent with existing architecture |
+| Real-time Communication | WebSocket | Support multi-device sync (future) |
+| Workflow Orchestration | Visual drag-and-drop | n8n/Dify-like experience |
 
 ---
 
-## 相关文档
+## Implementation Phases
 
-- [聊天集成](../chat-integration.md) - 工作空间聊天集成规范
-- [聊天输入组件](../chat-input-components.md) - ChatInput 统一组件
-- [设计系统](../design-system.md) - Viben 设计系统
-- [组件指南](../components.md) - React 组件开发指南
+### Phase 1: Basic Chat (MVP)
+
+- [ ] Chat page layout (list on left, conversation on right)
+- [ ] Agent conversations (reuse existing capabilities)
+- [ ] Conversation list (pinned + time sorted)
+
+### Phase 2: Contact Management
+
+- [ ] Contacts page layout (list on left, details on right)
+- [ ] Agent list (locally created)
+- [ ] Group chat list and management
+
+### Phase 3: Group Chat Features
+
+- [ ] Create group chats
+- [ ] Invite agents to groups
+- [ ] @mention triggers agent responses
+
+### Phase 4: Agent Teams
+
+- [ ] Team creation and orchestration
+- [ ] Visual workflow editor
+- [ ] Team execution and monitoring
+
+---
+
+## Related Documentation
+
+- [Chat Integration](../chat-integration.md) - Workspace chat integration specification
+- [Chat Input Components](../chat-input-components.md) - Unified ChatInput component
+- [Design System](../design-system.md) - Viben design system
+- [Component Guide](../components.md) - React component development guide

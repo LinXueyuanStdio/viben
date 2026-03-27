@@ -1,36 +1,36 @@
 ---
 sidebar_position: 2
-title: "MCP 配置"
-description: "配置 Viben MCP 服务器的数据源、API 密钥和设置"
+title: "MCP Configuration"
+description: "Configure Viben MCP server data sources, API keys and settings"
 ---
 
-# MCP 配置
+# MCP Configuration
 
 ## Viben: Agent Swarm x Code Evolution
 
-Viben 是一个 AI 驱动的代码迭代优化和智能体集群编排平台。MCP 服务器是平台的重要组成部分，为 Agent Swarm 提供知识获取能力：
+Viben is an AI-driven code iteration optimization and agent swarm orchestration platform. The MCP server is a key component of the platform, providing knowledge acquisition capabilities for Agent Swarm:
 
-- **FileRL** - 通过学术论文和技术文档获取最佳实践，优化代码迭代
-- **Idea Generation** - 从多元数据源获取灵感，激发创新思路
-- **Agent Swarm** - 智能体集群可统一调用 MCP 工具进行知识搜索
+- **FileRL** - Acquire best practices through academic papers and technical documentation to optimize code iteration
+- **Idea Generation** - Gather inspiration from diverse data sources to spark innovative ideas
+- **Agent Swarm** - Agent swarms can uniformly call MCP tools for knowledge search
 
 ---
 
-## 环境变量配置
+## Environment Variable Configuration
 
-Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可用的配置选项。
+The Viben MCP server can be configured through environment variables. This page covers all available configuration options.
 
-## 环境变量概览
+## Environment Variables Overview
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `BROWSE_MCP_DOWNLOAD_PATH` | 下载内容的保存目录 | `./downloads` |
-| `BROWSE_MCP_ENABLED_SOURCES` | 启用的数据源（逗号分隔）| 全部 |
-| `BROWSE_MCP_DISABLED_SOURCES` | 禁用的数据源（逗号分隔）| 无 |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BROWSE_MCP_DOWNLOAD_PATH` | Directory for saving downloaded content | `./downloads` |
+| `BROWSE_MCP_ENABLED_SOURCES` | Enabled data sources (comma-separated) | All |
+| `BROWSE_MCP_DISABLED_SOURCES` | Disabled data sources (comma-separated) | None |
 
-## 下载路径
+## Download Path
 
-设置下载内容的保存目录：
+Set the directory for saving downloaded content:
 
 ```json
 {
@@ -40,15 +40,15 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-如果目录不存在，会自动创建。
+If the directory does not exist, it will be created automatically.
 
-## 数据源控制
+## Data Source Control
 
-数据源控制适用于所有来源，包括插件提供的数据源。
+Data source control applies to all sources, including those provided by plugins.
 
-### 仅启用特定数据源
+### Enable Only Specific Data Sources
 
-使用 `BROWSE_MCP_ENABLED_SOURCES` 创建白名单：
+Use `BROWSE_MCP_ENABLED_SOURCES` to create a whitelist:
 
 ```json
 {
@@ -58,11 +58,11 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-只有列出的数据源可用。这对内置和插件数据源都有效。
+Only the listed data sources will be available. This works for both built-in and plugin data sources.
 
-### 禁用特定数据源
+### Disable Specific Data Sources
 
-使用 `BROWSE_MCP_DISABLED_SOURCES` 创建黑名单：
+Use `BROWSE_MCP_DISABLED_SOURCES` to create a blacklist:
 
 ```json
 {
@@ -72,16 +72,16 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-除了列出的数据源外，其他所有数据源都可用。
+All data sources except those listed will be available.
 
-### 优先级规则
+### Priority Rules
 
-- 如果设置了 `BROWSE_MCP_ENABLED_SOURCES`，它优先生效
-- 如果只设置了 `BROWSE_MCP_DISABLED_SOURCES`，除列出的外都启用
-- 如果都未设置，默认启用所有数据源
+- If `BROWSE_MCP_ENABLED_SOURCES` is set, it takes precedence
+- If only `BROWSE_MCP_DISABLED_SOURCES` is set, all except listed sources are enabled
+- If neither is set, all data sources are enabled by default
 
-:::tip 推荐配置
-对于大多数用户，使用 `BROWSE_MCP_DISABLED_SOURCES` 禁用需要 API 密钥的付费数据源：
+:::tip Recommended Configuration
+For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable paid data sources that require API keys:
 
 ```json
 {
@@ -92,88 +92,88 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 ```
 :::
 
-## API 密钥
+## API Keys
 
-### 学术数据源 API 密钥
+### Academic Data Source API Keys
 
-| 变量 | 服务 | 获取方式 |
-|------|------|----------|
-| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar | [获取 API 密钥](https://www.semanticscholar.org/product/api) |
-| `CORE_API_KEY` | CORE | [获取 API 密钥](https://core.ac.uk/services/api) |
-| `IEEE_API_KEY` | IEEE Xplore | [获取 API 密钥](https://developer.ieee.org/) |
-| `SCOPUS_API_KEY` | Scopus | [获取 API 密钥](https://dev.elsevier.com/) |
-| `SPRINGER_API_KEY` | Springer Link | [获取 API 密钥](https://dev.springernature.com/) |
-| `SCIENCEDIRECT_API_KEY` | ScienceDirect | [获取 API 密钥](https://dev.elsevier.com/) |
-| `WOS_API_KEY` | Web of Science | 需要机构订阅 |
+| Variable | Service | How to Obtain |
+|----------|---------|---------------|
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar | [Get API Key](https://www.semanticscholar.org/product/api) |
+| `CORE_API_KEY` | CORE | [Get API Key](https://core.ac.uk/services/api) |
+| `IEEE_API_KEY` | IEEE Xplore | [Get API Key](https://developer.ieee.org/) |
+| `SCOPUS_API_KEY` | Scopus | [Get API Key](https://dev.elsevier.com/) |
+| `SPRINGER_API_KEY` | Springer Link | [Get API Key](https://dev.springernature.com/) |
+| `SCIENCEDIRECT_API_KEY` | ScienceDirect | [Get API Key](https://dev.elsevier.com/) |
+| `WOS_API_KEY` | Web of Science | Requires institutional subscription |
 
-### 插件 API 密钥（社交媒体）
+### Plugin API Keys (Social Media)
 
-| 变量 | 服务 | 获取方式 |
-|------|------|----------|
-| `GITHUB_TOKEN` | GitHub | [个人访问令牌](https://github.com/settings/tokens) |
-| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter 开发者平台](https://developer.twitter.com/) |
-| `ZHIHU_API_KEY` | 知乎 | 联系平台 |
-| `XIAOHONGSHU_API_KEY` | 小红书 | 联系平台 |
+| Variable | Service | How to Obtain |
+|----------|---------|---------------|
+| `GITHUB_TOKEN` | GitHub | [Personal Access Token](https://github.com/settings/tokens) |
+| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter Developer Platform](https://developer.twitter.com/) |
+| `ZHIHU_API_KEY` | Zhihu | Contact platform |
+| `XIAOHONGSHU_API_KEY` | Xiaohongshu | Contact platform |
 
-### 免费 vs 付费数据源
+### Free vs Paid Data Sources
 
-**免费数据源**（无需 API 密钥）：
-- arxiv、pubmed、pmc、biorxiv、medrxiv
-- google_scholar、iacr、crossref、researchgate
-- github（有速率限制）
+**Free Data Sources** (no API key required):
+- arxiv, pubmed, pmc, biorxiv, medrxiv
+- google_scholar, iacr, crossref, researchgate
+- github (with rate limits)
 
-**免费但可选 API 密钥**（有密钥可获得更高限制）：
-- `semantic` - 无密钥可用，有 `SEMANTIC_SCHOLAR_API_KEY` 限制更高
-- `core` - 需要 `CORE_API_KEY`
-- `github` - 无密钥 60 请求/小时，有密钥 5000 请求/小时
+**Free but Optional API Key** (higher limits with key):
+- `semantic` - Works without key, higher limits with `SEMANTIC_SCHOLAR_API_KEY`
+- `core` - Requires `CORE_API_KEY`
+- `github` - 60 requests/hour without key, 5000 requests/hour with key
 
-**付费数据源**（需要 API 密钥）：
-- `ieee` - 需要 `IEEE_API_KEY`
-- `scopus` - 需要 `SCOPUS_API_KEY`
-- `springer` - 需要 `SPRINGER_API_KEY`
-- `sciencedirect` - 需要 `SCIENCEDIRECT_API_KEY`
-- `wos` - 需要 `WOS_API_KEY` 和机构订阅
-- `twitter` - 需要 `TWITTER_BEARER_TOKEN`
+**Paid Data Sources** (require API key):
+- `ieee` - Requires `IEEE_API_KEY`
+- `scopus` - Requires `SCOPUS_API_KEY`
+- `springer` - Requires `SPRINGER_API_KEY`
+- `sciencedirect` - Requires `SCIENCEDIRECT_API_KEY`
+- `wos` - Requires `WOS_API_KEY` and institutional subscription
+- `twitter` - Requires `TWITTER_BEARER_TOKEN`
 
-## 可用数据源名称
+## Available Data Source Names
 
-### 内置学术数据源
+### Built-in Academic Data Sources
 
-| 数据源名称 | 类型 | 说明 |
-|------------|------|------|
-| `arxiv` | 免费 | 物理、数学、计算机科学预印本 |
-| `pubmed` | 免费 | MEDLINE 生物医学文献 |
-| `pmc` | 免费 | PubMed Central 全文库 |
-| `biorxiv` | 免费 | 生物学预印本服务器 |
-| `medrxiv` | 免费 | 健康科学预印本服务器 |
-| `google_scholar` | 免费 | Google 学术搜索 |
-| `iacr` | 免费 | IACR 密码学预印本 |
-| `semantic` | 免费 | Semantic Scholar（可选 API 密钥）|
-| `crossref` | 免费 | CrossRef DOI 元数据 |
-| `core` | 免费 | CORE 开放获取（需要 API 密钥）|
-| `ieee` | 付费 | IEEE Xplore 数字图书馆 |
-| `scopus` | 付费 | Elsevier Scopus 数据库 |
-| `springer` | 付费 | Springer 出版物 |
-| `sciencedirect` | 付费 | Elsevier ScienceDirect |
-| `wos` | 付费 | Web of Science |
-| `acm` | 付费 | ACM 数字图书馆 |
-| `jstor` | 付费 | JSTOR 档案 |
-| `researchgate` | 免费 | ResearchGate 社交网络 |
+| Data Source Name | Type | Description |
+|------------------|------|-------------|
+| `arxiv` | Free | Physics, math, computer science preprints |
+| `pubmed` | Free | MEDLINE biomedical literature |
+| `pmc` | Free | PubMed Central full-text repository |
+| `biorxiv` | Free | Biology preprint server |
+| `medrxiv` | Free | Health sciences preprint server |
+| `google_scholar` | Free | Google Scholar search |
+| `iacr` | Free | IACR cryptography preprints |
+| `semantic` | Free | Semantic Scholar (optional API key) |
+| `crossref` | Free | CrossRef DOI metadata |
+| `core` | Free | CORE open access (requires API key) |
+| `ieee` | Paid | IEEE Xplore digital library |
+| `scopus` | Paid | Elsevier Scopus database |
+| `springer` | Paid | Springer publications |
+| `sciencedirect` | Paid | Elsevier ScienceDirect |
+| `wos` | Paid | Web of Science |
+| `acm` | Paid | ACM Digital Library |
+| `jstor` | Paid | JSTOR archive |
+| `researchgate` | Free | ResearchGate social network |
 
-### 插件数据源（社交媒体）
+### Plugin Data Sources (Social Media)
 
-这些数据源需要安装 `browse-mcp-plugin-social-media`：
+These data sources require installing `browse-mcp-plugin-social-media`:
 
-| 数据源名称 | 类型 | 说明 |
-|------------|------|------|
-| `github` | 免费 | GitHub 仓库和代码 |
-| `twitter` | 付费 | Twitter/X 帖子（需要 API 密钥）|
-| `zhihu` | 免费 | 知乎问答文章 |
-| `xiaohongshu` | 免费 | 小红书帖子 |
+| Data Source Name | Type | Description |
+|------------------|------|-------------|
+| `github` | Free | GitHub repositories and code |
+| `twitter` | Paid | Twitter/X posts (requires API key) |
+| `zhihu` | Free | Zhihu Q&A articles |
+| `xiaohongshu` | Free | Xiaohongshu posts |
 
-## 配置示例
+## Configuration Examples
 
-### 最小配置（仅免费数据源）
+### Minimal Configuration (Free Sources Only)
 
 ```json
 {
@@ -189,7 +189,7 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-### 带 Semantic Scholar API 密钥
+### With Semantic Scholar API Key
 
 ```json
 {
@@ -206,7 +206,7 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-### 学术 + 社交媒体
+### Academic + Social Media
 
 ```json
 {
@@ -224,7 +224,7 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-### 研究聚焦（医学/生物）
+### Research Focus (Medical/Biology)
 
 ```json
 {
@@ -242,7 +242,7 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-### 计算机科学聚焦
+### Computer Science Focus
 
 ```json
 {
@@ -262,7 +262,7 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-### 仅社交媒体
+### Social Media Only
 
 ```json
 {
@@ -281,44 +281,44 @@ Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可�
 }
 ```
 
-## 故障排除
+## Troubleshooting
 
-### 数据源不可用
+### Data Source Unavailable
 
-如果某个数据源不可用：
+If a data source is unavailable:
 
-1. 检查是否在 `BROWSE_MCP_DISABLED_SOURCES` 中
-2. 检查 `BROWSE_MCP_ENABLED_SOURCES` 是否设置且包含该数据源
-3. 对于付费数据源，验证 API 密钥是否设置
-4. 对于插件数据源，验证插件是否安装：`pip show browse-mcp-plugin-social-media`
+1. Check if it's in `BROWSE_MCP_DISABLED_SOURCES`
+2. Check if `BROWSE_MCP_ENABLED_SOURCES` is set and includes the data source
+3. For paid data sources, verify the API key is set
+4. For plugin data sources, verify the plugin is installed: `pip show browse-mcp-plugin-social-media`
 
-### API 速率限制
+### API Rate Limits
 
-如果遇到速率限制：
+If you encounter rate limits:
 
-- **Semantic Scholar**：添加 `SEMANTIC_SCHOLAR_API_KEY` 获得更高限制
-- **CORE**：从 [core.ac.uk](https://core.ac.uk/services/api) 获取免费 API 密钥
-- **Google Scholar**：可能被限流；使用其他数据源作为替代
-- **GitHub**：添加 `GITHUB_TOKEN` 从 60 请求/小时提升到 5000 请求/小时
+- **Semantic Scholar**: Add `SEMANTIC_SCHOLAR_API_KEY` for higher limits
+- **CORE**: Get a free API key from [core.ac.uk](https://core.ac.uk/services/api)
+- **Google Scholar**: May be rate limited; use other data sources as alternatives
+- **GitHub**: Add `GITHUB_TOKEN` to increase from 60 requests/hour to 5000 requests/hour
 
-### 下载文件缺失
+### Downloaded Files Missing
 
-如果下载的文件不见了：
+If downloaded files are missing:
 
-1. 检查 `BROWSE_MCP_DOWNLOAD_PATH` 是否可写
-2. 验证目录存在或可以创建
-3. 检查响应中的错误信息
+1. Check if `BROWSE_MCP_DOWNLOAD_PATH` is writable
+2. Verify the directory exists or can be created
+3. Check error messages in the response
 
-### 插件未加载
+### Plugin Not Loading
 
-如果插件数据源不可用：
+If plugin data sources are unavailable:
 
-1. 验证插件已安装：`pip list | grep browse-mcp`
-2. 检查加载错误：`browse-mcp --debug`
-3. 验证入口点：`python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"`
+1. Verify the plugin is installed: `pip list | grep browse-mcp`
+2. Check for loading errors: `browse-mcp --debug`
+3. Verify entry points: `python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"`
 
-## 下一步
+## Next Steps
 
-- [客户端配置](../getting-started/client-configuration) - 配置 MCP 客户端
-- [browse_search 工具](./tools/browse-search) - 学习搜索参数
-- [插件配置](../plugins/configuration) - 高级插件设置
+- [Client Configuration](../getting-started/client-configuration) - Configure MCP client
+- [browse_search Tool](./tools/browse-search) - Learn search parameters
+- [Plugin Configuration](../plugins/configuration) - Advanced plugin settings

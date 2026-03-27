@@ -1,315 +1,316 @@
 ---
 sidebar_position: 2
-title: 聊天功能 PRD
-description: Desktop 聊天页面产品需求文档
+title: Chat Feature PRD
+description: Desktop Chat Page Product Requirements Document
 ---
 
-# 聊天功能 PRD
+# Chat Feature PRD
 
-> 产品需求文档：Desktop 聊天页面
-
----
-
-## 1. 功能概述
-
-### 1.1 目标
-
-为用户提供统一的聊天入口，整合所有对话类型（智能体对话、联系人私聊、群聊、Workspace Chat），采用类微信的经典布局。
-
-### 1.2 用户价值
-
-- **一站式沟通**：无需在多个页面切换，所有对话集中管理
-- **熟悉的体验**：微信式布局，零学习成本
-- **智能助手触手可及**：智能体与真人联系人同等地位
+> Product Requirements Document: Desktop Chat Page
 
 ---
 
-## 2. 页面布局
+## 1. Feature Overview
 
-### 2.1 整体结构
+### 1.1 Objectives
+
+Provide users with a unified chat entry point that integrates all conversation types (agent conversations, contact direct messages, group chats, Workspace Chat), using a classic WeChat-style layout.
+
+### 1.2 User Value
+
+- **One-stop Communication**: No need to switch between multiple pages, all conversations managed centrally
+- **Familiar Experience**: WeChat-style layout with zero learning curve
+- **AI Assistants at Your Fingertips**: Agents and human contacts on equal footing
+
+---
+
+## 2. Page Layout
+
+### 2.1 Overall Structure
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                          聊天页面                               │
+│                          Chat Page                              │
 ├──────────────────┬─────────────────────────────────────────────┤
 │                  │                                             │
-│   对话列表        │              对话区域                        │
-│   (300px)        │              (flex-1)                       │
+│   Conversation   │              Conversation Area              │
+│   List           │              (flex-1)                       │
+│   (300px)        │                                             │
 │                  │                                             │
 │  ┌────────────┐  │  ┌─────────────────────────────────────────┐│
-│  │ 搜索框     │  │  │  对话标题栏                              ││
-│  └────────────┘  │  │  - 头像 + 名称                           ││
-│                  │  │  - 在线状态                              ││
-│  ┌────────────┐  │  │  - 操作菜单（...）                       ││
-│  │ 置顶对话   │  │  └─────────────────────────────────────────┘│
-│  │  ├─ 对话1  │  │  ┌─────────────────────────────────────────┐│
-│  │  └─ 对话2  │  │  │                                         ││
-│  └────────────┘  │  │           消息列表区域                    ││
+│  │ Search Box │  │  │  Conversation Title Bar                 ││
+│  └────────────┘  │  │  - Avatar + Name                        ││
+│                  │  │  - Online Status                        ││
+│  ┌────────────┐  │  │  - Action Menu (...)                    ││
+│  │ Pinned     │  │  └─────────────────────────────────────────┘│
+│  │  ├─ Conv1  │  │  ┌─────────────────────────────────────────┐│
+│  │  └─ Conv2  │  │  │                                         ││
+│  └────────────┘  │  │           Message List Area             ││
 │                  │  │                                         ││
-│  ┌────────────┐  │  │  - 消息气泡                              ││
-│  │ 普通对话   │  │  │  - 时间分隔                              ││
-│  │  ├─ 对话3  │  │  │  - 系统消息                              ││
-│  │  ├─ 对话4  │  │  │                                         ││
+│  ┌────────────┐  │  │  - Message Bubbles                      ││
+│  │ Regular    │  │  │  - Time Separators                      ││
+│  │  ├─ Conv3  │  │  │  - System Messages                      ││
+│  │  ├─ Conv4  │  │  │                                         ││
 │  │  └─ ...    │  │  │                                         ││
 │  └────────────┘  │  └─────────────────────────────────────────┘│
 │                  │  ┌─────────────────────────────────────────┐│
-│                  │  │           输入区域                        ││
-│                  │  │  - 工具栏（附件、表情等）                  ││
-│                  │  │  - 文本输入框                             ││
-│                  │  │  - 发送按钮                               ││
+│                  │  │           Input Area                     ││
+│                  │  │  - Toolbar (attachments, emoji, etc.)   ││
+│                  │  │  - Text Input Box                       ││
+│                  │  │  - Send Button                          ││
 │                  │  └─────────────────────────────────────────┘│
 │                  │                                             │
 └──────────────────┴─────────────────────────────────────────────┘
 ```
 
-### 2.2 响应式行为
+### 2.2 Responsive Behavior
 
-| 屏幕宽度 | 行为 |
-|----------|------|
-| ≥ 800px | 双栏布局（列表 + 对话） |
-| < 800px | 单栏布局（列表/对话切换） |
+| Screen Width | Behavior |
+|--------------|----------|
+| ≥ 800px | Two-column layout (list + conversation) |
+| < 800px | Single-column layout (list/conversation toggle) |
 
 ---
 
-## 3. 对话列表
+## 3. Conversation List
 
-### 3.1 列表项结构
+### 3.1 List Item Structure
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ [头像]  对话名称               时间戳  [置顶标记] │
-│         最新消息预览...        [未读数]          │
+│ [Avatar]  Conversation Name     Timestamp [Pin] │
+│           Latest message preview...  [Unread]   │
 └─────────────────────────────────────────────────┘
 ```
 
-### 3.2 对话类型与图标
+### 3.2 Conversation Types and Icons
 
-| 类型 | 图标 | 说明 |
-|------|------|------|
-| 智能体对话 | 🤖 | 与单个智能体的对话 |
-| 联系人私聊 | 👤 | 与真人联系人的私聊 |
-| 群聊 | 👥 | 多人/多智能体群聊 |
-| Workspace | 📁 | Workspace 上下文对话 |
+| Type | Icon | Description |
+|------|------|-------------|
+| Agent Conversation | 🤖 | Conversation with a single agent |
+| Contact Direct Message | 👤 | Private chat with a human contact |
+| Group Chat | 👥 | Multi-person/multi-agent group chat |
+| Workspace | 📁 | Workspace context conversation |
 
-### 3.3 排序规则
+### 3.3 Sorting Rules
 
-1. **置顶对话**：始终在最上方，按置顶时间排序
-2. **普通对话**：按最新消息时间降序排列
+1. **Pinned Conversations**: Always at the top, sorted by pin time
+2. **Regular Conversations**: Sorted by latest message time in descending order
 
-### 3.4 列表交互
+### 3.4 List Interactions
 
-| 操作 | 触发方式 | 效果 |
-|------|----------|------|
-| 选中对话 | 点击 | 右侧显示对话内容 |
-| 置顶/取消置顶 | 右键菜单 | 移动到置顶区域/普通区域 |
-| 删除对话 | 右键菜单 | 删除对话（需确认） |
-| 标记已读 | 右键菜单 | 清除未读计数 |
-| 静音 | 右键菜单 | 不显示消息通知 |
+| Action | Trigger | Effect |
+|--------|---------|--------|
+| Select Conversation | Click | Display conversation content on the right |
+| Pin/Unpin | Right-click menu | Move to pinned/regular area |
+| Delete Conversation | Right-click menu | Delete conversation (requires confirmation) |
+| Mark as Read | Right-click menu | Clear unread count |
+| Mute | Right-click menu | Disable message notifications |
 
 ---
 
-## 4. 对话区域
+## 4. Conversation Area
 
-### 4.1 标题栏
+### 4.1 Title Bar
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [头像]  对话名称                              [📞] [📹] [⋮] │
-│         在线状态 / 成员数                                   │
+│ [Avatar]  Conversation Name                     [📞] [📹] [⋮] │
+│           Online Status / Member Count                       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **头像**：对话头像（智能体图标/用户头像/群头像）
-- **名称**：对话名称
-- **状态**：
-  - 智能体：模型类型（如 "Claude 3.5 Sonnet"）
-  - 联系人：在线/离线
-  - 群聊：成员数量
-- **操作按钮**：
-  - 音频通话（未来）
-  - 视频通话（未来）
-  - 更多菜单（查看资料、清空记录、退出群聊等）
+- **Avatar**: Conversation avatar (agent icon/user avatar/group avatar)
+- **Name**: Conversation name
+- **Status**:
+  - Agent: Model type (e.g., "Claude 3.5 Sonnet")
+  - Contact: Online/Offline
+  - Group Chat: Member count
+- **Action Buttons**:
+  - Audio call (future)
+  - Video call (future)
+  - More menu (view profile, clear history, leave group, etc.)
 
-### 4.2 消息列表
+### 4.2 Message List
 
-#### 消息类型
+#### Message Types
 
-| 类型 | 说明 |
-|------|------|
-| 文本消息 | 普通文字，支持 Markdown |
-| 图片消息 | 支持预览和下载 |
-| 文件消息 | 显示文件名、大小，支持下载 |
-| 代码消息 | 语法高亮显示 |
-| 系统消息 | 入群、退群、名称变更等 |
+| Type | Description |
+|------|-------------|
+| Text Message | Plain text with Markdown support |
+| Image Message | Supports preview and download |
+| File Message | Displays filename and size, supports download |
+| Code Message | Syntax highlighted display |
+| System Message | Join group, leave group, name changes, etc. |
 
-#### 消息气泡
+#### Message Bubbles
 
 ```
-发送方（右侧，主题色背景）：
+Sender (right side, theme color background):
                     ┌─────────────────────┐
-                    │  消息内容            │
+                    │  Message content     │
                     └─────────────────────┘
                                     12:34 ✓✓
 
-接收方（左侧，灰色背景）：
+Receiver (left side, gray background):
 ┌─────────────────────┐
-│  消息内容            │
+│  Message content     │
 └─────────────────────┘
 12:35
 ```
 
-#### 特殊显示
+#### Special Displays
 
-- **时间分隔**：超过5分钟的消息间显示时间标签
-- **日期分隔**：不同日期的消息显示日期标签
-- **@提及高亮**：@某人 的文字高亮显示
+- **Time Separator**: Display time label for messages more than 5 minutes apart
+- **Date Separator**: Display date label for messages on different days
+- **@Mention Highlight**: Highlighted display for @someone text
 
-### 4.3 输入区域
+### 4.3 Input Area
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [📎] [😊] [📷]                               [@] [模型选择]  │
+│ [📎] [😊] [📷]                               [@] [Model Select] │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  输入消息...                                      [发送]    │
+│  Type a message...                              [Send]      │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **工具栏**：
-  - 附件：发送文件
-  - 表情：表情选择器
-  - 图片：发送图片
-  - @提及：在群聊中提及成员/智能体
-  - 模型选择：智能体对话时可切换模型
-- **输入框**：多行文本输入，支持 Ctrl+Enter 换行，Enter 发送
-- **发送按钮**：发送消息
+- **Toolbar**:
+  - Attachment: Send files
+  - Emoji: Emoji picker
+  - Image: Send images
+  - @Mention: Mention members/agents in group chat
+  - Model Select: Switch models during agent conversation
+- **Input Box**: Multi-line text input, Ctrl+Enter for new line, Enter to send
+- **Send Button**: Send message
 
 ---
 
-## 5. 智能体对话特性
+## 5. Agent Conversation Features
 
-### 5.1 模型选择
+### 5.1 Model Selection
 
-在与智能体对话时，用户可以：
+When conversing with an agent, users can:
 
-- 查看当前使用的模型
-- 切换到其他可用模型
-- 查看 token 用量（可选显示）
+- View the currently used model
+- Switch to other available models
+- View token usage (optional display)
 
-### 5.2 对话上下文
+### 5.2 Conversation Context
 
-- 支持清空上下文
-- 支持导出对话记录
-- 支持从某条消息重新开始
+- Support clearing context
+- Support exporting conversation history
+- Support restarting from a specific message
 
-### 5.3 工具调用显示
+### 5.3 Tool Call Display
 
-智能体使用工具时，显示工具调用状态：
+When an agent uses tools, display the tool call status:
 
 ```
 ┌─────────────────────────────────────────┐
-│ 🔧 正在执行: 搜索文件...                  │
-│    ├─ 搜索 "*.ts" 文件                   │
-│    └─ 找到 23 个文件                     │
+│ 🔧 Executing: Searching files...         │
+│    ├─ Searching "*.ts" files             │
+│    └─ Found 23 files                     │
 └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. 群聊特性
+## 6. Group Chat Features
 
-### 6.1 @提及智能体
+### 6.1 @Mention Agents
 
-在群聊中，可以通过 @智能体名称 触发智能体响应：
+In group chat, you can trigger agent responses by @agent-name:
 
 ```
-用户: @Claude助手 帮我分析一下这段代码
+User: @Claude-Assistant Please help me analyze this code
 
-Claude助手: 好的，让我来看看...
+Claude-Assistant: Sure, let me take a look...
 ```
 
-### 6.2 智能体响应规则
+### 6.2 Agent Response Rules
 
-- 只有被 @提及 的智能体才会响应
-- 智能体可以看到群内所有消息作为上下文
-- 多个智能体被提及时，按提及顺序响应
+- Only @mentioned agents will respond
+- Agents can see all messages in the group as context
+- When multiple agents are mentioned, they respond in mention order
 
-### 6.3 群公告
+### 6.3 Group Announcements
 
-- 管理员可发布群公告
-- 公告置顶显示在对话区域顶部
+- Admins can publish group announcements
+- Announcements are pinned at the top of the conversation area
 
 ---
 
-## 7. 用户故事
+## 7. User Stories
 
-### 7.1 基础对话
-
-```
-作为用户
-我想要在聊天列表中快速找到某个对话
-以便我能够继续之前的交流
-
-验收标准:
-- 搜索框支持按名称搜索
-- 最近对话自动排在前面
-- 未读对话有明显标记
-```
-
-### 7.2 智能体对话
+### 7.1 Basic Conversation
 
 ```
-作为用户
-我想要与智能体进行对话
-以便我能够获得 AI 助手的帮助
+As a user
+I want to quickly find a conversation in the chat list
+So that I can continue previous exchanges
 
-验收标准:
-- 可以选择要对话的智能体
-- 智能体响应显示在对话中
-- 可以查看和切换使用的模型
+Acceptance Criteria:
+- Search box supports searching by name
+- Recent conversations automatically appear first
+- Unread conversations have clear indicators
 ```
 
-### 7.3 群聊协作
+### 7.2 Agent Conversation
 
 ```
-作为用户
-我想要在群聊中@智能体
-以便团队中的智能体能够参与讨论
+As a user
+I want to have a conversation with an agent
+So that I can get help from an AI assistant
 
-验收标准:
-- 输入 @ 时显示成员/智能体列表
-- 被@的智能体自动响应
-- 其他成员可以看到智能体的回复
+Acceptance Criteria:
+- Can select which agent to chat with
+- Agent responses are displayed in the conversation
+- Can view and switch the model being used
+```
+
+### 7.3 Group Collaboration
+
+```
+As a user
+I want to @mention agents in group chat
+So that team agents can participate in discussions
+
+Acceptance Criteria:
+- Typing @ displays member/agent list
+- @mentioned agents automatically respond
+- Other members can see agent replies
 ```
 
 ---
 
-## 8. 非功能需求
+## 8. Non-Functional Requirements
 
-### 8.1 性能
+### 8.1 Performance
 
-- 对话列表加载时间 < 500ms
-- 消息发送响应时间 < 200ms
-- 支持 10000+ 条历史消息的流畅滚动
+- Conversation list load time < 500ms
+- Message send response time < 200ms
+- Support smooth scrolling for 10000+ historical messages
 
-### 8.2 可用性
+### 8.2 Usability
 
-- 支持键盘快捷键操作
-- 支持拖拽发送文件
-- 消息发送失败时提供重试选项
+- Support keyboard shortcuts
+- Support drag and drop to send files
+- Provide retry option when message sending fails
 
-### 8.3 安全
+### 8.3 Security
 
-- 消息内容加密存储
-- 敏感信息（API Key 等）脱敏显示
+- Message content encrypted at rest
+- Sensitive information (API Keys, etc.) displayed with masking
 
 ---
 
-## 9. 未来规划
+## 9. Future Plans
 
-- [ ] 消息搜索（全局/单对话）
-- [ ] 消息撤回
-- [ ] 消息转发
-- [ ] 语音消息
-- [ ] 多端同步
+- [ ] Message search (global/single conversation)
+- [ ] Message recall
+- [ ] Message forwarding
+- [ ] Voice messages
+- [ ] Multi-device sync

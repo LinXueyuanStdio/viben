@@ -1,12 +1,12 @@
-# 数据模型设计
+# Data Model Design
 
-> Social Chat 模块的数据结构定义
+> Data structure definitions for the Social Chat module
 
 ---
 
-## 1. 核心实体
+## 1. Core Entities
 
-### 1.1 实体关系图
+### 1.1 Entity Relationship Diagram
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -34,20 +34,20 @@
 
 ---
 
-## 2. 类型定义
+## 2. Type Definitions
 
-### 2.1 联系人 (Contact)
+### 2.1 Contact
 
 ```typescript
 // apps/desktop/src/types/social-chat.ts
 
 /**
- * 联系人类型
+ * Contact type
  */
 export type ContactType = "agent" | "user" | "group" | "team";
 
 /**
- * 联系人实体
+ * Contact entity
  */
 export interface Contact {
   id: string;
@@ -58,7 +58,7 @@ export interface Contact {
   created_at: string;
   updated_at: string;
 
-  // 根据类型的特定字段
+  // Type-specific fields
   agent?: AgentInfo;      // type === "agent"
   user?: UserInfo;        // type === "user"
   group?: GroupInfo;      // type === "group"
@@ -66,7 +66,7 @@ export interface Contact {
 }
 
 /**
- * 智能体信息
+ * Agent information
  */
 export interface AgentInfo {
   model: string;
@@ -83,7 +83,7 @@ export type AgentCapability =
   | "image_generation";
 
 /**
- * 用户信息
+ * User information
  */
 export interface UserInfo {
   email?: string;
@@ -92,7 +92,7 @@ export interface UserInfo {
 }
 
 /**
- * 群聊信息
+ * Group chat information
  */
 export interface GroupInfo {
   member_count: number;
@@ -102,7 +102,7 @@ export interface GroupInfo {
 }
 
 /**
- * 智能体团队信息
+ * Agent team information
  */
 export interface TeamInfo {
   node_count: number;
@@ -111,20 +111,20 @@ export interface TeamInfo {
 }
 ```
 
-### 2.2 对话 (Conversation)
+### 2.2 Conversation
 
 ```typescript
 /**
- * 对话类型
+ * Conversation type
  */
 export type ConversationType =
-  | "agent"      // 与智能体一对一
-  | "private"    // 与用户私聊
-  | "group"      // 群聊
-  | "workspace"; // Workspace 上下文
+  | "agent"      // One-on-one with agent
+  | "private"    // Private chat with user
+  | "group"      // Group chat
+  | "workspace"; // Workspace context
 
 /**
- * 对话实体
+ * Conversation entity
  */
 export interface Conversation {
   id: string;
@@ -132,22 +132,22 @@ export interface Conversation {
   name: string;
   avatar?: string;
 
-  // 参与者
+  // Participants
   participants: ConversationParticipant[];
 
-  // 状态
+  // Status
   is_pinned: boolean;
   is_muted: boolean;
   unread_count: number;
 
-  // 最新消息预览
+  // Latest message preview
   last_message?: MessagePreview;
 
-  // 元数据
+  // Metadata
   created_at: string;
   updated_at: string;
 
-  // 特定类型的附加数据
+  // Type-specific additional data
   workspace_id?: string;  // type === "workspace"
   group_settings?: GroupSettings;
 }
@@ -156,7 +156,7 @@ export interface ConversationParticipant {
   contact_id: string;
   role: "owner" | "admin" | "member";
   joined_at: string;
-  nickname?: string;  // 群昵称
+  nickname?: string;  // Group nickname
 }
 
 export interface GroupSettings {
@@ -173,24 +173,24 @@ export interface MessagePreview {
 }
 ```
 
-### 2.3 消息 (Message)
+### 2.3 Message
 
 ```typescript
 /**
- * 消息类型
+ * Message type
  */
 export type SocialMessageType =
-  | "text"           // 文本消息
-  | "image"          // 图片消息
-  | "file"           // 文件消息
-  | "code"           // 代码消息
-  | "agent_response" // 智能体响应
-  | "tool_use"       // 工具调用
-  | "tool_result"    // 工具结果
-  | "system";        // 系统消息
+  | "text"           // Text message
+  | "image"          // Image message
+  | "file"           // File message
+  | "code"           // Code message
+  | "agent_response" // Agent response
+  | "tool_use"       // Tool call
+  | "tool_result"    // Tool result
+  | "system";        // System message
 
 /**
- * 消息实体
+ * Message entity
  */
 export interface SocialMessage {
   id: string;
@@ -201,23 +201,23 @@ export interface SocialMessage {
   type: SocialMessageType;
   content: string;
 
-  // 附件
+  // Attachments
   attachments?: MessageAttachment[];
 
-  // @提及
+  // @mentions
   mentions?: MessageMention[];
 
-  // 引用回复
+  // Reply reference
   reply_to?: string;
 
-  // 状态
+  // Status
   status: "sending" | "sent" | "delivered" | "read" | "failed";
 
-  // 时间
+  // Timestamps
   created_at: string;
   updated_at?: string;
 
-  // 智能体特定
+  // Agent-specific
   agent_metadata?: AgentMessageMetadata;
 }
 
@@ -229,7 +229,7 @@ export interface MessageAttachment {
   url?: string;
   mime_type?: string;
 
-  // 代码附件
+  // Code attachment
   language?: string;
   code?: string;
 }
@@ -256,11 +256,11 @@ export interface ToolCallInfo {
 }
 ```
 
-### 2.4 智能体团队 (AgentTeam)
+### 2.4 Agent Team
 
 ```typescript
 /**
- * 智能体团队（工作流）
+ * Agent team (workflow)
  */
 export interface AgentTeam {
   id: string;
@@ -268,21 +268,21 @@ export interface AgentTeam {
   description?: string;
   avatar?: string;
 
-  // 工作流定义
+  // Workflow definition
   workflow: Workflow;
 
-  // 统计
+  // Statistics
   execution_count: number;
   success_count: number;
   last_execution_at?: string;
 
-  // 元数据
+  // Metadata
   created_at: string;
   updated_at: string;
 }
 
 /**
- * 工作流定义
+ * Workflow definition
  */
 export interface Workflow {
   nodes: WorkflowNode[];
@@ -291,22 +291,22 @@ export interface Workflow {
 }
 
 /**
- * 工作流节点类型
+ * Workflow node type
  */
 export type WorkflowNodeType =
-  | "trigger"   // 触发器
-  | "agent"     // 智能体
-  | "condition" // 条件分支
-  | "loop"      // 循环
-  | "parallel"  // 并行
-  | "merge"     // 合并
-  | "http"      // HTTP 请求
-  | "code"      // 代码执行
-  | "transform" // 数据转换
-  | "output";   // 输出
+  | "trigger"   // Trigger
+  | "agent"     // Agent
+  | "condition" // Conditional branch
+  | "loop"      // Loop
+  | "parallel"  // Parallel
+  | "merge"     // Merge
+  | "http"      // HTTP request
+  | "code"      // Code execution
+  | "transform" // Data transformation
+  | "output";   // Output
 
 /**
- * 工作流节点
+ * Workflow node
  */
 export interface WorkflowNode {
   id: string;
@@ -370,34 +370,34 @@ export interface OutputNodeData {
 }
 
 /**
- * 工作流边（连接）
+ * Workflow edge (connection)
  */
 export interface WorkflowEdge {
   id: string;
   source: string;
   target: string;
-  source_handle?: string;  // 用于条件节点的 true/false 分支
+  source_handle?: string;  // For condition node true/false branches
   target_handle?: string;
 }
 
 /**
- * 工作流执行记录
+ * Workflow execution record
  */
 export interface WorkflowExecution {
   id: string;
   team_id: string;
   status: "running" | "completed" | "failed" | "cancelled";
 
-  // 触发信息
+  // Trigger information
   trigger_type: string;
   trigger_data?: Record<string, unknown>;
 
-  // 执行结果
+  // Execution results
   node_results: NodeExecutionResult[];
   output?: unknown;
   error?: string;
 
-  // 时间
+  // Timestamps
   started_at: string;
   completed_at?: string;
   duration_ms?: number;
@@ -417,12 +417,12 @@ export interface NodeExecutionResult {
 
 ---
 
-## 3. 数据库 Schema
+## 3. Database Schema
 
 ### 3.1 SQLite Schema (Desktop)
 
 ```sql
--- 联系人表
+-- Contacts table
 CREATE TABLE contacts (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('agent', 'user', 'group', 'team')),
@@ -436,7 +436,7 @@ CREATE TABLE contacts (
 
 CREATE INDEX idx_contacts_type ON contacts(type);
 
--- 对话表
+-- Conversations table
 CREATE TABLE conversations (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('agent', 'private', 'group', 'workspace')),
@@ -460,7 +460,7 @@ CREATE TABLE conversations (
 CREATE INDEX idx_conversations_type ON conversations(type);
 CREATE INDEX idx_conversations_pinned ON conversations(is_pinned, updated_at);
 
--- 对话参与者表
+-- Conversation participants table
 CREATE TABLE conversation_participants (
   conversation_id TEXT NOT NULL,
   contact_id TEXT NOT NULL,
@@ -473,7 +473,7 @@ CREATE TABLE conversation_participants (
   FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
 );
 
--- 消息表
+-- Messages table
 CREATE TABLE social_messages (
   id TEXT PRIMARY KEY,
   conversation_id TEXT NOT NULL,
@@ -497,7 +497,7 @@ CREATE TABLE social_messages (
 CREATE INDEX idx_messages_conversation ON social_messages(conversation_id, created_at);
 CREATE INDEX idx_messages_sender ON social_messages(sender_id);
 
--- 智能体团队表
+-- Agent teams table
 CREATE TABLE agent_teams (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -514,7 +514,7 @@ CREATE TABLE agent_teams (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 工作流执行记录表
+-- Workflow executions table
 CREATE TABLE workflow_executions (
   id TEXT PRIMARY KEY,
   team_id TEXT NOT NULL,
@@ -539,7 +539,7 @@ CREATE INDEX idx_executions_team ON workflow_executions(team_id, started_at);
 
 ---
 
-## 4. Store 定义
+## 4. Store Definitions
 
 ### 4.1 Social Chat Store
 
@@ -550,24 +550,24 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface SocialChatState {
-  // 联系人
+  // Contacts
   contacts: Contact[];
   contactsLoading: boolean;
 
-  // 对话
+  // Conversations
   conversations: Conversation[];
   activeConversationId: string | null;
   conversationsLoading: boolean;
 
-  // 消息
+  // Messages
   messages: Record<string, SocialMessage[]>;  // conversationId -> messages
   messagesLoading: boolean;
 
-  // 智能体团队
+  // Agent teams
   teams: AgentTeam[];
   teamsLoading: boolean;
 
-  // 分组折叠状态
+  // Group collapse state
   collapsedGroups: {
     agents: boolean;
     groups: boolean;
@@ -576,13 +576,13 @@ interface SocialChatState {
 }
 
 interface SocialChatActions {
-  // 联系人
+  // Contacts
   setContacts: (contacts: Contact[]) => void;
   addContact: (contact: Contact) => void;
   updateContact: (id: string, updates: Partial<Contact>) => void;
   deleteContact: (id: string) => void;
 
-  // 对话
+  // Conversations
   setConversations: (conversations: Conversation[]) => void;
   setActiveConversation: (id: string | null) => void;
   createConversation: (conversation: Conversation) => void;
@@ -592,18 +592,18 @@ interface SocialChatActions {
   muteConversation: (id: string, muted: boolean) => void;
   markAsRead: (id: string) => void;
 
-  // 消息
+  // Messages
   setMessages: (conversationId: string, messages: SocialMessage[]) => void;
   addMessage: (conversationId: string, message: SocialMessage) => void;
   updateMessage: (conversationId: string, messageId: string, updates: Partial<SocialMessage>) => void;
 
-  // 智能体团队
+  // Agent teams
   setTeams: (teams: AgentTeam[]) => void;
   addTeam: (team: AgentTeam) => void;
   updateTeam: (id: string, updates: Partial<AgentTeam>) => void;
   deleteTeam: (id: string) => void;
 
-  // UI 状态
+  // UI state
   toggleGroup: (group: "agents" | "groups" | "teams") => void;
 
   // Getters
@@ -771,12 +771,12 @@ export const useSocialChatStore = create<SocialChatState & SocialChatActions>()(
 
 ---
 
-## 5. 与现有系统的映射
+## 5. Integration with Existing Systems
 
-### 5.1 与 Agent 系统集成
+### 5.1 Integration with Agent System
 
 ```typescript
-// 从现有 Agent 转换为 Contact
+// Convert existing Agent to Contact
 function agentToContact(agent: LocalAgent): Contact {
   return {
     id: agent.id,
@@ -797,32 +797,32 @@ function agentToContact(agent: LocalAgent): Contact {
 }
 ```
 
-### 5.2 与 Workspace Chat 集成
+### 5.2 Integration with Workspace Chat
 
 ```typescript
-// Workspace 对话类型
+// Workspace conversation type
 interface WorkspaceConversation extends Conversation {
   type: "workspace";
   workspace_id: string;
-  // 使用现有的 useAgent hook 处理消息
+  // Use existing useAgent hook for message handling
 }
 
-// 复用现有消息组件
+// Reuse existing message components
 // - MessageList
 // - MessageItem
-// - AgentChatInput (带模型选择)
+// - AgentChatInput (with model selection)
 ```
 
 ---
 
-## 6. 迁移说明
+## 6. Migration Guide
 
-### 6.1 现有数据迁移
+### 6.1 Existing Data Migration
 
 ```sql
--- 从现有 tasks/messages 迁移到新的社交消息系统
--- 1. 为每个有 task 的 session 创建对应的 conversation
--- 2. 将 message 迁移到 social_messages
+-- Migrate from existing tasks/messages to new social messaging system
+-- 1. Create corresponding conversation for each session with task
+-- 2. Migrate messages to social_messages
 
 INSERT INTO conversations (id, type, name, workspace_id, created_at, updated_at)
 SELECT
@@ -836,10 +836,10 @@ FROM sessions s
 LEFT JOIN workspaces w ON s.workspace_id = w.id;
 ```
 
-### 6.2 渐进式迁移策略
+### 6.2 Progressive Migration Strategy
 
-1. **Phase 1**: 新建 social_messages 表，保持原有 messages 表不变
-2. **Phase 2**: 新消息写入两个表（双写）
-3. **Phase 3**: 读取切换到新表
-4. **Phase 4**: 历史数据迁移
-5. **Phase 5**: 下线旧表
+1. **Phase 1**: Create new social_messages table, keep original messages table unchanged
+2. **Phase 2**: Write new messages to both tables (dual-write)
+3. **Phase 3**: Switch reads to new table
+4. **Phase 4**: Migrate historical data
+5. **Phase 5**: Deprecate old table

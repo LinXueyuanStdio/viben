@@ -1,40 +1,40 @@
 ---
 sidebar_position: 4
-title: 联系人功能开发规范
-description: Desktop 联系人页面实现指南
+title: Contacts Feature Development Specification
+description: Desktop Contacts Page Implementation Guide
 ---
 
-# 联系人功能开发规范
+# Contacts Feature Development Specification
 
-> 开发规范：Desktop 联系人页面实现指南
+> Development Specification: Desktop Contacts Page Implementation Guide
 
 ---
 
-## 1. 文件结构
+## 1. File Structure
 
 ```
 apps/desktop/src/
 ├── pages/
-│   └── contacts.tsx                # 联系人主页面
+│   └── contacts.tsx                # Contacts main page
 ├── components/
 │   └── contacts/
-│       ├── index.ts                # 导出入口
-│       ├── contact-list.tsx        # 联系人列表（左侧）
-│       ├── contact-group.tsx       # 可折叠分组
-│       ├── contact-item.tsx        # 联系人列表项
-│       ├── agent-detail.tsx        # 智能体详情面板
-│       ├── group-detail.tsx        # 群聊详情面板
-│       ├── team-detail.tsx         # 智能体团队详情面板
-│       ├── create-agent-dialog.tsx # 创建智能体对话框
-│       ├── create-group-dialog.tsx # 创建群聊对话框
-│       └── create-team-dialog.tsx  # 创建团队对话框
+│       ├── index.ts                # Export entry
+│       ├── contact-list.tsx        # Contact list (left side)
+│       ├── contact-group.tsx       # Collapsible group
+│       ├── contact-item.tsx        # Contact list item
+│       ├── agent-detail.tsx        # Agent detail panel
+│       ├── group-detail.tsx        # Group chat detail panel
+│       ├── team-detail.tsx         # Agent team detail panel
+│       ├── create-agent-dialog.tsx # Create agent dialog
+│       ├── create-group-dialog.tsx # Create group chat dialog
+│       └── create-team-dialog.tsx  # Create team dialog
 └── hooks/
-    └── use-contacts.ts             # 联系人业务逻辑
+    └── use-contacts.ts             # Contacts business logic
 ```
 
 ---
 
-## 2. 主页面
+## 2. Main Page
 
 ```tsx
 // apps/desktop/src/pages/contacts.tsx
@@ -57,12 +57,12 @@ export default function ContactsPage() {
 
   return (
     <div className="flex h-full">
-      {/* 左侧列表 */}
+      {/* Left side list */}
       <div className="w-[300px] flex-shrink-0 border-r border-border">
         <ContactList onSelect={handleSelect} selectedId={selectedId} />
       </div>
 
-      {/* 右侧详情 */}
+      {/* Right side detail */}
       <div className="flex-1 min-w-0">
         {selectedType === "agent" && <AgentDetail agentId={selectedId!} />}
         {selectedType === "group" && <GroupDetail groupId={selectedId!} />}
@@ -76,7 +76,7 @@ export default function ContactsPage() {
 function EmptyState() {
   return (
     <div className="flex items-center justify-center h-full text-muted-foreground">
-      选择一个联系人查看详情
+      Select a contact to view details
     </div>
   );
 }
@@ -84,7 +84,7 @@ function EmptyState() {
 
 ---
 
-## 3. 核心组件
+## 3. Core Components
 
 ### 3.1 ContactList
 
@@ -104,19 +104,19 @@ export function ContactList({ onSelect, selectedId }: ContactListProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* 搜索框 */}
+      {/* Search box */}
       <div className="p-3 border-b border-border">
-        <Input placeholder="搜索..." className="w-full" />
+        <Input placeholder="Search..." className="w-full" />
       </div>
 
       <ScrollArea className="flex-1">
-        {/* 智能体分组 */}
+        {/* Agents group */}
         <ContactGroup
-          title="智能体"
+          title="Agents"
           count={getAgents().length}
           collapsed={collapsedGroups.agents}
           onToggle={() => toggleGroup("agents")}
-          onAdd={() => {/* 打开创建对话框 */}}
+          onAdd={() => {/* Open create dialog */}}
         >
           {getAgents().map((agent) => (
             <ContactItem
@@ -128,13 +128,13 @@ export function ContactList({ onSelect, selectedId }: ContactListProps) {
           ))}
         </ContactGroup>
 
-        {/* 群聊分组 */}
+        {/* Group chats group */}
         <ContactGroup
-          title="群聊"
+          title="Group Chats"
           count={getGroups().length}
           collapsed={collapsedGroups.groups}
           onToggle={() => toggleGroup("groups")}
-          onAdd={() => {/* 打开创建对话框 */}}
+          onAdd={() => {/* Open create dialog */}}
         >
           {getGroups().map((group) => (
             <ContactItem
@@ -146,13 +146,13 @@ export function ContactList({ onSelect, selectedId }: ContactListProps) {
           ))}
         </ContactGroup>
 
-        {/* 智能体团队分组 */}
+        {/* Agent teams group */}
         <ContactGroup
-          title="智能体团队"
+          title="Agent Teams"
           count={getTeams().length}
           collapsed={collapsedGroups.teams}
           onToggle={() => toggleGroup("teams")}
-          onAdd={() => {/* 打开创建对话框 */}}
+          onAdd={() => {/* Open create dialog */}}
         >
           {getTeams().map((team) => (
             <ContactItem
@@ -234,46 +234,46 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
   if (!agent || agent.type !== "agent") return null;
 
   const handleChat = () => {
-    // 创建或打开与该智能体的对话，跳转到聊天页面
+    // Create or open conversation with this agent, navigate to chat page
     navigate(`/chat?agent=${agentId}`);
   };
 
   return (
     <div className="flex flex-col h-full p-6">
-      {/* 头部 */}
+      {/* Header */}
       <div className="flex flex-col items-center pb-6 border-b border-border">
         <Avatar className="w-20 h-20 mb-4">
           <AvatarImage src={agent.avatar} />
           <AvatarFallback>🤖</AvatarFallback>
         </Avatar>
         <h2 className="text-xl font-semibold">{agent.name}</h2>
-        <p className="text-sm text-muted-foreground">本地智能体</p>
+        <p className="text-sm text-muted-foreground">Local Agent</p>
       </div>
 
-      {/* 基础信息 */}
+      {/* Basic Information */}
       <div className="py-4 border-b border-border">
-        <h3 className="font-medium mb-3">基础信息</h3>
+        <h3 className="font-medium mb-3">Basic Information</h3>
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted-foreground">模型</dt>
+            <dt className="text-muted-foreground">Model</dt>
             <dd>{agent.agent?.model}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground mb-1">系统提示</dt>
+            <dt className="text-muted-foreground mb-1">System Prompt</dt>
             <dd className="text-xs bg-muted p-2 rounded">{agent.agent?.system_prompt}</dd>
           </div>
         </dl>
       </div>
 
-      {/* 操作按钮 */}
+      {/* Action Buttons */}
       <div className="flex gap-2 mt-auto pt-4">
         <Button onClick={handleChat} className="flex-1">
           <MessageSquare className="w-4 h-4 mr-2" />
-          发消息
+          Send Message
         </Button>
         <Button variant="outline">
           <Pencil className="w-4 h-4 mr-2" />
-          编辑
+          Edit
         </Button>
         <Button variant="destructive" size="icon" onClick={() => deleteContact(agentId)}>
           <Trash2 className="w-4 h-4" />
@@ -286,34 +286,34 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
 
 ---
 
-## 4. 导航集成
+## 4. Navigation Integration
 
 ```tsx
 // apps/desktop/src/components/layout/sidebar.tsx
 
 const navigationItems = [
-  { id: "chat", label: "聊天", icon: MessageSquare, href: "/chat" },
-  { id: "contacts", label: "联系人", icon: Users, href: "/contacts" },
+  { id: "chat", label: "Chat", icon: MessageSquare, href: "/chat" },
+  { id: "contacts", label: "Contacts", icon: Users, href: "/contacts" },
   // ...
 ];
 ```
 
 ---
 
-## 5. 关键交互
+## 5. Key Interactions
 
-| 操作 | 触发 | 结果 |
-|------|------|------|
-| 点击分组标题 | 单击 | 展开/折叠分组 |
-| 点击 + 按钮 | 单击 | 打开创建对话框 |
-| 点击联系人 | 单击 | 右侧显示详情 |
-| 点击"发消息" | 单击 | 跳转聊天页面 |
-| 点击"删除" | 单击 | 确认后删除 |
+| Action | Trigger | Result |
+|--------|---------|--------|
+| Click group title | Single click | Expand/collapse group |
+| Click + button | Single click | Open create dialog |
+| Click contact | Single click | Show detail on right side |
+| Click "Send Message" | Single click | Navigate to chat page |
+| Click "Delete" | Single click | Delete after confirmation |
 
 ---
 
-## 6. 与现有系统集成
+## 6. Integration with Existing System
 
-- 智能体数据复用 `useAgentsStore` 中的 `localAgents`
-- 跳转聊天时复用 `useSocialChatStore.createConversation`
-- 详情面板复用 Agent 编辑组件
+- Agent data reuses `localAgents` from `useAgentsStore`
+- When navigating to chat, reuses `useSocialChatStore.createConversation`
+- Detail panel reuses Agent edit components
