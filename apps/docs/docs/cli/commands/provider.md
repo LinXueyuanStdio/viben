@@ -1,53 +1,53 @@
 ---
 sidebar_position: 9
 title: "viben provider"
-description: "管理 API 提供商 - OpenAI、Anthropic、Google、Azure 等"
+description: "Manage API providers - OpenAI, Anthropic, Google, Azure, etc."
 ---
 
 # viben provider
 
-管理 AI 模型的 API 提供商。
+Manage API providers for AI models.
 
-## 用法
+## Usage
 
 ```bash
 viben provider <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `list` | 列出所有已配置的 providers |
-| `create` | 创建新 provider |
-| `remove` | 删除 provider |
-| `set-default` | 设置默认 provider |
-| `status` | 检查 provider 连通性 |
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List all configured providers |
+| `create` | Create a new provider |
+| `remove` | Remove a provider |
+| `set-default` | Set the default provider |
+| `status` | Check provider connectivity |
 
-## Provider 类型
+## Provider Types
 
-| 类型 | 说明 | 认证方式 |
-|------|------|----------|
+| Type | Description | Authentication |
+|------|-------------|----------------|
 | `openai` | OpenAI API | API Key |
 | `anthropic` | Anthropic API | API Key |
 | `google` | Google AI (Gemini) | API Key, OAuth |
 | `azure` | Azure OpenAI | API Key, Azure AD |
 | `openrouter` | OpenRouter | API Key |
-| `ollama` | Ollama（本地） | 无 |
-| `custom` | 自定义 OpenAI 兼容 | API Key |
+| `ollama` | Ollama (local) | None |
+| `custom` | Custom OpenAI-compatible | API Key |
 
-## 命令
+## Commands
 
-### 列出 Providers
+### List Providers
 
-列出所有已配置的 providers：
+List all configured providers:
 
 ```bash
 viben provider list
 viben provider list --json
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Providers:
@@ -60,7 +60,7 @@ Providers:
 * = default provider
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```json
 {
@@ -88,55 +88,55 @@ Providers:
 }
 ```
 
-### 创建 Provider
+### Create Provider
 
-创建新 provider：
+Create a new provider:
 
 ```bash
-# 创建带显式名称和类型
+# Create with explicit name and type
 viben provider create -n my-anthropic -t anthropic --api-key sk-ant-xxx
 
-# 创建自动生成名称
+# Create with auto-generated name
 viben provider create -t openai --api-key sk-xxx
 
-# 创建带 base URL 的自定义 provider
+# Create custom provider with base URL
 viben provider create -t custom --api-key sk-xxx --base-url https://api.example.com/v1
 
-# 从配置文件创建
+# Create from configuration file
 viben provider create -n my-provider -t anthropic -c /path/to/config.yaml
 ```
 
-**输出：**
+**Output:**
 
 ```
 Created provider 'anthropic-main'
 ```
 
-### 删除 Provider
+### Remove Provider
 
 ```bash
 viben provider remove -n anthropic-main
 ```
 
-### 设置默认 Provider
+### Set Default Provider
 
 ```bash
 viben provider set-default -n openai-main
 ```
 
-### Provider 状态
+### Provider Status
 
-检查 provider 连通性：
+Check provider connectivity:
 
 ```bash
-# 检查所有 providers
+# Check all providers
 viben provider status
 
-# 检查特定 provider
+# Check specific provider
 viben provider status -n anthropic-main
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Provider Status:
@@ -147,12 +147,12 @@ Provider Status:
   custom-api       custom      ✓ connected   latency: 200ms
 ```
 
-## 环境变量
+## Environment Variables
 
-Providers 可以使用环境变量配置：
+Providers can be configured using environment variables:
 
-| Provider | API Key | Base URL | 其他 |
-|----------|---------|----------|------|
+| Provider | API Key | Base URL | Other |
+|----------|---------|----------|-------|
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | - |
 | `openai` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_ORG_ID` |
 | `azure` | `AZURE_OPENAI_API_KEY` | `AZURE_OPENAI_ENDPOINT` | `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT` |
@@ -161,28 +161,28 @@ Providers 可以使用环境变量配置：
 | `ollama` | - | `OLLAMA_HOST` | - |
 | `custom` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | - |
 
-### 优先级
+### Priority
 
-Provider 配置按以下顺序解析：
+Provider configuration is resolved in the following order:
 
-1. 命令行参数 (`--api-key`)
-2. 配置文件中的值
-3. Provider 特定环境变量（如 `ANTHROPIC_API_KEY`）
-4. 通用环境变量（如 custom 类型使用 `OPENAI_API_KEY`）
+1. Command-line arguments (`--api-key`)
+2. Values in configuration file
+3. Provider-specific environment variables (e.g., `ANTHROPIC_API_KEY`)
+4. Generic environment variables (e.g., custom type uses `OPENAI_API_KEY`)
 
-### 快速配置
+### Quick Setup
 
 ```bash
-# 设置环境变量（推荐）
+# Set environment variables (recommended)
 export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
 
-# 创建 providers（自动使用环境变量）
+# Create providers (automatically uses environment variables)
 viben provider create -t anthropic
 viben provider create -t openai
 ```
 
-## Provider 配置文件
+## Provider Configuration File
 
 ```yaml
 # ~/.viben/providers.yaml
@@ -193,11 +193,11 @@ default: anthropic-main
 providers:
   anthropic-main:
     type: anthropic
-    # API key 从 ANTHROPIC_API_KEY 环境变量获取
+    # API key obtained from ANTHROPIC_API_KEY environment variable
 
   openai-main:
     type: openai
-    # API key 从 OPENAI_API_KEY 环境变量获取
+    # API key obtained from OPENAI_API_KEY environment variable
 
   azure-gpt4:
     type: azure
@@ -214,9 +214,9 @@ providers:
     OPENAI_BASE_URL: "https://api.example.com/v1"
 ```
 
-## 错误处理
+## Error Handling
 
-### Provider 未找到
+### Provider Not Found
 
 ```json
 {
@@ -228,7 +228,7 @@ providers:
 }
 ```
 
-### 无效的 API Key
+### Invalid API Key
 
 ```json
 {
@@ -240,7 +240,7 @@ providers:
 }
 ```
 
-### 连接错误
+### Connection Error
 
 ```json
 {
@@ -252,8 +252,8 @@ providers:
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben model](./model) - 模型管理
-- [viben agent](./agent) - 智能体管理
-- [viben config](./config) - 配置管理
+- [viben model](./model) - Model management
+- [viben agent](./agent) - Agent management
+- [viben config](./config) - Configuration management

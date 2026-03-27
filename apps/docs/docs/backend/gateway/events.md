@@ -1,26 +1,26 @@
-# 事件流 API
+# Event Stream API
 
-> `/api/events` - Server-Sent Events 端点
+> `/api/events` - Server-Sent Events endpoint
 
-## 概述
+## Overview
 
-事件流 API 提供 Server-Sent Events (SSE) 方式的实时事件推送。
+The Event Stream API provides real-time event push via Server-Sent Events (SSE).
 
-## 端点
+## Endpoint
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/events` | SSE 事件流 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/events` | SSE event stream |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/events
 
-建立 SSE 连接，接收实时事件推送。
+Establish an SSE connection to receive real-time event push.
 
-**响应头**:
+**Response Headers**:
 
 ```
 Content-Type: text/event-stream
@@ -28,7 +28,7 @@ Cache-Control: no-cache
 Connection: keep-alive
 ```
 
-**事件格式**:
+**Event Format**:
 
 ```
 event: TaskCreated
@@ -40,18 +40,18 @@ data: {"agent_id":"CLAUDE_CODE","session_id":"xyz"}
 
 ---
 
-## 事件类型
+## Event Types
 
-### 任务事件
+### Task Events
 
-| 事件 | 说明 |
-|------|------|
-| TaskCreated | 任务创建 |
-| TaskUpdated | 任务更新 |
-| TaskDeleted | 任务删除 |
-| TaskStatusChanged | 任务状态变化 |
+| Event | Description |
+|-------|-------------|
+| TaskCreated | Task created |
+| TaskUpdated | Task updated |
+| TaskDeleted | Task deleted |
+| TaskStatusChanged | Task status changed |
 
-**示例**:
+**Example**:
 
 ```json
 {
@@ -63,15 +63,15 @@ data: {"agent_id":"CLAUDE_CODE","session_id":"xyz"}
 }
 ```
 
-### 智能体事件
+### Agent Events
 
-| 事件 | 说明 |
-|------|------|
-| AgentSpawned | 智能体启动 |
-| AgentCompleted | 智能体完成 |
-| AgentError | 智能体错误 |
+| Event | Description |
+|-------|-------------|
+| AgentSpawned | Agent started |
+| AgentCompleted | Agent completed |
+| AgentError | Agent error |
 
-**示例**:
+**Example**:
 
 ```json
 {
@@ -83,25 +83,25 @@ data: {"agent_id":"CLAUDE_CODE","session_id":"xyz"}
 }
 ```
 
-### 群聊事件
+### Group Chat Events
 
-| 事件 | 说明 |
-|------|------|
-| GroupChatMessage | 新消息 |
-| GroupChatAgentThinking | 智能体思考中 |
-| GroupChatAgentResponse | 智能体响应 |
+| Event | Description |
+|-------|-------------|
+| GroupChatMessage | New message |
+| GroupChatAgentThinking | Agent thinking |
+| GroupChatAgentResponse | Agent response |
 
-### 定时任务事件
+### Cron Job Events
 
-| 事件 | 说明 |
-|------|------|
-| CronJobTriggered | 任务触发 |
-| CronJobCompleted | 任务完成 |
-| CronJobFailed | 任务失败 |
+| Event | Description |
+|-------|-------------|
+| CronJobTriggered | Job triggered |
+| CronJobCompleted | Job completed |
+| CronJobFailed | Job failed |
 
 ---
 
-## 使用示例
+## Usage Examples
 
 ### JavaScript
 
@@ -131,23 +131,23 @@ curl -N http://localhost:18790/api/events
 
 ---
 
-## 与 WebSocket 对比
+## SSE vs WebSocket Comparison
 
-| 特性 | SSE | WebSocket |
-|------|-----|-----------|
-| 方向 | 服务器 → 客户端 | 双向 |
-| 协议 | HTTP | WebSocket |
-| 重连 | 自动 | 手动 |
-| 适用场景 | 事件推送 | 实时交互 |
+| Feature | SSE | WebSocket |
+|---------|-----|-----------|
+| Direction | Server → Client | Bidirectional |
+| Protocol | HTTP | WebSocket |
+| Reconnection | Automatic | Manual |
+| Use Case | Event push | Real-time interaction |
 
-**建议**:
-- 单向事件推送使用 SSE (`/api/events`)
-- 双向交互使用 WebSocket (`/ws`)
+**Recommendations**:
+- Use SSE for unidirectional event push (`/api/events`)
+- Use WebSocket for bidirectional interaction (`/ws`)
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [WebSocket](./websocket.md) - WebSocket 通信
-- [任务 API](./tasks.md) - 任务管理
-- [智能体 API](./agents.md) - 智能体管理
+- [WebSocket](./websocket.md) - WebSocket communication
+- [Tasks API](./tasks.md) - Task management
+- [Agents API](./agents.md) - Agent management

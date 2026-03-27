@@ -2,21 +2,21 @@
 sidebar_position: 4
 ---
 
-# 错误处理
+# Error Handling
 
-> Viben 项目错误处理约定
-
----
-
-## 概述
-
-Viben 使用统一的错误处理模式，确保 API 响应一致性和用户体验。
+> Error handling conventions for the Viben project
 
 ---
 
-## 错误响应格式
+## Overview
 
-### 标准错误响应
+Viben uses a unified error handling pattern to ensure API response consistency and user experience.
+
+---
+
+## Error Response Format
+
+### Standard Error Response
 
 ```json
 {
@@ -26,56 +26,56 @@ Viben 使用统一的错误处理模式，确保 API 响应一致性和用户体
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| error | string | 用户友好的错误消息 |
-| code | string | 错误代码（可选） |
-| details | object | 额外错误详情（可选） |
+| Field | Type | Description |
+|-------|------|-------------|
+| error | string | User-friendly error message |
+| code | string | Error code (optional) |
+| details | object | Additional error details (optional) |
 
-### HTTP 状态码
+### HTTP Status Codes
 
-| 状态码 | 用途 |
-|--------|------|
-| 400 | 请求参数错误 |
-| 401 | 未认证 |
-| 403 | 无权限 |
-| 404 | 资源不存在 |
-| 409 | 资源冲突 |
-| 500 | 服务器内部错误 |
-
----
-
-## 错误类型
-
-### 业务错误
-
-| 错误代码 | HTTP 状态 | 说明 |
-|----------|----------|------|
-| `NOT_FOUND` | 404 | 资源不存在 |
-| `ALREADY_EXISTS` | 409 | 资源已存在 |
-| `INVALID_INPUT` | 400 | 输入参数无效 |
-| `UNAUTHORIZED` | 401 | 未授权访问 |
-| `FORBIDDEN` | 403 | 禁止访问 |
-
-### 系统错误
-
-| 错误代码 | HTTP 状态 | 说明 |
-|----------|----------|------|
-| `INTERNAL_ERROR` | 500 | 内部服务器错误 |
-| `DATABASE_ERROR` | 500 | 数据库错误 |
-| `EXTERNAL_SERVICE_ERROR` | 502 | 外部服务错误 |
-| `TIMEOUT` | 504 | 请求超时 |
+| Status Code | Purpose |
+|-------------|---------|
+| 400 | Bad request parameters |
+| 401 | Unauthenticated |
+| 403 | Forbidden |
+| 404 | Resource not found |
+| 409 | Resource conflict |
+| 500 | Internal server error |
 
 ---
 
-## 错误处理模式
+## Error Types
+
+### Business Errors
+
+| Error Code | HTTP Status | Description |
+|------------|-------------|-------------|
+| `NOT_FOUND` | 404 | Resource not found |
+| `ALREADY_EXISTS` | 409 | Resource already exists |
+| `INVALID_INPUT` | 400 | Invalid input parameters |
+| `UNAUTHORIZED` | 401 | Unauthorized access |
+| `FORBIDDEN` | 403 | Access forbidden |
+
+### System Errors
+
+| Error Code | HTTP Status | Description |
+|------------|-------------|-------------|
+| `INTERNAL_ERROR` | 500 | Internal server error |
+| `DATABASE_ERROR` | 500 | Database error |
+| `EXTERNAL_SERVICE_ERROR` | 502 | External service error |
+| `TIMEOUT` | 504 | Request timeout |
+
+---
+
+## Error Handling Patterns
 
 ### TypeScript (Gateway API)
 
 ```typescript
 import { Context } from 'hono';
 
-// 统一错误响应
+// Unified error response
 function errorResponse(c: Context, status: number, message: string, code?: string) {
   return c.json({
     error: message,
@@ -83,7 +83,7 @@ function errorResponse(c: Context, status: number, message: string, code?: strin
   }, status);
 }
 
-// 路由示例
+// Route example
 app.get('/api/agent/:id', async (c) => {
   const { id } = c.req.param();
 
@@ -160,21 +160,21 @@ def search(query: str):
 
 ---
 
-## 错误日志
+## Error Logging
 
-### 日志级别
+### Log Levels
 
-| 级别 | 用途 |
-|------|------|
-| `error` | 错误和异常 |
-| `warn` | 警告信息 |
-| `info` | 一般信息 |
-| `debug` | 调试信息 |
+| Level | Purpose |
+|-------|---------|
+| `error` | Errors and exceptions |
+| `warn` | Warning messages |
+| `info` | General information |
+| `debug` | Debug information |
 
-### 日志内容
+### Log Content
 
 ```typescript
-// 记录错误时包含上下文
+// Include context when logging errors
 logger.error({
   error: error.message,
   stack: error.stack,
@@ -186,9 +186,9 @@ logger.error({
 
 ---
 
-## 前端错误处理
+## Frontend Error Handling
 
-### API 调用
+### API Calls
 
 ```typescript
 async function fetchAgent(id: string) {
@@ -203,7 +203,7 @@ async function fetchAgent(id: string) {
 }
 ```
 
-### 用户提示
+### User Notifications
 
 ```typescript
 import { toast } from 'sonner';
@@ -218,51 +218,51 @@ try {
 
 ---
 
-## 禁止的模式
+## Forbidden Patterns
 
-### 不要吞掉错误
+### Don't Swallow Errors
 
 ```typescript
-// 错误
+// Wrong
 try {
   await riskyOperation();
 } catch (error) {
-  // 静默忽略错误
+  // Silently ignoring error
 }
 
-// 正确
+// Correct
 try {
   await riskyOperation();
 } catch (error) {
   console.error('Operation failed:', error);
-  throw error; // 或返回适当的错误响应
+  throw error; // Or return appropriate error response
 }
 ```
 
-### 不要返回模糊错误
+### Don't Return Vague Errors
 
 ```typescript
-// 错误
+// Wrong
 return { error: 'Something went wrong' };
 
-// 正确
+// Correct
 return { error: 'Failed to connect to database', code: 'DATABASE_ERROR' };
 ```
 
-### 不要暴露敏感信息
+### Don't Expose Sensitive Information
 
 ```typescript
-// 错误
-return { error: error.stack }; // 暴露堆栈信息
+// Wrong
+return { error: error.stack }; // Exposing stack trace
 
-// 正确
-console.error('Internal error:', error); // 服务端日志
-return { error: 'Internal server error' }; // 客户端响应
+// Correct
+console.error('Internal error:', error); // Server-side log
+return { error: 'Internal server error' }; // Client response
 ```
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [日志指南](./logging-guidelines.md)
-- [质量指南](./quality-guidelines.md)
+- [Logging Guidelines](./logging-guidelines.md)
+- [Quality Guidelines](./quality-guidelines.md)

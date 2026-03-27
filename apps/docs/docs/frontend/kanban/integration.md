@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
-title: Kanban 集成规格
-description: 在工作空间中集成 vibe-kanban 任务看板功能
+title: Kanban Integration Specification
+description: Integrating vibe-kanban task board functionality in workspace
 ---
 
-# Kanban Integration - Vibe-Kanban 集成规格
+# Kanban Integration - Vibe-Kanban Integration Specification
 
-> 在工作空间中集成 vibe-kanban 任务看板功能，提供项目级任务管理能力。
+> Integrating vibe-kanban task board functionality in workspace, providing project-level task management capabilities.
 
 ---
 
@@ -21,35 +21,35 @@ description: 在工作空间中集成 vibe-kanban 任务看板功能
 
 ---
 
-## 目标
+## Goals
 
-将 [vibe-kanban](https://github.com/others/vibe-kanban) 集成到 viben desktop 应用中：
+Integrate [vibe-kanban](https://github.com/others/vibe-kanban) into the viben desktop application:
 
-1. 在工作空间页面添加【任务看板】入口
-2. 点击后在 desktop 内打开嵌入式 kanban 页面
-3. 实现类 Notion 风格的面包屑导航
-4. 支持工作空间级别的任务管理
-
----
-
-## 用户流程
-
-```
-工作空间列表 → 选择工作空间 → 工作空间详情页
-                                    ↓
-                              点击【任务看板】
-                                    ↓
-                              面包屑导航更新
-                              (工作空间 > 任务看板)
-                                    ↓
-                              打开 Kanban 页面
-```
+1. Add [Task Board] entry on workspace page
+2. Open embedded kanban page within desktop on click
+3. Implement Notion-style breadcrumb navigation
+4. Support workspace-level task management
 
 ---
 
-## 包架构设计 (Package Architecture)
+## User Flow
 
-### 整体架构图
+```
+Workspace List → Select Workspace → Workspace Details Page
+                                    ↓
+                              Click [Task Board]
+                                    ↓
+                              Breadcrumb navigation updates
+                              (Workspace > Task Board)
+                                    ↓
+                              Open Kanban Page
+```
+
+---
+
+## Package Architecture
+
+### Overall Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -97,13 +97,13 @@ description: 在工作空间中集成 vibe-kanban 任务看板功能
 
 ---
 
-## 新增包定义
+## New Package Definitions
 
-### Package 1: `@viben/ui` - 共享 UI 组件库
+### Package 1: `@viben/ui` - Shared UI Component Library
 
-**目的**: 从 desktop 应用中提取可复用的 UI 原语，供所有应用共享。
+**Purpose**: Extract reusable UI primitives from desktop application for sharing across all applications.
 
-**优先级**: P0 (基础依赖)
+**Priority**: P0 (Foundation dependency)
 
 ```
 packages/ui/
@@ -112,23 +112,23 @@ packages/ui/
 ├── tsup.config.ts
 ├── tailwind.config.ts
 ├── src/
-│   ├── index.ts                 # 导出入口
+│   ├── index.ts                 # Export entry
 │   ├── lib/
-│   │   └── utils.ts             # cn() 工具函数
+│   │   └── utils.ts             # cn() utility function
 │   ├── styles/
-│   │   └── globals.css          # Tailwind 基础样式 + CSS 变量
+│   │   └── globals.css          # Tailwind base styles + CSS variables
 │   └── components/
-│       ├── breadcrumb.tsx       # 面包屑导航 ⭐ 新增
-│       ├── button.tsx           # 按钮
-│       ├── card.tsx             # 卡片
-│       ├── badge.tsx            # 徽章
-│       ├── skeleton.tsx         # 骨架屏
-│       ├── dialog.tsx           # 对话框
-│       ├── dropdown-menu.tsx    # 下拉菜单
-│       ├── tooltip.tsx          # 工具提示
-│       ├── scroll-area.tsx      # 滚动区域
-│       ├── separator.tsx        # 分隔符
-│       └── index.ts             # 组件导出
+│       ├── breadcrumb.tsx       # Breadcrumb navigation ⭐ New
+│       ├── button.tsx           # Button
+│       ├── card.tsx             # Card
+│       ├── badge.tsx            # Badge
+│       ├── skeleton.tsx         # Skeleton
+│       ├── dialog.tsx           # Dialog
+│       ├── dropdown-menu.tsx    # Dropdown menu
+│       ├── tooltip.tsx          # Tooltip
+│       ├── scroll-area.tsx      # Scroll area
+│       ├── separator.tsx        # Separator
+│       └── index.ts             # Component exports
 └── README.md
 ```
 
@@ -182,28 +182,28 @@ packages/ui/
 }
 ```
 
-**导出的组件**:
+**Exported Components**:
 
-| 组件 | 来源 | 可复用性 |
-|------|------|---------|
-| `Breadcrumb` | 新建 | ⭐⭐⭐⭐⭐ |
-| `Button` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Card` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Badge` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Skeleton` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Dialog` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `DropdownMenu` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Tooltip` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `ScrollArea` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
-| `Separator` | 从 desktop 提取 | ⭐⭐⭐⭐⭐ |
+| Component | Source | Reusability |
+|-----------|--------|-------------|
+| `Breadcrumb` | New | ⭐⭐⭐⭐⭐ |
+| `Button` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Card` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Badge` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Skeleton` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Dialog` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `DropdownMenu` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Tooltip` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `ScrollArea` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
+| `Separator` | Extracted from desktop | ⭐⭐⭐⭐⭐ |
 
 ---
 
-### Package 2: `@viben/kanban` - Kanban 核心组件
+### Package 2: `@viben/kanban` - Kanban Core Components
 
-**目的**: 封装可复用的 Kanban 看板 UI 组件，不含业务逻辑。
+**Purpose**: Encapsulate reusable Kanban board UI components without business logic.
 
-**优先级**: P1 (Kanban 功能核心)
+**Priority**: P1 (Kanban feature core)
 
 ```
 packages/kanban/
@@ -211,23 +211,23 @@ packages/kanban/
 ├── tsconfig.json
 ├── tsup.config.ts
 ├── src/
-│   ├── index.ts                 # 导出入口
-│   ├── types.ts                 # 类型定义
-│   ├── context.ts               # Kanban 上下文
+│   ├── index.ts                 # Export entry
+│   ├── types.ts                 # Type definitions
+│   ├── context.ts               # Kanban context
 │   ├── components/
-│   │   ├── kanban-provider.tsx  # DnD 上下文提供者
-│   │   ├── kanban-board.tsx     # 看板容器
-│   │   ├── kanban-column.tsx    # 列组件
+│   │   ├── kanban-provider.tsx  # DnD context provider
+│   │   ├── kanban-board.tsx     # Board container
+│   │   ├── kanban-column.tsx    # Column component
 │   │   ├── kanban-column-header.tsx
-│   │   ├── kanban-card.tsx      # 卡片组件
+│   │   ├── kanban-card.tsx      # Card component
 │   │   ├── kanban-card-content.tsx
-│   │   ├── kanban-add-card.tsx  # 添加卡片
+│   │   ├── kanban-add-card.tsx  # Add card
 │   │   └── index.ts
 │   ├── primitives/
-│   │   ├── priority-icon.tsx    # 优先级图标
-│   │   ├── assignee-avatar.tsx  # 指派人头像
-│   │   ├── due-date-badge.tsx   # 截止日期徽章
-│   │   ├── tag-badge.tsx        # 标签徽章
+│   │   ├── priority-icon.tsx    # Priority icon
+│   │   ├── assignee-avatar.tsx  # Assignee avatar
+│   │   ├── due-date-badge.tsx   # Due date badge
+│   │   ├── tag-badge.tsx        # Tag badge
 │   │   └── index.ts
 │   └── hooks/
 │       ├── use-kanban-context.ts
@@ -278,25 +278,25 @@ packages/kanban/
 }
 ```
 
-**核心类型定义** (`src/types.ts`):
+**Core Type Definitions** (`src/types.ts`):
 
 ```typescript
 // ============================================
-// Core Types - 核心类型 (无业务逻辑)
+// Core Types (No business logic)
 // ============================================
 
 /**
- * 看板项目状态
+ * Kanban item status
  */
 export type KanbanStatus = string;
 
 /**
- * 优先级
+ * Priority
  */
 export type KanbanPriority = "low" | "medium" | "high" | "urgent";
 
 /**
- * 看板列配置
+ * Kanban column configuration
  */
 export interface KanbanColumnConfig {
   id: string;
@@ -304,17 +304,17 @@ export interface KanbanColumnConfig {
   title: string;
   color?: string;
   order: number;
-  /** 是否可折叠 */
+  /** Whether collapsible */
   collapsible?: boolean;
-  /** 是否默认折叠 */
+  /** Whether collapsed by default */
   defaultCollapsed?: boolean;
-  /** 最大任务数限制 (WIP limit) */
+  /** Maximum task limit (WIP limit) */
   maxItems?: number;
 }
 
 /**
- * 看板项目 (通用)
- * 使用泛型支持扩展字段
+ * Kanban item (generic)
+ * Uses generics to support extended fields
  */
 export interface KanbanItem<TMetadata = Record<string, unknown>> {
   id: string;
@@ -323,12 +323,12 @@ export interface KanbanItem<TMetadata = Record<string, unknown>> {
   status: KanbanStatus;
   priority?: KanbanPriority;
   order: number;
-  /** 扩展元数据 */
+  /** Extended metadata */
   metadata?: TMetadata;
 }
 
 /**
- * 拖拽结果
+ * Drag result
  */
 export interface KanbanDragResult {
   itemId: string;
@@ -338,7 +338,7 @@ export interface KanbanDragResult {
 }
 
 /**
- * 看板事件回调
+ * Kanban event callbacks
  */
 export interface KanbanCallbacks<TItem extends KanbanItem = KanbanItem> {
   onItemMove?: (result: KanbanDragResult) => void | Promise<void>;
@@ -350,23 +350,23 @@ export interface KanbanCallbacks<TItem extends KanbanItem = KanbanItem> {
 }
 
 /**
- * 看板配置
+ * Kanban configuration
  */
 export interface KanbanConfig {
-  /** 允许跨列拖拽 */
+  /** Allow cross-column drag */
   allowCrossColumnDrag?: boolean;
-  /** 允许列内排序 */
+  /** Allow reordering within column */
   allowReorder?: boolean;
-  /** 显示添加卡片按钮 */
+  /** Show add card button */
   showAddCard?: boolean;
-  /** 只读模式 */
+  /** Read-only mode */
   readonly?: boolean;
-  /** 虚拟滚动阈值 */
+  /** Virtual scroll threshold */
   virtualizeThreshold?: number;
 }
 
 // ============================================
-// Component Props - 组件属性
+// Component Props
 // ============================================
 
 export interface KanbanProviderProps {
@@ -380,9 +380,9 @@ export interface KanbanBoardProps<TItem extends KanbanItem = KanbanItem> {
   callbacks?: KanbanCallbacks<TItem>;
   config?: KanbanConfig;
   className?: string;
-  /** 自定义卡片渲染 */
+  /** Custom card rendering */
   renderCard?: (item: TItem) => React.ReactNode;
-  /** 自定义列头渲染 */
+  /** Custom column header rendering */
   renderColumnHeader?: (column: KanbanColumnConfig, itemCount: number) => React.ReactNode;
 }
 
@@ -403,25 +403,25 @@ export interface KanbanCardProps<TItem extends KanbanItem = KanbanItem> {
 }
 ```
 
-**组件职责分离**:
+**Component Responsibility Separation**:
 
-| 组件 | 职责 | 业务逻辑 |
-|------|------|---------|
-| `KanbanProvider` | 提供 DnD 上下文 | 无 |
-| `KanbanBoard` | 渲染列容器，处理拖拽事件 | 无 |
-| `KanbanColumn` | 渲染单列，作为拖放区域 | 无 |
-| `KanbanColumnHeader` | 渲染列标题、任务数 | 无 |
-| `KanbanCard` | 渲染可拖拽卡片 | 无 |
-| `KanbanCardContent` | 渲染卡片内容 (可定制) | 无 |
-| `KanbanAddCard` | 添加新卡片 UI | 无 |
+| Component | Responsibility | Business Logic |
+|-----------|----------------|----------------|
+| `KanbanProvider` | Provides DnD context | None |
+| `KanbanBoard` | Renders column container, handles drag events | None |
+| `KanbanColumn` | Renders single column, acts as drop zone | None |
+| `KanbanColumnHeader` | Renders column title, task count | None |
+| `KanbanCard` | Renders draggable card | None |
+| `KanbanCardContent` | Renders card content (customizable) | None |
+| `KanbanAddCard` | Add new card UI | None |
 
 ---
 
-### Package 3: `@viben/types` - 共享类型定义
+### Package 3: `@viben/types` - Shared Type Definitions
 
-**目的**: 定义跨应用共享的 TypeScript 类型。
+**Purpose**: Define TypeScript types shared across applications.
 
-**优先级**: P0 (基础依赖)
+**Priority**: P0 (Foundation dependency)
 
 ```
 packages/types/
@@ -429,21 +429,21 @@ packages/types/
 ├── tsconfig.json
 ├── src/
 │   ├── index.ts
-│   ├── workspace.ts         # 工作空间相关类型
-│   ├── kanban.ts            # Kanban 业务类型 (扩展 @viben/kanban)
-│   ├── user.ts              # 用户相关类型
-│   ├── package.ts           # MCP/Skill 包类型
-│   └── api.ts               # API 响应类型
+│   ├── workspace.ts         # Workspace related types
+│   ├── kanban.ts            # Kanban business types (extends @viben/kanban)
+│   ├── user.ts              # User related types
+│   ├── package.ts           # MCP/Skill package types
+│   └── api.ts               # API response types
 └── README.md
 ```
 
-**Kanban 业务类型** (`src/kanban.ts`):
+**Kanban Business Types** (`src/kanban.ts`):
 
 ```typescript
 import type { KanbanItem, KanbanColumnConfig, KanbanPriority } from "@viben/kanban";
 
 /**
- * Viben 任务元数据
+ * Viben task metadata
  */
 export interface TaskMetadata {
   assigneeId?: string;
@@ -460,7 +460,7 @@ export interface TaskMetadata {
 }
 
 /**
- * Viben 任务 (扩展 KanbanItem)
+ * Viben task (extends KanbanItem)
  */
 export interface Task extends KanbanItem<TaskMetadata> {
   workspaceId: string;
@@ -468,23 +468,23 @@ export interface Task extends KanbanItem<TaskMetadata> {
 }
 
 /**
- * 任务状态 (预定义)
+ * Task status (predefined)
  */
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done" | "archived";
 
 /**
- * 默认列配置
+ * Default column configuration
  */
 export const DEFAULT_COLUMNS: KanbanColumnConfig[] = [
-  { id: "backlog", status: "backlog", title: "待规划", color: "#6B7280", order: 0 },
-  { id: "todo", status: "todo", title: "待办", color: "#3B82F6", order: 1 },
-  { id: "in_progress", status: "in_progress", title: "进行中", color: "#F59E0B", order: 2 },
-  { id: "review", status: "review", title: "待审核", color: "#8B5CF6", order: 3 },
-  { id: "done", status: "done", title: "已完成", color: "#10B981", order: 4 },
+  { id: "backlog", status: "backlog", title: "Backlog", color: "#6B7280", order: 0 },
+  { id: "todo", status: "todo", title: "To Do", color: "#3B82F6", order: 1 },
+  { id: "in_progress", status: "in_progress", title: "In Progress", color: "#F59E0B", order: 2 },
+  { id: "review", status: "review", title: "Review", color: "#8B5CF6", order: 3 },
+  { id: "done", status: "done", title: "Done", color: "#10B981", order: 4 },
 ];
 
 /**
- * 任务筛选条件
+ * Task filter criteria
  */
 export interface TaskFilter {
   status?: TaskStatus[];
@@ -497,19 +497,19 @@ export interface TaskFilter {
 }
 
 /**
- * 任务排序字段
+ * Task sort field
  */
 export type TaskSortField = "order" | "priority" | "dueDate" | "createdAt" | "updatedAt" | "title";
 
 /**
- * 任务排序方向
+ * Task sort direction
  */
 export type TaskSortDirection = "asc" | "desc";
 ```
 
 ---
 
-## 包依赖关系图
+## Package Dependency Graph
 
 ```mermaid
 graph TD
@@ -558,59 +558,59 @@ graph TD
     style TYPES fill:#81C784
 ```
 
-**依赖方向说明**:
+**Dependency Direction Legend**:
 
-- `→` 运行时依赖
-- `-.->` 类型依赖 (仅类型导入)
+- `→` Runtime dependency
+- `-.->` Type dependency (type imports only)
 
 ---
 
-## Symlink 集成策略 (推荐方案)
+## Symlink Integration Strategy (Recommended)
 
-> **核心思想**: 通过 symlink 将 vibe-kanban 的前端包直接链接到 viben monorepo 中，实现代码共享而非复制。
+> **Core Concept**: Link vibe-kanban frontend packages directly to viben monorepo via symlink, achieving code sharing rather than duplication.
 
-### 为什么选择 Symlink
+### Why Choose Symlink
 
-| 方案 | 优点 | 缺点 | 推荐度 |
-|------|------|------|--------|
-| **A: 源码复制** | 完全控制 | 维护两份代码，同步困难 | ⭐⭐ |
-| **B: NPM 包发布** | 版本管理清晰 | 需发布流程，迭代慢 | ⭐⭐⭐ |
-| **C: Git Submodule** | 版本追踪 | 构建复杂，子模块管理麻烦 | ⭐⭐⭐ |
-| **D: Symlink** | 实时同步，零维护成本 | 需本地有 vibe-kanban 仓库 | ⭐⭐⭐⭐⭐ |
+| Approach | Pros | Cons | Recommendation |
+|----------|------|------|----------------|
+| **A: Source Copy** | Full control | Maintain two codebases, sync difficult | ⭐⭐ |
+| **B: NPM Package Publishing** | Clear version management | Requires publish flow, slow iteration | ⭐⭐⭐ |
+| **C: Git Submodule** | Version tracking | Complex build, submodule management difficult | ⭐⭐⭐ |
+| **D: Symlink** | Real-time sync, zero maintenance cost | Requires local vibe-kanban repo | ⭐⭐⭐⭐⭐ |
 
-### vibe-kanban 项目结构
+### vibe-kanban Project Structure
 
-根据 [ARCHITECTURE.md](file:///Users/lxy/Documents/GitHub/others/vibe-kanban/ARCHITECTURE.md)，vibe-kanban 的前端结构：
+According to [ARCHITECTURE.md](file:///Users/lxy/Documents/GitHub/others/vibe-kanban/ARCHITECTURE.md), vibe-kanban's frontend structure:
 
 ```
 vibe-kanban/
-├── frontend/                     # React 前端应用
+├── frontend/                     # React frontend application
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── ui/              # 基础 UI 组件 (shadcn/ui)
+│   │   │   ├── ui/              # Basic UI components (shadcn/ui)
 │   │   │   │   └── shadcn-io/
-│   │   │   │       └── kanban/  # ⭐ Kanban 核心组件
-│   │   │   ├── ui-new/          # 新设计系统组件
-│   │   │   │   ├── containers/  # 业务容器
-│   │   │   │   ├── primitives/  # ⭐ 原子组件
-│   │   │   │   └── views/       # ⭐ 视图组件
+│   │   │   │       └── kanban/  # ⭐ Kanban core components
+│   │   │   ├── ui-new/          # New design system components
+│   │   │   │   ├── containers/  # Business containers
+│   │   │   │   ├── primitives/  # ⭐ Atomic components
+│   │   │   │   └── views/       # ⭐ View components
 │   │   │   └── ...
-│   │   ├── hooks/               # 自定义 Hooks (~90个)
-│   │   ├── stores/              # Zustand 状态
-│   │   └── lib/                 # 工具库
+│   │   ├── hooks/               # Custom Hooks (~90)
+│   │   ├── stores/              # Zustand state
+│   │   └── lib/                 # Utility library
 │   └── package.json
-├── shared/                       # 前后端共享类型
-│   ├── types.ts                 # ⭐ TypeScript 类型定义
+├── shared/                       # Frontend-backend shared types
+│   ├── types.ts                 # ⭐ TypeScript type definitions
 │   └── remote-types.ts
 └── ...
 ```
 
-### Symlink 映射方案
+### Symlink Mapping Plan
 
-在 viben monorepo 中创建 symlink，指向 vibe-kanban 的相关目录：
+Create symlinks in viben monorepo pointing to vibe-kanban's relevant directories:
 
 ```bash
-# 目标结构
+# Target structure
 viben/
 ├── packages/
 │   ├── vibe-kanban-ui/          # symlink → vibe-kanban/frontend/src/components/ui
@@ -619,40 +619,40 @@ viben/
 │   └── ...
 ```
 
-### 设置步骤
+### Setup Steps
 
-#### Step 1: 创建 Symlink
+#### Step 1: Create Symlinks
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 
-# 创建 symlink 目录
+# Create symlink directory
 mkdir -p packages/vibe-kanban
 
-# 链接 UI 组件
+# Link UI components
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/components/ui \
       packages/vibe-kanban/ui
 
-# 链接新设计组件
+# Link new design components
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/components/ui-new \
       packages/vibe-kanban/ui-new
 
-# 链接 hooks
+# Link hooks
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/hooks \
       packages/vibe-kanban/hooks
 
-# 链接共享类型
+# Link shared types
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/shared \
       packages/vibe-kanban/shared
 
-# 链接工具库
+# Link utility library
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/lib \
       packages/vibe-kanban/lib
 ```
 
-#### Step 2: 创建包装 package.json
+#### Step 2: Create Wrapper package.json
 
-在 `packages/vibe-kanban/` 创建 `package.json`：
+Create `package.json` in `packages/vibe-kanban/`:
 
 ```json
 {
@@ -677,25 +677,25 @@ ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/lib \
 }
 ```
 
-#### Step 3: 创建统一导出入口
+#### Step 3: Create Unified Export Entry
 
-在 `packages/vibe-kanban/index.ts`：
+In `packages/vibe-kanban/index.ts`:
 
 ```typescript
-// Kanban 核心组件
+// Kanban core components
 export * from "./ui/shadcn-io/kanban";
 
-// 新设计组件
+// New design components
 export * from "./ui-new/primitives";
 export * from "./ui-new/views/KanbanBoard";
 
-// 类型定义
+// Type definitions
 export type * from "./shared/types";
 ```
 
-#### Step 4: 更新 Turbo 配置
+#### Step 4: Update Turbo Configuration
 
-在 `turbo.json` 中配置构建依赖：
+Configure build dependencies in `turbo.json`:
 
 ```json
 {
@@ -711,7 +711,7 @@ export type * from "./shared/types";
 }
 ```
 
-#### Step 5: 在 Desktop 应用中使用
+#### Step 5: Use in Desktop Application
 
 ```typescript
 // apps/desktop/src/components/workspace/workspace-kanban.tsx
@@ -724,7 +724,7 @@ import {
 import type { Task } from "@viben/vibe-kanban/shared";
 
 export function WorkspaceKanban({ workspaceId }: { workspaceId: string }) {
-  // ... 业务逻辑
+  // ... business logic
   return (
     <KanbanProvider>
       <KanbanBoard
@@ -737,99 +737,99 @@ export function WorkspaceKanban({ workspaceId }: { workspaceId: string }) {
 }
 ```
 
-### 可复用组件清单 (通过 Symlink)
+### Reusable Component List (via Symlink)
 
-| 路径 | 组件 | 用途 |
-|------|------|------|
-| `ui/shadcn-io/kanban/` | `KanbanProvider`, `KanbanBoard`, `KanbanCard`, `KanbanCards`, `KanbanHeader` | Kanban 核心 UI |
-| `ui-new/primitives/` | `PriorityIcon`, `ViewNavTabs`, `StatusBadge` | 原子组件 |
-| `ui-new/views/` | `KanbanBoard`, `KanbanCardContent`, `IssueListView` | 视图组件 |
-| `hooks/` | `useKanban*`, `useDragDrop`, `useProject*` | 状态 Hooks |
-| `shared/` | `Task`, `Project`, `TaskStatus`, `IssuePriority` | TypeScript 类型 |
-| `lib/` | `utils.ts`, `api.ts` | 工具函数 |
+| Path | Components | Purpose |
+|------|------------|---------|
+| `ui/shadcn-io/kanban/` | `KanbanProvider`, `KanbanBoard`, `KanbanCard`, `KanbanCards`, `KanbanHeader` | Kanban core UI |
+| `ui-new/primitives/` | `PriorityIcon`, `ViewNavTabs`, `StatusBadge` | Atomic components |
+| `ui-new/views/` | `KanbanBoard`, `KanbanCardContent`, `IssueListView` | View components |
+| `hooks/` | `useKanban*`, `useDragDrop`, `useProject*` | State Hooks |
+| `shared/` | `Task`, `Project`, `TaskStatus`, `IssuePriority` | TypeScript types |
+| `lib/` | `utils.ts`, `api.ts` | Utility functions |
 
-### 注意事项
+### Notes
 
-1. **开发环境**: 需要同时克隆 vibe-kanban 和 viben 仓库
-2. **CI/CD**: 需要在 CI 中也设置好 symlink，或者使用 Git Submodule 作为备选
-3. **类型兼容**: vibe-kanban 使用 React 18，viben 使用 React 19，需确保兼容性
-4. **样式冲突**: vibe-kanban 使用双 Tailwind 配置，需适配到 Viben Design System
+1. **Development Environment**: Requires cloning both vibe-kanban and viben repositories
+2. **CI/CD**: Need to set up symlink in CI, or use Git Submodule as fallback
+3. **Type Compatibility**: vibe-kanban uses React 18, viben uses React 19, ensure compatibility
+4. **Style Conflicts**: vibe-kanban uses dual Tailwind config, need to adapt to Viben Design System
 
-### 备选方案: 混合模式
+### Fallback: Hybrid Mode
 
-如果 symlink 在某些环境不可用，可采用混合模式：
+If symlink is unavailable in certain environments, use hybrid mode:
 
-1. **开发环境**: 使用 symlink（实时同步）
-2. **CI 环境**: 使用 Git Submodule 或 npm pack
-3. **生产环境**: 构建时复制必要文件
-
----
-
-## 组件迁移映射
-
-### 直接通过 Symlink 使用
-
-| vibe-kanban 组件 | 导入路径 | 修改程度 |
-|-----------------|---------|---------|
-| `ui/shadcn-io/kanban/KanbanProvider` | `@viben/vibe-kanban` | 无需修改 |
-| `ui/shadcn-io/kanban/KanbanBoard` | `@viben/vibe-kanban` | 无需修改 |
-| `ui/shadcn-io/kanban/KanbanCard` | `@viben/vibe-kanban` | 无需修改 |
-| `ui/shadcn-io/kanban/KanbanCards` | `@viben/vibe-kanban` | 无需修改 |
-| `ui/shadcn-io/kanban/KanbanHeader` | `@viben/vibe-kanban` | 无需修改 |
-| `ui-new/views/KanbanCardContent` | `@viben/vibe-kanban/ui-new/views` | 无需修改 |
-| `ui-new/primitives/PriorityIcon` | `@viben/vibe-kanban/ui-new/primitives` | 无需修改 |
-
-### 需要在 viben 中实现的组件 (业务相关)
-
-| 组件 | 原因 | 实现位置 |
-|------|------|---------|
-| `WorkspaceKanban` | viben 特定的工作空间集成 | `apps/desktop/src/components/workspace/` |
-| `useWorkspaceKanban` | viben 特定的状态管理 | `apps/desktop/src/hooks/` |
-| `Breadcrumb` | Notion 风格，@viben/ui 统一提供 | `packages/ui/` |
-
-### 不通过 Symlink 引用的组件 (vibe-kanban 特有)
-
-| 组件 | 原因 |
-|------|------|
-| `KanbanContainer` | 包含 vibe-kanban 特有的业务逻辑 |
-| `KanbanFilterBar` | 依赖 vibe-kanban 的筛选状态 |
-| `KanbanIssuePanelContainer` | 特定于 Issue 详情 |
-| `useTaskMutations` | 依赖 vibe-kanban 后端 API |
-| 所有 stores | vibe-kanban 应用级状态 |
+1. **Development Environment**: Use symlink (real-time sync)
+2. **CI Environment**: Use Git Submodule or npm pack
+3. **Production Environment**: Copy necessary files during build
 
 ---
 
-## 样式适配指南
+## Component Migration Mapping
 
-### 从 vibe-kanban 样式到 Viben Design System
+### Direct Use via Symlink
 
-**颜色映射**:
+| vibe-kanban Component | Import Path | Modification Level |
+|-----------------------|-------------|-------------------|
+| `ui/shadcn-io/kanban/KanbanProvider` | `@viben/vibe-kanban` | No modification |
+| `ui/shadcn-io/kanban/KanbanBoard` | `@viben/vibe-kanban` | No modification |
+| `ui/shadcn-io/kanban/KanbanCard` | `@viben/vibe-kanban` | No modification |
+| `ui/shadcn-io/kanban/KanbanCards` | `@viben/vibe-kanban` | No modification |
+| `ui/shadcn-io/kanban/KanbanHeader` | `@viben/vibe-kanban` | No modification |
+| `ui-new/views/KanbanCardContent` | `@viben/vibe-kanban/ui-new/views` | No modification |
+| `ui-new/primitives/PriorityIcon` | `@viben/vibe-kanban/ui-new/primitives` | No modification |
 
-| vibe-kanban | Viben Design System | CSS 变量 |
-|-------------|---------------------|----------|
+### Components to Implement in viben (Business-related)
+
+| Component | Reason | Implementation Location |
+|-----------|--------|------------------------|
+| `WorkspaceKanban` | viben-specific workspace integration | `apps/desktop/src/components/workspace/` |
+| `useWorkspaceKanban` | viben-specific state management | `apps/desktop/src/hooks/` |
+| `Breadcrumb` | Notion-style, provided by @viben/ui | `packages/ui/` |
+
+### Components Not Referenced via Symlink (vibe-kanban specific)
+
+| Component | Reason |
+|-----------|--------|
+| `KanbanContainer` | Contains vibe-kanban specific business logic |
+| `KanbanFilterBar` | Depends on vibe-kanban filter state |
+| `KanbanIssuePanelContainer` | Specific to Issue details |
+| `useTaskMutations` | Depends on vibe-kanban backend API |
+| All stores | vibe-kanban application-level state |
+
+---
+
+## Style Adaptation Guide
+
+### From vibe-kanban Styles to Viben Design System
+
+**Color Mapping**:
+
+| vibe-kanban | Viben Design System | CSS Variable |
+|-------------|---------------------|--------------|
 | `bg-card` | `bg-surface` | `--surface` |
 | `border-border` | `border-border` | `--border` |
 | `text-foreground` | `text-foreground` | `--foreground` |
-| 蓝色主色 | 暖琥珀色 | `--primary` |
-| 默认圆角 | `rounded-xl` | `--radius-lg` |
+| Blue primary | Warm amber | `--primary` |
+| Default radius | `rounded-xl` | `--radius-lg` |
 
-**动画适配**:
+**Animation Adaptation**:
 
 ```css
-/* vibe-kanban 默认 */
+/* vibe-kanban default */
 transition: all 0.2s ease;
 
 /* Viben Design System */
 transition: all var(--duration-fast) var(--ease-out-expo);
 ```
 
-**卡片样式适配**:
+**Card Style Adaptation**:
 
 ```tsx
-// vibe-kanban 原始样式
+// vibe-kanban original style
 <div className="rounded-lg border bg-card p-3 shadow-sm">
 
-// Viben Design System 适配
+// Viben Design System adaptation
 <div className={cn(
   "rounded-xl border border-border bg-surface p-4",
   "transition-all duration-200",
@@ -839,38 +839,39 @@ transition: all var(--duration-fast) var(--ease-out-expo);
 
 ---
 
-## UI 设计
+## UI Design
 
-### 1. 面包屑导航 (Breadcrumb)
+### 1. Breadcrumb Navigation
 
-**位置**: 工作空间页面顶部
+**Position**: Top of workspace page
 
-**设计理念**: 采用 Notion 风格
+**Design Philosophy**: Notion-style
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  🏠 Home  /  📁 My Workspace  /  📋 任务看板                   │
+│  🏠 Home  /  📁 My Workspace  /  📋 Task Board                │
 │  ─────────────────────────────────────────────────────────── │
 │                                                              │
-│                     [页面内容区域]                            │
+│                     [Page Content Area]                      │
 │                                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**交互行为**:
-- 每个层级可点击，导航到对应页面
-- 当前页面不可点击，显示为普通文本
-- 支持图标显示 (可选)
-- 响应式：移动端折叠中间层级，显示 `... / 当前页`
+**Interaction Behavior**:
+- Each level is clickable, navigates to corresponding page
+- Current page is not clickable, displayed as plain text
+- Supports icon display (optional)
+- Responsive: collapses middle levels on mobile, shows `... / Current Page`
 
-### 2. Kanban 页面布局
+### 2. Kanban Page Layout
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  面包屑: Home / My Workspace / 任务看板                        │
+│  Breadcrumb: Home / My Workspace / Task Board                │
 ├──────────────────────────────────────────────────────────────┤
 │ ┌────────────┬────────────┬────────────┬────────────┐       │
-│ │  待办 (5)   │ 进行中 (3)  │ 已完成 (12) │ 已归档      │       │
+│ │  To Do (5) │In Progress │  Done (12) │ Archived   │       │
+│ │            │   (3)      │            │            │       │
 │ ├────────────┼────────────┼────────────┼────────────┤       │
 │ │ ┌────────┐ │ ┌────────┐ │ ┌────────┐ │            │       │
 │ │ │ Task 1 │ │ │ Task 3 │ │ │ Task 5 │ │            │       │
@@ -879,41 +880,41 @@ transition: all var(--duration-fast) var(--ease-out-expo);
 │ │ │ Task 2 │ │ │ Task 4 │ │ │ Task 6 │ │            │       │
 │ │ └────────┘ │ └────────┘ │ └────────┘ │            │       │
 │ │            │            │            │            │       │
-│ │ + 添加任务  │            │            │            │       │
+│ │ + Add Task │            │            │            │       │
 │ └────────────┴────────────┴────────────┴────────────┘       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 实施阶段 (Symlink 方案)
+## Implementation Phases (Symlink Approach)
 
-### Phase 0: Symlink 设置
+### Phase 0: Symlink Setup
 
-**目标**: 建立 vibe-kanban 与 viben 的 symlink 连接
+**Goal**: Establish symlink connection between vibe-kanban and viben
 
-| 任务 | 交付物 | 优先级 |
-|------|--------|--------|
-| 创建 symlink 目录结构 | `packages/vibe-kanban/` | P0 |
-| 链接 vibe-kanban 前端组件 | symlinks to ui/, ui-new/, hooks/ | P0 |
-| 链接共享类型 | symlink to shared/ | P0 |
-| 创建包装 package.json | `packages/vibe-kanban/package.json` | P0 |
-| 创建统一导出入口 | `packages/vibe-kanban/index.ts` | P0 |
-| 更新 pnpm-workspace.yaml | 添加 vibe-kanban 包 | P0 |
-| 更新 turbo.json | 配置构建依赖 | P0 |
+| Task | Deliverable | Priority |
+|------|-------------|----------|
+| Create symlink directory structure | `packages/vibe-kanban/` | P0 |
+| Link vibe-kanban frontend components | symlinks to ui/, ui-new/, hooks/ | P0 |
+| Link shared types | symlink to shared/ | P0 |
+| Create wrapper package.json | `packages/vibe-kanban/package.json` | P0 |
+| Create unified export entry | `packages/vibe-kanban/index.ts` | P0 |
+| Update pnpm-workspace.yaml | Add vibe-kanban package | P0 |
+| Update turbo.json | Configure build dependencies | P0 |
 
-**验收标准**:
-- [ ] `ls -la packages/vibe-kanban/` 显示正确的 symlink
-- [ ] `pnpm install` 不报错
-- [ ] desktop 应用可从 `@viben/vibe-kanban` 导入组件
-- [ ] TypeScript 类型检查通过
+**Acceptance Criteria**:
+- [ ] `ls -la packages/vibe-kanban/` shows correct symlinks
+- [ ] `pnpm install` succeeds without errors
+- [ ] desktop app can import components from `@viben/vibe-kanban`
+- [ ] TypeScript type checking passes
 
-**设置命令**:
+**Setup Commands**:
 ```bash
-# 创建目录
+# Create directory
 mkdir -p packages/vibe-kanban
 
-# 创建 symlinks
+# Create symlinks
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/components/ui packages/vibe-kanban/ui
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/components/ui-new packages/vibe-kanban/ui-new
 ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/hooks packages/vibe-kanban/hooks
@@ -923,37 +924,37 @@ ln -s /Users/lxy/Documents/GitHub/others/vibe-kanban/frontend/src/lib packages/v
 
 ---
 
-### Phase 1: 基础包搭建 (@viben/ui)
+### Phase 1: Foundation Package Setup (@viben/ui)
 
-**目标**: 创建共享 UI 组件库（与 vibe-kanban 互补）
+**Goal**: Create shared UI component library (complementing vibe-kanban)
 
-| 任务 | 交付物 | 优先级 |
-|------|--------|--------|
-| 创建 `@viben/types` 包 | `packages/types/` | P0 |
-| 创建 `@viben/ui` 包 | `packages/ui/` | P0 |
-| 从 desktop 迁移 UI 原语 | 10+ 组件 | P0 |
-| 创建 Breadcrumb 组件 | `@viben/ui/breadcrumb` | P0 |
-| 配置 Turbo 构建流水线 | `turbo.json` 更新 | P0 |
+| Task | Deliverable | Priority |
+|------|-------------|----------|
+| Create `@viben/types` package | `packages/types/` | P0 |
+| Create `@viben/ui` package | `packages/ui/` | P0 |
+| Migrate UI primitives from desktop | 10+ components | P0 |
+| Create Breadcrumb component | `@viben/ui/breadcrumb` | P0 |
+| Configure Turbo build pipeline | `turbo.json` update | P0 |
 
-**验收标准**:
-- [ ] `pnpm build` 成功构建所有包
-- [ ] desktop 应用可从 `@viben/ui` 导入组件
-- [ ] 类型检查通过
+**Acceptance Criteria**:
+- [ ] `pnpm build` successfully builds all packages
+- [ ] desktop app can import components from `@viben/ui`
+- [ ] Type checking passes
 
-### Phase 2: Desktop 集成 (使用 Symlink)
+### Phase 2: Desktop Integration (Using Symlink)
 
-**目标**: 在 desktop 应用中使用 vibe-kanban 组件（通过 symlink）
+**Goal**: Use vibe-kanban components in desktop application (via symlink)
 
-| 任务 | 交付物 | 优先级 |
-|------|--------|--------|
-| 添加 Workspace Kanban Tab | UI 入口 | P1 |
-| 实现 `WorkspaceKanban` 容器 | 使用 `@viben/vibe-kanban` | P1 |
-| 实现 `useWorkspaceKanban` hook | viben 特定状态管理 | P1 |
-| 样式适配层 | CSS 变量映射 | P1 |
-| 本地存储 (SQLite via Tauri) | 数据持久化 | P2 |
-| 添加国际化支持 | i18n 翻译 | P2 |
+| Task | Deliverable | Priority |
+|------|-------------|----------|
+| Add Workspace Kanban Tab | UI entry point | P1 |
+| Implement `WorkspaceKanban` container | Using `@viben/vibe-kanban` | P1 |
+| Implement `useWorkspaceKanban` hook | viben-specific state management | P1 |
+| Style adaptation layer | CSS variable mapping | P1 |
+| Local storage (SQLite via Tauri) | Data persistence | P2 |
+| Add internationalization support | i18n translations | P2 |
 
-**使用示例**:
+**Usage Example**:
 ```typescript
 // apps/desktop/src/components/workspace/workspace-kanban.tsx
 import {
@@ -977,28 +978,28 @@ export function WorkspaceKanban({ workspaceId }: Props) {
 }
 ```
 
-**验收标准**:
-- [ ] 可从 `@viben/vibe-kanban` 正确导入组件
-- [ ] 可在工作空间中创建、编辑、删除任务
-- [ ] 拖拽任务更新状态
-- [ ] 数据持久化到本地
-- [ ] 支持中英文
+**Acceptance Criteria**:
+- [ ] Can correctly import components from `@viben/vibe-kanban`
+- [ ] Can create, edit, delete tasks in workspace
+- [ ] Dragging tasks updates status
+- [ ] Data persists locally
+- [ ] Supports English and Chinese
 
-### Phase 3: 云同步与高级功能
+### Phase 3: Cloud Sync and Advanced Features
 
-**目标**: 实现云端同步和协作功能
+**Goal**: Implement cloud synchronization and collaboration features
 
-| 任务 | 交付物 | 优先级 |
-|------|--------|--------|
-| 后端 Task API | REST 端点 | P3 |
-| 云端同步机制 | 双向同步 | P3 |
-| 实时协作 (可选) | WebSocket | P3 |
-| 筛选与搜索 | 高级功能 | P3 |
-| 性能优化 (虚拟滚动) | 大数据支持 | P3 |
+| Task | Deliverable | Priority |
+|------|-------------|----------|
+| Backend Task API | REST endpoints | P3 |
+| Cloud sync mechanism | Bidirectional sync | P3 |
+| Real-time collaboration (optional) | WebSocket | P3 |
+| Filtering and search | Advanced features | P3 |
+| Performance optimization (virtual scroll) | Large data support | P3 |
 
 ---
 
-## 目录结构总览 (Symlink 方案)
+## Directory Structure Overview (Symlink Approach)
 
 ```
 viben/
@@ -1007,92 +1008,92 @@ viben/
 │   │   └── src/
 │   │       ├── components/
 │   │       │   ├── workspace/
-│   │       │   │   └── workspace-kanban.tsx    # Kanban 容器 (业务逻辑)
+│   │       │   │   └── workspace-kanban.tsx    # Kanban container (business logic)
 │   │       │   └── layout/
-│   │       │       └── ... (使用 @viben/ui)
+│   │       │       └── ... (uses @viben/ui)
 │   │       └── hooks/
-│   │           └── use-workspace-kanban.ts     # Kanban 业务 hook
+│   │           └── use-workspace-kanban.ts     # Kanban business hook
 │   └── web/
-│       └── ... (也可使用 @viben/ui)
+│       └── ... (can also use @viben/ui)
 │
 ├── packages/
-│   ├── vibe-kanban/            # ⭐ Symlink 到 vibe-kanban 项目
-│   │   ├── package.json        # 包装配置
-│   │   ├── index.ts            # 统一导出
+│   ├── vibe-kanban/            # ⭐ Symlink to vibe-kanban project
+│   │   ├── package.json        # Wrapper configuration
+│   │   ├── index.ts            # Unified exports
 │   │   ├── ui -> ../../../others/vibe-kanban/frontend/src/components/ui
 │   │   ├── ui-new -> ../../../others/vibe-kanban/frontend/src/components/ui-new
 │   │   ├── hooks -> ../../../others/vibe-kanban/frontend/src/hooks
 │   │   ├── shared -> ../../../others/vibe-kanban/shared
 │   │   └── lib -> ../../../others/vibe-kanban/frontend/src/lib
 │   │
-│   ├── ui/                     # 共享 UI 组件库 (viben 特有)
+│   ├── ui/                     # Shared UI component library (viben specific)
 │   │   └── src/
 │   │       ├── components/
-│   │       │   ├── breadcrumb.tsx    # Notion 风格面包屑
+│   │       │   ├── breadcrumb.tsx    # Notion-style breadcrumb
 │   │       │   ├── button.tsx
 │   │       │   ├── card.tsx
 │   │       │   └── ...
 │   │       └── lib/
 │   │           └── utils.ts
 │   │
-│   ├── types/                  # 共享类型定义 (viben 特有)
+│   ├── types/                  # Shared type definitions (viben specific)
 │   │   └── src/
 │   │       ├── workspace.ts
-│   │       ├── kanban.ts       # 扩展 vibe-kanban 类型
+│   │       ├── kanban.ts       # Extends vibe-kanban types
 │   │       └── user.ts
 │   │
 │   ├── api-client/             # (existing)
 │   └── cli/                    # (existing)
 │
-├── /Users/lxy/Documents/GitHub/others/vibe-kanban/  # 外部仓库 (symlink 源)
+├── /Users/lxy/Documents/GitHub/others/vibe-kanban/  # External repo (symlink source)
 │   ├── frontend/
 │   │   └── src/
 │   │       ├── components/
-│   │       │   ├── ui/                # shadcn/ui 基础组件
+│   │       │   ├── ui/                # shadcn/ui base components
 │   │       │   │   └── shadcn-io/
-│   │       │   │       └── kanban/    # Kanban 核心组件
-│   │       │   └── ui-new/            # 新设计组件
+│   │       │   │       └── kanban/    # Kanban core components
+│   │       │   └── ui-new/            # New design components
 │   │       │       ├── containers/
 │   │       │       ├── primitives/
 │   │       │       └── views/
-│   │       ├── hooks/                 # 90+ 自定义 hooks
+│   │       ├── hooks/                 # 90+ custom hooks
 │   │       └── lib/
-│   └── shared/                        # 前后端共享类型
+│   └── shared/                        # Frontend-backend shared types
 │
 └── .trellis/spec/modules/
-    └── kanban-integration.md          # 本文档
+    └── kanban-integration.md          # This document
 ```
 
 ---
 
 ## Acceptance Criteria
 
-### Symlink 设置
-- [ ] `packages/vibe-kanban/` 目录存在且 symlink 有效
-- [ ] `pnpm install` 成功，无 symlink 错误
-- [ ] TypeScript 可正确解析 symlink 模块
+### Symlink Setup
+- [ ] `packages/vibe-kanban/` directory exists and symlinks are valid
+- [ ] `pnpm install` succeeds without symlink errors
+- [ ] TypeScript can correctly resolve symlinked modules
 
-### 组件集成
-- [ ] `@viben/vibe-kanban` 可正确导入 Kanban 组件
-- [ ] `@viben/ui` Breadcrumb 组件支持 Notion 风格导航
-- [ ] Kanban 看板支持拖拽排序
-- [ ] 样式适配到 Viben Design System
-- [ ] 支持深色/浅色主题
+### Component Integration
+- [ ] `@viben/vibe-kanban` can correctly import Kanban components
+- [ ] `@viben/ui` Breadcrumb component supports Notion-style navigation
+- [ ] Kanban board supports drag-and-drop sorting
+- [ ] Styles adapted to Viben Design System
+- [ ] Supports dark/light themes
 
-### Desktop 应用
-- [ ] 工作空间页面显示【任务看板】Tab
-- [ ] 可在工作空间中创建、编辑、删除任务
-- [ ] 任务数据持久化到本地
-- [ ] 支持中英文国际化
+### Desktop Application
+- [ ] Workspace page displays [Task Board] Tab
+- [ ] Can create, edit, delete tasks in workspace
+- [ ] Task data persists locally
+- [ ] Supports English and Chinese internationalization
 
 ---
 
-## 参考资源
+## Reference Resources
 
-- [dnd-kit 文档](https://docs.dndkit.com/)
+- [dnd-kit Documentation](https://docs.dndkit.com/)
 - [Viben Design System](../design-system.md)
 - [Component Guidelines](../components.md)
-- [聊天集成](../chat-integration.md)
+- [Chat Integration](../chat-integration.md)
 
 ---
 

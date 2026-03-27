@@ -1,96 +1,96 @@
-# 智能体 API
+# Agent API
 
-> `/api/agent` - 智能体管理端点
+> `/api/agent` - Agent management endpoints
 
-## 概述
+## Overview
 
-智能体 API 提供两种类型的智能体管理：
-- **Viben 智能体**: 用户自定义智能体，存储在 YAML 配置中
-- **执行器智能体**: 基于执行器类型的智能体 (如 CLAUDE_CODE)
+The Agent API provides two types of agent management:
+- **Viben Agents**: User-defined agents stored in YAML configuration
+- **Executor Agents**: Executor-based agents (e.g., CLAUDE_CODE)
 
-## 端点列表
+## Endpoint List
 
-### 基础 CRUD
+### Basic CRUD
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent` | 列出所有智能体 |
-| POST | `/api/agent` | 创建 Viben 智能体 |
-| GET | `/api/agent/:id` | 获取智能体详情 |
-| PATCH | `/api/agent/:id` | 更新 Viben 智能体 |
-| DELETE | `/api/agent/:id` | 删除 Viben 智能体 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent` | List all agents |
+| POST | `/api/agent` | Create Viben agent |
+| GET | `/api/agent/:id` | Get agent details |
+| PATCH | `/api/agent/:id` | Update Viben agent |
+| DELETE | `/api/agent/:id` | Delete Viben agent |
 
-### 默认智能体
+### Default Agent
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/default` | 获取默认智能体 ID |
-| PUT | `/api/agent/default` | 设置默认智能体 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/default` | Get default agent ID |
+| PUT | `/api/agent/default` | Set default agent |
 
-### 模板管理
+### Template Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/templates` | 列出所有模板 |
-| GET | `/api/agent/templates/:id` | 获取模板详情 |
-| POST | `/api/agent/templates` | 从智能体创建模板 |
-| POST | `/api/agent/templates/:id/instantiate` | 从模板创建智能体 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/templates` | List all templates |
+| GET | `/api/agent/templates/:id` | Get template details |
+| POST | `/api/agent/templates` | Create template from agent |
+| POST | `/api/agent/templates/:id/instantiate` | Create agent from template |
 
-### 可用性检查
+### Availability Check
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/:id/availability` | 检查智能体可用性 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/:id/availability` | Check agent availability |
 
-### 进程管理
+### Process Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/agent/:id/spawn` | 启动智能体进程 |
-| POST | `/api/agent/:id/stop` | 停止智能体进程 |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/agent/:id/spawn` | Start agent process |
+| POST | `/api/agent/:id/stop` | Stop agent process |
 
-### 会话管理
+### Session Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/:id/sessions` | 列出会话 |
-| POST | `/api/agent/:id/sessions` | 创建会话 |
-| GET | `/api/agent/:id/sessions/:sid` | 获取会话详情 |
-| DELETE | `/api/agent/:id/sessions/:sid` | 删除会话 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/:id/sessions` | List sessions |
+| POST | `/api/agent/:id/sessions` | Create session |
+| GET | `/api/agent/:id/sessions/:sid` | Get session details |
+| DELETE | `/api/agent/:id/sessions/:sid` | Delete session |
 
-### 消息管理
+### Message Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/:id/sessions/:sid/messages` | 列出消息 |
-| POST | `/api/agent/:id/sessions/:sid/messages` | 添加消息 |
-| GET | `/api/agent/:id/sessions/:sid/ui-messages` | 获取 UI 消息 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/:id/sessions/:sid/messages` | List messages |
+| POST | `/api/agent/:id/sessions/:sid/messages` | Add message |
+| GET | `/api/agent/:id/sessions/:sid/ui-messages` | Get UI messages |
 
-### 历史记录
+### History
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/agent/:id/history` | 获取历史记录 |
-| POST | `/api/agent/:id/history` | 添加历史记录 |
-| GET | `/api/agent/:id/history/stats` | 获取历史统计 |
-| DELETE | `/api/agent/:id/history` | 清空历史记录 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/:id/history` | Get history records |
+| POST | `/api/agent/:id/history` | Add history record |
+| GET | `/api/agent/:id/history/stats` | Get history statistics |
+| DELETE | `/api/agent/:id/history` | Clear history |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/agent
 
-列出所有智能体 (Viben 智能体 + 执行器智能体)。
+List all agents (Viben agents + Executor agents).
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
-| include_global | bool | 否 | true | 是否包含全局智能体 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| workspace_path | string | No | - | Workspace path |
+| include_global | bool | No | true | Include global agents |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -121,9 +121,9 @@
 
 ### POST /api/agent
 
-创建新的 Viben 智能体。
+Create a new Viben agent.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -140,31 +140,31 @@
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| name | string | ✓ | 智能体名称 |
-| id | string | 否 | 智能体 ID (自动生成) |
-| description | string | 否 | 描述 |
-| model | string | 否 | 模型 ID |
-| provider | string | 否 | 提供商 ID |
-| system_prompt | string | 否 | 系统提示词 |
-| temperature | float | 否 | 温度参数 |
-| max_tokens | int | 否 | 最大 token 数 |
-| from_template | string | 否 | 从模板创建 |
-| base_path | string | 否 | 存储路径 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | Agent name |
+| id | string | No | Agent ID (auto-generated) |
+| description | string | No | Description |
+| model | string | No | Model ID |
+| provider | string | No | Provider ID |
+| system_prompt | string | No | System prompt |
+| temperature | float | No | Temperature parameter |
+| max_tokens | int | No | Maximum tokens |
+| from_template | string | No | Create from template |
+| base_path | string | No | Storage path |
 
-**响应**: 创建的智能体详情
+**Response**: Created agent details
 
 ---
 
 ### GET /api/agent/:id
 
-获取智能体详情。支持 Viben 智能体和执行器智能体。
+Get agent details. Supports both Viben agents and Executor agents.
 
-**路径参数**:
-- `id`: 智能体 ID 或执行器类型 (如 `CLAUDE_CODE`)
+**Path Parameters**:
+- `id`: Agent ID or Executor type (e.g., `CLAUDE_CODE`)
 
-**响应 (Viben 智能体)**:
+**Response (Viben Agent)**:
 
 ```json
 {
@@ -181,7 +181,7 @@
 }
 ```
 
-**响应 (执行器智能体)**:
+**Response (Executor Agent)**:
 
 ```json
 {
@@ -202,25 +202,25 @@
 
 ### POST /api/agent/:id/spawn
 
-启动智能体进程。
+Start an agent process.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
-  "prompt": "分析这段代码",
+  "prompt": "Analyze this code",
   "workdir": "/path/to/project",
   "session_id": "optional-session-id"
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| prompt | string | ✓ | 提示词 |
-| workdir | string | ✓ | 工作目录 |
-| session_id | string | 否 | 会话 ID |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| prompt | string | Yes | Prompt |
+| workdir | string | Yes | Working directory |
+| session_id | string | No | Session ID |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -234,9 +234,9 @@
 
 ### POST /api/agent/:id/stop
 
-停止智能体进程。
+Stop an agent process.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -244,7 +244,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -256,9 +256,9 @@
 
 ### GET /api/agent/:id/sessions/:sid/ui-messages
 
-获取 UI 友好的消息列表，用于前端渲染。
+Get UI-friendly message list for frontend rendering.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -284,16 +284,16 @@
 
 ### GET /api/agent/:id/history
 
-获取智能体历史记录。
+Get agent history records.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| limit | int | 否 | 50 | 返回记录数 |
-| search | string | 否 | - | 搜索关键词 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| limit | int | No | 50 | Number of records to return |
+| search | string | No | - | Search keyword |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -315,20 +315,20 @@
 
 ---
 
-## 智能体类型
+## Agent Types
 
-### Viben 智能体
+### Viben Agents
 
-用户自定义智能体，存储在：
-- 全局: `~/.viben/agents/<id>/config.yaml`
-- 工作空间: `<workspace>/.viben/agents/<id>/config.yaml`
+User-defined agents stored in:
+- Global: `~/.viben/agents/<id>/config.yaml`
+- Workspace: `<workspace>/.viben/agents/<id>/config.yaml`
 
-### 执行器智能体
+### Executor Agents
 
-基于执行器类型，可用类型：
+Based on executor types, available types:
 
-| ID | 名称 | 说明 |
-|-----|------|------|
+| ID | Name | Description |
+|----|------|-------------|
 | CLAUDE_CODE | Claude Code | Anthropic Claude Code CLI |
 | AMP | AMP | AMP coding agent |
 | GEMINI | Gemini | Google Gemini |
@@ -341,8 +341,8 @@
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [执行器 API](./executors.md) - 执行器管理
-- [模型 API](./models.md) - 模型管理
-- [会话 API](./sessions.md) - 会话管理
+- [Executor API](./executors.md) - Executor management
+- [Model API](./models.md) - Model management
+- [Session API](./sessions.md) - Session management

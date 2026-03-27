@@ -1,42 +1,42 @@
 ---
 sidebar_position: 13
 title: "viben cron"
-description: "管理智能体的定时任务"
+description: "Manage agent scheduled tasks"
 ---
 
 # viben cron
 
-管理智能体的定时任务。
+Manage agent scheduled tasks.
 
-## 用法
+## Usage
 
 ```bash
 viben cron <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `list` | 列出所有定时任务 |
-| `add` | 添加定时任务 |
-| `remove <job_id>` | 删除定时任务 |
-| `enable <job_id>` | 启用定时任务 |
-| `disable <job_id>` | 禁用定时任务 |
-| `show <job_id>` | 显示任务详情 |
-| `run <job_id>` | 立即执行任务（测试用） |
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List all scheduled jobs |
+| `add` | Add a scheduled job |
+| `remove <job_id>` | Remove a scheduled job |
+| `enable <job_id>` | Enable a scheduled job |
+| `disable <job_id>` | Disable a scheduled job |
+| `show <job_id>` | Show job details |
+| `run <job_id>` | Run job immediately (for testing) |
 
-## 命令
+## Commands
 
-### 列出定时任务
+### List Scheduled Jobs
 
 ```bash
-# 列出所有定时任务
+# List all scheduled jobs
 viben cron list
 viben cron list --json
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Scheduled Jobs:
@@ -45,7 +45,7 @@ Scheduled Jobs:
   hourly-check       disabled   every 3600s      -
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```json
 {
@@ -68,23 +68,23 @@ Scheduled Jobs:
 }
 ```
 
-### 添加定时任务
+### Add Scheduled Job
 
-使用 cron 表达式添加定时任务：
+Add a scheduled job using cron expression:
 
 ```bash
-# 使用 cron 表达式
+# Using cron expression
 viben cron add --name <name> --message "<message>" --cron "<cron-expr>"
 viben cron add --name "daily-greeting" --message "Good morning! What's on my schedule today?" --cron "0 9 * * *"
 viben cron add --name "weekly-review" --message "Summarize this week's accomplishments" --cron "0 17 * * 5"
 
-# 使用间隔秒数
+# Using interval in seconds
 viben cron add --name <name> --message "<message>" --every <seconds>
 viben cron add --name "hourly-check" --message "Check for any urgent tasks" --every 3600
 viben cron add --name "quick-poll" --message "Any updates?" --every 300
 ```
 
-**输出：**
+**Output:**
 
 ```
 Added cron job 'daily-greeting'
@@ -92,35 +92,35 @@ Added cron job 'daily-greeting'
   Next run: 2024-01-17 09:00:00
 ```
 
-### 删除定时任务
+### Remove Scheduled Job
 
 ```bash
 viben cron remove daily-greeting
 ```
 
-**输出：**
+**Output:**
 
 ```
 Removed cron job 'daily-greeting'
 ```
 
-### 启用/禁用定时任务
+### Enable/Disable Scheduled Job
 
 ```bash
-# 启用
+# Enable
 viben cron enable hourly-check
 
-# 禁用
+# Disable
 viben cron disable hourly-check
 ```
 
-### 显示任务详情
+### Show Job Details
 
 ```bash
 viben cron show daily-greeting
 ```
 
-**输出：**
+**Output:**
 
 ```
 Cron Job: daily-greeting
@@ -134,14 +134,14 @@ Cron Job: daily-greeting
   Next run: 2024-01-17 09:00:00
 ```
 
-### 立即执行任务
+### Run Job Immediately
 
 ```bash
-# 用于测试
+# For testing
 viben cron run daily-greeting
 ```
 
-## Cron 配置
+## Cron Configuration
 
 ```yaml
 # ~/.viben/cron.yaml
@@ -151,50 +151,50 @@ jobs:
   daily-greeting:
     enabled: true
     message: "Good morning! What's on my schedule today?"
-    cron: "0 9 * * *"        # 每天 9:00 AM
-    channel: my-telegram     # 发送响应的渠道
-    agent: main              # 使用的智能体
+    cron: "0 9 * * *"        # Every day at 9:00 AM
+    channel: my-telegram     # Channel to send response
+    agent: main              # Agent to use
 
   weekly-review:
     enabled: true
     message: "Summarize this week's accomplishments"
-    cron: "0 17 * * 5"       # 每周五 5:00 PM
+    cron: "0 17 * * 5"       # Every Friday at 5:00 PM
     channel: my-telegram
     agent: main
 
   hourly-check:
     enabled: false
     message: "Check for any urgent tasks"
-    every: 3600              # 每 3600 秒（1 小时）
-    channel: null            # 仅 CLI（无渠道通知）
+    every: 3600              # Every 3600 seconds (1 hour)
+    channel: null            # CLI only (no channel notification)
     agent: main
 ```
 
-## Cron 表达式格式
+## Cron Expression Format
 
-标准 cron 格式：`minute hour day-of-month month day-of-week`
+Standard cron format: `minute hour day-of-month month day-of-week`
 
-| 字段 | 取值范围 | 特殊字符 |
-|------|----------|----------|
-| 分钟 | 0-59 | `*` `,` `-` `/` |
-| 小时 | 0-23 | `*` `,` `-` `/` |
-| 日期 | 1-31 | `*` `,` `-` `/` |
-| 月份 | 1-12 | `*` `,` `-` `/` |
-| 星期 | 0-6 (0=周日) | `*` `,` `-` `/` |
+| Field | Value Range | Special Characters |
+|-------|-------------|-------------------|
+| Minute | 0-59 | `*` `,` `-` `/` |
+| Hour | 0-23 | `*` `,` `-` `/` |
+| Day of Month | 1-31 | `*` `,` `-` `/` |
+| Month | 1-12 | `*` `,` `-` `/` |
+| Day of Week | 0-6 (0=Sunday) | `*` `,` `-` `/` |
 
-**示例：**
+**Examples:**
 
-| 表达式 | 说明 |
-|--------|------|
-| `0 9 * * *` | 每天 9:00 AM |
-| `30 8 * * 1-5` | 工作日 8:30 AM |
-| `0 */2 * * *` | 每 2 小时 |
-| `0 0 1 * *` | 每月 1 日午夜 |
-| `0 17 * * 5` | 每周五 5:00 PM |
+| Expression | Description |
+|------------|-------------|
+| `0 9 * * *` | Every day at 9:00 AM |
+| `30 8 * * 1-5` | Weekdays at 8:30 AM |
+| `0 */2 * * *` | Every 2 hours |
+| `0 0 1 * *` | First day of every month at midnight |
+| `0 17 * * 5` | Every Friday at 5:00 PM |
 
-## 错误处理
+## Error Handling
 
-### 任务未找到
+### Job Not Found
 
 ```json
 {
@@ -206,7 +206,7 @@ jobs:
 }
 ```
 
-### 无效的 Cron 表达式
+### Invalid Cron Expression
 
 ```json
 {
@@ -218,7 +218,7 @@ jobs:
 }
 ```
 
-### 任务已存在
+### Job Already Exists
 
 ```json
 {
@@ -230,8 +230,8 @@ jobs:
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben channel](./channel) - 渠道管理
-- [viben gateway](./gateway) - Gateway 运行时
-- [viben agent](./agent) - 智能体管理
+- [viben channel](./channel) - Channel management
+- [viben gateway](./gateway) - Gateway runtime
+- [viben agent](./agent) - Agent management

@@ -1,26 +1,26 @@
-# 健康检查 API
+# Health Check API
 
-> `/health` - 服务健康检查端点
+> `/health` - Service health check endpoint
 
-## 概述
+## Overview
 
-健康检查端点用于验证 Gateway 服务是否正常运行。
+The health check endpoint is used to verify that the Gateway service is running properly.
 
-## 端点
+## Endpoint
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/health` | 健康检查 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /health
 
-检查服务健康状态。
+Check service health status.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -32,37 +32,37 @@
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| status | 服务状态 (`ok`) |
-| service | 服务名称 |
-| version | 版本号 |
-| timestamp | 当前时间 |
-| uptime | 运行状态 |
+| Field | Description |
+|-------|-------------|
+| status | Service status (`ok`) |
+| service | Service name |
+| version | Version number |
+| timestamp | Current time |
+| uptime | Running status |
 
 ---
 
-## 使用示例
+## Usage Example
 
 ```bash
-# 检查 Gateway 是否运行
+# Check if Gateway is running
 curl http://127.0.0.1:18790/health
 
-# 预期输出
+# Expected output
 {"status":"ok","service":"viben-gateway","version":"1.0.0",...}
 ```
 
 ---
 
-## 监控集成
+## Monitoring Integration
 
-健康检查端点适用于：
-- 负载均衡器健康检查
-- Kubernetes liveness/readiness 探针
-- 监控系统状态检测
+The health check endpoint is suitable for:
+- Load balancer health checks
+- Kubernetes liveness/readiness probes
+- Monitoring system status detection
 
 ```yaml
-# Kubernetes 探针配置示例
+# Kubernetes probe configuration example
 livenessProbe:
   httpGet:
     path: /health

@@ -1,57 +1,57 @@
 ---
 sidebar_position: 11
 title: "viben gateway"
-description: "启动 Gateway - 连接 channels 到 agent loop 的核心运行时"
+description: "Start the Gateway - the core runtime connecting channels to the agent loop"
 ---
 
 # viben gateway
 
-启动 Gateway - 连接 channels 到 agent loop 的核心运行时。
+Start the Gateway - the core runtime connecting channels to the agent loop.
 
-## 命令
+## Commands
 
 ```bash
-# 启动 gateway
+# Start the gateway
 viben gateway start
 
-# 使用特定选项启动
+# Start with specific options
 viben gateway start --host 127.0.0.1 --port 18790 --log-level info --agent main
 
-# 后台模式启动
+# Start in daemon mode
 viben gateway start --daemon
 
-# 停止运行中的 gateway
+# Stop a running gateway
 viben gateway stop
-viben gateway stop --port 18790    # 停止指定端口
+viben gateway stop --port 18790    # Stop on specific port
 
-# 重启 gateway（先停止再启动）
+# Restart the gateway (stop then start)
 viben gateway restart
 viben gateway restart --port 18790 --log-level debug
 
-# 检查 gateway 状态
+# Check gateway status
 viben gateway status
 ```
 
-## Gateway 命令
+## Gateway Commands
 
-| 命令 | 说明 |
-|------|------|
-| `viben gateway start` | 启动 gateway，支持 `--host`, `--port`, `--log-level`, `--agent`, `--daemon` |
-| `viben gateway stop` | 停止运行中的 gateway，支持 `--port` 指定端口 |
-| `viben gateway restart` | 重启 gateway（先停止再启动），支持所有 start 选项 |
-| `viben gateway status` | 检查 gateway 运行状态和健康状态 |
+| Command | Description |
+|---------|-------------|
+| `viben gateway start` | Start the gateway, supports `--host`, `--port`, `--log-level`, `--agent`, `--daemon` |
+| `viben gateway stop` | Stop a running gateway, supports `--port` to specify port |
+| `viben gateway restart` | Restart the gateway (stop then start), supports all start options |
+| `viben gateway status` | Check gateway running status and health |
 
-## 选项
+## Options
 
-| 选项 | 说明 | 默认值 |
-|------|------|--------|
-| `-h, --host <host>` | Gateway 监听地址 | `127.0.0.1` |
-| `-p, --port <port>` | Gateway 监听端口 | `18790` |
-| `-l, --log-level <level>` | 日志级别 (debug, info, warn, error) | `info` |
-| `-n, --agent <agent-id>` | 指定运行的智能体 | `main` |
-| `-d, --daemon` | 后台运行模式 | `false` |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-h, --host <host>` | Gateway listen address | `127.0.0.1` |
+| `-p, --port <port>` | Gateway listen port | `18790` |
+| `-l, --log-level <level>` | Log level (debug, info, warn, error) | `info` |
+| `-n, --agent <agent-id>` | Specify the agent to run | `main` |
+| `-d, --daemon` | Run in background mode | `false` |
 
-## 架构
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -76,17 +76,17 @@ viben gateway status
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Gateway 生命周期
+## Gateway Lifecycle
 
-1. 从 `~/.viben/config.yaml` 加载配置
-2. 初始化已启用的 channels（Telegram、Discord 等）
-3. 启动消息总线
-4. 启动智能体循环
-5. 处理消息直到关闭
+1. Load configuration from `~/.viben/config.yaml`
+2. Initialize enabled channels (Telegram, Discord, etc.)
+3. Start the message bus
+4. Start the agent loop
+5. Process messages until shutdown
 
-## 输出示例
+## Output Examples
 
-**`viben gateway start`（人类可读）：**
+**`viben gateway start` (Human-readable):**
 
 ```
 Gateway starting...
@@ -101,7 +101,7 @@ Gateway starting...
 Gateway running. Press Ctrl+C to stop.
 ```
 
-**`viben gateway start --json`：**
+**`viben gateway start --json`:**
 
 ```json
 {
@@ -119,7 +119,7 @@ Gateway running. Press Ctrl+C to stop.
 }
 ```
 
-**`viben gateway status`（人类可读）：**
+**`viben gateway status` (Human-readable):**
 
 ```
 Gateway Status: Running
@@ -140,23 +140,23 @@ Health:
   ✓ Memory usage: 128MB
 ```
 
-## API 端点
+## API Endpoints
 
-Gateway 启动后提供以下 HTTP API：
+The gateway provides the following HTTP APIs after startup:
 
-| 端点 | 说明 |
-|------|------|
-| `GET /health` | 健康检查 |
-| `GET /api/agent` | 智能体管理 |
-| `GET /api/sessions` | 会话管理 |
-| `POST /api/chat` | 聊天 API |
-| `GET /api/providers` | Provider 配置 |
-| `GET /api/models` | 模型配置 |
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /api/agent` | Agent management |
+| `GET /api/sessions` | Session management |
+| `POST /api/chat` | Chat API |
+| `GET /api/providers` | Provider configuration |
+| `GET /api/models` | Model configuration |
 
-默认地址：`http://127.0.0.1:18790`
+Default address: `http://127.0.0.1:18790`
 
-## 相关命令
+## Related Commands
 
-- [viben channel](./channel) - Channel 管理
-- [viben cron](./cron) - 定时任务管理
-- [viben agent](./agent) - 智能体管理
+- [viben channel](./channel) - Channel management
+- [viben cron](./cron) - Scheduled task management
+- [viben agent](./agent) - Agent management

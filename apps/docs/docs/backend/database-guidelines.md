@@ -2,52 +2,52 @@
 sidebar_position: 3
 ---
 
-# 数据库指南
+# Database Guidelines
 
-> Viben 项目数据库模式和约定
-
----
-
-## 概述
-
-Viben 项目使用两种数据存储策略：
-
-1. **Web 应用 (`apps/web`)**：PostgreSQL + Drizzle ORM
-2. **Desktop/Core (`packages/core`)**：YAML 文件存储
+> Viben project database schema and conventions
 
 ---
 
-## Web 应用数据库
+## Overview
 
-### 技术栈
+Viben project uses two data storage strategies:
 
-| 技术 | 用途 |
-|------|------|
-| PostgreSQL | 主数据库（使用 Neon） |
-| Drizzle ORM | 类型安全的 ORM |
-| Drizzle Kit | 迁移工具 |
+1. **Web Application (`apps/web`)**: PostgreSQL + Drizzle ORM
+2. **Desktop/Core (`packages/core`)**: YAML file storage
 
-### 数据库命令
+---
+
+## Web Application Database
+
+### Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| PostgreSQL | Primary database (using Neon) |
+| Drizzle ORM | Type-safe ORM |
+| Drizzle Kit | Migration tool |
+
+### Database Commands
 
 ```bash
 cd apps/web
 
-# 推送 schema 到数据库（交互式）
+# Push schema to database (interactive)
 pnpm db:push
 
-# 生成迁移文件
+# Generate migration files
 pnpm db:generate
 
-# 运行迁移
+# Run migrations
 pnpm db:migrate
 
-# 打开 Drizzle Studio 查看数据
+# Open Drizzle Studio to view data
 pnpm db:studio
 ```
 
-### Schema 定义
+### Schema Definition
 
-Schema 文件位于 `apps/web/lib/db/schema.ts`：
+Schema files are located at `apps/web/lib/db/schema.ts`:
 
 ```typescript
 import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core';
@@ -76,19 +76,19 @@ export const oauthConnections = pgTable('oauth_connections', {
 });
 ```
 
-### 查询模式
+### Query Patterns
 
 ```typescript
 import { db } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { users, oauthConnections } from '@/lib/db/schema';
 
-// 查询单条记录
+// Query single record
 const user = await db.query.users.findFirst({
   where: eq(users.id, userId),
 });
 
-// 关联查询
+// Query with relations
 const userWithConnections = await db.query.users.findFirst({
   where: eq(users.id, userId),
   with: {
@@ -96,48 +96,48 @@ const userWithConnections = await db.query.users.findFirst({
   },
 });
 
-// 插入记录
+// Insert record
 await db.insert(users).values({
   id: generateId(),
   email: 'user@example.com',
   username: 'username',
 });
 
-// 更新记录
+// Update record
 await db.update(users)
   .set({ displayName: 'New Name' })
   .where(eq(users.id, userId));
 
-// 删除记录
+// Delete record
 await db.delete(users).where(eq(users.id, userId));
 ```
 
 ---
 
-## Desktop/Core 文件存储
+## Desktop/Core File Storage
 
-### 存储结构
+### Storage Structure
 
 ```
 ~/.viben/
-├── agents/                    # 智能体配置
+├── agents/                    # Agent configurations
 │   └── <agent-id>/
 │       └── config.yaml
-├── providers/                 # 提供商配置
+├── providers/                 # Provider configurations
 │   ├── anthropic.yaml
 │   └── openai.yaml
-├── models.yaml               # 模型配置
-├── channels.yaml             # 通道配置
-├── sessions/                 # 会话数据
-└── telemetry/                # 遥测数据
+├── models.yaml               # Model configurations
+├── channels.yaml             # Channel configurations
+├── sessions/                 # Session data
+└── telemetry/                # Telemetry data
     ├── traces/
     ├── metrics/
     └── logs/
 ```
 
-### YAML 配置格式
+### YAML Configuration Format
 
-**智能体配置** (`~/.viben/agents/<id>/config.yaml`):
+**Agent Configuration** (`~/.viben/agents/<id>/config.yaml`):
 
 ```yaml
 id: my-agent
@@ -150,7 +150,7 @@ temperature: 0.7
 max_tokens: 4096
 ```
 
-**模型配置** (`~/.viben/models.yaml`):
+**Model Configuration** (`~/.viben/models.yaml`):
 
 ```yaml
 default: claude-3-sonnet
@@ -169,99 +169,99 @@ models:
 
 ---
 
-## 命名约定
+## Naming Conventions
 
-### 数据库表名
+### Database Table Names
 
-| 规则 | 示例 |
-|------|------|
-| 使用复数形式 | `users`, `oauth_connections` |
-| 使用 snake_case | `oauth_connections` |
-| 关联表使用下划线连接 | `user_packages` |
+| Rule | Example |
+|------|---------|
+| Use plural form | `users`, `oauth_connections` |
+| Use snake_case | `oauth_connections` |
+| Join tables use underscore | `user_packages` |
 
-### 列名
+### Column Names
 
-| 规则 | 示例 |
-|------|------|
-| 使用 snake_case | `created_at`, `user_id` |
-| 外键以 `_id` 结尾 | `user_id`, `package_id` |
-| 布尔值使用 `is_` 或 `has_` 前缀 | `is_active`, `has_verified` |
-| 时间戳使用 `_at` 后缀 | `created_at`, `updated_at` |
+| Rule | Example |
+|------|---------|
+| Use snake_case | `created_at`, `user_id` |
+| Foreign keys end with `_id` | `user_id`, `package_id` |
+| Booleans use `is_` or `has_` prefix | `is_active`, `has_verified` |
+| Timestamps use `_at` suffix | `created_at`, `updated_at` |
 
-### YAML 字段名
+### YAML Field Names
 
-| 规则 | 示例 |
-|------|------|
-| 使用 snake_case | `system_prompt`, `max_tokens` |
-| 与 API 参数保持一致 | `workspace_path` |
+| Rule | Example |
+|------|---------|
+| Use snake_case | `system_prompt`, `max_tokens` |
+| Consistent with API parameters | `workspace_path` |
 
 ---
 
-## 迁移管理
+## Migration Management
 
-### 创建迁移
+### Creating Migrations
 
 ```bash
 cd apps/web
 
-# 修改 schema.ts 后生成迁移
+# Generate migration after modifying schema.ts
 pnpm db:generate
 ```
 
-迁移文件存储在 `apps/web/lib/db/migrations/`。
+Migration files are stored in `apps/web/lib/db/migrations/`.
 
-### 运行迁移
+### Running Migrations
 
 ```bash
-# 开发环境 - 直接推送 schema
+# Development - push schema directly
 pnpm db:push
 
-# 生产环境 - 运行迁移
+# Production - run migrations
 pnpm db:migrate
 ```
 
-### 处理 Schema 错误
+### Handling Schema Errors
 
-遇到 "column X does not exist" 错误时：
+When encountering "column X does not exist" error:
 
 ```bash
 cd apps/web && pnpm db:push
 ```
 
-此命令需要手动交互确认 schema 变更。
+This command requires manual interaction to confirm schema changes.
 
 ---
 
-## 常见错误
+## Common Errors
 
-### 错误 1：数据库连接失败
+### Error 1: Database Connection Failed
 
 ```
 Error: No database connection string was provided to `neon()`
 ```
 
-**解决方案**：设置 `POSTGRES_URL` 环境变量
+**Solution**: Set the `POSTGRES_URL` environment variable
 
-### 错误 2：表不存在
+### Error 2: Table Does Not Exist
 
 ```
 Error: relation 'users' does not exist
 ```
 
-**解决方案**：运行 `pnpm db:push` 推送 schema
+**Solution**: Run `pnpm db:push` to push schema
 
-### 错误 3：唯一约束冲突
+### Error 3: Unique Constraint Violation
 
 ```
 Error: duplicate key value violates unique constraint
 ```
 
-**解决方案**：插入前检查记录是否存在
+**Solution**: Check if record exists before inserting
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [Drizzle ORM 文档](https://orm.drizzle.team/)
-- [Neon 文档](https://neon.tech/docs)
-- [Vercel 部署](./deployment/vercel.md)
+- [Drizzle ORM Documentation](https://orm.drizzle.team/)
+- [Neon Documentation](https://neon.tech/docs)
+- [Vercel Deployment](./deployment/vercel.md)

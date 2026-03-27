@@ -1,152 +1,152 @@
 ---
 sidebar_position: 23
 title: "viben idea"
-description: "AI 驱动的想法生成命令，分析项目代码库自动生成改进建议"
+description: "AI-driven idea generation command that analyzes project codebase to automatically generate improvement suggestions"
 ---
 
 # viben idea
 
-AI 驱动的想法生成命令，分析项目代码库自动生成改进建议。
+AI-driven idea generation command that analyzes project codebase to automatically generate improvement suggestions.
 
-## 概述
+## Overview
 
-`viben idea` 命令用于分析项目代码库，自动生成改进建议。支持 6 种内置类型和用户自定义类型。生成的想法可通过 `promote` 命令转为任务。
+The `viben idea` command analyzes the project codebase to automatically generate improvement suggestions. It supports 6 built-in types and user-defined custom types. Generated ideas can be converted to tasks using the `promote` command.
 
-## 内置类型
+## Built-in Types
 
-| 类型 | 说明 |
-|------|------|
-| `code_improvements` | 代码改进 - 基于现有模式的改进机会 |
-| `ui_ux_improvements` | UI/UX 改进 - 视觉和交互增强 |
-| `documentation_gaps` | 文档缺失 - 缺失或不足的文档 |
-| `security_hardening` | 安全加固 - 安全漏洞和加固措施 |
-| `performance_optimizations` | 性能优化 - 性能瓶颈和优化技术 |
-| `code_quality` | 代码质量 - 代码质量改进和重构模式 |
+| Type | Description |
+|------|-------------|
+| `code_improvements` | Code improvements - improvement opportunities based on existing patterns |
+| `ui_ux_improvements` | UI/UX improvements - visual and interaction enhancements |
+| `documentation_gaps` | Documentation gaps - missing or insufficient documentation |
+| `security_hardening` | Security hardening - security vulnerabilities and hardening measures |
+| `performance_optimizations` | Performance optimizations - performance bottlenecks and optimization techniques |
+| `code_quality` | Code quality - code quality improvements and refactoring patterns |
 
-## 命令结构
+## Command Structure
 
 ```bash
 viben idea <subcommand> [options]
 ```
 
-## 子命令概览
+## Subcommand Overview
 
-| 子命令 | 说明 |
-|--------|------|
-| `generate` | 生成想法（核心命令） |
-| `list` | 列出已生成的想法 |
-| `list-types` | 列出可用的想法类型 |
-| `view` | 查看想法详情 |
-| `promote` | 将想法转为任务 |
-| `remove` | 删除想法 |
+| Subcommand | Description |
+|------------|-------------|
+| `generate` | Generate ideas (core command) |
+| `list` | List generated ideas |
+| `list-types` | List available idea types |
+| `view` | View idea details |
+| `promote` | Convert idea to task |
+| `remove` | Delete idea |
 
-## 生成想法
+## Generate Ideas
 
 ```bash
 viben idea generate --types <type>... [options]
 ```
 
-**必选参数**:
+**Required Parameters**:
 
-| 参数 | 说明 |
-|------|------|
-| `--types`, `-t` | 要生成的想法类型，可多选 |
+| Parameter | Description |
+|-----------|-------------|
+| `--types`, `-t` | Idea types to generate, multiple selection allowed |
 
-**可选参数**:
+**Optional Parameters**:
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `--output`, `-o` | 输出目录 | `.viben/ideas/` |
-| `--model`, `-m` | AI 模型 | 全局配置 |
-| `--max-ideas` | 每类最大想法数 | 5 |
-| `--append` | 追加模式，保留已有想法 | false |
-| `--override` | 强制重新生成所有类型 | false |
-| `--json` | JSON 格式输出进度 | false |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--output`, `-o` | Output directory | `.viben/ideas/` |
+| `--model`, `-m` | AI model | Global config |
+| `--max-ideas` | Maximum ideas per type | 5 |
+| `--append` | Append mode, preserve existing ideas | false |
+| `--override` | Force regenerate all types | false |
+| `--json` | JSON format output for progress | false |
 
-**示例**:
+**Examples**:
 
 ```bash
-# 生成代码改进和代码质量想法
+# Generate code improvements and code quality ideas
 viben idea generate --types code_improvements code_quality
 
-# 使用自定义类型
+# Use custom type
 viben idea generate --types my_custom_type --model opus
 
-# 追加模式，每类最多 10 个
+# Append mode, maximum 10 per type
 viben idea generate -t security_hardening --append --max-ideas 10
 ```
 
-## 列出想法
+## List Ideas
 
 ```bash
 viben idea list [options]
 ```
 
-**选项**:
+**Options**:
 
-| 参数 | 说明 |
-|------|------|
-| `--type`, `-t` | 按类型过滤 |
-| `--effort`, `-e` | 按工作量过滤 (trivial/small/medium/large/complex) |
-| `--status`, `-s` | 按状态过滤 (draft/promoted/dismissed) |
-| `--json` | JSON 格式输出 |
+| Parameter | Description |
+|-----------|-------------|
+| `--type`, `-t` | Filter by type |
+| `--effort`, `-e` | Filter by effort (trivial/small/medium/large/complex) |
+| `--status`, `-s` | Filter by status (draft/promoted/dismissed) |
+| `--json` | JSON format output |
 
-**输出**:
+**Output**:
 
 ```
 Ideas (3):
 
 [a1b2c3d4] code_improvements  draft  small
   Add retry logic to API calls
-  为 API 调用添加自动重试逻辑，处理临时网络故障
-  Why: 当前代码在网络错误时直接失败，没有重试机制
+  Add automatic retry logic for API calls to handle temporary network failures
+  Why: Current code fails directly on network errors without retry mechanism
   Files:
     - src/api/client.ts
     - src/api/request.ts
   Implementation:
-    使用 exponential backoff 策略，最多重试 3 次
+    Use exponential backoff strategy, retry up to 3 times
 
 [b2c3d4e5] code_improvements  draft  medium
   Extract common validators
-  提取公共验证逻辑到独立模块
-  Why: 多处代码存在重复的验证逻辑
+  Extract common validation logic into a separate module
+  Why: Multiple places have duplicate validation logic
   Files:
     - src/utils/validators.ts
     - src/forms/*.ts
 
 [c3d4e5f6] security_hardening  promoted  small
   Add input sanitization
-  添加输入消毒处理防止 XSS 攻击
-  Why: 用户输入未经过滤直接渲染
+  Add input sanitization to prevent XSS attacks
+  Why: User input is rendered directly without filtering
   Task: 03-11-input-sanitization
 ```
 
-## 列出类型
+## List Types
 
 ```bash
 viben idea list-types [--json]
 ```
 
-**输出**:
+**Output**:
 
 ```
 TYPE                        SOURCE      DESCRIPTION
-code_improvements           builtin     代码改进 - 基于现有模式的改进机会
-ui_ux_improvements          builtin     UI/UX 改进 - 视觉和交互增强
-documentation_gaps          builtin     文档缺失 - 缺失或不足的文档
-security_hardening          builtin     安全加固 - 安全漏洞和加固措施
-performance_optimizations   builtin     性能优化 - 性能瓶颈和优化技术
-code_quality                builtin     代码质量 - 代码质量改进和重构模式
+code_improvements           builtin     Code improvements - improvement opportunities based on existing patterns
+ui_ux_improvements          builtin     UI/UX improvements - visual and interaction enhancements
+documentation_gaps          builtin     Documentation gaps - missing or insufficient documentation
+security_hardening          builtin     Security hardening - security vulnerabilities and hardening measures
+performance_optimizations   builtin     Performance optimizations - performance bottlenecks and optimization techniques
+code_quality                builtin     Code quality - code quality improvements and refactoring patterns
 api_design                  custom      docs/idea-types/api_design.md
 ```
 
-## 查看想法详情
+## View Idea Details
 
 ```bash
 viben idea view <idea-id> [--json]
 ```
 
-**输出**:
+**Output**:
 
 ```
 [a1b2c3d4] code_improvements  draft  small
@@ -154,10 +154,10 @@ Add retry logic to API calls
 Created: 2026-03-11T14:30:00Z
 
 Description
-为 API 调用添加自动重试逻辑，处理临时网络故障
+Add automatic retry logic for API calls to handle temporary network failures
 
 Rationale
-当前代码在网络错误时直接失败，没有重试机制
+Current code fails directly on network errors without retry mechanism
 
 Affected Files
   - src/api/client.ts
@@ -167,35 +167,35 @@ Existing Patterns
   - error handling in src/utils/error.ts
 
 Implementation
-使用 exponential backoff 策略，最多重试 3 次。
-1. 在 src/api/client.ts 中添加 retry wrapper
-2. 配置最大重试次数和退避时间
-3. 对可重试的错误码进行重试
+Use exponential backoff strategy, retry up to 3 times.
+1. Add retry wrapper in src/api/client.ts
+2. Configure maximum retry count and backoff time
+3. Retry on retriable error codes
 ```
 
-## 将想法转为任务
+## Promote Idea to Task
 
 ```bash
 viben idea promote <idea-id> [options]
 ```
 
-**选项**（与 `viben task create` 一致）:
+**Options** (consistent with `viben task create`):
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `-s, --slug <name>` | 任务标识符 | 从 idea title 生成 |
-| `-b, --branch <branch>` | 自定义分支名 | `feature/<slug>` |
-| `-a, --assignee <dev>` | 分配给谁 | 当前开发者 |
-| `-p, --priority <priority>` | 优先级 (P0-P3) | 根据 effort 映射 |
-| `-d, --description <text>` | 任务描述 | idea 的 description |
-| `--agent <agent-id>` | 关联的 agent 配置 | - |
-| `--executor <type>` | 执行器类型 | CLAUDE_CODE |
-| `--model <model>` | 使用的模型 | - |
-| `--start` | 自动加入队列 | false |
-| `--worktree` | 在 git worktree 中运行 | false |
-| `--json` | JSON 格式输出 | false |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `-s, --slug <name>` | Task identifier | Generated from idea title |
+| `-b, --branch <branch>` | Custom branch name | `feature/<slug>` |
+| `-a, --assignee <dev>` | Assign to | Current developer |
+| `-p, --priority <priority>` | Priority (P0-P3) | Mapped from effort |
+| `-d, --description <text>` | Task description | Idea's description |
+| `--agent <agent-id>` | Associated agent configuration | - |
+| `--executor <type>` | Executor type | CLAUDE_CODE |
+| `--model <model>` | Model to use | - |
+| `--start` | Automatically add to queue | false |
+| `--worktree` | Run in git worktree | false |
+| `--json` | JSON format output | false |
 
-**effort -> priority 默认映射**:
+**Effort -> Priority Default Mapping**:
 
 | Effort | Priority |
 |--------|----------|
@@ -205,22 +205,22 @@ viben idea promote <idea-id> [options]
 | large | P1 |
 | complex | P1 |
 
-**示例**:
+**Examples**:
 
 ```bash
-# 将想法转为任务（最简方式）
+# Convert idea to task (simplest way)
 viben idea promote ci-001
 
-# 指定优先级和 slug
+# Specify priority and slug
 viben idea promote ci-001 --slug add-retry-logic --priority P1
 
-# 创建并自动启动任务
+# Create and automatically start task
 viben idea promote ci-001 --start
 
-# 在隔离的 worktree 中开发
+# Develop in isolated worktree
 viben idea promote ci-001 --worktree --start
 
-# 完整示例
+# Full example
 viben idea promote ci-001 \
   --slug add-retry-logic \
   --branch feature/api-retry \
@@ -230,56 +230,56 @@ viben idea promote ci-001 \
   --start
 ```
 
-## 删除想法
+## Remove Ideas
 
 ```bash
 viben idea remove <idea-id>... [--type <type>] [--all]
 ```
 
-**选项**:
+**Options**:
 
-| 参数 | 说明 |
-|------|------|
-| `--type`, `-t` | 删除指定类型的所有想法 |
-| `--all` | 删除所有想法 |
+| Parameter | Description |
+|-----------|-------------|
+| `--type`, `-t` | Delete all ideas of specified type |
+| `--all` | Delete all ideas |
 
-**示例**:
+**Examples**:
 
 ```bash
-# 删除单个想法
+# Delete single idea
 viben idea remove ci-001
 
-# 删除多个想法
+# Delete multiple ideas
 viben idea remove ci-001 ci-002 sq-001
 
-# 删除某类型所有想法
+# Delete all ideas of a type
 viben idea remove --type code_improvements
 
-# 清空所有想法
+# Clear all ideas
 viben idea remove --all
 ```
 
-## 数据结构
+## Data Structure
 
-### 目录结构
+### Directory Structure
 
 ```
 .viben/
 └── ideas/
-    └── <date>-<slug>/                          # 每次生成一个目录
-        ├── idea.json                           # 元信息
-        ├── idea_code_improvements_<name1>.md   # 每个 idea 单独一个文件
+    └── <date>-<slug>/                          # One directory per generation
+        ├── idea.json                           # Metadata
+        ├── idea_code_improvements_<name1>.md   # Each idea in separate file
         ├── idea_code_improvements_<name2>.md
         ├── idea_security_hardening_<name1>.md
         └── idea_my_custom_type_<name1>.md
 
 docs/
-└── idea-types/                  # 自定义类型 prompt 模板
+└── idea-types/                  # Custom type prompt templates
     ├── api_design.md
     └── refactoring.md
 ```
 
-### idea.json 格式
+### idea.json Format
 
 ```json
 {
@@ -301,7 +301,7 @@ docs/
 }
 ```
 
-### idea_*.md 格式
+### idea_*.md Format
 
 ```markdown
 ---
@@ -309,8 +309,8 @@ id: a1b2c3d4
 type: code_improvements
 name: add-retry-logic
 title: Add retry logic to API calls
-description: 为 API 调用添加自动重试逻辑，处理临时网络故障
-rationale: 当前代码在网络错误时直接失败，没有重试机制
+description: Add automatic retry logic for API calls to handle temporary network failures
+rationale: Current code fails directly on network errors without retry mechanism
 estimated_effort: small
 status: draft
 promoted_to: null
@@ -322,50 +322,50 @@ existing_patterns:
   - error handling in src/utils/error.ts
 ---
 
-使用 exponential backoff 策略，最多重试 3 次。
+Use exponential backoff strategy, retry up to 3 times.
 
-1. 在 `src/api/client.ts` 中添加 retry wrapper
-2. 配置最大重试次数和退避时间
-3. 对可重试的错误码进行重试（如 5xx、网络超时）
+1. Add retry wrapper in `src/api/client.ts`
+2. Configure maximum retry count and backoff time
+3. Retry on retriable error codes (e.g., 5xx, network timeout)
 ```
 
-## 自定义类型
+## Custom Types
 
-用户可在 `docs/idea-types/*.md` 创建自定义类型 prompt 模板。
+Users can create custom type prompt templates in `docs/idea-types/*.md`.
 
 ```markdown
 ---
 name: api_design
-description: API 设计改进 - RESTful 规范、接口一致性、版本管理
+description: API design improvements - RESTful conventions, interface consistency, version management
 max_ideas: 5
 ---
 
 # API Design Ideation Agent
 
-你是一个 API 设计专家，负责分析项目代码库并提出 API 改进建议。
+You are an API design expert responsible for analyzing the project codebase and proposing API improvement suggestions.
 
-## 分析重点
+## Analysis Focus
 
-1. RESTful 规范遵循程度
-2. 接口命名一致性
-3. 请求/响应格式统一性
-4. 错误处理规范
-5. API 版本管理
+1. RESTful convention compliance
+2. Interface naming consistency
+3. Request/response format uniformity
+4. Error handling standards
+5. API version management
 
-## 输出要求
+## Output Requirements
 
-对于每个改进建议，提供：
+For each improvement suggestion, provide:
 
-- **title**: 简短描述
-- **description**: 改进内容
-- **rationale**: 为什么需要改进
-- **affected_files**: 涉及的文件
-- **existing_patterns**: 可参考的现有模式
-- **implementation_approach**: 实现方法
+- **title**: Brief description
+- **description**: Improvement content
+- **rationale**: Why improvement is needed
+- **affected_files**: Files involved
+- **existing_patterns**: Existing patterns for reference
+- **implementation_approach**: Implementation method
 - **estimated_effort**: trivial/small/medium/large/complex
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben task](./task) - 任务管理命令
-- [viben model](./model) - 模型配置
+- [viben task](./task) - Task management command
+- [viben model](./model) - Model configuration

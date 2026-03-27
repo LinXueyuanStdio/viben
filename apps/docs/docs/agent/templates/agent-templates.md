@@ -1,81 +1,81 @@
 ---
 sidebar_position: 5
-title: Agent 模板开发指南
-description: 创建可复用的 Agent 模板
+title: Agent Template Development Guide
+description: Creating Reusable Agent Templates
 ---
 
-# Agent 模板开发指南
+# Agent Template Development Guide
 
-Agent 模板是预配置的 Agent 定义，可以快速创建特定类型的 Agent。本文档介绍如何创建和使用 Agent 模板。
+Agent templates are pre-configured Agent definitions that allow you to quickly create specific types of Agents. This document describes how to create and use Agent templates.
 
-## 概述
+## Overview
 
-### 什么是 Agent 模板?
+### What is an Agent Template?
 
-Agent 模板是一组预定义的配置，包括：
+An Agent template is a set of predefined configurations, including:
 
-- Agent 基础配置（名称、描述、类型）
-- 预装的 Skills
-- 预配置的 MCP Servers
-- 默认的系统提示词
-- 模型参数设置
+- Agent basic configuration (name, description, type)
+- Pre-installed Skills
+- Pre-configured MCP Servers
+- Default system prompts
+- Model parameter settings
 
-使用模板可以快速创建针对特定场景优化的 Agent。
+Using templates allows you to quickly create Agents optimized for specific scenarios.
 
-### 模板类型
+### Template Types
 
-| 类型 | 存储位置 | 说明 |
-|------|----------|------|
-| 内置模板 | `~/.viben/templates/` | Viben 提供的官方模板 |
-| 用户模板 | `~/.viben/templates/` | 用户创建的自定义模板 |
-| 项目模板 | `<project>/.viben/templates/` | 项目级别的模板 |
+| Type | Storage Location | Description |
+|------|------------------|-------------|
+| Built-in Templates | `~/.viben/templates/` | Official templates provided by Viben |
+| User Templates | `~/.viben/templates/` | Custom templates created by users |
+| Project Templates | `<project>/.viben/templates/` | Project-level templates |
 
-## 快速开始
+## Quick Start
 
-### 从模板创建 Agent
+### Create an Agent from a Template
 
 ```bash
-# 列出可用模板
+# List available templates
 viben agent template list
 
-# 从模板创建 Agent
+# Create an Agent from a template
 viben agent create -n my-agent -f coding-assistant
 
-# 查看模板详情
+# View template details
 viben agent template show -n coding-assistant
 ```
 
-### 从现有 Agent 创建模板
+### Create a Template from an Existing Agent
 
 ```bash
-# 将现有 agent 保存为模板
+# Save an existing agent as a template
 viben agent template create -n my-template --clone my-agent
 
-# 添加描述
+# Add description
 viben agent set-template -n my-agent --description "A general coding assistant template"
 ```
 
-## 模板结构
+## Template Structure
 
-### 目录结构
+### Directory Structure
 
 ```
 my-template/
-├── template.yaml       # 模板元数据
-├── README.md           # 模板说明文档
-├── agent.yaml          # Agent 默认配置
-├── mcp_servers.json    # MCP 配置
-├── skills/             # 预装 Skills
+├── template.yaml       # Template metadata
+├── README.md           # Template documentation
+├── agent.yaml          # Agent default configuration
+├── mcp_servers.json    # MCP configuration
+├── skills/             # Pre-installed Skills
 │   └── skill.yaml
-├── prompts/            # 提示词文件
+├── prompts/            # Prompt files
 │   └── system.md
-└── memory/             # 初始记忆
+└── memory/             # Initial memory
     └── MEMORY.md
 ```
 
 ### template.yaml
 
-模板元数据配置：
+Template metadata configuration:
 
 ```yaml
 # template.yaml
@@ -84,7 +84,7 @@ version: 1.0.0
 description: A template for specific use case
 author: your-name
 
-# 模板参数（创建时可自定义）
+# Template parameters (customizable at creation time)
 parameters:
   - name: agent_name
     description: Name of the agent
@@ -96,7 +96,7 @@ parameters:
     description: Default working directory
     required: false
 
-# 预装组件
+# Pre-installed components
 includes:
   skills:
     - code-review
@@ -105,7 +105,7 @@ includes:
     - filesystem
     - git
 
-# 模板标签
+# Template tags
 tags:
   - coding
   - development
@@ -114,21 +114,21 @@ tags:
 
 ### agent.yaml
 
-Agent 默认配置：
+Agent default configuration:
 
 ```yaml
 # agent.yaml
 version: 1
 
-# Agent 元数据（可被参数覆盖）
+# Agent metadata (can be overridden by parameters)
 id: "{{ agent_name }}"
 name: "{{ agent_name }}"
 description: "Agent created from my-template"
 
-# Agent 类型
+# Agent type
 type: claude-code
 
-# 类型特定配置
+# Type-specific configuration
 type_config:
   plan: true
   dangerously_skip_permissions: false
@@ -136,18 +136,18 @@ type_config:
     You are a helpful coding assistant.
     Follow best practices and write clean code.
 
-# 模型配置
+# Model configuration
 model: "{{ model }}"
 temperature: 0.7
 max_tokens: 4096
 
-# MCP 配置
+# MCP configuration
 mcp:
   enabled:
     - filesystem
     - git
 
-# Skills 配置
+# Skills configuration
 skills:
   enabled:
     - code-review
@@ -156,7 +156,7 @@ skills:
 
 ### prompts/system.md
 
-系统提示词：
+System prompt:
 
 ```markdown
 <!-- prompts/system.md -->
@@ -180,21 +180,21 @@ You are a coding assistant created from the my-template template.
 4. Ask for clarification when needed
 ```
 
-## 创建自定义模板
+## Creating Custom Templates
 
-### 步骤 1: 初始化模板
+### Step 1: Initialize Template
 
 ```bash
-# 创建模板目录
+# Create template directory
 viben template create my-template
 
-# 或者从现有 agent 创建
+# Or create from an existing agent
 viben agent template create -n my-template --clone my-agent
 ```
 
-### 步骤 2: 配置模板
+### Step 2: Configure Template
 
-编辑 `template.yaml`：
+Edit `template.yaml`:
 
 ```yaml
 name: my-template
@@ -213,9 +213,9 @@ includes:
     - code-review
 ```
 
-### 步骤 3: 配置默认 Agent
+### Step 3: Configure Default Agent
 
-编辑 `agent.yaml`：
+Edit `agent.yaml`:
 
 ```yaml
 type: claude-code
@@ -224,34 +224,34 @@ type_config:
 model: claude-3-sonnet
 ```
 
-### 步骤 4: 添加 Skills 和 MCP
+### Step 4: Add Skills and MCP
 
-配置 `skills/` 目录和 `mcp_servers.json`。
+Configure the `skills/` directory and `mcp_servers.json`.
 
-### 步骤 5: 测试模板
+### Step 5: Test Template
 
 ```bash
-# 从模板创建测试 agent
+# Create a test agent from the template
 viben agent create -n test-agent -f my-template
 
-# 验证配置
+# Verify configuration
 viben agent show -n test-agent
 ```
 
-### 步骤 6: 发布模板
+### Step 6: Publish Template
 
 ```bash
-# 发布到本地模板库
+# Publish to local template library
 viben template publish my-template
 
-# 或分享模板配置
+# Or share template configuration
 ```
 
-## 模板参数
+## Template Parameters
 
-模板支持参数化配置，创建 Agent 时可以自定义：
+Templates support parameterized configuration, which can be customized when creating an Agent:
 
-### 定义参数
+### Defining Parameters
 
 ```yaml
 # template.yaml
@@ -276,9 +276,9 @@ parameters:
     max: 1
 ```
 
-### 使用参数
+### Using Parameters
 
-在配置文件中使用 `{{ param_name }}` 语法：
+Use the `{{ param_name }}` syntax in configuration files:
 
 ```yaml
 # agent.yaml
@@ -287,7 +287,7 @@ model: "{{ model }}"
 temperature: {{ temperature }}
 ```
 
-### 创建时指定参数
+### Specifying Parameters at Creation Time
 
 ```bash
 viben agent create -n my-agent -f my-template \
@@ -295,59 +295,59 @@ viben agent create -n my-agent -f my-template \
   --param temperature=0.5
 ```
 
-## 内置模板
+## Built-in Templates
 
 ### coding-assistant
 
-通用编码助手模板：
+General coding assistant template:
 
 ```bash
 viben agent create -n my-coder -f coding-assistant
 ```
 
-特点：
-- 支持多种编程语言
-- 内置代码审查 skill
-- 配置 filesystem 和 git MCP
+Features:
+- Support for multiple programming languages
+- Built-in code review skill
+- Configured with filesystem and git MCP
 
 ### research-assistant
 
-研究助手模板：
+Research assistant template:
 
 ```bash
 viben agent create -n my-researcher -f research-assistant
 ```
 
-特点：
-- 论文搜索和总结
-- 内置学术搜索 MCP
-- 引用格式化 skill
+Features:
+- Paper search and summarization
+- Built-in academic search MCP
+- Citation formatting skill
 
 ### devops-assistant
 
-DevOps 助手模板：
+DevOps assistant template:
 
 ```bash
 viben agent create -n my-devops -f devops-assistant
 ```
 
-特点：
-- CI/CD 配置
-- Docker 和 Kubernetes 支持
-- 监控和日志分析
+Features:
+- CI/CD configuration
+- Docker and Kubernetes support
+- Monitoring and log analysis
 
-## CLI 命令
+## CLI Commands
 
 ### viben agent template list
 
-列出所有可用模板：
+List all available templates:
 
 ```bash
 viben agent template list
 viben agent template list --json
 ```
 
-输出示例：
+Example output:
 
 ```
 Agent Templates:
@@ -358,7 +358,7 @@ Agent Templates:
 
 ### viben agent template show
 
-查看模板详情：
+View template details:
 
 ```bash
 viben agent template show -n coding-assistant
@@ -366,7 +366,7 @@ viben agent template show -n coding-assistant
 
 ### viben agent template create
 
-从 agent 创建模板：
+Create a template from an agent:
 
 ```bash
 viben agent template create -n <template-id> --clone <agent-id>
@@ -375,17 +375,17 @@ viben agent template create -n my-template --clone my-agent
 
 ### viben agent template remove
 
-删除模板：
+Delete a template:
 
 ```bash
 viben agent template remove -n <template-id>
 ```
 
-## 最佳实践
+## Best Practices
 
-### 1. 模板命名
+### 1. Template Naming
 
-使用描述性的名称：
+Use descriptive names:
 
 ```
 # Good
@@ -399,86 +399,86 @@ my-template
 test
 ```
 
-### 2. 版本管理
+### 2. Version Management
 
-遵循语义化版本：
+Follow semantic versioning:
 
 ```yaml
-version: 1.0.0  # 主版本.次版本.修订版本
+version: 1.0.0  # major.minor.patch
 ```
 
-- 主版本：不兼容的变更
-- 次版本：向后兼容的功能添加
-- 修订版本：向后兼容的问题修复
+- Major version: Incompatible changes
+- Minor version: Backward-compatible feature additions
+- Patch version: Backward-compatible bug fixes
 
-### 3. 文档完善
+### 3. Complete Documentation
 
-每个模板应包含完整的 README.md：
+Each template should include a comprehensive README.md:
 
 ```markdown
 # Template Name
 
-## 功能描述
-[模板用途和特点]
+## Description
+[Template purpose and features]
 
-## 使用方法
+## Usage
 ```bash
 viben agent create -n my-agent -f template-name
 ```
 
-## 参数说明
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| model | 使用的模型 | claude-3-sonnet |
+## Parameters
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| model | Model to use | claude-3-sonnet |
 
-## 包含的 Skills
-- skill-1: 描述
-- skill-2: 描述
+## Included Skills
+- skill-1: Description
+- skill-2: Description
 
-## 包含的 MCP
-- mcp-1: 描述
-- mcp-2: 描述
+## Included MCP
+- mcp-1: Description
+- mcp-2: Description
 
-## 注意事项
-[使用注意事项]
+## Notes
+[Usage notes and considerations]
 ```
 
-### 4. 参数设计
+### 4. Parameter Design
 
-- 提供合理的默认值
-- 必需参数尽量少
-- 使用枚举限制选项
+- Provide reasonable default values
+- Minimize required parameters
+- Use enums to limit options
 
 ```yaml
 parameters:
   - name: model
-    default: claude-3-sonnet  # 有默认值
-    enum:                     # 限制选项
+    default: claude-3-sonnet  # Has default value
+    enum:                     # Limited options
       - claude-3-opus
       - claude-3-sonnet
 ```
 
-### 5. 测试模板
+### 5. Test Templates
 
-发布前充分测试：
+Test thoroughly before publishing:
 
 ```bash
-# 创建测试 agent
+# Create a test agent
 viben agent create -n test-agent -f my-template
 
-# 验证配置
+# Verify configuration
 viben agent show -n test-agent
 
-# 测试对话
+# Test conversation
 viben agent chat -n test-agent -p "Hello"
 
-# 清理
+# Clean up
 viben agent remove -n test-agent
 ```
 
-## 相关文档
+## Related Documentation
 
-- [Agent 开发指南](../index.md)
-- [Skill 开发指南](../skill-development.md)
-- [MCP 开发指南](../mcp-development.md)
-- [CLI 集成指南](../cli-integration.md)
+- [Agent Development Guide](../index.md)
+- [Skill Development Guide](../skill-development.md)
+- [MCP Development Guide](../mcp-development.md)
+- [CLI Integration Guide](../cli-integration.md)

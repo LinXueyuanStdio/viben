@@ -1,56 +1,56 @@
 ---
 sidebar_position: 6
-title: 最佳实践
-description: Agent 开发的最佳实践和设计模式
+title: Best Practices
+description: Best Practices and Design Patterns for Agent Development
 ---
 
-# Agent 开发最佳实践
+# Agent Development Best Practices
 
-本文档总结了 Agent 开发的最佳实践和设计模式，帮助你创建高效、可维护的 Agent。
+This document summarizes best practices and design patterns for Agent development, helping you create efficient and maintainable Agents.
 
-## 架构设计
+## Architecture Design
 
-### 单一职责原则
+### Single Responsibility Principle
 
-每个 Agent 应专注于特定领域或任务：
+Each Agent should focus on a specific domain or task:
 
 ```yaml
-# Good: 专注的 Agent
+# Good: Focused Agent
 name: code-review-agent
 description: Specializes in code review and quality analysis
 
-# Bad: 过于宽泛
+# Bad: Too broad
 name: general-agent
 description: Does everything - coding, research, writing, math...
 ```
 
-**原则**：
-- 一个 Agent 专注一个领域
-- 复杂任务拆分为多个专业 Agent
-- 通过 Agent 组合实现复杂功能
+**Principles**:
+- One Agent focuses on one domain
+- Split complex tasks into multiple specialized Agents
+- Achieve complex functionality through Agent composition
 
-### 模块化 Skill
+### Modular Skills
 
-将复杂功能拆分为独立的 Skill：
+Split complex functionality into independent Skills:
 
 ```yaml
 # agent config
 skills:
   enabled:
-    - paper-search      # 搜索论文
-    - paper-summarize   # 总结论文
-    - citation-format   # 格式化引用
-    - bibliography      # 生成参考文献
+    - paper-search      # Search papers
+    - paper-summarize   # Summarize papers
+    - citation-format   # Format citations
+    - bibliography      # Generate bibliography
 ```
 
-**好处**：
-- 技能可复用
-- 便于测试和维护
-- 按需组合
+**Benefits**:
+- Skills are reusable
+- Easy to test and maintain
+- Compose as needed
 
-### Memory 管理
+### Memory Management
 
-合理使用 Memory 系统：
+Use the Memory system wisely:
 
 ```markdown
 <!-- memory/MEMORY.md -->
@@ -70,7 +70,7 @@ skills:
 - .trellis/: Development workflow
 ```
 
-**每日日志格式**：
+**Daily log format**:
 
 ```markdown
 # 2024-01-16
@@ -88,11 +88,11 @@ skills:
 - Next: Implement step 2 and 3
 ```
 
-## 配置管理
+## Configuration Management
 
-### 环境变量
+### Environment Variables
 
-敏感信息使用环境变量：
+Use environment variables for sensitive information:
 
 ```yaml
 # agent.yaml
@@ -102,25 +102,25 @@ providers:
   openai:
     api_key: ${OPENAI_API_KEY}
 
-# MCP 配置
+# MCP configuration
 mcp:
   github:
     env:
       GITHUB_TOKEN: ${GITHUB_TOKEN}
 ```
 
-**不要这样做**：
+**Don't do this**:
 
 ```yaml
-# Bad: 硬编码密钥
+# Bad: Hardcoded keys
 providers:
   anthropic:
     api_key: sk-ant-xxx-actual-key-here
 ```
 
-### 合理的默认值
+### Reasonable Defaults
 
-提供合理的默认配置：
+Provide sensible default configurations:
 
 ```yaml
 # agent.yaml
@@ -134,33 +134,33 @@ type_config:
   dangerously_skip_permissions: false
 ```
 
-### 配置分层
+### Configuration Layering
 
-利用配置合并机制：
+Leverage the configuration merging mechanism:
 
 ```
-~/.viben/agents/main/config.yaml     # 全局 Agent 配置
+~/.viben/agents/main/config.yaml     # Global Agent configuration
   ↓
-<project>/.claude/                    # 项目级配置覆盖
+<project>/.claude/                    # Project-level configuration override
   ↓
-命令行参数                             # 运行时覆盖
+Command line parameters               # Runtime override
 ```
 
-## 错误处理
+## Error Handling
 
-### 优雅降级
+### Graceful Degradation
 
-配置 fallback 模型：
+Configure fallback models:
 
 ```yaml
 # agent.yaml
 fallbacks:
-  - model: claude-3-opus      # 首选
-  - model: claude-3-sonnet    # 备选
-  - model: gpt-4              # 最后备选
+  - model: claude-3-opus      # Primary
+  - model: claude-3-sonnet    # Fallback
+  - model: gpt-4              # Last resort
 ```
 
-### 重试策略
+### Retry Strategy
 
 ```yaml
 # agent.yaml
@@ -171,9 +171,9 @@ retry:
   max_delay: 30000
 ```
 
-### 错误日志
+### Error Logging
 
-使用 Memory 系统记录错误：
+Use the Memory system to record errors:
 
 ```markdown
 ## 14:30 - Error encountered
@@ -183,47 +183,47 @@ retry:
 - Prevention: Consider rate limiting in agent config
 ```
 
-## 性能优化
+## Performance Optimization
 
-### 缓存策略
+### Caching Strategy
 
-启用响应缓存：
+Enable response caching:
 
 ```yaml
 # agent.yaml
 cache:
   enabled: true
-  ttl: 3600           # 1 小时
-  max_size: 100       # 最大缓存条目
+  ttl: 3600           # 1 hour
+  max_size: 100       # Maximum cache entries
 ```
 
-### 流式响应
+### Streaming Responses
 
-使用流式响应提升用户体验：
+Use streaming responses to improve user experience:
 
 ```yaml
 # agent.yaml
 streaming: true
 ```
 
-CLI 使用：
+CLI usage:
 
 ```bash
-# 流式输出
+# Streaming output
 viben agent chat -n my-agent -p "Write a long article" --output-format stream-json
 ```
 
-### Token 优化
+### Token Optimization
 
-- 精简系统提示词
-- 使用结构化输出减少 token
-- 定期清理会话历史
+- Keep system prompts concise
+- Use structured output to reduce tokens
+- Regularly clean session history
 
-## 安全实践
+## Security Practices
 
-### 输入验证
+### Input Validation
 
-在 Skill 中验证输入：
+Validate input in Skills:
 
 ```yaml
 # skill.yaml
@@ -241,24 +241,24 @@ input_schema:
     - query
 ```
 
-### 权限控制
+### Permission Control
 
-限制 Agent 能力范围：
+Limit Agent capability scope:
 
 ```yaml
 # agent.yaml
 permissions:
-  file_access: true       # 文件读写
-  network_access: true    # 网络访问
-  exec_commands: false    # 禁止执行命令
+  file_access: true       # File read/write
+  network_access: true    # Network access
+  exec_commands: false    # Disable command execution
 
 type_config:
-  dangerously_skip_permissions: false  # 不跳过权限检查
+  dangerously_skip_permissions: false  # Don't skip permission checks
 ```
 
-### MCP 安全
+### MCP Security
 
-限制 MCP 访问范围：
+Limit MCP access scope:
 
 ```json
 {
@@ -272,35 +272,35 @@ type_config:
 }
 ```
 
-## 测试策略
+## Testing Strategy
 
-### 单元测试
+### Unit Testing
 
-测试 Agent 响应：
+Test Agent responses:
 
 ```bash
-# 测试基本响应
+# Test basic response
 viben agent chat -n my-agent -p "Hello" --json
 
-# 验证输出格式
+# Verify output format
 viben agent chat -n my-agent -p "Generate JSON" --json | jq .
 ```
 
-### 集成测试
+### Integration Testing
 
-测试完整流程：
+Test complete workflows:
 
 ```bash
 #!/bin/bash
 # test-agent.sh
 
-# 创建测试 agent (从模板创建)
+# Create test agent (from template)
 viben agent create test-agent --from-template my-template
 
-# 测试基本功能
+# Test basic functionality
 response=$(viben agent chat -n test-agent -p "Test query" --json)
 
-# 验证响应
+# Verify response
 if echo "$response" | jq -e '.success == true' > /dev/null; then
     echo "Test passed"
 else
@@ -308,57 +308,57 @@ else
     exit 1
 fi
 
-# 清理
+# Clean up
 viben agent remove test-agent
 ```
 
-### Skill 测试
+### Skill Testing
 
 ```bash
-# 测试单个 skill
+# Test a single skill
 viben skill test my-skill --input "test input"
 ```
 
-## 文档规范
+## Documentation Standards
 
 ### Agent README
 
-每个 Agent 应包含文档：
+Each Agent should include documentation:
 
 ```markdown
 # Agent Name
 
-## 功能描述
-[Agent 的主要功能和适用场景]
+## Description
+[Main functionality and use cases of the Agent]
 
-## 安装
+## Installation
 ```bash
 viben agent create my-agent --from-template template-name
 ```
 
-## 配置
-[配置选项说明]
+## Configuration
+[Configuration options description]
 
-## 使用示例
+## Usage Examples
 ```bash
 viben agent chat -n my-agent -p "Example query"
 ```
 
 ## Skills
-- skill-1: 功能描述
-- skill-2: 功能描述
+- skill-1: Functionality description
+- skill-2: Functionality description
 
 ## MCP Servers
-- mcp-1: 用途说明
-- mcp-2: 用途说明
+- mcp-1: Purpose description
+- mcp-2: Purpose description
 
-## 限制
-[已知限制和注意事项]
+## Limitations
+[Known limitations and considerations]
 ```
 
-### 变更日志
+### Changelog
 
-记录重要变更：
+Record important changes:
 
 ```markdown
 # Changelog
@@ -376,11 +376,11 @@ viben agent chat -n my-agent -p "Example query"
 - Fixed memory loading issue
 ```
 
-## 常见模式
+## Common Patterns
 
-### 专家 Agent 模式
+### Expert Agent Pattern
 
-创建领域专家：
+Create domain experts:
 
 ```yaml
 # code-review-agent.yaml
@@ -409,7 +409,7 @@ skills:
     - performance-check
 ```
 
-### 研究助手模式
+### Research Assistant Pattern
 
 ```yaml
 # research-agent.yaml
@@ -430,7 +430,7 @@ mcp:
     - semantic-scholar
 ```
 
-### DevOps Agent 模式
+### DevOps Agent Pattern
 
 ```yaml
 # devops-agent.yaml
@@ -451,38 +451,38 @@ mcp:
     - docker
 ```
 
-## 检查清单
+## Checklist
 
-### 发布前检查
+### Pre-release Checklist
 
-- [ ] 配置文件语法正确
-- [ ] 环境变量正确引用
-- [ ] Skills 正确配置
-- [ ] MCP Servers 可用
-- [ ] Memory 系统正常
-- [ ] 文档完整
-- [ ] 测试通过
+- [ ] Configuration file syntax is correct
+- [ ] Environment variables are properly referenced
+- [ ] Skills are correctly configured
+- [ ] MCP Servers are available
+- [ ] Memory system is working
+- [ ] Documentation is complete
+- [ ] Tests pass
 
-### 运行时检查
+### Runtime Checklist
 
 ```bash
-# 检查 agent 状态
+# Check agent status
 viben agent status -n my-agent
 
-# 检查 executor 可用性
+# Check executor availability
 viben executor list
 
-# 检查 MCP 配置
+# Check MCP configuration
 viben mcp list --agent my-agent
 
-# 检查 skills
+# Check skills
 viben skill list --agent my-agent
 ```
 
-## 相关文档
+## Related Documentation
 
-- [Agent 开发指南](./index.md)
-- [MCP 开发指南](./mcp-development.md)
-- [Skill 开发指南](./skill-development.md)
-- [CLI 集成指南](./cli-integration.md)
-- [Agent 模板指南](./templates/agent-templates.md)
+- [Agent Development Guide](./index.md)
+- [MCP Development Guide](./mcp-development.md)
+- [Skill Development Guide](./skill-development.md)
+- [CLI Integration Guide](./cli-integration.md)
+- [Agent Template Guide](./templates/agent-templates.md)

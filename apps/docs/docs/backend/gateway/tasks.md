@@ -1,30 +1,30 @@
-# 任务 API
+# Tasks API
 
-> `/api/tasks` - 任务管理端点
+> `/api/tasks` - Task management endpoints
 
-## 概述
+## Overview
 
-任务 API 提供任务的创建、查询、更新和删除功能。
+The Tasks API provides functionality for creating, querying, updating, and deleting tasks.
 
-## 端点列表
+## Endpoints
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/tasks` | 列出所有任务 |
-| POST | `/api/tasks` | 创建任务 |
-| GET | `/api/tasks/:id` | 获取任务详情 |
-| PATCH | `/api/tasks/:id` | 更新任务 |
-| DELETE | `/api/tasks/:id` | 删除任务 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tasks` | List all tasks |
+| POST | `/api/tasks` | Create a task |
+| GET | `/api/tasks/:id` | Get task details |
+| PATCH | `/api/tasks/:id` | Update a task |
+| DELETE | `/api/tasks/:id` | Delete a task |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/tasks
 
-列出所有任务。
+List all tasks.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -46,9 +46,9 @@
 
 ### POST /api/tasks
 
-创建新任务。
+Create a new task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -58,13 +58,13 @@
 }
 ```
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| title | string | ✓ | 任务标题 |
-| description | string | 否 | 任务描述 |
-| agent_id | string | 否 | 分配的智能体 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| title | string | Yes | Task title |
+| description | string | No | Task description |
+| agent_id | string | No | Assigned agent |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -80,9 +80,9 @@
 
 ### GET /api/tasks/:id
 
-获取任务详情。
+Get task details.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -107,9 +107,9 @@
 
 ### PATCH /api/tasks/:id
 
-更新任务。
+Update a task.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -120,20 +120,20 @@
 }
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| title | string | 任务标题 |
-| description | string | 任务描述 |
-| status | string | 任务状态 |
-| agent_id | string | 分配的智能体 |
+| Field | Type | Description |
+|-------|------|-------------|
+| title | string | Task title |
+| description | string | Task description |
+| status | string | Task status |
+| agent_id | string | Assigned agent |
 
 ---
 
 ### DELETE /api/tasks/:id
 
-删除任务。
+Delete a task.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -143,21 +143,21 @@
 
 ---
 
-## 任务状态
+## Task Status
 
-| 状态 | 说明 |
-|------|------|
-| pending | 待处理 |
-| in_progress | 进行中 |
-| completed | 已完成 |
-| failed | 已失败 |
-| cancelled | 已取消 |
+| Status | Description |
+|--------|-------------|
+| pending | Pending |
+| in_progress | In progress |
+| completed | Completed |
+| failed | Failed |
+| cancelled | Cancelled |
 
 ---
 
-## 事件通知
+## Event Notifications
 
-任务状态变化时会发送事件：
+Events are sent when task status changes:
 
 ```json
 {
@@ -173,7 +173,7 @@
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [会话 API](./sessions.md) - 会话管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Sessions API](./sessions.md) - Session management
+- [Agents API](./agents.md) - Agent management

@@ -1,61 +1,61 @@
 # WebSocket API
 
-> WebSocket 实时通信端点
+> WebSocket real-time communication endpoints
 
-## 概述
+## Overview
 
-Viben Gateway 提供多个 WebSocket 端点用于实时通信：
-- 通用 WebSocket (`/ws`)
-- 群聊 WebSocket (`/api/group-chats/:id/sessions/:sid/ws`)
-- 终端 WebSocket (`/terminal/ws`)
-
----
-
-## 端点列表
-
-| 路径 | 说明 |
-|------|------|
-| `/ws` | 通用 WebSocket，事件订阅 |
-| `/api/group-chats/:id/sessions/:sid/ws` | 群聊会话实时通信 |
-| `/terminal/ws` | 终端 PTY 会话 |
+Viben Gateway provides multiple WebSocket endpoints for real-time communication:
+- General WebSocket (`/ws`)
+- Group Chat WebSocket (`/api/group-chats/:id/sessions/:sid/ws`)
+- Terminal WebSocket (`/terminal/ws`)
 
 ---
 
-## 通用 WebSocket
+## Endpoint List
+
+| Path | Description |
+|------|-------------|
+| `/ws` | General WebSocket, event subscription |
+| `/api/group-chats/:id/sessions/:sid/ws` | Group chat session real-time communication |
+| `/terminal/ws` | Terminal PTY session |
+
+---
+
+## General WebSocket
 
 ### GET /ws
 
-通用 WebSocket 连接，用于订阅系统事件。
+General WebSocket connection for subscribing to system events.
 
-**事件通道**:
+**Event Channels**:
 
-| 通道 | 说明 |
-|------|------|
-| cron | 定时任务事件 |
-| channels | 通道事件 |
-| group | 群聊事件 |
-| tasks | 任务事件 |
-| sessions | 会话事件 |
-| agents | 智能体事件 |
-| gateway | 网关事件 |
+| Channel | Description |
+|---------|-------------|
+| cron | Cron job events |
+| channels | Channel events |
+| group | Group chat events |
+| tasks | Task events |
+| sessions | Session events |
+| agents | Agent events |
+| gateway | Gateway events |
 
-**客户端消息**:
+**Client Messages**:
 
 ```json
-// 订阅事件
+// Subscribe to events
 {
   "type": "subscribe",
   "channels": ["cron", "agents"]
 }
 
-// 取消订阅
+// Unsubscribe from events
 {
   "type": "unsubscribe",
   "channels": ["cron"]
 }
 ```
 
-**服务器消息**:
+**Server Messages**:
 
 ```json
 {
@@ -72,24 +72,24 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 
 ---
 
-## 群聊 WebSocket
+## Group Chat WebSocket
 
 ### GET /api/group-chats/:id/sessions/:sid/ws
 
-群聊会话 WebSocket 连接。
+Group chat session WebSocket connection.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | 否 | 工作空间路径 |
-| member_type | string | 否 | 成员类型 |
-| member_id | string | 否 | 成员 ID |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| workspace_path | string | No | Workspace path |
+| member_type | string | No | Member type |
+| member_id | string | No | Member ID |
 
-**客户端消息**:
+**Client Messages**:
 
 ```typescript
-// 发送消息
+// Send message
 {
   "type": "send_message",
   "data": {
@@ -97,7 +97,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 切换视图
+// Switch view
 {
   "type": "switch_view",
   "data": {
@@ -106,7 +106,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 输入指示器
+// Typing indicator
 {
   "type": "typing",
   "data": {
@@ -115,10 +115,10 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 }
 ```
 
-**服务器消息**:
+**Server Messages**:
 
 ```typescript
-// 新消息
+// New message
 {
   "type": "message",
   "data": {
@@ -131,7 +131,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 智能体思考中
+// Agent thinking
 {
   "type": "agent_thinking",
   "data": {
@@ -140,7 +140,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 智能体响应
+// Agent response
 {
   "type": "agent_response",
   "data": {
@@ -150,7 +150,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 输入指示器
+// Typing indicator
 {
   "type": "typing_indicator",
   "data": {
@@ -159,7 +159,7 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
   }
 }
 
-// 错误
+// Error
 {
   "type": "error",
   "data": {
@@ -171,32 +171,32 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 
 ---
 
-## 终端 WebSocket
+## Terminal WebSocket
 
 ### GET /terminal/ws
 
-终端 PTY 会话 WebSocket 连接。
+Terminal PTY session WebSocket connection.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| cwd | string | 否 | cwd | 工作目录 |
-| cols | int | 否 | 80 | 终端列数 |
-| rows | int | 否 | 24 | 终端行数 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| cwd | string | No | cwd | Working directory |
+| cols | int | No | 80 | Terminal columns |
+| rows | int | No | 24 | Terminal rows |
 
-**数据编码**: Base64
+**Data Encoding**: Base64
 
-**客户端消息**:
+**Client Messages**:
 
 ```typescript
-// 输入数据 (Base64 编码)
+// Input data (Base64 encoded)
 {
   "type": "input",
   "data": "bHMgLWxhCg=="  // "ls -la\n"
 }
 
-// 调整大小
+// Resize
 {
   "type": "resize",
   "data": {
@@ -206,16 +206,16 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 }
 ```
 
-**服务器消息**:
+**Server Messages**:
 
 ```typescript
-// 输出数据 (Base64 编码)
+// Output data (Base64 encoded)
 {
   "type": "output",
   "data": "dG90YWwgMTI4Cg=="
 }
 
-// 终端关闭
+// Terminal closed
 {
   "type": "exit",
   "data": {
@@ -224,13 +224,13 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 }
 ```
 
-**示例 (JavaScript)**:
+**Example (JavaScript)**:
 
 ```javascript
 const ws = new WebSocket('ws://localhost:18790/terminal/ws?cols=80&rows=24');
 
 ws.onopen = () => {
-  // 发送命令
+  // Send command
   const input = btoa('ls -la\n');
   ws.send(JSON.stringify({ type: 'input', data: input }));
 };
@@ -246,62 +246,62 @@ ws.onmessage = (event) => {
 
 ---
 
-## 事件类型汇总
+## Event Types Summary
 
-### 任务事件
+### Task Events
 
-| 类型 | 说明 |
-|------|------|
-| TaskCreated | 任务创建 |
-| TaskUpdated | 任务更新 |
-| TaskDeleted | 任务删除 |
-| TaskStatusChanged | 任务状态变化 |
+| Type | Description |
+|------|-------------|
+| TaskCreated | Task created |
+| TaskUpdated | Task updated |
+| TaskDeleted | Task deleted |
+| TaskStatusChanged | Task status changed |
 
-### 智能体事件
+### Agent Events
 
-| 类型 | 说明 |
-|------|------|
-| AgentSpawned | 智能体启动 |
-| AgentCompleted | 智能体完成 |
-| AgentError | 智能体错误 |
+| Type | Description |
+|------|-------------|
+| AgentSpawned | Agent started |
+| AgentCompleted | Agent completed |
+| AgentError | Agent error |
 
-### 群聊事件
+### Group Chat Events
 
-| 类型 | 说明 |
-|------|------|
-| GroupChatMessage | 新消息 |
-| GroupChatAgentThinking | 智能体思考中 |
-| GroupChatAgentResponse | 智能体响应 |
+| Type | Description |
+|------|-------------|
+| GroupChatMessage | New message |
+| GroupChatAgentThinking | Agent thinking |
+| GroupChatAgentResponse | Agent response |
 
-### 定时任务事件
+### Cron Job Events
 
-| 类型 | 说明 |
-|------|------|
-| CronJobTriggered | 任务触发 |
-| CronJobCompleted | 任务完成 |
-| CronJobFailed | 任务失败 |
+| Type | Description |
+|------|-------------|
+| CronJobTriggered | Job triggered |
+| CronJobCompleted | Job completed |
+| CronJobFailed | Job failed |
 
 ---
 
-## 连接管理
+## Connection Management
 
-### 心跳
+### Heartbeat
 
-WebSocket 连接使用 ping/pong 机制保持活跃：
-- 服务器每 30 秒发送 ping
-- 客户端应在 10 秒内响应 pong
-- 超时未响应将断开连接
+WebSocket connections use ping/pong mechanism to stay alive:
+- Server sends ping every 30 seconds
+- Client should respond with pong within 10 seconds
+- Connection will be closed if no response within timeout
 
-### 重连
+### Reconnection
 
-建议客户端实现自动重连逻辑：
+It is recommended that clients implement automatic reconnection logic:
 
 ```javascript
 function connect() {
   const ws = new WebSocket('ws://localhost:18790/ws');
 
   ws.onclose = () => {
-    setTimeout(connect, 3000);  // 3 秒后重连
+    setTimeout(connect, 3000);  // Reconnect after 3 seconds
   };
 
   ws.onerror = () => {
@@ -312,7 +312,7 @@ function connect() {
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [事件流 API](./events.md) - SSE 事件流
-- [群聊 API](./group-chats.md) - 群聊管理
+- [Event Stream API](./events.md) - SSE event stream
+- [Group Chats API](./group-chats.md) - Group chat management

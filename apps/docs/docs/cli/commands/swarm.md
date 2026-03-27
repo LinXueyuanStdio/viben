@@ -1,118 +1,118 @@
 ---
 sidebar_position: 19
 title: "viben swarm"
-description: "智能体集群调度命令，管理多智能体并行开发"
+description: "Agent swarm scheduling command for managing multi-agent parallel development"
 ---
 
 # viben swarm
 
-智能体集群调度命令，管理多智能体并行开发。
+Agent swarm scheduling command for managing multi-agent parallel development.
 
-:::warning 废弃通知
-`viben swarm start` 已废弃。
+:::warning Deprecation Notice
+`viben swarm start` has been deprecated.
 
-**推荐替代命令**：
-- 完整流程（plan -> work）：`viben task start <task>`
-- 仅执行 work 阶段（跳过 plan）：`viben task work-phase <task>`
+**Recommended alternatives**:
+- Full workflow (plan -> work): `viben task start <task>`
+- Work phase only (skip plan): `viben task work-phase <task>`
 :::
 
-## 概述
+## Overview
 
-`viben swarm` 命令用于管理智能体集群，支持在独立的 Git worktree 中启动多个智能体并行工作。
+The `viben swarm` command is used to manage agent swarms, supporting the launch of multiple agents working in parallel in isolated Git worktrees.
 
-## 命令结构
+## Command Structure
 
 ```bash
 viben swarm <subcommand> [options]
 ```
 
-## 子命令概览
+## Subcommand Overview
 
-| 子命令 | 说明 |
-|--------|------|
-| `start` | 启动智能体 (已废弃) |
-| `stop` | 停止智能体 |
-| `status` | 查看智能体状态 |
-| `wait` | 等待智能体完成 |
-| `list` | 列出 Worktree |
-| `registry` | 显示智能体注册表 |
+| Subcommand | Description |
+|------------|-------------|
+| `start` | Start an agent (deprecated) |
+| `stop` | Stop an agent |
+| `status` | View agent status |
+| `wait` | Wait for agents to complete |
+| `list` | List worktrees |
+| `registry` | Show agent registry |
 
-## 启动智能体 (已废弃)
+## Start Agent (Deprecated)
 
 :::caution
-请使用 `viben task work-phase <task>` 代替。
+Please use `viben task work-phase <task>` instead.
 :::
 
 ```bash
 viben swarm start <task> [options]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--executor <executor>` | 指定执行器 (CLAUDE_CODE, CURSOR, GEMINI_CLI 等) |
-| `--detach` | 后台运行，不阻塞终端 |
-| `--resume` | 恢复智能体 session |
-| `--session <id>` | 指定 session-id 恢复 |
+| Option | Description |
+|--------|-------------|
+| `--executor <executor>` | Specify executor (CLAUDE_CODE, CURSOR, GEMINI_CLI, etc.) |
+| `--detach` | Run in background, don't block the terminal |
+| `--resume` | Resume agent session |
+| `--session <id>` | Specify session-id to resume |
 
-**迁移指南**:
+**Migration Guide**:
 
-| 旧命令 | 新命令 |
-|--------|--------|
+| Old Command | New Command |
+|-------------|-------------|
 | `viben swarm start <task>` | `viben task start <task>` |
 | `viben swarm start <task>` | `viben task work-phase <task>` |
 
-## 停止智能体
+## Stop Agent
 
 ```bash
 viben swarm stop <task> [--force]
 viben swarm stop --all [--force]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--force` | 强制终止 (SIGKILL) |
-| `--all` | 停止所有运行中的智能体 |
+| Option | Description |
+|--------|-------------|
+| `--force` | Force terminate (SIGKILL) |
+| `--all` | Stop all running agents |
 
-**示例**:
-
-```bash
-viben swarm stop add-user-auth           # 停止指定智能体 (SIGTERM)
-viben swarm stop add-user-auth --force   # 强制终止 (SIGKILL)
-viben swarm stop --all                   # 停止所有智能体
-```
-
-## 查看状态
+**Examples**:
 
 ```bash
-# 查看所有智能体状态
-viben swarm status                       # 显示所有智能体摘要
-viben swarm status --running             # 只显示运行中
-viben swarm status --stopped             # 只显示已停止
-viben swarm status --json                # JSON 输出
-
-# 查看特定智能体状态
-viben swarm status <task>                # 显示特定智能体
-viben swarm status <task> --detail       # 详细状态
-viben swarm status <task> --watch        # 实时监控日志
-viben swarm status <task> --log          # 显示最近日志条目
+viben swarm stop add-user-auth           # Stop specific agent (SIGTERM)
+viben swarm stop add-user-auth --force   # Force terminate (SIGKILL)
+viben swarm stop --all                   # Stop all agents
 ```
 
-**选项**:
+## View Status
 
-| 选项 | 说明 |
-|------|------|
-| `--running` | 只显示运行中的智能体 |
-| `--stopped` | 只显示已停止的智能体 |
-| `--json` | JSON 格式输出 |
-| `--detail` | 显示详细状态 |
-| `--watch` | 实时监控智能体日志 |
-| `--log` | 显示最近日志条目 |
+```bash
+# View all agent statuses
+viben swarm status                       # Show all agent summary
+viben swarm status --running             # Show only running
+viben swarm status --stopped             # Show only stopped
+viben swarm status --json                # JSON output
 
-**输出**:
+# View specific agent status
+viben swarm status <task>                # Show specific agent
+viben swarm status <task> --detail       # Detailed status
+viben swarm status <task> --watch        # Real-time log monitoring
+viben swarm status <task> --log          # Show recent log entries
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `--running` | Show only running agents |
+| `--stopped` | Show only stopped agents |
+| `--json` | JSON format output |
+| `--detail` | Show detailed status |
+| `--watch` | Real-time monitoring of agent logs |
+| `--log` | Show recent log entries |
+
+**Output**:
 
 ```
 === Swarm Status ===
@@ -130,68 +130,68 @@ Running:
 Stopped:
   ○ fix-login-bug [CLAUDE_CODE]
     Status:   in_progress
-    "正在分析登录逻辑..."
+    "Analyzing login logic..."
     Resume:   viben swarm start fix-login-bug --resume
 ```
 
-## 等待智能体完成
+## Wait for Agents to Complete
 
 ```bash
 viben swarm wait [tasks...] [options]
 ```
 
-**参数**:
+**Arguments**:
 
-| 参数 | 说明 |
-|------|------|
-| `[tasks...]` | 可选，指定等待的任务列表 |
+| Argument | Description |
+|----------|-------------|
+| `[tasks...]` | Optional, specify list of tasks to wait for |
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 | 默认值 |
-|------|------|--------|
-| `--all` | 等待所有运行中的智能体 | - |
-| `--polling-interval-seconds <n>` | 轮询间隔 | 10 |
-| `--timeout-seconds <n>` | 单任务超时时间 | 300 |
-| `--quiet` | 静默模式 | - |
-| `--verbose` | 详细模式 | - |
-| `--json` | JSON 格式输出 | - |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--all` | Wait for all running agents | - |
+| `--polling-interval-seconds <n>` | Polling interval | 10 |
+| `--timeout-seconds <n>` | Per-task timeout | 300 |
+| `--quiet` | Quiet mode | - |
+| `--verbose` | Verbose mode | - |
+| `--json` | JSON format output | - |
 
-**完成状态**:
+**Completion Status**:
 
-| 状态 | 说明 |
-|------|------|
-| `completed` | 进程退出 + task.status 为 completed |
-| `failed` | 进程退出 + task.status 为 failed |
-| `timeout` | 超时 + 调用 `viben task reject <task>` |
-| `exited` | 进程退出但 task.status 未更新 |
+| Status | Description |
+|--------|-------------|
+| `completed` | Process exited + task.status is completed |
+| `failed` | Process exited + task.status is failed |
+| `timeout` | Timeout + calls `viben task reject <task>` |
+| `exited` | Process exited but task.status not updated |
 
-**退出码**:
+**Exit Codes**:
 
-| 退出码 | 含义 |
-|--------|------|
-| 0 | 所有任务完成 |
-| 1 | 有任务超时 |
-| 2 | 没有找到任何 agent |
-| 3 | 执行错误 |
+| Exit Code | Meaning |
+|-----------|---------|
+| 0 | All tasks completed |
+| 1 | Some tasks timed out |
+| 2 | No agents found |
+| 3 | Execution error |
 
-**示例**:
+**Examples**:
 
 ```bash
-# 等待所有智能体
+# Wait for all agents
 viben swarm wait --all
 
-# 等待指定任务
+# Wait for specific tasks
 viben swarm wait task-a task-b task-c
 
-# 自定义超时
+# Custom timeout
 viben swarm wait --all --timeout-seconds 600 --polling-interval-seconds 5
 
-# JSON 输出
+# JSON output
 viben swarm wait --all --json
 ```
 
-**输出（进度模式）**:
+**Output (progress mode)**:
 
 ```
 Waiting for 3 agents... [10s] 1/3 completed
@@ -207,13 +207,13 @@ Waiting for 3 agents... [40s] 3/3 completed
 Summary: 2 completed, 0 failed, 1 timeout
 ```
 
-## 列出 Worktree
+## List Worktrees
 
 ```bash
 viben swarm list [--json]
 ```
 
-**输出**:
+**Output**:
 
 ```
 === Git Worktrees ===
@@ -229,13 +229,13 @@ PATH                                           COMMIT   BRANCH
     Started:  2024-03-03T10:30:00
 ```
 
-## 查看注册表
+## View Registry
 
 ```bash
 viben swarm registry [--json]
 ```
 
-**输出**:
+**Output**:
 
 ```
 === Agent Registry ===
@@ -256,7 +256,7 @@ File: .viben/agents/registry.json
 }
 ```
 
-## 架构概述
+## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -271,7 +271,7 @@ File: .viben/agents/registry.json
 │      └── registry.json                                   │
 └─────────────────────────────────────────────────────────┘
                           │
-                          │ viben task work-phase (推荐)
+                          │ viben task work-phase (recommended)
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Worktree (Isolated Branch)                  │
@@ -288,7 +288,7 @@ File: .viben/agents/registry.json
 └─────────────────────────────────────────────────────────┘
 ```
 
-## registry.json 格式
+## registry.json Format
 
 ```json
 {
@@ -305,28 +305,28 @@ File: .viben/agents/registry.json
 }
 ```
 
-## worktree.yaml 配置
+## worktree.yaml Configuration
 
 ```yaml
 # .viben/worktree.yaml
 version: 1
 
-# Worktree 存储位置
+# Worktree storage location
 base_dir: ~/.viben/worktrees
 
-# 创建 worktree 时复制的文件
+# Files to copy when creating worktree
 copy_files:
   - .env
   - .env.local
   - .envrc
 
-# 创建后执行的命令
+# Commands to execute after creation
 post_create:
   - pnpm install
   - pnpm build
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben task](./task) - 任务管理命令
-- [viben executor](./executor) - Executor 发现和管理
+- [viben task](./task) - Task management command
+- [viben executor](./executor) - Executor discovery and management

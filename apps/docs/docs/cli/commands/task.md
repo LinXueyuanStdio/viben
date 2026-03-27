@@ -1,65 +1,65 @@
 ---
 sidebar_position: 17
 title: "viben task"
-description: "任务管理命令，支持任务的完整生命周期管理"
+description: "Task management command with full lifecycle management support"
 ---
 
 # viben task
 
-任务管理命令，支持任务的完整生命周期管理。
+Task management command with full lifecycle management support.
 
-## 概述
+## Overview
 
-`viben task` 命令用于管理开发任务，包括任务的创建、配置、上下文管理、规划和监控。
+The `viben task` command is used to manage development tasks, including task creation, configuration, context management, planning, and monitoring.
 
-## 命令结构
+## Command Structure
 
 ```bash
 viben task <subcommand> [options]
 ```
 
-## 子命令概览
+## Subcommand Overview
 
-| 子命令 | 说明 |
-|--------|------|
-| `list` | 列出任务 |
-| `create` | 创建新任务 |
-| `view` | 查看任务详情 |
-| `edit` | 编辑任务 |
-| `delete` | 删除任务 |
-| `finish` | 完成任务 |
-| `archive` | 归档任务 |
-| `list-archive` | 列出归档任务 |
-| `enqueue` | 入队任务 |
-| `dequeue` | 移出队列 |
-| `pause` | 暂停任务 |
-| `resume` | 恢复任务 |
-| `review` | 查看待审查任务 |
-| `approve` | 批准完成 |
-| `reject` | 拒绝返工 |
-| `retry` | 重试失败任务 |
-| `cancel` | 取消任务 |
-| `start` | 启动任务执行 |
-| `status` | 查看任务状态 |
-| `create-pr` | 创建 Pull Request |
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List tasks |
+| `create` | Create a new task |
+| `view` | View task details |
+| `edit` | Edit a task |
+| `delete` | Delete a task |
+| `finish` | Complete a task |
+| `archive` | Archive a task |
+| `list-archive` | List archived tasks |
+| `enqueue` | Enqueue a task |
+| `dequeue` | Remove from queue |
+| `pause` | Pause a task |
+| `resume` | Resume a task |
+| `review` | View tasks pending review |
+| `approve` | Approve completion |
+| `reject` | Reject and rework |
+| `retry` | Retry a failed task |
+| `cancel` | Cancel a task |
+| `start` | Start task execution |
+| `status` | View task status |
+| `create-pr` | Create a Pull Request |
 
-## 任务 CRUD
+## Task CRUD
 
-### 列出任务
+### List Tasks
 
 ```bash
 viben task list [--mine] [--status <status>] [--json]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--mine`, `-m` | 只显示分配给当前开发者的任务 |
-| `--status`, `-s` | 按状态过滤 (backlog, in_progress, completed) |
-| `--json` | JSON 格式输出 |
+| Option | Description |
+|--------|-------------|
+| `--mine`, `-m` | Show only tasks assigned to the current developer |
+| `--status`, `-s` | Filter by status (backlog, in_progress, completed) |
+| `--json` | JSON format output |
 
-**示例**:
+**Examples**:
 
 ```bash
 viben task list
@@ -67,22 +67,22 @@ viben task list --mine
 viben task list --status in_progress --json
 ```
 
-### 创建任务
+### Create Task
 
 ```bash
 viben task create <title> [options]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--slug <name>` | 任务标识符，默认从 title 生成 |
-| `--assignee <dev>` | 分配给谁，默认当前开发者 |
-| `--priority <P0-P3>` | 优先级，默认 P2 |
-| `--agent <agent-id>` | 关联的智能体配置 |
+| Option | Description |
+|--------|-------------|
+| `--slug <name>` | Task identifier, defaults to generated from title |
+| `--assignee <dev>` | Assign to whom, defaults to current developer |
+| `--priority <P0-P3>` | Priority, defaults to P2 |
+| `--agent <agent-id>` | Associated agent configuration |
 
-**示例**:
+**Examples**:
 
 ```bash
 viben task create "Add user authentication"
@@ -90,90 +90,90 @@ viben task create "Fix login bug" --slug fix-login --priority P1
 viben task create "Implement API" --assignee john --agent coding-assistant
 ```
 
-### 查看任务
+### View Task
 
 ```bash
 viben task view <task>
 ```
 
-**示例**:
+**Examples**:
 
 ```bash
 viben task view add-user-auth
 viben task view .viben/tasks/03-03-add-user-auth
 ```
 
-### 编辑任务
+### Edit Task
 
 ```bash
 viben task edit <task>
 ```
 
-### 删除任务
+### Delete Task
 
 ```bash
 viben task delete <task> [--force]
 ```
 
-## 状态生命周期管理
+## Status Lifecycle Management
 
-### 入队任务
+### Enqueue Task
 
-将任务从 backlog 状态移入 queue 状态。
+Move a task from backlog status to queue status.
 
 ```bash
 viben task enqueue <task> [options]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--agent <id>` | 执行智能体 ID |
-| `--executor <type>` | 执行器类型 (CLAUDE_CODE, CURSOR, OPENCODE, etc.) |
-| `--model <id>` | 模型 ID |
-| `--priority <p>` | 优先级 (P0/P1/P2/P3) |
+| Option | Description |
+|--------|-------------|
+| `--agent <id>` | Execution agent ID |
+| `--executor <type>` | Executor type (CLAUDE_CODE, CURSOR, OPENCODE, etc.) |
+| `--model <id>` | Model ID |
+| `--priority <p>` | Priority (P0/P1/P2/P3) |
 
-**示例**:
+**Examples**:
 
 ```bash
-# 基本入队
+# Basic enqueue
 viben task enqueue 03-10-feature-xyz
 
-# 指定执行配置
+# Specify execution configuration
 viben task enqueue 03-10-feature-xyz --agent my-agent --executor CLAUDE_CODE
 ```
 
-### 移出队列
+### Dequeue Task
 
 ```bash
 viben task dequeue <task>
 ```
 
-### 暂停任务
+### Pause Task
 
 ```bash
 viben task pause <task>
 ```
 
-### 恢复任务
+### Resume Task
 
 ```bash
 viben task resume <task>
 ```
 
-### 查看待审查任务
+### View Tasks Pending Review
 
 ```bash
 viben task review <task>
 ```
 
-**输出**:
+**Output**:
 
 ```
 === Task Review: 03-10-feature-xyz ===
 
-Title:    实现用户认证功能
+Title:    Implement user authentication feature
 Status:   review
 Priority: P1
 
@@ -184,67 +184,67 @@ Files Changed: 12
 +425 -89
 
 Next steps:
-  viben task approve 03-10-feature-xyz   # 批准完成
-  viben task reject 03-10-feature-xyz    # 拒绝返工
+  viben task approve 03-10-feature-xyz   # Approve completion
+  viben task reject 03-10-feature-xyz    # Reject and rework
 ```
 
-### 批准任务
+### Approve Task
 
 ```bash
 viben task approve <task>
 ```
 
-### 拒绝任务
+### Reject Task
 
 ```bash
 viben task reject <task> [--reason <text>]
 ```
 
-### 重试任务
+### Retry Task
 
 ```bash
 viben task retry <task>
 ```
 
-### 取消任务
+### Cancel Task
 
 ```bash
 viben task cancel <task> [--reason <text>] [--force]
-viben task stop <task>   # cancel 的别名
+viben task stop <task>   # Alias for cancel
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--reason <text>` | 取消原因 |
-| `--force`, `-f` | 强制取消 in_progress 状态的任务 |
+| Option | Description |
+|--------|-------------|
+| `--reason <text>` | Cancellation reason |
+| `--force`, `-f` | Force cancel tasks in in_progress status |
 
-## 任务执行
+## Task Execution
 
-### 启动任务
+### Start Task
 
 ```bash
 viben task start <task> [options]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--executor <type>` | 执行器类型 |
-| `--detach` | 后台运行 |
-| `--worktree` | 在隔离的 git worktree 中运行 |
-| `--resume` | 恢复已有的智能体 session |
-| `--session <id>` | 指定 session-id |
+| Option | Description |
+|--------|-------------|
+| `--executor <type>` | Executor type |
+| `--detach` | Run in background |
+| `--worktree` | Run in an isolated git worktree |
+| `--resume` | Resume an existing agent session |
+| `--session <id>` | Specify session-id |
 
-**执行流程**:
-1. 调用 Plan Agent 规划任务
-2. 调用 Work Agent 执行任务
-3. 自动创建 worktree（如配置）
-4. 完成后进入 review 状态
+**Execution Flow**:
+1. Call Plan Agent to plan the task
+2. Call Work Agent to execute the task
+3. Automatically create worktree (if configured)
+4. Enter review status upon completion
 
-**示例**:
+**Examples**:
 
 ```bash
 viben task start add-user-auth
@@ -252,161 +252,161 @@ viben task start add-user-auth --executor CURSOR
 viben task start add-user-auth --resume
 ```
 
-### 阶段命令
+### Phase Commands
 
 ```bash
-# 运行 Plan 阶段
+# Run Plan phase
 viben task plan-phase <task> [--platform <platform>] [--verbose]
 
-# 运行 Work 阶段
+# Run Work phase
 viben task work-phase <task> [--platform <platform>] [--no-detach]
 
-# 运行 Implement 阶段
+# Run Implement phase
 viben task implement-phase <task>
 
-# 运行 Check 阶段
+# Run Check phase
 viben task check-phase <task>
 ```
 
-### 查看状态
+### View Status
 
 ```bash
-# 查看所有任务状态
+# View all task statuses
 viben task status
 
-# 查看特定任务状态
+# View specific task status
 viben task status <task> [--detail] [--watch] [--log]
 ```
 
-**选项**:
+**Options**:
 
-| 选项 | 说明 |
-|------|------|
-| `--assignee`, `-a` | 按分配人过滤 |
-| `--status`, `-s` | 按状态过滤 |
-| `--running` | 只显示有运行中智能体的任务 |
-| `--json` | JSON 格式输出 |
-| `--detail` | 显示详细状态 |
-| `--watch` | 实时监控智能体日志 |
-| `--log` | 显示最近日志条目 |
+| Option | Description |
+|--------|-------------|
+| `--assignee`, `-a` | Filter by assignee |
+| `--status`, `-s` | Filter by status |
+| `--running` | Show only tasks with running agents |
+| `--json` | JSON format output |
+| `--detail` | Show detailed status |
+| `--watch` | Real-time monitoring of agent logs |
+| `--log` | Show recent log entries |
 
-### 创建 PR
+### Create PR
 
 ```bash
 viben task create-pr <task> [--dry-run]
 ```
 
-## 上下文管理
+## Context Management
 
-### 初始化上下文
+### Initialize Context
 
 ```bash
 viben task init-context <task>
 ```
 
-创建 `implement.jsonl`、`check.jsonl`、`fix.jsonl` 文件。
+Creates `implement.jsonl`, `check.jsonl`, and `fix.jsonl` files.
 
-### 添加上下文
+### Add Context
 
 ```bash
 viben task add-context <task> <file>... [--reason <text>] [--recursive]
 ```
 
-**示例**:
+**Examples**:
 
 ```bash
 viben task add-context add-user-auth src/auth/
-viben task add-context add-user-auth docs/api.md --reason "API 参考文档"
+viben task add-context add-user-auth docs/api.md --reason "API reference documentation"
 ```
 
-### 移除上下文
+### Remove Context
 
 ```bash
 viben task remove-context <task> <file>...
 ```
 
-### 列出上下文
+### List Context
 
 ```bash
 viben task list-context <task>
 ```
 
-### 验证上下文
+### Validate Context
 
 ```bash
 viben task validate-context <task>
 ```
 
-## 归档管理
+## Archive Management
 
-### 完成任务
+### Complete Task
 
 ```bash
 viben task finish <task>
 ```
 
-### 归档任务
+### Archive Task
 
 ```bash
 viben task archive <task>
 ```
 
-任务会被移动到 `archive/YYYY-MM/` 目录。
+The task will be moved to the `archive/YYYY-MM/` directory.
 
-### 列出归档任务
+### List Archived Tasks
 
 ```bash
 viben task list-archive [YYYY-MM]
 ```
 
-### 清理 Worktree
+### Clean Up Worktree
 
 ```bash
-# 清理指定分支的 worktree
+# Clean up worktree for a specific branch
 viben task cleanup <branch> [--keep-branch] [--yes]
 
-# 清理已合并的 worktree
+# Clean up merged worktrees
 viben task cleanup --merged [--yes]
 
-# 清理所有 worktree
+# Clean up all worktrees
 viben task cleanup --all [--yes]
 
-# 列出所有 worktree
+# List all worktrees
 viben task cleanup --list
 ```
 
-## 状态转换
+## Status Transitions
 
-| 命令 | 允许的起始状态 | 目标状态 |
-|------|--------------|---------|
+| Command | Allowed Starting Status | Target Status |
+|---------|------------------------|---------------|
 | enqueue | backlog | queue |
 | dequeue | queue | backlog |
 | pause | queue, in_progress | paused |
-| resume | paused | queue 或 in_progress |
+| resume | paused | queue or in_progress |
 | approve | review | completed |
 | reject | review | backlog |
 | retry | failed | queue |
 | cancel | backlog, queue, paused, in_progress*, review | cancelled |
 
-> *`in_progress` 状态需要 `--force` 参数
+> *`in_progress` status requires the `--force` parameter
 
-## 任务目录结构
+## Task Directory Structure
 
 ```
 .viben/tasks/
 ├── 03-03-add-user-auth/
-│   ├── task.json           # 任务元数据
-│   ├── prd.md              # 产品需求文档 (Plan Agent 生成)
-│   ├── implement.jsonl     # 实现阶段上下文
-│   ├── check.jsonl         # 检查阶段上下文
-│   ├── fix.jsonl           # 修复阶段上下文
-│   └── .plan-log           # Plan Agent 日志
+│   ├── task.json           # Task metadata
+│   ├── prd.md              # Product Requirements Document (generated by Plan Agent)
+│   ├── implement.jsonl     # Implementation phase context
+│   ├── check.jsonl         # Check phase context
+│   ├── fix.jsonl           # Fix phase context
+│   └── .plan-log           # Plan Agent log
 └── archive/
     └── 2024-02/
         └── 02-15-old-task/
 ```
 
-## task.json 格式
+## task.json Format
 
 ```json
 {
@@ -437,8 +437,8 @@ viben task cleanup --list
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben queue](./queue) - 命令队列管理
-- [viben swarm](./swarm) - 智能体集群调度
-- [viben session](./session) - 会话记录管理
+- [viben queue](./queue) - Command queue management
+- [viben swarm](./swarm) - Agent swarm scheduling
+- [viben session](./session) - Session record management

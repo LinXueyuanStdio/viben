@@ -1,119 +1,119 @@
 ---
 sidebar_position: 14
 title: "viben team"
-description: "团队协作工作区初始化和管理"
+description: "Team collaboration workspace initialization and management"
 ---
 
 # viben team
 
-团队协作工作区初始化和管理。
+Team collaboration workspace initialization and management.
 
-## 用法
+## Usage
 
 ```bash
 viben team <subcommand> [options]
 ```
 
-## 架构概述
+## Architecture Overview
 
 ```
 +-------------------------------------------------------------+
 |                    Team Workspace                            |
 +-------------------------------------------------------------+
 |  .viben/                                                     |
-|      +-- workflow.md           # 工作流文档                   |
-|      +-- worktree.yaml         # Git worktree 配置            |
-|      +-- .gitignore            # Git 忽略规则                 |
-|      +-- .version              # 版本号                       |
-|      +-- .developer            # 开发者身份                   |
-|      +-- .current-task         # 当前任务指针                 |
-|      +-- .template-hashes.json # 模板文件哈希                 |
-|      +-- workspace/            # 开发者工作区                 |
-|      |   +-- <developer>/      # 每个开发者的独立空间         |
-|      +-- tasks/                # 任务目录                     |
-|      |   +-- archive/          # 归档任务                     |
+|      +-- workflow.md           # Workflow documentation       |
+|      +-- worktree.yaml         # Git worktree configuration   |
+|      +-- .gitignore            # Git ignore rules             |
+|      +-- .version              # Version number               |
+|      +-- .developer            # Developer identity           |
+|      +-- .current-task         # Current task pointer         |
+|      +-- .template-hashes.json # Template file hashes         |
+|      +-- workspace/            # Developer workspace          |
+|      |   +-- <developer>/      # Individual space per dev     |
+|      +-- tasks/                # Tasks directory              |
+|      |   +-- archive/          # Archived tasks               |
 +-------------------------------------------------------------+
-|  .claude/                      # Claude Code 配置             |
-|      +-- settings.json         # Claude Code 设置             |
-|      +-- agents/               # 子智能体定义                 |
-|      +-- commands/viben/       # 自定义命令                   |
-|      +-- hooks/                # 钩子脚本                     |
+|  .claude/                      # Claude Code configuration    |
+|      +-- settings.json         # Claude Code settings         |
+|      +-- agents/               # Sub-agent definitions        |
+|      +-- commands/viben/       # Custom commands              |
+|      +-- hooks/                # Hook scripts                 |
 +-------------------------------------------------------------+
-|  .cursor/ (可选)               # Cursor IDE 配置              |
-|      +-- commands/             # Cursor 命令                  |
+|  .cursor/ (optional)           # Cursor IDE configuration     |
+|      +-- commands/             # Cursor commands              |
 +-------------------------------------------------------------+
-|  AGENTS.md                     # 根级智能体指令文件           |
+|  AGENTS.md                     # Root-level agent instructions|
 +-------------------------------------------------------------+
 ```
 
-## 核心概念
+## Core Concepts
 
-| 概念 | 说明 |
-|------|------|
-| **Developer** | 开发者标识，用于区分不同开发者的工作区 |
-| **Project Type** | 项目类型 (frontend/backend/fullstack)，决定生成哪些规范文件 |
-| **Workspace** | 开发者独立工作空间，包含日志和会话记录 |
-| **Task** | 任务单元，包含 task.json 和 prd.md |
-| **Spec** | 项目规范文档，指导 AI 智能体行为 |
+| Concept | Description |
+|---------|-------------|
+| **Developer** | Developer identifier, used to distinguish workspaces for different developers |
+| **Project Type** | Project type (frontend/backend/fullstack), determines which spec files are generated |
+| **Workspace** | Developer's independent workspace, contains logs and session records |
+| **Task** | Task unit, contains task.json and prd.md |
+| **Spec** | Project specification documents, guides AI agent behavior |
 
-## 命令
+## Commands
 
-### 初始化团队工作区
+### Initialize Team Workspace
 
 ```bash
-# 初始化团队工作区
+# Initialize team workspace
 viben team init --developer <name>
 viben team init --developer john-doe
 
-# 指定项目类型
+# Specify project type
 viben team init --developer <name> --project-type <type>
 viben team init --developer john-doe --project-type frontend
 viben team init --developer john-doe --project-type backend
-viben team init --developer john-doe --project-type fullstack  # 默认
+viben team init --developer john-doe --project-type fullstack  # Default
 
-# 指定目标目录
+# Specify target directory
 viben team init --developer <name> --target <path>
 viben team init --developer john-doe --target /path/to/project
 
-# 强制覆盖现有文件
+# Force overwrite existing files
 viben team init --developer <name> --force
 
-# 跳过已存在的文件
+# Skip existing files
 viben team init --developer <name> --skip-existing
 
-# 不包含 Cursor 配置
+# Exclude Cursor configuration
 viben team init --developer <name> --no-cursor
 
-# JSON 输出
+# JSON output
 viben team init --developer <name> --json
 ```
 
-## 参数说明
+## Parameter Reference
 
-| 参数 | 必需 | 默认值 | 说明 |
-|------|------|--------|------|
-| `--developer, -d` | 是 | - | 开发者名称，小写字母数字加连字符 |
-| `--project-type, -t` | - | `fullstack` | 项目类型: frontend, backend, fullstack |
-| `--target` | - | `cwd` | 目标目录路径 |
-| `--force, -f` | - | `false` | 强制覆盖现有文件 |
-| `--skip-existing` | - | `false` | 跳过已存在的文件 |
-| `--no-cursor` | - | `false` | 不创建 .cursor 目录 |
-| `--json` | - | `false` | JSON 格式输出 |
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `--developer, -d` | Yes | - | Developer name, lowercase alphanumeric with hyphens |
+| `--project-type, -t` | - | `fullstack` | Project type: frontend, backend, fullstack |
+| `--target` | - | `cwd` | Target directory path |
+| `--force, -f` | - | `false` | Force overwrite existing files |
+| `--skip-existing` | - | `false` | Skip existing files |
+| `--no-cursor` | - | `false` | Do not create .cursor directory |
+| `--json` | - | `false` | JSON format output |
 
-## Developer 名称验证规则
+## Developer Name Validation Rules
 
-开发者名称必须满足以下规则：
-- 只能包含小写字母 (a-z)、数字 (0-9) 和连字符 (-)
-- 不能以连字符开头或结尾
-- 不能为空
+Developer names must follow these rules:
+- Can only contain lowercase letters (a-z), digits (0-9), and hyphens (-)
+- Cannot start or end with a hyphen
+- Cannot be empty
 
-**有效示例：** `john`, `john-doe`, `dev123`, `my-agent-1`
+**Valid examples:** `john`, `john-doe`, `dev123`, `my-agent-1`
 
-**无效示例：** `John` (大写), `-invalid` (以连字符开头), `invalid-` (以连字符结尾)
+**Invalid examples:** `John` (uppercase), `-invalid` (starts with hyphen), `invalid-` (ends with hyphen)
 
-## 输出示例
+## Output Examples
 
-**`viben team init --developer john-doe`（人类可读）：**
+**`viben team init --developer john-doe` (human-readable):**
 
 ```
 Initialized Viben team workspace
@@ -134,7 +134,7 @@ Next steps:
   3. Run /viben:start to begin your first session
 ```
 
-**`viben team init --developer john-doe --json`：**
+**`viben team init --developer john-doe --json`:**
 
 ```json
 {
@@ -155,9 +155,9 @@ Next steps:
 }
 ```
 
-## 错误处理
+## Error Handling
 
-### 目录已存在
+### Directory Already Exists
 
 ```
 Error: Directory already exists: /path/to/project/.viben
@@ -165,7 +165,7 @@ Error: Directory already exists: /path/to/project/.viben
 Use --force to overwrite or --skip-existing to skip
 ```
 
-### 无效的开发者名称
+### Invalid Developer Name
 
 ```
 Error: Invalid developer name "John-Doe"
@@ -176,43 +176,43 @@ not starting or ending with hyphen.
 Valid examples: john, john-doe, dev123
 ```
 
-## 生成的目录结构
+## Generated Directory Structure
 
-### .viben/ 目录
+### .viben/ Directory
 
 ```
 .viben/
-+-- workflow.md              # 工作流文档
-+-- worktree.yaml            # Git worktree 配置
-+-- .gitignore               # Git 忽略规则
-+-- .version                 # 版本号 (1.0.0)
-+-- .developer               # 开发者身份信息
-+-- .current-task            # 当前任务路径
-+-- .template-hashes.json    # 模板 SHA256 哈希
++-- workflow.md              # Workflow documentation
++-- worktree.yaml            # Git worktree configuration
++-- .gitignore               # Git ignore rules
++-- .version                 # Version number (1.0.0)
++-- .developer               # Developer identity info
++-- .current-task            # Current task path
++-- .template-hashes.json    # Template SHA256 hashes
 |
 +-- workspace/
-|   +-- index.md             # 工作区索引
+|   +-- index.md             # Workspace index
 |   +-- <developer>/
-|       +-- index.md         # 开发者索引
-|       +-- journal-1.md     # 会话日志
+|       +-- index.md         # Developer index
+|       +-- journal-1.md     # Session journal
 |
 +-- tasks/
-|   +-- archive/             # 归档任务
+|   +-- archive/             # Archived tasks
 |   +-- 00-bootstrap-guidelines/
-|       +-- task.json        # 任务元数据
-|       +-- prd.md           # 任务需求文档
+|       +-- task.json        # Task metadata
+|       +-- prd.md           # Task requirements document
 ```
 
-### docs/specs/ 目录
+### docs/specs/ Directory
 
 ```
 docs/specs/
-+-- guides/              # 通用指南 (始终创建)
++-- guides/              # General guides (always created)
 |   +-- index.md
 |   +-- cross-layer-thinking-guide.md
 |   +-- code-reuse-thinking-guide.md
 |
-+-- backend/             # 后端规范 (backend/fullstack)
++-- backend/             # Backend specs (backend/fullstack)
 |   +-- index.md
 |   +-- directory-structure.md
 |   +-- database-guidelines.md
@@ -220,7 +220,7 @@ docs/specs/
 |   +-- quality-guidelines.md
 |   +-- error-handling.md
 |
-+-- frontend/            # 前端规范 (frontend/fullstack)
++-- frontend/            # Frontend specs (frontend/fullstack)
     +-- index.md
     +-- directory-structure.md
     +-- type-safety.md
@@ -230,13 +230,13 @@ docs/specs/
     +-- state-management.md
 ```
 
-### .claude/ 目录
+### .claude/ Directory
 
 ```
 .claude/
-+-- settings.json            # Claude Code 设置
++-- settings.json            # Claude Code settings
 |
-+-- agents/                  # 子智能体
++-- agents/                  # Sub-agents
 |   +-- check.md
 |   +-- fix.md
 |   +-- work.md
@@ -244,7 +244,7 @@ docs/specs/
 |   +-- plan.md
 |   +-- research.md
 |
-+-- commands/viben/          # 自定义命令
++-- commands/viben/          # Custom commands
 |   +-- before-backend-dev.md
 |   +-- before-frontend-dev.md
 |   +-- break-loop.md
@@ -260,12 +260,12 @@ docs/specs/
 |   +-- task.md
 |   +-- update-spec.md
 |
-+-- hooks/                   # 钩子脚本 (可执行)
++-- hooks/                   # Hook scripts (executable)
     +-- ralph-loop.py
     +-- session-start.py
 ```
 
-### .cursor/ 目录（可选）
+### .cursor/ Directory (Optional)
 
 ```
 .cursor/
@@ -285,16 +285,16 @@ docs/specs/
     +-- viben-update-spec.md
 ```
 
-## 文件权限
+## File Permissions
 
-钩子脚本文件 (`.py`) 创建时设置为可执行 (mode 0755)。
+Hook script files (`.py`) are created with executable permissions (mode 0755).
 
-## 模板哈希
+## Template Hashes
 
-`.viben/.template-hashes.json` 存储所有模板文件的 SHA256 哈希，用于：
-- 检测本地文件是否被修改
-- 升级时判断是否需要更新
-- 冲突解决
+`.viben/.template-hashes.json` stores SHA256 hashes of all template files, used for:
+- Detecting if local files have been modified
+- Determining if updates are needed during upgrades
+- Conflict resolution
 
 ```json
 {
@@ -304,8 +304,8 @@ docs/specs/
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben init](./init) - 基本工作区初始化
-- [viben workspace](./workspace) - 工作区操作
-- [viben agent](./agent) - 智能体管理
+- [viben init](./init) - Basic workspace initialization
+- [viben workspace](./workspace) - Workspace operations
+- [viben agent](./agent) - Agent management

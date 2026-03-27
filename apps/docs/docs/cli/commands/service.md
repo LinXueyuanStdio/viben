@@ -1,52 +1,52 @@
 ---
 sidebar_position: 4
 title: "viben service"
-description: "管理 Viben 后台服务"
+description: "Manage Viben background services"
 ---
 
 # viben service
 
-管理 Viben 后台服务。
+Manage Viben background services.
 
-## 用法
+## Usage
 
 ```bash
 viben service <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `status [name]` | 显示服务状态 |
-| `start <name>` | 启动服务 |
-| `stop <name>` | 停止服务 |
-| `restart <name>` | 重启服务 |
-| `logs <name>` | 查看服务日志 |
+| Subcommand | Description |
+|------------|-------------|
+| `status [name]` | Show service status |
+| `start <name>` | Start a service |
+| `stop <name>` | Stop a service |
+| `restart <name>` | Restart a service |
+| `logs <name>` | View service logs |
 
-## 托管服务
+## Managed Services
 
-| 服务 | 说明 |
-|------|------|
-| `mcp:<name>` | MCP Server 进程 |
-| `viben:sync` | 配置同步服务 |
-| `viben:index` | 本地索引服务 |
+| Service | Description |
+|---------|-------------|
+| `mcp:<name>` | MCP Server process |
+| `viben:sync` | Configuration sync service |
+| `viben:index` | Local indexing service |
 
-## 命令
+## Commands
 
-### 服务状态
+### Service Status
 
-检查服务状态：
+Check service status:
 
 ```bash
-# 检查所有服务
+# Check all services
 viben service status
 
-# 检查特定服务
+# Check a specific service
 viben service status mcp:filesystem
 ```
 
-**输出（人类可读）：**
+**Output (Human-readable):**
 
 ```
 Services:
@@ -55,7 +55,7 @@ Services:
   viben:sync        stopped   -          -
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```bash
 viben service status --json
@@ -89,25 +89,25 @@ viben service status --json
 }
 ```
 
-### 启动服务
+### Start Service
 
-启动后台服务：
+Start a background service:
 
 ```bash
-# 启动 filesystem MCP 服务器
+# Start filesystem MCP server
 viben service start mcp:filesystem
 
-# 启动同步服务
+# Start sync service
 viben service start viben:sync
 ```
 
-**输出：**
+**Output:**
 
 ```
 Started mcp:filesystem (pid: 12345)
 ```
 
-**JSON 输出：**
+**JSON Output:**
 
 ```json
 {
@@ -120,25 +120,25 @@ Started mcp:filesystem (pid: 12345)
 }
 ```
 
-### 停止服务
+### Stop Service
 
-停止运行中的服务：
+Stop a running service:
 
 ```bash
-# 停止 filesystem MCP 服务器
+# Stop filesystem MCP server
 viben service stop mcp:filesystem
 
-# 停止同步服务
+# Stop sync service
 viben service stop viben:sync
 ```
 
-**输出：**
+**Output:**
 
 ```
 Stopped mcp:filesystem
 ```
 
-**JSON 输出：**
+**JSON Output:**
 
 ```json
 {
@@ -150,37 +150,37 @@ Stopped mcp:filesystem
 }
 ```
 
-### 重启服务
+### Restart Service
 
-重启服务：
+Restart a service:
 
 ```bash
-# 重启 filesystem MCP 服务器
+# Restart filesystem MCP server
 viben service restart mcp:filesystem
 ```
 
-**输出：**
+**Output:**
 
 ```
 Restarted mcp:filesystem (pid: 12350)
 ```
 
-### 查看日志
+### View Logs
 
-查看服务日志：
+View service logs:
 
 ```bash
-# 查看日志
+# View logs
 viben service logs mcp:filesystem
 
-# 实时跟踪日志
+# Follow logs in real-time
 viben service logs mcp:filesystem -f
 
-# 查看最后 N 行
+# View last N lines
 viben service logs mcp:filesystem --tail 50
 ```
 
-**输出：**
+**Output:**
 
 ```
 [2024-01-16 10:30:00] INFO: Starting mcp:filesystem
@@ -188,37 +188,37 @@ viben service logs mcp:filesystem --tail 50
 [2024-01-16 10:31:15] DEBUG: Received request: list_directory
 ```
 
-## 服务类型
+## Service Types
 
-### MCP 服务
+### MCP Services
 
-MCP 服务以 `mcp:` 前缀命名：
+MCP services are named with the `mcp:` prefix:
 
 ```bash
-# 启动 MCP 服务器
+# Start MCP servers
 viben service start mcp:filesystem
 viben service start mcp:git
 viben service start mcp:browser
 
-# 检查 MCP 服务状态
+# Check MCP service status
 viben service status mcp:filesystem
 ```
 
-### 系统服务
+### System Services
 
-系统服务以 `viben:` 前缀命名：
+System services are named with the `viben:` prefix:
 
 ```bash
-# 启动同步服务
+# Start sync service
 viben service start viben:sync
 
-# 启动索引服务
+# Start indexing service
 viben service start viben:index
 ```
 
-## 错误处理
+## Error Handling
 
-### 服务未找到
+### Service Not Found
 
 ```bash
 viben service start unknown:service
@@ -234,7 +234,7 @@ viben service start unknown:service
 }
 ```
 
-### 服务已在运行
+### Service Already Running
 
 ```bash
 viben service start mcp:filesystem
@@ -250,7 +250,7 @@ viben service start mcp:filesystem
 }
 ```
 
-### 服务未运行
+### Service Not Running
 
 ```bash
 viben service stop mcp:filesystem
@@ -266,8 +266,8 @@ viben service stop mcp:filesystem
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben mcp](./mcp) - MCP 服务器管理
-- [viben config](./config) - 配置管理
-- [viben gateway](./gateway) - Gateway 运行时
+- [viben mcp](./mcp) - MCP server management
+- [viben config](./config) - Configuration management
+- [viben gateway](./gateway) - Gateway runtime

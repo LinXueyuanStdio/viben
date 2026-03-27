@@ -1,90 +1,90 @@
-# 群聊 API
+# Group Chats API
 
-> `/api/group-chats` - 群聊管理端点
+> `/api/group-chats` - Group chat management endpoints
 
-## 概述
+## Overview
 
-群聊 API 提供多智能体协作聊天功能，支持多个智能体在同一会话中协同工作。
+The Group Chats API provides multi-agent collaborative chat functionality, supporting multiple agents working together in the same session.
 
-## 端点列表
+## Endpoint List
 
-### 群聊 CRUD
+### Group Chat CRUD
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats` | 列出群聊 |
-| POST | `/api/group-chats` | 创建群聊 |
-| GET | `/api/group-chats/:id` | 获取群聊详情 |
-| PATCH | `/api/group-chats/:id` | 更新群聊 |
-| DELETE | `/api/group-chats/:id` | 删除群聊 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats` | List group chats |
+| POST | `/api/group-chats` | Create group chat |
+| GET | `/api/group-chats/:id` | Get group chat details |
+| PATCH | `/api/group-chats/:id` | Update group chat |
+| DELETE | `/api/group-chats/:id` | Delete group chat |
 
-### 成员管理
+### Member Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/members` | 列出成员 |
-| POST | `/api/group-chats/:id/members` | 添加成员 |
-| DELETE | `/api/group-chats/:id/members/:mid` | 移除成员 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/members` | List members |
+| POST | `/api/group-chats/:id/members` | Add member |
+| DELETE | `/api/group-chats/:id/members/:mid` | Remove member |
 
-### 会话管理
+### Session Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/sessions` | 列出会话 |
-| POST | `/api/group-chats/:id/sessions` | 创建会话 |
-| GET | `/api/group-chats/:id/sessions/:sid` | 获取会话详情 |
-| PATCH | `/api/group-chats/:id/sessions/:sid` | 更新会话 |
-| DELETE | `/api/group-chats/:id/sessions/:sid` | 删除会话 |
-| GET | `/api/group-chats/:id/sessions/:sid/agents` | 列出会话智能体 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/sessions` | List sessions |
+| POST | `/api/group-chats/:id/sessions` | Create session |
+| GET | `/api/group-chats/:id/sessions/:sid` | Get session details |
+| PATCH | `/api/group-chats/:id/sessions/:sid` | Update session |
+| DELETE | `/api/group-chats/:id/sessions/:sid` | Delete session |
+| GET | `/api/group-chats/:id/sessions/:sid/agents` | List session agents |
 
-### 消息管理
+### Message Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/sessions/:sid/messages` | 列出消息 |
-| POST | `/api/group-chats/:id/sessions/:sid/messages` | 发送消息 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/sessions/:sid/messages` | List messages |
+| POST | `/api/group-chats/:id/sessions/:sid/messages` | Send message |
 
-### 文件管理
+### File Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/files` | 列出文件 |
-| POST | `/api/group-chats/:id/files` | 上传文件 |
-| GET | `/api/group-chats/:id/files/:name` | 下载文件 |
-| DELETE | `/api/group-chats/:id/files/:name` | 删除文件 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/files` | List files |
+| POST | `/api/group-chats/:id/files` | Upload file |
+| GET | `/api/group-chats/:id/files/:name` | Download file |
+| DELETE | `/api/group-chats/:id/files/:name` | Delete file |
 
-### 图片管理
+### Picture Management
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/pictures` | 列出图片 |
-| POST | `/api/group-chats/:id/pictures` | 上传图片 |
-| GET | `/api/group-chats/:id/pictures/:name` | 下载图片 |
-| DELETE | `/api/group-chats/:id/pictures/:name` | 删除图片 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/pictures` | List pictures |
+| POST | `/api/group-chats/:id/pictures` | Upload picture |
+| GET | `/api/group-chats/:id/pictures/:name` | Download picture |
+| DELETE | `/api/group-chats/:id/pictures/:name` | Delete picture |
 
 ### WebSocket
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/group-chats/:id/sessions/:sid/ws` | WebSocket 连接 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/group-chats/:id/sessions/:sid/ws` | WebSocket connection |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/group-chats
 
-列出群聊。
+List group chats.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| workspace_path | string | 否 | - | 工作空间路径 |
-| include_global | bool | 否 | true | 包含全局群聊 |
-| created_by | string | 否 | - | 按创建者过滤 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| workspace_path | string | No | - | Workspace path |
+| include_global | bool | No | true | Include global group chats |
+| created_by | string | No | - | Filter by creator |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -106,9 +106,9 @@
 
 ### POST /api/group-chats
 
-创建群聊。
+Create a group chat.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -132,9 +132,9 @@
 
 ### GET /api/group-chats/:id
 
-获取群聊详情。
+Get group chat details.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -166,23 +166,23 @@
 
 ### GET /api/group-chats/:id/sessions/:sid/messages
 
-列出会话消息。支持多视图。
+List session messages. Supports multiple views.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 默认 | 说明 |
-|------|------|------|------|------|
-| view | string | 否 | ui | 视图类型: `ui` 或 `agent` |
-| agent_id | string | 条件 | - | 智能体 ID (view=agent 时必需) |
-| limit | int | 否 | 50 | 返回消息数 |
-| before | string | 否 | - | 分页游标 |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| view | string | No | ui | View type: `ui` or `agent` |
+| agent_id | string | Conditional | - | Agent ID (required when view=agent) |
+| limit | int | No | 50 | Number of messages to return |
+| before | string | No | - | Pagination cursor |
 
-**视图类型**:
+**View Types**:
 
-- **ui**: 用户友好视图，适合前端渲染
-- **agent**: 智能体视图，包含原始消息和工具调用
+- **ui**: User-friendly view, suitable for frontend rendering
+- **agent**: Agent view, includes raw messages and tool calls
 
-**响应 (ui 视图)**:
+**Response (ui view)**:
 
 ```json
 {
@@ -212,7 +212,7 @@
 }
 ```
 
-**响应 (agent 视图)**:
+**Response (agent view)**:
 
 ```json
 {
@@ -243,9 +243,9 @@
 
 ### POST /api/group-chats/:id/sessions/:sid/messages
 
-发送消息到群聊。自动触发所有智能体响应。
+Send a message to the group chat. Automatically triggers all agent responses.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -259,7 +259,7 @@
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -272,37 +272,37 @@
 
 ### GET /api/group-chats/:id/sessions/:sid/ws
 
-WebSocket 连接，用于实时通信。
+WebSocket connection for real-time communication.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| workspace_path | string | 否 | 工作空间路径 |
-| member_type | string | 否 | 成员类型 |
-| member_id | string | 否 | 成员 ID |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| workspace_path | string | No | Workspace path |
+| member_type | string | No | Member type |
+| member_id | string | No | Member ID |
 
-**WebSocket 消息类型**:
+**WebSocket Message Types**:
 
 ```typescript
-// 服务器 → 客户端
+// Server → Client
 interface ServerMessage {
   type:
-    | "message"           // 新消息
-    | "agent_thinking"    // 智能体思考中
-    | "agent_response"    // 智能体响应
-    | "typing_indicator"  // 输入指示器
-    | "error";            // 错误
+    | "message"           // New message
+    | "agent_thinking"    // Agent thinking
+    | "agent_response"    // Agent response
+    | "typing_indicator"  // Typing indicator
+    | "error";            // Error
   data: any;
 }
 
-// 客户端 → 服务器
+// Client → Server
 interface ClientMessage {
   type:
-    | "send_message"      // 发送消息
-    | "switch_view"       // 切换视图
-    | "subscribe"         // 订阅事件
-    | "unsubscribe";      // 取消订阅
+    | "send_message"      // Send message
+    | "switch_view"       // Switch view
+    | "subscribe"         // Subscribe to events
+    | "unsubscribe";      // Unsubscribe from events
   data: any;
 }
 ```
@@ -311,15 +311,15 @@ interface ClientMessage {
 
 ### POST /api/group-chats/:id/files
 
-上传文件。
+Upload a file.
 
-**请求**: `multipart/form-data`
+**Request**: `multipart/form-data`
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| file | file | 文件内容 |
+| Field | Type | Description |
+|-------|------|-------------|
+| file | file | File content |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -333,11 +333,11 @@ interface ClientMessage {
 
 ### POST /api/group-chats/:id/pictures
 
-上传图片。仅接受图片格式。
+Upload a picture. Only accepts image formats.
 
-**支持格式**: `image/jpeg`, `image/png`, `image/gif`, `image/webp`
+**Supported Formats**: `image/jpeg`, `image/png`, `image/gif`, `image/webp`
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -351,27 +351,27 @@ interface ClientMessage {
 
 ---
 
-## 群聊存储
+## Group Chat Storage
 
-群聊数据存储在工作空间目录下：
+Group chat data is stored in the workspace directory:
 
 ```
 <workspace>/.viben/group-chats/
 └── <group-chat-id>/
-    ├── config.yaml           # 群聊配置
-    ├── members.yaml          # 成员列表
+    ├── config.yaml           # Group chat configuration
+    ├── members.yaml          # Member list
     ├── sessions/
     │   └── <session-id>/
-    │       ├── config.yaml   # 会话配置
-    │       └── messages.jsonl # 消息历史
-    ├── files/                # 上传的文件
-    └── pictures/             # 上传的图片
+    │       ├── config.yaml   # Session configuration
+    │       └── messages.jsonl # Message history
+    ├── files/                # Uploaded files
+    └── pictures/             # Uploaded pictures
 ```
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [智能体 API](./agents.md) - 智能体管理
-- [WebSocket](./websocket.md) - WebSocket 通信
-- [聊天列表 API](./chat-list.md) - 聊天列表聚合
+- [Agents API](./agents.md) - Agent management
+- [WebSocket](./websocket.md) - WebSocket communication
+- [Chat List API](./chat-list.md) - Chat list aggregation

@@ -4,39 +4,39 @@ title: "Queue API"
 description: "Task queue management API"
 ---
 
-# 任务队列 API
+# Task Queue API
 
-> `/api/queue` - 任务队列管理端点
+> `/api/queue` - Task queue management endpoints
 
-## 概述
+## Overview
 
-任务队列 API 提供全局并发控制和故障恢复能力，允许前端提交 agent 任务到队列，由 Gateway 统一调度执行，避免同时运行过多 agent 导致资源耗尽。
+The Task Queue API provides global concurrency control and failure recovery capabilities, allowing the frontend to submit agent tasks to the queue, which are then uniformly scheduled and executed by the Gateway to prevent resource exhaustion from running too many agents simultaneously.
 
-## 端点列表
+## Endpoints
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/queue/enqueue` | 提交任务到队列 |
-| POST | `/api/queue/enqueue-batch` | 批量提交任务到队列 |
-| GET | `/api/queue/status` | 获取队列整体状态 |
-| GET | `/api/queue/tasks` | 获取任务列表 |
-| GET | `/api/queue/tasks/:id` | 获取单个任务详情 |
-| GET | `/api/queue/tasks/:id/running` | 检查任务进程是否运行中 |
-| GET | `/api/queue/tasks/:id/stream` | 任务输出流（SSE） |
-| DELETE | `/api/queue/tasks/:id` | 取消/删除任务 |
-| PUT | `/api/queue/config` | 更新队列配置 |
-| GET | `/api/queue/config` | 获取队列配置 |
-| POST | `/api/queue/clear-history` | 清除任务历史 |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/queue/enqueue` | Submit task to queue |
+| POST | `/api/queue/enqueue-batch` | Batch submit tasks to queue |
+| GET | `/api/queue/status` | Get overall queue status |
+| GET | `/api/queue/tasks` | Get task list |
+| GET | `/api/queue/tasks/:id` | Get single task details |
+| GET | `/api/queue/tasks/:id/running` | Check if task process is running |
+| GET | `/api/queue/tasks/:id/stream` | Task output stream (SSE) |
+| DELETE | `/api/queue/tasks/:id` | Cancel/delete task |
+| PUT | `/api/queue/config` | Update queue configuration |
+| GET | `/api/queue/config` | Get queue configuration |
+| POST | `/api/queue/clear-history` | Clear task history |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### POST /api/queue/enqueue
 
-提交任务到队列。
+Submit a task to the queue.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -52,20 +52,20 @@ description: "Task queue management API"
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| agent_id | string | Yes | 智能体 ID |
-| input | string | Yes | 用户提示词 |
-| cwd | string | No | 工作目录 |
-| session_id | string | No | 会话 ID |
-| agent_config_path | string | No | 智能体配置文件路径 |
-| resume_session | string | No | 恢复现有 SDK 会话 |
-| max_retries | number | No | 最大重试次数（默认 3） |
-| attachments | array | No | 附件列表 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| agent_id | string | Yes | Agent ID |
+| input | string | Yes | User prompt |
+| cwd | string | No | Working directory |
+| session_id | string | No | Session ID |
+| agent_config_path | string | No | Agent configuration file path |
+| resume_session | string | No | Resume existing SDK session |
+| max_retries | number | No | Maximum retry count (default 3) |
+| attachments | array | No | Attachment list |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -79,9 +79,9 @@ description: "Task queue management API"
 
 ### POST /api/queue/enqueue-batch
 
-批量提交任务到队列。
+Batch submit tasks to the queue.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -89,7 +89,7 @@ description: "Task queue management API"
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -103,9 +103,9 @@ description: "Task queue management API"
 
 ### GET /api/queue/status
 
-获取队列整体状态。
+Get overall queue status.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -127,15 +127,15 @@ description: "Task queue management API"
 
 ### GET /api/queue/tasks
 
-获取任务列表。
+Get task list.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| status | string | 按状态过滤：pending, running, completed, failed |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| status | string | Filter by status: pending, running, completed, failed |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -162,9 +162,9 @@ description: "Task queue management API"
 
 ### GET /api/queue/tasks/:id
 
-获取单个任务详情。
+Get single task details.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -187,9 +187,9 @@ description: "Task queue management API"
 
 ### GET /api/queue/tasks/:id/running
 
-检查任务进程是否实际运行中。
+Check if task process is actually running.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -206,32 +206,32 @@ description: "Task queue management API"
 
 ### GET /api/queue/tasks/:id/stream
 
-订阅任务输出的 SSE 流。
+Subscribe to task output SSE stream.
 
-**响应格式**: `text/event-stream`
+**Response Format**: `text/event-stream`
 
-**事件类型**:
+**Event Types**:
 
 ```json
-// 初始任务状态
+// Initial task status
 {"type": "task", "task": {...}}
 
-// 进度更新
+// Progress update
 {"type": "progress", "id": "task_...", "progress": {...}}
 
-// 任务完成
+// Task completed
 {"type": "completed", "task": {...}}
 
-// 任务失败
+// Task failed
 {"type": "failed", "task": {...}}
 
-// 任务取消
+// Task cancelled
 {"type": "cancelled", "task": {...}}
 
-// 心跳
+// Heartbeat
 {"type": "ping"}
 
-// 流结束
+// Stream end
 {"type": "done"}
 ```
 
@@ -239,18 +239,18 @@ description: "Task queue management API"
 
 ### DELETE /api/queue/tasks/:id
 
-取消或删除任务。
+Cancel or delete a task.
 
-- 对于 pending/running 任务：取消执行
-- 对于 completed/failed 任务：从历史记录中删除
+- For pending/running tasks: cancel execution
+- For completed/failed tasks: remove from history
 
-**响应**:
+**Response**:
 
 ```json
-// 取消成功
+// Cancel successful
 {"cancelled": true, "task_id": "task_..."}
 
-// 删除成功
+// Delete successful
 {"deleted": true, "task_id": "task_..."}
 ```
 
@@ -258,9 +258,9 @@ description: "Task queue management API"
 
 ### PUT /api/queue/config
 
-更新队列配置。
+Update queue configuration.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -271,22 +271,22 @@ description: "Task queue management API"
 }
 ```
 
-**字段说明**:
+**Field Description**:
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| max_concurrency | number | 最大并发任务数 |
-| default_max_retries | number | 默认最大重试次数 |
-| persist_debounce_ms | number | 持久化防抖延迟（毫秒） |
-| shutdown_timeout_ms | number | 关闭超时时间（毫秒） |
+| Field | Type | Description |
+|-------|------|-------------|
+| max_concurrency | number | Maximum concurrent tasks |
+| default_max_retries | number | Default maximum retry count |
+| persist_debounce_ms | number | Persistence debounce delay (milliseconds) |
+| shutdown_timeout_ms | number | Shutdown timeout (milliseconds) |
 
 ---
 
 ### GET /api/queue/config
 
-获取当前队列配置。
+Get current queue configuration.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -301,9 +301,9 @@ description: "Task queue management API"
 
 ### POST /api/queue/clear-history
 
-清除已完成和失败的任务历史记录。
+Clear completed and failed task history.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -313,24 +313,24 @@ description: "Task queue management API"
 
 ---
 
-## 任务状态
+## Task Status
 
-| 状态 | 说明 |
-|------|------|
-| pending | 已入队，等待执行 |
-| running | 正在执行中 |
-| retrying | 执行失败，准备重试 |
-| completed | 执行成功完成 |
-| failed | 执行失败，已达最大重试次数 |
+| Status | Description |
+|--------|-------------|
+| pending | Queued, waiting for execution |
+| running | Currently executing |
+| retrying | Execution failed, preparing to retry |
+| completed | Execution completed successfully |
+| failed | Execution failed, maximum retries reached |
 
 ---
 
-## 事件通知
+## Event Notifications
 
-队列状态变化时会发送事件到 WebSocket（queue 通道）和 SSE：
+Queue status changes will send events to WebSocket (queue channel) and SSE:
 
 ```json
-// 任务入队
+// Task queued
 {
   "type": "queue_task_queued",
   "data": {
@@ -338,7 +338,7 @@ description: "Task queue management API"
   }
 }
 
-// 任务开始
+// Task started
 {
   "type": "queue_task_started",
   "data": {
@@ -346,7 +346,7 @@ description: "Task queue management API"
   }
 }
 
-// 任务进度
+// Task progress
 {
   "type": "queue_task_progress",
   "data": {
@@ -355,7 +355,7 @@ description: "Task queue management API"
   }
 }
 
-// 任务完成
+// Task completed
 {
   "type": "queue_task_completed",
   "data": {
@@ -364,7 +364,7 @@ description: "Task queue management API"
   }
 }
 
-// 任务失败
+// Task failed
 {
   "type": "queue_task_failed",
   "data": {
@@ -374,7 +374,7 @@ description: "Task queue management API"
   }
 }
 
-// 任务取消
+// Task cancelled
 {
   "type": "queue_task_cancelled",
   "data": {
@@ -382,7 +382,7 @@ description: "Task queue management API"
   }
 }
 
-// 队列状态变化
+// Queue status changed
 {
   "type": "queue_status_changed",
   "data": {
@@ -393,7 +393,7 @@ description: "Task queue management API"
   }
 }
 
-// 队列恢复（Gateway 重启后）
+// Queue restored (after Gateway restart)
 {
   "type": "queue_restored",
   "data": {
@@ -405,24 +405,24 @@ description: "Task queue management API"
 
 ---
 
-## 文件持久化
+## File Persistence
 
-队列数据存储在 `~/.viben/queue/` 目录：
+Queue data is stored in `~/.viben/queue/` directory:
 
 ```
 ~/.viben/queue/
-├── config.yaml      # 队列配置
-├── state.yaml       # 队列元数据
-├── tasks/           # 任务详情
+├── config.yaml      # Queue configuration
+├── state.yaml       # Queue metadata
+├── tasks/           # Task details
 │   ├── task-{id}.yaml
 │   └── ...
-└── corrupted/       # 损坏的任务文件
+└── corrupted/       # Corrupted task files
 ```
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [智能体 API](./agents.md) - 智能体管理
-- [WebSocket API](./websocket.md) - 实时事件订阅
-- [事件流](./events.md) - SSE 事件通知
+- [Agent API](./agents.md) - Agent management
+- [WebSocket API](./websocket.md) - Real-time event subscription
+- [Event Stream](./events.md) - SSE event notifications

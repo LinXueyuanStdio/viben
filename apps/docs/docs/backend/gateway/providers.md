@@ -1,32 +1,32 @@
-# 提供商 API
+# Provider API
 
-> `/api/providers` - 提供商管理端点
+> `/api/providers` - Provider management endpoints
 
-## 概述
+## Overview
 
-提供商 API 与模型 API 配合使用，提供提供商的模型发现和管理功能。
+The Provider API works in conjunction with the Model API to provide model discovery and management functionality for providers.
 
-## 端点列表
+## Endpoint List
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/api/providers/:id/discover-models` | 发现可用模型 |
-| GET | `/api/providers/:id/models` | 列出已启用模型 |
-| POST | `/api/providers/:pid/models/:mid/enable` | 启用模型 |
-| POST | `/api/providers/:pid/models/:mid/disable` | 禁用模型 |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/providers/:id/discover-models` | Discover available models |
+| GET | `/api/providers/:id/models` | List enabled models |
+| POST | `/api/providers/:pid/models/:mid/enable` | Enable model |
+| POST | `/api/providers/:pid/models/:mid/disable` | Disable model |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/providers/:id/discover-models
 
-发现提供商可用的所有模型。
+Discover all available models from a provider.
 
-**路径参数**:
-- `id`: 提供商 ID (如 `anthropic`, `openai`)
+**Path Parameters**:
+- `id`: Provider ID (e.g., `anthropic`, `openai`)
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -66,9 +66,9 @@
 
 ### GET /api/providers/:id/models
 
-列出提供商已启用的模型。
+List enabled models for a provider.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -94,13 +94,13 @@
 
 ### POST /api/providers/:pid/models/:mid/enable
 
-为提供商启用指定模型。
+Enable a specific model for a provider.
 
-**路径参数**:
-- `pid`: 提供商 ID
-- `mid`: 模型 ID
+**Path Parameters**:
+- `pid`: Provider ID
+- `mid`: Model ID
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -115,9 +115,9 @@
 
 ### POST /api/providers/:pid/models/:mid/disable
 
-为提供商禁用指定模型。
+Disable a specific model for a provider.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -130,20 +130,20 @@
 
 ---
 
-## 支持的提供商
+## Supported Providers
 
-| ID | 名称 | 说明 |
-|-----|------|------|
-| anthropic | Anthropic | Claude 系列模型 |
-| openai | OpenAI | GPT 系列模型 |
-| google | Google | Gemini 系列模型 |
-| ollama | Ollama | 本地模型 |
+| ID | Name | Description |
+|----|------|-------------|
+| anthropic | Anthropic | Claude series models |
+| openai | OpenAI | GPT series models |
+| google | Google | Gemini series models |
+| ollama | Ollama | Local models |
 
 ---
 
-## 提供商配置存储
+## Provider Configuration Storage
 
-提供商配置存储在 `~/.viben/providers/` 目录下：
+Provider configuration is stored in the `~/.viben/providers/` directory:
 
 ```
 ~/.viben/providers/
@@ -152,7 +152,7 @@
 └── ollama.yaml
 ```
 
-**配置文件格式**:
+**Configuration File Format**:
 
 ```yaml
 id: anthropic
@@ -166,7 +166,7 @@ enabled_models:
 
 ---
 
-## 相关端点
+## Related Endpoints
 
-- [模型 API](./models.md) - 模型管理
-- [智能体 API](./agents.md) - 智能体管理
+- [Model API](./models.md) - Model management
+- [Agent API](./agents.md) - Agent management

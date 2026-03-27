@@ -6,37 +6,37 @@ description: "Observability data query API"
 
 # Telemetry API
 
-> `/api/telemetry` - 可观测性数据查询接口
+> `/api/telemetry` - Observability data query endpoints
 
-## 概述
+## Overview
 
-Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
-- 查询 trace 列表和详情
-- 查看执行统计
-- 清理旧数据
+The Telemetry API provides REST query interface for OpenTelemetry data, used for:
+- Querying trace lists and details
+- Viewing execution statistics
+- Cleaning up old data
 
-数据存储在 `~/.viben/telemetry/` 目录下。
+Data is stored in the `~/.viben/telemetry/` directory.
 
-## 端点列表
+## Endpoints
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/telemetry/dates` | GET | 获取可用日期列表 |
-| `/api/telemetry/traces` | GET | 获取指定日期的 traces |
-| `/api/telemetry/trace/:id` | GET | 获取 trace 详情（树结构）|
-| `/api/telemetry/trace/:id/spans` | GET | 获取原始 spans |
-| `/api/telemetry/clean` | DELETE | 清理旧文件 |
-| `/api/telemetry/stats` | GET | 获取统计信息 |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/telemetry/dates` | GET | Get available date list |
+| `/api/telemetry/traces` | GET | Get traces for a specific date |
+| `/api/telemetry/trace/:id` | GET | Get trace details (tree structure) |
+| `/api/telemetry/trace/:id/spans` | GET | Get raw spans |
+| `/api/telemetry/clean` | DELETE | Clean up old files |
+| `/api/telemetry/stats` | GET | Get statistics |
 
 ---
 
-## 详细说明
+## Detailed Description
 
 ### GET /api/telemetry/dates
 
-获取所有有 trace 数据的日期列表。
+Get list of all dates that have trace data.
 
-**响应**:
+**Response**:
 
 ```json
 [
@@ -57,16 +57,16 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ### GET /api/telemetry/traces
 
-获取指定日期的 trace 列表。
+Get trace list for a specific date.
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `date` | string | 否 | 日期 (YYYY-MM-DD)，默认今天 |
-| `route` | string | 否 | 按路由过滤 (如 `/api/agent/run`) |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `date` | string | No | Date (YYYY-MM-DD), defaults to today |
+| `route` | string | No | Filter by route (e.g., `/api/agent/run`) |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -87,21 +87,21 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ### GET /api/telemetry/trace/:id
 
-获取单个 trace 的详细信息，包含树结构。
+Get detailed information for a single trace, including tree structure.
 
-**路径参数**:
+**Path Parameters**:
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
+| Parameter | Type | Description |
+|-----------|------|-------------|
 | `id` | string | Trace ID |
 
-**查询参数**:
+**Query Parameters**:
 
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `date` | string | 否 | 日期 (YYYY-MM-DD)，默认今天 |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `date` | string | No | Date (YYYY-MM-DD), defaults to today |
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -115,7 +115,7 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
     "root": {
       "spanId": "span001",
       "name": "POST /api/agent/run",
-      "displayName": "执行智能体",
+      "displayName": "Execute Agent",
       "kind": 1,
       "startTime": 1705312200000,
       "endTime": 1705312205000,
@@ -130,7 +130,7 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
         {
           "spanId": "span002",
           "name": "agent.run.stream",
-          "displayName": "流式响应",
+          "displayName": "Streaming Response",
           "duration": 4500,
           "children": []
         }
@@ -158,9 +158,9 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ### GET /api/telemetry/trace/:id/spans
 
-获取 trace 的原始 span 列表（扁平结构）。
+Get raw span list for a trace (flat structure).
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -171,7 +171,7 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
       "spanId": "span001",
       "parentSpanId": null,
       "name": "POST /api/agent/run",
-      "displayName": "执行智能体",
+      "displayName": "Execute Agent",
       "kind": 1,
       "startTime": 1705312200000,
       "endTime": 1705312205000,
@@ -188,9 +188,9 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ### DELETE /api/telemetry/clean
 
-清理超过保留期的旧数据。
+Clean up old data that exceeds the retention period.
 
-**请求体**:
+**Request Body**:
 
 ```json
 {
@@ -198,7 +198,7 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 }
 ```
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -213,9 +213,9 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ### GET /api/telemetry/stats
 
-获取 telemetry 存储统计。
+Get telemetry storage statistics.
 
-**响应**:
+**Response**:
 
 ```json
 {
@@ -229,7 +229,7 @@ Telemetry API 提供对 OpenTelemetry 数据的 REST 查询接口，用于：
 
 ---
 
-## 数据结构
+## Data Structures
 
 ### TraceSpan
 
@@ -240,9 +240,9 @@ interface TraceSpan {
   name: string;
   displayName: string;
   kind: number;          // 0=INTERNAL, 1=SERVER, 2=CLIENT, 3=PRODUCER, 4=CONSUMER
-  startTime: number;     // Unix 毫秒
-  endTime: number;       // Unix 毫秒
-  duration: number;      // 毫秒
+  startTime: number;     // Unix milliseconds
+  endTime: number;       // Unix milliseconds
+  duration: number;      // milliseconds
   status: {
     code: number;        // 0=UNSET, 1=OK, 2=ERROR
     message?: string;
@@ -257,16 +257,16 @@ interface TraceSpan {
 ```typescript
 interface TraceEvent {
   name: string;
-  time: number;          // Unix 毫秒
+  time: number;          // Unix milliseconds
   attributes?: Record<string, unknown>;
 }
 ```
 
 ---
 
-## 错误响应
+## Error Response
 
-所有端点在出错时返回：
+All endpoints return the following on error:
 
 ```json
 {
@@ -275,12 +275,12 @@ interface TraceEvent {
 }
 ```
 
-HTTP 状态码：
-- `404` - Trace 不存在
-- `500` - 内部错误
+HTTP Status Codes:
+- `404` - Trace not found
+- `500` - Internal error
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [Telemetry Guidelines](../telemetry-guidelines.md) - 开发指南
+- [Telemetry Guidelines](../telemetry-guidelines.md) - Development Guidelines

@@ -1,52 +1,52 @@
 ---
 sidebar_position: 6
 title: "viben skill"
-description: "管理技能 - 安装、卸载和列出可用技能"
+description: "Manage skills - install, uninstall, and list available skills"
 ---
 
 # viben skill
 
-管理 Viben 智能体的技能。
+Manage skills for Viben agents.
 
-## 用法
+## Usage
 
 ```bash
 viben skill <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `install <name>` | 安装技能 |
-| `uninstall <name>` | 卸载技能 |
-| `list` | 列出已安装的技能 |
+| Subcommand | Description |
+|------------|-------------|
+| `install <name>` | Install a skill |
+| `uninstall <name>` | Uninstall a skill |
+| `list` | List installed skills |
 
-## 命令
+## Commands
 
-### 安装技能
+### Install Skill
 
-从市场安装技能：
+Install a skill from the marketplace:
 
 ```bash
-# 安装最新版本
+# Install latest version
 viben skill install code-review
 
-# 安装特定版本
+# Install specific version
 viben skill install code-review@1.0.0
 
-# 安装到特定智能体
+# Install to a specific agent
 viben skill install code-review -n my-agent
 ```
 
-**输出（人类可读）：**
+**Output (Human-readable):**
 
 ```
 Installing code-review@1.0.0...
 Installed code-review v1.0.0
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```bash
 viben skill install code-review --json
@@ -63,21 +63,21 @@ viben skill install code-review --json
 }
 ```
 
-### 卸载技能
+### Uninstall Skill
 
-移除已安装的技能：
+Remove an installed skill:
 
 ```bash
 viben skill uninstall code-review
 ```
 
-**输出：**
+**Output:**
 
 ```
 Uninstalled code-review
 ```
 
-**JSON 输出：**
+**JSON Output:**
 
 ```json
 {
@@ -89,19 +89,19 @@ Uninstalled code-review
 }
 ```
 
-### 列出技能
+### List Skills
 
-列出已安装的技能：
+List installed skills:
 
 ```bash
-# 列出已安装的技能
+# List installed skills
 viben skill list
 
-# 列出市场可用的技能
+# List available skills from marketplace
 viben skill list --available
 ```
 
-**输出（人类可读）：**
+**Output (Human-readable):**
 
 ```
 Installed Skills:
@@ -110,7 +110,7 @@ Installed Skills:
   test-runner     v0.9.0    Test execution helper
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```bash
 viben skill list --json
@@ -141,31 +141,31 @@ viben skill list --json
 }
 ```
 
-## 技能作用域
+## Skill Scopes
 
-技能可以在不同作用域安装：
+Skills can be installed at different scopes:
 
-| 位置 | 说明 |
-|------|------|
-| `~/.viben/skills/` | 共享技能（所有智能体可用） |
-| `~/.viben/agents/<id>/skills/` | 智能体专属技能 |
+| Location | Description |
+|----------|-------------|
+| `~/.viben/skills/` | Shared skills (available to all agents) |
+| `~/.viben/agents/<id>/skills/` | Agent-specific skills |
 
-### 示例
+### Examples
 
 ```bash
-# 安装到共享技能（默认）
+# Install to shared skills (default)
 viben skill install code-review
 
-# 安装到特定智能体
+# Install to a specific agent
 viben skill install code-review -n my-agent
 
-# 列出特定智能体的技能
+# List skills for a specific agent
 viben skill list -n my-agent
 ```
 
-## 技能配置
+## Skill Configuration
 
-技能在 `~/.viben/skills/installed.yaml` 中管理：
+Skills are managed in `~/.viben/skills/installed.yaml`:
 
 ```yaml
 version: 1
@@ -182,9 +182,9 @@ installed:
     installed_at: "2024-01-10T14:00:00Z"
 ```
 
-## 错误处理
+## Error Handling
 
-### 技能未找到
+### Skill Not Found
 
 ```bash
 viben skill install unknown-skill
@@ -200,7 +200,7 @@ viben skill install unknown-skill
 }
 ```
 
-### 已安装
+### Already Installed
 
 ```bash
 viben skill install code-review
@@ -216,7 +216,7 @@ viben skill install code-review
 }
 ```
 
-### 未安装
+### Not Installed
 
 ```bash
 viben skill uninstall unknown-skill
@@ -232,8 +232,8 @@ viben skill uninstall unknown-skill
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben mcp](./mcp) - MCP 服务器管理
-- [viben agent](./agent) - 智能体管理
-- [viben config](./config) - 配置管理
+- [viben mcp](./mcp) - MCP server management
+- [viben agent](./agent) - Agent management
+- [viben config](./config) - Configuration management

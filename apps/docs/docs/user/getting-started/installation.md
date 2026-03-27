@@ -1,180 +1,180 @@
 ---
 sidebar_position: 1
-title: "安装指南"
-description: "安装 Viben 桌面应用、CLI 工具或 MCP 服务器"
+title: "Installation Guide"
+description: "Install Viben desktop app, CLI tool, or MCP server"
 ---
 
-# 安装指南
+# Installation Guide
 
 ## Viben: Agent Swarm x Code Evolution
 
-Viben 是一个 AI 驱动的代码迭代优化和智能体集群编排平台，核心能力包括：
+Viben is an AI-driven code iterative optimization and agent swarm orchestration platform. Core capabilities include:
 
-- **FileRL (File Reinforcement Learning)** - 基于反馈的代码迭代优化系统
-- **Agent Swarm** - 多智能体集群编排与协作
-- **Task System (XState)** - 基于状态机的任务工作流管理
-- **Idea Generation** - AI 辅助的创意生成与知识探索
-
----
-
-## 产品形态
-
-Viben 提供多种产品形态，你可以根据需求选择安装：
-
-| 产品 | 安装方式 | 适用场景 |
-|------|----------|----------|
-| **桌面应用** | 下载安装包 | Agent Swarm 编排、FileRL 代码优化、任务管理 |
-| **CLI 工具** | npm/npx | 命令行自动化、任务状态机、Queue 系统 |
-| **MCP 服务器** | pip/uv | AI 助手集成学术搜索、知识获取 |
+- **FileRL (File Reinforcement Learning)** - Feedback-based code iterative optimization system
+- **Agent Swarm** - Multi-agent swarm orchestration and collaboration
+- **Task System (XState)** - State machine-based task workflow management
+- **Idea Generation** - AI-assisted idea generation and knowledge exploration
 
 ---
 
-## 桌面应用（推荐）
+## Product Forms
 
-桌面应用是体验 **Agent Swarm x Code Evolution** 最直观的方式，提供完整的图形界面：
+Viben offers multiple product forms. You can choose to install based on your needs:
 
-- **Agent Swarm** - 可视化编排和管理智能体集群
-- **FileRL** - 代码迭代优化的可视化反馈界面
-- **Task System** - 基于 XState 的任务状态机管理
-- **Idea Generation** - AI 辅助的知识探索与创意生成
+| Product | Installation Method | Use Cases |
+|---------|---------------------|-----------|
+| **Desktop App** | Download installer | Agent Swarm orchestration, FileRL code optimization, task management |
+| **CLI Tool** | npm/npx | Command line automation, task state machine, Queue system |
+| **MCP Server** | pip/uv | AI assistant integration for academic search, knowledge acquisition |
 
-### 下载
+---
 
-[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+## Desktop App (Recommended)
 
-从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本：
+The desktop app is the most intuitive way to experience **Agent Swarm x Code Evolution**, providing a complete graphical interface:
 
-| 平台 | 下载格式 | 说明 |
-|------|----------|------|
-| **macOS** | `.dmg` (Universal) | 支持 Intel 和 Apple Silicon |
-| **Windows** | `.msi` 或 `.exe` | 64 位 Windows 10/11 |
-| **Linux** | `.AppImage` 或 `.deb` | 64 位 Linux |
+- **Agent Swarm** - Visual orchestration and management of agent swarms
+- **FileRL** - Visual feedback interface for code iterative optimization
+- **Task System** - XState-based task state machine management
+- **Idea Generation** - AI-assisted knowledge exploration and idea generation
 
-### macOS 安装
+### Download
 
-1. 下载 `.dmg` 文件
-2. 双击打开磁盘映像
-3. 拖动 **Viben** 到 **Applications** 文件夹
-4. 首次启动时，右键点击选择"打开"（绕过 Gatekeeper）
+[![Latest Version](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-:::note macOS 安全提示
-如果看到"Viben 已损坏，无法打开"的提示，在终端运行：
+Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop):
+
+| Platform | Download Format | Notes |
+|----------|-----------------|-------|
+| **macOS** | `.dmg` (Universal) | Supports Intel and Apple Silicon |
+| **Windows** | `.msi` or `.exe` | 64-bit Windows 10/11 |
+| **Linux** | `.AppImage` or `.deb` | 64-bit Linux |
+
+### macOS Installation
+
+1. Download the `.dmg` file
+2. Double-click to open the disk image
+3. Drag **Viben** to the **Applications** folder
+4. On first launch, right-click and select "Open" (to bypass Gatekeeper)
+
+:::note macOS Security Note
+If you see "Viben is damaged and can't be opened", run in terminal:
 ```bash
 xattr -cr /Applications/Viben.app
 ```
 :::
 
-### Windows 安装
+### Windows Installation
 
-1. 下载 `.msi` 或 `.exe` 安装包
-2. 运行安装程序
-3. 按照安装向导完成安装
-4. 从开始菜单启动 Viben
+1. Download the `.msi` or `.exe` installer
+2. Run the installer
+3. Follow the installation wizard to complete installation
+4. Launch Viben from the Start menu
 
-### Linux 安装
+### Linux Installation
 
-**AppImage（便携版）：**
+**AppImage (Portable):**
 ```bash
 chmod +x Viben_*.AppImage
 ./Viben_*.AppImage
 ```
 
-**Debian/Ubuntu：**
+**Debian/Ubuntu:**
 ```bash
 sudo dpkg -i Viben_*_amd64.deb
-sudo apt-get install -f  # 修复依赖
+sudo apt-get install -f  # Fix dependencies
 ```
 
 ---
 
-## CLI 工具
+## CLI Tool
 
-Viben CLI 是 **Agent Swarm x Code Evolution** 的命令行入口，适合自动化和脚本集成：
+Viben CLI is the command line entry point for **Agent Swarm x Code Evolution**, suitable for automation and script integration:
 
-- **Task System** - `viben task` 管理任务状态机工作流
-- **Queue System** - `viben queue` 后台命令执行队列
-- **Agent Management** - 命令行管理智能体集群
+- **Task System** - `viben task` manages task state machine workflows
+- **Queue System** - `viben queue` background command execution queue
+- **Agent Management** - Command line management of agent swarms
 
-### 使用 npx（推荐）
+### Using npx (Recommended)
 
-无需安装，直接运行：
+No installation needed, run directly:
 
 ```bash
 npx viben
 ```
 
-### 全局安装
+### Global Installation
 
 ```bash
 npm install -g viben
 ```
 
-安装后可以直接使用 `viben` 命令：
+After installation, you can use the `viben` command directly:
 
 ```bash
 viben --help
 ```
 
-### 验证安装
+### Verify Installation
 
 ```bash
 viben version
 ```
 
-### 主要命令
+### Main Commands
 
 ```
 viben <command> [options]
 
 Commands:
-  gateway       启动 Gateway 服务
-  agent         管理智能体 (Agent Swarm)
-  task          任务状态机工作流 (Task System)
-  queue         后台命令执行队列 (Queue System)
-  provider      管理 API Provider
-  model         管理模型配置
-  mcp           管理 MCP 服务器
-  skill         管理 Skills
-  channel       管理聊天通道
-  cron          管理定时任务
-  workspace     工作空间操作
+  gateway       Start Gateway service
+  agent         Manage agents (Agent Swarm)
+  task          Task state machine workflows (Task System)
+  queue         Background command execution queue (Queue System)
+  provider      Manage API Providers
+  model         Manage model configurations
+  mcp           Manage MCP servers
+  skill         Manage Skills
+  channel       Manage chat channels
+  cron          Manage scheduled tasks
+  workspace     Workspace operations
 ```
 
 ---
 
-## MCP 服务器
+## MCP Server
 
-MCP 服务器为 **Agent Swarm** 提供知识获取能力，支持学术论文搜索和多元数据源访问，是 **Idea Generation** 和 **FileRL** 的重要知识来源。
+The MCP server provides knowledge acquisition capabilities for **Agent Swarm**, supporting academic paper search and multi-source data access. It is an important knowledge source for **Idea Generation** and **FileRL**.
 
-### 快速安装
+### Quick Installation
 
 ```bash
 pip install browse-mcp
 ```
 
-### 使用 uv
+### Using uv
 
-如果你使用 [uv](https://github.com/astral-sh/uv) 作为包管理器：
+If you use [uv](https://github.com/astral-sh/uv) as your package manager:
 
 ```bash
 uv pip install browse-mcp
 ```
 
-### Shell 脚本安装
+### Shell Script Installation
 
-macOS 或 Linux 上的快速安装：
+Quick installation on macOS or Linux:
 
 ```bash
 curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
 ```
 
-### 验证安装
+### Verify Installation
 
 ```bash
 browse-mcp --help
 ```
 
-输出示例：
+Example output:
 
 ```
 Usage: browse-mcp [OPTIONS] COMMAND [ARGS]...
@@ -189,82 +189,82 @@ Options:
   --help                Show this message and exit.
 ```
 
-### 启动服务器
+### Start Server
 
 ```bash
 browse-mcp
 ```
 
 :::tip
-服务器默认以 stdio 模式运行，这是 Claude Desktop 等 MCP 客户端期望的方式。你不需要保持终端打开，MCP 客户端会自动启动服务器。
+The server runs in stdio mode by default, which is what MCP clients like Claude Desktop expect. You don't need to keep the terminal open; the MCP client will automatically start the server.
 :::
 
 ---
 
-## 从源码安装（开发者）
+## Install from Source (Developers)
 
-### 克隆仓库
+### Clone Repository
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
 cd viben
 ```
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 构建项目
+### Build Project
 
 ```bash
 pnpm build
 ```
 
-### 启动开发服务
+### Start Development Services
 
-**桌面应用：**
+**Desktop App:**
 ```bash
 pnpm dev:desktop
 ```
 
-**Gateway 服务：**
+**Gateway Service:**
 ```bash
 pnpm gateway:build
 ```
 
 ---
 
-## 系统要求
+## System Requirements
 
-### 桌面应用
+### Desktop App
 
-| 平台 | 最低要求 |
-|------|----------|
-| **macOS** | macOS 10.15 (Catalina) 或更高 |
-| **Windows** | Windows 10 (64 位) 或更高 |
-| **Linux** | Ubuntu 20.04 或同等版本 (64 位) |
+| Platform | Minimum Requirements |
+|----------|---------------------|
+| **macOS** | macOS 10.15 (Catalina) or higher |
+| **Windows** | Windows 10 (64-bit) or higher |
+| **Linux** | Ubuntu 20.04 or equivalent (64-bit) |
 
-**推荐配置：**
+**Recommended Configuration:**
 - 4 GB RAM
-- 100 MB 磁盘空间
-- 网络连接
+- 100 MB disk space
+- Network connection
 
-### CLI 工具
+### CLI Tool
 
-- Node.js 18+ 或 20+
-- npm 或 pnpm
+- Node.js 18+ or 20+
+- npm or pnpm
 
-### MCP 服务器
+### MCP Server
 
-- Python 3.10 或更高
-- pip 或 uv
+- Python 3.10 or higher
+- pip or uv
 
 ---
 
-## 下一步
+## Next Steps
 
-- [快速入门](./quick-start) - 2 分钟搜索你的第一篇论文
-- [客户端配置](./client-configuration) - 配置 Claude Desktop、Cline 等
-- [桌面应用功能](../desktop/features) - 探索桌面应用完整功能
+- [Quick Start](./quick-start) - Search your first paper in 2 minutes
+- [Client Configuration](./client-configuration) - Configure Claude Desktop, Cline, etc.
+- [Desktop App Features](../desktop/features) - Explore complete desktop app features

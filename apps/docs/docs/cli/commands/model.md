@@ -1,49 +1,49 @@
 ---
 sidebar_position: 10
 title: "viben model"
-description: "管理模型、别名和回退链"
+description: "Manage models, aliases, and fallback chains"
 ---
 
 # viben model
 
-管理 AI 模型、别名和回退配置。
+Manage AI models, aliases, and fallback configuration.
 
-## 用法
+## Usage
 
 ```bash
 viben model <subcommand> [options]
 ```
 
-## 子命令
+## Subcommands
 
-| 子命令 | 说明 |
-|--------|------|
-| `list` | 列出可用模型 |
-| `status` | 显示模型状态 |
-| `set-default` | 设置默认模型 |
-| `alias` | 管理模型别名 |
-| `fallback` | 管理回退链 |
-| `config` | 管理模型特定配置 |
-| `providers` | 列出可用 providers |
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List available models |
+| `status` | Show model status |
+| `set-default` | Set the default model |
+| `alias` | Manage model aliases |
+| `fallback` | Manage fallback chains |
+| `config` | Manage model-specific configuration |
+| `providers` | List available providers |
 
-## 命令
+## Commands
 
-### 列出模型
+### List Models
 
-列出可用模型：
+List available models:
 
 ```bash
-# 列出所有模型
+# List all models
 viben model list
 
-# 列出特定 provider 的模型
+# List models for a specific provider
 viben model list --provider anthropic-main
 
-# JSON 输出
+# JSON output
 viben model list --json
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Available Models:
@@ -60,7 +60,7 @@ Available Models:
 * = default model
 ```
 
-**输出（JSON）：**
+**Output (JSON):**
 
 ```json
 {
@@ -87,19 +87,19 @@ Available Models:
 }
 ```
 
-### 模型状态
+### Model Status
 
-检查模型可用性：
+Check model availability:
 
 ```bash
-# 检查所有模型
+# Check all models
 viben model status
 
-# 检查特定模型
+# Check specific model
 viben model status -n claude-sonnet-4-20250514
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Model Status:
@@ -111,29 +111,29 @@ Model Status:
   local-llama                local-ollama     ✗ provider offline
 ```
 
-### 设置默认模型
+### Set Default Model
 
 ```bash
 viben model set-default -n claude-sonnet-4-20250514
 ```
 
-**输出：**
+**Output:**
 
 ```
 Set 'claude-sonnet-4-20250514' as default model
 ```
 
-## 别名管理
+## Alias Management
 
-模型别名允许你使用短名称引用常用模型。
+Model aliases allow you to use short names to reference commonly used models.
 
-### 列出别名
+### List Aliases
 
 ```bash
 viben model alias list
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Model Aliases:
@@ -143,44 +143,44 @@ Model Aliases:
   gpt    → gpt-4-turbo
 ```
 
-### 创建别名
+### Create Alias
 
 ```bash
-# 创建别名
+# Create alias
 viben model alias create -n fast -m claude-3-5-haiku-latest
 viben model alias create -n smart -m claude-sonnet-4-20250514
 viben model alias create -n best -m claude-opus-4-20250514
 ```
 
-**输出：**
+**Output:**
 
 ```
 Created alias 'fast' → 'claude-3-5-haiku-latest'
 ```
 
-### 删除别名
+### Remove Alias
 
 ```bash
 viben model alias remove -n fast
 ```
 
-### 解析别名
+### Resolve Alias
 
 ```bash
 viben model alias resolve -n fast
 ```
 
-## 回退链管理
+## Fallback Chain Management
 
-回退链定义当主模型不可用时尝试的模型顺序。
+Fallback chains define the order of models to try when the primary model is unavailable.
 
-### 列出回退链
+### List Fallback Chain
 
 ```bash
 viben model fallback list
 ```
 
-**输出（人类可读）：**
+**Output (human-readable):**
 
 ```
 Fallback Chain:
@@ -189,52 +189,52 @@ Fallback Chain:
   3. claude-3-5-haiku-latest    (anthropic-main)
 ```
 
-### 设置回退链
+### Set Fallback Chain
 
 ```bash
-# 设置回退链（支持空格或逗号分隔）
+# Set fallback chain (supports space or comma separation)
 viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
 ```
 
-### 添加到回退链
+### Add to Fallback Chain
 
 ```bash
 viben model fallback add -n claude-sonnet-4-20250514
 ```
 
-### 从回退链移除
+### Remove from Fallback Chain
 
 ```bash
 viben model fallback remove -n gpt-4-turbo
 ```
 
-### 清空回退链
+### Clear Fallback Chain
 
 ```bash
 viben model fallback clear
 ```
 
-## 模型配置
+## Model Configuration
 
-### 查看模型配置
+### View Model Configuration
 
 ```bash
 viben model config show -n claude-sonnet-4-20250514
 ```
 
-### 设置模型配置
+### Set Model Configuration
 
 ```bash
 viben model config set -n claude-sonnet-4-20250514 --temperature 0.7 --max-tokens 8192
 ```
 
-### 删除模型配置
+### Remove Model Configuration
 
 ```bash
 viben model config remove -n claude-sonnet-4-20250514
 ```
 
-## 模型配置文件
+## Model Configuration File
 
 ```yaml
 # ~/.viben/models.yaml
@@ -242,7 +242,7 @@ version: 1
 
 default: claude-sonnet-4-20250514
 
-# 模型别名
+# Model aliases
 aliases:
   fast: claude-3-5-haiku-latest
   smart: claude-sonnet-4-20250514
@@ -251,13 +251,13 @@ aliases:
   code: claude-sonnet-4-20250514
   chat: claude-3-5-haiku-latest
 
-# 回退链（按顺序尝试）
+# Fallback chain (tried in order)
 fallbacks:
   - claude-sonnet-4-20250514
   - gpt-4-turbo
   - claude-3-5-haiku-latest
 
-# 模型特定配置
+# Model-specific configuration
 model_config:
   claude-sonnet-4-20250514:
     provider: anthropic-main
@@ -275,10 +275,10 @@ model_config:
     temperature: 0.8
 ```
 
-## 模型能力
+## Model Capabilities
 
 ```yaml
-# 模型能力（用于智能选择）
+# Model capabilities (for intelligent selection)
 model_capabilities:
   claude-sonnet-4-20250514:
     context_window: 200000
@@ -297,9 +297,9 @@ model_capabilities:
     cost_per_1k_output: 0.03
 ```
 
-## 错误处理
+## Error Handling
 
-### 模型未找到
+### Model Not Found
 
 ```json
 {
@@ -311,7 +311,7 @@ model_capabilities:
 }
 ```
 
-### 别名已存在
+### Alias Already Exists
 
 ```json
 {
@@ -323,7 +323,7 @@ model_capabilities:
 }
 ```
 
-### Provider 不可用
+### Provider Unavailable
 
 ```json
 {
@@ -335,8 +335,8 @@ model_capabilities:
 }
 ```
 
-## 相关命令
+## Related Commands
 
-- [viben provider](./provider) - Provider 管理
-- [viben agent](./agent) - 智能体管理
-- [viben config](./config) - 配置管理
+- [viben provider](./provider) - Provider management
+- [viben agent](./agent) - Agent management
+- [viben config](./config) - Configuration management

@@ -1,48 +1,48 @@
-# Executor Chat 命令设计
+# Executor Chat Command Design
 
-## 概述
+## Overview
 
-为 `viben executor` 新增 `chat` 子命令，支持非交互式方式调用 AI coding agent（如 Claude Code），实现与 `claude -p` 一致的输入输出体验。
+Add a `chat` subcommand to `viben executor`, supporting non-interactive invocation of AI coding agents (such as Claude Code), providing the same input/output experience as `claude -p`.
 
-## 命令接口
+## Command Interface
 
 ```
 viben executor chat [OPTIONS] -n <EXECUTOR_NAME>
 
 OPTIONS:
-    -n, --name <NAME>           Executor 名称 (如 CLAUDE_CODE, GEMINI)
-    -p, --prompt <PROMPT>       提示词（可选，无则从 stdin 读取）
-    -C, --cwd <DIR>             工作目录（默认当前目录）
+    -n, --name <NAME>           Executor name (e.g., CLAUDE_CODE, GEMINI)
+    -p, --prompt <PROMPT>       Prompt (optional, reads from stdin if not provided)
+    -C, --cwd <DIR>             Working directory (defaults to current directory)
 
-    --input-format <FORMAT>     输入格式: text (默认), stream-json
-    --output-format <FORMAT>    输出格式: text (默认), stream-json
-    --verbose                   详细输出
+    --input-format <FORMAT>     Input format: text (default), stream-json
+    --output-format <FORMAT>    Output format: text (default), stream-json
+    --verbose                   Verbose output
 
-    --session-id <ID>           指定 session ID
-    --resume <SESSION_ID>       恢复已有 session
+    --session-id <ID>           Specify session ID
+    --resume <SESSION_ID>       Resume existing session
 
-    --model <MODEL>             指定模型（executor 支持时）
-    --dangerously-skip-permissions  跳过权限检查
+    --model <MODEL>             Specify model (when supported by executor)
+    --dangerously-skip-permissions  Skip permission checks
 ```
 
-## 使用示例
+## Usage Examples
 
 ```bash
-# 基本用法
-viben executor chat -n CLAUDE_CODE -p "分析这段代码"
+# Basic usage
+viben executor chat -n CLAUDE_CODE -p "Analyze this code"
 
-# 从 stdin 读取纯文本
-echo "写一个排序函数" | viben executor chat -n CLAUDE_CODE
+# Read plain text from stdin
+echo "Write a sorting function" | viben executor chat -n CLAUDE_CODE
 
-# JSON 流输入输出（用于程序化调用）
-echo '{"type":"user","message":{"role":"user","content":"分析代码"}}' | \
+# JSON stream input/output (for programmatic invocation)
+echo '{"type":"user","message":{"role":"user","content":"Analyze code"}}' | \
   viben executor chat -n CLAUDE_CODE --input-format stream-json --output-format stream-json
 
-# 恢复 session
-viben executor chat -n CLAUDE_CODE -p "继续上面的工作" --resume abc123
+# Resume session
+viben executor chat -n CLAUDE_CODE -p "Continue the previous work" --resume abc123
 ```
 
-## 数据流架构
+## Data Flow Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -52,66 +52,66 @@ viben executor chat -n CLAUDE_CODE -p "继续上面的工作" --resume abc123
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      ChatCommand::execute()                      │
-│  1. 解析参数                                                      │
-│  2. 读取 prompt (从 -p 或 stdin)                                  │
-│  3. 根据 --name 创建 CodingAgent                                  │
-│  4. 调用 spawn_chat_process()                                    │
+│  1. Parse arguments                                              │
+│  2. Read prompt (from -p or stdin)                               │
+│  3. Create CodingAgent based on --name                           │
+│  4. Call spawn_chat_process()                                    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     ClaudeCode executor                          │
-│  构建命令: claude -p "prompt" ...                                │
-│  - 根据 input/output format 添加对应参数                          │
-│  - 处理 --model, --dangerously-skip-permissions 等               │
+│  Build command: claude -p "prompt" ...                           │
+│  - Add corresponding parameters based on input/output format     │
+│  - Handle --model, --dangerously-skip-permissions, etc.          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      子进程 (claude)                             │
-│  stdin  ◄──── 继承父进程 stdin                                   │
-│  stdout ────► 继承父进程 stdout                                  │
-│  stderr ────► 继承父进程 stderr                                  │
+│                      Child process (claude)                      │
+│  stdin  ◄──── Inherits parent process stdin                      │
+│  stdout ────► Inherits parent process stdout                     │
+│  stderr ────► Inherits parent process stderr                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 代码实现
+## Code Implementation
 
-### 1. ChatOptions 接口
+### 1. ChatOptions Interface
 
-文件: `packages/core/src/cli/commands/executor.ts`
+File: `packages/core/src/cli/commands/executor.ts`
 
 ```typescript
-// ExecutorAction chat 子命令
+// ExecutorAction chat subcommand
 export interface ChatOptions {
-  name: string;           // Executor 名称 (如 CLAUDE_CODE, GEMINI)
-  prompt?: string;        // 提示词（可选，无则从 stdin 读取）
-  cwd?: string;           // 工作目录（默认当前目录）
-  inputFormat?: string;   // 输入格式: text (默认), stream-json
-  outputFormat?: string;  // 输出格式: text (默认), stream-json
-  verbose?: boolean;      // 详细输出
-  sessionId?: string;     // 指定 session ID
-  resume?: string;        // 恢复已有 session
-  model?: string;         // 指定模型（executor 支持时）
-  dangerouslySkipPermissions?: boolean;  // 跳过权限检查
+  name: string;           // Executor name (e.g., CLAUDE_CODE, GEMINI)
+  prompt?: string;        // Prompt (optional, reads from stdin if not provided)
+  cwd?: string;           // Working directory (defaults to current directory)
+  inputFormat?: string;   // Input format: text (default), stream-json
+  outputFormat?: string;  // Output format: text (default), stream-json
+  verbose?: boolean;      // Verbose output
+  sessionId?: string;     // Specify session ID
+  resume?: string;        // Resume existing session
+  model?: string;         // Specify model (when supported by executor)
+  dangerouslySkipPermissions?: boolean;  // Skip permission checks
 }
 ```
 
-### 2. executeChat 函数
+### 2. executeChat Function
 
 ```typescript
 // packages/core/src/cli/commands/executor.ts
 export async function executeChat(options: ChatOptions): Promise<void> {
-  // 1. 确定工作目录
+  // 1. Determine working directory
   const workDir = options.cwd || process.cwd();
 
-  // 2. 读取 prompt（-p 优先，否则从 stdin）
+  // 2. Read prompt (-p takes priority, otherwise from stdin)
   let prompt = options.prompt;
   if (!prompt) {
     prompt = await readStdin();
   }
 
-  // 3. 根据 name 创建 executor（使用 spawnChat）
+  // 3. Create executor based on name (using spawnChat)
   const result = await spawnChat(options.name, {
     prompt,
     cwd: workDir,
@@ -124,14 +124,14 @@ export async function executeChat(options: ChatOptions): Promise<void> {
     dangerouslySkipPermissions: options.dangerouslySkipPermissions,
   });
 
-  // 4. 等待退出并返回状态码
+  // 4. Wait for exit and return status code
   process.exit(result.exitCode);
 }
 ```
 
-### 3. spawnChat 函数
+### 3. spawnChat Function
 
-参考 `packages/core/src/executors/chat.ts` 中的 `spawnChat` 函数实现：
+Reference the `spawnChat` function implementation in `packages/core/src/executors/chat.ts`:
 
 ```typescript
 // packages/core/src/executors/chat.ts
@@ -139,24 +139,24 @@ export async function spawnChat(
   executorType: string,
   options: ChatOptions
 ): Promise<ChatSpawnResult> {
-  // 检查 executor 是否支持 chat
+  // Check if executor supports chat
   if (!executorSupportsChat(executorType)) {
     throw new ExecutorError(`Chat not supported for executor: ${executorType}`);
   }
 
-  // 创建 executor 实例
+  // Create executor instance
   const executor = createExecutor(executorType);
 
-  // 构建命令参数
+  // Build command arguments
   const args = buildChatArgs(options);
 
-  // spawn 子进程，继承 IO
+  // Spawn child process, inherit IO
   const child = spawn(executor.command, args, {
     cwd: options.cwd,
     stdio: 'inherit',
   });
 
-  // 等待退出
+  // Wait for exit
   const exitCode = await new Promise<number>((resolve) => {
     child.on('exit', (code) => resolve(code ?? 1));
   });
@@ -165,9 +165,9 @@ export async function spawnChat(
 }
 ```
 
-### 4. 错误类型扩展
+### 4. Error Type Extension
 
-文件: `packages/core/src/error.ts`
+File: `packages/core/src/error.ts`
 
 ```typescript
 export class ExecutorError extends VibenError {
@@ -185,12 +185,12 @@ export class ExecutorError extends VibenError {
 }
 ```
 
-### 5. Chat 支持检查
+### 5. Chat Support Check
 
-文件: `packages/core/src/executors/chat.ts`
+File: `packages/core/src/executors/chat.ts`
 
 ```typescript
-// 支持 chat 的 executor 类型
+// Executor types that support chat
 export const CHAT_SUPPORTED_EXECUTORS = ['CLAUDE_CODE', 'GEMINI', 'CODEX'] as const;
 
 export function executorSupportsChat(executorType: string): boolean {
@@ -200,17 +200,17 @@ export function executorSupportsChat(executorType: string): boolean {
 }
 ```
 
-## 文件变更总结
+## File Changes Summary
 
-| 文件 | 变更 |
-|------|------|
-| `packages/core/src/cli/commands/executor.ts` | 新增 `chat` 子命令和 `executeChat` 函数 |
-| `packages/core/src/error.ts` | 新增 `ExecutorError.chatNotSupported`, `noPromptProvided` 方法 |
-| `packages/core/src/executors/chat.ts` | 新增 `executorSupportsChat()`, `spawnChat()` 函数 |
+| File | Changes |
+|------|---------|
+| `packages/core/src/cli/commands/executor.ts` | Add `chat` subcommand and `executeChat` function |
+| `packages/core/src/error.ts` | Add `ExecutorError.chatNotSupported`, `noPromptProvided` methods |
+| `packages/core/src/executors/chat.ts` | Add `executorSupportsChat()`, `spawnChat()` functions |
 
-## 设计决策
+## Design Decisions
 
-1. **直接使用 `claude` 命令** - 假设用户已安装 Claude Code CLI，而非通过 npx 临时安装
-2. **IO 透传** - 使用 `Stdio::inherit()` 保持与 claude 完全一致的输入输出体验
-3. **权限默认安全** - 遵循 claude code 的设计，默认需要权限检查
-4. **架构可扩展** - 通过 `supports_chat()` 和 `chat_command()` 方法支持未来添加其他 executor
+1. **Direct use of `claude` command** - Assumes user has Claude Code CLI installed, rather than installing via npx temporarily
+2. **IO passthrough** - Use `Stdio::inherit()` to maintain identical input/output experience with claude
+3. **Safe permissions by default** - Follow claude code's design, permission checks required by default
+4. **Extensible architecture** - Support adding other executors in the future through `supports_chat()` and `chat_command()` methods

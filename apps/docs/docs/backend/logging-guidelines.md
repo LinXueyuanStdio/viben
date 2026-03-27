@@ -2,36 +2,36 @@
 sidebar_position: 5
 ---
 
-# 日志指南
+# Logging Guidelines
 
-> Viben 项目日志记录约定
-
----
-
-## 概述
-
-Viben 使用结构化日志，支持 JSON 格式输出，便于日志分析和监控。
+> Logging conventions for the Viben project
 
 ---
 
-## 日志库
+## Overview
+
+Viben uses structured logging with JSON format output, facilitating log analysis and monitoring.
+
+---
+
+## Logging Libraries
 
 ### TypeScript (packages/core)
 
-使用 **Pino** 进行日志记录：
+Use **Pino** for logging:
 
 ```typescript
 import { createLogger, createDualLogger } from "@viben/core/telemetry";
 
-// 创建 logger
+// Create logger
 const logger = process.env.NODE_ENV === "production"
   ? createLogger(config)
-  : createDualLogger(config);  // 同时输出到文件和控制台
+  : createDualLogger(config);  // Output to both file and console
 ```
 
 ### Python (browse-mcp)
 
-使用 **loguru** 进行日志记录：
+Use **loguru** for logging:
 
 ```python
 from loguru import logger
@@ -42,78 +42,78 @@ logger.error(f"Search failed: {error}")
 
 ---
 
-## 日志级别
+## Log Levels
 
-| 级别 | TypeScript | Python | 用途 |
-|------|------------|--------|------|
-| trace | `logger.trace()` | `logger.trace()` | 非常详细的调试信息 |
-| debug | `logger.debug()` | `logger.debug()` | 调试信息（开发环境） |
-| info | `logger.info()` | `logger.info()` | 一般信息（生产环境默认） |
-| warn | `logger.warn()` | `logger.warning()` | 警告信息 |
-| error | `logger.error()` | `logger.error()` | 错误信息 |
-| fatal | `logger.fatal()` | `logger.critical()` | 致命错误 |
+| Level | TypeScript | Python | Purpose |
+|-------|------------|--------|---------|
+| trace | `logger.trace()` | `logger.trace()` | Very detailed debug information |
+| debug | `logger.debug()` | `logger.debug()` | Debug information (development) |
+| info | `logger.info()` | `logger.info()` | General information (production default) |
+| warn | `logger.warn()` | `logger.warning()` | Warning messages |
+| error | `logger.error()` | `logger.error()` | Error messages |
+| fatal | `logger.fatal()` | `logger.critical()` | Fatal errors |
 
-### 级别选择指南
+### Level Selection Guide
 
-| 场景 | 推荐级别 |
-|------|----------|
-| 请求开始/结束 | info |
-| 外部 API 调用 | debug |
-| 参数验证失败 | warn |
-| 异常捕获 | error |
-| 系统崩溃 | fatal |
+| Scenario | Recommended Level |
+|----------|-------------------|
+| Request start/end | info |
+| External API calls | debug |
+| Parameter validation failure | warn |
+| Exception caught | error |
+| System crash | fatal |
 
 ---
 
-## 结构化日志
+## Structured Logging
 
-### 基本格式
+### Basic Format
 
 ```typescript
-// 结构化日志（推荐）
+// Structured logging (recommended)
 logger.info({
   userId: user.id,
   action: 'createAgent',
   agentId: agent.id,
 }, 'Agent created successfully');
 
-// 简单消息
+// Simple message
 logger.info('Server started');
 ```
 
-### 必需字段
+### Required Fields
 
-| 字段 | 说明 |
-|------|------|
-| message | 日志消息 |
-| timestamp | 时间戳（自动添加） |
-| level | 日志级别（自动添加） |
+| Field | Description |
+|-------|-------------|
+| message | Log message |
+| timestamp | Timestamp (auto-added) |
+| level | Log level (auto-added) |
 
-### 推荐字段
+### Recommended Fields
 
-| 字段 | 说明 |
-|------|------|
-| userId | 用户 ID |
-| sessionId | 会话 ID |
-| traceId | 追踪 ID |
-| action | 操作名称 |
-| duration | 操作耗时 |
+| Field | Description |
+|-------|-------------|
+| userId | User ID |
+| sessionId | Session ID |
+| traceId | Trace ID |
+| action | Operation name |
+| duration | Operation duration |
 
 ---
 
-## 应该记录的内容
+## What to Log
 
-### 请求/响应
+### Request/Response
 
 ```typescript
-// 请求开始
+// Request start
 logger.info({
   method: 'POST',
   path: '/api/agent',
   body: requestBody,
 }, 'API request received');
 
-// 请求完成
+// Request completed
 logger.info({
   method: 'POST',
   path: '/api/agent',
@@ -122,17 +122,17 @@ logger.info({
 }, 'API request completed');
 ```
 
-### 业务操作
+### Business Operations
 
 ```typescript
-// 重要业务操作
+// Important business operations
 logger.info({
   userId: user.id,
   agentId: agent.id,
   action: 'spawn',
 }, 'Agent spawned');
 
-// 状态变更
+// Status changes
 logger.info({
   taskId: task.id,
   oldStatus: 'pending',
@@ -140,10 +140,10 @@ logger.info({
 }, 'Task status changed');
 ```
 
-### 错误和异常
+### Errors and Exceptions
 
 ```typescript
-// 错误日志
+// Error logging
 logger.error({
   error: error.message,
   stack: error.stack,
@@ -154,49 +154,49 @@ logger.error({
 
 ---
 
-## 不应该记录的内容
+## What Not to Log
 
-### 敏感数据
+### Sensitive Data
 
-| 不记录 | 原因 |
-|--------|------|
-| 密码 | 安全风险 |
-| API 密钥 | 安全风险 |
-| 令牌 | 安全风险 |
-| 个人身份信息 (PII) | 隐私合规 |
+| Do Not Log | Reason |
+|------------|--------|
+| Passwords | Security risk |
+| API keys | Security risk |
+| Tokens | Security risk |
+| Personally Identifiable Information (PII) | Privacy compliance |
 
-### 示例
+### Example
 
 ```typescript
-// 错误 - 记录敏感信息
+// Wrong - logging sensitive information
 logger.info({
   user: {
     email: 'user@example.com',
-    password: 'secret123',  // 绝不记录
-    apiKey: 'sk-xxx',       // 绝不记录
+    password: 'secret123',  // Never log
+    apiKey: 'sk-xxx',       // Never log
   },
 }, 'User login');
 
-// 正确 - 脱敏处理
+// Correct - sanitized data
 logger.info({
   userId: user.id,
-  email: maskEmail(user.email),  // 脱敏
+  email: maskEmail(user.email),  // Sanitized
   action: 'login',
 }, 'User login');
 ```
 
 ---
 
-## 日志存储
+## Log Storage
 
-### 文件存储结构
+### File Storage Structure
 
 ```
 ~/.viben/telemetry/logs/
-└── YYYY-MM-DD.jsonl     # 按日期聚合
+└── YYYY-MM-DD.jsonl     # Aggregated by date
 ```
 
-### 日志格式 (JSONL)
+### Log Format (JSONL)
 
 ```json
 {"level":"info","time":1705312200000,"msg":"Server started","pid":12345}
@@ -205,9 +205,9 @@ logger.info({
 
 ---
 
-## 日志配置
+## Log Configuration
 
-### Pino 配置
+### Pino Configuration
 
 ```typescript
 const config = {
@@ -219,63 +219,63 @@ const config = {
 };
 ```
 
-### 环境变量
+### Environment Variables
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| LOG_LEVEL | 日志级别 | info |
-| LOG_FORMAT | 日志格式 | json |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| LOG_LEVEL | Log level | info |
+| LOG_FORMAT | Log format | json |
 
 ---
 
-## 调试技巧
+## Debugging Tips
 
-### 启用调试日志
+### Enable Debug Logging
 
 ```bash
-# 开发环境
+# Development environment
 LOG_LEVEL=debug pnpm dev
 
-# 查看特定模块
+# View specific module
 DEBUG=viben:* pnpm dev
 ```
 
-### 查看日志文件
+### View Log Files
 
 ```bash
-# 查看最新日志
+# View latest logs
 tail -f ~/.viben/telemetry/logs/$(date +%Y-%m-%d).jsonl
 
-# 使用 jq 格式化
+# Format with jq
 tail -f ~/.viben/telemetry/logs/*.jsonl | jq .
 ```
 
 ---
 
-## 禁止的模式
+## Forbidden Patterns
 
-### 使用 console.log
+### Using console.log
 
 ```typescript
-// 错误
+// Wrong
 console.log('User created:', user);
 
-// 正确
+// Correct
 logger.info({ userId: user.id }, 'User created');
 ```
 
-### 使用 print (Python)
+### Using print (Python)
 
 ```python
-# 错误
+# Wrong
 print(f"Search result: {result}")
 
-# 正确
+# Correct
 logger.info(f"Search completed: {len(result)} results")
 ```
 
 ---
 
-## 相关文档
+## Related Documentation
 
-- [错误处理](./error-handling.md)
+- [Error Handling](./error-handling.md)
