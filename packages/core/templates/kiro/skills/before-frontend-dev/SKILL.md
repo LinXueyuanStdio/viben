@@ -1,8 +1,3 @@
----
-name: before-frontend-dev
-description: "Read the frontend development guidelines before starting your development task."
----
-
 Read the frontend development guidelines before starting your development task.
 
 Execute these steps:

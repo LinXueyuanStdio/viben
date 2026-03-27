@@ -1,11 +1,6 @@
----
-name: break-loop
-description: "Break the Loop - Deep Bug Analysis"
----
-
 # Break the Loop - Deep Bug Analysis
 
-When debug is complete, use this skill for deep analysis to break the "fix bug -> forget -> repeat" cycle.
+When debug is complete, use this command for deep analysis to break the "fix bug -> forget -> repeat" cycle.
 
 ---
 
@@ -64,7 +59,7 @@ Solidify insights into the system:
 - [ ] Update `docs/specs/backend/` or `docs/specs/frontend/` docs
 - [ ] Create issue record (if applicable)
 - [ ] Create feature ticket for root fix
-- [ ] Update check skills if needed
+- [ ] Update check commands if needed
 
 ---
 

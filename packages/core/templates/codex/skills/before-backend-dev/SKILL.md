@@ -1,8 +1,3 @@
----
-name: before-backend-dev
-description: "Read the backend development guidelines before starting your development task."
----
-
 Read the backend development guidelines before starting your development task.
 
 Execute these steps:

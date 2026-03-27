@@ -1,40 +1,40 @@
 {
-  "generatedAt": "2026-03-14T16:30:28.286316+00:00",
+  "generatedAt": "2026-03-27T05:56:12.525067+00:00",
   "summary": {
-    "totalLines": 613029,
-    "totalFiles": 2133,
+    "totalLines": 734889,
+    "totalFiles": 2270,
     "totalModules": 19,
-    "codeLines": 377584,
-    "docLines": 166354,
-    "configLines": 69091
+    "codeLines": 418519,
+    "docLines": 185867,
+    "configLines": 130503
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 229414,
-      "files": 755,
+      "lines": 266349,
+      "files": 840,
       "color": "#3178C6"
     },
     {
       "lang": "Markdown",
       "ext": "md",
-      "lines": 165007,
-      "files": 558,
+      "lines": 184519,
+      "files": 596,
       "color": "#083FA1"
     },
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 129057,
-      "files": 515,
+      "lines": 132621,
+      "files": 520,
       "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 56530,
-      "files": 85,
+      "lines": 116791,
+      "files": 84,
       "color": "#F59E0B"
     },
     {
@@ -54,23 +54,23 @@
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 3564,
-      "files": 6,
+      "lines": 3835,
+      "files": 8,
       "color": "#E34F26"
+    },
+    {
+      "lang": "YAML",
+      "ext": "yml",
+      "lines": 2259,
+      "files": 18,
+      "color": "#CB171E"
     },
     {
       "lang": "TOML",
       "ext": "toml",
-      "lines": 1899,
+      "lines": 1898,
       "files": 18,
       "color": "#9C4121"
-    },
-    {
-      "lang": "Rust",
-      "ext": "rs",
-      "lines": 1378,
-      "files": 10,
-      "color": "#DEA584"
     },
     {
       "lang": "ICNS",
@@ -82,21 +82,28 @@
     {
       "lang": "Plain Text",
       "ext": "txt",
-      "lines": 1347,
+      "lines": 1348,
       "files": 20,
       "color": "#6B7280"
     },
     {
-      "lang": "YAML",
-      "ext": "yml",
-      "lines": 1121,
-      "files": 11,
-      "color": "#CB171E"
+      "lang": "JavaScript",
+      "ext": "js",
+      "lines": 1052,
+      "files": 6,
+      "color": "#F7DF1E"
+    },
+    {
+      "lang": "Rust",
+      "ext": "rs",
+      "lines": 1050,
+      "files": 8,
+      "color": "#DEA584"
     },
     {
       "lang": "CSS",
       "ext": "css",
-      "lines": 1005,
+      "lines": 1019,
       "files": 6,
       "color": "#1572B6"
     },
@@ -106,38 +113,31 @@
       "lines": 688,
       "files": 5,
       "color": "#89E051"
-    },
-    {
-      "lang": "CJS",
-      "ext": "cjs",
-      "lines": 555,
-      "files": 2,
-      "color": "#6B7280"
     }
   ],
   "modules": [
     {
       "name": "apps/desktop",
-      "lines": 188020,
-      "files": 602,
+      "lines": 250549,
+      "files": 598,
       "color": "#F59E0B"
     },
     {
       "name": "packages/core",
-      "lines": 186859,
-      "files": 559,
+      "lines": 225806,
+      "files": 660,
       "color": "#3B82F6"
     },
     {
       "name": "apps/docs",
-      "lines": 62362,
-      "files": 205,
+      "lines": 72106,
+      "files": 230,
       "color": "#8B5CF6"
     },
     {
       "name": "apps/web",
-      "lines": 55469,
-      "files": 311,
+      "lines": 55987,
+      "files": 315,
       "color": "#10B981"
     },
     {
@@ -148,7 +148,7 @@
     },
     {
       "name": "packages/kanban",
-      "lines": 9431,
+      "lines": 9437,
       "files": 80,
       "color": "#6B7280"
     },
@@ -184,7 +184,7 @@
     },
     {
       "name": "backend/patterns",
-      "lines": 703,
+      "lines": 868,
       "files": 4,
       "color": "#6B7280"
     },
@@ -202,7 +202,7 @@
     },
     {
       "name": "apps/cli",
-      "lines": 603,
+      "lines": 613,
       "files": 7,
       "color": "#EC4899"
     },
@@ -233,32 +233,32 @@
   ],
   "desktopDirs": [
     {
+      "name": "i18n",
+      "lines": 85773,
+      "files": 22,
+      "color": "#6B7280"
+    },
+    {
       "name": "components",
-      "lines": 72167,
+      "lines": 73083,
       "files": 260,
       "color": "#8B5CF6"
     },
     {
       "name": "pages",
-      "lines": 30615,
-      "files": 40,
+      "lines": 32788,
+      "files": 41,
       "color": "#3B82F6"
     },
     {
-      "name": "i18n",
-      "lines": 25493,
-      "files": 22,
-      "color": "#6B7280"
-    },
-    {
       "name": "hooks",
-      "lines": 23916,
-      "files": 71,
+      "lines": 24423,
+      "files": 72,
       "color": "#10B981"
     },
     {
       "name": "lib",
-      "lines": 18211,
+      "lines": 18110,
       "files": 70,
       "color": "#F59E0B"
     },
@@ -270,25 +270,25 @@
     },
     {
       "name": "types",
-      "lines": 2405,
+      "lines": 2410,
       "files": 10,
       "color": "#6366F1"
     },
     {
       "name": "features",
-      "lines": 1452,
+      "lines": 1440,
       "files": 33,
       "color": "#6B7280"
     },
     {
-      "name": "db",
-      "lines": 972,
-      "files": 4,
+      "name": "index.css",
+      "lines": 585,
+      "files": 1,
       "color": "#6B7280"
     },
     {
-      "name": "index.css",
-      "lines": 571,
+      "name": "App.tsx",
+      "lines": 172,
       "files": 1,
       "color": "#6B7280"
     }
@@ -296,25 +296,25 @@
   "apps": [
     {
       "name": "desktop",
-      "lines": 188020,
-      "files": 602,
+      "lines": 250549,
+      "files": 598,
       "color": "#F59E0B"
     },
     {
       "name": "docs",
-      "lines": 62362,
-      "files": 205,
+      "lines": 72106,
+      "files": 230,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "lines": 55469,
-      "files": 311,
+      "lines": 55987,
+      "files": 315,
       "color": "#10B981"
     },
     {
       "name": "cli",
-      "lines": 603,
+      "lines": 613,
       "files": 7,
       "color": "#EC4899"
     }
@@ -322,22 +322,22 @@
   "density": [
     {
       "name": "desktop",
-      "density": 312.3,
+      "density": 419.0,
       "color": "#F59E0B"
     },
     {
       "name": "pkg/core",
-      "density": 334.3,
+      "density": 342.1,
       "color": "#3B82F6"
     },
     {
       "name": "docs",
-      "density": 304.2,
+      "density": 313.5,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "density": 178.4,
+      "density": 177.7,
       "color": "#10B981"
     },
     {
@@ -347,7 +347,7 @@
     },
     {
       "name": "pkg/kanban",
-      "density": 117.9,
+      "density": 118.0,
       "color": "#6B7280"
     },
     {
@@ -369,171 +369,123 @@
   "categories": [
     {
       "label": "源代码",
-      "lines": 377584,
+      "lines": 418519,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 166354,
+      "lines": 185867,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 69091,
+      "lines": 130503,
       "color": "#F59E0B"
     }
   ],
   "topFiles": [
     {
       "path": "apps/docs/openapi/gateway-api.json",
-      "lines": 5734,
+      "lines": 5722,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "lines": 4144,
+      "lines": 4476,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "lines": 4071,
+      "lines": 4408,
       "ext": "json"
     },
     {
-      "path": "apps/desktop/src/pages/workspace-chat.tsx",
-      "lines": 3421,
-      "ext": "tsx"
-    },
-    {
-      "path": "apps/desktop/src/pages/workspace-kanban.tsx",
-      "lines": 2990,
-      "ext": "tsx"
-    },
-    {
-      "path": "apps/desktop/src/lib/gateway/client.ts",
-      "lines": 2842,
+      "path": "packages/core/src/gateway/routes/task.ts",
+      "lines": 4361,
       "ext": "ts"
     },
     {
-      "path": "apps/desktop/src/pages/settings.tsx",
-      "lines": 2618,
-      "ext": "tsx"
-    },
-    {
-      "path": "apps/web/lib/db/migrations/meta/0000_snapshot.json",
-      "lines": 2617,
+      "path": "apps/desktop/src/i18n/locales/tr.json",
+      "lines": 4263,
       "ext": "json"
     },
     {
-      "path": "packages/core/src/cli/commands/task.ts",
-      "lines": 2368,
-      "ext": "ts"
-    },
-    {
-      "path": "packages/core/src/cli/lib/viben-workspace.ts",
-      "lines": 2219,
-      "ext": "ts"
-    },
-    {
-      "path": "packages/core/src/gateway/routes/group-chats.ts",
-      "lines": 2165,
-      "ext": "ts"
-    },
-    {
-      "path": "docs/specs/roadmap/platform-upgrade-v2.md",
-      "lines": 2154,
-      "ext": "md"
-    },
-    {
-      "path": "apps/desktop/src/components/file-browser/index.tsx",
-      "lines": 2125,
-      "ext": "tsx"
-    },
-    {
-      "path": "packages/core/src/cli/commands/channel.test.ts",
-      "lines": 2114,
-      "ext": "ts"
-    },
-    {
-      "path": "packages/core/src/cli/lib/viben-workspace.test.ts",
-      "lines": 2113,
-      "ext": "ts"
-    },
-    {
-      "path": "apps/web/public/data/code-stats.json",
-      "lines": 2086,
+      "path": "apps/desktop/src/i18n/locales/nl.json",
+      "lines": 4263,
       "ext": "json"
     },
     {
-      "path": "apps/desktop/src/pages/settings-channels.tsx",
-      "lines": 1952,
-      "ext": "tsx"
+      "path": "apps/desktop/src/i18n/locales/ms.json",
+      "lines": 4263,
+      "ext": "json"
     },
     {
-      "path": "apps/desktop/src/hooks/use-agent-conversation.ts",
-      "lines": 1879,
-      "ext": "ts"
+      "path": "apps/desktop/src/i18n/locales/ja.json",
+      "lines": 4263,
+      "ext": "json"
     },
     {
-      "path": "apps/desktop/src/components/workspace/task-detail-panel.tsx",
-      "lines": 1782,
-      "ext": "tsx"
+      "path": "apps/desktop/src/i18n/locales/de.json",
+      "lines": 4263,
+      "ext": "json"
     },
     {
-      "path": "packages/core/src/gateway/routes/executors.ts",
-      "lines": 1670,
-      "ext": "ts"
+      "path": "apps/desktop/src/i18n/locales/ru.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/pl.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/uk.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/pt.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/it.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/fr.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/hi.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/ko.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/vi.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/id.json",
+      "lines": 4263,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/th.json",
+      "lines": 4263,
+      "ext": "json"
     }
   ],
   "commitActivity": [
-    {
-      "date": "2025-03-16",
-      "count": 0
-    },
-    {
-      "date": "2025-03-17",
-      "count": 0
-    },
-    {
-      "date": "2025-03-18",
-      "count": 0
-    },
-    {
-      "date": "2025-03-19",
-      "count": 0
-    },
-    {
-      "date": "2025-03-20",
-      "count": 0
-    },
-    {
-      "date": "2025-03-21",
-      "count": 0
-    },
-    {
-      "date": "2025-03-22",
-      "count": 0
-    },
-    {
-      "date": "2025-03-23",
-      "count": 0
-    },
-    {
-      "date": "2025-03-24",
-      "count": 0
-    },
-    {
-      "date": "2025-03-25",
-      "count": 0
-    },
-    {
-      "date": "2025-03-26",
-      "count": 0
-    },
-    {
-      "date": "2025-03-27",
-      "count": 0
-    },
     {
       "date": "2025-03-28",
       "count": 0
@@ -1940,33 +1892,86 @@
     },
     {
       "date": "2026-03-14",
-      "count": 18
+      "count": 23
     },
     {
       "date": "2026-03-15",
+      "count": 10
+    },
+    {
+      "date": "2026-03-16",
+      "count": 1
+    },
+    {
+      "date": "2026-03-17",
+      "count": 10
+    },
+    {
+      "date": "2026-03-18",
+      "count": 23
+    },
+    {
+      "date": "2026-03-19",
+      "count": 7
+    },
+    {
+      "date": "2026-03-20",
+      "count": 1
+    },
+    {
+      "date": "2026-03-21",
       "count": 0
+    },
+    {
+      "date": "2026-03-22",
+      "count": 0
+    },
+    {
+      "date": "2026-03-23",
+      "count": 5
+    },
+    {
+      "date": "2026-03-24",
+      "count": 0
+    },
+    {
+      "date": "2026-03-25",
+      "count": 2
+    },
+    {
+      "date": "2026-03-26",
+      "count": 3
+    },
+    {
+      "date": "2026-03-27",
+      "count": 18
     }
   ],
   "fileChurn": [
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "changes": 129,
-      "lastChanged": "2026-03-14"
+      "changes": 144,
+      "lastChanged": "2026-03-27"
     },
     {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "changes": 126,
-      "lastChanged": "2026-03-14"
+      "changes": 142,
+      "lastChanged": "2026-03-27"
     },
     {
       "path": "apps/desktop/src/pages/workspace-chat.tsx",
-      "changes": 62,
-      "lastChanged": "2026-03-14"
+      "changes": 65,
+      "lastChanged": "2026-03-19"
     },
     {
       "path": "apps/desktop/src/hooks/index.ts",
-      "changes": 58,
-      "lastChanged": "2026-03-09"
+      "changes": 62,
+      "lastChanged": "2026-03-18"
+    },
+    {
+      "path": "apps/desktop/src/pages/workspace-kanban.tsx",
+      "changes": 54,
+      "lastChanged": "2026-03-18"
     },
     {
       "path": "apps/desktop/src/pages/agent-detail.tsx",
@@ -1974,67 +1979,62 @@
       "lastChanged": "2026-03-10"
     },
     {
-      "path": "apps/desktop/src/pages/workspace-kanban.tsx",
-      "changes": 46,
-      "lastChanged": "2026-03-14"
-    },
-    {
       "path": "apps/desktop/package.json",
-      "changes": 45,
-      "lastChanged": "2026-03-14"
+      "changes": 46,
+      "lastChanged": "2026-03-18"
     },
     {
       "path": "apps/desktop/src-tauri/src/lib.rs",
-      "changes": 43,
-      "lastChanged": "2026-03-04"
-    },
-    {
-      "path": "apps/desktop/src/pages/settings.tsx",
-      "changes": 37,
-      "lastChanged": "2026-03-03"
+      "changes": 45,
+      "lastChanged": "2026-03-18"
     },
     {
       "path": "apps/desktop/src/App.tsx",
-      "changes": 37,
-      "lastChanged": "2026-03-02"
+      "changes": 38,
+      "lastChanged": "2026-03-18"
     },
     {
-      "path": "apps/desktop/src/components/layout/sidebar.tsx",
-      "changes": 32,
-      "lastChanged": "2026-03-09"
+      "path": "apps/desktop/src/pages/settings.tsx",
+      "changes": 38,
+      "lastChanged": "2026-03-15"
     },
     {
       "path": "apps/desktop/src/components/workspace/task-detail-panel.tsx",
-      "changes": 31,
-      "lastChanged": "2026-03-14"
+      "changes": 37,
+      "lastChanged": "2026-03-23"
+    },
+    {
+      "path": "packages/core/src/cli/commands/task.ts",
+      "changes": 35,
+      "lastChanged": "2026-03-23"
+    },
+    {
+      "path": "apps/desktop/src/components/layout/sidebar.tsx",
+      "changes": 34,
+      "lastChanged": "2026-03-18"
     },
     {
       "path": "packages/core/src/gateway/routes/tasks.ts",
-      "changes": 28,
-      "lastChanged": "2026-03-14"
+      "changes": 34,
+      "lastChanged": "2026-03-15"
     },
     {
       "path": "packages/core/package.json",
-      "changes": 28,
-      "lastChanged": "2026-03-11"
-    },
-    {
-      "path": "apps/desktop/src/pages/index.ts",
-      "changes": 28,
-      "lastChanged": "2026-03-02"
+      "changes": 30,
+      "lastChanged": "2026-03-27"
     }
   ],
   "codeFreshness": [
     {
       "label": "<1月",
-      "files": 1364,
-      "lines": 462330,
+      "files": 1489,
+      "lines": 581189,
       "color": "#10B981"
     },
     {
       "label": "1-3月",
-      "files": 774,
-      "lines": 150699,
+      "files": 786,
+      "lines": 153701,
       "color": "#3B82F6"
     },
     {
@@ -2059,27 +2059,27 @@
   "fileSizeDistribution": [
     {
       "range": "0-50",
-      "files": 391,
+      "files": 407,
       "color": "#10B981"
     },
     {
       "range": "50-100",
-      "files": 310,
+      "files": 323,
       "color": "#3B82F6"
     },
     {
       "range": "100-200",
-      "files": 447,
+      "files": 467,
       "color": "#F59E0B"
     },
     {
       "range": "200-500",
-      "files": 651,
+      "files": 689,
       "color": "#F97316"
     },
     {
       "range": "500+",
-      "files": 334,
+      "files": 384,
       "color": "#EF4444"
     }
   ]

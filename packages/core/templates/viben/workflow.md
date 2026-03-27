@@ -44,49 +44,13 @@ This creates:
 ### Step 1: Understand Current Context
 
 ```bash
-# Get full context in one command (specify task or use current task)
+# Get full context for a specific task
 viben task context <task>
 
 # Or check manually:
 viben user get                                   # Your identity
 viben task list                                  # Active tasks
 git status && git log --oneline -10              # Git state
-```
-
-### Step 2: Read Project Guidelines [MANDATORY]
-
-**CRITICAL**: Read guidelines before writing any code:
-
-```bash
-# Read frontend guidelines index (if applicable)
-cat docs/specs/frontend/index.md
-
-# Read backend guidelines index (if applicable)
-cat docs/specs/backend/index.md
-```
-
-**Why read both?**
-- Understand the full project architecture
-- Know coding standards for the entire codebase
-- See how frontend and backend interact
-- Learn the overall code quality requirements
-
-### Step 3: Before Coding - Read Specific Guidelines (Required)
-
-Based on your task, read the **detailed** guidelines:
-
-**Frontend Task**:
-```bash
-cat docs/specs/frontend/hook-guidelines.md      # For hooks
-cat docs/specs/frontend/component-guidelines.md # For components
-cat docs/specs/frontend/type-safety.md          # For types
-```
-
-**Backend Task**:
-```bash
-cat docs/specs/backend/database-guidelines.md   # For DB operations
-cat docs/specs/backend/type-safety.md           # For types
-cat docs/specs/backend/logging-guidelines.md    # For logging
 ```
 
 ---
@@ -138,21 +102,49 @@ All workflow operations are available through the `viben` CLI:
 viben user init <name>    # Initialize developer identity
 viben user get            # Get current developer name
 
-# Task management
+# Task lifecycle
 viben task list           # List active tasks
-viben task create         # Create new task
-viben task start          # Set current task
-viben task finish <task>  # Finish specified task
-viben task archive        # Archive completed task
-viben task context <task> # Get session context for specified task
-viben task add-session    # Record session
+viben task create "title" --slug <task-name> --description "<description>" # Create new task
+viben task view <task>    # View task details
+viben task start <task>   # Start task execution
+viben task pause <task>   # Pause execution
+viben task resume <task>  # Resume paused task
+viben task finish <task>  # Finish task
+viben task cancel <task>  # Cancel task
+viben task archive <task> # Archive completed task
 
-# Multi-agent operations
-viben task work-phase     # Run work agent (auto-creates worktree if needed)
-viben swarm status        # Monitor agent status
-viben task cleanup        # Cleanup worktree
-viben task create-pr      # Create PR from task
-viben task plan-phase     # Start plan agent
+# Task queue
+viben task enqueue <task> # Move task to queue
+viben task dequeue <task> # Remove from queue
+
+# Task context
+viben task context <task> # Get session context for AI
+viben task add-context <task> <file> # Add context files
+viben task list-context <task>   # List context entries
+
+# Review workflow
+viben task review <task>  # View for review
+viben task approve <task> # Approve and complete
+viben task reject <task>  # Reject to backlog
+viben task retry <task>   # Retry failed task
+
+# AI-assisted phases
+viben task plan-phase <task>     # Run plan agent
+viben task work-phase <task>     # Run work agent (orchestrates all phases)
+
+# Git worktree & PR
+viben task create-worktree <task> # Create isolated worktree
+viben task create-pr <task>      # Create PR from task
+viben task cleanup <task>        # Cleanup worktrees
+
+# Multi-agent monitoring (swarm)
+viben swarm list          # List worktrees and agents
+viben swarm status        # Show agent status (--watch for live)
+viben swarm stop          # Stop running agent
+viben swarm registry      # Show agent registry
+
+# Session recording
+viben task add-session    # Record session to journal
 ```
 
 ---
@@ -164,35 +156,11 @@ viben task plan-phase     # Start plan agent
 Use the unified context command:
 
 ```bash
-# Get all context for a specific task
+# Get context for a specific task
 viben task context <task>
 
 # Or get JSON format
 viben task context <task> --json
-```
-
-### Step 2: Read Development Guidelines [!] REQUIRED
-
-**[!] CRITICAL: MUST read guidelines before writing any code**
-
-Based on what you'll develop, read the corresponding guidelines:
-
-**Frontend Development** (if applicable):
-```bash
-# Read index first, then specific docs based on task
-cat docs/specs/frontend/index.md
-```
-
-**Backend Development** (if applicable):
-```bash
-# Read index first, then specific docs based on task
-cat docs/specs/backend/index.md
-```
-
-**Cross-Layer Features**:
-```bash
-# For features spanning multiple layers
-cat docs/specs/guides/cross-layer-thinking-guide.md
 ```
 
 ### Step 3: Select Task to Develop
@@ -240,10 +208,6 @@ viben task create "<title>" --slug <task-name>
 - [OK] Lint checks pass (project-specific command)
 - [OK] Type checks pass (if applicable)
 - [OK] Manual feature testing passes
-
-**Project-specific checks**:
-- See `docs/specs/frontend/quality-guidelines.md` for frontend
-- See `docs/specs/backend/quality-guidelines.md` for backend
 
 ---
 
@@ -351,7 +315,7 @@ viben task list-archive                       # List archived tasks
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `viben task context <task>` for full context of the task you're working on
+   - Run `viben task context <task>` for full task context
    - [!] **MUST read** relevant `docs/specs/` docs
 
 2. **During development**:
@@ -400,23 +364,31 @@ git commit -m "type(scope): description"
 
 ```bash
 # Session management
-viben task context <task>    # Get full context for specified task
+viben task context <task>    # Get task context
 viben task add-session       # Record session
 
 # Task management
 viben task list              # List tasks
 viben task create "<title>"  # Create task
+viben task start <task>      # Start task
+viben task finish <task>     # Finish task
+
+# Review workflow
+viben task review <task>     # View for review
+viben task approve <task>    # Approve task
+viben task reject <task>     # Reject task
 
 # Multi-agent operations
-viben task work-phase <task> # Run work agent (auto-creates worktree if needed)
-viben swarm status <task>    # Monitor agent status
+viben task work-phase <task> # Run work agent (orchestrates all phases)
+viben swarm status --watch   # Monitor agent status (live)
+viben swarm stop <task>      # Stop running agent
 viben task cleanup <task>    # Cleanup worktree
-viben task create-pr         # Create PR from task
+viben task create-pr <task>  # Create PR from task
 
 # Slash commands
-/viben:finish-work          # Pre-commit checklist
-/viben:break-loop           # Post-debug analysis
-/viben:check-cross-layer    # Cross-layer verification
+/viben:finish-work           # Pre-commit checklist
+/viben:break-loop            # Post-debug analysis
+/viben:check-cross-layer     # Cross-layer verification
 ```
 
 ---
