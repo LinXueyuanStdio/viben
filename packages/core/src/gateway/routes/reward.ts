@@ -65,12 +65,15 @@ function toSnakeCaseRewardType(rewardType: RewardType) {
 function toSnakeCaseTaskCandidate(candidate: TaskCandidate) {
   return {
     task: candidate.task,
+    idea_id: candidate.ideaId,
     reward: candidate.reward,
     diff_lines: candidate.diffLines,
+    d: candidate.d,
+    change_weight: candidate.changeWeight,
     kl_penalty: candidate.klPenalty,
     adjusted_reward: candidate.adjustedReward,
-    advantage: candidate.advantage,
-    ppo_score: candidate.ppoScore,
+    relative_score: candidate.relativeScore,
+    final_score: candidate.finalScore,
   };
 }
 

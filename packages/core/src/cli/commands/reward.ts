@@ -232,8 +232,8 @@ export function registerRewardCommand(program: Command): void {
               diff_lines: c.diffLines,
               kl_penalty: c.klPenalty,
               adjusted_reward: c.adjustedReward,
-              advantage: c.advantage,
-              ppo_score: c.ppoScore,
+              relative_score: c.relativeScore,
+              final_score: c.finalScore,
             })),
             selected: result.selected,
             rejected: result.rejected,
@@ -252,16 +252,16 @@ export function registerRewardCommand(program: Command): void {
             // Output table
             outputTable(
               ctx,
-              ["TASK", "REWARD", "DIFF", "KL", "ADJUSTED", "ADVANTAGE", "STATUS"],
+              ["TASK", "REWARD", "DIFF", "KL", "ADJUSTED", "RELATIVE", "FINAL", "STATUS"],
               (result.candidates || []).map((c: TaskCandidate) => {
                 const isSelected = c.task === result.selected;
                 const status = isSelected
                   ? chalk.green("SELECTED")
                   : chalk.gray("rejected");
-                const advantage =
-                  c.advantage >= 0
-                    ? chalk.green(`+${c.advantage.toFixed(3)}`)
-                    : chalk.red(c.advantage.toFixed(3));
+                const relativeScore =
+                  c.relativeScore >= 0
+                    ? chalk.green(`+${c.relativeScore.toFixed(3)}`)
+                    : chalk.red(c.relativeScore.toFixed(3));
 
                 return [
                   isSelected ? chalk.bold(c.task) : c.task,
@@ -269,7 +269,8 @@ export function registerRewardCommand(program: Command): void {
                   String(c.diffLines),
                   c.klPenalty.toFixed(3),
                   c.adjustedReward.toFixed(3),
-                  advantage,
+                  relativeScore,
+                  c.finalScore.toFixed(3),
                   status,
                 ];
               })

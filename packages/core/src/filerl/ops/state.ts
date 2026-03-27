@@ -73,6 +73,7 @@ export function createInitialState(name: string, targetPath: string): FileRlStat
     iterations: [],
     best_reward: 0,
     best_task: undefined,
+    no_merge_count: 0,
     converged: false,
     active: false,
     started_at: now,
@@ -89,9 +90,11 @@ export function createIterationState(iteration: number): IterationState {
     phase: "init",
     ideas: [],
     tasks: [],
+    task_idea_map: {},
     rewards: {},
     selected_task: undefined,
     rejected_tasks: [],
+    merge_error: undefined,
     completed: false,
     started_at: new Date().toISOString(),
     completed_at: undefined,
@@ -175,7 +178,8 @@ export function completeIteration(
   state: FileRlState,
   selectedTask: string | undefined,
   rejectedTasks: string[],
-  rewards: Record<string, number>
+  rewards: Record<string, number>,
+  mergeError?: string
 ): void {
   const currentIter = state.iterations[state.iterations.length - 1];
   if (!currentIter) {
@@ -185,19 +189,25 @@ export function completeIteration(
   currentIter.selected_task = selectedTask;
   currentIter.rejected_tasks = rejectedTasks;
   currentIter.rewards = rewards;
+  currentIter.merge_error = mergeError;
   currentIter.completed = true;
   currentIter.phase = "completed";
   currentIter.completed_at = new Date().toISOString();
 
   state.completed_iterations++;
 
-  // Update best reward tracking
-  if (selectedTask && rewards[selectedTask]) {
+  // Update no_merge_count
+  if (selectedTask && !mergeError) {
+    state.no_merge_count = 0;
+
+    // Update best reward tracking
     const reward = rewards[selectedTask];
-    if (reward > state.best_reward) {
+    if (reward !== undefined && reward > state.best_reward) {
       state.best_reward = reward;
       state.best_task = selectedTask;
     }
+  } else {
+    state.no_merge_count++;
   }
 }
 
@@ -205,13 +215,20 @@ export function completeIteration(
  * Check if the run has converged
  *
  * Convergence criteria:
- * - At least 2 completed iterations
- * - Best reward improvement < convergence_threshold
+ * - No-merge limit reached
+ * - At least 2 completed iterations and reward improvement < threshold
  */
 export function checkConvergence(
   state: FileRlState,
-  convergenceThreshold: number
+  convergenceThreshold: number,
+  noMergeLimit: number
 ): boolean {
+  // Check no-merge limit
+  if (state.no_merge_count >= noMergeLimit) {
+    return true;
+  }
+
+  // Check reward convergence (need at least 2 iterations)
   if (state.completed_iterations < 2) {
     return false;
   }

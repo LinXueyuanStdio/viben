@@ -220,6 +220,9 @@ export interface IterationState {
   /** Tasks created from ideas */
   tasks: string[];
 
+  /** Mapping from task name to idea name */
+  task_idea_map: Record<string, string>;
+
   /** Task rewards (task name -> reward score) */
   rewards: Record<string, number>;
 
@@ -228,6 +231,9 @@ export interface IterationState {
 
   /** Rejected tasks */
   rejected_tasks: string[];
+
+  /** Merge error if merge failed */
+  merge_error?: string;
 
   /** Whether iteration is complete */
   completed: boolean;
@@ -263,6 +269,9 @@ export interface FileRlState {
 
   /** Best task name */
   best_task?: string;
+
+  /** Consecutive iterations with no merge */
+  no_merge_count: number;
 
   /** Whether the run is converged */
   converged: boolean;

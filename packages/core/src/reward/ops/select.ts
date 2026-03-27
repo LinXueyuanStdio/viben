@@ -25,56 +25,54 @@ import {
 // =============================================================================
 
 /**
- * Calculate KL penalty for a task
- *
- * Formula: KL = λ × (diff_lines / max_diff)
- *
- * @param diffLines - Number of lines changed
- * @param klCoef - KL penalty coefficient λ
- * @param maxDiff - Maximum diff lines for normalization
- */
-function calculateKlPenalty(
-  diffLines: number,
-  klCoef: number,
-  maxDiff: number
-): number {
-  // Clamp diff_lines to max_diff to avoid excessive penalties
-  const clampedDiff = Math.min(diffLines, maxDiff);
-  return klCoef * (clampedDiff / maxDiff);
-}
-
-/**
  * Calculate PPO metrics for a list of tasks
  *
  * Steps:
- * 1. Load reward data from each task.json
- * 2. Calculate KL penalty and adjusted reward for each
- * 3. Calculate baseline (mean of adjusted rewards)
- * 4. Calculate advantage and PPO score for each
+ * 1. Calculate d, changeWeight, klPenalty, adjustedReward for each task
+ * 2. Calculate baseline (mean of adjusted rewards)
+ * 3. Calculate relativeScore and finalScore for each task
  *
- * @param taskRewards - Array of { task, reward, diffLines }
+ * Formula:
+ * - d = min(1, diffLines / maxDiff)
+ * - changeWeight = exp(-β × d)
+ * - klPenalty = λ × d
+ * - adjustedReward = R - klPenalty
+ * - relativeScore = adjustedReward - baseline
+ * - finalScore = min(w × S, clip(w, 1-ε, 1+ε) × S)
+ *
+ * @param taskRewards - Array of { task, reward, diffLines, ideaId }
  * @param options - PPO calculation options
  */
 function calculatePpoMetrics(
-  taskRewards: Array<{ task: string; reward: number; diffLines: number }>,
-  options: Required<Pick<SelectOptions, 'threshold' | 'klCoef' | 'maxDiff'>>
+  taskRewards: Array<{ task: string; reward: number; diffLines: number; ideaId?: string }>,
+  options: {
+    klCoef: number;
+    changeSensitivity: number;
+    clipRange: number;
+    maxDiff: number;
+  }
 ): TaskCandidate[] {
-  const { klCoef, maxDiff } = options;
+  const { klCoef, changeSensitivity, clipRange, maxDiff } = options;
 
-  // Step 1: Calculate KL penalty and adjusted reward
+  // Step 1: Calculate d, changeWeight, klPenalty, adjustedReward
   const candidates: TaskCandidate[] = taskRewards.map(
-    ({ task, reward, diffLines }) => {
-      const klPenalty = calculateKlPenalty(diffLines, klCoef, maxDiff);
+    ({ task, reward, diffLines, ideaId }) => {
+      const d = Math.min(1, diffLines / maxDiff);
+      const changeWeight = Math.exp(-changeSensitivity * d);
+      const klPenalty = klCoef * d;
       const adjustedReward = reward - klPenalty;
 
       return {
         task,
+        ideaId,
         reward,
         diffLines,
+        d,
+        changeWeight,
         klPenalty,
         adjustedReward,
-        advantage: 0, // Will be calculated after baseline
-        ppoScore: 0, // Will be calculated after baseline
+        relativeScore: 0,
+        finalScore: 0,
       };
     }
   );
@@ -83,11 +81,19 @@ function calculatePpoMetrics(
   const baseline =
     candidates.reduce((sum, c) => sum + c.adjustedReward, 0) / candidates.length;
 
-  // Step 3: Calculate advantage and PPO score
-  for (const candidate of candidates) {
-    candidate.advantage = candidate.adjustedReward - baseline;
-    // Simplified PPO score (ρ = 1)
-    candidate.ppoScore = candidate.advantage;
+  // Step 3: Calculate relativeScore and finalScore
+  for (const c of candidates) {
+    c.relativeScore = c.adjustedReward - baseline;
+
+    // L = min(w × S, clip(w, 1-ε, 1+ε) × S)
+    const clippedWeight = Math.max(
+      1 - clipRange,
+      Math.min(1 + clipRange, c.changeWeight)
+    );
+    c.finalScore = Math.min(
+      c.changeWeight * c.relativeScore,
+      clippedWeight * c.relativeScore
+    );
   }
 
   return candidates;
@@ -179,9 +185,11 @@ function loadTaskReward(
  *
  * Algorithm:
  * 1. Load reward data from each task.json
- * 2. Calculate PPO metrics (KL penalty, adjusted reward, advantage)
- * 3. Filter candidates by threshold
- * 4. Select the one with highest PPO score
+ * 2. Calculate PPO metrics (d, changeWeight, klPenalty, adjustedReward, relativeScore, finalScore)
+ * 3. Two-stage selection (if taskIdeaMap provided):
+ *    - Stage 1: Select best rollout per idea by finalScore
+ *    - Stage 2: Select global best from idea winners above threshold
+ * 4. Single-stage selection (fallback): Select best by finalScore above threshold
  *
  * @param repoRoot - Repository root path
  * @param taskNames - Array of task names to compare
@@ -196,7 +204,10 @@ export function selectBestTask(
   const opts = {
     threshold: options.threshold ?? SELECT_DEFAULTS.threshold,
     klCoef: options.klCoef ?? SELECT_DEFAULTS.klCoef,
+    changeSensitivity: options.changeSensitivity ?? SELECT_DEFAULTS.changeSensitivity,
+    clipRange: options.clipRange ?? SELECT_DEFAULTS.clipRange,
     maxDiff: options.maxDiff ?? SELECT_DEFAULTS.maxDiff,
+    taskIdeaMap: options.taskIdeaMap,
     filerlDir: options.filerlDir,
     iteration: options.iteration,
   };
@@ -213,7 +224,7 @@ export function selectBestTask(
   const isFileRlMode = !!opts.filerlDir && opts.iteration !== undefined;
 
   // Load reward data from each task
-  const taskRewards: Array<{ task: string; reward: number; diffLines: number }> =
+  const taskRewards: Array<{ task: string; reward: number; diffLines: number; ideaId?: string }> =
     [];
   const errors: string[] = [];
 
@@ -244,8 +255,12 @@ export function selectBestTask(
       continue;
     }
 
+    // Get ideaId from taskIdeaMap or fallback to task name
+    const ideaId = opts.taskIdeaMap?.[taskDirName];
+
     taskRewards.push({
       task: taskDirName,
+      ideaId,
       ...rewardData,
     });
   }
@@ -265,17 +280,40 @@ export function selectBestTask(
   const baseline =
     candidates.reduce((sum, c) => sum + c.adjustedReward, 0) / candidates.length;
 
-  // Sort by PPO score (descending)
-  candidates.sort((a, b) => b.ppoScore - a.ppoScore);
+  // Two-stage selection
+  let selected: string | null = null;
 
-  // Find candidates above threshold
-  const aboveThreshold = candidates.filter(
-    (c) => c.adjustedReward >= opts.threshold
-  );
+  if (opts.taskIdeaMap && Object.keys(opts.taskIdeaMap).length > 0) {
+    // Stage 1: Best rollout per idea
+    const ideaGroups = new Map<string, TaskCandidate[]>();
+    for (const c of candidates) {
+      const ideaId = c.ideaId || opts.taskIdeaMap[c.task] || c.task;
+      if (!ideaGroups.has(ideaId)) {
+        ideaGroups.set(ideaId, []);
+      }
+      ideaGroups.get(ideaId)!.push(c);
+    }
 
-  // Select best (highest PPO score above threshold)
-  const selected =
-    aboveThreshold.length > 0 ? aboveThreshold[0].task : null;
+    const bestPerIdea: TaskCandidate[] = [];
+    for (const [ideaId, group] of ideaGroups) {
+      const best = group.reduce((a, b) => (a.finalScore > b.finalScore ? a : b));
+      bestPerIdea.push(best);
+    }
+
+    // Stage 2: Global best from idea winners (above threshold)
+    const qualified = bestPerIdea.filter((c) => c.adjustedReward >= opts.threshold);
+    if (qualified.length > 0) {
+      const winner = qualified.reduce((a, b) =>
+        a.finalScore > b.finalScore ? a : b
+      );
+      selected = winner.task;
+    }
+  } else {
+    // Single-stage selection (no idea grouping)
+    candidates.sort((a, b) => b.finalScore - a.finalScore);
+    const qualified = candidates.filter((c) => c.adjustedReward >= opts.threshold);
+    selected = qualified.length > 0 ? qualified[0].task : null;
+  }
 
   // Rejected = all except selected
   const rejected = candidates

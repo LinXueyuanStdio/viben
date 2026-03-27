@@ -1262,7 +1262,7 @@ export async function orchestrateFullIteration(
       updateIterationPhase(state, "merge_cleanup");
       writeState(repoRoot, state);
 
-      orchestrateMergeAndCleanup(repoRoot, name, selectedTask, rejectedTasks, onProgress);
+      const mergeResult = orchestrateMergeAndCleanup(repoRoot, name, selectedTask, rejectedTasks, onProgress);
 
       // Now mark the iteration as completed
       state = readState(repoRoot, name);
@@ -1271,14 +1271,21 @@ export async function orchestrateFullIteration(
         const cfg = parseRes.config;
         const iter = state.iterations[state.iterations.length - 1];
 
+        // Extract merge error if merge failed
+        const mergeData = mergeResult.data as { merged?: { success: boolean; error?: string } } | undefined;
+        const mergeError = mergeData?.merged && !mergeData.merged.success
+          ? mergeData.merged.error
+          : undefined;
+
         completeIteration(
           state,
           iter?.selected_task,
           iter?.rejected_tasks || [],
-          iter?.rewards || {}
+          iter?.rewards || {},
+          mergeError
         );
 
-        if (cfg && checkConvergence(state, cfg.convergence.threshold)) {
+        if (cfg && checkConvergence(state, cfg.convergence.threshold, cfg.convergence.no_merge_limit)) {
           markConverged(state);
         }
 
