@@ -663,12 +663,10 @@ export async function initializeCore(): Promise<void> {
   const { configManager } = await import("./config");
   const { agentManager } = await import("./agents");
   const { mcpManager } = await import("./mcp");
-  const { skillsManager } = await import("./skills");
   const { serviceManager } = await import("./services");
 
   await configManager.initialize();
   await agentManager.initialize();
   await mcpManager.initialize();
-  await skillsManager.initialize();
   await serviceManager.initialize();
 }

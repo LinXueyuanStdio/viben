@@ -178,9 +178,9 @@ viben task compute-reward <task> [options]
 ## reward.jsonl 格式
 
 ```jsonl
-{"file": "packages/core/src/prompts/reward-types/test_coverage.md", "reason": "test_coverage", "weight": 0.4}
-{"file": "packages/core/src/prompts/reward-types/code_quality.md", "reason": "code_quality", "weight": 0.3}
-{"file": "packages/core/src/prompts/reward-types/agent_review.md", "reason": "agent_review", "weight": 0.3}
+{"file": "packages/core/templates/viben/reward-types/test_coverage.md", "reason": "test_coverage", "weight": 0.4}
+{"file": "packages/core/templates/viben/reward-types/code_quality.md", "reason": "code_quality", "weight": 0.3}
+{"file": "packages/core/templates/viben/reward-types/agent_review.md", "reason": "agent_review", "weight": 0.3}
 ```
 
 ---
