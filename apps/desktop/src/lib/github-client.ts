@@ -20,7 +20,7 @@ import type {
   GitHubAuthStatusResponse,
   GitHubIssueInvestigation,
   GitHubPaginatedResponse,
-} from "@viben/core";
+} from "@viben/core/shared";
 
 // Re-export types for convenience
 export type {
