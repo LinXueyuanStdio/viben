@@ -1,8 +1,3 @@
----
-name: finish-work
-description: "Finish Work - Pre-Commit Checklist"
----
-
 # Finish Work - Pre-Commit Checklist
 
 Before submitting or committing, use this checklist to ensure work completeness.
@@ -29,6 +24,15 @@ pnpm test
 - [ ] No non-null assertions (the `x!` operator)?
 - [ ] No `any` types?
 
+### 1.5. Test Coverage
+
+Check if your change needs new or updated tests (see `docs/specs/unit-test/conventions.md`):
+
+- [ ] New pure function → unit test added?
+- [ ] Bug fix → regression test added in `test/regression.test.ts`?
+- [ ] Changed init/update behavior → integration test added/updated?
+- [ ] No logic change (text/data only) → no test needed
+
 ### 2. Code-Spec Sync
 
 **Code-Spec Docs**:
@@ -39,7 +43,7 @@ pnpm test
 - [ ] Does `docs/specs/guides/` need updates?
   - New cross-layer flows, lessons from bugs
 
-**Key Question**: 
+**Key Question**:
 > "If I fixed a bug or discovered something non-obvious, should I document it so future me (or others) won't hit the same issue?"
 
 If YES -> Update the relevant code-spec doc.
@@ -55,7 +59,8 @@ If this change touches infra or cross-layer contracts, this is a blocking checkl
 - [ ] Includes required tests and assertion points
 
 **Block Rule**:
-If infra/cross-layer changed but the related spec is still abstract, do NOT finish. Run `$update-spec` manually first.
+In pipeline mode, the finish agent will automatically detect and execute spec updates when gaps are found.
+If running this checklist manually, ensure spec sync is complete before committing — run `/viben:update-spec` if needed.
 
 ### 3. API Changes
 
@@ -125,19 +130,19 @@ git diff --name-only
 
 ```
 Development Flow:
-  Write code -> Test -> $finish-work -> git commit -> $record-session
+  Write code -> Test -> /viben:finish-work -> git commit -> /viben:record-session
                           |                              |
                    Ensure completeness              Record progress
-                   
+
 Debug Flow:
-  Hit bug -> Fix -> $break-loop -> Knowledge capture
+  Hit bug -> Fix -> /viben:break-loop -> Knowledge capture
                        |
                   Deep analysis
 ```
 
-- `$finish-work` - Check work completeness (this skill)
-- `$record-session` - Record session and commits
-- `$break-loop` - Deep analysis after debugging
+- `/viben:finish-work` - Check work completeness (this command)
+- `/viben:record-session` - Record session and commits
+- `/viben:break-loop` - Deep analysis after debugging
 
 ---
 

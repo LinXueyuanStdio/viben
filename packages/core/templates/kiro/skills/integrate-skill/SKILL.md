@@ -1,22 +1,17 @@
----
-name: integrate-skill
-description: "Integrate Skill into Project Guidelines"
----
+# Integrate Claude Skill into Project Guidelines
 
-# Integrate Skill into Project Guidelines
-
-Adapt and integrate a reusable skill into your project's development guidelines (not directly into project code).
+Adapt and integrate a Claude global skill into your project's development guidelines (not directly into project code).
 
 ## Usage
 
 ```
-$integrate-skill <skill-name>
+/viben:integrate-skill <skill-name>
 ```
 
 **Examples**:
 ```
-$integrate-skill frontend-design
-$integrate-skill mcp-builder
+/viben:integrate-skill frontend-design
+/viben:integrate-skill mcp-builder
 ```
 
 ## Core Principle
@@ -33,11 +28,14 @@ $integrate-skill mcp-builder
 
 ### 1. Read Skill Content
 
-Locate and read the skill instructions:
-- `.kiro/skills/<skill-name>/SKILL.md` in the repository
-- Skill list in `AGENTS.md` (when available in current context)
+```bash
+openskills read <skill-name>
+```
 
-If the skill cannot be found, ask the user for the source path or repository.
+If the skill doesn't exist, prompt user to check available skills:
+```bash
+# Available skills are listed in AGENTS.md under <available_skills>
+```
 
 ### 2. Determine Integration Target
 
@@ -47,7 +45,7 @@ Based on skill type, determine which guidelines to update:
 |----------------|-------------------|
 | UI/Frontend (`frontend-design`, `web-artifacts-builder`) | `docs/specs/frontend/` |
 | Backend/API (`mcp-builder`) | `docs/specs/backend/` |
-| Documentation (`doc-coauthoring`, `docx`, `pdf`) | `docs/specs/` or create dedicated guidelines |
+| Documentation (`doc-coauthoring`, `docx`, `pdf`) | `.viben/` or create dedicated guidelines |
 | Testing (`webapp-testing`) | `docs/specs/frontend/` (E2E) |
 
 ### 3. Analyze Skill Content
@@ -166,12 +164,12 @@ yarn add <package>
 
 ---
 
-## 6. Optional: Create Usage Skill
+## 6. Optional: Create Usage Command
 
-If this skill is frequently used, create a shortcut skill:
+If this skill is frequently used, create a shortcut command:
 
 ```bash
-$create-command use-<skill-name> Use <skill-name> skill following project guidelines
+/viben:create-command use-<skill-name> Use <skill-name> skill following project guidelines
 ```
 
 ## Common Skill Integration Reference

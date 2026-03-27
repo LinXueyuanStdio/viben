@@ -12,15 +12,25 @@
  * - GET /api/skill/enabled - Get enabled skills for agent
  */
 import type { FastifyInstance } from "fastify";
-import { skillsManager } from "../../skills";
+import {
+  listSkills,
+  getSkill,
+  installSkill,
+  uninstallSkill,
+  listAvailableSkills,
+  enableSkill,
+  disableSkill,
+  getEnabledSkills,
+} from "../../skill/ops";
 import type {
   SkillTarget,
   InstallSkillResult,
   UninstallSkillResult,
   AgentSkillConfig,
   AvailableSkill,
-} from "../../skills/types";
-import type { Skill, InstalledSkill } from "../../types";
+  InstalledSkillInfo,
+  SkillInfo,
+} from "../../skill/ops/types";
 
 // ============================================================================
 // Types
@@ -30,7 +40,7 @@ import type { Skill, InstalledSkill } from "../../types";
  * Response for listing skills
  */
 interface ListSkillsResponse {
-  skills: InstalledSkill[];
+  skills: InstalledSkillInfo[];
   count: number;
 }
 
@@ -38,7 +48,7 @@ interface ListSkillsResponse {
  * Response for getting a single skill
  */
 interface GetSkillResponse {
-  skill: Skill;
+  skill: SkillInfo;
 }
 
 /**
@@ -151,7 +161,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
         return { error: "custom_path is required when target is 'custom'" };
       }
 
-      const skills = await skillsManager.listInstalledSkills(
+      const result = await listSkills(
         target
           ? {
               target,
@@ -161,9 +171,14 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
           : undefined
       );
 
+      if (!result.success) {
+        reply.code(400);
+        return { error: result.error || "Failed to list skills" };
+      }
+
       return {
-        skills,
-        count: skills.length,
+        skills: result.skills,
+        count: result.count,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -213,10 +228,14 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     },
   }, async (_request, reply) => {
     try {
-      const skills = await skillsManager.listAvailableSkills();
+      const result = await listAvailableSkills();
+      if (!result.success) {
+        reply.code(500);
+        return { error: result.error || "Failed to list available skills" };
+      }
       return {
-        skills,
-        count: skills.length,
+        skills: result.skills,
+        count: result.total,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -286,7 +305,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      const skills = await skillsManager.getEnabledSkills(agent_id);
+      const skills = await getEnabledSkills(agent_id);
       return {
         skills,
         count: skills.length,
@@ -368,7 +387,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     const { target, agent_id, custom_path } = request.query;
 
     try {
-      const skill = await skillsManager.getSkillInfo(
+      const result = await getSkill(
         name,
         target
           ? {
@@ -379,12 +398,12 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
           : undefined
       );
 
-      if (!skill) {
+      if (!result.success || !result.skill) {
         reply.code(404);
-        return { error: `Skill not found: ${name}` };
+        return { error: result.error || `Skill not found: ${name}` };
       }
 
-      return { skill };
+      return { skill: result.skill };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       fastify.log.error(`Failed to get skill: ${message}`);
@@ -499,7 +518,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      const result = await skillsManager.installSkill({
+      const result = await installSkill({
         name,
         target,
         agentId: agent_id,
@@ -509,6 +528,18 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
         version,
         force,
       });
+
+      if (!result.success) {
+        reply.code(500);
+        return {
+          success: false,
+          name: result.name,
+          version: result.version,
+          path: result.path,
+          message: result.message,
+          error: result.error || "Installation failed",
+        };
+      }
 
       return result;
     } catch (error) {
@@ -624,12 +655,22 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      const result = await skillsManager.uninstallSkill({
+      const result = await uninstallSkill({
         name,
         target,
         agentId: agent_id,
         customPath: custom_path,
       });
+
+      if (!result.success) {
+        reply.code(result.error?.includes("not found") ? 404 : 500);
+        return {
+          success: false,
+          name: result.name,
+          message: result.message,
+          error: result.error || "Uninstallation failed",
+        };
+      }
 
       return result;
     } catch (error) {
@@ -727,25 +768,24 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      const config = await skillsManager.enableSkill(skill_name, agent_id);
+      const result = await enableSkill(skill_name, agent_id);
+      if (!result.success) {
+        reply.code(result.error?.includes("not found") ? 404 : 500);
+        return { error: result.error || "Failed to enable skill" };
+      }
       return {
         success: true,
-        config,
+        config: {
+          skillName: result.skillName,
+          enabled: result.enabled,
+          agentId: result.agentId,
+          enabledAt: result.enabledAt,
+        },
         message: `Skill "${skill_name}" enabled for agent "${agent_id}"`,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       fastify.log.error(`Failed to enable skill: ${message}`);
-
-      // Check if it's a NotFoundError
-      if (error && typeof error === "object" && "name" in error) {
-        const errorName = (error as { name: string }).name;
-        if (errorName === "NotFoundError") {
-          reply.code(404);
-          return { error: message };
-        }
-      }
-
       reply.code(500);
       return { error: message };
     }
@@ -820,25 +860,24 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      const config = await skillsManager.disableSkill(skill_name, agent_id);
+      const result = await disableSkill(skill_name, agent_id);
+      if (!result.success) {
+        reply.code(result.error?.includes("not found") ? 404 : 500);
+        return { error: result.error || "Failed to disable skill" };
+      }
       return {
         success: true,
-        config,
+        config: {
+          skillName: result.skillName,
+          enabled: result.enabled,
+          agentId: result.agentId,
+          enabledAt: result.enabledAt,
+        },
         message: `Skill "${skill_name}" disabled for agent "${agent_id}"`,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       fastify.log.error(`Failed to disable skill: ${message}`);
-
-      // Check if it's a NotFoundError
-      if (error && typeof error === "object" && "name" in error) {
-        const errorName = (error as { name: string }).name;
-        if (errorName === "NotFoundError") {
-          reply.code(404);
-          return { error: message };
-        }
-      }
-
       reply.code(500);
       return { error: message };
     }

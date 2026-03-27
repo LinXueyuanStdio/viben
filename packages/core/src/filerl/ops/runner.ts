@@ -50,6 +50,8 @@ import { selectBestTask } from "../../reward/ops/select";
 import { computeReward } from "../../reward/ops/crud";
 import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas, getAllIdeasFromSession } from "../../idea/ops";
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
+import { registrySearchAgent } from "../../cli/lib/viben-workspace";
+import { isProcessRunning } from "../../cli/lib/swarm/status";
 
 // =============================================================================
 // Constants
@@ -727,7 +729,9 @@ export function orchestrateCheckTasksStatus(
 
     statuses[taskName] = { status, hasReward, prUrl };
 
-    if (status !== "completed" && status !== "review" && status !== "failed" && status !== "cancelled") {
+    // Consider completed, review, failed, cancelled as terminal states for FileRL purposes
+    const isCompleted = status === "completed" || status === "review" || status === "failed" || status === "cancelled";
+    if (!isCompleted) {
       allCompleted = false;
     }
     if (status === "failed" || status === "cancelled") {
@@ -855,8 +859,8 @@ export function orchestrateSelectBest(
   }
 
   // Gather rewards from tasks
-  // In FileRL mode, rewards are stored in .viben/filerl/{name}/iter{N}/{task}/reward.json
-  // Note: The reward directory uses taskData.name which may differ from the task directory name
+  // Rewards stored at: iter{N}/{idea}/{task}/reward.json
+  // Fallback: task.json reward field
   const taskRewards: Record<string, number> = {};
   const filerlDir = getFileRlDir(repoRoot, name);
 
@@ -868,13 +872,16 @@ export function orchestrateSelectBest(
       continue;
     }
 
-    // Get the actual task name used for reward output directory
+    // Get the actual task name and ideaId
     const taskData = viewResult.task as { name?: string; id?: string };
     const rewardDirName = taskData.name || taskData.id || taskDirName;
+    const ideaId = currentIter.task_idea_map[taskDirName];
 
-    // Try to read from FileRL reward.json
+    // Try location: iter{N}/{idea}/{task}/reward.json
     const iterDir = join(filerlDir, `iter${state.current_iteration}`);
-    const rewardJsonPath = join(iterDir, rewardDirName, "reward.json");
+    const rewardJsonPath = ideaId
+      ? join(iterDir, ideaId, rewardDirName, "reward.json")
+      : join(iterDir, rewardDirName, "reward.json"); // Fallback if no ideaId
 
     try {
       const rewardContent = readFileSync(rewardJsonPath, "utf-8");
@@ -885,12 +892,15 @@ export function orchestrateSelectBest(
         continue;
       }
     } catch {
-      // reward.json not found, try task.json fallback
+      // Not found in FileRL directory
     }
 
-    // Fallback: try to read from task.json
-    const taskReward = (viewResult.task as unknown as { reward?: { total?: number } }).reward;
-    if (taskReward && typeof taskReward.total === "number") {
+    // Fallback: task.json reward field
+    const taskReward = (viewResult.task as unknown as { reward?: number | { total?: number } }).reward;
+    if (typeof taskReward === "number") {
+      taskRewards[taskDirName] = taskReward;
+      onProgress?.(`Task ${taskDirName}: reward = ${taskReward.toFixed(3)}`);
+    } else if (taskReward && typeof taskReward.total === "number") {
       taskRewards[taskDirName] = taskReward.total;
       onProgress?.(`Task ${taskDirName}: reward = ${taskReward.total.toFixed(3)}`);
     }
@@ -1012,7 +1022,33 @@ export function orchestrateMergeAndCleanup(
 }
 
 /**
+ * Check if an agent process is stuck or dead
+ *
+ * @param repoRoot - Repository root path
+ * @param taskName - Task name to check
+ * @returns Object with running status and agent info
+ */
+function checkAgentHealth(
+  repoRoot: string,
+  taskName: string
+): { running: boolean; pid?: number } {
+  // Search for agent by task name
+  const agent = registrySearchAgent(taskName, repoRoot);
+  if (!agent) {
+    return { running: false };
+  }
+
+  const running = isProcessRunning(agent.pid);
+  return {
+    running,
+    pid: agent.pid,
+  };
+}
+
+/**
  * Wait for all tasks to complete with polling
+ *
+ * Also monitors agent process health and restarts stuck/dead agents.
  *
  * @param repoRoot - Repository root path
  * @param taskNames - Task names to wait for
@@ -1025,13 +1061,21 @@ export async function waitForTasksCompletion(
   options: {
     pollInterval?: number;
     maxWaitTime?: number;
+    maxRestartAttempts?: number;
   } = {},
   onProgress?: (message: string) => void
 ): Promise<OrchestrationResult> {
   const debug = createDebugLogger("waitForTasks");
   const pollInterval = options.pollInterval || DEFAULT_POLL_INTERVAL;
   const maxWaitTime = options.maxWaitTime || DEFAULT_MAX_WAIT_TIME;
+  const maxRestartAttempts = options.maxRestartAttempts || 3;
   const startTime = Date.now();
+
+  // Track restart attempts per task
+  const restartAttempts: Record<string, number> = {};
+  for (const taskName of taskNames) {
+    restartAttempts[taskName] = 0;
+  }
 
   while (true) {
     const statusResult = orchestrateCheckTasksStatus(repoRoot, taskNames);
@@ -1041,6 +1085,39 @@ export async function waitForTasksCompletion(
       totalCount: number;
       statuses: Record<string, { status: string }>;
     };
+
+    // Check for stuck/dead agents and restart them
+    const stuckTasks: string[] = [];
+    for (const taskName of taskNames) {
+      const taskStatus = statusData.statuses[taskName]?.status;
+
+      // Only check in_progress tasks
+      if (taskStatus === "in_progress") {
+        const health = checkAgentHealth(repoRoot, taskName);
+
+        if (!health.running) {
+          // Agent process is dead but task is still in_progress
+          debug(`Task ${taskName} has dead agent (PID: ${health.pid})`);
+
+          if (restartAttempts[taskName] < maxRestartAttempts) {
+            stuckTasks.push(taskName);
+            restartAttempts[taskName]++;
+            onProgress?.(`Agent for ${taskName} died, restarting (attempt ${restartAttempts[taskName]}/${maxRestartAttempts})`);
+          } else {
+            onProgress?.(`Agent for ${taskName} failed after ${maxRestartAttempts} restart attempts`);
+          }
+        }
+      }
+    }
+
+    // Restart stuck tasks
+    if (stuckTasks.length > 0) {
+      debug(`Restarting ${stuckTasks.length} stuck tasks`);
+      const restartResult = await orchestrateStartTasks(repoRoot, stuckTasks, onProgress);
+      if (!restartResult.success) {
+        debug("Failed to restart some tasks", { error: restartResult.error });
+      }
+    }
 
     onProgress?.(`Task status: ${statusData.completedCount}/${statusData.totalCount} completed`);
 

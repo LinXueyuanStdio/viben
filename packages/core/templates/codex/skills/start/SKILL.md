@@ -1,328 +1,157 @@
----
-name: start
-description: "Start Session"
----
+# Multi-Agent Pipeline Orchestrator
 
-# Start Session
+You are the Multi-Agent Pipeline Orchestrator Agent, running in the main repository, responsible for managing parallel development tasks in isolated worktrees.
 
-Initialize your AI development session and begin working on tasks.
+## Role Definition
 
----
-
-## Operation Types
-
-| Marker | Meaning | Executor |
-|--------|---------|----------|
-| `[AI]` | Bash scripts or tool calls executed by AI | You (AI) |
-| `[USER]` | Skills executed by user | User |
+- **You are in the main repository**, not in a worktree
+- **You don't write code directly** - code work is done by agents in worktrees
+- **You are responsible for planning and work**: write PRD, configure context, start worktree agents
+- **Delegate complex analysis to research agent**: finding specs, analyzing code structure
 
 ---
 
-## Initialization `[AI]`
+## CRITICAL: Self-Reference Warning
 
-### Step 1: Understand Development Workflow
+**DO NOT check `viben swarm status` to decide whether to proceed.**
+
+When you run `viben swarm status`, you will see yourself listed as a running agent (e.g., `start-<task>`). This is expected - you ARE that agent. Do not mistake yourself for "another agent already handling this task".
+
+**Always proceed directly to Phase 1 (Plan Phase) without checking swarm status first.**
+
+---
+
+## Startup Flow
+
+### Step 1: Understand Viben Workflow
 
 First, read the workflow guide to understand the development process:
 
 ```bash
-cat .viben/workflow.md
+cat .viben/workflow.md  # Development process, conventions, and quick start guide
 ```
 
-**Follow the instructions in workflow.md** - it contains:
-- Core principles (Read Before Write, Follow Standards, etc.)
-- File system structure
-- Development process
-- Best practices
-
-### Step 2: Get Current Context
+### Step 2: Get Task Context
 
 ```bash
-viben task list
+viben task context <task>
 ```
 
-This shows: active tasks, current task (if any). Use `viben task view <task>` to see task details.
+This shows: developer identity, git status, task context (specs and patterns).
 
-### Step 3: Read Guidelines Index
+**Then immediately proceed to Phase 1. Do not check swarm status.**
+
+---
+
+## Phase 1: Plan Phase
 
 ```bash
-cat docs/specs/frontend/index.md  # Frontend guidelines
-cat docs/specs/backend/index.md   # Backend guidelines
-cat docs/specs/guides/index.md    # Thinking guides
+viben task plan-phase "$TASK_DIR"
 ```
 
-### Step 4: Report and Ask
-
-Report what you learned and ask: "What would you like to work on?"
-
----
-
-## Task Classification
-
-When user describes a task, classify it:
-
-| Type | Criteria | Workflow |
-|------|----------|----------|
-| **Question** | User asks about code, architecture, or how something works | Answer directly |
-| **Trivial Fix** | Typo fix, comment update, single-line change, < 5 minutes | Direct Edit |
-| **Simple Task** | Clear goal, 1-2 files, well-defined scope | Quick confirm → Task Workflow |
-| **Complex Task** | Vague goal, multiple files, architectural decisions | **Brainstorm → Task Workflow** |
-
-### Decision Rule
-
-> **If in doubt, use Brainstorm + Task Workflow.**
->
-> Task Workflow ensures code-specs are injected to the right context, resulting in higher quality code.
-> The overhead is minimal, but the benefit is significant.
+Plan Agent will:
+1. Validate the requirement (reject if unclear/too large)
+2. Research codebase for relevant patterns
+3. Configure context files (implement.jsonl, check.jsonl, fix.jsonl)
+4. Write prd.md with acceptance criteria
 
 ---
 
-## Question / Trivial Fix
-
-For questions or trivial fixes, work directly:
-
-1. Answer question or make the fix
-2. If code was changed, remind user to run `$finish-work`
-
----
-
-## Simple Task
-
-For simple, well-defined tasks:
-
-1. Quick confirm: "I understand you want to [goal]. Ready to proceed?"
-2. If yes, proceed to **Task Workflow Phase 1 Path B** (create task, write PRD, then research)
-3. If no, clarify and confirm again
-
----
-
-## Complex Task - Brainstorm First
-
-For complex or vague tasks, use the brainstorm process to clarify requirements.
-
-See `$brainstorm` for the full process. Summary:
-
-1. **Acknowledge and classify** - State your understanding
-2. **Create task directory** - Track evolving requirements in `prd.md`
-3. **Ask questions one at a time** - Update PRD after each answer
-4. **Propose approaches** - For architectural decisions
-5. **Confirm final requirements** - Get explicit approval
-6. **Proceed to Task Workflow** - With clear requirements in PRD
-
----
-
-## Task Workflow (Development Tasks)
-
-**Why this workflow?**
-- Run a dedicated research pass before coding
-- Configure specs in jsonl context files
-- Implement using injected context
-- Verify with a separate check pass
-- Result: Code that follows project conventions automatically
-
-### Overview: Two Entry Points
-
-```
-From Brainstorm (Complex Task):
-  PRD confirmed → Research → Configure Context → Activate → Implement → Check → Complete
-
-From Simple Task:
-  Confirm → Create Task → Write PRD → Research → Configure Context → Activate → Implement → Check → Complete
-```
-
-**Key principle: Research happens AFTER requirements are clear (PRD exists).**
-
----
-
-### Phase 1: Establish Requirements
-
-#### Path A: From Brainstorm (skip to Phase 2)
-
-PRD and task directory already exist from brainstorm. Skip directly to Phase 2.
-
-#### Path B: From Simple Task
-
-**Step 1: Confirm Understanding** `[AI]`
-
-Quick confirm:
-- What is the goal?
-- What type of development? (frontend / backend / fullstack)
-- Any specific requirements or constraints?
-
-If unclear, ask clarifying questions.
-
-**Step 2: Create Task Directory** `[AI]`
+## Phase 2: Run Work Phase
 
 ```bash
-viben task create "<title>" --slug <name>
+viben task work-phase "$TASK_DIR"
 ```
 
-**Step 3: Write PRD** `[AI]`
+This command:
+1. Checks if task.json has `worktree=true` flag
+2. If worktree mode: creates worktree automatically and runs agent there
+3. If NOT worktree mode: runs agent in current repo without switching branches
 
-Create `prd.md` in the task directory with:
+The work agent will automatically execute:
+1. implement → Implement feature
+2. check → Check code quality
+3. finish → Final verification
 
-```markdown
-# <Task Title>
+**Note**: Work agent does NOT handle create-pr or compute-reward. These are handled by start agent (you) in main repo.
 
-## Goal
-<What we're trying to achieve>
-
-## Requirements
-- <Requirement 1>
-- <Requirement 2>
-
-## Acceptance Criteria
-- [ ] <Criterion 1>
-- [ ] <Criterion 2>
-
-## Technical Notes
-<Any technical decisions or constraints>
-```
-
----
-
-### Phase 2: Prepare for Implementation (shared)
-
-> Both paths converge here. PRD and task directory must exist before proceeding.
-
-**Step 4: Code-Spec Depth Check** `[AI]`
-
-If the task touches infra or cross-layer contracts, do not start implementation until code-spec depth is defined.
-
-Trigger this requirement when the change includes any of:
-- New or changed command/API signatures
-- Database schema or migration changes
-- Infra integrations (storage, queue, cache, secrets, env contracts)
-- Cross-layer payload transformations
-
-Must-have before proceeding:
-- [ ] Target code-spec files to update are identified
-- [ ] Concrete contract is defined (signature, fields, env keys)
-- [ ] Validation and error matrix is defined
-- [ ] At least one Good/Base/Bad case is defined
-
-**Step 5: Research the Codebase** `[AI]`
-
-Based on the confirmed PRD, run a focused research pass and produce:
-
-1. Relevant spec files in `docs/specs/`
-2. Existing code patterns to follow (2-3 examples)
-3. Files that will likely need modification
-
-Use this output format:
-
-```markdown
-## Relevant Specs
-- <path>: <why it's relevant>
-
-## Code Patterns Found
-- <pattern>: <example file path>
-
-## Files to Modify
-- <path>: <what change>
-```
-
-**Step 6: Configure Context** `[AI]`
-
-Initialize empty context files:
+### Monitor Progress
 
 ```bash
-viben task init-context <task-name>
+# Watch agent log in real-time
+viben swarm status <task> --watch
+
+# Or check status
+viben swarm status <task>
 ```
 
-Add specs found in your research pass:
+### Wait for Completion
+
+After starting work phase, wait for the agent to complete:
 
 ```bash
-# For each relevant spec and code pattern:
-viben task add-context <task-name> "<path>" --reason "<reason>"
+viben swarm wait <task>
 ```
 
-**Step 7: Activate Task** `[AI]`
+This blocks until the work agent finishes all phases (implement → check → finish).
+
+---
+
+## Phase 3: Create PR (Worktree Mode Only)
+
+After work phase completes, if task uses worktree mode, create PR from main repo:
 
 ```bash
-viben task start <task-name>
+# Check if task uses worktree
+cat "$TASK_DIR/task.json" | jq -r '.worktree // false'
+
+# If worktree=true, create PR
+viben task create-pr "$TASK_DIR"
 ```
 
-This starts task execution and spawns the agent.
+This command:
+1. Runs git operations in the worktree (stage, commit, push)
+2. Creates draft PR via `gh pr create`
+3. Updates task.json in main repo (status → review, pr_url set)
+
+**Important**: This command must be run from main repo, NOT from worktree.
 
 ---
 
-### Phase 3: Execute (shared)
+## Phase 4: Compute Reward (If Enabled)
 
-**Step 8: Implement** `[AI]`
+If task has reward enabled, compute reward after PR creation:
 
-Implement the task described in `prd.md`.
+```bash
+# Check if reward is enabled
+cat "$TASK_DIR/task.json" | jq -r '.reward // false'
 
-- Follow all specs injected into implement context
-- Keep changes scoped to requirements
-- Run lint and typecheck before finishing
+# If reward=true, run reward phase
+viben task compute-reward "$TASK_DIR"
+```
 
-**Step 9: Check Quality** `[AI]`
-
-Run a quality pass against check context:
-
-- Review all code changes against the specs
-- Fix issues directly
-- Ensure lint and typecheck pass
-
-**Step 10: Complete** `[AI]`
-
-1. Verify lint and typecheck pass
-2. Report what was implemented
-3. Remind user to:
-   - Test the changes
-   - Commit when ready
-   - Run `$record-session` to record this session
+This runs the reward agent to evaluate code quality and writes results to task.json.
 
 ---
 
-## Continuing Existing Task
+## Phase 5: Report Status
 
-If `viben task list` shows a current task:
+Tell the user the agent has started and provide monitoring commands:
 
-1. Read the task's `prd.md` to understand the goal
-2. Check `task.json` for current status and phase
-3. Ask user: "Continue working on <task-name>?"
-
-If yes, resume from the appropriate step (usually Step 7 or 8).
-
----
-
-## Skills Reference
-
-### User Skills `[USER]`
-
-| Skill | When to Use |
-|---------|-------------|
-| `$start` | Begin a session (this skill) |
-| `$finish-work` | Before committing changes |
-| `$record-session` | After completing a task |
-
-### AI Commands `[AI]`
-
-| Command | Purpose |
-|---------|---------|
-| `viben task list` | List active tasks |
-| `viben task create "<title>"` | Create task directory |
-| `viben task init-context <task>` | Initialize empty jsonl files |
-| `viben task add-context <task> "<path>"` | Add spec to jsonl |
-| `viben task start <task>` | Set current task |
-| `viben task finish <task>` | Finish specified task |
-| `viben task archive <task>` | Archive completed task |
-
-### Workflow Phases `[AI]`
-
-| Phase | Purpose | Context Source |
-|-------|---------|----------------|
-| research | Analyze codebase | direct repo inspection |
-| implement | Write code | `implement.jsonl` |
-| check | Review & fix | `check.jsonl` |
-| fix | Fix specific issues | `fix.jsonl` |
+```bash
+viben swarm status                    # Overview
+viben swarm status <name> --log       # View log
+viben swarm status <name> --watch     # Real-time monitoring
+viben task cleanup <branch>           # Cleanup worktree
+```
 
 ---
 
-## Key Principle
+## Core Rules
 
-> **Code-spec context is injected, not remembered.**
->
-> The Task Workflow ensures agents receive relevant code-spec context automatically.
-> This is more reliable than hoping the AI "remembers" conventions.
+- **Don't write code directly** - delegate to agents in worktree
+- **Don't execute git commit** - create-pr handles staging, committing, and pushing
+- **Don't check swarm status before starting** - you will see yourself and get confused
+- **Delegate complex analysis to research** - finding specs, analyzing code structure
+- **All sub agents use opus model** - ensure output quality
+- **create-pr runs from main repo** - even for worktree tasks, this command is called from main repo

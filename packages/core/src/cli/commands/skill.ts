@@ -1,12 +1,11 @@
 /**
  * CLI skill command - Manage skills
  *
- * Uses skillsManager from skills module.
+ * Uses skill/ops functions for all operations.
  */
 import chalk from "chalk";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
-import type { SkillTarget } from "../../skills/types";
 import {
   output,
   successResponse,
@@ -15,7 +14,18 @@ import {
   outputSuccess,
   handleCommandError,
 } from "../lib";
-import { skillsManager } from "../../skills";
+import {
+  listSkills,
+  listAvailableSkills,
+  getSkill,
+  installSkill,
+  uninstallSkill,
+  enableSkill,
+  disableSkill,
+  getEnabledSkills,
+  getSkillDir,
+} from "../../skill/ops";
+import type { SkillTarget } from "../../skill/ops/types";
 
 /**
  * Get output context from program options
@@ -41,8 +51,8 @@ export function registerSkillCommand(program: Command): void {
     .description("List installed skills")
     .option("--available", "List available skills from marketplace")
     .option("--agent <id>", "List skills for a specific agent")
-    .option("--global", "List only global skills")
-    .option("--claude", "List only Claude skills")
+    .option("-g, --global", "List only global skills")
+    .option("-c, --claude", "List only Claude skills")
     .action(
       async (options: {
         available?: boolean;
@@ -54,13 +64,17 @@ export function registerSkillCommand(program: Command): void {
         try {
           if (options.available) {
             // List available skills from marketplace
-            const available = await skillsManager.listAvailableSkills();
+            const result = await listAvailableSkills();
+
+            if (!result.success) {
+              throw new Error(result.error);
+            }
 
             output(
               ctx,
-              successResponse({ skills: available, count: available.length }),
+              successResponse({ skills: result.skills, count: result.total }),
               () => {
-                if (available.length === 0) {
+                if (result.skills.length === 0) {
                   console.log(chalk.gray("No skills available in marketplace."));
                   console.log();
                   console.log(chalk.gray("Marketplace integration coming soon."));
@@ -72,73 +86,64 @@ export function registerSkillCommand(program: Command): void {
                 outputTable(
                   ctx,
                   ["Name", "Version", "Description"],
-                  available.map((s) => [s.name, s.version, s.description || "-"])
-                );
-              }
-            );
-          } else if (options.agent) {
-            // List skills for specific agent
-            const skills = await skillsManager.listAgentSkills(options.agent);
-
-            output(
-              ctx,
-              successResponse({ agent: options.agent, skills, count: skills.length }),
-              () => {
-                if (skills.length === 0) {
-                  console.log(
-                    chalk.gray(`No skills installed for agent "${options.agent}".`)
-                  );
-                  console.log();
-                  console.log("Install a skill with:");
-                  console.log(
-                    chalk.cyan(`  viben skill install <name> --agent ${options.agent}`)
-                  );
-                  return;
-                }
-
-                console.log(chalk.bold(`Skills for Agent: ${options.agent}`));
-                console.log();
-                outputTable(
-                  ctx,
-                  ["Name", "Version", "Path"],
-                  skills.map((s) => [s.name, s.version, s.path])
+                  result.skills.map((s) => [s.name, s.version, s.description || "-"])
                 );
               }
             );
           } else {
             // List installed skills from specified or all targets
             let target: SkillTarget | undefined;
-            if (options.global) {
+            if (options.agent) {
+              target = "agent";
+            } else if (options.global) {
               target = "global";
             } else if (options.claude) {
               target = "claude";
             }
 
-            const skills = await skillsManager.listInstalledSkills(
-              target ? { target } : undefined
+            const result = await listSkills(
+              target ? { target, agentId: options.agent } : undefined
             );
+
+            if (!result.success) {
+              throw new Error(result.error);
+            }
 
             output(
               ctx,
-              successResponse({ skills, count: skills.length }),
+              successResponse({ skills: result.skills, count: result.count }),
               () => {
-                if (skills.length === 0) {
-                  console.log(chalk.gray("No skills installed."));
-                  console.log();
-                  console.log("Install a skill with:");
-                  console.log(chalk.cyan("  viben skill install <name>"));
-                  console.log();
-                  console.log("View available skills with:");
-                  console.log(chalk.cyan("  viben skill list --available"));
+                if (result.skills.length === 0) {
+                  if (options.agent) {
+                    console.log(
+                      chalk.gray(`No skills installed for agent "${options.agent}".`)
+                    );
+                    console.log();
+                    console.log("Install a skill with:");
+                    console.log(
+                      chalk.cyan(`  viben skill install <name> --agent ${options.agent}`)
+                    );
+                  } else {
+                    console.log(chalk.gray("No skills installed."));
+                    console.log();
+                    console.log("Install a skill with:");
+                    console.log(chalk.cyan("  viben skill install <name>"));
+                    console.log();
+                    console.log("View available skills with:");
+                    console.log(chalk.cyan("  viben skill list --available"));
+                  }
                   return;
                 }
 
-                console.log(chalk.bold("Installed Skills:"));
+                const title = options.agent
+                  ? `Skills for Agent: ${options.agent}`
+                  : "Installed Skills:";
+                console.log(chalk.bold(title));
                 console.log();
                 outputTable(
                   ctx,
                   ["Name", "Version", "Path", "Installed At"],
-                  skills.map((s) => [
+                  result.skills.map((s) => [
                     s.name,
                     s.version,
                     s.path,
@@ -154,39 +159,60 @@ export function registerSkillCommand(program: Command): void {
       }
     );
 
-  // skill show <name> - show skill details
+  // skill view <name> - show skill details (replaces 'show' and 'path')
   skill
-    .command("show <name>")
+    .command("view <name>")
     .description("Show skill details")
     .option("--agent <id>", "Agent ID (for agent-specific skills)")
-    .action(async (name: string, options: { agent?: string }) => {
-      const ctx = getOutputContext(program);
-      try {
-        const skillInfo = await skillsManager.getSkillInfo(
-          name,
-          options.agent ? { target: "agent", agentId: options.agent } : undefined
-        );
-
-        if (!skillInfo) {
-          throw new Error(`Skill "${name}" not found`);
+    .option("-g, --global", "View global skill")
+    .option("-c, --claude", "View Claude skill")
+    .action(
+      async (
+        name: string,
+        options: {
+          agent?: string;
+          global?: boolean;
+          claude?: boolean;
         }
+      ) => {
+        const ctx = getOutputContext(program);
+        try {
+          // Determine target
+          let target: SkillTarget | undefined;
+          if (options.agent) {
+            target = "agent";
+          } else if (options.claude) {
+            target = "claude";
+          } else if (options.global) {
+            target = "global";
+          }
 
-        output(ctx, successResponse({ skill: skillInfo }), () => {
-          console.log(chalk.bold(`Skill: ${skillInfo.name}`));
-          console.log();
-          outputKeyValue(ctx, {
-            ID: skillInfo.id,
-            Name: skillInfo.name,
-            Version: skillInfo.version,
-            Description: skillInfo.description || "-",
-            Path: skillInfo.path,
-            Source: skillInfo.source,
+          const result = await getSkill(
+            name,
+            target ? { target, agentId: options.agent } : undefined
+          );
+
+          if (!result.success || !result.skill) {
+            throw new Error(result.error || `Skill "${name}" not found`);
+          }
+
+          output(ctx, successResponse({ skill: result.skill }), () => {
+            console.log(chalk.bold(`Skill: ${result.skill!.name}`));
+            console.log();
+            outputKeyValue(ctx, {
+              ID: result.skill!.id,
+              Name: result.skill!.name,
+              Version: result.skill!.version,
+              Description: result.skill!.description || "-",
+              Path: result.skill!.path,
+              Source: result.skill!.source,
+            });
           });
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
+        } catch (error) {
+          handleCommandError(ctx, error);
+        }
       }
-    });
+    );
 
   // skill install <nameWithVersion> - install a skill
   // Supports: skill install <name>, skill install <name>@<version>, skill install <name>@latest
@@ -194,8 +220,8 @@ export function registerSkillCommand(program: Command): void {
     .command("install <nameWithVersion>")
     .description("Install a skill (supports name@version syntax)")
     .option("--agent <id>", "Install to a specific agent")
-    .option("--global", "Install globally (default)")
-    .option("--claude", "Install to Claude skills directory")
+    .option("-g, --global", "Install globally (default)")
+    .option("-c, --claude", "Install to Claude skills directory")
     .option("--path <path>", "Install to custom path")
     .option("--source <path>", "Install from local path")
     .option("--version <version>", "Specific version to install")
@@ -236,7 +262,7 @@ export function registerSkillCommand(program: Command): void {
             target = getTargetFromExecutor(options.executor);
           }
 
-          const result = await skillsManager.installSkill({
+          const result = await installSkill({
             name,
             target,
             agentId: options.agent,
@@ -246,6 +272,10 @@ export function registerSkillCommand(program: Command): void {
             executor: options.executor,
             force: options.force,
           });
+
+          if (!result.success) {
+            throw new Error(result.error || result.message);
+          }
 
           output(ctx, successResponse({ result }), () => {
             outputSuccess(ctx, result.message);
@@ -268,8 +298,8 @@ export function registerSkillCommand(program: Command): void {
     .command("uninstall <name>")
     .description("Uninstall a skill")
     .option("--agent <id>", "Uninstall from a specific agent")
-    .option("--global", "Uninstall from global (default)")
-    .option("--claude", "Uninstall from Claude skills directory")
+    .option("-g, --global", "Uninstall from global (default)")
+    .option("-c, --claude", "Uninstall from Claude skills directory")
     .option("--path <path>", "Uninstall from custom path")
     .action(
       async (
@@ -293,12 +323,16 @@ export function registerSkillCommand(program: Command): void {
             target = "custom";
           }
 
-          const result = await skillsManager.uninstallSkill({
+          const result = await uninstallSkill({
             name,
             target,
             agentId: options.agent,
             customPath: options.path,
           });
+
+          if (!result.success) {
+            throw new Error(result.error || result.message);
+          }
 
           output(ctx, successResponse({ result }), () => {
             outputSuccess(ctx, result.message);
@@ -317,9 +351,13 @@ export function registerSkillCommand(program: Command): void {
     .action(async (name: string, options: { agent: string }) => {
       const ctx = getOutputContext(program);
       try {
-        const config = await skillsManager.enableSkill(name, options.agent);
+        const result = await enableSkill(name, options.agent);
 
-        output(ctx, successResponse({ config }), () => {
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        output(ctx, successResponse({ config: result }), () => {
           outputSuccess(
             ctx,
             `Skill "${name}" enabled for agent "${options.agent}"`
@@ -338,9 +376,13 @@ export function registerSkillCommand(program: Command): void {
     .action(async (name: string, options: { agent: string }) => {
       const ctx = getOutputContext(program);
       try {
-        const config = await skillsManager.disableSkill(name, options.agent);
+        const result = await disableSkill(name, options.agent);
 
-        output(ctx, successResponse({ config }), () => {
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        output(ctx, successResponse({ config: result }), () => {
           outputSuccess(
             ctx,
             `Skill "${name}" disabled for agent "${options.agent}"`
@@ -359,7 +401,7 @@ export function registerSkillCommand(program: Command): void {
     .action(async (options: { agent: string }) => {
       const ctx = getOutputContext(program);
       try {
-        const enabled = await skillsManager.getEnabledSkills(options.agent);
+        const enabled = await getEnabledSkills(options.agent);
 
         output(
           ctx,
@@ -391,42 +433,24 @@ export function registerSkillCommand(program: Command): void {
       }
     });
 
-  // skill path <name> - get path to a skill
-  skill
-    .command("path <name>")
-    .description("Get the path to a skill")
-    .option("--agent <id>", "Agent ID (for agent-specific skills)")
-    .option("--global", "Get global skill path")
-    .option("--claude", "Get Claude skill path")
-    .action(
-      async (
-        name: string,
-        options: {
-          agent?: string;
-          global?: boolean;
-          claude?: boolean;
-        }
-      ) => {
-        const ctx = getOutputContext(program);
-        try {
-          let path: string;
+  // Backward compatibility aliases
+  skill.command("show <name>", { hidden: true }).action(async (name: string) => {
+    // Redirect to view command
+    const result = await getSkill(name);
+    if (result.success && result.skill) {
+      console.log(chalk.bold(`Skill: ${result.skill.name}`));
+      console.log();
+      console.log(`Path: ${result.skill.path}`);
+    } else {
+      console.error(result.error || `Skill "${name}" not found`);
+    }
+  });
 
-          if (options.agent) {
-            path = skillsManager.getAgentSkillPath(options.agent, name);
-          } else if (options.claude) {
-            path = skillsManager.getClaudeSkillPath(name);
-          } else {
-            path = skillsManager.getSharedSkillPath(name);
-          }
-
-          output(ctx, successResponse({ name, path }), () => {
-            console.log(path);
-          });
-        } catch (error) {
-          handleCommandError(ctx, error);
-        }
-      }
-    );
+  skill.command("path <name>", { hidden: true }).action(async (name: string) => {
+    // Redirect to view - just print the path
+    const path = getSkillDir("global", name);
+    console.log(path);
+  });
 }
 
 /**
@@ -447,7 +471,7 @@ function parseNameWithVersion(nameWithVersion: string): {
   const name = nameWithVersion.substring(0, atIndex);
   const version = nameWithVersion.substring(atIndex + 1);
 
-  // Handle "latest" as undefined (let skillsManager resolve it)
+  // Handle "latest" as undefined (let ops resolve it)
   if (version === "latest") {
     return { name, version: undefined };
   }
