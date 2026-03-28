@@ -85,16 +85,6 @@ viben swarm status <task> --watch
 viben swarm status <task>
 ```
 
-### Wait for Completion
-
-After starting work phase, wait for the agent to complete:
-
-```bash
-viben swarm wait <task>
-```
-
-This blocks until the work agent finishes all phases (implement → check → finish).
-
 ---
 
 ## Phase 3: Create PR (Worktree Mode Only)

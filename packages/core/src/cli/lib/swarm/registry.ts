@@ -353,3 +353,61 @@ export function registryListAgents(repoRoot: string): AgentEntry[] {
   const registry = readRegistry(repoRoot);
   return registry.agents;
 }
+
+/**
+ * Check if a process is running
+ *
+ * @param pid - Process ID to check
+ * @returns True if the process is running
+ */
+function isProcessRunning(pid: number): boolean {
+  try {
+    // On Unix, kill with signal 0 checks if process exists
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Cleanup dead agents from registry
+ *
+ * Removes all agents whose processes are no longer running.
+ * This is useful for cleaning up stale registry entries after
+ * phase-specific agents (plan, implement, check) complete their work.
+ *
+ * @param repoRoot - Repository root path
+ * @returns Object containing removed agent IDs and count
+ */
+export function cleanupDeadAgents(repoRoot: string): {
+  removedIds: string[];
+  removedCount: number;
+} {
+  const registry = readRegistry(repoRoot);
+
+  if (registry.agents.length === 0) {
+    return { removedIds: [], removedCount: 0 };
+  }
+
+  const removedIds: string[] = [];
+  const aliveAgents: AgentEntry[] = [];
+
+  for (const agent of registry.agents) {
+    if (isProcessRunning(agent.pid)) {
+      aliveAgents.push(agent);
+    } else {
+      removedIds.push(agent.id);
+    }
+  }
+
+  if (removedIds.length > 0) {
+    registry.agents = aliveAgents;
+    writeRegistry(repoRoot, registry);
+  }
+
+  return {
+    removedIds,
+    removedCount: removedIds.length,
+  };
+}

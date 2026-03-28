@@ -28,6 +28,7 @@ import {
   writeTaskJson,
   createCLIAdapter,
   registryAddAgent,
+  registryRemoveById,
   DIR_VIBEN,
   DIR_TASKS,
 } from "../../cli/lib/viben-workspace";
@@ -349,6 +350,9 @@ Current task context:
     spawnOpts.detached = true;
   }
 
+  // Generate agent ID early (needed for cleanup handler)
+  const agentId = `start-${taskName}`;
+
   let child: ChildProcess;
   try {
     child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
@@ -359,11 +363,35 @@ Current task context:
     };
   }
 
+  const agentPid = child.pid || 0;
+
+  // ---------------------------------------------------------------------------
+  // Register to Registry
+  // ---------------------------------------------------------------------------
+
+  registryAddAgent(
+    {
+      agentId,
+      worktreePath: repoRoot,
+      pid: agentPid,
+      taskDir: taskDirAbs, // Store absolute path
+      platform,
+    },
+    repoRoot
+  );
+
+  // ---------------------------------------------------------------------------
+  // Setup cleanup on process exit
+  // ---------------------------------------------------------------------------
+
+  child.on("exit", () => {
+    // Remove agent from registry when process exits
+    registryRemoveById(agentId, repoRoot);
+  });
+
   if (detach) {
     child.unref();
   }
-
-  const agentPid = child.pid || 0;
 
   // Extract session ID from logs if needed
   if (!adapter.supportsSessionIdOnCreate) {
@@ -383,23 +411,6 @@ Current task context:
       }
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Register to Registry
-  // ---------------------------------------------------------------------------
-
-  const agentId = `start-${taskName}`;
-
-  registryAddAgent(
-    {
-      agentId,
-      worktreePath: repoRoot,
-      pid: agentPid,
-      taskDir: taskDirAbs, // Store absolute path
-      platform,
-    },
-    repoRoot
-  );
 
   // ---------------------------------------------------------------------------
   // Return Result

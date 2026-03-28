@@ -19,6 +19,7 @@ import {
   getDeveloper,
   createCLIAdapter,
   registryAddAgent,
+  registryRemoveById,
   DIR_VIBEN,
   DIR_TASKS,
 } from "../../cli/lib/viben-workspace";
@@ -243,8 +244,9 @@ export async function runPlanPhase(
     detached: true,
   };
 
+  const agentId = `plan-${taskName}`;
+
   const child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
-  child.unref();
 
   const agentPid = child.pid || 0;
 
@@ -259,8 +261,6 @@ export async function runPlanPhase(
   // Step 10: Register agent to registry
   // ---------------------------------------------------------------------------
 
-  const agentId = `plan-${taskName}`;
-
   registryAddAgent(
     {
       agentId,
@@ -271,6 +271,17 @@ export async function runPlanPhase(
     },
     repoRoot
   );
+
+  // ---------------------------------------------------------------------------
+  // Step 11: Setup cleanup on process exit
+  // ---------------------------------------------------------------------------
+
+  child.on("exit", () => {
+    // Remove agent from registry when process exits
+    registryRemoveById(agentId, repoRoot);
+  });
+
+  child.unref();
 
   // ---------------------------------------------------------------------------
   // Return success result

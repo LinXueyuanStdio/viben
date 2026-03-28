@@ -50,6 +50,7 @@ import {
   writeTaskJson,
   createCLIAdapter,
   registryAddAgent,
+  registryRemoveById,
   DIR_VIBEN,
   DIR_TASKS,
 } from "../../cli/lib/viben-workspace";
@@ -304,6 +305,10 @@ Follow your agent instructions to execute the task workflow. Read task.json from
     spawnOpts.detached = true;
   }
 
+  // Generate agent ID early (needed for cleanup handler)
+  const taskName = taskData.name || taskData.id || "unknown";
+  const agentId = customAgentId || `${agentIdPrefix}-${taskName}`;
+
   let child: ChildProcess;
   try {
     child = spawn(cliCmd[0], cliCmd.slice(1), spawnOpts);
@@ -314,11 +319,35 @@ Follow your agent instructions to execute the task workflow. Read task.json from
     };
   }
 
+  const agentPid = child.pid || 0;
+
+  // =============================================================================
+  // Register to Registry (always in main repo)
+  // =============================================================================
+
+  registryAddAgent(
+    {
+      agentId,
+      worktreePath: workingDir,
+      pid: agentPid,
+      taskDir: taskDir, // Store absolute path (taskDir is already absolute)
+      platform,
+    },
+    repoRoot
+  );
+
+  // =============================================================================
+  // Setup cleanup on process exit
+  // =============================================================================
+
+  child.on("exit", () => {
+    // Remove agent from registry when process exits
+    registryRemoveById(agentId, repoRoot);
+  });
+
   if (detach) {
     child.unref();
   }
-
-  const agentPid = child.pid || 0;
 
   // For platforms that don't support session ID on create, extract from logs
   if (!adapter.supportsSessionIdOnCreate) {
@@ -340,25 +369,6 @@ Follow your agent instructions to execute the task workflow. Read task.json from
       }
     }
   }
-
-  // =============================================================================
-  // Register to Registry (always in main repo)
-  // =============================================================================
-
-  // Generate agent ID
-  const taskName = taskData.name || taskData.id || "unknown";
-  const agentId = customAgentId || `${agentIdPrefix}-${taskName}`;
-
-  registryAddAgent(
-    {
-      agentId,
-      worktreePath: workingDir,
-      pid: agentPid,
-      taskDir: taskDir, // Store absolute path (taskDir is already absolute)
-      platform,
-    },
-    repoRoot
-  );
 
   // =============================================================================
   // Return Result

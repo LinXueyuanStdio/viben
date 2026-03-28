@@ -188,7 +188,7 @@ task:
 # ============================================
 
 # 1.1 清空测试目录
-rm -rf /tmp/filerl-test
+rm -r /tmp/filerl-test
 mkdir -p /tmp/filerl-test
 cd /tmp/filerl-test
 
@@ -226,9 +226,10 @@ EOF
 git add . && git commit -m "init"
 
 # 1.3 初始化 viben
-viben init
-viben team init
-viben user init FileRL-optimizer
+# 必须按顺序执行以下命令:
+# - viben team init: 创建 .claude/commands/viben/start.md (task start 依赖此文件)
+# - viben user init: 创建 .viben/.developer 文件 (registry 依赖此文件)
+viben team init --user filerl-tester
 
 # 1.4 创建 target.md（使用 CLI 命令）
 viben filerl create test-basic -d "基础流程测试"

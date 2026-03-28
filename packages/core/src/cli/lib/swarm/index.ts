@@ -40,6 +40,7 @@ export {
   registrySearchAgent,
   registryGetTaskDir,
   registryListAgents,
+  cleanupDeadAgents,
 } from "./registry";
 
 // Worktree
@@ -92,12 +93,3 @@ export {
   getCleanupSummary,
 } from "./cleanup";
 
-// Wait
-export {
-  type WaitOptions,
-  type WaitResult,
-  type TaskWaitResult,
-  waitForAgents,
-  getRunningAgents,
-  formatWaitResult,
-} from "./wait";
