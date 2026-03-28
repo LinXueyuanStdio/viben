@@ -59,7 +59,7 @@ interface SubscriberInfo {
   id: string;
   taskId: string;
   /** Workspace path for workspace-level subscriptions */
-  workspacePath?: string;
+  workspace_path?: string;
   /** Task IDs for batch subscriptions */
   taskIds?: string[];
   /** Subscription type */
@@ -147,7 +147,7 @@ export class TaskSSEManager {
     const info: SubscriberInfo = {
       id: subscriberId,
       taskId,
-      workspacePath,
+      workspace_path: workspacePath,
       subscriptionType: "task",
       listener,
       connectedAt: now,
@@ -282,7 +282,7 @@ export class TaskSSEManager {
     const info: SubscriberInfo = {
       id: subscriberId,
       taskId: "", // Not used for workspace subscriptions
-      workspacePath,
+      workspace_path: workspacePath,
       subscriptionType: "workspace",
       listener,
       connectedAt: now,
@@ -334,7 +334,7 @@ export class TaskSSEManager {
       id: subscriberId,
       taskId: taskIds[0] || "", // Primary task for heartbeat
       taskIds,
-      workspacePath,
+      workspace_path: workspacePath,
       subscriptionType: "batch",
       listener,
       connectedAt: now,

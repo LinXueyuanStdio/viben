@@ -207,7 +207,7 @@ export function registerMcpCommand(program: Command): void {
                   m.name,
                   m.version,
                   m.path,
-                  formatDate(m.installedAt),
+                  formatDate(m.installed_at),
                 ])
               );
             }
@@ -279,7 +279,7 @@ export function registerMcpCommand(program: Command): void {
               Name: mcpServer.name,
               Version: mcpServer.version,
               Path: mcpServer.path,
-              "Installed At": formatDate(mcpServer.installedAt),
+              "Installed At": formatDate(mcpServer.installed_at),
             });
           });
         }

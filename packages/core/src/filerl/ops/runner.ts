@@ -248,10 +248,10 @@ export function createTasksFromIdeas(
       filerlDir,
     });
 
-    if (result.success && result.dirName) {
-      taskNames.push(result.dirName);
+    if (result.success && result.dir_name) {
+      taskNames.push(result.dir_name);
       // Always auto-start tasks in FileRL loop
-      enqueueTask(repoRoot, result.dirName, {});
+      enqueueTask(repoRoot, result.dir_name, {});
     } else {
       errors.push(`Failed to create task for idea ${ideaId}: ${result.error}`);
     }

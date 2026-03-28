@@ -230,15 +230,15 @@ export function promoteIdea(
     }
 
     // Update idea status to promoted
-    updateIdeaStatus(repoRoot, idea.id, "promoted", result.dirName);
+    updateIdeaStatus(repoRoot, idea.id, "promoted", result.dir_name);
 
     return {
       success: true,
       idea_id: ideaId,
       idea_title: idea.title,
-      task_id: result.dirName,
-      task_dir: result.taskDir,
-      dir_name: result.dirName,
+      task_id: result.dir_name,
+      task_dir: result.task_dir,
+      dir_name: result.dir_name,
       priority,
       status: options.start ? "queue" : "backlog",
       worktree: options.worktree || false,
@@ -307,7 +307,7 @@ export function promoteIdeaDirect(
 
     // Try to update idea status on disk (may fail if not persisted, that's OK)
     try {
-      updateIdeaStatus(repoRoot, idea.id, "promoted", result.dirName);
+      updateIdeaStatus(repoRoot, idea.id, "promoted", result.dir_name);
     } catch {
       // Ignore - idea may not be on disk yet
     }
@@ -316,9 +316,9 @@ export function promoteIdeaDirect(
       success: true,
       idea_id: idea.id,
       idea_title: idea.title,
-      task_id: result.dirName,
-      task_dir: result.taskDir,
-      dir_name: result.dirName,
+      task_id: result.dir_name,
+      task_dir: result.task_dir,
+      dir_name: result.dir_name,
       priority,
       status: options.start ? "queue" : "backlog",
       worktree: options.worktree || false,

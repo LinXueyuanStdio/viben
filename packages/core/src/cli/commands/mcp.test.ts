@@ -77,7 +77,7 @@ function createMockInstalledMcp(overrides: Partial<InstalledMcp> = {}): Installe
     name: "test-mcp",
     version: "1.0.0",
     path: "/path/to/mcp",
-    installedAt: "2024-01-01T00:00:00Z",
+    installed_at: "2024-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -314,7 +314,7 @@ describe("MCP CLI Commands", () => {
           name: "filesystem",
           version: "1.2.0",
           path: "/path/to/filesystem",
-          installedAt: "2024-01-15T10:00:00Z",
+          installed_at: "2024-01-15T10:00:00Z",
         }),
       ];
 

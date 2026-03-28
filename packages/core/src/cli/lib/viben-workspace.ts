@@ -1996,7 +1996,7 @@ export function appendTaskEvent(
   const eventsPath = join(taskDir, "events.jsonl");
 
   const event = {
-    eventId: generateEventId(),
+    event_id: generateEventId(),
     sequence: getNextEventSequence(taskDir),
     type: eventType,
     timestamp: new Date().toISOString(),

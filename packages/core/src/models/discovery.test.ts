@@ -58,7 +58,7 @@ describe("discoverModels", () => {
         type: "openai",
         name: "OpenAI",
         apiKey: "sk-test-key",
-        baseUrl: "https://api.openai.com/v1",
+        base_url: "https://api.openai.com/v1",
       });
 
       const mockResponse = {
@@ -95,7 +95,7 @@ describe("discoverModels", () => {
         type: "openai",
         name: "Local OpenAI",
         apiKey: "sk-local-key",
-        baseUrl: "http://localhost:8080/v1",
+        base_url: "http://localhost:8080/v1",
       });
 
       vi.mocked(providerManager.getProvider).mockResolvedValue(mockProvider);
@@ -162,7 +162,7 @@ describe("discoverModels", () => {
         id: "ollama-local",
         type: "ollama",
         name: "Ollama Local",
-        baseUrl: "http://localhost:11434",
+        base_url: "http://localhost:11434",
       });
 
       const mockResponse = {
@@ -487,7 +487,7 @@ describe("discoverModels", () => {
         type: "azure",
         name: "Azure OpenAI",
         apiKey: "azure-key",
-        baseUrl: "https://my-resource.openai.azure.com",
+        base_url: "https://my-resource.openai.azure.com",
         deployment: "gpt-4-deployment",
       });
 
@@ -512,7 +512,7 @@ describe("discoverModels", () => {
         type: "custom",
         name: "Custom LLM",
         apiKey: "custom-key",
-        baseUrl: "http://custom-llm.local/v1",
+        base_url: "http://custom-llm.local/v1",
       });
 
       const mockResponse = {

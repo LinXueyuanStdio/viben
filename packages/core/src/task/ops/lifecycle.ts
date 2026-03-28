@@ -283,7 +283,7 @@ export function enqueueTask(
 
   // Build additional fields
   const additionalFields: Record<string, unknown> = {
-    queuedAt: new Date().toISOString(),
+    queued_at: new Date().toISOString(),
   };
 
   if (options.agent) additionalFields.agent = options.agent;
@@ -365,7 +365,7 @@ export function dequeueTask(repoRoot: string, taskName: string): LifecycleResult
   }
 
   // Update task status (clear queuedAt)
-  if (!updateTaskStatus(taskDir, "backlog", { queuedAt: null })) {
+  if (!updateTaskStatus(taskDir, "backlog", { queued_at: null })) {
     return { success: false, task: taskName, error: "Failed to update task.json" };
   }
 
@@ -586,8 +586,8 @@ export function approveTask(
   // Step 4: Update task status
   const completedAt = getTodayDate();
   const updateFields: Record<string, unknown> = {
-    completedAt,
-    reviewReason: "approved",
+    completed_at: completedAt,
+    review_reason: "approved",
   };
 
   // Note: Do NOT clear worktree_path here - it should be preserved for reference
@@ -662,10 +662,10 @@ export function rejectTask(
   // Build additional fields - clear pr_url, record rejection
   const additionalFields: Record<string, unknown> = {
     pr_url: null, // Clear PR URL as it may need to be resubmitted
-    reviewReason: "rejected",
+    review_reason: "rejected",
   };
   if (reason) {
-    additionalFields.rejectReason = reason;
+    additionalFields.reject_reason = reason;
   }
 
   // Update task status
@@ -708,7 +708,7 @@ export function retryTask(repoRoot: string, taskName: string): LifecycleResult {
 
   // Update task status - clear error fields, set new queuedAt
   if (!updateTaskStatus(taskDir, "queue", {
-    queuedAt: new Date().toISOString(),
+    queued_at: new Date().toISOString(),
     error: null,
     errorMessage: null,
     failedAt: null,

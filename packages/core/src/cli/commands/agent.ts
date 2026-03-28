@@ -852,7 +852,7 @@ export function registerAgentCommand(program: Command): void {
               s.id.slice(0, 8) + "...",
               s.name || "-",
               s.created_at.split("T")[0],
-              s.lastAccessedAt.split("T")[0],
+              s.last_accessed_at.split("T")[0],
             ])
           );
         });
@@ -884,7 +884,7 @@ export function registerAgentCommand(program: Command): void {
             console.log();
             outputKeyValue(ctx, {
               ID: sess.id,
-              Agent: sess.agentId,
+              Agent: sess.agent_id,
               Name: sess.name || "-",
             });
           }

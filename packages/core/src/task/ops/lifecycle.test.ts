@@ -68,7 +68,7 @@ describe("lifecycle operations", () => {
       expect(result.fromStatus).toBe("backlog");
 
       // Verify actual file was updated
-      const taskJson = await tempDir.readJson<{ status: string; queuedAt?: string }>(
+      const taskJson = await tempDir.readJson<{ status: string; queued_at?: string }>(
         ".viben/tasks/test-task/task.json"
       );
       expect(taskJson.status).toBe("queue");
@@ -170,7 +170,7 @@ describe("lifecycle operations", () => {
     it("should change status from queue to backlog", async () => {
       await createTaskDir(tempDir, "test-task", {
         status: "queue",
-        queuedAt: new Date().toISOString(),
+        queued_at: new Date().toISOString(),
       });
 
       const result = dequeueTask(tempDir.root, "test-task");
@@ -180,7 +180,7 @@ describe("lifecycle operations", () => {
       expect(result.fromStatus).toBe("queue");
 
       // Verify actual file was updated
-      const taskJson = await tempDir.readJson<{ status: string; queuedAt?: string }>(
+      const taskJson = await tempDir.readJson<{ status: string; queued_at?: string }>(
         ".viben/tasks/test-task/task.json"
       );
       expect(taskJson.status).toBe("backlog");
@@ -368,8 +368,8 @@ describe("lifecycle operations", () => {
 
       const taskJson = await tempDir.readJson<{
         status: string;
-        completedAt?: string;
-        reviewReason?: string;
+        completed_at?: string;
+        review_reason?: string;
       }>(".viben/tasks/test-task/task.json");
       expect(taskJson.status).toBe("completed");
       expect(taskJson.completed_at).toBeDefined();
@@ -485,7 +485,7 @@ describe("lifecycle operations", () => {
       const taskJson = await tempDir.readJson<{
         status: string;
         pr_url?: string;
-        reviewReason?: string;
+        review_reason?: string;
       }>(".viben/tasks/test-task/task.json");
       expect(taskJson.status).toBe("backlog");
       expect(taskJson.pr_url).toBeUndefined(); // Should be cleared
@@ -500,9 +500,9 @@ describe("lifecycle operations", () => {
       expect(result.success).toBe(true);
 
       const taskJson = await tempDir.readJson<{
-        rejectReason?: string;
+        reject_reason?: string;
       }>(".viben/tasks/test-task/task.json");
-      expect(taskJson.rejectReason).toBe("Code quality issues");
+      expect(taskJson.reject_reason).toBe("Code quality issues");
     });
 
     it("should append REJECTED event with reason", async () => {
@@ -569,7 +569,7 @@ describe("lifecycle operations", () => {
 
       const taskJson = await tempDir.readJson<{
         status: string;
-        queuedAt?: string;
+        queued_at?: string;
         error?: string;
         errorMessage?: string;
         failedAt?: string;

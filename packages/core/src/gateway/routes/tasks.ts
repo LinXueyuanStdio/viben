@@ -871,7 +871,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       base_branch: input.base_branch ?? sourceTask?.base_branch,
       executor: input.executor ?? sourceTask?.executor ?? "Agent",
       model: input.model_id ?? sourceTask?.model, // Copy model from source task
-      workspacePath,
+      workspace_path: workspacePath,
       // Template flag
       is_template: input.is_template ?? false,
     };
