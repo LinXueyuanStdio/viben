@@ -1406,6 +1406,8 @@
     "transportType": "トランスポートタイプ",
     "selectTransport": "トランスポートタイプを選択",
     "command": "コマンド",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
     "arguments": "引数",
     "envVars": "環境変数",
     "addEnvVar": "環境変数を追加",
@@ -1764,6 +1766,8 @@
       "type": "Transport Type",
       "url": "URL",
       "command": "Command",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
       "args": "Arguments",
       "argPlaceholder": "Enter argument...",
       "envVars": "Environment Variables",
@@ -3981,6 +3985,10 @@
     "auth": {
       "invalidApiKey": "Invalid API key",
       "authenticationFailed": "Authentication failed"
+    },
+    "components": {
+      "dialogProviderRequired": "Dialog components must be used within a Dialog provider",
+      "tabsProviderRequired": "Tabs components must be used within a Tabs provider"
     },
     "agents": {
       "notFound": "Agent {{id}} not found",

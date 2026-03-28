@@ -1406,6 +1406,8 @@
     "transportType": "전송 유형",
     "selectTransport": "전송 유형 선택",
     "command": "명령",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
     "arguments": "인수",
     "envVars": "환경 변수",
     "addEnvVar": "환경 변수 추가",
@@ -1764,6 +1766,8 @@
       "type": "Transport Type",
       "url": "URL",
       "command": "Command",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
       "args": "Arguments",
       "argPlaceholder": "Enter argument...",
       "envVars": "Environment Variables",
@@ -3981,6 +3985,10 @@
     "auth": {
       "invalidApiKey": "Invalid API key",
       "authenticationFailed": "Authentication failed"
+    },
+    "components": {
+      "dialogProviderRequired": "Dialog components must be used within a Dialog provider",
+      "tabsProviderRequired": "Tabs components must be used within a Tabs provider"
     },
     "agents": {
       "notFound": "Agent {{id}} not found",

@@ -1406,6 +1406,8 @@
     "transportType": "Tipo de transporte",
     "selectTransport": "Seleccionar tipo de transporte",
     "command": "Comando",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
     "arguments": "Argumentos",
     "envVars": "Variables de entorno",
     "addEnvVar": "Añadir variable de entorno",
@@ -1764,6 +1766,8 @@
       "type": "Transport Type",
       "url": "URL",
       "command": "Command",
+    "url": "URL",
+    "tokenIncluded": "(token included)",
       "args": "Arguments",
       "argPlaceholder": "Enter argument...",
       "envVars": "Environment Variables",
@@ -3981,6 +3985,10 @@
     "auth": {
       "invalidApiKey": "Invalid API key",
       "authenticationFailed": "Authentication failed"
+    },
+    "components": {
+      "dialogProviderRequired": "Dialog components must be used within a Dialog provider",
+      "tabsProviderRequired": "Tabs components must be used within a Tabs provider"
     },
     "agents": {
       "notFound": "Agent {{id}} not found",
