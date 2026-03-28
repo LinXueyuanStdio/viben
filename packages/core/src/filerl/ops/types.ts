@@ -235,6 +235,12 @@ export interface IterationState {
   /** Merge error if merge failed */
   merge_error?: string;
 
+  /** Stop reason if iteration was stopped early */
+  stop_reason?: string;
+
+  /** Failed tasks (exceeded restart attempts) */
+  failed_tasks?: string[];
+
   /** Whether iteration is complete */
   completed: boolean;
 
@@ -269,6 +275,9 @@ export interface FileRlState {
 
   /** Best task name */
   best_task?: string;
+
+  /** Stop reason if run was stopped early */
+  stop_reason?: string;
 
   /** Consecutive iterations with no merge */
   no_merge_count: number;

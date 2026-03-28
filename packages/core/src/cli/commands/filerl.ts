@@ -1261,27 +1261,23 @@ export function registerFileRlCommand(program: Command): void {
           const taskIdeaMap: Record<string, string> = {};
 
           if (tasks.length === 0) {
-            // Auto-discover tasks from iteration directory
-            const iterDir = join(filerlDir, `iter${iteration}`);
-            if (existsSync(iterDir)) {
-              const { readdirSync, statSync } = await import("node:fs");
-              const ideaDirs = readdirSync(iterDir).filter(f =>
-                statSync(join(iterDir, f)).isDirectory()
-              );
+            // Get tasks from state.json (not directory scan to avoid stale entries)
+            const iterState = state.iterations.find(i => i.iteration === iteration);
+            if (iterState) {
+              // Filter by idea if specified
+              if (options.idea) {
+                tasks = iterState.tasks.filter(t => iterState.task_idea_map?.[t] === options.idea);
+              } else {
+                tasks = [...iterState.tasks];
+              }
 
-              for (const ideaId of ideaDirs) {
-                // Filter by idea if specified
-                if (options.idea && ideaId !== options.idea) continue;
-
-                const ideaDir = join(iterDir, ideaId);
-                const taskDirs = readdirSync(ideaDir).filter(f =>
-                  statSync(join(ideaDir, f)).isDirectory() && f !== "idea.md"
-                );
-
-                // Record task -> ideaId mapping for two-stage selection
-                for (const taskDir of taskDirs) {
-                  tasks.push(taskDir);
-                  taskIdeaMap[taskDir] = ideaId;
+              // Build taskIdeaMap from state
+              if (iterState.task_idea_map) {
+                for (const task of tasks) {
+                  const ideaId = iterState.task_idea_map[task];
+                  if (ideaId) {
+                    taskIdeaMap[task] = ideaId;
+                  }
                 }
               }
             }
