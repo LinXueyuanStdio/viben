@@ -453,9 +453,9 @@ ESLint must be installed in order to run during builds: pnpm install --save-dev 
 Type error: Could not find a declaration file for module 'bcrypt'.
 ```
 
-**Cause**: 这是 pnpm monorepo 在 Vercel 上的已知问题。Vercel 默认在根目录运行 `pnpm install`（不安装 devDependencies），但 Next.js 构建时需要 `typescript`、`eslint`、`@types/*` 等 devDependencies。当 Next.js 尝试自动安装这些依赖时，会与已安装的 `node_modules` 结构冲突。
+**Cause**: This is a known issue with pnpm monorepos on Vercel. By default, Vercel runs `pnpm install` in the root directory without installing devDependencies, but Next.js build requires `typescript`, `eslint`, `@types/*` and other devDependencies. When Next.js attempts to auto-install these dependencies, it conflicts with the existing `node_modules` structure.
 
-**Fix**: 在 `vercel.json` 中使用 `--prod=false` 强制安装 devDependencies：
+**Fix**: Use `--prod=false` in `vercel.json` to force install devDependencies:
 
 ```json
 {
@@ -463,17 +463,17 @@ Type error: Could not find a declaration file for module 'bcrypt'.
 }
 ```
 
-**⚠️ 重要警告 - 请勿修改**:
+**Important Warning - Do Not Modify**:
 
-`--prod=false` 是正确的解决方案，**不要**将 `typescript`、`eslint`、`@types/bcrypt` 等移到 `dependencies`，原因：
+`--prod=false` is the correct solution. **Do not** move `typescript`, `eslint`, `@types/bcrypt`, etc. to `dependencies` for these reasons:
 
-1. **语义不正确** - 这些是构建时工具，不是运行时依赖
-2. **增加生产包体积** - 生产服务器不需要 TypeScript 编译器
-3. **违反社区惯例** - 所有 Next.js 项目都将这些放在 devDeps
+1. **Semantically incorrect** - These are build-time tools, not runtime dependencies
+2. **Increases production bundle size** - Production servers don't need the TypeScript compiler
+3. **Violates community conventions** - All Next.js projects keep these in devDeps
 
-**相关 commit**: `792d6ee` - fix(vercel): install devDependencies to fix build conflict
+**Related commit**: `792d6ee` - fix(vercel): install devDependencies to fix build conflict
 
-**参考**:
+**References**:
 - https://github.com/vercel/vercel/issues/10176
 - https://pnpm.io/cli/install#--prod--p
 
