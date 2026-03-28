@@ -716,7 +716,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
                 </div>
                 {importedConfig.transport.url && (
                   <div className="p-2 rounded bg-muted/50 col-span-2">
-                    <span className="text-muted-foreground">URL:</span>{" "}
+                    <span className="text-muted-foreground">{t("inspector.url")}:</span>{" "}
                     <span className="font-mono text-xs break-all">{importedConfig.transport.url}</span>
                   </div>
                 )}
@@ -731,7 +731,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
                     <span className="text-muted-foreground">{t("inspector.auth")}:</span>{" "}
                     <span className="font-medium">{importedConfig.auth.type}</span>
                     {importedConfig.auth.token && (
-                      <span className="text-amber-500 ml-1">(token included)</span>
+                      <span className="text-amber-500 ml-1">{t("inspector.tokenIncluded")}</span>
                     )}
                   </div>
                 )}

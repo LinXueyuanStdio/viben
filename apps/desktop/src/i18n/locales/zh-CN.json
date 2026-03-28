@@ -1414,6 +1414,8 @@
     "transportType": "传输类型",
     "selectTransport": "选择传输类型",
     "command": "命令",
+    "url": "URL",
+    "tokenIncluded": "(包含令牌)",
     "arguments": "参数",
     "envVars": "环境变量",
     "addEnvVar": "添加环境变量",
@@ -4188,6 +4190,10 @@
     "auth": {
       "invalidApiKey": "无效的 API 密钥",
       "authenticationFailed": "认证失败"
+    },
+    "components": {
+      "dialogProviderRequired": "Dialog 组件必须在 Dialog 提供者内部使用",
+      "tabsProviderRequired": "Tabs 组件必须在 Tabs 提供者内部使用"
     },
     "agents": {
       "notFound": "未找到智能体 {{id}}",
