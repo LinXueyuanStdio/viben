@@ -25,11 +25,10 @@ import {
   type Registry,
   type StartResult,
   type AgentStatus,
-  type WaitOptions,
-  type WaitResult,
   // Registry functions
   getRegistryPath,
   readRegistry,
+  cleanupDeadAgents,
   // Start functions
   startAgent,
   // Status functions
@@ -41,10 +40,6 @@ import {
   getSessionId,
   // Cleanup functions
   listWorktrees,
-  // Wait functions
-  waitForAgents,
-  getRunningAgents,
-  formatWaitResult,
   // CLI Adapter
   createCLIAdapter,
   type Platform,
@@ -764,204 +759,41 @@ export function registerSwarmCommand(program: Command): void {
       }
     });
 
-  // swarm wait - wait for agents to complete
+  // swarm cleanup-registry - remove dead agents from registry
   swarm
-    .command("wait")
-    .description("Wait for agents to complete")
-    .argument("[tasks...]", "Task names to wait for (empty = use --all)")
-    .option("--all", "Wait for all running agents")
-    .option("--polling-interval-seconds <n>", "Polling interval in seconds", "10")
-    .option("--timeout-seconds <n>", "Timeout per task in seconds", "300")
-    .option("--global-timeout-seconds <n>", "Global timeout in seconds (0 = no global timeout)", "0")
-    .option("--quiet", "Quiet mode - minimal output")
-    .option("--verbose", "Verbose mode - show status table each poll")
-    .option("--json", "JSON format output")
-    .action(async (tasks: string[], options: {
-      all?: boolean;
-      pollingIntervalSeconds?: string;
-      timeoutSeconds?: string;
-      globalTimeoutSeconds?: string;
-      quiet?: boolean;
-      verbose?: boolean;
-      json?: boolean;
-    }) => {
+    .command("cleanup-registry")
+    .description("Remove dead agents from registry")
+    .action(async () => {
       const ctx = getOutputContext(program);
       const repoRoot = findVibenRoot();
 
       if (!repoRoot) {
         handleCommandError(ctx, new Error("Not in a Viben workspace"));
-        process.exit(3);
         return;
       }
 
       try {
-        // Determine tasks to wait for
-        let tasksToWait: string[] = tasks;
-
-        if (options.all) {
-          // Wait for all running agents
-          tasksToWait = [];
-        } else if (tasks.length === 0) {
-          // No tasks specified and no --all flag
-          output(ctx, errorResponse("NO_TASKS", "No tasks specified. Use task names or --all"), () => {
-            console.error(chalk.red("Error: No tasks specified"));
-            console.log(chalk.gray("Usage: viben swarm wait <task1> <task2> ..."));
-            console.log(chalk.gray("       viben swarm wait --all"));
-          });
-          process.exit(2);
-          return;
-        }
-
-        // Get current PID to exclude self (prevent deadlock)
-        const currentPid = process.pid;
-
-        // Parse options (include excludePid to prevent deadlock)
-        const waitOptions: WaitOptions = {
-          pollingIntervalSeconds: parseInt(options.pollingIntervalSeconds || "10", 10),
-          timeoutSeconds: parseInt(options.timeoutSeconds || "300", 10),
-          globalTimeoutSeconds: parseInt(options.globalTimeoutSeconds || "0", 10),
-          verbose: options.verbose ?? ctx.verbose ?? false,
-          quiet: options.quiet ?? ctx.quiet ?? false,
-          excludePid: currentPid,
-        };
-
-        // Read registry once for all operations
-        const registry = readRegistry(repoRoot);
-
-        // Helper: find agent by task with precise matching
-        const findAgentByTask = (taskName: string) => {
-          // 1. Exact ID match
-          const exactId = registry.agents.find((a) => a.id === taskName);
-          if (exactId) return exactId;
-          // 2. Exact task directory name match
-          const exactDir = registry.agents.find((a) => {
-            const dirName = a.task_dir.split("/").pop() || "";
-            return dirName === taskName;
-          });
-          if (exactDir) return exactDir;
-          // 3. Partial match
-          return registry.agents.find((a) => a.task_dir.includes(taskName));
-        };
-
-        // Get running agents (excluding self)
-        const runningAgents = registry.agents.filter(
-          (a) => isProcessRunning(a.pid) && a.pid !== currentPid
+        const result = cleanupDeadAgents(repoRoot);
+        output(
+          ctx,
+          successResponse({
+            removedCount: result.removedCount,
+            removedIds: result.removedIds,
+          }),
+          () => {
+            if (result.removedCount === 0) {
+              console.log(chalk.gray("No dead agents to clean up"));
+            } else {
+              console.log(chalk.green(`Removed ${result.removedCount} dead agent(s) from registry:`));
+              for (const id of result.removedIds) {
+                console.log(chalk.gray(`  - ${id}`));
+              }
+            }
+          }
         );
-
-        if (runningAgents.length === 0) {
-          output(ctx, successResponse({
-            completed: [],
-            failed: [],
-            timeout: [],
-            results: [],
-            skippedSelf: registry.agents.some((a) => a.pid === currentPid),
-          }), () => {
-            const selfInRegistry = registry.agents.some((a) => a.pid === currentPid);
-            if (selfInRegistry) {
-              console.log(chalk.yellow("No other running agents found (excluded self to prevent deadlock)"));
-            } else {
-              console.log(chalk.yellow("No running agents found"));
-            }
-          });
-          process.exit(0); // No agents to wait for is success
-          return;
-        }
-
-        // Filter to specified tasks if not --all
-        if (tasksToWait.length > 0) {
-          const validTasks: string[] = [];
-          const invalidTasks: string[] = [];
-          const skippedSelf: string[] = [];
-
-          for (const taskName of tasksToWait) {
-            const agent = findAgentByTask(taskName);
-            if (agent) {
-              if (agent.pid === currentPid) {
-                // Skip self to prevent deadlock
-                skippedSelf.push(taskName);
-              } else if (isProcessRunning(agent.pid)) {
-                validTasks.push(taskName);
-              } else {
-                // Agent exists but not running
-                if (!waitOptions.quiet) {
-                  console.log(chalk.yellow(`Skipping ${taskName}: agent not running`));
-                }
-              }
-            } else {
-              invalidTasks.push(taskName);
-            }
-          }
-
-          if (skippedSelf.length > 0 && !waitOptions.quiet) {
-            console.log(chalk.yellow(`⚠️  Skipped self: ${skippedSelf.join(", ")} (prevents deadlock)`));
-          }
-
-          if (invalidTasks.length > 0 && !waitOptions.quiet) {
-            console.log(chalk.yellow(`Tasks not found in registry: ${invalidTasks.join(", ")}`));
-          }
-
-          if (validTasks.length === 0) {
-            output(ctx, successResponse({
-              completed: [],
-              failed: [],
-              timeout: [],
-              results: [],
-              skippedSelf: skippedSelf.length > 0,
-            }), () => {
-              if (skippedSelf.length > 0 && invalidTasks.length === 0) {
-                console.log(chalk.yellow("Only self found - nothing to wait for"));
-              } else {
-                console.log(chalk.yellow("No running agents match the specified tasks"));
-              }
-            });
-            process.exit(0); // Nothing to wait for is success
-            return;
-          }
-
-          tasksToWait = validTasks;
-        }
-
-        // Show starting message
-        if (!waitOptions.quiet) {
-          const count = tasksToWait.length || runningAgents.length;
-          console.log(chalk.blue(`=== Waiting for ${count} agent(s) ===`));
-          console.log(chalk.dim(`Polling: ${waitOptions.pollingIntervalSeconds}s, Timeout: ${waitOptions.timeoutSeconds}s`));
-          if (registry.agents.some((a) => a.pid === currentPid)) {
-            console.log(chalk.dim(`(Excluded self PID ${currentPid} to prevent deadlock)`));
-          }
-          console.log();
-        }
-
-        // Execute wait
-        const result: WaitResult = await waitForAgents(repoRoot, tasksToWait, waitOptions);
-
-        // Output result
-        if (ctx.json) {
-          const hasTimeout = result.timeout.length > 0;
-          const hasFailed = result.failed.length > 0;
-          output(ctx, {
-            success: !hasTimeout && !hasFailed,
-            data: result,
-          });
-        } else if (!waitOptions.quiet) {
-          console.log();
-          console.log(formatWaitResult(result));
-        }
-
-        // Determine exit code with clear semantics:
-        // 0 = all completed successfully
-        // 1 = timeout occurred
-        // 2 = failed (no timeout)
-        if (result.timeout.length > 0) {
-          process.exit(1); // Timeout
-        } else if (result.failed.length > 0) {
-          process.exit(2); // Failed
-        } else {
-          process.exit(0); // All completed
-        }
       } catch (error) {
         handleCommandError(ctx, error);
-        process.exit(3);
       }
     });
+
 }

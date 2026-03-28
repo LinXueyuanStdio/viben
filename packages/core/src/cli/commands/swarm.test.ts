@@ -151,7 +151,6 @@ describe("Swarm CLI Commands", () => {
       expect(subcommands).toContain("stop");
       expect(subcommands).toContain("status");
       expect(subcommands).toContain("registry");
-      expect(subcommands).toContain("wait");
     });
   });
 

@@ -50,7 +50,7 @@ import { selectBestTask } from "../../reward/ops/select";
 import { computeReward } from "../../reward/ops/crud";
 import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas, getAllIdeasFromSession } from "../../idea/ops";
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
-import { readRegistry } from "../../cli/lib/swarm/registry";
+import { readRegistry, cleanupDeadAgents } from "../../cli/lib/swarm/registry";
 import { isProcessRunning } from "../../cli/lib/swarm/status";
 
 // =============================================================================
@@ -1145,6 +1145,15 @@ export async function waitForTasksCompletion(
 
     if (statusData.allCompleted || (nonFailedCompleted && failedTasks.length > 0)) {
       debug("All tasks completed or failed", { failedTasks });
+
+      // Clean up dead agents from registry to prevent stale entries
+      const cleanupResult = cleanupDeadAgents(repoRoot);
+      if (cleanupResult.removedCount > 0) {
+        debug(`Cleaned up ${cleanupResult.removedCount} dead agents from registry`, {
+          removedIds: cleanupResult.removedIds,
+        });
+        onProgress?.(`Cleaned up ${cleanupResult.removedCount} stale agent entries`);
+      }
 
       // If some tasks failed permanently, record in state
       if (failedTasks.length > 0) {

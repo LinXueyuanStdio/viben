@@ -353,8 +353,8 @@ while true; do
     done
     wait
 
-    # Phase 3: Wait (compute-reward runs automatically in work-phase)
-    viben swarm wait --all
+    # Phase 3: Monitor progress (agents complete independently)
+    # Use `viben swarm status --watch` to monitor progress
 
     # Phase 4: PPO selection
     TASKS=$(viben task list --status completed --from-idea --json | jq -r '.[].name' | tr '\n' ' ')
@@ -454,7 +454,6 @@ viben swarm status $TASK --log
 | List ideas | `viben filerl list-ideas <run>` | List ideas in a run |
 | Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
 | Monitor | `viben swarm status --watch` | Watch agent progress |
-| Wait | `viben swarm wait --all` | Wait for all tasks |
 | Compute reward | `viben task compute-reward <task>` | Evaluate PR (auto in work-phase) |
 | PPO select | `viben reward select <tasks...>` | Aggregate + select best |
 | Approve & merge | `viben task approve <task>` | Agent merges PR |
@@ -486,8 +485,8 @@ for idea_id in $(viben idea list --json | jq -r '.[].id'); do
 done
 wait
 
-# Step 3: Wait for all tasks (including compute-reward)
-viben swarm wait --all
+# Step 3: Monitor progress (agents complete independently)
+# Use `viben swarm status --watch` to monitor
 
 # Step 4: PPO select best task
 TASKS="03-17-add-caching 03-17-optimize-queries 03-17-connection-pool"

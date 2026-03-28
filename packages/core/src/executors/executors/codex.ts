@@ -20,14 +20,31 @@ import type {
 import { ExecutorError } from "../../error";
 import { which, whichSync } from "../utils";
 
-const BASE_COMMAND = "npx -y codex-cli@latest";
+/**
+ * Codex CLI command - using the official @openai/codex package
+ *
+ * Command structure:
+ * - Interactive: codex [OPTIONS] [PROMPT]
+ * - Non-interactive: codex exec [OPTIONS] [PROMPT]
+ * - Resume: codex resume [OPTIONS] [SESSION_ID] [PROMPT]
+ * - Non-interactive resume: codex exec resume [OPTIONS] [SESSION_ID]
+ */
+const BASE_COMMAND = "npx -y @openai/codex";
 
 /**
  * Codex executor configuration
  */
 export interface CodexConfig extends ExecutorConfig {
-  /** Model to use */
+  /** Model to use (e.g., "o3", "gpt-5-codex") */
   model?: string;
+  /** Configuration profile from config.toml */
+  profile?: string;
+  /** Sandbox mode: "read-only", "workspace-write", "danger-full-access" */
+  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  /** Enable full-auto mode (--full-auto: -a on-request, --sandbox workspace-write) */
+  fullAuto?: boolean;
+  /** Skip all confirmation prompts (--dangerously-bypass-approvals-and-sandbox) */
+  dangerouslyBypassApprovalsAndSandbox?: boolean;
 }
 
 /**
@@ -51,12 +68,18 @@ export class Codex implements StandardCodingAgentExecutor {
     prompt: string,
     env: ExecutionEnv
   ): Promise<SpawnedChild> {
+    // Build command: codex exec [OPTIONS] [PROMPT]
     let builder = CommandBuilder.new(this.config.baseCommandOverride || BASE_COMMAND)
-      .addParams("--prompt", prompt);
+      .addParams("exec");
 
-    if (this.config.model) {
-      builder = builder.addParams("--model", this.config.model);
-    }
+    // Add options before prompt
+    builder = this.addCommonOptions(builder);
+
+    // Add JSON output for programmatic parsing
+    builder = builder.addParams("--json");
+
+    // Prompt must be the last argument
+    builder = builder.addParams(prompt);
 
     const commandParts = builder.buildInitial();
 
@@ -88,6 +111,33 @@ export class Codex implements StandardCodingAgentExecutor {
     return { child };
   }
 
+  /**
+   * Add common CLI options to the command builder
+   */
+  private addCommonOptions(builder: CommandBuilder): CommandBuilder {
+    if (this.config.model) {
+      builder = builder.addParams("-m", this.config.model);
+    }
+
+    if (this.config.profile) {
+      builder = builder.addParams("-p", this.config.profile);
+    }
+
+    if (this.config.sandbox) {
+      builder = builder.addParams("-s", this.config.sandbox);
+    }
+
+    if (this.config.fullAuto) {
+      builder = builder.addParams("--full-auto");
+    }
+
+    if (this.config.dangerouslyBypassApprovalsAndSandbox) {
+      builder = builder.addParams("--dangerously-bypass-approvals-and-sandbox");
+    }
+
+    return builder;
+  }
+
   async spawnFollowUp(
     currentDir: string,
     prompt: string,
@@ -95,13 +145,19 @@ export class Codex implements StandardCodingAgentExecutor {
     _resetToMessageId: string | undefined,
     env: ExecutionEnv
   ): Promise<SpawnedChild> {
+    // Build command: codex exec resume [OPTIONS] [SESSION_ID]
+    // Note: exec resume doesn't support additional prompt, it just continues the session
     let builder = CommandBuilder.new(this.config.baseCommandOverride || BASE_COMMAND)
-      .addParams("--prompt", prompt)
-      .addParams("--session", sessionId);
+      .addParams("exec", "resume");
 
-    if (this.config.model) {
-      builder = builder.addParams("--model", this.config.model);
-    }
+    // Add options
+    builder = this.addCommonOptions(builder);
+
+    // Add JSON output for programmatic parsing
+    builder = builder.addParams("--json");
+
+    // Session ID as positional argument
+    builder = builder.addParams(sessionId);
 
     const commandParts = builder.buildInitial();
 
@@ -121,6 +177,8 @@ export class Codex implements StandardCodingAgentExecutor {
       ...commandParts.env,
       ...(this.config.env || {}),
       NPM_CONFIG_LOGLEVEL: "error",
+      // Pass the prompt as environment variable for the session to pick up
+      CODEX_FOLLOWUP_PROMPT: prompt,
     };
 
     const child = spawn(programPath, fullArgs, {
@@ -169,6 +227,8 @@ export class Codex implements StandardCodingAgentExecutor {
 
   /**
    * Spawn a non-interactive chat process with transparent I/O streaming.
+   *
+   * Uses `codex exec` for non-interactive execution or `codex resume` for continuing sessions.
    */
   async spawnChat(options: ChatOptions): Promise<ChatSpawnResult> {
     const {
@@ -185,22 +245,56 @@ export class Codex implements StandardCodingAgentExecutor {
       throw ExecutorError.executableNotFound("npx");
     }
 
-    const args: string[] = ["-y", "codex-cli@latest"];
-
-    if (prompt) {
-      args.push("--prompt", prompt);
-    }
-
-    if (model || this.config.model) {
-      args.push("--model", model || this.config.model!);
-    }
+    const args: string[] = ["-y", "@openai/codex"];
 
     if (sessionId) {
-      args.push("--session", sessionId);
+      // Resume existing session: codex resume [OPTIONS] [SESSION_ID] [PROMPT]
+      args.push("resume");
+
+      // Add model option if specified
+      if (model || this.config.model) {
+        args.push("-m", model || this.config.model!);
+      }
+
+      // Add full-auto for non-interactive
+      if (this.config.fullAuto) {
+        args.push("--full-auto");
+      } else if (this.config.dangerouslyBypassApprovalsAndSandbox) {
+        args.push("--dangerously-bypass-approvals-and-sandbox");
+      }
+
+      // Session ID
+      args.push(sessionId);
+
+      // Optional prompt for the resumed session
+      if (prompt) {
+        args.push(prompt);
+      }
+    } else {
+      // New non-interactive session: codex exec [OPTIONS] [PROMPT]
+      args.push("exec");
+
+      // Add model option if specified
+      if (model || this.config.model) {
+        args.push("-m", model || this.config.model!);
+      }
+
+      // Add full-auto for non-interactive
+      if (this.config.fullAuto) {
+        args.push("--full-auto");
+      } else if (this.config.dangerouslyBypassApprovalsAndSandbox) {
+        args.push("--dangerously-bypass-approvals-and-sandbox");
+      }
+
+      // Add prompt
+      if (prompt) {
+        args.push(prompt);
+      }
     }
 
+    // Note: Codex CLI doesn't have a --verbose flag, but we can use config overrides
     if (verbose) {
-      args.push("--verbose");
+      // Could add debug config if needed in the future
     }
 
     const spawnEnv = {

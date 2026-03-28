@@ -158,7 +158,7 @@ const CLI_NAMES: Record<Platform, string> = {
 /**
  * Platforms that support CLI agent execution
  */
-const CLI_AGENT_PLATFORMS: Platform[] = ["claude", "opencode"];
+const CLI_AGENT_PLATFORMS: Platform[] = ["claude", "opencode", "codex", "gemini"];
 
 // =============================================================================
 // CLIAdapter Implementation
@@ -415,8 +415,13 @@ export class CLIAdapter implements ICLIAdapter {
         return cmd;
       }
 
-      case "codex":
-        return ["codex", "exec", prompt];
+      case "codex": {
+        // Codex CLI: codex exec [OPTIONS] [PROMPT]
+        // Use --full-auto for non-interactive sandboxed execution
+        const codexCmd = ["codex", "exec", "--full-auto", "--json"];
+        codexCmd.push(prompt);
+        return codexCmd;
+      }
 
       case "kiro":
         return ["kiro", "run", prompt];
@@ -465,7 +470,8 @@ export class CLIAdapter implements ICLIAdapter {
       case "opencode":
         return ["opencode", "run", "--session", sessionId];
       case "codex":
-        return ["codex", "resume", sessionId];
+        // Codex CLI: codex resume [OPTIONS] [SESSION_ID]
+        return ["codex", "resume", "--full-auto", sessionId];
       case "kiro":
         return ["kiro", "resume", sessionId];
       case "gemini":

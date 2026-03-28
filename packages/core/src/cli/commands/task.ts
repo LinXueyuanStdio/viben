@@ -743,11 +743,18 @@ export function registerTaskCommand(program: Command): void {
 
           // Progress Section
           console.log(chalk.bold("Progress"));
-          const phaseNames = ["backlog", "implement", "check", "finish"];
+          const phaseNames = ["plan", "implement", "check", "finish"];
           const currentPhase = taskJson.current_phase || 0;
-          outputKeyValue(ctx, {
-            "Current Phase": `${currentPhase}/${phaseNames.length - 1} (${phaseNames[currentPhase] || "unknown"})`,
-          });
+          const phaseDisplay = phaseNames.map((name, i) => {
+            if (i < currentPhase) {
+              return chalk.green(`${name} ✓`);
+            } else if (i === currentPhase) {
+              return chalk.yellow(`${name} ●`);
+            } else {
+              return chalk.gray(`${name} ○`);
+            }
+          }).join(" → ");
+          console.log(`  ${phaseDisplay}`);
           // Show next actions
           if (taskJson.next_action && taskJson.next_action.length > 0) {
             const actions = taskJson.next_action.map(a => `${a.phase}:${a.action}`).join(" → ");

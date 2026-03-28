@@ -787,42 +787,6 @@ describe("swarm command execution", () => {
   });
 
   // ===========================================================================
-  // swarm wait execution tests
-  // ===========================================================================
-
-  describe("swarm wait", () => {
-    it("should show error when no tasks specified and no --all flag", async () => {
-      await createVibenWorkspace(ctx.tempDir);
-
-      await ctx.run(["swarm", "wait"]);
-
-      // Check error message was shown (exit code may vary due to error handling chain)
-      expect(ctx.console.hasError("No tasks specified")).toBe(true);
-    });
-
-    it("should exit successfully when no running agents with --all flag", async () => {
-      await createVibenWorkspace(ctx.tempDir);
-
-      // No agents in registry means no running agents
-      await ctx.run(["swarm", "wait", "--all"]);
-
-      // Check the output message - exit code 0 indicates no agents to wait for
-      expect(ctx.console.hasLog("No running agents") || ctx.console.hasLog("No other running agents")).toBe(true);
-    });
-
-    it("should report tasks not found in registry", async () => {
-      await createVibenWorkspace(ctx.tempDir);
-
-      await ctx.run(["swarm", "wait", "nonexistent-task-1", "nonexistent-task-2"]);
-
-      expect(
-        ctx.console.hasLog("not found") ||
-        ctx.console.hasLog("No running agents")
-      ).toBe(true);
-    });
-  });
-
-  // ===========================================================================
   // Registry file operations tests
   // ===========================================================================
 
