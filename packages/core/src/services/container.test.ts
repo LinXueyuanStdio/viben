@@ -160,7 +160,7 @@ describe("ContainerService", () => {
 
       const state = service.getProcess(sessionId);
       expect(state).toBeDefined();
-      expect(state?.session_id).toBe(sessionId);
+      expect(state?.sessionId).toBe(sessionId);
       expect(state?.agentType).toBe("claude_code");
       expect(state?.workdir).toBe("/workspace");
       expect(state?.pid).toBe(12345);
@@ -260,7 +260,7 @@ describe("ContainerService", () => {
 
       const state = service.getProcess(sessionId);
       expect(state).toBeDefined();
-      expect(state?.session_id).toBe(sessionId);
+      expect(state?.sessionId).toBe(sessionId);
     });
 
     it("should return undefined for non-existent session", () => {
@@ -296,8 +296,8 @@ describe("ContainerService", () => {
 
       const running = service.runningProcesses();
       expect(running).toHaveLength(2);
-      expect(running.map((p) => p.session_id)).toContain("session-1");
-      expect(running.map((p) => p.session_id)).toContain("session-2");
+      expect(running.map((p) => p.sessionId)).toContain("session-1");
+      expect(running.map((p) => p.sessionId)).toContain("session-2");
     });
 
     it("should not include completed processes", async () => {
@@ -631,7 +631,7 @@ describe("ContainerService", () => {
 
       const state = service.getProcess(sessionId);
       expect(state).toBeDefined();
-      expect(state?.session_id).toBe(sessionId);
+      expect(state?.sessionId).toBe(sessionId);
       expect(state?.status).toBe("running");
     });
 

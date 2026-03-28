@@ -457,7 +457,7 @@ export function registerTaskCommand(program: Command): void {
           output(ctx, successResponse({
             task: taskJson,
             task_dir: result.task_dir,
-            dirName: result.dirName,
+            dir_name: result.dir_name,
             files,
             runtime: result.runtime,
           }), () => {
@@ -475,13 +475,13 @@ export function registerTaskCommand(program: Command): void {
             });
 
             // Show file status in compact form
-            const hasFiles = files.prd.exists || files.implementJsonl.exists;
+            const hasFiles = files.prd.exists || files.implement_jsonl.exists;
             if (hasFiles) {
               console.log();
               const fileStatus: string[] = [];
               if (files.prd.exists) fileStatus.push("prd.md");
-              if (files.implementJsonl.exists) fileStatus.push("implement.jsonl");
-              if (files.checkJsonl.exists) fileStatus.push("check.jsonl");
+              if (files.implement_jsonl.exists) fileStatus.push("implement.jsonl");
+              if (files.check_jsonl.exists) fileStatus.push("check.jsonl");
               console.log(chalk.gray(`Files: ${fileStatus.join(", ")}`));
             }
 
@@ -491,7 +491,7 @@ export function registerTaskCommand(program: Command): void {
             }
 
             console.log();
-            console.log(chalk.dim(`Use 'viben task view ${result.dirName}' for full details`));
+            console.log(chalk.dim(`Use 'viben task view ${result.dir_name}' for full details`));
           });
           return;
         }
@@ -580,13 +580,13 @@ export function registerTaskCommand(program: Command): void {
           throw CliError.operationFailed("Create task", result.error!);
         }
 
-        const { dirName, status, contextInitialized } = result;
-        const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dirName}`;
+        const { dir_name, status, context_initialized } = result;
+        const relativePath = `${DIR_VIBEN}/${DIR_TASKS}/${dir_name}`;
 
         // If --start is provided, enqueue the task to queue system
-        if (options.start && dirName) {
+        if (options.start && dir_name) {
           // Task was created with status "backlog", now enqueue to queue system
-          const enqueueResult = enqueueTask(repoRoot, dirName, {
+          const enqueueResult = enqueueTask(repoRoot, dir_name, {
             agent: options.agent,
             executor: options.executor,
             model: options.model,
@@ -597,16 +597,16 @@ export function registerTaskCommand(program: Command): void {
           if (!enqueueResult.success) {
             // Task created but enqueue failed
             output(ctx, errorResponse("ENQUEUE_FAILED", enqueueResult.error || "Failed to enqueue task"), () => {
-              console.log(chalk.yellow(`Created task: ${dirName}`));
+              console.log(chalk.yellow(`Created task: ${dir_name}`));
               console.log(chalk.red(`Failed to enqueue: ${enqueueResult.error}`));
-              console.log(chalk.gray(`Run manually: viben task enqueue ${dirName}`));
+              console.log(chalk.gray(`Run manually: viben task enqueue ${dir_name}`));
             });
             return;
           }
 
           const queueId = enqueueResult.additionalData?.queue_id;
-          output(ctx, successResponse({ task_dir: relativePath, status: "queue", contextInitialized, queueId }), () => {
-            console.log(chalk.green(`Created and enqueued: ${dirName}`));
+          output(ctx, successResponse({ task_dir: relativePath, status: "queue", context_initialized, queueId }), () => {
+            console.log(chalk.green(`Created and enqueued: ${dir_name}`));
             console.log(chalk.gray(`Status: backlog -> queue`));
             if (queueId) {
               console.log(chalk.gray(`Queue ID: ${queueId}`));
@@ -614,14 +614,14 @@ export function registerTaskCommand(program: Command): void {
             if (options.worktree) {
               console.log(chalk.gray(`Worktree: enabled`));
             }
-            if (contextInitialized) {
+            if (context_initialized) {
               console.log(chalk.gray(`Context: initialized (empty)`));
             }
           });
         } else {
           // Show what was configured
-          output(ctx, successResponse({ task_dir: relativePath, contextInitialized }), () => {
-            console.log(chalk.green(`Created task: ${dirName}`));
+          output(ctx, successResponse({ task_dir: relativePath, context_initialized }), () => {
+            console.log(chalk.green(`Created task: ${dir_name}`));
             console.log();
 
             // Show auto-configured values
@@ -635,7 +635,7 @@ export function registerTaskCommand(program: Command): void {
             console.log(chalk.blue("Next steps:"));
             console.log("  1. Create prd.md with requirements");
             console.log("  2. Use research agent to add context (add-context)");
-            console.log(`  3. Run: viben task start ${dirName}`);
+            console.log(`  3. Run: viben task start ${dir_name}`);
             console.log();
           });
         }
@@ -674,7 +674,7 @@ export function registerTaskCommand(program: Command): void {
         output(ctx, successResponse({
           task: taskJson,
           task_dir: result.task_dir,
-          dirName: result.dirName,
+          dir_name: result.dir_name,
           files,
           worktree,
           runtime: result.runtime,
@@ -688,7 +688,7 @@ export function registerTaskCommand(program: Command): void {
           console.log(chalk.bold("Basic Info"));
           outputKeyValue(ctx, {
             ID: taskJson.id || "-",
-            Directory: result.dirName || "-",
+            Directory: result.dir_name || "-",
             Status: formatStatus(taskJson.status),
             Priority: formatPriority(taskJson.priority),
           });
@@ -772,9 +772,9 @@ export function registerTaskCommand(program: Command): void {
             return chalk.green("✓") + " " + chalk.gray(size);
           };
           console.log(`  prd.md:           ${formatFile(files.prd, "prd.md")}`);
-          console.log(`  implement.jsonl:  ${formatFile(files.implementJsonl, "implement.jsonl")}`);
-          console.log(`  check.jsonl:      ${formatFile(files.checkJsonl, "check.jsonl")}`);
-          console.log(`  fix.jsonl:        ${formatFile(files.fixJsonl, "fix.jsonl")}`);
+          console.log(`  implement.jsonl:  ${formatFile(files.implement_jsonl, "implement.jsonl")}`);
+          console.log(`  check.jsonl:      ${formatFile(files.check_jsonl, "check.jsonl")}`);
+          console.log(`  fix.jsonl:        ${formatFile(files.fix_jsonl, "fix.jsonl")}`);
           console.log();
 
           // Logs Section
@@ -787,23 +787,23 @@ export function registerTaskCommand(program: Command): void {
             const time = info.modifiedAt ? new Date(info.modifiedAt).toLocaleString() : "";
             return `${chalk.green("✓")} ${chalk.gray(size)} ${chalk.dim(time)}`;
           };
-          if (files.startLog.exists) {
-            console.log(`  start.log.jsonl:      ${formatLog(files.startLog)}`);
+          if (files.start_log.exists) {
+            console.log(`  start.log.jsonl:      ${formatLog(files.start_log)}`);
           }
-          if (files.planLog.exists) {
-            console.log(`  plan.log.jsonl:       ${formatLog(files.planLog)}`);
+          if (files.plan_log.exists) {
+            console.log(`  plan.log.jsonl:       ${formatLog(files.plan_log)}`);
           }
-          if (files.workLog.exists) {
-            console.log(`  work.log.jsonl:       ${formatLog(files.workLog)}`);
+          if (files.work_log.exists) {
+            console.log(`  work.log.jsonl:       ${formatLog(files.work_log)}`);
           }
-          if (files.implementLog.exists) {
-            console.log(`  implement.log.jsonl:  ${formatLog(files.implementLog)}`);
+          if (files.implement_log.exists) {
+            console.log(`  implement.log.jsonl:  ${formatLog(files.implement_log)}`);
           }
-          if (files.reviewLog.exists) {
-            console.log(`  review.log.jsonl:     ${formatLog(files.reviewLog)}`);
+          if (files.review_log.exists) {
+            console.log(`  review.log.jsonl:     ${formatLog(files.review_log)}`);
           }
-          if (!files.startLog.exists && !files.planLog.exists && !files.workLog.exists &&
-              !files.implementLog.exists && !files.reviewLog.exists) {
+          if (!files.start_log.exists && !files.plan_log.exists && !files.work_log.exists &&
+              !files.implement_log.exists && !files.review_log.exists) {
             console.log(chalk.gray("  (no logs yet)"));
           }
           console.log();
@@ -1096,17 +1096,17 @@ export function registerTaskCommand(program: Command): void {
             console.log();
             console.log(chalk.green(`=== Task Started ===`));
             console.log();
-            console.log(`  ID:        ${result.agentId}`);
+            console.log(`  ID:        ${result.agent_id}`);
             console.log(`  PID:       ${result.pid}`);
             console.log(`  Session:   ${result.session_id || "N/A"}`);
-            console.log(`  Working:   ${result.workingDir}`);
+            console.log(`  Working:   ${result.working_dir}`);
             console.log(`  Log:       ${result.log_file}`);
             console.log();
             console.log(chalk.yellow(`To monitor: tail -f ${result.log_file}`));
             console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
             if (result.session_id) {
               const adapter = createCLIAdapter(platform);
-              const resumeCmd = adapter.getResumeCommandStr(result.session_id, result.workingDir);
+              const resumeCmd = adapter.getResumeCommandStr(result.session_id, result.working_dir);
               console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
             }
           } else {
@@ -2263,10 +2263,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.log_file}`);
+          console.log(`  Log:  ${result.logFile}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.log_file}`);
+          console.log(`  tail -f ${result.logFile}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2314,10 +2314,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.log_file}`);
+          console.log(`  Log:  ${result.logFile}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.log_file}`);
+          console.log(`  tail -f ${result.logFile}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2365,10 +2365,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.log_file}`);
+          console.log(`  Log:  ${result.logFile}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.log_file}`);
+          console.log(`  tail -f ${result.logFile}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2546,7 +2546,7 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  Path:        ${result.worktreePath}`);
           console.log(`  Branch:      ${result.branch}`);
-          console.log(`  Base Branch: ${result.base_branch}`);
+          console.log(`  Base Branch: ${result.baseBranch}`);
           console.log();
           console.log(chalk.yellow("Next step:"));
           console.log(`  viben task work-phase ${task} --worktree ${result.worktreePath}`);
@@ -2699,13 +2699,13 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:       ${result.agentId}`);
           console.log(`  PID:      ${result.pid}`);
-          if (result.session_id) {
-            console.log(`  Session:  ${result.session_id}`);
+          if (result.sessionId) {
+            console.log(`  Session:  ${result.sessionId}`);
           }
-          console.log(`  Log:      ${result.log_file}`);
+          console.log(`  Log:      ${result.logFile}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.log_file}`);
+          console.log(`  tail -f ${result.logFile}`);
           console.log(`  viben swarm status ${task}`);
           console.log();
 
@@ -2883,7 +2883,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         // Human-readable output
-        console.log(chalk.bold.cyan(`=== Stuck Check: ${result.task_dir} ===`));
+        console.log(chalk.bold.cyan(`=== Stuck Check: ${result.taskDir} ===`));
         console.log();
 
         // Overall status

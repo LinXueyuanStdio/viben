@@ -292,11 +292,11 @@ export function cmdStatusSummary(
           name,
           priority,
           assignee,
-          phaseInfo: phaseInfoStr,
+          phase_info: phaseInfoStr,
           elapsed,
           branch,
           modified,
-          lastTool,
+          last_tool: lastTool,
           pid,
         });
       } else {
@@ -308,8 +308,8 @@ export function cmdStatusSummary(
           name,
           worktree,
           status,
-          taskDir: taskDirPath,
-          logFile,
+          task_dir: taskDirPath,
+          log_file: logFile,
           platform: agentPlatform,
         });
       }

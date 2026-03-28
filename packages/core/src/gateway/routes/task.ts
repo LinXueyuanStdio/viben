@@ -1971,7 +1971,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       // Create START event
       const nextSequence = (task.last_event?.sequence ?? 0) + 1;
       const event: TaskEvent = {
-        eventId: randomUUID(),
+        event_id: randomUUID(),
         sequence: nextSequence,
         type: "START",
         timestamp: new Date().toISOString(),
@@ -2791,7 +2791,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     const previousStatus = task.status;
     const nextSequence = (task.last_event?.sequence ?? 0) + 1;
     const event: TaskEvent = {
-      eventId: randomUUID(),
+      event_id: randomUUID(),
       sequence: nextSequence,
       type: "ARCHIVE",
       timestamp: new Date().toISOString(),
@@ -4115,10 +4115,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
     return {
       success: true,
-      task_id: result.dirName,
+      task_id: result.dir_name,
       task_dir: result.task_dir,
       status: result.status,
-      context_initialized: result.contextInitialized,
+      context_initialized: result.context_initialized,
     };
   });
 
@@ -4191,7 +4191,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         success: true,
         worktree_path: result.worktreePath,
         branch: result.branch,
-        base_branch: result.base_branch,
+        base_branch: result.baseBranch,
       };
     } catch (error) {
       reply.code(500);

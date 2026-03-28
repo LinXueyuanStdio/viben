@@ -66,7 +66,7 @@ function mcpToPackage(mcp: InstalledMcp): InstalledPackage {
     version: mcp.version,
     package_type: "mcp",
     install_path: mcp.path,
-    installed_at: mcp.installedAt,
+    installed_at: mcp.installed_at,
   };
 }
 

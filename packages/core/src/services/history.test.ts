@@ -59,7 +59,7 @@ describe("HistoryService", () => {
 
       const entries = await service.getHistory("test-agent");
       expect(entries).toHaveLength(1);
-      expect(entries[0].session_id).toBe("session-123");
+      expect(entries[0].sessionId).toBe("session-123");
     });
 
     it("should add entry without session ID", async () => {
@@ -68,7 +68,7 @@ describe("HistoryService", () => {
 
       const entries = await service.getHistory("test-agent");
       expect(entries).toHaveLength(1);
-      expect(entries[0].session_id).toBeUndefined();
+      expect(entries[0].sessionId).toBeUndefined();
     });
 
     it("should create agent directory if not exists", async () => {
@@ -401,7 +401,7 @@ describe("createHistoryEntry", () => {
 
     expect(entry.prompt).toBe("test");
     expect(entry.agentId).toBe("agent-1");
-    expect(entry.session_id).toBeUndefined();
+    expect(entry.sessionId).toBeUndefined();
     expect(entry.timestamp >= before).toBe(true);
     expect(entry.timestamp <= after).toBe(true);
   });
@@ -409,6 +409,6 @@ describe("createHistoryEntry", () => {
   it("should create entry with session ID", () => {
     const entry = createHistoryEntry("test", "agent-1", "session-abc");
 
-    expect(entry.session_id).toBe("session-abc");
+    expect(entry.sessionId).toBe("session-abc");
   });
 });

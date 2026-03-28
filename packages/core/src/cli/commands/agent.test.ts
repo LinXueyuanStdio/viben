@@ -75,8 +75,8 @@ function createMockAgent(overrides: Partial<Agent> = {}): Agent {
     skills: [],
     planMode: false,
     approvals: false,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
   } as Agent;
 }
@@ -87,9 +87,9 @@ function createMockAgent(overrides: Partial<Agent> = {}): Agent {
 function createMockSession(overrides: Partial<AgentSession> = {}): AgentSession {
   return {
     id: "test-session",
-    agentId: "test-agent",
-    createdAt: "2024-01-01T00:00:00Z",
-    lastAccessedAt: "2024-01-01T00:00:00Z",
+    agent_id: "test-agent",
+    created_at: "2024-01-01T00:00:00Z",
+    last_accessed_at: "2024-01-01T00:00:00Z",
     ...overrides,
   } as AgentSession;
 }
@@ -148,8 +148,8 @@ describe("Agent CLI Commands", () => {
           name: "Agent Two",
           executorType: "GEMINI" as ExecutorType,
           model: "gemini-pro",
-          createdAt: "2024-01-02T00:00:00Z",
-          updatedAt: "2024-01-02T00:00:00Z",
+          created_at: "2024-01-02T00:00:00Z",
+          updated_at: "2024-01-02T00:00:00Z",
         }),
       ];
 
@@ -346,7 +346,7 @@ describe("Agent CLI Commands", () => {
         planMode: true,
         temperature: 0.7,
         maxTokens: 4096,
-        updatedAt: "2024-01-02T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
@@ -489,8 +489,8 @@ describe("Agent CLI Commands", () => {
           id: "agent-2",
           name: "Agent Two",
           executorType: "GEMINI" as ExecutorType,
-          createdAt: "2024-01-02T00:00:00Z",
-          updatedAt: "2024-01-02T00:00:00Z",
+          created_at: "2024-01-02T00:00:00Z",
+          updated_at: "2024-01-02T00:00:00Z",
         }),
       ];
 
@@ -687,17 +687,17 @@ describe("Agent CLI Commands", () => {
       const mockSessions = [
         createMockSession({
           id: "session-1",
-          agentId: "my-agent",
+          agent_id: "my-agent",
           name: "Feature Development",
-          createdAt: "2024-01-01T10:00:00Z",
-          lastAccessedAt: "2024-01-01T14:00:00Z",
+          created_at: "2024-01-01T10:00:00Z",
+          last_accessed_at: "2024-01-01T14:00:00Z",
         }),
         createMockSession({
           id: "session-2",
-          agentId: "my-agent",
+          agent_id: "my-agent",
           name: "Bug Fixes",
-          createdAt: "2024-01-02T09:00:00Z",
-          lastAccessedAt: "2024-01-02T12:00:00Z",
+          created_at: "2024-01-02T09:00:00Z",
+          last_accessed_at: "2024-01-02T12:00:00Z",
         }),
       ];
 
@@ -751,9 +751,9 @@ describe("Agent CLI Commands", () => {
 
       const mockSession = createMockSession({
         id: "new-session-id",
-        agentId: "my-agent",
-        createdAt: "2024-01-01T10:00:00Z",
-        lastAccessedAt: "2024-01-01T10:00:00Z",
+        agent_id: "my-agent",
+        created_at: "2024-01-01T10:00:00Z",
+        last_accessed_at: "2024-01-01T10:00:00Z",
       });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
@@ -774,10 +774,10 @@ describe("Agent CLI Commands", () => {
 
       const mockSession = createMockSession({
         id: "new-session-id",
-        agentId: "my-agent",
+        agent_id: "my-agent",
         name: "Feature Work",
-        createdAt: "2024-01-01T10:00:00Z",
-        lastAccessedAt: "2024-01-01T10:00:00Z",
+        created_at: "2024-01-01T10:00:00Z",
+        last_accessed_at: "2024-01-01T10:00:00Z",
       });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
@@ -833,10 +833,10 @@ describe("Agent CLI Commands", () => {
       });
 
       const mockMemory = {
-        agentId: "my-agent",
+        agent_id: "my-agent",
         content: "# Agent Memory\n\nSome important information.",
         path: "/path/to/memory/MEMORY.md",
-        updatedAt: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
         size: 100,
       };
 
@@ -852,7 +852,7 @@ describe("Agent CLI Commands", () => {
           content: "# 2024-01-01\n\n## 10:00 - Session\n- Task 1",
           entries: [{ time: "10:00", title: "Session", items: ["Task 1"] }],
           path: "/path/to/2024-01-01.md",
-          updatedAt: "2024-01-01T12:00:00Z",
+          updated_at: "2024-01-01T12:00:00Z",
         },
       ];
 
@@ -881,10 +881,10 @@ describe("Agent CLI Commands", () => {
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.getMemory).mockResolvedValue({
-        agentId: "my-agent",
+        agent_id: "my-agent",
         content: "",
         path: "/path/to/MEMORY.md",
-        updatedAt: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
         size: 0,
       });
       vi.mocked(memoryManager.getMemoryStats).mockResolvedValue({

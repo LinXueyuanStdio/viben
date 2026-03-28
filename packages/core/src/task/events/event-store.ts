@@ -143,12 +143,12 @@ export class TaskEventStore {
     // 7. Build update payload
     const updatePayload: Parameters<typeof taskService.updateTask>[1] = {
       status: newStatus,
-      xstateState: transitionResult.value,
-      lastEvent: event,
-      // Note: eventHistory is no longer stored in task.json
+      xstate_state: transitionResult.value,
+      last_event: event,
+      // Note: event_history is no longer stored in task.json
       // Events are stored in events.jsonl for append-only efficiency
-      // Also update reviewReason if transitioning to review
-      reviewReason: this.computeReviewReason(event, task),
+      // Also update review_reason if transitioning to review
+      review_reason: this.computeReviewReason(event, task),
     };
 
     // 8. Set queuedAt timestamp when QUEUE event is applied (for FIFO ordering)
@@ -247,7 +247,7 @@ export class TaskEventStore {
   /**
    * Compute review reason based on event type
    */
-  private computeReviewReason(event: TaskEvent, task: UnifiedTask): UnifiedTask["reviewReason"] {
+  private computeReviewReason(event: TaskEvent, task: UnifiedTask): UnifiedTask["review_reason"] {
     switch (event.type) {
       case "CHECK_PASSED":
         return "completed";

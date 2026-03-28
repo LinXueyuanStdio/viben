@@ -107,8 +107,8 @@ export class HistoryService {
    */
   private entryToLine(entry: HistoryEntry): string {
     const contentB64 = this.encodeContent(entry.prompt);
-    const sessionId = entry.session_id || "-";
-    return `${entry.timestamp}|${entry.agentId}|${sessionId}|${contentB64}\n`;
+    const sessionIdVal = entry.sessionId || "-";
+    return `${entry.timestamp}|${entry.agentId}|${sessionIdVal}|${contentB64}\n`;
   }
 
   /**
