@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Viben Gateway
 
-> Hono-based HTTP/WebSocket API server providing AI agent orchestration and management services.
+> Axum-based HTTP/WebSocket API server providing AI agent orchestration and management services.
 
 ## Overview
 
@@ -21,7 +21,7 @@ Viben Gateway is the core backend service of Viben, running on port **18790**, p
 |                      Viben Gateway                           |
 |                      Port: 18790                             |
 +-------------------------------------------------------------+
-|  HTTP Layer (Hono)                                           |
+|  HTTP Layer (Axum)                                           |
 |  +-- CORS Middleware (Allow All Origins)                     |
 |  +-- Tracing Middleware (Request/Response Logging)           |
 |  +-- Router                                                  |
@@ -36,11 +36,13 @@ Viben Gateway is the core backend service of Viben, running on port **18790**, p
 |  +-- /api/sessions        Session Management                 |
 |  +-- /api/channels        Channel Management                 |
 |  +-- /api/cron            Scheduled Tasks                    |
+|  +-- /api/queue           Task Queue                         |
 |  +-- /api/workspaces      Workspace Management               |
 |  +-- /api/mcp             MCP Server Management              |
 |  +-- /api/kanban          Kanban Data Management             |
 |  +-- /api/group-chats     Group Chat Management              |
 |  +-- /api/chat-list       Chat List Aggregation              |
+|  +-- /api/telemetry       Observability Data                 |
 |  +-- /api/events          SSE Event Stream                   |
 +-------------------------------------------------------------+
 |  WebSocket Routes                                            |
@@ -75,11 +77,13 @@ Viben Gateway is the core backend service of Viben, running on port **18790**, p
 | Sessions | `/api/sessions` | [sessions.md](./sessions.md) |
 | Channels | `/api/channels` | [channels.md](./channels.md) |
 | Scheduled Tasks | `/api/cron` | [cron.md](./cron.md) |
+| Task Queue | `/api/queue` | [queue.md](./queue.md) |
 | Workspaces | `/api/workspaces` | [API Reference](/backend/api/) |
 | MCP | `/api/mcp` | [API Reference](/backend/api/) |
 | Kanban | `/api/kanban` | [API Reference](/backend/api/) |
 | Group Chats | `/api/group-chats` | [group-chats.md](./group-chats.md) |
 | Chat List | `/api/chat-list` | [chat-list.md](./chat-list.md) |
+| Telemetry | `/api/telemetry` | [telemetry.md](./telemetry.md) |
 | Event Stream | `/api/events` | [events.md](./events.md) |
 | WebSocket | `/ws`, `/terminal/ws` | [websocket.md](./websocket.md) |
 

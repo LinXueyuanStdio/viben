@@ -119,7 +119,7 @@ viben task delete <task> [--force]
 
 ### Enqueue Task
 
-Move a task from backlog status to queue status.
+Move a task from backlog status to queue status and submit it to the Command Queue system.
 
 ```bash
 viben task enqueue <task> [options]
@@ -133,21 +133,64 @@ viben task enqueue <task> [options]
 | `--executor <type>` | Executor type (CLAUDE_CODE, CURSOR, OPENCODE, etc.) |
 | `--model <id>` | Model ID |
 | `--priority <p>` | Priority (P0/P1/P2/P3) |
+| `--skip-queue` | Only update status, don't submit to queue system |
 
 **Examples**:
 
 ```bash
-# Basic enqueue
+# Basic enqueue - submits to command queue
 viben task enqueue 03-10-feature-xyz
 
 # Specify execution configuration
 viben task enqueue 03-10-feature-xyz --agent my-agent --executor CLAUDE_CODE
+
+# Only update status without submitting to queue
+viben task enqueue 03-10-feature-xyz --skip-queue
+```
+
+**How It Works**:
+
+When you run `viben task enqueue`, the following happens:
+
+1. Task status is updated from `backlog` to `queue`
+2. The command `viben task start <task>` is submitted to the Command Queue system
+3. The queue task ID is saved to `task.json` as `queue_id`
+4. The queue system executes the command when capacity is available
+
+```bash
+# View the queue status
+viben queue status
+
+# View queue task list
+viben queue list
+# ID              STATUS   COMMAND                          CWD
+# q_7kA9OXDz71T7  pending  viben task start my-feature      /path/to/repo
+
+# View task.json
+cat .viben/tasks/03-15-my-feature/task.json
+# {
+#   "status": "queue",
+#   "queue_id": "q_7kA9OXDz71T7",
+#   ...
+# }
 ```
 
 ### Dequeue Task
 
+Remove a task from the queue and return it to backlog status.
+
 ```bash
 viben task dequeue <task>
+```
+
+**Examples**:
+
+```bash
+# Dequeue via task system
+viben task dequeue my-feature
+
+# Alternative: cancel via queue system directly
+viben queue cancel q_7kA9OXDz71T7
 ```
 
 ### Pause Task
@@ -437,8 +480,108 @@ viben task cleanup --list
 }
 ```
 
+## Task + Queue Integration
+
+The Task system integrates with the Command Queue system to enable queued task execution with concurrency control and background processing.
+
+### Architecture
+
+**Key Principle**: The Queue system has zero knowledge of the Task system. Queue only executes shell commands and doesn't understand task semantics.
+
+```
+┌─────────────────────┐      ┌─────────────────────┐
+│   Task System       │ ───> │   Queue System      │
+│                     │      │   (Zero Knowledge)  │
+│ - task.json mgmt    │      │                     │
+│ - State machine     │      │ - Command queuing   │
+│ - Agent scheduling  │      │ - Process management│
+│                     │      │ - Concurrency ctrl  │
+│ enqueueTask()       │      │                     │
+│  └─ queue.enqueue() │      │ Only executes shell │
+└─────────────────────┘      └─────────────────────┘
+```
+
+### Data Flow
+
+When you run `viben task enqueue <task>`:
+
+1. Task status is updated to `queue` in `task.json`
+2. Queue system receives command: `viben task start <task>`
+3. Queue ID is saved to `task.json`
+
+When the Queue system executes the command:
+
+1. `viben task start` updates status to `in_progress`
+2. Agent executes the task
+3. On completion, status becomes `completed` or `failed`
+
+### Status Mapping
+
+| Task Status | Queue Status | Description |
+|-------------|--------------|-------------|
+| `backlog` | - | Task not submitted to queue |
+| `queue` | `pending` | Task waiting for execution |
+| `in_progress` | `running` | Task currently executing |
+| `completed` | `completed` (exit 0) | Task completed successfully |
+| `failed` | `completed` (exit != 0) | Task execution failed |
+
+### task.json Queue Field
+
+When a task is enqueued, the `queue_id` field is added to `task.json`:
+
+```json
+{
+  "id": "my-feature",
+  "status": "queue",
+  "queue_id": "q_7kA9OXDz71T7",
+  ...
+}
+```
+
+### Workflow Example
+
+```bash
+# 1. Create task
+viben task create "My feature" --slug my-feature
+
+# 2. Submit to queue
+viben task enqueue my-feature
+
+# 3. View queue status
+viben queue status
+# Queue Status
+# ────────────────────────────────────────
+#   Pending:     1 task(s)
+#   Running:     0 / 3 (max concurrency)
+
+# 4. View queue list
+viben queue list
+# ID              STATUS   COMMAND                          CWD
+# q_7kA9OXDz71T7  pending  viben task start my-feature      /path/to/repo
+
+# 5. Monitor execution
+viben queue logs q_7kA9OXDz71T7 --follow
+
+# 6. View task status
+viben task status my-feature
+```
+
+### Direct Execution (Skip Queue)
+
+To execute a task immediately without going through the queue:
+
+```bash
+# Option 1: Use --skip-queue flag
+viben task enqueue my-feature --skip-queue
+viben task start my-feature
+
+# Option 2: Use start directly
+viben task start my-feature
+```
+
 ## Related Commands
 
 - [viben queue](./queue) - Command queue management
 - [viben swarm](./swarm) - Agent swarm scheduling
 - [viben session](./session) - Session record management
+- [viben filerl](./filerl) - File-based Reinforcement Learning
