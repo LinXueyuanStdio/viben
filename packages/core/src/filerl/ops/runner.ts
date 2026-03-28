@@ -50,7 +50,7 @@ import { selectBestTask } from "../../reward/ops/select";
 import { computeReward } from "../../reward/ops/crud";
 import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas, getAllIdeasFromSession } from "../../idea/ops";
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
-import { registrySearchAgent } from "../../cli/lib/viben-workspace";
+import { readRegistry } from "../../cli/lib/swarm/registry";
 import { isProcessRunning } from "../../cli/lib/swarm/status";
 
 // =============================================================================
@@ -1012,7 +1012,10 @@ export function orchestrateMergeAndCleanup(
 }
 
 /**
- * Check if an agent process is stuck or dead
+ * Check if any agent process for a task is still running
+ *
+ * A task may have multiple agents (start-xxx, plan-xxx, implement-xxx, etc.).
+ * We consider the task as "healthy" if ANY of its agents is still running.
  *
  * @param repoRoot - Repository root path
  * @param taskName - Task name to check
@@ -1021,17 +1024,35 @@ export function orchestrateMergeAndCleanup(
 function checkAgentHealth(
   repoRoot: string,
   taskName: string
-): { running: boolean; pid?: number } {
-  // Search for agent by task name
-  const agent = registrySearchAgent(taskName, repoRoot);
-  if (!agent) {
-    return { running: false };
+): { running: boolean; pid?: number; agentCount: number } {
+  // Read registry directly to find ALL agents for this task
+  const registry = readRegistry(repoRoot);
+  if (!registry) {
+    return { running: false, agentCount: 0 };
   }
 
-  const running = isProcessRunning(agent.pid);
+  // Find all agents whose task_dir contains the task name
+  const taskAgents = registry.agents.filter(agent =>
+    agent.task_dir.includes(taskName)
+  );
+
+  if (taskAgents.length === 0) {
+    return { running: false, agentCount: 0 };
+  }
+
+  // Check if ANY agent for this task is still running
+  for (const agent of taskAgents) {
+    if (isProcessRunning(agent.pid)) {
+      return { running: true, pid: agent.pid, agentCount: taskAgents.length };
+    }
+  }
+
+  // All agents are dead - return the most recent one's PID for logging
+  const lastAgent = taskAgents[taskAgents.length - 1];
   return {
-    running,
-    pid: agent.pid,
+    running: false,
+    pid: lastAgent.pid,
+    agentCount: taskAgents.length,
   };
 }
 
@@ -1041,12 +1062,14 @@ function checkAgentHealth(
  * Also monitors agent process health and restarts stuck/dead agents.
  *
  * @param repoRoot - Repository root path
+ * @param name - FileRL run name (for updating state on failure)
  * @param taskNames - Task names to wait for
  * @param options - Wait options
  * @param onProgress - Optional progress callback
  */
 export async function waitForTasksCompletion(
   repoRoot: string,
+  name: string,
   taskNames: string[],
   options: {
     pollInterval?: number;
@@ -1063,6 +1086,7 @@ export async function waitForTasksCompletion(
 
   // Track restart attempts per task
   const restartAttempts: Record<string, number> = {};
+  const failedTasks: string[] = [];
   for (const taskName of taskNames) {
     restartAttempts[taskName] = 0;
   }
@@ -1081,8 +1105,8 @@ export async function waitForTasksCompletion(
     for (const taskName of taskNames) {
       const taskStatus = statusData.statuses[taskName]?.status;
 
-      // Only check in_progress tasks
-      if (taskStatus === "in_progress") {
+      // Only check in_progress tasks that haven't permanently failed
+      if (taskStatus === "in_progress" && !failedTasks.includes(taskName)) {
         const health = checkAgentHealth(repoRoot, taskName);
 
         if (!health.running) {
@@ -1093,7 +1117,8 @@ export async function waitForTasksCompletion(
             stuckTasks.push(taskName);
             restartAttempts[taskName]++;
             onProgress?.(`Agent for ${taskName} died, restarting (attempt ${restartAttempts[taskName]}/${maxRestartAttempts})`);
-          } else {
+          } else if (!failedTasks.includes(taskName)) {
+            failedTasks.push(taskName);
             onProgress?.(`Agent for ${taskName} failed after ${maxRestartAttempts} restart attempts`);
           }
         }
@@ -1111,19 +1136,57 @@ export async function waitForTasksCompletion(
 
     onProgress?.(`Task status: ${statusData.completedCount}/${statusData.totalCount} completed`);
 
-    if (statusData.allCompleted) {
-      debug("All tasks completed");
-      return { success: true, phase: "wait_complete", data: statusData };
+    // Check if all tasks are either completed or permanently failed
+    const nonFailedTasks = taskNames.filter(t => !failedTasks.includes(t));
+    const nonFailedCompleted = nonFailedTasks.every(t => {
+      const status = statusData.statuses[t]?.status;
+      return status === "completed" || status === "review" || status === "failed" || status === "cancelled";
+    });
+
+    if (statusData.allCompleted || (nonFailedCompleted && failedTasks.length > 0)) {
+      debug("All tasks completed or failed", { failedTasks });
+
+      // If some tasks failed permanently, record in state
+      if (failedTasks.length > 0) {
+        const state = readState(repoRoot, name);
+        if (state) {
+          const currentIter = state.iterations[state.iterations.length - 1];
+          if (currentIter) {
+            currentIter.failed_tasks = failedTasks;
+            writeState(repoRoot, state);
+          }
+        }
+      }
+
+      return {
+        success: true,
+        phase: "wait_complete",
+        data: { ...statusData, failedTasks },
+      };
     }
 
     const elapsed = Date.now() - startTime;
     if (elapsed >= maxWaitTime) {
-      debug("Timeout", { elapsed: Math.round(elapsed / 60000) });
+      debug("Timeout", { elapsed: Math.round(elapsed / 60000), failedTasks });
+
+      // Update state with timeout information
+      const state = readState(repoRoot, name);
+      if (state) {
+        const currentIter = state.iterations[state.iterations.length - 1];
+        if (currentIter) {
+          currentIter.stop_reason = `Timeout after ${Math.round(elapsed / 60000)} minutes`;
+          currentIter.failed_tasks = failedTasks;
+        }
+        state.stop_reason = `wait_tasks_timeout: ${Math.round(elapsed / 60000)} minutes`;
+        state.active = false;
+        writeState(repoRoot, state);
+      }
+
       return {
         success: false,
         phase: "wait_timeout",
         error: `Timeout after ${Math.round(elapsed / 60000)} minutes`,
-        data: statusData,
+        data: { ...statusData, failedTasks },
       };
     }
 
@@ -1347,7 +1410,7 @@ export async function orchestrateFullIteration(
       updateIterationPhase(state, "wait_tasks");
       writeState(repoRoot, state);
 
-      const waitResult = await waitForTasksCompletion(repoRoot, tasks, {}, onProgress);
+      const waitResult = await waitForTasksCompletion(repoRoot, name, tasks, {}, onProgress);
       if (!waitResult.success) {
         return waitResult;
       }
