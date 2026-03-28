@@ -7,7 +7,7 @@
  * Based on docs/plans/2026-03-17-filerl-commands-design.md
  */
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import {
   resolveTaskDirectory,
   readTaskJson,
@@ -240,9 +240,9 @@ export function selectBestTask(
     const ideaId = opts.taskIdeaMap?.[taskDirName];
 
     if (isFileRlMode) {
-      // FileRL mode: get task name from task.json for reward directory
-      const taskData = readTaskJson(taskDir) as { name?: string; id?: string } | null;
-      const rewardDirName = taskData?.name || taskData?.id || taskDirName;
+      // FileRL mode: use task directory basename as reward directory name
+      // (not task.json name/id, which might be the idea ID)
+      const rewardDirName = basename(taskDir);
 
       // Read from iter{N}/{ideaId}/{taskName}/reward.json
       rewardData = loadFileRlIterReward(opts.filerlDir!, opts.iteration!, rewardDirName, ideaId);
