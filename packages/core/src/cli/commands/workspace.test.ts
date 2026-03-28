@@ -281,8 +281,8 @@ describe("workspace command", () => {
         mcp: { enabled: ["filesystem", "git"] },
         skills: { enabled: ["code-review", "commit"] },
         agents: ["main", "reviewer"],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(
@@ -309,8 +309,8 @@ describe("workspace command", () => {
         mcp: { enabled: ["filesystem"] },
         skills: { enabled: ["code-review"] },
         agents: ["main"],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(
@@ -372,8 +372,8 @@ describe("workspace command", () => {
         mcp: { enabled: [] },
         skills: { enabled: [] },
         agents: [],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(
@@ -403,8 +403,8 @@ describe("workspace command", () => {
         mcp: { enabled: [] },
         skills: { enabled: [] },
         agents: [],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(

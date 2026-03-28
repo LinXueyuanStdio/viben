@@ -57,8 +57,8 @@ describe("TaskModel", () => {
       expect(task.title).toBe("Test Task");
       expect(task.description).toBe("A test task description");
       expect(task.status).toBe("backlog");
-      expect(task.createdAt).toBeDefined();
-      expect(task.updatedAt).toBeDefined();
+      expect(task.created_at).toBeDefined();
+      expect(task.updated_at).toBeDefined();
     });
 
     it("should create a task with custom id", async () => {
@@ -168,7 +168,7 @@ describe("TaskModel", () => {
       const updated = await TaskModel.update(task.id, { title: "Updated" });
 
       expect(updated.title).toBe("Updated");
-      expect(updated.updatedAt).toBeDefined();
+      expect(updated.updated_at).toBeDefined();
       // Verify the update was persisted
       const found = await TaskModel.findById(task.id);
       expect(found?.title).toBe("Updated");
@@ -264,8 +264,8 @@ describe("SessionModel", () => {
       expect(session.agentId).toBe("agent-1");
       expect(session.status).toBe("active");
       expect(session.sessionData).toEqual({});
-      expect(session.createdAt).toBeDefined();
-      expect(session.updatedAt).toBeDefined();
+      expect(session.created_at).toBeDefined();
+      expect(session.updated_at).toBeDefined();
     });
 
     it("should create a session with custom id", async () => {
@@ -409,7 +409,7 @@ describe("SessionModel", () => {
       });
 
       expect(updated.status).toBe("completed");
-      expect(updated.updatedAt).toBeDefined();
+      expect(updated.updated_at).toBeDefined();
       // Verify the update was persisted
       const found = await SessionModel.findById(session.id);
       expect(found?.status).toBe("completed");
@@ -500,20 +500,20 @@ describe("ExecutionProcessModel", () => {
   describe("create()", () => {
     it("should create a new execution process with default status", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       expect(process.id).toBeDefined();
-      expect(process.sessionId).toBe("session-1");
+      expect(process.session_id).toBe("session-1");
       expect(process.status).toBe("running");
-      expect(process.startedAt).toBeDefined();
+      expect(process.started_at).toBeDefined();
       expect(process.pid).toBeUndefined();
     });
 
     it("should create process with custom id", async () => {
       const process = await ExecutionProcessModel.create({
         id: "custom-process-id",
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       expect(process.id).toBe("custom-process-id");
@@ -521,7 +521,7 @@ describe("ExecutionProcessModel", () => {
 
     it("should create process with pid", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
         pid: 12345,
       });
 
@@ -532,14 +532,14 @@ describe("ExecutionProcessModel", () => {
   describe("findById()", () => {
     it("should find process by ID", async () => {
       const created = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
         pid: 99999,
       });
 
       const found = await ExecutionProcessModel.findById(created.id);
 
       expect(found).not.toBeNull();
-      expect(found?.sessionId).toBe("session-1");
+      expect(found?.session_id).toBe("session-1");
       expect(found?.pid).toBe(99999);
     });
 
@@ -556,18 +556,18 @@ describe("ExecutionProcessModel", () => {
     });
 
     it("should return all processes sorted by startedAt descending", async () => {
-      await ExecutionProcessModel.create({ sessionId: "session-1" });
+      await ExecutionProcessModel.create({ session_id: "session-1" });
       // Small delays to ensure different timestamps
       await new Promise((resolve) => setTimeout(resolve, 5));
-      await ExecutionProcessModel.create({ sessionId: "session-2" });
+      await ExecutionProcessModel.create({ session_id: "session-2" });
       await new Promise((resolve) => setTimeout(resolve, 5));
-      await ExecutionProcessModel.create({ sessionId: "session-3" });
+      await ExecutionProcessModel.create({ session_id: "session-3" });
 
       const processes = await ExecutionProcessModel.findAll();
 
       expect(processes).toHaveLength(3);
       // Verify all processes are present
-      const sessionIds = processes.map((p) => p.sessionId);
+      const sessionIds = processes.map((p) => p.session_id);
       expect(sessionIds).toContain("session-1");
       expect(sessionIds).toContain("session-2");
       expect(sessionIds).toContain("session-3");
@@ -576,21 +576,21 @@ describe("ExecutionProcessModel", () => {
 
   describe("findBySessionId()", () => {
     it("should find processes by session ID", async () => {
-      await ExecutionProcessModel.create({ sessionId: "session-1" });
-      await ExecutionProcessModel.create({ sessionId: "session-2" });
-      await ExecutionProcessModel.create({ sessionId: "session-1" });
+      await ExecutionProcessModel.create({ session_id: "session-1" });
+      await ExecutionProcessModel.create({ session_id: "session-2" });
+      await ExecutionProcessModel.create({ session_id: "session-1" });
 
       const processes = await ExecutionProcessModel.findBySessionId("session-1");
 
       expect(processes).toHaveLength(2);
-      processes.forEach((p) => expect(p.sessionId).toBe("session-1"));
+      processes.forEach((p) => expect(p.session_id).toBe("session-1"));
     });
   });
 
   describe("findByStatus()", () => {
     it("should find processes by status", async () => {
-      const proc1 = await ExecutionProcessModel.create({ sessionId: "session-1" });
-      await ExecutionProcessModel.create({ sessionId: "session-2" });
+      const proc1 = await ExecutionProcessModel.create({ session_id: "session-1" });
+      await ExecutionProcessModel.create({ session_id: "session-2" });
       await ExecutionProcessModel.markCompleted(proc1.id, 0);
 
       const running = await ExecutionProcessModel.findByStatus("running");
@@ -603,8 +603,8 @@ describe("ExecutionProcessModel", () => {
 
   describe("findRunning()", () => {
     it("should find all running processes", async () => {
-      const proc1 = await ExecutionProcessModel.create({ sessionId: "session-1" });
-      await ExecutionProcessModel.create({ sessionId: "session-2" });
+      const proc1 = await ExecutionProcessModel.create({ session_id: "session-1" });
+      await ExecutionProcessModel.create({ session_id: "session-2" });
       await ExecutionProcessModel.markCompleted(proc1.id, 0);
 
       const running = await ExecutionProcessModel.findRunning();
@@ -617,7 +617,7 @@ describe("ExecutionProcessModel", () => {
   describe("update()", () => {
     it("should update process status", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       const updated = await ExecutionProcessModel.update(process.id, {
@@ -629,7 +629,7 @@ describe("ExecutionProcessModel", () => {
 
     it("should update process pid", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       const updated = await ExecutionProcessModel.update(process.id, {
@@ -649,7 +649,7 @@ describe("ExecutionProcessModel", () => {
   describe("markCompleted()", () => {
     it("should mark process as completed with exit code", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       await ExecutionProcessModel.markCompleted(process.id, 0);
@@ -657,14 +657,14 @@ describe("ExecutionProcessModel", () => {
       const found = await ExecutionProcessModel.findById(process.id);
       expect(found?.status).toBe("completed");
       expect(found?.exitCode).toBe(0);
-      expect(found?.endedAt).toBeDefined();
+      expect(found?.ended_at).toBeDefined();
     });
   });
 
   describe("markFailed()", () => {
     it("should mark process as failed", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       await ExecutionProcessModel.markFailed(process.id, 1);
@@ -672,12 +672,12 @@ describe("ExecutionProcessModel", () => {
       const found = await ExecutionProcessModel.findById(process.id);
       expect(found?.status).toBe("failed");
       expect(found?.exitCode).toBe(1);
-      expect(found?.endedAt).toBeDefined();
+      expect(found?.ended_at).toBeDefined();
     });
 
     it("should mark process as failed without exit code", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       await ExecutionProcessModel.markFailed(process.id);
@@ -691,21 +691,21 @@ describe("ExecutionProcessModel", () => {
   describe("markCancelled()", () => {
     it("should mark process as cancelled", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       await ExecutionProcessModel.markCancelled(process.id);
 
       const found = await ExecutionProcessModel.findById(process.id);
       expect(found?.status).toBe("cancelled");
-      expect(found?.endedAt).toBeDefined();
+      expect(found?.ended_at).toBeDefined();
     });
   });
 
   describe("delete()", () => {
     it("should delete existing process", async () => {
       const process = await ExecutionProcessModel.create({
-        sessionId: "session-1",
+        session_id: "session-1",
       });
 
       const result = await ExecutionProcessModel.delete(process.id);
@@ -755,8 +755,8 @@ describe("GroupChatModel", () => {
       expect(chat.id).toBeDefined();
       expect(chat.name).toBe("Test Chat");
       expect(chat.createdBy).toBe("user-1");
-      expect(chat.createdAt).toBeDefined();
-      expect(chat.updatedAt).toBeDefined();
+      expect(chat.created_at).toBeDefined();
+      expect(chat.updated_at).toBeDefined();
     });
 
     it("should create group chat with custom id", async () => {
@@ -864,7 +864,7 @@ describe("GroupChatModel", () => {
       const updated = await GroupChatModel.update(chat.id, { name: "Updated" });
 
       expect(updated.name).toBe("Updated");
-      expect(updated.updatedAt).toBeDefined();
+      expect(updated.updated_at).toBeDefined();
       // Verify the update was persisted
       const found = await GroupChatModel.findById(chat.id);
       expect(found?.name).toBe("Updated");
@@ -979,7 +979,7 @@ describe("GroupChatMemberModel", () => {
       expect(member.memberId).toBe("user-1");
       expect(member.displayName).toBe("User One");
       expect(member.role).toBe("member");
-      expect(member.joinedAt).toBeDefined();
+      expect(member.joined_at).toBeDefined();
     });
 
     it("should create member with custom id and role", async () => {
@@ -1237,7 +1237,7 @@ describe("GroupChatMessageModel", () => {
       expect(message.senderName).toBe("User One");
       expect(message.contentType).toBe("text");
       expect(message.content).toBe("Hello, world!");
-      expect(message.createdAt).toBeDefined();
+      expect(message.created_at).toBeDefined();
     });
 
     it("should create message with custom id", async () => {
@@ -1456,7 +1456,7 @@ describe("GroupChatMessageModel", () => {
       const messages = await GroupChatMessageModel.findByGroupChatId(
         "chat-1",
         undefined,
-        msg3.createdAt
+        msg3.created_at
       );
 
       expect(messages).toHaveLength(2);

@@ -234,11 +234,11 @@ export function promoteIdea(
 
     return {
       success: true,
-      ideaId: ideaId,
-      ideaTitle: idea.title,
-      taskId: result.dirName,
-      taskDir: result.taskDir,
-      dirName: result.dirName,
+      idea_id: ideaId,
+      idea_title: idea.title,
+      task_id: result.dirName,
+      task_dir: result.taskDir,
+      dir_name: result.dirName,
       priority,
       status: options.start ? "queue" : "backlog",
       worktree: options.worktree || false,
@@ -314,11 +314,11 @@ export function promoteIdeaDirect(
 
     return {
       success: true,
-      ideaId: idea.id,
-      ideaTitle: idea.title,
-      taskId: result.dirName,
-      taskDir: result.taskDir,
-      dirName: result.dirName,
+      idea_id: idea.id,
+      idea_title: idea.title,
+      task_id: result.dirName,
+      task_dir: result.taskDir,
+      dir_name: result.dirName,
       priority,
       status: options.start ? "queue" : "backlog",
       worktree: options.worktree || false,

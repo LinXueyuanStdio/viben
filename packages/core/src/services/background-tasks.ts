@@ -17,15 +17,15 @@ export interface BackgroundTask {
   /** Task unique ID */
   taskId: string;
   /** Agent session ID (used for stopping) */
-  sessionId: string;
+  session_id: string;
   /** User prompt (for display) */
   prompt: string;
   /** Task status */
   status: "pending" | "running" | "completed" | "error" | "cancelled";
   /** Start time */
-  startedAt: Date;
+  started_at: Date;
   /** Completion time */
-  completedAt?: Date;
+  completed_at?: Date;
   /** Error message */
   errorMessage?: string;
   /** API cost */
@@ -33,7 +33,7 @@ export interface BackgroundTask {
   /** Execution duration (ms) */
   duration?: number;
   /** Workspace path (for filtering by workspace) */
-  workspacePath?: string;
+  workspace_path?: string;
   /** Agent config path (AGENTS.md) for workspace-level agents */
   agentConfigPath?: string;
   /** Agent name (for display) */
@@ -57,9 +57,9 @@ export class BackgroundTaskManager {
    */
   addTask(task: {
     taskId: string;
-    sessionId: string;
+    session_id: string;
     prompt: string;
-    workspacePath?: string;
+    workspace_path?: string;
     agentConfigPath?: string;
     agentName?: string;
   }): BackgroundTask {
@@ -69,13 +69,13 @@ export class BackgroundTaskManager {
     const fullTask: BackgroundTask = {
       ...task,
       status: "running",
-      startedAt: new Date(),
+      started_at: new Date(),
     };
 
     this.tasks.set(task.taskId, fullTask);
     this.notifyListeners();
 
-    log.info({ taskId: task.taskId, workspacePath: task.workspacePath || "global" }, "Added task");
+    log.info({ taskId: task.taskId, workspacePath: task.workspace_path || "global" }, "Added task");
     return fullTask;
   }
 
@@ -84,9 +84,9 @@ export class BackgroundTaskManager {
    */
   getTasksByWorkspace(workspacePath: string): BackgroundTask[] {
     const normalizedPath = workspacePath.replace(/\/+$/, "");
-    return Array.from(this.tasks.values()).filter((t) => {
-      if (!t.workspacePath) return false;
-      return t.workspacePath.replace(/\/+$/, "") === normalizedPath;
+    return Array.from(this.tasks.values()).filter((task) => {
+      if (!task.workspace_path) return false;
+      return task.workspace_path.replace(/\/+$/, "") === normalizedPath;
     });
   }
 
@@ -112,10 +112,13 @@ export class BackgroundTaskManager {
     const task = this.tasks.get(taskId);
     if (!task) return;
 
-    Object.assign(task, update);
+    task.status = update.status;
+    if (update.errorMessage !== undefined) task.errorMessage = update.errorMessage;
+    if (update.cost !== undefined) task.cost = update.cost;
+    if (update.duration !== undefined) task.duration = update.duration;
 
     if (update.status !== "running") {
-      task.completedAt = new Date();
+      task.completed_at = new Date();
     }
 
     this.notifyListeners();
@@ -125,11 +128,11 @@ export class BackgroundTaskManager {
   /**
    * Update task session ID (called when session is created after task)
    */
-  updateSessionId(taskId: string, sessionId: string): void {
+  updateSessionId(taskId: string, session_id: string): void {
     const task = this.tasks.get(taskId);
     if (!task) return;
 
-    task.sessionId = sessionId;
+    task.session_id = session_id;
     this.notifyListeners();
   }
 
@@ -212,14 +215,14 @@ export class BackgroundTaskManager {
    */
   cleanupOldTasks(maxAgeMs: number = 3600000): void {
     const now = Date.now();
-    for (const [id, task] of this.tasks) {
+    for (const [taskId, task] of this.tasks) {
       if (
         task.status !== "running" &&
-        task.completedAt &&
-        now - task.completedAt.getTime() > maxAgeMs
+        task.completed_at &&
+        now - task.completed_at.getTime() > maxAgeMs
       ) {
-        this.tasks.delete(id);
-        this.abortControllers.delete(id);
+        this.tasks.delete(taskId);
+        this.abortControllers.delete(taskId);
       }
     }
     this.notifyListeners();

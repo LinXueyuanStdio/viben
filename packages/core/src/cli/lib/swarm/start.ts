@@ -77,11 +77,11 @@ export interface StartResult {
   /** Process ID */
   pid?: number;
   /** Session ID for resuming */
-  sessionId?: string;
+  session_id?: string;
   /** Path to the worktree */
   worktreePath?: string;
   /** Path to the log file */
-  logFile?: string;
+  log_file?: string;
   /** Error message if failed */
   error?: string;
 }
@@ -391,7 +391,7 @@ export async function startAgent(
   const workResult = await runWorkPhase({
     repoRoot,
     workingDir: worktreePath,
-    taskDir: taskDirAbs, // Main repo's task dir, not worktree's copy
+    task_dir: taskDirAbs, // Main repo's task dir, not worktree's copy
     platform,
     verbose,
     detach,
@@ -417,9 +417,9 @@ export async function startAgent(
     success: true,
     agentId: workResult.agentId,
     pid: workResult.pid,
-    sessionId: workResult.sessionId,
+    session_id: workResult.sessionId,
     worktreePath,
-    logFile: workResult.logFile,
+    log_file: workResult.logFile,
   };
 }
 

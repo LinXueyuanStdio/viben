@@ -161,7 +161,7 @@ export interface Idea {
   promotedTo?: string;
 
   /** ISO timestamp when the idea was created */
-  createdAt: string;
+  created_at: string;
 
   // ----- Optional fields depending on idea type -----
 
@@ -237,13 +237,13 @@ export interface RawIdeaData {
  */
 export interface IdeaSessionSummary {
   /** Total number of ideas generated */
-  totalIdeas: number;
+  total_ideas: number;
 
   /** Count of ideas by type */
-  byType: Record<string, number>;
+  by_type: Record<string, number>;
 
   /** Count of ideas by status */
-  byStatus: Record<IdeaStatus, number>;
+  by_status: Record<IdeaStatus, number>;
 }
 
 /**
@@ -280,10 +280,10 @@ export interface IdeaSession {
   files?: string[];
 
   /** ISO timestamp when session was created */
-  generatedAt: string;
+  generated_at: string;
 
   /** ISO timestamp when session was last updated */
-  updatedAt: string;
+  updated_at: string;
 }
 
 /**
@@ -425,25 +425,25 @@ export interface IdeaGenerateTypeResult {
  */
 export interface IdeaGenerateResult {
   /** Session ID */
-  sessionId: string;
+  session_id: string;
 
   /** Session directory path */
   sessionDir: string;
 
   /** Results for each type */
-  typeResults: IdeaGenerateTypeResult[];
+  type_results: IdeaGenerateTypeResult[];
 
   /** All generated ideas */
   ideas: Idea[];
 
   /** Count by type */
-  byType: Record<string, number>;
+  by_type: Record<string, number>;
 
   /** Errors encountered */
   errors: string[];
 
   /** Total ideas generated */
-  totalIdeas: number;
+  total_ideas: number;
 
   /** Whether the operation succeeded */
   success: boolean;
@@ -457,19 +457,19 @@ export interface IdeaPromoteResult {
   success: boolean;
 
   /** Original idea ID */
-  ideaId?: string;
+  idea_id?: string;
 
   /** Idea title */
-  ideaTitle?: string;
+  idea_title?: string;
 
   /** Created task ID */
-  taskId?: string;
+  task_id?: string;
 
   /** Created task directory */
-  taskDir?: string;
+  task_dir?: string;
 
   /** Task directory name */
-  dirName?: string;
+  dir_name?: string;
 
   /** Task priority */
   priority?: string;
@@ -681,7 +681,7 @@ export function parseRawIdea(raw: RawIdeaData): Idea {
       : "medium",
     status: isValidIdeaStatus(raw.status) ? raw.status : "draft",
     promotedTo: raw.promoted_to || undefined,
-    createdAt: raw.created_at,
+    created_at: raw.created_at,
     affectedFiles: raw.affected_files,
     existingPatterns: raw.existing_patterns,
     buildsUpon: raw.builds_upon,
@@ -705,17 +705,17 @@ export function parseRawSession(raw: RawIdeaSession): IdeaSession {
     types: raw.types,
     model: raw.model,
     summary: {
-      totalIdeas: raw.summary.total_ideas,
-      byType: raw.summary.by_type,
-      byStatus: {
+      total_ideas: raw.summary.total_ideas,
+      by_type: raw.summary.by_type,
+      by_status: {
         draft: raw.summary.by_status.draft || 0,
         promoted: raw.summary.by_status.promoted || 0,
         dismissed: raw.summary.by_status.dismissed || 0,
       },
     },
     files: raw.files,
-    generatedAt: raw.generated_at,
-    updatedAt: raw.updated_at,
+    generated_at: raw.generated_at,
+    updated_at: raw.updated_at,
   };
 }
 

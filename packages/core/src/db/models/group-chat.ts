@@ -30,8 +30,8 @@ interface GroupChatEntry {
   description?: string;
   taskId?: string;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface GroupChatMemberEntry {
@@ -40,7 +40,7 @@ interface GroupChatMemberEntry {
   memberId: string;
   displayName: string;
   role: MemberRole;
-  joinedAt: string;
+  joined_at: string;
   lastSeenAt?: string;
 }
 
@@ -54,7 +54,7 @@ interface GroupChatMessageEntry {
   mentions?: string[];
   replyTo?: string;
   metadata?: Record<string, unknown>;
-  createdAt: string;
+  created_at: string;
 }
 
 function getGroupChatsPath(): string {
@@ -98,7 +98,7 @@ export const GroupChatModel = {
     const data = await loadGroupChats();
     return Object.entries(data.groupChats)
       .map(([id, entry]) => ({ id, ...entry }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
 
   async findById(id: string): Promise<GroupChat | null> {
@@ -123,8 +123,8 @@ export const GroupChatModel = {
       description: input.description,
       taskId: input.taskId,
       createdBy: input.createdBy,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     data.groupChats[id] = entry;
@@ -143,8 +143,8 @@ export const GroupChatModel = {
       description: input.description ?? entry.description,
       taskId: input.taskId ?? entry.taskId,
       createdBy: entry.createdBy,
-      createdAt: entry.createdAt,
-      updatedAt: now,
+      created_at: entry.created_at,
+      updated_at: now,
     };
 
     data.groupChats[id] = updated;
@@ -198,7 +198,7 @@ export const GroupChatMemberModel = {
     const data = await loadGroupChats();
     return Object.entries(data.members)
       .map(([id, entry]) => ({ id, ...entry }))
-      .sort((a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime());
+      .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime());
   },
 
   async findById(id: string): Promise<GroupChatMember | null> {
@@ -229,7 +229,7 @@ export const GroupChatMemberModel = {
       memberId: input.memberId,
       displayName: input.displayName,
       role: input.role || "member",
-      joinedAt: now,
+      joined_at: now,
     };
 
     data.members[id] = entry;
@@ -289,7 +289,7 @@ export const GroupChatMessageModel = {
     const data = await loadGroupChats();
     return Object.entries(data.messages)
       .map(([id, entry]) => ({ id, ...entry }))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   },
 
   async findById(id: string): Promise<GroupChatMessage | null> {
@@ -309,7 +309,7 @@ export const GroupChatMessageModel = {
 
     if (before) {
       const beforeTime = new Date(before).getTime();
-      filtered = filtered.filter((m) => new Date(m.createdAt).getTime() < beforeTime);
+      filtered = filtered.filter((m) => new Date(m.created_at).getTime() < beforeTime);
     }
 
     if (limit) {
@@ -334,7 +334,7 @@ export const GroupChatMessageModel = {
       mentions: input.mentions,
       replyTo: input.replyTo,
       metadata: input.metadata,
-      createdAt: now,
+      created_at: now,
     };
 
     data.messages[id] = entry;

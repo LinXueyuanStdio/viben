@@ -21,12 +21,12 @@ interface ExecutionProcessesFile {
 }
 
 interface ExecutionProcessEntry {
-  sessionId: string;
+  session_id: string;
   pid?: number;
   status: ExecutionProcessStatus;
   exitCode?: number;
-  startedAt: string;
-  endedAt?: string;
+  started_at: string;
+  ended_at?: string;
 }
 
 function getProcessesPath(): string {
@@ -61,7 +61,7 @@ export const ExecutionProcessModel = {
         id,
         ...entry,
       }))
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+      .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
   },
 
   /**
@@ -81,7 +81,7 @@ export const ExecutionProcessModel = {
    */
   async findBySessionId(sessionId: string): Promise<ExecutionProcess[]> {
     const all = await this.findAll();
-    return all.filter((p) => p.sessionId === sessionId);
+    return all.filter((p) => p.session_id === sessionId);
   },
 
   /**
@@ -108,10 +108,10 @@ export const ExecutionProcessModel = {
     const now = new Date().toISOString();
 
     const entry: ExecutionProcessEntry = {
-      sessionId: input.sessionId,
+      session_id: input.session_id,
       pid: input.pid,
       status: "running",
-      startedAt: now,
+      started_at: now,
     };
 
     data.processes[id] = entry;
@@ -131,12 +131,12 @@ export const ExecutionProcessModel = {
     }
 
     const updated: ExecutionProcessEntry = {
-      sessionId: entry.sessionId,
+      session_id: entry.session_id,
       pid: input.pid ?? entry.pid,
       status: input.status ?? entry.status,
       exitCode: input.exitCode ?? entry.exitCode,
-      startedAt: entry.startedAt,
-      endedAt: input.endedAt ?? entry.endedAt,
+      started_at: entry.started_at,
+      ended_at: input.ended_at ?? entry.ended_at,
     };
 
     data.processes[id] = updated;
@@ -152,7 +152,7 @@ export const ExecutionProcessModel = {
     await this.update(id, {
       status: "completed",
       exitCode,
-      endedAt: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
     });
   },
 
@@ -163,7 +163,7 @@ export const ExecutionProcessModel = {
     await this.update(id, {
       status: "failed",
       exitCode,
-      endedAt: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
     });
   },
 
@@ -173,7 +173,7 @@ export const ExecutionProcessModel = {
   async markCancelled(id: string): Promise<void> {
     await this.update(id, {
       status: "cancelled",
-      endedAt: new Date().toISOString(),
+      ended_at: new Date().toISOString(),
     });
   },
 

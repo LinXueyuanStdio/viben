@@ -27,13 +27,13 @@ import type { AgentMemory, DailyLog, LogEntry } from "../types";
  */
 export interface MemoryContent {
   /** Agent ID */
-  agentId: string;
+  agent_id: string;
   /** Main memory content (MEMORY.md) */
   content: string;
   /** File path */
   path: string;
   /** Last modified time */
-  updatedAt: string;
+  updated_at: string;
   /** File size in bytes */
   size: number;
 }
@@ -51,7 +51,7 @@ export interface DailyLogContent {
   /** File path */
   path: string;
   /** Last modified time */
-  updatedAt: string;
+  updated_at: string;
 }
 
 /**
@@ -83,8 +83,8 @@ export class MemoryManager {
   /**
    * Initialize memory directory for an agent
    */
-  async initialize(agentId: string): Promise<void> {
-    await ensureDir(getAgentMemoryDir(agentId));
+  async initialize(agent_id: string): Promise<void> {
+    await ensureDir(getAgentMemoryDir(agent_id));
   }
 
   // ==========================================================================
@@ -94,16 +94,16 @@ export class MemoryManager {
   /**
    * Get main memory content for an agent
    */
-  async getMemory(agentId: string): Promise<MemoryContent> {
-    const memoryDir = getAgentMemoryDir(agentId);
+  async getMemory(agent_id: string): Promise<MemoryContent> {
+    const memoryDir = getAgentMemoryDir(agent_id);
     const memoryPath = join(memoryDir, "MEMORY.md");
 
     if (!fileExists(memoryPath)) {
       return {
-        agentId,
+        agent_id,
         content: "",
         path: memoryPath,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         size: 0,
       };
     }
@@ -112,10 +112,10 @@ export class MemoryManager {
     const stats = await stat(memoryPath);
 
     return {
-      agentId,
+      agent_id,
       content,
       path: memoryPath,
-      updatedAt: stats.mtime.toISOString(),
+      updated_at: stats.mtime.toISOString(),
       size: stats.size,
     };
   }
@@ -123,8 +123,8 @@ export class MemoryManager {
   /**
    * Set main memory content (overwrites existing)
    */
-  async setMemory(agentId: string, content: string): Promise<void> {
-    const memoryDir = getAgentMemoryDir(agentId);
+  async setMemory(agent_id: string, content: string): Promise<void> {
+    const memoryDir = getAgentMemoryDir(agent_id);
     const memoryPath = join(memoryDir, "MEMORY.md");
 
     await ensureDir(memoryDir);
@@ -134,8 +134,8 @@ export class MemoryManager {
   /**
    * Append content to main memory
    */
-  async appendMemory(agentId: string, content: string): Promise<void> {
-    const memoryDir = getAgentMemoryDir(agentId);
+  async appendMemory(agent_id: string, content: string): Promise<void> {
+    const memoryDir = getAgentMemoryDir(agent_id);
     const memoryPath = join(memoryDir, "MEMORY.md");
 
     await ensureDir(memoryDir);
@@ -150,15 +150,15 @@ export class MemoryManager {
   /**
    * Clear main memory (delete content but keep file)
    */
-  async clearMemory(agentId: string): Promise<void> {
-    await this.setMemory(agentId, "");
+  async clearMemory(agent_id: string): Promise<void> {
+    await this.setMemory(agent_id, "");
   }
 
   /**
    * Check if agent has main memory file
    */
-  async hasMemory(agentId: string): Promise<boolean> {
-    const memoryPath = join(getAgentMemoryDir(agentId), "MEMORY.md");
+  async hasMemory(agent_id: string): Promise<boolean> {
+    const memoryPath = join(getAgentMemoryDir(agent_id), "MEMORY.md");
     return fileExists(memoryPath);
   }
 
@@ -169,9 +169,9 @@ export class MemoryManager {
   /**
    * Get daily log for a specific date
    */
-  async getDailyLog(agentId: string, date?: string): Promise<DailyLogContent | null> {
+  async getDailyLog(agent_id: string, date?: string): Promise<DailyLogContent | null> {
     const dateStr = date ?? this.getTodayDateString();
-    const memoryDir = getAgentMemoryDir(agentId);
+    const memoryDir = getAgentMemoryDir(agent_id);
     const logPath = join(memoryDir, `${dateStr}.md`);
 
     if (!fileExists(logPath)) {
@@ -187,28 +187,28 @@ export class MemoryManager {
       content,
       entries,
       path: logPath,
-      updatedAt: stats.mtime.toISOString(),
+      updated_at: stats.mtime.toISOString(),
     };
   }
 
   /**
    * Get today's daily log
    */
-  async getTodayLog(agentId: string): Promise<DailyLogContent | null> {
-    return this.getDailyLog(agentId, this.getTodayDateString());
+  async getTodayLog(agent_id: string): Promise<DailyLogContent | null> {
+    return this.getDailyLog(agent_id, this.getTodayDateString());
   }
 
   /**
    * Get yesterday's daily log
    */
-  async getYesterdayLog(agentId: string): Promise<DailyLogContent | null> {
-    return this.getDailyLog(agentId, this.getYesterdayDateString());
+  async getYesterdayLog(agent_id: string): Promise<DailyLogContent | null> {
+    return this.getDailyLog(agent_id, this.getYesterdayDateString());
   }
 
   /**
    * Get daily logs for the last N days
    */
-  async getRecentLogs(agentId: string, days = 7): Promise<DailyLogContent[]> {
+  async getRecentLogs(agent_id: string, days = 7): Promise<DailyLogContent[]> {
     const logs: DailyLogContent[] = [];
     const now = new Date();
 
@@ -217,7 +217,7 @@ export class MemoryManager {
       date.setDate(date.getDate() - i);
       const dateStr = this.formatDate(date);
 
-      const log = await this.getDailyLog(agentId, dateStr);
+      const log = await this.getDailyLog(agent_id, dateStr);
       if (log) {
         logs.push(log);
       }
@@ -229,8 +229,8 @@ export class MemoryManager {
   /**
    * List all available daily log dates
    */
-  async listDailyLogDates(agentId: string): Promise<string[]> {
-    const memoryDir = getAgentMemoryDir(agentId);
+  async listDailyLogDates(agent_id: string): Promise<string[]> {
+    const memoryDir = getAgentMemoryDir(agent_id);
     if (!fileExists(memoryDir)) {
       return [];
     }
@@ -253,9 +253,9 @@ export class MemoryManager {
   /**
    * Append entry to today's daily log
    */
-  async appendToDailyLog(agentId: string, options: AppendLogOptions): Promise<void> {
+  async appendToDailyLog(agent_id: string, options: AppendLogOptions): Promise<void> {
     const dateStr = this.getTodayDateString();
-    const memoryDir = getAgentMemoryDir(agentId);
+    const memoryDir = getAgentMemoryDir(agent_id);
     const logPath = join(memoryDir, `${dateStr}.md`);
 
     await ensureDir(memoryDir);
@@ -285,9 +285,9 @@ export class MemoryManager {
   /**
    * Append raw content to today's daily log
    */
-  async appendRawToDailyLog(agentId: string, content: string): Promise<void> {
+  async appendRawToDailyLog(agent_id: string, content: string): Promise<void> {
     const dateStr = this.getTodayDateString();
-    const memoryDir = getAgentMemoryDir(agentId);
+    const memoryDir = getAgentMemoryDir(agent_id);
     const logPath = join(memoryDir, `${dateStr}.md`);
 
     await ensureDir(memoryDir);
@@ -305,25 +305,25 @@ export class MemoryManager {
    * Get memory content for session startup
    * Returns main memory + today's log + yesterday's log
    */
-  async getSessionStartupMemory(agentId: string): Promise<string> {
+  async getSessionStartupMemory(agent_id: string): Promise<string> {
     const parts: string[] = [];
 
     // Main memory
-    const memory = await this.getMemory(agentId);
+    const memory = await this.getMemory(agent_id);
     if (memory.content) {
       parts.push("# Agent Memory\n");
       parts.push(memory.content);
     }
 
     // Today's log
-    const todayLog = await this.getTodayLog(agentId);
+    const todayLog = await this.getTodayLog(agent_id);
     if (todayLog) {
       parts.push("\n# Today's Log\n");
       parts.push(todayLog.content);
     }
 
     // Yesterday's log
-    const yesterdayLog = await this.getYesterdayLog(agentId);
+    const yesterdayLog = await this.getYesterdayLog(agent_id);
     if (yesterdayLog) {
       parts.push("\n# Yesterday's Log\n");
       parts.push(yesterdayLog.content);
@@ -336,13 +336,13 @@ export class MemoryManager {
    * Get combined memory stats
    */
   async getMemoryStats(
-    agentId: string
+    agent_id: string
   ): Promise<{ mainMemorySize: number; dailyLogsCount: number; totalSize: number }> {
-    const memory = await this.getMemory(agentId);
-    const dates = await this.listDailyLogDates(agentId);
+    const memory = await this.getMemory(agent_id);
+    const dates = await this.listDailyLogDates(agent_id);
 
     let totalSize = memory.size;
-    const memoryDir = getAgentMemoryDir(agentId);
+    const memoryDir = getAgentMemoryDir(agent_id);
 
     for (const date of dates) {
       const logPath = join(memoryDir, `${date}.md`);
@@ -366,8 +366,8 @@ export class MemoryManager {
   /**
    * Get daily logs in legacy format (for backward compatibility)
    */
-  async getDailyLogsLegacy(agentId: string, days = 7): Promise<DailyLog[]> {
-    const logs = await this.getRecentLogs(agentId, days);
+  async getDailyLogsLegacy(agent_id: string, days = 7): Promise<DailyLog[]> {
+    const logs = await this.getRecentLogs(agent_id, days);
 
     return logs.map((log) => ({
       date: log.date,
@@ -382,12 +382,12 @@ export class MemoryManager {
   /**
    * Get agent memory in legacy format (for backward compatibility)
    */
-  async getMemoryLegacy(agentId: string): Promise<AgentMemory> {
-    const memory = await this.getMemory(agentId);
+  async getMemoryLegacy(agent_id: string): Promise<AgentMemory> {
+    const memory = await this.getMemory(agent_id);
     return {
-      agentId,
+      agent_id,
       content: memory.content,
-      updatedAt: memory.updatedAt,
+      updated_at: memory.updated_at,
     };
   }
 

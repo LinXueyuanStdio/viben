@@ -87,30 +87,30 @@ interface OfficialServerDisplay {
   /** Description */
   description: string | null;
   /** Primary icon URL */
-  iconUrl: string | null;
+  icon_url: string | null;
   /** Repository URL */
-  repositoryUrl: string | null;
+  repository_url: string | null;
   /** Website URL */
-  websiteUrl: string | null;
+  website_url: string | null;
   /** Publication status */
   status: "active" | "deprecated" | "deleted";
   /** Whether this is the latest version */
-  isLatest: boolean;
+  is_latest: boolean;
   /** Published timestamp */
-  publishedAt: string;
+  published_at: string;
   /** Updated timestamp */
-  updatedAt: string;
+  updated_at: string;
   /** Available package types */
-  packageTypes: PackageRegistryType[];
+  package_types: PackageRegistryType[];
   /** Has remote endpoints */
-  hasRemotes: boolean;
+  has_remotes: boolean;
   /** Original server data for installation */
   _original: RawServerEntry;
 }
 
 interface OfficialServerListResponse {
   servers: OfficialServerDisplay[];
-  nextCursor: string | null;
+  next_cursor: string | null;
   count: number;
 }
 
@@ -293,10 +293,10 @@ function transformServerEntry(entry: RawServerEntry): OfficialServerDisplay {
   const meta = entry._meta?.["io.modelcontextprotocol.registry/official"];
 
   // Try to find icon URL - prefer light theme
-  let iconUrl: string | null = null;
+  let icon_url: string | null = null;
   if (server.icons && server.icons.length > 0) {
     const lightIcon = server.icons.find((i) => i.theme === "light") || server.icons[0];
-    iconUrl = lightIcon.src;
+    icon_url = lightIcon.src;
   }
 
   const now = new Date().toISOString();
@@ -307,15 +307,15 @@ function transformServerEntry(entry: RawServerEntry): OfficialServerDisplay {
     slug: createSlug(server.name),
     version: server.version,
     description: server.description || null,
-    iconUrl,
-    repositoryUrl: server.repository?.url || null,
-    websiteUrl: server.websiteUrl || null,
+    icon_url,
+    repository_url: server.repository?.url || null,
+    website_url: server.websiteUrl || null,
     status: (meta?.status as "active" | "deprecated" | "deleted") || "active",
-    isLatest: meta?.isLatest ?? true,
-    publishedAt: meta?.publishedAt || now,
-    updatedAt: meta?.updatedAt || now,
-    packageTypes: extractPackageTypes(server.packages),
-    hasRemotes: (server.remotes && server.remotes.length > 0) || false,
+    is_latest: meta?.isLatest ?? true,
+    published_at: meta?.publishedAt || now,
+    updated_at: meta?.updatedAt || now,
+    package_types: extractPackageTypes(server.packages),
+    has_remotes: (server.remotes && server.remotes.length > 0) || false,
     _original: entry,
   };
 }
@@ -382,11 +382,11 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
 
       const endIndex = startIndex + limit;
       const paginatedServers = servers.slice(startIndex, endIndex);
-      const nextCursor = endIndex < servers.length ? String(endIndex) : null;
+      const next_cursor = endIndex < servers.length ? String(endIndex) : null;
 
       const response: OfficialServerListResponse = {
         servers: paginatedServers,
-        nextCursor,
+        next_cursor,
         count: servers.length,
       };
 
@@ -397,7 +397,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
       if (cached) {
         const response: OfficialServerListResponse = {
           servers: cached.servers.slice(0, limit),
-          nextCursor: cached.servers.length > limit ? String(limit) : null,
+          next_cursor: cached.servers.length > limit ? String(limit) : null,
           count: cached.servers.length,
         };
         return response;

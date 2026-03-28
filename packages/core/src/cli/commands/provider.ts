@@ -73,7 +73,7 @@ export function registerProviderCommand(program: Command): void {
             providers.map((p) => [
               p.id,
               p.type,
-              p.baseUrl || chalk.gray("(default)"),
+              p.base_url || chalk.gray("(default)"),
               p.isDefault ? chalk.green("Yes") : "",
               p.enabled ? "Yes" : chalk.red("No"),
             ])
@@ -134,9 +134,9 @@ export function registerProviderCommand(program: Command): void {
           type,
           name,
           apiKey,
-          baseUrl: options.baseUrl || DEFAULT_BASE_URLS[type],
+          base_url: options.baseUrl || DEFAULT_BASE_URLS[type],
           timeout: options.timeout,
-          maxRetries: options.maxRetries,
+          max_retries: options.maxRetries,
           setAsDefault: options.default,
         });
 
@@ -219,7 +219,7 @@ export function registerProviderCommand(program: Command): void {
               Connected: status.connected ? chalk.green("Yes") : chalk.red("No"),
               Latency: status.latency ? `${status.latency}ms` : "-",
               Error: status.error || "-",
-              "Checked At": status.checkedAt,
+              "Checked At": status.checked_at,
             });
           });
         } else {
@@ -271,16 +271,16 @@ export function registerProviderCommand(program: Command): void {
           outputKeyValue(ctx, {
             Type: p.type,
             Name: p.name,
-            "Base URL": p.baseUrl || "(default)",
+            "Base URL": p.base_url || "(default)",
             "API Key": p.apiKey ? "********" : chalk.gray("(not set)"),
             "API Version": p.apiVersion || "-",
             Deployment: p.deployment || "-",
             Timeout: p.timeout ? `${p.timeout}s` : "-",
-            "Max Retries": p.maxRetries ?? "-",
+            "Max Retries": p.max_retries ?? "-",
             Default: p.isDefault ? "Yes" : "No",
             Enabled: p.enabled ? "Yes" : "No",
-            Created: p.createdAt,
-            Updated: p.updatedAt,
+            Created: p.created_at,
+            Updated: p.updated_at,
           });
         });
       } catch (error) {
@@ -324,9 +324,9 @@ export function registerProviderCommand(program: Command): void {
           type: options.type as ProviderType | undefined,
           name: options.displayName,
           apiKey: options.apiKey,
-          baseUrl: options.baseUrl,
+          base_url: options.baseUrl,
           timeout: options.timeout,
-          maxRetries: options.maxRetries,
+          max_retries: options.maxRetries,
         });
 
         output(ctx, successResponse({ provider }), () => {

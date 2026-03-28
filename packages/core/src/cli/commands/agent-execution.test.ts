@@ -108,8 +108,8 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
       const now = new Date().toISOString();
       const frontmatter = {
         name: config.name || agentId,
-        createdAt: config.createdAt || now,
-        updatedAt: config.updatedAt || now,
+        createdAt: config.created_at || now,
+        updatedAt: config.updated_at || now,
         mcpServers: config.mcpServers || [],
         skills: config.skills || [],
         planMode: config.planMode ?? false,

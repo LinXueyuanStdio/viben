@@ -36,9 +36,9 @@ export interface SSEToolUseMessage {
  */
 export interface SSEToolResultMessage {
   type: "tool_result";
-  toolUseId: string;
+  tool_use_id: string;
   output: string;
-  isError?: boolean;
+  is_error?: boolean;
 }
 
 /**
@@ -79,7 +79,7 @@ export interface SSEQuestionMessage {
 export interface SSESdkSessionMessage {
   type: "sdk_session";
   /** The SDK's internal session ID (UUID) for use with resume parameter */
-  sdkSessionId: string;
+  sdk_session_id: string;
 }
 
 /**
@@ -263,7 +263,7 @@ export class SdkChatProxy implements ChatProxy {
         queryOptions.model = model;
       }
       if (sessionId) {
-        queryOptions.sessionId = sessionId;
+        queryOptions.session_id = sessionId;
       }
       if (resume) {
         queryOptions.resume = resume;
@@ -552,7 +552,7 @@ export class SdkChatProxy implements ChatProxy {
         verboseLog("Resuming session", { resume });
       } else if (sessionId && uuidRegex.test(sessionId)) {
         // Only pass sessionId for new sessions (not resuming)
-        queryOptions.sessionId = sessionId;
+        queryOptions.session_id = sessionId;
         verboseLog("Starting new session", { sessionId });
       }
 
@@ -692,12 +692,12 @@ export class SdkChatProxy implements ChatProxy {
     if (msg.session_id && typeof msg.session_id === "string") {
       if (this.emittedSdkSessionId !== msg.session_id) {
         if (this.verboseMode) {
-          log.debug({ sdkSessionId: msg.session_id }, "Emitting SDK session ID");
+          log.debug({ sdk_session_id: msg.session_id }, "Emitting SDK session ID");
         }
         this.emittedSdkSessionId = msg.session_id;
         yield {
           type: "sdk_session",
-          sdkSessionId: msg.session_id,
+          sdk_session_id: msg.session_id,
         };
       }
     }
@@ -765,12 +765,12 @@ export class SdkChatProxy implements ChatProxy {
             const isError = (block.is_error ?? block.isError ?? false) as boolean;
             yield {
               type: "tool_result",
-              toolUseId: toolUseId || "",
+              tool_use_id: toolUseId || "",
               output:
                 typeof block.content === "string"
                   ? block.content
                   : JSON.stringify(block.content),
-              isError,
+              is_error: isError,
             };
           }
         }
@@ -862,12 +862,12 @@ export class SdkChatProxy implements ChatProxy {
     if (msg.type === "tool_result") {
       yield {
         type: "tool_result",
-        toolUseId: (msg.tool_use_id ?? msg.toolUseId) as string,
+        tool_use_id: (msg.tool_use_id ?? msg.toolUseId) as string,
         output:
           typeof msg.content === "string"
             ? msg.content
             : JSON.stringify(msg.content),
-        isError: (msg.is_error ?? msg.isError) as boolean | undefined,
+        is_error: (msg.is_error ?? msg.isError) as boolean | undefined,
       };
       return;
     }

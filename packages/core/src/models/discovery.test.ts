@@ -36,8 +36,8 @@ function createMockProvider(overrides: Partial<Provider>): Provider {
     name: "Test Provider",
     isDefault: false,
     enabled: true,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -84,8 +84,8 @@ describe("discoverModels", () => {
       expect(result.models[0]).toEqual({
         id: "gpt-4o",
         name: "gpt-4o",
-        createdAt: 1700000000,
-        ownedBy: "openai",
+        created_at: 1700000000,
+        owned_by: "openai",
       });
     });
 
@@ -701,8 +701,8 @@ describe("enrichModel", () => {
     const discovered: DiscoveredModel = {
       id: "gpt-4o",
       name: "gpt-4o",
-      createdAt: 1700000000,
-      ownedBy: "openai",
+      created_at: 1700000000,
+      owned_by: "openai",
     };
 
     const enriched = enrichModel(discovered);
@@ -771,7 +771,7 @@ describe("enrichModel", () => {
     const discovered: DiscoveredModel = {
       id: "gpt-4-turbo",
       name: "gpt-4-turbo",
-      ownedBy: "openai",
+      owned_by: "openai",
     };
 
     const enriched = enrichModel(discovered);

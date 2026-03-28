@@ -331,7 +331,7 @@ export function registerRewardCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.logFile}`);
+          console.log(`  Log:  ${result.log_file}`);
 
           if (result.warnings && result.warnings.length > 0) {
             console.log();
@@ -343,7 +343,7 @@ export function registerRewardCommand(program: Command): void {
 
           console.log();
           console.log(chalk.gray("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);

@@ -16,8 +16,8 @@ function toSnakeCaseSession(session: Session) {
     status: session.status,
     prompt: session.prompt,
     session_data: session.sessionData,
-    created_at: session.createdAt,
-    updated_at: session.updatedAt,
+    created_at: session.created_at,
+    updated_at: session.updated_at,
   };
 }
 

@@ -105,7 +105,7 @@ export class TaskEventStore {
     }
 
     // 3. Validate sequence number (strict ordering)
-    const expectedSeq = (task.lastEvent?.sequence ?? 0) + 1;
+    const expectedSeq = (task.last_event?.sequence ?? 0) + 1;
     if (event.sequence !== expectedSeq) {
       return {
         success: false,
@@ -116,7 +116,7 @@ export class TaskEventStore {
     }
 
     // 4. Validate state transition using XState
-    const currentXState = task.xstateState ?? "backlog";
+    const currentXState = task.xstate_state ?? "backlog";
     const transitionResult = this.computeTransition(currentXState, event.type);
 
     // Check if transition is valid:
@@ -154,7 +154,7 @@ export class TaskEventStore {
     // 8. Set queuedAt timestamp when QUEUE event is applied (for FIFO ordering)
     // @see .trellis/spec/modules/task-system.md - 调度信息
     if (event.type === "QUEUE") {
-      updatePayload.queuedAt = event.timestamp;
+      updatePayload.queued_at = event.timestamp;
     }
 
     // 9. Persist machine_context for pause/resume across restarts
@@ -255,11 +255,11 @@ export class TaskEventStore {
         return "stopped";
       case "PLAN_COMPLETE":
         // Only set if going to review (requiresPlanReview)
-        return task.metadata?.agentConfig?.thinkingLevel === "high" ? "plan_review" : task.reviewReason;
+        return task.metadata?.agent_config?.thinking_level === "high" ? "plan_review" : task.review_reason;
       case "CHECK_FAILED":
         return "qa_rejected";
       default:
-        return task.reviewReason;
+        return task.review_reason;
     }
   }
 
@@ -274,7 +274,7 @@ export class TaskEventStore {
     if (!task) {
       return 1;
     }
-    return (task.lastEvent?.sequence ?? 0) + 1;
+    return (task.last_event?.sequence ?? 0) + 1;
   }
 
   /**
@@ -301,24 +301,24 @@ export class TaskEventStore {
 
     // Fall back to task.json eventHistory for backward compatibility
     const task = await taskService.getTask(taskDir);
-    if (!task || !task.eventHistory || task.eventHistory.length === 0) {
+    if (!task || !task.event_history || task.event_history.length === 0) {
       return [];
     }
 
     // Migrate legacy eventHistory to events.jsonl inline
     try {
-      const content = task.eventHistory.map((e) => JSON.stringify(e)).join("\n") + "\n";
+      const content = task.event_history.map((e) => JSON.stringify(e)).join("\n") + "\n";
       await writeFile(eventsPath, content, "utf-8");
-      console.log(`[TaskEventStore] Migrated ${task.eventHistory.length} events to events.jsonl`);
+      console.log(`[TaskEventStore] Migrated ${task.event_history.length} events to events.jsonl`);
     } catch (error) {
       console.error(`[TaskEventStore] Failed to migrate event history:`, error);
     }
 
     // Return the events (filter by since if specified)
     if (since === undefined) {
-      return task.eventHistory;
+      return task.event_history;
     }
-    return task.eventHistory.filter((e) => e.sequence > since);
+    return task.event_history.filter((e) => e.sequence > since);
   }
 
   /**
@@ -370,7 +370,7 @@ export class TaskEventStore {
     }
 
     // Validate sequence number
-    const expectedSeq = (task.lastEvent?.sequence ?? 0) + 1;
+    const expectedSeq = (task.last_event?.sequence ?? 0) + 1;
     if (event.sequence !== expectedSeq) {
       return {
         success: false,
@@ -381,7 +381,7 @@ export class TaskEventStore {
     }
 
     // Validate state transition
-    const currentXState = task.xstateState ?? "backlog";
+    const currentXState = task.xstate_state ?? "backlog";
     const transitionResult = this.computeTransition(currentXState, event.type);
 
     // Check if transition is valid (same logic as applyEvent)

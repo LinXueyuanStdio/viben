@@ -40,8 +40,8 @@ packages/core/src/executor/
 │   ├── session.ts         # 会话管理
 │   ├── availability.ts    # 可用性检测
 │   └── command.ts         # 命令构建
-├── platforms/
-│   ├── index.ts           # 平台注册入口
+├── engines/
+│   ├── index.ts           # 引擎注册入口
 │   ├── claude.ts          # CLAUDE_CODE 实现
 │   ├── gemini.ts          # GEMINI 实现
 │   ├── codex.ts           # CODEX 实现
@@ -435,7 +435,7 @@ export function getAvailableExecutors(): Array<{
 ### CLAUDE_CODE
 
 ```typescript
-// packages/core/src/executor/platforms/claude.ts
+// packages/core/src/executor/engines/claude.ts
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -737,7 +737,7 @@ export {
 
 ### 阶段 2: 迁移平台实现
 
-1. 将 `executors/executors/*.ts` 迁移到 `executor/platforms/`
+1. 将 `executors/executors/*.ts` 迁移到 `executor/engines/`
 2. 每个平台实现 `Executor` 接口
 3. 保留原有模块作为兼容层
 
@@ -793,11 +793,193 @@ export { getExecutor as createExecutor } from "../executor/ops/registry";
 | SDK 模式不稳定 | 保留 Spawn 模式作为 fallback |
 | 平台特性差异大 | 通过能力检测动态适配 |
 
+## 执行流程说明
+
+### 方法使用场景
+
+| 方法 | 场景 | 特点 |
+|-----|------|------|
+| `spawn()` | Task Phase 执行 | 后台进程，日志文件输出，适合长时间运行 |
+| `chat()` | CLI 命令、简单 API 调用 | 同步等待结果，适合单次交互 |
+| `chatStreaming()` | Gateway WebSocket/SSE | 实时流式输出，适合 UI 实时显示 |
+| `resume()` | 会话恢复 | 继续已有会话，需要 sessionId |
+
+### SDK vs Spawn 模式选择
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    chat() 调用                          │
+└───────────────────────┬─────────────────────────────────┘
+                        ▼
+          ┌─────────────────────────────┐
+          │  options.preferSdk = true?  │
+          └─────────────┬───────────────┘
+                        │
+         ┌──────────────┼──────────────┐
+         │ yes          │              │ no
+         ▼              │              ▼
+  ┌──────────────┐      │       ┌──────────────┐
+  │ SDK 可用?    │      │       │ 使用 Spawn   │
+  └──────┬───────┘      │       └──────────────┘
+         │              │
+    ┌────┴────┐         │
+    │ yes     │ no      │
+    ▼         ▼         │
+┌────────┐  ┌─────────┐ │
+│使用 SDK│  │使用 Spawn│ │
+└────────┘  └─────────┘ │
+```
+
+**SDK 模式优势**: 原生 TypeScript，无需子进程，类型安全
+**Spawn 模式优势**: 稳定性好，兼容性强，支持所有平台
+
+### 会话生命周期
+
+```
+┌─────────────┐
+│   新建会话   │ ◄─── sessionId 由调用方指定或自动生成
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   执行中    │ ◄─── spawn/chat/chatStreaming
+└──────┬──────┘
+       │
+   ┌───┴───┐
+   │       │
+   ▼       ▼
+┌─────┐ ┌─────────┐
+│完成 │ │  暂停   │ ◄─── 进程退出但会话可恢复
+└─────┘ └────┬────┘
+             │
+             ▼
+       ┌──────────┐
+       │  恢复    │ ◄─── resume(sessionId)
+       └──────────┘
+```
+
+**会话存储**: 由各平台自行管理（如 Claude Code 存储在 `~/.claude/projects/`）
+
+## 错误处理
+
+### 错误类型
+
+```typescript
+/**
+ * 执行器错误类型
+ */
+export type ExecutorErrorType =
+  | "NOT_FOUND"         // 执行器未安装
+  | "NOT_AUTHENTICATED" // 未登录/认证
+  | "SPAWN_FAILED"      // 进程启动失败
+  | "TIMEOUT"           // 执行超时
+  | "SDK_ERROR"         // SDK 错误
+  | "PROCESS_CRASHED"   // 进程异常退出
+  | "PERMISSION_DENIED" // 权限不足
+  | "INVALID_CONFIG";   // 配置无效
+
+/**
+ * 执行器错误
+ */
+export class ExecutorError extends Error {
+  constructor(
+    public readonly type: ExecutorErrorType,
+    message: string,
+    public readonly executorType?: ExecutorType,
+    public readonly cause?: Error
+  ) {
+    super(message);
+    this.name = "ExecutorError";
+  }
+}
+```
+
+### 错误处理策略
+
+| 错误类型 | 处理策略 |
+|---------|---------|
+| `NOT_FOUND` | 提示用户安装执行器 |
+| `NOT_AUTHENTICATED` | 引导用户登录 |
+| `SPAWN_FAILED` | 重试 1 次，然后报错 |
+| `TIMEOUT` | 返回部分结果（如有），报告超时 |
+| `SDK_ERROR` | 降级到 Spawn 模式 |
+| `PROCESS_CRASHED` | 记录日志，返回错误 |
+
+### 重试配置
+
+```typescript
+/**
+ * 重试配置
+ */
+export interface RetryConfig {
+  /** 最大重试次数 */
+  maxRetries: number;
+  /** 退避间隔（毫秒） */
+  backoffMs: number;
+  /** 可重试的错误类型 */
+  retryableErrors: ExecutorErrorType[];
+}
+
+/**
+ * 默认重试配置
+ */
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 1,
+  backoffMs: 1000,
+  retryableErrors: ["SPAWN_FAILED", "SDK_ERROR"],
+};
+```
+
+## 结果类型统一
+
+根据 review 反馈，统一 `SpawnResult` 和 `ChatResult`：
+
+```typescript
+/**
+ * 统一执行结果
+ */
+export interface ExecutionResult {
+  /** 是否成功 */
+  success: boolean;
+  /** 退出码（仅进程模式有效） */
+  exitCode?: number;
+  /** 会话 ID */
+  sessionId?: string;
+  /** 进程 ID（仅 spawn 模式有效） */
+  pid?: number;
+  /** 日志文件路径（仅 spawn 模式有效） */
+  logFile?: string;
+  /** 错误信息 */
+  error?: string;
+  /** 错误类型 */
+  errorType?: ExecutorErrorType;
+}
+
+// SpawnResult 和 ChatResult 继承自 ExecutionResult
+export type SpawnResult = ExecutionResult;
+export type ChatResult = ExecutionResult;
+```
+
+## 实施优先级
+
+根据 review 建议，采用分步实施策略：
+
+### 优先级 1: 核心平台（必须）
+- `CLAUDE_CODE` - 最常用，功能最全
+- `GEMINI` - 第二常用
+
+### 优先级 2: 次要平台（重要）
+- `CODEX` - OpenAI 生态
+- `OPENCODE` - 开源替代
+
+### 优先级 3: 其他平台（可选）
+- `AMP`, `CURSOR_AGENT`, `QWEN_CODE`, `COPILOT`, `DROID`
+
 ## 时间线估计
 
-- 阶段 1: 1 天
-- 阶段 2: 2-3 天
-- 阶段 3: 2 天
-- 阶段 4: 1 天
+- 阶段 1: 1 天（创建结构 + 核心类型）
+- 阶段 2: 3 天（迁移 CLAUDE_CODE + GEMINI，验证设计）
+- 阶段 3: 2 天（更新消费方）
+- 阶段 4: 1-2 天（迁移其他平台 + 清理）
 
-**总计**: 约 6-7 天
+**总计**: 约 7-8 天

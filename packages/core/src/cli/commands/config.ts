@@ -45,7 +45,7 @@ function getEditor(): string {
 function resolveConfigOptions(
   options: ConfigOptions,
   globalOpts: { global?: boolean }
-): { global: boolean; workspacePath?: string } {
+): { global: boolean; workspace_path?: string } {
   // Explicit global flag takes precedence
   if (options.global || globalOpts.global) {
     return { global: true };
@@ -61,13 +61,13 @@ function resolveConfigOptions(
         1
       );
     }
-    return { global: false, workspacePath };
+    return { global: false, workspace_path: workspacePath };
   }
 
   // Default: prefer workspace if in one, otherwise global
   const workspacePath = workspaceManager.getCurrentWorkspacePath();
   if (workspacePath) {
-    return { global: false, workspacePath };
+    return { global: false, workspace_path: workspacePath };
   }
 
   return { global: true };
@@ -78,12 +78,12 @@ function resolveConfigOptions(
  */
 function getConfigPathForOptions(options: {
   global: boolean;
-  workspacePath?: string;
+  workspace_path?: string;
 }): string {
   if (options.global) {
     return getConfigPath();
   }
-  return getWorkspaceConfigPath(options.workspacePath || process.cwd());
+  return getWorkspaceConfigPath(options.workspace_path || process.cwd());
 }
 
 /**

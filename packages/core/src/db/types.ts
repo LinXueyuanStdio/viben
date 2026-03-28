@@ -27,8 +27,8 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   agentId?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -66,8 +66,8 @@ export interface Session {
   status: SessionStatus;
   prompt?: string;
   sessionData: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -101,12 +101,12 @@ export type ExecutionProcessStatus = "running" | "completed" | "failed" | "cance
  */
 export interface ExecutionProcess {
   id: string;
-  sessionId: string;
+  session_id: string;
   pid?: number;
   status: ExecutionProcessStatus;
   exitCode?: number;
-  startedAt: string;
-  endedAt?: string;
+  started_at: string;
+  ended_at?: string;
 }
 
 /**
@@ -114,7 +114,7 @@ export interface ExecutionProcess {
  */
 export interface CreateExecutionProcess {
   id?: string;
-  sessionId: string;
+  session_id: string;
   pid?: number;
 }
 
@@ -125,7 +125,7 @@ export interface UpdateExecutionProcess {
   status?: ExecutionProcessStatus;
   pid?: number;
   exitCode?: number;
-  endedAt?: string;
+  ended_at?: string;
 }
 
 /**
@@ -147,8 +147,8 @@ export interface GroupChat {
   description?: string;
   taskId?: string;
   createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -161,7 +161,7 @@ export interface GroupChatMember {
   memberId: string;
   displayName: string;
   role: MemberRole;
-  joinedAt: string;
+  joined_at: string;
   lastSeenAt?: string;
 }
 
@@ -184,5 +184,5 @@ export interface GroupChatMessage {
   mentions?: string[];
   replyTo?: string;
   metadata?: Record<string, unknown>;
-  createdAt: string;
+  created_at: string;
 }

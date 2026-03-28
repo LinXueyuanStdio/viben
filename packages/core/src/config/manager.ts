@@ -29,7 +29,7 @@ export interface ConfigOptions {
   /** Use global config (~/.viben/config.yaml) */
   global?: boolean;
   /** Custom workspace path (defaults to cwd) */
-  workspacePath?: string;
+  workspace_path?: string;
 }
 
 /**
@@ -495,7 +495,7 @@ export class GitStyleConfigManager {
     if (workspacePath) {
       workspaceEntries = await this.list({
         global: false,
-        workspacePath,
+        workspace_path: workspacePath,
       });
     }
 
@@ -536,7 +536,7 @@ export class GitStyleConfigManager {
       return getConfigPath();
     }
 
-    const workspacePath = options.workspacePath || process.cwd();
+    const workspacePath = options.workspace_path || process.cwd();
     return getWorkspaceConfigPath(workspacePath);
   }
 }

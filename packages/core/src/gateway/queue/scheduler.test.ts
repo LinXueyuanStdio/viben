@@ -422,14 +422,14 @@ describe("getNextTask", () => {
         createdAt: "2026-01-01T10:00:00.000Z",
       });
       // Explicitly clear queuedAt to test fallback
-      older.queuedAt = undefined;
+      older.queued_at = undefined;
 
       const newer = createTaskInState("queue", {
         id: "newer",
         priority: "medium",
         createdAt: "2026-01-01T11:00:00.000Z",
       });
-      newer.queuedAt = undefined;
+      newer.queued_at = undefined;
 
       const tasks = [newer, older];
       const allTasks = createTaskMap(tasks);

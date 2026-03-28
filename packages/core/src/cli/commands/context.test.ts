@@ -262,9 +262,9 @@ describe("Context CLI Command", () => {
 
       expect(response.data.git).toBeDefined();
       expect(response.data.git.branch).toBe("feature/user-auth");
-      expect(response.data.git.isClean).toBe(false);
-      expect(response.data.git.uncommittedChanges).toBe(3);
-      expect(response.data.git.recentCommits).toHaveLength(3);
+      expect(response.data.git.is_clean).toBe(false);
+      expect(response.data.git.uncommitted_changes).toBe(3);
+      expect(response.data.git.recent_commits).toHaveLength(3);
     });
 
     it("should include tasks info in JSON output", async () => {
@@ -291,7 +291,7 @@ describe("Context CLI Command", () => {
       expect(response.data.journal).toBeDefined();
       expect(response.data.journal.file).toContain("journal-1.md");
       expect(response.data.journal.lines).toBe(1500);
-      expect(response.data.journal.nearLimit).toBe(false);
+      expect(response.data.journal.near_limit).toBe(false);
     });
   });
 
@@ -342,8 +342,8 @@ describe("Context CLI Command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const response = JSON.parse(output);
 
-      expect(response.data.git.isClean).toBe(true);
-      expect(response.data.git.uncommittedChanges).toBe(0);
+      expect(response.data.git.is_clean).toBe(true);
+      expect(response.data.git.uncommitted_changes).toBe(0);
     });
 
     it("should handle journal near limit warning", async () => {
@@ -355,7 +355,7 @@ describe("Context CLI Command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const response = JSON.parse(output);
 
-      expect(response.data.journal.nearLimit).toBe(true);
+      expect(response.data.journal.near_limit).toBe(true);
       expect(response.data.journal.lines).toBe(1900);
     });
 
@@ -471,11 +471,11 @@ describe("Context CLI Command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const response = JSON.parse(output);
 
-      // Python: context["git"] = { branch, isClean, uncommittedChanges, recentCommits }
+      // Python: context["git"] = { branch, is_clean, uncommitted_changes, recent_commits }
       expect(response.data.git).toHaveProperty("branch");
-      expect(response.data.git).toHaveProperty("isClean");
-      expect(response.data.git).toHaveProperty("uncommittedChanges");
-      expect(response.data.git).toHaveProperty("recentCommits");
+      expect(response.data.git).toHaveProperty("is_clean");
+      expect(response.data.git).toHaveProperty("uncommitted_changes");
+      expect(response.data.git).toHaveProperty("recent_commits");
     });
 
     it("should match Python isClean logic (status_count == 0)", async () => {
@@ -488,8 +488,8 @@ describe("Context CLI Command", () => {
       const response = JSON.parse(output);
 
       // Python: is_clean = git_status_count == 0
-      expect(response.data.git.isClean).toBe(true);
-      expect(response.data.git.uncommittedChanges).toBe(0);
+      expect(response.data.git.is_clean).toBe(true);
+      expect(response.data.git.uncommitted_changes).toBe(0);
     });
 
     it("should match Python commits structure [{hash, message}]", async () => {
@@ -501,10 +501,10 @@ describe("Context CLI Command", () => {
       const response = JSON.parse(output);
 
       // Python: commits.append({"hash": parts[0], "message": parts[1]})
-      expect(Array.isArray(response.data.git.recentCommits)).toBe(true);
-      if (response.data.git.recentCommits.length > 0) {
-        expect(response.data.git.recentCommits[0]).toHaveProperty("hash");
-        expect(response.data.git.recentCommits[0]).toHaveProperty("message");
+      expect(Array.isArray(response.data.git.recent_commits)).toBe(true);
+      if (response.data.git.recent_commits.length > 0) {
+        expect(response.data.git.recent_commits[0]).toHaveProperty("hash");
+        expect(response.data.git.recent_commits[0]).toHaveProperty("message");
       }
     });
 
@@ -530,13 +530,13 @@ describe("Context CLI Command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const response = JSON.parse(output);
 
-      // Python: context["journal"] = { file, lines, nearLimit: lines > 1800 }
+      // Python: context["journal"] = { file, lines, near_limit: lines > 1800 }
       expect(response.data.journal).toHaveProperty("file");
       expect(response.data.journal).toHaveProperty("lines");
-      expect(response.data.journal).toHaveProperty("nearLimit");
+      expect(response.data.journal).toHaveProperty("near_limit");
     });
 
-    it("should calculate nearLimit as lines > 1800 (Python parity)", async () => {
+    it("should calculate near_limit as lines > 1800 (Python parity)", async () => {
       setupStandardMocks();
 
       // Test exactly at boundary
@@ -544,7 +544,7 @@ describe("Context CLI Command", () => {
       await runCommand(["--json", "context"]);
       let output = consoleSpy.mock.calls[0][0] as string;
       let response = JSON.parse(output);
-      expect(response.data.journal.nearLimit).toBe(false);
+      expect(response.data.journal.near_limit).toBe(false);
 
       consoleSpy.mockClear();
 
@@ -553,7 +553,7 @@ describe("Context CLI Command", () => {
       await runCommand(["--json", "context"]);
       output = consoleSpy.mock.calls[0][0] as string;
       response = JSON.parse(output);
-      expect(response.data.journal.nearLimit).toBe(true);
+      expect(response.data.journal.near_limit).toBe(true);
     });
 
     it("should match Python directory path format", async () => {

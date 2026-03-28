@@ -55,7 +55,7 @@ export interface RunCommandOptions {
   /** Prompt to send to the agent */
   prompt: string;
   /** Optional session ID (Claude Code only for creation) */
-  sessionId?: string;
+  session_id?: string;
   /** Whether to skip permission prompts (default: true) */
   skipPermissions?: boolean;
   /** Whether to enable verbose output (default: true) */
@@ -384,7 +384,7 @@ export class CLIAdapter implements ICLIAdapter {
     const {
       agent,
       prompt,
-      sessionId,
+      session_id,
       skipPermissions = true,
       verbose = true,
       jsonOutput = true,
@@ -438,8 +438,8 @@ export class CLIAdapter implements ICLIAdapter {
         // claude
         const cmd = ["claude", "-p", "--agent", mappedAgent];
 
-        if (sessionId) {
-          cmd.push("--session-id", sessionId);
+        if (session_id) {
+          cmd.push("--session-id", session_id);
         }
 
         if (skipPermissions) {

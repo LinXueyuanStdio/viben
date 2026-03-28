@@ -192,12 +192,12 @@ export class TaskSSEManager {
     if (!info) return;
 
     // Remove event listeners based on subscription type
-    if (info.subscriptionType === "workspace" && info.workspacePath) {
-      const eventName = `workspace:${info.workspacePath}`;
+    if (info.subscriptionType === "workspace" && info.workspace_path) {
+      const eventName = `workspace:${info.workspace_path}`;
       this.emitter.off(eventName, info.listener);
-      this.workspaceSubscribers.get(info.workspacePath)?.delete(subscriberId);
-      if (this.workspaceSubscribers.get(info.workspacePath)?.size === 0) {
-        this.workspaceSubscribers.delete(info.workspacePath);
+      this.workspaceSubscribers.get(info.workspace_path)?.delete(subscriberId);
+      if (this.workspaceSubscribers.get(info.workspace_path)?.size === 0) {
+        this.workspaceSubscribers.delete(info.workspace_path);
       }
     } else if (info.subscriptionType === "batch" && info.taskIds) {
       // Remove from each task's subscriber set

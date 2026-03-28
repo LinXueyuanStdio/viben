@@ -404,13 +404,13 @@ describe("viben init command", () => {
           id: "basic",
           name: "Basic Template",
           description: "A basic starter template",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          created_at: "2024-01-01T00:00:00.000Z",
         },
         {
           id: "advanced",
           name: "Advanced Template",
           description: "An advanced template with more features",
-          createdAt: "2024-01-02T00:00:00.000Z",
+          created_at: "2024-01-02T00:00:00.000Z",
         },
       ];
 
@@ -436,7 +436,7 @@ describe("viben init command", () => {
           id: "my-template",
           name: "My Template",
           description: "This is a test description",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          created_at: "2024-01-01T00:00:00.000Z",
         },
       ];
 
@@ -475,7 +475,7 @@ describe("viben init command", () => {
           id: "test-template",
           name: "Test Template",
           description: "A test template",
-          createdAt: "2024-01-01T00:00:00.000Z",
+          created_at: "2024-01-01T00:00:00.000Z",
         },
       ];
 

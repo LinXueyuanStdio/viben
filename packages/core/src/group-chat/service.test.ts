@@ -31,8 +31,8 @@ describe("GroupChatService", () => {
       expect(groupChat.name).toBe("Test Group");
       expect(groupChat.description).toBe("A test group chat");
       expect(groupChat.createdBy).toBe("user-1");
-      expect(groupChat.createdAt).toBeDefined();
-      expect(groupChat.updatedAt).toBeDefined();
+      expect(groupChat.created_at).toBeDefined();
+      expect(groupChat.updated_at).toBeDefined();
     });
 
     it("should create group chat with custom id", async () => {
@@ -129,7 +129,7 @@ describe("GroupChatService", () => {
       });
 
       expect(updated.name).toBe("New Name");
-      expect(updated.updatedAt).not.toBe(created.updatedAt);
+      expect(updated.updated_at).not.toBe(created.updated_at);
     });
 
     it("should update group chat settings", async () => {
@@ -293,7 +293,7 @@ describe("GroupChatService", () => {
 
   describe("Messages", () => {
     let groupChatId: string;
-    let sessionId: string;
+    let session_id: string;
 
     beforeEach(async () => {
       const groupChat = await service.createGroupChat("user-1", {
@@ -304,13 +304,13 @@ describe("GroupChatService", () => {
       const session = await service.createSession(groupChatId, {
         name: "Test Session",
       });
-      sessionId = session.id;
+      session_id = session.id;
     });
 
     it("should send a message", async () => {
       const message = await service.sendMessage(
         groupChatId,
-        sessionId,
+        session_id,
         "user-1",
         "human",
         "Alice",
@@ -328,7 +328,7 @@ describe("GroupChatService", () => {
     it("should get messages", async () => {
       await service.sendMessage(
         groupChatId,
-        sessionId,
+        session_id,
         "user-1",
         "human",
         "Alice",
@@ -336,14 +336,14 @@ describe("GroupChatService", () => {
       );
       await service.sendMessage(
         groupChatId,
-        sessionId,
+        session_id,
         "agent-1",
         "agent",
         "Bot",
         { content: "Message 2", type: "text" }
       );
 
-      const messages = await service.getMessages(groupChatId, sessionId);
+      const messages = await service.getMessages(groupChatId, session_id);
       expect(messages).toHaveLength(2);
       expect(messages[0].content).toBe("Message 1");
       expect(messages[1].content).toBe("Message 2");
@@ -352,7 +352,7 @@ describe("GroupChatService", () => {
     it("should filter messages by sender", async () => {
       await service.sendMessage(
         groupChatId,
-        sessionId,
+        session_id,
         "user-1",
         "human",
         "Alice",
@@ -360,14 +360,14 @@ describe("GroupChatService", () => {
       );
       await service.sendMessage(
         groupChatId,
-        sessionId,
+        session_id,
         "user-2",
         "human",
         "Bob",
         { content: "From Bob" }
       );
 
-      const messages = await service.getMessages(groupChatId, sessionId, {
+      const messages = await service.getMessages(groupChatId, session_id, {
         senderId: "user-1",
       });
       expect(messages).toHaveLength(1);
@@ -378,7 +378,7 @@ describe("GroupChatService", () => {
       for (let i = 0; i < 5; i++) {
         await service.sendMessage(
           groupChatId,
-          sessionId,
+          session_id,
           "user-1",
           "human",
           "Alice",
@@ -386,7 +386,7 @@ describe("GroupChatService", () => {
         );
       }
 
-      const messages = await service.getMessages(groupChatId, sessionId, {
+      const messages = await service.getMessages(groupChatId, session_id, {
         limit: 2,
       });
       expect(messages).toHaveLength(2);
@@ -398,7 +398,7 @@ describe("GroupChatService", () => {
 
   describe("Agent Responses", () => {
     let groupChatId: string;
-    let sessionId: string;
+    let session_id: string;
 
     beforeEach(async () => {
       const groupChat = await service.createGroupChat("user-1", {
@@ -409,39 +409,39 @@ describe("GroupChatService", () => {
       const session = await service.createSession(groupChatId, {
         name: "Test Session",
       });
-      sessionId = session.id;
+      session_id = session.id;
     });
 
     it("should add and get agent responses", async () => {
-      await service.addAgentResponse(groupChatId, sessionId, {
+      await service.addAgentResponse(groupChatId, session_id, {
         id: "resp-1",
         agentId: "agent-1",
         agentName: "Bot",
-        sessionId,
+        session_id,
         content: "Response content",
         status: "completed",
         startedAt: new Date().toISOString(),
       });
 
-      const responses = await service.getAgentResponses(groupChatId, sessionId);
+      const responses = await service.getAgentResponses(groupChatId, session_id);
       expect(responses).toHaveLength(1);
       expect(responses[0].content).toBe("Response content");
     });
 
     it("should clear agent responses", async () => {
-      await service.addAgentResponse(groupChatId, sessionId, {
+      await service.addAgentResponse(groupChatId, session_id, {
         id: "resp-1",
         agentId: "agent-1",
         agentName: "Bot",
-        sessionId,
+        session_id,
         content: "Response",
         status: "completed",
         startedAt: new Date().toISOString(),
       });
 
-      await service.clearAgentResponses(groupChatId, sessionId);
+      await service.clearAgentResponses(groupChatId, session_id);
 
-      const responses = await service.getAgentResponses(groupChatId, sessionId);
+      const responses = await service.getAgentResponses(groupChatId, session_id);
       expect(responses).toHaveLength(0);
     });
   });

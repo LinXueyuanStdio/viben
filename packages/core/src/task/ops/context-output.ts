@@ -52,7 +52,7 @@ export function getContextJson(repoRoot: string, taskDir?: string): ContextJson 
   }
 
   // Current task - requires taskDir parameter
-  let currentTask: ContextJson["currentTask"] = null;
+  let currentTask: ContextJson["current_task"] = null;
   if (taskDir) {
     const taskData = readTaskJsonFromWorkspace(taskDir);
     if (taskData) {
@@ -65,9 +65,9 @@ export function getContextJson(repoRoot: string, taskDir?: string): ContextJson 
         path: relativePath,
         name: String(taskData.name || taskData.id || "unknown"),
         status: String(taskData.status || "unknown"),
-        createdAt: String(taskData.createdAt || "unknown"),
+        created_at: String(taskData.created_at || "unknown"),
         description: String(taskData.description || ""),
-        hasPrd: existsSync(prdFile),
+        has_prd: existsSync(prdFile),
       };
     }
   }
@@ -99,20 +99,20 @@ export function getContextJson(repoRoot: string, taskDir?: string): ContextJson 
     developer,
     git: {
       branch,
-      isClean,
-      uncommittedChanges: gitStatusCount,
-      recentCommits: commits,
+      is_clean: isClean,
+      uncommitted_changes: gitStatusCount,
+      recent_commits: commits,
     },
-    currentTask,
+    current_task: currentTask,
     tasks: {
       active: activeTasks,
       directory: `${DIR_VIBEN}/${DIR_TASKS}`,
     },
-    myTasks,
+    my_tasks: myTasks,
     journal: {
       file: journalRelative,
       lines: journalInfo.lines,
-      nearLimit: journalInfo.lines > 1800,
+      near_limit: journalInfo.lines > 1800,
     },
     paths: {
       workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
@@ -200,7 +200,7 @@ export function getContextText(repoRoot: string, taskDir?: string): string {
     if (taskData) {
       const tName = String(taskData.name || taskData.id || "unknown");
       const tStatus = String(taskData.status || "unknown");
-      const tCreated = String(taskData.createdAt || "unknown");
+      const tCreated = String(taskData.created_at || "unknown");
       const tDesc = String(taskData.description || "");
 
       lines.push(`Name: ${tName}`);

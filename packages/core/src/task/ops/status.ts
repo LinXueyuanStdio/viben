@@ -214,7 +214,7 @@ export function cmdStatusSummary(
   options: StatusSummaryOptions = {},
   _ctx?: OutputContext
 ): void {
-  const { filterAssignee, filterStatus, onlyRunning } = options;
+  const { filter_assignee, filter_status, only_running } = options;
   const tasksDir = getTasksDir(repoRoot);
   if (!existsSync(tasksDir)) {
     console.log("No tasks directory found");
@@ -252,12 +252,12 @@ export function cmdStatusSummary(
     const priority = t.priority;
 
     // Filter by assignee
-    if (filterAssignee && assignee !== filterAssignee) {
+    if (filter_assignee && assignee !== filter_assignee) {
       continue;
     }
 
     // Filter by status
-    if (filterStatus && status !== filterStatus) {
+    if (filter_status && status !== filter_status) {
       continue;
     }
 
@@ -265,7 +265,7 @@ export function cmdStatusSummary(
     const agent = registrySearchAgent(name, repoRoot);
 
     // If --running flag is set, skip tasks without running agents
-    if (onlyRunning && (!agent || !isProcessRunning(agent.pid))) {
+    if (only_running && (!agent || !isProcessRunning(agent.pid))) {
       continue;
     }
 
@@ -327,12 +327,12 @@ export function cmdStatusSummary(
       console.log(
         `${chalk.green("▶")} ${chalk.cyan(t.name)} ${chalk.green("[running]")} ${priorityColor(`[${t.priority}]`)} @${t.assignee}`
       );
-      console.log(`  Phase:    ${t.phaseInfo}`);
+      console.log(`  Phase:    ${t.phase_info}`);
       console.log(`  Elapsed:  ${t.elapsed}`);
       console.log(`  Branch:   ${chalk.gray(t.branch)}`);
       console.log(`  Modified: ${t.modified} file(s)`);
-      if (t.lastTool) {
-        console.log(`  Activity: ${chalk.yellow(t.lastTool)}`);
+      if (t.last_tool) {
+        console.log(`  Activity: ${chalk.yellow(t.last_tool)}`);
       }
       console.log(`  PID:      ${chalk.gray(String(t.pid))}`);
       console.log();
@@ -347,9 +347,9 @@ export function cmdStatusSummary(
       if (t.status === "completed") {
         console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
       } else {
-        const sessionId = getSessionId(t.taskDir);
+        const sessionId = getSessionId(t.task_dir);
         if (sessionId) {
-          const lastMsg = getLastMessage(t.logFile, 150, t.platform);
+          const lastMsg = getLastMessage(t.log_file, 150, t.platform);
           console.log(`${chalk.red("○")} ${t.name} ${chalk.red("[stopped]")}`);
           if (lastMsg) {
             console.log(`${chalk.gray(`"${lastMsg}"`)}`);

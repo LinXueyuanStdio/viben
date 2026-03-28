@@ -455,7 +455,7 @@ export async function orchestrateGenerateIdeas(
   debug("generateIdeas result", {
     success: result.success,
     ideaCount: result.ideas.length,
-    sessionId: result.sessionId,
+    session_id: result.session_id,
     sessionDir: result.sessionDir,
   });
 
@@ -475,10 +475,10 @@ export async function orchestrateGenerateIdeas(
     success: true,
     phase: "generate_ideas",
     data: {
-      sessionId: result.sessionId,
+      session_id: result.session_id,
       sessionDir: result.sessionDir,
       ideas: result.ideas,
-      byType: result.byType,
+      by_type: result.by_type,
     },
   };
 }
@@ -623,11 +623,11 @@ export function orchestratePromoteIdeas(
 
     // Use promoteIdeaDirect since we already have the Idea object in memory
     const result = promoteIdeaDirect(repoRoot, idea, promoteOptions);
-    if (result.success && result.dirName) {
-      taskNames.push(result.dirName);
+    if (result.success && result.dir_name) {
+      taskNames.push(result.dir_name);
       // Track which idea each task came from
-      currentIter.task_idea_map[result.dirName] = idea.id;
-      debug(`Promoted ${idea.id} -> ${result.dirName}`);
+      currentIter.task_idea_map[result.dir_name] = idea.id;
+      debug(`Promoted ${idea.id} -> ${result.dir_name}`);
     } else {
       debug(`Failed to promote ${idea.id}`, { error: result.error });
       errors.push(`Failed to promote idea ${idea.id}: ${result.error}`);
@@ -677,7 +677,7 @@ export async function orchestrateStartTasks(
 
     if (result.success) {
       started.push(taskName);
-      debug(`Started ${taskName}`, { sessionId: result.sessionId });
+      debug(`Started ${taskName}`, { session_id: result.session_id });
     } else {
       debug(`Failed to start ${taskName}`, { error: result.error });
       errors.push(`Failed to start task ${taskName}: ${result.error}`);

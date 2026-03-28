@@ -93,8 +93,8 @@ async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
     is_default: model.isDefault ?? false,
     enabled: model.enabled ?? true,
     is_available: isAvailable,
-    created_at: model.createdAt ?? now,
-    updated_at: model.updatedAt ?? now,
+    created_at: model.created_at ?? now,
+    updated_at: model.updated_at ?? now,
   };
 }
 

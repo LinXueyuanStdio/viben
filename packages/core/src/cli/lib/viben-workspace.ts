@@ -519,16 +519,16 @@ export function getActiveTasks(repoRoot: string): Array<{
 /**
  * Get current session number from index.md
  *
- * @param indexPath - Path to index.md file
+ * @param index_path - Path to index.md file
  * @returns Session number or 0 if not found
  */
-export function getCurrentSessionNumber(indexPath: string): number {
-  if (!existsSync(indexPath)) {
+export function getCurrentSessionNumber(index_path: string): number {
+  if (!existsSync(index_path)) {
     return 0;
   }
 
   try {
-    const content = readFileSync(indexPath, "utf-8");
+    const content = readFileSync(index_path, "utf-8");
     for (const line of content.split("\n")) {
       if (line.includes("Total Sessions")) {
         const match = line.match(/:\s*(\d+)/);
@@ -551,14 +551,14 @@ export function getCurrentSessionNumber(indexPath: string): number {
  * @returns Markdown content string
  */
 export function generateSessionContent(params: {
-  sessionNum: number;
+  session_num: number;
   title: string;
   commit: string;
   summary: string;
-  extraContent: string;
+  extra_content: string;
   date: string;
 }): string {
-  const { sessionNum, title, commit, summary, extraContent, date } = params;
+  const { session_num, title, commit, summary, extra_content, date } = params;
 
   let commitTable: string;
   if (commit && commit !== "-") {
@@ -574,7 +574,7 @@ export function generateSessionContent(params: {
 
   return `
 
-## Session ${sessionNum}: ${title}
+## Session ${session_num}: ${title}
 
 **Date**: ${date}
 **Task**: ${title}
@@ -585,7 +585,7 @@ ${summary}
 
 ### Main Changes
 
-${extraContent}
+${extra_content}
 
 ### Git Commits
 
@@ -641,18 +641,18 @@ export async function createNewJournalFile(params: {
  * @returns True on success
  */
 export async function updateIndexWithSession(params: {
-  indexPath: string;
+  index_path: string;
   workspaceDir: string;
-  sessionNum: number;
+  session_num: number;
   title: string;
   commit: string;
-  activeFile: string;
+  active_file: string;
   date: string;
 }): Promise<boolean> {
-  const { indexPath, workspaceDir, sessionNum, title, commit, activeFile, date } =
+  const { index_path, workspaceDir, session_num, title, commit, active_file, date } =
     params;
 
-  if (!existsSync(indexPath)) {
+  if (!existsSync(index_path)) {
     return false;
   }
 
@@ -666,12 +666,12 @@ export async function updateIndexWithSession(params: {
   }
 
   // Get active file number and count all journal files
-  const match = activeFile.match(/journal-(\d+)\.md$/);
+  const match = active_file.match(/journal-(\d+)\.md$/);
   const activeNum = match ? parseInt(match[1], 10) : 0;
   const filesTable = countJournalFiles(workspaceDir, activeNum);
 
   try {
-    const content = await readFile(indexPath, "utf-8");
+    const content = await readFile(index_path, "utf-8");
 
     if (!content.includes("@@@auto:current-status")) {
       return false;
@@ -689,8 +689,8 @@ export async function updateIndexWithSession(params: {
       if (line.includes("@@@auto:current-status")) {
         newLines.push(line);
         inCurrentStatus = true;
-        newLines.push(`- **Active File**: \`${activeFile}\``);
-        newLines.push(`- **Total Sessions**: ${sessionNum}`);
+        newLines.push(`- **Active File**: \`${active_file}\``);
+        newLines.push(`- **Total Sessions**: ${session_num}`);
         newLines.push(`- **Last Active**: ${date}`);
         continue;
       }
@@ -740,7 +740,7 @@ export async function updateIndexWithSession(params: {
       if (inSessionHistory) {
         newLines.push(line);
         if (line.match(/^\|\s*-/) && !headerWritten) {
-          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
+          newLines.push(`| ${session_num} | ${date} | ${title} | ${commitDisplay} |`);
           headerWritten = true;
         }
         continue;
@@ -749,7 +749,7 @@ export async function updateIndexWithSession(params: {
       newLines.push(line);
     }
 
-    await writeFile(indexPath, newLines.join("\n"), "utf-8");
+    await writeFile(index_path, newLines.join("\n"), "utf-8");
     return true;
   } catch {
     return false;
@@ -764,7 +764,7 @@ export async function updateIndexWithSession(params: {
  * @returns Table rows string
  */
 function countJournalFiles(workspaceDir: string, activeNum: number): string {
-  const activeFile = `${FILE_JOURNAL_PREFIX}${activeNum}.md`;
+  const active_file = `${FILE_JOURNAL_PREFIX}${activeNum}.md`;
   const resultLines: string[] = [];
 
   try {
@@ -783,7 +783,7 @@ function countJournalFiles(workspaceDir: string, activeNum: number): string {
 
     for (const filename of files) {
       const lines = countLines(join(workspaceDir, filename));
-      const status = filename === activeFile ? "Active" : "Archived";
+      const status = filename === active_file ? "Active" : "Archived";
       resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
     }
   } catch {
@@ -973,7 +973,7 @@ export function archiveTask(
       try {
         const taskData = JSON.parse(readFileSync(taskJsonPath, "utf-8"));
         taskData.status = "completed";
-        taskData.completedAt = getTodayDate();
+        taskData.completed_at = getTodayDate();
         writeFileSync(taskJsonPath, JSON.stringify(taskData, null, 2), "utf-8");
       } catch {
         // Continue even if status update fails
@@ -1552,7 +1552,7 @@ export function registryAddAgent(
     agentId: string;
     worktreePath: string;
     pid: number;
-    taskDir: string;
+    task_dir: string;
     platform?: string;
   },
   repoRoot: string
@@ -1571,7 +1571,7 @@ export function registryAddAgent(
     worktree_path: params.worktreePath,
     pid: params.pid,
     started_at: new Date().toISOString(),
-    task_dir: params.taskDir,
+    task_dir: params.task_dir,
     platform: params.platform || "claude",
   };
 

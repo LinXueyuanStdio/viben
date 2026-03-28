@@ -30,23 +30,23 @@ export interface AgentStatus {
   /** Whether the agent process is currently running */
   running: boolean;
   /** Path to the git worktree */
-  worktreePath: string;
+  worktree_path: string;
   /** Task directory path */
-  taskDir: string;
+  task_dir: string;
   /** ISO timestamp when agent was started */
-  startedAt: string;
+  started_at: string;
   /** Platform (claude, opencode, etc.) */
   platform: string;
   /** Session ID for resuming (if available) */
-  sessionId?: string;
+  session_id?: string;
   /** Elapsed time since start (formatted) */
   elapsed?: string;
   /** Number of modified files in worktree */
   modifiedFiles?: number;
   /** Last tool call made by agent */
-  lastTool?: string | null;
+  last_tool?: string | null;
   /** Last assistant message */
-  lastMessage?: string | null;
+  last_message?: string | null;
   /** Git branch name */
   branch?: string;
   /** Phase info string (e.g., "1/4 (implement)") */
@@ -388,7 +388,7 @@ export function getSessionId(taskDir: string): string | null {
   }
 
   // Support both camelCase and snake_case
-  const sessionId = (taskData.sessionId as string) || (taskData.session_id as string);
+  const sessionId = (taskData.session_id as string) || (taskData.session_id as string);
   return sessionId || null;
 }
 
@@ -445,15 +445,15 @@ export function getAgentStatus(agent: AgentRegistryEntry, repoRoot: string): Age
     id: agent.id,
     pid: agent.pid,
     running: isProcessRunning(agent.pid),
-    worktreePath: agent.worktree_path,
-    taskDir: agent.task_dir,
-    startedAt: agent.started_at,
+    worktree_path: agent.worktree_path,
+    task_dir: agent.task_dir,
+    started_at: agent.started_at,
     platform,
-    sessionId: sessionId || undefined,
+    session_id: sessionId || undefined,
     elapsed,
     modifiedFiles,
-    lastTool,
-    lastMessage,
+    last_tool: lastTool,
+    last_message: lastMessage,
     branch,
     phase,
   };

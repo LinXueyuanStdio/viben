@@ -392,7 +392,7 @@ export function parseAIResponse(response: string, type: string): Idea[] {
         rationale: String(raw.rationale || ""),
         estimatedEffort: effort,
         status: "draft",
-        createdAt: now,
+        created_at: now,
         affectedFiles: Array.isArray(raw.affected_files)
           ? raw.affected_files.map(String)
           : undefined,
@@ -536,13 +536,13 @@ export async function generateIdeas(
 
   if (typePrompts.size === 0) {
     return {
-      sessionId: "",
+      session_id: "",
       sessionDir: "",
       ideas: [],
-      byType: {},
+      by_type: {},
       errors: errors.length > 0 ? errors : ["No valid idea types specified"],
-      typeResults: [],
-      totalIdeas: 0,
+      type_results: [],
+      total_ideas: 0,
       success: false,
     };
   }
@@ -666,18 +666,18 @@ export async function generateIdeas(
   );
 
   return {
-    sessionId,
+    session_id: sessionId,
     sessionDir,
     ideas: allIdeas,
-    byType,
+    by_type: byType,
     errors,
-    typeResults: results.map((r) => ({
+    type_results: results.map((r) => ({
       type: r.type,
       count: r.ideas.length,
       file: getIdeaFilePath(sessionDir, r.type),
       error: r.error,
     })),
-    totalIdeas: allIdeas.length,
+    total_ideas: allIdeas.length,
     success: errors.length === 0 || allIdeas.length > 0,
   };
 }

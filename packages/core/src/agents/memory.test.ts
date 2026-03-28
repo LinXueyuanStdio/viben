@@ -70,7 +70,7 @@ describe("MemoryManager", () => {
     it("should return empty content for non-existent memory", async () => {
       const memory = await manager.getMemory("new-agent");
 
-      expect(memory.agentId).toBe("new-agent");
+      expect(memory.agent_id).toBe("new-agent");
       expect(memory.content).toBe("");
       expect(memory.size).toBe(0);
     });
@@ -475,9 +475,9 @@ describe("MemoryManager", () => {
 
       const memory = await manager.getMemoryLegacy("test-agent");
 
-      expect(memory.agentId).toBe("test-agent");
+      expect(memory.agent_id).toBe("test-agent");
       expect(memory.content).toBe("Memory content");
-      expect(memory.updatedAt).toBeDefined();
+      expect(memory.updated_at).toBeDefined();  // AgentMemory uses snake_case
     });
   });
 

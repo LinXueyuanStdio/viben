@@ -85,7 +85,7 @@ export class AgentEventEmitter {
       }
 
       // Create and apply the event
-      const nextSeq = (task.lastEvent?.sequence ?? 0) + 1;
+      const nextSeq = (task.last_event?.sequence ?? 0) + 1;
       const event = createTaskEvent(eventType, nextSeq, payload);
 
       const result = await taskEventStore.applyEvent(taskDir, event);
@@ -97,7 +97,7 @@ export class AgentEventEmitter {
           data: {
             task_id: taskId,
             workspace_path: workspacePath,
-            event_id: event.eventId,
+            event_id: event.event_id,
             event_type: eventType,
             sequence: nextSeq,
             new_state: result.newState || "unknown",

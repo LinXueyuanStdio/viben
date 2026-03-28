@@ -142,7 +142,7 @@ export const DEFAULT_ORCHESTRATOR_CONFIG: OrchestratorConfig = {
  *
  * Usage:
  * ```typescript
- * const orchestrator = new AgentOrchestrator(service, groupChatId, sessionId);
+ * const orchestrator = new AgentOrchestrator(service, groupChatId, session_id);
  *
  * // Subscribe to events
  * orchestrator.on("thinking", (event) => console.log(`${event.agentName} is thinking...`));
@@ -160,7 +160,7 @@ export class AgentOrchestrator extends EventEmitter {
   constructor(
     private readonly service: GroupChatService,
     private readonly groupChatId: string,
-    private readonly sessionId: string,
+    private readonly session_id: string,
     config?: Partial<OrchestratorConfig>
   ) {
     super();
@@ -329,7 +329,7 @@ export class AgentOrchestrator extends EventEmitter {
       type: "thinking",
       timestamp: timestamp(),
     };
-    await this.service.appendMessage(this.groupChatId, this.sessionId, thinkingMessage).catch(() => {
+    await this.service.appendMessage(this.groupChatId, this.session_id, thinkingMessage).catch(() => {
       // Ignore errors
     });
 
@@ -337,7 +337,7 @@ export class AgentOrchestrator extends EventEmitter {
       // Build context for this agent (prepend other agents' responses)
       const contextMessage = await this.service.buildMessageForAgent(
         this.groupChatId,
-        this.sessionId,
+        this.session_id,
         agentId,
         userMessage,
         senderName
@@ -352,7 +352,7 @@ export class AgentOrchestrator extends EventEmitter {
       };
       await this.service.appendAgentRolloutMessage(
         this.groupChatId,
-        this.sessionId,
+        this.session_id,
         agentId,
         userRollout
       );
@@ -385,7 +385,7 @@ export class AgentOrchestrator extends EventEmitter {
           content: result.error,
           timestamp: timestamp(),
         };
-        await this.service.appendMessage(this.groupChatId, this.sessionId, errorMessage).catch(() => {});
+        await this.service.appendMessage(this.groupChatId, this.session_id, errorMessage).catch(() => {});
 
         return { success: false, error: result.error };
       }
@@ -401,7 +401,7 @@ export class AgentOrchestrator extends EventEmitter {
       };
       await this.service.appendAgentRolloutMessage(
         this.groupChatId,
-        this.sessionId,
+        this.session_id,
         agentId,
         assistantRollout
       );
@@ -411,14 +411,14 @@ export class AgentOrchestrator extends EventEmitter {
         id: `resp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         agentId,
         agentName,
-        sessionId: this.sessionId,
+        session_id: this.session_id,
         content,
         status: "completed",
         startedAt: new Date(startTime).toISOString(),
         completedAt: timestamp(),
         durationMs: duration,
       };
-      await this.service.addAgentResponse(this.groupChatId, this.sessionId, agentResponse);
+      await this.service.addAgentResponse(this.groupChatId, this.session_id, agentResponse);
 
       // Record response in UI messages
       const responseMessage: GroupChatUIMessage = {
@@ -430,7 +430,7 @@ export class AgentOrchestrator extends EventEmitter {
         content,
         timestamp: timestamp(),
       };
-      await this.service.appendMessage(this.groupChatId, this.sessionId, responseMessage);
+      await this.service.appendMessage(this.groupChatId, this.session_id, responseMessage);
 
       // Emit response event
       pushEvent({
@@ -622,7 +622,7 @@ export class AgentOrchestrator extends EventEmitter {
    * Get the session ID
    */
   getSessionId(): string {
-    return this.sessionId;
+    return this.session_id;
   }
 
   /**
@@ -692,8 +692,8 @@ function truncateMessage(msg: string, maxLen: number): string {
 export function createOrchestrator(
   service: GroupChatService,
   groupChatId: string,
-  sessionId: string,
+  session_id: string,
   config?: Partial<OrchestratorConfig>
 ): AgentOrchestrator {
-  return new AgentOrchestrator(service, groupChatId, sessionId, config);
+  return new AgentOrchestrator(service, groupChatId, session_id, config);
 }

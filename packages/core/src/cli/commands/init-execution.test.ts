@@ -183,8 +183,8 @@ describe("init command execution", () => {
 
       expect(config.version).toBe(1);
       expect(config.settings).toBeDefined();
-      expect(config.createdAt).toBeDefined();
-      expect(config.updatedAt).toBeDefined();
+      expect(config.created_at).toBeDefined();
+      expect(config.updated_at).toBeDefined();
     });
 
     it("should not overwrite existing workspace", async () => {

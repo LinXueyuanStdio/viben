@@ -36,8 +36,8 @@ function convertToGHIssue(issue: GitHubIssue): autofix.GHIssue {
     labels: issue.labels.map((l) => ({ name: l.name })),
     assignees: issue.assignees.map((a) => ({ login: a.login })),
     author: { login: issue.user.login },
-    createdAt: issue.created_at,
-    updatedAt: issue.updated_at,
+    created_at: issue.created_at,
+    updated_at: issue.updated_at,
     url: issue.html_url,
     comments: { totalCount: issue.comments },
   };
@@ -1072,8 +1072,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
         author: {
           login: issue.user.login,
         },
-        createdAt: issue.created_at,
-        updatedAt: issue.updated_at,
+        created_at: issue.created_at,
+        updated_at: issue.updated_at,
         url: issue.html_url,
         comments: {
           totalCount: issue.comments,
@@ -1087,8 +1087,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
         author: {
           login: c.user.login,
         },
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
       }));
 
       // Analyze

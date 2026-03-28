@@ -17,9 +17,9 @@ export interface DiscoveredModel {
   /** Display name */
   name?: string;
   /** Creation timestamp (if available) */
-  createdAt?: number;
+  created_at?: number;
   /** Owner/organization */
-  ownedBy?: string;
+  owned_by?: string;
   /** Model capabilities */
   capabilities?: string[];
   /** Additional metadata */
@@ -75,8 +75,8 @@ async function discoverOpenAI(
     models.push({
       id: model.id,
       name: model.id,
-      createdAt: model.created,
-      ownedBy: model.owned_by,
+      created_at: model.created,
+      owned_by: model.owned_by,
     });
   }
 
@@ -268,7 +268,7 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
 
   const providerType = provider.type as ProviderType;
   const apiKey = provider.apiKey || "";
-  const baseUrl = provider.baseUrl;
+  const baseUrl = provider.base_url;
 
   try {
     let models: DiscoveredModel[] = [];

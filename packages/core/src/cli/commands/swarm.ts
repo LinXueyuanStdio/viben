@@ -299,15 +299,15 @@ async function startAgentCommand(
       console.log();
       console.log(`  ID:        ${result.agentId}`);
       console.log(`  PID:       ${result.pid}`);
-      console.log(`  Session:   ${result.sessionId || "N/A"}`);
+      console.log(`  Session:   ${result.session_id || "N/A"}`);
       console.log(`  Worktree:  ${result.worktreePath}`);
-      console.log(`  Log:       ${result.logFile}`);
+      console.log(`  Log:       ${result.log_file}`);
       console.log();
-      console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+      console.log(chalk.yellow(`To monitor: tail -f ${result.log_file}`));
       console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
-      if (result.sessionId) {
+      if (result.session_id) {
         const adapter = createCLIAdapter(platform);
-        const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+        const resumeCmd = adapter.getResumeCommandStr(result.session_id, result.worktreePath);
         console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
       }
     } else {
@@ -432,7 +432,7 @@ async function showStatusCommand(
       return;
     }
 
-    const logFile = join(status.worktreePath, "agent.log.jsonl");
+    const logFile = join(status.worktree_path, "agent.log.jsonl");
     if (!existsSync(logFile)) {
       console.error(chalk.red(`Log file not found: ${logFile}`));
       process.exit(1);
@@ -456,7 +456,7 @@ async function showStatusCommand(
       return;
     }
 
-    const logFile = join(status.worktreePath, "agent.log.jsonl");
+    const logFile = join(status.worktree_path, "agent.log.jsonl");
     if (!existsSync(logFile)) {
       console.error(chalk.red(`Log file not found: ${logFile}`));
       process.exit(1);
@@ -492,33 +492,33 @@ async function showStatusCommand(
     console.log();
     console.log(`  ID:        ${status.id}`);
     console.log(`  PID:       ${status.pid}`);
-    console.log(`  Session:   ${status.sessionId || "N/A"}`);
-    console.log(`  Worktree:  ${status.worktreePath}`);
-    console.log(`  Task Dir:  ${status.taskDir}`);
-    console.log(`  Started:   ${status.startedAt}`);
+    console.log(`  Session:   ${status.session_id || "N/A"}`);
+    console.log(`  Worktree:  ${status.worktree_path}`);
+    console.log(`  Task Dir:  ${status.task_dir}`);
+    console.log(`  Started:   ${status.started_at}`);
     console.log();
 
     if (status.running) {
       console.log(`  Status:    ${chalk.green("Running")}`);
     } else {
       console.log(`  Status:    ${chalk.red("Stopped")}`);
-      if (status.sessionId) {
+      if (status.session_id) {
         const adapter = createCLIAdapter(status.platform as Platform);
-        const resumeCmd = adapter.getResumeCommandStr(status.sessionId, status.worktreePath);
+        const resumeCmd = adapter.getResumeCommandStr(status.session_id, status.worktree_path);
         console.log();
         console.log(chalk.yellow(`  Resume: ${resumeCmd}`));
       }
     }
 
     // Show git changes
-    if (existsSync(status.worktreePath)) {
+    if (existsSync(status.worktree_path)) {
       console.log();
       console.log(chalk.blue("=== Git Changes ==="));
       console.log();
 
       try {
         const gitStatus = execSync("git status --short", {
-          cwd: status.worktreePath,
+          cwd: status.worktree_path,
           encoding: "utf-8",
         });
         if (gitStatus.trim()) {
@@ -580,8 +580,8 @@ async function showStatusCommand(
         console.log(`    Branch:   ${chalk.dim(agent.branch)}`);
       }
       console.log(`    Modified: ${agent.modifiedFiles} file(s)`);
-      if (agent.lastTool) {
-        console.log(`    Activity: ${chalk.yellow(agent.lastTool)}`);
+      if (agent.last_tool) {
+        console.log(`    Activity: ${chalk.yellow(agent.last_tool)}`);
       }
       console.log(`    PID:      ${chalk.dim(agent.pid.toString())}`);
       console.log();
@@ -592,12 +592,12 @@ async function showStatusCommand(
     console.log(chalk.red("Stopped:"));
     for (const agent of stoppedAgents) {
       console.log(`  ${chalk.red("○")} ${agent.id} ${chalk.red("[stopped]")}`);
-      if (agent.lastMessage) {
-        console.log(`    ${chalk.dim(`"${agent.lastMessage}"`)}`);
+      if (agent.last_message) {
+        console.log(`    ${chalk.dim(`"${agent.last_message}"`)}`);
       }
-      if (agent.sessionId) {
+      if (agent.session_id) {
         const adapter = createCLIAdapter(agent.platform as Platform);
-        const resumeCmd = adapter.getResumeCommandStr(agent.sessionId, agent.worktreePath);
+        const resumeCmd = adapter.getResumeCommandStr(agent.session_id, agent.worktree_path);
         console.log(`    ${chalk.yellow(resumeCmd)}`);
       }
       console.log();

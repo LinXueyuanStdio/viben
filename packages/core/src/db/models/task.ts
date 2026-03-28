@@ -20,8 +20,8 @@ interface TaskEntry {
   description?: string;
   status: TaskStatus;
   agentId?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 function getTasksPath(): string {
@@ -56,7 +56,7 @@ export const TaskModel = {
         id,
         ...entry,
       }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
 
   /**
@@ -100,8 +100,8 @@ export const TaskModel = {
       description: input.description,
       status: "backlog",
       agentId: input.agentId,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     data.tasks[id] = entry;
@@ -126,8 +126,8 @@ export const TaskModel = {
       description: input.description ?? entry.description,
       status: input.status ?? entry.status,
       agentId: input.agentId ?? entry.agentId,
-      createdAt: entry.createdAt,
-      updatedAt: now,
+      created_at: entry.created_at,
+      updated_at: now,
     };
 
     data.tasks[id] = updated;

@@ -212,9 +212,9 @@ export type SSEEventType =
  */
 export interface SSESessionMessage {
   type: "session";
-  sessionId: string;
+  session_id: string;
   /** Trace ID for observability correlation */
-  traceId?: string;
+  trace_id?: string;
 }
 
 /**
@@ -224,7 +224,7 @@ export interface SSESessionMessage {
 export interface SSESdkSessionMessage {
   type: "sdk_session";
   /** The SDK's internal session ID (UUID) for use with resume parameter */
-  sdkSessionId: string;
+  sdk_session_id: string;
 }
 
 /**
@@ -250,9 +250,9 @@ export interface SSEToolUseMessage {
  */
 export interface SSEToolResultMessage {
   type: "tool_result";
-  toolUseId: string;
+  tool_use_id: string;
   output: string;
-  isError?: boolean;
+  is_error?: boolean;
 }
 
 /**
@@ -567,8 +567,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       const clientSessionId = resumeSession || sessionId;
       sendSSE(reply, {
         type: "session",
-        sessionId: clientSessionId,
-        traceId,
+        session_id: clientSessionId,
+        trace_id: traceId,
       });
       log.info("session", resumeSession ? "resumed" : "created", {
         sessionId,
@@ -581,9 +581,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       const taskId = persistTaskId || sessionId;
       backgroundTaskManager.addTask({
         taskId,
-        sessionId,
+        session_id: sessionId,
         prompt: prompt.slice(0, 200) + (prompt.length > 200 ? "..." : ""),
-        workspacePath: cwd,
+        workspace_path: cwd,
         agentConfigPath,
         agentName: agentConfig?.name,
       });
@@ -738,38 +738,38 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           toolResultCount++;
           const resultMsg = message as SSEToolResultMessage;
           log.info("stream", "tool_result", {
-            toolUseId: resultMsg.toolUseId,
-            isError: resultMsg.isError || false,
+            toolUseId: resultMsg.tool_use_id,
+            isError: resultMsg.is_error || false,
             outputLength: resultMsg.output?.length || 0,
             toolResultCount,
           });
 
           // Find and end the corresponding tool span
-          const toolSpan = pendingToolSpans.get(resultMsg.toolUseId);
-          const toolName = pendingToolNames.get(resultMsg.toolUseId) || "unknown";
+          const toolSpan = pendingToolSpans.get(resultMsg.tool_use_id);
+          const toolName = pendingToolNames.get(resultMsg.tool_use_id) || "unknown";
           if (toolSpan) {
             // Add result attributes to the tool span
             toolSpan.setAttributes({
-              "tool_result.is_error": resultMsg.isError || false,
+              "tool_result.is_error": resultMsg.is_error || false,
               // Store output (truncated if too long)
               "tool_result.output": resultMsg.output?.slice(0, 2000) +
                 (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
               "tool_result.output_length": resultMsg.output?.length || 0,
             });
-            if (resultMsg.isError) {
+            if (resultMsg.is_error) {
               toolSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
             } else {
               toolSpan.setStatus({ code: SpanStatusCode.OK });
             }
             toolSpan.end();
-            pendingToolSpans.delete(resultMsg.toolUseId);
-            pendingToolNames.delete(resultMsg.toolUseId);
+            pendingToolSpans.delete(resultMsg.tool_use_id);
+            pendingToolNames.delete(resultMsg.tool_use_id);
 
             // Record tool call metrics
             recordAgentToolCall({
               agentName: agentConfig?.name || "default",
               toolName,
-              status: resultMsg.isError ? "error" : "success",
+              status: resultMsg.is_error ? "error" : "success",
             });
           } else {
             // No matching tool span, create a standalone result span
@@ -777,8 +777,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
               getSpanName("tool_result"),
               {
                 attributes: {
-                  "tool_result.tool_use_id": resultMsg.toolUseId,
-                  "tool_result.is_error": resultMsg.isError || false,
+                  "tool_result.tool_use_id": resultMsg.tool_use_id,
+                  "tool_result.is_error": resultMsg.is_error || false,
                   "tool_result.output": resultMsg.output?.slice(0, 2000) +
                     (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
                   "tool_result.output_length": resultMsg.output?.length || 0,
@@ -786,7 +786,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
               },
               streamContext
             );
-            if (resultMsg.isError) {
+            if (resultMsg.is_error) {
               resultSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
             } else {
               resultSpan.setStatus({ code: SpanStatusCode.OK });
@@ -814,7 +814,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             sessionId,
             questionMsg.id, // toolUseId
             questionMsg.questions,
-            { agentConfigPath, workspacePath: cwd }
+            { agent_config_path: agentConfigPath, workspace_path: cwd }
           );
           log.info("stream", "question_received", {
             questionId: questionMsg.id,
@@ -822,7 +822,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           });
         } else if (message.type === "sdk_session") {
           // Log SDK session ID for debugging resume functionality
-          const sdkSessionId = (message as SSESdkSessionMessage).sdkSessionId;
+          const sdkSessionId = (message as SSESdkSessionMessage).sdk_session_id;
           log.info("stream", "sdk_session_received", {
             sdkSessionId,
             willPersist: !!(persistSessionId && persistTaskId),
@@ -850,17 +850,17 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 message.type === "tool_use"
                   ? (message as SSEToolUseMessage).id
                   : message.type === "tool_result"
-                    ? (message as SSEToolResultMessage).toolUseId
+                    ? (message as SSEToolResultMessage).tool_use_id
                     : undefined,
               toolName: message.type === "tool_use" ? (message as SSEToolUseMessage).name : undefined,
               toolInput: message.type === "tool_use" ? (message as SSEToolUseMessage).input : undefined,
               toolOutput:
                 message.type === "tool_result" ? (message as SSEToolResultMessage).output : undefined,
               isError:
-                message.type === "tool_result" ? (message as SSEToolResultMessage).isError : undefined,
+                message.type === "tool_result" ? (message as SSEToolResultMessage).is_error : undefined,
               // Persist SDK session ID for resume functionality
               sdkSessionId:
-                message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdkSessionId : undefined,
+                message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdk_session_id : undefined,
             }, agentDir);
           } catch (persistError) {
             log.warn("persistence", "ui_message_save_failed", {
@@ -882,9 +882,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 role,
                 content,
                 toolResult: message.type === "tool_result" ? {
-                  toolUseId: (message as SSEToolResultMessage).toolUseId,
+                  toolUseId: (message as SSEToolResultMessage).tool_use_id,
                   output: (message as SSEToolResultMessage).output,
-                  isError: (message as SSEToolResultMessage).isError,
+                  isError: (message as SSEToolResultMessage).is_error,
                 } : undefined,
               }, agentDir);
             } catch (persistError) {
@@ -1117,7 +1117,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         reply.code(404);
         return { error: `Session not found: ${sessionId}` };
       }
-      return { success: true, sessionId };
+      return { success: true, session_id: sessionId };
     }
   );
 
@@ -1283,7 +1283,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
       const isAborted = agentService.isSessionAborted(sessionId);
       return {
-        sessionId,
+        session_id: sessionId,
         status: isAborted ? "cancelled" : "active",
       };
     }
@@ -1304,12 +1304,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       }
       return {
         id: plan.id,
-        sessionId: plan.sessionId,
+        session_id: plan.session_id,
         goal: plan.goal,
         steps: plan.steps,
         notes: plan.notes,
         status: plan.status,
-        createdAt: plan.createdAt.toISOString(),
+        created_at: plan.created_at.toISOString(),
       };
     }
   );

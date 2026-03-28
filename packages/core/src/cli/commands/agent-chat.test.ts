@@ -390,7 +390,7 @@ describe("agent chat command", () => {
 
       expect(exitCode).toBe(0);
       const executeCall = (mockState.executeProxy as ReturnType<typeof vi.fn>).mock.calls[0];
-      expect(executeCall[0].sessionId).toBe("my-session");
+      expect(executeCall[0].session_id).toBe("my-session");
     });
 
     it("should pass resume with --resume option", async () => {

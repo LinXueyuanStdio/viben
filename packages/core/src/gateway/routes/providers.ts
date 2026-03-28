@@ -45,16 +45,16 @@ function toSnakeCaseProvider(provider: Provider): ProviderResponse {
     type: provider.type,
     name: provider.name,
     api_key: provider.apiKey,
-    base_url: provider.baseUrl,
+    base_url: provider.base_url,
     api_version: provider.apiVersion,
     deployment: provider.deployment,
     timeout: provider.timeout,
-    max_retries: provider.maxRetries,
+    max_retries: provider.max_retries,
     headers: provider.headers,
     is_default: provider.isDefault,
     enabled: provider.enabled,
-    created_at: provider.createdAt,
-    updated_at: provider.updatedAt,
+    created_at: provider.created_at,
+    updated_at: provider.updated_at,
   };
 }
 
@@ -304,11 +304,11 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
           type: body.type as ProviderType,
           name: body.name,
           apiKey: body.api_key,
-          baseUrl: body.base_url,
+          base_url: body.base_url,
           apiVersion: body.api_version,
           deployment: body.deployment,
           timeout: body.timeout,
-          maxRetries: body.max_retries,
+          max_retries: body.max_retries,
           headers: body.headers,
           setAsDefault: body.set_as_default,
         };
@@ -397,11 +397,11 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
           type: body.type as ProviderType | undefined,
           name: body.name,
           apiKey: body.api_key,
-          baseUrl: body.base_url,
+          base_url: body.base_url,
           apiVersion: body.api_version,
           deployment: body.deployment,
           timeout: body.timeout,
-          maxRetries: body.max_retries,
+          max_retries: body.max_retries,
           headers: body.headers,
         };
 
@@ -526,7 +526,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
           connected: status.connected,
           latency: status.latency,
           error: status.error,
-          checked_at: status.checkedAt,
+          checked_at: status.checked_at,
         };
       } catch (e) {
         reply.code(400);

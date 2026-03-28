@@ -91,19 +91,19 @@ export function createMockTask(
     title: DEFAULT_TASK_TITLE,
     status: "backlog",
     priority: "medium",
-    createdAt: DEFAULT_CREATED_AT,
+    created_at: DEFAULT_CREATED_AT,
     ...overrides,
   };
 }
 
 /**
- * Create a task in a specific state with appropriate xstateState
+ * Create a task in a specific state with appropriate xstate_state
  */
 export function createTaskInState(
   status: TaskStatus,
   overrides?: Partial<UnifiedTask> & {
-    xstateState?: XStateValue;
-    eventHistory?: TaskEvent[];
+    xstate_state?: XStateValue;
+    event_history?: TaskEvent[];
   }
 ): UnifiedTask {
   const task = createMockTask({
@@ -111,11 +111,11 @@ export function createTaskInState(
     ...overrides,
   });
 
-  // Set xstateState based on status if not provided
-  if (!overrides?.xstateState) {
-    task.xstateState = statusToXStateValue(status);
+  // Set xstate_state based on status if not provided
+  if (!overrides?.xstate_state) {
+    task.xstate_state = statusToXStateValue(status);
   } else {
-    task.xstateState = overrides.xstateState;
+    task.xstate_state = overrides.xstate_state;
   }
 
   return task;
@@ -144,7 +144,7 @@ export function createMockEvent(
   overrides?: Partial<TaskEvent>
 ): TaskEvent {
   return {
-    eventId: `evt_${Date.now()}`,
+    event_id: `evt_${Date.now()}`,
     sequence: 1,
     type: "QUEUE",
     timestamp: DEFAULT_CREATED_AT,
@@ -160,7 +160,7 @@ export function createEventSequence(
   startSequence = 1
 ): TaskEvent[] {
   return types.map((type, index) => ({
-    eventId: `evt_${startSequence + index}`,
+    event_id: `evt_${startSequence + index}`,
     sequence: startSequence + index,
     type,
     timestamp: new Date(
@@ -182,61 +182,61 @@ export const TASK_BACKLOG = createTaskInState("backlog");
  * Task in queue state
  */
 export const TASK_QUEUED = createTaskInState("queue", {
-  lastEvent: createMockEvent({ type: "QUEUE", sequence: 1 }),
+  last_event: createMockEvent({ type: "QUEUE", sequence: 1 }),
 });
 
 /**
  * Task in plan phase
  */
 export const TASK_PLAN = createTaskInState("in_progress", {
-  xstateState: { in_progress: "plan" },
-  lastEvent: createMockEvent({ type: "START", sequence: 2 }),
+  xstate_state: { in_progress: "plan" },
+  last_event: createMockEvent({ type: "START", sequence: 2 }),
 });
 
 /**
  * Task in implement phase
  */
 export const TASK_IMPLEMENT = createTaskInState("in_progress", {
-  xstateState: { in_progress: "implement" },
-  lastEvent: createMockEvent({ type: "PLAN_COMPLETE", sequence: 3 }),
+  xstate_state: { in_progress: "implement" },
+  last_event: createMockEvent({ type: "PLAN_COMPLETE", sequence: 3 }),
 });
 
 /**
  * Task in check phase
  */
 export const TASK_CHECK = createTaskInState("in_progress", {
-  xstateState: { in_progress: "check" },
-  lastEvent: createMockEvent({ type: "ALL_SUBTASKS_DONE", sequence: 4 }),
+  xstate_state: { in_progress: "check" },
+  last_event: createMockEvent({ type: "ALL_SUBTASKS_DONE", sequence: 4 }),
 });
 
 /**
  * Task in review state
  */
 export const TASK_REVIEW = createTaskInState("review", {
-  reviewReason: "completed",
-  lastEvent: createMockEvent({ type: "CHECK_PASSED", sequence: 5 }),
+  review_reason: "completed",
+  last_event: createMockEvent({ type: "CHECK_PASSED", sequence: 5 }),
 });
 
 /**
  * Completed task
  */
 export const TASK_COMPLETED = createTaskInState("completed", {
-  lastEvent: createMockEvent({ type: "APPROVED", sequence: 6 }),
-  completedAt: DEFAULT_CREATED_AT,
+  last_event: createMockEvent({ type: "APPROVED", sequence: 6 }),
+  completed_at: DEFAULT_CREATED_AT,
 });
 
 /**
  * Failed task
  */
 export const TASK_FAILED = createTaskInState("failed", {
-  lastEvent: createMockEvent({ type: "PLAN_FAILED", sequence: 3 }),
+  last_event: createMockEvent({ type: "PLAN_FAILED", sequence: 3 }),
 });
 
 /**
  * Paused task (from queue)
  */
 export const TASK_PAUSED_FROM_QUEUE = createTaskInState("paused", {
-  lastEvent: createMockEvent({ type: "PAUSE", sequence: 2 }),
+  last_event: createMockEvent({ type: "PAUSE", sequence: 2 }),
   machine_context: {
     current_subtask_index: 0,
     requires_plan_review: false,
@@ -252,7 +252,7 @@ export const TASK_PAUSED_FROM_QUEUE = createTaskInState("paused", {
  * Paused task (from implement)
  */
 export const TASK_PAUSED_FROM_IMPLEMENT = createTaskInState("paused", {
-  lastEvent: createMockEvent({ type: "PAUSE", sequence: 4 }),
+  last_event: createMockEvent({ type: "PAUSE", sequence: 4 }),
   machine_context: {
     current_subtask_index: 2,
     requires_plan_review: false,

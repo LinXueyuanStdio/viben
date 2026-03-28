@@ -136,8 +136,8 @@ export class GroupChatService {
       description: request.description,
       settings: request.settings,
       createdBy,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
       metadata: request.metadata,
     };
 
@@ -198,7 +198,7 @@ export class GroupChatService {
     }
 
     return configs.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }
 
@@ -222,7 +222,7 @@ export class GroupChatService {
         ? { ...config.settings, ...update.settings }
         : config.settings,
       metadata: update.metadata ?? config.metadata,
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     await this.writeConfig(groupChatId, updated);
@@ -333,8 +333,8 @@ export class GroupChatService {
       name: request.name,
       status: "active",
       activeAgents: request.activeAgents || [],
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
       metadata: request.metadata,
     };
 
@@ -385,7 +385,7 @@ export class GroupChatService {
     }
 
     return sessions.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }
 
@@ -408,7 +408,7 @@ export class GroupChatService {
       status: update.status ?? session.status,
       activeAgents: update.activeAgents ?? session.activeAgents,
       metadata: update.metadata ?? session.metadata,
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     await this.writeYaml(this.sessionConfigPath(groupChatId, sessionId), updated);

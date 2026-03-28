@@ -151,8 +151,8 @@ export function registerWorkspaceCommand(program: Command): void {
               list: agents,
               count: agents.length,
             },
-            createdAt: workspace.createdAt,
-            updatedAt: workspace.updatedAt,
+            created_at: workspace.created_at,
+            updated_at: workspace.updated_at,
           }),
           () => {
             console.log(chalk.bold("Current Workspace:"));
@@ -190,14 +190,14 @@ export function registerWorkspaceCommand(program: Command): void {
 
             // Timestamps
             if (ctx.verbose) {
-              if (workspace.createdAt) {
+              if (workspace.created_at) {
                 console.log(
-                  `  ${chalk.cyan("Created:")} ${workspace.createdAt}`
+                  `  ${chalk.cyan("Created:")} ${workspace.created_at}`
                 );
               }
-              if (workspace.updatedAt) {
+              if (workspace.updated_at) {
                 console.log(
-                  `  ${chalk.cyan("Updated:")} ${workspace.updatedAt}`
+                  `  ${chalk.cyan("Updated:")} ${workspace.updated_at}`
                 );
               }
             }

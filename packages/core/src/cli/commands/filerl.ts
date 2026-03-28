@@ -808,7 +808,7 @@ export function registerFileRlCommand(program: Command): void {
                       type: typeMatch?.[1] || "unknown",
                       estimatedEffort: (effortMatch?.[1] || "medium") as "trivial" | "small" | "medium" | "large" | "complex",
                       status: (statusMatch?.[1] || "draft") as "draft" | "promoted" | "dismissed",
-                      createdAt: new Date().toISOString(),
+                      created_at: new Date().toISOString(),
                     });
                   }
                 }
@@ -1128,10 +1128,10 @@ export function registerFileRlCommand(program: Command): void {
 
           const result = promoteIdeaDirect(repoRoot, idea, promoteOptions);
 
-          if (result.success && result.dirName) {
+          if (result.success && result.dir_name) {
             results.push({
               ideaId,
-              taskId: result.dirName,
+              taskId: result.dir_name,
               success: true,
             });
 
@@ -1139,8 +1139,8 @@ export function registerFileRlCommand(program: Command): void {
             if (!currentIter.ideas.includes(ideaId)) {
               currentIter.ideas.push(ideaId);
             }
-            currentIter.tasks.push(result.dirName);
-            currentIter.task_idea_map[result.dirName] = ideaId;
+            currentIter.tasks.push(result.dir_name);
+            currentIter.task_idea_map[result.dir_name] = ideaId;
           } else {
             results.push({
               ideaId,
@@ -1539,7 +1539,7 @@ export function registerFileRlCommand(program: Command): void {
           }
           console.log(`  ID:        ${result.agentId}`);
           console.log(`  PID:       ${result.pid}`);
-          console.log(`  Log:       ${result.logFile}`);
+          console.log(`  Log:       ${result.log_file}`);
 
           if (result.warnings && result.warnings.length > 0) {
             console.log();
@@ -1551,7 +1551,7 @@ export function registerFileRlCommand(program: Command): void {
 
           console.log();
           console.log(chalk.gray("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);

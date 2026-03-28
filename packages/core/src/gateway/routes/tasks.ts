@@ -63,8 +63,8 @@ function toDbTask(task: UnifiedTask): Task {
     description: task.description || task.prompt,
     status: task.status as DbTaskStatus,
     agentId: task.agent,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt || task.createdAt,
+    created_at: task.created_at,
+    updated_at: task.updated_at || task.created_at,
   };
 }
 
@@ -74,8 +74,8 @@ function toDbTask(task: UnifiedTask): Task {
  */
 function parseSubtasksDetail(task: UnifiedTask): SubtaskInfo[] | null {
   // Prefer structured subtaskDetails if available
-  if (task.subtaskDetails && task.subtaskDetails.length > 0) {
-    return task.subtaskDetails;
+  if (task.subtask_details && task.subtask_details.length > 0) {
+    return task.subtask_details;
   }
 
   // Parse from legacy subtasks string array if available
@@ -102,12 +102,12 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     description: task.description || task.prompt || null,
     status: task.status,
     // Status details
-    review_reason: task.reviewReason ?? null,
+    review_reason: task.review_reason ?? null,
     current_phase: task.current_phase ?? 0,
     next_action: task.next_action ?? null,
     // Organization fields
     priority: task.priority || DEFAULT_PRIORITY,
-    workspace_path: task.workspacePath ?? null,
+    workspace_path: task.workspace_path ?? null,
     // People
     creator: task.creator ?? null,
     assignee: task.assignee ?? null,
@@ -119,8 +119,8 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     pr_url: task.pr_url ?? null,
     // Agent/Session fields
     agent_id: task.agent ?? null,
-    session_id: task.sessionId ?? null,
-    task_index: task.taskIndex ?? 0,
+    session_id: task.session_id ?? null,
+    task_index: task.task_index ?? 0,
     prompt: task.prompt ?? null,
     // Execution info
     cost: task.cost ?? null,
@@ -129,11 +129,11 @@ export function toSnakeCaseTask(task: UnifiedTask) {
     executor: task.executor || "Agent",
     // Subtask visualization
     subtasks_detail: parseSubtasksDetail(task),
-    execution_progress: task.executionProgress ?? null,
+    execution_progress: task.execution_progress ?? null,
     // Timestamps
-    created_at: task.createdAt,
-    updated_at: task.updatedAt ?? task.createdAt,
-    completed_at: task.completedAt ?? null,
+    created_at: task.created_at,
+    updated_at: task.updated_at ?? task.created_at,
+    completed_at: task.completed_at ?? null,
     // Template flag
     is_template: task.is_template ?? false,
   };
@@ -146,12 +146,12 @@ export function toSnakeCaseTask(task: UnifiedTask) {
 /**
  * Get the latest journal file info from workspace directory
  */
-function getLatestJournalInfo(devDir: string): {
+function getLatestJournalInfo(dev_dir: string): {
   file: string | null;
   number: number;
   lines: number;
 } {
-  if (!existsSync(devDir)) {
+  if (!existsSync(dev_dir)) {
     return { file: null, number: 0, lines: 0 };
   }
 
@@ -159,7 +159,7 @@ function getLatestJournalInfo(devDir: string): {
   let latestNum = -1;
 
   try {
-    const files = readdirSync(devDir);
+    const files = readdirSync(dev_dir);
     for (const file of files) {
       if (file.startsWith("journal-") && file.endsWith(".md")) {
         const match = file.match(/journal-(\d+)\.md$/);
@@ -167,7 +167,7 @@ function getLatestJournalInfo(devDir: string): {
           const num = parseInt(match[1], 10);
           if (num > latestNum) {
             latestNum = num;
-            latestFile = join(devDir, file);
+            latestFile = join(dev_dir, file);
           }
         }
       }
@@ -198,13 +198,13 @@ function getLatestJournalInfo(devDir: string): {
 /**
  * Get current session number from index.md by parsing "Total Sessions" line
  */
-function getSessionNumberFromIndex(indexPath: string): number {
-  if (!existsSync(indexPath)) {
+function getSessionNumberFromIndex(index_path: string): number {
+  if (!existsSync(index_path)) {
     return 0;
   }
 
   try {
-    const content = readFileSync(indexPath, "utf-8");
+    const content = readFileSync(index_path, "utf-8");
     for (const line of content.split("\n")) {
       if (line.includes("Total Sessions")) {
         const match = line.match(/:\s*(\d+)/);
@@ -224,14 +224,14 @@ function getSessionNumberFromIndex(indexPath: string): number {
  * Generate session content markdown
  */
 function generateSessionMarkdown(params: {
-  sessionNum: number;
+  session_num: number;
   title: string;
   commit: string;
   summary: string;
-  extraContent: string;
+  extra_content: string;
   date: string;
 }): string {
-  const { sessionNum, title, commit, summary, extraContent, date } = params;
+  const { session_num, title, commit, summary, extra_content, date } = params;
 
   let commitTable: string;
   if (commit && commit !== "-") {
@@ -247,7 +247,7 @@ function generateSessionMarkdown(params: {
 
   return `
 
-## Session ${sessionNum}: ${title}
+## Session ${session_num}: ${title}
 
 **Date**: ${date}
 **Task**: ${title}
@@ -258,7 +258,7 @@ ${summary}
 
 ### Main Changes
 
-${extraContent}
+${extra_content}
 
 ### Git Commits
 
@@ -282,13 +282,13 @@ ${commitTable}
  * Create a new journal file when current one exceeds MAX_LINES
  */
 function createNewJournalFileSync(
-  devDir: string,
+  dev_dir: string,
   number: number,
   developer: string,
   date: string,
   prevNumber: number
 ): string {
-  const newFilePath = join(devDir, `journal-${number}.md`);
+  const newFilePath = join(dev_dir, `journal-${number}.md`);
   const maxLines = 2000;
 
   const content = `# Journal - ${developer} (Part ${number})
@@ -307,12 +307,12 @@ function createNewJournalFileSync(
 /**
  * Count journal files and return markdown table rows
  */
-function countJournalFilesTable(devDir: string, activeNum: number): string {
-  const activeFile = `journal-${activeNum}.md`;
+function countJournalFilesTable(dev_dir: string, activeNum: number): string {
+  const active_file = `journal-${activeNum}.md`;
   const resultLines: string[] = [];
 
   try {
-    const files = readdirSync(devDir)
+    const files = readdirSync(dev_dir)
       .filter((f) => f.startsWith("journal-") && f.endsWith(".md"))
       .sort((a, b) => {
         const numA = parseInt(a.match(/(\d+)/)?.[1] ?? "0", 10);
@@ -321,7 +321,7 @@ function countJournalFilesTable(devDir: string, activeNum: number): string {
       });
 
     for (const filename of files) {
-      const filePath = join(devDir, filename);
+      const filePath = join(dev_dir, filename);
       let lines = 0;
       try {
         const content = readFileSync(filePath, "utf-8");
@@ -334,7 +334,7 @@ function countJournalFilesTable(devDir: string, activeNum: number): string {
       } catch {
         // Ignore errors
       }
-      const status = filename === activeFile ? "Active" : "Archived";
+      const status = filename === active_file ? "Active" : "Archived";
       resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
     }
   } catch {
@@ -348,17 +348,17 @@ function countJournalFilesTable(devDir: string, activeNum: number): string {
  * Update index.md with new session info
  */
 function updateIndexWithNewSession(params: {
-  indexPath: string;
-  devDir: string;
-  sessionNum: number;
+  index_path: string;
+  dev_dir: string;
+  session_num: number;
   title: string;
   commit: string;
-  activeFile: string;
+  active_file: string;
   date: string;
 }): boolean {
-  const { indexPath, devDir, sessionNum, title, commit, activeFile, date } = params;
+  const { index_path, dev_dir, session_num, title, commit, active_file, date } = params;
 
-  if (!existsSync(indexPath)) {
+  if (!existsSync(index_path)) {
     return false;
   }
 
@@ -370,12 +370,12 @@ function updateIndexWithNewSession(params: {
       .join(", ");
   }
 
-  const match = activeFile.match(/journal-(\d+)\.md$/);
+  const match = active_file.match(/journal-(\d+)\.md$/);
   const activeNum = match ? parseInt(match[1], 10) : 0;
-  const filesTable = countJournalFilesTable(devDir, activeNum);
+  const filesTable = countJournalFilesTable(dev_dir, activeNum);
 
   try {
-    const content = readFileSync(indexPath, "utf-8");
+    const content = readFileSync(index_path, "utf-8");
 
     if (!content.includes("@@@auto:current-status")) {
       return false;
@@ -393,8 +393,8 @@ function updateIndexWithNewSession(params: {
       if (line.includes("@@@auto:current-status")) {
         newLines.push(line);
         inCurrentStatus = true;
-        newLines.push(`- **Active File**: \`${activeFile}\``);
-        newLines.push(`- **Total Sessions**: ${sessionNum}`);
+        newLines.push(`- **Active File**: \`${active_file}\``);
+        newLines.push(`- **Total Sessions**: ${session_num}`);
         newLines.push(`- **Last Active**: ${date}`);
         continue;
       }
@@ -444,7 +444,7 @@ function updateIndexWithNewSession(params: {
       if (inSessionHistory) {
         newLines.push(line);
         if (/^\|\s*-/.test(line) && !headerWritten) {
-          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
+          newLines.push(`| ${session_num} | ${date} | ${title} | ${commitDisplay} |`);
           headerWritten = true;
         }
         continue;
@@ -453,7 +453,7 @@ function updateIndexWithNewSession(params: {
       newLines.push(line);
     }
 
-    writeFileSync(indexPath, newLines.join("\n"), "utf-8");
+    writeFileSync(index_path, newLines.join("\n"), "utf-8");
     return true;
   } catch {
     return false;
@@ -533,12 +533,12 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX_SIZE = 1000;
 
 interface CacheEntry {
-  workspacePath: string;
-  taskDir: string;
+  workspace_path: string;
+  task_dir: string;
   /** Timestamp when this entry was last accessed */
-  lastAccessed: number;
+  last_accessed: number;
   /** Timestamp when this entry was created */
-  createdAt: number;
+  created_at: number;
 }
 
 // Store task directory paths by ID for lookups with TTL
@@ -554,13 +554,13 @@ export function getCacheEntry(taskId: string): CacheEntry | null {
 
   const now = Date.now();
   // Check if entry is expired
-  if (now - entry.createdAt > CACHE_TTL_MS) {
+  if (now - entry.created_at > CACHE_TTL_MS) {
     taskDirCache.delete(taskId);
     return null;
   }
 
   // Update last accessed time
-  entry.lastAccessed = now;
+  entry.last_accessed = now;
   return entry;
 }
 
@@ -577,8 +577,8 @@ export function setCacheEntry(taskId: string, workspacePath: string, taskDir: st
     let oldestTime = Infinity;
 
     for (const [key, entry] of taskDirCache) {
-      if (entry.lastAccessed < oldestTime) {
-        oldestTime = entry.lastAccessed;
+      if (entry.last_accessed < oldestTime) {
+        oldestTime = entry.last_accessed;
         oldestKey = key;
       }
     }
@@ -589,10 +589,10 @@ export function setCacheEntry(taskId: string, workspacePath: string, taskDir: st
   }
 
   taskDirCache.set(taskId, {
-    workspacePath,
-    taskDir,
-    lastAccessed: now,
-    createdAt: now,
+    workspace_path: workspacePath,
+    task_dir: taskDir,
+    last_accessed: now,
+    created_at: now,
   });
 }
 
@@ -792,8 +792,8 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
     // Check cache first (with TTL validation)
     const cached = getCacheEntry(id);
     if (cached) {
-      taskDir = cached.taskDir;
-      workspacePath = cached.workspacePath;
+      taskDir = cached.task_dir;
+      workspacePath = cached.workspace_path;
     } else if (workspace_path) {
       taskDir = await taskService.findTaskById(workspace_path, id);
       // Cache the result if found
@@ -822,7 +822,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
   // - is_template: Mark as a template
   fastify.post<{ Body: CreateTaskInput }>("/api/tasks", async (request, reply) => {
     const input = request.body;
-    const workspacePath = input.workspacePath || input.workspace_path;
+    const workspacePath = input.workspace_path || input.workspace_path;
 
     // Require workspace_path
     if (!workspacePath) {
@@ -865,8 +865,8 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
       agent: input.agentId || input.agent_id || sourceTask?.agent,
-      sessionId: input.sessionId || input.session_id, // Don't copy sessionId - each task needs its own
-      taskIndex: input.taskIndex || input.task_index || 0,
+      session_id: input.sessionId || input.session_id, // Don't copy sessionId - each task needs its own
+      task_index: input.taskIndex || input.task_index || 0,
       branch: input.branch ?? sourceTask?.branch,
       base_branch: input.base_branch ?? sourceTask?.base_branch,
       executor: input.executor ?? sourceTask?.executor ?? "Agent",
@@ -907,8 +907,8 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
 
       const cached = getCacheEntry(id);
       if (cached) {
-        taskDir = cached.taskDir;
-        workspacePath = cached.workspacePath;
+        taskDir = cached.task_dir;
+        workspacePath = cached.workspace_path;
       } else if (workspace_path) {
         taskDir = await taskService.findTaskById(workspace_path, id);
         // Cache the result if found
@@ -944,14 +944,14 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       if (updates.is_template !== undefined) taskUpdates.is_template = updates.is_template;
 
       // Session/Agent fields
-      const sessionId = updates.sessionId ?? updates.session_id;
-      if (sessionId !== undefined) taskUpdates.sessionId = sessionId;
+      const sessionId = updates.session_id ?? updates.session_id;
+      if (sessionId !== undefined) taskUpdates.session_id = sessionId;
       const agentId = updates.agentId ?? updates.agent_id;
       if (agentId !== undefined) taskUpdates.agent = agentId;
 
       // Kanban fields
-      const newWorkspacePath = updates.workspacePath ?? updates.workspace_path;
-      if (newWorkspacePath !== undefined) taskUpdates.workspacePath = newWorkspacePath;
+      const newWorkspacePath = updates.workspace_path ?? updates.workspace_path;
+      if (newWorkspacePath !== undefined) taskUpdates.workspace_path = newWorkspacePath;
       if (updates.executor !== undefined) taskUpdates.executor = updates.executor;
 
       // Git fields
@@ -998,7 +998,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
 
         const cached = getCacheEntry(id);
         if (cached) {
-          taskDir = cached.taskDir;
+          taskDir = cached.task_dir;
         } else if (workspace_path) {
           taskDir = await taskService.findTaskById(workspace_path, id);
         }
@@ -1059,9 +1059,9 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
 
     try {
       const allTasks = await taskService.listTasks(workspace_path);
-      const tasks = allTasks.filter((t) => t.sessionId === sessionId);
+      const tasks = allTasks.filter((t) => t.session_id === sessionId);
       // Sort by taskIndex
-      tasks.sort((a, b) => (a.taskIndex ?? 0) - (b.taskIndex ?? 0));
+      tasks.sort((a, b) => (a.task_index ?? 0) - (b.task_index ?? 0));
       return { tasks: tasks.map(toSnakeCaseTask) };
     } catch (error) {
       reply.code(500);
@@ -1177,9 +1177,9 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
     // Check cache first (with TTL validation)
     const cached = getCacheEntry(id);
     if (cached) {
-      log.debug({ taskDir: cached.taskDir }, "Found in cache");
-      taskDir = cached.taskDir;
-      workspacePath = cached.workspacePath;
+      log.debug({ taskDir: cached.task_dir }, "Found in cache");
+      taskDir = cached.task_dir;
+      workspacePath = cached.workspace_path;
     } else if (workspace_path) {
       log.debug("Searching for task by ID...");
       taskDir = await taskService.findTaskById(workspace_path, id);
@@ -1198,15 +1198,15 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
 
     try {
       const specsData = await taskService.getTaskSpecsData(taskDir);
-      log.debug({ taskDir: specsData.taskDir }, "Specs data loaded");
+      log.debug({ taskDir: specsData.task_dir }, "Specs data loaded");
 
       // Convert to snake_case for API response
       return {
-        prd_content: specsData.prdContent,
-        prd_path: specsData.prdPath,
+        prd_content: specsData.prd_content,
+        prd_path: specsData.prd_path,
         subtasks: specsData.subtasks,
         logs: specsData.logs,
-        task_dir: specsData.taskDir,
+        task_dir: specsData.task_dir,
       };
     } catch (error) {
       log.error({ err: error }, "Error getting task specs");
@@ -1327,9 +1327,9 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
           }
 
           // Create event
-          const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+          const nextSequence = (task.last_event?.sequence ?? 0) + 1;
           const event: TaskEvent = {
-            eventId: randomUUID(),
+            event_id: randomUUID(),
             sequence: nextSequence,
             type: event_type as TaskEventType,
             timestamp: new Date().toISOString(),
@@ -1435,8 +1435,8 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
     // Check cache first
     const cached = getCacheEntry(id);
     if (cached) {
-      taskDir = cached.taskDir;
-      workspacePath = cached.workspacePath;
+      taskDir = cached.task_dir;
+      workspacePath = cached.workspace_path;
     } else if (workspace_path) {
       taskDir = await taskService.findTaskById(workspace_path, id);
       if (taskDir) {
@@ -1480,13 +1480,13 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
     // Try to find the queue task by looking for tasks with matching session_id
     let isRunning = false;
 
-    if (task.sessionId && state.taskQueue) {
+    if (task.session_id && state.taskQueue) {
       // Get all running queue tasks
       const queueTasks = state.taskQueue.getTasks("running");
 
       // Check if any queue task matches this task's session
       isRunning = queueTasks.some((qt) =>
-        qt.payload.session_id === task.sessionId
+        qt.payload.session_id === task.session_id
       );
     }
 

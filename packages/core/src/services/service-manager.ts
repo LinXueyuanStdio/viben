@@ -47,7 +47,7 @@ export interface ServiceInfo {
   /** Uptime string (e.g., "2h 30m") */
   uptime?: string;
   /** ISO timestamp when started */
-  startedAt?: string;
+  started_at?: string;
   /** Error message if status is failed */
   error?: string;
   /** Command used to start the service */
@@ -71,7 +71,7 @@ export interface ServiceProcess {
   /** Arguments passed to the command */
   args?: string[];
   /** ISO timestamp when started */
-  startedAt: string;
+  started_at: string;
 }
 
 /**
@@ -343,8 +343,8 @@ export class ServiceManager {
       type: service.type,
       status: "running",
       pid: service.pid,
-      uptime: this.calculateUptime(service.startedAt),
-      startedAt: service.startedAt,
+      uptime: this.calculateUptime(service.started_at),
+      started_at: service.started_at,
       command: service.command,
       args: service.args,
     };
@@ -454,7 +454,7 @@ export class ServiceManager {
             pid,
             command,
             args,
-            startedAt: new Date().toISOString(),
+            started_at: new Date().toISOString(),
           };
 
           if (existing >= 0) {
@@ -678,7 +678,7 @@ export class ServiceManager {
 
         // Service property
         if (currentService && line.startsWith("    ")) {
-          const match = trimmed.match(/^(\w+):\s*(.*)$/);
+          const match = trimmed.match(/^([\w_]+):\s*(.*)$/);
           if (match) {
             const [, key, value] = match;
             const parsed = this.parseYamlValue(value);
@@ -686,6 +686,9 @@ export class ServiceManager {
               currentService.pid = parseInt(parsed as string, 10);
             } else if (key === "args") {
               currentService.args = JSON.parse(parsed as string);
+            } else if (key === "startedAt" || key === "started_at") {
+              // Handle both old and new field names
+              currentService.started_at = parsed as string;
             } else {
               (currentService as Record<string, unknown>)[key] = parsed;
             }
@@ -743,7 +746,7 @@ export class ServiceManager {
       if (service.args && service.args.length > 0) {
         lines.push(`    args: ${JSON.stringify(service.args)}`);
       }
-      lines.push(`    startedAt: "${service.startedAt}"`);
+      lines.push(`    started_at: "${service.started_at}"`);
     }
 
     return lines.join("\n") + "\n";

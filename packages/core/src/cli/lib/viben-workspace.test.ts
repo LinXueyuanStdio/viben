@@ -1103,11 +1103,11 @@ describe("generateSessionContent", () => {
 
   it("should generate markdown with session header", () => {
     const result = generateSessionContent({
-      sessionNum: 5,
+      session_num: 5,
       title: "Test Session",
       commit: "abc123",
       summary: "Test summary",
-      extraContent: "Extra content",
+      extra_content: "Extra content",
       date: "2024-03-03",
     });
 
@@ -1119,11 +1119,11 @@ describe("generateSessionContent", () => {
 
   it("should generate commit table for single commit", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "abc123",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1134,11 +1134,11 @@ describe("generateSessionContent", () => {
 
   it("should generate commit table for multiple commits", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "abc,def,ghi",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1150,11 +1150,11 @@ describe("generateSessionContent", () => {
 
   it("should show no commits message when commit is '-'", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "-",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1164,11 +1164,11 @@ describe("generateSessionContent", () => {
 
   it("should handle empty commit string same as '-'", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1178,11 +1178,11 @@ describe("generateSessionContent", () => {
 
   it("should trim whitespace from commit hashes", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: " abc , def , ghi ",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1194,11 +1194,11 @@ describe("generateSessionContent", () => {
 
   it("should start content with double newline", () => {
     const result = generateSessionContent({
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "-",
       summary: "Summary",
-      extraContent: "",
+      extra_content: "",
       date: "2024-01-01",
     });
 
@@ -1208,11 +1208,11 @@ describe("generateSessionContent", () => {
 
   it("should include all session sections matching Python format", () => {
     const result = generateSessionContent({
-      sessionNum: 10,
+      session_num: 10,
       title: "Complete Test",
       commit: "abc123",
       summary: "Test summary",
-      extraContent: "Extra content here",
+      extra_content: "Extra content here",
       date: "2024-03-15",
     });
 
@@ -1343,12 +1343,12 @@ describe("updateIndexWithSession", () => {
 
   it("should return false when index.md does not exist", async () => {
     const result = await updateIndexWithSession({
-      indexPath: tempDir.resolve("index.md"),
+      index_path: tempDir.resolve("index.md"),
       workspaceDir: tempDir.root,
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "abc",
-      activeFile: "journal-1.md",
+      active_file: "journal-1.md",
       date: "2024-03-03",
     });
 
@@ -1359,12 +1359,12 @@ describe("updateIndexWithSession", () => {
     await tempDir.writeFile("index.md", "No markers here");
 
     const result = await updateIndexWithSession({
-      indexPath: tempDir.resolve("index.md"),
+      index_path: tempDir.resolve("index.md"),
       workspaceDir: tempDir.root,
-      sessionNum: 1,
+      session_num: 1,
       title: "Test",
       commit: "abc",
-      activeFile: "journal-1.md",
+      active_file: "journal-1.md",
       date: "2024-03-03",
     });
 
@@ -1391,12 +1391,12 @@ describe("updateIndexWithSession", () => {
     );
 
     const result = await updateIndexWithSession({
-      indexPath: tempDir.resolve("index.md"),
+      index_path: tempDir.resolve("index.md"),
       workspaceDir: tempDir.root,
-      sessionNum: 5,
+      session_num: 5,
       title: "Test Session",
       commit: "abc123",
-      activeFile: "journal-1.md",
+      active_file: "journal-1.md",
       date: "2024-03-03",
     });
 

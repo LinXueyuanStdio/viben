@@ -12,27 +12,27 @@
  *    2. Execute each action in next_action array in order
  *    3. Actions: implement, check, finish (create-pr handled by start agent)
  *
- * Log files are ALWAYS written to the task directory (taskDir), not the working directory.
+ * Log files are ALWAYS written to the task directory (task_dir), not the working directory.
  * This ensures logs are accessible from the main repo regardless of worktree usage.
  *
  * @example
  * ```typescript
  * import { runWorkPhase } from "@viben/core/task/phase/work";
  *
- * // Run in current repo - log written to taskDir/work.log.jsonl
+ * // Run in current repo - log written to task_dir/work.log.jsonl
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/repo",
- *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
+ *   task_dir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
  * });
  * // Log file: /path/to/repo/.viben/tasks/03-12-my-task/work.log.jsonl
  *
- * // Run in worktree - log still written to taskDir in main repo
+ * // Run in worktree - log still written to task_dir in main repo
  * const result = await runWorkPhase({
  *   repoRoot: "/path/to/repo",
  *   workingDir: "/path/to/worktree",
- *   taskDir: "/path/to/repo/.viben/tasks/03-12-my-task",
+ *   task_dir: "/path/to/repo/.viben/tasks/03-12-my-task",
  *   platform: "claude",
  *   logFileName: "agent.log.jsonl",
  * });
@@ -68,7 +68,7 @@ export interface WorkPhaseOptions {
   /** Working directory where agent runs (repo root or worktree) */
   workingDir: string;
   /** Task directory absolute path */
-  taskDir: string;
+  task_dir: string;
   /** Platform to use (default: "claude") */
   platform?: string;
   /** Enable verbose output */
@@ -179,7 +179,7 @@ export async function runWorkPhase(
   const {
     repoRoot,
     workingDir,
-    taskDir,
+    task_dir: taskDir,
     platform = "claude",
     verbose = true,
     detach = true,
@@ -285,7 +285,7 @@ export async function runWorkPhase(
     prompt: `task_dir: ${taskDirAbs}
 
 Follow your agent instructions to execute the task workflow. Read task.json from the task directory, then execute each action in next_action array in order.`,
-    sessionId: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
+    session_id: adapter.supportsSessionIdOnCreate ? sessionId || undefined : undefined,
     skipPermissions,
     verbose,
     jsonOutput,
@@ -330,7 +330,7 @@ Follow your agent instructions to execute the task workflow. Read task.json from
       agentId,
       worktreePath: workingDir,
       pid: agentPid,
-      taskDir: taskDir, // Store absolute path (taskDir is already absolute)
+      task_dir: taskDir, // Store absolute path (taskDir is already absolute)
       platform,
     },
     repoRoot

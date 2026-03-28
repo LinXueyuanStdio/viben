@@ -134,8 +134,8 @@ export async function createTaskDir(
     title: `Test Task: ${taskName}`,
     status: "backlog",
     priority: "medium",
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
     ...taskData,
   });
 

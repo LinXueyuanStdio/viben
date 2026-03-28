@@ -103,7 +103,7 @@ vi.mock("node:fs", () => ({
       title: "Test Task",
       status: "plan",
       priority: "P2",
-      createdAt: "2024-03-03",
+      created_at: "2024-03-03",
       current_phase: 0,
     })
   ),

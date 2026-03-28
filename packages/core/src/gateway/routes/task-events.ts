@@ -236,11 +236,11 @@ export function registerTaskEventRoutes(fastify: FastifyInstance): void {
     // Parse and validate event
     const event = request.body;
 
-    if (!event.eventId || !event.type || event.sequence === undefined) {
+    if (!event.event_id || !event.type || event.sequence === undefined) {
       return reply.status(400).send({
         error: "Invalid event format",
         code: "INVALID_EVENT",
-        required: ["eventId", "type", "sequence"],
+        required: ["event_id", "type", "sequence"],
       });
     }
 
@@ -427,11 +427,11 @@ export function registerTaskEventRoutes(fastify: FastifyInstance): void {
     return reply.status(200).send({
       task_id,
       status: task.status,
-      xstate_state: task.xstateState ?? "backlog",
-      last_event: task.lastEvent,
-      review_reason: task.reviewReason,
-      execution_progress: task.executionProgress,
-      next_sequence: (task.lastEvent?.sequence ?? 0) + 1,
+      xstate_state: task.xstate_state ?? "backlog",
+      last_event: task.last_event,
+      review_reason: task.review_reason,
+      execution_progress: task.execution_progress,
+      next_sequence: (task.last_event?.sequence ?? 0) + 1,
     });
   });
 

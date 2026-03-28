@@ -49,8 +49,8 @@ export interface TunnelState {
   port: number;
   connections: TunnelConnection[];
   error: string | null;
-  startedAt: number | null;
-  lastConnectedAt: number | null;
+  started_at: number | null;
+  last_connected_at: number | null;
 }
 
 /**
@@ -75,8 +75,8 @@ export class TunnelService extends EventEmitter {
     port: 18790,
     connections: [],
     error: null,
-    startedAt: null,
-    lastConnectedAt: null,
+    started_at: null,
+    last_connected_at: null,
   };
 
   private tunnel: CloudflaredTunnel | null = null;
@@ -112,7 +112,7 @@ export class TunnelService extends EventEmitter {
       status: "starting",
       port,
       error: null,
-      startedAt: Date.now(),
+      started_at: Date.now(),
       connections: [],
     });
 
@@ -137,7 +137,7 @@ export class TunnelService extends EventEmitter {
           this.updateState({
             status: "connected",
             url,
-            lastConnectedAt: Date.now(),
+            last_connected_at: Date.now(),
           });
 
           this.emit("connected", url);

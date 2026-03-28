@@ -135,8 +135,8 @@ export async function initWorkspace(
     ...DEFAULT_WORKSPACE_CONFIG,
     version: 1,
     name: basename(targetDir),
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
   };
 
   // Create .viben directory
@@ -233,7 +233,7 @@ export async function getWorkspaceTemplate(
     id: templateId,
     name: config.name,
     description: config.description,
-    createdAt: config.createdAt,
+    created_at: config.created_at,
   };
 }
 
@@ -248,7 +248,7 @@ export async function getWorkspaceTemplate(
  */
 export async function createWorkspaceTemplate(
   templateId: string,
-  config: Omit<WorkspaceTemplateConfig, "createdAt">
+  config: Omit<WorkspaceTemplateConfig, "created_at">
 ): Promise<WorkspaceTemplate> {
   throw new Error(
     "Workspace templates are deprecated. Use inline template system instead."

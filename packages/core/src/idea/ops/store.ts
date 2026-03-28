@@ -246,7 +246,7 @@ function parseIdeaFromFrontmatterAndBody(
       frontmatter.promoted_to && frontmatter.promoted_to !== "null"
         ? String(frontmatter.promoted_to)
         : undefined,
-    createdAt: String(frontmatter.created_at || new Date().toISOString()),
+    created_at: String(frontmatter.created_at || new Date().toISOString()),
     affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
     existingPatterns:
       existingPatterns.length > 0 ? existingPatterns : undefined,
@@ -716,13 +716,13 @@ export function writeIdeaSession(
     types: session.types,
     model: session.model,
     summary: {
-      total_ideas: session.summary.totalIdeas,
-      by_type: session.summary.byType,
-      by_status: session.summary.byStatus,
+      total_ideas: session.summary.total_ideas,
+      by_type: session.summary.by_type,
+      by_status: session.summary.by_status,
     },
     files: session.files,
-    generated_at: session.generatedAt,
-    updated_at: session.updatedAt,
+    generated_at: session.generated_at,
+    updated_at: session.updated_at,
   };
 
   writeSessionMetadata(sessionDir, raw);
@@ -795,7 +795,7 @@ export function writeIdeasToFile(filePath: string, ideas: Idea[]): void {
       `estimated_effort: ${idea.estimatedEffort}`,
       `status: ${idea.status}`,
       `promoted_to: ${idea.promotedTo || "null"}`,
-      `created_at: ${idea.createdAt}`,
+      `created_at: ${idea.created_at}`,
     ];
 
     // Add affected files to frontmatter as YAML array
@@ -850,7 +850,7 @@ export function writeSingleIdeaToFile(sessionDir: string, idea: Idea): string {
     `estimated_effort: ${idea.estimatedEffort}`,
     `status: ${idea.status}`,
     `promoted_to: ${idea.promotedTo || "null"}`,
-    `created_at: ${idea.createdAt}`,
+    `created_at: ${idea.created_at}`,
   ];
 
   // Add affected files to frontmatter as YAML array
@@ -1203,7 +1203,7 @@ export function removeAllIdeas(repoRoot: string): number {
   let removedCount = 0;
 
   for (const session of sessions) {
-    removedCount += session.summary.totalIdeas;
+    removedCount += session.summary.total_ideas;
     const sessionDir = getIdeaSessionDir(repoRoot, session.id);
 
     // Remove entire session directory
@@ -1227,9 +1227,9 @@ function updateSessionSummary(sessionDir: string): void {
   }
 
   // Recalculate summary
-  session.summary.totalIdeas = 0;
-  session.summary.byType = {};
-  session.summary.byStatus = { draft: 0, promoted: 0, dismissed: 0 };
+  session.summary.total_ideas = 0;
+  session.summary.by_type = {};
+  session.summary.by_status = { draft: 0, promoted: 0, dismissed: 0 };
 
   // Check which types still have files
   const remainingTypes: string[] = [];
@@ -1241,12 +1241,12 @@ function updateSessionSummary(sessionDir: string): void {
 
       if (ideas.length > 0) {
         remainingTypes.push(type);
-        session.summary.byType[type] = ideas.length;
-        session.summary.totalIdeas += ideas.length;
+        session.summary.by_type[type] = ideas.length;
+        session.summary.total_ideas += ideas.length;
 
         for (const idea of ideas) {
-          if (idea.status in session.summary.byStatus) {
-            session.summary.byStatus[idea.status as IdeaStatus]++;
+          if (idea.status in session.summary.by_status) {
+            session.summary.by_status[idea.status as IdeaStatus]++;
           }
         }
       }
@@ -1254,6 +1254,7 @@ function updateSessionSummary(sessionDir: string): void {
   }
 
   session.types = remainingTypes;
-  session.updatedAt = new Date().toISOString();
+  session.updated_at = new Date().toISOString();
   writeIdeaSession(sessionDir, session);
 }
+

@@ -680,12 +680,12 @@ export class ChannelRouter {
  * for sending back through the channel.
  */
 export class ResponseCollector {
-  private sessionId: string;
+  private session_id: string;
   private events: EventService;
   private responseParts: string[] = [];
 
-  constructor(sessionId: string, events: EventService) {
-    this.sessionId = sessionId;
+  constructor(session_id: string, events: EventService) {
+    this.session_id = session_id;
     this.events = events;
   }
 
@@ -704,12 +704,12 @@ export class ResponseCollector {
       const unsubscribe = this.events.subscribe((event: GatewayEvent) => {
         if (event.type === "session_message") {
           const data = event.data as { session_id: string; content: string; role: string };
-          if (data.session_id === this.sessionId && data.role === "assistant") {
+          if (data.session_id === this.session_id && data.role === "assistant") {
             this.responseParts.push(data.content);
           }
         } else if (event.type === "agent_completed") {
           const data = event.data as { session_id: string; success: boolean };
-          if (data.session_id === this.sessionId) {
+          if (data.session_id === this.session_id) {
             clearTimeout(timeout);
             unsubscribe();
 
@@ -721,7 +721,7 @@ export class ResponseCollector {
           }
         } else if (event.type === "error") {
           const data = event.data as { message: string; code?: string };
-          if (data.code === this.sessionId) {
+          if (data.code === this.session_id) {
             clearTimeout(timeout);
             unsubscribe();
             resolve(`Error: ${data.message}`);

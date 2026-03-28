@@ -37,8 +37,8 @@ interface KanbanComment {
   task_id: string;
   content: string;
   author: CommentAuthor;
-  createdAt: string;
-  updatedAt?: string;
+  created_at: string;
+  updated_at?: string;
   reactions: CommentReaction[];
 }
 
@@ -54,8 +54,8 @@ interface ActivityActor {
 }
 
 interface ActivityData {
-  oldValue?: string;
-  newValue?: string;
+  old_value?: string;
+  new_value?: string;
   [key: string]: unknown;
 }
 
@@ -209,8 +209,8 @@ export function registerKanbanDataRoutes(fastify: FastifyInstance): void {
                   avatar: { type: "string" },
                 },
               },
-              createdAt: { type: "string" },
-              updatedAt: { type: "string" },
+              created_at: { type: "string" },
+              updated_at: { type: "string" },
               reactions: {
                 type: "array",
                 items: {
@@ -261,7 +261,7 @@ export function registerKanbanDataRoutes(fastify: FastifyInstance): void {
         name: author_name,
         avatar: author_avatar,
       },
-      createdAt: now,
+      created_at: now,
       reactions: [],
     };
 
@@ -294,7 +294,7 @@ export function registerKanbanDataRoutes(fastify: FastifyInstance): void {
     }
 
     comment.content = content;
-    comment.updatedAt = getCurrentTimestamp();
+    comment.updated_at = getCurrentTimestamp();
 
     await saveComments(taskId, store);
     return comment;
@@ -510,8 +510,8 @@ async function addActivityInternal(
     },
     timestamp: getCurrentTimestamp(),
     data: {
-      oldValue,
-      newValue,
+      old_value: oldValue,
+      new_value: newValue,
     },
   };
 

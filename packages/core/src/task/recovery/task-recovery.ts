@@ -195,16 +195,16 @@ export class TaskRecoveryService {
     }
 
     // No last event means can't determine stuck status
-    if (!task.lastEvent) {
+    if (!task.last_event) {
       // Check updatedAt instead
-      if (!task.updatedAt) {
+      if (!task.updated_at) {
         return false;
       }
-      const lastUpdateTime = new Date(task.updatedAt).getTime();
+      const lastUpdateTime = new Date(task.updated_at).getTime();
       return Date.now() - lastUpdateTime > this.config.stuckThresholdMs;
     }
 
-    const lastEventTime = new Date(task.lastEvent.timestamp).getTime();
+    const lastEventTime = new Date(task.last_event.timestamp).getTime();
     return Date.now() - lastEventTime > this.config.stuckThresholdMs;
   }
 
@@ -215,13 +215,13 @@ export class TaskRecoveryService {
    * @param task - Task to recover
    */
   private async recoverStuckTask(taskDir: string, task: UnifiedTask): Promise<void> {
-    const nextSeq = (task.lastEvent?.sequence ?? 0) + 1;
+    const nextSeq = (task.last_event?.sequence ?? 0) + 1;
 
     const event = createTaskEvent("USER_STOPPED", nextSeq, {
       reason: "stuck_detected",
       autoRecovery: true,
       detectedAt: new Date().toISOString(),
-      lastEventTimestamp: task.lastEvent?.timestamp,
+      lastEventTimestamp: task.last_event?.timestamp,
     });
 
     const result = await this.eventStore.applyEvent(taskDir, event);
@@ -269,7 +269,7 @@ export class TaskRecoveryService {
     }
 
     try {
-      const nextSeq = (task.lastEvent?.sequence ?? 0) + 1;
+      const nextSeq = (task.last_event?.sequence ?? 0) + 1;
       const event = createTaskEvent("USER_STOPPED", nextSeq, {
         reason,
         manualRecovery: true,

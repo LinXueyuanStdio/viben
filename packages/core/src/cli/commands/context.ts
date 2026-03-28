@@ -43,9 +43,9 @@ interface ContextData {
   developer: string;
   git: {
     branch: string;
-    isClean: boolean;
-    uncommittedChanges: number;
-    recentCommits: Array<{
+    is_clean: boolean;
+    uncommitted_changes: number;
+    recent_commits: Array<{
       hash: string;
       message: string;
     }>;
@@ -61,7 +61,7 @@ interface ContextData {
   journal: {
     file: string;
     lines: number;
-    nearLimit: boolean;
+    near_limit: boolean;
   };
 }
 
@@ -109,9 +109,9 @@ function getContextJson(repoRoot: string): ContextData {
     developer,
     git: {
       branch,
-      isClean,
-      uncommittedChanges: gitStatusCount,
-      recentCommits: commits,
+      is_clean: isClean,
+      uncommitted_changes: gitStatusCount,
+      recent_commits: commits,
     },
     tasks: {
       active: tasks,
@@ -120,7 +120,7 @@ function getContextJson(repoRoot: string): ContextData {
     journal: {
       file: journalRelative,
       lines: journalLines,
-      nearLimit: journalLines > 1800,
+      near_limit: journalLines > 1800,
     },
   };
 }
@@ -197,7 +197,7 @@ function getContextText(repoRoot: string): string {
     if (taskData) {
       const tName = String(taskData.name ?? taskData.id ?? "unknown");
       const tStatus = String(taskData.status ?? "unknown");
-      const tCreated = String(taskData.createdAt ?? "unknown");
+      const tCreated = String(taskData.created_at ?? "unknown");
       const tDesc = String(taskData.description ?? "");
 
       lines.push(`Name: ${tName}`);

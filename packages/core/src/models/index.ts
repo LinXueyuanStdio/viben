@@ -113,8 +113,8 @@ export class ModelManager {
         maxOutputTokens: entry.max_output_tokens,
         isDefault,
         enabled: entry.enabled,
-        createdAt: entry.created_at,
-        updatedAt: entry.updated_at,
+        created_at: entry.created_at,
+        updated_at: entry.updated_at,
       });
     }
 
@@ -148,8 +148,8 @@ export class ModelManager {
         maxOutputTokens: customEntry.max_output_tokens,
         isDefault,
         enabled: customEntry.enabled,
-        createdAt: customEntry.created_at,
-        updatedAt: customEntry.updated_at,
+        created_at: customEntry.created_at,
+        updated_at: customEntry.updated_at,
       };
     }
 
@@ -225,8 +225,8 @@ export class ModelManager {
       maxOutputTokens: entry.max_output_tokens,
       isDefault,
       enabled: entry.enabled,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
     };
   }
 
@@ -306,8 +306,8 @@ export class ModelManager {
       maxOutputTokens: entry.max_output_tokens,
       isDefault: config.default === id,
       enabled: entry.enabled,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
     };
   }
 
@@ -536,8 +536,8 @@ export class ModelManager {
           maxOutputTokens: customEntry.max_output_tokens,
           isDefault: this.config.default === resolved,
           enabled: customEntry.enabled,
-          createdAt: customEntry.created_at,
-          updatedAt: customEntry.updated_at,
+          created_at: customEntry.created_at,
+          updated_at: customEntry.updated_at,
         };
       }
     }

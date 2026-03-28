@@ -685,11 +685,11 @@ interface TaskJson {
   priority: string;
   creator: string;
   assignee: string;
-  createdAt: string;
-  completedAt: null;
+  created_at: string;
+  completed_at: null;
   commit: null;
   subtasks: { name: string; status: string }[];
-  relatedFiles: string[];
+  related_files: string[];
   notes: string;
 }
 
@@ -735,11 +735,11 @@ function getBootstrapTaskJson(
     priority: "high",
     creator: developer,
     assignee: developer,
-    createdAt: today,
-    completedAt: null,
+    created_at: today,
+    completed_at: null,
     commit: null,
     subtasks,
-    relatedFiles,
+    related_files: relatedFiles,
     notes: `First-time setup task created by viben team init (${projectType} project)`,
   };
 }

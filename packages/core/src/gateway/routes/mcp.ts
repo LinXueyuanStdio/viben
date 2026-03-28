@@ -34,7 +34,7 @@ interface InstalledMcpResponse {
   name: string;
   version?: string;
   path?: string;
-  installedAt?: string;
+  installed_at?: string;
 }
 
 interface McpStatus {
@@ -47,13 +47,13 @@ interface McpStatus {
   /** Full command line arguments */
   args?: string[];
   /** Startup timestamp */
-  startedAt?: string;
+  started_at?: string;
   /** Endpoint URL for connecting */
-  endpointUrl?: string;
+  endpoint_url?: string;
   /** Exit code if process terminated */
-  exitCode?: number | null;
+  exit_code?: number | null;
   /** Exit signal if process was killed */
-  exitSignal?: string | null;
+  exit_signal?: string | null;
   /** Stderr output from the process */
   stderr?: string;
   /** Stdout output from the process */
@@ -151,7 +151,7 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
                   name: { type: "string" },
                   version: { type: "string" },
                   path: { type: "string" },
-                  installedAt: { type: "string" },
+                  installed_at: { type: "string" },
                 },
               },
             },
@@ -167,7 +167,7 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
         name: m.name,
         version: m.version,
         path: m.path,
-        installedAt: m.installedAt,
+        installed_at: m.installed_at,
       })),
       total: installed.length,
     };
@@ -507,8 +507,8 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
         browseMcpStatus = {
           ...browseMcpStatus,
           running: false,
-          exitCode: code,
-          exitSignal: signal ?? undefined,
+          exit_code: code,
+          exit_signal: signal ?? undefined,
           stdout: browseMcpStdout,
           stderr: browseMcpStderr,
           error: code !== 0
@@ -535,7 +535,7 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
       }
 
       // Build endpoint URL based on transport
-      const endpointUrl = transport === "sse"
+      const endpoint_url = transport === "sse"
         ? `http://localhost:${port}/sse`
         : `http://localhost:${port}/mcp`;
 
@@ -547,8 +547,8 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
         port,
         command: python_path,
         args,
-        startedAt: new Date().toISOString(),
-        endpointUrl,
+        started_at: new Date().toISOString(),
+        endpoint_url,
       };
 
       return browseMcpStatus;

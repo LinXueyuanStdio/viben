@@ -371,7 +371,7 @@ export function computeReward(
       success: true,
       agentId: result.agentId,
       pid: result.pid,
-      logFile: result.logFile,
+      logFile: result.log_file,
       warnings: result.warnings,
     };
   } catch (error) {

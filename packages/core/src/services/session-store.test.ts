@@ -46,7 +46,7 @@ describe("SessionStoreService", () => {
       await service.createSession(config);
 
       const loaded = await service.getSession("agent-1", sessionId);
-      expect(loaded?.workspacePath).toBe("/workspace");
+      expect(loaded?.workspace_path).toBe("/workspace");
     });
   });
 

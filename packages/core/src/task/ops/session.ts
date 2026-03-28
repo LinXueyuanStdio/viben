@@ -22,8 +22,8 @@ import type {
  * Get the latest journal file info from workspace directory
  * Returns: { file: path | null, number: number, lines: number }
  */
-export function getLatestJournalInfo(devDir: string): JournalFileInfo {
-  if (!existsSync(devDir)) {
+export function getLatestJournalInfo(dev_dir: string): JournalFileInfo {
+  if (!existsSync(dev_dir)) {
     return { file: null, number: 0, lines: 0 };
   }
 
@@ -31,7 +31,7 @@ export function getLatestJournalInfo(devDir: string): JournalFileInfo {
   let latestNum = -1;
 
   try {
-    const files = readdirSync(devDir);
+    const files = readdirSync(dev_dir);
     for (const file of files) {
       if (file.startsWith("journal-") && file.endsWith(".md")) {
         const match = file.match(/journal-(\d+)\.md$/);
@@ -39,7 +39,7 @@ export function getLatestJournalInfo(devDir: string): JournalFileInfo {
           const num = parseInt(match[1], 10);
           if (num > latestNum) {
             latestNum = num;
-            latestFile = join(devDir, file);
+            latestFile = join(dev_dir, file);
           }
         }
       }
@@ -71,13 +71,13 @@ export function getLatestJournalInfo(devDir: string): JournalFileInfo {
 /**
  * Get current session number from index.md by parsing "Total Sessions" line
  */
-export function getSessionNumberFromIndex(indexPath: string): number {
-  if (!existsSync(indexPath)) {
+export function getSessionNumberFromIndex(index_path: string): number {
+  if (!existsSync(index_path)) {
     return 0;
   }
 
   try {
-    const content = readFileSync(indexPath, "utf-8");
+    const content = readFileSync(index_path, "utf-8");
     for (const line of content.split("\n")) {
       if (line.includes("Total Sessions")) {
         const match = line.match(/:\s*(\d+)/);
@@ -97,7 +97,7 @@ export function getSessionNumberFromIndex(indexPath: string): number {
  * Generate session content markdown
  */
 export function generateSessionMarkdown(params: SessionMarkdownParams): string {
-  const { sessionNum, title, commit, summary, extraContent, date } = params;
+  const { session_num, title, commit, summary, extra_content, date } = params;
 
   let commitTable: string;
   if (commit && commit !== "-") {
@@ -113,7 +113,7 @@ export function generateSessionMarkdown(params: SessionMarkdownParams): string {
 
   return `
 
-## Session ${sessionNum}: ${title}
+## Session ${session_num}: ${title}
 
 **Date**: ${date}
 **Task**: ${title}
@@ -124,7 +124,7 @@ ${summary}
 
 ### Main Changes
 
-${extraContent}
+${extra_content}
 
 ### Git Commits
 
@@ -148,13 +148,13 @@ ${commitTable}
  * Create a new journal file when current one exceeds MAX_LINES
  */
 export function createNewJournalFile(
-  devDir: string,
+  dev_dir: string,
   number: number,
   developer: string,
   date: string,
   prevNumber: number
 ): string {
-  const newFilePath = join(devDir, `journal-${number}.md`);
+  const newFilePath = join(dev_dir, `journal-${number}.md`);
   const maxLines = 2000;
 
   const content = `# Journal - ${developer} (Part ${number})
@@ -173,12 +173,12 @@ export function createNewJournalFile(
 /**
  * Count journal files and return markdown table rows
  */
-export function countJournalFilesTable(devDir: string, activeNum: number): string {
-  const activeFile = `journal-${activeNum}.md`;
+export function countJournalFilesTable(dev_dir: string, activeNum: number): string {
+  const active_file = `journal-${activeNum}.md`;
   const resultLines: string[] = [];
 
   try {
-    const files = readdirSync(devDir)
+    const files = readdirSync(dev_dir)
       .filter((f) => f.startsWith("journal-") && f.endsWith(".md"))
       .sort((a, b) => {
         const numA = parseInt(a.match(/(\d+)/)?.[1] ?? "0", 10);
@@ -187,7 +187,7 @@ export function countJournalFilesTable(devDir: string, activeNum: number): strin
       });
 
     for (const filename of files) {
-      const filePath = join(devDir, filename);
+      const filePath = join(dev_dir, filename);
       let lines = 0;
       try {
         const content = readFileSync(filePath, "utf-8");
@@ -200,7 +200,7 @@ export function countJournalFilesTable(devDir: string, activeNum: number): strin
       } catch {
         // Ignore errors
       }
-      const status = filename === activeFile ? "Active" : "Archived";
+      const status = filename === active_file ? "Active" : "Archived";
       resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
     }
   } catch {
@@ -215,9 +215,9 @@ export function countJournalFilesTable(devDir: string, activeNum: number): strin
  * Processes sections marked with @@@auto markers
  */
 export function updateIndexWithNewSession(params: IndexUpdateParams): boolean {
-  const { indexPath, devDir, sessionNum, title, commit, activeFile, date } = params;
+  const { index_path, dev_dir, session_num, title, commit, active_file, date } = params;
 
-  if (!existsSync(indexPath)) {
+  if (!existsSync(index_path)) {
     return false;
   }
 
@@ -231,12 +231,12 @@ export function updateIndexWithNewSession(params: IndexUpdateParams): boolean {
   }
 
   // Get active file number and count all journal files
-  const match = activeFile.match(/journal-(\d+)\.md$/);
+  const match = active_file.match(/journal-(\d+)\.md$/);
   const activeNum = match ? parseInt(match[1], 10) : 0;
-  const filesTable = countJournalFilesTable(devDir, activeNum);
+  const filesTable = countJournalFilesTable(dev_dir, activeNum);
 
   try {
-    const content = readFileSync(indexPath, "utf-8");
+    const content = readFileSync(index_path, "utf-8");
 
     if (!content.includes("@@@auto:current-status")) {
       return false;
@@ -254,8 +254,8 @@ export function updateIndexWithNewSession(params: IndexUpdateParams): boolean {
       if (line.includes("@@@auto:current-status")) {
         newLines.push(line);
         inCurrentStatus = true;
-        newLines.push(`- **Active File**: \`${activeFile}\``);
-        newLines.push(`- **Total Sessions**: ${sessionNum}`);
+        newLines.push(`- **Active File**: \`${active_file}\``);
+        newLines.push(`- **Total Sessions**: ${session_num}`);
         newLines.push(`- **Last Active**: ${date}`);
         continue;
       }
@@ -305,7 +305,7 @@ export function updateIndexWithNewSession(params: IndexUpdateParams): boolean {
       if (inSessionHistory) {
         newLines.push(line);
         if (/^\|\s*-/.test(line) && !headerWritten) {
-          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
+          newLines.push(`| ${session_num} | ${date} | ${title} | ${commitDisplay} |`);
           headerWritten = true;
         }
         continue;
@@ -314,7 +314,7 @@ export function updateIndexWithNewSession(params: IndexUpdateParams): boolean {
       newLines.push(line);
     }
 
-    writeFileSync(indexPath, newLines.join("\n"), "utf-8");
+    writeFileSync(index_path, newLines.join("\n"), "utf-8");
     return true;
   } catch {
     return false;

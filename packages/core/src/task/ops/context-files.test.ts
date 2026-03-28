@@ -42,7 +42,7 @@ describe("context-files operations", () => {
       const result = initContext(tempDir.root, TASK_NAME);
 
       expect(result.success).toBe(true);
-      expect(result.taskDir).toBe(taskDir);
+      expect(result.task_dir).toBe(taskDir);
       expect(result.files).toEqual({
         implement: 0,
         check: 0,

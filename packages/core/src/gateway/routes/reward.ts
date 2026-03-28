@@ -596,7 +596,7 @@ export function registerRewardRoutes(fastify: FastifyInstance): void {
       success: true,
       agent_id: result.agentId,
       pid: result.pid,
-      log_file: result.logFile,
+      log_file: result.log_file,
       warnings: result.warnings ?? null,
     };
   });

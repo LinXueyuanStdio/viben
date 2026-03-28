@@ -42,9 +42,9 @@ export interface GroupChatConfig {
   /** Creator ID */
   createdBy: string;
   /** Creation timestamp */
-  createdAt: string;
+  created_at: string;
   /** Last update timestamp */
-  updatedAt: string;
+  updated_at: string;
   /** Additional metadata */
   metadata?: Record<string, unknown>;
 }
@@ -89,9 +89,9 @@ export interface GroupChatSessionConfig {
   /** Active agents in this session */
   activeAgents?: string[];
   /** Creation timestamp */
-  createdAt: string;
+  created_at: string;
   /** Last update timestamp */
-  updatedAt: string;
+  updated_at: string;
   /** Additional metadata */
   metadata?: Record<string, unknown>;
 }
@@ -156,7 +156,7 @@ export interface AgentResponse {
   /** Agent display name */
   agentName: string;
   /** Session ID */
-  sessionId: string;
+  session_id: string;
   /** Content */
   content: string;
   /** Thinking content */

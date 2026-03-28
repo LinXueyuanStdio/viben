@@ -73,7 +73,7 @@ function generateIdeaMarkdown(idea: Idea): string {
   lines.push(`title: "${idea.title.replace(/"/g, '\\"')}"`);
   lines.push(`estimated_effort: ${idea.estimatedEffort}`);
   lines.push(`status: ${idea.status}`);
-  lines.push(`created_at: ${idea.createdAt}`);
+  lines.push(`created_at: ${idea.created_at}`);
   if (idea.affectedFiles && idea.affectedFiles.length > 0) {
     lines.push("affected_files:");
     for (const file of idea.affectedFiles) {

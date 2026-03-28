@@ -350,7 +350,7 @@ describe("initTeam", () => {
     expect(taskJson.status).toBe("in_progress");
     expect(taskJson.priority).toBe("high");
     expect(taskJson.assignee).toBe("test-dev");
-    expect(taskJson.createdAt).toBeDefined();
+    expect(taskJson.created_at).toBeDefined();
   });
 
   it("should set .current-task to bootstrap task path", async () => {
