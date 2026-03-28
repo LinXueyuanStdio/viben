@@ -935,7 +935,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       // Enqueue to the task queue
       const result = await state.taskQueue.enqueue({
         agent_id: effectiveAgentId,
-        session_id: task.sessionId,
+        session_id: task.session_id,
         input: effectiveInput,
         cwd: effectiveCwd,
         agent_config_path,
@@ -948,7 +948,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       // Update task with queue reference
       await taskService.updateTask(taskDir, {
         status: "queue",
-        sessionId: task.sessionId || result.task_id, // Use queue task_id as session reference
+        session_id: task.session_id || result.task_id, // Use queue task_id as session reference
       });
 
       reply.code(201);
@@ -1026,13 +1026,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     let cancelled = false;
     let queueTaskId: string | null = null;
 
-    if (task.sessionId && state.taskQueue) {
+    if (task.session_id && state.taskQueue) {
       // Search running tasks for matching session
       const runningTasks = state.taskQueue.getTasks("running");
       const pendingTasks = state.taskQueue.getTasks("pending");
       const allTasks = [...runningTasks, ...pendingTasks];
 
-      const queueTask = allTasks.find((qt) => qt.payload.session_id === task.sessionId);
+      const queueTask = allTasks.find((qt) => qt.payload.session_id === task.session_id);
 
       if (queueTask) {
         queueTaskId = queueTask.id;
@@ -1044,7 +1044,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     if (cancelled || task.status === "in_progress" || task.status === "queue") {
       await taskService.updateTask(taskDir, {
         status: "review",
-        reviewReason: "stopped",
+        review_reason: "stopped",
       });
     }
 
@@ -1126,9 +1126,9 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     let queueStatus: string | null = null;
     let isRunning = false;
 
-    if (task.sessionId && state.taskQueue) {
+    if (task.session_id && state.taskQueue) {
       const queueTasks = state.taskQueue.getTasks();
-      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.sessionId);
+      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.session_id);
 
       if (queueTask) {
         queueTaskId = queueTask.id;
@@ -1334,7 +1334,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         // Enqueue
         const result = await state.taskQueue.enqueue({
           agent_id: effectiveAgentId,
-          session_id: task.sessionId,
+          session_id: task.session_id,
           input: effectiveInput,
           cwd: workspace_path,
         });
@@ -1522,11 +1522,11 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const specsData = await taskService.getTaskSpecsData(taskDir);
 
       return {
-        prd_content: specsData.prdContent,
-        prd_path: specsData.prdPath,
+        prd_content: specsData.prd_content,
+        prd_path: specsData.prd_path,
         subtasks: specsData.subtasks,
         logs: specsData.logs,
-        task_dir: specsData.taskDir,
+        task_dir: specsData.task_dir,
       };
     } catch (error) {
       reply.code(500);
@@ -1748,9 +1748,9 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
     // Find queue task for this task
     let queueTaskId: string | null = null;
-    if (task.sessionId && state.taskQueue) {
+    if (task.session_id && state.taskQueue) {
       const queueTasks = state.taskQueue.getTasks();
-      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.sessionId);
+      const queueTask = queueTasks.find((qt) => qt.payload.session_id === task.session_id);
       if (queueTask) {
         queueTaskId = queueTask.id;
       }
@@ -1878,7 +1878,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     // Check cache first
     const cached = getCacheEntry(taskIdOrPath);
     if (cached) {
-      return cached.taskDir;
+      return cached.task_dir;
     }
 
     // Try to find by ID
@@ -1969,7 +1969,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     // If task is in queue status, transition to in_progress via START event
     if (task.status === "queue") {
       // Create START event
-      const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+      const nextSequence = (task.last_event?.sequence ?? 0) + 1;
       const event: TaskEvent = {
         eventId: randomUUID(),
         sequence: nextSequence,
@@ -2000,7 +2000,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         try {
           await state.taskQueue.enqueue({
             agent_id: task.agent,
-            session_id: task.sessionId,
+            session_id: task.session_id,
             input: task.prompt,
             cwd: workspace_path,
           });
@@ -2789,7 +2789,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     const previousStatus = task.status;
-    const nextSequence = (task.lastEvent?.sequence ?? 0) + 1;
+    const nextSequence = (task.last_event?.sequence ?? 0) + 1;
     const event: TaskEvent = {
       eventId: randomUUID(),
       sequence: nextSequence,
@@ -2956,13 +2956,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           pr_url: taskData.pr_url,
           creator: taskData.creator,
           assignee: taskData.assignee,
-          created_at: taskData.createdAt,
-          completed_at: taskData.completedAt,
+          created_at: taskData.created_at,
+          completed_at: taskData.completed_at,
         },
         pr_info: prInfo,
         specs: {
-          prd_content: specsData.prdContent,
-          prd_path: specsData.prdPath,
+          prd_content: specsData.prd_content,
+          prd_path: specsData.prd_path,
           subtasks: specsData.subtasks,
           logs: specsData.logs,
         },
@@ -3309,7 +3309,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
 
     // Use core createPR function
-    const result = createPR(repoRoot, taskDirPath, { dryRun: dryRun || false });
+    const result = createPR(repoRoot, taskDirPath, { dry_run: dryRun || false });
 
     if (!result.success) {
       const errorCode = result.error?.includes("No changes") ? "NO_CHANGES" :
@@ -3322,16 +3322,18 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
     // Build steps array for response compatibility
     const steps: string[] = [];
-    if (result.hadStagedChanges) {
-      steps.push(`Committed: ${result.commitMessage}`);
-    } else if (result.unpushedCommits) {
-      steps.push(`Found ${result.unpushedCommits} unpushed commit(s)`);
+    if (result.had_staged_changes) {
+      steps.push(`Committed: ${result.commit_message}`);
+    } else if (result.unpushed_commits) {
+      steps.push(`Found ${result.unpushed_commits} unpushed commit(s)`);
     }
-    if (!dryRun && result.currentBranch) {
-      steps.push(`Pushed to origin/${result.currentBranch}`);
+    if (result.local_only) {
+      steps.push("Local-only mode: skipped push and PR creation");
+    } else if (!dryRun && result.current_branch) {
+      steps.push(`Pushed to origin/${result.current_branch}`);
     }
-    if (result.prUrl) {
-      steps.push(dryRun ? `[DRY-RUN] Would create PR` : `PR created: ${result.prUrl}`);
+    if (result.pr_url) {
+      steps.push(dryRun ? `[DRY-RUN] Would create PR` : `PR created: ${result.pr_url}`);
     }
     if (!dryRun) {
       steps.push("Task status updated to review");
@@ -3340,13 +3342,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     return {
       success: true,
       data: {
-        pr_url: result.prUrl,
-        pr_title: result.taskName,
-        base_branch: result.baseBranch,
-        head_branch: result.currentBranch,
+        pr_url: result.pr_url,
+        pr_title: result.task_name,
+        base_branch: result.base_branch,
+        head_branch: result.current_branch,
         dry_run: dryRun || false,
+        local_only: result.local_only || false,
         steps,
-        ...(result.dryRunInfo && { dry_run_info: result.dryRunInfo }),
+        ...(result.dry_run_info && { dry_run_info: result.dry_run_info }),
       },
     };
   });
@@ -3409,27 +3412,27 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       }
 
       // Get workspace directory for developer
-      const devDir = join(workspace_path, DIR_VIBEN, DIR_WORKSPACE, developer);
-      if (!existsSync(devDir)) {
+      const dev_dir = join(workspace_path, DIR_VIBEN, DIR_WORKSPACE, developer);
+      if (!existsSync(dev_dir)) {
         reply.code(400);
-        return { error: `Workspace directory not found: ${devDir}`, code: "WORKSPACE_NOT_FOUND" };
+        return { error: `Workspace directory not found: ${dev_dir}`, code: "WORKSPACE_NOT_FOUND" };
       }
 
-      const indexPath = join(devDir, "index.md");
+      const index_path = join(dev_dir, "index.md");
       const today = getTodayDate();
 
       // Get journal info
-      const journalInfo = getLatestJournalInfo(devDir);
-      const currentSession = getSessionNumberFromIndex(indexPath);
+      const journalInfo = getLatestJournalInfo(dev_dir);
+      const currentSession = getSessionNumberFromIndex(index_path);
       const newSession = currentSession + 1;
 
       // Generate session content
       const sessionContent = generateSessionMarkdown({
-        sessionNum: newSession,
+        session_num: newSession,
         title,
         commit: commit || "-",
         summary: summary || "(Add summary)",
-        extraContent: content || "(Add details)",
+        extra_content: content || "(Add details)",
         date: today,
       });
       const contentLines = sessionContent.split("\n").length;
@@ -3441,13 +3444,13 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       // Check if need to rotate journal file
       if (journalInfo.lines + contentLines > MAX_LINES) {
         targetNum = journalInfo.number + 1;
-        targetFile = createNewJournalFile(devDir, targetNum, developer, today, journalInfo.number);
+        targetFile = createNewJournalFile(dev_dir, targetNum, developer, today, journalInfo.number);
       }
 
       // Create initial journal file if none exists
       if (!targetFile) {
         targetNum = 1;
-        targetFile = createNewJournalFile(devDir, targetNum, developer, today, 0);
+        targetFile = createNewJournalFile(dev_dir, targetNum, developer, today, 0);
       }
 
       // Append session content to target file
@@ -3455,14 +3458,14 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       writeFileSync(targetFile, existingContent + sessionContent, "utf-8");
 
       // Update index.md
-      const activeFileName = `journal-${targetNum}.md`;
+      const active_fileName = `journal-${targetNum}.md`;
       const updateSuccess = updateIndexWithNewSession({
-        indexPath,
-        devDir,
-        sessionNum: newSession,
+        index_path,
+        dev_dir,
+        session_num: newSession,
         title,
         commit: commit || "-",
-        activeFile: activeFileName,
+        active_file: active_fileName,
         date: today,
       });
 
@@ -3470,7 +3473,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         success: true,
         data: {
           session: newSession,
-          journal_file: activeFileName,
+          journal_file: active_fileName,
           title,
           index_updated: updateSuccess,
           lines_added: contentLines,
@@ -3635,7 +3638,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           agentId: `plan-${name}`,
           worktreePath: workspace_path,
           pid: agentPid,
-          taskDir: taskDir, // Store absolute path
+          task_dir: taskDir, // Store absolute path
           platform,
         },
         workspace_path
@@ -3887,7 +3890,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const result = await runWorkPhase({
         repoRoot: workspace_path,
         workingDir: workspace_path,
-        taskDir,
+        task_dir: taskDir,
         platform,
         verbose,
         detach,
@@ -4113,7 +4116,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     return {
       success: true,
       task_id: result.dirName,
-      task_dir: result.taskDir,
+      task_dir: result.task_dir,
       status: result.status,
       context_initialized: result.contextInitialized,
     };
@@ -4188,7 +4191,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         success: true,
         worktree_path: result.worktreePath,
         branch: result.branch,
-        base_branch: result.baseBranch,
+        base_branch: result.base_branch,
       };
     } catch (error) {
       reply.code(500);

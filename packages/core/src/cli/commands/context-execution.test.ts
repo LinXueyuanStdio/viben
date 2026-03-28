@@ -513,17 +513,17 @@ describe("context command execution", () => {
         data: {
           git: {
             branch: string;
-            isClean: boolean;
-            uncommittedChanges: number;
-            recentCommits: Array<{ hash: string; message: string }>;
+            is_clean: boolean;
+            uncommitted_changes: number;
+            recent_commits: Array<{ hash: string; message: string }>;
           };
         };
       };
 
       expect(result?.data?.git).toBeDefined();
       expect(result?.data?.git?.branch).toBe("main");
-      expect(result?.data?.git?.isClean).toBe(true);
-      expect(result?.data?.git?.uncommittedChanges).toBe(0);
+      expect(result?.data?.git?.is_clean).toBe(true);
+      expect(result?.data?.git?.uncommitted_changes).toBe(0);
     });
 
     it("should output JSON with tasks info", async () => {
@@ -560,14 +560,14 @@ describe("context command execution", () => {
           journal: {
             file: string;
             lines: number;
-            nearLimit: boolean;
+            near_limit: boolean;
           };
         };
       };
 
       expect(result?.data?.journal).toBeDefined();
       expect(result?.data?.journal?.file).toContain("journal-1.md");
-      expect(result?.data?.journal?.nearLimit).toBe(false);
+      expect(result?.data?.journal?.near_limit).toBe(false);
     });
 
     it("should return error JSON when not in workspace", async () => {

@@ -216,7 +216,7 @@ Ensure lint and typecheck pass.`;
         agentId,
         worktreePath: repoRoot,
         pid: agentPid,
-        taskDir: taskDirAbs, // Store absolute path
+        task_dir: taskDirAbs, // Store absolute path
         platform,
       },
       repoRoot

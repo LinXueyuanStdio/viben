@@ -79,8 +79,8 @@ export interface SubtaskInfo {
   name: string;
   title?: string;
   status: SubtaskStatus;
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /**
@@ -93,7 +93,7 @@ export type ExecutionPhase = "plan" | "implement" | "check" | "fix" | "complete"
  */
 export interface ExecutionProgress {
   phase: ExecutionPhase;
-  phaseProgress?: number; // 0-100
+  phase_progress?: number; // 0-100
 }
 
 // =============================================================================
@@ -111,7 +111,7 @@ export type XStateValue = string | { in_progress: ExecutionPhase };
  */
 export interface TaskEvent {
   /** Unique event identifier (UUID) */
-  eventId: string;
+  event_id: string;
   /** Monotonically increasing sequence number for ordering */
   sequence: number;
   /** Event type - determines the state transition */
@@ -132,7 +132,7 @@ export interface TaskEvent {
 export interface TaskSource {
   type: "manual" | "github_issue" | "linear" | "ideation";
   ref?: string;
-  importedAt?: string;
+  imported_at?: string;
 }
 
 /**
@@ -150,17 +150,17 @@ export interface TaskClassification {
  */
 export interface AgentConfig {
   model?: string;
-  thinkingLevel?: "low" | "medium" | "high";
-  maxRetries?: number;
+  thinking_level?: "low" | "medium" | "high";
+  max_retries?: number;
 }
 
 /**
  * Git configuration for task
  */
 export interface GitConfig {
-  baseBranch?: string;
-  branchPrefix?: string;
-  useWorktree?: boolean;
+  base_branch?: string;
+  branch_prefix?: string;
+  use_worktree?: boolean;
 }
 
 /**
@@ -169,8 +169,8 @@ export interface GitConfig {
 export interface TaskMetadata {
   source?: TaskSource;
   classification?: TaskClassification;
-  agentConfig?: AgentConfig;
-  gitConfig?: GitConfig;
+  agent_config?: AgentConfig;
+  git_config?: GitConfig;
 }
 
 // =============================================================================
@@ -195,7 +195,7 @@ export interface UnifiedTask {
   /** Primary status */
   status: TaskStatus;
   /** Reason for entering review */
-  reviewReason?: ReviewReason;
+  review_reason?: ReviewReason;
   /** Current phase number (CLI phase system) */
   current_phase?: number;
   /** Next actions by phase */
@@ -227,11 +227,11 @@ export interface UnifiedTask {
   /** Subtask names (legacy string array) */
   subtasks?: string[];
   /** Structured subtask details */
-  subtaskDetails?: SubtaskInfo[];
+  subtask_details?: SubtaskInfo[];
   /** Execution progress tracking */
-  executionProgress?: ExecutionProgress;
+  execution_progress?: ExecutionProgress;
   /** Related file paths */
-  relatedFiles?: string[];
+  related_files?: string[];
   /** Free-form notes */
   notes?: string;
 
@@ -239,11 +239,11 @@ export interface UnifiedTask {
   /** Associated agent ID */
   agent?: string;
   /** Session ID */
-  sessionId?: string;
+  session_id?: string;
   /** Model ID for task execution */
   model?: string;
   /** Task index within session */
-  taskIndex?: number;
+  task_index?: number;
   /** User prompt */
   prompt?: string;
 
@@ -259,21 +259,21 @@ export interface UnifiedTask {
 
   // === Workspace ===
   /** Workspace path (absolute) */
-  workspacePath?: string;
+  workspace_path?: string;
 
   // === Timestamps ===
   /** Creation timestamp */
-  createdAt: string;
+  created_at: string;
   /** Last update timestamp */
-  updatedAt?: string;
+  updated_at?: string;
   /** Completion timestamp */
-  completedAt?: string;
+  completed_at?: string;
   /** Timestamp when task started execution (first time entering in_progress) */
-  startedAt?: string;
+  started_at?: string;
   /** Timestamp when check phase passed validation */
-  checkPassedAt?: string;
+  check_passed_at?: string;
   /** Timestamp when PR was created */
-  prCreatedAt?: string;
+  pr_created_at?: string;
   /** Timestamp when PR was merged (ISO format) */
   merged_at?: string;
   /** Merge commit SHA */
@@ -281,31 +281,31 @@ export interface UnifiedTask {
 
   // === XState State Machine (Task State Machine System) ===
   /** XState state machine current state */
-  xstateState?: XStateValue;
+  xstate_state?: XStateValue;
   /** Last event that was applied (kept for quick access to latest state) */
-  lastEvent?: TaskEvent;
+  last_event?: TaskEvent;
   /**
    * @deprecated Event history is now stored in events.jsonl file.
    * Use TaskEventStore.getEventHistory() to read events.
    * This field is kept for backward compatibility during migration.
    */
-  eventHistory?: TaskEvent[];
+  event_history?: TaskEvent[];
   /** Extended metadata for classification and configuration */
   metadata?: TaskMetadata;
 
   // === Task Relationships (Task Dependency System) ===
   /** Task IDs this task depends on - task can only start when all dependencies are completed */
-  dependsOn?: string[];
+  depends_on?: string[];
   /** Parent task ID (used for task splitting) */
-  parentTaskId?: string;
+  parent_task_id?: string;
   /** Child task IDs (reverse reference for task splitting) */
-  childTaskIds?: string[];
+  child_task_ids?: string[];
 
   // === Scheduling Information ===
   /** Queue entry timestamp (ISO string) - used for FIFO sorting within same priority */
-  queuedAt?: string;
+  queued_at?: string;
   /** Auto-start agent when enqueued */
-  autoStart?: boolean;
+  auto_start?: boolean;
   /** Run agent in a git worktree (isolated branch) */
   worktree?: boolean;
   /** Queue system task ID (when task is submitted to command queue) */
@@ -492,9 +492,9 @@ export interface ImplementationPhase {
  */
 export interface ImplementationProgress {
   /** Number of completed subtasks */
-  completedSubtasks: number;
+  completed_subtasks: number;
   /** Total number of subtasks */
-  totalSubtasks: number;
+  total_subtasks: number;
   /** Completion percentage (0-100) */
   percentage: number;
 }
@@ -511,7 +511,7 @@ export interface ImplementationPlanFileV2 extends ImplementationPlanFile {
   /** Structured phases (optional, for advanced workflows) */
   phases?: ImplementationPhase[];
   /** Current active phase index */
-  currentPhase?: number;
+  current_phase?: number;
   /** Computed progress (can be derived from subtasks) */
   progress?: ImplementationProgress;
 }
@@ -520,11 +520,11 @@ export interface ImplementationPlanFileV2 extends ImplementationPlanFile {
  * Task specs data returned by getTaskSpecsData
  */
 export interface TaskSpecsData {
-  prdContent: string | null;
-  prdPath: string | null;
+  prd_content: string | null;
+  prd_path: string | null;
   subtasks: ImplementationPlanSubtask[];
   logs: TaskLogs | null;
-  taskDir: string; // Task directory path for file browsing
+  task_dir: string; // Task directory path for file browsing
 }
 
 // =============================================================================
@@ -554,9 +554,9 @@ export interface ContextEntry {
  * Status summary filter options
  */
 export interface StatusSummaryOptions {
-  filterAssignee?: string;
-  filterStatus?: string;
-  onlyRunning?: boolean;
+  filter_assignee?: string;
+  filter_status?: string;
+  only_running?: boolean;
 }
 
 /**
@@ -566,11 +566,11 @@ export interface RunningTaskInfo {
   name: string;
   priority: string;
   assignee: string;
-  phaseInfo: string;
+  phase_info: string;
   elapsed: string;
   branch: string;
   modified: number;
-  lastTool: string | null;
+  last_tool: string | null;
   pid: number;
 }
 
@@ -581,8 +581,8 @@ export interface StoppedTaskInfo {
   name: string;
   worktree: string;
   status: string;
-  taskDir: string;
-  logFile: string;
+  task_dir: string;
+  log_file: string;
   platform: string;
 }
 
@@ -603,17 +603,17 @@ export interface ContextJson {
   developer: string;
   git: {
     branch: string;
-    isClean: boolean;
-    uncommittedChanges: number;
-    recentCommits: Array<{ hash: string; message: string }>;
+    is_clean: boolean;
+    uncommitted_changes: number;
+    recent_commits: Array<{ hash: string; message: string }>;
   };
-  currentTask: {
+  current_task: {
     path: string;
     name: string;
     status: string;
-    createdAt: string;
+    created_at: string;
     description: string;
-    hasPrd: boolean;
+    has_prd: boolean;
   } | null;
   tasks: {
     active: Array<{
@@ -625,7 +625,7 @@ export interface ContextJson {
     }>;
     directory: string;
   };
-  myTasks: Array<{
+  my_tasks: Array<{
     title: string;
     priority: string;
     status: string;
@@ -633,7 +633,7 @@ export interface ContextJson {
   journal: {
     file: string;
     lines: number;
-    nearLimit: boolean;
+    near_limit: boolean;
   };
   paths: {
     workspace: string;
@@ -646,11 +646,11 @@ export interface ContextJson {
  * Session markdown generation parameters
  */
 export interface SessionMarkdownParams {
-  sessionNum: number;
+  session_num: number;
   title: string;
   commit: string;
   summary: string;
-  extraContent: string;
+  extra_content: string;
   date: string;
 }
 
@@ -658,12 +658,12 @@ export interface SessionMarkdownParams {
  * Index update parameters for add-session
  */
 export interface IndexUpdateParams {
-  indexPath: string;
-  devDir: string;
-  sessionNum: number;
+  index_path: string;
+  dev_dir: string;
+  session_num: number;
   title: string;
   commit: string;
-  activeFile: string;
+  active_file: string;
   date: string;
 }
 

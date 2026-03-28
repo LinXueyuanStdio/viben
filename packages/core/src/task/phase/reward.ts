@@ -62,7 +62,7 @@ export interface RewardPhaseResult {
   /** Process ID of the spawned agent */
   pid?: number;
   /** Path to the log file */
-  logFile?: string;
+  log_file?: string;
   /** Error message if failed */
   error?: string;
   /** Warning messages */
@@ -227,11 +227,11 @@ function extractJsonObjects(content: string): string[] {
  */
 interface GetDiffLinesOptions {
   /** Base branch to compare against (default: main) */
-  baseBranch?: string;
-  /** Feature branch to compare (if provided, uses baseBranch..featureBranch) */
-  featureBranch?: string;
+  base_branch?: string;
+  /** Feature branch to compare (if provided, uses base_branch..feature_branch) */
+  feature_branch?: string;
   /** Worktree path (if provided, runs git diff in worktree) */
-  worktreePath?: string;
+  worktree_path?: string;
 }
 
 /**
@@ -242,9 +242,9 @@ interface GetDiffLinesOptions {
  * @returns Number of lines changed, or 0 if error
  */
 function getDiffLines(repoRoot: string, options: GetDiffLinesOptions = {}): number {
-  const baseBranch = options.baseBranch || "main";
-  const featureBranch = options.featureBranch;
-  const worktreePath = options.worktreePath;
+  const baseBranch = options.base_branch || "main";
+  const featureBranch = options.feature_branch;
+  const worktreePath = options.worktree_path;
 
   try {
     let output: string;
@@ -711,7 +711,7 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
     return {
       success: false,
       error: `Failed to run reward agent: ${result.error.message}`,
-      logFile,
+      log_file: logFile,
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
@@ -738,7 +738,7 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
     return {
       success: false,
       error: parseResult.error,
-      logFile,
+      log_file: logFile,
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
@@ -749,7 +749,7 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
 
   return {
     success: true,
-    logFile,
+    log_file: logFile,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
@@ -944,9 +944,9 @@ export function parseRewardResult(
   const taskBaseBranch = (taskData as { base_branch?: string }).base_branch || "main";
 
   const diffLines = getDiffLines(repoRoot, {
-    baseBranch: taskBaseBranch,
-    featureBranch: taskBranch,
-    worktreePath: taskWorktreePath,
+    base_branch: taskBaseBranch,
+    feature_branch: taskBranch,
+    worktree_path: taskWorktreePath,
   });
 
   // Build reward result

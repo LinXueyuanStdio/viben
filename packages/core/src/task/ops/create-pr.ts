@@ -5,7 +5,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -23,26 +23,87 @@ import {
 // =============================================================================
 
 export interface CreatePROptions {
-  dryRun?: boolean;
+  dry_run?: boolean;
 }
 
 export interface CreatePRResult {
   success: boolean;
-  prUrl?: string;
-  taskName?: string;
-  baseBranch?: string;
-  currentBranch?: string;
-  commitMessage?: string;
-  hadStagedChanges?: boolean;
-  unpushedCommits?: number;
+  pr_url?: string;
+  task_name?: string;
+  base_branch?: string;
+  current_branch?: string;
+  commit_message?: string;
+  had_staged_changes?: boolean;
+  unpushed_commits?: number;
   error?: string;
+  /** True if running in local-only mode (no remote) */
+  local_only?: boolean;
   /** Dry run info for display */
-  dryRunInfo?: {
-    stagedFiles: string[];
-    prTitle: string;
-    prBase: string;
-    prHead: string;
+  dry_run_info?: {
+    staged_files: string[];
+    pr_title: string;
+    pr_base: string;
+    pr_head: string;
   };
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Check if origin remote exists
+ */
+function hasOriginRemote(gitWorkDir: string): boolean {
+  const { stdout } = runGitCommand(["remote"], gitWorkDir);
+  const remotes = stdout.split("\n").map((r) => r.trim()).filter(Boolean);
+  return remotes.includes("origin");
+}
+
+/**
+ * Check if origin remote is GitHub
+ */
+function isGitHubRemote(gitWorkDir: string): boolean {
+  const { stdout } = runGitCommand(["remote", "-v"], gitWorkDir);
+  return stdout.includes("github.com");
+}
+
+/**
+ * Run gh CLI command safely (no shell interpolation)
+ */
+function runGhCommand(args: string[], cwd: string): { code: number; stdout: string; stderr: string } {
+  const result = spawnSync("gh", args, {
+    cwd,
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return {
+    code: result.status ?? 1,
+    stdout: (result.stdout as string) || "",
+    stderr: (result.stderr as string) || "",
+  };
+}
+
+/**
+ * Update task.json for PR creation
+ */
+function updateTaskForPR(
+  taskDirPath: string,
+  taskJsonPath: string,
+  prUrl?: string
+): void {
+  let createPrPhase = getPhaseForAction(taskJsonPath, "create-pr");
+  if (!createPrPhase) {
+    createPrPhase = 4; // Default fallback
+  }
+
+  updateTaskField(taskDirPath, "status", "review");
+  updateTaskField(taskDirPath, "current_phase", createPrPhase);
+  updateTaskField(taskDirPath, "pr_created_at", new Date().toISOString());
+
+  if (prUrl) {
+    updateTaskField(taskDirPath, "pr_url", prUrl);
+  }
 }
 
 // =============================================================================
@@ -58,7 +119,7 @@ export interface CreatePRResult {
  *
  * @param repoRoot - The main repository root directory (NOT worktree)
  * @param taskNameOrPath - Task name or directory path (required)
- * @param options - Options including dryRun mode
+ * @param options - Options including dry_run mode
  * @returns Result with PR URL and operation details
  */
 export function createPR(
@@ -66,7 +127,7 @@ export function createPR(
   taskNameOrPath: string,
   options: CreatePROptions = {}
 ): CreatePRResult {
-  const dryRun = options.dryRun || false;
+  const dryRun = options.dry_run || false;
   const targetDir = taskNameOrPath;
 
   // Resolve task directory path (in main repo)
@@ -120,6 +181,10 @@ export function createPR(
   // Git operations run in worktree if it exists, otherwise in main repo
   const gitWorkDir = worktreePath && existsSync(worktreePath) ? worktreePath : repoRoot;
 
+  // Check remote status early (before any operations that depend on it)
+  const hasRemote = hasOriginRemote(gitWorkDir);
+  const isGitHub = hasRemote && isGitHubRemote(gitWorkDir);
+
   // Get current branch (from git work directory)
   const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], gitWorkDir);
   const currentBranch = branchOut.trim();
@@ -139,12 +204,28 @@ export function createPR(
   const commitMsg = taskTitle;
 
   if (!hasStagedChanges) {
-    // Check for unpushed commits
-    const { stdout: logOut } = runGitCommand(
-      ["log", `origin/${currentBranch}..HEAD`, "--oneline"],
-      gitWorkDir
-    );
-    unpushedCommits = logOut.split("\n").filter((line) => line.trim()).length;
+    // Check for unpushed commits (only if remote exists)
+    if (hasRemote) {
+      const { stdout: logOut, code: logCode } = runGitCommand(
+        ["log", `origin/${currentBranch}..HEAD`, "--oneline"],
+        gitWorkDir
+      );
+      // Only count if command succeeded (remote branch exists)
+      if (logCode === 0) {
+        unpushedCommits = logOut.split("\n").filter((line) => line.trim()).length;
+      }
+    }
+
+    // For local-only mode, check if there are any local commits not in base branch
+    if (!hasRemote) {
+      const { stdout: localLogOut, code: localLogCode } = runGitCommand(
+        ["log", `${baseBranch}..HEAD`, "--oneline"],
+        gitWorkDir
+      );
+      if (localLogCode === 0) {
+        unpushedCommits = localLogOut.split("\n").filter((line) => line.trim()).length;
+      }
+    }
 
     if (unpushedCommits === 0) {
       if (dryRun) {
@@ -169,59 +250,83 @@ export function createPR(
     stagedFiles = stagedOut.split("\n").filter((line) => line.trim());
   }
 
-  // Push to remote (unless dry run)
-  if (!dryRun) {
-    const { code: pushCode, stderr: pushErr } = runGitCommand(
-      ["push", "-u", "origin", currentBranch],
-      gitWorkDir
-    );
-    if (pushCode !== 0) {
-      return {
-        success: false,
-        error: `Failed to push: ${pushErr}`,
-      };
-    }
-  }
-
-  // Create PR
-  const prTitle = taskTitle;
-  let prUrl = "";
-
+  // Dry run mode: show what would be done
   if (dryRun) {
-    prUrl = "https://github.com/example/repo/pull/DRY-RUN";
     // Reset staging area in dry run
     runGitCommand(["reset", "HEAD"], gitWorkDir);
 
     return {
       success: true,
-      prUrl,
-      taskName,
-      baseBranch,
-      currentBranch,
-      commitMessage: commitMsg,
-      hadStagedChanges: hasStagedChanges,
-      unpushedCommits,
-      dryRunInfo: {
-        stagedFiles,
-        prTitle,
-        prBase: baseBranch,
-        prHead: currentBranch,
+      pr_url: hasRemote ? "https://github.com/example/repo/pull/DRY-RUN" : undefined,
+      task_name: taskName,
+      base_branch: baseBranch,
+      current_branch: currentBranch,
+      commit_message: commitMsg,
+      had_staged_changes: hasStagedChanges,
+      unpushed_commits: unpushedCommits,
+      local_only: !hasRemote,
+      dry_run_info: {
+        staged_files: stagedFiles,
+        pr_title: taskTitle,
+        pr_base: baseBranch,
+        pr_head: currentBranch,
       },
     };
   }
 
-  // Check if PR already exists (gh commands run in git work directory)
-  try {
-    const existingPrResult = execSync(
-      `gh pr list --head "${currentBranch}" --base "${baseBranch}" --json url --jq ".[0].url"`,
-      { cwd: gitWorkDir, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
-    ).trim();
+  // Local-only mode: no remote, skip push and PR creation but update status
+  if (!hasRemote) {
+    updateTaskForPR(taskDirPath, taskJsonPath);
 
-    if (existingPrResult) {
-      prUrl = existingPrResult;
-    }
-  } catch {
-    // No existing PR
+    return {
+      success: true,
+      local_only: true,
+      task_name: taskName,
+      base_branch: baseBranch,
+      current_branch: currentBranch,
+      commit_message: commitMsg,
+      had_staged_changes: hasStagedChanges,
+      unpushed_commits: unpushedCommits,
+    };
+  }
+
+  // Push to remote
+  const { code: pushCode, stderr: pushErr } = runGitCommand(
+    ["push", "-u", "origin", currentBranch],
+    gitWorkDir
+  );
+  if (pushCode !== 0) {
+    return {
+      success: false,
+      error: `Failed to push: ${pushErr}`,
+    };
+  }
+
+  // Non-GitHub remote: skip PR creation but update status
+  if (!isGitHub) {
+    updateTaskForPR(taskDirPath, taskJsonPath);
+
+    return {
+      success: true,
+      local_only: true,
+      task_name: taskName,
+      base_branch: baseBranch,
+      current_branch: currentBranch,
+      commit_message: commitMsg,
+      had_staged_changes: hasStagedChanges,
+      unpushed_commits: unpushedCommits,
+    };
+  }
+
+  // GitHub flow: check if PR already exists
+  let prUrl = "";
+  const { stdout: existingPrOut, code: existingPrCode } = runGhCommand(
+    ["pr", "list", "--head", currentBranch, "--base", baseBranch, "--json", "url", "--jq", ".[0].url"],
+    gitWorkDir
+  );
+
+  if (existingPrCode === 0 && existingPrOut.trim()) {
+    prUrl = existingPrOut.trim();
   }
 
   if (!prUrl) {
@@ -230,40 +335,31 @@ export function createPR(
     const hasPrdBody = existsSync(prdFile);
 
     // Use --body-file to avoid shell escaping issues with markdown content
-    // Write PR body to a temp file to handle special characters and newlines properly
     let tempBodyFile: string | null = null;
 
     try {
-      let ghCreateCmd: string;
+      const ghArgs = ["pr", "create", "--draft", "--base", baseBranch, "--title", taskTitle];
 
       if (hasPrdBody) {
         // Create temp file for PR body to avoid shell escaping issues
         tempBodyFile = join(tmpdir(), `viben-pr-body-${Date.now()}.md`);
         const prBody = readFileSync(prdFile, "utf-8");
         writeFileSync(tempBodyFile, prBody, "utf-8");
-
-        // Escape title for shell (only need to handle double quotes in title)
-        const escapedTitle = prTitle.replace(/"/g, '\\"');
-        ghCreateCmd = `gh pr create --draft --base "${baseBranch}" --title "${escapedTitle}" --body-file "${tempBodyFile}"`;
+        ghArgs.push("--body-file", tempBodyFile);
       } else {
-        // No body file, create PR with empty body
-        const escapedTitle = prTitle.replace(/"/g, '\\"');
-        ghCreateCmd = `gh pr create --draft --base "${baseBranch}" --title "${escapedTitle}" --body ""`;
+        ghArgs.push("--body", "");
       }
 
-      const createPrResult = execSync(ghCreateCmd, {
-        cwd: gitWorkDir,
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-      }).trim();
+      const { code: createCode, stdout: createOut, stderr: createErr } = runGhCommand(ghArgs, gitWorkDir);
 
-      prUrl = createPrResult;
-    } catch (err) {
-      const error = err as { stderr?: string };
-      return {
-        success: false,
-        error: `Failed to create PR: ${error.stderr || "Unknown error"}`,
-      };
+      if (createCode !== 0) {
+        return {
+          success: false,
+          error: `Failed to create PR: ${createErr || "Unknown error"}`,
+        };
+      }
+
+      prUrl = createOut.trim();
     } finally {
       // Clean up temp file
       if (tempBodyFile && existsSync(tempBodyFile)) {
@@ -277,25 +373,16 @@ export function createPR(
   }
 
   // Update task.json in MAIN REPO (not worktree copy)
-  // taskDirPath always points to main repo's task directory
-  let createPrPhase = getPhaseForAction(taskJsonPath, "create-pr");
-  if (!createPrPhase) {
-    createPrPhase = 4; // Default fallback
-  }
-
-  updateTaskField(taskDirPath, "status", "review");
-  updateTaskField(taskDirPath, "pr_url", prUrl);
-  updateTaskField(taskDirPath, "current_phase", createPrPhase);
-  updateTaskField(taskDirPath, "prCreatedAt", new Date().toISOString());
+  updateTaskForPR(taskDirPath, taskJsonPath, prUrl);
 
   return {
     success: true,
-    prUrl,
-    taskName,
-    baseBranch,
-    currentBranch,
-    commitMessage: commitMsg,
-    hadStagedChanges: hasStagedChanges,
-    unpushedCommits,
+    pr_url: prUrl,
+    task_name: taskName,
+    base_branch: baseBranch,
+    current_branch: currentBranch,
+    commit_message: commitMsg,
+    had_staged_changes: hasStagedChanges,
+    unpushed_commits: unpushedCommits,
   };
 }

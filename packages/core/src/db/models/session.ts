@@ -21,8 +21,8 @@ interface SessionEntry {
   status: SessionStatus;
   prompt?: string;
   sessionData: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 function getSessionsPath(): string {
@@ -57,7 +57,7 @@ export const SessionModel = {
         id,
         ...entry,
       }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
 
   /**
@@ -118,8 +118,8 @@ export const SessionModel = {
       status: "active",
       prompt: input.prompt,
       sessionData: input.sessionData || {},
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     data.sessions[id] = entry;
@@ -145,8 +145,8 @@ export const SessionModel = {
       status: input.status ?? entry.status,
       prompt: input.prompt ?? entry.prompt,
       sessionData: input.sessionData ?? entry.sessionData,
-      createdAt: entry.createdAt,
-      updatedAt: now,
+      created_at: entry.created_at,
+      updated_at: now,
     };
 
     data.sessions[id] = updated;

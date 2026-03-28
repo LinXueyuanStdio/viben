@@ -82,10 +82,10 @@ export interface CreateTaskOptions {
 
 export interface CreateTaskResult {
   success: boolean;
-  taskDir?: string;
-  dirName?: string;
+  task_dir?: string;
+  dir_name?: string;
   status?: string;
-  contextInitialized?: boolean;
+  context_initialized?: boolean;
   error?: string;
 }
 
@@ -157,28 +157,28 @@ export interface ViewTaskResult {
   success: boolean;
   task?: TaskJson;
   /** Task directory absolute path */
-  taskDir?: string;
+  task_dir?: string;
   /** Task directory name */
-  dirName?: string;
+  dir_name?: string;
   /** Files in task directory */
   files?: {
     prd: TaskFileInfo;
-    implementJsonl: TaskFileInfo;
-    checkJsonl: TaskFileInfo;
-    fixJsonl: TaskFileInfo;
-    startLog: TaskFileInfo;
-    planLog: TaskFileInfo;
-    workLog: TaskFileInfo;
-    implementLog: TaskFileInfo;
-    reviewLog: TaskFileInfo;
+    implement_jsonl: TaskFileInfo;
+    check_jsonl: TaskFileInfo;
+    fix_jsonl: TaskFileInfo;
+    start_log: TaskFileInfo;
+    plan_log: TaskFileInfo;
+    work_log: TaskFileInfo;
+    implement_log: TaskFileInfo;
+    review_log: TaskFileInfo;
   };
   /** Worktree info */
   worktree?: TaskWorktreeInfo;
   /** Runtime info if task is running */
   runtime?: {
-    isRunning: boolean;
+    is_running: boolean;
     pid?: number;
-    sessionId?: string;
+    session_id?: string;
     platform?: string;
   };
   /** Timing info for duration tracking */
@@ -303,22 +303,22 @@ function calculateTiming(
   taskData: Record<string, unknown>,
   taskDir: string,
   files: {
-    startLog: TaskFileInfo;
-    planLog: TaskFileInfo;
-    workLog: TaskFileInfo;
-    implementLog: TaskFileInfo;
-    reviewLog: TaskFileInfo;
+    start_log: TaskFileInfo;
+    plan_log: TaskFileInfo;
+    work_log: TaskFileInfo;
+    implement_log: TaskFileInfo;
+    review_log: TaskFileInfo;
   }
 ): TaskTimingInfo {
   const timing: TaskTimingInfo = {};
   const now = Date.now();
 
-  const createdAt = taskData.createdAt as string | undefined;
-  const queuedAt = taskData.queuedAt as string | undefined;
-  const startedAt = taskData.startedAt as string | undefined;
-  const checkPassedAt = taskData.checkPassedAt as string | undefined;
-  const prCreatedAt = taskData.prCreatedAt as string | undefined;
-  const completedAt = taskData.completedAt as string | undefined;
+  const createdAt = taskData.created_at as string | undefined;
+  const queuedAt = taskData.queued_at as string | undefined;
+  const startedAt = taskData.started_at as string | undefined;
+  const checkPassedAt = taskData.check_passed_at as string | undefined;
+  const prCreatedAt = taskData.pr_created_at as string | undefined;
+  const completedAt = taskData.completed_at as string | undefined;
   const status = taskData.status as string | undefined;
 
   // 1. Total duration (creation to now or completion)
@@ -386,10 +386,10 @@ function calculateTiming(
     executionStartTime = new Date(startedAt).getTime();
   } else {
     const allStarts = [
-      files.startLog.modifiedAt,
-      files.planLog.modifiedAt,
-      files.workLog.modifiedAt,
-      files.implementLog.modifiedAt,
+      files.start_log.modifiedAt,
+      files.plan_log.modifiedAt,
+      files.work_log.modifiedAt,
+      files.implement_log.modifiedAt,
     ]
       .filter(Boolean)
       .map((t) => new Date(t!).getTime());
@@ -407,11 +407,11 @@ function calculateTiming(
 
   // 7. Idle duration (time since last activity)
   const allEnds = [
-    files.startLog.modifiedAt,
-    files.planLog.modifiedAt,
-    files.workLog.modifiedAt,
-    files.implementLog.modifiedAt,
-    files.reviewLog.modifiedAt,
+    files.start_log.modifiedAt,
+    files.plan_log.modifiedAt,
+    files.work_log.modifiedAt,
+    files.implement_log.modifiedAt,
+    files.review_log.modifiedAt,
     checkPassedAt,
     prCreatedAt,
   ]
@@ -561,8 +561,8 @@ export function createTask(
     priority: (options.priority || DEFAULT_PRIORITY) as IssuePriority,
     creator: creator,
     assignee: assignee,
-    createdAt: new Date().toISOString(),
-    completedAt: undefined,
+    created_at: new Date().toISOString(),
+    completed_at: undefined,
     branch: branch,
     base_branch: currentBranch,
     worktree_path: undefined,
@@ -575,12 +575,12 @@ export function createTask(
     commit: undefined,
     pr_url: undefined,
     subtasks: [],
-    relatedFiles: [],
+    related_files: [],
     notes: "",
     agent: options.agent,
     executor: executor,
     model: options.model,
-    autoStart: options.start || false,
+    auto_start: options.start || false,
     worktree: options.worktree || false,
     compute_reward: options.computeReward ?? false,
     // FileRL directory for reward config and output (reward_config is read from FileRL target)
@@ -598,10 +598,10 @@ export function createTask(
 
   return {
     success: true,
-    taskDir,
-    dirName,
+    task_dir: taskDir,
+    dir_name: dirName,
     status: taskData.status,
-    contextInitialized,
+    context_initialized: contextInitialized,
   };
 }
 
@@ -653,24 +653,24 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
   // Gather file info
   const files = {
     prd: getFileInfo(join(taskDir, "prd.md")),
-    implementJsonl: getFileInfo(join(taskDir, "implement.jsonl")),
-    checkJsonl: getFileInfo(join(taskDir, "check.jsonl")),
-    fixJsonl: getFileInfo(join(taskDir, "fix.jsonl")),
-    startLog: getFileInfo(join(taskDir, "start.log.jsonl")),
-    planLog: getFileInfo(join(taskDir, "plan.log.jsonl")),
-    workLog: getFileInfo(join(taskDir, "work.log.jsonl")),
-    implementLog: getFileInfo(join(taskDir, "implement.log.jsonl")),
-    reviewLog: getFileInfo(join(taskDir, "review.log.jsonl")),
+    implement_jsonl: getFileInfo(join(taskDir, "implement.jsonl")),
+    check_jsonl: getFileInfo(join(taskDir, "check.jsonl")),
+    fix_jsonl: getFileInfo(join(taskDir, "fix.jsonl")),
+    start_log: getFileInfo(join(taskDir, "start.log.jsonl")),
+    plan_log: getFileInfo(join(taskDir, "plan.log.jsonl")),
+    work_log: getFileInfo(join(taskDir, "work.log.jsonl")),
+    implement_log: getFileInfo(join(taskDir, "implement.log.jsonl")),
+    review_log: getFileInfo(join(taskDir, "review.log.jsonl")),
   };
 
   // Try to get runtime info from session-id.txt
-  let runtime: ViewTaskResult["runtime"] = { isRunning: false };
+  let runtime: ViewTaskResult["runtime"] = { is_running: false };
   const sessionIdPath = join(taskDir, "session-id.txt");
   if (existsSync(sessionIdPath)) {
     try {
       const sessionId = readFileSync(sessionIdPath, "utf-8").trim();
       if (sessionId) {
-        runtime.sessionId = sessionId;
+        runtime.session_id = sessionId;
       }
     } catch {
       // Ignore
@@ -679,7 +679,7 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
 
   // Check if task has a session_id in task.json
   if (taskData.session_id) {
-    runtime.sessionId = taskData.session_id as string;
+    runtime.session_id = taskData.session_id as string;
   }
 
   // Gather worktree info
@@ -724,8 +724,8 @@ export function viewTask(repoRoot: string, taskName: string): ViewTaskResult {
   return {
     success: true,
     task: taskData as unknown as TaskJson,
-    taskDir,
-    dirName,
+    task_dir: taskDir,
+    dir_name: dirName,
     files,
     worktree,
     runtime,
@@ -812,7 +812,7 @@ export function archiveTask(repoRoot: string, taskName: string): ArchiveTaskResu
     const taskData = readTaskJson(taskDir);
     if (taskData) {
       taskData.status = "completed";
-      taskData.completedAt = today;
+      taskData.completed_at = today;
       writeTaskJson(taskDir, taskData);
     }
   }

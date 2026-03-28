@@ -57,11 +57,11 @@ vi.mock("../../services/agent", () => ({
     isSessionAborted: vi.fn(() => false),
     getPlan: vi.fn(() => ({
       id: "test-plan-123",
-      sessionId: "test-session-123",
+      session_id: "test-session-123",
       goal: "Test goal",
       steps: [{ id: "1", description: "Step 1", status: "pending" }],
       status: "pending",
-      createdAt: new Date(),
+      created_at: new Date(),
     })),
     approvePlan: vi.fn(() => true),
     rejectPlan: vi.fn(() => true),
@@ -371,7 +371,7 @@ describe("Agent Run Routes", () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
         expect(body.success).toBe(true);
-        expect(body.sessionId).toBe("test-session-123");
+        expect(body.session_id).toBe("test-session-123");
         expect(agentService.stopSession).toHaveBeenCalledWith("test-session-123");
       });
 
@@ -515,7 +515,7 @@ describe("Agent Run Routes", () => {
 
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
-        expect(body.sessionId).toBe("test-session-123");
+        expect(body.session_id).toBe("test-session-123");
         expect(body.status).toBe("active");
       });
 
@@ -529,7 +529,7 @@ describe("Agent Run Routes", () => {
 
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
-        expect(body.sessionId).toBe("test-session-123");
+        expect(body.session_id).toBe("test-session-123");
         expect(body.status).toBe("cancelled");
       });
 
@@ -631,9 +631,9 @@ describe("Agent Run Routes", () => {
 
         // First message should be session with UUID format
         expect(messages[0].type).toBe("session");
-        expect(messages[0].sessionId).toBeDefined();
-        expect(typeof messages[0].sessionId).toBe("string");
-        expect(messages[0].sessionId).toMatch(
+        expect(messages[0].session_id).toBeDefined();
+        expect(typeof messages[0].session_id).toBe("string");
+        expect(messages[0].session_id).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
         );
       });
@@ -999,9 +999,9 @@ describe("Agent Run Routes", () => {
         mockExecuteStreaming.mockImplementationOnce(async function* () {
           yield {
             type: "tool_result",
-            toolUseId: "tool-123",
+            tool_use_id: "tool-123",
             output: "File contents here",
-            isError: false,
+            is_error: false,
           };
           yield { type: "result", subtype: "success" };
         });
@@ -1018,9 +1018,9 @@ describe("Agent Run Routes", () => {
         const toolResultMsg = messages.find((m) => m.type === "tool_result");
 
         expect(toolResultMsg).toBeDefined();
-        expect(toolResultMsg?.toolUseId).toBe("tool-123");
+        expect(toolResultMsg?.tool_use_id).toBe("tool-123");
         expect(toolResultMsg?.output).toBe("File contents here");
-        expect(toolResultMsg?.isError).toBe(false);
+        expect(toolResultMsg?.is_error).toBe(false);
       });
 
       it("should stream question messages and store in agentService", async () => {
@@ -1067,7 +1067,7 @@ describe("Agent Run Routes", () => {
         mockExecuteStreaming.mockImplementationOnce(async function* () {
           yield {
             type: "sdk_session",
-            sdkSessionId: "sdk-session-uuid",
+            sdk_session_id: "sdk-session-uuid",
           };
           yield { type: "text", content: "Hello" };
           yield { type: "result", subtype: "success" };
@@ -1085,7 +1085,7 @@ describe("Agent Run Routes", () => {
         const sdkSessionMsg = messages.find((m) => m.type === "sdk_session");
 
         expect(sdkSessionMsg).toBeDefined();
-        expect(sdkSessionMsg?.sdkSessionId).toBe("sdk-session-uuid");
+        expect(sdkSessionMsg?.sdk_session_id).toBe("sdk-session-uuid");
       });
 
       it("should stream error messages from SDK", async () => {
@@ -1141,7 +1141,7 @@ describe("Agent Run Routes", () => {
 
         const messages = parseSSEMessages(response.sseMessages);
         expect(messages[0].type).toBe("session");
-        expect(messages[0].sessionId).toBeDefined();
+        expect(messages[0].session_id).toBeDefined();
       });
 
       it("should include done message last in SSE stream", async () => {

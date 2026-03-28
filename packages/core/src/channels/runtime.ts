@@ -42,7 +42,7 @@ export interface ChannelRuntimeConfig {
   /** Message bus for publishing inbound messages */
   messageBus: MessageBus;
   /** Whether to auto-start enabled channels (default: true) */
-  autoStart?: boolean;
+  auto_start?: boolean;
   /** Polling timeout in seconds (default: 30) */
   pollingTimeout?: number;
 }
@@ -55,7 +55,7 @@ export interface ChannelRuntimeConfig {
 export class ChannelRuntime {
   private channelManager: ChannelManager;
   private messageBus: MessageBus;
-  private autoStart: boolean;
+  private auto_start: boolean;
   private pollingTimeout: number;
 
   /** Active pollers by channel ID */
@@ -65,14 +65,14 @@ export class ChannelRuntime {
   constructor(config: ChannelRuntimeConfig) {
     this.channelManager = config.channelManager;
     this.messageBus = config.messageBus;
-    this.autoStart = config.autoStart ?? true;
+    this.auto_start = config.auto_start ?? true;
     this.pollingTimeout = config.pollingTimeout ?? 30;
   }
 
   /**
    * Start the channel runtime
    *
-   * If autoStart is true, starts all enabled channels with agent bindings.
+   * If auto_start is true, starts all enabled channels with agent bindings.
    */
   async start(): Promise<void> {
     if (this.running) {
@@ -83,7 +83,7 @@ export class ChannelRuntime {
     log.info("Starting...");
     this.running = true;
 
-    if (this.autoStart) {
+    if (this.auto_start) {
       await this.startEnabledChannels();
     }
 

@@ -129,8 +129,8 @@ export class AgentManager {
         description: v.description,
       })),
       envVariables: config.env_variables,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 
@@ -195,8 +195,8 @@ export class AgentManager {
         description: v.description,
       })),
       env_variables: baseConfig.envVariables,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     // Create agent directory and config (AGENTS.md)
@@ -233,8 +233,8 @@ export class AgentManager {
         description: v.description,
       })),
       envVariables: config.env_variables,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 
@@ -322,8 +322,8 @@ export class AgentManager {
         description: v.description,
       })),
       env_variables: envVariables,
-      createdAt: agent.createdAt,
-      updatedAt: new Date().toISOString(),
+      created_at: agent.created_at,
+      updated_at: new Date().toISOString(),
     };
 
     await writeMarkdownConfig(getAgentConfigPath(id), config, systemPrompt);
@@ -355,8 +355,8 @@ export class AgentManager {
         description: v.description,
       })),
       envVariables: config.env_variables,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 
@@ -394,7 +394,7 @@ export class AgentManager {
 
     return [...globalAgents, ...workspaceAgents]
       .filter((agent) => agent.isTemplate === true)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
   }
 
   /**
@@ -474,8 +474,8 @@ export class AgentManager {
         description: v.description,
       })),
       env_variables: template.envVariables,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     await ensureDir(agentDir);
@@ -537,8 +537,8 @@ export class AgentManager {
         description: v.description,
       })),
       env_variables: agent.envVariables,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     await ensureDir(globalDir);
@@ -573,17 +573,17 @@ export class AgentManager {
         if (sessionFile) {
           sessions.push({
             id: entry.name,
-            agentId,
+            agent_id: agentId,
             name: sessionFile.name,
-            createdAt: sessionFile.createdAt,
-            lastAccessedAt: sessionFile.lastAccessedAt,
+            created_at: sessionFile.created_at,
+            last_accessed_at: sessionFile.last_accessed_at,
           });
         }
       }
     }
 
     return sessions.sort(
-      (a, b) => new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime()
+      (a, b) => new Date(b.last_accessed_at).getTime() - new Date(a.last_accessed_at).getTime()
     );
   }
 
@@ -603,8 +603,8 @@ export class AgentManager {
     const session: SessionFile = {
       id: sessionId,
       name,
-      createdAt: now,
-      lastAccessedAt: now,
+      created_at: now,
+      last_accessed_at: now,
     };
 
     await ensureDir(sessionDir);
@@ -612,10 +612,10 @@ export class AgentManager {
 
     return {
       id: sessionId,
-      agentId,
+      agent_id: agentId,
       name,
-      createdAt: now,
-      lastAccessedAt: now,
+      created_at: now,
+      last_accessed_at: now,
     };
   }
 
@@ -642,17 +642,17 @@ export class AgentManager {
 
     if (!fileExists(memoryPath)) {
       return {
-        agentId,
+        agent_id: agentId,
         content: "",
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
     }
 
     const content = await readFile(memoryPath, "utf-8");
     return {
-      agentId,
+      agent_id: agentId,
       content,
-      updatedAt: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
   }
 
@@ -784,8 +784,8 @@ export class AgentManager {
         description: v.description,
       })),
       envVariables: config.env_variables,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 
@@ -834,8 +834,8 @@ export class AgentManager {
         description: v.description,
       })),
       env_variables: envVariables,
-      createdAt: agent.createdAt,
-      updatedAt: new Date().toISOString(),
+      created_at: agent.created_at,
+      updated_at: new Date().toISOString(),
     };
 
     await writeMarkdownConfig(configPath, config, systemPrompt);
@@ -867,8 +867,8 @@ export class AgentManager {
         description: v.description,
       })),
       envVariables: config.env_variables,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 

@@ -82,8 +82,8 @@ function toSnakeCaseWorkspace(workspace: Workspace, type: WorkspaceType = "custo
     mcp: workspace.mcp,
     skills: workspace.skills,
     agents: workspace.agents,
-    created_at: workspace.createdAt,
-    updated_at: workspace.updatedAt,
+    created_at: workspace.created_at,
+    updated_at: workspace.updated_at,
   };
 }
 

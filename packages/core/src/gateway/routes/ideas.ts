@@ -55,6 +55,8 @@ const log = globalLogger.child({ module: "ideas" });
 
 /**
  * Transform Idea to snake_case API response format
+ * Note: The Idea interface now uses snake_case internally, so we just need
+ * to copy over camelCase optional fields to snake_case
  */
 function toSnakeCaseIdea(idea: Idea) {
   return {
@@ -67,8 +69,8 @@ function toSnakeCaseIdea(idea: Idea) {
     estimated_effort: idea.estimatedEffort,
     status: idea.status,
     promoted_to: idea.promotedTo ?? null,
-    created_at: idea.createdAt,
-    // Optional fields
+    created_at: idea.created_at,
+    // Optional fields (still camelCase in Idea interface)
     affected_files: idea.affectedFiles ?? null,
     existing_patterns: idea.existingPatterns ?? null,
     builds_upon: idea.buildsUpon ?? null,
@@ -370,11 +372,11 @@ export function registerIdeaRoutes(fastify: FastifyInstance): void {
 
       return {
         success: true,
-        session_id: result.sessionId,
+        session_id: result.session_id,
         session_dir: result.sessionDir,
         ideas: result.ideas.map(toSnakeCaseIdea),
-        by_type: result.byType,
-        total_ideas: result.totalIdeas,
+        by_type: result.by_type,
+        total_ideas: result.total_ideas,
         errors: result.errors,
       };
     } catch (error) {
@@ -519,11 +521,11 @@ export function registerIdeaRoutes(fastify: FastifyInstance): void {
 
     return {
       success: true,
-      idea_id: result.ideaId,
-      idea_title: result.ideaTitle,
-      task_id: result.taskId,
-      task_dir: result.taskDir,
-      dir_name: result.dirName,
+      idea_id: result.idea_id,
+      idea_title: result.idea_title,
+      task_id: result.task_id,
+      task_dir: result.task_dir,
+      dir_name: result.dir_name,
       priority: result.priority,
       status: result.status,
       worktree: result.worktree,

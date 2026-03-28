@@ -98,7 +98,7 @@ describe("Workspace Initialization", () => {
       expect(result.config.version).toBe(1);
     });
 
-    it("should set createdAt and updatedAt timestamps", async () => {
+    it("should set created_at and updated_at timestamps", async () => {
       const targetDir = join(tempDir, "timestamped-project");
       await mkdir(targetDir, { recursive: true });
 
@@ -106,11 +106,11 @@ describe("Workspace Initialization", () => {
       const result = await initWorkspace({ targetDir });
       const after = new Date().toISOString();
 
-      expect(result.config.createdAt).toBeDefined();
-      expect(result.config.updatedAt).toBeDefined();
+      expect(result.config.created_at).toBeDefined();
+      expect(result.config.updated_at).toBeDefined();
       // Timestamps should be between before and after
-      expect(result.config.createdAt! >= before).toBe(true);
-      expect(result.config.createdAt! <= after).toBe(true);
+      expect(result.config.created_at! >= before).toBe(true);
+      expect(result.config.created_at! <= after).toBe(true);
     });
 
     it("should write valid YAML config file", async () => {
@@ -236,7 +236,7 @@ describe("Workspace Initialization", () => {
             color: "always",
           },
         },
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
       await writeYaml(join(templateDir, "template.yaml"), templateConfig);
 
@@ -260,7 +260,7 @@ describe("Workspace Initialization", () => {
       const templateConfig: WorkspaceTemplateConfig = {
         name: "Dirs Template",
         directories: ["custom-dir", "another-dir/nested"],
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
       await writeYaml(join(templateDir, "template.yaml"), templateConfig);
 
@@ -287,7 +287,7 @@ describe("Workspace Initialization", () => {
       const templateConfig: WorkspaceTemplateConfig = {
         name: "Files Template",
         files: ["README.md", "config/settings.json"],
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
       await writeYaml(join(templateDir, "template.yaml"), templateConfig);
 
@@ -323,7 +323,7 @@ describe("Workspace Initialization", () => {
         expect(template.id).toBe("my-template");
         expect(template.name).toBe("My Template");
         expect(template.description).toBe("A custom template");
-        expect(template.createdAt).toBeDefined();
+        expect(template.created_at).toBeDefined();
       });
 
       it("should throw AlreadyExistsError for duplicate template", async () => {

@@ -23,7 +23,7 @@ const log = globalLogger.child({ module: "agent-service" });
  */
 export interface AgentPlan {
   id: string;
-  sessionId: string;
+  session_id: string;
   goal: string;
   steps: Array<{
     id: string;
@@ -32,7 +32,7 @@ export interface AgentPlan {
   }>;
   notes?: string;
   status: "pending" | "approved" | "rejected";
-  createdAt: Date;
+  created_at: Date;
 }
 
 /**
@@ -40,7 +40,7 @@ export interface AgentPlan {
  */
 export interface AgentQuestion {
   id: string;
-  sessionId: string;
+  session_id: string;
   toolUseId: string;
   questions: Array<{
     question: string;
@@ -50,11 +50,11 @@ export interface AgentQuestion {
   }>;
   status: "pending" | "answered";
   answers?: Record<string, string>;
-  createdAt: Date;
+  created_at: Date;
   /** Agent config path (AGENTS.md) for workspace-level agents */
-  agentConfigPath?: string;
+  agent_config_path?: string;
   /** Workspace path */
-  workspacePath?: string;
+  workspace_path?: string;
   /** Promise resolver for WebSocket mode - called when answer is received */
   resolver?: (answers: Record<string, string>) => void;
 }
@@ -161,14 +161,14 @@ export class AgentService {
    */
   storePlan(
     sessionId: string,
-    plan: Omit<AgentPlan, "id" | "sessionId" | "status" | "createdAt">
+    plan: Omit<AgentPlan, "id" | "session_id" | "status" | "created_at">
   ): AgentPlan {
     const fullPlan: AgentPlan = {
       ...plan,
       id: randomUUID(),
-      sessionId,
+      session_id: sessionId,
       status: "pending",
-      createdAt: new Date(),
+      created_at: new Date(),
     };
     this.plans.set(fullPlan.id, fullPlan);
     log.debug({ planId: fullPlan.id }, "Stored plan");
@@ -193,7 +193,7 @@ export class AgentService {
    */
   getPendingPlanForSession(sessionId: string): AgentPlan | undefined {
     for (const plan of this.plans.values()) {
-      if (plan.sessionId === sessionId && plan.status === "pending") {
+      if (plan.session_id === sessionId && plan.status === "pending") {
         return plan;
       }
     }
@@ -227,7 +227,7 @@ export class AgentService {
 
     plan.status = "rejected";
     // Also trigger abort for the associated session
-    this.stopSession(plan.sessionId);
+    this.stopSession(plan.session_id);
     log.info({ planId }, "Plan rejected");
     return true;
   }
@@ -273,17 +273,17 @@ export class AgentService {
     sessionId: string,
     toolUseId: string,
     questions: AgentQuestion["questions"],
-    options?: { agentConfigPath?: string; workspacePath?: string }
+    options?: { agent_config_path?: string; workspace_path?: string }
   ): AgentQuestion {
     const fullQuestion: AgentQuestion = {
       id: toolUseId, // Use toolUseId as the question ID for easy lookup
-      sessionId,
+      session_id: sessionId,
       toolUseId,
       questions,
       status: "pending",
-      createdAt: new Date(),
-      agentConfigPath: options?.agentConfigPath,
-      workspacePath: options?.workspacePath,
+      created_at: new Date(),
+      agent_config_path: options?.agent_config_path,
+      workspace_path: options?.workspace_path,
     };
     this.questions.set(fullQuestion.id, fullQuestion);
     log.debug({ questionId: fullQuestion.id }, "Stored question");
@@ -308,7 +308,7 @@ export class AgentService {
    */
   getPendingQuestionForSession(sessionId: string): AgentQuestion | undefined {
     for (const question of this.questions.values()) {
-      if (question.sessionId === sessionId && question.status === "pending") {
+      if (question.session_id === sessionId && question.status === "pending") {
         return question;
       }
     }
@@ -427,14 +427,14 @@ export class AgentService {
     const now = Date.now();
     // Cleanup old plans
     for (const [planId, plan] of this.plans) {
-      if (now - plan.createdAt.getTime() > maxAgeMs && plan.status !== "pending") {
+      if (now - plan.created_at.getTime() > maxAgeMs && plan.status !== "pending") {
         this.plans.delete(planId);
         log.debug({ planId }, "Cleaned up plan");
       }
     }
     // Cleanup old questions
     for (const [questionId, question] of this.questions) {
-      if (now - question.createdAt.getTime() > maxAgeMs && question.status !== "pending") {
+      if (now - question.created_at.getTime() > maxAgeMs && question.status !== "pending") {
         this.questions.delete(questionId);
         log.debug({ questionId }, "Cleaned up question");
       }

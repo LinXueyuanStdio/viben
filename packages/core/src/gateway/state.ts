@@ -75,7 +75,7 @@ export function createAppState(): AppState {
   const channelRuntime = new ChannelRuntime({
     channelManager,
     messageBus,
-    autoStart: true, // Auto-start enabled channels with agent bindings
+    auto_start: true, // Auto-start enabled channels with agent bindings
     pollingTimeout: 30,
   });
 

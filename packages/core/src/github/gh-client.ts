@@ -53,9 +53,9 @@ export interface GHIssue {
   labels: Array<{ name: string }>;
   assignees: Array<{ login: string }>;
   author: { login: string };
-  createdAt: string;
-  updatedAt: string;
-  closedAt?: string;
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
   url: string;
   comments: { totalCount: number };
   milestone?: { title: string; number: number };
@@ -68,8 +68,8 @@ export interface GHComment {
   id: string;
   body: string;
   author: { login: string };
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -85,10 +85,10 @@ export interface GHPR {
   headRefName: string;
   baseRefName: string;
   url: string;
-  createdAt: string;
-  updatedAt: string;
-  mergedAt?: string;
-  closedAt?: string;
+  created_at: string;
+  updated_at: string;
+  merged_at?: string;
+  closed_at?: string;
   additions: number;
   deletions: number;
   changedFiles: number;
@@ -124,6 +124,102 @@ export interface CreatePROptions {
   head: string;
   base: string;
   draft?: boolean;
+}
+
+// ============================================================================
+// Raw Types (matching gh CLI JSON output with camelCase)
+// ============================================================================
+
+/**
+ * Raw GitHub Issue from gh CLI (camelCase)
+ */
+interface RawGHIssue {
+  number: number;
+  title: string;
+  body: string;
+  state: "OPEN" | "CLOSED";
+  stateReason?: string;
+  labels: Array<{ name: string }>;
+  assignees: Array<{ login: string }>;
+  author: { login: string };
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  url: string;
+  comments: { totalCount: number };
+  milestone?: { title: string; number: number };
+}
+
+/**
+ * Raw GitHub PR from gh CLI (camelCase)
+ */
+interface RawGHPR {
+  number: number;
+  title: string;
+  body: string;
+  state: "OPEN" | "CLOSED" | "MERGED";
+  isDraft: boolean;
+  author: { login: string };
+  headRefName: string;
+  baseRefName: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+  mergedAt?: string;
+  closedAt?: string;
+  additions: number;
+  deletions: number;
+  changedFiles: number;
+}
+
+// ============================================================================
+// Transformation Functions
+// ============================================================================
+
+/**
+ * Transform raw gh CLI issue to snake_case interface
+ */
+function transformIssue(raw: RawGHIssue): GHIssue {
+  return {
+    number: raw.number,
+    title: raw.title,
+    body: raw.body,
+    state: raw.state,
+    stateReason: raw.stateReason,
+    labels: raw.labels,
+    assignees: raw.assignees,
+    author: raw.author,
+    created_at: raw.createdAt,
+    updated_at: raw.updatedAt,
+    closed_at: raw.closedAt,
+    url: raw.url,
+    comments: raw.comments,
+    milestone: raw.milestone,
+  };
+}
+
+/**
+ * Transform raw gh CLI PR to snake_case interface
+ */
+function transformPR(raw: RawGHPR): GHPR {
+  return {
+    number: raw.number,
+    title: raw.title,
+    body: raw.body,
+    state: raw.state,
+    isDraft: raw.isDraft,
+    author: raw.author,
+    headRefName: raw.headRefName,
+    baseRefName: raw.baseRefName,
+    url: raw.url,
+    created_at: raw.createdAt,
+    updated_at: raw.updatedAt,
+    merged_at: raw.mergedAt,
+    closed_at: raw.closedAt,
+    additions: raw.additions,
+    deletions: raw.deletions,
+    changedFiles: raw.changedFiles,
+  };
 }
 
 // ============================================================================
@@ -247,7 +343,8 @@ export class GHClient {
     }
 
     const result = await this.exec(args);
-    return JSON.parse(result) as GHIssue[];
+    const issues = JSON.parse(result) as RawGHIssue[];
+    return issues.map(transformIssue);
   }
 
   /**
@@ -262,7 +359,8 @@ export class GHClient {
       "number,title,body,state,stateReason,labels,assignees,author,createdAt,updatedAt,closedAt,url,comments,milestone",
     ]);
 
-    return JSON.parse(result) as GHIssue;
+    const issue = JSON.parse(result) as RawGHIssue;
+    return transformIssue(issue);
   }
 
   /**
@@ -301,8 +399,8 @@ export class GHClient {
         id: String(c.id),
         body: c.body,
         author: { login: c.user.login },
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
       }));
     } catch {
       // Multi-page case: arrays are concatenated like "[...][...][...]"
@@ -324,8 +422,8 @@ export class GHClient {
         id: String(c.id),
         body: c.body,
         author: { login: c.user.login },
-        createdAt: c.created_at,
-        updatedAt: c.updated_at,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
       }));
     }
   }
@@ -424,7 +522,8 @@ export class GHClient {
     }
 
     const result = await this.exec(args);
-    return JSON.parse(result) as GHPR[];
+    const prs = JSON.parse(result) as RawGHPR[];
+    return prs.map(transformPR);
   }
 
   /**
@@ -439,7 +538,8 @@ export class GHClient {
       "number,title,body,state,isDraft,author,headRefName,baseRefName,url,createdAt,updatedAt,mergedAt,closedAt,additions,deletions,changedFiles",
     ]);
 
-    return JSON.parse(result) as GHPR;
+    const pr = JSON.parse(result) as RawGHPR;
+    return transformPR(pr);
   }
 
   /**

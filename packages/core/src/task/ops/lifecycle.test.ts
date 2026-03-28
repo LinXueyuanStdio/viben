@@ -72,7 +72,7 @@ describe("lifecycle operations", () => {
         ".viben/tasks/test-task/task.json"
       );
       expect(taskJson.status).toBe("queue");
-      expect(taskJson.queuedAt).toBeDefined();
+      expect(taskJson.queued_at).toBeDefined();
     });
 
     it("should append QUEUE event to events.jsonl", async () => {
@@ -89,7 +89,7 @@ describe("lifecycle operations", () => {
 
       const queueEvent = events.find((e) => e.type === "QUEUE");
       expect(queueEvent).toBeDefined();
-      expect(queueEvent.eventId).toBeDefined();
+      expect(queueEvent.event_id).toBeDefined();
       expect(queueEvent.timestamp).toBeDefined();
     });
 
@@ -184,7 +184,7 @@ describe("lifecycle operations", () => {
         ".viben/tasks/test-task/task.json"
       );
       expect(taskJson.status).toBe("backlog");
-      expect(taskJson.queuedAt).toBeUndefined(); // Should be cleared
+      expect(taskJson.queued_at).toBeUndefined(); // Should be cleared
     });
 
     it("should append DEQUEUE event to events.jsonl", async () => {
@@ -372,8 +372,8 @@ describe("lifecycle operations", () => {
         reviewReason?: string;
       }>(".viben/tasks/test-task/task.json");
       expect(taskJson.status).toBe("completed");
-      expect(taskJson.completedAt).toBeDefined();
-      expect(taskJson.reviewReason).toBe("approved");
+      expect(taskJson.completed_at).toBeDefined();
+      expect(taskJson.review_reason).toBe("approved");
     });
 
     it("should append APPROVED event to events.jsonl", async () => {
@@ -489,7 +489,7 @@ describe("lifecycle operations", () => {
       }>(".viben/tasks/test-task/task.json");
       expect(taskJson.status).toBe("backlog");
       expect(taskJson.pr_url).toBeUndefined(); // Should be cleared
-      expect(taskJson.reviewReason).toBe("rejected");
+      expect(taskJson.review_reason).toBe("rejected");
     });
 
     it("should record rejection reason when provided", async () => {
@@ -575,7 +575,7 @@ describe("lifecycle operations", () => {
         failedAt?: string;
       }>(".viben/tasks/test-task/task.json");
       expect(taskJson.status).toBe("queue");
-      expect(taskJson.queuedAt).toBeDefined();
+      expect(taskJson.queued_at).toBeDefined();
       expect(taskJson.error).toBeUndefined(); // Should be cleared
       expect(taskJson.errorMessage).toBeUndefined(); // Should be cleared
       expect(taskJson.failedAt).toBeUndefined(); // Should be cleared

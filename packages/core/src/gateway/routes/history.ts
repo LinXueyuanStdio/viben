@@ -8,15 +8,15 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { randomUUID } from "crypto";
 
 /**
- * History entry structure (internal camelCase)
+ * History entry structure (snake_case for API and storage)
  */
 export interface HistoryEntry {
   id: string;
-  agentId?: string;
+  agent_id?: string;
   command: string;
   timestamp: string;
-  workspacePath?: string;
-  exitCode?: number;
+  workspace_path?: string;
+  exit_code?: number;
   duration?: number;
 }
 
@@ -34,16 +34,16 @@ interface HistoryEntryResponse {
 }
 
 /**
- * Transform history entry to snake_case response format
+ * Transform history entry to response format (same fields, snake_case)
  */
-function toSnakeCaseEntry(entry: HistoryEntry): HistoryEntryResponse {
+function toResponseEntry(entry: HistoryEntry): HistoryEntryResponse {
   return {
     id: entry.id,
-    agent_id: entry.agentId,
+    agent_id: entry.agent_id,
     command: entry.command,
     timestamp: entry.timestamp,
-    workspace_path: entry.workspacePath,
-    exit_code: entry.exitCode,
+    workspace_path: entry.workspace_path,
+    exit_code: entry.exit_code,
     duration: entry.duration,
   };
 }
@@ -94,22 +94,22 @@ const historyStore: Map<string, HistoryEntry> = new Map();
 function createHistoryEntry(data: CreateHistoryBody): HistoryEntry {
   return {
     id: randomUUID(),
-    agentId: data.agentId || data.agent_id,
+    agent_id: data.agentId || data.agent_id,
     command: data.command,
     timestamp: new Date().toISOString(),
-    workspacePath: data.workspacePath || data.workspace_path,
-    exitCode: data.exitCode ?? data.exit_code,
+    workspace_path: data.workspacePath || data.workspace_path,
+    exit_code: data.exitCode ?? data.exit_code,
     duration: data.duration,
   };
 }
 
 /**
- * Get all history entries, optionally filtered by agentId
+ * Get all history entries, optionally filtered by agent_id
  */
 function getHistoryEntries(agentId?: string): HistoryEntry[] {
   const entries = Array.from(historyStore.values());
   if (agentId) {
-    return entries.filter((entry) => entry.agentId === agentId);
+    return entries.filter((entry) => entry.agent_id === agentId);
   }
   return entries;
 }
@@ -134,7 +134,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
     const entries = allEntries.slice(offset, offset + limit);
 
     return {
-      entries: entries.map(toSnakeCaseEntry),
+      entries: entries.map(toResponseEntry),
       total,
       limit,
       offset,
@@ -153,7 +153,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
       return { error: `History entry not found: ${id}` };
     }
 
-    return toSnakeCaseEntry(entry);
+    return toResponseEntry(entry);
   });
 
   // Create a new history entry
@@ -171,7 +171,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
     historyStore.set(entry.id, entry);
 
     reply.code(201);
-    return toSnakeCaseEntry(entry);
+    return toResponseEntry(entry);
   });
 
   // Delete a specific history entry
@@ -201,7 +201,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
     if (agentId) {
       // Clear only entries for the specified agent
       for (const [id, entry] of historyStore.entries()) {
-        if (entry.agentId === agentId) {
+        if (entry.agent_id === agentId) {
           historyStore.delete(id);
           clearedCount++;
         }

@@ -90,7 +90,7 @@ export interface PlanPhaseResult {
  *
  * if (result.success) {
  *   console.log(`Plan Agent started (PID: ${result.pid})`);
- *   console.log(`Log file: ${result.logFile}`);
+ *   console.log(`Log file: ${result.log_file}`);
  * } else {
  *   console.error(`Failed: ${result.error}`);
  * }
@@ -266,7 +266,7 @@ export async function runPlanPhase(
       agentId,
       worktreePath: repoRoot,
       pid: agentPid,
-      taskDir: taskDirAbs, // Store absolute path
+      task_dir: taskDirAbs, // Store absolute path
       platform,
     },
     repoRoot

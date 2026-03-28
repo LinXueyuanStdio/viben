@@ -195,7 +195,7 @@ function findDuplicates(
 
   // Sort by creation date (older first)
   const sorted = [...issues].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
   for (let i = 1; i < sorted.length; i++) {

@@ -67,16 +67,16 @@ export class ProviderManager {
         type: entry.provider_type as ProviderType,
         name: entry.name,
         apiKey: entry.api_key,
-        baseUrl: entry.base_url,
+        base_url: entry.base_url,
         apiVersion: entry.api_version,
         deployment: entry.deployment,
         timeout: entry.timeout,
-        maxRetries: entry.max_retries,
+        max_retries: entry.max_retries,
         headers: entry.headers,
         isDefault: config.default === id,
         enabled: entry.enabled,
-        createdAt: entry.created_at,
-        updatedAt: entry.updated_at,
+        created_at: entry.created_at,
+        updated_at: entry.updated_at,
       });
     }
 
@@ -99,16 +99,16 @@ export class ProviderManager {
       type: entry.provider_type as ProviderType,
       name: entry.name,
       apiKey: entry.api_key,
-      baseUrl: entry.base_url,
+      base_url: entry.base_url,
       apiVersion: entry.api_version,
       deployment: entry.deployment,
       timeout: entry.timeout,
-      maxRetries: entry.max_retries,
+      max_retries: entry.max_retries,
       headers: entry.headers,
       isDefault: config.default === id,
       enabled: entry.enabled,
-      createdAt: entry.created_at,
-      updatedAt: entry.updated_at,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
     };
   }
 
@@ -128,11 +128,11 @@ export class ProviderManager {
       provider_type: options.type,
       name: options.name,
       api_key: options.apiKey,
-      base_url: options.baseUrl || DEFAULT_BASE_URLS[options.type],
+      base_url: options.base_url || DEFAULT_BASE_URLS[options.type],
       api_version: options.apiVersion,
       deployment: options.deployment,
       timeout: options.timeout,
-      max_retries: options.maxRetries,
+      max_retries: options.max_retries,
       headers: options.headers,
       enabled: true,
       created_at: now,
@@ -153,16 +153,16 @@ export class ProviderManager {
       type: options.type,
       name: options.name,
       apiKey: options.apiKey,
-      baseUrl: entry.base_url,
+      base_url: entry.base_url,
       apiVersion: entry.api_version,
       deployment: entry.deployment,
       timeout: entry.timeout,
-      maxRetries: entry.max_retries,
+      max_retries: entry.max_retries,
       headers: entry.headers,
       isDefault: config.default === id,
       enabled: true,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
   }
 
@@ -186,11 +186,11 @@ export class ProviderManager {
       provider_type: updates.type || entry.provider_type,
       name: updates.name || entry.name,
       api_key: updates.apiKey ?? entry.api_key,
-      base_url: updates.baseUrl ?? entry.base_url,
+      base_url: updates.base_url ?? entry.base_url,
       api_version: updates.apiVersion ?? entry.api_version,
       deployment: updates.deployment ?? entry.deployment,
       timeout: updates.timeout ?? entry.timeout,
-      max_retries: updates.maxRetries ?? entry.max_retries,
+      max_retries: updates.max_retries ?? entry.max_retries,
       headers: updates.headers ?? entry.headers,
       updated_at: now,
     };
@@ -203,16 +203,16 @@ export class ProviderManager {
       type: updated.provider_type as ProviderType,
       name: updated.name,
       apiKey: updated.api_key,
-      baseUrl: updated.base_url,
+      base_url: updated.base_url,
       apiVersion: updated.api_version,
       deployment: updated.deployment,
       timeout: updated.timeout,
-      maxRetries: updated.max_retries,
+      max_retries: updated.max_retries,
       headers: updated.headers,
       isDefault: config.default === id,
       enabled: updated.enabled,
-      createdAt: updated.created_at,
-      updatedAt: now,
+      created_at: updated.created_at,
+      updated_at: now,
     };
   }
 
@@ -289,7 +289,7 @@ export class ProviderManager {
         id,
         connected: false,
         error: "Provider not found",
-        checkedAt: now,
+        checked_at: now,
       };
     }
 
@@ -298,7 +298,7 @@ export class ProviderManager {
         id,
         connected: false,
         error: "Provider is disabled",
-        checkedAt: now,
+        checked_at: now,
       };
     }
 
@@ -311,7 +311,7 @@ export class ProviderManager {
         id,
         connected: false,
         error: "API key not configured",
-        checkedAt: now,
+        checked_at: now,
       };
     }
 
@@ -321,7 +321,7 @@ export class ProviderManager {
       id,
       connected: true,
       latency: 0,
-      checkedAt: now,
+      checked_at: now,
     };
   }
 

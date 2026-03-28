@@ -152,25 +152,25 @@ describe("WorkspaceManager", () => {
 
   describe("registerWorkspace() / addKnownWorkspace()", () => {
     it("should register a new workspace", async () => {
-      const workspacePath = join(tempDir, "my-project");
-      await mkdir(workspacePath);
+      const workspace_path = join(tempDir, "my-project");
+      await mkdir(workspace_path);
 
-      await manager.registerWorkspace(workspacePath, "My Project");
+      await manager.registerWorkspace(workspace_path, "My Project");
 
       const known = await manager.readKnownWorkspaces();
       expect(known.workspaces).toHaveLength(1);
-      expect(known.workspaces[0].path).toBe(workspacePath);
+      expect(known.workspaces[0].path).toBe(workspace_path);
       expect(known.workspaces[0].name).toBe("My Project");
       expect(known.workspaces[0].registeredAt).toBeDefined();
       expect(known.workspaces[0].lastAccessed).toBeDefined();
     });
 
     it("should update lastAccessed when registering existing workspace", async () => {
-      const workspacePath = join(tempDir, "existing-project");
-      await mkdir(workspacePath);
+      const workspace_path = join(tempDir, "existing-project");
+      await mkdir(workspace_path);
 
       // Register first time
-      await manager.registerWorkspace(workspacePath, "Original Name");
+      await manager.registerWorkspace(workspace_path, "Original Name");
       const firstKnown = await manager.readKnownWorkspaces();
       const firstAccessed = firstKnown.workspaces[0].lastAccessed;
       const registeredAt = firstKnown.workspaces[0].registeredAt;
@@ -179,7 +179,7 @@ describe("WorkspaceManager", () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Register again with new name
-      await manager.registerWorkspace(workspacePath, "New Name");
+      await manager.registerWorkspace(workspace_path, "New Name");
       const secondKnown = await manager.readKnownWorkspaces();
 
       // Should still be one workspace
@@ -193,10 +193,10 @@ describe("WorkspaceManager", () => {
     });
 
     it("should normalize path when registering", async () => {
-      const workspacePath = join(tempDir, "project", "..", "project");
+      const workspace_path = join(tempDir, "project", "..", "project");
       await mkdir(join(tempDir, "project"));
 
-      await manager.registerWorkspace(workspacePath);
+      await manager.registerWorkspace(workspace_path);
 
       const known = await manager.readKnownWorkspaces();
       // Path should be normalized (no "..")
@@ -206,16 +206,16 @@ describe("WorkspaceManager", () => {
 
   describe("unregisterWorkspace() / removeKnownWorkspace()", () => {
     it("should unregister an existing workspace", async () => {
-      const workspacePath = join(tempDir, "to-remove");
-      await mkdir(workspacePath);
+      const workspace_path = join(tempDir, "to-remove");
+      await mkdir(workspace_path);
 
       // Register first
-      await manager.registerWorkspace(workspacePath);
+      await manager.registerWorkspace(workspace_path);
       let known = await manager.readKnownWorkspaces();
       expect(known.workspaces).toHaveLength(1);
 
       // Unregister
-      await manager.unregisterWorkspace(workspacePath);
+      await manager.unregisterWorkspace(workspace_path);
       known = await manager.readKnownWorkspaces();
       expect(known.workspaces).toHaveLength(0);
     });

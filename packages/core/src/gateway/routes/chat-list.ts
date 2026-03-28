@@ -181,10 +181,10 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
                 workspace_path: globalPath,
                 icon_type: "group",
                 is_global: true,
-                last_active: gc.updatedAt,
+                last_active: gc.updated_at,
                 metadata: {
                   created_by: gc.createdBy,
-                  created_at: gc.createdAt,
+                  created_at: gc.created_at,
                   settings: gc.settings,
                 },
               });
@@ -214,10 +214,10 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
                   workspace_path: workspacePath,
                   icon_type: "group",
                   is_global: false,
-                  last_active: gc.updatedAt,
+                  last_active: gc.updated_at,
                   metadata: {
                     created_by: gc.createdBy,
-                    created_at: gc.createdAt,
+                    created_at: gc.created_at,
                     settings: gc.settings,
                   },
                 });

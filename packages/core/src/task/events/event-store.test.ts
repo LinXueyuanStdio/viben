@@ -555,7 +555,7 @@ describe("Complete State Transition Flows", () => {
 
       mockGetTask.mockResolvedValue(currentTask);
       mockUpdateTask.mockImplementation(async (_, updates) => {
-        currentTask = { ...currentTask, ...updates } as UnifiedTask;
+        currentTask = { ...current_task, ...updates } as UnifiedTask;
         return currentTask;
       });
 
@@ -582,7 +582,7 @@ describe("Complete State Transition Flows", () => {
     // PAUSE
     mockGetTask.mockResolvedValue(currentTask);
     mockUpdateTask.mockImplementation(async (_, updates) => {
-      currentTask = { ...currentTask, ...updates } as UnifiedTask;
+      currentTask = { ...current_task, ...updates } as UnifiedTask;
       return currentTask;
     });
 
@@ -783,7 +783,7 @@ describe("Self-Transition Tests", () => {
     for (let i = 0; i < 5; i++) {
       mockGetTask.mockResolvedValue(currentTask);
       mockUpdateTask.mockImplementation(async (_, updates) => {
-        currentTask = { ...currentTask, ...updates } as UnifiedTask;
+        currentTask = { ...current_task, ...updates } as UnifiedTask;
         return currentTask;
       });
 
@@ -801,7 +801,7 @@ describe("Self-Transition Tests", () => {
     // Verify final state
     expect(currentTask.machine_context?.current_subtask_index).toBe(5);
     expect(currentTask.status).toBe("in_progress");
-    expect(currentTask.xstateState).toEqual({ in_progress: "implement" });
+    expect(currentTask.xstate_state).toEqual({ in_progress: "implement" });
   });
 
   it("validates SUBTASK_COMPLETE without applying", async () => {

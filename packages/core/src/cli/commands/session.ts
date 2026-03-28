@@ -96,12 +96,12 @@ function getWorkspaceDir(repoRoot: string, developer: string): string {
 /**
  * Parse sessions from index.md file
  */
-function parseSessionsFromIndex(indexPath: string): SessionEntry[] {
-  if (!existsSync(indexPath)) {
+function parseSessionsFromIndex(index_path: string): SessionEntry[] {
+  if (!existsSync(index_path)) {
     return [];
   }
 
-  const content = readFileSync(indexPath, "utf-8");
+  const content = readFileSync(index_path, "utf-8");
   const sessions: SessionEntry[] = [];
 
   // Find the @@@auto:session-history section
@@ -171,7 +171,7 @@ async function addSession(
   title: string,
   commit: string,
   summary: string,
-  extraContent: string
+  extra_content: string
 ): Promise<SessionAddResult> {
   const developer = getDeveloper(repoRoot);
   if (!developer) {
@@ -183,21 +183,21 @@ async function addSession(
     throw new Error("Workspace directory not found");
   }
 
-  const indexPath = join(workspaceDir, "index.md");
+  const index_path = join(workspaceDir, "index.md");
   const today = getTodayDate();
 
   // Get current journal info
   const { file: journalFile, number: currentNum, lines: currentLines } = getJournalInfo(repoRoot);
-  const currentSession = getCurrentSessionNumber(indexPath);
+  const currentSession = getCurrentSessionNumber(index_path);
   const newSession = currentSession + 1;
 
   // Generate session content
   const sessionContent = generateSessionContent({
-    sessionNum: newSession,
+    session_num: newSession,
     title,
     commit,
     summary,
-    extraContent,
+    extra_content,
     date: today,
   });
   const contentLines = sessionContent.split("\n").length;
@@ -244,14 +244,14 @@ async function addSession(
   console.error("");
 
   // Update index.md
-  const activeFile = `${FILE_JOURNAL_PREFIX}${targetNum}.md`;
+  const active_file = `${FILE_JOURNAL_PREFIX}${targetNum}.md`;
   const updated = await updateIndexWithSession({
-    indexPath,
+    index_path,
     workspaceDir,
-    sessionNum: newSession,
+    session_num: newSession,
     title,
     commit,
-    activeFile,
+    active_file,
     date: today,
   });
 
@@ -262,7 +262,7 @@ async function addSession(
   console.error(`Updating index.md for session ${newSession}...`);
   console.error(`  Title: ${title}`);
   console.error(`  Commit: ${commit}`);
-  console.error(`  Active File: ${activeFile}`);
+  console.error(`  Active File: ${active_file}`);
   console.error("");
   console.error("[OK] Updated index.md successfully!");
   console.error("");
@@ -346,10 +346,10 @@ export function registerSessionCommand(program: Command): void {
           }
 
           // Read extra content from file or stdin
-          let extraContent = "(Add details)";
+          let extra_content = "(Add details)";
           if (options.contentFile) {
             if (existsSync(options.contentFile)) {
-              extraContent = readFileSync(options.contentFile, "utf-8");
+              extra_content = readFileSync(options.contentFile, "utf-8");
             }
           } else if (!process.stdin.isTTY && process.stdin.readable && !process.stdin.readableEnded) {
             // Read from stdin if available (non-interactive mode)
@@ -398,7 +398,7 @@ export function registerSessionCommand(program: Command): void {
 
               const stdinContent = await readPromise;
               if (stdinContent) {
-                extraContent = stdinContent;
+                extra_content = stdinContent;
               }
             } catch {
               // Keep default value if stdin read fails
@@ -410,7 +410,7 @@ export function registerSessionCommand(program: Command): void {
             options.title,
             options.commit,
             options.summary,
-            extraContent
+            extra_content
           );
 
           output(
@@ -460,8 +460,8 @@ export function registerSessionCommand(program: Command): void {
 
             for (const dev of developers) {
               const workspaceDir = getWorkspaceDir(repoRoot, dev);
-              const indexPath = join(workspaceDir, "index.md");
-              const sessions = parseSessionsFromIndex(indexPath);
+              const index_path = join(workspaceDir, "index.md");
+              const sessions = parseSessionsFromIndex(index_path);
 
               for (const s of sessions) {
                 allSessions.push({ ...s, developer: dev });
@@ -496,8 +496,8 @@ export function registerSessionCommand(program: Command): void {
             }
 
             const workspaceDir = getWorkspaceDir(repoRoot, developer);
-            const indexPath = join(workspaceDir, "index.md");
-            allSessions = parseSessionsFromIndex(indexPath);
+            const index_path = join(workspaceDir, "index.md");
+            allSessions = parseSessionsFromIndex(index_path);
 
             // Sessions are already in descending order in the file
           }

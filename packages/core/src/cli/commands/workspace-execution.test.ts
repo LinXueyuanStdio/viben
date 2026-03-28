@@ -348,8 +348,8 @@ skills:
 agents:
   - main
   - reviewer
-createdAt: "2024-01-01T00:00:00.000Z"
-updatedAt: "2024-01-15T00:00:00.000Z"
+created_at: "2024-01-01T00:00:00.000Z"
+updated_at: "2024-01-15T00:00:00.000Z"
 `
       );
 
@@ -360,8 +360,8 @@ updatedAt: "2024-01-15T00:00:00.000Z"
         mcp: { enabled: ["filesystem", "git"] },
         skills: { enabled: ["code-review", "commit"] },
         agents: ["main", "reviewer"],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(mockWorkspace);
@@ -393,8 +393,8 @@ updatedAt: "2024-01-15T00:00:00.000Z"
         mcp: { enabled: ["filesystem"] },
         skills: { enabled: ["code-review"] },
         agents: ["main"],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(mockWorkspace);
@@ -408,8 +408,8 @@ updatedAt: "2024-01-15T00:00:00.000Z"
           mcp: { enabled: string[]; count: number };
           skills: { enabled: string[]; count: number };
           agents: { list: string[]; count: number };
-          createdAt: string;
-          updatedAt: string;
+          created_at: string;
+          updated_at: string;
         };
       };
 
@@ -446,8 +446,8 @@ updatedAt: "2024-01-15T00:00:00.000Z"
         mcp: { enabled: [] },
         skills: { enabled: [] },
         agents: [],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(mockWorkspace);
@@ -486,8 +486,8 @@ updatedAt: "2024-01-15T00:00:00.000Z"
         mcp: { enabled: [] },
         skills: { enabled: [] },
         agents: [],
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-15T00:00:00.000Z",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2024-01-15T00:00:00.000Z",
       };
 
       vi.mocked(workspaceManager.getCurrentWorkspace).mockResolvedValue(mockWorkspace);

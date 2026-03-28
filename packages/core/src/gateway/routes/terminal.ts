@@ -56,7 +56,7 @@ interface TerminalMessage {
   /** Error message (for type: "error") */
   message?: string;
   /** Session ID (for type: "connected") */
-  sessionId?: string;
+  session_id?: string;
 }
 
 /**
@@ -65,7 +65,7 @@ interface TerminalMessage {
 interface PtySession {
   id: string;
   pty: IPty;
-  createdAt: Date;
+  created_at: Date;
 }
 
 /**
@@ -204,14 +204,14 @@ export function registerTerminalRoutes(fastify: FastifyInstance, _state?: AppSta
       const session: PtySession = {
         id: sessionId,
         pty,
-        createdAt: new Date(),
+        created_at: new Date(),
       };
       sessions.set(sessionId, session);
 
       // Send connected message
       const connectedMsg: TerminalMessage = {
         type: "connected",
-        sessionId,
+        session_id: sessionId,
       };
       socket.send(JSON.stringify(connectedMsg));
 

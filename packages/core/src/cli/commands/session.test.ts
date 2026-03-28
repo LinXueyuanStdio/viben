@@ -298,7 +298,7 @@ describe("Session CLI Commands", () => {
 
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionNum: 11,
+          session_num: 11,
         })
       );
     });
@@ -651,7 +651,7 @@ describe("Session CLI Commands", () => {
       // Python: generate_session_content(session_num, title, commit, summary, extra_content, today)
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionNum: 16, // current + 1
+          session_num: 16, // current + 1
           title: "Test Title",
           commit: "abc123,def456",
           summary: "Test summary",
@@ -670,10 +670,10 @@ describe("Session CLI Commands", () => {
       // Python: update_index(index_file, dev_dir, title, commit, new_session, active_file, today)
       expect(updateIndexWithSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionNum: 11,
+          session_num: 11,
           title: "Index Update Test",
           commit: "xyz789",
-          activeFile: "journal-1.md",
+          active_file: "journal-1.md",
           date: "2024-03-20",
         })
       );
@@ -770,7 +770,7 @@ describe("Session CLI Commands", () => {
       // active_file should be journal-5.md
       expect(updateIndexWithSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          activeFile: "journal-5.md",
+          active_file: "journal-5.md",
         })
       );
     });
@@ -795,7 +795,7 @@ describe("Session CLI Commands", () => {
       // new_session should be 0 + 1 = 1
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionNum: 1,
+          session_num: 1,
         })
       );
     });
@@ -809,7 +809,7 @@ describe("Session CLI Commands", () => {
       // Python: new_session = current_session + 1
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionNum: 43,
+          session_num: 43,
         })
       );
     });
@@ -876,11 +876,11 @@ describe("Session CLI Commands", () => {
       // Python updates: @@@auto:current-status, @@@auto:active-documents, @@@auto:session-history
       expect(updateIndexWithSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          indexPath: expect.stringContaining("index.md"),
+          index_path: expect.stringContaining("index.md"),
           workspaceDir: expect.any(String),
-          sessionNum: expect.any(Number),
+          session_num: expect.any(Number),
           title: "Title",
-          activeFile: expect.stringMatching(/journal-\d+\.md/),
+          active_file: expect.stringMatching(/journal-\d+\.md/),
         })
       );
     });
@@ -1020,7 +1020,7 @@ describe("Session CLI Commands", () => {
 
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
-          extraContent: "Extra content from file",
+          extra_content: "Extra content from file",
         })
       );
     });
@@ -1056,11 +1056,11 @@ describe("Session CLI Commands", () => {
 
       // 1. Generate session content
       expect(generateSessionContent).toHaveBeenCalledWith({
-        sessionNum: 6,
+        session_num: 6,
         title: "Complete Test",
         commit: "abc123",
         summary: "Test summary",
-        extraContent: "(Add details)",
+        extra_content: "(Add details)",
         date: "2024-03-03",
       });
 
@@ -1073,12 +1073,12 @@ describe("Session CLI Commands", () => {
 
       // 3. Update index.md
       expect(updateIndexWithSession).toHaveBeenCalledWith({
-        indexPath: "/workspace/.viben/workspace/test-user/index.md",
+        index_path: "/workspace/.viben/workspace/test-user/index.md",
         workspaceDir: "/workspace/.viben/workspace/test-user",
-        sessionNum: 6,
+        session_num: 6,
         title: "Complete Test",
         commit: "abc123",
-        activeFile: "journal-1.md",
+        active_file: "journal-1.md",
         date: "2024-03-03",
       });
     });
@@ -1113,7 +1113,7 @@ describe("Session CLI Commands", () => {
       // Should update index with new journal file
       expect(updateIndexWithSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          activeFile: "journal-3.md",
+          active_file: "journal-3.md",
         })
       );
     });

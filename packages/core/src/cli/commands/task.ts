@@ -456,7 +456,7 @@ export function registerTaskCommand(program: Command): void {
 
           output(ctx, successResponse({
             task: taskJson,
-            taskDir: result.taskDir,
+            task_dir: result.task_dir,
             dirName: result.dirName,
             files,
             runtime: result.runtime,
@@ -605,7 +605,7 @@ export function registerTaskCommand(program: Command): void {
           }
 
           const queueId = enqueueResult.additionalData?.queue_id;
-          output(ctx, successResponse({ taskDir: relativePath, status: "queue", contextInitialized, queueId }), () => {
+          output(ctx, successResponse({ task_dir: relativePath, status: "queue", contextInitialized, queueId }), () => {
             console.log(chalk.green(`Created and enqueued: ${dirName}`));
             console.log(chalk.gray(`Status: backlog -> queue`));
             if (queueId) {
@@ -620,7 +620,7 @@ export function registerTaskCommand(program: Command): void {
           });
         } else {
           // Show what was configured
-          output(ctx, successResponse({ taskDir: relativePath, contextInitialized }), () => {
+          output(ctx, successResponse({ task_dir: relativePath, contextInitialized }), () => {
             console.log(chalk.green(`Created task: ${dirName}`));
             console.log();
 
@@ -673,7 +673,7 @@ export function registerTaskCommand(program: Command): void {
         // For JSON output, include all data
         output(ctx, successResponse({
           task: taskJson,
-          taskDir: result.taskDir,
+          task_dir: result.task_dir,
           dirName: result.dirName,
           files,
           worktree,
@@ -811,22 +811,22 @@ export function registerTaskCommand(program: Command): void {
           // Timestamps Section
           console.log(chalk.bold("Timestamps"));
           const timestamps: Record<string, string> = {
-            "Created At": taskJson.createdAt || "-",
+            "Created At": taskJson.created_at || "-",
           };
-          if (taskJson.queuedAt) {
-            timestamps["Queued At"] = taskJson.queuedAt;
+          if (taskJson.queued_at) {
+            timestamps["Queued At"] = taskJson.queued_at;
           }
-          if (taskJson.startedAt) {
-            timestamps["Started At"] = taskJson.startedAt;
+          if (taskJson.started_at) {
+            timestamps["Started At"] = taskJson.started_at;
           }
-          if (taskJson.checkPassedAt) {
-            timestamps["Check Passed"] = taskJson.checkPassedAt;
+          if (taskJson.check_passed_at) {
+            timestamps["Check Passed"] = taskJson.check_passed_at;
           }
-          if (taskJson.prCreatedAt) {
-            timestamps["PR Created"] = taskJson.prCreatedAt;
+          if (taskJson.pr_created_at) {
+            timestamps["PR Created"] = taskJson.pr_created_at;
           }
-          if (taskJson.completedAt) {
-            timestamps["Completed At"] = taskJson.completedAt;
+          if (taskJson.completed_at) {
+            timestamps["Completed At"] = taskJson.completed_at;
           }
           outputKeyValue(ctx, timestamps);
 
@@ -878,11 +878,11 @@ export function registerTaskCommand(program: Command): void {
           }
 
           // Session Info (if available)
-          if (result.runtime?.sessionId) {
+          if (result.runtime?.session_id) {
             console.log();
             console.log(chalk.bold("Session"));
             outputKeyValue(ctx, {
-              "Session ID": result.runtime.sessionId,
+              "Session ID": result.runtime.session_id,
             });
           }
 
@@ -1027,8 +1027,8 @@ export function registerTaskCommand(program: Command): void {
         if (options.resume) {
           // Read session ID from task.json or CLI option
           let sessionId = options.session;
-          if (!sessionId && taskJson?.sessionId) {
-            sessionId = taskJson.sessionId;
+          if (!sessionId && taskJson?.session_id) {
+            sessionId = taskJson.session_id;
           }
 
           if (!sessionId) {
@@ -1098,15 +1098,15 @@ export function registerTaskCommand(program: Command): void {
             console.log();
             console.log(`  ID:        ${result.agentId}`);
             console.log(`  PID:       ${result.pid}`);
-            console.log(`  Session:   ${result.sessionId || "N/A"}`);
+            console.log(`  Session:   ${result.session_id || "N/A"}`);
             console.log(`  Working:   ${result.workingDir}`);
-            console.log(`  Log:       ${result.logFile}`);
+            console.log(`  Log:       ${result.log_file}`);
             console.log();
-            console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+            console.log(chalk.yellow(`To monitor: tail -f ${result.log_file}`));
             console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
-            if (result.sessionId) {
+            if (result.session_id) {
               const adapter = createCLIAdapter(platform);
-              const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.workingDir);
+              const resumeCmd = adapter.getResumeCommandStr(result.session_id, result.workingDir);
               console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
             }
           } else {
@@ -1439,7 +1439,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         output(ctx, successResponse({
-          taskDir: result.taskDir,
+          task_dir: result.taskDir,
           files: result.files,
         }), () => {
           console.log(chalk.green(`Initialized context files for: ${task}`));
@@ -1662,9 +1662,9 @@ export function registerTaskCommand(program: Command): void {
 
         // Summary view (default)
         cmdStatusSummary(repoRoot, {
-          filterAssignee: options.assignee,
-          filterStatus: options.status,
-          onlyRunning: options.running,
+          filter_assignee: options.assignee,
+          filter_status: options.status,
+          only_running: options.running,
         }, ctx);
 
       } catch (error) {
@@ -1692,52 +1692,74 @@ export function registerTaskCommand(program: Command): void {
         }
         console.log();
 
-        const result = createPR(repoRoot, task, { dryRun });
+        const result = createPR(repoRoot, task, { dry_run: dryRun });
 
         if (!result.success) {
           throw CliError.operationFailed("Create PR", result.error || "Unknown error");
         }
 
         // Display task info
-        console.log(`Task: ${result.taskName}`);
-        console.log(`Base branch: ${result.baseBranch}`);
-        console.log(`Current branch: ${result.currentBranch}`);
+        console.log(`Task: ${result.task_name}`);
+        console.log(`Base branch: ${result.base_branch}`);
+        console.log(`Current branch: ${result.current_branch}`);
         console.log();
 
-        if (dryRun && result.dryRunInfo) {
+        if (dryRun && result.dry_run_info) {
           // Show dry run info
-          if (result.hadStagedChanges) {
-            console.log(`[DRY-RUN] Would commit with message: ${result.commitMessage}`);
+          if (result.had_staged_changes) {
+            console.log(`[DRY-RUN] Would commit with message: ${result.commit_message}`);
             console.log("[DRY-RUN] Staged files:");
-            for (const file of result.dryRunInfo.stagedFiles) {
+            for (const file of result.dry_run_info.staged_files) {
               console.log(`  - ${file}`);
             }
-          } else if (result.unpushedCommits) {
-            console.log(`Found ${result.unpushedCommits} unpushed commit(s)`);
+          } else if (result.unpushed_commits) {
+            console.log(`Found ${result.unpushed_commits} unpushed commit(s)`);
           }
 
-          console.log(`[DRY-RUN] Would push to: origin/${result.currentBranch}`);
-          console.log("[DRY-RUN] Would create PR:");
-          console.log(`  Title: ${result.dryRunInfo.prTitle}`);
-          console.log(`  Base:  ${result.dryRunInfo.prBase}`);
-          console.log(`  Head:  ${result.dryRunInfo.prHead}`);
+          if (result.local_only) {
+            console.log("[DRY-RUN] No remote detected, would skip push and PR creation");
+          } else {
+            console.log(`[DRY-RUN] Would push to: origin/${result.current_branch}`);
+            console.log("[DRY-RUN] Would create PR:");
+            console.log(`  Title: ${result.dry_run_info.pr_title}`);
+            console.log(`  Base:  ${result.dry_run_info.pr_base}`);
+            console.log(`  Head:  ${result.dry_run_info.pr_head}`);
+            console.log(`  pr_url: ${result.pr_url}`);
+          }
           console.log("[DRY-RUN] Would update task.json:");
           console.log("  status: review");
-          console.log(`  pr_url: ${result.prUrl}`);
+        } else if (result.local_only) {
+          // Local-only mode: no remote
+          console.log(chalk.yellow("=== Local-Only Mode ==="));
+          console.log(chalk.yellow("No remote detected. Skipping push and PR creation."));
+          console.log();
+          if (result.had_staged_changes) {
+            console.log(chalk.green(`Committed: ${result.commit_message}`));
+          } else if (result.unpushed_commits) {
+            console.log(`Found ${result.unpushed_commits} unpushed commit(s)`);
+          }
+          console.log(chalk.green(`Task status updated to 'review'`));
+          console.log();
+          console.log(chalk.cyan("To merge changes to main repo:"));
+          console.log(chalk.cyan(`  cd <main-repo> && git merge ${result.current_branch}`));
         } else {
           // Show actual results
-          if (result.hadStagedChanges) {
-            console.log(chalk.green(`Committed: ${result.commitMessage}`));
-          } else if (result.unpushedCommits) {
-            console.log(`Found ${result.unpushedCommits} unpushed commit(s)`);
+          if (result.had_staged_changes) {
+            console.log(chalk.green(`Committed: ${result.commit_message}`));
+          } else if (result.unpushed_commits) {
+            console.log(`Found ${result.unpushed_commits} unpushed commit(s)`);
           }
-          console.log(chalk.green(`Pushed to origin/${result.currentBranch}`));
+          console.log(chalk.green(`Pushed to origin/${result.current_branch}`));
           console.log(chalk.green(`Task status updated to 'review'`));
         }
 
         console.log();
-        console.log(chalk.green("=== PR Created Successfully ==="));
-        console.log(`PR URL: ${result.prUrl}`);
+        if (result.local_only) {
+          console.log(chalk.green("=== Ready for Review (Local) ==="));
+        } else {
+          console.log(chalk.green("=== PR Created Successfully ==="));
+          console.log(`PR URL: ${result.pr_url}`);
+        }
 
       } catch (error) {
         handleCommandError(ctx, error);
@@ -2073,29 +2095,29 @@ export function registerTaskCommand(program: Command): void {
           }
 
           // Get workspace directory for developer
-          const devDir = join(repoRoot, DIR_VIBEN, DIR_WORKSPACE, developer);
-          if (!existsSync(devDir)) {
+          const dev_dir = join(repoRoot, DIR_VIBEN, DIR_WORKSPACE, developer);
+          if (!existsSync(dev_dir)) {
             throw CliError.operationFailed(
               "Add session",
-              `Workspace directory not found: ${devDir}`
+              `Workspace directory not found: ${dev_dir}`
             );
           }
 
-          const indexPath = join(devDir, "index.md");
+          const index_path = join(dev_dir, "index.md");
           const today = getTodayDate();
 
           // Get journal info
-          const journalInfo = getLatestJournalInfo(devDir);
-          const currentSession = getSessionNumberFromIndex(indexPath);
+          const journalInfo = getLatestJournalInfo(dev_dir);
+          const currentSession = getSessionNumberFromIndex(index_path);
           const newSession = currentSession + 1;
 
           // Generate session content
           const sessionContent = generateSessionMarkdown({
-            sessionNum: newSession,
+            session_num: newSession,
             title: options.title,
             commit: options.commit,
             summary: options.summary,
-            extraContent: options.content,
+            extra_content: options.content,
             date: today,
           });
           const contentLines = sessionContent.split("\n").length;
@@ -2128,7 +2150,7 @@ export function registerTaskCommand(program: Command): void {
               )
             );
             targetFile = createNewJournalFile(
-              devDir,
+              dev_dir,
               targetNum,
               developer,
               today,
@@ -2140,7 +2162,7 @@ export function registerTaskCommand(program: Command): void {
           // Create initial journal file if none exists
           if (!targetFile) {
             targetNum = 1;
-            targetFile = createNewJournalFile(devDir, targetNum, developer, today, 0);
+            targetFile = createNewJournalFile(dev_dir, targetNum, developer, today, 0);
             console.log(`Created initial: ${targetFile}`);
           }
 
@@ -2154,14 +2176,14 @@ export function registerTaskCommand(program: Command): void {
 
           // Update index.md
           console.log("Updating index.md...");
-          const activeFileName = `journal-${targetNum}.md`;
+          const active_fileName = `journal-${targetNum}.md`;
           const updateSuccess = updateIndexWithNewSession({
-            indexPath,
-            devDir,
-            sessionNum: newSession,
+            index_path,
+            dev_dir,
+            session_num: newSession,
             title: options.title,
             commit: options.commit,
-            activeFile: activeFileName,
+            active_file: active_fileName,
             date: today,
           });
 
@@ -2188,7 +2210,7 @@ export function registerTaskCommand(program: Command): void {
             ctx,
             successResponse({
               session: newSession,
-              journalFile: activeFileName,
+              journalFile: active_fileName,
               title: options.title,
             }),
             () => {
@@ -2241,10 +2263,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.logFile}`);
+          console.log(`  Log:  ${result.log_file}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2292,10 +2314,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.logFile}`);
+          console.log(`  Log:  ${result.log_file}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2343,10 +2365,10 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:   ${result.agentId}`);
           console.log(`  PID:  ${result.pid}`);
-          console.log(`  Log:  ${result.logFile}`);
+          console.log(`  Log:  ${result.log_file}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
           console.log();
 
           output(ctx, successResponse(result));
@@ -2392,7 +2414,7 @@ export function registerTaskCommand(program: Command): void {
         if (result.success) {
           console.log(chalk.green("=== Reward Computation Complete ==="));
           console.log();
-          console.log(`  Log: ${result.logFile}`);
+          console.log(`  Log: ${result.log_file}`);
 
           if (result.warnings && result.warnings.length > 0) {
             console.log();
@@ -2524,7 +2546,7 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  Path:        ${result.worktreePath}`);
           console.log(`  Branch:      ${result.branch}`);
-          console.log(`  Base Branch: ${result.baseBranch}`);
+          console.log(`  Base Branch: ${result.base_branch}`);
           console.log();
           console.log(chalk.yellow("Next step:"));
           console.log(`  viben task work-phase ${task} --worktree ${result.worktreePath}`);
@@ -2661,7 +2683,7 @@ export function registerTaskCommand(program: Command): void {
         const result = await runWorkPhase({
           repoRoot,
           workingDir,
-          taskDir: taskDirAbs,
+          task_dir: taskDirAbs,
           platform,
           verbose: options.verbose,
           detach: options.detach !== false,
@@ -2677,13 +2699,13 @@ export function registerTaskCommand(program: Command): void {
           console.log();
           console.log(`  ID:       ${result.agentId}`);
           console.log(`  PID:      ${result.pid}`);
-          if (result.sessionId) {
-            console.log(`  Session:  ${result.sessionId}`);
+          if (result.session_id) {
+            console.log(`  Session:  ${result.session_id}`);
           }
-          console.log(`  Log:      ${result.logFile}`);
+          console.log(`  Log:      ${result.log_file}`);
           console.log();
           console.log(chalk.yellow("To monitor:"));
-          console.log(`  tail -f ${result.logFile}`);
+          console.log(`  tail -f ${result.log_file}`);
           console.log(`  viben swarm status ${task}`);
           console.log();
 
@@ -2763,7 +2785,7 @@ export function registerTaskCommand(program: Command): void {
         if (result.success) {
           console.log(chalk.green("Check phase validation passed."));
           // Record timestamp when check phase passes
-          updateTaskField(taskDir, "checkPassedAt", new Date().toISOString());
+          updateTaskField(taskDir, "check_passed_at", new Date().toISOString());
         } else {
           console.log(chalk.red("Check phase validation failed:"));
           console.log(chalk.red(`  ${result.error}`));
@@ -2861,7 +2883,7 @@ export function registerTaskCommand(program: Command): void {
         }
 
         // Human-readable output
-        console.log(chalk.bold.cyan(`=== Stuck Check: ${result.taskDir} ===`));
+        console.log(chalk.bold.cyan(`=== Stuck Check: ${result.task_dir} ===`));
         console.log();
 
         // Overall status
@@ -2899,11 +2921,11 @@ export function registerTaskCommand(program: Command): void {
           console.log(chalk.cyan("Task Info:"));
           console.log(`  Status:   ${formatStatus(result.task.status)}`);
           console.log(`  Assignee: ${result.task.assignee || "-"}`);
-          if (result.task.lastEvent) {
-            console.log(`  Last Event: ${result.task.lastEvent.type} @ ${result.task.lastEvent.timestamp}`);
+          if (result.task.last_event) {
+            console.log(`  Last Event: ${result.task.last_event.type} @ ${result.task.last_event.timestamp}`);
           }
-          if (result.task.updatedAt) {
-            console.log(`  Updated:  ${result.task.updatedAt}`);
+          if (result.task.updated_at) {
+            console.log(`  Updated:  ${result.task.updated_at}`);
           }
         }
 

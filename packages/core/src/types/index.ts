@@ -193,8 +193,8 @@ export interface Agent {
   customVariables?: CustomVariable[];
   /** Environment variable references */
   envVariables?: string[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AgentConfig {
@@ -222,16 +222,16 @@ export interface AgentConfig {
 
 export interface AgentSession {
   id: string;
-  agentId: string;
+  agent_id: string;
   name?: string;
-  createdAt: string;
-  lastAccessedAt: string;
+  created_at: string;
+  last_accessed_at: string;
 }
 
 export interface AgentMemory {
-  agentId: string;
+  agent_id: string;
   content: string;
-  updatedAt: string;
+  updated_at: string;
 }
 
 export interface DailyLog {
@@ -306,7 +306,7 @@ export interface Provider {
   type: ProviderType;
   name: string;
   apiKey?: string;
-  baseUrl?: string;
+  base_url?: string;
   /** API version (e.g., "2024-01" for Anthropic) */
   apiVersion?: string;
   /** Azure deployment name */
@@ -314,24 +314,24 @@ export interface Provider {
   /** Request timeout in seconds */
   timeout?: number;
   /** Maximum retry attempts */
-  maxRetries?: number;
+  max_retries?: number;
   /** Custom headers for requests */
   headers?: Record<string, string>;
   isDefault: boolean;
   enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProviderConfig {
   type: ProviderType;
   name: string;
   apiKey?: string;
-  baseUrl?: string;
+  base_url?: string;
   apiVersion?: string;
   deployment?: string;
   timeout?: number;
-  maxRetries?: number;
+  max_retries?: number;
   headers?: Record<string, string>;
 }
 
@@ -340,18 +340,18 @@ export interface ProviderStatus {
   connected: boolean;
   latency?: number;
   error?: string;
-  checkedAt: string;
+  checked_at: string;
 }
 
 export interface CreateProviderOptions {
   type: ProviderType;
   name: string;
   apiKey?: string;
-  baseUrl?: string;
+  base_url?: string;
   apiVersion?: string;
   deployment?: string;
   timeout?: number;
-  maxRetries?: number;
+  max_retries?: number;
   headers?: Record<string, string>;
   setAsDefault?: boolean;
 }
@@ -363,11 +363,11 @@ export interface ProviderUpdate {
   type?: ProviderType;
   name?: string;
   apiKey?: string;
-  baseUrl?: string;
+  base_url?: string;
   apiVersion?: string;
   deployment?: string;
   timeout?: number;
-  maxRetries?: number;
+  max_retries?: number;
   headers?: Record<string, string>;
 }
 
@@ -392,9 +392,9 @@ export interface Model {
   /** Whether this model is enabled */
   enabled?: boolean;
   /** Creation timestamp (for custom models) */
-  createdAt?: string;
+  created_at?: string;
   /** Last update timestamp (for custom models) */
-  updatedAt?: string;
+  updated_at?: string;
 }
 
 export interface ModelConfig {
@@ -426,7 +426,7 @@ export interface InstalledMcp {
   name: string;
   version: string;
   path: string;
-  installedAt: string;
+  installed_at: string;
 }
 
 // ============================================================================
@@ -446,7 +446,7 @@ export interface InstalledSkill {
   name: string;
   version: string;
   path: string;
-  installedAt: string;
+  installed_at: string;
 }
 
 // ============================================================================

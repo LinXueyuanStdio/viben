@@ -363,8 +363,8 @@ export function registerAgentCommand(program: Command): void {
                 : "-",
             "Plan Mode": agentData.planMode ? "Enabled" : "Disabled",
             Approvals: agentData.approvals ? "Enabled" : "Disabled",
-            "Created At": agentData.createdAt,
-            "Updated At": agentData.updatedAt,
+            "Created At": agentData.created_at,
+            "Updated At": agentData.updated_at,
           });
 
           if (agentData.mcpServers.length > 0) {
@@ -851,7 +851,7 @@ export function registerAgentCommand(program: Command): void {
             sessions.map((s) => [
               s.id.slice(0, 8) + "...",
               s.name || "-",
-              s.createdAt.split("T")[0],
+              s.created_at.split("T")[0],
               s.lastAccessedAt.split("T")[0],
             ])
           );

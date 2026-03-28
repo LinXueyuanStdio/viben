@@ -24,7 +24,7 @@ export function createTaskEvent(
   payload?: Record<string, unknown>
 ) {
   return {
-    eventId: crypto.randomUUID(),
+    event_id: crypto.randomUUID(),
     sequence,
     type,
     timestamp: new Date().toISOString(),

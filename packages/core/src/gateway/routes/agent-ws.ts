@@ -29,16 +29,23 @@ const log = globalLogger.child({ module: "agent-ws" });
 
 /**
  * Query parameters for agent WebSocket connection
+ * Supports both camelCase and snake_case
  */
 interface AgentWsQuery {
   /** Working directory for the agent */
   cwd?: string;
-  /** Path to agent AGENTS.md config file */
+  /** Path to agent AGENTS.md config file - camelCase */
   agentConfigPath?: string;
-  /** Session ID for persistence */
+  /** Path to agent AGENTS.md config file - snake_case */
+  agent_config_path?: string;
+  /** Session ID for persistence - camelCase */
   sessionId?: string;
-  /** Task ID for persistence */
+  /** Session ID for persistence - snake_case */
+  session_id?: string;
+  /** Task ID for persistence - camelCase */
   taskId?: string;
+  /** Task ID for persistence - snake_case */
+  task_id?: string;
 }
 
 /**
@@ -76,13 +83,13 @@ interface ClientMessage {
 
 /**
  * Server to Client message types
- * Reuses the same format as SSE messages for compatibility
+ * Reuses the same format as SSE messages for compatibility (snake_case)
  */
 interface ServerMessage {
   type: "session" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong";
   // session
-  sessionId?: string;
-  traceId?: string;
+  session_id?: string;
+  trace_id?: string;
   // text
   content?: string;
   // tool_use
@@ -90,9 +97,9 @@ interface ServerMessage {
   name?: string;
   input?: unknown;
   // tool_result
-  toolUseId?: string;
+  tool_use_id?: string;
   output?: string;
-  isError?: boolean;
+  is_error?: boolean;
   // question
   questions?: Array<{
     question: string;
@@ -122,15 +129,15 @@ interface WsSession {
   id: string;
   socket: WebSocket;
   /** Path to agent AGENTS.md config file */
-  agentConfigPath?: string;
+  agent_config_path?: string;
   cwd: string;
-  persistSessionId?: string;
-  persistTaskId?: string;
-  agentConfig?: AgentConfigPayload;
-  isRunning: boolean;
+  persist_session_id?: string;
+  persist_task_id?: string;
+  agent_config?: AgentConfigPayload;
+  is_running: boolean;
   // Promise resolver for waiting on user input
-  pendingQuestionResolver?: (answers: Record<string, string>) => void;
-  pendingPlanResolver?: (approved: boolean) => void;
+  pending_question_resolver?: (answers: Record<string, string>) => void;
+  pending_plan_resolver?: (approved: boolean) => void;
 }
 
 // ============================================================================
@@ -256,7 +263,7 @@ function formatAnswersAsText(
  * answer as a new message to the agent.
  */
 async function executeAgent(session: WsSession, prompt: string, isFollowUp = false): Promise<void> {
-  const { socket, cwd, agentConfigPath, persistSessionId, persistTaskId, agentConfig } = session;
+  const { socket, cwd, agent_config_path: agentConfigPath, persist_session_id: persistSessionId, persist_task_id: persistTaskId, agent_config: agentConfig } = session;
 
   // Create trace span
   const span = tracer.startSpan("agent-ws.execute", {
@@ -273,13 +280,13 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
   // Register session for abort control (only on first execution)
   if (!isFollowUp) {
     agentService.registerSession(session.id);
-    session.isRunning = true;
+    session.is_running = true;
 
     // Send session message
     sendMessage(socket, {
       type: "session",
-      sessionId: session.id,
-      traceId,
+      session_id: session.id,
+      trace_id: traceId,
     });
 
     log.info({ sessionId: session.id }, "Session started");
@@ -347,7 +354,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
           session.id,
           questionMsg.id,
           questionMsg.questions,
-          { agentConfigPath, workspacePath: cwd }
+          { agent_config_path: agentConfigPath, workspace_path: cwd }
         );
 
         // Send question to client
@@ -357,7 +364,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         log.info({ questionId: questionMsg.id }, "Waiting for answer to question");
 
         const answers = await new Promise<Record<string, string>>((resolve) => {
-          session.pendingQuestionResolver = resolve;
+          session.pending_question_resolver = resolve;
         });
 
         log.info({ questionId: questionMsg.id }, "Received answer for question");
@@ -418,14 +425,14 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               message.type === "tool_use"
                 ? (message as { id: string }).id
                 : message.type === "tool_result"
-                  ? (message as { toolUseId: string }).toolUseId
+                  ? (message as { tool_use_id: string }).tool_use_id
                   : undefined,
             toolName: message.type === "tool_use" ? (message as { name: string }).name : undefined,
             toolInput: message.type === "tool_use" ? (message as { input: unknown }).input : undefined,
             toolOutput:
               message.type === "tool_result" ? (message as { output: string }).output : undefined,
             isError:
-              message.type === "tool_result" ? (message as { isError?: boolean }).isError : undefined,
+              message.type === "tool_result" ? (message as { is_error?: boolean }).is_error : undefined,
           }, agentConfigPath);
         } catch (e) {
           log.warn({ err: e }, "Failed to persist message");
@@ -444,8 +451,8 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
     sendMessage(socket, { type: "error", message: errorMessage });
   } finally {
     // Only cleanup on the outermost call (not follow-ups that returned early)
-    if (!isFollowUp || !session.isRunning) {
-      session.isRunning = false;
+    if (!isFollowUp || !session.is_running) {
+      session.is_running = false;
       agentService.unregisterSession(session.id);
 
       // Send done message
@@ -480,15 +487,15 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         const query = req.query as AgentWsQuery;
         const sessionId = randomUUID();
 
-        // Create session with agent config path
+        // Create session with agent config path (support both camelCase and snake_case)
         const session: WsSession = {
           id: sessionId,
           socket,
-          agentConfigPath: query.agentConfigPath,
+          agent_config_path: query.agentConfigPath || query.agent_config_path,
           cwd: query.cwd || process.cwd(),
-          persistSessionId: query.sessionId,
-          persistTaskId: query.taskId,
-          isRunning: false,
+          persist_session_id: query.sessionId || query.session_id,
+          persist_task_id: query.taskId || query.task_id,
+          is_running: false,
         };
 
         wsSessions.set(sessionId, session);
@@ -502,7 +509,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
 
             switch (msg.type) {
               case "start": {
-                if (session.isRunning) {
+                if (session.is_running) {
                   sendMessage(socket, {
                     type: "error",
                     message: "Agent is already running. Send 'cancel' first to stop.",
@@ -515,16 +522,16 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   return;
                 }
 
-                // Load agent config from path
+                // Load agent config from path (support both camelCase and snake_case)
                 let agentConfig = msg.agentConfig;
-                const configPath = query.agentConfigPath;
+                const configPath = query.agentConfigPath || query.agent_config_path;
                 if (configPath) {
                   const loadedConfig = await loadAgentConfigFromPath(configPath);
                   if (loadedConfig) {
                     agentConfig = loadedConfig;
                   }
                 }
-                session.agentConfig = agentConfig;
+                session.agent_config = agentConfig;
 
                 // Start agent execution (non-blocking)
                 executeAgent(session, msg.prompt).catch((err) => {
@@ -543,9 +550,9 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 }
 
                 // Resolve pending question
-                if (session.pendingQuestionResolver) {
-                  session.pendingQuestionResolver(msg.answers);
-                  session.pendingQuestionResolver = undefined;
+                if (session.pending_question_resolver) {
+                  session.pending_question_resolver(msg.answers);
+                  session.pending_question_resolver = undefined;
                 } else {
                   // Store answer for later use (if not waiting synchronously)
                   agentService.answerQuestion(msg.questionId, msg.answers);
@@ -569,9 +576,9 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 }
 
                 // Resolve pending plan approval
-                if (session.pendingPlanResolver) {
-                  session.pendingPlanResolver(true);
-                  session.pendingPlanResolver = undefined;
+                if (session.pending_plan_resolver) {
+                  session.pending_plan_resolver(true);
+                  session.pending_plan_resolver = undefined;
                 }
                 break;
               }
@@ -592,15 +599,15 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 }
 
                 // Resolve pending plan approval
-                if (session.pendingPlanResolver) {
-                  session.pendingPlanResolver(false);
-                  session.pendingPlanResolver = undefined;
+                if (session.pending_plan_resolver) {
+                  session.pending_plan_resolver(false);
+                  session.pending_plan_resolver = undefined;
                 }
                 break;
               }
 
               case "cancel": {
-                if (!session.isRunning) {
+                if (!session.is_running) {
                   sendMessage(socket, { type: "error", message: "No agent is running" });
                   return;
                 }
@@ -609,13 +616,13 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 agentService.stopSession(session.id);
 
                 // Reject any pending promises
-                if (session.pendingQuestionResolver) {
-                  session.pendingQuestionResolver({});
-                  session.pendingQuestionResolver = undefined;
+                if (session.pending_question_resolver) {
+                  session.pending_question_resolver({});
+                  session.pending_question_resolver = undefined;
                 }
-                if (session.pendingPlanResolver) {
-                  session.pendingPlanResolver(false);
-                  session.pendingPlanResolver = undefined;
+                if (session.pending_plan_resolver) {
+                  session.pending_plan_resolver(false);
+                  session.pending_plan_resolver = undefined;
                 }
                 break;
               }
@@ -643,7 +650,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
           log.info({ sessionId }, "WebSocket disconnected");
 
           // Abort any running session
-          if (session.isRunning) {
+          if (session.is_running) {
             agentService.stopSession(session.id);
           }
 
@@ -656,7 +663,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
           log.error({ err, sessionId }, "WebSocket error");
 
           // Abort any running session
-          if (session.isRunning) {
+          if (session.is_running) {
             agentService.stopSession(session.id);
           }
 
@@ -681,7 +688,7 @@ export function getActiveWsSessionCount(): number {
 export function closeAllWsSessions(): void {
   for (const [sessionId, session] of wsSessions) {
     try {
-      if (session.isRunning) {
+      if (session.is_running) {
         agentService.stopSession(session.id);
       }
       session.socket.close();

@@ -93,13 +93,13 @@ function isActiveStatus(status: TaskStatus): boolean {
  */
 function getLastEventTime(task: UnifiedTask): number | null {
   // Check lastEvent first
-  if (task.lastEvent?.timestamp) {
-    return new Date(task.lastEvent.timestamp).getTime();
+  if (task.last_event?.timestamp) {
+    return new Date(task.last_event.timestamp).getTime();
   }
 
   // Fall back to updatedAt
-  if (task.updatedAt) {
-    return new Date(task.updatedAt).getTime();
+  if (task.updated_at) {
+    return new Date(task.updated_at).getTime();
   }
 
   return null;
@@ -258,13 +258,13 @@ export function checkStuck(
     } else {
       eventCheck.reason = `Last event ${elapsedStr} ago (within threshold)`;
     }
-  } else if (task.status === "queue" && task.queuedAt) {
+  } else if (task.status === "queue" && task.queued_at) {
     // For queue status, check queuedAt if no event timestamp
-    const queuedTime = new Date(task.queuedAt).getTime();
+    const queuedTime = new Date(task.queued_at).getTime();
     const elapsed = now - queuedTime;
     const elapsedStr = formatDuration(elapsed);
     eventCheck.data = {
-      queuedAt: task.queuedAt,
+      queuedAt: task.queued_at,
       elapsedMs: elapsed,
       elapsedStr,
       thresholdMs,

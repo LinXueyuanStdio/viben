@@ -25,7 +25,7 @@ export interface SessionConfig {
   /** Agent directory (absolute path to agent directory, e.g., /path/to/agents/myagent) */
   agentDir?: string;
   /** Agent config snapshot at session creation time */
-  agentConfig?: Record<string, unknown>;
+  agent_config?: Record<string, unknown>;
   /** Task ID (optional) */
   taskId?: string;
   /** Initial prompt */
@@ -33,11 +33,11 @@ export interface SessionConfig {
   /** Session status */
   status: string;
   /** Workspace path where this session runs (absolute path) */
-  workspacePath?: string;
+  workspace_path?: string;
   /** Created timestamp */
-  createdAt: string;
+  created_at: string;
   /** Updated timestamp */
-  updatedAt: string;
+  updated_at: string;
   /** Additional metadata */
   metadata?: Record<string, unknown>;
 }
@@ -104,12 +104,12 @@ export interface AgentMessage {
  * Session statistics
  */
 export interface SessionStats {
-  sessionId: string;
+  session_id: string;
   agentId: string;
   status: string;
   messageCount: number;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // NOTE: TaskConfig and TaskStatus have been moved to task-service.ts
@@ -158,7 +158,7 @@ export interface LibraryFile {
   /** Whether the file is favorited */
   isFavorite?: boolean;
   /** Created timestamp */
-  createdAt: string;
+  created_at: string;
 }
 
 /**
@@ -170,8 +170,8 @@ export function createSessionConfig(id: string, agentId: string): SessionConfig 
     id,
     agentId,
     status: "active",
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
     metadata: {},
   };
 }
@@ -182,7 +182,7 @@ export function createSessionConfig(id: string, agentId: string): SessionConfig 
 export function createSessionConfigWithWorkspace(id: string, agentId: string, workspacePath: string): SessionConfig {
   return {
     ...createSessionConfig(id, agentId),
-    workspacePath,
+    workspace_path: workspacePath,
   };
 }
 
@@ -199,8 +199,8 @@ export function createSessionConfigWithAgentInfo(
   return {
     ...createSessionConfig(id, agentId),
     agentDir,
-    agentConfig,
-    workspacePath,
+    agent_config: agentConfig,
+    workspace_path: workspacePath,
   };
 }
 
@@ -430,7 +430,7 @@ export class SessionStoreService {
       throw new SessionStoreError(`Session not found: ${config.id}`);
     }
 
-    config.updatedAt = new Date().toISOString();
+    config.updated_at = new Date().toISOString();
     const yaml = this.configToYaml(config);
     await writeFile(configPath, yaml);
   }
@@ -479,7 +479,7 @@ export class SessionStoreService {
     }
 
     // Sort by created_at descending
-    sessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    sessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return sessions;
   }
@@ -663,12 +663,12 @@ export class SessionStoreService {
     const messages = await this.readMessages(agentId, sessionId);
 
     return {
-      sessionId,
+      session_id: sessionId,
       agentId,
       status: config.status,
       messageCount: messages.length,
-      createdAt: config.createdAt,
-      updatedAt: config.updatedAt,
+      created_at: config.created_at,
+      updated_at: config.updated_at,
     };
   }
 
@@ -742,8 +742,8 @@ export class SessionStoreService {
       }
     }
 
-    // Sort by createdAt descending
-    files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Sort by created_at descending
+    files.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     return files;
   }
@@ -781,13 +781,13 @@ export class SessionStoreService {
     lines.push(`id: ${JSON.stringify(config.id)}`);
     lines.push(`agentId: ${JSON.stringify(config.agentId)}`);
     if (config.agentDir) lines.push(`agentDir: ${JSON.stringify(config.agentDir)}`);
-    if (config.agentConfig) lines.push(`agentConfig: ${JSON.stringify(config.agentConfig)}`);
+    if (config.agent_config) lines.push(`agent_config: ${JSON.stringify(config.agent_config)}`);
     if (config.taskId) lines.push(`taskId: ${JSON.stringify(config.taskId)}`);
     if (config.prompt) lines.push(`prompt: ${JSON.stringify(config.prompt)}`);
     lines.push(`status: ${JSON.stringify(config.status)}`);
-    if (config.workspacePath) lines.push(`workspacePath: ${JSON.stringify(config.workspacePath)}`);
-    lines.push(`createdAt: ${JSON.stringify(config.createdAt)}`);
-    lines.push(`updatedAt: ${JSON.stringify(config.updatedAt)}`);
+    if (config.workspace_path) lines.push(`workspace_path: ${JSON.stringify(config.workspace_path)}`);
+    lines.push(`created_at: ${JSON.stringify(config.created_at)}`);
+    lines.push(`updated_at: ${JSON.stringify(config.updated_at)}`);
     if (config.metadata) lines.push(`metadata: ${JSON.stringify(config.metadata)}`);
     return lines.join("\n") + "\n";
   }
@@ -821,7 +821,8 @@ export class SessionStoreService {
             config.agentDir = parsed;
             break;
           case "agentConfig":
-            config.agentConfig = parsed;
+          case "agent_config":
+            config.agent_config = parsed;
             break;
           case "taskId":
             config.taskId = parsed;
@@ -833,13 +834,16 @@ export class SessionStoreService {
             config.status = parsed;
             break;
           case "workspacePath":
-            config.workspacePath = parsed;
+          case "workspace_path":
+            config.workspace_path = parsed;
             break;
           case "createdAt":
-            config.createdAt = parsed;
+          case "created_at":
+            config.created_at = parsed;
             break;
           case "updatedAt":
-            config.updatedAt = parsed;
+          case "updated_at":
+            config.updated_at = parsed;
             break;
           case "metadata":
             config.metadata = parsed;
@@ -868,7 +872,7 @@ export class SessionStoreService {
     if (file.preview) lines.push(`preview: ${JSON.stringify(file.preview)}`);
     if (file.thumbnail) lines.push(`thumbnail: ${JSON.stringify(file.thumbnail)}`);
     if (file.isFavorite !== undefined) lines.push(`isFavorite: ${JSON.stringify(file.isFavorite)}`);
-    lines.push(`createdAt: ${JSON.stringify(file.createdAt)}`);
+    lines.push(`created_at: ${JSON.stringify(file.created_at)}`);
     return lines.join("\n") + "\n";
   }
 
@@ -916,7 +920,8 @@ export class SessionStoreService {
             file.isFavorite = parsed;
             break;
           case "createdAt":
-            file.createdAt = parsed;
+          case "created_at":
+            file.created_at = parsed;
             break;
         }
       } catch {

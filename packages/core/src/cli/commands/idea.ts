@@ -226,7 +226,7 @@ export function registerIdeaCommand(program: Command): void {
             console.log();
 
             console.log(chalk.bold("Summary by type:"));
-            for (const [type, count] of Object.entries(result.byType)) {
+            for (const [type, count] of Object.entries(result.by_type)) {
               console.log(`  ${type}: ${count} idea(s)`);
             }
 
@@ -239,7 +239,7 @@ export function registerIdeaCommand(program: Command): void {
             }
 
             console.log();
-            console.log(chalk.gray(`Session ID: ${result.sessionId}`));
+            console.log(chalk.gray(`Session ID: ${result.session_id}`));
             console.log(chalk.gray(`Output: ${result.sessionDir}`));
           });
         } catch (error) {
@@ -436,7 +436,7 @@ export function registerIdeaCommand(program: Command): void {
               `  ${formatEffort(idea.estimatedEffort)}`
           );
           console.log(chalk.bold(idea.title));
-          console.log(chalk.gray(`Created: ${idea.createdAt}`));
+          console.log(chalk.gray(`Created: ${idea.created_at}`));
           if (idea.promotedTo) {
             console.log(chalk.green(`Task: ${idea.promotedTo}`));
           }
@@ -562,8 +562,8 @@ export function registerIdeaCommand(program: Command): void {
           // This matches the behavior of `viben task create --start`
           // Note: worktree flag is already saved in task.json by createTask,
           // and will be read by `viben task start` when executing
-          if (options.start && result.taskId) {
-            const enqueueResult = enqueueTask(repoRoot, result.taskId, {
+          if (options.start && result.task_id) {
+            const enqueueResult = enqueueTask(repoRoot, result.task_id, {
               agent: options.agent,
               executor: options.executor,
               model: options.model,
@@ -581,9 +581,9 @@ export function registerIdeaCommand(program: Command): void {
             outputSuccess(ctx, `Promoted idea "${ideaId}" to task`);
             console.log();
             outputKeyValue(ctx, {
-              "Idea": `${result.ideaId} - ${result.ideaTitle}`,
-              "Task ID": result.taskId || "",
-              "Task Directory": result.taskDir || "",
+              "Idea": `${result.idea_id} - ${result.idea_title}`,
+              "Task ID": result.task_id || "",
+              "Task Directory": result.task_dir || "",
               "Priority": result.priority || "",
               "Status": result.status || "",
               "Worktree": result.worktree ? "enabled" : "disabled",
@@ -593,11 +593,11 @@ export function registerIdeaCommand(program: Command): void {
               console.log(chalk.green("Task enqueued for execution."));
               console.log();
               console.log(chalk.blue("Monitor progress:"));
-              console.log(`  viben task status ${result.taskId}`);
+              console.log(`  viben task status ${result.task_id}`);
             } else {
               console.log(chalk.blue("Next steps:"));
               console.log(`  1. Create prd.md with requirements`);
-              console.log(`  2. Start working: viben task start ${result.taskId}`);
+              console.log(`  2. Start working: viben task start ${result.task_id}`);
             }
           });
         } catch (error) {

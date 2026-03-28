@@ -52,11 +52,11 @@ export function allDependenciesMet(
   allTasks: Map<string, UnifiedTask>
 ): boolean {
   // No dependencies = all met
-  if (!task.dependsOn || task.dependsOn.length === 0) {
+  if (!task.depends_on || task.depends_on.length === 0) {
     return true;
   }
 
-  return task.dependsOn.every((depId) => {
+  return task.depends_on.every((depId) => {
     const depTask = allTasks.get(depId);
     if (!depTask) {
       // Dependency task not found - treat as not met
@@ -91,8 +91,8 @@ export function detectCyclicDependency(
 
   // Copy existing dependencies
   allTasks.forEach((task, id) => {
-    if (task.dependsOn && task.dependsOn.length > 0) {
-      dependencyMap.set(id, [...task.dependsOn]);
+    if (task.depends_on && task.depends_on.length > 0) {
+      dependencyMap.set(id, [...task.depends_on]);
     }
   });
 
@@ -188,8 +188,8 @@ export function getNextTask(
     }
 
     // 2. FIFO within same priority - use queuedAt or createdAt
-    const timeA = new Date(a.queuedAt ?? a.createdAt).getTime();
-    const timeB = new Date(b.queuedAt ?? b.createdAt).getTime();
+    const timeA = new Date(a.queued_at ?? a.created_at).getTime();
+    const timeB = new Date(b.queued_at ?? b.created_at).getTime();
 
     return timeA - timeB;
   });
@@ -213,7 +213,7 @@ export function getDependentTasks(
   const dependents: UnifiedTask[] = [];
 
   allTasks.forEach((task) => {
-    if (task.dependsOn && task.dependsOn.includes(taskId)) {
+    if (task.depends_on && task.depends_on.includes(taskId)) {
       dependents.push(task);
     }
   });

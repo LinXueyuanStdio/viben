@@ -536,8 +536,8 @@ function toGroupChatResponse(
     name: gc.name,
     description: gc.description,
     created_by: gc.createdBy,
-    created_at: gc.createdAt,
-    updated_at: gc.updatedAt,
+    created_at: gc.created_at,
+    updated_at: gc.updated_at,
     settings: {
       broadcast_mode: gc.settings?.broadcastMode || "all",
       show_thinking: gc.settings?.showThinking || false,
@@ -571,8 +571,8 @@ function toSessionResponse(s: GroupChatSessionConfig): SessionResponse {
     id: s.id,
     group_chat_id: s.groupChatId,
     title: s.name,
-    created_at: s.createdAt,
-    updated_at: s.updatedAt,
+    created_at: s.created_at,
+    updated_at: s.updated_at,
     active_agents: s.activeAgents || [],
     status: s.status,
   };

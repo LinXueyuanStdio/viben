@@ -18,8 +18,8 @@ export function createMockTask(overrides: Partial<TaskJson> = {}): TaskJson {
     title: "Test Task",
     status: "backlog",
     priority: "medium",
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
     ...overrides,
   };
 }

@@ -59,13 +59,13 @@ function toSnakeCaseSession(s: SessionConfig) {
     id: s.id,
     agent_id: s.agentId,
     agent_dir: s.agentDir,
-    agent_config: s.agentConfig,
+    agent_config: s.agent_config,
     task_id: s.taskId,
     prompt: s.prompt,
     status: s.status,
-    workspace_path: s.workspacePath,
-    created_at: s.createdAt,
-    updated_at: s.updatedAt,
+    workspace_path: s.workspace_path,
+    created_at: s.created_at,
+    updated_at: s.updated_at,
     metadata: s.metadata,
   };
 }
@@ -205,8 +205,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         skills: a.skills,
         plan_mode: a.planMode,
         approvals: a.approvals,
-        created_at: a.createdAt,
-        updated_at: a.updatedAt,
+        created_at: a.created_at,
+        updated_at: a.updated_at,
       };
     };
 
@@ -336,8 +336,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         skills: agent.skills,
         plan_mode: agent.planMode,
         approvals: agent.approvals,
-        created_at: agent.createdAt,
-        updated_at: agent.updatedAt,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
       };
     } catch (e) {
       reply.code(400);
@@ -404,8 +404,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         model: t.model,
         provider: t.provider,
         executor_type: t.executorType,
-        created_at: t.createdAt,
-        updated_at: t.updatedAt,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
       })),
       total: templates.length,
     };
@@ -428,8 +428,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           description: agent.description,
           is_template: agent.isTemplate,
           template_description: agent.templateDescription,
-          created_at: agent.createdAt,
-          updated_at: agent.updatedAt,
+          created_at: agent.created_at,
+          updated_at: agent.updated_at,
         };
       } catch (e) {
         reply.code(400);
@@ -462,8 +462,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         provider: template.provider,
         executor_type: template.executorType,
         system_prompt: template.systemPrompt,
-        created_at: template.createdAt,
-        updated_at: template.updatedAt,
+        created_at: template.created_at,
+        updated_at: template.updated_at,
       };
     }
   );
@@ -515,8 +515,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           skills: agent.skills,
           plan_mode: agent.planMode,
           approvals: agent.approvals,
-          created_at: agent.createdAt,
-          updated_at: agent.updatedAt,
+          created_at: agent.created_at,
+          updated_at: agent.updated_at,
         };
       } catch (e) {
         reply.code(400);
@@ -575,8 +575,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         approvals: agent.approvals,
         is_template: agent.isTemplate,
         template_description: agent.templateDescription,
-        created_at: agent.createdAt,
-        updated_at: agent.updatedAt,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
       };
     } catch (e) {
       reply.code(400);
@@ -636,7 +636,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         }
 
         // Sort by created_at descending
-        allSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        allSessions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         return {
           sessions: allSessions.map(toSnakeCaseSession),
@@ -1060,8 +1060,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       skills: agent.skills,
       plan_mode: agent.planMode,
       approvals: agent.approvals,
-      created_at: agent.createdAt,
-      updated_at: agent.updatedAt,
+      created_at: agent.created_at,
+      updated_at: agent.updated_at,
     };
   });
 
@@ -1160,8 +1160,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         approvals: agent.approvals,
         is_template: agent.isTemplate,
         template_description: agent.templateDescription,
-        created_at: agent.createdAt,
-        updated_at: agent.updatedAt,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
       };
     } catch (e) {
       reply.code(400);

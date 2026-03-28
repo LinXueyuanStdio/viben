@@ -216,7 +216,7 @@ export class TaskService {
       title: task.title || slug,
       description: task.description,
       status: task.status || "backlog",
-      reviewReason: task.reviewReason,
+      review_reason: task.review_reason,
       current_phase: task.current_phase ?? 0,
       next_action: task.next_action ?? [
         { phase: 1, action: "implement" },
@@ -232,20 +232,20 @@ export class TaskService {
       commit: task.commit,
       pr_url: task.pr_url,
       subtasks: task.subtasks ?? [],
-      relatedFiles: task.relatedFiles ?? [],
+      related_files: task.related_files ?? [],
       notes: task.notes ?? "",
       agent: task.agent,
-      sessionId: task.sessionId,
-      taskIndex: task.taskIndex ?? 0,
+      session_id: task.session_id,
+      task_index: task.task_index ?? 0,
       prompt: task.prompt,
       cost: task.cost,
       duration: task.duration,
       favorite: task.favorite,
       executor: task.executor,
-      workspacePath,
-      createdAt: task.createdAt || today,
-      updatedAt: now,
-      completedAt: task.completedAt,
+      workspace_path: workspacePath,
+      created_at: task.created_at || today,
+      updated_at: now,
+      completed_at: task.completed_at,
     };
 
     // Write task.json
@@ -304,7 +304,7 @@ export class TaskService {
     // Configuration locking: agent/sessionId/executor/model cannot be changed after task is queued
     // See: .trellis/spec/modules/task-system.md "配置锁定规则"
     if (existing.status !== "backlog") {
-      const lockedFields = ["agent", "sessionId", "executor", "model"] as const;
+      const lockedFields = ["agent", "session_id", "executor", "model"] as const;
       for (const field of lockedFields) {
         if (updates[field] !== undefined && updates[field] !== existing[field]) {
           throw new Error(
@@ -323,7 +323,7 @@ export class TaskService {
       ...updates,
       id: existing.id, // Prevent ID from being changed
       name: existing.name, // Prevent name from being changed
-      updatedAt: now,
+      updated_at: now,
     };
 
     // Set completedAt if status changed to a terminal state (completed, failed, cancelled)
@@ -332,7 +332,7 @@ export class TaskService {
       (updates.status === "completed" || updates.status === "failed" || updates.status === "cancelled") &&
       existing.status !== updates.status
     ) {
-      updated.completedAt = now;
+      updated.completed_at = now;
     }
 
     // Write updated task.json
@@ -404,7 +404,7 @@ export class TaskService {
         const task = await this.getTask(taskDir);
         if (task) {
           // Ensure workspacePath is set
-          task.workspacePath = task.workspacePath || workspacePath;
+          task.workspace_path = task.workspace_path || workspacePath;
           tasks.push(task);
         }
       }
@@ -412,10 +412,10 @@ export class TaskService {
       // Ignore errors
     }
 
-    // Sort by createdAt descending
+    // Sort by created_at descending
     tasks.sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
+      const dateA = new Date(a.created_at || "").getTime();
+      const dateB = new Date(b.created_at || "").getTime();
       return dateB - dateA;
     });
 
@@ -463,7 +463,7 @@ export class TaskService {
           const task = await this.getTask(taskDir);
           if (task) {
             // Ensure workspacePath is set and status is archived
-            task.workspacePath = task.workspacePath || workspacePath;
+            task.workspace_path = task.workspace_path || workspacePath;
             // Mark as archived if not already
             if (task.status !== "archived") {
               task.status = "archived";
@@ -613,7 +613,7 @@ export class TaskService {
     if (task.status === "completed") {
       return true;
     }
-    if (task.status === "review" && task.reviewReason === "completed") {
+    if (task.status === "review" && task.review_reason === "completed") {
       return true;
     }
     return false;
@@ -667,19 +667,19 @@ export class TaskService {
    */
   async getTaskSpecsData(taskDir: string): Promise<TaskSpecsData> {
     const result: TaskSpecsData = {
-      prdContent: null,
-      prdPath: null,
+      prd_content: null,
+      prd_path: null,
       subtasks: [],
       logs: null,
-      taskDir, // Return task directory path for file browsing
+      task_dir: taskDir, // Return task directory path for file browsing
     };
 
     // 1. Read PRD content (prd.md)
     const prdPath = join(taskDir, "prd.md");
     if (existsSync(prdPath)) {
       try {
-        result.prdContent = await readFile(prdPath, "utf-8");
-        result.prdPath = prdPath;
+        result.prd_content = await readFile(prdPath, "utf-8");
+        result.prd_path = prdPath;
       } catch {
         // Ignore read errors
       }

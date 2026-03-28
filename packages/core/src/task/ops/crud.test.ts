@@ -231,9 +231,9 @@ describe("crud operations", () => {
       const result = createTask(tempDir.root, "Test Task");
 
       expect(result.success).toBe(true);
-      expect(result.dirName).toBe("03-15-test-task");
+      expect(result.dir_name).toBe("03-15-test-task");
       expect(result.status).toBe("backlog");
-      expect(result.contextInitialized).toBeDefined();
+      expect(result.context_initialized).toBeDefined();
 
       // Verify actual file was created
       const taskJson = await tempDir.readJson<{
@@ -242,7 +242,7 @@ describe("crud operations", () => {
         status: string;
         assignee: string;
         creator: string;
-        createdAt: string;
+        created_at: string;
       }>(".viben/tasks/03-15-test-task/task.json");
 
       expect(taskJson.id).toBe("test-task");
@@ -250,14 +250,14 @@ describe("crud operations", () => {
       expect(taskJson.status).toBe("backlog");
       expect(taskJson.assignee).toBe("test-dev");
       expect(taskJson.creator).toBe("test-dev");
-      expect(taskJson.createdAt).toBeDefined();
+      expect(taskJson.created_at).toBeDefined();
     });
 
     it("should create task with custom slug", async () => {
       const result = createTask(tempDir.root, "Test Task", { slug: "custom-slug" });
 
       expect(result.success).toBe(true);
-      expect(result.dirName).toBe("03-15-custom-slug");
+      expect(result.dir_name).toBe("03-15-custom-slug");
 
       // Verify directory exists
       expect(await tempDir.exists(".viben/tasks/03-15-custom-slug")).toBe(true);
@@ -296,16 +296,16 @@ describe("crud operations", () => {
       expect(taskJson.branch).toBe("fix/bug-123");
     });
 
-    it("should set autoStart to true when --start is provided", async () => {
+    it("should set auto_start to true when --start is provided", async () => {
       const result = createTask(tempDir.root, "Test Task", { start: true });
 
       expect(result.success).toBe(true);
       expect(result.status).toBe("backlog");
 
-      const taskJson = await tempDir.readJson<{ autoStart: boolean; status: string }>(
+      const taskJson = await tempDir.readJson<{ auto_start: boolean; status: string }>(
         ".viben/tasks/03-15-test-task/task.json"
       );
-      expect(taskJson.autoStart).toBe(true);
+      expect(taskJson.auto_start).toBe(true);
       expect(taskJson.status).toBe("backlog");
     });
 
@@ -409,7 +409,7 @@ describe("crud operations", () => {
       const result = createTask(tempDir.root, "Test Task");
 
       expect(result.success).toBe(true);
-      expect(result.contextInitialized).toBe(true);
+      expect(result.context_initialized).toBe(true);
 
       // Verify context files were created
       expect(await tempDir.exists(".viben/tasks/03-15-test-task/implement.jsonl")).toBe(true);
@@ -453,7 +453,7 @@ describe("crud operations", () => {
       expect(result.success).toBe(true);
       expect(result.task?.title).toBe("Test Task");
       expect(result.task?.status).toBe("backlog");
-      expect(result.dirName).toBe("03-15-test-task");
+      expect(result.dir_name).toBe("03-15-test-task");
     });
 
     it("should return file info for existing files", async () => {
@@ -487,11 +487,11 @@ describe("crud operations", () => {
     });
 
     it("should calculate timing info when task has timestamps", async () => {
-      const createdAt = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
+      const created_at = new Date(Date.now() - 3600000).toISOString(); // 1 hour ago
       await createTaskDir(tempDir, "03-15-test-task", {
         id: "test-task",
         status: "in_progress",
-        createdAt,
+        created_at,
       });
 
       const result = viewTask(tempDir.root, "test-task");
@@ -637,10 +637,10 @@ describe("crud operations", () => {
       // Verify archived task has completed status (archiveTaskToDir uses real getTodayDate)
       const archivedTask = await tempDir.readJson<{
         status: string;
-        completedAt: string;
+        completed_at: string;
       }>(`.viben/tasks/archive/${yearMonth}/03-15-test-task/task.json`);
       expect(archivedTask.status).toBe("completed");
-      expect(archivedTask.completedAt).toBeDefined();
+      expect(archivedTask.completed_at).toBeDefined();
     });
 
     it("should create archive directory structure if not exists", async () => {

@@ -313,37 +313,37 @@ describe("GitStyleConfigManager", () => {
     it("should set and get a simple value", async () => {
       // Use workspace config for this test (avoids global config mocking)
       await manager.set("theme", "dark", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       const value = await manager.get("theme", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe("dark");
     });
 
     it("should set and get a nested value", async () => {
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       const value = await manager.get("settings.editor", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe("vim");
     });
 
     it("should set and get array value", async () => {
       await manager.set("mcp.enabled[0]", "server1", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       await manager.set("mcp.enabled[1]", "server2", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const value0 = await manager.get("mcp.enabled[0]", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       const value1 = await manager.get("mcp.enabled[1]", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       expect(value0).toBe("server1");
@@ -352,27 +352,27 @@ describe("GitStyleConfigManager", () => {
 
     it("should parse boolean values", async () => {
       await manager.set("features.enabled", "true", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       const value = await manager.get("features.enabled", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe(true);
     });
 
     it("should parse numeric values", async () => {
       await manager.set("settings.timeout", "30", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       const value = await manager.get("settings.timeout", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe(30);
     });
 
     it("should return undefined for non-existent key", async () => {
       const value = await manager.get("nonexistent.key", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBeUndefined();
     });
@@ -381,14 +381,14 @@ describe("GitStyleConfigManager", () => {
   describe("list", () => {
     it("should list all config entries", async () => {
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       await manager.set("settings.theme", "dark", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const entries = await manager.list({
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       expect(entries).toHaveLength(2);
@@ -398,7 +398,7 @@ describe("GitStyleConfigManager", () => {
 
     it("should return empty array for non-existent config", async () => {
       const entries = await manager.list({
-        workspacePath: join(tempDir, "nonexistent"),
+        workspace_path: join(tempDir, "nonexistent"),
       });
       expect(entries).toEqual([]);
     });
@@ -407,33 +407,33 @@ describe("GitStyleConfigManager", () => {
   describe("unset", () => {
     it("should remove a config key", async () => {
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       await manager.set("settings.theme", "dark", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const deleted = await manager.unset("settings.editor", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       expect(deleted).toBe(true);
 
       const value = await manager.get("settings.editor", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBeUndefined();
 
       // Theme should still exist
       const theme = await manager.get("settings.theme", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(theme).toBe("dark");
     });
 
     it("should return false for non-existent key", async () => {
       const deleted = await manager.unset("nonexistent.key", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(deleted).toBe(false);
     });
@@ -442,14 +442,14 @@ describe("GitStyleConfigManager", () => {
   describe("getAll", () => {
     it("should return full config object", async () => {
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       await manager.set("settings.theme", "dark", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const config = await manager.getAll({
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       expect(config).toEqual({
@@ -462,7 +462,7 @@ describe("GitStyleConfigManager", () => {
 
     it("should return empty object for non-existent config", async () => {
       const config = await manager.getAll({
-        workspacePath: join(tempDir, "nonexistent"),
+        workspace_path: join(tempDir, "nonexistent"),
       });
       expect(config).toEqual({});
     });
@@ -471,18 +471,18 @@ describe("GitStyleConfigManager", () => {
   describe("has", () => {
     it("should return true for existing key", async () => {
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const exists = await manager.has("settings.editor", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(exists).toBe(true);
     });
 
     it("should return false for non-existent key", async () => {
       const exists = await manager.has("nonexistent.key", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(exists).toBe(false);
     });
@@ -492,15 +492,15 @@ describe("GitStyleConfigManager", () => {
     it("should return workspace config entries", async () => {
       // Set workspace config
       await manager.set("settings.editor", "vim", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       await manager.set("settings.theme", "dark", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       // Test basic functionality - getMerged returns workspace entries
       const entries = await manager.list({
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       expect(entries.find((e) => e.key === "settings.editor")?.value).toBe("vim");
@@ -511,27 +511,27 @@ describe("GitStyleConfigManager", () => {
   describe("global vs workspace config", () => {
     it("should read from workspace config by default", async () => {
       await manager.set("location", "workspace", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const value = await manager.get("location", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe("workspace");
     });
 
     it("should handle deeply nested paths", async () => {
       await manager.set("a.b.c.d.e", "deep", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
 
       const value = await manager.get("a.b.c.d.e", {
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(value).toBe("deep");
 
       const all = await manager.getAll({
-        workspacePath: workspaceDir,
+        workspace_path: workspaceDir,
       });
       expect(all).toEqual({ a: { b: { c: { d: { e: "deep" } } } } });
     });

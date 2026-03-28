@@ -51,10 +51,10 @@ interface InspectorConfig {
 }
 
 interface SessionInfo {
-  sessionId: string;
-  transportType: string;
-  createdAt: Date;
-  serverConnected: boolean;
+  session_id: string;
+  transport_type: string;
+  created_at: Date;
+  server_connected: boolean;
 }
 
 // ============================================================================
@@ -143,9 +143,9 @@ function mcpProxy({
   transportToServer.onmessage = (message) => {
     log.debug({ message: JSON.stringify(message).slice(0, 200) }, "Server -> Client message");
     if (!reportedServerSession) {
-      if (transportToServer.sessionId) {
+      if (transportToServer.session_id) {
         // Can only report for StreamableHttp
-        log.info({ sessionId: transportToServer.sessionId }, "Proxy <-> Server sessionId");
+        log.info({ sessionId: transportToServer.session_id }, "Proxy <-> Server sessionId");
       }
       reportedServerSession = true;
     }
@@ -777,10 +777,10 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
               sessionHeaderHolders.set(newSessionId, headerHolder);
             }
             sessionMetadata.set(newSessionId, {
-              sessionId: newSessionId,
-              transportType: "streamable-http",
-              createdAt: new Date(),
-              serverConnected: true,
+              session_id: newSessionId,
+              transport_type: "streamable-http",
+              created_at: new Date(),
+              server_connected: true,
             });
             log.info({ sessionId: newSessionId }, "Client <-> Proxy sessionId");
           },
@@ -891,15 +891,15 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       const endpoint = `${prefix}/api/mcp/inspector/message`;
 
       const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
-      webAppTransports.set(webAppTransport.sessionId, webAppTransport);
+      webAppTransports.set(webAppTransport.session_id, webAppTransport);
       log.info("Created client transport");
 
-      serverTransports.set(webAppTransport.sessionId, serverTransport);
-      sessionMetadata.set(webAppTransport.sessionId, {
-        sessionId: webAppTransport.sessionId,
-        transportType: "stdio",
-        createdAt: new Date(),
-        serverConnected: true,
+      serverTransports.set(webAppTransport.session_id, serverTransport);
+      sessionMetadata.set(webAppTransport.session_id, {
+        session_id: webAppTransport.session_id,
+        transport_type: "stdio",
+        created_at: new Date(),
+        server_connected: true,
       });
       log.info("Created server transport");
 
@@ -927,10 +927,10 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
             });
             webAppTransport.close();
             serverTransport.close();
-            webAppTransports.delete(webAppTransport.sessionId);
-            serverTransports.delete(webAppTransport.sessionId);
-            sessionHeaderHolders.delete(webAppTransport.sessionId);
-            sessionMetadata.delete(webAppTransport.sessionId);
+            webAppTransports.delete(webAppTransport.session_id);
+            serverTransports.delete(webAppTransport.session_id);
+            sessionHeaderHolders.delete(webAppTransport.session_id);
+            sessionMetadata.delete(webAppTransport.session_id);
             log.error("Command not found, transports removed");
           } else {
             // Determine log level based on content
@@ -1015,7 +1015,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
     if (!checkAuth(request, reply)) return;
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     log.debug({ sessionId }, "SSE POST received");
 
     // If no sessionId but has URL, this is a new connection attempt
@@ -1085,18 +1085,18 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       const endpoint = `${prefix}/api/mcp/inspector/message`;
 
       const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
-      webAppTransports.set(webAppTransport.sessionId, webAppTransport);
+      webAppTransports.set(webAppTransport.session_id, webAppTransport);
       log.info("Created client transport");
 
-      serverTransports.set(webAppTransport.sessionId, serverTransport);
+      serverTransports.set(webAppTransport.session_id, serverTransport);
       if (headerHolder) {
-        sessionHeaderHolders.set(webAppTransport.sessionId, headerHolder);
+        sessionHeaderHolders.set(webAppTransport.session_id, headerHolder);
       }
-      sessionMetadata.set(webAppTransport.sessionId, {
-        sessionId: webAppTransport.sessionId,
-        transportType: "sse",
-        createdAt: new Date(),
-        serverConnected: true,
+      sessionMetadata.set(webAppTransport.session_id, {
+        session_id: webAppTransport.session_id,
+        transport_type: "sse",
+        created_at: new Date(),
+        server_connected: true,
       });
       log.info("Created server transport");
 
@@ -1148,7 +1148,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     try {
-      const sessionId = request.query.sessionId;
+      const sessionId = request.query.session_id;
       log.debug({ sessionId }, "Received POST message");
 
       if (!sessionId) {

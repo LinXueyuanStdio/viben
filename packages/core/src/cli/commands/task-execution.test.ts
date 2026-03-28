@@ -331,12 +331,12 @@ describe("task command execution", () => {
     it("should return JSON output with --json flag", async () => {
       const result = (await ctx.runJson(["task", "create", "JSON Create Test"])) as {
         success: boolean;
-        data: { taskDir: string };
+        data: { task_dir: string };
       };
 
       expect(result).not.toBeNull();
       expect(result?.success).toBe(true);
-      expect(result?.data?.taskDir).toBeDefined();
+      expect(result?.data?.task_dir).toBeDefined();
     });
 
     it("should create task with description", async () => {
@@ -583,8 +583,8 @@ describe("task command execution", () => {
       expect(hasSuccessMessage).toBe(true);
 
       // Task should be moved to archive directory
-      const activeFiles = await ctx.tempDir.listFiles(".viben/tasks");
-      expect(activeFiles.some((f) => f.includes("archive-task"))).toBe(false);
+      const active_files = await ctx.tempDir.listFiles(".viben/tasks");
+      expect(active_files.some((f) => f.includes("archive-task"))).toBe(false);
 
       // Check archive directory exists
       const archiveDir = await ctx.tempDir.exists(".viben/tasks/archive");

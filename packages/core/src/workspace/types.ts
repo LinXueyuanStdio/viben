@@ -37,8 +37,8 @@ export interface WorkspaceConfigFile {
   mcp?: WorkspaceMcpConfig;
   skills?: WorkspaceSkillsConfig;
   agents?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 /**
@@ -58,9 +58,9 @@ export interface Workspace {
   /** List of agent IDs in this workspace */
   agents?: string[];
   /** Creation timestamp */
-  createdAt?: string;
+  created_at?: string;
   /** Last update timestamp */
-  updatedAt?: string;
+  updated_at?: string;
 }
 
 /**
@@ -122,7 +122,7 @@ export interface WorkspaceTemplate {
   /** Template description */
   description?: string;
   /** Creation timestamp */
-  createdAt: string;
+  created_at: string;
 }
 
 /**
@@ -140,5 +140,5 @@ export interface WorkspaceTemplateConfig {
   /** List of files to copy (relative paths within template) */
   files?: string[];
   /** Creation timestamp */
-  createdAt: string;
+  created_at: string;
 }

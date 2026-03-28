@@ -34,19 +34,19 @@ export interface PreviewStatus {
   /** Unique identifier for this preview instance */
   id: string;
   /** Associated task ID */
-  taskId: string;
+  task_id: string;
   /** Current status of the preview server */
   status: "starting" | "running" | "stopped" | "error";
   /** URL to access the preview (e.g., http://localhost:5173) */
   url?: string;
   /** Port number on the host */
-  hostPort?: number;
+  host_port?: number;
   /** Error message if status is 'error' */
   error?: string;
   /** When the server was started */
-  startedAt?: Date;
+  started_at?: Date;
   /** Last time the preview was accessed */
-  lastAccessedAt?: Date;
+  last_accessed_at?: Date;
 }
 
 /**
@@ -54,12 +54,12 @@ export interface PreviewStatus {
  */
 interface PreviewInstance {
   id: string;
-  taskId: string;
+  task_id: string;
   port: number;
   status: PreviewStatus["status"];
   error?: string;
-  startedAt: Date;
-  lastAccessedAt: Date;
+  started_at: Date;
+  last_accessed_at: Date;
   healthCheckInterval?: ReturnType<typeof setInterval>;
   idleTimeout?: ReturnType<typeof setTimeout>;
   process?: ChildProcess;
@@ -149,7 +149,7 @@ export class PreviewManager {
     // Check if already running
     const existing = this.instances.get(taskId);
     if (existing && existing.status === "running") {
-      existing.lastAccessedAt = new Date();
+      existing.last_accessed_at = new Date();
       this.resetIdleTimeout(existing);
       return this.getStatusForInstance(existing);
     }
@@ -163,11 +163,11 @@ export class PreviewManager {
       // Try to stop the oldest idle preview
       const oldestIdle = this.findOldestIdlePreview();
       if (oldestIdle) {
-        await this.stopPreview(oldestIdle.taskId);
+        await this.stopPreview(oldestIdle.task_id);
       } else {
         return {
           id: `preview-${taskId}`,
-          taskId,
+          task_id: taskId,
           status: "error",
           error: `Maximum concurrent previews (${MAX_CONCURRENT_PREVIEWS}) reached. Please stop an existing preview first.`,
         };
@@ -179,7 +179,7 @@ export class PreviewManager {
     if (!port) {
       return {
         id: `preview-${taskId}`,
-        taskId,
+        task_id: taskId,
         status: "error",
         error: "No available ports in range 5173-5273",
       };
@@ -188,11 +188,11 @@ export class PreviewManager {
     // Create instance
     const instance: PreviewInstance = {
       id: `preview-${taskId}`,
-      taskId,
+      task_id: taskId,
       port,
       status: "starting",
-      startedAt: new Date(),
-      lastAccessedAt: new Date(),
+      started_at: new Date(),
+      last_accessed_at: new Date(),
     };
 
     this.instances.set(taskId, instance);
@@ -219,7 +219,7 @@ export class PreviewManager {
       // Ensure project files exist (zero-config support)
       await this.ensureProjectFiles(workDir, instance.port);
 
-      log.info({ taskId: instance.taskId, port: instance.port }, "Starting Vite server");
+      log.info({ taskId: instance.task_id, port: instance.port }, "Starting Vite server");
 
       await this.startViteProcess(instance, workDir);
     } catch (error) {
@@ -517,7 +517,7 @@ export class PreviewManager {
     if (!instance) {
       return {
         id: `preview-${taskId}`,
-        taskId,
+        task_id: taskId,
         status: "stopped",
       };
     }
@@ -537,13 +537,13 @@ export class PreviewManager {
     if (!instance) {
       return {
         id: `preview-${taskId}`,
-        taskId,
+        task_id: taskId,
         status: "stopped",
       };
     }
 
     // Update last accessed time
-    instance.lastAccessedAt = new Date();
+    instance.last_accessed_at = new Date();
     this.resetIdleTimeout(instance);
 
     return this.getStatusForInstance(instance);
@@ -619,7 +619,7 @@ export class PreviewManager {
           throw new Error(`Health check failed: ${response.status}`);
         }
       } catch (error) {
-        log.warn({ err: error, taskId: instance.taskId }, "Health check failed");
+        log.warn({ err: error, taskId: instance.task_id }, "Health check failed");
         instance.status = "error";
         instance.error = "Server health check failed";
         this.cleanup(instance);
@@ -636,8 +636,8 @@ export class PreviewManager {
     }
 
     instance.idleTimeout = setTimeout(() => {
-      log.info({ taskId: instance.taskId }, "Idle timeout reached");
-      this.stopPreview(instance.taskId);
+      log.info({ taskId: instance.task_id }, "Idle timeout reached");
+      this.stopPreview(instance.task_id);
     }, IDLE_TIMEOUT_MS);
   }
 
@@ -651,10 +651,10 @@ export class PreviewManager {
     for (const instance of this.instances.values()) {
       if (
         instance.status === "running" &&
-        instance.lastAccessedAt.getTime() < oldestTime
+        instance.last_accessed_at.getTime() < oldestTime
       ) {
         oldest = instance;
-        oldestTime = instance.lastAccessedAt.getTime();
+        oldestTime = instance.last_accessed_at.getTime();
       }
     }
 
@@ -685,7 +685,7 @@ export class PreviewManager {
     }
 
     this.releasePort(instance.port);
-    this.instances.delete(instance.taskId);
+    this.instances.delete(instance.task_id);
   }
 
   /**
@@ -694,16 +694,16 @@ export class PreviewManager {
   private getStatusForInstance(instance: PreviewInstance): PreviewStatus {
     return {
       id: instance.id,
-      taskId: instance.taskId,
+      task_id: instance.task_id,
       status: instance.status,
       url:
         instance.status === "running"
           ? `http://localhost:${instance.port}`
           : undefined,
-      hostPort: instance.port,
+      host_port: instance.port,
       error: instance.error,
-      startedAt: instance.startedAt,
-      lastAccessedAt: instance.lastAccessedAt,
+      started_at: instance.started_at,
+      last_accessed_at: instance.last_accessed_at,
     };
   }
 }

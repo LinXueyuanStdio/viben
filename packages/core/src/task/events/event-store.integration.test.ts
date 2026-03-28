@@ -36,9 +36,9 @@ describe("TaskEventStore file persistence (integration)", () => {
       title: "Test Persistence Task",
       status: "backlog",
       priority: "medium",
-      createdAt: "2026-01-15T10:00:00.000Z",
-      updatedAt: "2026-01-15T10:00:00.000Z",
-      workspacePath: tempDir.root,
+      created_at: "2026-01-15T10:00:00.000Z",
+      updated_at: "2026-01-15T10:00:00.000Z",
+      workspace_path: tempDir.root,
     };
     await tempDir.writeJson(`.viben/tasks/${taskName}/task.json`, taskData);
   });
@@ -52,7 +52,7 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Manually append an event (simulating what applyEvent does)
     const event: TaskEvent = {
-      eventId: "evt_1",
+      event_id: "evt_1",
       sequence: 1,
       type: "QUEUE",
       timestamp: "2026-01-15T10:00:00.000Z",
@@ -71,7 +71,7 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Parse and verify
     const parsedEvent = JSON.parse(content.trim());
-    expect(parsedEvent.eventId).toBe("evt_1");
+    expect(parsedEvent.event_id).toBe("evt_1");
     expect(parsedEvent.type).toBe("QUEUE");
   });
 
@@ -80,9 +80,9 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Write multiple events
     const events: TaskEvent[] = [
-      { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
-      { eventId: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
-      { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      { event_id: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      { event_id: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
+      { event_id: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
     ];
 
     const content = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
@@ -111,8 +111,8 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Write events to file
     const events: TaskEvent[] = [
-      { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
-      { eventId: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
+      { event_id: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      { event_id: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
     ];
     const content = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
     await tempDir.writeFile(eventsPath, content);
@@ -133,8 +133,8 @@ describe("TaskEventStore file persistence (integration)", () => {
     }
 
     expect(readEvents).toHaveLength(2);
-    expect(readEvents[0].eventId).toBe("evt_1");
-    expect(readEvents[1].eventId).toBe("evt_2");
+    expect(readEvents[0].event_id).toBe("evt_1");
+    expect(readEvents[1].event_id).toBe("evt_2");
   });
 
   it("should handle malformed JSON lines gracefully", async () => {
@@ -142,11 +142,11 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Write content with some malformed lines
     const content = [
-      '{"eventId":"evt_1","sequence":1,"type":"QUEUE","timestamp":"2026-01-15T10:00:00.000Z"}',
+      '{"event_id":"evt_1","sequence":1,"type":"QUEUE","timestamp":"2026-01-15T10:00:00.000Z"}',
       "invalid json line",
-      '{"eventId":"evt_2","sequence":2,"type":"START","timestamp":"2026-01-15T10:01:00.000Z"}',
+      '{"event_id":"evt_2","sequence":2,"type":"START","timestamp":"2026-01-15T10:01:00.000Z"}',
       "", // Empty line
-      '{"eventId":"evt_3","sequence":3,"type":"PLAN_COMPLETE","timestamp":"2026-01-15T10:02:00.000Z"}',
+      '{"event_id":"evt_3","sequence":3,"type":"PLAN_COMPLETE","timestamp":"2026-01-15T10:02:00.000Z"}',
     ].join("\n") + "\n";
 
     await tempDir.writeFile(eventsPath, content);
@@ -175,10 +175,10 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Write multiple events
     const events: TaskEvent[] = [
-      { eventId: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
-      { eventId: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
-      { eventId: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
-      { eventId: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
+      { event_id: "evt_1", sequence: 1, type: "QUEUE", timestamp: "2026-01-15T10:00:00.000Z" },
+      { event_id: "evt_2", sequence: 2, type: "START", timestamp: "2026-01-15T10:01:00.000Z" },
+      { event_id: "evt_3", sequence: 3, type: "PLAN_COMPLETE", timestamp: "2026-01-15T10:02:00.000Z" },
+      { event_id: "evt_4", sequence: 4, type: "ALL_SUBTASKS_DONE", timestamp: "2026-01-15T10:03:00.000Z" },
     ];
 
     const content = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
@@ -217,7 +217,7 @@ describe("TaskEventStore file persistence (integration)", () => {
 
     // Create event with all possible fields
     const originalEvent: TaskEvent = {
-      eventId: "evt_complex_1",
+      event_id: "evt_complex_1",
       sequence: 1,
       type: "QUEUE",
       timestamp: "2026-01-15T10:00:00.000Z",
@@ -236,7 +236,7 @@ describe("TaskEventStore file persistence (integration)", () => {
     const readEvent = JSON.parse(fileContent.trim()) as TaskEvent;
 
     // Verify exact match
-    expect(readEvent.eventId).toBe(originalEvent.eventId);
+    expect(readEvent.event_id).toBe(originalEvent.event_id);
     expect(readEvent.sequence).toBe(originalEvent.sequence);
     expect(readEvent.type).toBe(originalEvent.type);
     expect(readEvent.timestamp).toBe(originalEvent.timestamp);

@@ -400,8 +400,8 @@ export class AutoFixTaskQueue extends EventEmitter {
         id: c.id,
         body: c.body,
         author: c.author,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
       }));
 
       const analysis = await analyzeIssue(issue, convertedComments);

@@ -756,7 +756,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       "Content-Type, Authorization, Accept, Mcp-Session-Id"
     );
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     const message = request.body;
 
     log.debug({ sessionId, message: JSON.stringify(message).slice(0, 100) }, "POST /message received");
@@ -814,7 +814,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       "Content-Type, Authorization, Accept, Mcp-Session-Id"
     );
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     const message = request.body;
 
     if (!sessionId) {

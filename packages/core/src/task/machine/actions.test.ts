@@ -62,28 +62,28 @@ describe("setReviewReason actions", () => {
   describe("setReviewReason_planReview", () => {
     it("sets reviewReason to plan_review", () => {
       const result = setReviewReason_planReview();
-      expect(result.reviewReason).toBe("plan_review");
+      expect(result.review_reason).toBe("plan_review");
     });
   });
 
   describe("setReviewReason_stopped", () => {
     it("sets reviewReason to stopped", () => {
       const result = setReviewReason_stopped();
-      expect(result.reviewReason).toBe("stopped");
+      expect(result.review_reason).toBe("stopped");
     });
   });
 
   describe("setReviewReason_completed", () => {
     it("sets reviewReason to completed", () => {
       const result = setReviewReason_completed();
-      expect(result.reviewReason).toBe("completed");
+      expect(result.review_reason).toBe("completed");
     });
   });
 
   describe("setReviewReason_qaRejected", () => {
     it("sets reviewReason to qa_rejected", () => {
       const result = setReviewReason_qaRejected();
-      expect(result.reviewReason).toBe("qa_rejected");
+      expect(result.review_reason).toBe("qa_rejected");
     });
   });
 });
@@ -242,7 +242,7 @@ describe("setQueuedAt", () => {
 
   it("sets queuedAt to current timestamp", () => {
     const result = setQueuedAt();
-    expect(result.queuedAt).toBe("2026-01-15T10:30:00.000Z");
+    expect(result.queued_at).toBe("2026-01-15T10:30:00.000Z");
   });
 
   it("only returns queuedAt", () => {

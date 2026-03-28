@@ -48,8 +48,8 @@ export interface AgentConfigFile {
   }>;
   /** Environment variable references (snake_case for YAML) */
   env_variables?: string[];
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -58,6 +58,6 @@ export interface AgentConfigFile {
 export interface SessionFile {
   id: string;
   name?: string;
-  createdAt: string;
-  lastAccessedAt: string;
+  created_at: string;
+  last_accessed_at: string;
 }

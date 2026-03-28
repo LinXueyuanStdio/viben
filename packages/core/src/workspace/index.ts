@@ -149,9 +149,9 @@ export class WorkspaceManager {
   /**
    * Add a workspace to the known workspaces list
    */
-  async addKnownWorkspace(workspacePath: string, name?: string): Promise<void> {
+  async addKnownWorkspace(workspace_path: string, name?: string): Promise<void> {
     const known = await this.readKnownWorkspaces();
-    const normalizedPath = resolve(workspacePath);
+    const normalizedPath = resolve(workspace_path);
 
     // Check if already exists
     const existingIndex = known.workspaces.findIndex(
@@ -183,16 +183,16 @@ export class WorkspaceManager {
    * Register a workspace (alias for addKnownWorkspace)
    * Adds a workspace to the global registry
    */
-  async registerWorkspace(workspacePath: string, name?: string): Promise<void> {
-    return this.addKnownWorkspace(workspacePath, name);
+  async registerWorkspace(workspace_path: string, name?: string): Promise<void> {
+    return this.addKnownWorkspace(workspace_path, name);
   }
 
   /**
    * Remove a workspace from the known workspaces list
    */
-  async removeKnownWorkspace(workspacePath: string): Promise<void> {
+  async removeKnownWorkspace(workspace_path: string): Promise<void> {
     const known = await this.readKnownWorkspaces();
-    const normalizedPath = resolve(workspacePath);
+    const normalizedPath = resolve(workspace_path);
 
     known.workspaces = known.workspaces.filter((w) => w.path !== normalizedPath);
     await this.writeKnownWorkspaces(known);
@@ -202,16 +202,16 @@ export class WorkspaceManager {
    * Unregister a workspace (alias for removeKnownWorkspace)
    * Removes a workspace from the global registry
    */
-  async unregisterWorkspace(workspacePath: string): Promise<void> {
-    return this.removeKnownWorkspace(workspacePath);
+  async unregisterWorkspace(workspace_path: string): Promise<void> {
+    return this.removeKnownWorkspace(workspace_path);
   }
 
   /**
    * Get workspace info for a given path.
    * Returns null if the path is not a valid workspace.
    */
-  async getWorkspaceInfo(workspacePath: string): Promise<Workspace | null> {
-    const vibenDir = join(workspacePath, WORKSPACE_DIR);
+  async getWorkspaceInfo(workspace_path: string): Promise<Workspace | null> {
+    const vibenDir = join(workspace_path, WORKSPACE_DIR);
     const configPath = join(vibenDir, WORKSPACE_CONFIG_FILE);
 
     if (!fileExists(configPath)) {
@@ -227,14 +227,14 @@ export class WorkspaceManager {
       const fileStat = await stat(configPath);
 
       return {
-        path: workspacePath,
-        name: config.name || basename(workspacePath),
+        path: workspace_path,
+        name: config.name || basename(workspace_path),
         configPath,
         mcp: config.mcp,
         skills: config.skills,
         agents: config.agents,
-        createdAt: config.createdAt || fileStat.birthtime.toISOString(),
-        updatedAt: config.updatedAt || fileStat.mtime.toISOString(),
+        created_at: config.created_at || fileStat.birthtime.toISOString(),
+        updated_at: config.updated_at || fileStat.mtime.toISOString(),
       };
     } catch {
       return null;
@@ -298,8 +298,8 @@ export class WorkspaceManager {
   /**
    * List agents in a workspace
    */
-  async listWorkspaceAgents(workspacePath: string): Promise<string[]> {
-    const agentsDir = join(workspacePath, WORKSPACE_DIR, "agents");
+  async listWorkspaceAgents(workspace_path: string): Promise<string[]> {
+    const agentsDir = join(workspace_path, WORKSPACE_DIR, "agents");
 
     if (!fileExists(agentsDir)) {
       return [];
@@ -318,29 +318,29 @@ export class WorkspaceManager {
   /**
    * Get the agents directory for a workspace
    */
-  getWorkspaceAgentsDir(workspacePath: string): string {
-    return join(workspacePath, WORKSPACE_DIR, "agents");
+  getWorkspaceAgentsDir(workspace_path: string): string {
+    return join(workspace_path, WORKSPACE_DIR, "agents");
   }
 
   /**
    * Get the MCP directory for a workspace
    */
-  getWorkspaceMcpDir(workspacePath: string): string {
-    return join(workspacePath, WORKSPACE_DIR, "mcp");
+  getWorkspaceMcpDir(workspace_path: string): string {
+    return join(workspace_path, WORKSPACE_DIR, "mcp");
   }
 
   /**
    * Get the skills directory for a workspace
    */
-  getWorkspaceSkillsDir(workspacePath: string): string {
-    return join(workspacePath, WORKSPACE_DIR, "skills");
+  getWorkspaceSkillsDir(workspace_path: string): string {
+    return join(workspace_path, WORKSPACE_DIR, "skills");
   }
 
   /**
    * Get the config path for a workspace
    */
-  getWorkspaceConfigPath(workspacePath: string): string {
-    return join(workspacePath, WORKSPACE_DIR, WORKSPACE_CONFIG_FILE);
+  getWorkspaceConfigPath(workspace_path: string): string {
+    return join(workspace_path, WORKSPACE_DIR, WORKSPACE_CONFIG_FILE);
   }
 
   /**
@@ -388,8 +388,8 @@ export class WorkspaceManager {
   /**
    * Read workspace configuration
    */
-  async readConfig(workspacePath: string): Promise<WorkspaceConfigFile | null> {
-    const configPath = this.getWorkspaceConfigPath(workspacePath);
+  async readConfig(workspace_path: string): Promise<WorkspaceConfigFile | null> {
+    const configPath = this.getWorkspaceConfigPath(workspace_path);
 
     if (!fileExists(configPath)) {
       return null;
@@ -403,10 +403,10 @@ export class WorkspaceManager {
    * Write workspace configuration
    */
   async writeConfig(
-    workspacePath: string,
+    workspace_path: string,
     config: WorkspaceConfigFile
   ): Promise<void> {
-    const configPath = this.getWorkspaceConfigPath(workspacePath);
+    const configPath = this.getWorkspaceConfigPath(workspace_path);
     await writeYaml(configPath, config);
   }
 }

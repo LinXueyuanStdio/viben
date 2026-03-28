@@ -300,7 +300,7 @@ services:
     type: "custom"
     pid: 99999
     command: "test-cmd"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -336,7 +336,7 @@ services:
     pid: 12345
     command: "npx"
     args: ["-y","@anthropic-ai/mcp-server-filesystem"]
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -365,7 +365,7 @@ services:
     type: "mcp"
     pid: 88888
     command: "stale-cmd"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -401,7 +401,7 @@ services:
     pid: 77777
     command: "original-cmd"
     args: ["--original-arg"]
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -506,12 +506,12 @@ services:
     type: "custom"
     pid: 11111
     command: "cmd1"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
   - name: "service2"
     type: "custom"
     pid: 22222
     command: "cmd2"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -554,7 +554,7 @@ services:
     type: "custom"
     pid: 33333
     command: "cmd"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -575,7 +575,7 @@ services:
     type: "custom"
     pid: 44444
     command: "cmd"
-    startedAt: "2024-01-15T10:00:00Z"
+    started_at: "2024-01-15T10:00:00Z"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 
@@ -613,7 +613,7 @@ services:
     type: "custom"
     pid: 55555
     command: "cmd"
-    startedAt: "${startTime}"
+    started_at: "${startTime}"
 `;
       await tempDir.writeFile("services.yaml", servicesYaml);
 

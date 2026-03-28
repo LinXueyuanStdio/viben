@@ -58,15 +58,15 @@ export interface StartTaskResult {
   /** Whether the task started successfully */
   success: boolean;
   /** Agent ID for tracking */
-  agentId?: string;
+  agent_id?: string;
   /** Process ID of the spawned agent */
   pid?: number;
   /** Session ID for resume support */
-  sessionId?: string;
+  session_id?: string;
   /** Path to the log file */
-  logFile?: string;
+  log_file?: string;
   /** Working directory where agent runs */
-  workingDir?: string;
+  working_dir?: string;
   /** Error message if failed */
   error?: string;
 }
@@ -81,7 +81,7 @@ interface TaskData {
   description?: string;
   status?: string;
   session_id?: string;
-  startedAt?: string;
+  started_at?: string;
   [key: string]: unknown;
 }
 
@@ -232,7 +232,7 @@ function buildPromptCommand(
  * if (result.success) {
  *   console.log(`Task started`);
  *   console.log(`Agent ID: ${result.agentId}`);
- *   console.log(`Log file: ${result.logFile}`);
+ *   console.log(`Log file: ${result.log_file}`);
  * } else {
  *   console.error(`Failed: ${result.error}`);
  * }
@@ -292,8 +292,8 @@ export async function startTask(
 
   // Update task status and record start time (only if not already started)
   taskData.status = "in_progress";
-  if (!taskData.startedAt) {
-    taskData.startedAt = new Date().toISOString();
+  if (!taskData.started_at) {
+    taskData.started_at = new Date().toISOString();
   }
   writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
 
@@ -374,7 +374,7 @@ Current task context:
       agentId,
       worktreePath: repoRoot,
       pid: agentPid,
-      taskDir: taskDirAbs, // Store absolute path
+      task_dir: taskDirAbs, // Store absolute path (snake_case used by registry)
       platform,
     },
     repoRoot
@@ -425,10 +425,10 @@ Current task context:
 
   return {
     success: true,
-    agentId,
+    agent_id: agentId,
     pid: agentPid,
-    sessionId: sessionId || undefined,
-    logFile,
-    workingDir: repoRoot,
+    session_id: sessionId || undefined,
+    log_file: logFile,
+    working_dir: repoRoot,
   };
 }

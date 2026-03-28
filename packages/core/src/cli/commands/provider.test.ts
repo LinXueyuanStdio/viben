@@ -81,11 +81,11 @@ function createMockProvider(overrides: Partial<Provider> = {}): Provider {
     type: "openai" as ProviderType,
     name: "Test Provider",
     apiKey: "sk-test-key",
-    baseUrl: "https://api.openai.com/v1",
+    base_url: "https://api.openai.com/v1",
     isDefault: false,
     enabled: true,
-    createdAt: "2024-01-01T00:00:00Z",
-    updatedAt: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -98,7 +98,7 @@ function createMockStatus(overrides: Partial<ProviderStatus> = {}): ProviderStat
     id: "test-provider",
     connected: true,
     latency: 100,
-    checkedAt: "2024-01-01T00:00:00Z",
+    checked_at: "2024-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -156,7 +156,7 @@ describe("Provider CLI Commands", () => {
           id: "anthropic-main",
           type: "anthropic",
           name: "Anthropic Main",
-          baseUrl: "https://api.anthropic.com/v1",
+          base_url: "https://api.anthropic.com/v1",
         }),
       ];
 
@@ -300,7 +300,7 @@ describe("Provider CLI Commands", () => {
     it("should create provider with --base-url option", async () => {
       const mockProvider = createMockProvider({
         id: "custom-provider",
-        baseUrl: "https://api.custom.com/v1",
+        base_url: "https://api.custom.com/v1",
       });
 
       vi.mocked(providerManager.createProvider).mockResolvedValue(mockProvider);
@@ -316,7 +316,7 @@ describe("Provider CLI Commands", () => {
 
       expect(providerManager.createProvider).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseUrl: "https://api.custom.com/v1",
+          base_url: "https://api.custom.com/v1",
         })
       );
     });
@@ -341,7 +341,7 @@ describe("Provider CLI Commands", () => {
     it("should create provider with --max-retries option", async () => {
       const mockProvider = createMockProvider({
         id: "my-provider",
-        maxRetries: 3,
+        max_retries: 3,
       });
 
       vi.mocked(providerManager.createProvider).mockResolvedValue(mockProvider);
@@ -350,7 +350,7 @@ describe("Provider CLI Commands", () => {
 
       expect(providerManager.createProvider).toHaveBeenCalledWith(
         expect.objectContaining({
-          maxRetries: 3,
+          max_retries: 3,
         })
       );
     });
@@ -378,9 +378,9 @@ describe("Provider CLI Commands", () => {
         type: "anthropic",
         name: "Full Provider",
         apiKey: "sk-ant-test",
-        baseUrl: "https://api.custom.com/v1",
+        base_url: "https://api.custom.com/v1",
         timeout: 60,
-        maxRetries: 5,
+        max_retries: 5,
         isDefault: true,
       });
 
@@ -409,9 +409,9 @@ describe("Provider CLI Commands", () => {
           type: "anthropic",
           name: "full-provider",
           apiKey: "sk-ant-test",
-          baseUrl: "https://api.custom.com/v1",
+          base_url: "https://api.custom.com/v1",
           timeout: 60,
-          maxRetries: 5,
+          max_retries: 5,
           setAsDefault: true,
         })
       );
@@ -507,7 +507,7 @@ describe("Provider CLI Commands", () => {
           id: "custom-1234567890",
           type: "custom",
           apiKey: "sk-test",
-          baseUrl: "https://api.example.com/v1",
+          base_url: "https://api.example.com/v1",
         });
 
         vi.mocked(providerManager.createProvider).mockResolvedValue(mockProvider);
@@ -527,7 +527,7 @@ describe("Provider CLI Commands", () => {
           expect.objectContaining({
             type: "custom",
             apiKey: "sk-test",
-            baseUrl: "https://api.example.com/v1",
+            base_url: "https://api.example.com/v1",
             name: expect.stringMatching(/^custom-\d+$/),
           })
         );
@@ -801,9 +801,9 @@ describe("Provider CLI Commands", () => {
         type: "openai",
         name: "My OpenAI Provider",
         apiKey: "sk-test-key",
-        baseUrl: "https://api.openai.com/v1",
+        base_url: "https://api.openai.com/v1",
         timeout: 30,
-        maxRetries: 3,
+        max_retries: 3,
         isDefault: true,
         enabled: true,
       });
@@ -910,7 +910,7 @@ describe("Provider CLI Commands", () => {
     it("should update provider base URL", async () => {
       const mockProvider = createMockProvider({
         id: "my-provider",
-        baseUrl: "https://api.new.com/v1",
+        base_url: "https://api.new.com/v1",
       });
 
       vi.mocked(providerManager.updateProvider).mockResolvedValue(mockProvider);
@@ -925,7 +925,7 @@ describe("Provider CLI Commands", () => {
       ]);
 
       expect(providerManager.updateProvider).toHaveBeenCalledWith("my-provider", {
-        baseUrl: "https://api.new.com/v1",
+        base_url: "https://api.new.com/v1",
       });
     });
 
@@ -991,7 +991,7 @@ describe("Provider CLI Commands", () => {
     it("should update provider max retries", async () => {
       const mockProvider = createMockProvider({
         id: "my-provider",
-        maxRetries: 5,
+        max_retries: 5,
       });
 
       vi.mocked(providerManager.updateProvider).mockResolvedValue(mockProvider);
@@ -999,7 +999,7 @@ describe("Provider CLI Commands", () => {
       await runCommand(["provider", "update", "-n", "my-provider", "--max-retries", "5"]);
 
       expect(providerManager.updateProvider).toHaveBeenCalledWith("my-provider", {
-        maxRetries: 5,
+        max_retries: 5,
       });
     });
 
