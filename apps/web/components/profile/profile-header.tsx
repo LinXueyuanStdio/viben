@@ -16,12 +16,19 @@ interface ProfileHeaderProps {
     email: string;
     bio: string | null;
     role: string;
-    createdAt: Date;
+    createdAt: Date | string;
   };
 }
 
 export function ProfileHeader({ user }: ProfileHeaderProps) {
   const { t } = useTranslation();
+
+  // Format date consistently to avoid hydration mismatch
+  const formattedDate = (() => {
+    const date = typeof user.createdAt === 'string' ? new Date(user.createdAt) : user.createdAt;
+    // Use ISO format for consistent server/client rendering, then let the client format it
+    return date.toISOString().split('T')[0];
+  })();
 
   return (
     <div className="flex items-start justify-between">
@@ -47,7 +54,7 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
             <p className="mt-2 max-w-md text-sm">{user.bio}</p>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
-            {t('profile.header.memberSince', { date: user.createdAt.toLocaleDateString() })}
+            {t('profile.header.memberSince', { date: formattedDate })}
           </p>
         </div>
       </div>

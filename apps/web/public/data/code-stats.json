@@ -1,39 +1,39 @@
 {
-  "generatedAt": "2026-03-29T11:11:32.829403+00:00",
+  "generatedAt": "2026-03-29T12:04:40.668778+00:00",
   "summary": {
-    "totalLines": 750930,
-    "totalFiles": 2337,
+    "totalLines": 747996,
+    "totalFiles": 2334,
     "totalModules": 19,
-    "codeLines": 421033,
-    "docLines": 199857,
-    "configLines": 130040
+    "codeLines": 422799,
+    "docLines": 195148,
+    "configLines": 130049
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 270213,
-      "files": 858,
+      "lines": 271793,
+      "files": 866,
       "color": "#3178C6"
     },
     {
       "lang": "Markdown",
       "ext": "md",
-      "lines": 198509,
-      "files": 652,
+      "lines": 193800,
+      "files": 641,
       "color": "#083FA1"
     },
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 132598,
+      "lines": 132784,
       "files": 520,
       "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 116953,
+      "lines": 116962,
       "files": 85,
       "color": "#F59E0B"
     },
@@ -124,8 +124,8 @@
     },
     {
       "name": "packages/core",
-      "lines": 238295,
-      "files": 727,
+      "lines": 239647,
+      "files": 734,
       "color": "#3B82F6"
     },
     {
@@ -136,8 +136,8 @@
     },
     {
       "name": "apps/web",
-      "lines": 55986,
-      "files": 315,
+      "lines": 56303,
+      "files": 316,
       "color": "#10B981"
     },
     {
@@ -308,8 +308,8 @@
     },
     {
       "name": "web",
-      "lines": 55986,
-      "files": 315,
+      "lines": 56303,
+      "files": 316,
       "color": "#10B981"
     },
     {
@@ -327,7 +327,7 @@
     },
     {
       "name": "pkg/core",
-      "density": 327.8,
+      "density": 326.5,
       "color": "#3B82F6"
     },
     {
@@ -337,7 +337,7 @@
     },
     {
       "name": "web",
-      "density": 177.7,
+      "density": 178.2,
       "color": "#10B981"
     },
     {
@@ -369,17 +369,17 @@
   "categories": [
     {
       "label": "源代码",
-      "lines": 421033,
+      "lines": 422799,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 199857,
+      "lines": 195148,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 130040,
+      "lines": 130049,
       "color": "#F59E0B"
     }
   ],
@@ -1944,7 +1944,7 @@
     },
     {
       "date": "2026-03-29",
-      "count": 11
+      "count": 20
     }
   ],
   "fileChurn": [
@@ -2020,21 +2020,21 @@
     },
     {
       "path": "packages/core/package.json",
-      "changes": 30,
-      "lastChanged": "2026-03-27"
+      "changes": 31,
+      "lastChanged": "2026-03-29"
     }
   ],
   "codeFreshness": [
     {
       "label": "<1月",
-      "files": 1563,
-      "lines": 607398,
+      "files": 1568,
+      "lines": 606294,
       "color": "#10B981"
     },
     {
       "label": "1-3月",
-      "files": 779,
-      "lines": 143549,
+      "files": 770,
+      "lines": 141581,
       "color": "#3B82F6"
     },
     {
@@ -2064,22 +2064,22 @@
     },
     {
       "range": "50-100",
-      "files": 345,
+      "files": 343,
       "color": "#3B82F6"
     },
     {
       "range": "100-200",
-      "files": 496,
+      "files": 499,
       "color": "#F59E0B"
     },
     {
       "range": "200-500",
-      "files": 708,
+      "files": 705,
       "color": "#F97316"
     },
     {
       "range": "500+",
-      "files": 388,
+      "files": 387,
       "color": "#EF4444"
     }
   ]
