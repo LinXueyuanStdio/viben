@@ -72,8 +72,8 @@ export function SourceBadge({ source, className }: SourceBadgeProps) {
       variant={source === 'official' ? 'default' : 'secondary'}
       className={cn(
         'text-[10px] shrink-0',
-        source === 'official' && 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20',
-        source === 'community' && 'bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 border-purple-500/20',
+        source === 'official' && 'bg-primary/10 text-primary hover:bg-primary/20 border-primary/20',
+        source === 'community' && 'bg-secondary text-secondary-foreground hover:bg-secondary/80 border-secondary',
         className
       )}
     >

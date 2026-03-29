@@ -192,7 +192,7 @@ export function OfficialServerCard({
           )}
           <div className="flex-1" />
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             className="text-xs gap-1"
             onClick={(e) => e.stopPropagation()}

@@ -569,7 +569,39 @@ async function configureAntigravity(
 // =============================================================================
 
 /**
+ * Copy all .md files from a template subdirectory to destination
+ */
+async function copyTemplateMdFiles(
+  templateSubdir: string,
+  destDir: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[],
+  cwd: string
+): Promise<void> {
+  const templateDir = join(getTemplatesDir(), templateSubdir);
+  if (!fs.existsSync(templateDir)) {
+    return; // Template directory doesn't exist, skip
+  }
+
+  ensureDir(destDir);
+  const entries = await readdir(templateDir);
+  const mdFiles = entries.filter((file) => file.endsWith(".md"));
+
+  for (const file of mdFiles) {
+    const content = readTemplate(`${templateSubdir}/${file}`);
+    await writeFileIfNeeded(
+      join(destDir, file),
+      content,
+      options,
+      createdFiles,
+      cwd
+    );
+  }
+}
+
+/**
  * Create spec templates (always creates both frontend and backend specs)
+ * Dynamically reads all .md files from template directories
  */
 async function createSpecTemplates(
   cwd: string,
@@ -579,133 +611,68 @@ async function createSpecTemplates(
   const specDir = join(cwd, "docs/specs");
   ensureDir(specDir);
 
-  // Guides - always created
-  ensureDir(join(specDir, "guides"));
-  const guidesFiles = [
-    "index.md",
-    "cross-layer-thinking-guide.md",
-    "code-reuse-thinking-guide.md",
-  ];
-
-  for (const file of guidesFiles) {
-    const content = readTemplate(`viben/spec/guides/${file}`);
-    await writeFileIfNeeded(
-      join(specDir, "guides", file),
-      content,
-      options,
-      createdFiles,
-      cwd
-    );
-  }
+  // Guides
+  await copyTemplateMdFiles(
+    "viben/spec/guides",
+    join(specDir, "guides"),
+    options,
+    createdFiles,
+    cwd
+  );
 
   // Backend specs
-  ensureDir(join(specDir, "backend"));
-  const backendFiles = [
-    "index.md",
-    "directory-structure.md",
-    "database-guidelines.md",
-    "logging-guidelines.md",
-    "quality-guidelines.md",
-    "error-handling.md",
-  ];
-
-  for (const file of backendFiles) {
-    const content = readTemplate(`viben/spec/backend/${file}`);
-    await writeFileIfNeeded(
-      join(specDir, "backend", file),
-      content,
-      options,
-      createdFiles,
-      cwd
-    );
-  }
+  await copyTemplateMdFiles(
+    "viben/spec/backend",
+    join(specDir, "backend"),
+    options,
+    createdFiles,
+    cwd
+  );
 
   // Frontend specs
-  ensureDir(join(specDir, "frontend"));
-  const frontendFiles = [
-    "index.md",
-    "directory-structure.md",
-    "type-safety.md",
-    "hook-guidelines.md",
-    "component-guidelines.md",
-    "quality-guidelines.md",
-    "state-management.md",
-  ];
-
-  for (const file of frontendFiles) {
-    const content = readTemplate(`viben/spec/frontend/${file}`);
-    await writeFileIfNeeded(
-      join(specDir, "frontend", file),
-      content,
-      options,
-      createdFiles,
-      cwd
-    );
-  }
+  await copyTemplateMdFiles(
+    "viben/spec/frontend",
+    join(specDir, "frontend"),
+    options,
+    createdFiles,
+    cwd
+  );
 }
 
 /**
  * Create idea-types templates in docs/idea-types/
+ * Dynamically reads all .md files from templates/viben/idea-types/
  */
 async function createIdeaTypesTemplates(
   cwd: string,
   options: { force?: boolean; skipExisting?: boolean },
   createdFiles: string[]
 ): Promise<void> {
-  const ideaTypesDir = join(cwd, "docs/idea-types");
-  ensureDir(ideaTypesDir);
-
-  const ideaTypeFiles = [
-    "code_improvements.md",
-    "code_quality.md",
-    "documentation_gaps.md",
-    "performance_optimizations.md",
-    "security_hardening.md",
-    "ui_ux_improvements.md",
-  ];
-
-  for (const file of ideaTypeFiles) {
-    const content = readTemplate(`viben/idea-types/${file}`);
-    await writeFileIfNeeded(
-      join(ideaTypesDir, file),
-      content,
-      options,
-      createdFiles,
-      cwd
-    );
-  }
+  await copyTemplateMdFiles(
+    "viben/idea-types",
+    join(cwd, "docs/idea-types"),
+    options,
+    createdFiles,
+    cwd
+  );
 }
 
 /**
  * Create reward-types templates in docs/reward-types/
+ * Dynamically reads all .md files from templates/viben/reward-types/
  */
 async function createRewardTypesTemplates(
   cwd: string,
   options: { force?: boolean; skipExisting?: boolean },
   createdFiles: string[]
 ): Promise<void> {
-  const rewardTypesDir = join(cwd, "docs/reward-types");
-  ensureDir(rewardTypesDir);
-
-  const rewardTypeFiles = [
-    "test_coverage.md",
-    "code_quality.md",
-    "security_scan.md",
-    "diff_penalty.md",
-    "agent_review.md",
-    "benchmark_comparison.md",
-  ];
-
-  for (const file of rewardTypeFiles) {
-    const content = readTemplate(`viben/reward-types/${file}`);
-    await writeFileIfNeeded(
-      join(rewardTypesDir, file),
-      content,
-      options,
-      createdFiles,
-      cwd
-    );
-  }
+  await copyTemplateMdFiles(
+    "viben/reward-types",
+    join(cwd, "docs/reward-types"),
+    options,
+    createdFiles,
+    cwd
+  );
 }
 
 // =============================================================================
