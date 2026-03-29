@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
@@ -15,10 +16,17 @@ const navigation = [
 export function SettingsSidebar() {
   const { t } = useTranslation();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <aside className="w-48 shrink-0">
-      <h2 className="mb-4 text-lg font-semibold">{t('settings.title')}</h2>
+      <h2 className="mb-4 text-lg font-semibold" suppressHydrationWarning>
+        {mounted ? t('settings.title') : 'Settings'}
+      </h2>
       <nav className="space-y-1">
         {navigation.map((item) => {
           const isActive = pathname === item.href;
@@ -32,9 +40,12 @@ export function SettingsSidebar() {
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
+              suppressHydrationWarning
             >
               <item.icon className="h-4 w-4" />
-              {t(item.nameKey)}
+              <span suppressHydrationWarning>
+                {mounted ? t(item.nameKey) : item.nameKey.split('.').pop()}
+              </span>
             </Link>
           );
         })}
