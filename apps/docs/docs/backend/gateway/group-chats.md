@@ -4,7 +4,31 @@
 
 ## Overview
 
-The Group Chats API provides multi-agent collaborative chat functionality, supporting multiple agents working together in the same session.
+The Group Chats API provides multi-agent collaborative chat functionality, supporting multiple agents working together in the same session. It uses a file-based storage system and supports a dual-view architecture for different perspectives on conversations.
+
+## Core Concepts
+
+### Dual-View System
+
+Group chats support two distinct views for messages:
+
+| View | File Source | Content | Description |
+|------|-------------|---------|-------------|
+| **User View** | `messages.ui.jsonl` | Clean message stream | What users see in the UI, without tool call details |
+| **Agent View** | `<agent-id>/messages.rollout.jsonl` | Raw agent messages | Complete agent history including tool calls |
+
+When a user sends a message:
+1. All agents in the group chat **think in parallel**
+2. User view shows "Agent is thinking..." status
+3. Each agent provides their response when ready
+4. Tool calls happen in the background, hidden from user view
+
+### Participant Types
+
+| Type | Identifier | Description |
+|------|------------|-------------|
+| `human` | User ID | Human users who send messages via UI |
+| `agent` | Agent ID | AI agents like Claude, GPT, etc. |
 
 ## Endpoint List
 
@@ -239,6 +263,16 @@ List session messages. Supports multiple views.
 }
 ```
 
+**UI Message Types**:
+
+```typescript
+type UIMessageType =
+  | "user"           // User message
+  | "agent_thinking" // Agent is thinking
+  | "agent_response" // Agent response
+  | "system"         // System messages (member joined/left, etc.)
+```
+
 ---
 
 ### POST /api/group-chats/:id/sessions/:sid/messages
@@ -353,20 +387,103 @@ Upload a picture. Only accepts image formats.
 
 ## Group Chat Storage
 
-Group chat data is stored in the workspace directory:
+Group chat data is stored in the workspace directory using a file-based approach:
 
 ```
 <workspace>/.viben/group-chats/
 └── <group-chat-id>/
-    ├── config.yaml           # Group chat configuration
-    ├── members.yaml          # Member list
-    ├── sessions/
-    │   └── <session-id>/
-    │       ├── config.yaml   # Session configuration
-    │       └── messages.jsonl # Message history
-    ├── files/                # Uploaded files
-    └── pictures/             # Uploaded pictures
+    ├── config.yaml              # Group chat configuration
+    ├── files/                   # Shared files (group files)
+    ├── pictures/                # Shared pictures (group album)
+    └── sessions/                # Conversation records
+        └── <session-id>/
+            ├── config.yaml          # Session configuration
+            ├── messages.ui.jsonl    # User view messages (append-only)
+            ├── responses.jsonl      # Current round agent responses (cleared each round)
+            └── agents/
+                └── <agent-id>/
+                    ├── messages.rollout.jsonl  # Agent message history (with tool calls)
+                    └── subagents/              # Sub-agent messages (if any)
+                        └── agent-<subagent-id>.jsonl
 ```
+
+### Key Files Explained
+
+| File | Lifecycle | Purpose |
+|------|-----------|---------|
+| `messages.ui.jsonl` | append-only | Complete conversation history for user view |
+| `responses.jsonl` | cleared each round | Temporary storage for current round agent responses |
+| `messages.rollout.jsonl` | append-only | Full agent message history (including tool calls) |
+| `subagents/agent-*.jsonl` | append-only | Sub-agent message records (following Claude Code design) |
+
+### The responses.jsonl Lifecycle
+
+The `responses.jsonl` file plays a crucial role in multi-agent coordination:
+
+1. **User sends message**: `responses.jsonl` is **cleared**
+2. **Agents process**: Each agent thinks and generates a response
+3. **Agent completes**: Response is **appended** to `responses.jsonl`
+4. **Next round**: When user sends next message, `responses.jsonl` is read to build context for each agent (showing what other agents said)
+
+This mechanism allows each agent to see what other agents responded in the previous round, enabling coherent multi-agent discussions.
+
+### Message Building Logic
+
+When sending messages to agents, the Gateway constructs context that includes other agents' previous responses:
+
+```
+Example: 3 agents (Claude, Cursor, Codex)
+
+User Round 1: "Please review this code"
+  -> To Claude: "Please review this code"
+  -> To Cursor: "Please review this code"
+  -> To Codex: "Please review this code"
+
+After agents respond, responses.jsonl contains all 3 responses.
+
+User Round 2: "How should I fix it?"
+  -> To Claude:
+     [Cursor]: I found 2 bugs...
+
+     [Codex]: I suggest refactoring...
+
+     [User]: How should I fix it?
+
+  -> To Cursor:
+     [Claude]: The code has 3 issues...
+
+     [Codex]: I suggest refactoring...
+
+     [User]: How should I fix it?
+```
+
+---
+
+## View Switching
+
+Users can switch between different views in the UI:
+
+| View | Data Source | Can Send Messages | Description |
+|------|-------------|-------------------|-------------|
+| **Group Chat View** (default) | `messages.ui.jsonl` | Yes | Clean message stream, normal user interaction |
+| **Agent View** | `agents/<id>/messages.rollout.jsonl` | No (read-only) | View specific agent's tool calls and processing |
+
+**Switching Behavior**:
+- Switching maintains position in the same conversation round
+- Agent view disables the message input box
+- User must manually switch views; no automatic switching
+
+---
+
+## Comparison with Regular Chat Sessions
+
+| Aspect | Regular Chat Session | Group Chat |
+|--------|---------------------|------------|
+| Participants | 1 user + 1 agent | 1 user + N agents |
+| Agent Response | Sequential | **Parallel** |
+| Tool Calls | Shown in UI | **Hidden in background** |
+| Storage | Database | **File system** |
+| View | Single | **Switchable** |
 
 ---
 

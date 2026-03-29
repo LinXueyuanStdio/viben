@@ -28,6 +28,7 @@ The Kanban module provides project-level task management capabilities for Viben 
 | [Phase 6](./phase6-views.md) | UI fixes and layout | Phase 6 |
 | [Phase 7](./phase7-ai.md) | Critical layout fixes | Phase 7 |
 | [Phase 8](./phase8-customization.md) | Match vibe-kanban layout | Phase 8 |
+| [Layout Architecture](./layout-architecture.md) | Deep dive into layout system and resizable panels | Reference |
 
 ---
 

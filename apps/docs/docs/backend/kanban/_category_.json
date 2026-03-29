@@ -1,0 +1,8 @@
+{
+  "label": "Kanban",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "File-based kanban board system with Git Worktree integration"
+  }
+}
