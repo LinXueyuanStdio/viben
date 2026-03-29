@@ -397,7 +397,7 @@ describe("Codex.spawnChat", () => {
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
-      expect.arrayContaining(["-y", "codex-cli@latest", "--prompt", "test prompt"]),
+      expect.arrayContaining(["-y", "@openai/codex", "exec", "test prompt"]),
       expect.objectContaining({
         stdio: "inherit",
       })
@@ -410,29 +410,31 @@ describe("Codex.spawnChat", () => {
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
-      expect.arrayContaining(["--model", "gpt-4-turbo"]),
+      expect.arrayContaining(["-m", "gpt-4-turbo"]),
       expect.any(Object)
     );
   });
 
-  it("should include session option when specified", async () => {
+  it("should include session option when specified (resume mode)", async () => {
     const executor = new Codex();
     await executor.spawnChat({ prompt: "test", sessionId: "codex-session-123" });
 
+    // When sessionId is provided, it uses resume mode with sessionId as positional arg
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
-      expect.arrayContaining(["--session", "codex-session-123"]),
+      expect.arrayContaining(["resume", "codex-session-123"]),
       expect.any(Object)
     );
   });
 
-  it("should include verbose flag when specified", async () => {
+  it("should use exec mode for new session", async () => {
     const executor = new Codex();
-    await executor.spawnChat({ prompt: "test", verbose: true });
+    await executor.spawnChat({ prompt: "test" });
 
+    // Codex uses exec mode for new sessions (no verbose flag)
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
-      expect.arrayContaining(["--verbose"]),
+      expect.arrayContaining(["exec", "test"]),
       expect.any(Object)
     );
   });
