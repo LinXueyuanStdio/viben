@@ -29,8 +29,8 @@ vi.mock("../../agents", () => ({
   agentManager: mockAgentManager,
 }));
 
-// Mock the executors module
-vi.mock("../../executors", () => {
+// Mock the unified executor module
+vi.mock("../../executor", () => {
   const MOCK_EXECUTOR_TYPES = [
     "CLAUDE_CODE",
     "AMP",
@@ -41,7 +41,7 @@ vi.mock("../../executors", () => {
     "QWEN_CODE",
     "COPILOT",
     "DROID",
-  ];
+  ] as const;
 
   const MOCK_CHAT_SUPPORTED_EXECUTORS = ["CLAUDE_CODE", "GEMINI", "CODEX"];
 
@@ -51,35 +51,49 @@ vi.mock("../../executors", () => {
     capabilities: () => {
       switch (type) {
         case "CLAUDE_CODE":
-          return ["SESSION_FORK", "CONTEXT_USAGE"];
+          return ["SPAWN", "CHAT", "CHAT_SDK", "CHAT_STREAMING", "SESSION_RESUME", "SESSION_FORK", "CONTEXT_USAGE", "PLAN_MODE", "APPROVALS"];
+        case "GEMINI":
+          return ["SPAWN", "CHAT", "SESSION_FORK"];
         case "CODEX":
-          return ["SESSION_FORK", "SETUP_HELPER", "CONTEXT_USAGE"];
+          return ["SPAWN", "CHAT", "SESSION_FORK", "CONTEXT_USAGE"];
         case "COPILOT":
-          return [];
+          return ["SPAWN"];
         default:
-          return ["SESSION_FORK"];
+          return ["SPAWN", "SESSION_FORK"];
       }
+    },
+    supports: (capability: string) => {
+      const caps = createMockExecutor(type, available).capabilities();
+      return caps.includes(capability);
     },
     getAvailabilityInfo: () => ({
       status: available ? "INSTALLATION_FOUND" : "NOT_FOUND",
       lastAuthTimestamp: available ? Date.now() : null,
       path: available ? `/usr/local/bin/${type.toLowerCase().replace("_", "-")}` : undefined,
     }),
-    supportsChat: () => MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type),
-    getChatCommand: () => {
-      if (MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type)) {
-        switch (type) {
-          case "CLAUDE_CODE":
-            return "claude";
-          case "GEMINI":
-            return "gemini";
-          case "CODEX":
-            return "codex";
-          default:
-            return null;
-        }
+    getCliName: () => {
+      switch (type) {
+        case "CLAUDE_CODE":
+          return "claude";
+        case "GEMINI":
+          return "gemini";
+        case "CODEX":
+          return "codex";
+        case "AMP":
+          return "amp";
+        case "OPENCODE":
+          return "opencode";
+        case "CURSOR_AGENT":
+          return "cursor-agent";
+        case "QWEN_CODE":
+          return "qwen-code";
+        case "COPILOT":
+          return "copilot";
+        case "DROID":
+          return "droid";
+        default:
+          return type.toLowerCase();
       }
-      return null;
     },
     defaultMcpConfigPath: () => {
       switch (type) {
@@ -96,31 +110,32 @@ vi.mock("../../executors", () => {
   });
 
   return {
-    EXECUTOR_TYPES: MOCK_EXECUTOR_TYPES,
-    CHAT_SUPPORTED_EXECUTORS: MOCK_CHAT_SUPPORTED_EXECUTORS,
-    executorSupportsChat: (type: string) => MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type),
-    getAllExecutorsAvailability: () => {
-      const result: Record<string, { available: boolean; executor: ReturnType<typeof createMockExecutor> }> = {};
-      // Make CLAUDE_CODE and GEMINI available, others not
-      const availableExecutors = ["CLAUDE_CODE", "GEMINI"];
-      for (const type of MOCK_EXECUTOR_TYPES) {
-        const available = availableExecutors.includes(type);
-        result[type] = {
-          available,
-          executor: createMockExecutor(type, available),
-        };
-      }
-      return result;
-    },
-    createExecutor: (type: string) => {
-      if (!MOCK_EXECUTOR_TYPES.includes(type)) {
+    getRegisteredTypes: () => [...MOCK_EXECUTOR_TYPES],
+    getExecutor: (type: string) => {
+      if (!MOCK_EXECUTOR_TYPES.includes(type as typeof MOCK_EXECUTOR_TYPES[number])) {
         throw new Error(`Unknown executor type: ${type}`);
       }
       const availableExecutors = ["CLAUDE_CODE", "GEMINI"];
       return createMockExecutor(type, availableExecutors.includes(type));
     },
+    getAvailableExecutors: () => {
+      const availableExecutors = ["CLAUDE_CODE", "GEMINI"];
+      return availableExecutors.map((type) => ({
+        type,
+        executor: createMockExecutor(type, true),
+        availability: { status: "INSTALLATION_FOUND", path: `/usr/local/bin/${type.toLowerCase().replace("_", "-")}` },
+      }));
+    },
   };
 });
+
+// Mock the legacy executors module (still used for chat proxy)
+vi.mock("../../executors", () => ({
+  createChatProxyAsync: vi.fn(),
+  chatProxyFactory: {
+    isSdkAvailable: vi.fn(() => false),
+  },
+}));
 
 describe("Executor CLI Commands", () => {
   let program: Command;
