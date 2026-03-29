@@ -21,16 +21,18 @@ import { BaseExecutor } from "./base";
 /**
  * Qwen Code executor configuration
  */
-interface QwenCodeExecutorConfig extends ExecutorConfig {
+export interface QwenCodeExecutorConfig extends ExecutorConfig {
   /** Model to use */
   model?: string;
 }
 
 class QwenCodeExecutor extends BaseExecutor {
   readonly type = "QWEN_CODE" as const;
+  protected override config: QwenCodeExecutorConfig;
 
-  constructor(config: ExecutorConfig = {}) {
+  constructor(config: QwenCodeExecutorConfig = {}) {
     super(config);
+    this.config = config;
   }
 
   // === Capability Detection ===
@@ -302,4 +304,4 @@ class QwenCodeExecutor extends BaseExecutor {
 // Register executor
 registerExecutor("QWEN_CODE", (config) => new QwenCodeExecutor(config));
 
-export { QwenCodeExecutor, type QwenCodeExecutorConfig };
+export { QwenCodeExecutor };

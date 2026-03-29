@@ -20,9 +20,8 @@ import { homedir } from "node:os";
 import { join, basename } from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { workspaceManager } from "../../workspace";
-import type { Workspace } from "../../workspace";
-import { initTeam, type ProjectType, type ExecutorType } from "../../team/init";
+import { workspaceManager, initWorkspace } from "../../workspace";
+import type { Workspace, ExecutorType } from "../../workspace";
 import { logger as globalLogger } from "../../telemetry";
 
 const execAsync = promisify(exec);
@@ -336,7 +335,6 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
       // Initialize .viben if requested
       if (init_viben) {
         const developerName = viben_options?.developer_name || "developer";
-        const projectType: ProjectType = viben_options?.project_type || "fullstack";
         const includeCursor = viben_options?.include_cursor ?? true;
         const force = viben_options?.force ?? false;
 
@@ -347,10 +345,9 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
         }
 
         try {
-          const result = await initTeam({
+          const result = await initWorkspace({
             targetDir: workspacePath,
             developerName,
-            projectType,
             force,
             skipExisting: !force,
             executors,

@@ -80,11 +80,23 @@ class DroidExecutor extends BaseExecutor {
 
   buildRunCommand(options: RunCommandOptions): string[] {
     const { prompt } = options;
-    return ["droid", "--prompt", prompt];
+    const args = ["droid", "--prompt", prompt];
+
+    if (this.config.model) {
+      args.push("--model", this.config.model);
+    }
+
+    return args;
   }
 
   buildResumeCommand(sessionId: string): string[] {
-    return ["droid", "--session", sessionId];
+    const args = ["droid", "--session", sessionId];
+
+    if (this.config.model) {
+      args.push("--model", this.config.model);
+    }
+
+    return args;
   }
 
   getNonInteractiveEnv(): Record<string, string> {

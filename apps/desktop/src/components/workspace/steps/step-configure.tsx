@@ -21,7 +21,6 @@ export interface ConfigureFormData {
   initViben: boolean;
   vibenOptions: {
     developerName: string;
-    projectType: "frontend" | "backend" | "fullstack";
     includeCursor: boolean;
     force: boolean;
   };
@@ -59,7 +58,6 @@ export function StepConfigure({
   const [reinitialize, setReinitialize] = React.useState(false);
   const [showAdvanced, setShowAdvanced] = React.useState(false);
   const [developerName, setDeveloperName] = React.useState("developer");
-  const [projectType, setProjectType] = React.useState<"frontend" | "backend" | "fullstack">("fullstack");
   const [includeCursor, setIncludeCursor] = React.useState(true);
 
   // Update name when folder status changes
@@ -122,7 +120,6 @@ export function StepConfigure({
       initViben: initViben && (method === "create-new" || !folderStatus?.hasViben || reinitialize),
       vibenOptions: {
         developerName: developerName.trim() || "developer",
-        projectType,
         includeCursor,
         force: reinitialize,
       },
@@ -318,28 +315,6 @@ export function StepConfigure({
                   onChange={(e) => setDeveloperName(e.target.value)}
                   placeholder={t("placeholders.developer")}
                 />
-              </div>
-
-              {/* Project type */}
-              <div className="space-y-2">
-                <Label>{t("workspace.addModal.fieldProjectType")}</Label>
-                <div className="flex gap-4">
-                  {(["fullstack", "frontend", "backend"] as const).map((type) => (
-                    <label key={type} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="projectType"
-                        value={type}
-                        checked={projectType === type}
-                        onChange={() => setProjectType(type)}
-                        className="h-4 w-4"
-                      />
-                      <span className="text-sm">
-                        {t(`workspace.addModal.project${type.charAt(0).toUpperCase() + type.slice(1)}`)}
-                      </span>
-                    </label>
-                  ))}
-                </div>
               </div>
 
               {/* Include Cursor */}

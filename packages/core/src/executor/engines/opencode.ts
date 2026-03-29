@@ -28,9 +28,11 @@ export interface OpencodeExecutorConfig extends ExecutorConfig {
 
 class OpencodeExecutor extends BaseExecutor {
   readonly type = "OPENCODE" as const;
+  protected override config: OpencodeExecutorConfig;
 
-  constructor(config: ExecutorConfig = {}) {
+  constructor(config: OpencodeExecutorConfig = {}) {
     super(config);
+    this.config = config;
   }
 
   // === Capability Detection ===
@@ -63,7 +65,6 @@ class OpencodeExecutor extends BaseExecutor {
       "SPAWN",
       "SESSION_RESUME",
       "SESSION_FORK",
-      "CONTEXT_USAGE",
     ];
   }
 

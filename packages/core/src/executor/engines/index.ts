@@ -30,6 +30,7 @@ export type { CursorAgentExecutorConfig } from "./cursor";
 export { DroidExecutor } from "./droid";
 export type { DroidExecutorConfig } from "./droid";
 export { GeminiExecutor } from "./gemini";
+export type { GeminiExecutorConfig } from "./gemini";
 export { OpencodeExecutor } from "./opencode";
 export type { OpencodeExecutorConfig } from "./opencode";
 export { QwenCodeExecutor } from "./qwen";

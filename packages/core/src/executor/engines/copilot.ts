@@ -28,9 +28,11 @@ export interface CopilotExecutorConfig extends ExecutorConfig {
 
 class CopilotExecutor extends BaseExecutor {
   readonly type = "COPILOT" as const;
+  protected override config: CopilotExecutorConfig;
 
   constructor(config: CopilotExecutorConfig = {}) {
     super(config);
+    this.config = config;
   }
 
   // === Capability Detection ===

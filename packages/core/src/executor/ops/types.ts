@@ -121,9 +121,9 @@ export interface SSEToolUseMessage {
 
 export interface SSEToolResultMessage {
   type: "tool_result";
-  toolUseId: string;
+  tool_use_id: string;
   output: string;
-  isError?: boolean;
+  is_error?: boolean;
 }
 
 export interface SSEResultMessage {
@@ -151,7 +151,7 @@ export interface SSEQuestionMessage {
 
 export interface SSESdkSessionMessage {
   type: "sdk_session";
-  sdkSessionId: string;
+  sdk_session_id: string;
 }
 
 export type SSEMessage =
