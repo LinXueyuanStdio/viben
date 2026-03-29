@@ -22,7 +22,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Copy, Trash2, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, Copy, Trash2, Loader2, Terminal, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ApiKey {
@@ -43,6 +44,7 @@ export function ProfileApiKeys() {
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -102,7 +104,9 @@ export function ProfileApiKeys() {
   function copyKey() {
     if (newKeyValue) {
       navigator.clipboard.writeText(newKeyValue);
+      setCopied(true);
       toast.success(t('profile.apiKeys.toast.copied'));
+      setTimeout(() => setCopied(false), 2000);
     }
   }
 
@@ -123,7 +127,12 @@ export function ProfileApiKeys() {
             {t('profile.apiKeys.description')}
           </p>
         </div>
-        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <Dialog open={showDialog} onOpenChange={(open) => {
+          setShowDialog(open);
+          if (!open) {
+            setCopied(false);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button onClick={() => setNewKeyValue(null)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -145,11 +154,29 @@ export function ProfileApiKeys() {
             {newKeyValue ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Input value={newKeyValue} readOnly className="font-mono" />
-                  <Button variant="outline" size="icon" onClick={copyKey}>
-                    <Copy className="h-4 w-4" />
+                  <Input value={newKeyValue} readOnly className="font-mono text-sm" />
+                  <Button
+                    variant={copied ? "default" : "secondary"}
+                    size="default"
+                    onClick={copyKey}
+                    className="shrink-0 min-w-[100px]"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        {t('profile.apiKeys.copied')}
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-2 h-4 w-4" />
+                        {t('profile.apiKeys.copyKey')}
+                      </>
+                    )}
                   </Button>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('profile.apiKeys.copyHint')}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -178,6 +205,16 @@ export function ProfileApiKeys() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <Alert className="bg-muted/50">
+        <Terminal className="h-4 w-4" />
+        <AlertDescription className="ml-2">
+          <span className="font-medium">{t('profile.apiKeys.cliTip')}</span>
+          <code className="ml-2 rounded bg-muted px-1.5 py-0.5 font-mono text-sm">
+            viben login
+          </code>
+        </AlertDescription>
+      </Alert>
 
       {keys.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
