@@ -1,5 +1,7 @@
 /**
  * Executor CLI commands
+ *
+ * Uses the unified executor module (src/executor) for all executor operations.
  */
 import { Command } from "commander";
 import chalk from "chalk";
@@ -11,18 +13,32 @@ import {
   handleCommandError,
   outputKeyValue,
 } from "../lib";
+// Use unified executor module
 import {
-  EXECUTOR_TYPES,
-  getAllExecutorsAvailability,
-  createExecutor,
-  executorSupportsChat,
-  CHAT_SUPPORTED_EXECUTORS,
+  getExecutor,
+  getRegisteredTypes,
+} from "../../executor";
+// Legacy imports for chat proxy (not yet migrated to unified module)
+import {
   createChatProxyAsync,
   chatProxyFactory,
 } from "../../executors";
 import { agentManager } from "../../agents";
 import type { ExecutorType } from "../../types";
 import type { ChatFormat } from "../../executors";
+
+/**
+ * Chat-supported executor types
+ * TODO: Move to unified module when chat is migrated
+ */
+const CHAT_SUPPORTED_EXECUTORS: ExecutorType[] = ["CLAUDE_CODE", "GEMINI", "CODEX"];
+
+/**
+ * Check if an executor type supports non-interactive chat mode
+ */
+function executorSupportsChat(executorType: ExecutorType): boolean {
+  return CHAT_SUPPORTED_EXECUTORS.includes(executorType);
+}
 
 /**
  * Get output context from program options
@@ -51,7 +67,7 @@ export function registerExecutorCommand(program: Command): void {
     .action(async () => {
       const ctx = getOutputContext(program);
       try {
-        const types = EXECUTOR_TYPES;
+        const types = getRegisteredTypes();
         output(ctx, successResponse({ types }), () => {
           console.log(chalk.bold("Available Executor Types:"));
           console.log();
@@ -86,21 +102,22 @@ export function registerExecutorCommand(program: Command): void {
     .action(async (options) => {
       const ctx = getOutputContext(program);
       try {
-        const availability = getAllExecutorsAvailability();
-        let executors = Object.entries(availability).map(
-          ([type, info]) => {
-            const availInfo = info.executor.getAvailabilityInfo();
-            return {
-              type: type as ExecutorType,
-              available: info.available,
-              status: availInfo.status,
-              path: availInfo.path ?? null,
-              capabilities: info.executor.capabilities(),
-              supportsChat: executorSupportsChat(type as ExecutorType),
-              chatCommand: info.executor.getChatCommand?.() ?? null,
-            };
-          }
-        );
+        // Get all registered types and build executor info
+        const types = getRegisteredTypes();
+        let executors = types.map((type) => {
+          const exec = getExecutor(type);
+          const availInfo = exec.getAvailabilityInfo();
+          const isAvailable = availInfo.status === "LOGIN_DETECTED" || availInfo.status === "INSTALLATION_FOUND";
+          return {
+            type,
+            available: isAvailable,
+            status: availInfo.status,
+            path: availInfo.path ?? null,
+            capabilities: exec.capabilities(),
+            supportsChat: executorSupportsChat(type),
+            chatCommand: exec.supports("CHAT") ? exec.getCliName() : null,
+          };
+        });
 
         // Filter by available if requested
         if (options.available) {
@@ -158,17 +175,18 @@ export function registerExecutorCommand(program: Command): void {
 
         // Validate executor type
         const upperType = executorType.toUpperCase() as ExecutorType;
-        if (!EXECUTOR_TYPES.includes(upperType)) {
+        const registeredTypes = getRegisteredTypes();
+        if (!registeredTypes.includes(upperType)) {
           throw new Error(
-            `Unknown executor type: ${executorType}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+            `Unknown executor type: ${executorType}. Valid types: ${registeredTypes.join(", ")}`
           );
         }
 
-        const exec = createExecutor(upperType);
+        const exec = getExecutor(upperType);
         const availabilityInfo = exec.getAvailabilityInfo();
         const capabilities = exec.capabilities();
-        const supportsChat = exec.supportsChat?.() ?? false;
-        const chatCommand = exec.getChatCommand?.() ?? null;
+        const supportsChat = exec.supports("CHAT");
+        const chatCommand = supportsChat ? exec.getCliName() : null;
         const mcpConfigPath = exec.defaultMcpConfigPath();
 
         // Get agents using this executor
@@ -278,9 +296,10 @@ export function registerExecutorCommand(program: Command): void {
       try {
         // Validate executor type
         const upperType = options.name.toUpperCase() as ExecutorType;
-        if (!EXECUTOR_TYPES.includes(upperType)) {
+        const registeredTypes = getRegisteredTypes();
+        if (!registeredTypes.includes(upperType)) {
           throw new Error(
-            `Unknown executor type: ${options.name}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+            `Unknown executor type: ${options.name}. Valid types: ${registeredTypes.join(", ")}`
           );
         }
 
