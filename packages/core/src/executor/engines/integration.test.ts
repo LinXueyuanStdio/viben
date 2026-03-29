@@ -168,7 +168,8 @@ describe("Executor Integration Tests", () => {
         if (!available) return;
         if (!executor.supportsSessionIdOnCreate()) return;
 
-        const sessionId = `test-${Date.now()}`;
+        // Claude requires valid UUID format for session IDs
+        const sessionId = crypto.randomUUID();
         const result = await executor.spawn({
           cwd: testDir,
           prompt: "Say hello",

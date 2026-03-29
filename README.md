@@ -326,23 +326,107 @@ Algorithm: FileRL — 多目标带约束的迭代优化
 <summary><b>CLI 命令速查</b></summary>
 
 ```bash
-# 生命周期
-viben filerl create <name>       # 创建优化目标
-viben filerl start <target.md>   # 启动优化循环
-viben filerl status <name>       # 查看状态
-viben filerl stop <name>         # 停止
-viben filerl resume <name>       # 恢复
+# 目标文件管理
+viben filerl create <name>                  # 创建 target.md 配置文件
+viben filerl create <name> -d "描述"        # 带描述创建
 
-# Idea → Task
-viben idea generate --types <t>  # 生成想法
-viben idea promote <id> --start  # 转为任务
+# 运行生命周期
+viben filerl start <target.md>              # 启动 FileRL 循环
+viben filerl start <name>                   # 恢复已有运行
+viben filerl start <target.md> --dry-run    # 验证配置
+viben filerl status <name>                  # 查看状态
+viben filerl stop <name>                    # 停止运行
+viben filerl resume <name>                  # 恢复运行
+viben filerl list                           # 列出所有运行
+
+# Idea 管理
+viben filerl generate-ideas <name> --types <types...>  # 生成 idea
+viben filerl generate-ideas <name> --iter 2            # 指定迭代
+viben filerl list-ideas <name>                         # 列出 idea
+viben filerl add-idea <name> <idea.md>                 # 添加外部 idea
+viben filerl promote-ideas <name> --ideas <id...>      # 转为任务
+viben filerl promote-ideas <name> --ideas <id> --start # 创建并启动
 
 # 评估与选择
-viben reward select <tasks...>   # 选择最佳候选
-viben task approve <task>        # 合并 PR
+viben filerl compute-reward <name>                # 计算奖励
+viben filerl compute-reward <name> --idea <id>    # 指定 idea
+viben filerl select <name>                        # PPO 选择最佳
+viben filerl select <name> --threshold 0.7        # 自定义阈值
+
+# 任务合并与清理
+viben task approve <task>        # 合并 winner PR
+viben task cleanup <task>        # 清理 loser worktree
 
 # 监控
-viben swarm status --watch       # 实时监控
+viben swarm status --watch       # 实时监控 Agent 集群
+viben swarm list                 # 列出所有 worktree
+```
+
+</details>
+
+<details>
+<summary><b>完整工作流示例</b></summary>
+
+```bash
+# 1. 创建目标文件
+viben filerl create my-optimization -d "优化代码质量"
+
+# 2. 启动 FileRL 循环
+viben filerl start my-optimization.md
+
+# 3. 生成 idea (在 iter1/ 下)
+viben filerl generate-ideas my-optimization --types code_improvements
+
+# 4. 查看生成的 idea
+viben filerl list-ideas my-optimization
+
+# 5. 将 idea 转为 task 并启动
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+
+# 6. 查看状态
+viben filerl status my-optimization
+
+# 7. 监控任务执行
+viben swarm status --watch
+
+# 8. 计算奖励
+viben filerl compute-reward my-optimization --iter 1
+
+# 9. 选择最佳候选
+viben filerl select my-optimization
+
+# 10. 合并 winner，清理 loser
+viben task approve <winner-task>
+viben task cleanup <loser-task>
+```
+
+</details>
+
+<details>
+<summary><b>目录结构</b></summary>
+
+```
+.viben/filerl/<run-name>/
+├── state.json                      # FileRL 状态
+└── iter{N}/                        # 第 N 次迭代
+    └── <idea-id>/                  # idea 目录
+        ├── idea.md                 # idea 定义
+        └── <task-name>/            # rollout task
+            ├── reward.json         # reward 结果
+            └── reward.log.jsonl    # reward agent 执行日志
+```
+
+**Reward 格式**:
+```json
+{
+  "total_score": 0.825,
+  "diff_lines": 50,
+  "scores": {
+    "code_quality": { "score": 0.85, "reasoning": "..." },
+    "agent_review": { "score": 0.80, "reasoning": "..." }
+  },
+  "computed_at": "2026-03-27T10:30:00Z"
+}
 ```
 
 </details>

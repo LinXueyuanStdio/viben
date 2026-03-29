@@ -326,23 +326,107 @@ Output:   C*                  // Optimized codebase (current solution, not guara
 <summary><b>CLI Command Reference</b></summary>
 
 ```bash
-# Lifecycle
-viben filerl create <name>       # Create optimization target
-viben filerl start <target.md>   # Start optimization loop
-viben filerl status <name>       # View status
-viben filerl stop <name>         # Stop
-viben filerl resume <name>       # Resume
+# Target File Management
+viben filerl create <name>                  # Create target.md config file
+viben filerl create <name> -d "description" # Create with description
 
-# Idea → Task
-viben idea generate --types <t>  # Generate ideas
-viben idea promote <id> --start  # Convert to task
+# Run Lifecycle
+viben filerl start <target.md>              # Start FileRL loop
+viben filerl start <name>                   # Resume existing run
+viben filerl start <target.md> --dry-run    # Validate config
+viben filerl status <name>                  # View status
+viben filerl stop <name>                    # Stop run
+viben filerl resume <name>                  # Resume run
+viben filerl list                           # List all runs
+
+# Idea Management
+viben filerl generate-ideas <name> --types <types...>  # Generate ideas
+viben filerl generate-ideas <name> --iter 2            # Specify iteration
+viben filerl list-ideas <name>                         # List ideas
+viben filerl add-idea <name> <idea.md>                 # Add external idea
+viben filerl promote-ideas <name> --ideas <id...>      # Convert to tasks
+viben filerl promote-ideas <name> --ideas <id> --start # Create and start
 
 # Evaluation & Selection
-viben reward select <tasks...>   # Select best candidate
-viben task approve <task>        # Merge PR
+viben filerl compute-reward <name>                # Compute rewards
+viben filerl compute-reward <name> --idea <id>    # Specify idea
+viben filerl select <name>                        # PPO select best
+viben filerl select <name> --threshold 0.7        # Custom threshold
+
+# Task Merge & Cleanup
+viben task approve <task>        # Merge winner PR
+viben task cleanup <task>        # Cleanup loser worktree
 
 # Monitoring
-viben swarm status --watch       # Real-time monitoring
+viben swarm status --watch       # Real-time Agent swarm monitoring
+viben swarm list                 # List all worktrees
+```
+
+</details>
+
+<details>
+<summary><b>Complete Workflow Example</b></summary>
+
+```bash
+# 1. Create target file
+viben filerl create my-optimization -d "Optimize code quality"
+
+# 2. Start FileRL loop
+viben filerl start my-optimization.md
+
+# 3. Generate ideas (under iter1/)
+viben filerl generate-ideas my-optimization --types code_improvements
+
+# 4. List generated ideas
+viben filerl list-ideas my-optimization
+
+# 5. Promote ideas to tasks and start
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+
+# 6. Check status
+viben filerl status my-optimization
+
+# 7. Monitor task execution
+viben swarm status --watch
+
+# 8. Compute rewards
+viben filerl compute-reward my-optimization --iter 1
+
+# 9. Select best candidate
+viben filerl select my-optimization
+
+# 10. Merge winner, cleanup loser
+viben task approve <winner-task>
+viben task cleanup <loser-task>
+```
+
+</details>
+
+<details>
+<summary><b>Directory Structure</b></summary>
+
+```
+.viben/filerl/<run-name>/
+├── state.json                      # FileRL state
+└── iter{N}/                        # Iteration N
+    └── <idea-id>/                  # idea directory
+        ├── idea.md                 # idea definition
+        └── <task-name>/            # rollout task
+            ├── reward.json         # reward result
+            └── reward.log.jsonl    # reward agent execution log
+```
+
+**Reward Format**:
+```json
+{
+  "total_score": 0.825,
+  "diff_lines": 50,
+  "scores": {
+    "code_quality": { "score": 0.85, "reasoning": "..." },
+    "agent_review": { "score": 0.80, "reasoning": "..." }
+  },
+  "computed_at": "2026-03-27T10:30:00Z"
+}
 ```
 
 </details>
