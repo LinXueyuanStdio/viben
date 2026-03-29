@@ -20,9 +20,19 @@ describe("executor/ops/registry", () => {
       expect(hasExecutor("GEMINI")).toBe(true);
     });
 
-    it("should return false for unregistered types", () => {
-      // CODEX is not implemented in Phase 1
-      expect(hasExecutor("CODEX")).toBe(false);
+    it("should return true for all implemented types", () => {
+      // All executor types are now implemented
+      expect(hasExecutor("CODEX")).toBe(true);
+      expect(hasExecutor("AMP")).toBe(true);
+      expect(hasExecutor("OPENCODE")).toBe(true);
+      expect(hasExecutor("CURSOR_AGENT")).toBe(true);
+      expect(hasExecutor("QWEN_CODE")).toBe(true);
+      expect(hasExecutor("COPILOT")).toBe(true);
+      expect(hasExecutor("DROID")).toBe(true);
+    });
+
+    it("should return false for invalid types", () => {
+      expect(hasExecutor("INVALID_TYPE" as never)).toBe(false);
     });
   });
 
@@ -39,8 +49,14 @@ describe("executor/ops/registry", () => {
       expect(executor.type).toBe("GEMINI");
     });
 
-    it("should throw for unregistered type", () => {
-      expect(() => getExecutor("CODEX")).toThrow("Unknown executor type: CODEX");
+    it("should throw for invalid type", () => {
+      expect(() => getExecutor("INVALID_TYPE" as never)).toThrow("Unknown executor type: INVALID_TYPE");
+    });
+
+    it("should return executor for CODEX", () => {
+      const executor = getExecutor("CODEX");
+      expect(executor).toBeDefined();
+      expect(executor.type).toBe("CODEX");
     });
 
     it("should pass config to factory", () => {

@@ -17,5 +17,25 @@ import "./engines";
 export * from "./ops";
 
 // Re-export engine classes for direct instantiation
-export { ClaudeExecutor, GeminiExecutor, BaseExecutor } from "./engines";
-export type { ClaudeExecutorConfig } from "./engines";
+export {
+  AmpExecutor,
+  ClaudeExecutor,
+  CodexExecutor,
+  CopilotExecutor,
+  CursorAgentExecutor,
+  DroidExecutor,
+  GeminiExecutor,
+  OpencodeExecutor,
+  QwenCodeExecutor,
+  BaseExecutor,
+} from "./engines";
+export type {
+  AmpExecutorConfig,
+  ClaudeExecutorConfig,
+  CodexExecutorConfig,
+  CopilotExecutorConfig,
+  CursorAgentExecutorConfig,
+  DroidExecutorConfig,
+  OpencodeExecutorConfig,
+  QwenCodeExecutorConfig,
+} from "./engines";

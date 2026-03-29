@@ -192,7 +192,6 @@ export {
   type KnownWorkspaceEntry,
   type InitWorkspaceOptions,
   type InitWorkspaceResult,
-  type ProjectType,
   type ExecutorType,
 } from "./workspace";
 
@@ -518,11 +517,9 @@ export {
 
 // Workspace init types (migrated from team module)
 export {
-  type ProjectType as TeamProjectType,
   type ExecutorTemplateConfig,
   EXECUTOR_TEMPLATE_CONFIGS,
   validateDeveloperName,
-  detectProjectType,
 } from "./workspace";
 
 // Idea (viben idea)
@@ -670,8 +667,15 @@ export {
   getAvailableExecutors as getUnifiedAvailableExecutors,
   registerExecutor as registerUnifiedExecutor,
   // Engine classes
+  AmpExecutor,
   ClaudeExecutor,
+  CodexExecutor,
+  CopilotExecutor,
+  CursorAgentExecutor,
+  DroidExecutor,
   GeminiExecutor,
+  OpencodeExecutor,
+  QwenCodeExecutor,
   BaseExecutor,
 } from "./executor";
 
@@ -695,7 +699,14 @@ export type {
   SSEErrorMessage,
   SSEQuestionMessage,
   SSESdkSessionMessage,
+  AmpExecutorConfig,
   ClaudeExecutorConfig,
+  CodexExecutorConfig,
+  CopilotExecutorConfig,
+  CursorAgentExecutorConfig,
+  DroidExecutorConfig,
+  OpencodeExecutorConfig,
+  QwenCodeExecutorConfig,
 } from "./executor";
 
 /**
