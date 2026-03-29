@@ -32,6 +32,7 @@ Subcommands:
   list-types  列出可用的想法类型（内置 + 自定义）
   view        查看想法详情
   promote     将想法转为任务
+  clear       清空所有想法和会话
   remove      删除想法
 ```
 
@@ -260,6 +261,50 @@ viben idea promote ci-001 \
 3. 更新想法状态为 `promoted`
 4. 在想法中记录关联的 task id
 5. 如果指定了 `--start`，任务状态设为 `queue`
+
+---
+
+### `viben idea clear`
+
+清空所有想法和会话。这是一个破坏性操作，会删除 `.viben/ideas/` 下的所有会话目录。
+
+```bash
+viben idea clear [--force] [--json]
+```
+
+**选项**：
+
+| 参数 | 说明 |
+|------|------|
+| `--force`, `-f` | 跳过确认警告 |
+| `--json` | JSON 格式输出 |
+
+**示例**：
+
+```bash
+# 清空所有想法（会显示警告）
+viben idea clear
+
+# 跳过警告直接清空
+viben idea clear --force
+
+# JSON 格式输出
+viben idea clear --force --json
+```
+
+**输出示例**：
+
+```
+⚠ This will remove ALL ideas and sessions. Use --force to skip this warning.
+✓ Cleared 15 idea(s)
+```
+
+**与 `remove --all` 的区别**：
+
+`clear` 命令是 `remove --all` 的快捷方式，语义更清晰：
+- `viben idea clear` = `viben idea remove --all`
+- `clear` 默认显示警告，需要 `--force` 跳过
+- `remove --all` 也会显示警告
 
 ---
 
@@ -503,12 +548,13 @@ CLI 按以下顺序查找 idea type prompt：
 
 ### 命令实现
 
-- [ ] `viben idea generate --types <type>...` 生成想法
-- [ ] `viben idea list` 列出想法
-- [ ] `viben idea list-types` 列出可用类型（内置 + 自定义）
-- [ ] `viben idea view <idea-id>` 查看想法详情
-- [ ] `viben idea promote <idea-id>` 将想法转为任务
-- [ ] `viben idea remove <idea-id>...` 删除想法
+- [x] `viben idea generate --types <type>...` 生成想法
+- [x] `viben idea list` 列出想法
+- [x] `viben idea list-types` 列出可用类型（内置 + 自定义）
+- [x] `viben idea view <idea-id>` 查看想法详情
+- [x] `viben idea promote <idea-id>` 将想法转为任务
+- [x] `viben idea clear` 清空所有想法和会话
+- [x] `viben idea remove <idea-id>...` 删除想法
 
 ### generate 选项
 

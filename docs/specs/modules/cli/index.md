@@ -8,10 +8,10 @@
 
 | 文档 | 命令 | 说明 | 状态 |
 |------|------|------|------|
-| [init.md](./init.md) | `viben init` | 工作区初始化 | 待实现 |
+| [init.md](./init.md) | `viben init` | 工作区初始化 (完整团队工作区) | 已实现 |
+| [update.md](./update.md) | `viben update` | 更新工作区组件 (模板文件) | 已实现 |
 | [config.md](./config.md) | `viben config` | Git 风格配置管理 | 待实现 |
 | [workspace.md](./workspace.md) | `viben workspace` | 工作区操作 | 待实现 |
-| [team.md](./team.md) | `viben team` | 团队协作工作区初始化 | 待实现 |
 | [user.md](./user.md) | `viben user` | 用户身份管理 | 已实现 |
 
 ### 服务与运行时
@@ -72,10 +72,10 @@ viben <command> [subcommand] [options]
 
 Commands:
   # 核心初始化与配置
-  init          Initialize workspace in current directory
+  init          Initialize workspace (full team workspace with executors)
+  update        Update workspace components (idea-types, reward-types)
   config        Configuration management (git-style)
   workspace     Workspace operations
-  team          Team collaboration workspace setup
   user          Manage user identity (init, get, status)
 
   # 服务与运行时

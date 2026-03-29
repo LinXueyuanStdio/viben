@@ -607,6 +607,53 @@ export function registerIdeaCommand(program: Command): void {
     );
 
   // ============================================================================
+  // idea clear
+  // ============================================================================
+  ideaCmd
+    .command("clear")
+    .description("Clear all ideas (remove all idea sessions)")
+    .option("-f, --force", "Skip confirmation")
+    .option("--json", "JSON format output")
+    .action(
+      async (options: {
+        force?: boolean;
+        json?: boolean;
+      }) => {
+        const ctx = getOutputContext(program);
+        if (options.json) {
+          ctx.json = true;
+        }
+        const cwd = process.cwd();
+
+        try {
+          const repoRoot = ensureVibenRoot(cwd);
+
+          // Warn about destructive operation
+          if (!options.force && !ctx.quiet) {
+            outputWarning(ctx, "This will remove ALL ideas and sessions. Use --force to skip this warning.");
+          }
+
+          const result = removeIdeas(repoRoot, [], { all: true });
+
+          if (!result.success) {
+            throw CliError.operationFailed("Clear ideas", result.error || "Unknown error");
+          }
+
+          output(ctx, successResponse(result), () => {
+            if (result.count === 0) {
+              console.log(chalk.gray("No ideas to clear."));
+              return;
+            }
+
+            outputSuccess(ctx, `Cleared ${result.count} idea(s)`);
+          });
+        } catch (error) {
+          handleCommandError(ctx, error);
+        }
+      }
+    );
+
+  // ============================================================================
   // idea remove
   // ============================================================================
   ideaCmd

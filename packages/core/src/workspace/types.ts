@@ -1,6 +1,93 @@
 /**
  * Workspace-specific types
  */
+import type { ExecutorType } from "../types";
+
+export type { ExecutorType };
+
+// =============================================================================
+// Executor Types
+// =============================================================================
+
+/**
+ * Configuration for an AI executor's template setup
+ */
+export interface ExecutorTemplateConfig {
+  /** Display name of the executor */
+  name: string;
+  /** Config directory name in the project root (e.g., ".claude") */
+  configDir: string;
+  /** Whether this executor uses Python hooks (affects Windows encoding detection) */
+  hasPythonHooks: boolean;
+  /** Template directory name (under packages/core/templates/) */
+  templateDir: string;
+}
+
+/**
+ * Registry of AI executors that have template support.
+ * Not all ExecutorType values have templates - only those that support
+ * project-level configuration files.
+ */
+export const EXECUTOR_TEMPLATE_CONFIGS: Partial<Record<ExecutorType, ExecutorTemplateConfig>> = {
+  CLAUDE_CODE: {
+    name: "Claude Code",
+    configDir: ".claude",
+    hasPythonHooks: true,
+    templateDir: "claude",
+  },
+  CURSOR: {
+    name: "Cursor",
+    configDir: ".cursor",
+    hasPythonHooks: false,
+    templateDir: "cursor",
+  },
+  GEMINI: {
+    name: "Gemini CLI",
+    configDir: ".gemini",
+    hasPythonHooks: false,
+    templateDir: "gemini",
+  },
+  CODEX: {
+    name: "Codex",
+    configDir: ".agents/skills",
+    hasPythonHooks: false,
+    templateDir: "codex",
+  },
+  OPENCODE: {
+    name: "OpenCode",
+    configDir: ".opencode",
+    hasPythonHooks: false,
+    templateDir: "opencode",
+  },
+  IFLOW: {
+    name: "iFlow CLI",
+    configDir: ".iflow",
+    hasPythonHooks: true,
+    templateDir: "iflow",
+  },
+  KILO: {
+    name: "Kilo CLI",
+    configDir: ".kilocode",
+    hasPythonHooks: false,
+    templateDir: "kilo",
+  },
+  KIRO: {
+    name: "Kiro Code",
+    configDir: ".kiro/skills",
+    hasPythonHooks: false,
+    templateDir: "kiro",
+  },
+  ANTIGRAVITY: {
+    name: "Antigravity",
+    configDir: ".agent/workflows",
+    hasPythonHooks: false,
+    templateDir: "antigravity",
+  },
+};
+
+// =============================================================================
+// Workspace Configuration Types
+// =============================================================================
 
 /**
  * Workspace MCP configuration
@@ -91,10 +178,14 @@ export interface KnownWorkspacesFile {
 export interface InitWorkspaceOptions {
   /** Target directory to initialize (defaults to cwd) */
   targetDir?: string;
-  /** Template name to use */
-  template?: string;
   /** Force initialization even if workspace already exists */
   force?: boolean;
+  /** Skip existing files without error */
+  skipExisting?: boolean;
+  /** Developer name for workspace initialization */
+  developerName?: string;
+  /** AI executors to configure (default: CURSOR, CLAUDE_CODE) */
+  executors?: ExecutorType[];
 }
 
 /**
@@ -105,40 +196,10 @@ export interface InitWorkspaceResult {
   success: boolean;
   /** Absolute path to .viben directory */
   path: string;
-  /** List of created files (relative to .viben) */
+  /** List of created files (relative paths) */
   files: string[];
   /** The workspace configuration */
   config: WorkspaceConfigFile;
-}
-
-/**
- * Workspace template metadata
- */
-export interface WorkspaceTemplate {
-  /** Template ID (directory name) */
-  id: string;
-  /** Template name */
-  name: string;
-  /** Template description */
-  description?: string;
-  /** Creation timestamp */
-  created_at: string;
-}
-
-/**
- * Workspace template configuration file structure (stored in template directory)
- */
-export interface WorkspaceTemplateConfig {
-  /** Template name */
-  name: string;
-  /** Template description */
-  description?: string;
-  /** Base workspace configuration to use */
-  workspaceConfig?: Partial<WorkspaceConfigFile>;
-  /** List of directories to create */
-  directories?: string[];
-  /** List of files to copy (relative paths within template) */
-  files?: string[];
-  /** Creation timestamp */
-  created_at: string;
+  /** Warning messages */
+  warnings?: string[];
 }

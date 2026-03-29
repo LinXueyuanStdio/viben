@@ -18,11 +18,23 @@ import type {
 import { registerExecutor } from "../ops/registry";
 import { BaseExecutor } from "./base";
 
+/**
+ * Gemini CLI specific configuration
+ */
+export interface GeminiExecutorConfig extends ExecutorConfig {
+  /** Sandbox mode (e.g., docker, none) */
+  sandbox?: string;
+  /** Yolo mode - skip all confirmations */
+  yolo?: boolean;
+}
+
 class GeminiExecutor extends BaseExecutor {
+  protected override config: GeminiExecutorConfig;
   readonly type = "GEMINI" as const;
 
-  constructor(config: ExecutorConfig = {}) {
+  constructor(config: GeminiExecutorConfig = {}) {
     super(config);
+    this.config = config;
   }
 
   // === Capability Detection ===
@@ -269,6 +281,6 @@ class GeminiExecutor extends BaseExecutor {
 }
 
 // Register executor
-registerExecutor("GEMINI", (config) => new GeminiExecutor(config));
+registerExecutor("GEMINI", (config) => new GeminiExecutor(config as GeminiExecutorConfig));
 
 export { GeminiExecutor };

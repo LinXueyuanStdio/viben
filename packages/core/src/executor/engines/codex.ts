@@ -551,9 +551,9 @@ export class CodexExecutor extends BaseExecutor {
       if (obj.type === "tool_result") {
         return {
           type: "tool_result",
-          toolUseId: String(obj.tool_use_id || obj.id || ""),
+          tool_use_id: String(obj.tool_use_id || obj.id || ""),
           output: String(obj.output || obj.result || ""),
-          isError: Boolean(obj.is_error || obj.error),
+          is_error: Boolean(obj.is_error || obj.error),
         };
       }
 

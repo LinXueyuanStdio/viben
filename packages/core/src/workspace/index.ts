@@ -30,7 +30,11 @@ export {
   deleteWorkspaceTemplate,
   workspaceExists,
   isInsideWorkspace,
+  validateDeveloperName,
 } from "./init";
+
+// Export update functions
+export { updateIdeaTypes, updateRewardTypes } from "./update";
 
 // Import initWorkspace for internal use (renamed to avoid conflict with local export)
 import { initWorkspace as initWorkspaceFromInit } from "./init";
