@@ -21,7 +21,7 @@ import {
   VIBEN_WEB_URL,
 } from "../../auth";
 
-const TOKEN_URL = `${VIBEN_WEB_URL}/settings/tokens`;
+const TOKEN_URL = `${VIBEN_WEB_URL}/profile`;
 
 /**
  * Prompt user for input
