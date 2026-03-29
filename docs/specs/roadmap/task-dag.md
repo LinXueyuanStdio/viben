@@ -228,6 +228,6 @@ T0 → T1 → T4 → T5 → T11 → T13 → T16 → T21
 
 ## Next Steps
 
-1. Create module specs in `.trellis/spec/modules/`
+1. Create module specs in `docs/specs/modules/`
 2. Start with T0 (Project Setup)
 3. Execute parallel groups where possible

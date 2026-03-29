@@ -1,7 +1,7 @@
 /**
  * User CLI commands
  *
- * Manages user identity for the Trellis workflow.
+ * Manages user identity for the viben workflow.
  * Each developer/agent needs to initialize their identity before using
  * task management and session recording features.
  */

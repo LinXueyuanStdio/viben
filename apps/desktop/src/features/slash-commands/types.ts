@@ -98,7 +98,7 @@ export interface SlashCommandDefinition {
 export interface WorkspaceCommandFile {
   /** Command name (derived from filename) */
   name: string;
-  /** Full command name with namespace (e.g., trellis:start) */
+  /** Full command name with namespace (e.g., viben:start) */
   fullName: string;
   /** File path */
   path: string;

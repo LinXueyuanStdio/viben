@@ -67,7 +67,7 @@ Use the Memory system wisely:
 
 ## Important Files
 - CLAUDE.md: Project guidelines
-- .trellis/: Development workflow
+- .viben/: Development workflow
 ```
 
 **Daily log format**:

@@ -440,8 +440,7 @@ vercel logs
    - 确保所有必需变量都已添加
 
 4. **参考文档**
-   - `.trellis/spec/deployment-vercel.md` - Vercel 部署文档
-   - `.trellis/spec/github-oauth-integration.md` - GitHub OAuth 详细文档
+   - `docs/specs/deployment/` - 部署文档
 
 ---
 

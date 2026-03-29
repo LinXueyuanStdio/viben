@@ -3,8 +3,6 @@
  *
  * Strict tests for the `executor chat` subcommand which enables non-interactive
  * AI coding agent execution (similar to `claude -p`).
- *
- * Based on spec: .trellis/spec/modules/cli/executor-chat.md
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";

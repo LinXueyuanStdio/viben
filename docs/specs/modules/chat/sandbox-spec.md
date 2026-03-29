@@ -660,4 +660,4 @@ npm install -g @anthropic-ai/sandbox-runtime
 
 - WorkAny 沙箱系统: `/docs/work/sandbox-system.md`
 - WorkAny 后端 API: `/docs/work/backend-api.md`
-- WorkAny 迁移规范: `.trellis/spec/modules/chat/workany-migration.md`
+- WorkAny 迁移规范: `docs/specs/modules/chat/workany-migration.md`

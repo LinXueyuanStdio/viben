@@ -370,7 +370,7 @@ export interface WorkspaceAgentConfig {
 /** Command file (.claude/commands/ folder) */
 export interface WorkspaceCommand {
   id: string;              // namespace/command format
-  namespace: string;       // folder name (e.g., "trellis")
+  namespace: string;       // folder name (e.g., "viben")
   name: string;            // filename without extension
   path: string;            // full file path
   content: string;         // full markdown content

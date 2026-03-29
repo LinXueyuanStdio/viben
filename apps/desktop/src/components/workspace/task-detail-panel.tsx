@@ -2219,7 +2219,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               Configuration lock rule:
               - backlog: Show selectors, allow user to configure agent/executor/model
               - Other states: Hide selectors, configuration is locked after queueing
-              See: .trellis/spec/modules/task-system.md "会话绑定与配置锁定"
             */}
             <DesktopChatInput
               onSend={agentSendMessage}

@@ -27,17 +27,17 @@
 ### High Priority (Spec exists, no implementation)
 
 1. **Marketplace Publish Flow**
-   - Spec: `.trellis/spec/frontend/marketplace-publish-flow.md` ✅
+   - Spec: `docs/specs/frontend/marketplace-publish-flow.md` ✅
    - Implementation: ❌ None
    - Impact: Cannot publish MCP/Skills to marketplace from desktop app
 
 2. **Social Chat System**
-   - Specs: `.trellis/spec/modules/social-chat/*.md` (6 files) ✅
+   - Specs: `docs/specs/modules/social-chat/*.md` (6 files) ✅
    - Implementation: ❌ None
    - Impact: Major feature not available
 
 3. **CLI Agent Chat**
-   - Spec: `.trellis/spec/modules/cli/agent-chat.md` ✅
+   - Spec: `docs/specs/modules/cli/agent-chat.md` ✅
    - Implementation: ❌ None
    - Impact: Cannot run interactive AI agent from CLI
 
@@ -49,7 +49,7 @@
    - Gap: Core CRUD operations missing (projects, tasks, workspaces)
 
 2. **WorkAny Migration**
-   - Spec: `.trellis/spec/modules/chat/workany-migration.md`
+   - Spec: `docs/specs/modules/chat/workany-migration.md`
    - Status: 🟡 Planning stage
 
 ---

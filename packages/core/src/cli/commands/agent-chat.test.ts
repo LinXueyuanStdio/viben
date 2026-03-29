@@ -3,8 +3,6 @@
  *
  * Tests for the `viben agent chat` subcommand which enables non-interactive
  * chat with an Agent using its configured executor.
- *
- * Based on spec: .trellis/spec/modules/cli/agent-chat.md
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";

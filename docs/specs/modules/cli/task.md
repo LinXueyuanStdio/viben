@@ -4,7 +4,7 @@
 
 ## 概述
 
-`viben task` 命令用于管理开发任务，包括任务的创建、配置、上下文管理、规划和监控。设计参考了 Trellis 的 `task.py` 和 GitHub CLI (`gh`) 的命令风格。
+`viben task` 命令用于管理开发任务，包括任务的创建、配置、上下文管理、规划和监控。
 
 ## 命令结构
 
@@ -1243,29 +1243,6 @@ viben task check-stuck 03-11-feature-xyz --json
   "notes": ""
 }
 ```
-
----
-
-## Trellis 命令映射
-
-| Trellis 命令 | viben 命令 |
-|-------------|-----------|
-| `task.py create` | `viben task create` |
-| `task.py list` | `viben task list` |
-| `task.py start` | `viben task start` |
-| `task.py finish` | `viben task finish <task>` |
-| `task.py archive` | `viben task archive` |
-| `task.py list-archive` | `viben task list-archive` |
-| `task.py set-branch` | `viben task set-branch` |
-| `task.py set-base-branch` | `viben task set-base` |
-| `task.py init-context` | `viben task init-context` |
-| `task.py add-context` | `viben task add-context` |
-| `task.py list-context` | `viben task list-context` |
-| `task.py validate` | `viben task validate-context` |
-| `task.py create-pr` | `viben task create-pr` |
-| `plan.py` | `viben task plan-phase` |
-| `start.py` | `viben task work-phase` |
-| `status.py` | `viben task status` |
 
 ---
 

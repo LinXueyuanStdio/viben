@@ -1,8 +1,6 @@
 /**
  * Provider CLI Commands Tests
  *
- * Tests cover the following spec requirements from .trellis/spec/modules/cli/provider.md:
- *
  * Acceptance Criteria:
  * - [x] `viben provider list` 列出所有 providers
  * - [x] `viben provider create -n <name> -t <type>` 创建 provider
