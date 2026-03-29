@@ -182,6 +182,7 @@ export {
   WORKSPACE_CONFIG_FILE,
   AGENTS_DIR,
   DEFAULT_WORKSPACE_CONFIG,
+  updateIdeaTypes,
   type Workspace,
   type WorkspaceConfigFile,
   type WorkspaceMcpConfig,
@@ -191,8 +192,8 @@ export {
   type KnownWorkspaceEntry,
   type InitWorkspaceOptions,
   type InitWorkspaceResult,
-  type WorkspaceTemplate,
-  type WorkspaceTemplateConfig,
+  type ProjectType,
+  type ExecutorType,
 } from "./workspace";
 
 // Channels management
@@ -515,13 +516,14 @@ export {
   type NotificationOptions,
 } from "./notifications";
 
-// Team (viben team init)
+// Workspace init types (migrated from team module)
 export {
-  initTeam,
-  type InitOptions,
-  type InitResult,
   type ProjectType as TeamProjectType,
-} from "./team";
+  type ExecutorTemplateConfig,
+  EXECUTOR_TEMPLATE_CONFIGS,
+  validateDeveloperName,
+  detectProjectType,
+} from "./workspace";
 
 // Idea (viben idea)
 export {
@@ -654,6 +656,47 @@ export { run, createProgram } from "./cli";
 //   import { createGateway, runGateway } from "@viben/core/gateway";
 // Or dynamically import:
 //   const gateway = await import("@viben/core/gateway");
+
+// =============================================================================
+// Unified Executor Module (new)
+// =============================================================================
+
+// Export with namespace to avoid collision with existing executors
+export {
+  // Registry
+  getExecutor as getUnifiedExecutor,
+  hasExecutor as hasUnifiedExecutor,
+  getRegisteredTypes as getUnifiedExecutorTypes,
+  getAvailableExecutors as getUnifiedAvailableExecutors,
+  registerExecutor as registerUnifiedExecutor,
+  // Engine classes
+  ClaudeExecutor,
+  GeminiExecutor,
+  BaseExecutor,
+} from "./executor";
+
+// Export types (no collision risk for types)
+export type {
+  Executor,
+  ExecutorCapability,
+  ExecutorConfig as UnifiedExecutorConfig,
+  SpawnOptions,
+  SpawnResult,
+  ChatOptions as UnifiedChatOptions,
+  ChatResult,
+  ExecutionResult,
+  ExecutorErrorType,
+  RunCommandOptions,
+  SSEMessage,
+  SSETextMessage,
+  SSEToolUseMessage,
+  SSEToolResultMessage,
+  SSEResultMessage,
+  SSEErrorMessage,
+  SSEQuestionMessage,
+  SSESdkSessionMessage,
+  ClaudeExecutorConfig,
+} from "./executor";
 
 /**
  * Initialize all core managers

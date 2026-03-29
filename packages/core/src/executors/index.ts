@@ -205,3 +205,19 @@ export async function spawnChat(
 
   return executor.spawnChat(options);
 }
+
+// =============================================================================
+// Compatibility Layer - Forward to unified executor module
+// =============================================================================
+
+// Import unified module to ensure engines are registered
+import "../executor";
+
+// Re-export registry functions for gradual migration
+// Note: These use the unified registry, not the old switch-based factory
+export {
+  getExecutor as getUnifiedExecutor,
+  hasExecutor as hasUnifiedExecutor,
+  getRegisteredTypes as getUnifiedExecutorTypes,
+  getAvailableExecutors as getUnifiedAvailableExecutors,
+} from "../executor";
