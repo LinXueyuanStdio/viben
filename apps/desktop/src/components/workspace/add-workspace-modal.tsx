@@ -144,7 +144,6 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
         init_viben: data.initViben,
         viben_options: data.initViben ? {
           developer_name: data.vibenOptions.developerName,
-          project_type: data.vibenOptions.projectType,
           include_cursor: data.vibenOptions.includeCursor,
           force: data.vibenOptions.force,
         } : undefined,

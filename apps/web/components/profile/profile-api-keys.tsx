@@ -78,7 +78,10 @@ export function ProfileApiKeys() {
 
       const data = await res.json();
       setNewKeyValue(data.key);
-      setKeys((prev) => [data.apiKey, ...prev]);
+      // Only add the new key if it's valid
+      if (data.apiKey && data.apiKey.id) {
+        setKeys((prev) => [data.apiKey, ...prev]);
+      }
       setNewKeyName('');
       toast.success(t('profile.apiKeys.toast.created'));
     } catch {
@@ -233,7 +236,7 @@ export function ProfileApiKeys() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {keys.map((key) => (
+            {keys.filter((key) => key && key.id).map((key) => (
               <TableRow key={key.id}>
                 <TableCell className="font-medium">{key.name}</TableCell>
                 <TableCell className="font-mono text-sm">
