@@ -20,7 +20,7 @@ export function McpPageHeader({ isAuthenticated }: McpPageHeaderProps) {
       subtitle={t('marketplace.subtitle')}
     >
       {isAuthenticated && (
-        <Button variant="outline" asChild>
+        <Button variant="default" asChild>
           <Link href="/my-packages">
             <Package className="mr-2 h-4 w-4" />
             {t('marketplace.myMcp')}

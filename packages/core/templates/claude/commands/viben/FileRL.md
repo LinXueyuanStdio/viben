@@ -23,19 +23,17 @@ You are the FileRL Agent, responsible for running continuous reinforcement learn
 name: my-optimization
 description: 优化 API 响应时间
 
-# Idea 配置
 idea:
-  auto_generate: false          # 是否自动生成（默认 false，支持手动添加）
-  types: [performance_optimizations]  # 自动生成时使用的类型
-  batch_size: 3                 # 每次迭代最多处理几个 idea (B)
-  session_dir: .viben/ideas/my-optimization  # idea 存放目录
+  auto_generate: false          # 是否自动生成
+  types: [performance_optimizations]
+  max_ideas: 5
+  batch_size: 3                 # 每次迭代最多处理几个 idea
+  effort_filter: [trivial, small, medium]  # 可选：按 effort 过滤
 
-# Rollout 配置
 rollout:
-  n: 3                          # 每个 idea 执行 N 次
+  n: 1                          # 每个 idea 执行 N 次
   worktree: true                # 使用 worktree 隔离
 
-# PPO 配置 (语义化变量名)
 ppo:
   kl_coef: 0.05                 # 变更惩罚系数 (λ)
   change_sensitivity: 2.0       # 变更惩罚敏感度 (β)
@@ -43,22 +41,36 @@ ppo:
   quality_threshold: 0.6        # 质量阈值 (τ)
   max_diff: 500                 # 最大变更行数
 
-# 收敛配置
 convergence:
   threshold: 0.01               # 收敛阈值 (δ)
-  max_iterations: 50            # 最大迭代次数
+  max_iterations: 50
   no_merge_limit: 5             # 连续无合并次数限制
 
-# Reward 配置
 reward:
   types: [test_coverage, code_quality, agent_review]
   weights: [0.34, 0.33, 0.33]
 
-# 执行器配置
 task:
   executor: CLAUDE_CODE
   model: sonnet
+
+enabled: true
 ---
+```
+
+---
+
+## Directory Structure
+
+```
+.viben/filerl/<run-name>/
+├── state.json                      # FileRL 状态
+└── iter{N}/                        # 第 N 次迭代
+    └── <idea-id>/                  # idea 目录
+        ├── idea.md                 # idea 定义
+        └── <task-name>/            # rollout task
+            ├── reward.json         # reward 结果
+            └── reward.log.jsonl    # reward agent 执行日志
 ```
 
 ---
@@ -79,41 +91,39 @@ git log --oneline -5
 git status
 ```
 
-### Step 2: Load Optimization Target
-
-Read the task context to understand optimization goals:
+### Step 2: Create and Start FileRL Run
 
 ```bash
-viben task context $TASK_DIR
-```
+# Create target file
+viben filerl create my-optimization -d "优化 API 响应时间"
 
-The task description should specify:
-- **Optimization target** (performance, security, quality, etc.)
-- **Scope** (specific module, entire codebase, etc.)
-- **Constraints** (don't break tests, maintain API compatibility, etc.)
+# Validate configuration
+viben filerl start my-optimization.md --dry-run
+
+# Start FileRL run
+viben filerl start my-optimization.md
+```
 
 ---
 
 ## Main Training Loop
 
-### Phase 1: Idea Generation (Sampling)
+### Phase 1: Idea Generation
 
-Use `viben idea generate` to analyze the codebase and generate optimization ideas:
+Use `viben filerl generate-ideas` to generate optimization ideas in the current iteration directory:
 
 ```bash
-# List available idea types (builtin + custom)
-viben idea list-types
+# Generate ideas for current iteration
+viben filerl generate-ideas my-optimization --types code_improvements
 
-# Generate ideas using specific types
-viben idea generate --types performance_optimizations security_hardening
-
-# Generate with custom max ideas per type
-viben idea generate --types code_improvements --max-ideas 3
+# Generate ideas for specific iteration
+viben filerl generate-ideas my-optimization --iter 2 --types refactoring performance
 
 # View generated ideas
-viben idea list
-viben idea view <idea-id>
+viben filerl list-ideas my-optimization
 ```
+
+**Output directory**: `.viben/filerl/<name>/iter{N}/<idea-id>/idea.md`
 
 **Built-in Idea Types:**
 
@@ -126,38 +136,6 @@ viben idea view <idea-id>
 | `security_hardening` | Security vulnerabilities and hardening |
 | `ui_ux_improvements` | User interface and experience improvements |
 
-**Custom Idea Types:**
-
-You can define custom idea types by creating prompt templates in `docs/idea-types/`:
-
-```bash
-# Create custom idea type
-mkdir -p docs/idea-types
-cat > docs/idea-types/api_optimization.md << 'EOF'
----
-name: api_optimization
-description: API response time and efficiency improvements
-max_ideas: 5
----
-
-Analyze the API layer for optimization opportunities:
-
-1. Identify slow endpoints (>500ms response time)
-2. Find N+1 query patterns
-3. Suggest caching strategies
-4. Recommend connection pooling improvements
-5. Identify unnecessary data fetching
-
-For each idea, provide structured output with:
-- title, description, rationale
-- affected_files, estimated_effort
-- metrics (before/after estimates)
-EOF
-
-# Now use your custom type
-viben idea generate --types api_optimization
-```
-
 **Idea Structure:**
 
 Each generated idea contains:
@@ -169,46 +147,55 @@ Each generated idea contains:
 - `affected_files`: List of files to modify
 - `implementation_approach`: Suggested approach
 
-### Phase 2: Parallel Rollout (PR Generation)
+### Phase 2: Promote Ideas to Tasks
 
-Use `viben idea promote` to convert ideas to tasks and execute in parallel:
+Use `viben filerl promote-ideas` to convert ideas to tasks:
 
 ```bash
-# Promote single idea to task (with worktree for isolation)
-viben idea promote <idea-id> --worktree --start
+# Promote single idea
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4
 
-# Promote multiple ideas in parallel
-for idea_id in $(viben idea list --json | jq -r '.[0:3] | .[].id'); do
-    viben idea promote "$idea_id" --worktree --start &
-done
-wait
+# Promote multiple ideas
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 po-e5f6g7h8
 
-# Or promote with custom options
-viben idea promote po-a1b2c3d4 \
-    --slug perf-cache-layer \
-    --worktree \
-    --start \
-    --priority high
+# Promote and auto-start
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+
+# Promote with worktree isolation
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --start
+
+# Full example with custom options
+viben filerl promote-ideas my-optimization \
+  --ideas po-a1b2c3d4 \
+  --executor CLAUDE_CODE \
+  --model opus \
+  --start
 ```
 
 **Promote Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--slug <name>` | Custom task identifier (auto-generated from title if not provided) |
-| `--worktree` | Run in isolated git worktree |
-| `--start` | Auto-start task after creation |
-| `--priority <level>` | Override priority (defaults to effort-based) |
-| `--assignee <dev>` | Assign to specific developer |
-| `--executor <type>` | Executor type (CLAUDE_CODE, CURSOR, etc.) |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--iter <N>` | Iteration number | current iteration |
+| `--ideas <idea...>` | Idea IDs to promote | required |
+| `-s, --slug <name>` | Task identifier | from idea title |
+| `-b, --branch <branch>` | Branch name | `feature/<slug>` |
+| `-a, --assignee <dev>` | Assignee | current developer |
+| `-p, --priority <priority>` | Priority (P0-P3) | from effort |
+| `--executor <type>` | Executor type | target config |
+| `--model <model>` | Model | target config |
+| `--start` | Auto-start task | false |
+| `--worktree` | Use git worktree | target config |
 
-**What happens when you promote:**
+**Effort → Priority Mapping:**
 
-1. Idea status changes from `draft` to `promoted`
-2. Task directory created in `.viben/tasks/`
-3. Idea metadata linked to task via `promotedTo` field
-4. If `--start`: task enters execution queue
-5. If `--worktree`: isolated branch created for development
+| Effort | Priority |
+|--------|----------|
+| trivial | P3 |
+| small | P3 |
+| medium | P2 |
+| large | P1 |
+| complex | P1 |
 
 Monitor progress:
 
@@ -218,58 +205,47 @@ viben swarm status --watch
 
 ### Phase 3: Reward Computation
 
-Reward is computed automatically in work-phase via `viben task compute-reward`.
+Use `viben filerl compute-reward` to evaluate task PRs:
 
-**Work Phase Stages (in worktree):**
-```
-viben task work-phase <task>
-├── 1. implement-phase      → 实现代码
-├── 2. check-phase          → 检查代码质量
-└── 3. validate-check-phase → 验证通过
-```
+```bash
+# Compute reward for specific idea
+viben filerl compute-reward my-optimization --idea po-a1b2c3d4
 
-**Post-Work Stages (by start agent in main repo):**
-```
-├── 4. create-pr            → 创建 PR (worktree 模式)
-└── 5. compute-reward       → 评估 PR 奖励 (如果启用)
+# Compute reward for specific task
+viben filerl compute-reward my-optimization --iter 1 --task 03-27-fix-bug
 ```
 
-**Reward config in task.json** (inherited from idea type):
+**Output location**: `.viben/filerl/<run>/iter{N}/<idea>/<task>/reward.json`
+
+**Reward format:**
 ```json
 {
-  "reward_config": {
-    "types": ["test_coverage", "code_quality", "agent_review"],
-    "weights": [0.4, 0.3, 0.3]
-  }
-}
-```
-
-**Output written to task.json:**
-```json
-{
-  "reward": {
-    "scores": {
-      "test_coverage": { "score": 0.95, "reasoning": "..." },
-      "code_quality": { "score": 0.82, "reasoning": "..." },
-      "agent_review": { "score": 0.78, "reasoning": "..." }
-    },
-    "total": 0.858,
-    "diff_lines": 120,
-    "computed_at": "2024-03-17T10:30:00Z"
-  }
+  "total_score": 0.825,
+  "diff_lines": 50,
+  "scores": {
+    "code_quality": { "score": 0.85, "reasoning": "..." },
+    "agent_review": { "score": 0.80, "reasoning": "..." }
+  },
+  "computed_at": "2026-03-27T10:30:00Z"
 }
 ```
 
 ### Phase 4: PPO Selection
 
-Use `viben reward select` to aggregate rewards and select best PR:
+Use `viben filerl select` to select the best task:
 
 ```bash
-# Get completed tasks
-TASKS=$(viben task list --status completed --from-idea --json | jq -r '.[].name' | tr '\n' ' ')
+# Select from current iteration
+viben filerl select my-optimization
 
-# PPO selection
-viben reward select $TASKS --threshold 0.6 --kl-coef 0.05 --max-diff 500
+# Select from specific iteration
+viben filerl select my-optimization --iter 2
+
+# Filter by idea
+viben filerl select my-optimization --idea po-a1b2c3d4
+
+# Custom threshold
+viben filerl select my-optimization --threshold 0.7 --kl-coef 0.1
 ```
 
 **PPO Formulas:**
@@ -285,34 +261,25 @@ viben reward select $TASKS --threshold 0.6 --kl-coef 0.05 --max-diff 500
 
 **Output:**
 ```
-┌─────────┬────────┬───────┬────────┬──────────┬───────────┬────────────┐
-│ Task    │ Reward │ Diff  │ KL     │ Adjusted │ Advantage │ Status     │
-├─────────┼────────┼───────┼────────┼──────────┼───────────┼────────────┤
-│ task-a  │ 0.858  │ 120   │ 0.012  │ 0.846    │ +0.130    │ ✓ SELECTED │
-│ task-b  │ 0.721  │ 450   │ 0.045  │ 0.676    │ -0.040    │ rejected   │
-│ task-c  │ 0.634  │ 80    │ 0.008  │ 0.626    │ -0.090    │ rejected   │
-└─────────┴────────┴───────┴────────┴──────────┴───────────┴────────────┘
+PPO Selection Results
+=====================
+
+Run: my-optimization | Iteration: 1
+Baseline: 0.723 | Threshold: 0.6
+
+TASK      REWARD  DIFF  KL     ADJUSTED  RELATIVE  FINAL   STATUS
+task-a    0.858   120   0.012  0.846     +0.123    0.121   SELECTED
+task-b    0.721   450   0.045  0.676     -0.047    -0.046  rejected
 ```
 
 ### Phase 5: Update (Merge or Discard)
 
 ```bash
-# Get selection result
-RESULT=$(viben reward select $TASKS --json)
-SELECTED=$(echo $RESULT | jq -r '.selected')
-
-if [ -n "$SELECTED" ] && [ "$SELECTED" != "null" ]; then
-    # Approve agent merges the PR
-    viben task approve $SELECTED
-else
-    echo "No PR above threshold"
-fi
+# Approve and merge the selected task
+viben task approve <selected-task>
 
 # Cleanup rejected worktrees
-REJECTED=$(echo $RESULT | jq -r '.rejected[]')
-for task in $REJECTED; do
-    viben task cleanup $task
-done
+viben task cleanup <rejected-task>
 ```
 
 `viben task approve` internally:
@@ -322,92 +289,124 @@ done
 
 ### Phase 6: Convergence Check
 
-```python
-# Track reward history
-history.append(best.reward)
-
-# Check convergence (reward improvement plateaus)
-if len(history) >= 10:
-    recent_delta = abs(mean(history[-5:]) - mean(history[-10:-5]))
-    if recent_delta < CONVERGENCE_DELTA:
-        print("Converged! Stopping optimization.")
-        break
+Convergence is detected when:
 ```
+|mean(history[-5:]) - mean(history[-10:-5])| < δ
+```
+
+This requires at least 10 iterations of history.
 
 ---
 
-## Continuous Loop Structure
+## Iteration Phases (State Machine)
+
+FileRL tracks progress through phases, supporting resume after interruption:
+
+```
+init → generate_ideas → promote_ideas → execute_tasks →
+       wait_tasks → compute_rewards → select_best → merge_cleanup → completed
+```
+
+| Phase | Description |
+|-------|-------------|
+| `init` | Just started, no work done |
+| `generate_ideas` | Phase 1: Generate ideas |
+| `promote_ideas` | Phase 2: Convert ideas to tasks |
+| `execute_tasks` | Phase 2.5: Start task executors |
+| `wait_tasks` | Phase 3: Wait for tasks to complete |
+| `compute_rewards` | Phase 4: Compute rewards |
+| `select_best` | Phase 5: PPO selection |
+| `merge_cleanup` | Phase 6: Merge winner, cleanup losers |
+| `completed` | Iteration complete |
+
+---
+
+## Complete Workflow Example
 
 ```bash
-iteration=0
+# 1. Create target file
+viben filerl create my-optimization -d "优化代码质量"
 
-while true; do
-    echo "=== FileRL Iteration $iteration ==="
+# 2. Start FileRL run
+viben filerl start my-optimization.md
 
-    # Phase 1: Generate ideas
-    viben idea generate --types $OPTIMIZATION_TYPES --max-ideas $NUM_ROLLOUTS --override
+# 3. Generate ideas (in iter1/)
+viben filerl generate-ideas my-optimization --types code_improvements
 
-    # Phase 2: Parallel rollout
-    for idea_id in $(viben idea list --json | jq -r '.[].id'); do
-        viben idea promote "$idea_id" --worktree --start &
-    done
-    wait
+# 4. View generated ideas
+viben filerl list-ideas my-optimization
 
-    # Phase 3: Monitor progress (agents complete independently)
-    # Use `viben swarm status --watch` to monitor progress
+# 5. Promote ideas to tasks and start
+viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
-    # Phase 4: PPO selection
-    TASKS=$(viben task list --status completed --from-idea --json | jq -r '.[].name' | tr '\n' ' ')
-    RESULT=$(viben reward select $TASKS --threshold 0.6 --json)
-    SELECTED=$(echo $RESULT | jq -r '.selected')
+# 6. Check status
+viben filerl status my-optimization
 
-    # Phase 5: Approve & merge (or skip)
-    if [ -n "$SELECTED" ] && [ "$SELECTED" != "null" ]; then
-        viben task approve $SELECTED
-    fi
+# 7. Monitor task execution
+viben swarm status --watch
 
-    # Phase 6: Cleanup rejected
-    for task in $(echo $RESULT | jq -r '.rejected[]'); do
-        viben task cleanup $task
-    done
+# 8. Compute rewards
+viben filerl compute-reward my-optimization --iter 1
 
-    # Phase 7: Record & check convergence
-    viben task add-session --title "FileRL Iteration $iteration"
-    # Agent judges convergence based on reward history
+# 9. Select best candidate
+viben filerl select my-optimization
 
-    iteration=$((iteration + 1))
-done
+# 10. Merge winner, cleanup loser
+viben task approve <winner-task>
+viben task cleanup <loser-task>
 ```
 
 ---
 
-## Reward Function Details
+## Commands Reference
 
-### Multi-Objective Reward
+| PPO Step | Viben Command | Description |
+|----------|---------------|-------------|
+| Create target | `viben filerl create <name>` | Create target.md file |
+| Start run | `viben filerl start <target.md>` | Start FileRL run |
+| Resume run | `viben filerl resume <name>` | Resume paused run |
+| Stop run | `viben filerl stop <name>` | Stop active run |
+| View status | `viben filerl status <name>` | View run status |
+| List runs | `viben filerl list` | List all runs |
+| Generate ideas | `viben filerl generate-ideas <name> --types <types>` | Generate ideas |
+| Add idea | `viben filerl add-idea <name> <idea.md>` | Add manual idea |
+| List ideas | `viben filerl list-ideas <name>` | List ideas in run |
+| Promote ideas | `viben filerl promote-ideas <name> --ideas <ids>` | Convert to tasks |
+| Compute reward | `viben filerl compute-reward <name>` | Compute task rewards |
+| PPO select | `viben filerl select <name>` | Select best task |
+| Approve & merge | `viben task approve <task>` | Merge PR |
+| Cleanup | `viben task cleanup <task>` | Remove worktree |
+| Monitor | `viben swarm status --watch` | Watch agent progress |
 
-$$R(PR) = \sum_{i} w_i \cdot r_i(PR) - \lambda \cdot \text{Penalty}(PR)$$
+---
 
-| Component | Weight | How to Measure |
-|-----------|--------|----------------|
-| Test Pass Rate | 0.30 | `pnpm test` exit code + coverage |
-| Code Quality | 0.25 | ESLint/Pylint score |
-| Performance | 0.20 | Benchmark comparison |
-| Security | 0.15 | `npm audit` / SAST tools |
-| Maintainability | 0.10 | Cyclomatic complexity |
+## Reward Type Management
 
-### Penalty Terms
+```bash
+viben reward list-types              # List available reward types
+viben reward type list               # List reward types
+viben reward type view <name>        # View reward type details
+viben reward type create <name>      # Create custom reward type
+viben reward type update <name>      # Update reward type
+viben reward type delete <name>      # Delete reward type
+```
 
-- **Diff size penalty**: Large changes are risky
-- **Breaking change penalty**: API incompatibility
-- **Test coverage penalty**: Reduced coverage
+---
+
+## Safety Rules
+
+1. **Never force push to main** - All changes go through PR
+2. **Never skip tests** - Test pass rate is part of reward
+3. **Never auto-merge without review** (unless configured)
+4. **Always cleanup worktrees** - Don't leave orphaned branches
+5. **Respect KL constraint** - Don't change too much at once
+6. **Stop on repeated failures** - If 5 consecutive iterations fail threshold, pause and report
 
 ---
 
 ## Logging Results
 
-When an iteration is done, log it to `results.tsv` (tab-separated, NOT comma-separated).
-
-The TSV has a header row and 6 columns:
+When an iteration is done, log it to `results.tsv` (tab-separated):
 
 ```
 iteration	commit	reward	diff_lines	status	description
@@ -430,122 +429,17 @@ iteration	commit	reward	diff_lines	status	description
 4	b2c3d4e	0.892	85	merged	optimize N+1 queries in order service
 ```
 
-### Real-time Monitoring
-
-```bash
-# Watch all agents
-viben swarm status --watch
-
-# View specific agent log
-viben swarm status $TASK --log
-```
-
----
-
-## Commands Reference
-
-| PPO Step | Viben Command | Description |
-|----------|---------------|-------------|
-| Initialize | `viben user init filerl-optimizer` | Set optimizer identity |
-| List reward types | `viben reward list-types` | Show builtin + custom reward types |
-| List idea types | `viben idea list-types` | Show builtin + custom idea types |
-| Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |
-| Add idea manually | `viben filerl add-idea <run> <idea.md>` | Add manual idea to run |
-| List ideas | `viben filerl list-ideas <run>` | List ideas in a run |
-| Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
-| Monitor | `viben swarm status --watch` | Watch agent progress |
-| Compute reward | `viben task compute-reward <task>` | Evaluate PR (auto in work-phase) |
-| PPO select | `viben reward select <tasks...>` | Aggregate + select best |
-| Approve & merge | `viben task approve <task>` | Agent merges PR |
-| Cleanup | `viben task cleanup <task>` | Remove worktree |
-| Record | `viben task add-session` | Log session |
-
----
-
-## Safety Rules
-
-1. **Never force push to main** - All changes go through PR
-2. **Never skip tests** - Test pass rate is part of reward
-3. **Never auto-merge without review** (unless configured)
-4. **Always cleanup worktrees** - Don't leave orphaned branches
-5. **Respect KL constraint** - Don't change too much at once
-6. **Stop on repeated failures** - If 5 consecutive iterations fail threshold, pause and report
-
----
-
-## Example: Performance Optimization Loop
-
-```bash
-# Step 1: Generate performance optimization ideas
-viben idea generate --types performance_optimizations --max-ideas 3
-
-# Step 2: Promote all ideas to parallel worktree tasks
-for idea_id in $(viben idea list --json | jq -r '.[].id'); do
-    viben idea promote "$idea_id" --worktree --start &
-done
-wait
-
-# Step 3: Monitor progress (agents complete independently)
-# Use `viben swarm status --watch` to monitor
-
-# Step 4: PPO select best task
-TASKS="03-17-add-caching 03-17-optimize-queries 03-17-connection-pool"
-viben reward select $TASKS --threshold 0.6
-
-# Step 5: Approve and merge the selected task
-viben task approve 03-17-add-caching
-
-# Step 6: Cleanup rejected tasks
-viben task cleanup 03-17-optimize-queries
-viben task cleanup 03-17-connection-pool
-
-# Step 7: Record and continue
-viben task add-session --title "FileRL Iteration 1" --summary "Merged: add-caching, reward: 0.846"
-```
-
-### Using Custom Idea Types
-
-```bash
-# Create a custom idea type for your specific optimization goal
-cat > docs/idea-types/latency_reduction.md << 'EOF'
----
-name: latency_reduction
-description: Find and fix latency issues in the request pipeline
-max_ideas: 5
----
-
-Analyze the codebase for latency reduction opportunities:
-
-Focus areas:
-1. Database query optimization (indexes, query structure)
-2. Caching opportunities (Redis, in-memory)
-3. Async operation parallelization
-4. Connection pooling improvements
-5. Unnecessary serialization/deserialization
-
-Output format per idea:
-- title, description, rationale
-- affected_files
-- estimated_effort (trivial/small/medium/large/complex)
-- metrics: current_latency_ms, expected_latency_ms
-EOF
-
-# Use your custom type
-viben idea generate --types latency_reduction
-viben idea list --type latency_reduction
-```
-
 ---
 
 ## Completion Criteria
 
 The FileRL loop terminates when:
 
-1. **Convergence**: Reward improvement < `convergence_delta` for 10 iterations
+1. **Convergence**: `|mean(history[-5:]) - mean(history[-10:-5])| < δ`
 2. **Max iterations**: Reached `max_iterations` limit
-3. **Target achieved**: Specific metric target met (e.g., 95% test pass rate)
+3. **Target achieved**: Specific metric target met
 4. **Manual stop**: User interrupts the process
-5. **Repeated failures**: 5 consecutive iterations below threshold
+5. **Repeated failures**: 5 consecutive iterations below threshold (`no_merge_limit`)
 
 When complete, generate a summary report:
 

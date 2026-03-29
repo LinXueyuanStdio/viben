@@ -72,7 +72,8 @@ class CopilotExecutor extends BaseExecutor {
 
   buildRunCommand(options: RunCommandOptions): string[] {
     const { prompt } = options;
-    const args = ["gh", "copilot", "suggest", prompt];
+    // gh copilot suggest requires -t flag for shell type
+    const args = ["gh", "copilot", "suggest", "-t", "shell", prompt];
 
     if (this.config.model) {
       args.push("--model", this.config.model);
@@ -119,7 +120,8 @@ class CopilotExecutor extends BaseExecutor {
       };
     }
 
-    const args = ["copilot", "suggest", prompt];
+    // gh copilot suggest requires -t flag for shell type
+    const args = ["copilot", "suggest", "-t", "shell", prompt];
 
     if (this.config.model) {
       args.push("--model", this.config.model);
@@ -147,13 +149,31 @@ class CopilotExecutor extends BaseExecutor {
         };
       }
 
+      // Capture stderr for error reporting
+      let stderr = "";
+      if (child.stderr) {
+        child.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+      }
+
       const exitCode = await new Promise<number>((resolve, reject) => {
         child.on("exit", (code) => resolve(code ?? 1));
         child.on("error", reject);
       });
 
+      if (exitCode !== 0) {
+        return {
+          success: false,
+          exitCode,
+          pid: child.pid,
+          error: stderr.trim() || `Process exited with code ${exitCode}`,
+          errorType: "PROCESS_CRASHED",
+        };
+      }
+
       return {
-        success: exitCode === 0,
+        success: true,
         exitCode,
         pid: child.pid,
       };
@@ -182,7 +202,8 @@ class CopilotExecutor extends BaseExecutor {
       };
     }
 
-    const args = ["copilot", "suggest", prompt];
+    // gh copilot suggest requires -t flag for shell type
+    const args = ["copilot", "suggest", "-t", "shell", prompt];
 
     if (this.config.model) {
       args.push("--model", this.config.model);
