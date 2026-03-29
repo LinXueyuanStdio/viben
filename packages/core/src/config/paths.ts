@@ -96,3 +96,10 @@ export function getSharedMcpDir(): string {
 export function getSharedSkillsDir(): string {
   return join(getStateDir(), "skills");
 }
+
+/**
+ * Get the path to the auth token file
+ */
+export function getTokenPath(): string {
+  return join(getStateDir(), "token");
+}
