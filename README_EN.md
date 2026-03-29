@@ -47,7 +47,7 @@ Extend Agent capabilities
 <tr>
 <td align="center">
 <h3>📋 Task System</h3>
-<b>XState State Machine Driven</b><br/>
+<b>State Machine Driven</b><br/>
 Kanban + Queue + Auto-execution<br/>
 Complete task lifecycle management
 </td>
@@ -435,7 +435,7 @@ viben task cleanup <loser-task>
 
 ## 📋 Task System
 
-XState-based task lifecycle management with kanban, queue, and automated execution.
+State machine-driven task lifecycle management with kanban, queue, and automated execution.
 
 ### Task Lifecycle
 
