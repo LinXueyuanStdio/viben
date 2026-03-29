@@ -152,8 +152,8 @@ export function OfficialServerGrid({
 
       {/* Grid */}
       <AnimatedGrid>
-        {displayServers.map((server) => (
-          <OfficialServerCard key={server.id} server={server} />
+        {displayServers.map((server, index) => (
+          <OfficialServerCard key={`${server.id}-${server.version}-${index}`} server={server} />
         ))}
       </AnimatedGrid>
 

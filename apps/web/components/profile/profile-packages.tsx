@@ -1,26 +1,168 @@
-import { db, mcpPackages, skillPackages } from '@/lib/db';
-import { eq } from 'drizzle-orm';
-import { ProfilePackagesClient } from './profile-packages-client';
+'use client';
+
+import * as React from 'react';
+import { useTranslation } from 'react-i18next';
+import { McpCard } from '@/components/mcp/mcp-card';
+import { SkillCard } from '@/components/skills/skill-card';
+import { Button } from '@/components/ui/button';
+import { Plus, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+
+interface DbMcpPackage {
+  id: string;
+  name: string;
+  slug: string;
+  version: string;
+  description: string | null;
+  category: string | null;
+  transport: string;
+  favoritesCount: number;
+  downloads: number;
+  ratingAvg: number;
+  [key: string]: unknown;
+}
+
+interface DbSkillPackage {
+  id: string;
+  name: string;
+  slug: string;
+  version: string;
+  description: string | null;
+  category: string | null;
+  skillType: string;
+  favoritesCount: number;
+  downloads: number;
+  ratingAvg: number;
+  [key: string]: unknown;
+}
 
 interface ProfilePackagesProps {
   userId: string;
 }
 
-export async function ProfilePackages({ userId }: ProfilePackagesProps) {
-  const [mcps, skills] = await Promise.all([
-    db.query.mcpPackages.findMany({
-      where: eq(mcpPackages.authorId, userId),
-      orderBy: (pkg, { desc }) => [desc(pkg.createdAt)],
-      limit: 10,
-    }),
-    db.query.skillPackages.findMany({
-      where: eq(skillPackages.authorId, userId),
-      orderBy: (pkg, { desc }) => [desc(pkg.createdAt)],
-      limit: 10,
-    }),
-  ]);
+export function ProfilePackages({ userId }: ProfilePackagesProps) {
+  const { t } = useTranslation();
+  const [mcps, setMcps] = React.useState<DbMcpPackage[]>([]);
+  const [skills, setSkills] = React.useState<DbSkillPackage[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Map database results to client component props
-   
-  return <ProfilePackagesClient mcps={mcps as any} skills={skills as any} />;
+  const fetchPackages = React.useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/users/me/packages');
+      if (response.ok) {
+        const data = await response.json();
+        setMcps(data.mcps || []);
+        setSkills(data.skills || []);
+      } else {
+        setError('Failed to load packages');
+      }
+    } catch {
+      setError('Failed to load packages');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
+        <p className="text-sm text-destructive">{error}</p>
+        <button
+          onClick={fetchPackages}
+          className="mt-2 text-sm text-primary hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const hasPackages = mcps.length > 0 || skills.length > 0;
+
+  if (!hasPackages) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-lg text-muted-foreground">
+          {t('profile.packages.noPackagesYet')}
+        </p>
+        <Button className="mt-4" asChild>
+          <Link href="/publish">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('profile.packages.publishPackage')}
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {mcps.length > 0 && (
+        <div>
+          <h3 className="mb-4 text-lg font-semibold">{t('profile.packages.mcpPackages')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {mcps.map((pkg) => (
+              <McpCard
+                key={pkg.id}
+                package={{
+                  id: pkg.id,
+                  name: pkg.name,
+                  slug: pkg.slug,
+                  version: pkg.version,
+                  description: pkg.description,
+                  category: pkg.category,
+                  transport: pkg.transport,
+                  favoritesCount: pkg.favoritesCount,
+                  downloadsCount: pkg.downloads,
+                  ratingAvg: pkg.ratingAvg,
+                  author: null,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {skills.length > 0 && (
+        <div>
+          <h3 className="mb-4 text-lg font-semibold">{t('profile.packages.skills')}</h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {skills.map((pkg) => (
+              <SkillCard
+                key={pkg.id}
+                package={{
+                  id: pkg.id,
+                  name: pkg.name,
+                  slug: pkg.slug,
+                  version: pkg.version,
+                  description: pkg.description,
+                  category: pkg.category,
+                  skillType: pkg.skillType,
+                  favoritesCount: pkg.favoritesCount,
+                  downloadsCount: pkg.downloads,
+                  ratingAvg: pkg.ratingAvg,
+                  author: null,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
