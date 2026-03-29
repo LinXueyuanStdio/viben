@@ -57,10 +57,12 @@ export function AnimatedGrid({ children, className }: AnimatedGridProps) {
       animate={mounted ? 'visible' : 'hidden'}
       className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}
     >
-      {Children.map(children, (child) => {
+      {Children.map(children, (child, index) => {
         if (!isValidElement(child)) return child;
+        // Use index as key since Children.map provides stable ordering
+        // child.key may have duplicates in data (e.g., same package with different versions)
         return (
-          <motion.div key={child.key} variants={itemVariants}>
+          <motion.div key={index} variants={itemVariants}>
             {child}
           </motion.div>
         );
