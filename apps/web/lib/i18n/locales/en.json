@@ -196,6 +196,11 @@
   },
   "settings": {
     "title": "Settings",
+    "nav": {
+      "apiKeys": "API Keys",
+      "myPackages": "My Packages",
+      "favorites": "Favorites"
+    },
     "sections": {
       "general": "General",
       "appearance": "Appearance",

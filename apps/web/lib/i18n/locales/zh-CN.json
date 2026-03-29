@@ -196,6 +196,11 @@
   },
   "settings": {
     "title": "设置",
+    "nav": {
+      "apiKeys": "API 密钥",
+      "myPackages": "我的包",
+      "favorites": "收藏"
+    },
     "sections": {
       "general": "通用",
       "appearance": "外观",
