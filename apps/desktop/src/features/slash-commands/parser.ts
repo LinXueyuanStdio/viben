@@ -13,7 +13,7 @@ export function parseWorkspaceCommand(
   content: string
 ): WorkspaceCommandFile | null {
   // Extract filename and namespace from path
-  // e.g., .claude/commands/trellis/start.md -> trellis:start
+  // e.g., .claude/commands/viben/start.md -> viben:start
   const pathParts = filePath.split("/");
   const fileName = pathParts[pathParts.length - 1].replace(".md", "");
   const commandsIndex = pathParts.indexOf("commands");

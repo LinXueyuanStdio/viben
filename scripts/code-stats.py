@@ -57,7 +57,6 @@ EXCLUDE_DIRS = {
     ".auto-claude",
     ".claude",
     ".viben",
-    ".trellis",
     ".cache",
     ".idea",
     ".vscode",

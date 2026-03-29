@@ -10,7 +10,6 @@
  * triggering state transitions.
  *
  * @see packages/core/src/gateway/queue/scheduler.ts for dependency checking
- * @see .trellis/spec/modules/task-system.md for specification
  */
 
 import type { TaskMachineContext, XStateValue } from "./task-machine";

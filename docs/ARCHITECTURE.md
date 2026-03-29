@@ -443,4 +443,3 @@ Gateway 内部使用事件系统进行状态同步:
 ### B. 相关文档
 
 - [Gateway API 文档](./API.md)
-- [.trellis/spec/ARCHITECTURE.md](../.trellis/spec/ARCHITECTURE.md) - 详细架构规范

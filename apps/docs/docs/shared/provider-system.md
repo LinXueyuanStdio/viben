@@ -581,8 +581,8 @@ print([ext.name for ext in mgr])
 
 ## References
 
-- **Plugin Architecture:** `.trellis/spec/backend/plugin-architecture.md`
-- **Directory Structure:** `.trellis/spec/backend/directory-structure.md`
+- **Plugin Architecture:** `docs/specs/backend/plugin-architecture.md`
+- **Directory Structure:** `docs/specs/backend/directory-structure.md`
 - **Provider Registry:** `provider.index.json`
 - **Stevedore Documentation:** https://docs.openstack.org/stevedore/latest/
 

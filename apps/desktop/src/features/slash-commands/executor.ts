@@ -80,7 +80,7 @@ export function findCommand(
   const exact = commands.find((cmd) => cmd.name === name);
   if (exact) return exact;
 
-  // Try with namespace (e.g., trellis:start)
+  // Try with namespace (e.g., viben:start)
   return commands.find((cmd) => cmd.name === name || cmd.id === name);
 }
 

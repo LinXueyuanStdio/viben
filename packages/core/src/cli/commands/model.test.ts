@@ -1,8 +1,6 @@
 /**
  * Model CLI Commands Tests
  *
- * 覆盖规范: .trellis/spec/modules/cli/model.md
- *
  * 测试覆盖:
  * - Model 管理: list, show, status, set-default
  * - Model Alias: list, create, remove, resolve

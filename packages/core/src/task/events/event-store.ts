@@ -152,7 +152,6 @@ export class TaskEventStore {
     };
 
     // 8. Set queuedAt timestamp when QUEUE event is applied (for FIFO ordering)
-    // @see .trellis/spec/modules/task-system.md - 调度信息
     if (event.type === "QUEUE") {
       updatePayload.queued_at = event.timestamp;
     }

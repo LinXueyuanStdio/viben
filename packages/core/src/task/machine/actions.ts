@@ -225,8 +225,6 @@ export function clearPausedState(): Partial<TaskMachineContext> {
  * Note: This action returns a partial context that signals the need to set queuedAt.
  * The actual timestamp is set by the event store when applying the event,
  * as XState actions don't have access to the current time in a pure way.
- *
- * @see .trellis/spec/modules/task-system.md - 调度信息
  */
 export function setQueuedAt(): Partial<TaskMachineContextWithQueuedAt> {
   // Return a marker that indicates queuedAt should be set

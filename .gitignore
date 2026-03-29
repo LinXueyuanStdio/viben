@@ -62,15 +62,6 @@ target/
 # but ignored for library projects
 *.rs.bk
 
-# ===========================================
-# Trellis Development System
-# ===========================================
-.trellis/.ralph-state.json
-.trellis/.current-task
-.trellis/.developer
-.trellis/workspace/*/
-.trellis/tasks
-
 # Multi-agent temp files
 .session-id
 .agent-log

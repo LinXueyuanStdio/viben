@@ -302,7 +302,6 @@ export class TaskService {
     }
 
     // Configuration locking: agent/sessionId/executor/model cannot be changed after task is queued
-    // See: .trellis/spec/modules/task-system.md "配置锁定规则"
     if (existing.status !== "backlog") {
       const lockedFields = ["agent", "session_id", "executor", "model"] as const;
       for (const field of lockedFields) {

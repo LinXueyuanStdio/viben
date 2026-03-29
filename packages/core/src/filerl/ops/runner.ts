@@ -785,12 +785,17 @@ export function orchestrateComputeRewards(
     // Use taskDirName (the task directory name) since that's what the reward system uses
     const rewardDirName = taskDirName;
 
+    // Get ideaId from task.json for correct path
+    const ideaId = (viewResult.task as { filerl_idea?: string }).filerl_idea;
+
     // Check if reward already exists - first check FileRL reward.json, then task.json
     let hasReward = false;
 
-    // Check FileRL reward.json
+    // Check FileRL reward.json at iter{N}/{ideaId}/{taskDirName}/reward.json
     const iterDir = join(filerlDir, `iter${currentIteration}`);
-    const rewardJsonPath = join(iterDir, rewardDirName, "reward.json");
+    const rewardJsonPath = ideaId
+      ? join(iterDir, ideaId, rewardDirName, "reward.json")
+      : join(iterDir, rewardDirName, "reward.json");
     try {
       const rewardContent = readFileSync(rewardJsonPath, "utf-8");
       const rewardData = JSON.parse(rewardContent) as { total?: number };

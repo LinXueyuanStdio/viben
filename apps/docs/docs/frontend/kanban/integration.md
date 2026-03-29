@@ -1060,7 +1060,7 @@ viben/
 │   │       └── lib/
 │   └── shared/                        # Frontend-backend shared types
 │
-└── .trellis/spec/modules/
+└── docs/specs/modules/
     └── kanban-integration.md          # This document
 ```
 

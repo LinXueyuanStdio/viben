@@ -13,8 +13,6 @@
 ### 参考文档
 
 - 架构分析: `docs/work/` (已完成)
-- 组件参考: `.trellis/spec/modules/workspace/desktop-chat-workany.md`
-- Agent Hooks: `.trellis/spec/modules/chat/agent-hooks-spec.md`
 
 ---
 

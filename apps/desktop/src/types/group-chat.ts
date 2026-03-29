@@ -1,7 +1,5 @@
 /**
  * Group Chat types for multi-agent collaboration
- *
- * Matches the Gateway API spec in .trellis/spec/modules/gateway-group-chat.md
  */
 
 // ============================================================================

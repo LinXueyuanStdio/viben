@@ -18,7 +18,7 @@
 
 ## 概述
 
-`viben swarm` 命令用于管理智能体集群，支持在独立的 Git worktree 中启动多个智能体并行工作。设计参考了 Trellis 的 `multi_agent/` 脚本。
+`viben swarm` 命令用于管理智能体集群，支持在独立的 Git worktree 中启动多个智能体并行工作。
 
 ## 命令结构
 
@@ -344,19 +344,6 @@ post_create:
   - pnpm install
   - pnpm build
 ```
-
----
-
-## Trellis 命令映射
-
-| Trellis 命令 | viben 命令 | 备注 |
-|-------------|-----------|------|
-| `start.py <task-dir>` | `viben task work-phase <task>` | ~~`viben swarm start`~~ 已废弃 |
-| `cleanup.py --list` | `viben task cleanup --list` | 参阅 [task.md](./task.md) |
-| `cleanup.py <branch>` | `viben task cleanup <branch>` | 参阅 [task.md](./task.md) |
-| `cleanup.py --merged` | `viben task cleanup --merged` | 参阅 [task.md](./task.md) |
-| `cleanup.py --all` | `viben task cleanup --all` | 参阅 [task.md](./task.md) |
-| `status.py --registry` | `viben swarm registry` | |
 
 ---
 
