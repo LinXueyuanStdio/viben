@@ -27,7 +27,7 @@ import { BaseExecutor } from "./base";
  * Implements all abstract methods with configurable behavior.
  */
 class TestExecutor extends BaseExecutor {
-  readonly type = "TEST_EXECUTOR" as const;
+  readonly type = "CLAUDE_CODE" as const; // Using a valid ExecutorType for testing
 
   // Configurable test state
   private testCapabilities: ExecutorCapability[] = ["SPAWN", "CHAT"];
@@ -686,7 +686,7 @@ Third line`;
 
   describe("type property", () => {
     it("should return the executor type", () => {
-      expect(executor.type).toBe("TEST_EXECUTOR");
+      expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should be readonly", () => {

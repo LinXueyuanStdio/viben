@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       : null;
 
     const keyId = generateId();
+    const createdAt = new Date();
     await db.insert(apiKeys).values({
       id: keyId,
       userId: session.userId,
@@ -67,16 +68,21 @@ export async function POST(request: NextRequest) {
       keyPrefix: prefix,
       scopes,
       expiresAt,
+      createdAt,
     });
 
-    // Return the full key only once
+    // Return the full key only once, along with apiKey object for list update
     return NextResponse.json({
-      id: keyId,
       key: fullKey,
-      prefix,
-      name,
-      scopes,
-      expiresAt,
+      apiKey: {
+        id: keyId,
+        name,
+        keyPrefix: prefix,
+        scopes,
+        expiresAt,
+        lastUsedAt: null,
+        createdAt: createdAt.toISOString(),
+      },
       warning: 'Save this key now. You will not be able to see it again.',
     });
   } catch (error) {

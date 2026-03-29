@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings } from 'lucide-react';
+import { Settings, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 interface ProfileHeaderProps {
@@ -58,12 +58,20 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
           </p>
         </div>
       </div>
-      <Button variant="outline" asChild>
-        <Link href="/profile/settings">
-          <Settings className="mr-2 h-4 w-4" />
-          {t('common.settings')}
-        </Link>
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" asChild>
+          <Link href="/profile/settings">
+            <Pencil className="mr-2 h-4 w-4" />
+            {t('common.edit')}
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/settings/tokens">
+            <Settings className="mr-2 h-4 w-4" />
+            {t('common.settings')}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }

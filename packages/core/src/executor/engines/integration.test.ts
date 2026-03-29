@@ -148,11 +148,8 @@ describe("Executor Integration Tests", () => {
         // Should have at least one message
         expect(messages.length).toBeGreaterThan(0);
 
-        // Claude stream-json format outputs assistant messages, not plain text
-        // The type can be "assistant", "text", "result", etc.
-        const contentMessages = messages.filter(
-          (m) => m.type === "text" || (m as Record<string, unknown>).type === "assistant"
-        );
+        // Should have content messages (text type contains the response)
+        const contentMessages = messages.filter((m) => m.type === "text");
         expect(contentMessages.length).toBeGreaterThan(0);
 
         // Should have a result message
@@ -511,17 +508,14 @@ describe("Streaming Message Types", () => {
     const messageTypes = new Set(messages.map((m) => m.type));
     console.log("Message types received:", [...messageTypes]);
 
-    // Claude stream-json outputs: system, assistant, result (not "text")
-    // The "assistant" type contains the actual response content
-    expect(messageTypes.has("assistant") || messageTypes.has("text")).toBe(true);
+    // Should have text messages containing the response content
+    expect(messageTypes.has("text")).toBe(true);
 
-    // Verify assistant messages have content
-    const assistantMessages = messages.filter(
-      (m) => m.type === "assistant" || m.type === "text"
-    );
-    for (const msg of assistantMessages) {
-      // Assistant messages have a different structure
+    // Verify text messages have content
+    const textMessages = messages.filter((m) => m.type === "text");
+    for (const msg of textMessages) {
       expect(msg).toBeDefined();
+      expect((msg as { content: string }).content).toBeDefined();
     }
 
     // Should have result at end

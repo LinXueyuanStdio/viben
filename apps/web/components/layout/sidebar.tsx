@@ -237,10 +237,10 @@ export function Sidebar({
           <>
             {/* Settings Link - Only visible when logged in */}
             <Link
-              href="/profile/settings"
+              href="/settings/tokens"
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                pathname === '/profile/settings'
+                pathname === '/settings/tokens'
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
@@ -294,7 +294,7 @@ export function Sidebar({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/profile/settings" className="flex cursor-pointer items-center">
+                <Link href="/settings/tokens" className="flex cursor-pointer items-center">
                   <Settings className="mr-2 h-4 w-4" />
                   {t('common.settings')}
                 </Link>
