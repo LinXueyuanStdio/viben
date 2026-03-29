@@ -236,14 +236,33 @@ export class ClaudeExecutor extends BaseExecutor {
         child.stdin.end();
       }
 
+      // Capture stderr for error reporting
+      let stderr = "";
+      if (child.stderr) {
+        child.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+      }
+
       // Wait for completion
       const exitCode = await new Promise<number>((resolve, reject) => {
         child.on("exit", (code) => resolve(code ?? 1));
         child.on("error", reject);
       });
 
+      if (exitCode !== 0) {
+        return {
+          success: false,
+          exitCode,
+          sessionId,
+          pid: child.pid,
+          error: stderr.trim() || `Process exited with code ${exitCode}`,
+          errorType: "PROCESS_CRASHED",
+        };
+      }
+
       return {
-        success: exitCode === 0,
+        success: true,
         exitCode,
         sessionId,
         pid: child.pid,

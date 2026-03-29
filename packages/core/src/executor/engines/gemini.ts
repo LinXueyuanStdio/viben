@@ -149,13 +149,31 @@ class GeminiExecutor extends BaseExecutor {
         };
       }
 
+      // Capture stderr for error reporting
+      let stderr = "";
+      if (child.stderr) {
+        child.stderr.on("data", (data) => {
+          stderr += data.toString();
+        });
+      }
+
       const exitCode = await new Promise<number>((resolve, reject) => {
         child.on("exit", (code) => resolve(code ?? 1));
         child.on("error", reject);
       });
 
+      if (exitCode !== 0) {
+        return {
+          success: false,
+          exitCode,
+          pid: child.pid,
+          error: stderr.trim() || `Process exited with code ${exitCode}`,
+          errorType: "PROCESS_CRASHED",
+        };
+      }
+
       return {
-        success: exitCode === 0,
+        success: true,
         exitCode,
         pid: child.pid,
       };

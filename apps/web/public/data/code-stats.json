@@ -1,47 +1,47 @@
 {
-  "generatedAt": "2026-03-27T05:56:12.525067+00:00",
+  "generatedAt": "2026-03-29T11:11:32.829403+00:00",
   "summary": {
-    "totalLines": 734889,
-    "totalFiles": 2270,
+    "totalLines": 750930,
+    "totalFiles": 2337,
     "totalModules": 19,
-    "codeLines": 418519,
-    "docLines": 185867,
-    "configLines": 130503
+    "codeLines": 421033,
+    "docLines": 199857,
+    "configLines": 130040
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 266349,
-      "files": 840,
+      "lines": 270213,
+      "files": 858,
       "color": "#3178C6"
     },
     {
       "lang": "Markdown",
       "ext": "md",
-      "lines": 184519,
-      "files": 596,
+      "lines": 198509,
+      "files": 652,
       "color": "#083FA1"
     },
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 132621,
+      "lines": 132598,
       "files": 520,
       "color": "#61DAFB"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 116791,
-      "files": 84,
+      "lines": 116953,
+      "files": 85,
       "color": "#F59E0B"
     },
     {
       "lang": "Python",
       "ext": "py",
-      "lines": 12189,
-      "files": 60,
+      "lines": 11133,
+      "files": 56,
       "color": "#3776AB"
     },
     {
@@ -54,15 +54,15 @@
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 3835,
-      "files": 8,
+      "lines": 3564,
+      "files": 6,
       "color": "#E34F26"
     },
     {
       "lang": "YAML",
       "ext": "yml",
-      "lines": 2259,
-      "files": 18,
+      "lines": 2107,
+      "files": 17,
       "color": "#CB171E"
     },
     {
@@ -118,25 +118,25 @@
   "modules": [
     {
       "name": "apps/desktop",
-      "lines": 250549,
+      "lines": 250680,
       "files": 598,
       "color": "#F59E0B"
     },
     {
       "name": "packages/core",
-      "lines": 225806,
-      "files": 660,
+      "lines": 238295,
+      "files": 727,
       "color": "#3B82F6"
     },
     {
       "name": "apps/docs",
-      "lines": 72106,
-      "files": 230,
+      "lines": 77672,
+      "files": 245,
       "color": "#8B5CF6"
     },
     {
       "name": "apps/web",
-      "lines": 55987,
+      "lines": 55986,
       "files": 315,
       "color": "#10B981"
     },
@@ -154,7 +154,7 @@
     },
     {
       "name": "packages/chat",
-      "lines": 6963,
+      "lines": 6954,
       "files": 25,
       "color": "#6B7280"
     },
@@ -234,13 +234,13 @@
   "desktopDirs": [
     {
       "name": "i18n",
-      "lines": 85773,
+      "lines": 85929,
       "files": 22,
       "color": "#6B7280"
     },
     {
       "name": "components",
-      "lines": 73083,
+      "lines": 73060,
       "files": 260,
       "color": "#8B5CF6"
     },
@@ -270,7 +270,7 @@
     },
     {
       "name": "types",
-      "lines": 2410,
+      "lines": 2408,
       "files": 10,
       "color": "#6366F1"
     },
@@ -296,19 +296,19 @@
   "apps": [
     {
       "name": "desktop",
-      "lines": 250549,
+      "lines": 250680,
       "files": 598,
       "color": "#F59E0B"
     },
     {
       "name": "docs",
-      "lines": 72106,
-      "files": 230,
+      "lines": 77672,
+      "files": 245,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "lines": 55987,
+      "lines": 55986,
       "files": 315,
       "color": "#10B981"
     },
@@ -322,17 +322,17 @@
   "density": [
     {
       "name": "desktop",
-      "density": 419.0,
+      "density": 419.2,
       "color": "#F59E0B"
     },
     {
       "name": "pkg/core",
-      "density": 342.1,
+      "density": 327.8,
       "color": "#3B82F6"
     },
     {
       "name": "docs",
-      "density": 313.5,
+      "density": 317.0,
       "color": "#8B5CF6"
     },
     {
@@ -352,7 +352,7 @@
     },
     {
       "name": "pkg/chat",
-      "density": 278.5,
+      "density": 278.2,
       "color": "#6B7280"
     },
     {
@@ -369,17 +369,17 @@
   "categories": [
     {
       "label": "源代码",
-      "lines": 418519,
+      "lines": 421033,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 185867,
+      "lines": 199857,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 130503,
+      "lines": 130040,
       "color": "#F59E0B"
     }
   ],
@@ -391,109 +391,101 @@
     },
     {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "lines": 4476,
+      "lines": 4482,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "lines": 4408,
+      "lines": 4414,
       "ext": "json"
     },
     {
       "path": "packages/core/src/gateway/routes/task.ts",
-      "lines": 4361,
+      "lines": 4364,
       "ext": "ts"
     },
     {
       "path": "apps/desktop/src/i18n/locales/tr.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/nl.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/ms.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/ja.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/de.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/ru.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/pl.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/uk.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/pt.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/it.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/fr.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/hi.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/ko.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/vi.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/id.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     },
     {
       "path": "apps/desktop/src/i18n/locales/th.json",
-      "lines": 4263,
+      "lines": 4271,
       "ext": "json"
     }
   ],
   "commitActivity": [
-    {
-      "date": "2025-03-28",
-      "count": 0
-    },
-    {
-      "date": "2025-03-29",
-      "count": 0
-    },
     {
       "date": "2025-03-30",
       "count": 0
@@ -1944,19 +1936,27 @@
     },
     {
       "date": "2026-03-27",
-      "count": 18
+      "count": 31
+    },
+    {
+      "date": "2026-03-28",
+      "count": 5
+    },
+    {
+      "date": "2026-03-29",
+      "count": 11
     }
   ],
   "fileChurn": [
     {
       "path": "apps/desktop/src/i18n/locales/en.json",
-      "changes": 144,
-      "lastChanged": "2026-03-27"
+      "changes": 145,
+      "lastChanged": "2026-03-28"
     },
     {
       "path": "apps/desktop/src/i18n/locales/zh-CN.json",
-      "changes": 142,
-      "lastChanged": "2026-03-27"
+      "changes": 143,
+      "lastChanged": "2026-03-28"
     },
     {
       "path": "apps/desktop/src/pages/workspace-chat.tsx",
@@ -1989,6 +1989,16 @@
       "lastChanged": "2026-03-18"
     },
     {
+      "path": "apps/desktop/src/components/workspace/task-detail-panel.tsx",
+      "changes": 38,
+      "lastChanged": "2026-03-29"
+    },
+    {
+      "path": "packages/core/src/cli/commands/task.ts",
+      "changes": 38,
+      "lastChanged": "2026-03-29"
+    },
+    {
       "path": "apps/desktop/src/App.tsx",
       "changes": 38,
       "lastChanged": "2026-03-18"
@@ -1999,24 +2009,14 @@
       "lastChanged": "2026-03-15"
     },
     {
-      "path": "apps/desktop/src/components/workspace/task-detail-panel.tsx",
-      "changes": 37,
-      "lastChanged": "2026-03-23"
-    },
-    {
-      "path": "packages/core/src/cli/commands/task.ts",
-      "changes": 35,
-      "lastChanged": "2026-03-23"
+      "path": "packages/core/src/gateway/routes/tasks.ts",
+      "changes": 36,
+      "lastChanged": "2026-03-29"
     },
     {
       "path": "apps/desktop/src/components/layout/sidebar.tsx",
       "changes": 34,
       "lastChanged": "2026-03-18"
-    },
-    {
-      "path": "packages/core/src/gateway/routes/tasks.ts",
-      "changes": 34,
-      "lastChanged": "2026-03-15"
     },
     {
       "path": "packages/core/package.json",
@@ -2027,14 +2027,14 @@
   "codeFreshness": [
     {
       "label": "<1月",
-      "files": 1489,
-      "lines": 581189,
+      "files": 1563,
+      "lines": 607398,
       "color": "#10B981"
     },
     {
       "label": "1-3月",
-      "files": 786,
-      "lines": 153701,
+      "files": 779,
+      "lines": 143549,
       "color": "#3B82F6"
     },
     {
@@ -2059,27 +2059,27 @@
   "fileSizeDistribution": [
     {
       "range": "0-50",
-      "files": 407,
+      "files": 400,
       "color": "#10B981"
     },
     {
       "range": "50-100",
-      "files": 323,
+      "files": 345,
       "color": "#3B82F6"
     },
     {
       "range": "100-200",
-      "files": 467,
+      "files": 496,
       "color": "#F59E0B"
     },
     {
       "range": "200-500",
-      "files": 689,
+      "files": 708,
       "color": "#F97316"
     },
     {
       "range": "500+",
-      "files": 384,
+      "files": 388,
       "color": "#EF4444"
     }
   ]
