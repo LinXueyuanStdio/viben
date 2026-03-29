@@ -78,6 +78,8 @@ export interface CreateTaskOptions {
   computeReward?: boolean;
   /** FileRL directory absolute path for reward config and output */
   filerlDir?: string;
+  /** FileRL idea ID - links task to its source idea for reward path structure */
+  filerlIdea?: string;
 }
 
 export interface CreateTaskResult {
@@ -585,6 +587,8 @@ export function createTask(
     compute_reward: options.computeReward ?? false,
     // FileRL directory for reward config and output (reward_config is read from FileRL target)
     filerl_dir: options.filerlDir,
+    // FileRL idea ID - links task to its source idea for reward path structure
+    filerl_idea: options.filerlIdea,
   };
 
   // Note: --start flag is handled by CLI layer calling enqueueTask after creation

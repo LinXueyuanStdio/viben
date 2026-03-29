@@ -345,6 +345,12 @@ export interface UnifiedTask {
   filerl_dir?: string;
 
   /**
+   * FileRL idea ID - links task to its source idea
+   * When set, reward output path includes idea ID: iter<N>/<ideaId>/<taskName>/reward.json
+   */
+  filerl_idea?: string;
+
+  /**
    * @deprecated Use filerl_dir instead. Reward config is now read from FileRL target file.
    */
   reward_config?: RewardConfig;

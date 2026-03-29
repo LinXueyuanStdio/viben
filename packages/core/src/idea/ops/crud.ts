@@ -218,6 +218,8 @@ export function promoteIdea(
       worktree: options.worktree,
       computeReward: options.computeReward,
       filerlDir: options.filerlDir,
+      // Pass idea ID for FileRL reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
+      filerlIdea: options.filerlIdea || idea.id,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);
@@ -294,6 +296,8 @@ export function promoteIdeaDirect(
       worktree: options.worktree,
       computeReward: options.computeReward,
       filerlDir: options.filerlDir,
+      // Pass idea ID for FileRL reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
+      filerlIdea: options.filerlIdea || idea.id,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);

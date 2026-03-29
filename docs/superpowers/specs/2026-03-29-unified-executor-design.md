@@ -78,12 +78,12 @@ export type ExecutorCapability =
 
 ```typescript
 /**
- * 可用性状态
+ * 可用性状态（与现有代码保持一致）
  */
 export type AvailabilityStatus =
-  | "available"        // 已登录/可用
-  | "installed"        // 已安装但未登录
-  | "not_found";       // 未安装
+  | "LOGIN_DETECTED"      // 已登录/可用
+  | "INSTALLATION_FOUND"  // 已安装但未登录
+  | "NOT_FOUND";          // 未安装
 
 /**
  * 可用性信息
@@ -96,7 +96,7 @@ export interface AvailabilityInfo {
 }
 ```
 
-### SpawnOptions & SpawnResult
+### SpawnOptions
 
 ```typescript
 /**
@@ -113,8 +113,8 @@ export interface SpawnOptions {
   sessionId?: string;
   /** 模型 */
   model?: string;
-  /** 跳过权限检查 */
-  skipPermissions?: boolean;
+  /** 跳过权限检查（危险操作，与现有代码命名一致） */
+  dangerouslySkipPermissions?: boolean;
   /** 详细输出 */
   verbose?: boolean;
   /** JSON 输出格式 */
@@ -122,20 +122,9 @@ export interface SpawnOptions {
   /** 后台运行 */
   detach?: boolean;
 }
-
-/**
- * Spawn 结果
- */
-export interface SpawnResult {
-  success: boolean;
-  pid?: number;
-  sessionId?: string;
-  logFile?: string;
-  error?: string;
-}
 ```
 
-### ChatOptions & ChatResult
+### ChatOptions
 
 ```typescript
 /**
@@ -158,8 +147,8 @@ export interface ChatOptions {
   resume?: string;
   /** 模型 */
   model?: string;
-  /** 跳过权限检查 */
-  skipPermissions?: boolean;
+  /** 跳过权限检查（危险操作，与现有代码命名一致） */
+  dangerouslySkipPermissions?: boolean;
   /** 环境变量 */
   env?: Record<string, string>;
   /** 系统提示词 */
@@ -178,15 +167,6 @@ export interface ChatOptions {
   permissionMode?: string;
   /** 优先使用 SDK 模式 */
   preferSdk?: boolean;
-}
-
-/**
- * Chat 结果
- */
-export interface ChatResult {
-  exitCode: number;
-  sessionId?: string;
-  error?: string;
 }
 ```
 
@@ -250,7 +230,37 @@ export type SSEMessage =
   | SSESdkSessionMessage;
 ```
 
-### Executor Interface
+### ExecutionResult（统一结果类型）
+
+```typescript
+/**
+ * 统一执行结果
+ *
+ * SpawnResult 和 ChatResult 都使用此类型，确保一致性
+ */
+export interface ExecutionResult {
+  /** 是否成功 */
+  success: boolean;
+  /** 退出码（仅进程模式有效） */
+  exitCode?: number;
+  /** 会话 ID */
+  sessionId?: string;
+  /** 进程 ID（仅 spawn 模式有效） */
+  pid?: number;
+  /** 日志文件路径（仅 spawn 模式有效） */
+  logFile?: string;
+  /** 错误信息 */
+  error?: string;
+  /** 错误类型 */
+  errorType?: ExecutorErrorType;
+}
+
+// 类型别名，便于语义区分
+export type SpawnResult = ExecutionResult;
+export type ChatResult = ExecutionResult;
+```
+
+### RunCommandOptions & ExecutorConfig
 
 ```typescript
 import type { ExecutorType } from "../../types";
@@ -262,26 +272,36 @@ export interface RunCommandOptions {
   agent: string;
   prompt: string;
   sessionId?: string;
-  skipPermissions?: boolean;
+  dangerouslySkipPermissions?: boolean;
   verbose?: boolean;
   jsonOutput?: boolean;
 }
 
 /**
  * 执行器配置
+ *
+ * 配置优先级：方法选项 > ExecutorConfig > 引擎默认值
  */
 export interface ExecutorConfig {
   model?: string;
   appendPrompt?: string;
   planMode?: boolean;
   approvals?: boolean;
-  skipPermissions?: boolean;
+  dangerouslySkipPermissions?: boolean;
   baseCommandOverride?: string;
   env?: Record<string, string>;
 }
+```
 
+### Executor Interface
+
+```typescript
 /**
  * 统一执行器接口
+ *
+ * 方法命名与现有代码保持一致：
+ * - capabilities() 而非 getCapabilities()
+ * - defaultMcpConfigPath() 而非 getMcpConfigPath()
  */
 export interface Executor {
   /** 执行器类型标识 */
@@ -290,23 +310,23 @@ export interface Executor {
   // === 能力检测 ===
 
   /** 获取可用性信息 */
-  getAvailability(): AvailabilityInfo;
+  getAvailabilityInfo(): AvailabilityInfo;
 
-  /** 获取支持的能力列表 */
-  getCapabilities(): ExecutorCapability[];
+  /** 获取支持的能力列表（与现有代码一致） */
+  capabilities(): ExecutorCapability[];
 
   /** 检查是否支持某个能力 */
   supports(capability: ExecutorCapability): boolean;
 
   // === 配置 ===
 
-  /** 获取 MCP 配置文件路径 */
-  getMcpConfigPath(): string | null;
+  /** 获取 MCP 配置文件路径（与现有代码一致） */
+  defaultMcpConfigPath(): string | null;
 
-  /** 获取平台配置目录名（如 .claude, .gemini） */
+  /** 获取配置目录名（如 .claude, .gemini） */
   getConfigDirName(): string;
 
-  /** 获取平台配置目录完整路径 */
+  /** 获取配置目录完整路径 */
   getConfigDir(projectRoot: string): string;
 
   /** 获取 agent 配置文件路径 */
@@ -341,18 +361,18 @@ export interface Executor {
   // === 执行操作 ===
 
   /** 启动进程（交互式，用于 task phase） */
-  spawn(options: SpawnOptions): Promise<SpawnResult>;
+  spawn(options: SpawnOptions): Promise<ExecutionResult>;
 
   /** 非交互式 chat（用于 CLI 和 Gateway） */
-  chat(options: ChatOptions): Promise<ChatResult>;
+  chat(options: ChatOptions): Promise<ExecutionResult>;
 
   /** 流式 chat（用于 Gateway WebSocket/SSE） */
   chatStreaming(options: ChatOptions): AsyncGenerator<SSEMessage>;
 
   /** 恢复会话 */
-  resume(sessionId: string, options?: Partial<SpawnOptions>): Promise<SpawnResult>;
+  resume(sessionId: string, options?: Partial<SpawnOptions>): Promise<ExecutionResult>;
 
-  // === 平台特性 ===
+  // === 特性检测 ===
 
   /** 是否支持在创建时指定会话 ID */
   supportsSessionIdOnCreate(): boolean;
@@ -420,8 +440,8 @@ export function getAvailableExecutors(): Array<{
 
   for (const type of registry.keys()) {
     const executor = getExecutor(type);
-    const availability = executor.getAvailability();
-    if (availability.status !== "not_found") {
+    const availability = executor.getAvailabilityInfo();
+    if (availability.status !== "NOT_FOUND") {
       result.push({ type, executor, availability });
     }
   }
@@ -466,13 +486,13 @@ class ClaudeExecutor implements Executor {
 
   // === 能力检测 ===
 
-  getAvailability(): AvailabilityInfo {
+  getAvailabilityInfo(): AvailabilityInfo {
     const authFile = join(homedir(), ".claude.json");
     const execPath = whichSync("claude");
 
     if (existsSync(authFile)) {
       return {
-        status: "available",
+        status: "LOGIN_DETECTED",
         lastAuthTimestamp: Date.now(),
         path: execPath ?? undefined,
       };
@@ -480,15 +500,15 @@ class ClaudeExecutor implements Executor {
 
     if (execPath) {
       return {
-        status: "installed",
+        status: "INSTALLATION_FOUND",
         path: execPath,
       };
     }
 
-    return { status: "not_found" };
+    return { status: "NOT_FOUND" };
   }
 
-  getCapabilities(): ExecutorCapability[] {
+  capabilities(): ExecutorCapability[] {
     return [
       "spawn",
       "chat",
@@ -503,12 +523,12 @@ class ClaudeExecutor implements Executor {
   }
 
   supports(capability: ExecutorCapability): boolean {
-    return this.getCapabilities().includes(capability);
+    return this.capabilities().includes(capability);
   }
 
   // === 配置 ===
 
-  getMcpConfigPath(): string | null {
+  defaultMcpConfigPath(): string | null {
     return join(homedir(), ".claude.json");
   }
 
@@ -546,7 +566,7 @@ class ClaudeExecutor implements Executor {
       agent,
       prompt,
       sessionId,
-      skipPermissions = true,
+      dangerouslySkipPermissions = true,
       verbose = true,
       jsonOutput = true,
     } = options;
@@ -557,7 +577,7 @@ class ClaudeExecutor implements Executor {
       cmd.push("--session-id", sessionId);
     }
 
-    if (skipPermissions) {
+    if (dangerouslySkipPermissions) {
       cmd.push("--dangerously-skip-permissions");
     }
 
@@ -601,12 +621,12 @@ class ClaudeExecutor implements Executor {
 
   // === 执行操作 ===
 
-  async spawn(options: SpawnOptions): Promise<SpawnResult> {
+  async spawn(options: SpawnOptions): Promise<ExecutionResult> {
     // 实现 spawn 逻辑
     // ...
   }
 
-  async chat(options: ChatOptions): Promise<ChatResult> {
+  async chat(options: ChatOptions): Promise<ExecutionResult> {
     // 实现 chat 逻辑（可选择 SDK 或 Spawn 模式）
     // ...
   }
@@ -616,7 +636,7 @@ class ClaudeExecutor implements Executor {
     // ...
   }
 
-  async resume(sessionId: string, options?: Partial<SpawnOptions>): Promise<SpawnResult> {
+  async resume(sessionId: string, options?: Partial<SpawnOptions>): Promise<ExecutionResult> {
     // 实现 resume 逻辑
     // ...
   }
@@ -760,7 +780,7 @@ export {
 在迁移期间，保留旧的导出路径作为别名：
 
 ```typescript
-// packages/core/src/executors/index.ts (兼容层)
+// packages/core/src/executor/index.ts (兼容层)
 export * from "../executor/ops";
 export { getExecutor as createExecutor } from "../executor/ops/registry";
 ```
@@ -792,6 +812,77 @@ export { getExecutor as createExecutor } from "../executor/ops/registry";
 | 迁移中断现有功能 | 分阶段迁移，保留兼容层 |
 | SDK 模式不稳定 | 保留 Spawn 模式作为 fallback |
 | 平台特性差异大 | 通过能力检测动态适配 |
+
+## 配置优先级
+
+配置解析遵循以下优先级（从高到低）：
+
+```
+方法选项 (SpawnOptions/ChatOptions)
+       ↓
+ExecutorConfig (构造函数传入)
+       ↓
+引擎默认值 (各引擎内部定义)
+```
+
+**示例**：
+```typescript
+const executor = getExecutor("CLAUDE_CODE", {
+  model: "opus",                        // ExecutorConfig
+  dangerouslySkipPermissions: false,
+});
+
+// 方法选项覆盖 ExecutorConfig
+await executor.chat({
+  prompt: "Hello",
+  model: "sonnet",                      // 覆盖为 sonnet
+  dangerouslySkipPermissions: true,     // 覆盖为 true
+});
+```
+
+## 资源管理
+
+### 进程生命周期
+
+```typescript
+/**
+ * 进程句柄，用于管理和清理
+ */
+export interface ProcessHandle {
+  /** 进程 ID */
+  pid: number;
+  /** 取消/终止进程 */
+  cancel(): void;
+  /** 等待进程退出 */
+  wait(): Promise<ExecutionResult>;
+}
+```
+
+### 清理策略
+
+| 场景 | 清理方式 |
+|-----|---------|
+| 正常完成 | 自动清理，返回结果 |
+| 超时 | 发送 SIGTERM，等待 5s，然后 SIGKILL |
+| 用户取消 | 调用 `cancel()`，发送 SIGTERM |
+| 进程崩溃 | 记录日志，清理资源 |
+
+### 并发控制
+
+```typescript
+/**
+ * 同一 Executor 实例不保证线程安全
+ * 建议每个并发操作使用独立的 Executor 实例
+ */
+const executor1 = getExecutor("CLAUDE_CODE");
+const executor2 = getExecutor("CLAUDE_CODE");
+
+// 并行执行
+await Promise.all([
+  executor1.chat({ prompt: "Task 1" }),
+  executor2.chat({ prompt: "Task 2" }),
+]);
+```
 
 ## 执行流程说明
 
@@ -928,36 +1019,6 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
   backoffMs: 1000,
   retryableErrors: ["SPAWN_FAILED", "SDK_ERROR"],
 };
-```
-
-## 结果类型统一
-
-根据 review 反馈，统一 `SpawnResult` 和 `ChatResult`：
-
-```typescript
-/**
- * 统一执行结果
- */
-export interface ExecutionResult {
-  /** 是否成功 */
-  success: boolean;
-  /** 退出码（仅进程模式有效） */
-  exitCode?: number;
-  /** 会话 ID */
-  sessionId?: string;
-  /** 进程 ID（仅 spawn 模式有效） */
-  pid?: number;
-  /** 日志文件路径（仅 spawn 模式有效） */
-  logFile?: string;
-  /** 错误信息 */
-  error?: string;
-  /** 错误类型 */
-  errorType?: ExecutorErrorType;
-}
-
-// SpawnResult 和 ChatResult 继承自 ExecutionResult
-export type SpawnResult = ExecutionResult;
-export type ChatResult = ExecutionResult;
 ```
 
 ## 实施优先级
