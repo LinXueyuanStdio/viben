@@ -106,12 +106,14 @@ function calculatePpoMetrics(
 /**
  * Load reward data from FileRL reward.json
  *
- * Directory structure: iter{N}/{ideaId}/{taskName}/reward.json
+ * Directory structure:
+ * - With ideaId: iter{N}/{ideaId}/{taskName}/reward.json
+ * - Without ideaId: iter{N}/{taskName}/reward.json
  *
  * @param filerlDir - FileRL directory path
  * @param iteration - Current iteration number
- * @param ideaId - Idea ID (optional, for grouping)
  * @param taskName - Task name (used as reward directory name)
+ * @param ideaId - Idea ID (optional, for grouping)
  * @returns Reward data or null if not found/invalid
  */
 function loadFileRlIterReward(
@@ -120,7 +122,7 @@ function loadFileRlIterReward(
   taskName: string,
   ideaId?: string
 ): { reward: number; diffLines: number } | null {
-  // Build path: iter{N}/{ideaId}/{taskName}/reward.json or iter{N}/{taskName}/reward.json
+  // Build reward.json path based on whether ideaId is provided
   const rewardJsonPath = ideaId
     ? join(filerlDir, `iter${iteration}`, ideaId, taskName, "reward.json")
     : join(filerlDir, `iter${iteration}`, taskName, "reward.json");

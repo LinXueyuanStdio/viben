@@ -13,7 +13,6 @@ import {
   readTaskJson,
   updateTaskField,
   runGitCommand,
-  getPhaseForAction,
   DIR_VIBEN,
   FILE_TASK_JSON,
 } from "../../cli/lib/viben-workspace";
@@ -86,19 +85,16 @@ function runGhCommand(args: string[], cwd: string): { code: number; stdout: stri
 
 /**
  * Update task.json for PR creation
+ *
+ * Note: This function does NOT change current_phase.
+ * Phase progression is managed by the work agent, not by create-pr.
  */
 function updateTaskForPR(
   taskDirPath: string,
-  taskJsonPath: string,
+  _taskJsonPath: string,
   prUrl?: string
 ): void {
-  let createPrPhase = getPhaseForAction(taskJsonPath, "create-pr");
-  if (!createPrPhase) {
-    createPrPhase = 4; // Default fallback
-  }
-
   updateTaskField(taskDirPath, "status", "review");
-  updateTaskField(taskDirPath, "current_phase", createPrPhase);
   updateTaskField(taskDirPath, "pr_created_at", new Date().toISOString());
 
   if (prUrl) {

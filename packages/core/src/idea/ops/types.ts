@@ -386,6 +386,9 @@ export interface IdeaPromoteOptions {
 
   /** FileRL directory absolute path for reward config and output */
   filerlDir?: string;
+
+  /** FileRL idea ID - links task to its source idea for reward path structure */
+  filerlIdea?: string;
 }
 
 /**

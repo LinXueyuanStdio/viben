@@ -782,9 +782,8 @@ export function orchestrateComputeRewards(
     }
 
     // Get the actual task name used for reward output directory
-    // (taskData.name may differ from task directory name)
-    const taskData = viewResult.task as { name?: string; id?: string };
-    const rewardDirName = taskData.name || taskData.id || taskDirName;
+    // Use taskDirName (the task directory name) since that's what the reward system uses
+    const rewardDirName = taskDirName;
 
     // Check if reward already exists - first check FileRL reward.json, then task.json
     let hasReward = false;
@@ -872,9 +871,9 @@ export function orchestrateSelectBest(
       continue;
     }
 
-    // Get the actual task name and ideaId
-    const taskData = viewResult.task as { name?: string; id?: string };
-    const rewardDirName = taskData.name || taskData.id || taskDirName;
+    // Get the ideaId and use taskDirName for reward directory
+    // Use taskDirName (the task directory name) since that's what the reward system uses
+    const rewardDirName = taskDirName;
     const ideaId = currentIter.task_idea_map[taskDirName];
 
     // Try location: iter{N}/{idea}/{task}/reward.json
@@ -1594,17 +1593,8 @@ function checkAllRewardsComputed(
   const iterDir = join(filerlDir, `iter${iteration}`);
 
   for (const taskDirName of tasks) {
-    // Read task.json to get the actual task name used for reward output
-    const viewResult = viewTask(repoRoot, taskDirName);
-    if (!viewResult.success || !viewResult.task) {
-      return false;
-    }
-
-    // Use the same logic as reward.ts: taskData.name || taskData.id || dirname
-    const taskData = viewResult.task as { name?: string; id?: string };
-    const taskName = taskData.name || taskData.id || taskDirName;
-
-    const rewardJsonPath = join(iterDir, taskName, "reward.json");
+    // Use taskDirName directly as that's what the reward system uses for the directory
+    const rewardJsonPath = join(iterDir, taskDirName, "reward.json");
     try {
       const content = readFileSync(rewardJsonPath, "utf-8");
       const data = JSON.parse(content) as { total?: number };
