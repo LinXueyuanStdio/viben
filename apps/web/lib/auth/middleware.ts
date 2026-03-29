@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { decryptSession } from './jwe';
+import { validateApiKey } from './api-key';
 import type { Session } from './types';
 
 export async function authMiddleware(request: NextRequest) {
@@ -28,6 +29,25 @@ export async function authMiddleware(request: NextRequest) {
 
 // Helper to get session in API routes
 export async function requireAuth(request: NextRequest): Promise<Session> {
+  // 1. Check Bearer Token (API Key) first
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const apiKeyToken = authHeader.slice(7);
+    const user = await validateApiKey(apiKeyToken);
+    if (user) {
+      return {
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role as Session['role'],
+        expiresAt: 0, // API Key session doesn't expire
+      };
+    }
+    // Bearer token provided but invalid - don't fall through
+    throw new AuthError('Invalid API key', 401);
+  }
+
+  // 2. Check Cookie Session (existing logic)
   const token = request.cookies.get('session')?.value;
 
   if (!token) {
