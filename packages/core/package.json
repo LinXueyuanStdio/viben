@@ -86,6 +86,7 @@
     "cron-parser": "^5.5.0",
     "fastify": "^5.8.2",
     "gray-matter": "^4.0.3",
+    "open": "^11.0.0",
     "pino": "^10.3.1",
     "shell-quote": "^1.8.3",
     "undici": "^7.22.0",

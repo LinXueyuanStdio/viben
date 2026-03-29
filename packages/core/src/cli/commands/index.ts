@@ -28,6 +28,7 @@ import { registerIdeaCommand } from "./idea";
 import { registerRewardCommand } from "./reward";
 import { registerFileRlCommand } from "./filerl";
 import { registerIndexCommand } from "./index-cmd";
+import { registerLoginCommand } from "./login";
 
 /**
  * Register all commands on the program
@@ -58,4 +59,5 @@ export function registerCommands(program: Command): void {
   registerRewardCommand(program);
   registerFileRlCommand(program);
   registerIndexCommand(program);
+  registerLoginCommand(program);
 }
