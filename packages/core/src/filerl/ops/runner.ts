@@ -1293,11 +1293,19 @@ export async function orchestrateFullIteration(
     } else {
       // Check for existing draft ideas on disk
       const existingIdeasResult = listIdeas(repoRoot, { status: "draft" });
-      if (existingIdeasResult.ideas.length > 0) {
+      const batchSize = config.idea.batch_size;
+
+      // Only skip generation if we have enough draft ideas (>= batch_size)
+      // If we have fewer, we need to generate more to ensure batch_size ideas are available
+      if (existingIdeasResult.ideas.length >= batchSize) {
         ideas = existingIdeasResult.ideas;
-        onProgress?.(`[${iterNum}] Phase 1 - Found ${ideas.length} existing draft ideas`);
+        onProgress?.(`[${iterNum}] Phase 1 - Found ${ideas.length} existing draft ideas (>= batch_size ${batchSize})`);
       } else {
-        onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
+        if (existingIdeasResult.ideas.length > 0) {
+          onProgress?.(`[${iterNum}] Phase 1 - Found ${existingIdeasResult.ideas.length} draft ideas (< batch_size ${batchSize}), generating more`);
+        } else {
+          onProgress?.(`[${iterNum}] Phase 1 - Generate Ideas`);
+        }
         updateIterationPhase(state, "generate_ideas");
         writeState(repoRoot, state);
 
@@ -1306,7 +1314,9 @@ export async function orchestrateFullIteration(
           return generateResult;
         }
         const generateData = generateResult.data as { ideas: Idea[]; sessionDir?: string };
-        ideas = generateData.ideas;
+        // Combine existing draft ideas with newly generated ones
+        const existingDraftIdeas = existingIdeasResult.ideas;
+        ideas = [...existingDraftIdeas, ...generateData.ideas];
       }
     }
 
