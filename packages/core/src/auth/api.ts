@@ -1,6 +1,7 @@
 /**
  * API client for authentication
  */
+import { proxyFetch } from "../http";
 
 export const VIBEN_WEB_URL = "https://viben-web.vercel.app";
 
@@ -26,7 +27,7 @@ export class AuthApiError extends Error {
  */
 export async function verifyToken(token: string): Promise<UserInfo> {
   try {
-    const response = await fetch(`${VIBEN_WEB_URL}/api/users/me`, {
+    const response = await proxyFetch(`${VIBEN_WEB_URL}/api/users/me`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

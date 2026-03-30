@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { Key, Package, Heart } from 'lucide-react';
+import { Key, Heart } from 'lucide-react';
 
 const navigation = [
-  { nameKey: 'settings.nav.apiKeys', href: '/settings/tokens', icon: Key },
-  { nameKey: 'settings.nav.myPackages', href: '/settings/packages', icon: Package },
   { nameKey: 'settings.nav.favorites', href: '/settings/favorites', icon: Heart },
+  { nameKey: 'settings.nav.apiKeys', href: '/settings/tokens', icon: Key },
 ];
 
 export function SettingsSidebar() {
