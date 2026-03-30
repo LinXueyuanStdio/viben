@@ -54,11 +54,16 @@ export async function decryptSession(token: string): Promise<Session | null> {
     const { session } = payload as unknown as SessionPayload;
 
     if (session.expiresAt < Date.now()) {
+      console.warn('[Auth] Session expired:', new Date(session.expiresAt).toISOString());
       return null;
     }
 
     return session;
-  } catch {
+  } catch (error) {
+    // Only log in development to avoid noise in production
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[Auth] Failed to decrypt session:', error);
+    }
     return null;
   }
 }

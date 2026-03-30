@@ -97,51 +97,6 @@ export const oauthConnections = pgTable(
 );
 
 // ============================================
-// Organization Tables
-// ============================================
-
-export const organizations = pgTable(
-  'organizations',
-  {
-    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    slug: text('slug').notNull().unique(),
-    name: text('name').notNull(),
-    description: text('description'),
-    avatarUrl: text('avatar_url'),
-    websiteUrl: text('website_url'),
-    ownerId: text('owner_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [index('organizations_owner_id_idx').on(table.ownerId)]
-);
-
-export const orgMembers = pgTable(
-  'org_members',
-  {
-    orgId: text('org_id')
-      .notNull()
-      .references(() => organizations.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['member', 'admin', 'owner'] })
-      .default('member')
-      .notNull(),
-    joinedAt: timestamp('joined_at').defaultNow().notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.orgId, table.userId] }),
-    index('org_members_user_id_idx').on(table.userId),
-  ]
-);
-
-// ============================================
 // MCP Package Tables
 // ============================================
 
@@ -157,10 +112,6 @@ export const mcpPackages = pgTable(
     authorId: text('author_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    orgId: text('org_id').references(() => organizations.id, {
-      onDelete: 'set null',
-    }),
-
     // Links
     repositoryUrl: text('repository_url'),
     homepageUrl: text('homepage_url'),
@@ -228,9 +179,6 @@ export const skillPackages = pgTable(
     authorId: text('author_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    orgId: text('org_id').references(() => organizations.id, {
-      onDelete: 'set null',
-    }),
 
     // Technical
     skillType: text('skill_type', { enum: ['command', 'prompt', 'agent'] })
@@ -438,46 +386,6 @@ export const downloadRecords = pgTable(
   (table) => [
     index('download_records_entity_idx').on(table.entityType, table.entityId),
     index('download_records_created_at_idx').on(table.createdAt),
-  ]
-);
-
-// ============================================
-// Workspace Tables
-// ============================================
-
-export const workspaces = pgTable(
-  'workspaces',
-  {
-    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    name: text('name').notNull(),
-    description: text('description'),
-    ownerId: text('owner_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    isDefault: boolean('is_default').default(false).notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [index('workspaces_owner_id_idx').on(table.ownerId)]
-);
-
-export const workspaceEntities = pgTable(
-  'workspace_entities',
-  {
-    workspaceId: text('workspace_id')
-      .notNull()
-      .references(() => workspaces.id, { onDelete: 'cascade' }),
-    entityType: text('entity_type', { enum: ['mcp', 'skill'] }).notNull(),
-    entityId: text('entity_id').notNull(),
-    enabled: boolean('enabled').default(true).notNull(),
-    config: json('config').$type<Record<string, unknown>>(),
-    addedAt: timestamp('added_at').defaultNow().notNull(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.workspaceId, table.entityType, table.entityId] }),
   ]
 );
 

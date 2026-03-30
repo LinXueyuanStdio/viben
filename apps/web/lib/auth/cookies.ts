@@ -21,9 +21,18 @@ export async function getSession(): Promise<Session | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
 
-  if (!token) return null;
+  if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[Auth] No session cookie found');
+    }
+    return null;
+  }
 
-  return decryptSession(token);
+  const session = await decryptSession(token);
+  if (!session && process.env.NODE_ENV === 'development') {
+    console.warn('[Auth] Session cookie exists but decryption failed');
+  }
+  return session;
 }
 
 export async function clearSession(): Promise<void> {

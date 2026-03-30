@@ -41,10 +41,9 @@ export function createProxyFetch(): typeof fetch {
 
   if (proxyUrl) {
     const dispatcher = new ProxyAgent(proxyUrl);
-    return ((url: string | URL | Request, init?: RequestInit) =>
-      undiciFetch(url, { ...init, dispatcher } as Parameters<
-        typeof undiciFetch
-      >[1])) as typeof fetch;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((url: string | URL, init?: RequestInit) =>
+      undiciFetch(url as any, { ...init, dispatcher } as any)) as typeof fetch;
   }
 
   return fetch;

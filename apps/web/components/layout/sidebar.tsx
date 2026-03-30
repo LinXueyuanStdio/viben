@@ -6,22 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Package,
   Sparkles,
   FolderKanban,
-  Settings,
-  User,
   Building2,
   Layers,
   BarChart3,
@@ -31,8 +20,6 @@ import {
   Upload,
   PackageSearch,
   LogIn,
-  LogOut,
-  ChevronDown,
   Heart,
   Key,
 } from 'lucide-react';
@@ -273,84 +260,31 @@ export function Sidebar({
       <div className="border-t p-4">
         {/* User Section */}
         {isLoggedIn && username ? (
-          <>
-            {/* Settings Link - Only visible when logged in */}
-            <Link
-              href="/settings/tokens"
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                pathname === '/settings/tokens'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          <Link
+            href="/profile"
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg p-2',
+              'text-left transition-colors duration-200',
+              'hover:bg-muted',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              pathname === '/profile' && 'bg-primary/10'
+            )}
+          >
+            <Avatar className="h-8 w-8">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
+              <AvatarFallback className="text-xs">
+                {getInitials(username)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{username}</p>
+              {email && (
+                <p className="truncate text-xs text-muted-foreground">
+                  {email}
+                </p>
               )}
-            >
-              <Settings className="h-4 w-4" />
-              {t('common.settings')}
-            </Link>
-
-            <Separator className="my-3" />
-            <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-lg p-2',
-                  'text-left transition-colors duration-200',
-                  'hover:bg-muted',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                )}
-              >
-                <Avatar className="h-8 w-8">
-                  {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
-                  <AvatarFallback className="text-xs">
-                    {getInitials(username)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{username}</p>
-                  {email && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {email}
-                    </p>
-                  )}
-                </div>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{username}</p>
-                  {email && (
-                    <p className="text-xs text-muted-foreground">{email}</p>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/profile" className="flex cursor-pointer items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  {t('auth.profile')}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings/tokens" className="flex cursor-pointer items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  {t('common.settings')}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/api/auth/logout"
-                  className="flex cursor-pointer items-center text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  {t('auth.signOut')}
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-            </DropdownMenu>
-          </>
+            </div>
+          </Link>
         ) : (
           <Button asChild variant="outline" className="w-full">
             <Link href="/login">
