@@ -8,19 +8,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import i18n from '@/i18n';
 import {
-  getClient,
   searchPackages,
   listPackages,
   installMcpPackage,
   installSkillPackage,
-  syncWorkspace,
   setApiKey,
   clearApiKey,
   hasApiKey,
   type McpPackage,
   type SkillPackage,
-  type Workspace,
-  type WorkspaceSyncResult,
 } from '@/lib/viben';
 
 // ============================================
@@ -330,78 +326,6 @@ export function useInstallPackage() {
   const clearError = useCallback(() => setError(null), []);
 
   return { installing, progress, error, installMcp, installSkill, clearError };
-}
-
-// ============================================
-// Workspaces Hook
-// ============================================
-
-/**
- * Hook for managing workspaces
- *
- * @returns Workspace list and sync functionality
- *
- * @example
- * ```tsx
- * function WorkspaceSelector() {
- *   const { workspaces, loading, error, sync, refresh } = useWorkspaces();
- *
- *   const handleSync = async (id: string) => {
- *     const { mcps, skills } = await sync(id);
- *     console.log('Synced:', mcps.length, 'MCPs,', skills.length, 'skills');
- *   };
- *
- *   return (
- *     <div>
- *       {workspaces.map((ws) => (
- *         <div key={ws.id}>
- *           <span>{ws.name}</span>
- *           <button onClick={() => handleSync(ws.id)}>Sync</button>
- *         </div>
- *       ))}
- *     </div>
- *   );
- * }
- * ```
- */
-export function useWorkspaces() {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchWorkspaces = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await getClient().workspaces.list();
-      setWorkspaces(response.workspaces);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : i18n.t('errors.workspaces.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load on mount
-  useEffect(() => {
-    fetchWorkspaces();
-  }, [fetchWorkspaces]);
-
-  const sync = useCallback(
-    async (workspaceId: string): Promise<WorkspaceSyncResult> => {
-      return syncWorkspace(workspaceId);
-    },
-    []
-  );
-
-  return {
-    workspaces,
-    loading,
-    error,
-    sync,
-    refresh: fetchWorkspaces,
-  };
 }
 
 // ============================================

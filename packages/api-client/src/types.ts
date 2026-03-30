@@ -172,65 +172,6 @@ export interface FavoritesResponse {
 }
 
 // ============================================
-// Workspace Types
-// ============================================
-
-/**
- * Workspace for organizing packages
- */
-export interface Workspace {
-  id: string;
-  name: string;
-  description: string | null;
-  ownerId: string;
-  isDefault: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/**
- * Response for workspace list
- */
-export interface WorkspacesResponse {
-  workspaces: Workspace[];
-}
-
-/**
- * Response for single workspace
- */
-export interface WorkspaceResponse {
-  workspace: Workspace;
-}
-
-/**
- * Workspace entity (package assignment)
- */
-export interface WorkspaceEntity {
-  workspaceId: string;
-  entityType: 'mcp' | 'skill';
-  entityId: string;
-  enabled: boolean;
-  config: Record<string, unknown> | null;
-  addedAt: string;
-}
-
-/**
- * Workspace packages response with package details
- */
-export interface WorkspacePackagesResponse {
-  packages: {
-    mcp: McpPackage[];
-    skills: SkillPackage[];
-  };
-  configs: Array<{
-    packageId: string;
-    packageType: 'mcp' | 'skill';
-    config: Record<string, unknown> | null;
-    enabled: boolean;
-  }>;
-}
-
-// ============================================
 // Collection Types
 // ============================================
 
