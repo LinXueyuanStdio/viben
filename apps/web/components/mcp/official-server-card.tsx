@@ -81,7 +81,7 @@ export function OfficialServerCard({
   };
 
   return (
-    <Link href={`/mcp/official/${encodeURIComponent(server.id)}`}>
+    <Link href={`/mcp/official/${server.id.split('/').map(encodeURIComponent).join('/')}`}>
       <div
         className={cn(
           'group relative flex h-full flex-col rounded-xl border bg-card p-4 transition-all duration-300',
