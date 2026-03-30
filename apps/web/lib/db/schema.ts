@@ -531,12 +531,10 @@ export const moderationLogs = pgTable(
 export const usersRelations = relations(users, ({ many, one }) => ({
   apiKeys: many(apiKeys),
   oauthConnections: many(oauthConnections),
-  organizations: many(organizations),
   mcpPackages: many(mcpPackages),
   skillPackages: many(skillPackages),
   collections: many(collections),
   comments: many(comments),
-  workspaces: many(workspaces),
   reports: many(reports),
   moderationLogs: many(moderationLogs),
   drafts: many(drafts),
@@ -560,35 +558,10 @@ export const oauthConnectionsRelations = relations(oauthConnections, ({ one }) =
   }),
 }));
 
-export const organizationsRelations = relations(organizations, ({ one, many }) => ({
-  owner: one(users, {
-    fields: [organizations.ownerId],
-    references: [users.id],
-  }),
-  members: many(orgMembers),
-  mcpPackages: many(mcpPackages),
-  skillPackages: many(skillPackages),
-}));
-
-export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
-  organization: one(organizations, {
-    fields: [orgMembers.orgId],
-    references: [organizations.id],
-  }),
-  user: one(users, {
-    fields: [orgMembers.userId],
-    references: [users.id],
-  }),
-}));
-
 export const mcpPackagesRelations = relations(mcpPackages, ({ one }) => ({
   author: one(users, {
     fields: [mcpPackages.authorId],
     references: [users.id],
-  }),
-  organization: one(organizations, {
-    fields: [mcpPackages.orgId],
-    references: [organizations.id],
   }),
 }));
 
@@ -596,10 +569,6 @@ export const skillPackagesRelations = relations(skillPackages, ({ one }) => ({
   author: one(users, {
     fields: [skillPackages.authorId],
     references: [users.id],
-  }),
-  organization: one(organizations, {
-    fields: [skillPackages.orgId],
-    references: [organizations.id],
   }),
 }));
 
@@ -628,21 +597,6 @@ export const commentsRelations = relations(comments, ({ one }) => ({
   user: one(users, {
     fields: [comments.userId],
     references: [users.id],
-  }),
-}));
-
-export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
-  owner: one(users, {
-    fields: [workspaces.ownerId],
-    references: [users.id],
-  }),
-  entities: many(workspaceEntities),
-}));
-
-export const workspaceEntitiesRelations = relations(workspaceEntities, ({ one }) => ({
-  workspace: one(workspaces, {
-    fields: [workspaceEntities.workspaceId],
-    references: [workspaces.id],
   }),
 }));
 

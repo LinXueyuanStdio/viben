@@ -25,14 +25,6 @@ export async function GET(
             avatarUrl: true,
           },
         },
-        organization: {
-          columns: {
-            id: true,
-            slug: true,
-            name: true,
-            avatarUrl: true,
-          },
-        },
       },
     });
 

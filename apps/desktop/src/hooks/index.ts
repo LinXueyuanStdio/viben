@@ -18,7 +18,6 @@ export {
   useSkillSearch,
   usePackageList,
   useInstallPackage,
-  useWorkspaces,
   usePlatformAuth,
   usePlatformUser,
   useFavorite,

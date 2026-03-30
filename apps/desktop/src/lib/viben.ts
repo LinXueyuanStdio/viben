@@ -209,74 +209,6 @@ export async function installSkillPackage(pkg: SkillPackage): Promise<string> {
 }
 
 // ============================================
-// Workspace Sync
-// ============================================
-
-/**
- * Result of workspace sync operation
- */
-export interface WorkspaceSyncResult {
-  /** Enabled MCP packages */
-  mcps: McpPackage[];
-  /** Enabled skill packages */
-  skills: SkillPackage[];
-  /** Package configurations */
-  configs: Array<{
-    packageId: string;
-    packageType: 'mcp' | 'skill';
-    config: Record<string, unknown> | null;
-    enabled: boolean;
-  }>;
-}
-
-/**
- * Sync packages from a workspace
- *
- * Fetches all enabled packages from a workspace for local installation.
- *
- * @param workspaceId - ID of the workspace to sync
- * @returns Enabled packages and their configurations
- *
- * @example
- * ```ts
- * const { mcps, skills, configs } = await syncWorkspace(workspaceId);
- *
- * // Install enabled MCPs
- * for (const mcp of mcps) {
- *   await installMcpPackage(mcp);
- * }
- * ```
- */
-export async function syncWorkspace(
-  workspaceId: string
-): Promise<WorkspaceSyncResult> {
-  const api = getClient();
-
-  const { packages, configs } = await api.workspaces.packages(workspaceId);
-
-  // Filter to only enabled packages
-  const enabledMcps = packages.mcp.filter((pkg) => {
-    const config = configs.find(
-      (c) => c.packageId === pkg.id && c.packageType === 'mcp'
-    );
-    return config?.enabled !== false;
-  });
-
-  const enabledSkills = packages.skills.filter((pkg) => {
-    const config = configs.find(
-      (c) => c.packageId === pkg.id && c.packageType === 'skill'
-    );
-    return config?.enabled !== false;
-  });
-
-  return {
-    mcps: enabledMcps,
-    skills: enabledSkills,
-    configs,
-  };
-}
-
-// ============================================
 // Authentication
 // ============================================
 
@@ -334,6 +266,5 @@ export type {
   McpPackage,
   SkillPackage,
   PaginatedResponse,
-  Workspace,
   User,
 } from '@viben/api-client';

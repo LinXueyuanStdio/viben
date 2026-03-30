@@ -54,12 +54,6 @@ export type {
   UserResponse,
   Favorite,
   FavoritesResponse,
-  // Workspaces
-  Workspace,
-  WorkspacesResponse,
-  WorkspaceResponse,
-  WorkspaceEntity,
-  WorkspacePackagesResponse,
   // Collections
   Collection,
   CollectionItem,

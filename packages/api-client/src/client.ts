@@ -16,10 +16,6 @@ import type {
   User,
   UserResponse,
   FavoritesResponse,
-  Workspace,
-  WorkspacesResponse,
-  WorkspaceResponse,
-  WorkspacePackagesResponse,
   Collection,
   CollectionsResponse,
   CommentsResponse,
@@ -455,96 +451,6 @@ export class VibenClient {
     deleteApiKey: (id: string): Promise<{ success: boolean }> =>
       this.request<{ success: boolean }>(`/api/users/me/api-keys/${id}`, {
         method: 'DELETE',
-      }),
-  };
-
-  // ============================================
-  // Workspaces API
-  // ============================================
-
-  /**
-   * Workspace endpoints
-   */
-  workspaces = {
-    /**
-     * List user's workspaces
-     */
-    list: (): Promise<WorkspacesResponse> =>
-      this.request<WorkspacesResponse>('/api/workspaces'),
-
-    /**
-     * Get a specific workspace
-     */
-    get: (id: string): Promise<WorkspaceResponse> =>
-      this.request<WorkspaceResponse>(`/api/workspaces/${id}`),
-
-    /**
-     * Create a new workspace
-     */
-    create: (data: {
-      name: string;
-      description?: string;
-      isDefault?: boolean;
-    }): Promise<WorkspaceResponse> =>
-      this.request<WorkspaceResponse>('/api/workspaces', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-
-    /**
-     * Update a workspace
-     */
-    update: (
-      id: string,
-      data: { name?: string; description?: string }
-    ): Promise<WorkspaceResponse> =>
-      this.request<WorkspaceResponse>(`/api/workspaces/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-
-    /**
-     * Delete a workspace
-     */
-    delete: (id: string): Promise<{ success: boolean }> =>
-      this.request<{ success: boolean }>(`/api/workspaces/${id}`, {
-        method: 'DELETE',
-      }),
-
-    /**
-     * Get packages in a workspace
-     */
-    packages: (id: string): Promise<WorkspacePackagesResponse> =>
-      this.request<WorkspacePackagesResponse>(`/api/workspaces/${id}/packages`),
-
-    /**
-     * Add a package to a workspace
-     */
-    addPackage: (
-      workspaceId: string,
-      data: {
-        entityType: 'mcp' | 'skill';
-        entityId: string;
-        enabled?: boolean;
-        config?: Record<string, unknown>;
-      }
-    ): Promise<{ success: boolean }> =>
-      this.request<{ success: boolean }>(`/api/workspaces/${workspaceId}/packages`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-
-    /**
-     * Remove a package from a workspace
-     */
-    removePackage: (
-      workspaceId: string,
-      entityType: 'mcp' | 'skill',
-      entityId: string
-    ): Promise<{ success: boolean }> =>
-      this.request<{ success: boolean }>(`/api/workspaces/${workspaceId}/packages`, {
-        method: 'DELETE',
-        body: JSON.stringify({ entityType, entityId }),
       }),
   };
 

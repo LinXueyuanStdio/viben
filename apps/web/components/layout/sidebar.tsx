@@ -10,8 +10,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Package,
   Sparkles,
-  FolderKanban,
-  Building2,
   Layers,
   BarChart3,
   LayoutDashboard,
@@ -31,8 +29,6 @@ const navigation = [
   { nameKey: 'nav.mcpMarketplace', href: '/mcp', icon: Package },
   { nameKey: 'nav.skills', href: '/skills', icon: Sparkles },
   { nameKey: 'nav.collections', href: '/collections', icon: Layers },
-  { nameKey: 'workspace.workspaces', href: '/workspaces', icon: FolderKanban },
-  { nameKey: 'nav.organizations', href: '/orgs', icon: Building2 },
 ];
 
 // "我的" section - personal account related
