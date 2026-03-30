@@ -132,8 +132,12 @@ export async function fetchOfficialServer(
   name: string,
   version?: string
 ): Promise<OfficialServerDisplay | null> {
-  const url = new URL(`${REGISTRY_BASE_URL}/servers/${encodeURIComponent(name)}`);
-  if (version) url.searchParams.set('version', version);
+  // API requires /servers/{serverName}/versions/{version} format
+  // Use 'latest' as special version to get the latest version
+  const versionParam = version || 'latest';
+  const url = new URL(
+    `${REGISTRY_BASE_URL}/servers/${encodeURIComponent(name)}/versions/${encodeURIComponent(versionParam)}`
+  );
 
   const cacheKey = `server:${url.toString()}`;
 

@@ -647,6 +647,14 @@ export {
 // CLI
 export { run, createProgram } from "./cli";
 
+// HTTP utilities (proxy-aware fetch for Node.js)
+export {
+  getProxyUrl,
+  hasProxy,
+  createProxyFetch,
+  proxyFetch,
+} from "./http";
+
 // Gateway (optional - requires fastify)
 // Note: Gateway is excluded from the main build because it requires optional dependencies.
 // To use the gateway, install fastify and @fastify/cors, then:
