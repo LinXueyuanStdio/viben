@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import { SettingsSidebar } from '@/components/settings/settings-sidebar';
 
 export default async function SettingsLayout({
   children,
@@ -14,11 +13,8 @@ export default async function SettingsLayout({
   }
 
   return (
-    <div className="container max-w-6xl py-8">
-      <div className="flex gap-8">
-        <SettingsSidebar />
-        <main className="flex-1">{children}</main>
-      </div>
+    <div className="container max-w-4xl py-8">
+      {children}
     </div>
   );
 }
