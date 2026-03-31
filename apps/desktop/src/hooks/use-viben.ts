@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import i18n from '@/i18n';
 import {
+  getClient,
   searchPackages,
   listPackages,
   installMcpPackage,

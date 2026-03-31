@@ -27,7 +27,7 @@ import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
 
 const navigation = [
   { nameKey: 'nav.mcpMarketplace', href: '/mcp', icon: Package },
-  { nameKey: 'nav.skills', href: '/skills', icon: Sparkles },
+  { nameKey: 'nav.skillsMarket', href: '/skills', icon: Sparkles },
   { nameKey: 'nav.collections', href: '/collections', icon: Layers },
 ];
 

@@ -150,9 +150,6 @@ const DEFAULT_SETTINGS: SyncSettings = {
   conflictResolution: "cloud",
 };
 
-// Local storage key for sync status
-const SYNC_STATUS_KEY = "viben-sync-status";
-
 // ============================================================================
 // Hook Implementation
 // ============================================================================
