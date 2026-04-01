@@ -66,24 +66,36 @@ gh:user/repo#v1.0.0        # GitHub + ref (tag/branch/commit)
 
 ```
 ~/.claude/skills/<slug>/       # -e claude_code
-~/.cursor/skills/<slug>/       # -e cursor
-~/.gemini/skills/<slug>/       # -e gemini
 ```
+
+注：目前仅支持 `claude_code`，其他 executor 支持将在后续版本添加。
 
 ## 存储格式
 
 ### installed.yaml
 
+与现有 `InstalledSkillsFile` 格式保持一致：
+
 ```yaml
-packages:
-  <slug>:
-    name: "Display Name"
+installed:
+  - name: "foo"
     version: "1.2.3"
-    source: "registry" | "github" | "local"
-    spec: "foo@1.2.3"              # 原始安装 spec，用于更新
-    installed_at: "2026-04-01T..."
-    repository_url: "..."          # 可选
+    path: "/path/to/foo"
+    source: "marketplace"        # "local" | "marketplace" | "github"
+    installedAt: "2026-04-01T..."
+    spec: "foo@1.2.3"            # 新增：原始安装 spec，用于更新
 ```
+
+**字段说明：**
+- `name`: 包名称
+- `version`: 安装的版本
+- `path`: 安装路径
+- `source`: 来源类型
+  - `local`: 从本地路径安装
+  - `marketplace`: 从 viben registry 安装
+  - `github`: 从 GitHub 安装（新增）
+- `installedAt`: 安装时间（ISO 8601 格式）
+- `spec`: 原始安装命令（新增，可选）
 
 ### MCP 包结构
 
@@ -108,24 +120,26 @@ packages:
 ```bash
 viben mcp search <query>              # 搜索 registry
 viben mcp show <name>                 # 显示包详情
+  --version <ver>                     # 显示指定版本详情
 
 viben skill search <query>
 viben skill show <name>
+  --version <ver>
 ```
 
 ### 安装与卸载
 
 ```bash
-viben mcp install <spec>              # 安装 MCP 包
+viben mcp install <spec>              # 安装 MCP 包（默认项目级）
   -g, --global                        # 全局安装
   -f, --force                         # 强制重新安装
 
 viben mcp uninstall <name>
   -g, --global                        # 从全局卸载
 
-viben skill install <spec>
+viben skill install <spec>            # 安装 Skill 包（默认项目级）
   -g, --global                        # 全局安装
-  -e, --executor <type>               # 安装到指定 executor
+  -e, --executor <type>               # 安装到指定 executor (目前仅支持 claude_code)
   -f, --force                         # 强制重新安装
 
 viben skill uninstall <name>
@@ -136,7 +150,7 @@ viben skill uninstall <name>
 ### 列出已安装
 
 ```bash
-viben mcp list
+viben mcp list                        # 列出项目级已安装
   -g, --global                        # 列出全局已安装
   -a, --all                           # 列出全部（项目+全局）
 
@@ -152,7 +166,7 @@ viben skill list
 viben mcp download <name> [version]   # 下载到当前目录
 viben skill download <name> [version]
 
-viben mcp publish [path]              # 发布到 registry（需登录）
+viben mcp publish [path]              # 发布到 registry（需 viben login）
 viben skill publish [path]
 ```
 
@@ -201,12 +215,22 @@ $ viben mcp install ./my-mcp
 Error: Invalid MCP package. Missing package.json or invalid format.
 ```
 
+### Executor 参数错误
+
+```bash
+$ viben mcp install foo -e claude_code
+Error: --executor option is only available for skill packages.
+
+$ viben skill install foo -e unsupported
+Error: Executor 'unsupported' is not supported. Available: claude_code
+```
+
 ## 优先级规则
 
 查找顺序：
 1. 项目级 `.viben/skills/<name>` 或 `.viben/mcp/<name>`
 2. 全局 `~/.viben/skills/<name>` 或 `~/.viben/mcp/<name>`
-3. Executor 特定（仅 skill）`~/.claude/skills/<name>` 等
+3. Executor 特定（仅 skill）`~/.claude/skills/<name>`
 
 ## 实现架构
 
@@ -215,18 +239,18 @@ packages/core/src/
 ├── mcp/
 │   ├── index.ts              # 入口，导出 ops
 │   ├── types.ts              # MCP 类型定义
-│   └── ops/                  # 参考 skill/ops 结构
+│   └── ops/                  # 新增，参考 skill/ops 结构
 │       ├── index.ts          # ops 入口
-│       ├── types.ts          # ops 类型
+│       ├── types.ts          # ops 类型（与 skill/ops/types.ts 对齐）
 │       ├── paths.ts          # 路径工具函数
 │       ├── crud.ts           # install/uninstall/list/get
 │       └── registry.ts       # registry API 交互
 ├── skill/
 │   └── ops/
 │       ├── index.ts          # 现有
-│       ├── types.ts          # 现有，扩展
+│       ├── types.ts          # 现有，扩展 source 类型添加 "github"
 │       ├── paths.ts          # 现有
-│       ├── crud.ts           # 现有，扩展 registry 安装
+│       ├── crud.ts           # 现有，扩展 registry/github 安装
 │       └── registry.ts       # 新增，registry API 交互
 ├── cli/commands/
 │   ├── mcp.ts                # 扩展命令
@@ -242,15 +266,36 @@ CLI commands
     ↓
 mcp/ops, skill/ops
     ↓
-registry.ts (使用 @viben/api-client)
+registry.ts (使用 @viben/api-client 已有方法)
     ↓
 proxyFetch (处理代理)
 ```
 
+### API Client 集成
+
+使用 `@viben/api-client` 已有的方法：
+- `client.mcp.search(query)` - 搜索 MCP 包
+- `client.mcp.get(id)` - 获取 MCP 包详情
+- `client.mcp.download(id, version)` - 下载 MCP 包
+- `client.skill.search(query)` - 搜索 Skill 包
+- `client.skill.get(id)` - 获取 Skill 包详情
+- `client.skill.download(id, version)` - 下载 Skill 包
+
 ### 统一模式
 
 - `mcp/ops` 和 `skill/ops` 结构一致
-- 共用 `installed.yaml` 格式
+- 共用 `installed.yaml` 格式（数组格式，camelCase 字段）
 - 共用 registry API 模式
 - 使用已有的 `readYaml`/`writeYaml` 处理配置
 - 使用已有的 `proxyFetch` 处理网络请求
+
+## 未来扩展
+
+以下功能不在本次实现范围，可在后续版本添加：
+
+1. **update 命令** - 升级已安装包到最新版本
+2. **更多 executor 支持** - cursor, gemini 等
+3. **semver 范围** - `foo@^1.2.0` 版本范围支持
+4. **checksum 校验** - 包完整性验证
+5. **依赖解析** - 自动安装依赖包
+6. **缓存管理** - `viben mcp cache` / `viben skill cache`
