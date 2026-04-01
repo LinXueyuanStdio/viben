@@ -7,6 +7,12 @@
 # Ralph Loop state file
 .ralph-state.json
 
+# Installed MCP servers (managed by viben mcp install)
+mcp/
+
+# Installed skills (managed by viben skill install)
+skills/
+
 # Agent runtime files
 .agents/
 .agent-log
