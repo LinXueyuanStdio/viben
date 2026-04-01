@@ -97,7 +97,7 @@ installed:
 - `installed_at`: 安装时间（ISO 8601 格式）
 - `spec`: 原始安装命令（新增，可选）
 
-**注意：** 现有代码 `InstalledSkillEntry` 使用 `installedAt` (camelCase)，需要在实现时统一迁移为 `installed_at` (snake_case)，符合 CLAUDE.md 中 "File storage use snake_case" 的规范。
+**注意：** 字段使用 snake_case，符合 CLAUDE.md 中 "File storage use snake_case" 的规范。
 
 ### MCP 包结构
 
