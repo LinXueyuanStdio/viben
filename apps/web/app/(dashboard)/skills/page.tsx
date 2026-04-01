@@ -7,6 +7,8 @@ import { SearchInput } from '@/components/shared/search-input';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { getSession } from '@/lib/auth/cookies';
+import { SkillSourceTabs, type SkillSource } from '@/components/skills/skill-source-tabs';
+import { OfficialSkillGrid } from '@/components/skills/official-skill-grid';
 
 export const metadata = {
   title: 'Skills Marketplace',
@@ -19,12 +21,14 @@ interface SkillsPageProps {
     type?: string;
     sort?: string;
     page?: string;
+    source?: SkillSource;
   }>;
 }
 
 export default async function SkillsPage({ searchParams }: SkillsPageProps) {
   const params = await searchParams;
   const session = await getSession();
+  const source: SkillSource = params.source === 'community' ? 'community' : 'official';
 
   return (
     <div className="space-y-6">
@@ -43,21 +47,34 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
         )}
       </PageHeader>
 
+      {/* Source Tabs */}
+      <SkillSourceTabs source={source} />
+
+      {/* Search and Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
           placeholder="Search skills..."
           defaultValue={params.q}
         />
-        <SkillsFilters
-          category={params.category}
-          type={params.type}
-          sort={params.sort}
-        />
+        {source === 'community' && (
+          <SkillsFilters
+            category={params.category}
+            type={params.type}
+            sort={params.sort}
+          />
+        )}
       </div>
 
-      <Suspense fallback={<SkillsGridSkeleton />}>
-        <SkillsGrid searchParams={params} />
-      </Suspense>
+      {/* Content Grid */}
+      {source === 'official' ? (
+        <Suspense fallback={<SkillsGridSkeleton />}>
+          <OfficialSkillGrid searchQuery={params.q} />
+        </Suspense>
+      ) : (
+        <Suspense fallback={<SkillsGridSkeleton />}>
+          <SkillsGrid searchParams={params} />
+        </Suspense>
+      )}
     </div>
   );
 }

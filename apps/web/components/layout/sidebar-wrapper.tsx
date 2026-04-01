@@ -1,5 +1,5 @@
 import { getSession, isAdminRole } from '@/lib/auth';
-import { countPendingPackages, countOpenReports } from '@/lib/admin/stats';
+import { countPendingPackages } from '@/lib/admin/stats';
 import { Sidebar } from './sidebar';
 
 /**
@@ -10,13 +10,9 @@ export async function SidebarWrapper() {
 
   // Only fetch admin stats if user is an admin
   let pendingPackagesCount = 0;
-  let pendingReportsCount = 0;
 
   if (session && isAdminRole(session.role)) {
-    [pendingPackagesCount, pendingReportsCount] = await Promise.all([
-      countPendingPackages(),
-      countOpenReports(),
-    ]);
+    pendingPackagesCount = await countPendingPackages();
   }
 
   return (
@@ -26,7 +22,6 @@ export async function SidebarWrapper() {
       email={session?.email}
       avatarUrl={session?.avatarUrl}
       pendingPackagesCount={pendingPackagesCount}
-      pendingReportsCount={pendingReportsCount}
     />
   );
 }

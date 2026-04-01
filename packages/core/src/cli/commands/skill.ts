@@ -4,6 +4,7 @@
  * Uses skill/ops functions for all operations.
  */
 import chalk from "chalk";
+import { join } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -24,6 +25,9 @@ import {
   disableSkill,
   getEnabledSkills,
   getSkillDir,
+  searchSkillRegistry,
+  getSkillFromRegistry,
+  downloadSkillFromRegistry,
 } from "../../skill/ops";
 import type { SkillTarget } from "../../skill/ops/types";
 
@@ -451,6 +455,99 @@ export function registerSkillCommand(program: Command): void {
     const path = getSkillDir("global", name);
     console.log(path);
   });
+
+  // =============================================================================
+  // Marketplace Commands
+  // =============================================================================
+
+  // skill search <query> - search marketplace
+  skill
+    .command("search <query>")
+    .description("Search skill packages in marketplace")
+    .option("-l, --limit <n>", "Maximum results", "10")
+    .option("-t, --type <type>", "Filter by type (command, prompt, agent)")
+    .action(
+      async (
+        query: string,
+        options: { limit: string; type?: "command" | "prompt" | "agent" }
+      ) => {
+        const ctx = getOutputContext(program);
+        try {
+          const result = await searchSkillRegistry({
+            query,
+            limit: parseInt(options.limit, 10),
+            type: options.type,
+          });
+
+          if (!result.success) {
+            throw new Error(result.error);
+          }
+
+          output(
+            ctx,
+            successResponse({ skills: result.skills, total: result.total }),
+            () => {
+              if (result.skills.length === 0) {
+                console.log(chalk.gray(`No skills found for "${query}".`));
+                return;
+              }
+
+              console.log(chalk.bold(`Search Results for "${query}":`));
+              console.log();
+              outputTable(
+                ctx,
+                ["Name", "Type", "Version", "Downloads", "Description"],
+                result.skills.map((s) => [
+                  s.name,
+                  s.skill_type,
+                  s.version,
+                  String(s.downloads_count),
+                  truncate(s.description || "-", 35),
+                ])
+              );
+            }
+          );
+        } catch (error) {
+          handleCommandError(ctx, error);
+        }
+      }
+    );
+
+  // skill download <name> [version] - download without installing
+  skill
+    .command("download <name> [version]")
+    .description("Download a skill package to current directory")
+    .action(async (name: string, version?: string) => {
+      const ctx = getOutputContext(program);
+      try {
+        const pkgInfo = await getSkillFromRegistry(name);
+        if (!pkgInfo.success || !pkgInfo.skill) {
+          throw new Error(`Skill '${name}' not found`);
+        }
+
+        const targetDir = join(process.cwd(), pkgInfo.skill.slug);
+
+        if (!ctx.quiet) {
+          console.log(`Downloading ${name}@${version || pkgInfo.skill.version}...`);
+        }
+
+        const result = await downloadSkillFromRegistry(
+          pkgInfo.skill.id,
+          version,
+          targetDir
+        );
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        output(ctx, successResponse({ path: targetDir }), () => {
+          outputSuccess(ctx, `Downloaded to ${targetDir}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
 }
 
 /**
@@ -489,6 +586,14 @@ function getTargetFromExecutor(executor: string): SkillTarget {
     default:
       return "global";
   }
+}
+
+/**
+ * Truncate a string for display
+ */
+function truncate(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  return str.substring(0, maxLen - 3) + "...";
 }
 
 /**

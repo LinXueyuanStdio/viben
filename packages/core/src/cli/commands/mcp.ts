@@ -1,10 +1,11 @@
 /**
  * CLI mcp command - MCP (Model Context Protocol) utilities
  *
- * Uses mcpManager from mcp module.
+ * Uses mcpManager from mcp module and mcp/ops for package management.
  */
 import chalk from "chalk";
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -16,6 +17,16 @@ import {
   handleCommandError,
 } from "../lib";
 import { mcpManager } from "../../mcp";
+import {
+  installMcp,
+  uninstallMcp,
+  listMcps,
+  getMcp,
+  searchMarketplace,
+  getFromMarketplace,
+  downloadFromMarketplace,
+} from "../../mcp/ops";
+import type { McpTarget } from "../../mcp/ops/types";
 
 /**
  * Get output context from program options
@@ -423,6 +434,165 @@ export function registerMcpCommand(program: Command): void {
         handleCommandError(ctx, error);
       }
     });
+
+  // =============================================================================
+  // Package Management Commands
+  // =============================================================================
+
+  // mcp search <query> - search marketplace
+  mcp
+    .command("search <query>")
+    .description("Search MCP packages in marketplace")
+    .option("-l, --limit <n>", "Maximum results", "10")
+    .action(async (query: string, options: { limit: string }) => {
+      const ctx = getOutputContext(program);
+      try {
+        const result = await searchMarketplace({
+          query,
+          limit: parseInt(options.limit, 10),
+        });
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        output(
+          ctx,
+          successResponse({ packages: result.mcps, total: result.total }),
+          () => {
+            if (result.mcps.length === 0) {
+              console.log(chalk.gray(`No packages found for "${query}".`));
+              return;
+            }
+
+            console.log(chalk.bold(`Search Results for "${query}":`));
+            console.log();
+            outputTable(
+              ctx,
+              ["Name", "Version", "Downloads", "Description"],
+              result.mcps.map((p) => [
+                p.name,
+                p.version,
+                String(p.downloads_count),
+                truncate(p.description || "-", 40),
+              ])
+            );
+          }
+        );
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // mcp install <spec> - install package
+  mcp
+    .command("install <spec>")
+    .description("Install an MCP package (supports name, name@version, gh:user/repo, ./path)")
+    .option("-g, --global", "Install globally (default is project)")
+    .option("-f, --force", "Force reinstall")
+    .action(
+      async (
+        spec: string,
+        options: {
+          global?: boolean;
+          force?: boolean;
+        }
+      ) => {
+        const ctx = getOutputContext(program);
+        try {
+          const target: McpTarget = options.global ? "global" : "project";
+
+          if (!ctx.quiet) {
+            console.log(`Installing ${spec}...`);
+          }
+
+          const result = await installMcp({
+            spec,
+            target,
+            force: options.force,
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || result.message);
+          }
+
+          output(ctx, successResponse({ result }), () => {
+            outputSuccess(ctx, result.message);
+            console.log();
+            outputKeyValue(ctx, {
+              Name: result.name,
+              Version: result.version,
+              Path: result.path,
+              Target: result.target,
+              Source: result.source,
+            });
+          });
+        } catch (error) {
+          handleCommandError(ctx, error);
+        }
+      }
+    );
+
+  // mcp uninstall <name> - uninstall package
+  mcp
+    .command("uninstall <name>")
+    .description("Uninstall an MCP package")
+    .option("-g, --global", "Uninstall from global (default is project)")
+    .action(async (name: string, options: { global?: boolean }) => {
+      const ctx = getOutputContext(program);
+      try {
+        const target: McpTarget = options.global ? "global" : "project";
+
+        const result = await uninstallMcp({ name, target });
+
+        if (!result.success) {
+          throw new Error(result.error || result.message);
+        }
+
+        output(ctx, successResponse({ result }), () => {
+          outputSuccess(ctx, result.message);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // mcp download <name> [version] - download without installing
+  mcp
+    .command("download <name> [version]")
+    .description("Download an MCP package to current directory")
+    .action(async (name: string, version?: string) => {
+      const ctx = getOutputContext(program);
+      try {
+        // Get package info
+        const pkgInfo = await getFromMarketplace(name);
+        if (!pkgInfo.success || !pkgInfo.mcp) {
+          throw new Error(`Package '${name}' not found`);
+        }
+
+        const targetDir = join(process.cwd(), pkgInfo.mcp.slug);
+
+        if (!ctx.quiet) {
+          console.log(`Downloading ${name}@${version || pkgInfo.mcp.version}...`);
+        }
+
+        const result = await downloadFromMarketplace(
+          pkgInfo.mcp.id,
+          version,
+          targetDir
+        );
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        output(ctx, successResponse({ path: targetDir }), () => {
+          outputSuccess(ctx, `Downloaded to ${targetDir}`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
 }
 
 /**
@@ -472,4 +642,12 @@ function maskSecret(value: string): string {
     return "****";
   }
   return value.substring(0, 4) + "****" + value.substring(value.length - 4);
+}
+
+/**
+ * Truncate a string for display
+ */
+function truncate(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  return str.substring(0, maxLen - 3) + "...";
 }

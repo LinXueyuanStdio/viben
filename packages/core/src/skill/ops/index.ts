@@ -94,6 +94,22 @@ export {
 } from "./marketplace";
 
 // =============================================================================
+// Registry operations (uses @viben/api-client)
+// =============================================================================
+
+export {
+  searchSkillRegistry,
+  getSkillFromRegistry,
+  downloadSkillFromRegistry,
+} from "./registry";
+export type {
+  MarketplaceSkill,
+  SkillRegistrySearchOptions,
+  SkillRegistrySearchResult,
+  SkillRegistryGetResult,
+} from "./registry";
+
+// =============================================================================
 // Extract utilities
 // =============================================================================
 
