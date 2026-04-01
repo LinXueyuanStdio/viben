@@ -82,7 +82,7 @@ installed:
     version: "1.2.3"
     path: "/path/to/foo"
     source: "marketplace"        # "local" | "marketplace" | "github"
-    installedAt: "2026-04-01T..."
+    installed_at: "2026-04-01T..."
     spec: "foo@1.2.3"            # 新增：原始安装 spec，用于更新
 ```
 
@@ -94,8 +94,10 @@ installed:
   - `local`: 从本地路径安装
   - `marketplace`: 从 viben registry 安装
   - `github`: 从 GitHub 安装（新增）
-- `installedAt`: 安装时间（ISO 8601 格式）
+- `installed_at`: 安装时间（ISO 8601 格式）
 - `spec`: 原始安装命令（新增，可选）
+
+**注意：** 现有代码 `InstalledSkillEntry` 使用 `installedAt` (camelCase)，需要在实现时统一迁移为 `installed_at` (snake_case)，符合 CLAUDE.md 中 "File storage use snake_case" 的规范。
 
 ### MCP 包结构
 
@@ -284,7 +286,7 @@ proxyFetch (处理代理)
 ### 统一模式
 
 - `mcp/ops` 和 `skill/ops` 结构一致
-- 共用 `installed.yaml` 格式（数组格式，camelCase 字段）
+- 共用 `installed.yaml` 格式（数组格式，snake_case 字段）
 - 共用 registry API 模式
 - 使用已有的 `readYaml`/`writeYaml` 处理配置
 - 使用已有的 `proxyFetch` 处理网络请求
