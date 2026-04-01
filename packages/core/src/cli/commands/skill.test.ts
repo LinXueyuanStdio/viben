@@ -62,7 +62,7 @@ import {
  * Helper to create a mock list skills result
  */
 function createMockListSkillsResult(
-  skills: Array<{ name: string; version: string; path: string; installedAt: string }> = []
+  skills: Array<{ name: string; version: string; path: string; installed_at: string }> = []
 ): ListSkillsResult {
   return {
     success: true,
@@ -176,13 +176,13 @@ describe("Skill CLI Commands", () => {
           name: "code-review",
           version: "1.0.0",
           path: "/path/to/code-review",
-          installedAt: "2024-01-01T00:00:00Z",
+          installed_at: "2024-01-01T00:00:00Z",
         },
         {
           name: "commit-helper",
           version: "1.2.0",
           path: "/path/to/commit-helper",
-          installedAt: "2024-01-02T00:00:00Z",
+          installed_at: "2024-01-02T00:00:00Z",
         },
       ]);
 
@@ -209,7 +209,7 @@ describe("Skill CLI Commands", () => {
           name: "code-review",
           version: "1.0.0",
           path: "/path/to/code-review",
-          installedAt: "2024-01-01T00:00:00Z",
+          installed_at: "2024-01-01T00:00:00Z",
         },
       ]);
 
@@ -288,7 +288,7 @@ describe("Skill CLI Commands", () => {
           name: "agent-skill-1",
           version: "1.0.0",
           path: "/path/to/agent/skills/agent-skill-1",
-          installedAt: "2024-01-01T00:00:00Z",
+          installed_at: "2024-01-01T00:00:00Z",
         },
       ]);
 
@@ -319,7 +319,7 @@ describe("Skill CLI Commands", () => {
           name: "global-skill",
           version: "1.0.0",
           path: "/path/to/global-skill",
-          installedAt: "2024-01-01T00:00:00Z",
+          installed_at: "2024-01-01T00:00:00Z",
         },
       ]);
 
@@ -339,7 +339,7 @@ describe("Skill CLI Commands", () => {
           name: "claude-skill",
           version: "1.0.0",
           path: "/path/to/claude-skill",
-          installedAt: "2024-01-01T00:00:00Z",
+          installed_at: "2024-01-01T00:00:00Z",
         },
       ]);
 

@@ -121,7 +121,7 @@ export interface InstalledSkillInfo {
   name: string;
   version: string;
   path: string;
-  installedAt: string;
+  installed_at: string;
   source?: "local" | "marketplace";
 }
 
@@ -195,7 +195,7 @@ export interface InstalledSkillEntry {
   version: string;
   path: string;
   source: "local" | "marketplace";
-  installedAt: string;
+  installed_at: string;
 }
 
 /**

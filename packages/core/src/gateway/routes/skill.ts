@@ -132,7 +132,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
                   name: { type: "string" },
                   version: { type: "string" },
                   path: { type: "string" },
-                  installedAt: { type: "string" },
+                  installed_at: { type: "string" },
                 },
               },
             },

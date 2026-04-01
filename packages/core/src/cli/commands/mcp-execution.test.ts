@@ -201,11 +201,11 @@ describe("mcp command execution", () => {
   - name: filesystem
     version: "1.2.0"
     path: /path/to/filesystem
-    installedAt: "2024-01-15T10:00:00Z"
+    installed_at: "2024-01-15T10:00:00Z"
   - name: git
     version: "2.0.1"
     path: /path/to/git
-    installedAt: "2024-01-16T12:00:00Z"
+    installed_at: "2024-01-16T12:00:00Z"
 `
       );
 
@@ -225,7 +225,7 @@ describe("mcp command execution", () => {
   - name: test-mcp
     version: "1.0.0"
     path: /path/to/test
-    installedAt: "2024-01-01T00:00:00Z"
+    installed_at: "2024-01-01T00:00:00Z"
 `
       );
 
@@ -323,7 +323,7 @@ describe("mcp command execution", () => {
   - name: filesystem
     version: "1.2.0"
     path: /path/to/filesystem
-    installedAt: "2024-01-15T10:00:00Z"
+    installed_at: "2024-01-15T10:00:00Z"
 `
       );
 
@@ -351,7 +351,7 @@ describe("mcp command execution", () => {
   - name: test-mcp
     version: "1.0.0"
     path: /path/to/test
-    installedAt: "2024-01-01T00:00:00Z"
+    installed_at: "2024-01-01T00:00:00Z"
 `
       );
 
