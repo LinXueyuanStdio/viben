@@ -122,7 +122,8 @@ export interface InstalledSkillInfo {
   version: string;
   path: string;
   installed_at: string;
-  source?: "local" | "marketplace";
+  source?: "local" | "marketplace" | "github";
+  spec?: string;
 }
 
 /**
@@ -142,7 +143,7 @@ export interface SkillInfo {
   description?: string;
   version: string;
   path: string;
-  source: "local" | "marketplace";
+  source: "local" | "marketplace" | "github";
 }
 
 /**
@@ -194,8 +195,9 @@ export interface InstalledSkillEntry {
   name: string;
   version: string;
   path: string;
-  source: "local" | "marketplace";
+  source: "local" | "marketplace" | "github";
   installed_at: string;
+  spec?: string;
 }
 
 /**
