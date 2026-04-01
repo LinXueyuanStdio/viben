@@ -13,8 +13,6 @@ import {
   Layers,
   BarChart3,
   LayoutDashboard,
-  MessageSquare,
-  Flag,
   Upload,
   PackageSearch,
   LogIn,
@@ -100,19 +98,6 @@ export function Sidebar({
       icon: Package,
       permission: 'packages.review',
       badgeCount: pendingPackagesCount,
-    },
-    {
-      name: t('nav.content'),
-      href: '/admin/content',
-      icon: MessageSquare,
-      permission: 'content.moderate',
-    },
-    {
-      name: t('nav.reports'),
-      href: '/admin/reports',
-      icon: Flag,
-      permission: 'reports.view',
-      badgeCount: pendingReportsCount,
     },
   ];
 
