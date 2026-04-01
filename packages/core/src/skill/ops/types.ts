@@ -124,6 +124,7 @@ export interface InstalledSkillInfo {
   installed_at: string;
   source?: "local" | "marketplace" | "github";
   spec?: string;
+  target?: SkillTarget;
 }
 
 /**

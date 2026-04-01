@@ -26,11 +26,14 @@ interface OfficialSkillGridProps {
   className?: string;
 }
 
-const SORT_OPTIONS: { value: ClawhubSkillSortOption; label: string }[] = [
-  { value: 'updated', label: 'Recently Updated' },
-  { value: 'downloads', label: 'Most Downloads' },
-  { value: 'stars', label: 'Most Stars' },
-  { value: 'trending', label: 'Trending' },
+/**
+ * Sort option values and their translation keys
+ */
+const SORT_OPTIONS: { value: ClawhubSkillSortOption; labelKey: string; defaultLabel: string }[] = [
+  { value: 'updated', labelKey: 'marketplace.sort.updated', defaultLabel: 'Recently Updated' },
+  { value: 'downloads', labelKey: 'marketplace.sort.downloads', defaultLabel: 'Most Downloads' },
+  { value: 'stars', labelKey: 'marketplace.sort.stars', defaultLabel: 'Most Stars' },
+  { value: 'trending', labelKey: 'marketplace.sort.trending', defaultLabel: 'Trending' },
 ];
 
 /**
@@ -166,7 +169,7 @@ export function OfficialSkillGrid({
               <SelectContent>
                 {SORT_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value} className="text-xs">
-                    {option.label}
+                    {t(option.labelKey, option.defaultLabel)}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -15,6 +15,10 @@ import {
   outputKeyValue,
   outputSuccess,
   handleCommandError,
+  getOutputContext,
+  formatDate,
+  truncate,
+  maskSecret,
 } from "../lib";
 import { mcpManager } from "../../mcp";
 import {
@@ -27,18 +31,6 @@ import {
   downloadFromMarketplace,
 } from "../../mcp/ops";
 import type { McpTarget } from "../../mcp/ops/types";
-
-/**
- * Get output context from program options
- */
-function getOutputContext(program: Command): OutputContext {
-  const opts = program.opts();
-  return {
-    json: opts.json ?? false,
-    verbose: opts.verbose ?? false,
-    quiet: opts.quiet ?? false,
-  };
-}
 
 /**
  * Inspector command options
@@ -160,9 +152,11 @@ export function registerMcpCommand(program: Command): void {
   // mcp list - list installed MCP servers
   mcp
     .command("list")
-    .description("List installed MCP servers")
+    .description("List installed MCP packages")
     .option("--agent <id>", "List MCP servers for a specific agent")
-    .action(async (options: { agent?: string }) => {
+    .option("-g, --global", "List only global packages")
+    .option("-a, --all", "List packages from all targets (project + global)")
+    .action(async (options: { agent?: string; global?: boolean; all?: boolean }) => {
       const ctx = getOutputContext(program);
       try {
         if (options.agent) {
@@ -194,29 +188,44 @@ export function registerMcpCommand(program: Command): void {
             }
           );
         } else {
-          // List globally installed MCPs
-          const installed = await mcpManager.listInstalled();
+          // List installed MCPs using listMcps
+          const target: McpTarget | undefined = options.global ? "global" : undefined;
+          const result = await listMcps({ target, all: options.all || !options.global });
+
+          if (!result.success) {
+            throw new Error(result.error);
+          }
 
           output(
             ctx,
-            successResponse({ installed, count: installed.length }),
+            successResponse({ mcps: result.mcps, count: result.count }),
             () => {
-              if (installed.length === 0) {
-                console.log(chalk.gray("No MCP servers installed globally."));
+              if (result.mcps.length === 0) {
+                const scope = options.global ? "globally" : "in this project";
+                console.log(chalk.gray(`No MCP packages installed ${scope}.`));
                 console.log();
-                console.log("To configure MCP servers for an agent:");
-                console.log(chalk.cyan("  viben mcp list --agent <agent-id>"));
+                console.log("Install a package with:");
+                console.log(chalk.cyan("  viben mcp install <name>"));
+                console.log();
+                console.log("Search for packages with:");
+                console.log(chalk.cyan("  viben mcp search <query>"));
                 return;
               }
 
-              console.log(chalk.bold("Installed MCP Servers:"));
+              const title = options.global
+                ? "Global MCP Packages:"
+                : options.all
+                  ? "All MCP Packages:"
+                  : "Project MCP Packages:";
+              console.log(chalk.bold(title));
               console.log();
               outputTable(
                 ctx,
-                ["Name", "Version", "Path", "Installed At"],
-                installed.map((m) => [
+                ["Name", "Version", "Target", "Path", "Installed At"],
+                result.mcps.map((m) => [
                   m.name,
                   m.version,
+                  m.target,
                   m.path,
                   formatDate(m.installed_at),
                 ])
@@ -593,61 +602,4 @@ export function registerMcpCommand(program: Command): void {
         handleCommandError(ctx, error);
       }
     });
-}
-
-/**
- * Format a date string for display
- */
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) {
-    return "-";
-  }
-
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    // Less than 24 hours ago
-    if (diff < 24 * 60 * 60 * 1000) {
-      const hours = Math.floor(diff / (60 * 60 * 1000));
-      if (hours === 0) {
-        const minutes = Math.floor(diff / (60 * 1000));
-        if (minutes === 0) {
-          return "just now";
-        }
-        return `${minutes}m ago`;
-      }
-      return `${hours}h ago`;
-    }
-
-    // Less than 7 days ago
-    if (diff < 7 * 24 * 60 * 60 * 1000) {
-      const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-      return `${days}d ago`;
-    }
-
-    // Format as date
-    return date.toLocaleDateString();
-  } catch {
-    return dateStr;
-  }
-}
-
-/**
- * Mask a secret value for display
- */
-function maskSecret(value: string): string {
-  if (value.length <= 8) {
-    return "****";
-  }
-  return value.substring(0, 4) + "****" + value.substring(value.length - 4);
-}
-
-/**
- * Truncate a string for display
- */
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.substring(0, maxLen - 3) + "...";
 }

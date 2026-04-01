@@ -183,28 +183,30 @@ describe("mcp command execution", () => {
   // ===========================================================================
 
   describe("mcp list", () => {
-    it("should show message when no MCP servers installed globally", async () => {
+    it("should show message when no MCP packages installed", async () => {
       await ctx.run(["mcp", "list"]);
 
       // Check that console output indicates no MCPs
       const hasNoMcpMessage = ctx.console.logs.some(
-        (log) => log.includes("No MCP servers installed globally")
+        (log) => log.includes("No MCP packages installed")
       );
       expect(hasNoMcpMessage).toBe(true);
     });
 
-    it("should list globally installed MCP servers from installed.yaml", async () => {
-      // Create installed.yaml file with MCP entries
+    it("should list installed MCP packages from installed.yaml", async () => {
+      // Create installed.yaml file with MCP entries in the global mcp dir
       await ctx.tempDir.writeFile(
         "mcp/installed.yaml",
         `installed:
   - name: filesystem
     version: "1.2.0"
     path: /path/to/filesystem
+    source: marketplace
     installed_at: "2024-01-15T10:00:00Z"
   - name: git
     version: "2.0.1"
     path: /path/to/git
+    source: marketplace
     installed_at: "2024-01-16T12:00:00Z"
 `
       );
@@ -225,20 +227,21 @@ describe("mcp command execution", () => {
   - name: test-mcp
     version: "1.0.0"
     path: /path/to/test
+    source: marketplace
     installed_at: "2024-01-01T00:00:00Z"
 `
       );
 
       const result = (await ctx.runJson(["mcp", "list"])) as {
         success: boolean;
-        data: { installed: Array<{ name: string }> };
+        data: { mcps: Array<{ name: string }>; count: number };
       };
 
       expect(result).not.toBeNull();
       expect(result?.success).toBe(true);
-      expect(result?.data?.installed).toBeDefined();
-      expect(result?.data?.installed?.length).toBe(1);
-      expect(result?.data?.installed?.[0]?.name).toBe("test-mcp");
+      expect(result?.data?.mcps).toBeDefined();
+      expect(result?.data?.mcps?.length).toBe(1);
+      expect(result?.data?.mcps?.[0]?.name).toBe("test-mcp");
     });
   });
 

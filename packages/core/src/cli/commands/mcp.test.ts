@@ -35,6 +35,17 @@ vi.mock("../../mcp", () => ({
   },
 }));
 
+// Mock mcp/ops module
+vi.mock("../../mcp/ops", () => ({
+  listMcps: vi.fn(),
+  installMcp: vi.fn(),
+  uninstallMcp: vi.fn(),
+  getMcp: vi.fn(),
+  searchMarketplace: vi.fn(),
+  getFromMarketplace: vi.fn(),
+  downloadFromMarketplace: vi.fn(),
+}));
+
 // Mock chalk to avoid color output in tests
 vi.mock("chalk", () => ({
   default: {
@@ -54,6 +65,7 @@ vi.spyOn(process, "exit").mockImplementation((code?: number | string | null | un
 });
 
 import { mcpManager } from "../../mcp";
+import { listMcps, installMcp, uninstallMcp, searchMarketplace, getFromMarketplace, downloadFromMarketplace } from "../../mcp/ops";
 import { spawn } from "node:child_process";
 
 /**
@@ -158,58 +170,77 @@ describe("MCP CLI Commands", () => {
   // ============================================================================
 
   describe("mcp list", () => {
-    it("should list globally installed MCP servers", async () => {
-      const mockInstalled = [
-        createMockInstalledMcp({
-          name: "filesystem",
-          version: "1.2.0",
-          path: "/path/to/filesystem",
-        }),
-        createMockInstalledMcp({
-          name: "git",
-          version: "2.0.1",
-          path: "/path/to/git",
-        }),
-      ];
-
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue(mockInstalled);
+    it("should list installed MCP packages", async () => {
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [
+          {
+            name: "filesystem",
+            version: "1.2.0",
+            path: "/path/to/filesystem",
+            installed_at: new Date().toISOString(),
+            target: "project",
+          },
+          {
+            name: "git",
+            version: "2.0.1",
+            path: "/path/to/git",
+            installed_at: new Date().toISOString(),
+            target: "global",
+          },
+        ],
+        count: 2,
+      });
 
       await runCommand(["mcp", "list"]);
 
-      expect(mcpManager.listInstalled).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Installed MCP Servers"));
+      expect(listMcps).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("MCP Packages"));
     });
 
-    it("should show message when no MCP servers installed", async () => {
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue([]);
+    it("should show message when no MCP packages installed", async () => {
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [],
+        count: 0,
+      });
 
       await runCommand(["mcp", "list"]);
 
-      expect(mcpManager.listInstalled).toHaveBeenCalled();
+      expect(listMcps).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("No MCP servers installed globally")
+        expect.stringContaining("No MCP packages installed")
       );
     });
 
     it("should show help message when no MCPs installed", async () => {
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue([]);
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [],
+        count: 0,
+      });
 
       await runCommand(["mcp", "list"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("viben mcp list --agent")
+        expect.stringContaining("viben mcp install")
       );
     });
 
     it("should output JSON when --json flag is provided", async () => {
-      const mockInstalled = [
-        createMockInstalledMcp({
-          name: "filesystem",
-          version: "1.2.0",
-        }),
-      ];
-
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue(mockInstalled);
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [
+          {
+            name: "filesystem",
+            version: "1.2.0",
+            path: "/path/to/filesystem",
+            installed_at: new Date().toISOString(),
+            target: "project",
+          },
+        ],
+        count: 1,
+      });
 
       await runCommand(["--json", "mcp", "list"]);
 
@@ -217,7 +248,7 @@ describe("MCP CLI Commands", () => {
         expect.stringContaining('"success": true')
       );
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"installed"')
+        expect.stringContaining('"mcps"')
       );
     });
   });
@@ -1040,7 +1071,11 @@ describe("MCP CLI Commands", () => {
     });
 
     it("should include success: true in all successful JSON responses", async () => {
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue([]);
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [],
+        count: 0,
+      });
 
       await runCommand(["--json", "mcp", "list"]);
 
@@ -1056,7 +1091,12 @@ describe("MCP CLI Commands", () => {
 
   describe("Error handling", () => {
     it("should handle error in mcp list", async () => {
-      vi.mocked(mcpManager.listInstalled).mockRejectedValue(new Error("Database error"));
+      vi.mocked(listMcps).mockResolvedValue({
+        success: false,
+        error: "Database error",
+        mcps: [],
+        count: 0,
+      });
 
       await expect(runCommand(["mcp", "list"])).rejects.toThrow();
 
@@ -1082,7 +1122,12 @@ describe("MCP CLI Commands", () => {
     });
 
     it("should output error in JSON format when --json flag is set", async () => {
-      vi.mocked(mcpManager.listInstalled).mockRejectedValue(new Error("Test error"));
+      vi.mocked(listMcps).mockResolvedValue({
+        success: false,
+        error: "Test error",
+        mcps: [],
+        count: 0,
+      });
 
       await expect(runCommand(["--json", "mcp", "list"])).rejects.toThrow();
 
@@ -1134,20 +1179,39 @@ describe("MCP CLI Commands", () => {
     });
 
     it("should allow user to view MCP server details", async () => {
-      // List globally installed
-      vi.mocked(mcpManager.listInstalled).mockResolvedValue([
-        createMockInstalledMcp({ name: "filesystem", version: "1.2.0" }),
-        createMockInstalledMcp({ name: "git", version: "2.0.0" }),
-      ]);
+      // List installed MCPs
+      vi.mocked(listMcps).mockResolvedValue({
+        success: true,
+        mcps: [
+          {
+            name: "filesystem",
+            version: "1.2.0",
+            path: "/path/to/filesystem",
+            installed_at: new Date().toISOString(),
+            target: "project",
+          },
+          {
+            name: "git",
+            version: "2.0.0",
+            path: "/path/to/git",
+            installed_at: new Date().toISOString(),
+            target: "global",
+          },
+        ],
+        count: 2,
+      });
 
       await runCommand(["--json", "mcp", "list"]);
       const listOutput = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const listParsed = JSON.parse(listOutput);
-      expect(listParsed.data.installed.length).toBe(2);
+      expect(listParsed.data.mcps.length).toBe(2);
 
       consoleSpy.mockClear();
 
       // Show specific MCP
+      vi.mocked(mcpManager.listInstalled).mockResolvedValue([
+        createMockInstalledMcp({ name: "filesystem", version: "1.2.0" }),
+      ]);
       await runCommand(["--json", "mcp", "show", "filesystem"]);
       const showOutput = consoleSpy.mock.calls.map((call: unknown[]) => call[0]).join("");
       const showParsed = JSON.parse(showOutput);

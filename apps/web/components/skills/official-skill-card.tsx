@@ -3,42 +3,14 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Download, Star, ExternalLink, Apple, Monitor } from 'lucide-react';
+import { Sparkles, Download, Star, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/index';
+import { formatCount } from '@/lib/utils/format';
+import { OsIcon } from '@/components/shared/os-icon';
 import { SkillSourceBadge } from './skill-source-tabs';
 import type { ClawhubSkillDisplay } from '@/lib/types/clawhub-registry';
-
-/**
- * Format number with K/M suffix
- */
-function formatCount(count: number): string {
-  if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
-  }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
-  }
-  return String(count);
-}
-
-/**
- * Get OS icon
- */
-function OsIcon({ os }: { os: string }) {
-  switch (os.toLowerCase()) {
-    case 'macos':
-    case 'darwin':
-      return <Apple className="h-3 w-3" />;
-    case 'linux':
-      return <Monitor className="h-3 w-3" />;
-    case 'windows':
-      return <Monitor className="h-3 w-3" />;
-    default:
-      return <Monitor className="h-3 w-3" />;
-  }
-}
 
 interface OfficialSkillCardProps {
   skill: ClawhubSkillDisplay;

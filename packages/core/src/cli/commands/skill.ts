@@ -14,6 +14,9 @@ import {
   outputKeyValue,
   outputSuccess,
   handleCommandError,
+  getOutputContext,
+  formatDate,
+  truncate,
 } from "../lib";
 import {
   listSkills,
@@ -32,18 +35,6 @@ import {
 import type { SkillTarget } from "../../skill/ops/types";
 
 /**
- * Get output context from program options
- */
-function getOutputContext(program: Command): OutputContext {
-  const opts = program.opts();
-  return {
-    json: opts.json ?? false,
-    verbose: opts.verbose ?? false,
-    quiet: opts.quiet ?? false,
-  };
-}
-
-/**
  * Register the skill command
  */
 export function registerSkillCommand(program: Command): void {
@@ -57,12 +48,14 @@ export function registerSkillCommand(program: Command): void {
     .option("--agent <id>", "List skills for a specific agent")
     .option("-g, --global", "List only global skills")
     .option("-c, --claude", "List only Claude skills")
+    .option("-a, --all", "List skills from all targets")
     .action(
       async (options: {
         available?: boolean;
         agent?: string;
         global?: boolean;
         claude?: boolean;
+        all?: boolean;
       }) => {
         const ctx = getOutputContext(program);
         try {
@@ -97,6 +90,8 @@ export function registerSkillCommand(program: Command): void {
           } else {
             // List installed skills from specified or all targets
             let target: SkillTarget | undefined;
+            const listAll = options.all || (!options.agent && !options.global && !options.claude);
+
             if (options.agent) {
               target = "agent";
             } else if (options.global) {
@@ -106,7 +101,7 @@ export function registerSkillCommand(program: Command): void {
             }
 
             const result = await listSkills(
-              target ? { target, agentId: options.agent } : undefined
+              target ? { target, agentId: options.agent } : (listAll ? undefined : undefined)
             );
 
             if (!result.success) {
@@ -139,17 +134,25 @@ export function registerSkillCommand(program: Command): void {
                   return;
                 }
 
-                const title = options.agent
-                  ? `Skills for Agent: ${options.agent}`
-                  : "Installed Skills:";
+                let title: string;
+                if (options.agent) {
+                  title = `Skills for Agent: ${options.agent}`;
+                } else if (options.global) {
+                  title = "Global Skills:";
+                } else if (options.claude) {
+                  title = "Claude Skills:";
+                } else {
+                  title = "Installed Skills:";
+                }
                 console.log(chalk.bold(title));
                 console.log();
                 outputTable(
                   ctx,
-                  ["Name", "Version", "Path", "Installed At"],
+                  ["Name", "Version", "Target", "Path", "Installed At"],
                   result.skills.map((s) => [
                     s.name,
                     s.version,
+                    s.target || "-",
                     s.path,
                     formatDate(s.installed_at),
                   ])
@@ -585,52 +588,5 @@ function getTargetFromExecutor(executor: string): SkillTarget {
       return "claude";
     default:
       return "global";
-  }
-}
-
-/**
- * Truncate a string for display
- */
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.substring(0, maxLen - 3) + "...";
-}
-
-/**
- * Format a date string for display
- */
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) {
-    return "-";
-  }
-
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    // Less than 24 hours ago
-    if (diff < 24 * 60 * 60 * 1000) {
-      const hours = Math.floor(diff / (60 * 60 * 1000));
-      if (hours === 0) {
-        const minutes = Math.floor(diff / (60 * 1000));
-        if (minutes === 0) {
-          return "just now";
-        }
-        return `${minutes}m ago`;
-      }
-      return `${hours}h ago`;
-    }
-
-    // Less than 7 days ago
-    if (diff < 7 * 24 * 60 * 60 * 1000) {
-      const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-      return `${days}d ago`;
-    }
-
-    // Format as date
-    return date.toLocaleDateString();
-  } catch {
-    return dateStr;
   }
 }
