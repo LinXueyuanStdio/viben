@@ -41,7 +41,7 @@ export interface SkillResult {
  * Options for installing a skill
  */
 export interface InstallSkillOptions {
-  /** Skill name (or name@version) */
+  /** Skill name (or name@version or gh:user/repo#ref) */
   name: string;
   /** Installation target */
   target: SkillTarget;
@@ -57,6 +57,12 @@ export interface InstallSkillOptions {
   sourcePath?: string;
   /** Zip file path for packaged skills */
   zipPath?: string;
+  /** GitHub owner (for gh: source) */
+  githubOwner?: string;
+  /** GitHub repo (for gh: source) */
+  githubRepo?: string;
+  /** GitHub ref - tag/branch/commit (for gh: source) */
+  githubRef?: string;
   /** Progress callback for installation */
   onProgress?: (progress: number) => void;
   /** Executor name (e.g., "CLAUDE_CODE") - affects installation target */

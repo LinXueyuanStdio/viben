@@ -18,6 +18,7 @@ import {
   getFromMarketplace,
   downloadFromMarketplace,
 } from "./registry";
+import { downloadFromGitHub } from "../../utils/github-download";
 import type {
   McpTarget,
   InstallMcpOptions,
@@ -132,17 +133,53 @@ export async function installMcp(
       }
 
       case "github": {
-        // TODO: Implement GitHub installation
-        return {
-          success: false,
-          error: "GitHub installation is not yet implemented",
-          name: parsed.name,
-          version: "",
-          path: "",
-          target,
-          source: "github",
-          message: "GitHub installation is not yet implemented",
-        };
+        // Download from GitHub
+        const ghOwner = parsed.github_owner;
+        const ghRepo = parsed.github_repo;
+        const ghRef = parsed.github_ref;
+
+        if (!ghOwner || !ghRepo) {
+          return {
+            success: false,
+            error: "Invalid GitHub spec: missing owner or repo",
+            name: parsed.name,
+            version: "",
+            path: "",
+            target,
+            source: "github",
+            message: "Invalid GitHub spec",
+          };
+        }
+
+        const downloadResult = await downloadFromGitHub({
+          owner: ghOwner,
+          repo: ghRepo,
+          ref: ghRef,
+          targetDir: mcpDir,
+        });
+
+        if (!downloadResult.success) {
+          return {
+            success: false,
+            error: downloadResult.error,
+            name: parsed.name,
+            version: "",
+            path: "",
+            target,
+            source: "github",
+            message: downloadResult.error || "GitHub download failed",
+          };
+        }
+
+        // Try to read version from package.json
+        const pkgJsonPath = join(mcpDir, "package.json");
+        if (fileExists(pkgJsonPath)) {
+          const pkgJson = await readJson<{ version?: string }>(pkgJsonPath);
+          version = pkgJson?.version || ghRef || "1.0.0";
+        } else {
+          version = ghRef || "1.0.0";
+        }
+        break;
       }
 
       case "marketplace": {
