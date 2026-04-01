@@ -4,9 +4,17 @@
 
 ## Overview
 
-The Agent API provides two types of agent management:
-- **Viben Agents**: User-defined agents stored in YAML configuration
-- **Executor Agents**: Executor-based agents (e.g., CLAUDE_CODE)
+An Agent is a user-created configuration that defines:
+- Which executor to use (executor_type: CLAUDE_CODE, CURSOR, etc.)
+- System prompt and append prompt
+- Model and parameters (temperature, max_tokens)
+- MCP servers and skills configuration
+
+**Important Concept Distinction**:
+- **Agent**: User-created configuration file, stored in `.viben/agents/`, **editable**
+- **Executor**: Underlying AI tool runtime (Claude Code, Cursor, etc.), managed via `/api/executors`, **read-only**
+
+Agents specify which executor to use via the `executor_type` field.
 
 ## Endpoint List
 
