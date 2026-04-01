@@ -12,6 +12,7 @@
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
+[![Docs](https://img.shields.io/badge/docs-linxueyuan.online-blue?style=flat-square&logo=readthedocs)](https://linxueyuan.online/viben/)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square&logo=node.js)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-orange?style=flat-square&logo=tauri)](https://tauri.app/)
@@ -602,6 +603,12 @@ viben idea promote ci-001 --start --worktree
 ├── channels.yaml     # Notification channels
 └── workspaces.yaml   # Workspaces
 ```
+
+---
+
+## 📚 Documentation
+
+For full documentation, visit: **[linxueyuan.online/viben](https://linxueyuan.online/viben/)**
 
 ---
 
