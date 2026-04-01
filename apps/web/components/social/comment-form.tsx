@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +24,7 @@ export function CommentForm({
   isAuthenticated,
   className,
 }: CommentFormProps) {
+  const { t } = useTranslation();
   const [content, setContent] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
@@ -56,7 +58,7 @@ export function CommentForm({
     return (
       <div className={cn('rounded-lg border bg-muted/50 p-4 text-center', className)}>
         <p className="text-sm text-muted-foreground">
-          Sign in to leave a comment
+          {t('social.signInToComment')}
         </p>
       </div>
     );
@@ -66,7 +68,7 @@ export function CommentForm({
     <form onSubmit={handleSubmit} className={cn('space-y-3', className)}>
       {parentId && replyingToUsername && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Replying to @{replyingToUsername}</span>
+          <span>{t('social.replyingTo', { username: replyingToUsername })}</span>
           <Button
             type="button"
             variant="ghost"
@@ -82,7 +84,7 @@ export function CommentForm({
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        placeholder={parentId ? 'Write a reply...' : 'Write a comment...'}
+        placeholder={parentId ? t('social.writeReplyPlaceholder') : t('social.writeCommentPlaceholder')}
         className="min-h-[80px] resize-none"
         maxLength={2000}
       />
@@ -96,7 +98,7 @@ export function CommentForm({
           disabled={!content.trim() || isSubmitting}
         >
           <Send className="mr-2 h-4 w-4" />
-          {isSubmitting ? 'Posting...' : parentId ? 'Reply' : 'Comment'}
+          {isSubmitting ? t('social.posting') : parentId ? t('social.reply') : t('social.comment')}
         </Button>
       </div>
     </form>

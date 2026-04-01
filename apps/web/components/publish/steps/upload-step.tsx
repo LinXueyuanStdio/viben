@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { Upload, File, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,8 @@ const ACCEPTED_TYPES = {
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function UploadStep({ packageType, file, onFileChange }: UploadStepProps) {
+  const { t } = useTranslation();
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -50,9 +53,9 @@ export function UploadStep({ packageType, file, onFileChange }: UploadStepProps)
           <File className="h-8 w-8 text-green-500" />
         </div>
         <div>
-          <h3 className="text-lg font-medium">No file upload needed</h3>
+          <h3 className="text-lg font-medium">{t('publish.upload.noUploadNeeded')}</h3>
           <p className="text-sm text-muted-foreground">
-            Skill content was provided in the metadata step.
+            {t('publish.upload.skillContentProvided')}
           </p>
         </div>
       </div>
@@ -75,13 +78,13 @@ export function UploadStep({ packageType, file, onFileChange }: UploadStepProps)
         </div>
         <div className="mt-4">
           <p className="text-lg font-medium">
-            {isDragActive ? 'Drop your file here' : 'Drag and drop your package'}
+            {isDragActive ? t('publish.upload.dropHere') : t('publish.upload.dragAndDrop')}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            or click to browse. Accepts .zip, .tar.gz, .tgz
+            {t('publish.upload.orClickBrowse')}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Maximum size: 50MB
+            {t('publish.upload.maxSize')}
           </p>
         </div>
       </div>

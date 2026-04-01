@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Download, Star, Zap } from 'lucide-react';
@@ -54,6 +57,7 @@ interface SkillCardProps {
 }
 
 export function SkillCard({ package: pkg }: SkillCardProps) {
+  const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -81,7 +85,7 @@ export function SkillCard({ package: pkg }: SkillCardProps) {
         </div>
 
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
-          {pkg.description || 'No description'}
+          {pkg.description || t('skills.card.noDescription')}
         </p>
 
         <div className="mt-4 flex items-center justify-between">

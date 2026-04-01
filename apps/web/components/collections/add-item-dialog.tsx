@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +58,7 @@ export function AddItemDialog({
   onAdded,
   existingIds,
 }: AddItemDialogProps) {
+  const { t } = useTranslation('collections');
   const [activeTab, setActiveTab] = useState<'mcp' | 'skill'>('mcp');
   const [search, setSearch] = useState('');
   const [packages, setPackages] = useState<Package[]>([]);
@@ -66,7 +68,7 @@ export function AddItemDialog({
   const [adding, setAdding] = useState(false);
 
   const TypeIcon = activeTab === 'mcp' ? Server : Sparkles;
-  const typeLabel = activeTab === 'mcp' ? 'MCP servers' : 'skills';
+  const typeLabel = activeTab === 'mcp' ? t('mcpServers') : t('skills');
 
   const fetchPackages = useCallback(async (itemType: 'mcp' | 'skill') => {
     setLoading(true);
@@ -85,7 +87,7 @@ export function AddItemDialog({
       // Handle both response shapes (data.packages and data.data)
       setPackages(data.packages || data.data || []);
     } catch {
-      toast.error('Failed to load packages');
+      toast.error(t('failedToLoadPackages'));
       setPackages([]);
     } finally {
       setLoading(false);
@@ -147,10 +149,10 @@ export function AddItemDialog({
         package: selectedPackage,
       });
 
-      toast.success('Item added to collection');
+      toast.success(t('itemAddedToCollection'));
       onOpenChange(false);
     } catch {
-      toast.error('Failed to add item');
+      toast.error(t('failedToAddItem'));
     } finally {
       setAdding(false);
     }
@@ -164,9 +166,9 @@ export function AddItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add Item to Collection</DialogTitle>
+          <DialogTitle>{t('addItemToCollection')}</DialogTitle>
           <DialogDescription>
-            Search and select packages to add to this collection.
+            {t('addItemDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,11 +176,11 @@ export function AddItemDialog({
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="mcp" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
-              MCP Servers
+              {t('mcpServers')}
             </TabsTrigger>
             <TabsTrigger value="skill" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              Skills
+              {t('skills')}
             </TabsTrigger>
           </TabsList>
 
@@ -187,7 +189,7 @@ export function AddItemDialog({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder={`Search ${typeLabel}...`}
+                  placeholder={t('searchPlaceholder', { type: typeLabel })}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
@@ -201,9 +203,9 @@ export function AddItemDialog({
                   </div>
                 ) : availablePackages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <p>No available {typeLabel} found</p>
+                    <p>{t('noAvailablePackages', { type: typeLabel })}</p>
                     {search && (
-                      <p className="text-sm">Try adjusting your search</p>
+                      <p className="text-sm">{t('tryAdjustingSearch')}</p>
                     )}
                   </div>
                 ) : (
@@ -245,10 +247,10 @@ export function AddItemDialog({
 
               {selectedPackage && (
                 <div className="space-y-2">
-                  <Label htmlFor="note">Note (optional)</Label>
+                  <Label htmlFor="note">{t('noteOptional')}</Label>
                   <Textarea
                     id="note"
-                    placeholder="Why are you adding this to the collection?"
+                    placeholder={t('notePlaceholder')}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     rows={2}
@@ -261,11 +263,11 @@ export function AddItemDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('cancel')}
           </Button>
           <Button onClick={handleAdd} disabled={!selectedPackage || adding}>
             {adding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Add to Collection
+            {t('addToCollection')}
           </Button>
         </DialogFooter>
       </DialogContent>

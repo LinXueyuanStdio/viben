@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FavoriteButton } from '@/components/social';
@@ -15,6 +16,8 @@ export function SkillActions({
   favoritesCount,
   isAuthenticated,
 }: SkillActionsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-2">
       <FavoriteButton
@@ -25,7 +28,7 @@ export function SkillActions({
       />
       <Button>
         <Download className="mr-2 h-4 w-4" />
-        Install
+        {t('skills.actions.install')}
       </Button>
     </div>
   );

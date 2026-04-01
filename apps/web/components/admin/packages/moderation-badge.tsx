@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { PackageStatus } from '@/lib/types/admin';
@@ -12,28 +13,29 @@ interface ModerationBadgeProps {
 
 const statusConfig: Record<
   PackageStatus,
-  { label: string; className: string; icon?: typeof Star }
+  { labelKey: string; className: string; icon?: typeof Star }
 > = {
   pending: {
-    label: 'Pending',
+    labelKey: 'dashboard.admin.packages.status.pending',
     className: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   },
   approved: {
-    label: 'Approved',
+    labelKey: 'dashboard.admin.packages.status.approved',
     className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   },
   rejected: {
-    label: 'Rejected',
+    labelKey: 'dashboard.admin.packages.status.rejected',
     className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   },
   featured: {
-    label: 'Featured',
+    labelKey: 'dashboard.admin.packages.status.featured',
     className: 'bg-primary text-primary-foreground',
     icon: Star,
   },
 };
 
 export function ModerationBadge({ status, className }: ModerationBadgeProps) {
+  const { t } = useTranslation();
   const config = statusConfig[status];
   const Icon = config.icon;
 
@@ -47,7 +49,7 @@ export function ModerationBadge({ status, className }: ModerationBadgeProps) {
       )}
     >
       {Icon && <Icon className="mr-1 h-3 w-3 fill-current" />}
-      {config.label}
+      {t(config.labelKey)}
     </Badge>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import {
   Select,
   SelectContent,
@@ -14,6 +15,7 @@ interface CollectionsFiltersProps {
 }
 
 export function CollectionsFilters({ sort }: CollectionsFiltersProps) {
+  const { t } = useTranslation('collections');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,13 +37,13 @@ export function CollectionsFilters({ sort }: CollectionsFiltersProps) {
         onValueChange={(value) => updateFilter('sort', value)}
       >
         <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="Sort by" />
+          <SelectValue placeholder={t('sortBy')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="default">Most Popular</SelectItem>
-          <SelectItem value="recent">Recently Added</SelectItem>
-          <SelectItem value="items">Most Items</SelectItem>
-          <SelectItem value="forks">Most Forked</SelectItem>
+          <SelectItem value="default">{t('sortMostPopular')}</SelectItem>
+          <SelectItem value="recent">{t('sortRecentlyAdded')}</SelectItem>
+          <SelectItem value="items">{t('sortMostItems')}</SelectItem>
+          <SelectItem value="forks">{t('sortMostForked')}</SelectItem>
         </SelectContent>
       </Select>
     </div>

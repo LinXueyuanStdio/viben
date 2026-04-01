@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Heart } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ export function FavoriteButton({
   isAuthenticated = false,
   className,
 }: FavoriteButtonProps) {
+  const { t } = useTranslation();
   const [isFavorited, setIsFavorited] = React.useState(initialFavorited);
   const [count, setCount] = React.useState(initialCount);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -93,7 +95,7 @@ export function FavoriteButton({
       onClick={handleToggle}
       disabled={isLoading || !isAuthenticated}
       className={cn('gap-2', className)}
-      title={isAuthenticated ? (isFavorited ? 'Remove from favorites' : 'Add to favorites') : 'Sign in to favorite'}
+      title={isAuthenticated ? (isFavorited ? t('social.removeFromFavorites') : t('social.addToFavorites')) : t('social.signInToFavorite')}
     >
       <motion.div
         initial={false}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { PackageTypeStep } from './steps/package-type-step';
@@ -37,12 +38,7 @@ export interface PublishWizardState {
   file: File | null;
 }
 
-const STEPS = [
-  { title: 'Package Type', description: 'Choose what to publish' },
-  { title: 'Metadata', description: 'Add package information' },
-  { title: 'Upload', description: 'Upload your package' },
-  { title: 'Review', description: 'Review and submit' },
-];
+const STEP_KEYS = ['packageType', 'metadata', 'upload', 'review'] as const;
 
 const initialMetadata: PackageMetadata = {
   name: '',
@@ -60,6 +56,7 @@ const initialMetadata: PackageMetadata = {
 };
 
 export function PublishWizard() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [state, setState] = useState<PublishWizardState>({
     step: 0,
@@ -69,7 +66,7 @@ export function PublishWizard() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const progress = ((state.step + 1) / STEPS.length) * 100;
+  const progress = ((state.step + 1) / STEP_KEYS.length) * 100;
 
   const canGoNext = () => {
     switch (state.step) {
@@ -91,7 +88,7 @@ export function PublishWizard() {
   };
 
   const handleNext = () => {
-    if (state.step < STEPS.length - 1) {
+    if (state.step < STEP_KEYS.length - 1) {
       setState((prev) => ({ ...prev, step: prev.step + 1 }));
     }
   };
@@ -173,12 +170,12 @@ export function PublishWizard() {
         }
       }
 
-      toast.success('Package published successfully!');
+      toast.success(t('publish.toast.publishSuccess'));
       router.push(`/${state.packageType}/${pkg.id}`);
     } catch (error) {
       console.error('Failed to publish:', error);
       toast.error(
-        error instanceof Error ? error.message : 'Failed to publish package'
+        error instanceof Error ? error.message : t('publish.toast.publishFailed')
       );
     } finally {
       setIsSubmitting(false);
@@ -223,19 +220,21 @@ export function PublishWizard() {
     }
   };
 
+  const stepKey = STEP_KEYS[state.step];
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="font-medium">{STEPS[state.step].title}</span>
+          <span className="font-medium">{t(`publish.steps.${stepKey}.title`)}</span>
           <span className="text-muted-foreground">
-            Step {state.step + 1} of {STEPS.length}
+            {t('publish.wizard.stepOf', { current: state.step + 1, total: STEP_KEYS.length })}
           </span>
         </div>
         <Progress value={progress} className="h-2" />
         <p className="text-sm text-muted-foreground">
-          {STEPS[state.step].description}
+          {t(`publish.steps.${stepKey}.description`)}
         </p>
       </div>
 
@@ -250,17 +249,17 @@ export function PublishWizard() {
           disabled={state.step === 0 || isSubmitting}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
-          Back
+          {t('publish.wizard.back')}
         </Button>
 
-        {state.step === STEPS.length - 1 ? (
+        {state.step === STEP_KEYS.length - 1 ? (
           <Button onClick={handleSubmit} disabled={!canGoNext() || isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Publish Package
+            {t('publish.wizard.publishPackage')}
           </Button>
         ) : (
           <Button onClick={handleNext} disabled={!canGoNext()}>
-            Next
+            {t('publish.wizard.next')}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         )}

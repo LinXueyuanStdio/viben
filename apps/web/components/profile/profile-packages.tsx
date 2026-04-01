@@ -57,10 +57,10 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
         setMcps(data.mcps || []);
         setSkills(data.skills || []);
       } else {
-        setError('Failed to load packages');
+        setError(t('profile.packages.failedToLoad'));
       }
     } catch {
-      setError('Failed to load packages');
+      setError(t('profile.packages.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +86,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
           onClick={fetchPackages}
           className="mt-2 text-sm text-primary hover:underline"
         >
-          Try again
+          {t('profile.packages.tryAgain')}
         </button>
       </div>
     );

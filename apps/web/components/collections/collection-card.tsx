@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Layers, Lock, Heart, GitFork, Package } from 'lucide-react';
@@ -24,6 +27,8 @@ interface CollectionCardProps {
 }
 
 export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
+  const { t } = useTranslation('collections');
+
   return (
     <Link href={`/collections/${collection.id}`}>
       <div className="group flex h-full flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50">
@@ -46,11 +51,11 @@ export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
               </p>
             </div>
           </div>
-          {isOwner && <Badge variant="outline">Owner</Badge>}
+          {isOwner && <Badge variant="outline">{t('owner')}</Badge>}
         </div>
 
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
-          {collection.description || 'No description'}
+          {collection.description || t('noDescription')}
         </p>
 
         <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">

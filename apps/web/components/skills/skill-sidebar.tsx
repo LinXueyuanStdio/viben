@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Package, Tag, Zap } from 'lucide-react';
@@ -18,11 +21,13 @@ interface SkillSidebarProps {
 }
 
 export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Quick Start</CardTitle>
+          <CardTitle className="text-sm">{t('skills.sidebar.quickStart')}</CardTitle>
         </CardHeader>
         <CardContent>
           <pre className="overflow-x-auto rounded bg-muted p-3 text-xs">
@@ -33,13 +38,13 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Details</CardTitle>
+          <CardTitle className="text-sm">{t('skills.sidebar.details')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Package className="h-4 w-4" />
-              Version
+              {t('skills.sidebar.version')}
             </span>
             <Badge variant="secondary">{pkg.version}</Badge>
           </div>
@@ -47,7 +52,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Zap className="h-4 w-4" />
-              Type
+              {t('skills.sidebar.type')}
             </span>
             <Badge variant="outline">{pkg.skillType}</Badge>
           </div>
@@ -56,7 +61,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Tag className="h-4 w-4" />
-                Category
+                {t('skills.sidebar.category')}
               </span>
               <span>{pkg.category}</span>
             </div>
@@ -65,7 +70,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              Published
+              {t('skills.sidebar.published')}
             </span>
             <span>{pkg.createdAt.toLocaleDateString()}</span>
           </div>
@@ -73,7 +78,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              Updated
+              {t('skills.sidebar.updated')}
             </span>
             <span>{pkg.updatedAt.toLocaleDateString()}</span>
           </div>
@@ -83,7 +88,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
       {pkg.compatibility && pkg.compatibility.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Compatibility</CardTitle>
+            <CardTitle className="text-sm">{t('skills.sidebar.compatibility')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -100,7 +105,7 @@ export function SkillSidebar({ package: pkg }: SkillSidebarProps) {
       {pkg.dependencies && pkg.dependencies.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Dependencies</CardTitle>
+            <CardTitle className="text-sm">{t('skills.sidebar.dependencies')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -37,6 +38,7 @@ const createSchema = z.object({
 type CreateValues = z.infer<typeof createSchema>;
 
 export function CreateCollectionButton() {
+  const { t } = useTranslation('collections');
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,18 +81,18 @@ export function CreateCollectionButton() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create collection');
+        throw new Error(error.error || t('failedToCreate'));
       }
 
       const { collection } = await response.json();
-      toast.success('Collection created');
+      toast.success(t('createdSuccess'));
       setOpen(false);
       form.reset();
       setSlugManuallyEdited(false);
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create collection');
+      toast.error(error instanceof Error ? error.message : t('failedToCreate'));
     } finally {
       setIsLoading(false);
     }
@@ -109,24 +111,24 @@ export function CreateCollectionButton() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          New Collection
+          {t('newCollection')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Create Collection</DialogTitle>
+            <DialogTitle>{t('createCollection')}</DialogTitle>
             <DialogDescription>
-              Create a curated list of MCP servers and skills to share.
+              {t('createCollectionDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('name')}</Label>
               <Input
                 id="name"
-                placeholder="My Awesome Collection"
+                placeholder={t('namePlaceholder')}
                 {...form.register('name')}
               />
               {form.formState.errors.name && (
@@ -137,15 +139,15 @@ export function CreateCollectionButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">Slug</Label>
+              <Label htmlFor="slug">{t('slug')}</Label>
               <Input
                 id="slug"
-                placeholder="my-awesome-collection"
+                placeholder={t('slugPlaceholder')}
                 value={form.watch('slug')}
                 onChange={handleSlugChange}
               />
               <p className="text-xs text-muted-foreground">
-                URL-friendly identifier. Auto-generated from name.
+                {t('slugDescription')}
               </p>
               {form.formState.errors.slug && (
                 <p className="text-sm text-destructive">
@@ -155,19 +157,19 @@ export function CreateCollectionButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              <Label htmlFor="description">{t('descriptionOptional')}</Label>
               <Textarea
                 id="description"
-                placeholder="What is this collection about?"
+                placeholder={t('descriptionPlaceholder')}
                 {...form.register('description')}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Public</Label>
+                <Label>{t('public')}</Label>
                 <p className="text-xs text-muted-foreground">
-                  Anyone can view this collection
+                  {t('publicDescription')}
                 </p>
               </div>
               <Switch
@@ -180,7 +182,7 @@ export function CreateCollectionButton() {
           <DialogFooter>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Collection
+              {t('createCollection')}
             </Button>
           </DialogFooter>
         </form>

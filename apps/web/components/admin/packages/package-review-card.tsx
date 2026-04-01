@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ export function PackageReviewCard({
   onViewDetails,
   onStatusChange,
 }: PackageReviewCardProps) {
+  const { t } = useTranslation();
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isFeaturing, setIsFeaturing] = useState(false);
@@ -46,7 +48,7 @@ export function PackageReviewCard({
   const [currentStatus, setCurrentStatus] = useState<PackageStatus>(pkg.status);
 
   const TypeIcon = pkg.type === 'mcp' ? Package : Sparkles;
-  const typeLabel = pkg.type === 'mcp' ? 'MCP' : 'Skill';
+  const typeLabel = pkg.type === 'mcp' ? 'MCP' : t('dashboard.admin.packages.card.skill');
   const typeColor =
     pkg.type === 'mcp'
       ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
@@ -60,13 +62,13 @@ export function PackageReviewCard({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to approve package');
+        throw new Error(data.error || t('dashboard.admin.packages.card.approveError'));
       }
       setCurrentStatus('approved');
-      toast.success(`${pkg.name} has been approved`);
+      toast.success(t('dashboard.admin.packages.card.approveSuccess', { name: pkg.name }));
       onStatusChange?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to approve package');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.card.approveError'));
     } finally {
       setIsApproving(false);
     }
@@ -82,13 +84,13 @@ export function PackageReviewCard({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to reject package');
+        throw new Error(data.error || t('dashboard.admin.packages.card.rejectError'));
       }
       setCurrentStatus('rejected');
-      toast.success(`${pkg.name} has been rejected`);
+      toast.success(t('dashboard.admin.packages.card.rejectSuccess', { name: pkg.name }));
       onStatusChange?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to reject package');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.card.rejectError'));
       throw error; // Re-throw so modal knows it failed
     } finally {
       setIsRejecting(false);
@@ -105,17 +107,17 @@ export function PackageReviewCard({
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to update feature status');
+        throw new Error(data.error || t('dashboard.admin.packages.card.featureError'));
       }
       setCurrentStatus(featured ? 'featured' : 'approved');
       toast.success(
         featured
-          ? `${pkg.name} is now featured`
-          : `${pkg.name} has been unfeatured`
+          ? t('dashboard.admin.packages.card.featureSuccess', { name: pkg.name })
+          : t('dashboard.admin.packages.card.unfeatureSuccess', { name: pkg.name })
       );
       onStatusChange?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update feature status');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.card.featureError'));
     } finally {
       setIsFeaturing(false);
     }
@@ -140,7 +142,7 @@ export function PackageReviewCard({
               <ModerationBadge status={currentStatus} />
             </div>
             <time className="text-xs text-muted-foreground">
-              Submitted {formatRelativeTime(pkg.createdAt)}
+              {t('dashboard.admin.packages.card.submitted', { time: formatRelativeTime(pkg.createdAt) })}
             </time>
           </div>
 
@@ -159,12 +161,12 @@ export function PackageReviewCard({
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm text-muted-foreground">
-                by @{pkg.author.username}
+                {t('dashboard.admin.packages.card.byAuthor', { author: pkg.author.username })}
               </span>
             </div>
 
             <p className="text-sm text-muted-foreground line-clamp-2">
-              {pkg.description || 'No description provided'}
+              {pkg.description || t('dashboard.admin.packages.card.noDescription')}
             </p>
 
             {/* Tags */}
@@ -199,7 +201,7 @@ export function PackageReviewCard({
             onClick={() => onViewDetails(pkg.id)}
           >
             <Eye className="mr-1.5 h-4 w-4" />
-            View Details
+            {t('dashboard.admin.packages.card.viewDetails')}
           </Button>
 
           <div className="flex gap-2">
@@ -218,13 +220,13 @@ export function PackageReviewCard({
                       ) : (
                         <X className="mr-1.5 h-4 w-4" />
                       )}
-                      Reject
+                      {t('dashboard.admin.actions.reject')}
                       <ChevronDown className="ml-1 h-3 w-3" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => setShowRejectModal(true)}>
-                      Reject with reason...
+                      {t('dashboard.admin.packages.card.rejectWithReason')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -239,7 +241,7 @@ export function PackageReviewCard({
                   ) : (
                     <Check className="mr-1.5 h-4 w-4" />
                   )}
-                  Approve
+                  {t('dashboard.admin.actions.approve')}
                 </Button>
               </>
             )}
@@ -254,7 +256,7 @@ export function PackageReviewCard({
                   disabled={isLoading}
                 >
                   <X className="mr-1.5 h-4 w-4" />
-                  Revoke
+                  {t('dashboard.admin.packages.card.revoke')}
                 </Button>
                 <Button
                   size="sm"
@@ -266,7 +268,7 @@ export function PackageReviewCard({
                   ) : (
                     <Star className="mr-1.5 h-4 w-4" />
                   )}
-                  Feature
+                  {t('dashboard.admin.actions.feature')}
                 </Button>
               </>
             )}
@@ -284,7 +286,7 @@ export function PackageReviewCard({
                 ) : (
                   <Star className="mr-1.5 h-4 w-4 fill-current" />
                 )}
-                Unfeature
+                {t('dashboard.admin.actions.unfeature')}
               </Button>
             )}
 
@@ -300,7 +302,7 @@ export function PackageReviewCard({
                 ) : (
                   <Check className="mr-1.5 h-4 w-4" />
                 )}
-                Reopen
+                {t('dashboard.admin.packages.card.reopen')}
               </Button>
             )}
           </div>

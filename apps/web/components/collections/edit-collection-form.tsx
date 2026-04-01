@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +40,7 @@ interface EditCollectionFormProps {
 }
 
 export function EditCollectionForm({ collection }: EditCollectionFormProps) {
+  const { t } = useTranslation('collections');
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(true); // Start as true since we have existing slug
@@ -80,14 +82,14 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to update collection');
+        throw new Error(error.error || t('failedToUpdate'));
       }
 
-      toast.success('Collection updated');
+      toast.success(t('updatedSuccess'));
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update collection');
+      toast.error(error instanceof Error ? error.message : t('failedToUpdate'));
     } finally {
       setIsLoading(false);
     }
@@ -97,14 +99,14 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
     <Card>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <CardHeader>
-          <CardTitle>Collection Details</CardTitle>
+          <CardTitle>{t('collectionDetails')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('name')}</Label>
             <Input
               id="name"
-              placeholder="My Awesome Collection"
+              placeholder={t('namePlaceholder')}
               {...form.register('name')}
             />
             {form.formState.errors.name && (
@@ -115,15 +117,15 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
+            <Label htmlFor="slug">{t('slug')}</Label>
             <Input
               id="slug"
-              placeholder="my-awesome-collection"
+              placeholder={t('slugPlaceholder')}
               value={form.watch('slug')}
               onChange={handleSlugChange}
             />
             <p className="text-xs text-muted-foreground">
-              URL-friendly identifier. Must be unique.
+              {t('slugDescriptionEdit')}
             </p>
             {form.formState.errors.slug && (
               <p className="text-sm text-destructive">
@@ -133,19 +135,19 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
+            <Label htmlFor="description">{t('descriptionOptional')}</Label>
             <Textarea
               id="description"
-              placeholder="What is this collection about?"
+              placeholder={t('descriptionPlaceholder')}
               {...form.register('description')}
             />
           </div>
 
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label>Public</Label>
+              <Label>{t('public')}</Label>
               <p className="text-sm text-muted-foreground">
-                Anyone can view this collection
+                {t('publicDescription')}
               </p>
             </div>
             <Switch
@@ -160,11 +162,11 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
             variant="outline"
             onClick={() => router.back()}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button type="submit" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+            {t('saveChanges')}
           </Button>
         </CardFooter>
       </form>

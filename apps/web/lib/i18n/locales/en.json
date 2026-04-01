@@ -176,6 +176,91 @@
         "collection": "Collection",
         "user": "User",
         "report": "Report"
+      },
+      "packages": {
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "featured": "Featured"
+        },
+        "sort": {
+          "oldest": "Oldest First",
+          "newest": "Newest First"
+        },
+        "statusPlaceholder": "Status",
+        "sortPlaceholder": "Sort by",
+        "tabs": {
+          "all": "All Packages",
+          "mcp": "MCP Packages",
+          "skills": "Skills"
+        },
+        "rejection": {
+          "title": "Reject Package",
+          "description": "Rejecting {{packageName}} by @{{authorName}}. Please provide a reason that will be shown to the author.",
+          "quickReasons": "Quick reasons",
+          "reasons": {
+            "incompleteDoc": "Incomplete documentation",
+            "securityConcerns": "Security concerns",
+            "duplicate": "Duplicate of existing package",
+            "violatesGuidelines": "Violates guidelines"
+          },
+          "reasonLabel": "Rejection reason",
+          "reasonPlaceholder": "Explain why this package is being rejected...",
+          "submit": "Reject Package"
+        },
+        "detail": {
+          "skill": "Skill",
+          "downloads": "{{count}} downloads",
+          "favorites": "{{count}} favorites",
+          "comments": "{{count}} comments",
+          "description": "Description",
+          "noDescription": "No description provided",
+          "readme": "README",
+          "tags": "Tags",
+          "mcpDetails": "MCP Details",
+          "transport": "Transport",
+          "entryPoint": "Entry Point",
+          "skillDetails": "Skill Details",
+          "type": "Type",
+          "triggers": "Triggers",
+          "reviewHistory": "Review History",
+          "byAdmin": "by {{name}}",
+          "revoke": "Revoke",
+          "reopenApprove": "Reopen & Approve",
+          "fetchError": "Failed to fetch package details",
+          "loadError": "Failed to load package"
+        },
+        "card": {
+          "skill": "Skill",
+          "submitted": "Submitted {{time}}",
+          "byAuthor": "by @{{author}}",
+          "noDescription": "No description provided",
+          "viewDetails": "View Details",
+          "rejectWithReason": "Reject with reason...",
+          "revoke": "Revoke",
+          "reopen": "Reopen",
+          "approveSuccess": "{{name}} has been approved",
+          "approveError": "Failed to approve package",
+          "rejectSuccess": "{{name}} has been rejected",
+          "rejectError": "Failed to reject package",
+          "featureSuccess": "{{name}} is now featured",
+          "unfeatureSuccess": "{{name}} has been unfeatured",
+          "featureError": "Failed to update feature status"
+        },
+        "list": {
+          "tryAgain": "Try again",
+          "noPackages": "No packages found",
+          "noPendingPackages": "No packages are waiting for review",
+          "noStatusPackages": "No {{status}} packages",
+          "packageApproved": "Package approved",
+          "packageRejected": "Package rejected",
+          "packageFeatured": "Package featured",
+          "packageUnfeatured": "Package unfeatured",
+          "approveError": "Failed to approve package",
+          "rejectError": "Failed to reject package",
+          "featureError": "Failed to update feature status"
+        }
       }
     },
     "analytics": {
@@ -1242,7 +1327,9 @@
       "noPackagesYet": "You haven't published any packages yet",
       "publishPackage": "Publish a Package",
       "mcpPackages": "MCP Packages",
-      "skills": "Skills"
+      "skills": "Skills",
+      "failedToLoad": "Failed to load packages",
+      "tryAgain": "Try again"
     },
     "favorites": {
       "noFavorites": "You haven't favorited any packages yet",
@@ -1509,5 +1596,259 @@
     "noArtifacts": "No artifacts generated yet",
     "noFiles": "No working files",
     "noTools": "No tools used yet"
+  },
+  "collections": {
+    "owner": "Owner",
+    "noDescription": "No description",
+    "public": "Public",
+    "private": "Private",
+    "forkedFrom": "Forked from",
+    "anotherCollection": "another collection",
+    "fork": "Fork",
+    "edit": "Edit",
+    "delete": "Delete",
+    "by": "by",
+    "itemCount": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "forksCount": "{{count}} fork",
+    "forksCount_other": "{{count}} forks",
+    "favoritesCount": "{{count}} favorite",
+    "favoritesCount_other": "{{count}} favorites",
+    "failedToFork": "Failed to fork collection",
+    "forkedSuccess": "Collection forked successfully!",
+    "deleteConfirm": "Are you sure you want to delete this collection?",
+    "deletedSuccess": "Collection deleted",
+    "failedToDelete": "Failed to delete collection",
+    "items": "Items",
+    "addItem": "Add Item",
+    "emptyCollection": "This collection is empty",
+    "addFirstItem": "Add your first item",
+    "mcp": "MCP",
+    "skill": "Skill",
+    "unknownPackage": "Unknown Package",
+    "packageNotFound": "Package not found",
+    "itemRemoved": "Item removed",
+    "failedToRemoveItem": "Failed to remove item",
+    "sortBy": "Sort by",
+    "sortMostPopular": "Most Popular",
+    "sortRecentlyAdded": "Recently Added",
+    "sortMostItems": "Most Items",
+    "sortMostForked": "Most Forked",
+    "noCollectionsFound": "No collections found",
+    "tryAdjustingSearch": "Try adjusting your search",
+    "newCollection": "New Collection",
+    "createCollection": "Create Collection",
+    "createCollectionDesc": "Create a curated list of MCP servers and skills to share.",
+    "name": "Name",
+    "namePlaceholder": "My Awesome Collection",
+    "slug": "Slug",
+    "slugPlaceholder": "my-awesome-collection",
+    "slugDescription": "URL-friendly identifier. Auto-generated from name.",
+    "slugDescriptionEdit": "URL-friendly identifier. Must be unique.",
+    "descriptionOptional": "Description (optional)",
+    "descriptionPlaceholder": "What is this collection about?",
+    "publicDescription": "Anyone can view this collection",
+    "failedToCreate": "Failed to create collection",
+    "createdSuccess": "Collection created",
+    "failedToUpdate": "Failed to update collection",
+    "updatedSuccess": "Collection updated",
+    "collectionDetails": "Collection Details",
+    "cancel": "Cancel",
+    "saveChanges": "Save Changes",
+    "addItemToCollection": "Add Item to Collection",
+    "addItemDesc": "Search and select packages to add to this collection.",
+    "mcpServers": "MCP Servers",
+    "skills": "Skills",
+    "searchPlaceholder": "Search {{type}}...",
+    "noAvailablePackages": "No available {{type}} found",
+    "noteOptional": "Note (optional)",
+    "notePlaceholder": "Why are you adding this to the collection?",
+    "addToCollection": "Add to Collection",
+    "failedToLoadPackages": "Failed to load packages",
+    "itemAddedToCollection": "Item added to collection",
+    "failedToAddItem": "Failed to add item"
+  },
+  "social": {
+    "signInToComment": "Sign in to leave a comment",
+    "replyingTo": "Replying to @{{username}}",
+    "writeReplyPlaceholder": "Write a reply...",
+    "writeCommentPlaceholder": "Write a comment...",
+    "posting": "Posting...",
+    "reply": "Reply",
+    "comment": "Comment",
+    "comments": "Comments",
+    "deleteCommentTitle": "Delete comment?",
+    "deleteCommentDesc": "This action cannot be undone. This will permanently delete your comment.",
+    "deleteCommentWithRepliesDesc": "This action cannot be undone. This will permanently delete your comment and all its replies.",
+    "failedToLoadComments": "Failed to load comments",
+    "tryAgain": "Try again",
+    "noComments": "No comments yet. Be the first to comment!",
+    "addToFavorites": "Add to favorites",
+    "removeFromFavorites": "Remove from favorites",
+    "signInToFavorite": "Sign in to favorite"
+  },
+  "publish": {
+    "wizard": {
+      "stepOf": "Step {{current}} of {{total}}",
+      "back": "Back",
+      "next": "Next",
+      "publishPackage": "Publish Package"
+    },
+    "steps": {
+      "packageType": {
+        "title": "Package Type",
+        "description": "Choose what to publish"
+      },
+      "metadata": {
+        "title": "Metadata",
+        "description": "Add package information"
+      },
+      "upload": {
+        "title": "Upload",
+        "description": "Upload your package"
+      },
+      "review": {
+        "title": "Review",
+        "description": "Review and submit"
+      }
+    },
+    "packageType": {
+      "mcpServer": "MCP Server",
+      "mcpProtocol": "Model Context Protocol",
+      "mcpDescription": "Publish an MCP server that provides tools, resources, or prompts to AI assistants. Supports stdio, SSE, and HTTP transports.",
+      "skill": "Skill",
+      "skillExtension": "Claude Code Extension",
+      "skillDescription": "Publish a skill that extends Claude Code with commands, prompts, or agent behaviors. Can be triggered via slash commands."
+    },
+    "metadata": {
+      "packageName": "Package Name",
+      "packageNamePlaceholder": "My Awesome Package",
+      "slug": "Slug",
+      "slugPlaceholder": "my-awesome-package",
+      "slugHint": "URL-friendly identifier",
+      "shortDescription": "Short Description",
+      "shortDescriptionPlaceholder": "A brief description of what this package does",
+      "charactersCount": "{{count}}/{{max}} characters",
+      "longDescription": "Long Description",
+      "longDescriptionPlaceholder": "Detailed description with features, usage examples, etc. Markdown supported.",
+      "version": "Version",
+      "versionPlaceholder": "1.0.0",
+      "category": "Category",
+      "transport": "Transport",
+      "entryPoint": "Entry Point",
+      "entryPointPlaceholder": "npx @scope/package or uvx package",
+      "skillType": "Skill Type",
+      "skillTypeCommand": "Command",
+      "skillTypePrompt": "Prompt",
+      "skillTypeAgent": "Agent",
+      "skillContent": "Skill Content",
+      "skillContentPlaceholder": "The skill content (markdown or instructions)",
+      "tags": "Tags",
+      "tagsPlaceholder": "tag1, tag2, tag3",
+      "tagsHint": "Comma-separated list of tags",
+      "required": "*",
+      "categories": {
+        "general": "General",
+        "database": "Database",
+        "fileSystem": "File System",
+        "api": "API",
+        "web": "Web",
+        "productivity": "Productivity",
+        "development": "Development",
+        "communication": "Communication",
+        "codeGeneration": "Code Generation",
+        "testing": "Testing",
+        "documentation": "Documentation",
+        "refactoring": "Refactoring",
+        "debugging": "Debugging",
+        "deployment": "Deployment",
+        "other": "Other"
+      }
+    },
+    "upload": {
+      "noUploadNeeded": "No file upload needed",
+      "skillContentProvided": "Skill content was provided in the metadata step.",
+      "dropHere": "Drop your file here",
+      "dragAndDrop": "Drag and drop your package",
+      "orClickBrowse": "or click to browse. Accepts .zip, .tar.gz, .tgz",
+      "maxSize": "Maximum size: 50MB"
+    },
+    "review": {
+      "packageDetails": "Package Details",
+      "packageFile": "Package File",
+      "slug": "Slug",
+      "category": "Category",
+      "transport": "Transport",
+      "entryPoint": "Entry Point",
+      "notSet": "Not set",
+      "skillType": "Skill Type",
+      "description": "Description",
+      "tags": "Tags",
+      "warning": "Please review all details before publishing. Once published, you can update your package but the slug cannot be changed."
+    },
+    "toast": {
+      "publishSuccess": "Package published successfully!",
+      "publishFailed": "Failed to publish package",
+      "createFailed": "Failed to create package",
+      "uploadFailed": "Failed to upload package"
+    }
+  },
+  "skills": {
+    "filters": {
+      "allCategories": "All Categories",
+      "allTypes": "All Types",
+      "categoryPlaceholder": "Category",
+      "typePlaceholder": "Type",
+      "sortPlaceholder": "Sort by",
+      "categories": {
+        "automation": "Automation",
+        "coding": "Coding",
+        "data": "Data Processing",
+        "communication": "Communication",
+        "research": "Research",
+        "productivity": "Productivity",
+        "other": "Other"
+      },
+      "types": {
+        "command": "Command",
+        "prompt": "Prompt",
+        "agent": "Agent"
+      },
+      "sort": {
+        "latest": "Latest",
+        "popular": "Most Popular",
+        "downloads": "Most Downloads"
+      }
+    },
+    "readme": {
+      "title": "README",
+      "noDocumentation": "No documentation available."
+    },
+    "sidebar": {
+      "quickStart": "Quick Start",
+      "details": "Details",
+      "version": "Version",
+      "type": "Type",
+      "category": "Category",
+      "published": "Published",
+      "updated": "Updated",
+      "compatibility": "Compatibility",
+      "dependencies": "Dependencies"
+    },
+    "card": {
+      "noDescription": "No description"
+    },
+    "grid": {
+      "noSkillsFound": "No skills found",
+      "tryAdjusting": "Try adjusting your search or filters"
+    },
+    "actions": {
+      "install": "Install"
+    },
+    "header": {
+      "by": "by",
+      "downloadsCount": "{{count}} downloads",
+      "triggers": "Triggers"
+    }
   }
 }
