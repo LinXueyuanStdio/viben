@@ -2,6 +2,7 @@ import { db, collections, users } from '@/lib/db';
 import { getSession } from '@/lib/auth/cookies';
 import { eq, desc, ilike, or, and, count } from 'drizzle-orm';
 import { CollectionCard } from './collection-card';
+import { CollectionsEmpty } from './collections-empty';
 import { Pagination } from '@/components/shared/pagination';
 
 interface CollectionsGridProps {
@@ -93,16 +94,7 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
   const totalPages = Math.ceil(total / limit);
 
   if (results.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-lg text-muted-foreground">No collections found</p>
-        {q && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Try adjusting your search
-          </p>
-        )}
-      </div>
-    );
+    return <CollectionsEmpty hasQuery={!!q} />;
   }
 
   // Filter out collections without owners (shouldn't happen, but handle gracefully)

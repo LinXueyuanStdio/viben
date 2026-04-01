@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { CommentItem } from './comment-item';
 import { CommentForm } from './comment-form';
@@ -41,6 +42,7 @@ export function CommentSection({
   isAuthenticated = false,
   className,
 }: CommentSectionProps) {
+  const { t } = useTranslation();
   const [comments, setComments] = React.useState<Comment[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -61,10 +63,10 @@ export function CommentSection({
         const data = await response.json();
         setComments(data.comments);
       } else {
-        setError('Failed to load comments');
+        setError(t('social.failedToLoadComments'));
       }
     } catch (err) {
-      setError('Failed to load comments');
+      setError(t('social.failedToLoadComments'));
       console.error('Failed to fetch comments:', err);
     } finally {
       setIsLoading(false);
@@ -163,7 +165,7 @@ export function CommentSection({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <MessageSquare className="h-5 w-5" />
-          Comments
+          {t('social.comments')}
           {comments.length > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
               ({comments.length})
@@ -200,14 +202,14 @@ export function CommentSection({
               onClick={fetchComments}
               className="mt-2 text-sm text-primary hover:underline"
             >
-              Try again
+              {t('social.tryAgain')}
             </button>
           </div>
         ) : comments.length === 0 ? (
           <div className="py-8 text-center">
             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/30" />
             <p className="mt-2 text-sm text-muted-foreground">
-              No comments yet. Be the first to comment!
+              {t('social.noComments')}
             </p>
           </div>
         ) : (

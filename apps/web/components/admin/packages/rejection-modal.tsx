@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -13,13 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-
-const COMMON_REASONS = [
-  'Incomplete documentation',
-  'Security concerns',
-  'Duplicate of existing package',
-  'Violates guidelines',
-];
 
 interface RejectionModalProps {
   packageName: string;
@@ -36,8 +30,16 @@ export function RejectionModal({
   onClose,
   onConfirm,
 }: RejectionModalProps) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const COMMON_REASONS = [
+    t('dashboard.admin.packages.rejection.reasons.incompleteDoc'),
+    t('dashboard.admin.packages.rejection.reasons.securityConcerns'),
+    t('dashboard.admin.packages.rejection.reasons.duplicate'),
+    t('dashboard.admin.packages.rejection.reasons.violatesGuidelines'),
+  ];
 
   const handleConfirm = async () => {
     if (!reason.trim()) return;
@@ -72,16 +74,15 @@ export function RejectionModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Reject Package</DialogTitle>
+          <DialogTitle>{t('dashboard.admin.packages.rejection.title')}</DialogTitle>
           <DialogDescription>
-            Rejecting <span className="font-medium">{packageName}</span> by @{authorName}.
-            Please provide a reason that will be shown to the author.
+            {t('dashboard.admin.packages.rejection.description', { packageName, authorName })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Quick reasons</Label>
+            <Label>{t('dashboard.admin.packages.rejection.quickReasons')}</Label>
             <div className="flex flex-wrap gap-2">
               {COMMON_REASONS.map((commonReason) => (
                 <Button
@@ -98,10 +99,10 @@ export function RejectionModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="rejection-reason">Rejection reason</Label>
+            <Label htmlFor="rejection-reason">{t('dashboard.admin.packages.rejection.reasonLabel')}</Label>
             <Textarea
               id="rejection-reason"
-              placeholder="Explain why this package is being rejected..."
+              placeholder={t('dashboard.admin.packages.rejection.reasonPlaceholder')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
@@ -116,7 +117,7 @@ export function RejectionModal({
             onClick={handleClose}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -125,7 +126,7 @@ export function RejectionModal({
             disabled={!reason.trim() || isSubmitting}
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Reject Package
+            {t('dashboard.admin.packages.rejection.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>

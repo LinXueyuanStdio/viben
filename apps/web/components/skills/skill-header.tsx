@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Download, Star, Zap } from 'lucide-react';
@@ -29,6 +32,7 @@ interface SkillHeaderProps {
 }
 
 export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHeaderProps) {
+  const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -60,7 +64,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
               </AvatarFallback>
             </Avatar>
             <span className="text-sm">
-              by <span className="font-medium">{pkg.author.displayName}</span>
+              {t('skills.header.by')} <span className="font-medium">{pkg.author.displayName}</span>
             </span>
           </Link>
         )}
@@ -68,7 +72,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Download className="h-4 w-4" />
-            {pkg.downloadsCount} downloads
+            {t('skills.header.downloadsCount', { count: pkg.downloadsCount })}
           </span>
           {pkg.ratingCount > 0 && (
             <span className="flex items-center gap-1">
@@ -87,7 +91,7 @@ export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHead
 
       {pkg.triggerPatterns && pkg.triggerPatterns.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">Triggers</p>
+          <p className="text-sm font-medium">{t('skills.header.triggers')}</p>
           <div className="flex flex-wrap gap-2">
             {pkg.triggerPatterns.map((pattern) => (
               <code

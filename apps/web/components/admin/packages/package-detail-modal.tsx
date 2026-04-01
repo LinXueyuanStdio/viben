@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,7 @@ export function PackageDetailModal({
   onReject,
   onFeature,
 }: PackageDetailModalProps) {
+  const { t } = useTranslation();
   const [pkg, setPkg] = useState<PackageDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,12 +63,12 @@ export function PackageDetailModal({
     try {
       const res = await fetch(`/api/admin/packages/${id}`);
       if (!res.ok) {
-        throw new Error('Failed to fetch package details');
+        throw new Error(t('dashboard.admin.packages.detail.fetchError'));
       }
       const data = await res.json();
       setPkg(data.package);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load package');
+      setError(err instanceof Error ? err.message : t('dashboard.admin.packages.detail.loadError'));
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,7 @@ export function PackageDetailModal({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs">
-                      {pkg.type === 'mcp' ? 'MCP' : 'Skill'}
+                      {pkg.type === 'mcp' ? 'MCP' : t('dashboard.admin.packages.detail.skill')}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
                       v{pkg.version}
@@ -133,15 +135,15 @@ export function PackageDetailModal({
               <div className="flex gap-4 text-sm">
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <Download className="h-4 w-4" />
-                  {pkg.downloadsCount.toLocaleString()} downloads
+                  {t('dashboard.admin.packages.detail.downloads', { count: pkg.downloadsCount })}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <Heart className="h-4 w-4" />
-                  {pkg.favoritesCount.toLocaleString()} favorites
+                  {t('dashboard.admin.packages.detail.favorites', { count: pkg.favoritesCount })}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <MessageSquare className="h-4 w-4" />
-                  {pkg.commentsCount.toLocaleString()} comments
+                  {t('dashboard.admin.packages.detail.comments', { count: pkg.commentsCount })}
                 </span>
               </div>
 
@@ -149,16 +151,16 @@ export function PackageDetailModal({
 
               {/* Description */}
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">Description</h4>
+                <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.description')}</h4>
                 <p className="text-sm text-muted-foreground">
-                  {pkg.description || 'No description provided'}
+                  {pkg.description || t('dashboard.admin.packages.detail.noDescription')}
                 </p>
               </div>
 
               {/* Long Description / README */}
               {pkg.longDescription && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">README</h4>
+                  <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.readme')}</h4>
                   <div className="rounded-md bg-muted p-4 text-sm whitespace-pre-wrap">
                     {pkg.longDescription}
                   </div>
@@ -168,7 +170,7 @@ export function PackageDetailModal({
               {/* Tags */}
               {pkg.tags.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Tags</h4>
+                  <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.tags')}</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {pkg.tags.map((tag) => (
                       <Badge key={tag} variant="secondary" className="text-xs">
@@ -182,14 +184,14 @@ export function PackageDetailModal({
               {/* Type-specific Info */}
               {pkg.type === 'mcp' && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">MCP Details</h4>
+                  <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.mcpDetails')}</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Transport:</span>{' '}
+                      <span className="text-muted-foreground">{t('dashboard.admin.packages.detail.transport')}:</span>{' '}
                       <span className="font-mono">{pkg.transport}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Entry Point:</span>{' '}
+                      <span className="text-muted-foreground">{t('dashboard.admin.packages.detail.entryPoint')}:</span>{' '}
                       <span className="font-mono">{pkg.entryPoint}</span>
                     </div>
                   </div>
@@ -198,14 +200,14 @@ export function PackageDetailModal({
 
               {pkg.type === 'skill' && pkg.skillType && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Skill Details</h4>
+                  <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.skillDetails')}</h4>
                   <div className="text-sm">
-                    <span className="text-muted-foreground">Type:</span>{' '}
+                    <span className="text-muted-foreground">{t('dashboard.admin.packages.detail.type')}:</span>{' '}
                     <span className="font-mono">{pkg.skillType}</span>
                   </div>
                   {pkg.triggerPatterns && pkg.triggerPatterns.length > 0 && (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Triggers:</span>
+                      <span className="text-muted-foreground">{t('dashboard.admin.packages.detail.triggers')}:</span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {pkg.triggerPatterns.map((pattern, i) => (
                           <Badge
@@ -225,7 +227,7 @@ export function PackageDetailModal({
               {/* Review History */}
               {pkg.reviewHistory.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Review History</h4>
+                  <h4 className="text-sm font-medium">{t('dashboard.admin.packages.detail.reviewHistory')}</h4>
                   <div className="space-y-3">
                     {pkg.reviewHistory.map((entry, i) => (
                       <div
@@ -235,10 +237,10 @@ export function PackageDetailModal({
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium capitalize">
-                              {entry.action}
+                              {t(`dashboard.admin.actions.${entry.action}`, { defaultValue: entry.action })}
                             </span>
                             <span className="text-muted-foreground">
-                              by {entry.adminName}
+                              {t('dashboard.admin.packages.detail.byAdmin', { name: entry.adminName })}
                             </span>
                             <span className="text-muted-foreground">
                               {formatRelativeTime(entry.createdAt)}
@@ -266,9 +268,9 @@ export function PackageDetailModal({
                       variant="outline"
                       onClick={() => onReject?.(pkg.id)}
                     >
-                      Reject
+                      {t('dashboard.admin.actions.reject')}
                     </Button>
-                    <Button onClick={() => onApprove?.(pkg.id)}>Approve</Button>
+                    <Button onClick={() => onApprove?.(pkg.id)}>{t('dashboard.admin.actions.approve')}</Button>
                   </>
                 )}
                 {pkg.status === 'approved' && (
@@ -277,10 +279,10 @@ export function PackageDetailModal({
                       variant="outline"
                       onClick={() => onReject?.(pkg.id)}
                     >
-                      Revoke
+                      {t('dashboard.admin.packages.detail.revoke')}
                     </Button>
                     <Button onClick={() => onFeature?.(pkg.id, true)}>
-                      Feature
+                      {t('dashboard.admin.actions.feature')}
                     </Button>
                   </>
                 )}
@@ -289,12 +291,12 @@ export function PackageDetailModal({
                     variant="outline"
                     onClick={() => onFeature?.(pkg.id, false)}
                   >
-                    Unfeature
+                    {t('dashboard.admin.actions.unfeature')}
                   </Button>
                 )}
                 {pkg.status === 'rejected' && (
                   <Button onClick={() => onApprove?.(pkg.id)}>
-                    Reopen & Approve
+                    {t('dashboard.admin.packages.detail.reopenApprove')}
                   </Button>
                 )}
               </div>

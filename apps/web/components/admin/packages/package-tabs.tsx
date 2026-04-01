@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PackageReviewList } from './package-review-list';
@@ -20,6 +21,7 @@ function LoadingFallback() {
 }
 
 export function PackageTabs({ defaultType, status }: PackageTabsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -42,9 +44,9 @@ export function PackageTabs({ defaultType, status }: PackageTabsProps) {
       className="space-y-4"
     >
       <TabsList>
-        <TabsTrigger value="all">All Packages</TabsTrigger>
-        <TabsTrigger value="mcp">MCP Packages</TabsTrigger>
-        <TabsTrigger value="skill">Skills</TabsTrigger>
+        <TabsTrigger value="all">{t('dashboard.admin.packages.tabs.all')}</TabsTrigger>
+        <TabsTrigger value="mcp">{t('dashboard.admin.packages.tabs.mcp')}</TabsTrigger>
+        <TabsTrigger value="skill">{t('dashboard.admin.packages.tabs.skills')}</TabsTrigger>
       </TabsList>
 
       <TabsContent value="all" className="mt-4">

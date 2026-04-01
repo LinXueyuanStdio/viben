@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ export function CollectionHeader({
   isOwner,
   isLoggedIn,
 }: CollectionHeaderProps) {
+  const { t } = useTranslation('collections');
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -67,22 +69,22 @@ export function CollectionHeader({
       });
 
       if (!res.ok) {
-        throw new Error('Failed to fork collection');
+        throw new Error(t('failedToFork'));
       }
 
       const { collection: forked } = await res.json();
-      toast.success('Collection forked successfully!');
+      toast.success(t('forkedSuccess'));
       router.push(`/collections/${forked.id}`);
       router.refresh();
     } catch {
-      toast.error('Failed to fork collection');
+      toast.error(t('failedToFork'));
     } finally {
       setIsForking(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to delete this collection?')) {
+    if (!confirm(t('deleteConfirm'))) {
       return;
     }
 
@@ -91,11 +93,11 @@ export function CollectionHeader({
       await fetch(`/api/collections/${collection.id}`, {
         method: 'DELETE',
       });
-      toast.success('Collection deleted');
+      toast.success(t('deletedSuccess'));
       router.push('/collections');
       router.refresh();
     } catch {
-      toast.error('Failed to delete collection');
+      toast.error(t('failedToDelete'));
     } finally {
       setIsDeleting(false);
     }
@@ -115,12 +117,12 @@ export function CollectionHeader({
                 {collection.isPublic ? (
                   <>
                     <Globe className="mr-1 h-3 w-3" />
-                    Public
+                    {t('public')}
                   </>
                 ) : (
                   <>
                     <Lock className="mr-1 h-3 w-3" />
-                    Private
+                    {t('private')}
                   </>
                 )}
               </Badge>
@@ -136,12 +138,12 @@ export function CollectionHeader({
             {collection.forkedFromId && (
               <p className="mt-2 text-sm text-muted-foreground">
                 <GitFork className="mr-1 inline h-3 w-3" />
-                Forked from{' '}
+                {t('forkedFrom')}{' '}
                 <Link
                   href={`/collections/${collection.forkedFromId}`}
                   className="text-primary hover:underline"
                 >
-                  another collection
+                  {t('anotherCollection')}
                 </Link>
               </p>
             )}
@@ -160,7 +162,7 @@ export function CollectionHeader({
               ) : (
                 <GitFork className="mr-2 h-4 w-4" />
               )}
-              Fork
+              {t('fork')}
             </Button>
           )}
 
@@ -178,7 +180,7 @@ export function CollectionHeader({
                   }
                 >
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t('edit')}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleDelete}
@@ -186,7 +188,7 @@ export function CollectionHeader({
                   disabled={isDeleting}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+                  {t('delete')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -202,19 +204,19 @@ export function CollectionHeader({
               {collection.owner.username[0].toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <span>by {collection.owner.displayName}</span>
+          <span>{t('by')} {collection.owner.displayName}</span>
         </div>
         <span className="flex items-center gap-1">
           <Package className="h-4 w-4" />
-          {itemCount} {itemCount === 1 ? 'item' : 'items'}
+          {t('itemCount', { count: itemCount })}
         </span>
         <span className="flex items-center gap-1">
           <GitFork className="h-4 w-4" />
-          {collection.forksCount} forks
+          {t('forksCount', { count: collection.forksCount })}
         </span>
         <span className="flex items-center gap-1">
           <Heart className="h-4 w-4" />
-          {collection.favoritesCount} favorites
+          {t('favoritesCount', { count: collection.favoritesCount })}
         </span>
       </div>
     </div>

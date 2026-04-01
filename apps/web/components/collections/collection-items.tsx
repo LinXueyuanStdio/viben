@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -42,6 +43,7 @@ export function CollectionItems({
   items: initialItems,
   isOwner,
 }: CollectionItemsProps) {
+  const { t } = useTranslation('collections');
   const [items, setItems] = useState<CollectionItem[]>(initialItems);
   const [showAdd, setShowAdd] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -67,9 +69,9 @@ export function CollectionItems({
       }
 
       setItems((prev) => prev.filter((i) => i.itemId !== itemId));
-      toast.success('Item removed');
+      toast.success(t('itemRemoved'));
     } catch {
-      toast.error('Failed to remove item');
+      toast.error(t('failedToRemoveItem'));
     } finally {
       setRemovingId(null);
     }
@@ -82,18 +84,18 @@ export function CollectionItems({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Items</h2>
+        <h2 className="text-lg font-semibold">{t('items')}</h2>
         {isOwner && (
           <Button onClick={() => setShowAdd(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Item
+            {t('addItem')}
           </Button>
         )}
       </div>
 
       {items.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">This collection is empty</p>
+          <p className="text-muted-foreground">{t('emptyCollection')}</p>
           {isOwner && (
             <Button
               variant="outline"
@@ -101,7 +103,7 @@ export function CollectionItems({
               onClick={() => setShowAdd(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Add your first item
+              {t('addFirstItem')}
             </Button>
           )}
         </Card>
@@ -110,7 +112,7 @@ export function CollectionItems({
           {items.map((item) => {
             const TypeIcon = getItemIcon(item.itemType);
             const typeRoute = getItemRoute(item.itemType);
-            const typeLabel = item.itemType === 'mcp' ? 'MCP' : 'Skill';
+            const typeLabel = item.itemType === 'mcp' ? t('mcp') : t('skill');
 
             return (
               <Card key={item.id} className="p-4">
@@ -129,11 +131,11 @@ export function CollectionItems({
                       </Link>
                     ) : (
                       <span className="font-semibold text-muted-foreground">
-                        Unknown Package
+                        {t('unknownPackage')}
                       </span>
                     )}
                     <p className="text-sm text-muted-foreground line-clamp-1">
-                      {item.package?.description || 'Package not found'}
+                      {item.package?.description || t('packageNotFound')}
                     </p>
                     {item.note && (
                       <p className="mt-1 text-sm italic text-muted-foreground">

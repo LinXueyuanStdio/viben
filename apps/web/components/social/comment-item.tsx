@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2, MessageSquare, CornerDownRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export function CommentItem({
   isReply = false,
   isAuthenticated,
 }: CommentItemProps) {
+  const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = React.useState(false);
   const isOwner = currentUserId === comment.author.id;
 
@@ -100,7 +102,7 @@ export function CommentItem({
                 onClick={() => onReply(comment.id)}
               >
                 <MessageSquare className="h-3 w-3 mr-1" />
-                Reply
+                {t('social.reply')}
               </Button>
             )}
             {isOwner && (
@@ -113,24 +115,25 @@ export function CommentItem({
                     disabled={isDeleting}
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
+                    {t('common.delete')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('social.deleteCommentTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete
-                      your comment{comment.replies && comment.replies.length > 0 ? ' and all its replies' : ''}.
+                      {comment.replies && comment.replies.length > 0
+                        ? t('social.deleteCommentWithRepliesDesc')
+                        : t('social.deleteCommentDesc')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDelete}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Delete
+                      {t('common.delete')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

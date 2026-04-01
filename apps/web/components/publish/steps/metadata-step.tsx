@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,7 +50,27 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+// Map category keys to translation keys
+const CATEGORY_TRANSLATION_MAP: Record<string, string> = {
+  'general': 'general',
+  'database': 'database',
+  'file-system': 'fileSystem',
+  'api': 'api',
+  'web': 'web',
+  'productivity': 'productivity',
+  'development': 'development',
+  'communication': 'communication',
+  'code-generation': 'codeGeneration',
+  'testing': 'testing',
+  'documentation': 'documentation',
+  'refactoring': 'refactoring',
+  'debugging': 'debugging',
+  'deployment': 'deployment',
+  'other': 'other',
+};
+
 export function MetadataStep({ packageType, metadata, onChange }: MetadataStepProps) {
+  const { t } = useTranslation();
   const categories = packageType === 'mcp' ? MCP_CATEGORIES : SKILL_CATEGORIES;
 
   // Auto-generate slug from name
@@ -72,69 +93,69 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="name">Package Name *</Label>
+          <Label htmlFor="name">{t('publish.metadata.packageName')} {t('publish.metadata.required')}</Label>
           <Input
             id="name"
             value={metadata.name}
             onChange={(e) => handleNameChange(e.target.value)}
-            placeholder="My Awesome Package"
+            placeholder={t('publish.metadata.packageNamePlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="slug">Slug *</Label>
+          <Label htmlFor="slug">{t('publish.metadata.slug')} {t('publish.metadata.required')}</Label>
           <Input
             id="slug"
             value={metadata.slug}
             onChange={(e) => onChange({ ...metadata, slug: e.target.value })}
-            placeholder="my-awesome-package"
+            placeholder={t('publish.metadata.slugPlaceholder')}
           />
           <p className="text-xs text-muted-foreground">
-            URL-friendly identifier
+            {t('publish.metadata.slugHint')}
           </p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Short Description *</Label>
+        <Label htmlFor="description">{t('publish.metadata.shortDescription')} {t('publish.metadata.required')}</Label>
         <Input
           id="description"
           value={metadata.description}
           onChange={(e) => onChange({ ...metadata, description: e.target.value })}
-          placeholder="A brief description of what this package does"
+          placeholder={t('publish.metadata.shortDescriptionPlaceholder')}
           maxLength={200}
         />
         <p className="text-xs text-muted-foreground">
-          {metadata.description.length}/200 characters
+          {t('publish.metadata.charactersCount', { count: metadata.description.length, max: 200 })}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="longDescription">Long Description</Label>
+        <Label htmlFor="longDescription">{t('publish.metadata.longDescription')}</Label>
         <Textarea
           id="longDescription"
           value={metadata.longDescription}
           onChange={(e) =>
             onChange({ ...metadata, longDescription: e.target.value })
           }
-          placeholder="Detailed description with features, usage examples, etc. Markdown supported."
+          placeholder={t('publish.metadata.longDescriptionPlaceholder')}
           rows={6}
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="version">Version</Label>
+          <Label htmlFor="version">{t('publish.metadata.version')}</Label>
           <Input
             id="version"
             value={metadata.version}
             onChange={(e) => onChange({ ...metadata, version: e.target.value })}
-            placeholder="1.0.0"
+            placeholder={t('publish.metadata.versionPlaceholder')}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="category">{t('publish.metadata.category')}</Label>
           <Select
             value={metadata.category}
             onValueChange={(value) => onChange({ ...metadata, category: value })}
@@ -145,7 +166,7 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
             <SelectContent>
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, ' ')}
+                  {t(`publish.metadata.categories.${CATEGORY_TRANSLATION_MAP[cat] || cat}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -157,7 +178,7 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
       {packageType === 'mcp' && (
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="transport">Transport</Label>
+            <Label htmlFor="transport">{t('publish.metadata.transport')}</Label>
             <Select
               value={metadata.transport}
               onValueChange={(value: 'stdio' | 'sse' | 'http') =>
@@ -176,14 +197,14 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="entryPoint">Entry Point</Label>
+            <Label htmlFor="entryPoint">{t('publish.metadata.entryPoint')}</Label>
             <Input
               id="entryPoint"
               value={metadata.entryPoint}
               onChange={(e) =>
                 onChange({ ...metadata, entryPoint: e.target.value })
               }
-              placeholder="npx @scope/package or uvx package"
+              placeholder={t('publish.metadata.entryPointPlaceholder')}
             />
           </div>
         </div>
@@ -193,7 +214,7 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
       {packageType === 'skill' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="skillType">Skill Type</Label>
+            <Label htmlFor="skillType">{t('publish.metadata.skillType')}</Label>
             <Select
               value={metadata.skillType}
               onValueChange={(value: 'command' | 'prompt' | 'agent') =>
@@ -204,20 +225,20 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="command">Command</SelectItem>
-                <SelectItem value="prompt">Prompt</SelectItem>
-                <SelectItem value="agent">Agent</SelectItem>
+                <SelectItem value="command">{t('publish.metadata.skillTypeCommand')}</SelectItem>
+                <SelectItem value="prompt">{t('publish.metadata.skillTypePrompt')}</SelectItem>
+                <SelectItem value="agent">{t('publish.metadata.skillTypeAgent')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Skill Content *</Label>
+            <Label htmlFor="content">{t('publish.metadata.skillContent')} {t('publish.metadata.required')}</Label>
             <Textarea
               id="content"
               value={metadata.content}
               onChange={(e) => onChange({ ...metadata, content: e.target.value })}
-              placeholder="The skill content (markdown or instructions)"
+              placeholder={t('publish.metadata.skillContentPlaceholder')}
               rows={8}
             />
           </div>
@@ -225,7 +246,7 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="tags">Tags</Label>
+        <Label htmlFor="tags">{t('publish.metadata.tags')}</Label>
         <Input
           id="tags"
           value={metadata.tags.join(', ')}
@@ -238,10 +259,10 @@ export function MetadataStep({ packageType, metadata, onChange }: MetadataStepPr
                 .filter(Boolean),
             })
           }
-          placeholder="tag1, tag2, tag3"
+          placeholder={t('publish.metadata.tagsPlaceholder')}
         />
         <p className="text-xs text-muted-foreground">
-          Comma-separated list of tags
+          {t('publish.metadata.tagsHint')}
         </p>
       </div>
     </div>

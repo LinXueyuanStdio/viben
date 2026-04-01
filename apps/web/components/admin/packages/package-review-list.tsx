@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'next/navigation';
 import { PackageReviewCard } from './package-review-card';
 import { PackageDetailModal } from './package-detail-modal';
@@ -16,6 +17,7 @@ interface PackageReviewListProps {
 }
 
 export function PackageReviewList({ type, status }: PackageReviewListProps) {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
 
   const [packages, setPackages] = useState<PackageForReview[]>([]);
@@ -83,13 +85,13 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to approve package');
+        throw new Error(data.error || t('dashboard.admin.packages.list.approveError'));
       }
-      toast.success('Package approved');
+      toast.success(t('dashboard.admin.packages.list.packageApproved'));
       setDetailModalId(null);
       fetchPackages();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to approve package');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.list.approveError'));
     }
   };
 
@@ -112,13 +114,13 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to reject package');
+        throw new Error(data.error || t('dashboard.admin.packages.list.rejectError'));
       }
-      toast.success('Package rejected');
+      toast.success(t('dashboard.admin.packages.list.packageRejected'));
       setRejectModalPackage(null);
       fetchPackages();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to reject package');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.list.rejectError'));
       throw error;
     }
   };
@@ -132,13 +134,13 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to update feature status');
+        throw new Error(data.error || t('dashboard.admin.packages.list.featureError'));
       }
-      toast.success(featured ? 'Package featured' : 'Package unfeatured');
+      toast.success(featured ? t('dashboard.admin.packages.list.packageFeatured') : t('dashboard.admin.packages.list.packageUnfeatured'));
       setDetailModalId(null);
       fetchPackages();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update feature status');
+      toast.error(error instanceof Error ? error.message : t('dashboard.admin.packages.list.featureError'));
     }
   };
 
@@ -158,7 +160,7 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
           onClick={fetchPackages}
           className="mt-2 text-sm text-primary hover:underline"
         >
-          Try again
+          {t('dashboard.admin.packages.list.tryAgain')}
         </button>
       </div>
     );
@@ -168,11 +170,11 @@ export function PackageReviewList({ type, status }: PackageReviewListProps) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
         <Inbox className="h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-medium">No packages found</h3>
+        <h3 className="mt-4 text-lg font-medium">{t('dashboard.admin.packages.list.noPackages')}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {currentStatus === 'pending'
-            ? 'No packages are waiting for review'
-            : `No ${currentStatus} packages`}
+            ? t('dashboard.admin.packages.list.noPendingPackages')
+            : t('dashboard.admin.packages.list.noStatusPackages', { status: t(`dashboard.admin.packages.status.${currentStatus}`) })}
         </p>
       </div>
     );

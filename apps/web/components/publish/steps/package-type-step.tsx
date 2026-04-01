@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Server, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,8 @@ interface PackageTypeStepProps {
 }
 
 export function PackageTypeStep({ selected, onSelect }: PackageTypeStepProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card
@@ -26,15 +29,14 @@ export function PackageTypeStep({ selected, onSelect }: PackageTypeStepProps) {
               <Server className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">MCP Server</CardTitle>
-              <CardDescription>Model Context Protocol</CardDescription>
+              <CardTitle className="text-lg">{t('publish.packageType.mcpServer')}</CardTitle>
+              <CardDescription>{t('publish.packageType.mcpProtocol')}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Publish an MCP server that provides tools, resources, or prompts to AI
-            assistants. Supports stdio, SSE, and HTTP transports.
+            {t('publish.packageType.mcpDescription')}
           </p>
         </CardContent>
       </Card>
@@ -52,15 +54,14 @@ export function PackageTypeStep({ selected, onSelect }: PackageTypeStepProps) {
               <Zap className="h-6 w-6 text-yellow-500" />
             </div>
             <div>
-              <CardTitle className="text-lg">Skill</CardTitle>
-              <CardDescription>Claude Code Extension</CardDescription>
+              <CardTitle className="text-lg">{t('publish.packageType.skill')}</CardTitle>
+              <CardDescription>{t('publish.packageType.skillExtension')}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Publish a skill that extends Claude Code with commands, prompts, or
-            agent behaviors. Can be triggered via slash commands.
+            {t('publish.packageType.skillDescription')}
           </p>
         </CardContent>
       </Card>

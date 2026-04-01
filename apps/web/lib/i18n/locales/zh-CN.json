@@ -176,6 +176,91 @@
         "collection": "收藏夹",
         "user": "用户",
         "report": "举报"
+      },
+      "packages": {
+        "status": {
+          "pending": "待审核",
+          "approved": "已通过",
+          "rejected": "已拒绝",
+          "featured": "已推荐"
+        },
+        "sort": {
+          "oldest": "最早优先",
+          "newest": "最新优先"
+        },
+        "statusPlaceholder": "状态",
+        "sortPlaceholder": "排序方式",
+        "tabs": {
+          "all": "所有包",
+          "mcp": "MCP 包",
+          "skills": "技能"
+        },
+        "rejection": {
+          "title": "拒绝包",
+          "description": "正在拒绝 {{packageName}}（作者：@{{authorName}}）。请提供将向作者展示的拒绝原因。",
+          "quickReasons": "快速原因",
+          "reasons": {
+            "incompleteDoc": "文档不完整",
+            "securityConcerns": "安全问题",
+            "duplicate": "与现有包重复",
+            "violatesGuidelines": "违反准则"
+          },
+          "reasonLabel": "拒绝原因",
+          "reasonPlaceholder": "请说明拒绝此包的原因...",
+          "submit": "拒绝包"
+        },
+        "detail": {
+          "skill": "技能",
+          "downloads": "{{count}} 次下载",
+          "favorites": "{{count}} 次收藏",
+          "comments": "{{count}} 条评论",
+          "description": "描述",
+          "noDescription": "暂无描述",
+          "readme": "README",
+          "tags": "标签",
+          "mcpDetails": "MCP 详情",
+          "transport": "传输协议",
+          "entryPoint": "入口点",
+          "skillDetails": "技能详情",
+          "type": "类型",
+          "triggers": "触发器",
+          "reviewHistory": "审核历史",
+          "byAdmin": "由 {{name}}",
+          "revoke": "撤销",
+          "reopenApprove": "重新打开并通过",
+          "fetchError": "获取包详情失败",
+          "loadError": "加载包失败"
+        },
+        "card": {
+          "skill": "技能",
+          "submitted": "提交于 {{time}}",
+          "byAuthor": "由 @{{author}}",
+          "noDescription": "暂无描述",
+          "viewDetails": "查看详情",
+          "rejectWithReason": "附原因拒绝...",
+          "revoke": "撤销",
+          "reopen": "重新打开",
+          "approveSuccess": "{{name}} 已通过审核",
+          "approveError": "通过包失败",
+          "rejectSuccess": "{{name}} 已被拒绝",
+          "rejectError": "拒绝包失败",
+          "featureSuccess": "{{name}} 已被推荐",
+          "unfeatureSuccess": "{{name}} 已取消推荐",
+          "featureError": "更新推荐状态失败"
+        },
+        "list": {
+          "tryAgain": "重试",
+          "noPackages": "未找到包",
+          "noPendingPackages": "没有待审核的包",
+          "noStatusPackages": "没有{{status}}的包",
+          "packageApproved": "包已通过",
+          "packageRejected": "包已拒绝",
+          "packageFeatured": "包已推荐",
+          "packageUnfeatured": "包已取消推荐",
+          "approveError": "通过包失败",
+          "rejectError": "拒绝包失败",
+          "featureError": "更新推荐状态失败"
+        }
       }
     },
     "analytics": {
@@ -1245,7 +1330,9 @@
       "noPackagesYet": "您还没有发布任何包",
       "publishPackage": "发布包",
       "mcpPackages": "MCP 包",
-      "skills": "技能"
+      "skills": "技能",
+      "failedToLoad": "加载包失败",
+      "tryAgain": "重试"
     },
     "favorites": {
       "noFavorites": "您还没有收藏任何包",
@@ -1512,5 +1599,259 @@
     "noArtifacts": "暂无生成的产物",
     "noFiles": "暂无工作文件",
     "noTools": "暂无使用的工具"
+  },
+  "collections": {
+    "owner": "拥有者",
+    "noDescription": "暂无描述",
+    "public": "公开",
+    "private": "私有",
+    "forkedFrom": "派生自",
+    "anotherCollection": "另一个集合",
+    "fork": "派生",
+    "edit": "编辑",
+    "delete": "删除",
+    "by": "作者",
+    "itemCount": "{{count}} 个项目",
+    "itemCount_other": "{{count}} 个项目",
+    "forksCount": "{{count}} 次派生",
+    "forksCount_other": "{{count}} 次派生",
+    "favoritesCount": "{{count}} 次收藏",
+    "favoritesCount_other": "{{count}} 次收藏",
+    "failedToFork": "派生集合失败",
+    "forkedSuccess": "集合派生成功！",
+    "deleteConfirm": "确定要删除此集合吗？",
+    "deletedSuccess": "集合已删除",
+    "failedToDelete": "删除集合失败",
+    "items": "项目",
+    "addItem": "添加项目",
+    "emptyCollection": "此集合为空",
+    "addFirstItem": "添加第一个项目",
+    "mcp": "MCP",
+    "skill": "技能",
+    "unknownPackage": "未知包",
+    "packageNotFound": "包未找到",
+    "itemRemoved": "项目已移除",
+    "failedToRemoveItem": "移除项目失败",
+    "sortBy": "排序方式",
+    "sortMostPopular": "最受欢迎",
+    "sortRecentlyAdded": "最近添加",
+    "sortMostItems": "最多项目",
+    "sortMostForked": "最多派生",
+    "noCollectionsFound": "未找到集合",
+    "tryAdjustingSearch": "尝试调整搜索条件",
+    "newCollection": "新建集合",
+    "createCollection": "创建集合",
+    "createCollectionDesc": "创建一个精选的 MCP 服务器和技能列表进行分享。",
+    "name": "名称",
+    "namePlaceholder": "我的精选集合",
+    "slug": "标识符",
+    "slugPlaceholder": "my-awesome-collection",
+    "slugDescription": "URL 友好的标识符。根据名称自动生成。",
+    "slugDescriptionEdit": "URL 友好的标识符。必须唯一。",
+    "descriptionOptional": "描述（可选）",
+    "descriptionPlaceholder": "这个集合是关于什么的？",
+    "publicDescription": "任何人都可以查看此集合",
+    "failedToCreate": "创建集合失败",
+    "createdSuccess": "集合已创建",
+    "failedToUpdate": "更新集合失败",
+    "updatedSuccess": "集合已更新",
+    "collectionDetails": "集合详情",
+    "cancel": "取消",
+    "saveChanges": "保存更改",
+    "addItemToCollection": "添加项目到集合",
+    "addItemDesc": "搜索并选择要添加到此集合的包。",
+    "mcpServers": "MCP 服务器",
+    "skills": "技能",
+    "searchPlaceholder": "搜索 {{type}}...",
+    "noAvailablePackages": "未找到可用的 {{type}}",
+    "noteOptional": "备注（可选）",
+    "notePlaceholder": "为什么要添加这个到集合？",
+    "addToCollection": "添加到集合",
+    "failedToLoadPackages": "加载包失败",
+    "itemAddedToCollection": "项目已添加到集合",
+    "failedToAddItem": "添加项目失败"
+  },
+  "social": {
+    "signInToComment": "登录后发表评论",
+    "replyingTo": "回复 @{{username}}",
+    "writeReplyPlaceholder": "写下你的回复...",
+    "writeCommentPlaceholder": "写下你的评论...",
+    "posting": "发布中...",
+    "reply": "回复",
+    "comment": "评论",
+    "comments": "评论",
+    "deleteCommentTitle": "删除评论？",
+    "deleteCommentDesc": "此操作无法撤销。这将永久删除您的评论。",
+    "deleteCommentWithRepliesDesc": "此操作无法撤销。这将永久删除您的评论及其所有回复。",
+    "failedToLoadComments": "加载评论失败",
+    "tryAgain": "重试",
+    "noComments": "暂无评论，成为第一个评论的人吧！",
+    "addToFavorites": "添加到收藏",
+    "removeFromFavorites": "取消收藏",
+    "signInToFavorite": "登录后收藏"
+  },
+  "publish": {
+    "wizard": {
+      "stepOf": "第 {{current}} 步，共 {{total}} 步",
+      "back": "返回",
+      "next": "下一步",
+      "publishPackage": "发布包"
+    },
+    "steps": {
+      "packageType": {
+        "title": "包类型",
+        "description": "选择要发布的类型"
+      },
+      "metadata": {
+        "title": "元数据",
+        "description": "添加包信息"
+      },
+      "upload": {
+        "title": "上传",
+        "description": "上传您的包"
+      },
+      "review": {
+        "title": "审核",
+        "description": "审核并提交"
+      }
+    },
+    "packageType": {
+      "mcpServer": "MCP 服务器",
+      "mcpProtocol": "模型上下文协议",
+      "mcpDescription": "发布一个 MCP 服务器，为 AI 助手提供工具、资源或提示词。支持 stdio、SSE 和 HTTP 传输协议。",
+      "skill": "技能",
+      "skillExtension": "Claude Code 扩展",
+      "skillDescription": "发布一个技能，通过命令、提示词或智能体行为扩展 Claude Code。可通过斜杠命令触发。"
+    },
+    "metadata": {
+      "packageName": "包名称",
+      "packageNamePlaceholder": "我的精彩包",
+      "slug": "标识符",
+      "slugPlaceholder": "my-awesome-package",
+      "slugHint": "URL 友好的标识符",
+      "shortDescription": "简短描述",
+      "shortDescriptionPlaceholder": "简要描述此包的功能",
+      "charactersCount": "{{count}}/{{max}} 个字符",
+      "longDescription": "详细描述",
+      "longDescriptionPlaceholder": "包含功能、使用示例等的详细描述。支持 Markdown。",
+      "version": "版本",
+      "versionPlaceholder": "1.0.0",
+      "category": "分类",
+      "transport": "传输协议",
+      "entryPoint": "入口点",
+      "entryPointPlaceholder": "npx @scope/package 或 uvx package",
+      "skillType": "技能类型",
+      "skillTypeCommand": "命令",
+      "skillTypePrompt": "提示词",
+      "skillTypeAgent": "智能体",
+      "skillContent": "技能内容",
+      "skillContentPlaceholder": "技能内容（markdown 或指令）",
+      "tags": "标签",
+      "tagsPlaceholder": "标签1, 标签2, 标签3",
+      "tagsHint": "以逗号分隔的标签列表",
+      "required": "*",
+      "categories": {
+        "general": "通用",
+        "database": "数据库",
+        "fileSystem": "文件系统",
+        "api": "API",
+        "web": "网络",
+        "productivity": "生产力",
+        "development": "开发",
+        "communication": "通信",
+        "codeGeneration": "代码生成",
+        "testing": "测试",
+        "documentation": "文档",
+        "refactoring": "重构",
+        "debugging": "调试",
+        "deployment": "部署",
+        "other": "其他"
+      }
+    },
+    "upload": {
+      "noUploadNeeded": "无需上传文件",
+      "skillContentProvided": "技能内容已在元数据步骤中提供。",
+      "dropHere": "将文件拖放到此处",
+      "dragAndDrop": "拖放您的包",
+      "orClickBrowse": "或点击浏览。接受 .zip、.tar.gz、.tgz 格式",
+      "maxSize": "最大大小：50MB"
+    },
+    "review": {
+      "packageDetails": "包详情",
+      "packageFile": "包文件",
+      "slug": "标识符",
+      "category": "分类",
+      "transport": "传输协议",
+      "entryPoint": "入口点",
+      "notSet": "未设置",
+      "skillType": "技能类型",
+      "description": "描述",
+      "tags": "标签",
+      "warning": "发布前请仔细审核所有细节。发布后您可以更新包，但标识符无法更改。"
+    },
+    "toast": {
+      "publishSuccess": "包发布成功！",
+      "publishFailed": "发布包失败",
+      "createFailed": "创建包失败",
+      "uploadFailed": "上传包失败"
+    }
+  },
+  "skills": {
+    "filters": {
+      "allCategories": "所有分类",
+      "allTypes": "所有类型",
+      "categoryPlaceholder": "分类",
+      "typePlaceholder": "类型",
+      "sortPlaceholder": "排序",
+      "categories": {
+        "automation": "自动化",
+        "coding": "编程",
+        "data": "数据处理",
+        "communication": "通信",
+        "research": "研究",
+        "productivity": "生产力",
+        "other": "其他"
+      },
+      "types": {
+        "command": "命令",
+        "prompt": "提示词",
+        "agent": "智能体"
+      },
+      "sort": {
+        "latest": "最新",
+        "popular": "最受欢迎",
+        "downloads": "下载最多"
+      }
+    },
+    "readme": {
+      "title": "README",
+      "noDocumentation": "暂无文档。"
+    },
+    "sidebar": {
+      "quickStart": "快速开始",
+      "details": "详情",
+      "version": "版本",
+      "type": "类型",
+      "category": "分类",
+      "published": "发布时间",
+      "updated": "更新时间",
+      "compatibility": "兼容性",
+      "dependencies": "依赖"
+    },
+    "card": {
+      "noDescription": "暂无描述"
+    },
+    "grid": {
+      "noSkillsFound": "未找到技能",
+      "tryAdjusting": "尝试调整搜索或筛选条件"
+    },
+    "actions": {
+      "install": "安装"
+    },
+    "header": {
+      "by": "由",
+      "downloadsCount": "{{count}} 次下载",
+      "triggers": "触发器"
+    }
   }
 }
