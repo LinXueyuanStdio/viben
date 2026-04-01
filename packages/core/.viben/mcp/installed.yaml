@@ -1,0 +1,7 @@
+installed:
+  - name: servers
+    version: 0.6.2
+    path: /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/packages/core/.viben/mcp/servers
+    source: github
+    installed_at: 2026-04-02T09:39:44.736Z
+    spec: gh:modelcontextprotocol/servers#main

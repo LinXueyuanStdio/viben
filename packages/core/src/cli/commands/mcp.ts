@@ -284,22 +284,29 @@ export function registerMcpCommand(program: Command): void {
             }
           });
         } else {
-          // Show globally installed MCP
-          const installed = await mcpManager.listInstalled();
-          const mcpServer = installed.find((m) => m.name === name);
+          // Show installed MCP package (project or global)
+          const result = await getMcp(name, { target: "project" });
+          let mcpPkg = result.success ? result.mcp : undefined;
 
-          if (!mcpServer) {
+          // Fallback to global if not found in project
+          if (!mcpPkg) {
+            const globalResult = await getMcp(name, { target: "global" });
+            mcpPkg = globalResult.success ? globalResult.mcp : undefined;
+          }
+
+          if (!mcpPkg) {
             throw new Error(`MCP server "${name}" not found`);
           }
 
-          output(ctx, successResponse({ mcp: mcpServer }), () => {
-            console.log(chalk.bold(`MCP Server: ${mcpServer.name}`));
+          output(ctx, successResponse({ mcp: mcpPkg }), () => {
+            console.log(chalk.bold(`MCP Server: ${mcpPkg!.name}`));
             console.log();
             outputKeyValue(ctx, {
-              Name: mcpServer.name,
-              Version: mcpServer.version,
-              Path: mcpServer.path,
-              "Installed At": formatDate(mcpServer.installed_at),
+              Name: mcpPkg!.name,
+              Version: mcpPkg!.version,
+              Description: mcpPkg!.description || "-",
+              Path: mcpPkg!.path,
+              Source: mcpPkg!.source,
             });
           });
         }
