@@ -56,7 +56,6 @@ interface SidebarProps {
   email?: string;
   avatarUrl?: string;
   pendingPackagesCount?: number;
-  pendingReportsCount?: number;
 }
 
 function hasPermission(role: string, permission: AdminPermission): boolean {
@@ -82,7 +81,6 @@ export function Sidebar({
   email,
   avatarUrl,
   pendingPackagesCount = 0,
-  pendingReportsCount = 0,
 }: SidebarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();

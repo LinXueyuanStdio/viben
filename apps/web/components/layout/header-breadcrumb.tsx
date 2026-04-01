@@ -9,8 +9,6 @@ import {
   Layers,
   BarChart3,
   LayoutDashboard,
-  MessageSquare,
-  Flag,
   Upload,
   PackageSearch,
   Heart,
@@ -58,8 +56,6 @@ const routeConfig: Record<string, RouteConfig> = {
   // Admin section
   '/admin': { labelKey: 'nav.dashboard', icon: LayoutDashboard },
   '/admin/packages': { labelKey: 'nav.packages', icon: Package, parent: '/admin' },
-  '/admin/content': { labelKey: 'nav.content', icon: MessageSquare, parent: '/admin' },
-  '/admin/reports': { labelKey: 'nav.reports', icon: Flag, parent: '/admin' },
 };
 
 // Section roots - used as parent labels

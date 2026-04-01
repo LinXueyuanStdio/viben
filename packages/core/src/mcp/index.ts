@@ -120,3 +120,43 @@ export class McpManager {
 
 // Export singleton instance
 export const mcpManager = new McpManager();
+
+// Export ops module (selectively to avoid conflicts with ./types)
+export {
+  // Types
+  McpTarget,
+  McpResult,
+  ParsedInstallSpec,
+  InstallMcpOptions,
+  InstallMcpResult,
+  UninstallMcpOptions,
+  UninstallMcpResult,
+  ListMcpOptions,
+  InstalledMcpInfo,
+  ListMcpResult,
+  McpInfo,
+  GetMcpResult,
+  MarketplaceSearchOptions,
+  MarketplaceMcp,
+  MarketplaceSearchResult,
+  MarketplaceGetResult,
+  InstalledMcpsFile,
+  // Path utilities
+  getProjectMcpDir,
+  getGlobalMcpDir,
+  getMcpDir,
+  getInstalledYamlPath,
+  resolveTargetDir,
+  validateTargetOptions,
+  // CRUD operations
+  installMcp,
+  uninstallMcp,
+  listMcps,
+  getMcp,
+  parseInstallSpec,
+  // Registry operations
+  searchMarketplace,
+  getFromMarketplace,
+  downloadFromMarketplace,
+} from "./ops";
+export type { InstalledMcpEntry as OpsInstalledMcpEntry } from "./ops";
