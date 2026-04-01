@@ -106,7 +106,7 @@ export class McpManager {
       name: entry.name,
       version: entry.version,
       path: entry.path,
-      installed_at: entry.installedAt,
+      installed_at: entry.installed_at,
     }));
   }
 

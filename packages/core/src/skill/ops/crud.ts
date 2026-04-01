@@ -123,7 +123,7 @@ export async function installSkill(
         version: skillVersion || "1.0.0",
         path: skillDir,
         source: "marketplace",
-        installedAt: new Date().toISOString(),
+        installed_at: new Date().toISOString(),
       });
 
       // Build success message with warnings if any
@@ -165,7 +165,7 @@ export async function installSkill(
       version: skillVersion || "1.0.0",
       path: skillDir,
       source: sourcePath ? "local" : "marketplace",
-      installedAt: new Date().toISOString(),
+      installed_at: new Date().toISOString(),
     });
 
     return {
@@ -492,7 +492,7 @@ async function listSkillsInDir(skillsDir: string): Promise<InstalledSkillInfo[]>
             name: metadata?.name || entry.name,
             version: metadata?.version || "1.0.0",
             path: skillPath,
-            installedAt: new Date().toISOString(),
+            installed_at: new Date().toISOString(),
           });
         }
       }
@@ -508,7 +508,7 @@ async function listSkillsInDir(skillsDir: string): Promise<InstalledSkillInfo[]>
     name: entry.name,
     version: entry.version,
     path: entry.path,
-    installedAt: entry.installedAt,
+    installed_at: entry.installed_at,
     source: entry.source,
   }));
 }

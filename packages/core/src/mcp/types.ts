@@ -34,5 +34,5 @@ export interface InstalledMcpEntry {
   name: string;
   version: string;
   path: string;
-  installedAt: string;
+  installed_at: string;
 }

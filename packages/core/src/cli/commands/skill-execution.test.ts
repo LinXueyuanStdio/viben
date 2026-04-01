@@ -229,7 +229,7 @@ description: A tracked skill
   - name: tracked-skill
     version: 2.0.0
     path: ${ctx.skillsDir}/tracked-skill
-    installedAt: "2024-01-01T00:00:00Z"
+    installed_at: "2024-01-01T00:00:00Z"
 `
       );
 

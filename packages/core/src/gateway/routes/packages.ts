@@ -101,7 +101,7 @@ export function registerPackagesRoutes(fastify: FastifyInstance): void {
           version: skill.version,
           package_type: "skill" as const,
           install_path: skill.path,
-          installed_at: skill.installedAt,
+          installed_at: skill.installed_at,
         })),
       });
     } catch (error) {
@@ -212,7 +212,7 @@ export function registerPackagesRoutes(fastify: FastifyInstance): void {
           version: skill.version,
           package_type: "skill" as const,
           install_path: skill.path,
-          installed_at: skill.installedAt,
+          installed_at: skill.installed_at,
         })),
       });
     } catch (error) {

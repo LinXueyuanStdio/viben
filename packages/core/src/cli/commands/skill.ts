@@ -147,7 +147,7 @@ export function registerSkillCommand(program: Command): void {
                     s.name,
                     s.version,
                     s.path,
-                    formatDate(s.installedAt),
+                    formatDate(s.installed_at),
                   ])
                 );
               }
