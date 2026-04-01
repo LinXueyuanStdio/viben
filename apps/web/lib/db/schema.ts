@@ -38,7 +38,7 @@ export const users = pgTable(
     role: text('role', {
       enum: ['user', 'developer', 'admin', 'super_admin', 'moderator', 'support'],
     })
-      .default('user')
+      .default('developer')
       .notNull(),
 
     // Timestamps

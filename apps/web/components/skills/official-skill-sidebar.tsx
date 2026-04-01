@@ -3,7 +3,9 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Download, Star, User, Apple, Monitor, Shield } from 'lucide-react';
+import { Calendar, Download, Star, User, Shield } from 'lucide-react';
+import { formatCount } from '@/lib/utils/format';
+import { OsIcon } from '@/components/shared/os-icon';
 import type { ClawhubSkillDisplay } from '@/lib/types/clawhub-registry';
 
 interface OfficialSkillSidebarProps {
@@ -18,31 +20,6 @@ function formatDate(timestamp: number): string {
     month: 'short',
     day: 'numeric',
   });
-}
-
-function formatCount(count: number): string {
-  if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
-  }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
-  }
-  return String(count);
-}
-
-/**
- * Get OS icon
- */
-function OsIcon({ os }: { os: string }) {
-  switch (os.toLowerCase()) {
-    case 'macos':
-    case 'darwin':
-      return <Apple className="h-3 w-3" />;
-    case 'linux':
-    case 'windows':
-    default:
-      return <Monitor className="h-3 w-3" />;
-  }
 }
 
 export function OfficialSkillSidebar({ skill }: OfficialSkillSidebarProps) {

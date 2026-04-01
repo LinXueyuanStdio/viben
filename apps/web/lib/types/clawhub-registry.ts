@@ -3,6 +3,11 @@
  *
  * Based on the ClaWHub API v1
  * See: https://clawhub.ai/api/v1/
+ *
+ * NOTE: ClaWHub API uses camelCase for all field names (e.g., displayName, createdAt).
+ * This is an external API convention. Our internal convention per CLAUDE.md is to use
+ * snake_case for API parameters and file storage, but we preserve camelCase here to
+ * match the external ClaWHub API exactly.
  */
 
 // ============================================================================
@@ -68,7 +73,7 @@ export interface ClawhubSkillTags {
 }
 
 /**
- * Skill item in list response
+ * Skill item in list response (from /skills endpoint - deprecated, returns empty)
  */
 export interface ClawhubSkillListItem {
   slug: string;
@@ -80,6 +85,27 @@ export interface ClawhubSkillListItem {
   updatedAt: number;
   latestVersion?: ClawhubSkillVersion;
   metadata?: ClawhubSkillMetadata | null;
+}
+
+/**
+ * Package item in list response (from /packages endpoint)
+ * This is the actual working API endpoint for skills
+ */
+export interface ClawhubPackageItem {
+  name: string;
+  displayName: string;
+  summary?: string;
+  family: 'skill' | 'code-plugin' | 'bundle-plugin';
+  channel: 'official' | 'community' | 'private';
+  isOfficial: boolean;
+  executesCode: boolean;
+  ownerHandle?: string;
+  latestVersion?: string;
+  createdAt: number;
+  updatedAt: number;
+  capabilityTags?: string[];
+  runtimeId?: string | null;
+  verificationTier?: string | null;
 }
 
 /**
@@ -134,10 +160,18 @@ export interface ClawhubSearchResponse {
 // ============================================================================
 
 /**
- * Response for listing skills
+ * Response for listing skills (deprecated /skills endpoint)
  */
 export interface ClawhubSkillListResponse {
   items: ClawhubSkillListItem[];
+  nextCursor?: string | null;
+}
+
+/**
+ * Response for listing packages (working /packages endpoint)
+ */
+export interface ClawhubPackageListResponse {
+  items: ClawhubPackageItem[];
   nextCursor?: string | null;
 }
 

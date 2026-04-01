@@ -308,6 +308,11 @@ export function useClawhubRegistrySearch(
 
 /**
  * Combined hook for all ClaWHub registry operations
+ *
+ * NOTE: The ClaWHub API does not return a total count of skills in its response.
+ * This means we cannot provide a totalCount value for pagination UI (e.g., "Showing X of Y").
+ * The API uses cursor-based pagination, and we only know if there are more results
+ * by checking if nextCursor is present.
  */
 export function useClawhubRegistry(options: UseClawhubRegistrySkillsOptions = {}) {
   const { limit = 50, enabled = true, sort = 'updated' } = options;

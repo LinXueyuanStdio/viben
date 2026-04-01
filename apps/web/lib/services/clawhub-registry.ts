@@ -6,11 +6,11 @@
  */
 
 import type {
-  ClawhubSkillListResponse,
+  ClawhubPackageListResponse,
+  ClawhubPackageItem,
   ClawhubSkillDetailResponse,
   ClawhubSearchResponse,
   ClawhubSkillDisplay,
-  ClawhubSkillListItem,
   ClawhubSkillListParams,
   ClawhubSearchParams,
   ClawhubRegistryApiResponse,
@@ -21,6 +21,7 @@ const REGISTRY_BASE_URL = 'https://clawhub.ai/api/v1';
 // Simple in-memory cache for server-side
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 100; // Maximum number of cache entries
 
 /**
  * Get cached data or fetch fresh
@@ -35,35 +36,47 @@ async function cachedFetch<T>(
   }
 
   const data = await fetcher();
+
+  // If cache exceeds limit, remove oldest entry before adding new one
+  if (cache.size >= MAX_CACHE_SIZE) {
+    let oldestKey: string | null = null;
+    let oldestTimestamp = Infinity;
+    for (const [k, v] of cache) {
+      if (v.timestamp < oldestTimestamp) {
+        oldestTimestamp = v.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+
   cache.set(key, { data, timestamp: Date.now() });
   return data;
 }
 
 /**
- * Transform skill list item to display format
+ * Transform package item to display format
  */
-function transformSkillToDisplay(
-  item: ClawhubSkillListItem,
-  owner?: { handle: string; displayName?: string; image?: string | null }
-): ClawhubSkillDisplay {
+function transformPackageToDisplay(item: ClawhubPackageItem): ClawhubSkillDisplay {
   return {
-    id: item.slug,
+    id: item.name,
     name: item.displayName,
-    slug: item.slug,
-    version: item.tags?.latest ?? item.latestVersion?.version ?? '0.0.0',
+    slug: item.name,
+    version: item.latestVersion ?? '0.0.0',
     description: item.summary ?? null,
-    ownerHandle: owner?.handle ?? null,
-    ownerName: owner?.displayName ?? null,
-    ownerAvatar: owner?.image ?? null,
-    downloads: item.stats?.downloads ?? 0,
-    stars: item.stats?.stars ?? 0,
-    installs: item.stats?.installs ?? 0,
-    os: item.metadata?.os ?? null,
-    systems: item.metadata?.systems ?? null,
+    ownerHandle: item.ownerHandle ?? null,
+    ownerName: null, // Package API doesn't include owner display name
+    ownerAvatar: null, // Package API doesn't include owner avatar
+    downloads: 0, // Package API doesn't include stats
+    stars: 0,
+    installs: 0,
+    os: null, // Package API doesn't include platform metadata
+    systems: null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     isSuspicious: false,
-    _original: item,
   };
 }
 
@@ -98,20 +111,20 @@ function transformSkillDetailToDisplay(
 
 /**
  * Fetch skills from the ClaWHub registry
+ * Uses /packages endpoint with family=skill filter (the /skills endpoint returns empty)
  */
 export async function fetchClawhubSkills(
   params: ClawhubSkillListParams = {}
 ): Promise<ClawhubRegistryApiResponse> {
-  const { cursor, sort = 'updated', limit = 50, nonSuspiciousOnly = true } = params;
+  const { cursor, limit = 50 } = params;
 
-  // Build URL with query params
-  const url = new URL(`${REGISTRY_BASE_URL}/skills`);
+  // Build URL with query params - use /packages endpoint with family=skill
+  const url = new URL(`${REGISTRY_BASE_URL}/packages`);
+  url.searchParams.set('family', 'skill');
   if (cursor) url.searchParams.set('cursor', cursor);
-  if (sort) url.searchParams.set('sort', sort);
-  url.searchParams.set('limit', String(Math.min(limit, 200)));
-  if (nonSuspiciousOnly) url.searchParams.set('nonSuspiciousOnly', 'true');
+  url.searchParams.set('limit', String(Math.min(limit, 100)));
 
-  const cacheKey = `clawhub:skills:${url.toString()}`;
+  const cacheKey = `clawhub:packages:${url.toString()}`;
 
   const response = await cachedFetch(cacheKey, async () => {
     const res = await fetch(url.toString(), {
@@ -126,11 +139,11 @@ export async function fetchClawhubSkills(
       throw new Error(`ClaWHub API error: ${res.status} ${res.statusText}`);
     }
 
-    return res.json() as Promise<ClawhubSkillListResponse>;
+    return res.json() as Promise<ClawhubPackageListResponse>;
   });
 
   // Transform to display format
-  const skills = response.items.map((item) => transformSkillToDisplay(item));
+  const skills = response.items.map((item) => transformPackageToDisplay(item));
 
   return {
     skills,

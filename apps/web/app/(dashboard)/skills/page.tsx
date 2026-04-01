@@ -48,30 +48,34 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
       </PageHeader>
 
       {/* Source Tabs */}
-      <SkillSourceTabs source={source} />
+      <Suspense fallback={<div className="h-10 w-[400px] animate-pulse rounded-lg bg-muted" />}>
+        <SkillSourceTabs source={source} />
+      </Suspense>
 
       {/* Search and Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <SearchInput
-          placeholder="Search skills..."
-          defaultValue={params.q}
-        />
-        {source === 'community' && (
-          <SkillsFilters
-            category={params.category}
-            type={params.type}
-            sort={params.sort}
+      <Suspense fallback={<div className="h-10 w-full max-w-sm animate-pulse rounded-lg bg-muted" />}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <SearchInput
+            placeholder="Search skills..."
+            defaultValue={params.q}
           />
-        )}
-      </div>
+          {source === 'community' && (
+            <SkillsFilters
+              category={params.category}
+              type={params.type}
+              sort={params.sort}
+            />
+          )}
+        </div>
+      </Suspense>
 
       {/* Content Grid */}
       {source === 'official' ? (
-        <Suspense fallback={<SkillsGridSkeleton />}>
+        <Suspense key={`official-${params.q ?? ''}`} fallback={<SkillsGridSkeleton />}>
           <OfficialSkillGrid searchQuery={params.q} />
         </Suspense>
       ) : (
-        <Suspense fallback={<SkillsGridSkeleton />}>
+        <Suspense key={`community-${params.q ?? ''}`} fallback={<SkillsGridSkeleton />}>
           <SkillsGrid searchParams={params} />
         </Suspense>
       )}

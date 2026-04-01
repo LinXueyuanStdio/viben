@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       username,
       displayName,
       passwordHash,
-      role: 'user',
+      role: 'developer',
     });
 
     // Set session
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       userId,
       username,
       email,
-      role: 'user',
+      role: 'developer',
     });
 
     return NextResponse.json({ success: true, userId });

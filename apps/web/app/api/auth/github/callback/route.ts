@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
           displayName: githubUser.name || githubUser.login,
           avatarUrl: githubUser.avatar_url,
           githubUsername: githubUser.login,
-          role: 'user',
+          role: 'developer',
           emailVerified: true,
         });
 

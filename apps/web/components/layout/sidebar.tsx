@@ -18,6 +18,7 @@ import {
   LogIn,
   Heart,
   Key,
+  Users,
 } from 'lucide-react';
 import { VibenLogo } from '@/components/shared/viben-logo';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
@@ -96,6 +97,12 @@ export function Sidebar({
       icon: Package,
       permission: 'packages.review',
       badgeCount: pendingPackagesCount,
+    },
+    {
+      name: t('nav.users'),
+      href: '/admin/users',
+      icon: Users,
+      permission: 'users.view',
     },
   ];
 

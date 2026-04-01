@@ -12,27 +12,14 @@ import {
   Terminal,
   Download,
   Star,
-  Apple,
-  Monitor,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCount } from '@/lib/utils/format';
+import { OsIcon } from '@/components/shared/os-icon';
 import { SkillSourceBadge } from './skill-source-tabs';
 import type { ClawhubSkillDisplay } from '@/lib/types/clawhub-registry';
-
-/**
- * Format number with K/M suffix
- */
-function formatCount(count: number): string {
-  if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
-  }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
-  }
-  return String(count);
-}
 
 /**
  * Copy button with feedback
@@ -62,20 +49,6 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
   );
 }
 
-/**
- * Get OS icon
- */
-function OsIcon({ os }: { os: string }) {
-  switch (os.toLowerCase()) {
-    case 'macos':
-    case 'darwin':
-      return <Apple className="h-4 w-4" />;
-    case 'linux':
-    case 'windows':
-    default:
-      return <Monitor className="h-4 w-4" />;
-  }
-}
 
 interface OfficialSkillHeaderProps {
   skill: ClawhubSkillDisplay;
@@ -165,7 +138,7 @@ export function OfficialSkillHeader({ skill, content }: OfficialSkillHeaderProps
             </span>
             {skill.os.map((os) => (
               <Badge key={os} variant="outline" className="text-xs gap-1">
-                <OsIcon os={os} />
+                <OsIcon os={os} className="h-4 w-4" />
                 {os}
               </Badge>
             ))}

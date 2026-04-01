@@ -65,7 +65,7 @@ export interface InstallMcpOptions {
   /** Force reinstall if already exists */
   force?: boolean;
   /** Progress callback for installation */
-  on_progress?: (progress: number) => void;
+  onProgress?: (progress: number) => void;
 }
 
 /**

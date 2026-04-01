@@ -7,4 +7,5 @@ export * from "./viben-workspace";
 export * from "./idea-types";
 export * from "./idea-store";
 export * from "./idea-generator";
+export * from "./utils";
 export * as swarm from "./swarm";
