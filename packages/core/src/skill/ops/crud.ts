@@ -5,8 +5,9 @@
  * Pure functions following the task/ops pattern.
  */
 import { readdir, readFile, rm, cp, mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve, isAbsolute } from "node:path";
 import { readYaml, writeYaml, fileExists, ensureDir } from "../../config/yaml";
+import { downloadFromGitHub } from "../../utils/github-download";
 import {
   resolveTargetDir,
   validateTargetOptions,
@@ -15,6 +16,7 @@ import {
   getClaudeSkillsDir,
 } from "./paths";
 import { extractZipToDirectory, parseSkillMetadataFromContent } from "./extract";
+import { getSkillFromRegistry, downloadSkillFromRegistry } from "./registry";
 import type {
   SkillTarget,
   InstallSkillOptions,
@@ -51,13 +53,18 @@ export async function installSkill(
     force,
     sourcePath,
     zipPath,
+    githubOwner,
+    githubRepo,
+    githubRef,
     onProgress,
     version,
     conflictResolution,
   } = options;
 
-  // Parse name@version if present
-  const { skillName, skillVersion } = parseSkillName(name, version);
+  // Parse spec (supports name, name@version, gh:user/repo, gh:user/repo#ref, local paths)
+  const parsed = parseInstallSpec(name, version, githubOwner, githubRepo, githubRef);
+  const skillName = parsed.name;
+  const skillVersion = parsed.version;
 
   // Validate options
   const validation = validateTargetOptions(target, agentId, customPath);
@@ -140,9 +147,21 @@ export async function installSkill(
         target,
         message,
       };
-    } else if (sourcePath) {
+    } else if (sourcePath || parsed.source === "local") {
       // Copy from local directory
-      const copyResult = await copySkillFromLocal(sourcePath, skillDir);
+      const localPath = sourcePath || parsed.localPath;
+      if (!localPath) {
+        return {
+          success: false,
+          error: "Local path not specified",
+          name: skillName,
+          version: skillVersion || "1.0.0",
+          path: skillDir,
+          target,
+          message: "Local path not specified",
+        };
+      }
+      const copyResult = await copySkillFromLocal(localPath, skillDir);
       if (!copyResult.success) {
         return {
           success: false,
@@ -154,9 +173,136 @@ export async function installSkill(
           message: copyResult.error || "Failed to copy skill",
         };
       }
+    } else if (parsed.source === "github") {
+      // Download from GitHub
+      const ghOwner = parsed.githubOwner;
+      const ghRepo = parsed.githubRepo;
+      const ghRef = parsed.githubRef;
+
+      if (!ghOwner || !ghRepo) {
+        await rm(skillDir, { recursive: true, force: true });
+        return {
+          success: false,
+          error: "Invalid GitHub spec: missing owner or repo",
+          name: skillName,
+          version: skillVersion || "1.0.0",
+          path: "",
+          target,
+          message: "Invalid GitHub spec",
+        };
+      }
+
+      const downloadResult = await downloadFromGitHub({
+        owner: ghOwner,
+        repo: ghRepo,
+        ref: ghRef,
+        targetDir: skillDir,
+        onProgress,
+      });
+
+      if (!downloadResult.success) {
+        await rm(skillDir, { recursive: true, force: true });
+        return {
+          success: false,
+          error: downloadResult.error,
+          name: skillName,
+          version: skillVersion || "1.0.0",
+          path: "",
+          target,
+          message: downloadResult.error || "GitHub download failed",
+        };
+      }
+
+      // Try to read version from SKILL.md or use ref
+      const skillMdPath = join(skillDir, "SKILL.md");
+      let finalVersion = skillVersion || ghRef || "1.0.0";
+      if (fileExists(skillMdPath)) {
+        try {
+          const content = await readFile(skillMdPath, "utf-8");
+          const metadata = parseSkillMetadataFromContent(content);
+          if (metadata?.version) {
+            finalVersion = metadata.version;
+          }
+        } catch {
+          // Ignore errors reading SKILL.md
+        }
+      }
+
+      // Update installed.yaml with GitHub source
+      await addToInstalledList(targetDir, {
+        name: skillName,
+        version: finalVersion,
+        path: skillDir,
+        source: "github",
+        installed_at: new Date().toISOString(),
+        spec: name,
+      });
+
+      return {
+        success: true,
+        name: skillName,
+        version: finalVersion,
+        path: skillDir,
+        target,
+        message: `Skill '${skillName}' installed successfully from GitHub (${ghOwner}/${ghRepo})`,
+      };
     } else {
-      // Create a basic SKILL.md for now (marketplace download would go here)
-      await createSkillPlaceholder(skillDir, skillName, skillVersion);
+      // Download from marketplace
+      const pkgInfo = await getSkillFromRegistry(skillName);
+      if (!pkgInfo.success || !pkgInfo.skill) {
+        // Clean up empty skill directory
+        await rm(skillDir, { recursive: true, force: true });
+        return {
+          success: false,
+          error: `Skill '${skillName}' not found in registry.`,
+          name: skillName,
+          version: skillVersion || "",
+          path: "",
+          target,
+          message: `Skill '${skillName}' not found in registry`,
+        };
+      }
+
+      const downloadVersion = skillVersion || pkgInfo.skill.version;
+
+      // Download and extract
+      const downloadResult = await downloadSkillFromRegistry(
+        pkgInfo.skill.id,
+        skillVersion,
+        skillDir
+      );
+
+      if (!downloadResult.success) {
+        // Clean up on failure
+        await rm(skillDir, { recursive: true, force: true });
+        return {
+          success: false,
+          error: downloadResult.error,
+          name: skillName,
+          version: downloadVersion,
+          path: "",
+          target,
+          message: downloadResult.error || "Download failed",
+        };
+      }
+
+      // Update installed.yaml with marketplace source
+      await addToInstalledList(targetDir, {
+        name: skillName,
+        version: downloadVersion,
+        path: skillDir,
+        source: "marketplace",
+        installed_at: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        name: skillName,
+        version: downloadVersion,
+        path: skillDir,
+        target,
+        message: `Skill '${skillName}@${downloadVersion}' installed successfully from marketplace`,
+      };
     }
 
     // Update installed.yaml tracking
@@ -368,7 +514,108 @@ export async function getSkill(
 // =============================================================================
 
 /**
+ * Parsed install spec result
+ */
+interface ParsedSkillInstallSpec {
+  /** Skill name */
+  name: string;
+  /** Version (from @version or explicit) */
+  version?: string;
+  /** Source type */
+  source: "marketplace" | "github" | "local";
+  /** GitHub owner (for gh: source) */
+  githubOwner?: string;
+  /** GitHub repo (for gh: source) */
+  githubRepo?: string;
+  /** GitHub ref - tag/branch/commit (for gh: source) */
+  githubRef?: string;
+  /** Local path (for local source) */
+  localPath?: string;
+}
+
+/**
+ * Parse install spec into components
+ *
+ * Formats:
+ * - foo                        # marketplace, latest version
+ * - foo@1.2.3                  # marketplace, specific version
+ * - gh:user/repo               # GitHub, default branch
+ * - gh:user/repo#v1.0.0        # GitHub, specific ref
+ * - ./path/to/skill            # local relative path
+ * - /absolute/path             # local absolute path
+ *
+ * @param spec - Install spec string
+ * @param explicitVersion - Explicitly provided version
+ * @param explicitGhOwner - Explicitly provided GitHub owner
+ * @param explicitGhRepo - Explicitly provided GitHub repo
+ * @param explicitGhRef - Explicitly provided GitHub ref
+ */
+function parseInstallSpec(
+  spec: string,
+  explicitVersion?: string,
+  explicitGhOwner?: string,
+  explicitGhRepo?: string,
+  explicitGhRef?: string
+): ParsedSkillInstallSpec {
+  // If explicit GitHub options are provided, use them
+  if (explicitGhOwner && explicitGhRepo) {
+    return {
+      name: explicitGhRepo,
+      version: explicitVersion,
+      source: "github",
+      githubOwner: explicitGhOwner,
+      githubRepo: explicitGhRepo,
+      githubRef: explicitGhRef,
+    };
+  }
+
+  // Local path (starts with ./ or / or is absolute on Windows)
+  if (spec.startsWith("./") || spec.startsWith("/") || /^[a-zA-Z]:/.test(spec)) {
+    const name = spec.split("/").pop() || spec;
+    return {
+      name,
+      version: explicitVersion,
+      source: "local",
+      localPath: isAbsolute(spec) ? spec : resolve(process.cwd(), spec),
+    };
+  }
+
+  // GitHub (gh:user/repo or gh:user/repo#ref)
+  if (spec.startsWith("gh:")) {
+    const ghPart = spec.slice(3);
+    const [repoPath, ref] = ghPart.split("#");
+    const [owner, repo] = repoPath.split("/");
+
+    return {
+      name: repo,
+      version: explicitVersion,
+      source: "github",
+      githubOwner: owner,
+      githubRepo: repo,
+      githubRef: ref,
+    };
+  }
+
+  // Marketplace (name or name@version)
+  const atIndex = spec.lastIndexOf("@");
+  if (atIndex > 0) {
+    return {
+      name: spec.substring(0, atIndex),
+      version: explicitVersion || spec.substring(atIndex + 1),
+      source: "marketplace",
+    };
+  }
+
+  return {
+    name: spec,
+    version: explicitVersion,
+    source: "marketplace",
+  };
+}
+
+/**
  * Parse skill name@version format
+ * @deprecated Use parseInstallSpec instead
  */
 function parseSkillName(
   nameWithVersion: string,
