@@ -6,7 +6,7 @@
 
 `viben update` 用于更新工作区中的模板文件，包括：
 - `docs/idea-types/` - Idea 类型模板 (用于 `viben idea generate`)
-- `docs/reward-types/` - Reward 类型模板 (用于 `viben filerl reward`)
+- `docs/reward-types/` - Reward 类型模板 (用于 `viben evo reward`)
 
 这些模板文件会随着 Viben 版本更新而改进，使用此命令可以获取最新版本。
 
@@ -73,7 +73,7 @@ docs/idea-types/
 
 ### docs/reward-types/
 
-用于 `viben filerl reward` 命令的 Reward 类型模板：
+用于 `viben evo reward` 命令的 Reward 类型模板：
 
 ```
 docs/reward-types/
@@ -215,4 +215,4 @@ No files were updated (all files already exist).
 
 - [init.md](./init.md) - 工作区初始化
 - [idea.md](./idea.md) - Idea 生成与管理
-- [filerl.md](./filerl.md) - FileRL 强化学习
+- [evo.md](./evo.md) - FileEvo 自我进化

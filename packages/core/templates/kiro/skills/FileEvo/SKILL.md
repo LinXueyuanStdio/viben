@@ -1,6 +1,6 @@
-# FileRL - Codebase Reinforcement Learning Agent
+# FileEvo - Codebase Reinforcement Learning Agent
 
-You are the FileRL Agent, responsible for running continuous reinforcement learning optimization on the codebase. You treat the codebase as "model parameters" and use PPO-like algorithms to iteratively improve code quality.
+You are the FileEvo Agent, responsible for running continuous reinforcement learning optimization on the codebase. You treat the codebase as "model parameters" and use PPO-like algorithms to iteratively improve code quality.
 
 ## Core Concept: File System as Model Parameters
 
@@ -65,14 +65,14 @@ task:
 
 ## Startup Flow
 
-### Step 1: Initialize FileRL Session
+### Step 1: Initialize FileEvo Session
 
 ```bash
 # Read workflow guide
 cat .viben/workflow.md
 
 # Initialize PPO optimizer identity
-viben user init FileRL-optimizer
+viben user init FileEvo-optimizer
 
 # Get current codebase state
 git log --oneline -5
@@ -342,7 +342,7 @@ if len(history) >= 10:
 iteration=0
 
 while true; do
-    echo "=== FileRL Iteration $iteration ==="
+    echo "=== FileEvo Iteration $iteration ==="
 
     # Phase 1: Generate ideas
     viben idea generate --types $OPTIMIZATION_TYPES --max-ideas $NUM_ROLLOUTS --override
@@ -372,7 +372,7 @@ while true; do
     done
 
     # Phase 7: Record & check convergence
-    viben task add-session --title "FileRL Iteration $iteration"
+    viben task add-session --title "FileEvo Iteration $iteration"
     # Agent judges convergence based on reward history
 
     iteration=$((iteration + 1))
@@ -450,8 +450,8 @@ viben swarm status $TASK --log
 | List reward types | `viben reward list-types` | Show builtin + custom reward types |
 | List idea types | `viben idea list-types` | Show builtin + custom idea types |
 | Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |
-| Add idea manually | `viben filerl add-idea <run> <idea.md>` | Add manual idea to run |
-| List ideas | `viben filerl list-ideas <run>` | List ideas in a run |
+| Add idea manually | `viben evo add-idea <run> <idea.md>` | Add manual idea to run |
+| List ideas | `viben evo list-ideas <run>` | List ideas in a run |
 | Promote to task | `viben idea promote <id> --worktree --start` | Convert idea to task |
 | Monitor | `viben swarm status --watch` | Watch agent progress |
 | Compute reward | `viben task compute-reward <task>` | Evaluate PR (auto in work-phase) |
@@ -500,7 +500,7 @@ viben task cleanup 03-17-optimize-queries
 viben task cleanup 03-17-connection-pool
 
 # Step 7: Record and continue
-viben task add-session --title "FileRL Iteration 1" --summary "Merged: add-caching, reward: 0.846"
+viben task add-session --title "FileEvo Iteration 1" --summary "Merged: add-caching, reward: 0.846"
 ```
 
 ### Using Custom Idea Types
@@ -539,7 +539,7 @@ viben idea list --type latency_reduction
 
 ## Completion Criteria
 
-The FileRL loop terminates when:
+The FileEvo loop terminates when:
 
 1. **Convergence**: Reward improvement < `convergence_delta` for 10 iterations
 2. **Max iterations**: Reached `max_iterations` limit
@@ -550,7 +550,7 @@ The FileRL loop terminates when:
 When complete, generate a summary report:
 
 ```markdown
-## FileRL Optimization Report
+## FileEvo Optimization Report
 
 **Target**: Performance Optimization
 **Scope**: API Layer

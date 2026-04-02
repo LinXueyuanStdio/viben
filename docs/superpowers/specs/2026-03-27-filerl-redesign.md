@@ -1,11 +1,11 @@
-# FileRL 重新设计
+# FileEvo 重新设计
 
 > 日期: 2026-03-27
 > 状态: 设计完成，待审核
 
 ## 背景
 
-FileRL 是 Viben 的代码迭代优化系统，通过"生成多个候选方案 → 多维度评估 → 选择最优合并"的循环来提升代码质量。
+FileEvo 是 Viben 的代码迭代优化系统，通过"生成多个候选方案 → 多维度评估 → 选择最优合并"的循环来提升代码质量。
 
 ### 当前问题
 
@@ -27,7 +27,7 @@ FileRL 是 Viben 的代码迭代优化系统，通过"生成多个候选方案 �
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     FileRL Run                              │
+│                     FileEvo Run                              │
 │  ┌─────────────┐    ┌──────────────────────────────────┐   │
 │  │ Target.md   │───▶│         Idea Pool                │   │
 │  │ (配置)      │    │  ┌────┐ ┌────┐ ┌────┐           │   │
@@ -139,7 +139,7 @@ task:
 
 ```
 ┌──────────────┐
-│    init      │ ◀─── filerl start
+│    init      │ ◀─── evo start
 └──────┬───────┘
        │
        ▼
@@ -364,26 +364,26 @@ if (!approveResult.success) {
 ### 生命周期管理
 
 ```bash
-viben filerl create <name> [--target <target.md>]  # 创建 FileRL run
-viben filerl start <name>                          # 启动优化循环
-viben filerl stop <name>                           # 停止
-viben filerl resume <name>                         # 恢复
-viben filerl status <name>                         # 查看状态
-viben filerl list                                  # 列出所有 run
+viben evo create <name> [--target <target.md>]  # 创建 FileEvo run
+viben evo start <name>                          # 启动优化循环
+viben evo stop <name>                           # 停止
+viben evo resume <name>                         # 恢复
+viben evo status <name>                         # 查看状态
+viben evo list                                  # 列出所有 run
 ```
 
 ### Idea 管理
 
 ```bash
-viben filerl add-idea <name> <idea.md>             # 添加 idea 到 run
-viben filerl list-ideas <name>                     # 列出 run 的 idea
+viben evo add-idea <name> <idea.md>             # 添加 idea 到 run
+viben evo list-ideas <name>                     # 列出 run 的 idea
 ```
 
 ### 监控
 
 ```bash
-viben filerl watch <name>                          # 实时监控
-viben filerl report <name>                         # 生成报告
+viben evo watch <name>                          # 实时监控
+viben evo report <name>                         # 生成报告
 ```
 
 ---
@@ -403,15 +403,15 @@ viben filerl report <name>                         # 生成报告
 
 ### Phase 3: CLI 更新
 
-1. 更新 `filerl create` 命令
-2. 添加 `filerl add-idea` 命令
+1. 更新 `evo create` 命令
+2. 添加 `evo add-idea` 命令
 3. 更新帮助文档
 
 ### Phase 4: 测试与文档
 
 1. 更新单元测试
 2. 更新 README 中的 CLI 命令示例
-3. 更新 FileRL.md slash command
+3. 更新 FileEvo.md slash command
 
 ---
 

@@ -63,7 +63,7 @@
 | 文档 | 命令 | 说明 | 状态 |
 |------|------|------|------|
 | [idea.md](./idea.md) | `viben idea` | AI 驱动的想法生成 | 待实现 |
-| [filerl.md](./filerl.md) | `viben filerl` | FileRL 代码优化工作流 | 已实现 |
+| [evo.md](./evo.md) | `viben evo` | FileEvo 代码自我进化工作流 | 已实现 |
 
 ## 命令结构
 
@@ -104,7 +104,7 @@ Commands:
 
   # AI 辅助
   idea          AI-powered idea generation (generate, list, promote)
-  filerl        FileRL - File-based Reinforcement Learning for code optimization
+  evo           FileEvo - File-based Self-Evolution for code optimization
 
   # 通用
   version       Show version info

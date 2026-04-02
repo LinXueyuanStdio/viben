@@ -12,7 +12,7 @@ description: "Viben - Agent Swarm × Code Evolution, multi-objective constrained
 
 | Feature | Description |
 |---------|-------------|
-| 🧬 **FileRL** | Code iterative optimization: multi-candidate sampling + quality evaluation, automatically selects optimal solution to merge |
+| 🧬 **FileEvo** | Code iterative optimization: multi-candidate sampling + quality evaluation, automatically selects optimal solution to merge |
 | 🤖 **Multi-Agent** | Agent swarm orchestration: parallel Worktree isolation, automated task distribution and monitoring |
 | 🔌 **MCP Protocol** | Model Context Protocol: tool registration and invocation, extends Agent capability boundaries |
 | 📋 **Task System** | XState state machine driven: Kanban + Queue + Auto-execution, complete task lifecycle management |
@@ -41,11 +41,11 @@ description: "Viben - Agent Swarm × Code Evolution, multi-objective constrained
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## FileRL: Code Iterative Optimization
+## FileEvo: Code Iterative Optimization
 
 > *Multi-objective constrained candidate selection algorithm, iteratively improving code quality through sampling-evaluation-selection cycles*
 
-FileRL is a **heuristic iterative optimization method**, with the core idea of "generate multiple candidate solutions → multi-dimensional evaluation → select optimal to merge".
+FileEvo is a **heuristic iterative optimization method**, with the core idea of "generate multiple candidate solutions → multi-dimensional evaluation → select optimal to merge".
 
 ### System Components
 
@@ -66,9 +66,9 @@ FileRL is a **heuristic iterative optimization method**, with the core idea of "
 
 ```bash
 # Lifecycle
-viben filerl create <name>       # Create optimization target
-viben filerl start <target.md>   # Start optimization loop
-viben filerl status <name>       # View status
+viben evo create <name>       # Create optimization target
+viben evo start <target.md>   # Start optimization loop
+viben evo status <name>       # View status
 
 # Idea → Task
 viben idea generate --types <t>  # Generate ideas

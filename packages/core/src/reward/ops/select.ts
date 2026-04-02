@@ -4,7 +4,7 @@
  * Aggregates rewards from multiple tasks and selects the best one
  * using PPO (Proximal Policy Optimization) metrics.
  *
- * Based on docs/plans/2026-03-17-filerl-commands-design.md
+ * Based on docs/plans/2026-03-17-evo-commands-design.md
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
@@ -104,28 +104,28 @@ function calculatePpoMetrics(
 // =============================================================================
 
 /**
- * Load reward data from FileRL reward.json
+ * Load reward data from Evo reward.json
  *
  * Directory structure:
  * - With ideaId: iter{N}/{ideaId}/{taskName}/reward.json
  * - Without ideaId: iter{N}/{taskName}/reward.json
  *
- * @param filerlDir - FileRL directory path
+ * @param evoDir - Evo directory path
  * @param iteration - Current iteration number
  * @param taskName - Task name (used as reward directory name)
  * @param ideaId - Idea ID (optional, for grouping)
  * @returns Reward data or null if not found/invalid
  */
-function loadFileRlIterReward(
-  filerlDir: string,
+function loadEvoIterReward(
+  evoDir: string,
   iteration: number,
   taskName: string,
   ideaId?: string
 ): { reward: number; diffLines: number } | null {
   // Build reward.json path based on whether ideaId is provided
   const rewardJsonPath = ideaId
-    ? join(filerlDir, `iter${iteration}`, ideaId, taskName, "reward.json")
-    : join(filerlDir, `iter${iteration}`, taskName, "reward.json");
+    ? join(evoDir, `iter${iteration}`, ideaId, taskName, "reward.json")
+    : join(evoDir, `iter${iteration}`, taskName, "reward.json");
 
   try {
     const content = readFileSync(rewardJsonPath, "utf-8");
@@ -150,7 +150,7 @@ function loadFileRlIterReward(
  * Standard format: { total_score: number (0-1), diff_lines?: number, ... }
  *
  * Note: Rewards are NO LONGER stored in task.json.
- * For FileRL, use loadFileRlIterReward() which reads from iter{N}/{idea}/{task}/reward.json
+ * For Evo, use loadEvoIterReward() which reads from iter{N}/{idea}/{task}/reward.json
  *
  * @param taskDir - Absolute path to task directory
  * @returns Reward data or null if not found/invalid
@@ -201,7 +201,7 @@ export function selectBestTask(
   taskNames: string[],
   options: SelectOptions = {}
 ): SelectResult {
-  // Merge options with defaults (exclude filerlDir and iteration from defaults)
+  // Merge options with defaults (exclude evoDir and iteration from defaults)
   const opts = {
     threshold: options.threshold ?? SELECT_DEFAULTS.threshold,
     klCoef: options.klCoef ?? SELECT_DEFAULTS.klCoef,
@@ -209,7 +209,7 @@ export function selectBestTask(
     clipRange: options.clipRange ?? SELECT_DEFAULTS.clipRange,
     maxDiff: options.maxDiff ?? SELECT_DEFAULTS.maxDiff,
     taskIdeaMap: options.taskIdeaMap,
-    filerlDir: options.filerlDir,
+    evoDir: options.evoDir,
     iteration: options.iteration,
   };
 
@@ -221,8 +221,8 @@ export function selectBestTask(
     };
   }
 
-  // FileRL mode: read rewards from iter{N}/{ideaId}/{taskName}/reward.json
-  const isFileRlMode = !!opts.filerlDir && opts.iteration !== undefined;
+  // Evo mode: read rewards from iter{N}/{ideaId}/{taskName}/reward.json
+  const isEvoMode = !!opts.evoDir && opts.iteration !== undefined;
 
   // Load reward data from each task
   const taskRewards: Array<{ task: string; reward: number; diffLines: number; ideaId?: string }> =
@@ -241,16 +241,16 @@ export function selectBestTask(
     // Get ideaId from taskIdeaMap
     const ideaId = opts.taskIdeaMap?.[taskDirName];
 
-    if (isFileRlMode) {
-      // FileRL mode: use task directory basename as reward directory name
+    if (isEvoMode) {
+      // Evo mode: use task directory basename as reward directory name
       // (not task.json name/id, which might be the idea ID)
       const rewardDirName = basename(taskDir);
 
       // Read from iter{N}/{ideaId}/{taskName}/reward.json
-      rewardData = loadFileRlIterReward(opts.filerlDir!, opts.iteration!, rewardDirName, ideaId);
+      rewardData = loadEvoIterReward(opts.evoDir!, opts.iteration!, rewardDirName, ideaId);
     }
 
-    // Fallback to task.json reward if FileRL reward not found
+    // Fallback to task.json reward if Evo reward not found
     if (!rewardData) {
       rewardData = loadTaskReward(taskDir);
     }

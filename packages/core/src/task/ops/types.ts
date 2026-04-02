@@ -334,29 +334,29 @@ export interface UnifiedTask {
     };
   };
 
-  // === FileRL Reward ===
+  // === Evo Reward ===
   /** Enable compute-reward phase in work-phase pipeline */
   compute_reward?: boolean;
 
   /**
-   * FileRL directory absolute path (e.g., /path/to/.viben/filerl/<name>)
-   * When set, reward phase reads config from FileRL target and writes results to iter<N>/<task>/
+   * Evo directory absolute path (e.g., /path/to/.viben/evo/<name>)
+   * When set, reward phase reads config from Evo target and writes results to iter<N>/<task>/
    */
-  filerl_dir?: string;
+  evo_dir?: string;
 
   /**
-   * FileRL idea ID - links task to its source idea
+   * Evo idea ID - links task to its source idea
    * When set, reward output path includes idea ID: iter<N>/<ideaId>/<taskName>/reward.json
    */
-  filerl_idea?: string;
+  evo_idea?: string;
 
   /**
-   * @deprecated Use filerl_dir instead. Reward config is now read from FileRL target file.
+   * @deprecated Use evo_dir instead. Reward config is now read from Evo target file.
    */
   reward_config?: RewardConfig;
 
   /**
-   * @deprecated Reward results are now written to FileRL directory: .viben/filerl/<name>/iter<N>/<task>/reward.json
+   * @deprecated Reward results are now written to Evo directory: .viben/evo/<name>/iter<N>/<task>/reward.json
    */
   reward?: RewardResult;
 }

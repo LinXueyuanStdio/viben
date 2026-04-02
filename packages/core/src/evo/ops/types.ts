@@ -1,11 +1,11 @@
 /**
- * FileRL Types
+ * Evo Types
  *
- * Type definitions for the FileRL module.
- * FileRL treats codebase as "model parameters" and uses PPO algorithm
- * to iteratively optimize code quality.
+ * Type definitions for the Evo (File-based Self-Evolution) module.
+ * Evo treats codebase as "model parameters" and uses PPO algorithm
+ * to iteratively optimize code quality through self-evolution.
  *
- * Based on docs/plans/2026-03-17-filerl-commands-design.md
+ * Based on docs/plans/2026-03-17-evo-commands-design.md
  */
 
 import type { RewardConfig } from "../../reward/ops/types";
@@ -14,7 +14,7 @@ import type { RewardConfig } from "../../reward/ops/types";
 export { DEFAULT_REWARD_CONFIG } from "../../reward/ops/types";
 
 // =============================================================================
-// FileRL Target Configuration (YAML Header)
+// Evo Target Configuration (YAML Header)
 // =============================================================================
 
 /**
@@ -97,11 +97,11 @@ export interface TaskConfig {
 }
 
 /**
- * Complete FileRL target configuration
+ * Complete Evo target configuration
  *
  * This is parsed from the YAML header of the target markdown file.
  */
-export interface FileRlConfig {
+export interface EvoConfig {
   /** Target name/identifier */
   name: string;
 
@@ -126,7 +126,7 @@ export interface FileRlConfig {
   /** Task execution configuration */
   task: TaskConfig;
 
-  /** Whether the FileRL loop is enabled */
+  /** Whether the Evo loop is enabled */
   enabled: boolean;
 
   /** Created timestamp */
@@ -184,11 +184,11 @@ export const DEFAULT_TASK_CONFIG: TaskConfig = {
 
 
 // =============================================================================
-// FileRL Iteration State
+// Evo Iteration State
 // =============================================================================
 
 /**
- * Iteration phase - tracks progress through the FileRL pipeline
+ * Iteration phase - tracks progress through the Evo pipeline
  *
  * Flow: init -> generate_ideas -> promote_ideas -> execute_tasks ->
  *       wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
@@ -205,7 +205,7 @@ export type IterationPhase =
   | "completed";        // Iteration finished
 
 /**
- * State of a single FileRL iteration
+ * State of a single Evo iteration
  */
 export interface IterationState {
   /** Iteration number (1-based) */
@@ -252,9 +252,9 @@ export interface IterationState {
 }
 
 /**
- * FileRL run state (persisted in .viben/filerl/<name>/state.json)
+ * Evo run state (persisted in .viben/evo/<name>/state.json)
  */
-export interface FileRlState {
+export interface EvoState {
   /** Target name */
   name: string;
 
@@ -300,27 +300,27 @@ export interface FileRlState {
 // =============================================================================
 
 /**
- * Result of parsing a FileRL target file
+ * Result of parsing an Evo target file
  */
 export interface ParseTargetResult {
   success: boolean;
-  config?: FileRlConfig;
+  config?: EvoConfig;
   body?: string;
   error?: string;
 }
 
 /**
- * Result of running FileRL
+ * Result of running Evo
  */
 export interface RunResult {
   success: boolean;
-  state?: FileRlState;
+  state?: EvoState;
   message?: string;
   error?: string;
 }
 
 /**
- * Result of listing FileRL runs
+ * Result of listing Evo runs
  */
 export interface ListRunsResult {
   success: boolean;
@@ -336,17 +336,17 @@ export interface ListRunsResult {
 }
 
 /**
- * Result of viewing FileRL status
+ * Result of viewing Evo status
  */
 export interface StatusResult {
   success: boolean;
-  state?: FileRlState;
-  config?: FileRlConfig;
+  state?: EvoState;
+  config?: EvoConfig;
   error?: string;
 }
 
 /**
- * Result of stopping FileRL
+ * Result of stopping Evo
  */
 export interface StopResult {
   success: boolean;

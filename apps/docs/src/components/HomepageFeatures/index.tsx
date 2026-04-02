@@ -11,7 +11,7 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'FileRL - Code Iterative Optimization',
+    title: 'FileEvo - Code Iterative Optimization',
     Svg: require('@site/static/img/workspace-management.svg').default,
     description: (
       <>

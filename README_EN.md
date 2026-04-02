@@ -27,7 +27,7 @@
 <table>
 <tr>
 <td align="center" width="33%">
-<h3>🧬 FileRL</h3>
+<h3>🧬 FileEvo</h3>
 <b>Code Iterative Optimization</b><br/>
 Multi-candidate sampling + Quality evaluation<br/>
 Auto-select and merge best solution
@@ -69,11 +69,11 @@ Unified experience across platforms
 
 ---
 
-## 🧬 FileRL: Code Iterative Optimization
+## 🧬 FileEvo: Code Iterative Optimization
 
 > *Multi-objective constrained candidate selection algorithm, improving code quality through sampling-evaluation-selection loops*
 
-> ⚠️ **Method Positioning**: FileRL is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge". The algorithm borrows some RL concepts as design intuition, but **is not a strict RL implementation** — no state transition probabilities, no value function approximation, no theoretical convergence guarantees.
+> ⚠️ **Method Positioning**: FileEvo is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge". The algorithm borrows some RL concepts as design intuition, but **is not a strict RL implementation** — no state transition probabilities, no value function approximation, no theoretical convergence guarantees.
 
 ### Algorithm Overview
 
@@ -237,7 +237,7 @@ Where $\tau$ is the quality threshold (empirical value 0.5 ~ 0.7), candidates be
 <summary><b>Algorithm Pseudocode</b></summary>
 
 ```
-Algorithm: FileRL — Multi-objective Constrained Iterative Optimization
+Algorithm: FileEvo — Multi-objective Constrained Iterative Optimization
 ────────────────────────────────────────────────────
 Input:   C₀                  // Initial codebase
 Hyperparameters:
@@ -328,31 +328,31 @@ Output:   C*                  // Optimized codebase (current solution, not guara
 
 ```bash
 # Target File Management
-viben filerl create <name>                  # Create target.md config file
-viben filerl create <name> -d "description" # Create with description
+viben evo create <name>                  # Create target.md config file
+viben evo create <name> -d "description" # Create with description
 
 # Run Lifecycle
-viben filerl start <target.md>              # Start FileRL loop
-viben filerl start <name>                   # Resume existing run
-viben filerl start <target.md> --dry-run    # Validate config
-viben filerl status <name>                  # View status
-viben filerl stop <name>                    # Stop run
-viben filerl resume <name>                  # Resume run
-viben filerl list                           # List all runs
+viben evo start <target.md>              # Start FileEvo loop
+viben evo start <name>                   # Resume existing run
+viben evo start <target.md> --dry-run    # Validate config
+viben evo status <name>                  # View status
+viben evo stop <name>                    # Stop run
+viben evo resume <name>                  # Resume run
+viben evo list                           # List all runs
 
 # Idea Management
-viben filerl generate-ideas <name> --types <types...>  # Generate ideas
-viben filerl generate-ideas <name> --iter 2            # Specify iteration
-viben filerl list-ideas <name>                         # List ideas
-viben filerl add-idea <name> <idea.md>                 # Add external idea
-viben filerl promote-ideas <name> --ideas <id...>      # Convert to tasks
-viben filerl promote-ideas <name> --ideas <id> --start # Create and start
+viben evo generate-ideas <name> --types <types...>  # Generate ideas
+viben evo generate-ideas <name> --iter 2            # Specify iteration
+viben evo list-ideas <name>                         # List ideas
+viben evo add-idea <name> <idea.md>                 # Add external idea
+viben evo promote-ideas <name> --ideas <id...>      # Convert to tasks
+viben evo promote-ideas <name> --ideas <id> --start # Create and start
 
 # Evaluation & Selection
-viben filerl compute-reward <name>                # Compute rewards
-viben filerl compute-reward <name> --idea <id>    # Specify idea
-viben filerl select <name>                        # PPO select best
-viben filerl select <name> --threshold 0.7        # Custom threshold
+viben evo compute-reward <name>                # Compute rewards
+viben evo compute-reward <name> --idea <id>    # Specify idea
+viben evo select <name>                        # PPO select best
+viben evo select <name> --threshold 0.7        # Custom threshold
 
 # Task Merge & Cleanup
 viben task approve <task>        # Merge winner PR
@@ -370,31 +370,31 @@ viben swarm list                 # List all worktrees
 
 ```bash
 # 1. Create target file
-viben filerl create my-optimization -d "Optimize code quality"
+viben evo create my-optimization -d "Optimize code quality"
 
-# 2. Start FileRL loop
-viben filerl start my-optimization.md
+# 2. Start FileEvo loop
+viben evo start my-optimization.md
 
 # 3. Generate ideas (under iter1/)
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # 4. List generated ideas
-viben filerl list-ideas my-optimization
+viben evo list-ideas my-optimization
 
 # 5. Promote ideas to tasks and start
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # 6. Check status
-viben filerl status my-optimization
+viben evo status my-optimization
 
 # 7. Monitor task execution
 viben swarm status --watch
 
 # 8. Compute rewards
-viben filerl compute-reward my-optimization --iter 1
+viben evo compute-reward my-optimization --iter 1
 
 # 9. Select best candidate
-viben filerl select my-optimization
+viben evo select my-optimization
 
 # 10. Merge winner, cleanup loser
 viben task approve <winner-task>
@@ -407,8 +407,8 @@ viben task cleanup <loser-task>
 <summary><b>Directory Structure</b></summary>
 
 ```
-.viben/filerl/<run-name>/
-├── state.json                      # FileRL state
+.viben/evo/<run-name>/
+├── state.json                      # FileEvo state
 └── iter{N}/                        # Iteration N
     └── <idea-id>/                  # idea directory
         ├── idea.md                 # idea definition

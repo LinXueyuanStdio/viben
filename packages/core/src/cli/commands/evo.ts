@@ -1,16 +1,16 @@
 /**
- * viben filerl - FileRL (File-based Reinforcement Learning) command
+ * viben evo - Evo (File-based Self-Evolution) command
  *
- * FileRL treats codebase as "model parameters" and uses PPO algorithm
+ * Evo treats codebase as "model parameters" and uses PPO algorithm
  * to iteratively optimize code quality.
  *
  * Subcommands:
- * - create: Create a new FileRL target file
- * - start: Start FileRL with a target file
- * - status: View status of a FileRL run
- * - list: List all FileRL runs
- * - stop: Stop an active FileRL run
- * - resume: Resume a paused FileRL run
+ * - create: Create a new Evo target file
+ * - start: Start Evo with a target file
+ * - status: View status of an Evo run
+ * - list: List all Evo runs
+ * - stop: Stop an active Evo run
+ * - resume: Resume a paused Evo run
  */
 
 import chalk from "chalk";
@@ -31,25 +31,25 @@ import {
 import { CliError } from "../types";
 import { findVibenRoot, resolveTaskDirectory } from "../lib/viben-workspace";
 
-// Import filerl ops
+// Import evo ops
 import {
   parseTarget,
   validateConfig,
   generateTargetContent,
   initRun,
-  runFileRlLoop,
+  runEvoLoop,
   stop,
   resume,
   listRuns,
   getStatus,
   readState,
   writeState,
-  getFileRlDir,
-  generateIdeasForFileRl,
-  type FileRlConfig,
-  type FileRlState,
+  getEvoDir,
+  generateIdeasForEvo,
+  type EvoConfig,
+  type EvoState,
   type IterationState,
-} from "../../filerl/ops";
+} from "../../evo/ops";
 
 // Import idea ops
 import {
@@ -92,7 +92,7 @@ function ensureVibenRoot(cwd: string): string {
   const repoRoot = findVibenRoot(cwd);
   if (!repoRoot) {
     throw CliError.operationFailed(
-      "FileRL command",
+      "Evo command",
       `Not a Viben workspace (.viben not found). Run "viben team init" first.`
     );
   }
@@ -123,20 +123,20 @@ function formatIterationState(iter: IterationState): string {
 // =============================================================================
 
 /**
- * Register the filerl command
+ * Register the evo command
  */
-export function registerFileRlCommand(program: Command): void {
+export function registerEvoCommand(program: Command): void {
   const fileRlCmd = program
-    .command("filerl")
-    .description("FileRL - File-based Reinforcement Learning for code optimization");
+    .command("evo")
+    .description("Evo - File-based Self-Evolution for code optimization");
 
   // ============================================================================
-  // filerl create <name>
+  // evo create <name>
   // ============================================================================
   fileRlCmd
     .command("create")
-    .description("Create a new FileRL target file")
-    .argument("<name>", "Name for the FileRL target")
+    .description("Create a new Evo target file")
+    .argument("<name>", "Name for the Evo target")
     .option("-d, --description <text>", "Description of the target")
     .option("-o, --output <path>", "Output path (default: <name>.md)")
     .option("--json", "JSON format output")
@@ -185,12 +185,12 @@ export function registerFileRlCommand(program: Command): void {
         }
 
         output(ctx, successResponse({ name, path: outputPath }), () => {
-          outputSuccess(ctx, `Created FileRL target: ${outputPath}`);
+          outputSuccess(ctx, `Created Evo target: ${outputPath}`);
           console.log();
           console.log("Next steps:");
           console.log(`  1. Edit ${outputPath} to configure your optimization goals`);
-          console.log(`  2. Add ideas: viben filerl add-idea ${outputPath} path/to/idea.md`);
-          console.log(`  3. Start run: viben filerl start ${outputPath}`);
+          console.log(`  2. Add ideas: viben evo add-idea ${outputPath} path/to/idea.md`);
+          console.log(`  3. Start run: viben evo start ${outputPath}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -198,12 +198,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl start <name-or-target>
+  // evo start <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("start")
-    .description("Start FileRL with a target file or run name")
-    .argument("<name-or-target>", "FileRL run name or path to target file (*.md)")
+    .description("Start Evo with a target file or run name")
+    .argument("<name-or-target>", "Evo run name or path to target file (*.md)")
     .option("--force", "Force restart even if run is active")
     .option("--dry-run", "Parse and validate without running")
     .option("--json", "JSON format output")
@@ -234,7 +234,7 @@ export function registerFileRlCommand(program: Command): void {
           target = nameOrTarget;
         } else {
           throw CliError.operationFailed(
-            "Start FileRL",
+            "Start Evo",
             `"${nameOrTarget}" is not a valid run name or target file`
           );
         }
@@ -261,7 +261,7 @@ export function registerFileRlCommand(program: Command): void {
         if (options.dryRun) {
           // Dry run - just show parsed config
           output(ctx, successResponse({ config, body_length: parseResult.body?.length || 0 }), () => {
-            console.log(chalk.bold(`FileRL Target: ${config.name}`));
+            console.log(chalk.bold(`Evo Target: ${config.name}`));
             console.log();
             outputKeyValue(ctx, {
               "Name": config.name,
@@ -322,7 +322,7 @@ export function registerFileRlCommand(program: Command): void {
           throw CliError.operationFailed("Init run", initResult.error || "Unknown error");
         }
 
-        console.log(chalk.green("=== FileRL Starting ==="));
+        console.log(chalk.green("=== Evo Starting ==="));
         console.log();
         console.log(`  Name:              ${config.name}`);
         console.log(`  Target:            ${target}`);
@@ -334,17 +334,17 @@ export function registerFileRlCommand(program: Command): void {
 
         if (!config.idea.auto_generate) {
           console.log(chalk.yellow("Note: auto_generate is off. Add ideas manually:"));
-          console.log(chalk.yellow(`  viben filerl add-idea ${config.name} path/to/idea.md`));
+          console.log(chalk.yellow(`  viben evo add-idea ${config.name} path/to/idea.md`));
           console.log();
         }
 
-        // Run the full FileRL loop
-        const loopResult = await runFileRlLoop(repoRoot, config.name, (msg) => {
+        // Run the full Evo loop
+        const loopResult = await runEvoLoop(repoRoot, config.name, (msg) => {
           console.log(chalk.gray(`  ${msg}`));
         });
 
         if (!loopResult.success) {
-          throw CliError.operationFailed("FileRL loop", loopResult.error || "Unknown error");
+          throw CliError.operationFailed("Evo loop", loopResult.error || "Unknown error");
         }
 
         const resultData = loopResult.data as {
@@ -361,7 +361,7 @@ export function registerFileRlCommand(program: Command): void {
           bestReward: resultData.bestReward,
           bestTask: resultData.bestTask,
         }), () => {
-          console.log(chalk.green("=== FileRL Complete ==="));
+          console.log(chalk.green("=== Evo Complete ==="));
           console.log();
           outputKeyValue(ctx, {
             "Status": loopResult.phase === "converged" ? chalk.green("Converged") : chalk.yellow("Max iterations reached"),
@@ -376,12 +376,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl status <name>
+  // evo status <name>
   // ============================================================================
   fileRlCmd
     .command("status")
-    .description("View status of a FileRL run")
-    .argument("<name>", "Name of the FileRL run")
+    .description("View status of a Evo run")
+    .argument("<name>", "Name of the Evo run")
     .option("--json", "JSON format output")
     .action(async (name: string, options: { json?: boolean }) => {
       const ctx = getOutputContext(program);
@@ -395,7 +395,7 @@ export function registerFileRlCommand(program: Command): void {
 
         const result = getStatus(repoRoot, name);
         if (!result.success || !result.state) {
-          throw CliError.notFound("FileRL run", name);
+          throw CliError.notFound("Evo run", name);
         }
 
         const state = result.state;
@@ -408,7 +408,7 @@ export function registerFileRlCommand(program: Command): void {
           state,
           config: config || null,
         }), () => {
-          console.log(chalk.bold(`FileRL Run: ${state.name}`));
+          console.log(chalk.bold(`Evo Run: ${state.name}`));
           console.log();
           outputKeyValue(ctx, {
             "Target": state.target_path,
@@ -457,7 +457,7 @@ export function registerFileRlCommand(program: Command): void {
             console.log(chalk.green(`Run converged after ${state.completed_iterations} iterations.`));
           } else if (!state.active) {
             console.log();
-            console.log(chalk.yellow("Run is paused. Use 'viben filerl resume' to continue."));
+            console.log(chalk.yellow("Run is paused. Use 'viben evo resume' to continue."));
           }
         });
       } catch (error) {
@@ -466,11 +466,11 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl list
+  // evo list
   // ============================================================================
   fileRlCmd
     .command("list")
-    .description("List all FileRL runs")
+    .description("List all Evo runs")
     .option("--active", "Show only active runs")
     .option("--json", "JSON format output")
     .action(async (options: { active?: boolean; json?: boolean }) => {
@@ -497,15 +497,15 @@ export function registerFileRlCommand(program: Command): void {
 
         output(ctx, successResponse({ runs, count: runs.length }), () => {
           if (runs.length === 0) {
-            console.log(chalk.gray("No FileRL runs found."));
+            console.log(chalk.gray("No Evo runs found."));
             console.log();
             console.log("To start a new run:");
-            console.log("  viben filerl create <name>    # Create target file");
-            console.log("  viben filerl start <target.md>    # Run FileRL");
+            console.log("  viben evo create <name>    # Create target file");
+            console.log("  viben evo start <target.md>    # Run Evo");
             return;
           }
 
-          console.log(chalk.bold("FileRL Runs:"));
+          console.log(chalk.bold("Evo Runs:"));
           console.log();
           outputTable(
             ctx,
@@ -531,12 +531,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl stop <name>
+  // evo stop <name>
   // ============================================================================
   fileRlCmd
     .command("stop")
-    .description("Stop an active FileRL run")
-    .argument("<name>", "Name of the FileRL run to stop")
+    .description("Stop an active Evo run")
+    .argument("<name>", "Name of the Evo run to stop")
     .option("--json", "JSON format output")
     .action(async (name: string, options: { json?: boolean }) => {
       const ctx = getOutputContext(program);
@@ -554,7 +554,7 @@ export function registerFileRlCommand(program: Command): void {
         }
 
         output(ctx, successResponse({ name, message: result.message }), () => {
-          outputSuccess(ctx, result.message || `Stopped FileRL run: ${name}`);
+          outputSuccess(ctx, result.message || `Stopped Evo run: ${name}`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
@@ -562,12 +562,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl resume <name-or-target>
+  // evo resume <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("resume")
-    .description("Resume a paused FileRL run and continue the loop")
-    .argument("<name-or-target>", "Name of the FileRL run or path to target file (*.md)")
+    .description("Resume a paused Evo run and continue the loop")
+    .argument("<name-or-target>", "Name of the Evo run or path to target file (*.md)")
     .option("--json", "JSON format output")
     .action(async (nameOrTarget: string, options: { json?: boolean }) => {
       const ctx = getOutputContext(program);
@@ -602,16 +602,16 @@ export function registerFileRlCommand(program: Command): void {
           throw CliError.operationFailed("Resume run", resumeResult.error || "Unknown error");
         }
 
-        console.log(chalk.green(`=== FileRL Resuming: ${name} ===`));
+        console.log(chalk.green(`=== Evo Resuming: ${name} ===`));
         console.log();
 
         // Then continue the loop
-        const loopResult = await runFileRlLoop(repoRoot, name, (msg) => {
+        const loopResult = await runEvoLoop(repoRoot, name, (msg) => {
           console.log(chalk.gray(`  ${msg}`));
         });
 
         if (!loopResult.success) {
-          throw CliError.operationFailed("FileRL loop", loopResult.error || "Unknown error");
+          throw CliError.operationFailed("Evo loop", loopResult.error || "Unknown error");
         }
 
         const resultData = loopResult.data as {
@@ -628,7 +628,7 @@ export function registerFileRlCommand(program: Command): void {
           bestReward: resultData.bestReward,
           bestTask: resultData.bestTask,
         }), () => {
-          console.log(chalk.green("=== FileRL Complete ==="));
+          console.log(chalk.green("=== Evo Complete ==="));
           console.log();
           outputKeyValue(ctx, {
             "Status": loopResult.phase === "converged" ? chalk.green("Converged") : chalk.yellow("Max iterations reached"),
@@ -643,12 +643,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl add-idea <name-or-target> <idea-path>
+  // evo add-idea <name-or-target> <idea-path>
   // ============================================================================
   fileRlCmd
     .command("add-idea")
-    .description("Add an idea file to a FileRL target's idea pool")
-    .argument("<name-or-target>", "Run name or path to FileRL target file (*.md)")
+    .description("Add an idea file to a Evo target's idea pool")
+    .argument("<name-or-target>", "Run name or path to Evo target file (*.md)")
     .argument("<idea-path>", "Path to the idea file (.md)")
     .option("--json", "JSON format output")
     .action(async (nameOrTarget: string, ideaPath: string, options: { json?: boolean }) => {
@@ -662,7 +662,7 @@ export function registerFileRlCommand(program: Command): void {
         const repoRoot = ensureVibenRoot(cwd);
 
         // Try to get config from run state first, then fallback to target file
-        let config: FileRlConfig | null = null;
+        let config: EvoConfig | null = null;
 
         if (nameOrTarget.endsWith(".md")) {
           // It's a target file path - parse directly
@@ -685,7 +685,7 @@ export function registerFileRlCommand(program: Command): void {
         }
 
         if (!config) {
-          throw CliError.notFound("FileRL run or target file", nameOrTarget);
+          throw CliError.notFound("Evo run or target file", nameOrTarget);
         }
 
         const name = config.name;
@@ -716,12 +716,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl list-ideas <name-or-target>
+  // evo list-ideas <name-or-target>
   // ============================================================================
   fileRlCmd
     .command("list-ideas")
-    .description("List ideas in a FileRL target's pool")
-    .argument("<name-or-target>", "Run name or path to FileRL target file (*.md)")
+    .description("List ideas in a Evo target's pool")
+    .argument("<name-or-target>", "Run name or path to Evo target file (*.md)")
     .option("--status <status>", "Filter by status (draft, promoted, dismissed)")
     .option("--json", "JSON format output")
     .action(async (nameOrTarget: string, options: { status?: string; json?: boolean }) => {
@@ -735,7 +735,7 @@ export function registerFileRlCommand(program: Command): void {
         const repoRoot = ensureVibenRoot(cwd);
 
         // Try to get config from run state first, then fallback to target file
-        let config: FileRlConfig | null = null;
+        let config: EvoConfig | null = null;
 
         if (nameOrTarget.endsWith(".md")) {
           // It's a target file path - parse directly
@@ -758,27 +758,27 @@ export function registerFileRlCommand(program: Command): void {
         }
 
         if (!config) {
-          throw CliError.notFound("FileRL run or target file", nameOrTarget);
+          throw CliError.notFound("Evo run or target file", nameOrTarget);
         }
 
         const name = config.name;
 
-        // For FileRL, ideas are stored in .viben/filerl/<name>/iter{N}/<idea-id>/idea.md
-        // We need to read from the filerl directory structure, not the generic ideas directory
-        const filerlDir = join(repoRoot, ".viben", "filerl", name);
+        // For Evo, ideas are stored in .viben/evo/<name>/iter{N}/<idea-id>/idea.md
+        // We need to read from the evo directory structure, not the generic ideas directory
+        const evoDir = join(repoRoot, ".viben", "evo", name);
 
         // Get all ideas from all iteration directories
         const allIdeas: Awaited<ReturnType<typeof getAllIdeasFromSession>> = [];
 
-        // Check if filerl directory exists
-        if (existsSync(filerlDir)) {
+        // Check if evo directory exists
+        if (existsSync(evoDir)) {
           const { readdirSync, statSync } = await import("node:fs");
-          const entries = readdirSync(filerlDir);
+          const entries = readdirSync(evoDir);
 
           for (const entry of entries) {
             // Look for iter{N} directories
-            if (entry.startsWith("iter") && statSync(join(filerlDir, entry)).isDirectory()) {
-              const iterDir = join(filerlDir, entry);
+            if (entry.startsWith("iter") && statSync(join(evoDir, entry)).isDirectory()) {
+              const iterDir = join(evoDir, entry);
               const ideaDirs = readdirSync(iterDir).filter(f =>
                 statSync(join(iterDir, f)).isDirectory()
               );
@@ -837,7 +837,7 @@ export function registerFileRlCommand(program: Command): void {
             console.log(chalk.gray("No ideas found."));
             console.log();
             console.log("To add ideas:");
-            console.log(`  viben filerl add-idea ${nameOrTarget} path/to/idea.md`);
+            console.log(`  viben evo add-idea ${nameOrTarget} path/to/idea.md`);
             return;
           }
 
@@ -858,12 +858,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl generate-ideas <name>
+  // evo generate-ideas <name>
   // ============================================================================
   fileRlCmd
     .command("generate-ideas")
-    .description("Generate ideas for a FileRL run iteration")
-    .argument("<name>", "FileRL run name")
+    .description("Generate ideas for a Evo run iteration")
+    .argument("<name>", "Evo run name")
     .option("--iter <N>", "Target iteration number (default: current iteration from state.json)")
     .option("--types <types...>", "Idea types to generate (e.g., code_improvements, refactoring)")
     .option("--json", "JSON format output")
@@ -884,7 +884,7 @@ export function registerFileRlCommand(program: Command): void {
         // Load state
         const state = readState(repoRoot, name);
         if (!state) {
-          throw CliError.notFound("FileRL run", name);
+          throw CliError.notFound("Evo run", name);
         }
 
         // Parse target to get config
@@ -916,14 +916,14 @@ export function registerFileRlCommand(program: Command): void {
           throw CliError.invalidArgument("types", "No idea types specified");
         }
 
-        console.log(chalk.bold(`Generating ideas for FileRL: ${name}`));
+        console.log(chalk.bold(`Generating ideas for Evo: ${name}`));
         console.log();
         console.log(`  Iteration:   ${targetIter}`);
         console.log(`  Types:       ${ideaTypes.join(", ")}`);
         console.log(`  Max ideas:   ${config.idea.max_ideas}`);
         console.log();
 
-        const result = await generateIdeasForFileRl(repoRoot, name, targetIter, ideaTypes, {
+        const result = await generateIdeasForEvo(repoRoot, name, targetIter, ideaTypes, {
           maxIdeas: config.idea.max_ideas,
           model: config.task.model || "sonnet",
           onProgress: (msg) => console.log(chalk.gray(`  ${msg}`)),
@@ -955,7 +955,7 @@ export function registerFileRlCommand(program: Command): void {
               ])
             );
             console.log();
-            console.log(chalk.gray(`Ideas saved to: .viben/filerl/${name}/iter${targetIter}/`));
+            console.log(chalk.gray(`Ideas saved to: .viben/evo/${name}/iter${targetIter}/`));
           }
         });
       } catch (error) {
@@ -964,12 +964,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl promote-ideas <name> --ideas <idea...>
+  // evo promote-ideas <name> --ideas <idea...>
   // ============================================================================
   fileRlCmd
     .command("promote-ideas")
     .description("Promote ideas to tasks. Supports all viben task create options.")
-    .argument("<name>", "FileRL run name")
+    .argument("<name>", "Evo run name")
     .option("--iter <N>", "Iteration number (default: current iteration from state.json)")
     .option("--ideas <ideas...>", "Idea IDs to promote (required)")
     .option("-s, --slug <name>", "Task slug (only used if single idea)")
@@ -1015,7 +1015,7 @@ export function registerFileRlCommand(program: Command): void {
         // Load state
         const state = readState(repoRoot, name);
         if (!state) {
-          throw CliError.notFound("FileRL run", name);
+          throw CliError.notFound("Evo run", name);
         }
 
         // Parse target to get config
@@ -1038,8 +1038,8 @@ export function registerFileRlCommand(program: Command): void {
           throw CliError.invalidArgument("iter", "Must be a positive integer");
         }
 
-        const filerlDir = join(repoRoot, ".viben", "filerl", name);
-        const iterDir = join(filerlDir, `iter${targetIter}`);
+        const evoDir = join(repoRoot, ".viben", "evo", name);
+        const iterDir = join(evoDir, `iter${targetIter}`);
 
         if (!existsSync(iterDir)) {
           throw CliError.operationFailed(
@@ -1048,7 +1048,7 @@ export function registerFileRlCommand(program: Command): void {
           );
         }
 
-        console.log(chalk.bold(`Promoting ideas for FileRL: ${name}`));
+        console.log(chalk.bold(`Promoting ideas for Evo: ${name}`));
         console.log();
         console.log(`  Iteration: ${targetIter}`);
         console.log(`  Ideas:     ${options.ideas.join(", ")}`);
@@ -1121,7 +1121,7 @@ export function registerFileRlCommand(program: Command): void {
             start: options.start,
             worktree: options.worktree ?? config.rollout.worktree,
             computeReward: true,
-            filerlDir: getFileRlDir(repoRoot, name),
+            evoDir: getEvoDir(repoRoot, name),
           };
 
           console.log(chalk.gray(`  Promoting: ${idea.title}`));
@@ -1199,12 +1199,12 @@ export function registerFileRlCommand(program: Command): void {
     });
 
   // ============================================================================
-  // filerl select - Select best task using PPO metrics
+  // evo select - Select best task using PPO metrics
   // ============================================================================
   fileRlCmd
     .command("select")
-    .description("Select best task from a FileRL run using PPO metrics")
-    .argument("<name>", "FileRL run name")
+    .description("Select best task from a Evo run using PPO metrics")
+    .argument("<name>", "Evo run name")
     .option("--iter <N>", "Iteration number (default: current iteration)", (v: string) => parseInt(v, 10))
     .option("--idea <idea>", "Filter by specific idea ID")
     .option("--tasks <tasks...>", "Specific task names to compare (default: all tasks in iteration)")
@@ -1246,15 +1246,15 @@ export function registerFileRlCommand(program: Command): void {
         try {
           const repoRoot = ensureVibenRoot(cwd);
 
-          // Load FileRL state
+          // Load Evo state
           const state = readState(repoRoot, name);
           if (!state) {
-            throw CliError.notFound("FileRL run", name);
+            throw CliError.notFound("Evo run", name);
           }
 
           // Determine iteration
           const iteration = options.iter ?? state.current_iteration;
-          const filerlDir = join(repoRoot, ".viben", "filerl", name);
+          const evoDir = join(repoRoot, ".viben", "evo", name);
 
           // Get tasks from the iteration and build taskIdeaMap for two-stage selection
           let tasks = options.tasks || [];
@@ -1303,7 +1303,7 @@ export function registerFileRlCommand(program: Command): void {
 
           // Build options with taskIdeaMap for two-stage selection
           const selectOptions: Parameters<typeof selectBestTask>[2] = {
-            filerlDir,
+            evoDir,
             iteration,
             taskIdeaMap: Object.keys(taskIdeaMap).length > 0 ? taskIdeaMap : undefined,
           };
@@ -1428,12 +1428,12 @@ export function registerFileRlCommand(program: Command): void {
     );
 
   // ============================================================================
-  // filerl compute-reward - Compute reward for a task in a FileRL run
+  // evo compute-reward - Compute reward for a task in a Evo run
   // ============================================================================
   fileRlCmd
     .command("compute-reward")
-    .description("Compute reward for a task in a FileRL run")
-    .argument("<name>", "FileRL run name")
+    .description("Compute reward for a task in a Evo run")
+    .argument("<name>", "Evo run name")
     .option("--iter <N>", "Iteration number (default: current iteration)", (v: string) => parseInt(v, 10))
     .option("--idea <idea>", "Idea ID")
     .option("--task <task>", "Task name")
@@ -1457,16 +1457,16 @@ export function registerFileRlCommand(program: Command): void {
       try {
         const repoRoot = ensureVibenRoot(cwd);
 
-        // Load FileRL state
+        // Load Evo state
         const state = readState(repoRoot, name);
         if (!state) {
-          throw CliError.notFound("FileRL run", name);
+          throw CliError.notFound("Evo run", name);
         }
 
         // Determine iteration
         const iteration = options.iter ?? state.current_iteration;
-        const filerlDir = join(repoRoot, ".viben", "filerl", name);
-        const iterDir = join(filerlDir, `iter${iteration}`);
+        const evoDir = join(repoRoot, ".viben", "evo", name);
+        const iterDir = join(evoDir, `iter${iteration}`);
 
         if (!existsSync(iterDir)) {
           throw CliError.operationFailed(

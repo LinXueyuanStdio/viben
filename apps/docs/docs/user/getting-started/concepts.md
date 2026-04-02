@@ -1,16 +1,16 @@
 ---
 sidebar_position: 3
 title: "Core Concepts"
-description: "Understanding Viben's core concepts: FileRL, Task System, Agents, Executors"
+description: "Understanding Viben's core concepts: FileEvo, Task System, Agents, Executors"
 ---
 
 # Core Concepts
 
 This document introduces Viben's core concepts to help you understand how the system works.
 
-## FileRL: Code Iterative Optimization
+## FileEvo: Code Iterative Optimization
 
-FileRL is Viben's core algorithm that achieves iterative code quality improvement through multi-objective constrained candidate selection.
+FileEvo is Viben's core algorithm that achieves iterative code quality improvement through multi-objective constrained candidate selection.
 
 ### Core Idea
 

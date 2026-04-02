@@ -1,33 +1,33 @@
 ---
 sidebar_position: 24
-title: "viben filerl"
-description: "File-based Reinforcement Learning command for code optimization using PPO algorithm"
+title: "viben evo"
+description: "File-based Self-Evolution command for code optimization using PPO algorithm"
 ---
 
-# viben filerl
+# viben evo
 
-File-based Reinforcement Learning command for code optimization.
+File-based Self-Evolution command for code optimization.
 
 ## Overview
 
-The `viben filerl` command manages the FileRL workflow, treating codebases as "model parameters" and using the PPO algorithm to iteratively optimize code quality. It generates improvement ideas, converts them to tasks, evaluates results, and selects the best outcomes.
+The `viben evo` command manages the FileEvo workflow, treating codebases as "model parameters" and using the PPO algorithm to iteratively optimize code quality. It generates improvement ideas, converts them to tasks, evaluates results, and selects the best outcomes.
 
 ## Command Structure
 
 ```bash
-viben filerl <subcommand> [options]
+viben evo <subcommand> [options]
 ```
 
 ## Subcommand Overview
 
 | Subcommand | Description |
 |------------|-------------|
-| `create` | Create a new FileRL target file |
-| `start` | Start a FileRL run |
-| `status` | View FileRL run status |
-| `list` | List all FileRL runs |
-| `stop` | Stop an active FileRL run |
-| `resume` | Resume a paused FileRL run |
+| `create` | Create a new FileEvo target file |
+| `start` | Start a FileEvo run |
+| `status` | View FileEvo run status |
+| `list` | List all FileEvo runs |
+| `stop` | Stop an active FileEvo run |
+| `resume` | Resume a paused FileEvo run |
 | `add-idea` | Add idea file to target's idea pool |
 | `list-ideas` | List ideas in target's idea pool |
 | `generate-ideas` | Generate ideas for an iteration |
@@ -39,10 +39,10 @@ viben filerl <subcommand> [options]
 
 ### Create Target
 
-Create a new FileRL target file.
+Create a new FileEvo target file.
 
 ```bash
-viben filerl create <name> [options]
+viben evo create <name> [options]
 ```
 
 **Options**:
@@ -56,22 +56,22 @@ viben filerl create <name> [options]
 **Examples**:
 
 ```bash
-viben filerl create my-optimization
-viben filerl create code-quality -d "Optimize code quality"
+viben evo create my-optimization
+viben evo create code-quality -d "Optimize code quality"
 ```
 
 ## Run Management
 
 ### Start Run
 
-Start a FileRL run.
+Start a FileEvo run.
 
 ```bash
-viben filerl start <name-or-target> [options]
+viben evo start <name-or-target> [options]
 ```
 
 **Parameters**:
-- `<name-or-target>` - FileRL run name or target file path (*.md)
+- `<name-or-target>` - FileEvo run name or target file path (*.md)
 
 **Options**:
 
@@ -85,21 +85,21 @@ viben filerl start <name-or-target> [options]
 
 ```bash
 # Start using target file
-viben filerl start target.md
+viben evo start target.md
 
 # Start using run name (resume existing run)
-viben filerl start my-optimization
+viben evo start my-optimization
 
 # Validate configuration
-viben filerl start target.md --dry-run
+viben evo start target.md --dry-run
 ```
 
 ### View Status
 
-View FileRL run status.
+View FileEvo run status.
 
 ```bash
-viben filerl status <name> [options]
+viben evo status <name> [options]
 ```
 
 **Options**:
@@ -111,16 +111,16 @@ viben filerl status <name> [options]
 **Examples**:
 
 ```bash
-viben filerl status my-optimization
-viben filerl status my-optimization --json
+viben evo status my-optimization
+viben evo status my-optimization --json
 ```
 
 ### List Runs
 
-List all FileRL runs.
+List all FileEvo runs.
 
 ```bash
-viben filerl list [options]
+viben evo list [options]
 ```
 
 **Options**:
@@ -131,10 +131,10 @@ viben filerl list [options]
 
 ### Stop Run
 
-Stop an active FileRL run.
+Stop an active FileEvo run.
 
 ```bash
-viben filerl stop <name> [options]
+viben evo stop <name> [options]
 ```
 
 **Options**:
@@ -145,10 +145,10 @@ viben filerl stop <name> [options]
 
 ### Resume Run
 
-Resume a paused FileRL run.
+Resume a paused FileEvo run.
 
 ```bash
-viben filerl resume <name-or-target> [options]
+viben evo resume <name-or-target> [options]
 ```
 
 **Options**:
@@ -161,10 +161,10 @@ viben filerl resume <name-or-target> [options]
 
 ### Add Idea
 
-Add idea file to FileRL target's idea pool.
+Add idea file to FileEvo target's idea pool.
 
 ```bash
-viben filerl add-idea <name-or-target> <idea-path> [options]
+viben evo add-idea <name-or-target> <idea-path> [options]
 ```
 
 **Options**:
@@ -175,10 +175,10 @@ viben filerl add-idea <name-or-target> <idea-path> [options]
 
 ### List Ideas
 
-List ideas in FileRL target's idea pool.
+List ideas in FileEvo target's idea pool.
 
 ```bash
-viben filerl list-ideas <name-or-target> [options]
+viben evo list-ideas <name-or-target> [options]
 ```
 
 **Options**:
@@ -189,10 +189,10 @@ viben filerl list-ideas <name-or-target> [options]
 
 ### Generate Ideas
 
-Generate ideas for a FileRL run's iteration.
+Generate ideas for a FileEvo run's iteration.
 
 ```bash
-viben filerl generate-ideas <name> [options]
+viben evo generate-ideas <name> [options]
 ```
 
 **Options**:
@@ -207,20 +207,20 @@ viben filerl generate-ideas <name> [options]
 
 ```bash
 # Generate ideas for current iteration
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # Generate ideas for specific iteration
-viben filerl generate-ideas my-optimization --iter 2 --types refactoring performance
+viben evo generate-ideas my-optimization --iter 2 --types refactoring performance
 ```
 
-**Output Directory**: `.viben/filerl/<name>/iter{N}/<idea-id>/idea.md`
+**Output Directory**: `.viben/evo/<name>/iter{N}/<idea-id>/idea.md`
 
 ### Promote Ideas
 
 Convert ideas to tasks. Supports all `viben task create` options.
 
 ```bash
-viben filerl promote-ideas <name> [options]
+viben evo promote-ideas <name> [options]
 ```
 
 **Options**:
@@ -257,22 +257,22 @@ viben filerl promote-ideas <name> [options]
 
 ```bash
 # Convert idea to task (simplest)
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4
 
 # Batch promote multiple ideas
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 po-e5f6g7h8
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 po-e5f6g7h8
 
 # Promote for specific iteration
-viben filerl promote-ideas my-optimization --iter 2 --ideas po-a1b2c3d4
+viben evo promote-ideas my-optimization --iter 2 --ideas po-a1b2c3d4
 
 # Create and automatically start task
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # Develop in isolated worktree
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --start
 
 # Full example with executor and model
-viben filerl promote-ideas my-optimization \
+viben evo promote-ideas my-optimization \
   --ideas po-a1b2c3d4 \
   --executor CLAUDE_CODE \
   --model opus \
@@ -290,10 +290,10 @@ viben filerl promote-ideas my-optimization \
 
 ### Compute Reward
 
-Compute reward for tasks in a FileRL run.
+Compute reward for tasks in a FileEvo run.
 
 ```bash
-viben filerl compute-reward <name> [options]
+viben evo compute-reward <name> [options]
 ```
 
 **Options**:
@@ -311,15 +311,15 @@ viben filerl compute-reward <name> [options]
 
 ```bash
 # Compute reward for specific idea's task
-viben filerl compute-reward my-optimization --idea idea-001
+viben evo compute-reward my-optimization --idea idea-001
 
 # Compute reward for specific task in iteration
-viben filerl compute-reward my-optimization --iter 2 --task 03-27-fix-bug
+viben evo compute-reward my-optimization --iter 2 --task 03-27-fix-bug
 ```
 
 **Output Files**:
-- Reward result: `.viben/filerl/<name>/iter{N}/<idea>/<task>/reward.json`
-- Agent execution log: `.viben/filerl/<name>/iter{N}/<idea>/<task>/reward.log.jsonl`
+- Reward result: `.viben/evo/<name>/iter{N}/<idea>/<task>/reward.json`
+- Agent execution log: `.viben/evo/<name>/iter{N}/<idea>/<task>/reward.log.jsonl`
 
 **Reward Format**:
 
@@ -337,10 +337,10 @@ viben filerl compute-reward my-optimization --iter 2 --task 03-27-fix-bug
 
 ### Select Best Task
 
-Select best task from a FileRL run using PPO metrics.
+Select best task from a FileEvo run using PPO metrics.
 
 ```bash
-viben filerl select <name> [options]
+viben evo select <name> [options]
 ```
 
 **Options**:
@@ -359,16 +359,16 @@ viben filerl select <name> [options]
 
 ```bash
 # Select best task from current iteration
-viben filerl select my-optimization
+viben evo select my-optimization
 
 # Select from specific iteration
-viben filerl select my-optimization --iter 2
+viben evo select my-optimization --iter 2
 
 # Only consider tasks for specific idea
-viben filerl select my-optimization --idea idea-001
+viben evo select my-optimization --idea idea-001
 
 # Custom thresholds
-viben filerl select my-optimization --threshold 0.7 --kl-coef 0.1
+viben evo select my-optimization --threshold 0.7 --kl-coef 0.1
 ```
 
 **PPO Selection Algorithm**:
@@ -397,7 +397,7 @@ Selected: task-a
 
 ## Iteration Phase State Machine
 
-FileRL tracks progress through phases for each iteration, supporting resumption after interruption:
+FileEvo tracks progress through phases for each iteration, supporting resumption after interruption:
 
 ```
 init -> generate_ideas -> promote_ideas -> execute_tasks ->
@@ -418,7 +418,7 @@ init -> generate_ideas -> promote_ideas -> execute_tasks ->
 
 ## Target Configuration
 
-FileRL configuration is defined in the target.md file's YAML frontmatter:
+FileEvo configuration is defined in the target.md file's YAML frontmatter:
 
 ```yaml
 ---
@@ -467,8 +467,8 @@ Optimization target description...
 ## Directory Structure
 
 ```
-.viben/filerl/<run-name>/
-├── state.json                      # FileRL state
+.viben/evo/<run-name>/
+├── state.json                      # FileEvo state
 └── iter{N}/                        # Iteration N
     └── <idea-id>/                  # Idea directory
         ├── idea.md                 # Idea definition
@@ -514,31 +514,31 @@ Optimization target description...
 
 ```bash
 # 1. Create target file
-viben filerl create my-optimization -d "Optimize code quality"
+viben evo create my-optimization -d "Optimize code quality"
 
-# 2. Start FileRL loop
-viben filerl start my-optimization.md
+# 2. Start FileEvo loop
+viben evo start my-optimization.md
 
 # 3. Generate ideas (in iter1/)
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # 4. View generated ideas
-viben filerl list-ideas my-optimization
+viben evo list-ideas my-optimization
 
 # 5. Convert ideas to tasks and start
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # 6. View status
-viben filerl status my-optimization
+viben evo status my-optimization
 
 # 7. Monitor task execution
 viben swarm status --watch
 
 # 8. Compute rewards
-viben filerl compute-reward my-optimization --iter 1
+viben evo compute-reward my-optimization --iter 1
 
 # 9. Select best candidate
-viben filerl select my-optimization
+viben evo select my-optimization
 
 # 10. Merge winner, cleanup loser
 viben task approve <winner-task>

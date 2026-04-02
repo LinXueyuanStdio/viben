@@ -1,7 +1,7 @@
-# FileRL 功能测试计划
+# FileEvo 功能测试计划
 
 > 日期: 2026-03-27
-> 目标: 验证 viben filerl 命令的完整工作流程
+> 目标: 验证 viben evo 命令的完整工作流程
 
 ## 1. 测试范围
 
@@ -9,15 +9,15 @@
 
 | 功能 | 命令 | 覆盖场景 |
 |------|------|----------|
-| 创建 target | `viben filerl create <name>` | 创建 <name>.md 配置文件 |
-| 启动 run | `viben filerl start <target.md>` | 启动 FileRL 循环 |
-| 生成 idea | `viben filerl generate-ideas <name> --types <types>` | 在 iter{N}/ 下生成 |
-| 列出 idea | `viben filerl list-ideas <name>` | 当前迭代的 idea |
-| 启动迭代 | `viben filerl start <target.md>` | 开始执行循环 |
-| 恢复迭代 | `viben filerl resume <name>` | 从中断处继续 |
-| 停止迭代 | `viben filerl stop <name>` | 停止执行 |
-| 查看状态 | `viben filerl status <name>` | 当前状态 |
-| PPO 选择 | `viben filerl select <name> [--iter N] [--idea ID]` | threshold 过滤 |
+| 创建 target | `viben evo create <name>` | 创建 <name>.md 配置文件 |
+| 启动 run | `viben evo start <target.md>` | 启动 FileEvo 循环 |
+| 生成 idea | `viben evo generate-ideas <name> --types <types>` | 在 iter{N}/ 下生成 |
+| 列出 idea | `viben evo list-ideas <name>` | 当前迭代的 idea |
+| 启动迭代 | `viben evo start <target.md>` | 开始执行循环 |
+| 恢复迭代 | `viben evo resume <name>` | 从中断处继续 |
+| 停止迭代 | `viben evo stop <name>` | 停止执行 |
+| 查看状态 | `viben evo status <name>` | 当前状态 |
+| PPO 选择 | `viben evo select <name> [--iter N] [--idea ID]` | threshold 过滤 |
 | 合并 winner | `viben task approve <task>` | PR 合并 |
 | 清理 loser | `viben task cleanup <task>` | worktree 清理 |
 | 监控 | `viben swarm status --watch` | 实时状态 |
@@ -26,13 +26,13 @@
 
 | Phase | 命令/操作 | 验证点 |
 |-------|----------|--------|
-| init | `viben filerl start <target.md>` | 解析配置、创建 state.json |
-| fetch_ideas | `viben filerl generate-ideas` | 在 iter{N}/ 生成 idea |
+| init | `viben evo start <target.md>` | 解析配置、创建 state.json |
+| fetch_ideas | `viben evo generate-ideas` | 在 iter{N}/ 生成 idea |
 | create_rollouts | 内部逻辑 | task 创建、task_idea_map |
 | execute_tasks | `viben idea promote --start` | agent 启动、并行执行 |
 | wait_tasks | `viben swarm wait` | 状态轮询、进程健康检测 |
-| compute_rewards | `viben filerl compute-reward <name> [--iter N] [--idea ID] [--task T]` | reward.json 生成 |
-| select_best | `viben filerl select <name> [--iter N] [--idea ID]` | PPO 两阶段选择 |
+| compute_rewards | `viben evo compute-reward <name> [--iter N] [--idea ID] [--task T]` | reward.json 生成 |
+| select_best | `viben evo select <name> [--iter N] [--idea ID]` | PPO 两阶段选择 |
 | merge_cleanup | `viben task approve/cleanup` | 合并、清理 |
 | check_converge | 内部逻辑 | 收敛检测 |
 
@@ -53,19 +53,19 @@
 ### 2.1 初始化时创建的文件
 
 ```
-/tmp/filerl-test/
+/tmp/evo-test/
 ├── index.js                    # 测试代码（初始化时创建）
 ├── utils.js                    # 辅助代码（初始化时创建）
-└── test-basic.md               # FileRL 配置（由 viben filerl create 生成）
+└── test-basic.md               # FileEvo 配置（由 viben evo create 生成）
 ```
 
-### 2.2 FileRL 目录结构（由 viben 管理）
+### 2.2 FileEvo 目录结构（由 viben 管理）
 
 ```
-/tmp/filerl-test/
+/tmp/evo-test/
 └── .viben/
-    ├── filerl/<run-name>/
-    │   ├── state.json                      # FileRL 状态
+    ├── evo/<run-name>/
+    │   ├── state.json                      # FileEvo 状态
     │   ├── iter1/                          # 第 1 次迭代
     │   │   ├── <idea-id-1>/                # idea 1
     │   │   │   ├── idea.md                 # idea 定义
@@ -84,7 +84,7 @@
 
 ### 2.3 Reward 存储位置
 
-**路径**: `.viben/filerl/<run-name>/iter{N}/<idea-id>/<task-name>/reward.json`
+**路径**: `.viben/evo/<run-name>/iter{N}/<idea-id>/<task-name>/reward.json`
 
 **格式**:
 ```json
@@ -134,7 +134,7 @@ module.exports = { formatDate, sleep };
 
 ### 2.5 Target 配置 (test-basic.md)
 
-使用 `viben filerl create test-basic -d "基础流程测试"` 自动生成。
+使用 `viben evo create test-basic -d "基础流程测试"` 自动生成。
 
 **默认配置** (由 CLI 生成):
 ```yaml
@@ -178,7 +178,7 @@ task:
 
 ### 3.1 场景 A: 基础流程（主仓库模式）
 
-**目标**: 验证最简单的 FileRL 流程
+**目标**: 验证最简单的 FileEvo 流程
 
 **步骤**:
 
@@ -188,9 +188,9 @@ task:
 # ============================================
 
 # 1.1 清空测试目录
-rm -r /tmp/filerl-test
-mkdir -p /tmp/filerl-test
-cd /tmp/filerl-test
+rm -r /tmp/evo-test
+mkdir -p /tmp/evo-test
+cd /tmp/evo-test
 
 # 1.2 初始化 git
 git init
@@ -229,10 +229,10 @@ git add . && git commit -m "init"
 # 必须按顺序执行以下命令:
 # - viben team init: 创建 .claude/commands/viben/start.md (task start 依赖此文件)
 # - viben user init: 创建 .viben/.developer 文件 (registry 依赖此文件)
-viben team init --user filerl-tester
+viben team init --user evo-tester
 
 # 1.4 创建 target.md（使用 CLI 命令）
-viben filerl create test-basic -d "基础流程测试"
+viben evo create test-basic -d "基础流程测试"
 # 生成 test-basic.md，默认配置：
 #   auto_generate: false
 #   types: [code_improvements]
@@ -244,34 +244,34 @@ viben filerl create test-basic -d "基础流程测试"
 git add test-basic.md && git commit -m "add target.md"
 
 # ============================================
-# 阶段 2: FileRL 运行（只能用 viben 命令）
+# 阶段 2: FileEvo 运行（只能用 viben 命令）
 # ============================================
 
-# 2.1 启动 FileRL run（解析 test-basic.md，创建 state.json）
-viben filerl start test-basic.md --dry-run  # 先验证配置
-viben filerl start test-basic.md
+# 2.1 启动 FileEvo run（解析 test-basic.md，创建 state.json）
+viben evo start test-basic.md --dry-run  # 先验证配置
+viben evo start test-basic.md
 
 # 2.2 生成 idea（在 iter1/ 下）
-viben filerl generate-ideas test-basic --types code_improvements
+viben evo generate-ideas test-basic --types code_improvements
 
 # 2.3 查看生成的 idea
-viben filerl list-ideas test-basic
+viben evo list-ideas test-basic
 
-# 2.4 查看 FileRL 状态
-viben filerl status test-basic
+# 2.4 查看 FileEvo 状态
+viben evo status test-basic
 
-# 2.5 监控任务执行（FileRL start 会自动创建并执行 task）
+# 2.5 监控任务执行（FileEvo start 会自动创建并执行 task）
 viben swarm status --watch
 
 # 2.6 验证 reward 文件位置
-ls -la .viben/filerl/test-basic/iter1/*/
+ls -la .viben/evo/test-basic/iter1/*/
 
 # 2.7 查看最终结果
 viben task list
 ```
 
 **预期结果**:
-- FileRL run 创建成功
+- FileEvo run 创建成功
 - idea 在 `iter1/` 下生成
 - task 被创建并执行
 - reward.json 在 `iter{N}/{idea}/{task}/` 下生成
@@ -312,20 +312,20 @@ convergence:
 **步骤**:
 ```bash
 # 创建 run
-viben filerl create test-iter -d "多轮迭代测试"
+viben evo create test-iter -d "多轮迭代测试"
 
 # 第 1 轮
-viben filerl generate-ideas test-iter --iter 1 --types code_improvements
-viben filerl start test-iter
+viben evo generate-ideas test-iter --iter 1 --types code_improvements
+viben evo start test-iter
 # 等待完成...
 
 # 第 2 轮（如果未收敛）
-viben filerl generate-ideas test-iter --iter 2 --types code_improvements
-viben filerl resume test-iter
+viben evo generate-ideas test-iter --iter 2 --types code_improvements
+viben evo resume test-iter
 # 等待完成...
 
 # 查看收敛状态
-viben filerl status test-iter
+viben evo status test-iter
 ```
 
 **验证点**:
@@ -351,7 +351,7 @@ ppo:
 **验证命令**:
 ```bash
 # 查看详细的 PPO 计算结果
-viben filerl select test-basic --threshold 0.6
+viben evo select test-basic --threshold 0.6
 
 # 输出应包含:
 # ┌─────────┬────────┬───────┬────────┬──────────┬───────────┬────────────┐
@@ -370,18 +370,18 @@ viben filerl select test-basic --threshold 0.6
 
 ```bash
 # E1: 中断后恢复
-viben filerl start test-basic
+viben evo start test-basic
 # 在执行期间 Ctrl+C
-viben filerl status test-basic  # 查看当前 phase
-viben filerl resume test-basic  # 从中断处继续
+viben evo status test-basic  # 查看当前 phase
+viben evo resume test-basic  # 从中断处继续
 
 # E2: Agent 进程死亡
 viben swarm stop <task>  # 模拟停止
-viben filerl resume test-basic  # 应自动检测并重启
+viben evo resume test-basic  # 应自动检测并重启
 
 # E3: 无合格任务
 # 当所有 task 的 reward < threshold 时
-viben filerl status test-basic
+viben evo status test-basic
 # 应显示 no_merge_count 增加
 ```
 
@@ -391,10 +391,10 @@ viben filerl status test-basic
 
 ```bash
 # 在指定迭代目录生成 idea
-viben filerl generate-ideas test-basic --iter 2 --types code_improvements
+viben evo generate-ideas test-basic --iter 2 --types code_improvements
 
 # 验证目录结构
-ls -la .viben/filerl/test-basic/iter2/
+ls -la .viben/evo/test-basic/iter2/
 
 # 应该看到 idea 文件在 iter2/ 下
 ```
@@ -427,7 +427,7 @@ ppo:
 # task-b: total_score=0.75, diff_lines=400
 
 # 运行 select 并验证计算
-viben filerl select test-basic --json
+viben evo select test-basic --json
 
 # 预期计算 (以 task-a 为例):
 # d = 100/500 = 0.2
@@ -457,14 +457,14 @@ convergence:
 
 **验证步骤**:
 ```bash
-# 启动 FileRL (由于高阈值，所有候选都会被拒绝)
-viben filerl start target-high-threshold.md
+# 启动 FileEvo (由于高阈值，所有候选都会被拒绝)
+viben evo start target-high-threshold.md
 
 # 模拟 5 轮迭代 (每轮都无合格候选)
 # 第 5 轮后应该触发早停
 
 # 查看状态
-viben filerl status test-early-stop --json
+viben evo status test-early-stop --json
 
 # 预期输出包含:
 # "no_merge_count": 5
@@ -490,8 +490,8 @@ convergence:
 
 **验证步骤**:
 ```bash
-# 运行 FileRL 直到收敛或达到最大迭代
-viben filerl start test-converge.md
+# 运行 FileEvo 直到收敛或达到最大迭代
+viben evo start test-converge.md
 
 # 假设 10 轮后 history = [0.6, 0.65, 0.68, 0.70, 0.71, 0.72, 0.725, 0.728, 0.730, 0.731]
 # mean(history[-5:]) = mean([0.72, 0.725, 0.728, 0.730, 0.731]) = 0.7268
@@ -504,7 +504,7 @@ viben filerl start test-converge.md
 # |0.732 - 0.726| = 0.006 < 0.01, 触发收敛停止
 
 # 查看状态
-viben filerl status test-converge --json
+viben evo status test-converge --json
 
 # 预期输出包含:
 # "status": "converged"
@@ -523,7 +523,7 @@ viben filerl status test-converge --json
 ### 4.1 存储位置
 
 ```
-.viben/filerl/<run>/iter{N}/<idea>/<task>/reward.json
+.viben/evo/<run>/iter{N}/<idea>/<task>/reward.json
 ```
 
 ### 4.2 标准格式
@@ -567,13 +567,13 @@ viben filerl status test-converge --json
 
 ### 6.1 必须通过
 
-- [ ] `viben filerl create` 创建 run 成功
-- [ ] `viben filerl generate-ideas` 在 iter{N}/ 下生成 idea
-- [ ] `viben filerl start` 启动 task 实际运行
+- [ ] `viben evo create` 创建 run 成功
+- [ ] `viben evo generate-ideas` 在 iter{N}/ 下生成 idea
+- [ ] `viben evo start` 启动 task 实际运行
 - [ ] Task 状态只有合法值（无 "done"）
 - [ ] reward.json 在 `iter{N}/{idea}/{task}/` 下生成
 - [ ] Reward 格式为 `{ total_score: 0-1, diff_lines: N }`
-- [ ] `viben filerl select <name>` PPO 选择正确
+- [ ] `viben evo select <name>` PPO 选择正确
 - [ ] `viben task approve` 合并 winner 成功
 
 ### 6.2 应该通过
@@ -599,27 +599,27 @@ viben filerl status test-converge --json
 # 初始化
 viben init
 viben team init
-viben user init FileRL-optimizer
+viben user init FileEvo-optimizer
 
-# FileRL 生命周期
-viben filerl create <name> --target <file>
-viben filerl start <name>
-viben filerl resume <name>
-viben filerl stop <name>
-viben filerl status <name>
+# FileEvo 生命周期
+viben evo create <name> --target <file>
+viben evo start <name>
+viben evo resume <name>
+viben evo stop <name>
+viben evo status <name>
 
-# Idea 管理（FileRL 专用）
-viben filerl generate-ideas <name> [--iter <N>] --types <types...>
-viben filerl list-ideas <name>
+# Idea 管理（FileEvo 专用）
+viben evo generate-ideas <name> [--iter <N>] --types <types...>
+viben evo list-ideas <name>
 
 # Task 生命周期
 viben task list [--status completed] [--json]
-viben filerl compute-reward <name> [--iter N] [--idea ID] [--task T]
+viben evo compute-reward <name> [--iter N] [--idea ID] [--task T]
 viben task approve <task>
 viben task cleanup <task>
 
 # Reward 选择
-viben filerl select <name> [--iter N] [--idea ID] [--tasks T...] --threshold 0.6 [--json]
+viben evo select <name> [--iter N] [--idea ID] [--tasks T...] --threshold 0.6 [--json]
 
 # 监控
 viben swarm status [--watch]
@@ -628,12 +628,12 @@ viben swarm wait --all
 viben swarm stop <task>
 
 # 调试
-viben filerl status <name> --json
-cat .viben/filerl/<name>/state.json
-ls -la .viben/filerl/<name>/iter1/
+viben evo status <name> --json
+cat .viben/evo/<name>/state.json
+ls -la .viben/evo/<name>/iter1/
 ```
 
 ## 8. 参考文档
 
-- [FileRL 命令参考](../../.claude/commands/viben/FileRL.md)
-- [FileRL 设计文档](../superpowers/specs/2026-03-27-filerl-redesign.md)
+- [FileEvo 命令参考](../../.claude/commands/viben/FileEvo.md)
+- [FileEvo 设计文档](../superpowers/specs/2026-03-27-evo-redesign.md)

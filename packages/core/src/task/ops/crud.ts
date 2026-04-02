@@ -76,10 +76,10 @@ export interface CreateTaskOptions {
   start?: boolean;
   worktree?: boolean;
   computeReward?: boolean;
-  /** FileRL directory absolute path for reward config and output */
-  filerlDir?: string;
-  /** FileRL idea ID - links task to its source idea for reward path structure */
-  filerlIdea?: string;
+  /** Evo directory absolute path for reward config and output */
+  evoDir?: string;
+  /** Evo idea ID - links task to its source idea for reward path structure */
+  evoIdea?: string;
 }
 
 export interface CreateTaskResult {
@@ -585,10 +585,10 @@ export function createTask(
     auto_start: options.start || false,
     worktree: options.worktree || false,
     compute_reward: options.computeReward ?? false,
-    // FileRL directory for reward config and output (reward_config is read from FileRL target)
-    filerl_dir: options.filerlDir,
-    // FileRL idea ID - links task to its source idea for reward path structure
-    filerl_idea: options.filerlIdea,
+    // Evo directory for reward config and output (reward_config is read from Evo target)
+    evo_dir: options.evoDir,
+    // Evo idea ID - links task to its source idea for reward path structure
+    evo_idea: options.evoIdea,
   };
 
   // Note: --start flag is handled by CLI layer calling enqueueTask after creation

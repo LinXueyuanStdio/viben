@@ -26,7 +26,7 @@ import { registerUserCommand } from "./user";
 import { registerSessionCommand } from "./session";
 import { registerIdeaCommand } from "./idea";
 import { registerRewardCommand } from "./reward";
-import { registerFileRlCommand } from "./filerl";
+import { registerEvoCommand } from "./evo";
 import { registerIndexCommand } from "./index-cmd";
 import { registerLoginCommand } from "./login";
 
@@ -57,7 +57,7 @@ export function registerCommands(program: Command): void {
   registerSessionCommand(program);
   registerIdeaCommand(program);
   registerRewardCommand(program);
-  registerFileRlCommand(program);
+  registerEvoCommand(program);
   registerIndexCommand(program);
   registerLoginCommand(program);
 }

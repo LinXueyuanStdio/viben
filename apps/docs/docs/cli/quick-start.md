@@ -6,7 +6,7 @@ description: "Get started with Viben CLI in 5 minutes"
 
 # Quick Start
 
-Get **Agent Swarm x Code Evolution** running in 5 minutes. Viben CLI enables AI agent swarms to continuously evolve and optimize your codebase through FileRL, intelligent task management, and collaborative agent orchestration.
+Get **Agent Swarm x Code Evolution** running in 5 minutes. Viben CLI enables AI agent swarms to continuously evolve and optimize your codebase through FileEvo, intelligent task management, and collaborative agent orchestration.
 
 ## Step 1: Install Viben CLI
 

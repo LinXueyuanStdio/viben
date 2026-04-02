@@ -27,7 +27,7 @@
 <table>
 <tr>
 <td align="center" width="33%">
-<h3>🧬 FileRL</h3>
+<h3>🧬 FileEvo</h3>
 <b>代码迭代优化</b><br/>
 多候选采样 + 质量评估<br/>
 自动选择最优方案合并
@@ -69,11 +69,11 @@ Tauri 2 桌面应用<br/>
 
 ---
 
-## 🧬 FileRL: 代码迭代优化
+## 🧬 FileEvo: 代码迭代优化
 
 > *多目标带约束的候选选择算法，通过采样-评估-选择循环迭代提升代码质量*
 
-> ⚠️ **方法定位**：FileRL 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。算法借鉴了强化学习的部分概念作为设计直觉，但**并非严格的 RL 实现**——无状态转移概率、无价值函数逼近、无理论收敛保证。
+> ⚠️ **方法定位**：FileEvo 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。算法借鉴了强化学习的部分概念作为设计直觉，但**并非严格的 RL 实现**——无状态转移概率、无价值函数逼近、无理论收敛保证。
 
 ### 算法概述
 
@@ -237,7 +237,7 @@ $$\text{PR}^* = \arg\max\_{\text{PR}^\*\_{\text{idea}}}  L(\text{PR}^\*\_{\text{
 <summary><b>算法伪代码</b></summary>
 
 ```
-Algorithm: FileRL — 多目标带约束的迭代优化
+Algorithm: FileEvo — 多目标带约束的迭代优化
 ────────────────────────────────────────────────────
 输入:   C₀                  // 初始代码库
 超参数:
@@ -328,31 +328,31 @@ Algorithm: FileRL — 多目标带约束的迭代优化
 
 ```bash
 # 目标文件管理
-viben filerl create <name>                  # 创建 target.md 配置文件
-viben filerl create <name> -d "描述"        # 带描述创建
+viben evo create <name>                  # 创建 target.md 配置文件
+viben evo create <name> -d "描述"        # 带描述创建
 
 # 运行生命周期
-viben filerl start <target.md>              # 启动 FileRL 循环
-viben filerl start <name>                   # 恢复已有运行
-viben filerl start <target.md> --dry-run    # 验证配置
-viben filerl status <name>                  # 查看状态
-viben filerl stop <name>                    # 停止运行
-viben filerl resume <name>                  # 恢复运行
-viben filerl list                           # 列出所有运行
+viben evo start <target.md>              # 启动 FileEvo 循环
+viben evo start <name>                   # 恢复已有运行
+viben evo start <target.md> --dry-run    # 验证配置
+viben evo status <name>                  # 查看状态
+viben evo stop <name>                    # 停止运行
+viben evo resume <name>                  # 恢复运行
+viben evo list                           # 列出所有运行
 
 # Idea 管理
-viben filerl generate-ideas <name> --types <types...>  # 生成 idea
-viben filerl generate-ideas <name> --iter 2            # 指定迭代
-viben filerl list-ideas <name>                         # 列出 idea
-viben filerl add-idea <name> <idea.md>                 # 添加外部 idea
-viben filerl promote-ideas <name> --ideas <id...>      # 转为任务
-viben filerl promote-ideas <name> --ideas <id> --start # 创建并启动
+viben evo generate-ideas <name> --types <types...>  # 生成 idea
+viben evo generate-ideas <name> --iter 2            # 指定迭代
+viben evo list-ideas <name>                         # 列出 idea
+viben evo add-idea <name> <idea.md>                 # 添加外部 idea
+viben evo promote-ideas <name> --ideas <id...>      # 转为任务
+viben evo promote-ideas <name> --ideas <id> --start # 创建并启动
 
 # 评估与选择
-viben filerl compute-reward <name>                # 计算奖励
-viben filerl compute-reward <name> --idea <id>    # 指定 idea
-viben filerl select <name>                        # PPO 选择最佳
-viben filerl select <name> --threshold 0.7        # 自定义阈值
+viben evo compute-reward <name>                # 计算奖励
+viben evo compute-reward <name> --idea <id>    # 指定 idea
+viben evo select <name>                        # PPO 选择最佳
+viben evo select <name> --threshold 0.7        # 自定义阈值
 
 # 任务合并与清理
 viben task approve <task>        # 合并 winner PR
@@ -370,31 +370,31 @@ viben swarm list                 # 列出所有 worktree
 
 ```bash
 # 1. 创建目标文件
-viben filerl create my-optimization -d "优化代码质量"
+viben evo create my-optimization -d "优化代码质量"
 
-# 2. 启动 FileRL 循环
-viben filerl start my-optimization.md
+# 2. 启动 FileEvo 循环
+viben evo start my-optimization.md
 
 # 3. 生成 idea (在 iter1/ 下)
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # 4. 查看生成的 idea
-viben filerl list-ideas my-optimization
+viben evo list-ideas my-optimization
 
 # 5. 将 idea 转为 task 并启动
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # 6. 查看状态
-viben filerl status my-optimization
+viben evo status my-optimization
 
 # 7. 监控任务执行
 viben swarm status --watch
 
 # 8. 计算奖励
-viben filerl compute-reward my-optimization --iter 1
+viben evo compute-reward my-optimization --iter 1
 
 # 9. 选择最佳候选
-viben filerl select my-optimization
+viben evo select my-optimization
 
 # 10. 合并 winner，清理 loser
 viben task approve <winner-task>
@@ -407,8 +407,8 @@ viben task cleanup <loser-task>
 <summary><b>目录结构</b></summary>
 
 ```
-.viben/filerl/<run-name>/
-├── state.json                      # FileRL 状态
+.viben/evo/<run-name>/
+├── state.json                      # FileEvo 状态
 └── iter{N}/                        # 第 N 次迭代
     └── <idea-id>/                  # idea 目录
         ├── idea.md                 # idea 定义

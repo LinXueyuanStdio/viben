@@ -9,7 +9,7 @@ description: "Get started with Viben - Agent Cluster × Code Evolution"
 This guide helps you quickly get started with Viben.
 
 :::tip Core Concepts
-Before you begin, we recommend understanding the [Core Concepts](./concepts), including FileRL, Task System, and the differences between Agents and Executors.
+Before you begin, we recommend understanding the [Core Concepts](./concepts), including FileEvo, Task System, and the differences between Agents and Executors.
 :::
 
 ## Option 1: Using the Desktop Application (Recommended)
@@ -36,7 +36,7 @@ The desktop application provides a complete graphical interface, ideal for daily
 
 ### Step 4: Start Optimization
 
-- Use FileRL to automatically discover code improvements
+- Use FileEvo to automatically discover code improvements
 - View the generated Idea list
 - Convert Ideas into executable tasks
 
@@ -114,9 +114,9 @@ viben task approve auth
 
 ---
 
-## Option 3: Using FileRL to Optimize Code
+## Option 3: Using FileEvo to Optimize Code
 
-FileRL automatically improves code quality through iterative optimization.
+FileEvo automatically improves code quality through iterative optimization.
 
 ### Step 1: Generate Ideas
 
@@ -138,8 +138,8 @@ viben idea promote ci-001 --start --worktree
 ### Step 3: Monitor Optimization Loop
 
 ```bash
-# View FileRL status
-viben filerl status <name>
+# View FileEvo status
+viben evo status <name>
 
 # Real-time monitoring
 viben swarm status --watch
@@ -208,12 +208,12 @@ viben task start <task>                      # Start task
 viben task approve <task>                    # Approve completion
 ```
 
-### FileRL
+### FileEvo
 
 ```bash
 viben idea generate --types <types>          # Generate Ideas
 viben idea promote <id> --start              # Convert Idea to task
-viben filerl status <name>                   # View status
+viben evo status <name>                      # View status
 viben reward select <tasks...>               # Select best
 ```
 
@@ -228,7 +228,7 @@ viben task view <task>                       # View details
 
 ## Next Steps
 
-- [Core Concepts](./concepts) - Understand core concepts like FileRL, Task System
+- [Core Concepts](./concepts) - Understand core concepts like FileEvo, Task System
 - [Desktop Application Features](../desktop/features) - Explore full features
 - [CLI Documentation](/cli/) - Command line tool reference
 - [MCP Configuration](../mcp/configuration) - Configure API keys to enable paid data sources

@@ -10,11 +10,11 @@ Viben Desktop 是一个原生桌面应用，通过 **Agent Swarm（智能体集�
 
 ## 核心理念
 
-**Agent Swarm x Code Evolution** - 让多个智能体协同工作，通过 FileRL 强化学习驱动代码持续进化。
+**Agent Swarm x Code Evolution** - 让多个智能体协同工作，通过 FileEvo 强化学习驱动代码持续进化。
 
 ## 核心功能
 
-### FileRL 代码进化
+### FileEvo 代码进化
 
 基于强化学习的代码迭代优化系统：
 

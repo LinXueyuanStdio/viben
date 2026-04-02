@@ -4,12 +4,12 @@
  * Runs the reward agent to evaluate PR quality using configured reward types.
  *
  * Two modes of operation:
- * 1. FileRL mode (when task.filerl_dir is set):
- *    - Reads reward_config from FileRL state.json
- *    - Outputs to .viben/filerl/<name>/iter<N>/<task>/reward.json
- *    - Logs to .viben/filerl/<name>/iter<N>/<task>/reward.log.jsonl
+ * 1. Evo mode (when task.evo_dir is set):
+ *    - Reads reward_config from Evo state.json
+ *    - Outputs to .viben/evo/<name>/iter<N>/<task>/reward.json
+ *    - Logs to .viben/evo/<name>/iter<N>/<task>/reward.log.jsonl
  *
- * 2. Standalone mode (when task.filerl_dir is not set):
+ * 2. Standalone mode (when task.evo_dir is not set):
  *    - Uses reward_config from task.json or defaults
  *    - Outputs to task.json.reward
  *    - Logs to <task-dir>/reward.log.jsonl
@@ -47,7 +47,7 @@ export interface RewardPhaseOptions {
   platform?: string;
   /** Enable verbose output */
   verbose?: boolean;
-  /** Idea ID for FileRL mode (determines output directory structure) */
+  /** Idea ID for Evo mode (determines output directory structure) */
   ideaId?: string;
 }
 
@@ -78,15 +78,15 @@ interface TaskData {
   pr_url?: string;
   reward_config?: RewardConfig;
   reward?: RewardResult;
-  /** FileRL directory for reward config and output */
-  filerl_dir?: string;
+  /** Evo directory for reward config and output */
+  evo_dir?: string;
   [key: string]: unknown;
 }
 
 /**
- * FileRL state structure (subset of fields we need)
+ * Evo state structure (subset of fields we need)
  */
-interface FileRlStateData {
+interface EvoStateData {
   name: string;
   current_iteration: number;
   target_path?: string;
@@ -94,9 +94,9 @@ interface FileRlStateData {
 }
 
 /**
- * FileRL target config structure (subset of fields we need)
+ * Evo target config structure (subset of fields we need)
  */
-interface FileRlTargetConfig {
+interface EvoTargetConfig {
   reward?: RewardConfig;
   [key: string]: unknown;
 }
@@ -321,32 +321,32 @@ function getDiffLines(repoRoot: string, options: GetDiffLinesOptions = {}): numb
 }
 
 /**
- * Read FileRL state from filerl_dir
+ * Read Evo state from evo_dir
  *
- * @param filerlDir - Absolute path to FileRL directory
- * @returns FileRL state or null if not found
+ * @param evoDir - Absolute path to Evo directory
+ * @returns Evo state or null if not found
  */
-function readFileRlState(filerlDir: string): FileRlStateData | null {
-  const statePath = join(filerlDir, "state.json");
+function readEvoState(evoDir: string): EvoStateData | null {
+  const statePath = join(evoDir, "state.json");
   if (!existsSync(statePath)) {
     return null;
   }
 
   try {
     const content = readFileSync(statePath, "utf-8");
-    return JSON.parse(content) as FileRlStateData;
+    return JSON.parse(content) as EvoStateData;
   } catch {
     return null;
   }
 }
 
 /**
- * Read FileRL target config to get reward_config
+ * Read Evo target config to get reward_config
  *
  * @param targetPath - Absolute path to target file
  * @returns Reward config or null if not found
  */
-function readFileRlRewardConfig(targetPath: string): RewardConfig | null {
+function readEvoRewardConfig(targetPath: string): RewardConfig | null {
   if (!existsSync(targetPath)) {
     return null;
   }
@@ -427,23 +427,23 @@ function readFileRlRewardConfig(targetPath: string): RewardConfig | null {
 /**
  * Get the output directory for reward results
  *
- * @param filerlDir - FileRL directory (or null for standalone mode)
+ * @param evoDir - Evo directory (or null for standalone mode)
  * @param iteration - Current iteration number
- * @param ideaId - Idea ID (optional, for FileRL mode with idea grouping)
+ * @param ideaId - Idea ID (optional, for Evo mode with idea grouping)
  * @param taskName - Task name
  * @param taskDirAbs - Task directory (fallback for standalone mode)
  * @returns Absolute path to output directory
  */
 function getRewardOutputDir(
-  filerlDir: string | undefined,
+  evoDir: string | undefined,
   iteration: number,
   ideaId: string | undefined,
   taskName: string,
   taskDirAbs: string
 ): string {
-  if (filerlDir) {
-    // FileRL mode: .viben/filerl/<name>/iter<N>/<idea>/<task>/ or .viben/filerl/<name>/iter<N>/<task>/
-    const pathParts = [filerlDir, `iter${iteration}`];
+  if (evoDir) {
+    // Evo mode: .viben/evo/<name>/iter<N>/<idea>/<task>/ or .viben/evo/<name>/iter<N>/<task>/
+    const pathParts = [evoDir, `iter${iteration}`];
     if (ideaId) {
       pathParts.push(ideaId);
     }
@@ -587,30 +587,30 @@ export function runRewardPhaseSync(
   }
 
   // =============================================================================
-  // Determine Reward Config and Output Directory (FileRL vs Standalone)
+  // Determine Reward Config and Output Directory (Evo vs Standalone)
   // =============================================================================
 
   let rewardConfig: RewardConfig;
   let outputDir: string;
   let currentIteration = 0;
-  const filerlDir = taskData.filerl_dir;
+  const evoDir = taskData.evo_dir;
 
-  if (filerlDir && existsSync(filerlDir)) {
-    // FileRL mode: read config from FileRL state/target
-    const filerlState = readFileRlState(filerlDir);
-    if (!filerlState) {
+  if (evoDir && existsSync(evoDir)) {
+    // Evo mode: read config from Evo state/target
+    const evoState = readEvoState(evoDir);
+    if (!evoState) {
       return {
         success: false,
-        error: `FileRL state.json not found at ${filerlDir}`,
+        error: `Evo state.json not found at ${evoDir}`,
       };
     }
 
-    currentIteration = filerlState.current_iteration;
+    currentIteration = evoState.current_iteration;
 
     // Try to read reward config from target file
     let targetRewardConfig: RewardConfig | null = null;
-    if (filerlState.target_path) {
-      targetRewardConfig = readFileRlRewardConfig(filerlState.target_path);
+    if (evoState.target_path) {
+      targetRewardConfig = readEvoRewardConfig(evoState.target_path);
     }
 
     if (targetRewardConfig) {
@@ -618,15 +618,15 @@ export function runRewardPhaseSync(
     } else {
       // Fallback to task.json reward_config or defaults
       rewardConfig = taskData.reward_config || DEFAULT_REWARD_CONFIG;
-      warnings.push("Could not read reward config from FileRL target, using task.json or defaults");
+      warnings.push("Could not read reward config from Evo target, using task.json or defaults");
     }
 
-    // Output to FileRL directory (with optional idea grouping)
-    // ideaId can come from: 1) options.ideaId, 2) task.json.filerl_idea
-    const effectiveIdeaId = ideaId || (taskData as { filerl_idea?: string }).filerl_idea;
+    // Output to Evo directory (with optional idea grouping)
+    // ideaId can come from: 1) options.ideaId, 2) task.json.evo_idea
+    const effectiveIdeaId = ideaId || (taskData as { evo_idea?: string }).evo_idea;
     // Use task directory name (not taskData.name/id) for output path to avoid using idea ID
     const taskDirName = basename(taskDirAbs);
-    outputDir = getRewardOutputDir(filerlDir, currentIteration, effectiveIdeaId, taskDirName, taskDirAbs);
+    outputDir = getRewardOutputDir(evoDir, currentIteration, effectiveIdeaId, taskDirName, taskDirAbs);
   } else {
     // Standalone mode: use task.json config
     rewardConfig = taskData.reward_config || DEFAULT_REWARD_CONFIG;
@@ -690,7 +690,7 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
   // Run Agent Synchronously
   // =============================================================================
 
-  // Log file goes to output directory (FileRL or task dir)
+  // Log file goes to output directory (Evo or task dir)
   const logFile = join(outputDir, "reward.log.jsonl");
 
   // Open log file for writing
@@ -730,7 +730,7 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
 
   const parseResult = parseRewardResult(repoRoot, taskDir, {
     outputDir,
-    filerlDir,
+    evoDir,
     iteration: currentIteration,
   });
 
@@ -762,11 +762,11 @@ Read each reward type prompt, evaluate the code changes, and output JSON scores.
  * Options for parsing reward result
  */
 export interface ParseRewardOptions {
-  /** Output directory (for FileRL mode) */
+  /** Output directory (for Evo mode) */
   outputDir?: string;
-  /** FileRL directory (if in FileRL mode) */
-  filerlDir?: string;
-  /** Current iteration (for FileRL mode) */
+  /** Evo directory (if in Evo mode) */
+  evoDir?: string;
+  /** Current iteration (for Evo mode) */
   iteration?: number;
 }
 
@@ -779,7 +779,7 @@ export interface ParseRewardOptions {
  * 3. Calculates weighted total from reward.jsonl weights
  * 4. Gets diff lines using git diff --stat
  * 5. Writes results to:
- *    - FileRL mode: .viben/filerl/<name>/iter<N>/<task>/reward.json
+ *    - Evo mode: .viben/evo/<name>/iter<N>/<task>/reward.json
  *    - Standalone mode: task.json.reward field
  *
  * @param repoRoot - Repository root path
@@ -803,8 +803,8 @@ export function parseRewardResult(
 
   // Determine output directory
   const outputDir = options?.outputDir || taskDirAbs;
-  const filerlDir = options?.filerlDir;
-  const isFileRlMode = !!filerlDir;
+  const evoDir = options?.evoDir;
+  const isFileRlMode = !!evoDir;
 
   // Check task.json exists
   const taskJsonPath = join(taskDirAbs, "task.json");
@@ -960,8 +960,8 @@ export function parseRewardResult(
 
   // Write output based on mode
   if (isFileRlMode) {
-    // FileRL mode: write to reward.json in output directory
-    // Use snake_case for FileRL format (total_score, diff_lines)
+    // Evo mode: write to reward.json in output directory
+    // Use snake_case for Evo format (total_score, diff_lines)
     const rewardJsonPath = join(outputDir, "reward.json");
     const rewardOutput = {
       task: taskName,

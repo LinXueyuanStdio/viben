@@ -12,7 +12,7 @@ description: "微本 - Agent 集群 × 代码进化，多目标带约束的迭�
 
 | 特性 | 说明 |
 |------|------|
-| 🧬 **FileRL** | 代码迭代优化：多候选采样 + 质量评估，自动选择最优方案合并 |
+| 🧬 **FileEvo** | 代码迭代优化：多候选采样 + 质量评估，自动选择最优方案合并 |
 | 🤖 **多智能体** | Agent 集群编排：并行 Worktree 隔离，自动化任务分发与监控 |
 | 🔌 **MCP 协议** | Model Context Protocol：工具注册与调用，扩展 Agent 能力边界 |
 | 📋 **任务系统** | XState 状态机驱动：看板 + 队列 + 自动执行，完整的任务生命周期管理 |
@@ -41,11 +41,11 @@ description: "微本 - Agent 集群 × 代码进化，多目标带约束的迭�
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## FileRL: 代码迭代优化
+## FileEvo: 代码迭代优化
 
 > *多目标带约束的候选选择算法，通过采样-评估-选择循环迭代提升代码质量*
 
-FileRL 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。
+FileEvo 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。
 
 ### 系统组件
 
@@ -66,9 +66,9 @@ FileRL 是一种**启发式迭代优化方法**，核心思想是"生成多个�
 
 ```bash
 # 生命周期
-viben filerl create <name>       # 创建优化目标
-viben filerl start <target.md>   # 启动优化循环
-viben filerl status <name>       # 查看状态
+viben evo create <name>       # 创建优化目标
+viben evo start <target.md>   # 启动优化循环
+viben evo status <name>       # 查看状态
 
 # Idea → Task
 viben idea generate --types <t>  # 生成想法

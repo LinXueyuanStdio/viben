@@ -43,7 +43,7 @@ Find the end of `UnifiedTask` interface, after `machine_context` field (around l
 Add these fields before the closing brace of `UnifiedTask`:
 
 ```typescript
-  // === FileRL Reward ===
+  // === FileEvo Reward ===
   /** Enable compute-reward phase in work-phase pipeline */
   compute_reward?: boolean;
 
@@ -150,14 +150,14 @@ git commit -m "feat(cli): add --compute-reward option to task create"
 ---
 name: reward
 description: |
-  PR quality evaluation agent for FileRL. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
+  PR quality evaluation agent for FileEvo. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
 tools: Read, Bash, Glob, Grep
 model: sonnet
 ---
 
 # Reward Agent
 
-You are the Reward Agent in the FileRL workflow. Your job is to evaluate PR quality using multiple reward type prompts.
+You are the Reward Agent in the FileEvo workflow. Your job is to evaluate PR quality using multiple reward type prompts.
 
 ## Task Directory
 

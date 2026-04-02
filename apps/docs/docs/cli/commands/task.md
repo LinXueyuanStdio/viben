@@ -584,4 +584,4 @@ viben task start my-feature
 - [viben queue](./queue) - Command queue management
 - [viben swarm](./swarm) - Agent swarm scheduling
 - [viben session](./session) - Session record management
-- [viben filerl](./filerl) - File-based Reinforcement Learning
+- [viben evo](./evo) - File-based Self-Evolution
