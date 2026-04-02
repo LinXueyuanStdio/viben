@@ -392,7 +392,7 @@ viben evo report <name>                         # 生成报告
 
 ### Phase 1: 核心重构
 
-1. 更新 `FileRlConfig` 类型定义，使用新的配置格式
+1. 更新 `FileEvoConfig` 类型定义，使用新的配置格式
 2. 重构 `runner.ts` 状态机，实现新的 phase 流程
 3. 实现两阶段 PPO 选择算法
 

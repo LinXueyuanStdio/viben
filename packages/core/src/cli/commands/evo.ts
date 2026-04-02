@@ -126,14 +126,14 @@ function formatIterationState(iter: IterationState): string {
  * Register the evo command
  */
 export function registerEvoCommand(program: Command): void {
-  const fileRlCmd = program
+  const evoCmd = program
     .command("evo")
     .description("Evo - File-based Self-Evolution for code optimization");
 
   // ============================================================================
   // evo create <name>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("create")
     .description("Create a new Evo target file")
     .argument("<name>", "Name for the Evo target")
@@ -200,7 +200,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo start <name-or-target>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("start")
     .description("Start Evo with a target file or run name")
     .argument("<name-or-target>", "Evo run name or path to target file (*.md)")
@@ -378,7 +378,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo status <name>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("status")
     .description("View status of a Evo run")
     .argument("<name>", "Name of the Evo run")
@@ -468,7 +468,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo list
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("list")
     .description("List all Evo runs")
     .option("--active", "Show only active runs")
@@ -533,7 +533,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo stop <name>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("stop")
     .description("Stop an active Evo run")
     .argument("<name>", "Name of the Evo run to stop")
@@ -564,7 +564,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo resume <name-or-target>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("resume")
     .description("Resume a paused Evo run and continue the loop")
     .argument("<name-or-target>", "Name of the Evo run or path to target file (*.md)")
@@ -645,7 +645,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo add-idea <name-or-target> <idea-path>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("add-idea")
     .description("Add an idea file to a Evo target's idea pool")
     .argument("<name-or-target>", "Run name or path to Evo target file (*.md)")
@@ -718,7 +718,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo list-ideas <name-or-target>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("list-ideas")
     .description("List ideas in a Evo target's pool")
     .argument("<name-or-target>", "Run name or path to Evo target file (*.md)")
@@ -860,7 +860,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo generate-ideas <name>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("generate-ideas")
     .description("Generate ideas for a Evo run iteration")
     .argument("<name>", "Evo run name")
@@ -966,7 +966,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo promote-ideas <name> --ideas <idea...>
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("promote-ideas")
     .description("Promote ideas to tasks. Supports all viben task create options.")
     .argument("<name>", "Evo run name")
@@ -1201,7 +1201,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo select - Select best task using PPO metrics
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("select")
     .description("Select best task from a Evo run using PPO metrics")
     .argument("<name>", "Evo run name")
@@ -1430,7 +1430,7 @@ export function registerEvoCommand(program: Command): void {
   // ============================================================================
   // evo compute-reward - Compute reward for a task in a Evo run
   // ============================================================================
-  fileRlCmd
+  evoCmd
     .command("compute-reward")
     .description("Compute reward for a task in a Evo run")
     .argument("<name>", "Evo run name")

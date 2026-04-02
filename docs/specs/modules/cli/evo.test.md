@@ -636,4 +636,4 @@ ls -la .viben/evo/<name>/iter1/
 ## 8. 参考文档
 
 - [FileEvo 命令参考](../../.claude/commands/viben/FileEvo.md)
-- [FileEvo 设计文档](../superpowers/specs/2026-03-27-filerl-redesign.md)
+- [FileEvo 设计文档](../superpowers/specs/2026-03-27-evo-redesign.md)

@@ -149,7 +149,7 @@ viben evo start <name-or-target> [options]
 1. 解析 target.md 配置
 2. 验证配置合法性
 3. 如果 `--dry-run`：显示解析后的配置，不执行
-4. 否则：调用 `runFileRlLoop()` 执行完整循环
+4. 否则：调用 `runFileEvoLoop()` 执行完整循环
 
 **`--dry-run` 输出示例**：
 ```
@@ -268,7 +268,7 @@ viben evo resume <name-or-target> [--json]
 
 **行为**：
 1. 恢复 `state.active = true`
-2. 从当前 phase 继续执行 `runFileRlLoop()`
+2. 从当前 phase 继续执行 `runFileEvoLoop()`
 
 ---
 
@@ -331,7 +331,7 @@ viben evo generate-ideas <name> [options]
 | `--json` | JSON 格式输出 | false |
 
 **行为**：
-1. 调用 `generateIdeasForFileRl()` 生成 ideas
+1. 调用 `generateIdeasForFileEvo()` 生成 ideas
 2. 保存到 `.viben/evo/<name>/iter{N}/` 目录
 
 **输出示例**：
@@ -677,7 +677,7 @@ enabled: true                   # 是否启用
 参见 `packages/core/src/evo/ops/types.ts`：
 
 ```typescript
-interface FileRlConfig {
+interface FileEvoConfig {
   name: string;
   description?: string;
   ppo: PpoConfig;
@@ -896,7 +896,7 @@ packages/core/src/
 │   └── swarm.ts          # viben swarm 命令
 ├── evo/ops/
 │   ├── index.ts          # 导出
-│   ├── types.ts          # 类型定义 (FileRlConfig, FileRlState, etc.)
+│   ├── types.ts          # 类型定义 (FileEvoConfig, FileEvoState, etc.)
 │   ├── parser.ts         # target.md 解析
 │   ├── state.ts          # state.json 管理
 │   ├── runner.ts         # FileEvo 循环编排

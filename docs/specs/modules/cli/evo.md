@@ -563,8 +563,8 @@ packages/core/src/
 
 ## 参考文档
 
-- [FileEvo 命令设计](../../../plans/2026-03-17-filerl-commands-design.md) - 详细设计文档
-- [FileEvo 测试计划](../../../plans/2026-03-27-filerl-test-plan.md) - 功能测试场景
+- [FileEvo 命令设计](../../../plans/2026-03-17-evo-commands-design.md) - 详细设计文档
+- [FileEvo 测试计划](../../../plans/2026-03-27-evo-test-plan.md) - 功能测试场景
 - [FileEvo Agent 指南](../../../../.claude/commands/viben/FileEvo.md) - Agent 使用指南
 
 ---
