@@ -155,8 +155,8 @@ viben agent chat -n my-agent -p "快速任务" --json
 │                     记忆加载                                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. ~/.viben/agents/<id>/memory/MEMORY.md      (主记忆)         │
-│  2. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (今日日志)       │
-│  3. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (昨日日志)       │
+│  2. ~/.viben/agents/<id>/memory/2024-01-16.md  (今日日志)       │
+│  3. ~/.viben/agents/<id>/memory/2024-01-15.md  (昨日日志)       │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
