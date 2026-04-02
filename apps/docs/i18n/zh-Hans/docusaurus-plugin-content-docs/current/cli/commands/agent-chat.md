@@ -264,7 +264,7 @@ Use `viben agent list` to see all agents.
 ```
 Error: Chat not supported for agent type: custom
 
-Supported types: claude-code, gemini, codex
+Supported types: CLAUDE_CODE, GEMINI, CODEX
 ```
 
 ## executor chat 与 agent chat 的区别
