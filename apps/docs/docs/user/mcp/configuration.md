@@ -10,7 +10,7 @@ description: "Configure Viben MCP server data sources, API keys and settings"
 
 Viben is an AI-driven code iteration optimization and agent swarm orchestration platform. The MCP server is a key component of the platform, providing knowledge acquisition capabilities for Agent Swarm:
 
-- **FileRL** - Acquire best practices through academic papers and technical documentation to optimize code iteration
+- **FileEvo** - Acquire best practices through academic papers and technical documentation to optimize code iteration
 - **Idea Generation** - Gather inspiration from diverse data sources to spark innovative ideas
 - **Agent Swarm** - Agent swarms can uniformly call MCP tools for knowledge search
 

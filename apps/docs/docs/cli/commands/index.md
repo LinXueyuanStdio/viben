@@ -150,8 +150,8 @@ swarm:
     - reviewer
   max_parallel_agents: 4
 
-# FileRL settings
-filerl:
+# FileEvo settings
+evo:
   enabled: true
   metrics:
     - code_quality

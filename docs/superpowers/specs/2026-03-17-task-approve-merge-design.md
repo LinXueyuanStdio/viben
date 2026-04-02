@@ -4,7 +4,7 @@
 
 ## 背景
 
-当前 `viben task approve` 仅做简单的状态转换（review → completed）。在 FileRL 工作流中，approve 需要能够自动合并 PR。
+当前 `viben task approve` 仅做简单的状态转换（review → completed）。在 FileEvo 工作流中，approve 需要能够自动合并 PR。
 
 ## 设计目标
 

@@ -1,7 +1,7 @@
 /**
  * Reward REST API routes
  *
- * Provides REST-style endpoints for FileRL reward management:
+ * Provides REST-style endpoints for Evo reward management:
  *
  * Types CRUD:
  * - GET /api/reward/types - List available reward types (builtin + custom)

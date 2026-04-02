@@ -499,7 +499,7 @@ export function registerIdeaCommand(program: Command): void {
     .option("--model <model>", "Model to use for execution")
     .option("--start", "Auto-enqueue task for execution (status: queue)")
     .option("--worktree", "Run agent in a git worktree (isolated branch)")
-    .option("--compute-reward", "Enable reward computation for FileRL")
+    .option("--compute-reward", "Enable reward computation for Evo")
     .option("--json", "JSON format output")
     .action(
       async (

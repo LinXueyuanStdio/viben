@@ -25,7 +25,7 @@
 
 **Viben** is an **Agent Swarm x Code Evolution** platform focused on AI-driven code iteration optimization and intelligent agent cluster orchestration. Core capabilities include:
 
-- **FileRL (File Reinforcement Learning)** - Feedback-based code iteration optimization system
+- **FileEvo (File-based Self-Evolution)** - Feedback-based code iteration optimization system
 - **Agent Swarm** - Multi-agent cluster orchestration and collaboration
 - **Task System (XState)** - State machine-based task workflow management
 - **Idea Generation** - AI-assisted idea generation and knowledge exploration
@@ -35,7 +35,7 @@ Core Products:
 | Product | Description | Technology |
 |---------|-------------|------------|
 | **Web Application** | MCP/Skill package marketplace, social features | Next.js 15 + PostgreSQL |
-| **Desktop Application** | Agent Swarm orchestration, FileRL code optimization, task state machine | Tauri 2 + React 19 |
+| **Desktop Application** | Agent Swarm orchestration, FileEvo code optimization, task state machine | Tauri 2 + React 19 |
 | **CLI Tool** | Command-line agent cluster management and automation | TypeScript + Commander |
 | **MCP Server** | Academic paper search service (18 data sources) | Python + FastMCP |
 
@@ -263,7 +263,7 @@ apps/web/
 
 **Core Features**:
 - **Agent Swarm** - Intelligent agent cluster orchestration and collaboration
-- **FileRL** - Feedback-based code iteration optimization
+- **FileEvo** - Feedback-based code iteration optimization
 - **Task System (XState)** - State machine-driven task workflow
 - **Idea Generation** - AI-assisted idea generation
 - MCP server management (start/stop/monitor)
@@ -460,7 +460,7 @@ const { packages: skills } = await client.skill.search('git');
 - **Agent Swarm** - Command-line agent cluster management
 - **Task System** - Task state machine workflow (`viben task`)
 - **Queue System** - Background command execution queue (`viben queue`)
-- **FileRL** - Code iteration optimization automation
+- **FileEvo** - Code iteration optimization automation
 
 **Dependencies**: `commander`, `chalk`, `yaml`
 

@@ -2,7 +2,7 @@
   "name": "viben",
   "version": "0.1.0",
   "private": true,
-  "description": "Agent Swarm × Code Evolution - FileRL optimization, Multi-Agent orchestration, MCP Protocol, XState Task System, and Idea Generation",
+  "description": "Agent Swarm × Code Evolution - FileEvo optimization, Multi-Agent orchestration, MCP Protocol, XState Task System, and Idea Generation",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

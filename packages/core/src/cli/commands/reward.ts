@@ -1,7 +1,7 @@
 /**
- * viben reward - Reward type management for FileRL
+ * viben reward - Reward type management for Evo
  *
- * Manages reward types used to evaluate PR quality in the FileRL workflow.
+ * Manages reward types used to evaluate PR quality in the Evo workflow.
  * Supports built-in types and user-defined custom types.
  *
  * Subcommands:
@@ -100,7 +100,7 @@ function formatSource(source: string): string {
 export function registerRewardCommand(program: Command): void {
   const rewardCmd = program
     .command("reward")
-    .description("Reward type management for FileRL");
+    .description("Reward type management for Evo");
 
   // ============================================================================
   // reward list-types

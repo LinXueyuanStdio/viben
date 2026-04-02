@@ -1,20 +1,20 @@
-# FileRL Commands Design
+# FileEvo Commands Design
 
-> 为 FileRL（基于代码库的强化学习）设计的 viben 子命令体系
+> 为 FileEvo（基于代码库的强化学习）设计的 viben 子命令体系
 >
-> **状态**: 已实现，参见 `packages/core/src/cli/commands/filerl.ts`
+> **状态**: 已实现，参见 `packages/core/src/cli/commands/evo.ts`
 
 ## 概述
 
-FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质量。本设计定义了支持 FileRL 流程的命令体系。
+FileEvo 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质量。本设计定义了支持 FileEvo 流程的命令体系。
 
 ### 设计原则
 
-1. **FileRL 循环作为提示词** - 不是硬编码命令，而是 Agent 读取 `FileRL.md` 执行
+1. **FileEvo 循环作为提示词** - 不是硬编码命令，而是 Agent 读取 `FileEvo.md` 执行
 2. **独立子命令** - 提供可组合的原子命令，供 Agent 灵活调用
 3. **Reward Types 系统** - 类似 Idea Types，支持 builtin + custom
-4. **配置跟随 FileRL Target** - reward_config 定义在 target.md 的 YAML frontmatter 中
-5. **数据写回 Main Repo** - reward 结果写入 `.viben/filerl/<name>/iter{N}/<idea>/<task>/` 目录
+4. **配置跟随 FileEvo Target** - reward_config 定义在 target.md 的 YAML frontmatter 中
+5. **数据写回 Main Repo** - reward 结果写入 `.viben/evo/<name>/iter{N}/<idea>/<task>/` 目录
 6. **状态机驱动** - 每个迭代通过 phase 跟踪进度，支持中断恢复
 
 ---
@@ -25,14 +25,14 @@ FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         FileRL Main Task                                │
+│                         FileEvo Main Task                                │
 │                      (reads target.md, runs in main repo)               │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│   1. viben filerl start <target.md>                                    │
+│   1. viben evo start <target.md>                                    │
 │      → 解析配置, 创建 state.json, 进入迭代循环                          │
 │                                                                         │
-│   2. viben filerl generate-ideas <name> --types <types>                │
+│   2. viben evo generate-ideas <name> --types <types>                │
 │      → 在 iter{N}/ 下生成 idea                                         │
 │                                                                         │
 │   3. 内部: orchestratePromoteIdeas()                                    │
@@ -52,11 +52,11 @@ FileRL 将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质
 │                                                                         │
 │   4. viben swarm wait --all                                            │
 │                                                                         │
-│   5. viben filerl compute-reward <name> --iter N --task T              │
+│   5. viben evo compute-reward <name> --iter N --task T              │
 │      → 评估 task 代码, 写入 iter{N}/{idea}/{task}/reward.json          │
 │      → Agent 日志写入 iter{N}/{idea}/{task}/reward.log.jsonl           │
 │                                                                         │
-│   6. viben filerl select <name> --iter N                               │
+│   6. viben evo select <name> --iter N                               │
 │      → 聚合 rewards, 计算 PPO, 输出: selected=task-a                   │
 │                                                                         │
 │   7. viben task approve task-a                                         │
@@ -90,24 +90,24 @@ viben task work-phase <task>
 └── 3. validate-check-phase → 验证通过
 ```
 
-**注意**：`compute-reward` 不再是 worktree work-phase 的一部分。Reward 评估在 main repo 中由 FileRL main task 统一调用 `viben filerl reward` 完成。
+**注意**：`compute-reward` 不再是 worktree work-phase 的一部分。Reward 评估在 main repo 中由 FileEvo main task 统一调用 `viben evo reward` 完成。
 
 ---
 
 ## 命令详细设计
 
-### 1. `viben filerl create <name>`
+### 1. `viben evo create <name>`
 
-**用途**：创建新的 FileRL target 配置文件
+**用途**：创建新的 FileEvo target 配置文件
 
 **输入**：
 ```bash
-viben filerl create <name> [options]
+viben evo create <name> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `<name>` | FileRL target 名称 | 必填 |
+| `<name>` | FileEvo target 名称 | 必填 |
 | `-d, --description <text>` | 目标描述 | - |
 | `-o, --output <path>` | 输出路径 | `<name>.md` |
 | `--json` | JSON 格式输出 | false |
@@ -119,23 +119,23 @@ viben filerl create <name> [options]
 
 **输出示例**：
 ```
-✓ Created FileRL target: my-optimization.md
+✓ Created FileEvo target: my-optimization.md
 
 Next steps:
   1. Edit my-optimization.md to configure your optimization goals
-  2. Add ideas: viben filerl add-idea my-optimization path/to/idea.md
-  3. Start run: viben filerl start my-optimization.md
+  2. Add ideas: viben evo add-idea my-optimization path/to/idea.md
+  3. Start run: viben evo start my-optimization.md
 ```
 
 ---
 
-### 2. `viben filerl start <name-or-target>`
+### 2. `viben evo start <name-or-target>`
 
-**用途**：启动 FileRL 运行（解析配置，执行完整循环）
+**用途**：启动 FileEvo 运行（解析配置，执行完整循环）
 
 **输入**：
 ```bash
-viben filerl start <name-or-target> [options]
+viben evo start <name-or-target> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
@@ -153,7 +153,7 @@ viben filerl start <name-or-target> [options]
 
 **`--dry-run` 输出示例**：
 ```
-FileRL Target: my-optimization
+FileEvo Target: my-optimization
 
 Name:               my-optimization
 Description:        优化 API 响应时间
@@ -172,18 +172,18 @@ Max Diff:           500
 
 ---
 
-### 3. `viben filerl status <name>`
+### 3. `viben evo status <name>`
 
-**用途**：查看 FileRL run 的状态
+**用途**：查看 FileEvo run 的状态
 
 **输入**：
 ```bash
-viben filerl status <name> [--json]
+viben evo status <name> [--json]
 ```
 
 **输出示例**：
 ```
-FileRL Run: my-optimization
+FileEvo Run: my-optimization
 
 Target:           my-optimization.md
 Status:           active
@@ -211,13 +211,13 @@ Recent Iterations:
 
 ---
 
-### 4. `viben filerl list`
+### 4. `viben evo list`
 
-**用途**：列出所有 FileRL runs
+**用途**：列出所有 FileEvo runs
 
 **输入**：
 ```bash
-viben filerl list [options]
+viben evo list [options]
 ```
 
 | 参数 | 说明 | 默认值 |
@@ -227,7 +227,7 @@ viben filerl list [options]
 
 **输出示例**：
 ```
-FileRL Runs:
+FileEvo Runs:
 
 ┌──────────────────┬───────────┬─────────────┬──────────┐
 │ NAME             │ ITERATION │ BEST REWARD │ STATUS   │
@@ -242,13 +242,13 @@ Total: 3 run(s)
 
 ---
 
-### 5. `viben filerl stop <name>`
+### 5. `viben evo stop <name>`
 
-**用途**：停止活跃的 FileRL run
+**用途**：停止活跃的 FileEvo run
 
 **输入**：
 ```bash
-viben filerl stop <name> [--json]
+viben evo stop <name> [--json]
 ```
 
 **行为**：
@@ -257,13 +257,13 @@ viben filerl stop <name> [--json]
 
 ---
 
-### 6. `viben filerl resume <name-or-target>`
+### 6. `viben evo resume <name-or-target>`
 
-**用途**：恢复暂停的 FileRL run，继续循环
+**用途**：恢复暂停的 FileEvo run，继续循环
 
 **输入**：
 ```bash
-viben filerl resume <name-or-target> [--json]
+viben evo resume <name-or-target> [--json]
 ```
 
 **行为**：
@@ -272,13 +272,13 @@ viben filerl resume <name-or-target> [--json]
 
 ---
 
-### 7. `viben filerl add-idea <name-or-target> <idea-path>`
+### 7. `viben evo add-idea <name-or-target> <idea-path>`
 
-**用途**：手动添加 idea 到 FileRL target 的 idea pool
+**用途**：手动添加 idea 到 FileEvo target 的 idea pool
 
 **输入**：
 ```bash
-viben filerl add-idea <name-or-target> <idea-path> [--json]
+viben evo add-idea <name-or-target> <idea-path> [--json]
 ```
 
 **行为**：
@@ -287,13 +287,13 @@ viben filerl add-idea <name-or-target> <idea-path> [--json]
 
 ---
 
-### 8. `viben filerl list-ideas <name-or-target>`
+### 8. `viben evo list-ideas <name-or-target>`
 
-**用途**：列出 FileRL target 的 idea pool 中的 ideas
+**用途**：列出 FileEvo target 的 idea pool 中的 ideas
 
 **输入**：
 ```bash
-viben filerl list-ideas <name-or-target> [options]
+viben evo list-ideas <name-or-target> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
@@ -314,29 +314,29 @@ viben filerl list-ideas <name-or-target> [options]
 
 ---
 
-### 9. `viben filerl generate-ideas <name>`
+### 9. `viben evo generate-ideas <name>`
 
-**用途**：为 FileRL run 的迭代生成 ideas
+**用途**：为 FileEvo run 的迭代生成 ideas
 
 **输入**：
 ```bash
-viben filerl generate-ideas <name> [options]
+viben evo generate-ideas <name> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `<name>` | FileRL run 名称 | 必填 |
+| `<name>` | FileEvo run 名称 | 必填 |
 | `--iter <N>` | 目标迭代号 | 当前迭代 (从 state.json) |
 | `--types <types...>` | idea 类型列表 | 从 config 读取 |
 | `--json` | JSON 格式输出 | false |
 
 **行为**：
 1. 调用 `generateIdeasForFileRl()` 生成 ideas
-2. 保存到 `.viben/filerl/<name>/iter{N}/` 目录
+2. 保存到 `.viben/evo/<name>/iter{N}/` 目录
 
 **输出示例**：
 ```
-Generating ideas for FileRL: my-optimization
+Generating ideas for FileEvo: my-optimization
 
   Iteration:   2
   Types:       code_improvements, performance_optimizations
@@ -355,23 +355,23 @@ Generating ideas for FileRL: my-optimization
 │ po-c3d4e5f6│ Implement connection pooling             │ large  │ performance_optimizations│
 └────────────┴──────────────────────────────────────────┴────────┴────────────────────────┘
 
-Ideas saved to: .viben/filerl/my-optimization/iter2/
+Ideas saved to: .viben/evo/my-optimization/iter2/
 ```
 
 ---
 
-### 10. `viben filerl compute-reward <name>`
+### 10. `viben evo compute-reward <name>`
 
-**用途**：计算 FileRL run 中 task 的 reward
+**用途**：计算 FileEvo run 中 task 的 reward
 
 **输入**：
 ```bash
-viben filerl compute-reward <name> [options]
+viben evo compute-reward <name> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `<name>` | FileRL run 名称 | 必填 |
+| `<name>` | FileEvo run 名称 | 必填 |
 | `--iter <N>` | 迭代号 | 当前迭代 |
 | `--idea <idea>` | 指定 idea ID | - |
 | `--task <task>` | 指定 task 名称 | - |
@@ -402,18 +402,18 @@ To monitor:
 
 ---
 
-### 11. `viben filerl select <name>`
+### 11. `viben evo select <name>`
 
 **用途**：使用 PPO 算法聚合当前迭代的 rewards，选择最优 task
 
 **输入**：
 ```bash
-viben filerl select <name> [options]
+viben evo select <name> [options]
 ```
 
 | 参数 | 说明 | 默认值 |
 |------|------|--------|
-| `<name>` | FileRL run 名称 | 必填 |
+| `<name>` | FileEvo run 名称 | 必填 |
 | `--iter <N>` | 迭代号 | 当前迭代 |
 | `--idea <idea>` | 过滤指定 idea | - |
 | `--tasks <tasks...>` | 指定要比较的 tasks | 自动发现 |
@@ -425,13 +425,13 @@ viben filerl select <name> [options]
 **数据链路**：
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   viben filerl select <name>                        │
+│                   viben evo select <name>                        │
 │                    (executed in main repo)                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Step 1: Load rewards from FileRL directory                        │
+│  Step 1: Load rewards from FileEvo directory                        │
 │  ┌───────────────────────────────────────────────────────────────┐ │
-│  │ .viben/filerl/<name>/iter{N}/<idea>/<task>/reward.json        │ │
+│  │ .viben/evo/<name>/iter{N}/<idea>/<task>/reward.json        │ │
 │  │   → task-a: R=0.858                                           │ │
 │  │   → task-b: R=0.721                                           │ │
 │  │   → task-c: R=0.634                                           │ │
@@ -614,7 +614,7 @@ viben task approve <task> [options]
 
 ## Target 配置 (target.md)
 
-FileRL 的配置定义在 target.md 文件的 YAML frontmatter 中。
+FileEvo 的配置定义在 target.md 文件的 YAML frontmatter 中。
 
 ### 完整配置示例
 
@@ -674,7 +674,7 @@ enabled: true                   # 是否启用
 
 ### 配置接口定义
 
-参见 `packages/core/src/filerl/ops/types.ts`：
+参见 `packages/core/src/evo/ops/types.ts`：
 
 ```typescript
 interface FileRlConfig {
@@ -725,7 +725,7 @@ interface TaskConfig {
 
 ### state.json 结构
 
-FileRL run 的状态保存在 `.viben/filerl/<name>/state.json`：
+FileEvo run 的状态保存在 `.viben/evo/<name>/state.json`：
 
 ```json
 {
@@ -783,21 +783,21 @@ type IterationPhase =
 
 ## 命令汇总
 
-### FileRL 命令
+### FileEvo 命令
 
 | 命令 | 用途 |
 |------|------|
-| `viben filerl create <name>` | 创建 FileRL target 配置文件 |
-| `viben filerl start <name-or-target>` | 启动 FileRL 运行 |
-| `viben filerl status <name>` | 查看运行状态 |
-| `viben filerl list` | 列出所有 runs |
-| `viben filerl stop <name>` | 停止运行 |
-| `viben filerl resume <name-or-target>` | 恢复运行 |
-| `viben filerl add-idea <name-or-target> <idea-path>` | 手动添加 idea |
-| `viben filerl list-ideas <name-or-target>` | 列出 idea pool |
-| `viben filerl generate-ideas <name>` | 生成 ideas |
-| `viben filerl compute-reward <name>` | 计算 task reward |
-| `viben filerl select <name>` | PPO 选择最优 task |
+| `viben evo create <name>` | 创建 FileEvo target 配置文件 |
+| `viben evo start <name-or-target>` | 启动 FileEvo 运行 |
+| `viben evo status <name>` | 查看运行状态 |
+| `viben evo list` | 列出所有 runs |
+| `viben evo stop <name>` | 停止运行 |
+| `viben evo resume <name-or-target>` | 恢复运行 |
+| `viben evo add-idea <name-or-target> <idea-path>` | 手动添加 idea |
+| `viben evo list-ideas <name-or-target>` | 列出 idea pool |
+| `viben evo generate-ideas <name>` | 生成 ideas |
+| `viben evo compute-reward <name>` | 计算 task reward |
+| `viben evo select <name>` | PPO 选择最优 task |
 
 ### 相关命令
 
@@ -815,7 +815,7 @@ type IterationPhase =
 
 > **注意**: 此命令在 `viben swarm` 命名空间，参见 `packages/core/src/cli/commands/swarm.ts`
 
-**用途**：等待指定或所有 agent 完成，用于 FileRL 流程中并行任务同步点
+**用途**：等待指定或所有 agent 完成，用于 FileEvo 流程中并行任务同步点
 
 **输入**：
 ```bash
@@ -890,16 +890,16 @@ Summary: 2 completed, 0 failed, 1 timeout
 ```
 packages/core/src/
 ├── cli/commands/
-│   ├── filerl.ts         # viben filerl 命令
+│   ├── evo.ts         # viben evo 命令
 │   ├── reward.ts         # viben reward 命令
 │   ├── task.ts           # viben task 命令
 │   └── swarm.ts          # viben swarm 命令
-├── filerl/ops/
+├── evo/ops/
 │   ├── index.ts          # 导出
 │   ├── types.ts          # 类型定义 (FileRlConfig, FileRlState, etc.)
 │   ├── parser.ts         # target.md 解析
 │   ├── state.ts          # state.json 管理
-│   ├── runner.ts         # FileRL 循环编排
+│   ├── runner.ts         # FileEvo 循环编排
 │   └── idea-generator.ts # idea 生成
 ├── reward/ops/
 │   ├── types.ts          # RewardConfig 等
@@ -927,9 +927,9 @@ packages/core/src/
 ├── ideas/
 │   └── <session>/
 │       └── *.md                  # 生成的 ideas
-└── filerl/
+└── evo/
     └── <name>/
-        ├── state.json            # FileRL run state
+        ├── state.json            # FileEvo run state
         ├── iter1/                # 迭代 1
         │   ├── <idea-id-1>/      # idea 1
         │   │   ├── idea.md       # idea 定义
@@ -955,7 +955,7 @@ docs/
 
 #### reward.json
 
-**路径**: `.viben/filerl/<name>/iter{N}/<idea>/<task>/reward.json`
+**路径**: `.viben/evo/<name>/iter{N}/<idea>/<task>/reward.json`
 
 **格式**:
 ```json
@@ -979,7 +979,7 @@ docs/
 
 #### reward.log.jsonl
 
-**路径**: `.viben/filerl/<name>/iter{N}/<idea>/<task>/reward.log.jsonl`
+**路径**: `.viben/evo/<name>/iter{N}/<idea>/<task>/reward.log.jsonl`
 
 **说明**: 由 `runRewardPhase` 启动的 reward agent 产生的执行日志。格式与标准 agent log 相同 (JSONL)，记录 agent 的思考过程、工具调用、输出等。
 
@@ -989,8 +989,8 @@ docs/
 
 ## 参考文档
 
-- [FileRL 命令参考](../../.claude/commands/viben/FileRL.md) - Agent 使用指南
-- [FileRL 测试计划](./2026-03-27-filerl-test-plan.md) - 功能测试场景
-- [filerl.ts](../../packages/core/src/cli/commands/filerl.ts) - CLI 命令实现
-- [runner.ts](../../packages/core/src/filerl/ops/runner.ts) - 循环编排逻辑
-- [types.ts](../../packages/core/src/filerl/ops/types.ts) - 类型定义
+- [FileEvo 命令参考](../../.claude/commands/viben/FileEvo.md) - Agent 使用指南
+- [FileEvo 测试计划](./2026-03-27-evo-test-plan.md) - 功能测试场景
+- [evo.ts](../../packages/core/src/cli/commands/evo.ts) - CLI 命令实现
+- [runner.ts](../../packages/core/src/evo/ops/runner.ts) - 循环编排逻辑
+- [types.ts](../../packages/core/src/evo/ops/types.ts) - 类型定义

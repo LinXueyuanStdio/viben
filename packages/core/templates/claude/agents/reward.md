@@ -1,14 +1,14 @@
 ---
 name: reward
 description: |
-  PR quality evaluation agent for FileRL. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
+  PR quality evaluation agent. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
 tools: Read, Bash, Glob, Grep
 model: sonnet
 ---
 
 # Reward Agent
 
-You are the Reward Agent in the FileRL workflow. Your job is to evaluate PR quality using multiple reward type prompts.
+You are the Reward Agent. Your job is to evaluate PR quality using multiple reward type prompts.
 
 ## Task Directory
 

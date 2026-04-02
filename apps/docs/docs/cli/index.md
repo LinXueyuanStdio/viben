@@ -16,7 +16,7 @@ Viben CLI enables a new paradigm of software development where AI agent swarms c
 
 | Feature | Description |
 |---------|-------------|
-| **FileRL** | File-level Reinforcement Learning for code evolution - agents learn which code changes improve quality metrics |
+| **FileEvo** | File-level Reinforcement Learning for code evolution - agents learn which code changes improve quality metrics |
 | **Agent Swarm** | Orchestrate multiple specialized agents working in parallel on different aspects of your codebase |
 | **Task System** | XState-powered task management with state machines for complex development workflows |
 | **Idea Generation** | AI-driven ideation for features, refactoring opportunities, and architectural improvements |
@@ -45,7 +45,7 @@ Viben CLI enables a new paradigm of software development where AI agent swarms c
 
 The CLI is designed around the core philosophy of continuous code improvement through AI collaboration:
 
-- **FileRL**: Agents learn from code change outcomes to make better decisions
+- **FileEvo**: Agents learn from code change outcomes to make better decisions
 - **Swarm Intelligence**: Multiple specialized agents work in parallel
 - **Task-Driven**: XState state machines manage complex development workflows
 - **Idea Generation**: AI proactively suggests improvements and features

@@ -9,7 +9,7 @@
 
 Viben CLI enables autonomous code evolution through multi-agent orchestration:
 
-- **FileRL** - Reinforcement learning for code iteration and optimization
+- **FileEvo** - Reinforcement learning for code iteration and optimization
 - **Multi-Agent Swarm** - Coordinate multiple AI agents working in parallel
 - **MCP Protocol** - Model Context Protocol for seamless tool integration
 - **XState Task System** - State machine-driven task workflow management

@@ -9,7 +9,7 @@ description: "Complete reference documentation for Viben Gateway RESTful API"
 Viben Gateway is the core service of the **Agent Swarm x Code Evolution** platform, providing RESTful APIs for:
 
 - **Agent Swarm** - Agent cluster orchestration and collaboration management
-- **FileRL** - API support for code iteration optimization
+- **FileEvo** - API support for code iteration optimization
 - **Task System** - XState-based task state machine workflow
 - **Session Management** - Agent session and context management
 

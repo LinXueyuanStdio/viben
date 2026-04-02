@@ -18,7 +18,7 @@ In the **Agent Swarm x Code Evolution** paradigm, multiple agents collaborate wi
 | **Implementer** | Writes and modifies code based on task specifications |
 | **Reviewer** | Reviews code changes and provides quality feedback |
 | **Tester** | Generates and runs tests, validates implementations |
-| **Optimizer** | Applies FileRL to iteratively improve code quality metrics |
+| **Optimizer** | Applies FileEvo to iteratively improve code quality metrics |
 
 ### Swarm Coordination
 
@@ -39,7 +39,7 @@ In the **Agent Swarm x Code Evolution** paradigm, multiple agents collaborate wi
          +----------+----------+----------+
                         |
                         v
-                   FileRL Loop
+                   FileEvo Loop
               (Learn from outcomes)
 ```
 

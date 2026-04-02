@@ -1,10 +1,10 @@
 # viben task compute-reward 设计文档
 
-> 实现 FileRL 流程中的 PR 奖励评估命令
+> 实现 FileEvo 流程中的 PR 奖励评估命令
 
 ## 概述
 
-`viben task compute-reward` 是 FileRL（基于代码库的强化学习）流程的关键命令，用于评估 PR 的代码质量并计算奖励分数。该命令通过调用 reward agent 对多个维度进行评分，最终将结果写入 task.json。
+`viben task compute-reward` 是 FileEvo（基于代码库的强化学习）流程的关键命令，用于评估 PR 的代码质量并计算奖励分数。该命令通过调用 reward agent 对多个维度进行评分，最终将结果写入 task.json。
 
 ### 设计原则
 
@@ -66,7 +66,7 @@ work-phase 子阶段
 export interface UnifiedTask {
   // ... 现有字段 ...
 
-  // === FileRL Reward ===
+  // === FileEvo Reward ===
   /** Reward configuration for evaluation */
   reward_config?: RewardConfig;
 
@@ -193,7 +193,7 @@ viben task compute-reward <task> [options]
 ---
 name: reward
 description: |
-  PR quality evaluation agent for FileRL. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
+  PR quality evaluation agent for FileEvo. Evaluates code changes using reward type prompts. **IMPORTANT**: Always include `task_dir: <abs path>` as the FIRST LINE of prompt.
 tools: Read, Bash, Glob, Grep
 model: sonnet
 ---
@@ -330,6 +330,6 @@ viben reward select task-a task-b task-c \
 
 ## 参考
 
-- [FileRL Commands Design](../../../plans/2026-03-17-filerl-commands-design.md)
+- [FileEvo Commands Design](../../../plans/2026-03-17-evo-commands-design.md)
 - [Implement Phase Runner](../../../../packages/core/src/task/phase/implement.ts)
 - [Reward Types](../../../../packages/core/src/reward/ops/types.ts)

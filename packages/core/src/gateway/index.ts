@@ -2,7 +2,7 @@
  * Viben Gateway — Agent Swarm × Code Evolution
  *
  * HTTP/WebSocket server for multi-agent orchestration and code evolution.
- * Supports FileRL-based agent learning, XState task management, and
+ * Supports Evo-based agent learning, XState task management, and
  * real-time collaboration through SSE/WebSocket streaming.
  *
  * Note: This module requires fastify as a dependency. It is designed to be
@@ -129,7 +129,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       openapi: {
         info: {
           title: "Viben Gateway API",
-          description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, FileRL-based code evolution, and XState task management",
+          description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, Evo-based code evolution, and XState task management",
           version: "1.0.0",
         },
         servers: [{ url: `http://${host}:${port}` }],

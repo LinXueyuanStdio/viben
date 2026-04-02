@@ -217,9 +217,9 @@ export function promoteIdea(
       start: options.start,
       worktree: options.worktree,
       computeReward: options.computeReward,
-      filerlDir: options.filerlDir,
-      // Pass idea ID for FileRL reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
-      filerlIdea: options.filerlIdea || idea.id,
+      evoDir: options.evoDir,
+      // Pass idea ID for Evo reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
+      evoIdea: options.evoIdea || idea.id,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);
@@ -295,9 +295,9 @@ export function promoteIdeaDirect(
       start: options.start,
       worktree: options.worktree,
       computeReward: options.computeReward,
-      filerlDir: options.filerlDir,
-      // Pass idea ID for FileRL reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
-      filerlIdea: options.filerlIdea || idea.id,
+      evoDir: options.evoDir,
+      // Pass idea ID for Evo reward path structure: iter{N}/{ideaId}/{taskName}/reward.json
+      evoIdea: options.evoIdea || idea.id,
     };
 
     const result = createTask(repoRoot, idea.title, taskOptions);

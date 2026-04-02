@@ -47,7 +47,7 @@ export default function Home() {
   return (
     <Layout
       title={`${siteConfig.title} - Agent Swarm × Code Evolution`}
-      description="Multi-objective constrained iterative optimization for automatic code quality improvement. FileRL, multi-agent orchestration, and XState-powered task system.">
+      description="Multi-objective constrained iterative optimization for automatic code quality improvement. FileEvo, multi-agent orchestration, and XState-powered task system.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

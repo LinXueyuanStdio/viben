@@ -1,7 +1,7 @@
 /**
- * FileRL Operations
+ * Evo Operations
  *
- * Export all FileRL operations for use by CLI commands and other modules.
+ * Export all Evo operations for use by CLI commands and other modules.
  */
 
 // Types
@@ -12,9 +12,9 @@ export { parseTarget, validateConfig, generateTargetContent } from "./parser";
 
 // State management
 export {
-  getFileRlDir,
+  getEvoDir,
   getStatePath,
-  ensureFileRlDir,
+  ensureEvoDir,
   createInitialState,
   createIterationState,
   readState,
@@ -53,12 +53,12 @@ export {
   orchestrateMergeAndCleanup,
   orchestrateFullIteration,
   waitForTasksCompletion,
-  runFileRlLoop,
+  runEvoLoop,
 } from "./runner";
 
-// Idea generation for FileRL
+// Idea generation for Evo
 export type {
-  GenerateIdeasForFileRlOptions,
-  GenerateIdeasForFileRlResult,
+  GenerateIdeasForEvoOptions,
+  GenerateIdeasForEvoResult,
 } from "./idea-generator";
-export { generateIdeasForFileRl } from "./idea-generator";
+export { generateIdeasForEvo } from "./idea-generator";

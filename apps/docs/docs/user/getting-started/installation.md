@@ -10,7 +10,7 @@ description: "Install Viben desktop app, CLI tool, or MCP server"
 
 Viben is an AI-driven code iterative optimization and agent swarm orchestration platform. Core capabilities include:
 
-- **FileRL (File Reinforcement Learning)** - Feedback-based code iterative optimization system
+- **FileEvo (File-based Self-Evolution)** - Feedback-based code iterative optimization system
 - **Agent Swarm** - Multi-agent swarm orchestration and collaboration
 - **Task System (XState)** - State machine-based task workflow management
 - **Idea Generation** - AI-assisted idea generation and knowledge exploration
@@ -23,7 +23,7 @@ Viben offers multiple product forms. You can choose to install based on your nee
 
 | Product | Installation Method | Use Cases |
 |---------|---------------------|-----------|
-| **Desktop App** | Download installer | Agent Swarm orchestration, FileRL code optimization, task management |
+| **Desktop App** | Download installer | Agent Swarm orchestration, FileEvo code optimization, task management |
 | **CLI Tool** | npm/npx | Command line automation, task state machine, Queue system |
 | **MCP Server** | pip/uv | AI assistant integration for academic search, knowledge acquisition |
 
@@ -34,7 +34,7 @@ Viben offers multiple product forms. You can choose to install based on your nee
 The desktop app is the most intuitive way to experience **Agent Swarm x Code Evolution**, providing a complete graphical interface:
 
 - **Agent Swarm** - Visual orchestration and management of agent swarms
-- **FileRL** - Visual feedback interface for code iterative optimization
+- **FileEvo** - Visual feedback interface for code iterative optimization
 - **Task System** - XState-based task state machine management
 - **Idea Generation** - AI-assisted knowledge exploration and idea generation
 
@@ -144,7 +144,7 @@ Commands:
 
 ## MCP Server
 
-The MCP server provides knowledge acquisition capabilities for **Agent Swarm**, supporting academic paper search and multi-source data access. It is an important knowledge source for **Idea Generation** and **FileRL**.
+The MCP server provides knowledge acquisition capabilities for **Agent Swarm**, supporting academic paper search and multi-source data access. It is an important knowledge source for **Idea Generation** and **FileEvo**.
 
 ### Quick Installation
 

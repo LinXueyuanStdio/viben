@@ -1,7 +1,7 @@
 /**
- * FileRL Target Parser
+ * Evo Target Parser
  *
- * Parses FileRL target files (YAML header + Markdown body).
+ * Parses Evo target files (YAML header + Markdown body).
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -9,7 +9,7 @@ import { resolve, basename } from "node:path";
 import matter from "gray-matter";
 
 import {
-  type FileRlConfig,
+  type EvoConfig,
   type PpoConfig,
   type IdeaConfig,
   type RolloutConfig,
@@ -134,7 +134,7 @@ function parseTaskConfig(raw: Record<string, unknown>): TaskConfig {
 }
 
 /**
- * Parse a FileRL target file
+ * Parse an Evo target file
  *
  * Target files have YAML frontmatter with configuration and
  * markdown body with the workflow instructions.
@@ -164,7 +164,7 @@ export function parseTarget(targetPath: string, repoRoot: string): ParseTargetRe
       ? raw.name
       : basename(resolvedPath, ".md");
 
-    const config: FileRlConfig = {
+    const config: EvoConfig = {
       name,
       description: typeof raw.description === "string" ? raw.description : undefined,
       ppo: parsePpoConfig(raw),
@@ -192,12 +192,12 @@ export function parseTarget(targetPath: string, repoRoot: string): ParseTargetRe
 }
 
 /**
- * Validate a FileRL configuration
+ * Validate an Evo configuration
  *
  * @param config - Configuration to validate
  * @returns Validation result with any errors
  */
-export function validateConfig(config: FileRlConfig): { valid: boolean; errors: string[] } {
+export function validateConfig(config: EvoConfig): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Validate PPO config
@@ -263,7 +263,7 @@ export function validateConfig(config: FileRlConfig): { valid: boolean; errors: 
 }
 
 /**
- * Generate a default FileRL target file content
+ * Generate a default Evo target file content
  *
  * @param name - Target name
  * @param description - Optional description
@@ -274,7 +274,7 @@ export function generateTargetContent(name: string, description?: string): strin
 
   const frontmatter = `---
 name: ${name}
-description: ${description || `FileRL target for ${name}`}
+description: ${description || `Evo target for ${name}`}
 enabled: true
 
 ppo:
@@ -313,9 +313,9 @@ created_at: ${now}
 updated_at: ${now}
 ---
 
-# FileRL: ${name}
+# Evo: ${name}
 
-This file configures a FileRL (File-based Reinforcement Learning) loop.
+This file configures an Evo (File-based Self-Evolution) loop.
 
 ## How It Works
 
@@ -349,14 +349,14 @@ Configure which improvements to look for:
 ## Usage
 
 \`\`\`bash
-# Run the FileRL loop
-viben filerl start ${name}.md
+# Run the Evo loop
+viben evo start ${name}.md
 
 # Check status
-viben filerl status ${name}
+viben evo status ${name}
 
 # Stop a running loop
-viben filerl stop ${name}
+viben evo stop ${name}
 \`\`\`
 `;
 

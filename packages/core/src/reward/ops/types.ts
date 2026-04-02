@@ -2,7 +2,7 @@
  * Reward Types
  *
  * Type definitions for the reward module.
- * Based on docs/plans/2026-03-17-filerl-commands-design.md
+ * Based on docs/plans/2026-03-17-evo-commands-design.md
  */
 
 // =============================================================================
@@ -264,8 +264,8 @@ export interface SelectOptions {
   /** Map of task -> ideaId for two-stage selection */
   taskIdeaMap?: Record<string, string>;
 
-  /** FileRL directory path */
-  filerlDir?: string;
+  /** Evo directory path */
+  evoDir?: string;
 
   /** Current iteration number */
   iteration?: number;

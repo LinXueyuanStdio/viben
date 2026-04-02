@@ -381,14 +381,14 @@ export interface IdeaPromoteOptions {
   /** Task description override */
   description?: string;
 
-  /** Enable reward computation for FileRL */
+  /** Enable reward computation for Evo */
   computeReward?: boolean;
 
-  /** FileRL directory absolute path for reward config and output */
-  filerlDir?: string;
+  /** Evo directory absolute path for reward config and output */
+  evoDir?: string;
 
-  /** FileRL idea ID - links task to its source idea for reward path structure */
-  filerlIdea?: string;
+  /** Evo idea ID - links task to its source idea for reward path structure */
+  evoIdea?: string;
 }
 
 /**

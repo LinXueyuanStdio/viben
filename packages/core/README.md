@@ -2,7 +2,7 @@
 
 Viben 平台的核心共享库 — **Agent Swarm × Code Evolution**。
 
-为 CLI 和桌面应用提供统一的底层能力，支持 FileRL (File-based Reinforcement Learning)、Multi-Agent 编排和 XState Task System。
+为 CLI 和桌面应用提供统一的底层能力，支持 FileEvo (File-based Reinforcement Learning)、Multi-Agent 编排和 XState Task System。
 
 ## 概述
 
@@ -11,7 +11,7 @@ Viben 平台的核心共享库 — **Agent Swarm × Code Evolution**。
 ### 设计理念
 
 - **Agent Swarm**: 支持多智能体并行协作，通过 worktree 实现代码隔离
-- **Code Evolution**: 基于 FileRL 的代码演化范式，智能体通过文件系统持续学习
+- **Code Evolution**: 基于 FileEvo 的代码演化范式，智能体通过文件系统持续学习
 - **XState Task System**: 状态机驱动的任务管理，支持复杂工作流编排
 - **File-Native 范式**: 所有配置使用 YAML 格式存储在 `~/.viben/` 目录,不依赖数据库
 - **单例模式**: 核心管理器提供全局单例,确保状态一致性

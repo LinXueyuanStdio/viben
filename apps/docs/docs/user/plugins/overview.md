@@ -9,7 +9,7 @@ description: "Learn about the Viben plugin system and ContentSource API"
 The Viben plugin system is an important extension mechanism for the **Agent Swarm x Code Evolution** platform. Through plugins, agent swarms can access a wider range of knowledge sources and tools, supporting:
 
 - **Idea Generation** - Obtain inspiration and knowledge from diverse data sources
-- **FileRL** - Provide reference materials and best practices for code optimization
+- **FileEvo** - Provide reference materials and best practices for code optimization
 - **Agent Swarm** - Extend the toolset and capability boundaries of agents
 
 ## What is a Plugin?
@@ -188,7 +188,7 @@ Both formats work, but flat names are recommended for simplicity.
 - **Type-Safe API** - Generic `ContentSource[T]` with type hints
 - **Automatic Discovery** - No need to edit configuration files
 - **Independent Development** - Plugins can be developed and released independently
-- **FileRL Integration** - Plugin data can serve as reference input for code optimization
+- **FileEvo Integration** - Plugin data can serve as reference input for code optimization
 
 ## Next Steps
 

@@ -1,8 +1,8 @@
-# FileRL Redesign Implementation Plan
+# FileEvo Redesign Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Redesign FileRL to support manual idea input, implement full PPO two-stage selection, and fix idea state management bugs.
+**Goal:** Redesign FileEvo to support manual idea input, implement full PPO two-stage selection, and fix idea state management bugs.
 
 **Architecture:** Update types to use new config format (semantic field names, rollout.n, idea.batch_size), refactor runner state machine to support fetch_ideas phase, implement two-stage PPO selection with change_sensitivity (β) parameter, fix loser idea dismissal in cleanup phase.
 
@@ -15,7 +15,7 @@
 ### Task 1: Update PpoConfig with new field names
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts:23-41`
+- Modify: `packages/core/src/evo/ops/types.ts:23-41`
 
 - [ ] **Step 1: Update PpoConfig interface**
 
@@ -61,8 +61,8 @@ Expected: Errors in files that reference old field names (threshold, parallel_co
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "refactor(filerl): update PpoConfig with semantic field names
+git add packages/core/src/evo/ops/types.ts
+git commit -m "refactor(evo): update PpoConfig with semantic field names
 
 - kl_coef (λ): KL penalty coefficient
 - change_sensitivity (β): exponential decay sensitivity
@@ -78,7 +78,7 @@ BREAKING: Removes threshold, parallel_count, max_iterations, convergence_thresho
 ### Task 2: Add RolloutConfig and ConvergenceConfig
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts:46-58` (after IdeaConfig)
+- Modify: `packages/core/src/evo/ops/types.ts:46-58` (after IdeaConfig)
 
 - [ ] **Step 1: Add RolloutConfig interface**
 
@@ -133,8 +133,8 @@ export const DEFAULT_CONVERGENCE_CONFIG: ConvergenceConfig = {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "feat(filerl): add RolloutConfig and ConvergenceConfig types"
+git add packages/core/src/evo/ops/types.ts
+git commit -m "feat(evo): add RolloutConfig and ConvergenceConfig types"
 ```
 
 ---
@@ -142,7 +142,7 @@ git commit -m "feat(filerl): add RolloutConfig and ConvergenceConfig types"
 ### Task 3: Update IdeaConfig with batch_size and auto_generate
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts` (IdeaConfig section)
+- Modify: `packages/core/src/evo/ops/types.ts` (IdeaConfig section)
 
 - [ ] **Step 1: Update IdeaConfig interface**
 
@@ -187,8 +187,8 @@ export const DEFAULT_IDEA_CONFIG: IdeaConfig = {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "feat(filerl): update IdeaConfig with auto_generate and batch_size
+git add packages/core/src/evo/ops/types.ts
+git commit -m "feat(evo): update IdeaConfig with auto_generate and batch_size
 
 - auto_generate: controls whether ideas are generated automatically
 - batch_size: number of ideas to process per iteration (B)
@@ -200,13 +200,13 @@ git commit -m "feat(filerl): update IdeaConfig with auto_generate and batch_size
 ### Task 4: Update FileRlConfig to use new config types
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts` (FileRlConfig section)
+- Modify: `packages/core/src/evo/ops/types.ts` (FileRlConfig section)
 
 - [ ] **Step 1: Update FileRlConfig interface**
 
 ```typescript
 /**
- * Complete FileRL target configuration
+ * Complete FileEvo target configuration
  */
 export interface FileRlConfig {
   /** Target name/identifier */
@@ -233,7 +233,7 @@ export interface FileRlConfig {
   /** Task execution configuration */
   task: TaskConfig;
 
-  /** Whether the FileRL loop is enabled */
+  /** Whether the FileEvo loop is enabled */
   enabled: boolean;
 
   /** Created timestamp */
@@ -267,8 +267,8 @@ export const DEFAULT_TASK_CONFIG: TaskConfig = {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "refactor(filerl): restructure FileRlConfig with rollout and convergence sections"
+git add packages/core/src/evo/ops/types.ts
+git commit -m "refactor(evo): restructure FileRlConfig with rollout and convergence sections"
 ```
 
 ---
@@ -276,13 +276,13 @@ git commit -m "refactor(filerl): restructure FileRlConfig with rollout and conve
 ### Task 5: Update IterationPhase enum
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts` (IterationPhase section)
+- Modify: `packages/core/src/evo/ops/types.ts` (IterationPhase section)
 
 - [ ] **Step 1: Update IterationPhase type**
 
 ```typescript
 /**
- * Iteration phase - tracks progress through the FileRL pipeline
+ * Iteration phase - tracks progress through the FileEvo pipeline
  */
 export type IterationPhase =
   | "init"              // Just started
@@ -301,8 +301,8 @@ export type IterationPhase =
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "feat(filerl): update IterationPhase with fetch_ideas and check_converge"
+git add packages/core/src/evo/ops/types.ts
+git commit -m "feat(evo): update IterationPhase with fetch_ideas and check_converge"
 ```
 
 ---
@@ -310,7 +310,7 @@ git commit -m "feat(filerl): update IterationPhase with fetch_ideas and check_co
 ### Task 6: Add ideaId field to IterationState
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts` (IterationState section)
+- Modify: `packages/core/src/evo/ops/types.ts` (IterationState section)
 
 - [ ] **Step 1: Update IterationState interface**
 
@@ -359,8 +359,8 @@ export interface IterationState {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "feat(filerl): add task_idea_map and merge_error to IterationState"
+git add packages/core/src/evo/ops/types.ts
+git commit -m "feat(evo): add task_idea_map and merge_error to IterationState"
 ```
 
 ---
@@ -368,7 +368,7 @@ git commit -m "feat(filerl): add task_idea_map and merge_error to IterationState
 ### Task 7: Update FileRlState with no_merge_count
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/types.ts` (FileRlState section)
+- Modify: `packages/core/src/evo/ops/types.ts` (FileRlState section)
 
 - [ ] **Step 1: Update FileRlState interface**
 
@@ -415,8 +415,8 @@ export interface FileRlState {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/types.ts
-git commit -m "feat(filerl): add no_merge_count to FileRlState for early stop detection"
+git add packages/core/src/evo/ops/types.ts
+git commit -m "feat(evo): add no_merge_count to FileRlState for early stop detection"
 ```
 
 ---
@@ -424,7 +424,7 @@ git commit -m "feat(filerl): add no_merge_count to FileRlState for early stop de
 ### Task 8: Export new types and defaults from index.ts
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/index.ts`
+- Modify: `packages/core/src/evo/ops/index.ts`
 
 - [ ] **Step 1: Update exports**
 
@@ -449,8 +449,8 @@ Expected: List of files with type errors that need updating
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/index.ts
-git commit -m "chore(filerl): export new config types and defaults"
+git add packages/core/src/evo/ops/index.ts
+git commit -m "chore(evo): export new config types and defaults"
 ```
 
 ---
@@ -460,7 +460,7 @@ git commit -m "chore(filerl): export new config types and defaults"
 ### Task 9: Update parser to handle new config format
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/parser.ts`
+- Modify: `packages/core/src/evo/ops/parser.ts`
 
 - [ ] **Step 1: Add parseRolloutConfig function**
 
@@ -570,8 +570,8 @@ const config: FileRlConfig = {
 - [ ] **Step 7: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/parser.ts
-git commit -m "feat(filerl): update parser for new config format
+git add packages/core/src/evo/ops/parser.ts
+git commit -m "feat(evo): update parser for new config format
 
 - Add parseRolloutConfig and parseConvergenceConfig
 - Update parsePpoConfig with semantic field names
@@ -584,7 +584,7 @@ git commit -m "feat(filerl): update parser for new config format
 ### Task 10: Update validateConfig for new structure
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/parser.ts` (validateConfig function)
+- Modify: `packages/core/src/evo/ops/parser.ts` (validateConfig function)
 
 - [ ] **Step 1: Rewrite validateConfig**
 
@@ -655,8 +655,8 @@ export function validateConfig(config: FileRlConfig): { valid: boolean; errors: 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/parser.ts
-git commit -m "feat(filerl): update validateConfig for new config structure"
+git add packages/core/src/evo/ops/parser.ts
+git commit -m "feat(evo): update validateConfig for new config structure"
 ```
 
 ---
@@ -664,7 +664,7 @@ git commit -m "feat(filerl): update validateConfig for new config structure"
 ### Task 11: Update generateTargetContent for new format
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/parser.ts` (generateTargetContent function)
+- Modify: `packages/core/src/evo/ops/parser.ts` (generateTargetContent function)
 
 - [ ] **Step 1: Rewrite generateTargetContent**
 
@@ -674,7 +674,7 @@ export function generateTargetContent(name: string, description?: string): strin
 
   return `---
 name: ${name}
-description: ${description || `FileRL target for ${name}`}
+description: ${description || `FileEvo target for ${name}`}
 enabled: true
 
 # Idea configuration
@@ -719,9 +719,9 @@ created_at: ${now}
 updated_at: ${now}
 ---
 
-# FileRL: ${name}
+# FileEvo: ${name}
 
-This file configures a FileRL (File-based Reinforcement Learning) loop.
+This file configures a FileEvo (File-based Self-Evolution) loop.
 
 ## How It Works
 
@@ -737,12 +737,12 @@ This file configures a FileRL (File-based Reinforcement Learning) loop.
 
 \`\`\`bash
 # Add ideas manually (when auto_generate: false)
-viben filerl add-idea ${name} path/to/idea.md
+viben evo add-idea ${name} path/to/idea.md
 
 # Or enable auto_generate in config above
 
 # Start the optimization loop
-viben filerl start ${name}.md
+viben evo start ${name}.md
 \`\`\`
 `;
 }
@@ -751,8 +751,8 @@ viben filerl start ${name}.md
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/parser.ts
-git commit -m "feat(filerl): update generateTargetContent for new config format"
+git add packages/core/src/evo/ops/parser.ts
+git commit -m "feat(evo): update generateTargetContent for new config format"
 ```
 
 ---
@@ -822,8 +822,8 @@ export interface SelectOptions {
   /** Map of task -> ideaId for two-stage selection */
   taskIdeaMap?: Record<string, string>;
 
-  /** FileRL directory path */
-  filerlDir?: string;
+  /** FileEvo directory path */
+  evoDir?: string;
 
   /** Current iteration number */
   iteration?: number;
@@ -918,7 +918,7 @@ export function selectBestTask(
     clipRange: options.clipRange ?? SELECT_DEFAULTS.clipRange,
     maxDiff: options.maxDiff ?? SELECT_DEFAULTS.maxDiff,
     taskIdeaMap: options.taskIdeaMap,
-    filerlDir: options.filerlDir,
+    evoDir: options.evoDir,
     iteration: options.iteration,
   };
 
@@ -994,7 +994,7 @@ git commit -m "feat(reward): implement two-stage PPO selection algorithm
 ### Task 14: Update createInitialState with no_merge_count
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/state.ts`
+- Modify: `packages/core/src/evo/ops/state.ts`
 
 - [ ] **Step 1: Update createInitialState**
 
@@ -1043,8 +1043,8 @@ export function createIterationState(iteration: number): IterationState {
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/state.ts
-git commit -m "feat(filerl): update state functions with no_merge_count and task_idea_map"
+git add packages/core/src/evo/ops/state.ts
+git commit -m "feat(evo): update state functions with no_merge_count and task_idea_map"
 ```
 
 ---
@@ -1052,7 +1052,7 @@ git commit -m "feat(filerl): update state functions with no_merge_count and task
 ### Task 15: Update completeIteration to handle no_merge_count
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/state.ts`
+- Modify: `packages/core/src/evo/ops/state.ts`
 
 - [ ] **Step 1: Update completeIteration signature and logic**
 
@@ -1130,8 +1130,8 @@ export function checkConvergence(
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/state.ts
-git commit -m "feat(filerl): update completeIteration with merge error and no_merge tracking"
+git add packages/core/src/evo/ops/state.ts
+git commit -m "feat(evo): update completeIteration with merge error and no_merge tracking"
 ```
 
 ---
@@ -1141,7 +1141,7 @@ git commit -m "feat(filerl): update completeIteration with merge error and no_me
 ### Task 16: Add orchestrateFetchIdeas function
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/runner.ts`
+- Modify: `packages/core/src/evo/ops/runner.ts`
 
 - [ ] **Step 1: Add orchestrateFetchIdeas function**
 
@@ -1161,7 +1161,7 @@ export function orchestrateFetchIdeas(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "fetch_ideas", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "fetch_ideas", error: `FileEvo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -1208,8 +1208,8 @@ export function orchestrateFetchIdeas(
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/runner.ts
-git commit -m "feat(filerl): add orchestrateFetchIdeas for manual idea support"
+git add packages/core/src/evo/ops/runner.ts
+git commit -m "feat(evo): add orchestrateFetchIdeas for manual idea support"
 ```
 
 ---
@@ -1217,7 +1217,7 @@ git commit -m "feat(filerl): add orchestrateFetchIdeas for manual idea support"
 ### Task 17: Add orchestrateCreateRollouts function
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/runner.ts`
+- Modify: `packages/core/src/evo/ops/runner.ts`
 
 - [ ] **Step 1: Add orchestrateCreateRollouts function**
 
@@ -1238,7 +1238,7 @@ export function orchestrateCreateRollouts(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "create_rollouts", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "create_rollouts", error: `FileEvo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -1253,7 +1253,7 @@ export function orchestrateCreateRollouts(
     return { success: false, phase: "create_rollouts", error: "No active iteration" };
   }
 
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getFileRlDir(repoRoot, name);
   const taskNames: string[] = [];
   const taskIdeaMap: Record<string, string> = {};
   const errors: string[] = [];
@@ -1273,7 +1273,7 @@ export function orchestrateCreateRollouts(
         model: config.task.model,
         start: false,  // Will start in execute_tasks phase
         computeReward: true,
-        filerlDir,
+        evoDir,
       });
 
       if (result.success && result.dirName) {
@@ -1307,8 +1307,8 @@ export function orchestrateCreateRollouts(
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/runner.ts
-git commit -m "feat(filerl): add orchestrateCreateRollouts for multi-rollout support"
+git add packages/core/src/evo/ops/runner.ts
+git commit -m "feat(evo): add orchestrateCreateRollouts for multi-rollout support"
 ```
 
 ---
@@ -1316,7 +1316,7 @@ git commit -m "feat(filerl): add orchestrateCreateRollouts for multi-rollout sup
 ### Task 18: Fix orchestrateMergeAndCleanup to dismiss loser ideas
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/runner.ts`
+- Modify: `packages/core/src/evo/ops/runner.ts`
 
 - [ ] **Step 1: Update orchestrateMergeAndCleanup**
 
@@ -1369,7 +1369,7 @@ export function orchestrateMergeAndCleanup(
     }
 
     cancelTask(repoRoot, taskName, {
-      reason: `Rejected in FileRL iteration for run "${name}"`,
+      reason: `Rejected in FileEvo iteration for run "${name}"`,
       force: true,
     });
 
@@ -1401,8 +1401,8 @@ export function orchestrateMergeAndCleanup(
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/runner.ts
-git commit -m "fix(filerl): dismiss loser ideas in orchestrateMergeAndCleanup
+git add packages/core/src/evo/ops/runner.ts
+git commit -m "fix(evo): dismiss loser ideas in orchestrateMergeAndCleanup
 
 - Track which ideas belong to rejected tasks
 - Dismiss loser ideas (mark as 'dismissed' status)
@@ -1414,7 +1414,7 @@ git commit -m "fix(filerl): dismiss loser ideas in orchestrateMergeAndCleanup
 ### Task 19: Update orchestrateSelectBest to pass taskIdeaMap
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/runner.ts`
+- Modify: `packages/core/src/evo/ops/runner.ts`
 
 - [ ] **Step 1: Update orchestrateSelectBest to use new PPO params**
 
@@ -1428,7 +1428,7 @@ export function orchestrateSelectBest(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "select_best", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "select_best", error: `FileEvo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -1445,7 +1445,7 @@ export function orchestrateSelectBest(
 
   // Gather rewards
   const taskRewards: Record<string, number> = {};
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getFileRlDir(repoRoot, name);
 
   for (const taskDirName of currentIter.tasks) {
     // ... (existing reward loading logic) ...
@@ -1463,7 +1463,7 @@ export function orchestrateSelectBest(
     clipRange: config.ppo.clip_range,
     maxDiff: config.ppo.max_diff,
     taskIdeaMap: currentIter.task_idea_map,
-    filerlDir,
+    evoDir,
     iteration: state.current_iteration,
   });
 
@@ -1493,8 +1493,8 @@ export function orchestrateSelectBest(
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/runner.ts
-git commit -m "feat(filerl): update orchestrateSelectBest with two-stage PPO params"
+git add packages/core/src/evo/ops/runner.ts
+git commit -m "feat(evo): update orchestrateSelectBest with two-stage PPO params"
 ```
 
 ---
@@ -1502,7 +1502,7 @@ git commit -m "feat(filerl): update orchestrateSelectBest with two-stage PPO par
 ### Task 20: Update orchestrateFullIteration with new state machine
 
 **Files:**
-- Modify: `packages/core/src/filerl/ops/runner.ts`
+- Modify: `packages/core/src/evo/ops/runner.ts`
 
 - [ ] **Step 1: Rewrite orchestrateFullIteration with new phases**
 
@@ -1535,8 +1535,8 @@ export async function orchestrateFullIteration(
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/filerl/ops/runner.ts
-git commit -m "refactor(filerl): update orchestrateFullIteration with new state machine
+git add packages/core/src/evo/ops/runner.ts
+git commit -m "refactor(evo): update orchestrateFullIteration with new state machine
 
 - Add fetch_ideas phase for manual idea support
 - Use create_rollouts for multi-rollout task creation
@@ -1548,21 +1548,21 @@ git commit -m "refactor(filerl): update orchestrateFullIteration with new state 
 
 ## Chunk 6: CLI Updates
 
-### Task 21: Add filerl add-idea command
+### Task 21: Add evo add-idea command
 
 **Files:**
-- Modify: `packages/core/src/cli/commands/filerl.ts`
+- Modify: `packages/core/src/cli/commands/evo.ts`
 
 - [ ] **Step 1: Add add-idea subcommand**
 
 ```typescript
 // ============================================================================
-// filerl add-idea <name> <idea-path>
+// evo add-idea <name> <idea-path>
 // ============================================================================
 fileRlCmd
   .command("add-idea")
-  .description("Add an idea file to a FileRL run's idea pool")
-  .argument("<name>", "Name of the FileRL run")
+  .description("Add an idea file to a FileEvo run's idea pool")
+  .argument("<name>", "Name of the FileEvo run")
   .argument("<idea-path>", "Path to the idea file (.md)")
   .option("--json", "JSON format output")
   .action(async (name: string, ideaPath: string, options: { json?: boolean }) => {
@@ -1578,7 +1578,7 @@ fileRlCmd
       // Check run exists
       const state = readState(repoRoot, name);
       if (!state) {
-        throw CliError.notFound("FileRL run", name);
+        throw CliError.notFound("FileEvo run", name);
       }
 
       // Get config to find ideas directory
@@ -1619,12 +1619,12 @@ fileRlCmd
 
 ```typescript
 // ============================================================================
-// filerl list-ideas <name>
+// evo list-ideas <name>
 // ============================================================================
 fileRlCmd
   .command("list-ideas")
-  .description("List ideas in a FileRL run's pool")
-  .argument("<name>", "Name of the FileRL run")
+  .description("List ideas in a FileEvo run's pool")
+  .argument("<name>", "Name of the FileEvo run")
   .option("--status <status>", "Filter by status (draft, promoted, dismissed)")
   .option("--json", "JSON format output")
   .action(async (name: string, options: { status?: string; json?: boolean }) => {
@@ -1640,7 +1640,7 @@ fileRlCmd
       // Check run exists and get config
       const state = readState(repoRoot, name);
       if (!state) {
-        throw CliError.notFound("FileRL run", name);
+        throw CliError.notFound("FileEvo run", name);
       }
 
       const parseResult = parseTarget(state.target_path, repoRoot);
@@ -1663,7 +1663,7 @@ fileRlCmd
           console.log(chalk.gray("No ideas found."));
           console.log();
           console.log("To add ideas:");
-          console.log(`  viben filerl add-idea ${name} path/to/idea.md`);
+          console.log(`  viben evo add-idea ${name} path/to/idea.md`);
           return;
         }
 
@@ -1694,16 +1694,16 @@ import { listIdeas, type IdeaStatus } from "../../idea/ops";
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/core/src/cli/commands/filerl.ts
-git commit -m "feat(filerl): add add-idea and list-ideas CLI commands"
+git add packages/core/src/cli/commands/evo.ts
+git commit -m "feat(evo): add add-idea and list-ideas CLI commands"
 ```
 
 ---
 
-### Task 22: Update filerl status to show new config fields
+### Task 22: Update evo status to show new config fields
 
 **Files:**
-- Modify: `packages/core/src/cli/commands/filerl.ts`
+- Modify: `packages/core/src/cli/commands/evo.ts`
 
 - [ ] **Step 1: Update status command output**
 
@@ -1739,22 +1739,22 @@ if (config) {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/cli/commands/filerl.ts
-git commit -m "feat(filerl): update status command with new config fields"
+git add packages/core/src/cli/commands/evo.ts
+git commit -m "feat(evo): update status command with new config fields"
 ```
 
 ---
 
-### Task 23: Update filerl start to show new workflow
+### Task 23: Update evo start to show new workflow
 
 **Files:**
-- Modify: `packages/core/src/cli/commands/filerl.ts`
+- Modify: `packages/core/src/cli/commands/evo.ts`
 
 - [ ] **Step 1: Update start command output messages**
 
 ```typescript
 // In start command:
-console.log(chalk.green("=== FileRL Starting ==="));
+console.log(chalk.green("=== FileEvo Starting ==="));
 console.log();
 console.log(`  Name:              ${config.name}`);
 console.log(`  Target:            ${target}`);
@@ -1766,7 +1766,7 @@ console.log();
 
 if (!config.idea.auto_generate) {
   console.log(chalk.yellow("Note: auto_generate is off. Add ideas manually:"));
-  console.log(chalk.yellow(`  viben filerl add-idea ${config.name} path/to/idea.md`));
+  console.log(chalk.yellow(`  viben evo add-idea ${config.name} path/to/idea.md`));
   console.log();
 }
 ```
@@ -1774,25 +1774,25 @@ if (!config.idea.auto_generate) {
 - [ ] **Step 2: Commit**
 
 ```bash
-git add packages/core/src/cli/commands/filerl.ts
-git commit -m "feat(filerl): update start command with new workflow info"
+git add packages/core/src/cli/commands/evo.ts
+git commit -m "feat(evo): update start command with new workflow info"
 ```
 
 ---
 
 ## Chunk 7: Testing and Documentation
 
-### Task 24: Update FileRL.md slash command
+### Task 24: Update FileEvo.md slash command
 
 **Files:**
-- Modify: `.claude/commands/viben/FileRL.md`
+- Modify: `.claude/commands/viben/FileEvo.md`
 
 - [ ] **Step 1: Update configuration section**
 
 Update the YAML config example to match new format:
 
 ```yaml
-filerl:
+evo:
   rollout:
     n: 3                          # Number of parallel PRs per idea
     worktree: true                # Use git worktree isolation
@@ -1815,19 +1815,19 @@ filerl:
 ```markdown
 | PPO Step | Viben Command | Description |
 |----------|---------------|-------------|
-| Add idea | `viben filerl add-idea <name> <idea.md>` | Add idea to pool |
-| List ideas | `viben filerl list-ideas <name>` | List ideas in pool |
-| Start | `viben filerl start <target.md>` | Start optimization |
-| Status | `viben filerl status <name>` | View progress |
-| Stop | `viben filerl stop <name>` | Stop run |
-| Resume | `viben filerl resume <name>` | Continue run |
+| Add idea | `viben evo add-idea <name> <idea.md>` | Add idea to pool |
+| List ideas | `viben evo list-ideas <name>` | List ideas in pool |
+| Start | `viben evo start <target.md>` | Start optimization |
+| Status | `viben evo status <name>` | View progress |
+| Stop | `viben evo stop <name>` | Stop run |
+| Resume | `viben evo resume <name>` | Continue run |
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add .claude/commands/viben/FileRL.md
-git commit -m "docs(filerl): update FileRL.md with new config format and commands"
+git add .claude/commands/viben/FileEvo.md
+git commit -m "docs(evo): update FileEvo.md with new config format and commands"
 ```
 
 ---
@@ -1860,7 +1860,7 @@ Expected: All tests pass (some may need updates)
 
 ```bash
 git add -A
-git commit -m "fix(filerl): resolve remaining type and lint errors"
+git commit -m "fix(evo): resolve remaining type and lint errors"
 ```
 
 ---
@@ -1870,10 +1870,10 @@ git commit -m "fix(filerl): resolve remaining type and lint errors"
 - [ ] **Step 1: Create a test target file**
 
 ```bash
-cat > /tmp/test-filerl.md << 'EOF'
+cat > /tmp/test-evo.md << 'EOF'
 ---
 name: test-optimization
-description: Test FileRL redesign
+description: Test FileEvo redesign
 
 idea:
   auto_generate: false
@@ -1907,31 +1907,31 @@ task:
 
 # Test Optimization
 
-Testing the new FileRL config format.
+Testing the new FileEvo config format.
 EOF
 ```
 
 - [ ] **Step 2: Test dry-run parsing**
 
-Run: `viben filerl start /tmp/test-filerl.md --dry-run`
+Run: `viben evo start /tmp/test-evo.md --dry-run`
 Expected: Shows parsed config with new field names
 
 - [ ] **Step 3: Test create command**
 
-Run: `viben filerl create new-test --output /tmp/new-test.md`
+Run: `viben evo create new-test --output /tmp/new-test.md`
 Expected: Creates file with new config format
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git commit --allow-empty -m "test(filerl): verify new config format works"
+git commit --allow-empty -m "test(evo): verify new config format works"
 ```
 
 ---
 
 ## Summary
 
-This plan implements the FileRL redesign in 26 tasks across 7 chunks:
+This plan implements the FileEvo redesign in 26 tasks across 7 chunks:
 
 1. **Chunk 1 (Tasks 1-8)**: Type definitions update
 2. **Chunk 2 (Tasks 9-11)**: Parser update

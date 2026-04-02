@@ -14,7 +14,7 @@ Viben Desktop 通过 **Agent Swarm（智能体集群）** 和 **Code Evolution�
 
 ---
 
-## FileRL 代码进化
+## FileEvo 代码进化
 
 基于强化学习的代码迭代优化系统，让代码在反馈循环中持续进化。
 

@@ -6,7 +6,7 @@ description: "Install Viben CLI using npm, pnpm, or from source"
 
 # Installation
 
-Viben CLI is the command-line interface for **Agent Swarm x Code Evolution** - orchestrating AI agent swarms for continuous code improvement through FileRL, intelligent task management, and idea generation.
+Viben CLI is the command-line interface for **Agent Swarm x Code Evolution** - orchestrating AI agent swarms for continuous code improvement through FileEvo, intelligent task management, and idea generation.
 
 Install globally via npm/pnpm, or build from source for development.
 

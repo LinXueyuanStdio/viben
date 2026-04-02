@@ -1,9 +1,9 @@
 /**
- * FileRL Idea Generator
+ * Evo Idea Generator
  *
- * Generates ideas for a specific FileRL run iteration.
- * Ideas are saved to the FileRL directory structure:
- * .viben/filerl/<run-name>/iter{N}/<idea-id>/idea.md
+ * Generates ideas for a specific Evo run iteration.
+ * Ideas are saved to the Evo directory structure:
+ * .viben/evo/<run-name>/iter{N}/<idea-id>/idea.md
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -18,7 +18,7 @@ import {
 import { getIdeaType, loadIdeaTypePrompt } from "../../idea/ops/store";
 import { generateShortUuid } from "../../idea/ops/types";
 
-import { getFileRlDir, readState, writeState } from "./state";
+import { getEvoDir, readState, writeState } from "./state";
 import { parseTarget } from "./parser";
 
 // =============================================================================
@@ -26,9 +26,9 @@ import { parseTarget } from "./parser";
 // =============================================================================
 
 /**
- * Options for generating ideas for FileRL
+ * Options for generating ideas for Evo
  */
-export interface GenerateIdeasForFileRlOptions {
+export interface GenerateIdeasForEvoOptions {
   /** Maximum ideas to generate per type */
   maxIdeas?: number;
   /** Model to use for generation */
@@ -38,9 +38,9 @@ export interface GenerateIdeasForFileRlOptions {
 }
 
 /**
- * Result of generating ideas for FileRL
+ * Result of generating ideas for Evo
  */
-export interface GenerateIdeasForFileRlResult {
+export interface GenerateIdeasForEvoResult {
   /** Whether the operation succeeded */
   success: boolean;
   /** Generated ideas */
@@ -128,19 +128,19 @@ function generateIdeaMarkdown(idea: Idea): string {
 }
 
 /**
- * Save an idea to the FileRL iteration directory
+ * Save an idea to the Evo iteration directory
  *
- * @param filerlDir - FileRL run directory
+ * @param evoDir - Evo run directory
  * @param iteration - Iteration number
  * @param idea - Idea to save
  * @returns Path to the saved idea file
  */
 function saveIdeaToIterDir(
-  filerlDir: string,
+  evoDir: string,
   iteration: number,
   idea: Idea
 ): string {
-  const iterDir = join(filerlDir, `iter${iteration}`);
+  const iterDir = join(evoDir, `iter${iteration}`);
   const ideaDir = join(iterDir, idea.id);
 
   // Create directories
@@ -161,29 +161,29 @@ function saveIdeaToIterDir(
 // =============================================================================
 
 /**
- * Generate ideas for a FileRL run iteration
+ * Generate ideas for an Evo run iteration
  *
  * This function:
- * 1. Loads the FileRL run state and configuration
+ * 1. Loads the Evo run state and configuration
  * 2. Gathers project context for AI
  * 3. Generates ideas using the idea generator
- * 4. Saves ideas to .viben/filerl/<name>/iter{N}/<idea-id>/idea.md
+ * 4. Saves ideas to .viben/evo/<name>/iter{N}/<idea-id>/idea.md
  * 5. Updates state.json with generated idea IDs
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param iteration - Target iteration number
  * @param types - Idea types to generate
  * @param options - Generation options
  * @returns Generation result
  */
-export async function generateIdeasForFileRl(
+export async function generateIdeasForEvo(
   repoRoot: string,
   name: string,
   iteration: number,
   types: string[],
-  options: GenerateIdeasForFileRlOptions = {}
-): Promise<GenerateIdeasForFileRlResult> {
+  options: GenerateIdeasForEvoOptions = {}
+): Promise<GenerateIdeasForEvoResult> {
   const {
     maxIdeas = 5,
     model = "sonnet",
@@ -203,7 +203,7 @@ export async function generateIdeasForFileRl(
       success: false,
       ideas: [],
       byType: {},
-      error: `FileRL run not found: ${name}`,
+      error: `Evo run not found: ${name}`,
     };
   }
 
@@ -218,7 +218,7 @@ export async function generateIdeasForFileRl(
     };
   }
 
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getEvoDir(repoRoot, name);
 
   // Gather project context
   progress("Gathering project context...");
@@ -304,7 +304,7 @@ export async function generateIdeasForFileRl(
   const ideaIds: string[] = [];
 
   for (const idea of allIdeas) {
-    const ideaPath = saveIdeaToIterDir(filerlDir, iteration, idea);
+    const ideaPath = saveIdeaToIterDir(evoDir, iteration, idea);
     ideaIds.push(idea.id);
     progress(`Saved: ${idea.id} -> ${ideaPath}`);
   }

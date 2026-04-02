@@ -1,10 +1,10 @@
 /**
- * FileRL Runner
+ * Evo Runner
  *
- * Orchestrates the FileRL loop execution.
- * This module coordinates idea generation, task creation, and reward selection.
+ * Orchestrates the Evo loop execution.
+ * This module coordinates idea generation, task creation, and reward selection for the Evo system.
  *
- * The FileRL loop consists of the following phases:
+ * The Evo loop consists of the following phases:
  * 1. Generate Ideas - AI analyzes codebase and generates improvement ideas
  * 2. Promote Ideas - Top ideas are promoted to tasks
  * 3. Execute Tasks - Tasks run in parallel worktrees
@@ -18,8 +18,8 @@ import { resolve, join } from "node:path";
 import { readFileSync } from "node:fs";
 
 import type {
-  FileRlConfig,
-  FileRlState,
+  EvoConfig,
+  EvoState,
   IterationPhase,
   RunResult,
   StopResult,
@@ -37,7 +37,7 @@ import {
   stopRun,
   runExists,
   isRunActive,
-  getFileRlDir,
+  getEvoDir,
   updateIterationPhase,
   getCurrentPhase,
 } from "./state";
@@ -68,7 +68,7 @@ const DEFAULT_MAX_WAIT_TIME = 3600000; // 1 hour
 // =============================================================================
 
 /** Debug log prefix */
-const DEBUG_PREFIX = "[FileRL]";
+const DEBUG_PREFIX = "[Evo]";
 
 /**
  * Create a debug logger with timestamp
@@ -86,11 +86,11 @@ function createDebugLogger(phase: string) {
 }
 
 // =============================================================================
-// FileRL Runner
+// Evo Runner
 // =============================================================================
 
 /**
- * Initialize a new FileRL run
+ * Initialize a new Evo run
  *
  * This creates the initial state but does not start execution.
  * Use `runIteration` to actually execute iterations.
@@ -124,7 +124,7 @@ export function initRun(
     if (existingState?.active) {
       return {
         success: false,
-        error: `FileRL run "${config.name}" is already active. Use --force to restart or stop it first.`,
+        error: `Evo run "${config.name}" is already active. Use --force to restart or stop it first.`,
       };
     }
   }
@@ -135,13 +135,13 @@ export function initRun(
   writeState(repoRoot, state);
 
   debug("Initialized", { name: config.name });
-  return { success: true, state, message: `Initialized FileRL run: ${config.name}` };
+  return { success: true, state, message: `Initialized Evo run: ${config.name}` };
 }
 
 /**
- * Run a single iteration of the FileRL loop
+ * Run a single iteration of the Evo loop
  *
- * This is the main entry point for running FileRL. It:
+ * This is the main entry point for running Evo. It:
  * 1. Generates ideas (if needed)
  * 2. Creates tasks from top ideas
  * 3. Starts tasks in parallel worktrees
@@ -158,7 +158,7 @@ export function runIteration(
 ): RunResult {
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, error: `FileRL run not found: ${name}` };
+    return { success: false, error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -204,7 +204,7 @@ export function runIteration(
  * Create tasks from ideas for the current iteration
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param ideaIds - Array of idea IDs to promote to tasks
  */
 export function createTasksFromIdeas(
@@ -214,7 +214,7 @@ export function createTasksFromIdeas(
 ): RunResult {
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, error: `FileRL run not found: ${name}` };
+    return { success: false, error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -233,24 +233,24 @@ export function createTasksFromIdeas(
   const taskNames: string[] = [];
   const errors: string[] = [];
 
-  // Get FileRL directory for reward config and output
-  const filerlDir = getFileRlDir(repoRoot, name);
+  // Get Evo directory for reward config and output
+  const evoDir = getEvoDir(repoRoot, name);
 
   for (const ideaId of ideaIds) {
     // Use idea id as task name for consistent directory naming
     // This ensures iter{N}/{ideaId}/ structure for rewards
-    const result = createTask(repoRoot, `FileRL iteration ${state.current_iteration} - ${ideaId}`, {
+    const result = createTask(repoRoot, `Evo iteration ${state.current_iteration} - ${ideaId}`, {
       slug: ideaId,  // Use idea id directly as slug
       worktree: config.rollout.worktree,
       executor: config.task.executor,
       model: config.task.model,
       computeReward: true,
-      filerlDir,
+      evoDir,
     });
 
     if (result.success && result.dir_name) {
       taskNames.push(result.dir_name);
-      // Always auto-start tasks in FileRL loop
+      // Always auto-start tasks in Evo loop
       enqueueTask(repoRoot, result.dir_name, {});
     } else {
       errors.push(`Failed to create task for idea ${ideaId}: ${result.error}`);
@@ -271,7 +271,7 @@ export function createTasksFromIdeas(
  * Record task rewards and select the best one
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param rewards - Map of task name to reward score
  */
 export function selectBest(
@@ -283,7 +283,7 @@ export function selectBest(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, error: `FileRL run not found: ${name}` };
+    return { success: false, error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -299,7 +299,7 @@ export function selectBest(
   }
 
   const taskNames = Object.keys(taskRewards);
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getEvoDir(repoRoot, name);
   const selectResult = selectBestTask(repoRoot, taskNames, {
     threshold: config.ppo.quality_threshold,
     klCoef: config.ppo.kl_coef,
@@ -307,7 +307,7 @@ export function selectBest(
     clipRange: config.ppo.clip_range,
     maxDiff: config.ppo.max_diff,
     taskIdeaMap: currentIter.task_idea_map,
-    filerlDir,
+    evoDir,
     iteration: state.current_iteration,
   });
 
@@ -332,14 +332,14 @@ export function selectBest(
 }
 
 /**
- * Stop an active FileRL run
+ * Stop an active Evo run
  */
 export function stop(repoRoot: string, name: string): StopResult {
   const state = readState(repoRoot, name);
   if (!state) {
     return {
       success: false,
-      error: `FileRL run not found: ${name}`,
+      error: `Evo run not found: ${name}`,
     };
   }
 
@@ -355,19 +355,19 @@ export function stop(repoRoot: string, name: string): StopResult {
 
   return {
     success: true,
-    message: `Stopped FileRL run: ${name}`,
+    message: `Stopped Evo run: ${name}`,
   };
 }
 
 /**
- * Resume a paused FileRL run
+ * Resume a paused Evo run
  */
 export function resume(repoRoot: string, name: string): RunResult {
   const state = readState(repoRoot, name);
   if (!state) {
     return {
       success: false,
-      error: `FileRL run not found: ${name}`,
+      error: `Evo run not found: ${name}`,
     };
   }
 
@@ -392,7 +392,7 @@ export function resume(repoRoot: string, name: string): RunResult {
   return {
     success: true,
     state,
-    message: `Resumed FileRL run: ${name}`,
+    message: `Resumed Evo run: ${name}`,
   };
 }
 
@@ -414,10 +414,10 @@ export interface OrchestrationResult {
  * Phase 1: Generate Ideas
  *
  * Uses the idea generation ops to create new improvement ideas
- * based on the FileRL configuration.
+ * based on the Evo configuration.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param onProgress - Optional progress callback
  */
 export async function orchestrateGenerateIdeas(
@@ -432,7 +432,7 @@ export async function orchestrateGenerateIdeas(
   const state = readState(repoRoot, name);
   if (!state) {
     debug("<<< EXIT (state not found)");
-    return { success: false, phase: "generate_ideas", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "generate_ideas", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -498,7 +498,7 @@ export function orchestrateFetchIdeas(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "fetch_ideas", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "fetch_ideas", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -544,7 +544,7 @@ export function orchestrateFetchIdeas(
  * promotes them to tasks for execution.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param ideas - Ideas to select from (from Phase 1)
  * @param onProgress - Optional progress callback
  */
@@ -558,7 +558,7 @@ export function orchestratePromoteIdeas(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "promote_ideas", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "promote_ideas", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -608,17 +608,17 @@ export function orchestratePromoteIdeas(
   for (const idea of topIdeas) {
     onProgress?.(`Promoting idea: ${idea.title}`);
 
-    // Get FileRL directory for reward config and output
-    const filerlDir = getFileRlDir(repoRoot, name);
+    // Get Evo directory for reward config and output
+    const evoDir = getEvoDir(repoRoot, name);
 
     const promoteOptions = {
       slug: idea.id,  // Use full idea id as slug for consistent naming
       worktree: config.rollout.worktree,
       executor: config.task.executor,
       model: config.task.model,
-      start: true,  // Always auto-start tasks in FileRL loop
+      start: true,  // Always auto-start tasks in Evo loop
       computeReward: true,
-      filerlDir,
+      evoDir,
     };
 
     // Use promoteIdeaDirect since we already have the Idea object in memory
@@ -729,7 +729,7 @@ export function orchestrateCheckTasksStatus(
 
     statuses[taskName] = { status, hasReward, prUrl };
 
-    // Consider completed, review, failed, cancelled as terminal states for FileRL purposes
+    // Consider completed, review, failed, cancelled as terminal states for Evo purposes
     const isCompleted = status === "completed" || status === "review" || status === "failed" || status === "cancelled";
     if (!isCompleted) {
       allCompleted = false;
@@ -758,7 +758,7 @@ export function orchestrateCheckTasksStatus(
  * but don't have reward data yet.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name (for locating reward.json)
+ * @param name - Evo run name (for locating reward.json)
  * @param taskNames - Task names to compute rewards for
  * @param currentIteration - Current iteration number
  * @param onProgress - Optional progress callback
@@ -772,7 +772,7 @@ export function orchestrateComputeRewards(
 ): OrchestrationResult {
   const debug = createDebugLogger("computeRewards");
   const results: Record<string, { success: boolean; error?: string }> = {};
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getEvoDir(repoRoot, name);
 
   for (const taskDirName of taskNames) {
     const viewResult = viewTask(repoRoot, taskDirName);
@@ -786,13 +786,13 @@ export function orchestrateComputeRewards(
     const rewardDirName = taskDirName;
 
     // Get ideaId from task.json for correct path
-    const ideaId = (viewResult.task as { filerl_idea?: string }).filerl_idea;
+    const ideaId = (viewResult.task as { evo_idea?: string }).evo_idea;
 
-    // Check if reward already exists - first check FileRL reward.json, then task.json
+    // Check if reward already exists - first check Evo reward.json, then task.json
     let hasReward = false;
 
-    // Check FileRL reward.json at iter{N}/{ideaId}/{taskDirName}/reward.json
-    const iterDir = join(filerlDir, `iter${currentIteration}`);
+    // Check Evo reward.json at iter{N}/{ideaId}/{taskDirName}/reward.json
+    const iterDir = join(evoDir, `iter${currentIteration}`);
     const rewardJsonPath = ideaId
       ? join(iterDir, ideaId, rewardDirName, "reward.json")
       : join(iterDir, rewardDirName, "reward.json");
@@ -833,10 +833,10 @@ export function orchestrateComputeRewards(
  * Phase 5: Select Best Task and Complete Iteration
  *
  * Uses PPO algorithm to select the best task based on rewards.
- * Updates the FileRL state with the selection.
+ * Updates the Evo state with the selection.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param onProgress - Optional progress callback
  */
 export function orchestrateSelectBest(
@@ -848,7 +848,7 @@ export function orchestrateSelectBest(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "select_best", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "select_best", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -866,7 +866,7 @@ export function orchestrateSelectBest(
   // Rewards stored at: iter{N}/{idea}/{task}/reward.json
   // Fallback: task.json reward field
   const taskRewards: Record<string, number> = {};
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getEvoDir(repoRoot, name);
 
   for (const taskDirName of currentIter.tasks) {
     // First read task.json to get the actual task name used for reward directory
@@ -882,7 +882,7 @@ export function orchestrateSelectBest(
     const ideaId = currentIter.task_idea_map[taskDirName];
 
     // Try location: iter{N}/{idea}/{task}/reward.json
-    const iterDir = join(filerlDir, `iter${state.current_iteration}`);
+    const iterDir = join(evoDir, `iter${state.current_iteration}`);
     const rewardJsonPath = ideaId
       ? join(iterDir, ideaId, rewardDirName, "reward.json")
       : join(iterDir, rewardDirName, "reward.json"); // Fallback if no ideaId
@@ -926,7 +926,7 @@ export function orchestrateSelectBest(
  * Merges the winning task's PR and cleans up the rejected tasks.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param selectedTask - The winning task name
  * @param rejectedTasks - Array of rejected task names
  * @param onProgress - Optional progress callback
@@ -949,7 +949,7 @@ export function orchestrateMergeAndCleanup(
   // Get current iteration to access task_idea_map
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "merge_and_cleanup", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "merge_and_cleanup", error: `Evo run not found: ${name}` };
   }
 
   const currentIter = state.iterations[state.iterations.length - 1];
@@ -984,7 +984,7 @@ export function orchestrateMergeAndCleanup(
     }
 
     cancelTask(repoRoot, taskName, {
-      reason: `Rejected in FileRL iteration for run "${name}"`,
+      reason: `Rejected in Evo iteration for run "${name}"`,
       force: true,
     });
 
@@ -1066,7 +1066,7 @@ function checkAgentHealth(
  * Also monitors agent process health and restarts stuck/dead agents.
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name (for updating state on failure)
+ * @param name - Evo run name (for updating state on failure)
  * @param taskNames - Task names to wait for
  * @param options - Wait options
  * @param onProgress - Optional progress callback
@@ -1232,7 +1232,7 @@ function dismissFilteredIdeas(
 }
 
 /**
- * Run a complete FileRL iteration (single iteration, no loop)
+ * Run a complete Evo iteration (single iteration, no loop)
  *
  * Uses a state machine pattern to track progress through phases.
  * On resume, picks up from the last completed phase.
@@ -1242,7 +1242,7 @@ function dismissFilteredIdeas(
  *   wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param onProgress - Optional progress callback
  */
 export async function orchestrateFullIteration(
@@ -1251,7 +1251,7 @@ export async function orchestrateFullIteration(
   onProgress?: (message: string) => void
 ): Promise<OrchestrationResult> {
   const debug = createDebugLogger("fullIteration");
-  const filerlDir = getFileRlDir(repoRoot, name);
+  const evoDir = getEvoDir(repoRoot, name);
 
   // Initialize or resume iteration
   const initResult = runIteration(repoRoot, name);
@@ -1266,7 +1266,7 @@ export async function orchestrateFullIteration(
   // Load state and config
   let state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "init", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "init", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);
@@ -1450,7 +1450,7 @@ export async function orchestrateFullIteration(
   // ==========================================================================
   if (shouldRunPhase(currentPhase, "compute_rewards") && tasks.length > 0) {
     // Check if all rewards already computed
-    const allRewardsComputed = checkAllRewardsComputed(repoRoot, filerlDir, iterNum, tasks);
+    const allRewardsComputed = checkAllRewardsComputed(repoRoot, evoDir, iterNum, tasks);
 
     if (allRewardsComputed) {
       onProgress?.(`[${iterNum}] Phase 4 - Skipped (all rewards computed)`);
@@ -1595,17 +1595,17 @@ function shouldRunPhase(currentPhase: string, targetPhase: string): boolean {
 /**
  * Check if all rewards are computed for tasks in this iteration
  *
- * Note: The reward output directory uses taskData.name (e.g., "filerl-ramsey_graph-i1-xxx")
- * while the task directory name may have a date prefix (e.g., "03-20-filerl-ramsey_graph-i1-xxx").
+ * Note: The reward output directory uses taskData.name (e.g., "evo-ramsey_graph-i1-xxx")
+ * while the task directory name may have a date prefix (e.g., "03-20-evo-ramsey_graph-i1-xxx").
  * We need to read task.json to get the actual taskName used for the reward directory.
  */
 function checkAllRewardsComputed(
   repoRoot: string,
-  filerlDir: string,
+  evoDir: string,
   iteration: number,
   tasks: string[]
 ): boolean {
-  const iterDir = join(filerlDir, `iter${iteration}`);
+  const iterDir = join(evoDir, `iter${iteration}`);
 
   for (const taskDirName of tasks) {
     // Use taskDirName directly as that's what the reward system uses for the directory
@@ -1624,9 +1624,9 @@ function checkAllRewardsComputed(
 }
 
 /**
- * Run the full FileRL loop until convergence or max iterations
+ * Run the full Evo loop until convergence or max iterations
  *
- * This is the main entry point for running FileRL automatically.
+ * This is the main entry point for running Evo automatically.
  * It handles:
  * - Multiple iterations until convergence
  * - Regeneration when all ideas are filtered out
@@ -1634,10 +1634,10 @@ function checkAllRewardsComputed(
  * - Cleanup of rejected tasks
  *
  * @param repoRoot - Repository root path
- * @param name - FileRL run name
+ * @param name - Evo run name
  * @param onProgress - Optional progress callback
  */
-export async function runFileRlLoop(
+export async function runEvoLoop(
   repoRoot: string,
   name: string,
   onProgress?: (message: string) => void
@@ -1646,7 +1646,7 @@ export async function runFileRlLoop(
 
   const state = readState(repoRoot, name);
   if (!state) {
-    return { success: false, phase: "init", error: `FileRL run not found: ${name}` };
+    return { success: false, phase: "init", error: `Evo run not found: ${name}` };
   }
 
   const parseResult = parseTarget(state.target_path, repoRoot);

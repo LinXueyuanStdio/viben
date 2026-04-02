@@ -1,15 +1,15 @@
 /**
- * FileRL State Management
+ * Evo State Management
  *
- * Manages the persistent state of FileRL runs.
- * State is stored in .viben/filerl/<name>/state.json
+ * Manages the persistent state of Evo runs.
+ * State is stored in .viben/evo/<name>/state.json
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import type {
-  FileRlState,
+  EvoState,
   IterationState,
   IterationPhase,
   ListRunsResult,
@@ -20,8 +20,8 @@ import type {
 // Constants
 // =============================================================================
 
-/** FileRL state directory relative to .viben */
-const FILERL_DIR = "filerl";
+/** Evo state directory relative to .viben */
+const EVO_DIR = "evo";
 
 /** State file name */
 const STATE_FILE = "state.json";
@@ -31,24 +31,24 @@ const STATE_FILE = "state.json";
 // =============================================================================
 
 /**
- * Get the FileRL directory for a run
+ * Get the Evo directory for a run
  */
-export function getFileRlDir(repoRoot: string, name: string): string {
-  return join(repoRoot, ".viben", FILERL_DIR, name);
+export function getEvoDir(repoRoot: string, name: string): string {
+  return join(repoRoot, ".viben", EVO_DIR, name);
 }
 
 /**
  * Get the state file path for a run
  */
 export function getStatePath(repoRoot: string, name: string): string {
-  return join(getFileRlDir(repoRoot, name), STATE_FILE);
+  return join(getEvoDir(repoRoot, name), STATE_FILE);
 }
 
 /**
- * Ensure the FileRL directory exists
+ * Ensure the Evo directory exists
  */
-export function ensureFileRlDir(repoRoot: string, name: string): string {
-  const dir = getFileRlDir(repoRoot, name);
+export function ensureEvoDir(repoRoot: string, name: string): string {
+  const dir = getEvoDir(repoRoot, name);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -60,9 +60,9 @@ export function ensureFileRlDir(repoRoot: string, name: string): string {
 // =============================================================================
 
 /**
- * Create initial state for a new FileRL run
+ * Create initial state for a new Evo run
  */
-export function createInitialState(name: string, targetPath: string): FileRlState {
+export function createInitialState(name: string, targetPath: string): EvoState {
   const now = new Date().toISOString();
 
   return {
@@ -102,9 +102,9 @@ export function createIterationState(iteration: number): IterationState {
 }
 
 /**
- * Read FileRL state from disk
+ * Read Evo state from disk
  */
-export function readState(repoRoot: string, name: string): FileRlState | null {
+export function readState(repoRoot: string, name: string): EvoState | null {
   const statePath = getStatePath(repoRoot, name);
 
   if (!existsSync(statePath)) {
@@ -113,17 +113,17 @@ export function readState(repoRoot: string, name: string): FileRlState | null {
 
   try {
     const content = readFileSync(statePath, "utf-8");
-    return JSON.parse(content) as FileRlState;
+    return JSON.parse(content) as EvoState;
   } catch {
     return null;
   }
 }
 
 /**
- * Write FileRL state to disk
+ * Write Evo state to disk
  */
-export function writeState(repoRoot: string, state: FileRlState): void {
-  ensureFileRlDir(repoRoot, state.name);
+export function writeState(repoRoot: string, state: EvoState): void {
+  ensureEvoDir(repoRoot, state.name);
   const statePath = getStatePath(repoRoot, state.name);
 
   state.updated_at = new Date().toISOString();
@@ -133,7 +133,7 @@ export function writeState(repoRoot: string, state: FileRlState): void {
 /**
  * Update state with new iteration
  */
-export function startIteration(state: FileRlState): IterationState {
+export function startIteration(state: EvoState): IterationState {
   const newIteration = state.current_iteration + 1;
   const iterationState = createIterationState(newIteration);
 
@@ -148,7 +148,7 @@ export function startIteration(state: FileRlState): IterationState {
  * Update the phase of the current iteration
  */
 export function updateIterationPhase(
-  state: FileRlState,
+  state: EvoState,
   phase: IterationPhase
 ): void {
   const currentIter = state.iterations[state.iterations.length - 1];
@@ -162,7 +162,7 @@ export function updateIterationPhase(
 /**
  * Get the current iteration's phase
  */
-export function getCurrentPhase(state: FileRlState): IterationPhase | null {
+export function getCurrentPhase(state: EvoState): IterationPhase | null {
   const currentIter = state.iterations[state.iterations.length - 1];
   if (!currentIter) {
     return null;
@@ -175,7 +175,7 @@ export function getCurrentPhase(state: FileRlState): IterationPhase | null {
  * Complete the current iteration
  */
 export function completeIteration(
-  state: FileRlState,
+  state: EvoState,
   selectedTask: string | undefined,
   rejectedTasks: string[],
   rewards: Record<string, number>,
@@ -219,7 +219,7 @@ export function completeIteration(
  * - At least 2 completed iterations and reward improvement < threshold
  */
 export function checkConvergence(
-  state: FileRlState,
+  state: EvoState,
   convergenceThreshold: number,
   noMergeLimit: number
 ): boolean {
@@ -252,7 +252,7 @@ export function checkConvergence(
 /**
  * Mark the run as converged
  */
-export function markConverged(state: FileRlState): void {
+export function markConverged(state: EvoState): void {
   state.converged = true;
   state.active = false;
 }
@@ -260,7 +260,7 @@ export function markConverged(state: FileRlState): void {
 /**
  * Stop an active run
  */
-export function stopRun(state: FileRlState): void {
+export function stopRun(state: EvoState): void {
   state.active = false;
 
   // Mark current iteration as incomplete if not finished
@@ -275,10 +275,10 @@ export function stopRun(state: FileRlState): void {
 // =============================================================================
 
 /**
- * List all FileRL runs
+ * List all Evo runs
  */
 export function listRuns(repoRoot: string): ListRunsResult {
-  const fileRlBaseDir = join(repoRoot, ".viben", FILERL_DIR);
+  const fileRlBaseDir = join(repoRoot, ".viben", EVO_DIR);
 
   if (!existsSync(fileRlBaseDir)) {
     return { success: true, runs: [] };
@@ -331,7 +331,7 @@ export function getStatus(repoRoot: string, name: string): StatusResult {
   if (!state) {
     return {
       success: false,
-      error: `FileRL run not found: ${name}`,
+      error: `Evo run not found: ${name}`,
     };
   }
 

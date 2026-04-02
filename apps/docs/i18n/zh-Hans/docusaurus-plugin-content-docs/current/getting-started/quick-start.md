@@ -9,7 +9,7 @@ description: "快速上手微本 - Agent 集群 × 代码进化"
 本指南帮助你快速上手使用微本。
 
 :::tip 核心概念
-开始之前，建议先了解 [核心概念](./concepts)，理解 FileRL、任务系统、智能体与执行器的区别。
+开始之前，建议先了解 [核心概念](./concepts)，理解 FileEvo、任务系统、智能体与执行器的区别。
 :::
 
 ## 方式一：使用桌面应用（推荐）
@@ -36,7 +36,7 @@ description: "快速上手微本 - Agent 集群 × 代码进化"
 
 ### 第四步：开始优化
 
-- 使用 FileRL 自动发现代码改进点
+- 使用 FileEvo 自动发现代码改进点
 - 查看生成的 Idea 列表
 - 将 Idea 转化为可执行任务
 
@@ -114,9 +114,9 @@ viben task approve auth
 
 ---
 
-## 方式三：使用 FileRL 优化代码
+## 方式三：使用 FileEvo 优化代码
 
-FileRL 通过迭代优化自动提升代码质量。
+FileEvo 通过迭代优化自动提升代码质量。
 
 ### 第一步：生成 Idea
 
@@ -138,8 +138,8 @@ viben idea promote ci-001 --start --worktree
 ### 第三步：监控优化循环
 
 ```bash
-# 查看 FileRL 状态
-viben filerl status <name>
+# 查看 FileEvo 状态
+viben evo status <name>
 
 # 实时监控
 viben swarm status --watch
@@ -208,12 +208,12 @@ viben task start <task>                      # 启动任务
 viben task approve <task>                    # 批准完成
 ```
 
-### FileRL
+### FileEvo
 
 ```bash
 viben idea generate --types <types>          # 生成 Idea
 viben idea promote <id> --start              # Idea 转任务
-viben filerl status <name>                   # 查看状态
+viben evo status <name>                   # 查看状态
 viben reward select <tasks...>               # 选择最佳
 ```
 
@@ -228,7 +228,7 @@ viben task view <task>                       # 查看详情
 
 ## 下一步
 
-- [核心概念](./concepts) - 理解 FileRL、任务系统等核心概念
+- [核心概念](./concepts) - 理解 FileEvo、任务系统等核心概念
 - [桌面应用功能](../desktop/features) - 探索完整功能
 - [CLI 文档](/cli/) - 命令行工具参考
 - [MCP 配置](../mcp/configuration) - 配置 API 密钥启用付费数据源

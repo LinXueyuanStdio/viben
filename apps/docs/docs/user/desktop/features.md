@@ -14,9 +14,9 @@ Before exploring features, we recommend reading [Core Concepts](/user/getting-st
 
 ---
 
-## FileRL Code Evolution
+## FileEvo Code Evolution
 
-FileRL is Viben's core engine, driving code iteration optimization through reinforcement learning.
+FileEvo is Viben's core engine, driving code iteration optimization through reinforcement learning.
 
 ### How It Works
 
@@ -414,7 +414,7 @@ The following features are planned:
 - **Auto Updates** - Automatic application updates
 - **Plugin System** - Extend functionality through plugins
 - **Cloud Sync** - Optional cloud sync for settings and favorites
-- **Advanced FileRL** - More powerful code evolution strategies
+- **Advanced FileEvo** - More powerful code evolution strategies
 - **Swarm Templates** - Pre-defined agent collaboration templates
 
 ---
