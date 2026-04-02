@@ -30,7 +30,7 @@
 
 // Client
 export { VibenClient, ApiError } from './client';
-export type { VibenClientConfig } from './client';
+export type { VibenClientConfig, FetchFunction } from './client';
 
 // Backwards compatibility aliases
 export { VibenClient as BrowseMcpClient } from './client';

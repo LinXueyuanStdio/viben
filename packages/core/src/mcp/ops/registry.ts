@@ -9,6 +9,7 @@ import { VibenClient } from "@viben/api-client";
 import { readToken, VIBEN_WEB_URL } from "../../auth";
 import { ensureDir } from "../../config/yaml";
 import { extractZipToDirectory } from "../../skill/ops/extract";
+import { proxyFetch } from "../../http";
 import type {
   MarketplaceSearchOptions,
   MarketplaceSearchResult,
@@ -21,11 +22,12 @@ import type {
 // =============================================================================
 
 /**
- * Create a Viben API client with auth token
+ * Create a Viben API client with auth token and proxy support
  */
 async function createClient(): Promise<VibenClient> {
   const client = new VibenClient({
     baseUrl: VIBEN_WEB_URL,
+    fetch: proxyFetch,
   });
 
   // Set auth token if available
