@@ -5,7 +5,7 @@
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Agent API | Viben</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://linxueyuan.online/viben/zh-Hans/img/viben-social-card.png"><meta data-rh="true" name="twitter:image" content="https://linxueyuan.online/viben/zh-Hans/img/viben-social-card.png"><meta data-rh="true" property="og:url" content="https://linxueyuan.online/viben/zh-Hans/backend/gateway/agents"><meta data-rh="true" property="og:locale" content="zh_CN"><meta data-rh="true" property="og:locale:alternate" content="en_US"><meta data-rh="true" name="docusaurus_locale" content="zh-Hans"><meta data-rh="true" name="docsearch:language" content="zh-Hans"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-backend-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-backend-current"><meta data-rh="true" property="og:title" content="Agent API | Viben"><meta data-rh="true" name="description" content="/api/agent - Agent management endpoints"><meta data-rh="true" property="og:description" content="/api/agent - Agent management endpoints"><link data-rh="true" rel="icon" href="/viben/zh-Hans/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://linxueyuan.online/viben/zh-Hans/backend/gateway/agents"><link data-rh="true" rel="alternate" href="https://linxueyuan.online/viben/backend/gateway/agents" hreflang="en-US"><link data-rh="true" rel="alternate" href="https://linxueyuan.online/viben/zh-Hans/backend/gateway/agents" hreflang="zh-CN"><link data-rh="true" rel="alternate" href="https://linxueyuan.online/viben/backend/gateway/agents" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Agent API","item":"https://linxueyuan.online/viben/zh-Hans/backend/gateway/agents"}]}</script><link rel="alternate" type="application/rss+xml" href="/viben/zh-Hans/blog/rss.xml" title="Viben RSS Feed">
 <link rel="alternate" type="application/atom+xml" href="/viben/zh-Hans/blog/atom.xml" title="Viben Atom Feed"><link rel="stylesheet" href="/viben/zh-Hans/assets/css/styles.c0facde2.css">
-<script src="/viben/zh-Hans/assets/js/runtime~main.20c0a41f.js" defer="defer"></script>
+<script src="/viben/zh-Hans/assets/js/runtime~main.b1f4c0e3.js" defer="defer"></script>
 <script src="/viben/zh-Hans/assets/js/main.d9428c16.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -17,11 +17,19 @@
 <p><code>/api/agent</code> - Agent management endpoints</p>
 </blockquote>
 <h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="overview">Overview<a href="#overview" class="hash-link" aria-label="Overview的直接链接" title="Overview的直接链接" translate="no">​</a></h2>
-<p>The Agent API provides two types of agent management:</p>
+<p>An Agent is a user-created configuration that defines:</p>
 <ul>
-<li class=""><strong>Viben Agents</strong>: User-defined agents stored in YAML configuration</li>
-<li class=""><strong>Executor Agents</strong>: Executor-based agents (e.g., CLAUDE_CODE)</li>
+<li class="">Which executor to use (executor_type: CLAUDE_CODE, CURSOR, etc.)</li>
+<li class="">System prompt and append prompt</li>
+<li class="">Model and parameters (temperature, max_tokens)</li>
+<li class="">MCP servers and skills configuration</li>
 </ul>
+<p><strong>Important Concept Distinction</strong>:</p>
+<ul>
+<li class=""><strong>Agent</strong>: User-created configuration file, stored in <code>.viben/agents/</code>, <strong>editable</strong></li>
+<li class=""><strong>Executor</strong>: Underlying AI tool runtime (Claude Code, Cursor, etc.), managed via <code>/api/executors</code>, <strong>read-only</strong></li>
+</ul>
+<p>Agents specify which executor to use via the <code>executor_type</code> field.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="endpoint-list">Endpoint List<a href="#endpoint-list" class="hash-link" aria-label="Endpoint List的直接链接" title="Endpoint List的直接链接" translate="no">​</a></h2>
 <h3 class="anchor anchorTargetStickyNavbar_Kd7j" id="basic-crud">Basic CRUD<a href="#basic-crud" class="hash-link" aria-label="Basic CRUD的直接链接" title="Basic CRUD的直接链接" translate="no">​</a></h3>
 <table><thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead><tbody><tr><td>GET</td><td><code>/api/agent</code></td><td>List all agents</td></tr><tr><td>POST</td><td><code>/api/agent</code></td><td>Create Viben agent</td></tr><tr><td>GET</td><td><code>/api/agent/:id</code></td><td>Get agent details</td></tr><tr><td>PATCH</td><td><code>/api/agent/:id</code></td><td>Update Viben agent</td></tr><tr><td>DELETE</td><td><code>/api/agent/:id</code></td><td>Delete Viben agent</td></tr></tbody></table>
