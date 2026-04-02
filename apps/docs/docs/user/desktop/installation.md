@@ -6,7 +6,7 @@ description: "Install Viben Desktop - Agent Swarm x Code Evolution Platform"
 
 # Desktop Installation
 
-Detailed installation guide for Viben Desktop. Viben Desktop is an Agent Swarm x Code Evolution platform that drives continuous code evolution through agent swarms and reinforcement learning.
+Detailed installation guide for Viben Desktop. Viben Desktop is an Agent Swarm x Code Evolution platform that drives continuous code evolution through agent swarms and iterative optimization.
 
 ## Download
 

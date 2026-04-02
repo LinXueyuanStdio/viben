@@ -73,7 +73,7 @@ Unified experience across platforms
 
 > *Multi-objective constrained candidate selection algorithm, improving code quality through sampling-evaluation-selection loops*
 
-> ⚠️ **Method Positioning**: FileEvo is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge". The algorithm borrows some RL concepts as design intuition, but **is not a strict RL implementation** — no state transition probabilities, no value function approximation, no theoretical convergence guarantees.
+> ⚠️ **Method Positioning**: FileEvo is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge".
 
 ### Algorithm Overview
 

@@ -6,7 +6,7 @@ description: "Complete feature list for Viben Desktop Application - Agent Swarm 
 
 # Features
 
-Viben Desktop is an **Agent Swarm x Code Evolution** platform that drives continuous code evolution through agent swarm collaboration and reinforcement learning.
+Viben Desktop is an **Agent Swarm x Code Evolution** platform that drives continuous code evolution through agent swarm collaboration and iterative optimization.
 
 :::tip Core Concepts
 Before exploring features, we recommend reading [Core Concepts](/user/getting-started/concepts) to understand the difference between agents and executors.
@@ -16,7 +16,7 @@ Before exploring features, we recommend reading [Core Concepts](/user/getting-st
 
 ## FileEvo Code Evolution
 
-FileEvo is Viben's core engine, driving code iteration optimization through reinforcement learning.
+FileEvo is Viben's core engine, driving code iteration optimization through heuristic evaluation and selection.
 
 ### How It Works
 

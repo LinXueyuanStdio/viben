@@ -4,7 +4,7 @@
 
 ## 概述
 
-`viben task compute-reward` 是 FileEvo（基于代码库的强化学习）流程的关键命令，用于评估 PR 的代码质量并计算奖励分数。该命令通过调用 reward agent 对多个维度进行评分，最终将结果写入 task.json。
+`viben task compute-reward` 是 FileEvo（基于代码库的自我进化）流程的关键命令，用于评估 PR 的代码质量并计算奖励分数。该命令通过调用 reward agent 对多个维度进行评分，最终将结果写入 task.json。
 
 ### 设计原则
 

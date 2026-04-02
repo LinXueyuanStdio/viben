@@ -20,7 +20,7 @@ Viben CLI 是连接人类开发者和 AI 智能体集群的桥梁：
 | 功能 | 说明 |
 |------|------|
 | **Agent Swarm** | 智能体集群编排，协调多个 AI 智能体协同工作 |
-| **FileEvo (代码迭代优化)** | 基于文件的强化学习，通过反馈循环持续优化代码质量 |
+| **FileEvo (代码迭代优化)** | 基于文件的自我进化，通过反馈循环持续优化代码质量 |
 | **Task System** | XState 状态机驱动的任务管理，支持 backlog → queue → in_progress → review → completed 工作流 |
 | **Idea Generation** | 创意生成系统，激发和捕捉开发灵感 |
 | **Agent 管理** | 创建、配置和管理多个 AI 智能体实例 |

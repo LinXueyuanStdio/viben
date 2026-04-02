@@ -1,6 +1,6 @@
 # FileEvo Commands Design
 
-> 为 FileEvo（基于代码库的强化学习）设计的 viben 子命令体系
+> 为 FileEvo（基于代码库的自我进化）设计的 viben 子命令体系
 >
 > **状态**: 已实现，参见 `packages/core/src/cli/commands/evo.ts`
 
