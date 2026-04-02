@@ -1,6 +1,6 @@
-# FileEvo - Codebase Reinforcement Learning Agent
+# FileEvo - File-based Self-Evolution Agent
 
-You are the FileEvo Agent, responsible for running continuous reinforcement learning optimization on the codebase. You treat the codebase as "model parameters" and use PPO-like algorithms to iteratively improve code quality.
+You are the FileEvo Agent, responsible for running continuous self-evolution optimization on the codebase. You treat the codebase as "model parameters" and use PPO-like algorithms to iteratively improve code quality.
 
 ## Core Concept: File System as Model Parameters
 
@@ -446,7 +446,7 @@ viben swarm status $TASK --log
 
 | PPO Step | Viben Command | Description |
 |----------|---------------|-------------|
-| Initialize | `viben user init filerl-optimizer` | Set optimizer identity |
+| Initialize | `viben user init evo-optimizer` | Set optimizer identity |
 | List reward types | `viben reward list-types` | Show builtin + custom reward types |
 | List idea types | `viben idea list-types` | Show builtin + custom idea types |
 | Generate ideas | `viben idea generate --types <types>` | AI analyzes codebase |

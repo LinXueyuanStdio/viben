@@ -1,33 +1,33 @@
 ---
 sidebar_position: 24
-title: "viben filerl"
-description: "FileRL - 基于文件的代码优化强化学习"
+title: "viben evo"
+description: "FileEvo - 基于文件的自我进化代码优化"
 ---
 
-# viben filerl
+# viben evo
 
-FileRL - 基于文件的强化学习，用于代码优化。
+FileEvo - 基于文件的自我进化，用于代码优化。
 
 ## 概述
 
-`viben filerl` 命令用于管理 FileRL 工作流，将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质量。
+`viben evo` 命令用于管理 FileEvo 工作流，将代码库视为"模型参数"，使用 PPO 算法迭代优化代码质量。
 
 ## 命令结构
 
 ```bash
-viben filerl <子命令> [选项]
+viben evo <子命令> [选项]
 ```
 
 ## 子命令
 
 | 子命令 | 说明 |
 |--------|------|
-| `create` | 创建新的 FileRL 目标文件 |
-| `start` | 启动 FileRL 运行 |
-| `status` | 查看 FileRL 运行状态 |
-| `list` | 列出所有 FileRL 运行 |
-| `stop` | 停止活跃的 FileRL 运行 |
-| `resume` | 恢复暂停的 FileRL 运行 |
+| `create` | 创建新的 FileEvo 目标文件 |
+| `start` | 启动 FileEvo 运行 |
+| `status` | 查看 FileEvo 运行状态 |
+| `list` | 列出所有 FileEvo 运行 |
+| `stop` | 停止活跃的 FileEvo 运行 |
+| `resume` | 恢复暂停的 FileEvo 运行 |
 | `add-idea` | 添加 idea 到 idea 池 |
 | `list-ideas` | 列出 idea 池中的 idea |
 | `generate-ideas` | 为迭代生成 idea |
@@ -40,7 +40,7 @@ viben filerl <子命令> [选项]
 ### 创建目标文件
 
 ```bash
-viben filerl create <name> [options]
+viben evo create <name> [options]
 ```
 
 **选项**：
@@ -54,8 +54,8 @@ viben filerl create <name> [options]
 **示例**：
 
 ```bash
-viben filerl create my-optimization
-viben filerl create code-quality -d "优化代码质量"
+viben evo create my-optimization
+viben evo create code-quality -d "优化代码质量"
 ```
 
 ## 运行管理
@@ -63,11 +63,11 @@ viben filerl create code-quality -d "优化代码质量"
 ### 启动运行
 
 ```bash
-viben filerl start <name-or-target> [options]
+viben evo start <name-or-target> [options]
 ```
 
 **参数**：
-- `<name-or-target>` - FileRL 运行名称或目标文件路径 (*.md)
+- `<name-or-target>` - FileEvo 运行名称或目标文件路径 (*.md)
 
 **选项**：
 
@@ -81,25 +81,25 @@ viben filerl start <name-or-target> [options]
 
 ```bash
 # 使用目标文件启动
-viben filerl start target.md
+viben evo start target.md
 
 # 使用运行名称启动（恢复已有运行）
-viben filerl start my-optimization
+viben evo start my-optimization
 
 # 验证配置
-viben filerl start target.md --dry-run
+viben evo start target.md --dry-run
 ```
 
 ### 查看状态
 
 ```bash
-viben filerl status <name> [options]
+viben evo status <name> [options]
 ```
 
 **输出示例**：
 
 ```
-FileRL Run: my-optimization
+FileEvo Run: my-optimization
 Status: active
 Phase: execute_tasks
 
@@ -116,13 +116,13 @@ History:
 ### 列出运行
 
 ```bash
-viben filerl list [options]
+viben evo list [options]
 ```
 
 **输出**：
 
 ```
-FileRL Runs:
+FileEvo Runs:
   my-optimization    active     iter 3    best: 0.846
   code-quality       paused     iter 1    best: 0.721
   refactoring        completed  iter 5    best: 0.892
@@ -132,10 +132,10 @@ FileRL Runs:
 
 ```bash
 # 停止
-viben filerl stop <name>
+viben evo stop <name>
 
 # 恢复
-viben filerl resume <name-or-target>
+viben evo resume <name-or-target>
 ```
 
 ## Idea 管理
@@ -143,13 +143,13 @@ viben filerl resume <name-or-target>
 ### 添加 Idea
 
 ```bash
-viben filerl add-idea <name-or-target> <idea-path>
+viben evo add-idea <name-or-target> <idea-path>
 ```
 
 ### 列出 Idea
 
 ```bash
-viben filerl list-ideas <name-or-target>
+viben evo list-ideas <name-or-target>
 ```
 
 **输出**：
@@ -164,7 +164,7 @@ Ideas for my-optimization (iter 1):
 ### 生成 Idea
 
 ```bash
-viben filerl generate-ideas <name> [options]
+viben evo generate-ideas <name> [options]
 ```
 
 **选项**：
@@ -179,16 +179,16 @@ viben filerl generate-ideas <name> [options]
 
 ```bash
 # 为当前迭代生成 idea
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # 为指定迭代生成 idea
-viben filerl generate-ideas my-optimization --iter 2 --types refactoring performance
+viben evo generate-ideas my-optimization --iter 2 --types refactoring performance
 ```
 
 ### 将 Idea 转为任务
 
 ```bash
-viben filerl promote-ideas <name> [options]
+viben evo promote-ideas <name> [options]
 ```
 
 **选项**：
@@ -208,16 +208,16 @@ viben filerl promote-ideas <name> [options]
 
 ```bash
 # 将 idea 转为任务（最简方式）
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4
 
 # 批量 promote 多个 idea
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 po-e5f6g7h8
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 po-e5f6g7h8
 
 # 创建并自动启动任务
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # 在隔离的 worktree 中开发
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --start
 ```
 
 ## 奖励计算与选择
@@ -225,7 +225,7 @@ viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --worktree --star
 ### 计算奖励
 
 ```bash
-viben filerl compute-reward <name> [options]
+viben evo compute-reward <name> [options]
 ```
 
 **选项**：
@@ -241,10 +241,10 @@ viben filerl compute-reward <name> [options]
 
 ```bash
 # 为特定 idea 的任务计算奖励
-viben filerl compute-reward my-optimization --idea idea-001
+viben evo compute-reward my-optimization --idea idea-001
 
 # 为指定迭代的特定任务计算奖励
-viben filerl compute-reward my-optimization --iter 2 --task 03-27-fix-bug
+viben evo compute-reward my-optimization --iter 2 --task 03-27-fix-bug
 ```
 
 **Reward 格式**：
@@ -264,7 +264,7 @@ viben filerl compute-reward my-optimization --iter 2 --task 03-27-fix-bug
 ### PPO 选择
 
 ```bash
-viben filerl select <name> [options]
+viben evo select <name> [options]
 ```
 
 **选项**：
@@ -295,7 +295,7 @@ Selected: task-a
 
 ## 状态机
 
-FileRL 每个迭代通过 phase 跟踪进度：
+FileEvo 每个迭代通过 phase 跟踪进度：
 
 ```
 init → generate_ideas → promote_ideas → execute_tasks →
@@ -316,7 +316,7 @@ init → generate_ideas → promote_ideas → execute_tasks →
 
 ## Target 配置
 
-FileRL 的配置定义在 target.md 文件的 YAML frontmatter 中：
+FileEvo 的配置定义在 target.md 文件的 YAML frontmatter 中：
 
 ```yaml
 ---
@@ -364,8 +364,8 @@ enabled: true
 ## 目录结构
 
 ```
-.viben/filerl/<run-name>/
-├── state.json                      # FileRL 状态
+.viben/evo/<run-name>/
+├── state.json                      # FileEvo 状态
 └── iter{N}/                        # 第 N 次迭代
     └── <idea-id>/                  # idea 目录
         ├── idea.md                 # idea 定义
@@ -378,31 +378,31 @@ enabled: true
 
 ```bash
 # 1. 创建目标文件
-viben filerl create my-optimization -d "优化代码质量"
+viben evo create my-optimization -d "优化代码质量"
 
-# 2. 启动 FileRL 循环
-viben filerl start my-optimization.md
+# 2. 启动 FileEvo 循环
+viben evo start my-optimization.md
 
 # 3. 生成 idea
-viben filerl generate-ideas my-optimization --types code_improvements
+viben evo generate-ideas my-optimization --types code_improvements
 
 # 4. 查看生成的 idea
-viben filerl list-ideas my-optimization
+viben evo list-ideas my-optimization
 
 # 5. 将 idea 转为 task 并启动
-viben filerl promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
 
 # 6. 查看状态
-viben filerl status my-optimization
+viben evo status my-optimization
 
 # 7. 监控任务执行
 viben swarm status --watch
 
 # 8. 计算奖励
-viben filerl compute-reward my-optimization --iter 1
+viben evo compute-reward my-optimization --iter 1
 
 # 9. 选择最佳候选
-viben filerl select my-optimization
+viben evo select my-optimization
 
 # 10. 合并 winner，清理 loser
 viben task approve <winner-task>

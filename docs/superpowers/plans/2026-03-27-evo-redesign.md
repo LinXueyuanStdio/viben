@@ -197,18 +197,18 @@ git commit -m "feat(evo): update IdeaConfig with auto_generate and batch_size
 
 ---
 
-### Task 4: Update FileRlConfig to use new config types
+### Task 4: Update FileEvoConfig to use new config types
 
 **Files:**
-- Modify: `packages/core/src/evo/ops/types.ts` (FileRlConfig section)
+- Modify: `packages/core/src/evo/ops/types.ts` (FileEvoConfig section)
 
-- [ ] **Step 1: Update FileRlConfig interface**
+- [ ] **Step 1: Update FileEvoConfig interface**
 
 ```typescript
 /**
  * Complete FileEvo target configuration
  */
-export interface FileRlConfig {
+export interface FileEvoConfig {
   /** Target name/identifier */
   name: string;
 
@@ -268,7 +268,7 @@ export const DEFAULT_TASK_CONFIG: TaskConfig = {
 
 ```bash
 git add packages/core/src/evo/ops/types.ts
-git commit -m "refactor(evo): restructure FileRlConfig with rollout and convergence sections"
+git commit -m "refactor(evo): restructure FileEvoConfig with rollout and convergence sections"
 ```
 
 ---
@@ -365,15 +365,15 @@ git commit -m "feat(evo): add task_idea_map and merge_error to IterationState"
 
 ---
 
-### Task 7: Update FileRlState with no_merge_count
+### Task 7: Update FileEvoState with no_merge_count
 
 **Files:**
-- Modify: `packages/core/src/evo/ops/types.ts` (FileRlState section)
+- Modify: `packages/core/src/evo/ops/types.ts` (FileEvoState section)
 
-- [ ] **Step 1: Update FileRlState interface**
+- [ ] **Step 1: Update FileEvoState interface**
 
 ```typescript
-export interface FileRlState {
+export interface FileEvoState {
   /** Target name */
   name: string;
 
@@ -416,7 +416,7 @@ export interface FileRlState {
 
 ```bash
 git add packages/core/src/evo/ops/types.ts
-git commit -m "feat(evo): add no_merge_count to FileRlState for early stop detection"
+git commit -m "feat(evo): add no_merge_count to FileEvoState for early stop detection"
 ```
 
 ---
@@ -552,7 +552,7 @@ function parseTaskConfig(raw: Record<string, unknown>): TaskConfig {
 - [ ] **Step 6: Update parseTarget to include new configs**
 
 ```typescript
-const config: FileRlConfig = {
+const config: FileEvoConfig = {
   name,
   description: typeof raw.description === "string" ? raw.description : undefined,
   ppo: parsePpoConfig(raw),
@@ -589,7 +589,7 @@ git commit -m "feat(evo): update parser for new config format
 - [ ] **Step 1: Rewrite validateConfig**
 
 ```typescript
-export function validateConfig(config: FileRlConfig): { valid: boolean; errors: string[] } {
+export function validateConfig(config: FileEvoConfig): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   // Validate PPO config
@@ -999,7 +999,7 @@ git commit -m "feat(reward): implement two-stage PPO selection algorithm
 - [ ] **Step 1: Update createInitialState**
 
 ```typescript
-export function createInitialState(name: string, targetPath: string): FileRlState {
+export function createInitialState(name: string, targetPath: string): FileEvoState {
   const now = new Date().toISOString();
 
   return {
@@ -1058,7 +1058,7 @@ git commit -m "feat(evo): update state functions with no_merge_count and task_id
 
 ```typescript
 export function completeIteration(
-  state: FileRlState,
+  state: FileEvoState,
   selectedTask: string | undefined,
   rejectedTasks: string[],
   rewards: Record<string, number>,
@@ -1099,7 +1099,7 @@ export function completeIteration(
 
 ```typescript
 export function checkConvergence(
-  state: FileRlState,
+  state: FileEvoState,
   convergenceThreshold: number,
   noMergeLimit: number
 ): boolean {
@@ -1253,7 +1253,7 @@ export function orchestrateCreateRollouts(
     return { success: false, phase: "create_rollouts", error: "No active iteration" };
   }
 
-  const evoDir = getFileRlDir(repoRoot, name);
+  const evoDir = getFileEvoDir(repoRoot, name);
   const taskNames: string[] = [];
   const taskIdeaMap: Record<string, string> = {};
   const errors: string[] = [];
@@ -1445,7 +1445,7 @@ export function orchestrateSelectBest(
 
   // Gather rewards
   const taskRewards: Record<string, number> = {};
-  const evoDir = getFileRlDir(repoRoot, name);
+  const evoDir = getFileEvoDir(repoRoot, name);
 
   for (const taskDirName of currentIter.tasks) {
     // ... (existing reward loading logic) ...
@@ -1559,7 +1559,7 @@ git commit -m "refactor(evo): update orchestrateFullIteration with new state mac
 // ============================================================================
 // evo add-idea <name> <idea-path>
 // ============================================================================
-fileRlCmd
+evoCmd
   .command("add-idea")
   .description("Add an idea file to a FileEvo run's idea pool")
   .argument("<name>", "Name of the FileEvo run")
@@ -1621,7 +1621,7 @@ fileRlCmd
 // ============================================================================
 // evo list-ideas <name>
 // ============================================================================
-fileRlCmd
+evoCmd
   .command("list-ideas")
   .description("List ideas in a FileEvo run's pool")
   .argument("<name>", "Name of the FileEvo run")

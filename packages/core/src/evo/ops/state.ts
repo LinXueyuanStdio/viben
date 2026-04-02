@@ -278,14 +278,14 @@ export function stopRun(state: EvoState): void {
  * List all Evo runs
  */
 export function listRuns(repoRoot: string): ListRunsResult {
-  const fileRlBaseDir = join(repoRoot, ".viben", EVO_DIR);
+  const evoBaseDir = join(repoRoot, ".viben", EVO_DIR);
 
-  if (!existsSync(fileRlBaseDir)) {
+  if (!existsSync(evoBaseDir)) {
     return { success: true, runs: [] };
   }
 
   try {
-    const dirs = readdirSync(fileRlBaseDir, { withFileTypes: true });
+    const dirs = readdirSync(evoBaseDir, { withFileTypes: true });
     const runs: ListRunsResult["runs"] = [];
 
     for (const dir of dirs) {

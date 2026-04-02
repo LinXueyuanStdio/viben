@@ -804,7 +804,7 @@ export function parseRewardResult(
   // Determine output directory
   const outputDir = options?.outputDir || taskDirAbs;
   const evoDir = options?.evoDir;
-  const isFileRlMode = !!evoDir;
+  const isEvoMode = !!evoDir;
 
   // Check task.json exists
   const taskJsonPath = join(taskDirAbs, "task.json");
@@ -959,7 +959,7 @@ export function parseRewardResult(
   };
 
   // Write output based on mode
-  if (isFileRlMode) {
+  if (isEvoMode) {
     // Evo mode: write to reward.json in output directory
     // Use snake_case for Evo format (total_score, diff_lines)
     const rewardJsonPath = join(outputDir, "reward.json");

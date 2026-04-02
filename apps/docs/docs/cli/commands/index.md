@@ -24,7 +24,7 @@ These commands represent the primary workflow for code evolution:
 | [`swarm`](./swarm.md) | Orchestrate multiple agents working in parallel |
 | [`idea`](./idea.md) | AI-driven ideation for features and improvements |
 | [`queue`](./queue.md) | Background command execution with concurrency control |
-| [`filerl`](./filerl.md) | FileRL - File-based Reinforcement Learning for code optimization |
+| [`evo`](./evo.md) | FileEvo - File-based Self-Evolution for code optimization |
 
 ## Agent & Configuration Commands
 

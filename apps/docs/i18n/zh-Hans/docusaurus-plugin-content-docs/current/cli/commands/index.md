@@ -24,7 +24,7 @@ viben <命令> [子命令] [选项]
 | [`swarm`](./swarm.md) | 编排多个智能体并行工作 |
 | [`idea`](./idea.md) | AI 驱动的功能和改进点生成 |
 | [`queue`](./queue.md) | 后台命令执行，支持并发控制 |
-| [`filerl`](./filerl.md) | FileRL - 基于文件的代码优化强化学习 |
+| [`evo`](./evo.md) | FileEvo - 基于文件的自我进化代码优化 |
 
 ## 智能体与配置命令
 
