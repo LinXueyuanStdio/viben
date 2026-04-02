@@ -38,7 +38,7 @@ description: "发现和查看执行器（Claude Code、Cursor 等）"
 |----|------|------|----------|
 | `CLAUDE_CODE` | Claude Code | Anthropic 官方 CLI | `claude --version` |
 | `CURSOR` | Cursor | AI-first 编辑器 | `cursor --version` |
-| `GEMINI_CLI` | Gemini CLI | Google Gemini CLI | `gemini --version` |
+| `GEMINI` | Gemini CLI | Google Gemini CLI | `gemini --version` |
 | `CODEX` | OpenAI Codex | OpenAI Codex CLI | `codex --version` |
 | `WINDSURF` | Windsurf | Codeium IDE | `windsurf --version` |
 | `AMP` | Amp | Sourcegraph Amp | `amp --version` |
