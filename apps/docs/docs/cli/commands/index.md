@@ -24,15 +24,18 @@ These commands represent the primary workflow for code evolution:
 | [`swarm`](./swarm.md) | Orchestrate multiple agents working in parallel |
 | [`idea`](./idea.md) | AI-driven ideation for features and improvements |
 | [`queue`](./queue.md) | Background command execution with concurrency control |
+| [`filerl`](./filerl.md) | FileRL - File-based Reinforcement Learning for code optimization |
 
 ## Agent & Configuration Commands
 
 | Command | Description |
 |---------|-------------|
 | [`agent`](./agent.md) | Manage agent instances and templates |
+| [`agent chat`](./agent-chat.md) | Non-interactive conversation with Agent |
+| [`executor`](./executor.md) | Discover and view executors (Claude Code, Cursor, etc.) |
+| [`executor chat`](./executor-chat.md) | Non-interactive invocation of AI coding agents |
 | [`provider`](./provider.md) | Manage API providers (OpenAI, Anthropic, etc.) |
 | [`model`](./model.md) | Manage models, aliases, and fallback chains |
-| [`executor`](./executor.md) | Discover and view executors (Claude Code, Cursor, etc.) |
 | [`mcp`](./mcp.md) | Manage MCP servers |
 | [`skill`](./skill.md) | Manage skills |
 
