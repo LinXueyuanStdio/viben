@@ -30,6 +30,11 @@ import type {
 } from './types';
 
 /**
+ * Custom fetch function type
+ */
+export type FetchFunction = typeof fetch;
+
+/**
  * Configuration options for the API client
  */
 export interface VibenClientConfig {
@@ -39,6 +44,8 @@ export interface VibenClientConfig {
   apiKey?: string;
   /** Request timeout in milliseconds (default: 30000) */
   timeout?: number;
+  /** Custom fetch function (e.g., proxy-aware fetch) */
+  fetch?: FetchFunction;
 }
 
 /**
@@ -101,11 +108,13 @@ export class VibenClient {
   private baseUrl: string;
   private apiKey?: string;
   private timeout: number;
+  private fetchFn: FetchFunction;
 
   constructor(config: VibenClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;
+    this.fetchFn = config.fetch || fetch;
   }
 
   /**
@@ -143,7 +152,7 @@ export class VibenClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchFn(url, {
         ...options,
         headers,
         signal: controller.signal,
@@ -198,7 +207,7 @@ export class VibenClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchFn(url, {
         headers,
         signal: controller.signal,
       });
@@ -254,13 +263,15 @@ export class VibenClient {
     /**
      * Search MCP packages
      */
-    search: (
+    search: async (
       query: string,
       params?: ListParams
-    ): Promise<PaginatedResponse<McpPackage>> =>
-      this.request<PaginatedResponse<McpPackage>>(
+    ): Promise<PaginatedResponse<McpPackage>> => {
+      const response = await this.request<{ packages: McpPackage[]; pagination: PaginatedResponse<McpPackage>['pagination'] }>(
         `/api/mcp/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
-      ),
+      );
+      return { data: response.packages, pagination: response.pagination };
+    },
 
     /**
      * Download MCP package
@@ -333,13 +344,15 @@ export class VibenClient {
     /**
      * Search skill packages
      */
-    search: (
+    search: async (
       query: string,
       params?: SkillListParams
-    ): Promise<PaginatedResponse<SkillPackage>> =>
-      this.request<PaginatedResponse<SkillPackage>>(
+    ): Promise<PaginatedResponse<SkillPackage>> => {
+      const response = await this.request<{ packages: SkillPackage[]; pagination: PaginatedResponse<SkillPackage>['pagination'] }>(
         `/api/skill/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
-      ),
+      );
+      return { data: response.packages, pagination: response.pagination };
+    },
 
     /**
      * Download skill package

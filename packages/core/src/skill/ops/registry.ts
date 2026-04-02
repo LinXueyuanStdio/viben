@@ -1,7 +1,7 @@
 /**
  * Skill marketplace registry integration
  *
- * Uses @viben/api-client for API calls.
+ * Uses @viben/api-client for API calls with proxy support.
  */
 import { writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -9,6 +9,7 @@ import { VibenClient } from "@viben/api-client";
 import { readToken, VIBEN_WEB_URL } from "../../auth";
 import { ensureDir } from "../../config/yaml";
 import { extractZipToDirectory } from "./extract";
+import { proxyFetch } from "../../http";
 
 // =============================================================================
 // Types
@@ -73,6 +74,7 @@ export interface SkillRegistryGetResult {
 async function createClient(): Promise<VibenClient> {
   const client = new VibenClient({
     baseUrl: VIBEN_WEB_URL,
+    fetch: proxyFetch,
   });
 
   const token = await readToken();
