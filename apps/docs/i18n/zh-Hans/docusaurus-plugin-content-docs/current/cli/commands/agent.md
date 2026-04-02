@@ -24,10 +24,12 @@ viben agent <子命令> [选项]
 | `remove` | 删除智能体 |
 | `config` | 查看或设置智能体配置 |
 | `set-default` | 设置默认智能体 |
+| `set-template` | 设置为模板 |
 | `status` | 显示智能体状态 |
 | `template` | 管理智能体模板 |
 | `session` | 管理智能体会话 |
 | `memory` | 管理智能体记忆 |
+| `chat` | 使用智能体进行非交互式对话 |
 
 ## 智能体管理
 
@@ -449,6 +451,8 @@ skills:
 
 ## 相关命令
 
+- [viben agent chat](./agent-chat) - 智能体聊天
+- [viben executor](./executor) - 执行器管理
 - [viben provider](./provider) - 提供商管理
 - [viben model](./model) - 模型管理
 - [viben mcp](./mcp) - MCP 服务器管理

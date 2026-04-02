@@ -6,7 +6,7 @@ description: "微本 CLI 命令、全局选项和输出格式概览"
 
 # 命令概览
 
-微本 CLI (`viben`) 是一个用于配置应用、管理服务和查询状态的引导工具。它设计为可供人类和 AI 智能体使用。
+Viben CLI (`viben`) 是 **Agent Swarm x Code Evolution** 的命令行界面。它支持 AI 智能体集群的编排，用于持续代码改进和智能任务管理。
 
 ## 命令结构
 
@@ -14,18 +14,41 @@ description: "微本 CLI 命令、全局选项和输出格式概览"
 viben <命令> [子命令] [选项]
 ```
 
-## 可用命令
+## 核心命令 (Agent Swarm x Code Evolution)
+
+这些命令代表代码进化的主要工作流：
+
+| 命令 | 描述 |
+|------|------|
+| [`task`](./task.md) | XState 驱动的任务管理，支持状态机工作流 |
+| [`swarm`](./swarm.md) | 编排多个智能体并行工作 |
+| [`idea`](./idea.md) | AI 驱动的功能和改进点生成 |
+| [`queue`](./queue.md) | 后台命令执行，支持并发控制 |
+| [`filerl`](./filerl.md) | FileRL - 基于文件的代码优化强化学习 |
+
+## 智能体与配置命令
+
+| 命令 | 描述 |
+|------|------|
+| [`agent`](./agent.md) | 管理智能体实例和模板 |
+| [`agent chat`](./agent-chat.md) | 使用智能体进行非交互式对话 |
+| [`executor`](./executor.md) | 发现和查看执行器（Claude Code、Cursor 等）|
+| [`executor chat`](./executor-chat.md) | 非交互式调用 AI coding agent |
+| [`provider`](./provider.md) | 管理 API 提供商 (OpenAI、Anthropic 等) |
+| [`model`](./model.md) | 管理模型、别名和回退链 |
+| [`mcp`](./mcp.md) | 管理 MCP 服务器 |
+| [`skill`](./skill.md) | 管理技能 |
+
+## 工作区与服务命令
 
 | 命令 | 描述 |
 |------|------|
 | [`init`](./init.md) | 在当前目录初始化工作区 |
 | [`config`](./config.md) | 配置管理 (git 风格) |
 | [`service`](./service.md) | 管理后台服务 |
-| [`agent`](./agent.md) | 管理智能体实例和模板 |
-| [`provider`](./provider.md) | 管理 API 提供商 (OpenAI、Anthropic 等) |
-| [`model`](./model.md) | 管理模型、别名和回退链 |
-| [`mcp`](./mcp.md) | 管理 MCP 服务器 |
-| [`skill`](./skill.md) | 管理技能 |
+| [`gateway`](./gateway.md) | 启动 Gateway（消息总线 + 智能体循环）|
+| [`channel`](./channel.md) | 管理聊天渠道（Telegram、Discord 等）|
+| [`cron`](./cron.md) | 管理定时任务 |
 | [`workspace`](./workspace.md) | 工作区操作 |
 | `version` | 显示版本信息 |
 | `help` | 显示帮助 |
@@ -159,7 +182,9 @@ viben agent sync claude-code --json
 
 ## 下一步
 
-- [viben init](./init.md) - 初始化工作区
-- [viben config](./config.md) - 管理配置
+- [viben task](./task.md) - XState 驱动的任务管理
+- [viben swarm](./swarm.md) - 多智能体编排
+- [viben idea](./idea.md) - AI 驱动的 idea 生成
+- [viben queue](./queue.md) - 后台命令执行
 - [viben agent](./agent.md) - 管理智能体
-- [viben mcp](./mcp.md) - 管理 MCP 服务器
+- [viben gateway](./gateway.md) - 启动 Gateway

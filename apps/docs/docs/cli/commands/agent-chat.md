@@ -1,6 +1,12 @@
+---
+sidebar_position: 9
+title: "viben agent chat"
+description: "Non-interactive conversation with a specified Agent"
+---
+
 # viben agent chat
 
-> Non-interactive conversation with a specified Agent.
+Non-interactive conversation with a specified Agent.
 
 ## Overview
 
