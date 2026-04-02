@@ -58,9 +58,9 @@ OPTIONS:
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     执行器选择                                    │
-│  agent.type == "claude-code"  →  ClaudeCode 执行器              │
-│  agent.type == "gemini"       →  Gemini 执行器                  │
-│  agent.type == "codex"        →  Codex 执行器                   │
+│  agent.type == "CLAUDE_CODE"  →  ClaudeCode 执行器              │
+│  agent.type == "GEMINI"       →  Gemini 执行器                  │
+│  agent.type == "CODEX"        →  Codex 执行器                   │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
