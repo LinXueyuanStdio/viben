@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
 export const listMcpQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  page: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).default(1)),
+  limit: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).max(100).default(20)),
   category: z.string().nullish().transform(v => v ?? undefined),
-  sort: z.enum(['latest', 'popular', 'downloads']).default('latest'),
+  sort: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.enum(['latest', 'popular', 'downloads']).default('latest')),
 });
 
 export const searchMcpQuerySchema = z.object({
   q: z.string().min(1),
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  page: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).default(1)),
+  limit: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).max(100).default(20)),
 });
 
 export const createMcpSchema = z.object({
