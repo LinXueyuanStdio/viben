@@ -19,7 +19,7 @@
 <h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="什么是-viben">什么是 Viben？<a href="https://linxueyuan.online/viben/blog/welcome#%E4%BB%80%E4%B9%88%E6%98%AF-viben" class="hash-link" aria-label="Direct link to 什么是 Viben？" title="Direct link to 什么是 Viben？" translate="no">​</a></h2>
 <p>Viben 是一个融合 <strong>Agent Swarm（智能体集群）</strong> 与 <strong>Code Evolution（代码进化）</strong> 理念的开发平台。它不仅仅是工具，而是一套完整的智能开发生态系统。</p>
 <h3 class="anchor anchorTargetStickyNavbar_Kd7j" id="核心特性">核心特性<a href="https://linxueyuan.online/viben/blog/welcome#%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7" class="hash-link" aria-label="Direct link to 核心特性" title="Direct link to 核心特性" translate="no">​</a></h3>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-filerl---代码迭代优化">🧬 FileRL - 代码迭代优化<a href="https://linxueyuan.online/viben/blog/welcome#-filerl---%E4%BB%A3%E7%A0%81%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96" class="hash-link" aria-label="Direct link to 🧬 FileRL - 代码迭代优化" title="Direct link to 🧬 FileRL - 代码迭代优化" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-fileevo---代码迭代优化">🧬 FileEvo - 代码迭代优化<a href="https://linxueyuan.online/viben/blog/welcome#-fileevo---%E4%BB%A3%E7%A0%81%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96" class="hash-link" aria-label="Direct link to 🧬 FileEvo - 代码迭代优化" title="Direct link to 🧬 FileEvo - 代码迭代优化" translate="no">​</a></h4>
 <p>基于强化学习的代码进化引擎，通过持续迭代让代码自我优化：</p>
 <ul>
 <li class="">自动化代码质量评估</li>
@@ -48,7 +48,7 @@
 <li class="">技术方案生成</li>
 <li class="">原型快速验证</li>
 </ul>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-mcp-protocol---生态集成">🔌 MCP Protocol - 生态集成<a href="https://linxueyuan.online/viben/blog/welcome#-mcp-protocol---%E7%94%9F%E6%80%81%E9%9B%86%E6%88%90" class="hash-link" aria-label="Direct link to 🔌 MCP Protocol - 生态集�成" title="Direct link to 🔌 MCP Protocol - 生态集成" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-mcp-protocol---生态集成">🔌 MCP Protocol - 生态集成<a href="https://linxueyuan.online/viben/blog/welcome#-mcp-protocol---%E7%94%9F%E6%80%81%E9%9B%86%E6%88%90" class="hash-link" aria-label="Direct link to 🔌 MCP Protocol - 生态集成" title="Direct link to 🔌 MCP Protocol - 生态集成" translate="no">​</a></h4>
 <p>兼容 MCP (Model Context Protocol) 标准，无缝对接现有 AI 生态：</p>
 <ul>
 <li class="">与 Claude 等 MCP 客户端深度集成</li>
@@ -64,7 +64,7 @@
             <category>announcement</category>
             <category>agent-swarm</category>
             <category>code-evolution</category>
-            <category>filerl</category>
+            <category>evo</category>
             <category>mcp</category>
         </item>
     </channel>
