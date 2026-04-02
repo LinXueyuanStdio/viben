@@ -10,13 +10,13 @@ Viben Desktop is a native desktop application that achieves autonomous code iter
 
 ## Core Philosophy
 
-**Agent Swarm x Code Evolution** - Let multiple agents work collaboratively, driving continuous code evolution through FileEvo reinforcement learning.
+**Agent Swarm x Code Evolution** - Let multiple agents work collaboratively, driving continuous code evolution through FileEvo iterative optimization.
 
 ## Core Features
 
 ### FileEvo Code Evolution
 
-A reinforcement learning-based code iteration optimization system:
+A heuristic code iteration optimization system:
 
 | Component | Description |
 |-----------|-------------|
