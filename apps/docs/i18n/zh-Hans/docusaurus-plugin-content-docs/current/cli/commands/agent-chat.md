@@ -18,7 +18,7 @@ description: "使用指定智能体进行非交互式对话"
 viben agent chat [OPTIONS] -n <AGENT_ID>
 
 OPTIONS:
-    -n, --name <AGENT_ID>       智能体 ID（必需）
+    -n, --name <AGENT_ID>       智能体 ID（可选，默认为当前智能体）
     -p, --prompt <PROMPT>       提示词（可选，无则从 stdin 读取）
     -C, --cwd <DIR>             工作目录（默认当前目录）
 
