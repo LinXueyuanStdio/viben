@@ -1,17 +1,17 @@
 import { z } from 'zod';
 
 export const listSkillQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  page: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).default(1)),
+  limit: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).max(100).default(20)),
   category: z.string().nullish().transform(v => v ?? undefined),
   type: z.enum(['command', 'prompt', 'agent']).nullish().transform(v => v ?? undefined),
-  sort: z.enum(['latest', 'popular', 'downloads']).default('latest'),
+  sort: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.enum(['latest', 'popular', 'downloads']).default('latest')),
 });
 
 export const searchSkillQuerySchema = z.object({
   q: z.string().min(1),
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  page: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).default(1)),
+  limit: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.number().min(1).max(100).default(20)),
 });
 
 export const createSkillSchema = z.object({
