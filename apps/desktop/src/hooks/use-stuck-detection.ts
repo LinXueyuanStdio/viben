@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useUpdateVibeKanbanTaskStatus } from "./use-vibe-kanban";
+import { _useUpdateTaskStatus } from "./use-kanban";
 import { hasRecentActivity, getTimeSinceActivity } from "@/stores/task-activity-store";
-import { checkTaskRunningDetailed } from "@/lib/vibe-kanban";
+import { checkTaskRunningDetailed } from "@/lib/kanban";
 import {
   STUCK_THRESHOLD_MS,
   STUCK_CHECK_INTERVAL_MS,
   SAFETY_TIMEOUT_MS,
-} from "@/lib/vibe-kanban/constants";
+} from "@/lib/kanban/constants";
 
 /**
  * Minimal subtask interface for stuck detection
@@ -178,7 +178,7 @@ export function useStuckDetection({
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
-  const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
+  const updateTaskStatus = _useUpdateTaskStatus();
 
   // Track mount state for cleanup
   useEffect(() => {

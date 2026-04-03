@@ -36,6 +36,8 @@ export interface PlanPhaseOptions {
   platform?: string;
   /** Enable verbose output (default: false) */
   verbose?: boolean;
+  /** Detach the process (run in background, default: false) */
+  detach?: boolean;
 }
 
 /**
@@ -102,6 +104,7 @@ export async function runPlanPhase(
   options: PlanPhaseOptions = {}
 ): Promise<PlanPhaseResult> {
   const platform = options.platform || "claude";
+  const detach = options.detach ?? false;
 
   // ---------------------------------------------------------------------------
   // Step 1: Resolve task directory path
@@ -241,8 +244,11 @@ export async function runPlanPhase(
     cwd: repoRoot,
     env,
     stdio: ["ignore", logFd, logFd],
-    detached: true,
   };
+
+  if (detach) {
+    spawnOpts.detached = true;
+  }
 
   const agentId = `plan-${taskName}`;
 
@@ -272,33 +278,55 @@ export async function runPlanPhase(
     repoRoot
   );
 
-  // ---------------------------------------------------------------------------
-  // Step 11: Setup cleanup on process exit
-  // ---------------------------------------------------------------------------
-
-  child.on("exit", () => {
-    // Remove agent from registry when process exits
-    registryRemoveById(agentId, repoRoot);
-  });
-
-  child.unref();
-
-  // ---------------------------------------------------------------------------
-  // Return success result
-  // ---------------------------------------------------------------------------
-
   if (options.verbose) {
     console.log(`[plan-phase] Task: ${taskName}`);
     console.log(`[plan-phase] Requirement: ${requirement}`);
     console.log(`[plan-phase] Agent ID: ${agentId}`);
     console.log(`[plan-phase] PID: ${agentPid}`);
     console.log(`[plan-phase] Log: ${logFile}`);
+    console.log(`[plan-phase] Mode: ${detach ? "background" : "foreground"}`);
   }
 
+  // ---------------------------------------------------------------------------
+  // Step 11: Handle detached vs blocking mode
+  // ---------------------------------------------------------------------------
+
+  if (detach) {
+    // Detached mode: setup cleanup handler and return immediately
+    child.on("exit", () => {
+      registryRemoveById(agentId, repoRoot);
+    });
+    child.unref();
+
+    return {
+      success: true,
+      agentId,
+      pid: agentPid,
+      logFile,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Blocking mode: wait for process to complete
+  // ---------------------------------------------------------------------------
+
+  const exitCode = await new Promise<number>((resolve) => {
+    child.on("exit", (code) => {
+      resolve(code ?? 0);
+    });
+    child.on("error", () => {
+      resolve(1);
+    });
+  });
+
+  // Cleanup registry after process exits
+  registryRemoveById(agentId, repoRoot);
+
   return {
-    success: true,
+    success: exitCode === 0,
     agentId,
     pid: agentPid,
     logFile,
+    error: exitCode !== 0 ? `Process exited with code ${exitCode}` : undefined,
   };
 }

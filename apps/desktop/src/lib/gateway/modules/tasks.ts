@@ -388,6 +388,56 @@ export function subscribeTaskEvents(
 // Queue API Types
 // =============================================================================
 
+// =============================================================================
+// Task Lifecycle API Types
+// =============================================================================
+
+/**
+ * Common response for task lifecycle operations
+ */
+export interface TaskLifecycleResponse {
+  success: boolean;
+  task_id: string;
+  status?: string;
+  previous_status?: string;
+  message?: string;
+}
+
+/**
+ * Response for task stop operation
+ */
+export interface TaskStopResponse {
+  success: boolean;
+  cancelled: boolean;
+  task_id?: string;
+  error?: string;
+}
+
+/**
+ * Response for task archive operation
+ */
+export interface TaskArchiveResponse extends TaskLifecycleResponse {
+  archive_path?: string;
+}
+
+/**
+ * Options for task enqueue operation
+ */
+export interface TaskEnqueueOptions {
+  /** Agent ID to execute this task */
+  agent?: string;
+  /** Executor type (CLAUDE_CODE, CURSOR, etc.) */
+  executor?: string;
+  /** Model ID for execution */
+  model?: string;
+  /** Priority (urgent/high/medium/low/none) */
+  priority?: string;
+}
+
+// =============================================================================
+// Queue API Types
+// =============================================================================
+
 /**
  * Request to enqueue a task for background execution
  */

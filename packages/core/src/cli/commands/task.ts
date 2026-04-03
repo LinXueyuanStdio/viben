@@ -2234,7 +2234,8 @@ export function registerTaskCommand(program: Command): void {
     .argument("<task>", "Task name or directory")
     .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
     .option("-v, --verbose", "Enable verbose output")
-    .action(async (task: string, options: { platform?: string; verbose?: boolean }) => {
+    .option("--detach", "Run in background (default: foreground)")
+    .action(async (task: string, options: { platform?: string; verbose?: boolean; detach?: boolean }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
 
@@ -2251,11 +2252,13 @@ export function registerTaskCommand(program: Command): void {
         console.log(chalk.blue("=== Plan Phase ==="));
         console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
         console.log(chalk.cyan("[INFO]"), `Platform: ${options.platform || "claude"}`);
+        console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach ? "background" : "foreground"}`);
         console.log();
 
         const result = await runPlanPhase(repoRoot, taskDir, {
           platform: options.platform,
           verbose: options.verbose,
+          detach: options.detach ?? false,
         });
 
         if (result.success) {
@@ -2568,7 +2571,7 @@ export function registerTaskCommand(program: Command): void {
     .argument("<task>", "Task name or directory")
     .option("-p, --platform <platform>", "Platform (claude, cursor, iflow, opencode)", "claude")
     .option("-v, --verbose", "Enable verbose output")
-    .option("--no-detach", "Run in foreground (default: background)")
+    .option("--detach", "Run in background (default: foreground)")
     .action(async (task: string, options: { platform?: string; verbose?: boolean; detach?: boolean }) => {
       const ctx = getContext(program);
       const cwd = process.cwd();
@@ -2677,7 +2680,7 @@ export function registerTaskCommand(program: Command): void {
         console.log(chalk.cyan("[INFO]"), `Task: ${task}`);
         console.log(chalk.cyan("[INFO]"), `Platform: ${platform}`);
         console.log(chalk.cyan("[INFO]"), `Working Dir: ${modeLabel}`);
-        console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach !== false ? "background" : "foreground"}`);
+        console.log(chalk.cyan("[INFO]"), `Mode: ${options.detach ? "background" : "foreground"}`);
         console.log();
 
         const result = await runWorkPhase({
@@ -2686,7 +2689,7 @@ export function registerTaskCommand(program: Command): void {
           task_dir: taskDirAbs,
           platform,
           verbose: options.verbose,
-          detach: options.detach !== false,
+          detach: options.detach ?? false,
           skipPermissions: true,
           jsonOutput: true,
           logFileName,

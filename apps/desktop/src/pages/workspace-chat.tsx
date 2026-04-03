@@ -92,7 +92,7 @@ import {
   isExecutorType,
   buildWorkspaceUrl,
 } from "@/hooks";
-import { useVibeKanbanTasks } from "@/hooks/use-vibe-kanban";
+import { useTasks } from "@/hooks/use-kanban";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import type { AgentMessage, Artifact } from "@/types";
 import { cn } from "@/lib/utils";
@@ -417,7 +417,7 @@ export function WorkspaceChatPage() {
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
   // Load kanban tasks for the current workspace
-  const { data: tasks = [], isLoading: isTasksLoading } = useVibeKanbanTasks(workspace?.path);
+  const { data: tasks = [], isLoading: isTasksLoading } = useTasks(workspace?.path);
 
   // Live preview for HTML artifacts
   // taskId is based on workspace to share preview across sessions in same workspace

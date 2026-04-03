@@ -7,13 +7,13 @@
 
 import { useState, useCallback } from "react";
 import type { DragEndEvent } from "@viben/kanban";
-import type { KanbanColumnId, TaskStatus as VibeTaskStatus } from "@/lib/vibe-kanban";
+import type { KanbanColumnId, TaskStatus as VibeTaskStatus } from "@/lib/kanban";
 import {
   STATUS_TO_COLUMN,
   COLUMN_TO_STATUS,
   isValidStatusTransition,
   getValidDropTargets,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import type { EnhancedTask, DragDropState } from "../types";
 
 /**

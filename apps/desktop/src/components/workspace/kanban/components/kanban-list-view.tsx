@@ -56,7 +56,7 @@ import {
   KANBAN_COLUMNS,
   type TaskStatus as VibeTaskStatus,
   type KanbanColumnId,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import { CategoryIcons, COLUMN_COLOR_VARS, COLUMN_I18N_KEYS } from "../constants";
 import { useElapsedTime, formatElapsedTime } from "../hooks";
 import type { EnhancedTask, TaskActions } from "../types";

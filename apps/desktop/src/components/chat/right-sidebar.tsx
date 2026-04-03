@@ -42,7 +42,7 @@ import {
   ArtifactPreview,
   ToolPreview,
 } from "./tabs";
-import type { TaskWithAttemptStatus } from "@/lib/vibe-kanban";
+import type { TaskWithAttemptStatus } from "@/lib/kanban";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 /**

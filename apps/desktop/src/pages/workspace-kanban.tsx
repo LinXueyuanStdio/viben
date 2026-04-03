@@ -142,11 +142,11 @@ import {
 import { useLocalWorkspaces, useAgents, useModels, useStuckDetection } from "@/hooks";
 import { useElapsedTime, formatElapsedTime } from "@/components/workspace/kanban/hooks";
 import {
-  useVibeKanbanTasks,
-  useUpdateVibeKanbanTaskStatus,
-  useUpdateVibeKanbanTask,
-  useCreateVibeKanbanTask,
-} from "@/hooks/use-vibe-kanban";
+  useTasks,
+  _useUpdateTaskStatus,
+  _useUpdateTask,
+  _useCreateTask,
+} from "@/hooks/use-kanban";
 import {
   type TaskWithAttemptStatus,
   type TaskStatus as VibeTaskStatus,
@@ -161,7 +161,7 @@ import {
   COLUMN_COLORS as VIBE_COLUMN_COLORS,
   isValidStatusTransition,
   getValidDropTargets,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { getGatewayUrl, submitTaskEvent, type TaskEvent } from "@/lib/gateway";
@@ -1113,12 +1113,12 @@ export function WorkspaceKanbanPage() {
     error: tasksError,
     refetch: refetchTasks,
     isFetching: isFetchingTasks,
-  } = useVibeKanbanTasks(workspace?.path);
+  } = useTasks(workspace?.path);
 
   // Mutations
-  const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
-  const updateTask = useUpdateVibeKanbanTask();
-  const createTask = useCreateVibeKanbanTask();
+  const updateTaskStatus = _useUpdateTaskStatus();
+  const updateTask = _useUpdateTask();
+  const createTask = _useCreateTask();
 
   // Note: Queue auto-promotion is now handled by Gateway's CommandQueue (Promoter)
   // The backend automatically promotes tasks from "queue" -> "in_progress" when capacity is available

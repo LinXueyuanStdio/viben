@@ -38,7 +38,7 @@ import type {
   XStateValue,
   ReviewReason,
   ExecutionPhase,
-} from "@/lib/vibe-kanban/types";
+} from "@/lib/kanban/types";
 
 export interface TaskActionButtonsProps {
   /** Task ID */

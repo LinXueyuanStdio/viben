@@ -32,7 +32,7 @@ import {
   SelectableCard,
 } from "@viben/kanban";
 import { useTranslation } from "react-i18next";
-import type { KanbanColumnId } from "@/lib/vibe-kanban";
+import type { KanbanColumnId } from "@/lib/kanban";
 import type {
   ColumnState,
   DragDropState,

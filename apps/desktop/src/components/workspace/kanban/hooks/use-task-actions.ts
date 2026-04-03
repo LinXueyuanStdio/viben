@@ -8,17 +8,17 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  useUpdateVibeKanbanTaskStatus,
-  useUpdateVibeKanbanTask,
-  useCreateVibeKanbanTask,
-  useDeleteVibeKanbanTask,
-} from "@/hooks/use-vibe-kanban";
+  _useUpdateTaskStatus,
+  _useUpdateTask,
+  _useCreateTask,
+  _useDeleteTask,
+} from "@/hooks/use-kanban";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import {
   COLUMN_TO_STATUS,
   type KanbanColumnId,
   type TaskWithAttemptStatus,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import {
   getGatewayUrl,
   submitTaskEvent,
@@ -79,11 +79,11 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
   const { workspacePath, tasks = [], onSuccess, onError } = options;
   const { t } = useTranslation();
 
-  // Mutations from use-vibe-kanban
-  const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
-  const updateTask = useUpdateVibeKanbanTask();
-  const createTaskMutation = useCreateVibeKanbanTask();
-  const deleteTaskMutation = useDeleteVibeKanbanTask();
+  // Mutations from use-kanban
+  const updateTaskStatus = _useUpdateTaskStatus();
+  const updateTask = _useUpdateTask();
+  const createTaskMutation = _useCreateTask();
+  const deleteTaskMutation = _useDeleteTask();
 
   // Queue store actions
   const {

@@ -13,7 +13,7 @@ import {
   STUCK_THRESHOLD_MS,
   ACTIVITY_MAX_AGE_MS,
   ACTIVITY_CLEANUP_INTERVAL_MS,
-} from "@/lib/vibe-kanban/constants";
+} from "@/lib/kanban/constants";
 
 interface TaskActivityState {
   /** Map<taskId, lastActivityTimestamp> */

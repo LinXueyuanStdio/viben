@@ -30,8 +30,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useGitHubComments } from "@/hooks/use-github";
-import { createTask, getTasks } from "@/lib/vibe-kanban";
-import type { Task } from "@/lib/vibe-kanban";
+import { useTasks, _useCreateTask } from "@/hooks/use-kanban";
+import type { Task } from "@/lib/kanban";
 import type { GitHubIssue, GitHubComment } from "@/lib/github-client";
 
 /**
@@ -298,8 +298,12 @@ export function IssueDetailModal({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
-  const [loadingTask, setLoadingTask] = useState(false);
-  const [creatingTask, setCreatingTask] = useState(false);
+
+  // Fetch tasks using hook
+  const { data: tasks, isLoading: loadingTask } = useTasks(workspacePath);
+
+  // Create task mutation
+  const createTaskMutation = _useCreateTask();
 
   // Fetch comments
   const {
@@ -311,52 +315,41 @@ export function IssueDetailModal({
     loadMore: loadMoreComments,
   } = useGitHubComments(workspacePath, issue?.number ?? null);
 
-  // Check for linked task when issue changes
+  // Check for linked task when tasks data or issue changes
   useEffect(() => {
-    if (!issue || !workspacePath) {
+    if (!issue || !tasks) {
       setLinkedTask(null);
       return;
     }
 
-    const checkLinkedTask = async () => {
-      setLoadingTask(true);
-      try {
-        const tasks = await getTasks(workspacePath);
-        const linked = tasks.find(
-          (task) => task.github_issue_number === issue.number
-        );
-        setLinkedTask(linked || null);
-      } catch (error) {
-        console.error("Failed to check linked task:", error);
-        setLinkedTask(null);
-      } finally {
-        setLoadingTask(false);
-      }
-    };
-
-    checkLinkedTask();
-  }, [issue?.number, workspacePath]);
+    const linked = tasks.find(
+      (task) => task.github_issue_number === issue.number
+    );
+    setLinkedTask(linked || null);
+  }, [issue?.number, tasks]);
 
   const handleCreateTask = useCallback(async () => {
     if (!issue) return;
 
-    setCreatingTask(true);
-    try {
-      const newTask = await createTask({
+    createTaskMutation.mutate(
+      {
         title: issue.title,
         description: issue.body || undefined,
         status: "backlog",
         workspace_path: workspacePath,
         github_issue_number: issue.number,
         github_issue_url: issue.html_url,
-      });
-      setLinkedTask(newTask);
-    } catch (error) {
-      console.error("Failed to create task:", error);
-    } finally {
-      setCreatingTask(false);
-    }
-  }, [issue, workspacePath]);
+      },
+      {
+        onSuccess: (newTask) => {
+          setLinkedTask(newTask);
+        },
+        onError: (error) => {
+          console.error("Failed to create task:", error);
+        },
+      }
+    );
+  }, [issue, workspacePath, createTaskMutation]);
 
   const handleGoToTask = useCallback(() => {
     if (linkedTask) {
@@ -462,9 +455,9 @@ export function IssueDetailModal({
                 size="sm"
                 className="gap-2 bg-primary"
                 onClick={handleCreateTask}
-                disabled={creatingTask}
+                disabled={createTaskMutation.isPending}
               >
-                {creatingTask ? (
+                {createTaskMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Plus className="h-4 w-4" />
