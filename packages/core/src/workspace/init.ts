@@ -322,7 +322,6 @@ async function configureClaude(
   const claudeDir = join(cwd, ".claude");
   ensureDir(join(claudeDir, "agents"));
   ensureDir(join(claudeDir, "commands/viben"));
-  ensureDir(join(claudeDir, "hooks"));
 
   // Settings
   const pythonCmd = getPythonCommand();
@@ -352,15 +351,6 @@ async function configureClaude(
     "claude/commands/viben",
     join(claudeDir, "commands/viben"),
     options,
-    createdFiles,
-    cwd
-  );
-
-  // Hooks
-  await copyTemplateDir(
-    "claude/hooks",
-    join(claudeDir, "hooks"),
-    { ...options, executable: true },
     createdFiles,
     cwd
   );
@@ -397,7 +387,6 @@ async function configureIflow(
   const iflowDir = join(cwd, ".iflow");
   ensureDir(join(iflowDir, "agents"));
   ensureDir(join(iflowDir, "commands/viben"));
-  ensureDir(join(iflowDir, "hooks"));
 
   // Settings
   const pythonCmd = getPythonCommand();
@@ -425,14 +414,6 @@ async function configureIflow(
     "iflow/commands/viben",
     join(iflowDir, "commands/viben"),
     options,
-    createdFiles,
-    cwd
-  );
-
-  await copyTemplateDir(
-    "iflow/hooks",
-    join(iflowDir, "hooks"),
-    { ...options, executable: true },
     createdFiles,
     cwd
   );
