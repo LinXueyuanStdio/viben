@@ -103,7 +103,7 @@ import type {
   ExecutionPhase,
   TaskEvent,
   TaskEventType,
-} from "@/lib/vibe-kanban/types";
+} from "@/lib/kanban/types";
 
 // Editable Title Component
 function EditableTitle({

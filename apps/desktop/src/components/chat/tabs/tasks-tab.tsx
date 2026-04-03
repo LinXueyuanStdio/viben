@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TasksTabContentProps } from "./types";
-import type { TaskWithAttemptStatus, TaskStatus } from "@/lib/vibe-kanban";
+import type { TaskWithAttemptStatus, TaskStatus } from "@/lib/kanban";
 
 /**
  * Get status icon component

@@ -22,7 +22,7 @@ import {
   COLUMN_COLOR_VARS as VIBE_COLUMN_COLOR_VARS,
   KANBAN_COLUMNS,
   type KanbanColumnId,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 
 // ============================================
 // Re-exports from vibe-kanban

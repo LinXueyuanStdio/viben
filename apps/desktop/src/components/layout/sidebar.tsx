@@ -68,7 +68,7 @@ import { AddWorkspaceModal } from "@/components/workspace";
 import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
 import { CreateTaskDialog } from "@/components/workspace/kanban/create-task-dialog";
 import type { CreateTaskData } from "@/components/workspace/kanban/create-task-dialog";
-import { createTask } from "@/lib/vibe-kanban/api";
+import { _useCreateTask } from "@/hooks/use-kanban";
 import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
 import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
@@ -172,7 +172,7 @@ export function Sidebar() {
 
   // Create Task Dialog state
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const createTaskMutation = _useCreateTask();
 
   // Load agents and models for task creation
   const { agents, loading: isLoadingAgents } = useAgents({ workspacePath: activeWorkspace?.path });
@@ -244,9 +244,8 @@ export function Sidebar() {
       return;
     }
 
-    setIsCreatingTask(true);
     try {
-      await createTask({
+      await createTaskMutation.mutateAsync({
         title: data.title,
         description: data.description,
         workspace_path: activeWorkspace.path,
@@ -262,8 +261,6 @@ export function Sidebar() {
     } catch (error) {
       console.error("Failed to create task:", error);
       toast.error(t("sidebar.taskCreateFailed"));
-    } finally {
-      setIsCreatingTask(false);
     }
   };
 
@@ -613,7 +610,7 @@ export function Sidebar() {
           open={isCreateTaskOpen}
           onOpenChange={setIsCreateTaskOpen}
           onSubmit={handleCreateTask}
-          isSubmitting={isCreatingTask}
+          isSubmitting={createTaskMutation.isPending}
           availableAgents={agents.map((a: AgentInfo) => ({
             id: a.id,
             name: a.name,

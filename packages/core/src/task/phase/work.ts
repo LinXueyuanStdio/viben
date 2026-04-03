@@ -182,7 +182,7 @@ export async function runWorkPhase(
     task_dir: taskDir,
     platform = "claude",
     verbose = true,
-    detach = true,
+    detach = false,
     skipPermissions = true,
     jsonOutput = true,
     logFileName = "work.log.jsonl",
@@ -337,50 +337,97 @@ Follow your agent instructions to execute the task workflow. Read task.json from
   );
 
   // =============================================================================
-  // Setup cleanup on process exit
+  // Handle detached vs blocking mode
   // =============================================================================
-
-  child.on("exit", () => {
-    // Remove agent from registry when process exits
-    registryRemoveById(agentId, repoRoot);
-  });
 
   if (detach) {
+    // Detached mode: setup cleanup handler and return immediately
+    child.on("exit", () => {
+      registryRemoveById(agentId, repoRoot);
+    });
     child.unref();
-  }
 
-  // For platforms that don't support session ID on create, extract from logs
-  if (!adapter.supportsSessionIdOnCreate) {
-    // Wait a bit for the log to have session ID
-    for (let i = 0; i < 10; i++) {
-      await sleep(500);
-      try {
-        const logContent = readFileSync(logFile, "utf-8");
-        const extractedSessionId = extractSessionIdFromLog(logContent);
-        if (extractedSessionId) {
-          sessionId = extractedSessionId;
-          // Store in task.json
-          taskData.session_id = sessionId;
-          writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
-          break;
+    // For platforms that don't support session ID on create, extract from logs
+    if (!adapter.supportsSessionIdOnCreate) {
+      // Wait a bit for the log to have session ID
+      for (let i = 0; i < 10; i++) {
+        await sleep(500);
+        try {
+          const logContent = readFileSync(logFile, "utf-8");
+          const extractedSessionId = extractSessionIdFromLog(logContent);
+          if (extractedSessionId) {
+            sessionId = extractedSessionId;
+            // Store in task.json
+            taskData.session_id = sessionId;
+            writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
+            break;
+          }
+        } catch {
+          // Continue trying
         }
-      } catch {
-        // Continue trying
       }
     }
+
+    return {
+      success: true,
+      agentId,
+      pid: agentPid,
+      sessionId: sessionId || undefined,
+      logFile,
+      workingDir,
+    };
   }
 
   // =============================================================================
-  // Return Result
+  // Blocking mode: wait for process to complete
   // =============================================================================
 
+  // For platforms that don't support session ID on create, extract from logs in parallel
+  if (!adapter.supportsSessionIdOnCreate) {
+    // Start background extraction (non-blocking)
+    const extractionPromise = (async () => {
+      for (let i = 0; i < 10; i++) {
+        await sleep(500);
+        try {
+          const logContent = readFileSync(logFile, "utf-8");
+          const extractedSessionId = extractSessionIdFromLog(logContent);
+          if (extractedSessionId) {
+            sessionId = extractedSessionId;
+            taskData.session_id = sessionId;
+            writeTaskJson(taskDirAbs, taskData as Record<string, unknown>);
+            return;
+          }
+        } catch {
+          // Continue trying
+        }
+      }
+    })();
+
+    // Don't await here, let it run in parallel with process
+    extractionPromise.catch(() => {});
+  }
+
+  // Wait for process to complete
+  const exitCode = await new Promise<number>((resolve) => {
+    child.on("exit", (code) => {
+      resolve(code ?? 0);
+    });
+    child.on("error", () => {
+      resolve(1);
+    });
+  });
+
+  // Cleanup registry after process exits
+  registryRemoveById(agentId, repoRoot);
+
   return {
-    success: true,
+    success: exitCode === 0,
     agentId,
     pid: agentPid,
     sessionId: sessionId || undefined,
     logFile,
     workingDir,
+    error: exitCode !== 0 ? `Process exited with code ${exitCode}` : undefined,
   };
 }
 

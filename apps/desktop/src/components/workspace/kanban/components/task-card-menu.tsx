@@ -45,7 +45,7 @@ import {
   COLUMN_COLORS,
   type TaskStatus as VibeTaskStatus,
   type KanbanColumnId,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import type { EnhancedTask, TaskActions } from "../types";
 
 export interface TaskCardMenuProps {

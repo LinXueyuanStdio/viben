@@ -8,7 +8,7 @@ import {
   type ExecutionPhase,
   type Subtask,
   type SubtaskStatus,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 
 interface PhaseProgressIndicatorProps {
   /** Current execution phase */

@@ -14,7 +14,7 @@ import {
   useColumnResize,
   type ColumnWidths,
 } from "@viben/kanban";
-import type { KanbanColumnId } from "@/lib/vibe-kanban";
+import type { KanbanColumnId } from "@/lib/kanban";
 
 /**
  * Options for useColumnManagement hook

@@ -9,7 +9,7 @@ import type {
   MemberRole,
   AddMemberRequest,
 } from "@/lib/gateway";
-import type { TaskWithAttemptStatus } from "@/lib/vibe-kanban";
+import type { TaskWithAttemptStatus } from "@/lib/kanban";
 import type {
   AgentDetailData,
   ModelOption,

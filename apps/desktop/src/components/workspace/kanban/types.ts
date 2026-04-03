@@ -11,7 +11,7 @@ import type {
   ExecutionPhase as VibeExecutionPhase,
   ReviewReason as VibeReviewReason,
   Subtask,
-} from "@/lib/vibe-kanban";
+} from "@/lib/kanban";
 import type {
   IssuePriority,
   Tag,

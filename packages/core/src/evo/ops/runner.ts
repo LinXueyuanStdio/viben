@@ -52,6 +52,7 @@ import { generateIdeas, promoteIdeaDirect, dismissIdea, listIdeas, getAllIdeasFr
 import type { IdeaGenerateOptions, Idea } from "../../idea/ops";
 import { readRegistry, cleanupDeadAgents } from "../../cli/lib/swarm/registry";
 import { isProcessRunning } from "../../cli/lib/swarm/status";
+import { cleanupWorktree } from "../../cli/lib/swarm/cleanup";
 
 // =============================================================================
 // Constants
@@ -931,13 +932,13 @@ export function orchestrateSelectBest(
  * @param rejectedTasks - Array of rejected task names
  * @param onProgress - Optional progress callback
  */
-export function orchestrateMergeAndCleanup(
+export async function orchestrateMergeAndCleanup(
   repoRoot: string,
   name: string,
   selectedTask: string | undefined,
   rejectedTasks: string[],
   onProgress?: (message: string) => void
-): OrchestrationResult {
+): Promise<OrchestrationResult> {
   const debug = createDebugLogger("mergeAndCleanup");
 
   const results: {
@@ -988,12 +989,28 @@ export function orchestrateMergeAndCleanup(
       force: true,
     });
 
-    const archiveResult = archiveTask(repoRoot, taskName);
-    results.cleanedUp.push({
-      task: taskName,
-      success: archiveResult.success,
-      error: archiveResult.error,
-    });
+    // Get task info to find branch for worktree cleanup
+    const taskInfo = viewTask(repoRoot, taskName);
+    if (taskInfo.success && taskInfo.task?.branch) {
+      onProgress?.(`Cleaning up worktree for rejected task: ${taskName}`);
+      // cleanupWorktree removes worktree, branch, and archives task
+      const cleanupResult = await cleanupWorktree(repoRoot, taskInfo.task.branch, {
+        keepBranch: false,
+      });
+      results.cleanedUp.push({
+        task: taskName,
+        success: cleanupResult.success,
+        error: cleanupResult.error,
+      });
+    } else {
+      // No branch found, just archive the task
+      const archiveResult = archiveTask(repoRoot, taskName);
+      results.cleanedUp.push({
+        task: taskName,
+        success: archiveResult.success,
+        error: archiveResult.error,
+      });
+    }
   }
 
   // Dismiss loser ideas
@@ -1510,7 +1527,7 @@ export async function orchestrateFullIteration(
       updateIterationPhase(state, "merge_cleanup");
       writeState(repoRoot, state);
 
-      const mergeResult = orchestrateMergeAndCleanup(repoRoot, name, selectedTask, rejectedTasks, onProgress);
+      const mergeResult = await orchestrateMergeAndCleanup(repoRoot, name, selectedTask, rejectedTasks, onProgress);
 
       // Now mark the iteration as completed
       state = readState(repoRoot, name);

@@ -14,7 +14,7 @@ import type {
   TaskSSEEvent,
   TaskSSEStateChangedEvent,
   TaskSSERecoveredEvent,
-} from "@/lib/vibe-kanban/types";
+} from "@/lib/kanban/types";
 
 export interface UseTaskEventsOptions {
   /** Whether to auto-connect on mount */

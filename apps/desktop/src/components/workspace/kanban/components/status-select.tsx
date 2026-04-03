@@ -20,7 +20,7 @@ import {
   STATUS_TO_COLUMN,
   type TaskStatus,
   type KanbanColumnId,
-} from "@/lib/vibe-kanban/types";
+} from "@/lib/kanban/types";
 
 export interface StatusSelectProps {
   value: TaskStatus;

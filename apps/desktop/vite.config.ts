@@ -38,8 +38,10 @@ const nodeOnlyPackages = [
   "@fastify/swagger",
   "@fastify/swagger-ui",
   "@fastify/websocket",
-  // MCP SDK (uses Node.js streams for stdio transport)
-  "@modelcontextprotocol/sdk",
+  // MCP SDK stdio transport uses Node.js child_process
+  // SSE and HTTP transports work in browser, so only exclude stdio
+  "@modelcontextprotocol/sdk/client/stdio.js",
+  "@modelcontextprotocol/sdk/server/stdio.js",
   // Anthropic SDKs (use Node.js child_process, fs, etc.)
   "@anthropic-ai/claude-agent-sdk",
   "@anthropic-ai/sdk",

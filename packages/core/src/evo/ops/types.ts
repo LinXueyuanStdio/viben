@@ -69,6 +69,9 @@ export interface RolloutConfig {
 
   /** Use git worktree for isolation (default: true) */
   worktree: boolean;
+
+  /** Clean up worktrees for rejected tasks after selection (default: true) */
+  cleanup_rejected: boolean;
 }
 
 /**
@@ -163,6 +166,7 @@ export const DEFAULT_IDEA_CONFIG: IdeaConfig = {
 export const DEFAULT_ROLLOUT_CONFIG: RolloutConfig = {
   n: 1,
   worktree: true,
+  cleanup_rejected: true,
 };
 
 /**
