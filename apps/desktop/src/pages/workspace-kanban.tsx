@@ -1371,21 +1371,19 @@ export function WorkspaceKanbanPage() {
   );
 
   // Handle create task submission
+  // Note: Tasks are created in backlog by default, column selection is ignored
   const handleCreateTaskSubmit = useCallback(
     async (data: CreateTaskData) => {
       if (!workspace) return;
-
-      const status = COLUMN_TO_STATUS[createDialogColumnId as ColumnId] ?? "backlog";
 
       try {
         await createTask.mutateAsync({
           workspace_path: workspace.path,
           title: data.title,
-          description: data.description ?? null,
-          status,
-          agent_id: data.agentId,
-          model_id: data.modelId,
-          auto_start: data.autoStart,
+          description: data.description ?? undefined,
+          agent_id: data.agentId,       // will be mapped to 'agent'
+          model_id: data.modelId,       // will be mapped to 'model'
+          auto_start: data.autoStart,   // will be mapped to 'start'
           worktree: data.worktree,
         });
         toast.success(t("workspace.taskCreated", "Task created successfully"));
@@ -1550,8 +1548,7 @@ export function WorkspaceKanbanPage() {
       createTask.mutate({
         workspace_path: workspace.path,
         title: `${task.title} (copy)`,
-        description: task.description ?? null,
-        status: task.status,
+        description: task.description ?? undefined,
       });
       closeMoreMenu();
     },

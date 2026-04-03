@@ -249,11 +249,10 @@ export function Sidebar() {
         title: data.title,
         description: data.description,
         workspace_path: activeWorkspace.path,
-        agent_id: data.agentId,
-        model_id: data.modelId,
-        auto_start: data.autoStart,
+        agent_id: data.agentId,       // will be mapped to 'agent'
+        model_id: data.modelId,       // will be mapped to 'model'
+        auto_start: data.autoStart,   // will be mapped to 'start'
         worktree: data.worktree,
-        status: "backlog",
       });
       toast.success(t("sidebar.taskCreated"));
       // Navigate to kanban board to see the new task

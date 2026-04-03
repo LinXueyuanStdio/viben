@@ -301,8 +301,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
       createTaskMutation.mutate({
         workspace_path: workspacePath,
         title: `${task.title} (copy)`,
-        description: task.description ?? null,
-        status: task.status,
+        description: task.description ?? undefined,
       });
       onSuccess?.(t("workspace.taskDuplicated", "Task duplicated"));
     },
@@ -461,23 +460,22 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
 
   /**
    * Create a new task in the specified column
+   * Note: The columnId parameter is kept for API compatibility but the status
+   * is no longer sent to the API (tasks are created in backlog by default)
    */
   const createTask = useCallback(
-    async (data: CreateTaskData, columnId: string) => {
+    async (data: CreateTaskData, _columnId: string) => {
       if (!workspacePath) return;
-
-      const status = COLUMN_TO_STATUS[columnId as KanbanColumnId] ?? "backlog";
 
       setIsCreating(true);
       try {
         await createTaskMutation.mutateAsync({
           workspace_path: workspacePath,
           title: data.title,
-          description: data.description ?? null,
-          status,
-          agent_id: data.agentId,
-          model_id: data.modelId,
-          auto_start: data.autoStart,
+          description: data.description ?? undefined,
+          agent_id: data.agentId,       // will be mapped to 'agent'
+          model_id: data.modelId,       // will be mapped to 'model'
+          auto_start: data.autoStart,   // will be mapped to 'start'
           worktree: data.worktree,
         });
         onSuccess?.(t("workspace.taskCreated", "Task created successfully"));

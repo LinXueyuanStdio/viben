@@ -335,14 +335,16 @@ export function IssueDetailModal({
       {
         title: issue.title,
         description: issue.body || undefined,
-        status: "backlog",
         workspace_path: workspacePath,
+        // Note: github_issue_number and github_issue_url are stored in CreateTaskInput
+        // but not sent to the API (the API doesn't support these fields yet)
         github_issue_number: issue.number,
         github_issue_url: issue.html_url,
       },
       {
-        onSuccess: (newTask) => {
-          setLinkedTask(newTask);
+        onSuccess: () => {
+          // Refetch tasks to find the newly created task with the linked issue
+          // The linkedTask will be updated via the useEffect when tasks refresh
         },
         onError: (error) => {
           console.error("Failed to create task:", error);
