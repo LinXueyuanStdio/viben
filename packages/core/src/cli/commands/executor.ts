@@ -28,16 +28,12 @@ import type { ExecutorType } from "../../types";
 import type { ChatFormat } from "../../executors";
 
 /**
- * Chat-supported executor types
- * TODO: Move to unified module when chat is migrated
- */
-const CHAT_SUPPORTED_EXECUTORS: ExecutorType[] = ["CLAUDE_CODE", "GEMINI", "CODEX"];
-
-/**
  * Check if an executor type supports non-interactive chat mode
+ * Uses unified module's capabilities detection
  */
 function executorSupportsChat(executorType: ExecutorType): boolean {
-  return CHAT_SUPPORTED_EXECUTORS.includes(executorType);
+  const executor = getExecutor(executorType);
+  return executor.supports("CHAT");
 }
 
 /**
@@ -83,9 +79,10 @@ export function registerExecutorCommand(program: Command): void {
           console.log(
             chalk.gray(`Total: ${types.length} executor types`)
           );
+          const chatEnabledTypes = types.filter(t => executorSupportsChat(t));
           console.log(
             chalk.gray(
-              `Chat-enabled: ${CHAT_SUPPORTED_EXECUTORS.length} (${CHAT_SUPPORTED_EXECUTORS.join(", ")})`
+              `Chat-enabled: ${chatEnabledTypes.length} (${chatEnabledTypes.join(", ")})`
             )
           );
         });
@@ -305,8 +302,9 @@ export function registerExecutorCommand(program: Command): void {
 
         // Check if executor supports chat
         if (!executorSupportsChat(upperType)) {
+          const chatEnabledTypes = registeredTypes.filter(t => executorSupportsChat(t));
           throw new Error(
-            `Chat not supported for executor: ${upperType}. Chat-enabled executors: ${CHAT_SUPPORTED_EXECUTORS.join(", ")}`
+            `Chat not supported for executor: ${upperType}. Chat-enabled executors: ${chatEnabledTypes.join(", ")}`
           );
         }
 
