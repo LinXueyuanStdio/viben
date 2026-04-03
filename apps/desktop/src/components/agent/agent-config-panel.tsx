@@ -283,7 +283,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 <div className="flex items-center justify-between">
                   <Label>{t("settingsAgents.systemPrompt")}</Label>
                   <span className="text-xs text-muted-foreground">
-                    {systemPrompt.length.toLocaleString()} chars
+                    {systemPrompt.length.toLocaleString()} {t("common.units.chars")}
                   </span>
                 </div>
                 <Textarea
@@ -300,7 +300,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                 <div className="flex items-center justify-between">
                   <Label>{t("settingsAgents.appendPrompt")}</Label>
                   <span className="text-xs text-muted-foreground">
-                    {appendPrompt.length.toLocaleString()} chars
+                    {appendPrompt.length.toLocaleString()} {t("common.units.chars")}
                   </span>
                 </div>
                 <Textarea

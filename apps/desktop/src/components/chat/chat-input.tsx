@@ -1200,7 +1200,7 @@ export function ChatInput({
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
-                      {command.description}
+                      {t(`chat.slashCommands.${command.id}Desc`, command.description)}
                     </div>
                   </div>
                 </button>

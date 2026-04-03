@@ -123,7 +123,9 @@
       "kilobytes": "KB",
       "megabytes": "MB",
       "gigabytes": "GB",
-      "terabytes": "TB"
+      "terabytes": "TB",
+      "chars": "字符",
+      "lines": "行"
     }
   },
   "elapsedTime": {
@@ -3858,7 +3860,9 @@
     "deleteFolder": "删除文件夹",
     "deleteFile": "删除文件",
     "newFile": "新建文件",
+    "newFileShortcut": "({{shortcut}})",
     "newFolder": "新建文件夹",
+    "newFolderShortcut": "({{shortcut}})",
     "createNewFile": "创建新文件",
     "createNewFolder": "创建新文件夹",
     "deleteConfirm": "确定要删除",
@@ -3992,6 +3996,8 @@
     "openInVideoPlayer": "在视频播放器中打开",
     "noPdfPath": "没有可用的 PDF 文件路径",
     "noVideoPath": "没有可用的视频文件路径",
+    "videoNotSupported": "您的浏览器不支持 video 标签。",
+    "fontType": "{{ext}} 字体",
     "noImagePath": "没有可用的图片文件路径",
     "searchResults": "搜索结果",
     "results": "个结果",

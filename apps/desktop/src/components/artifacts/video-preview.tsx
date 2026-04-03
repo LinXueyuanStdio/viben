@@ -184,7 +184,7 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
           className="h-auto max-h-[70vh] w-full rounded-lg bg-black shadow-xl"
           preload="metadata"
         >
-          Your browser does not support the video tag.
+          {t("artifacts.videoNotSupported")}
         </video>
         <div className="text-muted-foreground mt-3 text-center text-sm">
           {artifact.name}

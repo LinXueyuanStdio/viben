@@ -176,7 +176,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
               {artifact.name.replace(/\.[^/.]+$/, "")}
             </h2>
             <p className="text-muted-foreground text-xs uppercase">
-              {getFileExtension(artifact.name)} Font
+              {t("artifacts.fontType", { ext: getFileExtension(artifact.name).toUpperCase() })}
             </p>
           </div>
         </div>

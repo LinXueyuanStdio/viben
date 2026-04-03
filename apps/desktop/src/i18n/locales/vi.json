@@ -116,7 +116,9 @@
       "kilobytes": "KB",
       "megabytes": "MB",
       "gigabytes": "GB",
-      "terabytes": "TB"
+      "terabytes": "TB",
+      "chars": "ký tự",
+      "lines": "dòng"
     }
   },
   "elapsedTime": {
@@ -3660,8 +3662,10 @@
     "file": "File",
     "deleteFolder": "Delete Folder",
     "deleteFile": "Delete File",
-    "newFile": "New File",
-    "newFolder": "New Folder",
+    "newFile": "Tệp mới",
+    "newFileShortcut": "({{shortcut}})",
+    "newFolder": "Thư mục mới",
+    "newFolderShortcut": "({{shortcut}})",
     "createNewFile": "Create New File",
     "createNewFolder": "Create New Folder",
     "deleteConfirm": "Are you sure you want to delete",
@@ -3792,9 +3796,11 @@
     "loadingPdf": "Loading PDF...",
     "openInPdfViewerHint": "Use the external link button to open in your PDF viewer",
     "loadingVideo": "Loading video...",
-    "openInVideoPlayer": "Open in Video Player",
-    "noPdfPath": "No PDF file path available",
-    "noVideoPath": "No video file path available",
+    "openInVideoPlayer": "Mở trong trình phát video",
+    "noPdfPath": "Không có đường dẫn tệp PDF",
+    "noVideoPath": "Không có đường dẫn tệp video",
+    "videoNotSupported": "Trình duyệt của bạn không hỗ trợ thẻ video.",
+    "fontType": "Phông chữ {{ext}}",
     "noImagePath": "No image file path available",
     "searchResults": "Search Results",
     "results": "results",
