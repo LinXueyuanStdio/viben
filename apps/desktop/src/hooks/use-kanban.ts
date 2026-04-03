@@ -126,6 +126,36 @@ export interface CreateTaskApiResponse {
 }
 
 /**
+ * Input type for _useCreateTask hook
+ * Accepts either the legacy format or the new API format
+ */
+export interface CreateTaskInput {
+  workspace_path: string;  // required
+  title: string;           // required
+  slug?: string;
+  branch?: string;
+  assignee?: string;
+  priority?: string;
+  description?: string | null;
+  // Agent/model fields (support both old and new naming)
+  agent?: string;
+  agent_id?: string;       // legacy - maps to 'agent'
+  executor?: string;
+  model?: string;
+  model_id?: string;       // legacy - maps to 'model'
+  // Auto-start fields (support both old and new naming)
+  start?: boolean;
+  auto_start?: boolean;    // legacy - maps to 'start'
+  worktree?: boolean;
+  // Legacy fields (ignored by the API but kept for type compatibility)
+  status?: TaskStatus;
+  github_issue_number?: number;
+  github_issue_url?: string;
+  session_id?: string;
+  task_index?: number;
+}
+
+/**
  * Response from lifecycle endpoints
  */
 export interface LifecycleResponse {
@@ -343,13 +373,35 @@ export function _useCreateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateTaskApiRequest): Promise<CreateTaskApiResponse> => {
+    mutationFn: async (input: CreateTaskInput): Promise<CreateTaskApiResponse> => {
       const url = `${getGatewayUrl()}/api/task/create`;
+
+      // Map input to API request format
+      const apiRequest: CreateTaskApiRequest = {
+        workspace_path: input.workspace_path,
+        title: input.title,
+        slug: input.slug,
+        branch: input.branch,
+        assignee: input.assignee,
+        priority: input.priority,
+        description: input.description ?? undefined,
+        // Map legacy field names to new API names
+        agent: input.agent ?? input.agent_id,
+        executor: input.executor,
+        model: input.model ?? input.model_id,
+        start: input.start ?? input.auto_start,
+        worktree: input.worktree,
+      };
+
+      // Remove undefined values
+      const body = Object.fromEntries(
+        Object.entries(apiRequest).filter(([, v]) => v !== undefined)
+      );
 
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -359,7 +411,7 @@ export function _useCreateTask() {
 
       return response.json();
     },
-    onSuccess: (_result: CreateTaskApiResponse, variables: CreateTaskApiRequest) => {
+    onSuccess: (_result: CreateTaskApiResponse, variables: CreateTaskInput) => {
       // Invalidate tasks query to refetch
       queryClient.invalidateQueries({
         queryKey: kanbanKeys.tasks(variables.workspace_path ?? ""),

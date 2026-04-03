@@ -953,6 +953,15 @@ export async function orchestrateMergeAndCleanup(
     return { success: false, phase: "merge_and_cleanup", error: `Evo run not found: ${name}` };
   }
 
+  // Load config to check cleanup settings
+  const parseResult = parseTarget(state.target_path, repoRoot);
+  const cleanupRejectedWorktree = parseResult.success && parseResult.config
+    ? parseResult.config.rollout.cleanup_rejected_worktree
+    : true; // Default to true if config not available
+  const cleanupApprovedWorktree = parseResult.success && parseResult.config
+    ? parseResult.config.rollout.cleanup_approved_worktree
+    : true; // Default to true if config not available
+
   const currentIter = state.iterations[state.iterations.length - 1];
   const taskIdeaMap = currentIter?.task_idea_map || {};
 
@@ -964,13 +973,16 @@ export async function orchestrateMergeAndCleanup(
   if (selectedTask) {
     onProgress?.(`Approving winning task: ${selectedTask}`);
     const approveResult = approveTask(repoRoot, selectedTask, {
-      cleanupIfMerged: true,
+      cleanupIfMerged: cleanupApprovedWorktree,
       pullIfMerged: true,
     });
 
     results.merged = { success: approveResult.success, error: approveResult.error };
     if (approveResult.success) {
       onProgress?.(`Merged PR for task: ${selectedTask}`);
+      if (!cleanupApprovedWorktree) {
+        onProgress?.(`Worktree preserved for approved task: ${selectedTask}`);
+      }
     } else {
       onProgress?.(`Warning: Failed to merge PR: ${approveResult.error}`);
       // Don't dismiss winner idea on merge failure - allow retry
@@ -991,7 +1003,7 @@ export async function orchestrateMergeAndCleanup(
 
     // Get task info to find branch for worktree cleanup
     const taskInfo = viewTask(repoRoot, taskName);
-    if (taskInfo.success && taskInfo.task?.branch) {
+    if (cleanupRejectedWorktree && taskInfo.success && taskInfo.task?.branch) {
       onProgress?.(`Cleaning up worktree for rejected task: ${taskName}`);
       // cleanupWorktree removes worktree, branch, and archives task
       const cleanupResult = await cleanupWorktree(repoRoot, taskInfo.task.branch, {
@@ -1003,7 +1015,7 @@ export async function orchestrateMergeAndCleanup(
         error: cleanupResult.error,
       });
     } else {
-      // No branch found, just archive the task
+      // No worktree cleanup (disabled or no branch found), just archive the task
       const archiveResult = archiveTask(repoRoot, taskName);
       results.cleanedUp.push({
         task: taskName,

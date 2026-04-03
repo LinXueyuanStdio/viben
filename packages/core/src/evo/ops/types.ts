@@ -71,7 +71,10 @@ export interface RolloutConfig {
   worktree: boolean;
 
   /** Clean up worktrees for rejected tasks after selection (default: true) */
-  cleanup_rejected: boolean;
+  cleanup_rejected_worktree: boolean;
+
+  /** Clean up worktree for approved/merged task after merge (default: true) */
+  cleanup_approved_worktree: boolean;
 }
 
 /**
@@ -166,7 +169,8 @@ export const DEFAULT_IDEA_CONFIG: IdeaConfig = {
 export const DEFAULT_ROLLOUT_CONFIG: RolloutConfig = {
   n: 1,
   worktree: true,
-  cleanup_rejected: true,
+  cleanup_rejected_worktree: true,
+  cleanup_approved_worktree: true,
 };
 
 /**

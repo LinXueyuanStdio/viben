@@ -105,6 +105,8 @@ function parseRolloutConfig(raw: Record<string, unknown>): RolloutConfig {
   return {
     n: typeof rolloutRaw.n === "number" ? rolloutRaw.n : DEFAULT_ROLLOUT_CONFIG.n,
     worktree: typeof rolloutRaw.worktree === "boolean" ? rolloutRaw.worktree : DEFAULT_ROLLOUT_CONFIG.worktree,
+    cleanup_rejected_worktree: typeof rolloutRaw.cleanup_rejected_worktree === "boolean" ? rolloutRaw.cleanup_rejected_worktree : DEFAULT_ROLLOUT_CONFIG.cleanup_rejected_worktree,
+    cleanup_approved_worktree: typeof rolloutRaw.cleanup_approved_worktree === "boolean" ? rolloutRaw.cleanup_approved_worktree : DEFAULT_ROLLOUT_CONFIG.cleanup_approved_worktree,
   };
 }
 
@@ -287,6 +289,8 @@ ppo:
 rollout:
   n: ${DEFAULT_ROLLOUT_CONFIG.n}
   worktree: ${DEFAULT_ROLLOUT_CONFIG.worktree}
+  cleanup_rejected_worktree: ${DEFAULT_ROLLOUT_CONFIG.cleanup_rejected_worktree}
+  cleanup_approved_worktree: ${DEFAULT_ROLLOUT_CONFIG.cleanup_approved_worktree}
 
 convergence:
   threshold: ${DEFAULT_CONVERGENCE_CONFIG.threshold}
