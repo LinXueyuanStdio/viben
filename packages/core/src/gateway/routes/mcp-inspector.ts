@@ -32,7 +32,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
-import { whichSync } from "../../executors/utils";
+import { whichSync } from "../../executor";
 import {
   validateOrigin,
   setSecurityHeaders,
