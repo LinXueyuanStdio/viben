@@ -8,7 +8,7 @@
 
 ### Agent 集群 × 代码进化
 
-##### 多目标带约束的迭代优化，自动提升代码质量
+##### FileEvo: 生成多个候选方案 → 多维度评估 → 选择最优合并
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
@@ -71,9 +71,7 @@ Tauri 2 桌面应用<br/>
 
 ## 🧬 FileEvo: 代码迭代优化
 
-> *多目标带约束的候选选择算法，通过采样-评估-选择循环迭代提升代码质量*
-
-> ⚠️ **方法定位**：FileEvo 是一种**启发式迭代优化方法**，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"。
+> FileEvo 是一种启发式迭代优化方法，核心思想是"生成多个候选方案 → 多维度评估 → 选择最优合并"
 
 ### 算法概述
 
@@ -237,7 +235,7 @@ $$\text{PR}^* = \arg\max\_{\text{PR}^\*\_{\text{idea}}}  L(\text{PR}^\*\_{\text{
 <summary><b>算法伪代码</b></summary>
 
 ```
-Algorithm: FileEvo — 多目标带约束的迭代优化
+Algorithm: FileEvo — 启发式迭代优化
 ────────────────────────────────────────────────────
 输入:   C₀                  // 初始代码库
 超参数:

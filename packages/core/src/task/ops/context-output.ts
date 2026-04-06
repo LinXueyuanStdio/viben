@@ -140,7 +140,7 @@ export function getContextText(repoRoot: string, taskDir?: string): string {
   lines.push("## DEVELOPER");
   if (!developer) {
     lines.push(
-      `ERROR: Not initialized. Run: viben team init-developer <name>`
+      `ERROR: Not initialized. Run: viben init`
     );
     return lines.join("\n");
   }

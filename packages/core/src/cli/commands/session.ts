@@ -333,13 +333,13 @@ export function registerSessionCommand(program: Command): void {
               ctx,
               errorResponse(
                 "DEVELOPER_NOT_INITIALIZED",
-                "Developer not initialized. Run 'viben team init --user <name>' first."
+                "Developer not initialized. Run 'viben init --user <name>' first."
               ),
               () => {
                 console.log(chalk.red("Error: Developer not initialized."));
                 console.log();
                 console.log("Initialize with:");
-                console.log(chalk.cyan("  viben team init --user <your-name>"));
+                console.log(chalk.cyan("  viben init --user <your-name>"));
               }
             );
             process.exit(1);
@@ -483,13 +483,13 @@ export function registerSessionCommand(program: Command): void {
                 ctx,
                 errorResponse(
                   "DEVELOPER_NOT_INITIALIZED",
-                  "Developer not initialized. Run 'viben team init --user <name>' first."
+                  "Developer not initialized. Run 'viben init --user <name>' first."
                 ),
                 () => {
                   console.log(chalk.red("Error: Developer not initialized."));
                   console.log();
                   console.log("Initialize with:");
-                  console.log(chalk.cyan("  viben team init --user <your-name>"));
+                  console.log(chalk.cyan("  viben init --user <your-name>"));
                 }
               );
               process.exit(1);

@@ -227,9 +227,9 @@ git add . && git commit -m "init"
 
 # 1.3 初始化 viben
 # 必须按顺序执行以下命令:
-# - viben team init: 创建 .claude/commands/viben/start.md (task start 依赖此文件)
+# - viben init: 创建 .claude/commands/viben/start.md (task start 依赖此文件)
 # - viben user init: 创建 .viben/.developer 文件 (registry 依赖此文件)
-viben team init --user evo-tester
+viben init --user evo-tester
 
 # 1.4 创建 target.md（使用 CLI 命令）
 viben evo create test-basic -d "基础流程测试"
@@ -598,7 +598,7 @@ viben evo status test-converge --json
 ```bash
 # 初始化
 viben init
-viben team init
+viben init
 viben user init FileEvo-optimizer
 
 # FileEvo 生命周期

@@ -8,14 +8,10 @@
  * - kanbanKeys: Query key factory
  *
  * Internal (CRUD):
- * - _useCreateTask, _useDeleteTask
+ * - _useCreateTask, _useUpdateTask, _useDeleteTask
  *
- * @deprecated hooks (to be removed once POST /api/task/update is available):
- * - _useUpdateTask: Uses PUT /api/tasks/:id for field updates (title, description, etc.)
+ * @deprecated hooks (to be removed):
  * - _useUpdateTaskStatus: Uses PUT /api/tasks/:id for status updates
- *
- * TODO: Create POST /api/task/update endpoint to replace PUT /api/tasks/:id
- * See: https://github.com/LinXueyuanStdio/viben/issues/XXX
  */
 
 import { useEffect } from "react";
@@ -29,12 +25,39 @@ import { recordTaskActivity, clearTaskActivity } from "@/stores/task-activity-st
 import { getGatewayUrl } from "@/lib/gateway";
 
 // ============================================================================
-// Types for Deprecated Update Hooks
+// Types for Update Hooks
 // ============================================================================
 
 /**
- * Request body for updating a task
- * @deprecated Will be replaced by POST /api/task/update
+ * Request body for POST /api/task/update endpoint
+ */
+export interface UpdateTaskApiRequest {
+  workspace_path: string;  // required
+  task_id: string;         // required
+  title?: string;
+  description?: string;
+  agent?: string;
+  executor?: string;
+  model?: string;
+  priority?: string;
+  branch?: string;
+  base_branch?: string;
+  assignee?: string;
+  notes?: string;
+}
+
+/**
+ * Response from POST /api/task/update endpoint
+ */
+export interface UpdateTaskApiResponse {
+  success: boolean;
+  task_id: string;
+  updated_fields: string[];
+}
+
+/**
+ * Legacy request body for updating a task
+ * @deprecated Will be replaced by UpdateTaskApiRequest
  */
 export interface UpdateTaskRequest {
   title?: string;
@@ -456,23 +479,46 @@ export function _useCreateTask() {
 }
 
 // ============================================================================
-// Deprecated Update Hooks
-// These use PUT /api/tasks/:id and should be replaced with POST /api/task/update
+// Update Task Hook
 // ============================================================================
 
-interface UpdateTaskParams {
-  taskId: string;
-  data: UpdateTaskRequest;
-  workspacePath?: string;
+/**
+ * Input parameters for _useUpdateTask hook
+ */
+export interface UpdateTaskParams {
+  workspacePath: string;  // required
+  taskId: string;         // required
+  data: {
+    title?: string;
+    description?: string;
+    agent?: string;
+    executor?: string;
+    model?: string;
+    priority?: string;
+    branch?: string;
+    base_branch?: string;
+    assignee?: string;
+    notes?: string;
+  };
 }
 
 /**
- * Update task fields (title, description, etc.)
+ * Update task fields (title, description, etc.) via POST /api/task/update
  *
- * @deprecated This hook uses PUT /api/tasks/:id which should be replaced with
- * a new POST /api/task/update endpoint. Use useTaskLifecycle for state transitions.
+ * @example
+ * ```tsx
+ * const updateTask = _useUpdateTask();
  *
- * TODO: Create POST /api/task/update endpoint to replace this
+ * updateTask.mutate({
+ *   workspacePath: "/path/to/workspace",
+ *   taskId: "task-123",
+ *   data: {
+ *     title: "New title",
+ *     description: "New description",
+ *     priority: "high"
+ *   }
+ * });
+ * ```
  *
  * @internal
  */
@@ -480,13 +526,25 @@ export function _useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ taskId, data }: UpdateTaskParams) => {
-      // Use PUT /api/tasks/:id directly since we removed the wrapper function
-      const url = `${getGatewayUrl()}/api/tasks/${encodeURIComponent(taskId)}`;
+    mutationFn: async ({ workspacePath, taskId, data }: UpdateTaskParams): Promise<UpdateTaskApiResponse> => {
+      const url = `${getGatewayUrl()}/api/task/update`;
+
+      // Build API request body
+      const body: UpdateTaskApiRequest = {
+        workspace_path: workspacePath,
+        task_id: taskId,
+        ...data,
+      };
+
+      // Remove undefined values
+      const cleanBody = Object.fromEntries(
+        Object.entries(body).filter(([, v]) => v !== undefined)
+      );
+
       const response = await fetch(url, {
-        method: "PUT",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(cleanBody),
       });
 
       if (!response.ok) {
@@ -496,7 +554,7 @@ export function _useUpdateTask() {
 
       return response.json();
     },
-    onMutate: async ({ taskId, data, workspacePath }: UpdateTaskParams) => {
+    onMutate: async ({ workspacePath, taskId, data }: UpdateTaskParams) => {
       const queryKey = kanbanKeys.tasks(workspacePath ?? "");
 
       // Cancel outgoing refetches
@@ -535,6 +593,10 @@ export function _useUpdateTask() {
     },
   });
 }
+
+// ============================================================================
+// Deprecated Update Hooks
+// ============================================================================
 
 interface UpdateTaskStatusParams {
   taskId: string;

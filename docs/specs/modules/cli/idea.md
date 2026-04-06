@@ -493,7 +493,7 @@ CLI 按以下顺序查找 idea type prompt：
 2. `packages/core/templates/viben/idea-types/<type>.md`（内置 fallback）
 
 这意味着：
-- 即使未运行 `viben team init`，内置类型也可用
+- 即使未运行 `viben init`，内置类型也可用
 - 项目可以在 `docs/idea-types/` 中覆盖内置类型
 - 自定义类型只需在 `docs/idea-types/` 中创建
 

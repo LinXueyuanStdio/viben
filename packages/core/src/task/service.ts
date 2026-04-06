@@ -258,44 +258,16 @@ export class TaskService {
   /**
    * Update a task
    *
-   * This method is protected by an async lock to prevent race conditions
-   * when multiple concurrent requests try to update the same task.
-   * The lock ensures that read-modify-write operations are atomic.
+   * Note: This method does NOT acquire a lock. State transitions should go
+   * through `taskEventStore.applyEvent()` which has its own locking.
+   * This method is for updating non-state fields (metadata, session_id, etc.)
+   * where last-write-wins semantics are acceptable.
    *
    * @param taskDir - Absolute path to task directory
    * @param updates - Partial task data to update
    * @returns Updated task data
    */
   async updateTask(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
-    // Use lock to prevent concurrent modifications to the same task
-    // This ensures the read-modify-write sequence is atomic
-    return taskLock.withLock(taskDir, async () => {
-      return this.updateTaskUnsafe(taskDir, updates);
-    });
-  }
-
-  /**
-   * Update task without acquiring the lock
-   *
-   * WARNING: This method should ONLY be called from within a lock context
-   * (i.e., when you already hold taskLock for this taskDir).
-   * This is exposed for use by TaskEventStore which acquires its own lock
-   * and needs to update the task without causing a deadlock.
-   *
-   * @param taskDir - Absolute path to task directory
-   * @param updates - Partial task data to update
-   * @returns Updated task data
-   * @internal For use by TaskEventStore only
-   */
-  async updateTaskWithoutLock(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
-    return this.updateTaskUnsafe(taskDir, updates);
-  }
-
-  /**
-   * Internal method to update task without locking
-   * Should only be called from within a lock context
-   */
-  private async updateTaskUnsafe(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
     const existing = await this.getTask(taskDir);
     if (!existing) {
       throw new Error(`Task not found: ${taskDir}`);

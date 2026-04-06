@@ -35,6 +35,10 @@ export interface CreatePRResult {
   had_staged_changes?: boolean;
   unpushed_commits?: number;
   error?: string;
+  /** Error code for specific handling */
+  error_code?: "NO_GIT" | "NO_GIT_REPO" | "NO_REMOTE" | "NOT_GITHUB" | "GH_NOT_INSTALLED" | "GH_AUTH_REQUIRED";
+  /** User-facing help message */
+  help?: string;
   /** True if running in local-only mode (no remote) */
   local_only?: boolean;
   /** Dry run info for display */
@@ -51,6 +55,25 @@ export interface CreatePRResult {
 // =============================================================================
 
 /**
+ * Check if git command is available
+ */
+function isGitAvailable(): boolean {
+  const result = spawnSync("git", ["--version"], {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return result.status === 0;
+}
+
+/**
+ * Check if directory is inside a git repository
+ */
+function isGitRepository(dir: string): boolean {
+  const { code } = runGitCommand(["rev-parse", "--git-dir"], dir);
+  return code === 0;
+}
+
+/**
  * Check if origin remote exists
  */
 function hasOriginRemote(gitWorkDir: string): boolean {
@@ -65,6 +88,28 @@ function hasOriginRemote(gitWorkDir: string): boolean {
 function isGitHubRemote(gitWorkDir: string): boolean {
   const { stdout } = runGitCommand(["remote", "-v"], gitWorkDir);
   return stdout.includes("github.com");
+}
+
+/**
+ * Check if gh CLI is installed
+ */
+function isGhInstalled(): boolean {
+  const result = spawnSync("gh", ["--version"], {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return result.status === 0;
+}
+
+/**
+ * Check if gh CLI is authenticated
+ */
+function isGhAuthenticated(): boolean {
+  const result = spawnSync("gh", ["auth", "status"], {
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  return result.status === 0;
 }
 
 /**
@@ -125,6 +170,51 @@ export function createPR(
 ): CreatePRResult {
   const dryRun = options.dry_run || false;
   const targetDir = taskNameOrPath;
+
+  // ==========================================================================
+  // Pre-flight checks: git availability
+  // ==========================================================================
+
+  // Check if git is installed
+  if (!isGitAvailable()) {
+    return {
+      success: false,
+      error: "Git is not installed or not in PATH",
+      error_code: "NO_GIT",
+      help: [
+        "Git is required to create pull requests.",
+        "",
+        "To install git:",
+        "  macOS:   brew install git",
+        "  Ubuntu:  sudo apt install git",
+        "  Windows: https://git-scm.com/download/win",
+      ].join("\n"),
+    };
+  }
+
+  // Check if we're in a git repository
+  if (!isGitRepository(repoRoot)) {
+    return {
+      success: false,
+      error: "Not a git repository",
+      error_code: "NO_GIT_REPO",
+      help: [
+        "This directory is not a git repository.",
+        "",
+        "To initialize a git repository:",
+        "  git init",
+        "  git add .",
+        "  git commit -m \"Initial commit\"",
+        "",
+        "To add a remote:",
+        "  git remote add origin <repository-url>",
+      ].join("\n"),
+    };
+  }
+
+  // ==========================================================================
+  // Task validation
+  // ==========================================================================
 
   // Resolve task directory path (in main repo)
   const taskDirPath = targetDir.startsWith("/")
@@ -277,12 +367,19 @@ export function createPR(
     return {
       success: true,
       local_only: true,
+      error_code: "NO_REMOTE",
       task_name: taskName,
       base_branch: baseBranch,
       current_branch: currentBranch,
       commit_message: commitMsg,
       had_staged_changes: hasStagedChanges,
       unpushed_commits: unpushedCommits,
+      help: [
+        "To add a remote and create a PR:",
+        "  git remote add origin <repository-url>",
+        "  git push -u origin " + currentBranch,
+        "  gh pr create --base " + baseBranch,
+      ].join("\n"),
     };
   }
 
@@ -302,15 +399,89 @@ export function createPR(
   if (!isGitHub) {
     updateTaskForPR(taskDirPath, taskJsonPath);
 
+    // Get remote URL for help message
+    const { stdout: remoteUrl } = runGitCommand(["remote", "get-url", "origin"], gitWorkDir);
+    const remoteHost = remoteUrl.trim().match(/[@/]([^/:]+)[:/]/)?.[1] || "your git host";
+
     return {
       success: true,
       local_only: true,
+      error_code: "NOT_GITHUB",
       task_name: taskName,
       base_branch: baseBranch,
       current_branch: currentBranch,
       commit_message: commitMsg,
       had_staged_changes: hasStagedChanges,
       unpushed_commits: unpushedCommits,
+      help: [
+        `Remote is not GitHub (detected: ${remoteHost}).`,
+        "Automatic PR creation is only supported for GitHub.",
+        "",
+        "To create a PR manually:",
+        `  Visit your repository on ${remoteHost} and create a PR`,
+        `  from '${currentBranch}' to '${baseBranch}'`,
+      ].join("\n"),
+    };
+  }
+
+  // ==========================================================================
+  // GitHub PR creation: check gh CLI
+  // ==========================================================================
+
+  if (!isGhInstalled()) {
+    // Still pushed successfully, just can't create PR
+    updateTaskForPR(taskDirPath, taskJsonPath);
+
+    return {
+      success: true,
+      local_only: true,
+      error_code: "GH_NOT_INSTALLED",
+      task_name: taskName,
+      base_branch: baseBranch,
+      current_branch: currentBranch,
+      commit_message: commitMsg,
+      had_staged_changes: hasStagedChanges,
+      unpushed_commits: unpushedCommits,
+      help: [
+        "GitHub CLI (gh) is not installed. Code was pushed successfully.",
+        "",
+        "To install gh CLI:",
+        "  macOS:   brew install gh",
+        "  Ubuntu:  sudo apt install gh",
+        "  Windows: winget install GitHub.cli",
+        "",
+        "Then authenticate:",
+        "  gh auth login",
+        "",
+        "Or create PR manually:",
+        `  https://github.com/<owner>/<repo>/compare/${baseBranch}...${currentBranch}`,
+      ].join("\n"),
+    };
+  }
+
+  if (!isGhAuthenticated()) {
+    // Still pushed successfully, just can't create PR
+    updateTaskForPR(taskDirPath, taskJsonPath);
+
+    return {
+      success: true,
+      local_only: true,
+      error_code: "GH_AUTH_REQUIRED",
+      task_name: taskName,
+      base_branch: baseBranch,
+      current_branch: currentBranch,
+      commit_message: commitMsg,
+      had_staged_changes: hasStagedChanges,
+      unpushed_commits: unpushedCommits,
+      help: [
+        "GitHub CLI is not authenticated. Code was pushed successfully.",
+        "",
+        "To authenticate:",
+        "  gh auth login",
+        "",
+        "Or create PR manually:",
+        `  https://github.com/<owner>/<repo>/compare/${baseBranch}...${currentBranch}`,
+      ].join("\n"),
     };
   }
 

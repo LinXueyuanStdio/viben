@@ -194,7 +194,7 @@ viben task start my-task --verbose
 Errors are printed to stderr with context:
 
 ```
-Error: Not a Viben workspace (.viben not found). Run "viben team init" first.
+Error: Not a Viben workspace (.viben not found). Run "viben init" first.
 Error: Task "nonexistent" not found
 Error: No developer set. Run "viben user init" first or use --assignee
 ```

@@ -384,7 +384,7 @@ function ensureVibenDirWithRoot(cwd: string): string {
   if (!repoRoot) {
     throw CliError.operationFailed(
       "Task command",
-      `Not a Viben workspace (.viben not found). Run "viben team init" first.`
+      `Not a Viben workspace (.viben not found). Run "viben init" first.`
     );
   }
   return repoRoot;
@@ -1837,6 +1837,13 @@ export function registerTaskCommand(program: Command): void {
         const result = createPR(repoRoot, task, { dry_run: dryRun });
 
         if (!result.success) {
+          // Show error with help if available
+          console.log(chalk.red(`Error: ${result.error}`));
+          if (result.help) {
+            console.log();
+            console.log(chalk.cyan("How to fix:"));
+            console.log(result.help);
+          }
           throw CliError.operationFailed("Create PR", result.error || "Unknown error");
         }
 
@@ -1871,19 +1878,36 @@ export function registerTaskCommand(program: Command): void {
           console.log("[DRY-RUN] Would update task.json:");
           console.log("  status: review");
         } else if (result.local_only) {
-          // Local-only mode: no remote
-          console.log(chalk.yellow("=== Local-Only Mode ==="));
-          console.log(chalk.yellow("No remote detected. Skipping push and PR creation."));
+          // Local-only mode: various reasons
+          const errorMessages: Record<string, string> = {
+            NO_REMOTE: "No remote configured",
+            NOT_GITHUB: "Remote is not GitHub",
+            GH_NOT_INSTALLED: "GitHub CLI not installed",
+            GH_AUTH_REQUIRED: "GitHub CLI not authenticated",
+          };
+          const reason = result.error_code ? errorMessages[result.error_code] || "Unknown reason" : "No remote";
+
+          console.log(chalk.yellow(`=== Local-Only Mode (${reason}) ===`));
           console.log();
           if (result.had_staged_changes) {
             console.log(chalk.green(`Committed: ${result.commit_message}`));
           } else if (result.unpushed_commits) {
             console.log(`Found ${result.unpushed_commits} unpushed commit(s)`);
           }
+
+          // Show if push was successful (for non-GitHub or gh CLI issues)
+          if (result.error_code && ["NOT_GITHUB", "GH_NOT_INSTALLED", "GH_AUTH_REQUIRED"].includes(result.error_code)) {
+            console.log(chalk.green(`Pushed to origin/${result.current_branch}`));
+          }
+
           console.log(chalk.green(`Task status updated to 'review'`));
-          console.log();
-          console.log(chalk.cyan("To merge changes to main repo:"));
-          console.log(chalk.cyan(`  cd <main-repo> && git merge ${result.current_branch}`));
+
+          // Show help message
+          if (result.help) {
+            console.log();
+            console.log(chalk.cyan("Next steps:"));
+            console.log(result.help);
+          }
         } else {
           // Show actual results
           if (result.had_staged_changes) {
@@ -2232,7 +2256,7 @@ export function registerTaskCommand(program: Command): void {
           if (!developer) {
             throw CliError.operationFailed(
               "Add session",
-              "Developer not initialized. Run 'viben team init-developer' first."
+              "Developer not initialized. Run 'viben init' first."
             );
           }
 
