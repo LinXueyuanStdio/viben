@@ -275,12 +275,16 @@ export function createPR(
   const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], gitWorkDir);
   const currentBranch = branchOut.trim();
 
-  // Stage changes (in git work directory)
+  // Stage all changes first
   runGitCommand(["add", "-A"], gitWorkDir);
 
-  // Exclude workspace and temp files (in git work directory)
-  runGitCommand(["reset", `${DIR_VIBEN}/workspace/`], gitWorkDir);
-  runGitCommand(["reset", "agent.log.jsonl", "session-id.txt"], gitWorkDir);
+  // Unstage files that should not be committed (workspace files, task metadata, logs)
+  // These reset commands only affect the staging area, not the working directory
+  // Use --quiet to avoid errors if the paths don't exist
+  runGitCommand(["reset", "--quiet", "--", `${DIR_VIBEN}/workspace/`], gitWorkDir);
+  runGitCommand(["reset", "--quiet", "--", `${DIR_VIBEN}/tasks/`], gitWorkDir);
+  runGitCommand(["reset", "--quiet", "--", "agent.log.jsonl"], gitWorkDir);
+  runGitCommand(["reset", "--quiet", "--", "session-id.txt"], gitWorkDir);
 
   // Check if there are staged changes
   const { code: diffCode } = runGitCommand(["diff", "--cached", "--quiet"], gitWorkDir);
@@ -325,7 +329,13 @@ export function createPR(
   } else {
     // Commit changes (unless dry run)
     if (!dryRun) {
-      runGitCommand(["commit", "-m", commitMsg], gitWorkDir);
+      const { code: commitCode, stderr: commitErr } = runGitCommand(["commit", "-m", commitMsg], gitWorkDir);
+      if (commitCode !== 0) {
+        return {
+          success: false,
+          error: `Failed to commit: ${commitErr}`,
+        };
+      }
     }
   }
 
