@@ -102,8 +102,44 @@ function ensureVibenRoot(cwd: string): string {
 /**
  * Format boolean as status indicator
  */
-function formatStatus(value: boolean, trueText: string, falseText: string): string {
+function formatBoolStatus(value: boolean, trueText: string, falseText: string): string {
   return value ? chalk.green(trueText) : chalk.gray(falseText);
+}
+
+/**
+ * Format idea status for display
+ */
+function formatIdeaStatus(status: string): string {
+  switch (status) {
+    case "draft":
+      return chalk.yellow(status);
+    case "promoted":
+      return chalk.green(status);
+    case "dismissed":
+      return chalk.gray(status);
+    default:
+      return chalk.gray(status);
+  }
+}
+
+/**
+ * Format effort level for display
+ */
+function formatEffort(effort: string): string {
+  switch (effort) {
+    case "trivial":
+      return chalk.green(effort);
+    case "small":
+      return chalk.cyan(effort);
+    case "medium":
+      return chalk.yellow(effort);
+    case "large":
+      return chalk.red(effort);
+    case "complex":
+      return chalk.magenta(effort);
+    default:
+      return chalk.gray(effort);
+  }
 }
 
 /**
@@ -266,7 +302,7 @@ export function registerEvoCommand(program: Command): void {
             outputKeyValue(ctx, {
               "Name": config.name,
               "Description": config.description || "-",
-              "Enabled": formatStatus(config.enabled, "yes", "no"),
+              "Enabled": formatBoolStatus(config.enabled, "yes", "no"),
             });
             console.log();
             console.log(chalk.bold("PPO Configuration:"));
@@ -281,7 +317,7 @@ export function registerEvoCommand(program: Command): void {
             console.log(chalk.bold("Rollout Configuration:"));
             outputKeyValue(ctx, {
               "Rollouts per Idea": config.rollout.n.toString(),
-              "Use Worktree": formatStatus(config.rollout.worktree, "yes", "no"),
+              "Use Worktree": formatBoolStatus(config.rollout.worktree, "yes", "no"),
             });
             console.log();
             console.log(chalk.bold("Convergence Configuration:"));
@@ -763,20 +799,118 @@ export function registerEvoCommand(program: Command): void {
 
         const name = config.name;
 
-        // For Evo, ideas are stored in .viben/evo/<name>/iter{N}/<idea-id>/idea.md
-        // We need to read from the evo directory structure, not the generic ideas directory
+        // Extended idea type for rich display (defined below in parseIdeaFromContent)
+        type EvoIdea = {
+          id: string;
+          title: string;
+          description: string;
+          rationale: string;
+          type: string;
+          estimatedEffort: "trivial" | "small" | "medium" | "large" | "complex";
+          status: "draft" | "promoted" | "dismissed";
+          created_at: string;
+          affectedFiles?: string[];
+          existingPatterns?: string[];
+          implementationApproach?: string;
+          promotedTo?: string;
+        };
+
+        // Get all ideas from state.json and idea files
+        const allIdeas: EvoIdea[] = [];
+
+        // Load state to get idea IDs from iterations
+        const state = readState(repoRoot, name);
+        const ideaIdsFromState: string[] = [];
+        if (state) {
+          for (const iter of state.iterations) {
+            for (const ideaId of iter.ideas) {
+              if (!ideaIdsFromState.includes(ideaId)) {
+                ideaIdsFromState.push(ideaId);
+              }
+            }
+          }
+        }
+
+        // Search for idea files in .viben/ideas/ directories
+        // Ideas can be in:
+        // 1. .viben/evo/<name>/iter{N}/<idea-id>/idea.md (new Evo structure)
+        // 2. .viben/ideas/<session-name>/idea_*_<id>.md (legacy session structure)
+        const ideasBaseDir = join(repoRoot, ".viben", "ideas");
         const evoDir = join(repoRoot, ".viben", "evo", name);
 
-        // Get all ideas from all iteration directories
-        const allIdeas: Awaited<ReturnType<typeof getAllIdeasFromSession>> = [];
+        // Helper to parse idea from file content
+        const parseIdeaFromContent = (content: string, ideaId: string): EvoIdea | null => {
+          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          if (!frontmatterMatch) return null;
 
-        // Check if evo directory exists
+          const frontmatter = frontmatterMatch[1];
+          const body = content.slice(frontmatterMatch[0].length).trim();
+
+          // Parse frontmatter fields
+          const titleMatch = frontmatter.match(/title:\s*"?([^"\n]+)"?/);
+          const effortMatch = frontmatter.match(/estimated_effort:\s*(\w+)/);
+          const statusMatch = frontmatter.match(/status:\s*(\w+)/);
+          const typeMatch = frontmatter.match(/type:\s*(\w+)/);
+          const rationaleMatch = frontmatter.match(/rationale:\s*"?([^"\n]+)"?/);
+          const descriptionMatch = frontmatter.match(/description:\s*"?([^"\n]+)"?/);
+          const promotedToMatch = frontmatter.match(/promoted_to:\s*"?([^"\n]+)"?/);
+
+          // Parse affected_files array
+          const affectedFilesMatch = frontmatter.match(/affected_files:\s*\n((?:\s+-\s+[^\n]+\n?)*)/);
+          const affectedFiles: string[] = [];
+          if (affectedFilesMatch) {
+            const fileLines = affectedFilesMatch[1].match(/^\s+-\s+(.+)$/gm);
+            if (fileLines) {
+              for (const line of fileLines) {
+                const fileMatch = line.match(/^\s+-\s+(.+)$/);
+                if (fileMatch) {
+                  affectedFiles.push(fileMatch[1].trim());
+                }
+              }
+            }
+          }
+
+          // Parse existing_patterns array
+          const existingPatternsMatch = frontmatter.match(/existing_patterns:\s*\n((?:\s+-\s+[^\n]+\n?)*)/);
+          const existingPatterns: string[] = [];
+          if (existingPatternsMatch) {
+            const patternLines = existingPatternsMatch[1].match(/^\s+-\s+(.+)$/gm);
+            if (patternLines) {
+              for (const line of patternLines) {
+                const patternMatch = line.match(/^\s+-\s+(.+)$/);
+                if (patternMatch) {
+                  existingPatterns.push(patternMatch[1].trim());
+                }
+              }
+            }
+          }
+
+          // Use body as description if no frontmatter description
+          const description = descriptionMatch?.[1] || body.split("\n")[0] || "";
+
+          return {
+            id: ideaId,
+            title: titleMatch?.[1] || "Untitled",
+            description,
+            rationale: rationaleMatch?.[1] || "",
+            type: typeMatch?.[1] || "unknown",
+            estimatedEffort: (effortMatch?.[1] || "medium") as "trivial" | "small" | "medium" | "large" | "complex",
+            status: (statusMatch?.[1] || "draft") as "draft" | "promoted" | "dismissed",
+            created_at: new Date().toISOString(),
+            affectedFiles: affectedFiles.length > 0 ? affectedFiles : undefined,
+            existingPatterns: existingPatterns.length > 0 ? existingPatterns : undefined,
+            implementationApproach: body || undefined,
+            promotedTo: promotedToMatch?.[1],
+          };
+        };
+
+        const { readdirSync, statSync, readFileSync } = await import("node:fs");
+        const foundIdeaIds = new Set<string>();
+
+        // 1. Check Evo directory structure: .viben/evo/<name>/iter{N}/<idea-id>/idea.md
         if (existsSync(evoDir)) {
-          const { readdirSync, statSync } = await import("node:fs");
           const entries = readdirSync(evoDir);
-
           for (const entry of entries) {
-            // Look for iter{N} directories
             if (entry.startsWith("iter") && statSync(join(evoDir, entry)).isDirectory()) {
               const iterDir = join(evoDir, entry);
               const ideaDirs = readdirSync(iterDir).filter(f =>
@@ -785,31 +919,12 @@ export function registerEvoCommand(program: Command): void {
 
               for (const ideaId of ideaDirs) {
                 const ideaPath = join(iterDir, ideaId, "idea.md");
-                if (existsSync(ideaPath)) {
-                  // Parse idea.md to extract idea metadata
-                  const { readFileSync } = await import("node:fs");
+                if (existsSync(ideaPath) && !foundIdeaIds.has(ideaId)) {
                   const content = readFileSync(ideaPath, "utf-8");
-
-                  // Parse YAML frontmatter
-                  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-                  if (frontmatterMatch) {
-                    const frontmatter = frontmatterMatch[1];
-                    const titleMatch = frontmatter.match(/title:\s*"?([^"\n]+)"?/);
-                    const effortMatch = frontmatter.match(/estimated_effort:\s*(\w+)/);
-                    const statusMatch = frontmatter.match(/status:\s*(\w+)/);
-                    const typeMatch = frontmatter.match(/type:\s*(\w+)/);
-                    const rationaleMatch = frontmatter.match(/rationale:\s*"?([^"\n]+)"?/);
-
-                    allIdeas.push({
-                      id: ideaId,
-                      title: titleMatch?.[1] || "Untitled",
-                      description: "",
-                      rationale: rationaleMatch?.[1] || "",
-                      type: typeMatch?.[1] || "unknown",
-                      estimatedEffort: (effortMatch?.[1] || "medium") as "trivial" | "small" | "medium" | "large" | "complex",
-                      status: (statusMatch?.[1] || "draft") as "draft" | "promoted" | "dismissed",
-                      created_at: new Date().toISOString(),
-                    });
+                  const idea = await parseIdeaFromContent(content, ideaId);
+                  if (idea) {
+                    allIdeas.push(idea);
+                    foundIdeaIds.add(ideaId);
                   }
                 }
               }
@@ -817,14 +932,51 @@ export function registerEvoCommand(program: Command): void {
           }
         }
 
-        // Fallback: also check the legacy ideas directory
+        // 2. Search in legacy ideas directory for remaining idea IDs from state
+        if (existsSync(ideasBaseDir)) {
+          const sessionDirs = readdirSync(ideasBaseDir).filter(f =>
+            statSync(join(ideasBaseDir, f)).isDirectory()
+          );
+
+          for (const sessionDir of sessionDirs) {
+            const sessionPath = join(ideasBaseDir, sessionDir);
+            const ideaFiles = readdirSync(sessionPath).filter(f => f.endsWith(".md"));
+
+            for (const ideaFile of ideaFiles) {
+              // Extract idea ID from filename pattern: idea_<type>_<8-char-hex-id>.md
+              const idMatch = ideaFile.match(/idea_.*_([a-f0-9]{8})\.md$/);
+              if (idMatch) {
+                const ideaId = idMatch[1];
+                // Include if: (a) matches an ID in state, or (b) we have no state (show all)
+                if (!foundIdeaIds.has(ideaId) && (ideaIdsFromState.length === 0 || ideaIdsFromState.includes(ideaId))) {
+                  const ideaPath = join(sessionPath, ideaFile);
+                  const content = readFileSync(ideaPath, "utf-8");
+                  const idea = await parseIdeaFromContent(content, ideaId);
+                  if (idea) {
+                    allIdeas.push(idea);
+                    foundIdeaIds.add(ideaId);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Fallback: check session_dir from config if specified
         const legacyIdeasDir = config.idea.session_dir
           ? resolve(repoRoot, config.idea.session_dir)
-          : join(repoRoot, ".viben", "ideas", name);
+          : null;
 
-        if (existsSync(legacyIdeasDir) && allIdeas.length === 0) {
+        if (legacyIdeasDir && existsSync(legacyIdeasDir) && allIdeas.length === 0) {
           const legacyIdeas = getAllIdeasFromSession(legacyIdeasDir);
-          allIdeas.push(...legacyIdeas);
+          // Cast legacy ideas to EvoIdea format (they have compatible base fields)
+          allIdeas.push(...legacyIdeas.map(idea => ({
+            ...idea,
+            affectedFiles: idea.affectedFiles,
+            existingPatterns: idea.existingPatterns,
+            implementationApproach: idea.implementationApproach,
+            promotedTo: idea.promotedTo,
+          })));
         }
 
         // Apply status filter if provided
@@ -841,16 +993,73 @@ export function registerEvoCommand(program: Command): void {
             return;
           }
 
-          outputTable(
-            ctx,
-            ["ID", "TITLE", "EFFORT", "STATUS"],
-            filteredIdeas.map(idea => [
-              idea.id,
-              idea.title.slice(0, 40) + (idea.title.length > 40 ? "..." : ""),
-              idea.estimatedEffort,
-              idea.status,
-            ])
-          );
+          console.log(chalk.bold(`Ideas (${filteredIdeas.length}):`));
+          console.log();
+
+          for (const idea of filteredIdeas) {
+            // Header: ID, Type, Status, Effort
+            console.log(
+              chalk.cyan(`[${idea.id}]`) +
+                chalk.gray(` ${idea.type}`) +
+                `  ${formatIdeaStatus(idea.status)}` +
+                `  ${formatEffort(idea.estimatedEffort)}`
+            );
+
+            // Title
+            console.log(chalk.bold(`  ${idea.title}`));
+
+            // Description
+            if (idea.description) {
+              console.log(chalk.gray(`  ${idea.description}`));
+            }
+
+            // Rationale
+            if (idea.rationale) {
+              console.log(chalk.yellow(`  Why: `) + idea.rationale);
+            }
+
+            // Affected files
+            if (idea.affectedFiles && idea.affectedFiles.length > 0) {
+              console.log(chalk.blue(`  Files:`));
+              for (const file of idea.affectedFiles.slice(0, 8)) {
+                console.log(chalk.gray(`    - ${file}`));
+              }
+              if (idea.affectedFiles.length > 8) {
+                console.log(chalk.gray(`    ... +${idea.affectedFiles.length - 8} more`));
+              }
+            }
+
+            // Existing patterns
+            if (idea.existingPatterns && idea.existingPatterns.length > 0) {
+              console.log(chalk.magenta(`  Patterns:`));
+              for (const pattern of idea.existingPatterns.slice(0, 5)) {
+                console.log(chalk.gray(`    - ${pattern}`));
+              }
+              if (idea.existingPatterns.length > 5) {
+                console.log(chalk.gray(`    ... +${idea.existingPatterns.length - 5} more`));
+              }
+            }
+
+            // Implementation approach (can be multi-line)
+            if (idea.implementationApproach) {
+              console.log(chalk.green(`  Implementation:`));
+              const lines = idea.implementationApproach.split("\n");
+              const maxLines = 10;
+              for (const line of lines.slice(0, maxLines)) {
+                console.log(chalk.gray(`    ${line}`));
+              }
+              if (lines.length > maxLines) {
+                console.log(chalk.gray(`    ... +${lines.length - maxLines} more lines`));
+              }
+            }
+
+            // Promoted to task
+            if (idea.promotedTo) {
+              console.log(chalk.green(`  Task: `) + idea.promotedTo);
+            }
+
+            console.log(); // Blank line between ideas
+          }
         });
       } catch (error) {
         handleCommandError(ctx, error);

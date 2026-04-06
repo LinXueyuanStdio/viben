@@ -4,7 +4,7 @@
  * Shared utilities for working with .viben workspace directories.
  * Replaces Python scripts in templates/viben/scripts/common/
  */
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import {
   existsSync,
   readdirSync,
@@ -346,29 +346,22 @@ export function runGitCommand(
   args: string[],
   cwd: string
 ): { code: number; stdout: string; stderr: string } {
-  try {
-    // Force UTF-8 encoding for consistent output
-    const gitArgs = ["-c", "i18n.logOutputEncoding=UTF-8", ...args];
-    const stdout = execSync(`git ${gitArgs.join(" ")}`, {
-      cwd,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      maxBuffer: 10 * 1024 * 1024, // 10MB
-    });
-    return { code: 0, stdout, stderr: "" };
-  } catch (error: unknown) {
-    const execError = error as {
-      status?: number;
-      stdout?: string;
-      stderr?: string;
-      message?: string;
-    };
-    return {
-      code: execError.status ?? 1,
-      stdout: execError.stdout ?? "",
-      stderr: execError.stderr ?? execError.message ?? "",
-    };
-  }
+  // Force UTF-8 encoding for consistent output
+  const gitArgs = ["-c", "i18n.logOutputEncoding=UTF-8", ...args];
+
+  // Use spawnSync to avoid shell interpretation issues with special characters
+  const result = spawnSync("git", gitArgs, {
+    cwd,
+    encoding: "utf-8",
+    stdio: ["pipe", "pipe", "pipe"],
+    maxBuffer: 10 * 1024 * 1024, // 10MB
+  });
+
+  return {
+    code: result.status ?? 1,
+    stdout: (result.stdout as string) || "",
+    stderr: (result.stderr as string) || "",
+  };
 }
 
 /**
