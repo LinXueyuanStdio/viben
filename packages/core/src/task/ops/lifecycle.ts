@@ -4,16 +4,11 @@
  * Status transitions: enqueue, dequeue, pause, resume, approve, reject, retry, cancel
  */
 
-import { execSync } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
   resolveTaskDirectory,
-  updateTaskStatus,
-  appendTaskEvent,
-  validateStatusTransition,
-  getTodayDate,
   runGitCommand,
   getRegistryFile,
   type PausedSnapshot,
@@ -24,6 +19,8 @@ import { enqueue as queueEnqueue } from "../../queue/ops/enqueue";
 import { runMergePRPhase } from "../phase/merge-pr";
 
 import type { TaskJson } from "./types";
+import { taskEventStore } from "../events/event-store";
+import { createTaskEvent } from "../events/task-event";
 
 // =============================================================================
 // Helper Functions
@@ -253,7 +250,7 @@ export interface LifecycleResult {
  * Submits "viben task start <task>" to the command queue system.
  * Queue system executes the command as a detached process.
  */
-export function enqueueTask(
+export async function enqueueTask(
   repoRoot: string,
   taskName: string,
   options: {
@@ -264,7 +261,7 @@ export function enqueueTask(
     /** Skip submitting to queue system (only update status) */
     skipQueue?: boolean;
   } = {}
-): LifecycleResult {
+): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -275,23 +272,8 @@ export function enqueueTask(
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "queue", "QUEUE");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
-
-  // Build additional fields
-  const additionalFields: Record<string, unknown> = {
-    queued_at: new Date().toISOString(),
-  };
-
-  if (options.agent) additionalFields.agent = options.agent;
-  if (options.executor) additionalFields.executor = options.executor;
-  if (options.model) additionalFields.model = options.model;
-  if (options.priority) additionalFields.priority = options.priority;
-
-  // Submit to command queue system (unless skipQueue is true)
+  // Submit to command queue system first (before state transition)
+  // This ensures we don't change state if queue submission fails
   let queueId: string | undefined;
   if (!options.skipQueue) {
     const dirName = taskDir.split("/").pop() || taskName;
@@ -318,21 +300,28 @@ export function enqueueTask(
     }
 
     queueId = queueResult.id;
-    additionalFields.queue_id = queueId;
   }
 
-  // Update task status
-  if (!updateTaskStatus(taskDir, "queue", additionalFields)) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
-
-  // Append event
-  appendTaskEvent(taskDir, "QUEUE", {
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("QUEUE", nextSequence, {
     agent: options.agent,
     executor: options.executor,
     model: options.model,
+    priority: options.priority,
     queue_id: queueId,
   });
+  const result = await taskEventStore.applyEvent(taskDir, event);
+
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot enqueue task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
+  }
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -347,7 +336,7 @@ export function enqueueTask(
 /**
  * Dequeue task: queue -> backlog
  */
-export function dequeueTask(repoRoot: string, taskName: string): LifecycleResult {
+export async function dequeueTask(repoRoot: string, taskName: string): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -358,19 +347,20 @@ export function dequeueTask(repoRoot: string, taskName: string): LifecycleResult
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "backlog", "DEQUEUE");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("DEQUEUE", nextSequence);
+  const result = await taskEventStore.applyEvent(taskDir, event);
 
-  // Update task status (clear queuedAt)
-  if (!updateTaskStatus(taskDir, "backlog", { queued_at: null })) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot dequeue task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
   }
-
-  // Append event
-  appendTaskEvent(taskDir, "DEQUEUE");
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -384,7 +374,7 @@ export function dequeueTask(repoRoot: string, taskName: string): LifecycleResult
 /**
  * Pause task: in_progress/queue -> paused
  */
-export function pauseTask(repoRoot: string, taskName: string): LifecycleResult {
+export async function pauseTask(repoRoot: string, taskName: string): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -395,26 +385,20 @@ export function pauseTask(repoRoot: string, taskName: string): LifecycleResult {
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "paused", "PAUSE");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("PAUSE", nextSequence, { fromState: taskData.status });
+  const result = await taskEventStore.applyEvent(taskDir, event);
+
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot pause task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
   }
-
-  // Save paused snapshot
-  const pausedSnapshot: PausedSnapshot = {
-    fromState: taskData.status,
-    subtaskIndex: taskData.current_phase || 0,
-    pausedAt: new Date().toISOString(),
-  };
-
-  // Update task status
-  if (!updateTaskStatus(taskDir, "paused", { pausedSnapshot })) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
-
-  // Append event
-  appendTaskEvent(taskDir, "PAUSE", { fromState: taskData.status });
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -428,7 +412,7 @@ export function pauseTask(repoRoot: string, taskName: string): LifecycleResult {
 /**
  * Resume task: paused -> in_progress/queue (restore)
  */
-export function resumeTask(repoRoot: string, taskName: string): LifecycleResult {
+export async function resumeTask(repoRoot: string, taskName: string): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -439,23 +423,24 @@ export function resumeTask(repoRoot: string, taskName: string): LifecycleResult 
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition (RESUME expects paused state)
-  const validation = validateStatusTransition(taskData.status, "queue", "RESUME");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
-
   // Read pausedSnapshot to determine target status
   const pausedSnapshot = (taskData as unknown as { pausedSnapshot?: PausedSnapshot }).pausedSnapshot;
   const targetStatus = pausedSnapshot?.fromState || "queue";
 
-  // Update task status (clear pausedSnapshot)
-  if (!updateTaskStatus(taskDir, targetStatus, { pausedSnapshot: null })) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("RESUME", nextSequence, { toState: targetStatus });
+  const result = await taskEventStore.applyEvent(taskDir, event);
 
-  // Append event
-  appendTaskEvent(taskDir, "RESUME", { toState: targetStatus });
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot resume task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
+  }
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -488,11 +473,11 @@ export interface ApproveTaskOptions {
  *
  * Note: Worktree cleanup is NOT done here. Use `viben task cleanup` for that.
  */
-export function approveTask(
+export async function approveTask(
   repoRoot: string,
   taskName: string,
   options: ApproveTaskOptions = {}
-): LifecycleResult {
+): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -509,17 +494,11 @@ export function approveTask(
   const branch = taskData.branch;
   const hasPrUrl = !!prUrl;
 
-  // Validate status transition - only review -> completed is allowed
-  // No special handling for in_progress + pr_url
-  const validation = validateStatusTransition(taskData.status, "completed", "APPROVED");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
-
   const dirName = taskDir.split("/").pop() || taskName;
   const additionalData: Record<string, unknown> = {};
 
   // Step 1: Merge PR if exists (using runMergePRPhase)
+  // This is done BEFORE state transition - if merge fails, we don't change state
   let mergeCommit: string | undefined;
   let mergedAt: string | undefined;
   let prMerged = false;
@@ -583,31 +562,24 @@ export function approveTask(
     }
   }
 
-  // Step 4: Update task status
-  const completedAt = getTodayDate();
-  const updateFields: Record<string, unknown> = {
-    completed_at: completedAt,
-    review_reason: "approved",
-  };
-
-  // Note: Do NOT clear worktree_path here - it should be preserved for reference
-
-  if (mergedAt) {
-    updateFields.merged_at = mergedAt;
-  }
-  if (mergeCommit) {
-    updateFields.merge_commit = mergeCommit;
-  }
-
-  if (!updateTaskStatus(taskDir, "completed", updateFields)) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
-
-  // Append event
-  appendTaskEvent(taskDir, "APPROVED", {
+  // Step 4: Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("APPROVED", nextSequence, {
     merge_commit: mergeCommit,
     merged_at: mergedAt,
   });
+  const result = await taskEventStore.applyEvent(taskDir, event);
+
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot approve task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+      additionalData,
+    };
+  }
 
   return {
     success: true,
@@ -628,11 +600,11 @@ export function approveTask(
  * Also allows: in_progress -> backlog if pr_url exists
  * This handles cases where PR was created but status wasn't updated to review
  */
-export function rejectTask(
+export async function rejectTask(
   repoRoot: string,
   taskName: string,
   reason?: string
-): LifecycleResult {
+): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -643,38 +615,20 @@ export function rejectTask(
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Special case: allow reject from in_progress if pr_url exists
-  // This handles cases where PR was created but status wasn't updated to review
-  const hasPrUrl = !!(taskData as { pr_url?: string }).pr_url;
-  const isInProgress = taskData.status === "in_progress";
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("REJECTED", nextSequence, { reason });
+  const result = await taskEventStore.applyEvent(taskDir, event);
 
-  if (isInProgress && hasPrUrl) {
-    // Allow transition from in_progress with pr_url - treat as if it was in review
-    // This is a recovery path for inconsistent state
-  } else {
-    // Validate status transition normally
-    const validation = validateStatusTransition(taskData.status, "backlog", "REJECTED");
-    if (!validation.valid) {
-      return { success: false, task: taskName, error: validation.error };
-    }
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot reject task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
   }
-
-  // Build additional fields - clear pr_url, record rejection
-  const additionalFields: Record<string, unknown> = {
-    pr_url: null, // Clear PR URL as it may need to be resubmitted
-    review_reason: "rejected",
-  };
-  if (reason) {
-    additionalFields.reject_reason = reason;
-  }
-
-  // Update task status
-  if (!updateTaskStatus(taskDir, "backlog", additionalFields)) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
-
-  // Append event
-  appendTaskEvent(taskDir, "REJECTED", { reason });
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -689,7 +643,7 @@ export function rejectTask(
 /**
  * Retry task: failed -> queue
  */
-export function retryTask(repoRoot: string, taskName: string): LifecycleResult {
+export async function retryTask(repoRoot: string, taskName: string): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -700,24 +654,20 @@ export function retryTask(repoRoot: string, taskName: string): LifecycleResult {
     return { success: false, task: taskName, error: `Cannot read task.json` };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "queue", "RETRY");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("RETRY", nextSequence);
+  const result = await taskEventStore.applyEvent(taskDir, event);
 
-  // Update task status - clear error fields, set new queuedAt
-  if (!updateTaskStatus(taskDir, "queue", {
-    queued_at: new Date().toISOString(),
-    error: null,
-    errorMessage: null,
-    failedAt: null,
-  })) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot retry task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
   }
-
-  // Append event
-  appendTaskEvent(taskDir, "RETRY");
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {
@@ -731,11 +681,11 @@ export function retryTask(repoRoot: string, taskName: string): LifecycleResult {
 /**
  * Cancel task: * -> cancelled
  */
-export function cancelTask(
+export async function cancelTask(
   repoRoot: string,
   taskName: string,
   options: { reason?: string; force?: boolean } = {}
-): LifecycleResult {
+): Promise<LifecycleResult> {
   const taskDir = resolveTaskDirectory(taskName, repoRoot);
   if (!taskDir || !existsSync(taskDir)) {
     return { success: false, task: taskName, error: `Task not found: ${taskName}` };
@@ -755,27 +705,20 @@ export function cancelTask(
     };
   }
 
-  // Validate status transition
-  const validation = validateStatusTransition(taskData.status, "cancelled", "CANCEL");
-  if (!validation.valid) {
-    return { success: false, task: taskName, error: validation.error };
-  }
+  // Create and apply event through eventStore
+  const nextSequence = await taskEventStore.getNextSequence(taskDir);
+  const event = createTaskEvent("CANCEL", nextSequence, options.reason ? { reason: options.reason } : undefined);
+  const result = await taskEventStore.applyEvent(taskDir, event);
 
-  // Build additional fields
-  const additionalFields: Record<string, unknown> = {
-    cancelledAt: new Date().toISOString(),
-  };
-  if (options.reason) {
-    additionalFields.cancelReason = options.reason;
+  if (!result.success) {
+    return {
+      success: false,
+      task: taskName,
+      error: result.error === "INVALID_TRANSITION"
+        ? `Cannot cancel task in '${taskData.status}' status`
+        : `State transition failed: ${result.error}`,
+    };
   }
-
-  // Update task status
-  if (!updateTaskStatus(taskDir, "cancelled", additionalFields)) {
-    return { success: false, task: taskName, error: "Failed to update task.json" };
-  }
-
-  // Append event
-  appendTaskEvent(taskDir, "CANCEL", options.reason ? { reason: options.reason } : undefined);
 
   const dirName = taskDir.split("/").pop() || taskName;
   return {

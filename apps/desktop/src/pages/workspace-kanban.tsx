@@ -143,9 +143,10 @@ import { useLocalWorkspaces, useAgents, useModels, useStuckDetection } from "@/h
 import { useElapsedTime, formatElapsedTime } from "@/components/workspace/kanban/hooks";
 import {
   useTasks,
-  _useUpdateTaskStatus,
+  useTaskLifecycle,
   _useUpdateTask,
   _useCreateTask,
+  type LifecycleAction,
 } from "@/hooks/use-kanban";
 import {
   type TaskWithAttemptStatus,
@@ -164,7 +165,6 @@ import {
 } from "@/lib/kanban";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
-import { getGatewayUrl, submitTaskEvent, type TaskEvent } from "@/lib/gateway";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
 import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
@@ -220,6 +220,43 @@ const validatePriority = (priority?: string): IssuePriority | undefined => {
     ? (priority as IssuePriority)
     : undefined;
 };
+
+/**
+ * Maps a status transition to the appropriate lifecycle action
+ *
+ * @param fromStatus - Current task status (optional, used for context-aware mapping)
+ * @param toStatus - Target task status
+ * @returns The lifecycle action to use, or null if no direct mapping exists
+ */
+function getLifecycleActionForStatusChange(
+  fromStatus: VibeTaskStatus | undefined,
+  toStatus: VibeTaskStatus
+): LifecycleAction | null {
+  // Context-aware mappings (depend on current status)
+  if (toStatus === "backlog") {
+    if (fromStatus === "queue") return "dequeue";
+    if (fromStatus === "review") return "reject";
+    // For other statuses going to backlog, use dequeue as fallback
+    return "dequeue";
+  }
+
+  if (toStatus === "in_progress") {
+    if (fromStatus === "paused") return "resume";
+    // For queue -> in_progress, use start
+    return "start";
+  }
+
+  // Simple status -> action mappings
+  const statusToAction: Partial<Record<VibeTaskStatus, LifecycleAction>> = {
+    queue: "enqueue",
+    paused: "pause",
+    completed: "approve",
+    cancelled: "cancel",
+    archived: "archive",
+  };
+
+  return statusToAction[toStatus] ?? null;
+}
 
 // Task Card Content Component - displays vibe-kanban task with enhanced fields (Auto-Claude style)
 interface TaskCardContentProps {
@@ -1116,7 +1153,7 @@ export function WorkspaceKanbanPage() {
   } = useTasks(workspace?.path);
 
   // Mutations
-  const updateTaskStatus = _useUpdateTaskStatus();
+  const taskLifecycle = useTaskLifecycle();
   const updateTask = _useUpdateTask();
   const createTask = _useCreateTask();
 
@@ -1324,12 +1361,15 @@ export function WorkspaceKanbanPage() {
 
       const isMovingToInProgress = newStatus === "in_progress" && currentStatus !== "in_progress";
 
-      // Update task status via API
-      updateTaskStatus.mutate({
-        taskId,
-        status: newStatus,
-        workspacePath: workspace.path,
-      });
+      // Get appropriate lifecycle action for the status transition
+      const action = getLifecycleActionForStatusChange(currentStatus, newStatus);
+      if (action) {
+        taskLifecycle.mutate({
+          action,
+          workspace_path: workspace.path,
+          task_id: taskId,
+        });
+      }
 
       // If moving to in-progress, open detail panel and trigger auto-start
       if (isMovingToInProgress) {
@@ -1337,7 +1377,7 @@ export function WorkspaceKanbanPage() {
         setAutoStartTaskOnOpen(true);
       }
     },
-    [workspace, updateTaskStatus, sortedTasks, toast, t]
+    [workspace, taskLifecycle, sortedTasks, toast, t]
   );
 
   // Handle drag start - compute valid drop targets for visual feedback
@@ -1497,17 +1537,22 @@ export function WorkspaceKanbanPage() {
       const newStatus = COLUMN_TO_STATUS[status as ColumnId];
       if (!newStatus) return;
 
-      // Update all selected tasks
+      // Update all selected tasks using appropriate lifecycle actions
       for (const taskId of selectedIds) {
-        updateTaskStatus.mutate({
-          taskId,
-          status: newStatus,
-          workspacePath: workspace.path,
-        });
+        const task = sortedTasks.find((t) => t.id === taskId);
+        const currentStatus = task?.status as VibeTaskStatus | undefined;
+        const action = getLifecycleActionForStatusChange(currentStatus, newStatus);
+        if (action) {
+          taskLifecycle.mutate({
+            action,
+            workspace_path: workspace.path,
+            task_id: taskId,
+          });
+        }
       }
       clearSelection();
     },
-    [workspace, selectedIds, updateTaskStatus, clearSelection]
+    [workspace, selectedIds, taskLifecycle, sortedTasks, clearSelection]
   );
 
   // Bulk delete (placeholder - would need delete mutation)
@@ -1528,14 +1573,20 @@ export function WorkspaceKanbanPage() {
       const newStatus = COLUMN_TO_STATUS[columnId as ColumnId];
       if (!newStatus) return;
 
-      updateTaskStatus.mutate({
-        taskId,
-        status: newStatus,
-        workspacePath: workspace.path,
-      });
+      // Find current task status for context-aware action mapping
+      const task = sortedTasks.find((t) => t.id === taskId);
+      const currentStatus = task?.status as VibeTaskStatus | undefined;
+      const action = getLifecycleActionForStatusChange(currentStatus, newStatus);
+      if (action) {
+        taskLifecycle.mutate({
+          action,
+          workspace_path: workspace.path,
+          task_id: taskId,
+        });
+      }
       closeMoreMenu();
     },
-    [workspace, updateTaskStatus, closeMoreMenu]
+    [workspace, taskLifecycle, sortedTasks, closeMoreMenu]
   );
 
   // Handle duplicate task
@@ -1564,21 +1615,21 @@ export function WorkspaceKanbanPage() {
     [closeMoreMenu]
   );
 
-  // Handle start task - update status to in_progress (new queue flow)
+  // Handle start task - enqueue the task to be automatically picked up
   const handleStartTask = useCallback(
     (taskId: string) => {
       if (!workspace) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue", // Add to queue, then automatically picked up
-        workspacePath: workspace.path,
+      taskLifecycle.mutate({
+        action: "enqueue",
+        workspace_path: workspace.path,
+        task_id: taskId,
       });
       closeMoreMenu();
     },
-    [workspace, updateTaskStatus, closeMoreMenu]
+    [workspace, taskLifecycle, closeMoreMenu]
   );
 
-  // Queue All - move all backlog tasks to queue
+  // Queue All - move all backlog tasks to queue using enqueue lifecycle action
   const handleQueueAll = useCallback(async () => {
     if (!workspace) return;
     const backlogTasks = tasksByColumn["backlog"] ?? [];
@@ -1589,12 +1640,12 @@ export function WorkspaceKanbanPage() {
       const taskIds = backlogTasks.map((t) => t.id);
       await queueAllBacklogTasks(taskIds);
 
-      // Update task statuses via Kanban API
+      // Use enqueue lifecycle action for each task
       for (const task of backlogTasks) {
-        updateTaskStatus.mutate({
-          taskId: task.id,
-          status: "queue",
-          workspacePath: workspace.path,
+        taskLifecycle.mutate({
+          action: "enqueue",
+          workspace_path: workspace.path,
+          task_id: task.id,
         });
       }
       toast.success(
@@ -1602,19 +1653,19 @@ export function WorkspaceKanbanPage() {
       );
     } catch (error) {
       console.error("[WorkspaceKanban] Queue all failed:", error);
-      // Still update statuses even if Gateway notification failed
+      // Still enqueue tasks even if Gateway notification failed
       for (const task of backlogTasks) {
-        updateTaskStatus.mutate({
-          taskId: task.id,
-          status: "queue",
-          workspacePath: workspace.path,
+        taskLifecycle.mutate({
+          action: "enqueue",
+          workspace_path: workspace.path,
+          task_id: task.id,
         });
       }
       toast.success(
         t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
       );
     }
-  }, [workspace, tasksByColumn, updateTaskStatus, queueAllBacklogTasks, toast, t]);
+  }, [workspace, tasksByColumn, taskLifecycle, queueAllBacklogTasks, toast, t]);
 
   // Archive All - archive all completed tasks
   const handleArchiveAll = useCallback(() => {
@@ -1637,18 +1688,18 @@ export function WorkspaceKanbanPage() {
     [archiveTask, toast, t]
   );
 
-  // Stop task - move back to backlog
+  // Stop task - use the stop lifecycle endpoint
   const handleStopTask = useCallback(
     (taskId: string) => {
       if (!workspace) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "backlog",
-        workspacePath: workspace.path,
+      taskLifecycle.mutate({
+        action: "stop",
+        workspace_path: workspace.path,
+        task_id: taskId,
       });
       toast.success(t("workspace.taskStopped", "Task stopped"));
     },
-    [workspace, updateTaskStatus, toast, t]
+    [workspace, taskLifecycle, toast, t]
   );
 
   // View PR - open in browser
@@ -1661,67 +1712,48 @@ export function WorkspaceKanbanPage() {
     []
   );
 
-  // Resume task - for failed/incomplete tasks
+  // Resume task - for paused or failed/incomplete tasks
   const handleResumeTask = useCallback(
     (taskId: string) => {
       if (!workspace) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue", // Put back in queue to restart
-        workspacePath: workspace.path,
+      // Find the task to determine if it's paused (use resume) or failed (use retry)
+      const task = sortedTasks.find((t) => t.id === taskId);
+      const action: LifecycleAction = task?.status === "paused" ? "resume" : "retry";
+      taskLifecycle.mutate({
+        action,
+        workspace_path: workspace.path,
+        task_id: taskId,
       });
     },
-    [workspace, updateTaskStatus]
+    [workspace, taskLifecycle, sortedTasks]
   );
 
-  // Recover task - for stuck tasks
+  // Recover task - for stuck tasks using retry lifecycle action
   const handleRecoverTask = useCallback(
     (taskId: string) => {
       if (!workspace) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue", // Put back in queue to restart
-        workspacePath: workspace.path,
+      taskLifecycle.mutate({
+        action: "retry",
+        workspace_path: workspace.path,
+        task_id: taskId,
       });
       toast.success(t("workspace.taskRecovered", "Task recovered and restarted"));
     },
-    [workspace, updateTaskStatus, toast, t]
+    [workspace, taskLifecycle, toast, t]
   );
 
-  // Approve a task in review
+  // Approve a task in review using the approve lifecycle endpoint
   const handleApproveTask = useCallback(
     async (taskId: string) => {
       if (!workspace) return;
 
-      const gatewayUrl = getGatewayUrl();
-      if (!gatewayUrl) return;
-
       try {
-        const event: TaskEvent = {
-          eventId: crypto.randomUUID(),
-          sequence: 0,
-          type: "APPROVED",
-          timestamp: new Date().toISOString(),
-        };
-
-        const result = await submitTaskEvent(
-          gatewayUrl,
-          taskId,
-          workspace.path,
-          event
-        );
-
-        if (result.success) {
-          toast.success(t("workspace.taskActions.approved", "Task approved"));
-        } else {
-          const errorMessage =
-            result.error === "SEQUENCE_MISMATCH"
-              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
-              : result.error === "INVALID_TRANSITION"
-                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
-                : t("workspace.taskActions.submitFailed", "Failed to submit event");
-          toast.error(errorMessage);
-        }
+        await taskLifecycle.mutateAsync({
+          action: "approve",
+          workspace_path: workspace.path,
+          task_id: taskId,
+        });
+        toast.success(t("workspace.taskActions.approved", "Task approved"));
       } catch (error) {
         const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         toast.error(t("workspace.taskActions.approveFailed", "Failed to approve task"), {
@@ -1729,43 +1761,21 @@ export function WorkspaceKanbanPage() {
         });
       }
     },
-    [workspace, toast, t]
+    [workspace, taskLifecycle, toast, t]
   );
 
-  // Reject a task in review
+  // Reject a task in review using the reject lifecycle endpoint
   const handleRejectTask = useCallback(
     async (taskId: string) => {
       if (!workspace) return;
 
-      const gatewayUrl = getGatewayUrl();
-      if (!gatewayUrl) return;
-
       try {
-        const event: TaskEvent = {
-          eventId: crypto.randomUUID(),
-          sequence: 0,
-          type: "REJECTED",
-          timestamp: new Date().toISOString(),
-        };
-
-        const result = await submitTaskEvent(
-          gatewayUrl,
-          taskId,
-          workspace.path,
-          event
-        );
-
-        if (result.success) {
-          toast.success(t("workspace.taskActions.rejected", "Task sent back for revision"));
-        } else {
-          const errorMessage =
-            result.error === "SEQUENCE_MISMATCH"
-              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
-              : result.error === "INVALID_TRANSITION"
-                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
-                : t("workspace.taskActions.submitFailed", "Failed to submit event");
-          toast.error(errorMessage);
-        }
+        await taskLifecycle.mutateAsync({
+          action: "reject",
+          workspace_path: workspace.path,
+          task_id: taskId,
+        });
+        toast.success(t("workspace.taskActions.rejected", "Task sent back for revision"));
       } catch (error) {
         const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         toast.error(t("workspace.taskActions.rejectFailed", "Failed to reject task"), {
@@ -1773,7 +1783,7 @@ export function WorkspaceKanbanPage() {
         });
       }
     },
-    [workspace, toast, t]
+    [workspace, taskLifecycle, toast, t]
   );
 
   // Command palette commands

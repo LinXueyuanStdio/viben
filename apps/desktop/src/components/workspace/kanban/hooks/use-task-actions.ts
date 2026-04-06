@@ -8,25 +8,59 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  _useUpdateTaskStatus,
+  useTaskLifecycle,
   _useUpdateTask,
   _useCreateTask,
   _useDeleteTask,
+  type LifecycleAction,
 } from "@/hooks/use-kanban";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import {
   COLUMN_TO_STATUS,
   type KanbanColumnId,
   type TaskWithAttemptStatus,
+  type TaskStatus,
 } from "@/lib/kanban";
-import {
-  getGatewayUrl,
-  submitTaskEvent,
-  type TaskEvent,
-} from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import type { CreateTaskData } from "../create-task-dialog";
 import type { TaskActions } from "../types";
+
+/**
+ * Maps a status transition to the appropriate lifecycle action
+ *
+ * @param fromStatus - Current task status (optional, used for context-aware mapping)
+ * @param toStatus - Target task status
+ * @returns The lifecycle action to use, or null if no direct mapping exists
+ */
+function getLifecycleActionForStatusChange(
+  fromStatus: TaskStatus | undefined,
+  toStatus: TaskStatus
+): LifecycleAction | null {
+  // Context-aware mappings (depend on current status)
+  if (toStatus === "backlog") {
+    if (fromStatus === "queue") return "dequeue";
+    if (fromStatus === "review") return "reject";
+    // For other statuses going to backlog, use dequeue as fallback
+    return "dequeue";
+  }
+
+  if (toStatus === "in_progress") {
+    if (fromStatus === "paused") return "resume";
+    // For queue -> in_progress, use start
+    return "start";
+  }
+
+  // Simple status -> action mappings
+  const statusToAction: Partial<Record<TaskStatus, LifecycleAction>> = {
+    queue: "enqueue",
+    paused: "pause",
+    completed: "approve",
+    cancelled: "cancel",
+    archived: "archive",
+  };
+
+  return statusToAction[toStatus] ?? null;
+}
 
 // Re-export CreateTaskData for convenience
 export type { CreateTaskData } from "../create-task-dialog";
@@ -80,7 +114,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
   const { t } = useTranslation();
 
   // Mutations from use-kanban
-  const updateTaskStatus = _useUpdateTaskStatus();
+  const taskLifecycle = useTaskLifecycle();
   const updateTask = _useUpdateTask();
   const createTaskMutation = _useCreateTask();
   const deleteTaskMutation = _useDeleteTask();
@@ -106,102 +140,83 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
   const onStart = useCallback(
     (taskId: string) => {
       if (!workspacePath) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue",
-        workspacePath,
+      taskLifecycle.mutate({
+        action: "enqueue",
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
     },
-    [workspacePath, updateTaskStatus]
+    [workspacePath, taskLifecycle]
   );
 
   /**
    * Stop a running task
-   * Moves task back to "backlog" status
+   * Uses the stop endpoint to properly halt execution
    */
   const onStop = useCallback(
     (taskId: string) => {
       if (!workspacePath) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "backlog",
-        workspacePath,
+      taskLifecycle.mutate({
+        action: "stop",
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
       onSuccess?.(t("workspace.taskStopped", "Task stopped"));
     },
-    [workspacePath, updateTaskStatus, onSuccess, t]
+    [workspacePath, taskLifecycle, onSuccess, t]
   );
 
   /**
    * Recover a stuck task
-   * Puts the task back in queue to restart execution
+   * Uses retry to put the task back in queue to restart execution
    */
   const onRecover = useCallback(
     (taskId: string) => {
       if (!workspacePath) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue",
-        workspacePath,
+      taskLifecycle.mutate({
+        action: "retry",
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
       onSuccess?.(t("workspace.taskRecovered", "Task recovered and restarted"));
     },
-    [workspacePath, updateTaskStatus, onSuccess, t]
+    [workspacePath, taskLifecycle, onSuccess, t]
   );
 
   /**
    * Resume a failed/incomplete task
-   * Puts the task back in queue to restart execution
+   * Uses resume endpoint for paused tasks, retry for failed tasks
    */
   const onResume = useCallback(
     (taskId: string) => {
       if (!workspacePath) return;
-      updateTaskStatus.mutate({
-        taskId,
-        status: "queue",
-        workspacePath,
+      // Find the task to determine appropriate action
+      const task = tasks.find((t) => t.id === taskId);
+      const action: LifecycleAction = task?.status === "paused" ? "resume" : "retry";
+      taskLifecycle.mutate({
+        action,
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
     },
-    [workspacePath, updateTaskStatus]
+    [workspacePath, taskLifecycle, tasks]
   );
 
   /**
    * Approve a task in review
-   * Submits APPROVED event to move task to completed status
+   * Uses the approve lifecycle endpoint to move task to completed status
    */
   const onApprove = useCallback(
     async (taskId: string) => {
       if (!workspacePath) return;
 
-      const gatewayUrl = getGatewayUrl();
-      if (!gatewayUrl) return;
-
       try {
-        const event: TaskEvent = {
-          eventId: crypto.randomUUID(),
-          sequence: 0, // Will be validated by server
-          type: "APPROVED",
-          timestamp: new Date().toISOString(),
-        };
-
-        const result = await submitTaskEvent(
-          gatewayUrl,
-          taskId,
-          workspacePath,
-          event
-        );
-
-        if (result.success) {
-          onSuccess?.(t("workspace.taskActions.approved", "Task approved"));
-        } else {
-          const errorMessage =
-            result.error === "SEQUENCE_MISMATCH"
-              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
-              : result.error === "INVALID_TRANSITION"
-                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
-                : t("workspace.taskActions.submitFailed", "Failed to submit event");
-          onError?.(errorMessage);
-        }
+        await taskLifecycle.mutateAsync({
+          action: "approve",
+          workspace_path: workspacePath,
+          task_id: taskId,
+        });
+        onSuccess?.(t("workspace.taskActions.approved", "Task approved"));
       } catch (error) {
         const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         onError?.(message);
@@ -210,46 +225,24 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         });
       }
     },
-    [workspacePath, onSuccess, onError, t]
+    [workspacePath, taskLifecycle, onSuccess, onError, t]
   );
 
   /**
    * Reject a task in review
-   * Submits REJECTED event to resume task execution
+   * Uses the reject lifecycle endpoint to send task back for revision
    */
   const onReject = useCallback(
     async (taskId: string) => {
       if (!workspacePath) return;
 
-      const gatewayUrl = getGatewayUrl();
-      if (!gatewayUrl) return;
-
       try {
-        const event: TaskEvent = {
-          eventId: crypto.randomUUID(),
-          sequence: 0, // Will be validated by server
-          type: "REJECTED",
-          timestamp: new Date().toISOString(),
-        };
-
-        const result = await submitTaskEvent(
-          gatewayUrl,
-          taskId,
-          workspacePath,
-          event
-        );
-
-        if (result.success) {
-          onSuccess?.(t("workspace.taskActions.rejected", "Task sent back for revision"));
-        } else {
-          const errorMessage =
-            result.error === "SEQUENCE_MISMATCH"
-              ? t("workspace.taskActions.sequenceMismatch", "Sequence mismatch - please refresh")
-              : result.error === "INVALID_TRANSITION"
-                ? t("workspace.taskActions.invalidTransition", "Invalid state transition")
-                : t("workspace.taskActions.submitFailed", "Failed to submit event");
-          onError?.(errorMessage);
-        }
+        await taskLifecycle.mutateAsync({
+          action: "reject",
+          workspace_path: workspacePath,
+          task_id: taskId,
+        });
+        onSuccess?.(t("workspace.taskActions.rejected", "Task sent back for revision"));
       } catch (error) {
         const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         onError?.(message);
@@ -258,19 +251,29 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         });
       }
     },
-    [workspacePath, onSuccess, onError, t]
+    [workspacePath, taskLifecycle, onSuccess, onError, t]
   );
 
   /**
    * Archive a completed task
-   * Adds task to archived list (local storage)
+   * Uses the archive lifecycle endpoint
    */
   const onArchive = useCallback(
     (taskId: string) => {
-      archiveTask(taskId);
+      if (!workspacePath) {
+        // Fallback to local storage if no workspace path
+        archiveTask(taskId);
+        onSuccess?.(t("workspace.taskArchived", "Task archived"));
+        return;
+      }
+      taskLifecycle.mutate({
+        action: "archive",
+        workspace_path: workspacePath,
+        task_id: taskId,
+      });
       onSuccess?.(t("workspace.taskArchived", "Task archived"));
     },
-    [archiveTask, onSuccess, t]
+    [workspacePath, taskLifecycle, archiveTask, onSuccess, t]
   );
 
   /**
@@ -310,7 +313,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
 
   /**
    * Move task to a specific column
-   * Updates task status based on column mapping
+   * Uses appropriate lifecycle action based on status transition
    */
   const onMoveToColumn = useCallback(
     (taskId: string, columnId: string) => {
@@ -318,13 +321,20 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
       const newStatus = COLUMN_TO_STATUS[columnId as KanbanColumnId];
       if (!newStatus) return;
 
-      updateTaskStatus.mutate({
-        taskId,
-        status: newStatus,
-        workspacePath,
-      });
+      // Find current task status for context-aware action mapping
+      const task = tasks.find((t) => t.id === taskId);
+      const currentStatus = task?.status as TaskStatus | undefined;
+      const action = getLifecycleActionForStatusChange(currentStatus, newStatus);
+
+      if (action) {
+        taskLifecycle.mutate({
+          action,
+          workspace_path: workspacePath,
+          task_id: taskId,
+        });
+      }
     },
-    [workspacePath, updateTaskStatus]
+    [workspacePath, taskLifecycle, tasks]
   );
 
   /**
@@ -361,7 +371,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
 
   /**
    * Queue all backlog tasks
-   * Moves all provided tasks from backlog to queue
+   * Moves all provided tasks from backlog to queue using enqueue lifecycle action
    */
   const queueAll = useCallback(
     async (taskIds: string[]) => {
@@ -371,12 +381,12 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         // Notify Gateway about batch queue operation (for tracking)
         await queueAllBacklogTasks(taskIds);
 
-        // Update task statuses via Kanban API
+        // Use enqueue lifecycle action for each task
         for (const taskId of taskIds) {
-          updateTaskStatus.mutate({
-            taskId,
-            status: "queue",
-            workspacePath,
+          taskLifecycle.mutate({
+            action: "enqueue",
+            workspace_path: workspacePath,
+            task_id: taskId,
           });
         }
         onSuccess?.(
@@ -384,12 +394,12 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         );
       } catch (error) {
         console.error("[useTaskActions] Queue all failed:", error);
-        // Still update statuses even if Gateway notification failed
+        // Still enqueue tasks even if Gateway notification failed
         for (const taskId of taskIds) {
-          updateTaskStatus.mutate({
-            taskId,
-            status: "queue",
-            workspacePath,
+          taskLifecycle.mutate({
+            action: "enqueue",
+            workspace_path: workspacePath,
+            task_id: taskId,
           });
         }
         onSuccess?.(
@@ -397,7 +407,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         );
       }
     },
-    [workspacePath, updateTaskStatus, queueAllBacklogTasks, onSuccess, t]
+    [workspacePath, taskLifecycle, queueAllBacklogTasks, onSuccess, t]
   );
 
   /**
@@ -416,6 +426,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
 
   /**
    * Change status for multiple tasks
+   * Uses appropriate lifecycle actions based on status transition
    */
   const bulkStatusChange = useCallback(
     (taskIds: string[], status: string) => {
@@ -424,14 +435,21 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
       if (!newStatus) return;
 
       for (const taskId of taskIds) {
-        updateTaskStatus.mutate({
-          taskId,
-          status: newStatus,
-          workspacePath,
-        });
+        // Find current task status for context-aware action mapping
+        const task = tasks.find((t) => t.id === taskId);
+        const currentStatus = task?.status as TaskStatus | undefined;
+        const action = getLifecycleActionForStatusChange(currentStatus, newStatus);
+
+        if (action) {
+          taskLifecycle.mutate({
+            action,
+            workspace_path: workspacePath,
+            task_id: taskId,
+          });
+        }
       }
     },
-    [workspacePath, updateTaskStatus]
+    [workspacePath, taskLifecycle, tasks]
   );
 
   /**

@@ -3,27 +3,53 @@
  * Uses workspace_path for filtering tasks
  *
  * Public API:
- * - useTasks: Fetch task list (GET /api/tasks)
+ * - useTasks: Fetch task list (POST /api/task/list)
  * - useTaskLifecycle: Lifecycle mutations (POST /api/task/{action})
  * - kanbanKeys: Query key factory
  *
  * Internal (CRUD):
- * - _useCreateTask, _useUpdateTask, _useUpdateTaskStatus, _useDeleteTask
+ * - _useCreateTask, _useDeleteTask
+ *
+ * @deprecated hooks (to be removed once POST /api/task/update is available):
+ * - _useUpdateTask: Uses PUT /api/tasks/:id for field updates (title, description, etc.)
+ * - _useUpdateTaskStatus: Uses PUT /api/tasks/:id for status updates
+ *
+ * TODO: Create POST /api/task/update endpoint to replace PUT /api/tasks/:id
+ * See: https://github.com/LinXueyuanStdio/viben/issues/XXX
  */
 
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getTasks,
-  updateTask,
-  deleteTask,
-  updateTaskStatus,
   type TaskWithAttemptStatus,
-  type UpdateTaskRequest,
   type TaskStatus,
 } from "@/lib/kanban";
 import { recordTaskActivity, clearTaskActivity } from "@/stores/task-activity-store";
 import { getGatewayUrl } from "@/lib/gateway";
+
+// ============================================================================
+// Types for Deprecated Update Hooks
+// ============================================================================
+
+/**
+ * Request body for updating a task
+ * @deprecated Will be replaced by POST /api/task/update
+ */
+export interface UpdateTaskRequest {
+  title?: string;
+  description?: string | null;
+  prompt?: string;
+  status?: TaskStatus;
+  priority?: string;
+  workspace_path?: string;
+  session_id?: string;
+  agent_id?: string;
+  cost?: number;
+  duration?: number;
+  favorite?: boolean;
+  executor?: string;
+}
 
 // ============================================================================
 // Types
@@ -175,6 +201,15 @@ export interface LifecycleResponse {
 export interface LifecycleErrorResponse {
   error: string;
   code?: string;
+}
+
+/**
+ * Response from POST /api/task/delete endpoint
+ */
+export interface DeleteTaskApiResponse {
+  success: boolean;
+  task_id: string;
+  deleted: boolean;
 }
 
 // ============================================================================
@@ -420,6 +455,11 @@ export function _useCreateTask() {
   });
 }
 
+// ============================================================================
+// Deprecated Update Hooks
+// These use PUT /api/tasks/:id and should be replaced with POST /api/task/update
+// ============================================================================
+
 interface UpdateTaskParams {
   taskId: string;
   data: UpdateTaskRequest;
@@ -427,14 +467,35 @@ interface UpdateTaskParams {
 }
 
 /**
- * Update a task
+ * Update task fields (title, description, etc.)
+ *
+ * @deprecated This hook uses PUT /api/tasks/:id which should be replaced with
+ * a new POST /api/task/update endpoint. Use useTaskLifecycle for state transitions.
+ *
+ * TODO: Create POST /api/task/update endpoint to replace this
+ *
  * @internal
  */
 export function _useUpdateTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, data }: UpdateTaskParams) => updateTask(taskId, data),
+    mutationFn: async ({ taskId, data }: UpdateTaskParams) => {
+      // Use PUT /api/tasks/:id directly since we removed the wrapper function
+      const url = `${getGatewayUrl()}/api/tasks/${encodeURIComponent(taskId)}`;
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Update task failed with status ${response.status}`);
+      }
+
+      return response.json();
+    },
     onMutate: async ({ taskId, data, workspacePath }: UpdateTaskParams) => {
       const queryKey = kanbanKeys.tasks(workspacePath ?? "");
 
@@ -483,14 +544,32 @@ interface UpdateTaskStatusParams {
 
 /**
  * Update task status (convenience hook)
- * @internal - Prefer useTaskLifecycle for state transitions
+ *
+ * @deprecated This hook uses PUT /api/tasks/:id for status updates. Prefer
+ * useTaskLifecycle for proper state transitions via POST /api/task/{action}.
+ *
+ * @internal
  */
 export function _useUpdateTaskStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId, status }: UpdateTaskStatusParams) =>
-      updateTaskStatus(taskId, status),
+    mutationFn: async ({ taskId, status }: UpdateTaskStatusParams) => {
+      // Use PUT /api/tasks/:id directly
+      const url = `${getGatewayUrl()}/api/tasks/${encodeURIComponent(taskId)}`;
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Update task status failed with status ${response.status}`);
+      }
+
+      return response.json();
+    },
     onMutate: async ({ taskId, status, workspacePath }: UpdateTaskStatusParams) => {
       const queryKey = kanbanKeys.tasks(workspacePath ?? "");
 
@@ -532,26 +611,48 @@ export function _useUpdateTaskStatus() {
   });
 }
 
+// ============================================================================
+// Delete Task Hook
+// ============================================================================
+
 interface DeleteTaskParams {
   taskId: string;
-  workspacePath?: string;
+  workspacePath: string;  // required for POST /api/task/delete
 }
 
 /**
- * Delete a task
+ * Delete a task via POST /api/task/delete endpoint
  * @internal
  */
 export function _useDeleteTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ taskId }: DeleteTaskParams) => deleteTask(taskId),
-    onSuccess: (_data: void, { taskId, workspacePath }: DeleteTaskParams) => {
+    mutationFn: async ({ taskId, workspacePath }: DeleteTaskParams): Promise<DeleteTaskApiResponse> => {
+      const url = `${getGatewayUrl()}/api/task/delete`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspace_path: workspacePath,
+          task_id: taskId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Delete task failed with status ${response.status}`);
+      }
+
+      return response.json();
+    },
+    onSuccess: (_data: DeleteTaskApiResponse, { taskId, workspacePath }: DeleteTaskParams) => {
       // Clear activity tracking for deleted task
       clearTaskActivity(taskId);
 
       queryClient.invalidateQueries({
-        queryKey: kanbanKeys.tasks(workspacePath ?? ""),
+        queryKey: kanbanKeys.tasks(workspacePath),
       });
     },
   });

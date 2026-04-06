@@ -2,9 +2,11 @@
  * MCP (Model Context Protocol) routes
  *
  * Provides HTTP API for:
- * - Global MCP server installation management
+ * - MCP package management (install, uninstall, list, search)
  * - Agent-specific MCP server configuration
  * - Browse-MCP process management
+ *
+ * All endpoints share the same src/mcp/ops implementation with CLI commands.
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { mcpManager } from "../../mcp";
@@ -12,6 +14,27 @@ import type { McpServer } from "../../types";
 import { exec, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 import { logger as globalLogger } from "../../telemetry";
+
+// Import from mcp/ops module - shared with CLI
+import {
+  // CRUD operations
+  installMcp,
+  uninstallMcp,
+  listMcps,
+  getMcp,
+  // Registry operations
+  searchMarketplace,
+  getFromMarketplace,
+  downloadFromMarketplace,
+} from "../../mcp/ops";
+import type {
+  McpTarget,
+  InstallMcpResult,
+  UninstallMcpResult,
+  InstalledMcpInfo,
+  McpInfo,
+  MarketplaceMcp,
+} from "../../mcp/ops/types";
 
 // Module-level logger for MCP routes
 const log = globalLogger.child({ module: "mcp" });
@@ -128,12 +151,597 @@ let mcpProxyStatus: McpProxyStatus = {
  */
 export function registerMcpRoutes(fastify: FastifyInstance): void {
   // ========================================================================
-  // Global Installed MCPs
+  // MCP Package Management (shared with CLI: viben mcp xxx)
+  // ========================================================================
+
+  /**
+   * List installed MCP packages
+   * GET /api/mcp/list
+   * CLI: viben mcp list
+   *
+   * Query params:
+   * - target: "project" | "global" (optional)
+   * - all: "true" to list from all targets
+   */
+  fastify.get<{
+    Querystring: {
+      target?: McpTarget;
+      all?: string;
+    };
+  }>("/api/mcp/list", {
+    schema: {
+      description: "List installed MCP packages",
+      tags: ["mcp"],
+      querystring: {
+        type: "object",
+        properties: {
+          target: {
+            type: "string",
+            enum: ["project", "global"],
+            description: "Filter by installation target",
+          },
+          all: {
+            type: "string",
+            description: "Set to 'true' to list from all targets",
+          },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            mcps: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  version: { type: "string" },
+                  path: { type: "string" },
+                  installed_at: { type: "string" },
+                  source: { type: "string" },
+                  target: { type: "string" },
+                },
+              },
+            },
+            count: { type: "number" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { target, all } = request.query;
+
+    try {
+      const result = await listMcps({
+        target,
+        all: all === "true",
+      });
+
+      if (!result.success) {
+        reply.code(400);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        mcps: result.mcps,
+        count: result.count,
+      };
+    } catch (error) {
+      log.error({ err: error }, "Failed to list MCP packages");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to list packages",
+      };
+    }
+  });
+
+  /**
+   * Get MCP package details
+   * GET /api/mcp/show/:name
+   * CLI: viben mcp show <name>
+   */
+  fastify.get<{
+    Params: { name: string };
+    Querystring: { target?: McpTarget };
+  }>("/api/mcp/show/:name", {
+    schema: {
+      description: "Get MCP package details",
+      tags: ["mcp"],
+      params: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Package name" },
+        },
+        required: ["name"],
+      },
+      querystring: {
+        type: "object",
+        properties: {
+          target: {
+            type: "string",
+            enum: ["project", "global"],
+          },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            mcp: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                version: { type: "string" },
+                description: { type: "string" },
+                path: { type: "string" },
+                source: { type: "string" },
+                target: { type: "string" },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name } = request.params;
+    const { target } = request.query;
+
+    try {
+      const result = await getMcp(name, { target });
+
+      if (!result.success || !result.mcp) {
+        reply.code(404);
+        return { success: false, error: result.error || `Package not found: ${name}` };
+      }
+
+      return {
+        success: true,
+        mcp: result.mcp,
+      };
+    } catch (error) {
+      log.error({ err: error }, "Failed to get MCP package");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get package",
+      };
+    }
+  });
+
+  /**
+   * Install MCP package
+   * POST /api/mcp/install
+   * CLI: viben mcp install <spec>
+   */
+  fastify.post<{
+    Body: {
+      spec: string;
+      target?: McpTarget;
+      force?: boolean;
+    };
+  }>("/api/mcp/install", {
+    schema: {
+      description: "Install an MCP package (supports name, name@version, gh:user/repo, ./path)",
+      tags: ["mcp"],
+      body: {
+        type: "object",
+        properties: {
+          spec: { type: "string", description: "Install spec (name, name@version, gh:user/repo, ./path)" },
+          target: {
+            type: "string",
+            enum: ["project", "global"],
+            default: "project",
+          },
+          force: { type: "boolean", default: false, description: "Force reinstall" },
+        },
+        required: ["spec"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            name: { type: "string" },
+            version: { type: "string" },
+            path: { type: "string" },
+            target: { type: "string" },
+            source: { type: "string" },
+            message: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { spec, target = "project", force = false } = request.body;
+
+    if (!spec) {
+      reply.code(400);
+      return { success: false, error: "spec is required" };
+    }
+
+    log.info({ spec, target, force }, "Installing MCP package");
+
+    try {
+      const result = await installMcp({
+        spec,
+        target,
+        force,
+      });
+
+      if (!result.success) {
+        reply.code(400);
+        return {
+          success: false,
+          error: result.error || result.message,
+        };
+      }
+
+      return result;
+    } catch (error) {
+      log.error({ err: error }, "Failed to install MCP package");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to install package",
+      };
+    }
+  });
+
+  /**
+   * Uninstall MCP package
+   * POST /api/mcp/uninstall
+   * CLI: viben mcp uninstall <name>
+   */
+  fastify.post<{
+    Body: {
+      name: string;
+      target?: McpTarget;
+    };
+  }>("/api/mcp/uninstall", {
+    schema: {
+      description: "Uninstall an MCP package",
+      tags: ["mcp"],
+      body: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Package name" },
+          target: {
+            type: "string",
+            enum: ["project", "global"],
+            default: "project",
+          },
+        },
+        required: ["name"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            name: { type: "string" },
+            message: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name, target = "project" } = request.body;
+
+    if (!name) {
+      reply.code(400);
+      return { success: false, error: "name is required" };
+    }
+
+    log.info({ name, target }, "Uninstalling MCP package");
+
+    try {
+      const result = await uninstallMcp({ name, target });
+
+      if (!result.success) {
+        const isNotFound = result.error?.includes("not found");
+        reply.code(isNotFound ? 404 : 400);
+        return {
+          success: false,
+          error: result.error || result.message,
+        };
+      }
+
+      return result;
+    } catch (error) {
+      log.error({ err: error }, "Failed to uninstall MCP package");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to uninstall package",
+      };
+    }
+  });
+
+  /**
+   * Search MCP packages in marketplace
+   * GET /api/mcp/search
+   * CLI: viben mcp search <query>
+   */
+  fastify.get<{
+    Querystring: {
+      query: string;
+      limit?: string;
+      page?: string;
+    };
+  }>("/api/mcp/search", {
+    schema: {
+      description: "Search MCP packages in marketplace",
+      tags: ["mcp"],
+      querystring: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query (required)" },
+          limit: { type: "string", description: "Maximum results" },
+          page: { type: "string", description: "Page number" },
+        },
+        required: ["query"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            mcps: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  slug: { type: "string" },
+                  version: { type: "string" },
+                  description: { type: "string" },
+                  downloads_count: { type: "number" },
+                  favorites_count: { type: "number" },
+                },
+              },
+            },
+            total: { type: "number" },
+            page: { type: "number" },
+            total_pages: { type: "number" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { query, limit, page } = request.query;
+
+    if (!query) {
+      reply.code(400);
+      return { success: false, error: "query is required" };
+    }
+
+    try {
+      const result = await searchMarketplace({
+        query,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        page: page ? parseInt(page, 10) : undefined,
+      });
+
+      if (!result.success) {
+        reply.code(400);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        mcps: result.mcps,
+        total: result.total,
+        page: result.page,
+        total_pages: result.total_pages,
+      };
+    } catch (error) {
+      log.error({ err: error }, "Failed to search marketplace");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to search marketplace",
+      };
+    }
+  });
+
+  /**
+   * Get MCP package from marketplace
+   * GET /api/mcp/info/:idOrSlug
+   * (No direct CLI equivalent, but useful for showing marketplace package details)
+   */
+  fastify.get<{
+    Params: { idOrSlug: string };
+  }>("/api/mcp/info/:idOrSlug", {
+    schema: {
+      description: "Get MCP package details from marketplace",
+      tags: ["mcp"],
+      params: {
+        type: "object",
+        properties: {
+          idOrSlug: { type: "string", description: "Package ID or slug" },
+        },
+        required: ["idOrSlug"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            mcp: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                name: { type: "string" },
+                slug: { type: "string" },
+                version: { type: "string" },
+                description: { type: "string" },
+                downloads_count: { type: "number" },
+                favorites_count: { type: "number" },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { idOrSlug } = request.params;
+
+    try {
+      const result = await getFromMarketplace(idOrSlug);
+
+      if (!result.success || !result.mcp) {
+        reply.code(404);
+        return { success: false, error: result.error || `Package not found: ${idOrSlug}` };
+      }
+
+      return {
+        success: true,
+        mcp: result.mcp,
+      };
+    } catch (error) {
+      log.error({ err: error }, "Failed to get package from marketplace");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to get package",
+      };
+    }
+  });
+
+  /**
+   * Download MCP package from marketplace (without installing)
+   * POST /api/mcp/download
+   * CLI: viben mcp download <name> [version]
+   */
+  fastify.post<{
+    Body: {
+      name: string;
+      version?: string;
+      target_dir: string;
+    };
+  }>("/api/mcp/download", {
+    schema: {
+      description: "Download MCP package to a directory",
+      tags: ["mcp"],
+      body: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Package name or ID" },
+          version: { type: "string", description: "Version to download" },
+          target_dir: { type: "string", description: "Target directory" },
+        },
+        required: ["name", "target_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            path: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name, version, target_dir } = request.body;
+
+    if (!name) {
+      reply.code(400);
+      return { success: false, error: "name is required" };
+    }
+
+    if (!target_dir) {
+      reply.code(400);
+      return { success: false, error: "target_dir is required" };
+    }
+
+    log.info({ name, version, target_dir }, "Downloading MCP package");
+
+    try {
+      const result = await downloadFromMarketplace(name, version, target_dir);
+
+      if (!result.success) {
+        reply.code(400);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        path: target_dir,
+      };
+    } catch (error) {
+      log.error({ err: error }, "Failed to download MCP package");
+      reply.code(500);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to download package",
+      };
+    }
+  });
+
+  // ========================================================================
+  // Legacy: Global Installed MCPs (deprecated, use /api/mcp/list instead)
   // ========================================================================
 
   /**
    * List globally installed MCP servers
    * GET /api/mcp/installed
+   * @deprecated Use GET /api/mcp/list?target=global instead
    */
   fastify.get("/api/mcp/installed", {
     schema: {

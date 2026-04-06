@@ -116,8 +116,10 @@ export class TaskEventStore {
     }
 
     // 4. Validate state transition using XState
-    const currentXState = task.xstate_state ?? "backlog";
-    const transitionResult = this.computeTransition(currentXState, event.type);
+    // If xstate_state is not set, infer from status (for backward compatibility with tasks
+    // that were created/updated without the event system)
+    const currentXState = task.xstate_state ?? task.status ?? "backlog";
+    const transitionResult = this.computeTransition(currentXState, event.type, task.machine_context);
 
     // Check if transition is valid:
     // - changed: true means state changed (normal transition)
@@ -151,9 +153,31 @@ export class TaskEventStore {
       review_reason: this.computeReviewReason(event, task),
     };
 
-    // 8. Set queuedAt timestamp when QUEUE event is applied (for FIFO ordering)
+    // 8. Handle event-specific payload data
     if (event.type === "QUEUE") {
+      // Set queuedAt timestamp for FIFO ordering
       updatePayload.queued_at = event.timestamp;
+      // Extract agent/executor/model/priority configuration from payload
+      if (event.payload) {
+        const payload = event.payload as { agent?: string; executor?: string; model?: string; priority?: UnifiedTask["priority"] };
+        if (payload.agent) updatePayload.agent = payload.agent;
+        if (payload.executor) updatePayload.executor = payload.executor;
+        if (payload.model) updatePayload.model = payload.model;
+        if (payload.priority) updatePayload.priority = payload.priority;
+      }
+    } else if (event.type === "DEQUEUE") {
+      // Clear queued_at when dequeuing back to backlog
+      updatePayload.queued_at = undefined;
+    } else if (event.type === "RETRY") {
+      // Set queued_at when retrying (failed -> queue)
+      updatePayload.queued_at = event.timestamp;
+    } else if (event.type === "APPROVED") {
+      // Extract merge commit info from payload
+      if (event.payload) {
+        const payload = event.payload as { merge_commit?: string; merged_at?: string };
+        if (payload.merge_commit) updatePayload.merge_commit = payload.merge_commit;
+        if (payload.merged_at) updatePayload.merged_at = payload.merged_at;
+      }
     }
 
     // 9. Persist machine_context for pause/resume across restarts
@@ -190,7 +214,9 @@ export class TaskEventStore {
     }
 
     // 10. Update task.json with new state
-    const updatedTask = await taskService.updateTask(taskDir, updatePayload);
+    // Use updateTaskWithoutLock since we're already inside the taskLock context
+    // (applyEvent wraps this method with taskLock.withLock)
+    const updatedTask = await taskService.updateTaskWithoutLock(taskDir, updatePayload);
 
     return {
       success: true,
@@ -233,14 +259,27 @@ export class TaskEventStore {
    */
   private computeTransition(
     currentState: XStateValue,
-    eventType: string
+    eventType: string,
+    machineContext?: UnifiedTask["machine_context"]
   ): { value: XStateValue; changed: boolean } {
     // Normalize legacy state names before computing transition
     const normalizedState = this.normalizeXStateValue(currentState);
 
+    // Map task machine_context to XState TaskMachineContext format
+    // This is needed for guards (e.g., pausedFromImplement) to work correctly
+    const xstateContext: Partial<import("../machine/task-machine").TaskMachineContext> | undefined = machineContext ? {
+      currentSubtaskIndex: machineContext.current_subtask_index ?? 0,
+      requiresPlanReview: machineContext.requires_plan_review ?? false,
+      paused_snapshot: machineContext.paused_snapshot ? {
+        from_state: machineContext.paused_snapshot.from_state as XStateValue,
+        subtask_index: machineContext.paused_snapshot.subtask_index,
+        paused_at: machineContext.paused_snapshot.paused_at,
+      } : undefined,
+    } : undefined;
+
     // Use the corrected getNextState function that properly handles
     // state restoration before computing transitions
-    return getNextState(normalizedState, { type: eventType } as TaskMachineEvent);
+    return getNextState(normalizedState, { type: eventType } as TaskMachineEvent, xstateContext);
   }
 
   /**
@@ -381,7 +420,7 @@ export class TaskEventStore {
 
     // Validate state transition
     const currentXState = task.xstate_state ?? "backlog";
-    const transitionResult = this.computeTransition(currentXState, event.type);
+    const transitionResult = this.computeTransition(currentXState, event.type, task.machine_context);
 
     // Check if transition is valid (same logic as applyEvent)
     const isSelfTransition = this.isSelfTransitionEvent(event.type);

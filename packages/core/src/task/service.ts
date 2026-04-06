@@ -275,6 +275,23 @@ export class TaskService {
   }
 
   /**
+   * Update task without acquiring the lock
+   *
+   * WARNING: This method should ONLY be called from within a lock context
+   * (i.e., when you already hold taskLock for this taskDir).
+   * This is exposed for use by TaskEventStore which acquires its own lock
+   * and needs to update the task without causing a deadlock.
+   *
+   * @param taskDir - Absolute path to task directory
+   * @param updates - Partial task data to update
+   * @returns Updated task data
+   * @internal For use by TaskEventStore only
+   */
+  async updateTaskWithoutLock(taskDir: string, updates: Partial<UnifiedTask>): Promise<UnifiedTask> {
+    return this.updateTaskUnsafe(taskDir, updates);
+  }
+
+  /**
    * Internal method to update task without locking
    * Should only be called from within a lock context
    */

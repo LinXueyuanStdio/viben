@@ -7,7 +7,6 @@ import type {
   Task,
   TaskWithAttemptStatus,
   CreateTaskRequest,
-  UpdateTaskRequest,
 } from "./types";
 import { getGatewayUrl } from "@/lib/gateway";
 import { NETWORK_RETRY_CONFIG } from "./constants";
@@ -35,12 +34,6 @@ export class VibeKanbanApiError extends Error {
   }
 }
 
-/**
- * Response format from unified /api/tasks endpoint
- */
-interface TasksResponse {
-  tasks: TaskWithAttemptStatus[];
-}
 
 /**
  * Make a request to the tasks API via Gateway
@@ -115,15 +108,45 @@ export async function checkHealth(): Promise<boolean> {
 }
 
 /**
- * Get tasks for a workspace
- * @param workspacePath - workspace path to filter tasks (empty string for global tasks, undefined for all tasks)
+ * Request body for POST /api/task/list endpoint
  */
-export async function getTasks(workspacePath?: string): Promise<TaskWithAttemptStatus[]> {
-  // Build query params - use empty string to get global tasks (tasks without workspace)
-  const params = workspacePath !== undefined
-    ? `?workspace_path=${encodeURIComponent(workspacePath)}`
-    : "";
-  const response = await makeRequest<TasksResponse>(`${API_PREFIX}${params}`);
+interface TaskListRequest {
+  workspace_path: string;
+  include_archived?: boolean;
+}
+
+/**
+ * Response format from POST /api/task/list endpoint
+ */
+interface TaskListResponse {
+  success: boolean;
+  tasks: TaskWithAttemptStatus[];
+}
+
+/**
+ * Get tasks for a workspace
+ * @param workspacePath - workspace path to filter tasks (required)
+ * @param includeArchived - whether to include archived tasks (default: false)
+ */
+export async function getTasks(
+  workspacePath?: string,
+  includeArchived?: boolean
+): Promise<TaskWithAttemptStatus[]> {
+  // workspace_path is required for the new endpoint
+  // If not provided, use empty string (for global tasks)
+  const body: TaskListRequest = {
+    workspace_path: workspacePath ?? "",
+  };
+
+  if (includeArchived !== undefined) {
+    body.include_archived = includeArchived;
+  }
+
+  const response = await makeRequest<TaskListResponse>("/api/task/list", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
   return response.tasks;
 }
 
@@ -145,35 +168,12 @@ export async function createTask(data: CreateTaskRequest): Promise<Task> {
 }
 
 /**
- * Update a task
- */
-export async function updateTask(
-  taskId: string,
-  data: UpdateTaskRequest
-): Promise<Task> {
-  return makeRequest<Task>(`${API_PREFIX}/${encodeURIComponent(taskId)}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-}
-
-/**
  * Delete a task
  */
 export async function deleteTask(taskId: string): Promise<void> {
   await makeRequest<{ deleted: string }>(`${API_PREFIX}/${encodeURIComponent(taskId)}`, {
     method: "DELETE",
   });
-}
-
-/**
- * Update task status (convenience method)
- */
-export async function updateTaskStatus(
-  taskId: string,
-  status: Task["status"]
-): Promise<Task> {
-  return updateTask(taskId, { status });
 }
 
 /**
