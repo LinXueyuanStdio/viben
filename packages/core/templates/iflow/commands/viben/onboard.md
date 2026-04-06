@@ -49,7 +49,7 @@ AI models are trained on millions of codebases - they know general patterns for 
 
 **The Problem**: AI writes code that "works" but doesn't match your project's style. It uses patterns that conflict with existing code. It makes decisions that violate unwritten team rules.
 
-**The Solution**: The `docs/specs/` directory contains project-specific guidelines. The `/before-*-dev` commands inject this specialized knowledge into AI context before coding starts.
+**The Solution**: The `docs/specs/` directory contains project-specific guidelines. Reading these guidelines before coding starts injects this specialized knowledge into AI context.
 
 ### Challenge 3: AI Context Window Is Limited
 
@@ -57,7 +57,7 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 
 **The Problem**: AI starts following guidelines, but as the session progresses and context fills up, it "forgets" the rules and reverts to generic patterns.
 
-**The Solution**: The `/check-*` commands re-verify code against guidelines AFTER writing, catching drift that occurred during development. The `/viben:finish-work` command does a final holistic review.
+**The Solution**: Re-verify code against guidelines AFTER writing to catch drift that occurred during development. The `/viben:finish-work` command does a final holistic review.
 
 ---
 
@@ -126,60 +126,6 @@ AI needs the same onboarding - but compressed into seconds at session start.
 
 ---
 
-### /viben:before-frontend-dev and /viben:before-backend-dev - Inject Specialized Knowledge
-
-**WHY IT EXISTS**:
-AI models have "pre-trained knowledge" - general patterns from millions of codebases. But YOUR project has specific conventions that differ from generic patterns.
-
-**WHAT IT ACTUALLY DOES**:
-1. Reads `docs/specs/frontend/` or `docs/specs/backend/`
-2. Loads project-specific patterns into AI's working context:
-   - Component naming conventions
-   - State management patterns
-   - Database query patterns
-   - Error handling standards
-
-**WHY THIS MATTERS**:
-- Without before-*-dev: AI writes generic code that doesn't match project style.
-- With before-*-dev: AI writes code that looks like the rest of the codebase.
-
----
-
-### /viben:check-frontend and /viben:check-backend - Combat Context Drift
-
-**WHY IT EXISTS**:
-AI context window has limited capacity. As conversation progresses, guidelines injected at session start become less influential. This causes "context drift."
-
-**WHAT IT ACTUALLY DOES**:
-1. Re-reads the guidelines that were injected earlier
-2. Compares written code against those guidelines
-3. Runs type checker and linter
-4. Identifies violations and suggests fixes
-
-**WHY THIS MATTERS**:
-- Without check-*: Context drift goes unnoticed, code quality degrades.
-- With check-*: Drift is caught and corrected before commit.
-
----
-
-### /viben:check-cross-layer - Multi-Dimension Verification
-
-**WHY IT EXISTS**:
-Most bugs don't come from lack of technical skill - they come from "didn't think of it":
-- Changed a constant in one place, missed 5 other places
-- Modified database schema, forgot to update the API layer
-- Created a utility function, but similar one already exists
-
-**WHAT IT ACTUALLY DOES**:
-1. Identifies which dimensions your change involves
-2. For each dimension, runs targeted checks:
-   - Cross-layer data flow
-   - Code reuse analysis
-   - Import path validation
-   - Consistency checks
-
----
-
 ### /viben:finish-work - Holistic Pre-Commit Review
 
 **WHY IT EXISTS**:
@@ -209,14 +155,12 @@ All the context AI built during this session will be lost when session ends. The
 
 ### Example 1: Bug Fix Session
 
-**[1/8] /viben:start** - AI needs project context before touching code
-**[2/8] viben task create "Fix bug" --slug fix-bug** - Track work for future reference
-**[3/8] /viben:before-frontend-dev** - Inject project-specific frontend knowledge
-**[4/8] Investigate and fix the bug** - Actual development work
-**[5/8] /viben:check-frontend** - Re-verify code against guidelines
-**[6/8] /viben:finish-work** - Holistic cross-layer review
-**[7/8] Human tests and commits** - Human validates before code enters repo
-**[8/8] /viben:record-session** - Persist memory for future sessions
+**[1/6] /viben:start** - AI needs project context before touching code
+**[2/6] viben task create "Fix bug" --slug fix-bug** - Track work for future reference
+**[3/6] Investigate and fix the bug** - Actual development work
+**[4/6] /viben:finish-work** - Holistic cross-layer review
+**[5/6] Human tests and commits** - Human validates before code enters repo
+**[6/6] /viben:record-session** - Persist memory for future sessions
 
 ### Example 2: Planning Session (No Code)
 
@@ -227,37 +171,35 @@ All the context AI built during this session will be lost when session ends. The
 
 ### Example 3: Code Review Fixes
 
-**[1/6] /viben:start** - Resume context from previous session
-**[2/6] /viben:before-backend-dev** - Re-inject guidelines before fixes
-**[3/6] Fix each CR issue** - Address feedback with guidelines in context
-**[4/6] /viben:check-backend** - Verify fixes didn't introduce new issues
-**[5/6] /viben:finish-work** - Document lessons from CR
-**[6/6] Human commits, then /viben:record-session** - Preserve CR lessons
+**[1/5] /viben:start** - Resume context from previous session
+**[2/5] Fix each CR issue** - Address feedback with guidelines in context
+**[3/5] /viben:finish-work** - Document lessons from CR
+**[4/5] Human commits** - Human validates before code enters repo
+**[5/5] /viben:record-session** - Preserve CR lessons
 
 ### Example 4: Large Refactoring
 
 **[1/5] /viben:start** - Clear baseline before major changes
 **[2/5] Plan phases** - Break into verifiable chunks
-**[3/5] Execute phase by phase with /check-* after each** - Incremental verification
+**[3/5] Execute phase by phase** - Incremental development
 **[4/5] /viben:finish-work** - Check if new patterns should be documented
 **[5/5] Record with multiple commit hashes** - Link all commits to one feature
 
 ### Example 5: Debug Session
 
-**[1/6] /viben:start** - See if this bug was investigated before
-**[2/6] /viben:before-backend-dev** - Guidelines might document known gotchas
-**[3/6] Investigation** - Actual debugging work
-**[4/6] /viben:check-backend** - Verify debug changes don't break other things
-**[5/6] /viben:finish-work** - Debug findings might need documentation
-**[6/6] Human commits, then /viben:record-session** - Debug knowledge is valuable
+**[1/5] /viben:start** - See if this bug was investigated before
+**[2/5] Investigation** - Actual debugging work
+**[3/5] /viben:finish-work** - Debug findings might need documentation
+**[4/5] Human commits** - Human validates before code enters repo
+**[5/5] /viben:record-session** - Debug knowledge is valuable
 
 ---
 
 ## KEY RULES TO EMPHASIZE
 
 1. **AI NEVER commits** - Human tests and approves. AI prepares, human validates.
-2. **Guidelines before code** - /before-*-dev commands inject project knowledge.
-3. **Check after code** - /check-* commands catch context drift.
+2. **Guidelines before code** - Read `docs/specs/` before coding starts.
+3. **Review before commit** - /viben:finish-work does holistic review.
 4. **Record everything** - /viben:record-session persists memory.
 
 ---
@@ -286,7 +228,7 @@ Explain to the developer:
 
 "I see that the development guidelines in `docs/specs/` are still empty templates. This is normal for a new Viben setup!
 
-The templates contain placeholder text that needs to be replaced with YOUR project's actual conventions. Without this, `/before-*-dev` commands won't provide useful guidance.
+The templates contain placeholder text that needs to be replaced with YOUR project's actual conventions. Without this, reading guidelines before coding won't provide useful guidance.
 
 **Your first task should be to fill in these guidelines:**
 
@@ -307,7 +249,7 @@ If guidelines have real content (no "To be filled" placeholders), this is an exi
 
 Explain to the developer:
 
-"Great! Your team has already customized the development guidelines. You can start using `/before-*-dev` commands right away.
+"Great! Your team has already customized the development guidelines. You can start reading `docs/specs/` before coding starts.
 
 I recommend reading through `docs/specs/` to familiarize yourself with the team's coding standards."
 

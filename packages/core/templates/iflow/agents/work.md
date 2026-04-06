@@ -97,9 +97,6 @@ Task(
 Hook will auto-inject:
 
 - finish-work.md
-- check-cross-layer.md
-- check-backend.md
-- check-frontend.md
 - All spec files from check.jsonl
 
 **After check agent completes**, validate if more checks are needed:

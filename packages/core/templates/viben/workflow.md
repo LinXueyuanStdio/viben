@@ -320,7 +320,7 @@ viben task list-archive                       # List archived tasks
 
 2. **During development**:
    - [!] **Follow** `docs/specs/` guidelines
-   - For cross-layer features, use `/viben:check-cross-layer`
+   - For cross-layer features, read `docs/specs/guides/cross-layer-thinking-guide.md`
    - Develop only one task at a time
    - Run lint and tests frequently
 
@@ -388,7 +388,6 @@ viben task create-pr <task>  # Create PR from task
 # Slash commands
 /viben:finish-work           # Pre-commit checklist
 /viben:break-loop            # Post-debug analysis
-/viben:check-cross-layer     # Cross-layer verification
 ```
 
 ---

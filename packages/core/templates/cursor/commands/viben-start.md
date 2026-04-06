@@ -28,7 +28,7 @@ cat .viben/workflow.md  # Development process, conventions, and quick start guid
 ### Step 2: Get Current Status `[AI]`
 
 ```bash
-viben team context
+viben user get && viben task list && git status
 ```
 
 This returns:
@@ -313,11 +313,6 @@ The following slash commands are for users (not AI):
 |---------|-------------|
 | `/viben-start` | Start development session (this command) |
 | `/viben-brainstorm` | Clarify vague requirements before implementation |
-| `/viben-before-frontend-dev` | Read frontend guidelines |
-| `/viben-before-backend-dev` | Read backend guidelines |
-| `/viben-check-frontend` | Check frontend code |
-| `/viben-check-backend` | Check backend code |
-| `/viben-check-cross-layer` | Cross-layer verification |
 | `/viben-finish-work` | Pre-commit checklist |
 | `/viben-record-session` | Record session progress |
 
@@ -330,7 +325,7 @@ The following slash commands are for users (not AI):
 | `viben task create "<title>" [--slug <name>]` | Create task directory |
 | `viben task list` | List active tasks |
 | `viben task archive <name>` | Archive task |
-| `viben team context` | Get session context |
+| `viben user get && viben task list && git status` | Get session context |
 
 ---
 

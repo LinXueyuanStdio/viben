@@ -9,13 +9,13 @@
 ### Step 1: Get Context
 
 ```bash
-viben team context
+viben task context
 ```
 
 ### Step 2: One-Click Add Session
 
 ```bash
-viben team add-session \
+viben task add-session \
   --title "Session Title" \
   --commit "hash1,hash2" \
   --summary "Brief summary of what was done"
@@ -42,8 +42,8 @@ viben task archive <task-name>
 
 | Command | Purpose |
 |---------|---------|
-| `viben team context` | Get all context info |
-| `viben team add-session --title "..." --commit "..."` | **One-click add session (recommended)** |
+| `viben task context` | Get all context info |
+| `viben task add-session --title "..." --commit "..."` | **One-click add session (recommended)** |
 | `viben task create "<title>" [--slug <name>]` | Create new task directory |
 | `viben task archive <name>` | Archive completed task |
 | `viben task list` | List active tasks |
