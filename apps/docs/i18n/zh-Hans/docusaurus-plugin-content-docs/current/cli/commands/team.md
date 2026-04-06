@@ -62,30 +62,30 @@ viben team <subcommand> [options]
 
 ```bash
 # 初始化团队工作区
-viben team init --developer <name>
-viben team init --developer john-doe
+viben init --developer <name>
+viben init --developer john-doe
 
 # 指定项目类型
-viben team init --developer <name> --project-type <type>
-viben team init --developer john-doe --project-type frontend
-viben team init --developer john-doe --project-type backend
-viben team init --developer john-doe --project-type fullstack  # 默认
+viben init --developer <name> --project-type <type>
+viben init --developer john-doe --project-type frontend
+viben init --developer john-doe --project-type backend
+viben init --developer john-doe --project-type fullstack  # 默认
 
 # 指定目标目录
-viben team init --developer <name> --target <path>
-viben team init --developer john-doe --target /path/to/project
+viben init --developer <name> --target <path>
+viben init --developer john-doe --target /path/to/project
 
 # 强制覆盖现有文件
-viben team init --developer <name> --force
+viben init --developer <name> --force
 
 # 跳过已存在的文件
-viben team init --developer <name> --skip-existing
+viben init --developer <name> --skip-existing
 
 # 不包含 Cursor 配置
-viben team init --developer <name> --no-cursor
+viben init --developer <name> --no-cursor
 
 # JSON 输出
-viben team init --developer <name> --json
+viben init --developer <name> --json
 ```
 
 ## 参数说明
@@ -113,7 +113,7 @@ viben team init --developer <name> --json
 
 ## 输出示例
 
-**`viben team init --developer john-doe`（人类可读）：**
+**`viben init --developer john-doe`（人类可读）：**
 
 ```
 Initialized Viben team workspace
@@ -134,7 +134,7 @@ Next steps:
   3. Run /viben:start to begin your first session
 ```
 
-**`viben team init --developer john-doe --json`：**
+**`viben init --developer john-doe --json`：**
 
 ```json
 {

@@ -497,37 +497,89 @@ export async function approveTask(
   const dirName = taskDir.split("/").pop() || taskName;
   const additionalData: Record<string, unknown> = {};
 
-  // Step 1: Merge PR if exists (using runMergePRPhase)
+  // Step 1: Merge changes
   // This is done BEFORE state transition - if merge fails, we don't change state
   let mergeCommit: string | undefined;
   let mergedAt: string | undefined;
-  let prMerged = false;
+  let merged = false;
 
-  if (hasPrUrl && !options.skipMerge) {
-    const mergeResult = runMergePRPhase(repoRoot, taskDir, {
-      prUrl: prUrl!,
-    });
-    additionalData.mergeResult = mergeResult;
+  if (!options.skipMerge) {
+    if (hasPrUrl) {
+      // Case 1: Has PR URL - merge via GitHub PR
+      const mergeResult = runMergePRPhase(repoRoot, taskDir, {
+        prUrl: prUrl!,
+      });
+      additionalData.mergeResult = mergeResult;
 
-    if (!mergeResult.success) {
-      return {
-        success: false,
-        task: dirName,
-        error: `Failed to merge PR: ${mergeResult.error}`,
-        additionalData,
+      if (!mergeResult.success) {
+        return {
+          success: false,
+          task: dirName,
+          error: `Failed to merge PR: ${mergeResult.error}`,
+          additionalData,
+        };
+      }
+
+      mergeCommit = mergeResult.mergeCommit;
+      mergedAt = new Date().toISOString();
+      merged = true;
+
+      // Fetch latest main after merge
+      runGitCommand(["fetch", "origin", "main"], repoRoot);
+    } else if (branch) {
+      // Case 2: No PR URL but has branch - merge locally
+      const baseBranch = taskData.base_branch || "main";
+
+      // Get current branch
+      const currentBranchResult = runGitCommand(["branch", "--show-current"], repoRoot);
+      const currentBranch = currentBranchResult.stdout.trim();
+
+      // Switch to base branch if not already on it
+      if (currentBranch !== baseBranch) {
+        const checkoutResult = runGitCommand(["checkout", baseBranch], repoRoot);
+        if (checkoutResult.code !== 0) {
+          return {
+            success: false,
+            task: dirName,
+            error: `Failed to checkout ${baseBranch}: ${checkoutResult.stderr}`,
+            additionalData,
+          };
+        }
+      }
+
+      // Merge the task branch
+      const mergeResult = runGitCommand(["merge", branch, "--no-ff", "-m", `Merge branch '${branch}'`], repoRoot);
+      additionalData.localMergeResult = {
+        success: mergeResult.code === 0,
+        output: mergeResult.stdout,
+        error: mergeResult.stderr,
       };
+
+      if (mergeResult.code !== 0) {
+        // Abort merge if failed
+        runGitCommand(["merge", "--abort"], repoRoot);
+        // Switch back to original branch
+        if (currentBranch && currentBranch !== baseBranch) {
+          runGitCommand(["checkout", currentBranch], repoRoot);
+        }
+        return {
+          success: false,
+          task: dirName,
+          error: `Failed to merge branch ${branch}: ${mergeResult.stderr}`,
+          additionalData,
+        };
+      }
+
+      // Get merge commit hash
+      const commitResult = runGitCommand(["rev-parse", "HEAD"], repoRoot);
+      mergeCommit = commitResult.stdout.trim();
+      mergedAt = new Date().toISOString();
+      merged = true;
     }
-
-    mergeCommit = mergeResult.mergeCommit;
-    mergedAt = new Date().toISOString();
-    prMerged = true;
-
-    // Fetch latest main after merge
-    runGitCommand(["fetch", "origin", "main"], repoRoot);
   }
 
-  // Step 2: Optionally git pull after merge (only if --pull-if-merged)
-  if (prMerged && options.pullIfMerged) {
+  // Step 2: Optionally git pull after merge (only for PR merge, not local merge)
+  if (merged && hasPrUrl && options.pullIfMerged) {
     const pullResult = runGitCommand(["pull", "origin", "main"], repoRoot);
     additionalData.pullResult = {
       success: pullResult.code === 0,
@@ -541,7 +593,7 @@ export async function approveTask(
   // 1. Remove agent from registry
   // 2. Remove worktree directory
   // 3. Delete local branch
-  if (prMerged && options.cleanupIfMerged && (worktreePath || branch)) {
+  if (merged && options.cleanupIfMerged && (worktreePath || branch)) {
     // 3a. Remove from registry (by worktree path)
     let removedFromRegistry = false;
     if (worktreePath) {

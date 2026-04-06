@@ -214,9 +214,7 @@ export class TaskEventStore {
     }
 
     // 10. Update task.json with new state
-    // Use updateTaskWithoutLock since we're already inside the taskLock context
-    // (applyEvent wraps this method with taskLock.withLock)
-    const updatedTask = await taskService.updateTaskWithoutLock(taskDir, updatePayload);
+    const updatedTask = await taskService.updateTask(taskDir, updatePayload);
 
     return {
       success: true,

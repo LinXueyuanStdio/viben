@@ -115,7 +115,7 @@ Workspace (Folder)
   - Workspace name (auto-filled from folder name for existing, user input for new)
   - Location (read-only for existing, folder picker for new)
   - Smart detection: Hide "Init Git" if `.git` exists, show warning + "Reinitialize" option if `.viben` exists
-  - "Initialize .viben" option triggers `viben team init` with advanced options (developer name, project type, include Cursor)
+  - "Initialize .viben" option triggers `viben init` with advanced options (developer name, project type, include Cursor)
 - **Step 3 - Complete**:
   - Success message with summary of actions taken
   - "Go to Workspace" or "Continue Adding" options

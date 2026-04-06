@@ -93,7 +93,7 @@ function ensureVibenRoot(cwd: string): string {
   if (!repoRoot) {
     throw CliError.operationFailed(
       "Evo command",
-      `Not a Viben workspace (.viben not found). Run "viben team init" first.`
+      `Not a Viben workspace (.viben not found). Run "viben init" first.`
     );
   }
   return repoRoot;

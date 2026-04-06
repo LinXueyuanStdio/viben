@@ -8,7 +8,7 @@
 
 ### Agent Swarm × Code Evolution
 
-##### Multi-objective constrained iterative optimization for automatic code quality improvement
+##### FileEvo: Generate multiple candidates → Multi-dimensional evaluation → Select best and merge
 
 [![Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?style=flat-square&logo=github)](https://github.com/LinXueyuanStdio/viben/releases)
 [![License](https://img.shields.io/github/license/LinXueyuanStdio/viben?style=flat-square)](./LICENSE)
@@ -71,9 +71,7 @@ Unified experience across platforms
 
 ## 🧬 FileEvo: Code Iterative Optimization
 
-> *Multi-objective constrained candidate selection algorithm, improving code quality through sampling-evaluation-selection loops*
-
-> ⚠️ **Method Positioning**: FileEvo is a **heuristic iterative optimization method**. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge".
+> FileEvo is a heuristic iterative optimization method. The core idea is "generate multiple candidate solutions → multi-dimensional evaluation → select best and merge".
 
 ### Algorithm Overview
 
@@ -237,7 +235,7 @@ Where $\tau$ is the quality threshold (empirical value 0.5 ~ 0.7), candidates be
 <summary><b>Algorithm Pseudocode</b></summary>
 
 ```
-Algorithm: FileEvo — Multi-objective Constrained Iterative Optimization
+Algorithm: FileEvo — Heuristic Iterative Optimization
 ────────────────────────────────────────────────────
 Input:   C₀                  // Initial codebase
 Hyperparameters:

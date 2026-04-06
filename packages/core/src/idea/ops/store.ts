@@ -13,7 +13,7 @@
  *
  * docs/
  * └── idea-types/                  # Idea type prompts (builtin + custom)
- *     └── <type>.md                # Copied from templates via `viben team init`
+ *     └── <type>.md                # Copied from templates via `viben init`
  */
 import {
   existsSync,
@@ -101,7 +101,7 @@ export function getIdeasDir(repoRoot: string, customOutput?: string): string {
  * Get the idea types directory path
  *
  * All idea types (builtin + custom) are stored in docs/idea-types/.
- * Builtin types are copied there by `viben team init`.
+ * Builtin types are copied there by `viben init`.
  *
  * @param repoRoot - Repository root path
  * @returns Absolute path to idea types directory

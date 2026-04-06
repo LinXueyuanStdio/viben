@@ -568,12 +568,12 @@ export function updateIdeaTypeOp(
     }
 
     // Builtin types can only be updated if they exist in docs/idea-types/
-    // (i.e., they were copied by `viben team init`)
+    // (i.e., they were copied by `viben init`)
     const typesDir = getIdeaTypesDir(repoRoot);
     if (!existing.promptPath.startsWith(typesDir)) {
       return {
         success: false,
-        error: `Cannot update builtin type "${typeName}". Copy it to docs/idea-types/ first using "viben team init".`,
+        error: `Cannot update builtin type "${typeName}". Copy it to docs/idea-types/ first using "viben init".`,
       };
     }
 

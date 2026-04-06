@@ -701,7 +701,7 @@ interface FolderStatus {
 - If `.viben` exists → Show warning + "Reinitialize (overwrite)" checkbox
 
 **Advanced Options** (collapsible):
-- Developer name (for `viben team init`)
+- Developer name (for `viben init`)
 - Project type: fullstack / frontend / backend
 - Include Cursor configuration
 

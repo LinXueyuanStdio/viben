@@ -300,7 +300,7 @@ export function registerContextCommand(program: Command): void {
               console.log(chalk.red("Error: Not in a Viben workspace."));
               console.log();
               console.log("Initialize a workspace with:");
-              console.log(chalk.cyan("  viben team init --user <name>"));
+              console.log(chalk.cyan("  viben init --user <name>"));
             }
           );
           process.exit(1);

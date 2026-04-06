@@ -62,30 +62,30 @@ viben team <subcommand> [options]
 
 ```bash
 # Initialize team workspace
-viben team init --developer <name>
-viben team init --developer john-doe
+viben init --developer <name>
+viben init --developer john-doe
 
 # Specify project type
-viben team init --developer <name> --project-type <type>
-viben team init --developer john-doe --project-type frontend
-viben team init --developer john-doe --project-type backend
-viben team init --developer john-doe --project-type fullstack  # Default
+viben init --developer <name> --project-type <type>
+viben init --developer john-doe --project-type frontend
+viben init --developer john-doe --project-type backend
+viben init --developer john-doe --project-type fullstack  # Default
 
 # Specify target directory
-viben team init --developer <name> --target <path>
-viben team init --developer john-doe --target /path/to/project
+viben init --developer <name> --target <path>
+viben init --developer john-doe --target /path/to/project
 
 # Force overwrite existing files
-viben team init --developer <name> --force
+viben init --developer <name> --force
 
 # Skip existing files
-viben team init --developer <name> --skip-existing
+viben init --developer <name> --skip-existing
 
 # Exclude Cursor configuration
-viben team init --developer <name> --no-cursor
+viben init --developer <name> --no-cursor
 
 # JSON output
-viben team init --developer <name> --json
+viben init --developer <name> --json
 ```
 
 ## Parameter Reference
@@ -113,7 +113,7 @@ Developer names must follow these rules:
 
 ## Output Examples
 
-**`viben team init --developer john-doe` (human-readable):**
+**`viben init --developer john-doe` (human-readable):**
 
 ```
 Initialized Viben team workspace
@@ -134,7 +134,7 @@ Next steps:
   3. Run /viben:start to begin your first session
 ```
 
-**`viben team init --developer john-doe --json`:**
+**`viben init --developer john-doe --json`:**
 
 ```json
 {
