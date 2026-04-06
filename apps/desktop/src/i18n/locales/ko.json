@@ -116,7 +116,9 @@
       "kilobytes": "KB",
       "megabytes": "MB",
       "gigabytes": "GB",
-      "terabytes": "TB"
+      "terabytes": "TB",
+      "chars": "자",
+      "lines": "줄"
     }
   },
   "elapsedTime": {
@@ -3660,8 +3662,10 @@
     "file": "File",
     "deleteFolder": "Delete Folder",
     "deleteFile": "Delete File",
-    "newFile": "New File",
-    "newFolder": "New Folder",
+    "newFile": "새 파일",
+    "newFileShortcut": "({{shortcut}})",
+    "newFolder": "새 폴더",
+    "newFolderShortcut": "({{shortcut}})",
     "createNewFile": "Create New File",
     "createNewFolder": "Create New Folder",
     "deleteConfirm": "Are you sure you want to delete",
@@ -3792,9 +3796,11 @@
     "loadingPdf": "Loading PDF...",
     "openInPdfViewerHint": "Use the external link button to open in your PDF viewer",
     "loadingVideo": "Loading video...",
-    "openInVideoPlayer": "Open in Video Player",
-    "noPdfPath": "No PDF file path available",
-    "noVideoPath": "No video file path available",
+    "openInVideoPlayer": "비디오 플레이어에서 열기",
+    "noPdfPath": "PDF 파일 경로가 없습니다",
+    "noVideoPath": "비디오 파일 경로가 없습니다",
+    "videoNotSupported": "브라우저가 video 태그를 지원하지 않습니다.",
+    "fontType": "{{ext}} 글꼴",
     "noImagePath": "No image file path available",
     "searchResults": "Search Results",
     "results": "results",

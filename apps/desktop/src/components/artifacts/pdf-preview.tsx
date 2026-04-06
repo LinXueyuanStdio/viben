@@ -130,7 +130,7 @@ export function PdfPreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground text-sm break-all whitespace-pre-wrap">
-            {error || "No PDF file path available"}
+            {error || t("artifacts.noPdfPath")}
           </p>
         </div>
       </div>

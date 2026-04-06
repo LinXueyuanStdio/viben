@@ -116,7 +116,9 @@
       "kilobytes": "KB",
       "megabytes": "MB",
       "gigabytes": "GB",
-      "terabytes": "TB"
+      "terabytes": "TB",
+      "chars": "ตัวอักษร",
+      "lines": "บรรทัด"
     }
   },
   "elapsedTime": {
@@ -3660,8 +3662,10 @@
     "file": "File",
     "deleteFolder": "Delete Folder",
     "deleteFile": "Delete File",
-    "newFile": "New File",
-    "newFolder": "New Folder",
+    "newFile": "ไฟล์ใหม่",
+    "newFileShortcut": "({{shortcut}})",
+    "newFolder": "โฟลเดอร์ใหม่",
+    "newFolderShortcut": "({{shortcut}})",
     "createNewFile": "Create New File",
     "createNewFolder": "Create New Folder",
     "deleteConfirm": "Are you sure you want to delete",
@@ -3792,9 +3796,11 @@
     "loadingPdf": "Loading PDF...",
     "openInPdfViewerHint": "Use the external link button to open in your PDF viewer",
     "loadingVideo": "Loading video...",
-    "openInVideoPlayer": "Open in Video Player",
-    "noPdfPath": "No PDF file path available",
-    "noVideoPath": "No video file path available",
+    "openInVideoPlayer": "เปิดในโปรแกรมเล่นวิดีโอ",
+    "noPdfPath": "ไม่มีเส้นทางไฟล์ PDF",
+    "noVideoPath": "ไม่มีเส้นทางไฟล์วิดีโอ",
+    "videoNotSupported": "เบราว์เซอร์ของคุณไม่รองรับแท็กวิดีโอ",
+    "fontType": "แบบอักษร {{ext}}",
     "noImagePath": "No image file path available",
     "searchResults": "Search Results",
     "results": "results",

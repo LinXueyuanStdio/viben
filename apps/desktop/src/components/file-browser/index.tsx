@@ -411,7 +411,7 @@ function Toolbar({
                 <FilePlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("fileBrowser.newFile")} (Cmd+N)</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFile")} {t("fileBrowser.newFileShortcut", { shortcut: "Cmd+N" })}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -419,7 +419,7 @@ function Toolbar({
                 <FolderPlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t("fileBrowser.newFolder")} (Cmd+Shift+N)</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFolder")} {t("fileBrowser.newFolderShortcut", { shortcut: "Cmd+Shift+N" })}</TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>

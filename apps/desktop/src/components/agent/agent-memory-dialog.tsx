@@ -212,7 +212,7 @@ export function AgentMemoryDialog({
                 <TabsContent value="memory" className="h-full mt-0 data-[state=active]:flex data-[state=active]:flex-col">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                     <span>{t("settingsAgents.editableMemory", { defaultValue: "Editable persistent memory" })}</span>
-                    <span>{getCharCount(memoryContent)} chars • {getLineCount(memoryContent)} lines</span>
+                    <span>{getCharCount(memoryContent)} {t("common.units.chars")} • {getLineCount(memoryContent)} {t("common.units.lines")}</span>
                   </div>
                   <Textarea
                     value={memoryContent}
@@ -226,7 +226,7 @@ export function AgentMemoryDialog({
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                     <span>{new Date().toLocaleDateString()}</span>
                     {todayLogContent && (
-                      <span>{getCharCount(todayLogContent)} chars • {getLineCount(todayLogContent)} lines</span>
+                      <span>{getCharCount(todayLogContent)} {t("common.units.chars")} • {getLineCount(todayLogContent)} {t("common.units.lines")}</span>
                     )}
                   </div>
                   <ScrollArea className="flex-1 min-h-[300px] rounded-md border bg-muted/30">
@@ -247,7 +247,7 @@ export function AgentMemoryDialog({
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
                     <span>{new Date(Date.now() - 86400000).toLocaleDateString()}</span>
                     {yesterdayLogContent && (
-                      <span>{getCharCount(yesterdayLogContent)} chars • {getLineCount(yesterdayLogContent)} lines</span>
+                      <span>{getCharCount(yesterdayLogContent)} {t("common.units.chars")} • {getLineCount(yesterdayLogContent)} {t("common.units.lines")}</span>
                     )}
                   </div>
                   <ScrollArea className="flex-1 min-h-[300px] rounded-md border bg-muted/30">

@@ -116,7 +116,9 @@
       "kilobytes": "KB",
       "megabytes": "MB",
       "gigabytes": "GB",
-      "terabytes": "TB"
+      "terabytes": "TB",
+      "chars": "अक्षर",
+      "lines": "पंक्तियाँ"
     }
   },
   "elapsedTime": {
@@ -3662,6 +3664,8 @@
     "deleteFile": "Delete File",
     "newFile": "New File",
     "newFolder": "New Folder",
+    "newFileShortcut": "({{shortcut}})",
+    "newFolderShortcut": "({{shortcut}})",
     "createNewFile": "Create New File",
     "createNewFolder": "Create New Folder",
     "deleteConfirm": "Are you sure you want to delete",
@@ -3808,6 +3812,8 @@
     "code": "Code",
     "previewNotAvailable": "Preview not available",
     "switchToCodeView": "Switch to Code view to see the content",
+    "videoNotSupported": "आपका ब्राउज़र वीडियो टैग का समर्थन नहीं करता।",
+    "fontType": "{{ext}} फ़ॉन्ट",
     "docxPreview": {
       "description": "Word documents can be opened in Microsoft Word or compatible applications.",
       "openButton": "Open in Word"
