@@ -128,6 +128,37 @@ export async function createTaskDir(
   const taskDir = await ctx.mkdir(`.viben/tasks/${taskName}`);
   const now = new Date().toISOString();
 
+  // Derive xstate_state from status if not provided
+  // This ensures the task state machine recognizes the initial state
+  const status = (taskData.status as string) ?? "backlog";
+  const xstate_state = taskData.xstate_state ?? deriveXStateFromStatus(status);
+
+  // Convert legacy pausedSnapshot format to machine_context format
+  // Tests may use pausedSnapshot but the state machine expects machine_context.paused_snapshot
+  const processedData = { ...taskData };
+  if (processedData.pausedSnapshot && !processedData.machine_context) {
+    const snapshot = processedData.pausedSnapshot as {
+      fromState?: unknown;
+      subtaskIndex?: number;
+      pausedAt?: string;
+    };
+    // Convert shorthand "in_progress" to XState nested format { in_progress: "implement" }
+    let fromState: unknown = snapshot.fromState ?? "queue";
+    if (fromState === "in_progress") {
+      fromState = { in_progress: "implement" }; // Default substate
+    }
+    processedData.machine_context = {
+      current_subtask_index: snapshot.subtaskIndex ?? 0,
+      requires_plan_review: false,
+      paused_snapshot: {
+        from_state: fromState,
+        subtask_index: snapshot.subtaskIndex ?? 0,
+        paused_at: snapshot.pausedAt ?? now,
+      },
+    };
+    delete processedData.pausedSnapshot;
+  }
+
   await ctx.writeJson(`.viben/tasks/${taskName}/task.json`, {
     id: taskName,
     name: taskName,
@@ -136,8 +167,35 @@ export async function createTaskDir(
     priority: "medium",
     created_at: now,
     updated_at: now,
-    ...taskData,
+    xstate_state,
+    ...processedData,
   });
 
   return taskDir;
+}
+
+/**
+ * Derive XState state from status for test setup
+ */
+function deriveXStateFromStatus(status: string): string | Record<string, string> {
+  switch (status) {
+    case "backlog":
+      return "backlog";
+    case "queue":
+      return "queue";
+    case "in_progress":
+      return { in_progress: "implement" }; // Default sub-state
+    case "paused":
+      return "paused";
+    case "review":
+      return "review";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return "backlog";
+  }
 }

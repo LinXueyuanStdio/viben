@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { _useUpdateTaskStatus } from "./use-kanban";
+import { useTaskLifecycle } from "./use-kanban";
 import { hasRecentActivity, getTimeSinceActivity } from "@/stores/task-activity-store";
 import { checkTaskRunningDetailed } from "@/lib/kanban";
 import {
@@ -178,7 +178,7 @@ export function useStuckDetection({
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
-  const updateTaskStatus = _useUpdateTaskStatus();
+  const taskLifecycle = useTaskLifecycle();
 
   // Track mount state for cleanup
   useEffect(() => {
@@ -337,18 +337,18 @@ export function useStuckDetection({
     };
   }, [isRunning, lastUpdated, checkInterval, stuckThreshold, taskId, enableProcessCheck]);
 
-  // Handle recovery - restart the task
+  // Handle recovery - restart the task using retry lifecycle action
   const handleRecover = useCallback(async () => {
     if (!workspacePath || isRecovering) return;
 
     try {
       setIsRecovering(true);
 
-      // Move task back to queue first
-      await updateTaskStatus.mutateAsync({
-        taskId,
-        status: "queue",
-        workspacePath,
+      // Use retry action to put task back in queue for restart
+      await taskLifecycle.mutateAsync({
+        action: "retry",
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
 
       // Notify callback before restart
@@ -359,10 +359,11 @@ export function useStuckDetection({
         // Small delay to let the queue transition complete
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        await updateTaskStatus.mutateAsync({
-          taskId,
-          status: "in_progress",
-          workspacePath,
+        await taskLifecycle.mutateAsync({
+          action: "start",
+          workspace_path: workspacePath,
+          task_id: taskId,
+          trigger_execution: true,
         });
       }
 
@@ -376,7 +377,7 @@ export function useStuckDetection({
     } finally {
       setIsRecovering(false);
     }
-  }, [taskId, workspacePath, updateTaskStatus, isRecovering, autoRestartOnRecovery, onRecovered]);
+  }, [taskId, workspacePath, taskLifecycle, isRecovering, autoRestartOnRecovery, onRecovered]);
 
   // Handle resume - for incomplete tasks (has spec but crashed before completing subtasks)
   const handleResume = useCallback(async () => {
@@ -385,11 +386,11 @@ export function useStuckDetection({
     try {
       setIsRecovering(true);
 
-      // Move task to queue to restart execution
-      await updateTaskStatus.mutateAsync({
-        taskId,
-        status: "queue",
-        workspacePath,
+      // Use retry action to put task back in queue for restart
+      await taskLifecycle.mutateAsync({
+        action: "retry",
+        workspace_path: workspacePath,
+        task_id: taskId,
       });
 
       // Notify callback
@@ -400,10 +401,11 @@ export function useStuckDetection({
         // Small delay to let the queue transition complete
         await new Promise((resolve) => setTimeout(resolve, 100));
 
-        await updateTaskStatus.mutateAsync({
-          taskId,
-          status: "in_progress",
-          workspacePath,
+        await taskLifecycle.mutateAsync({
+          action: "start",
+          workspace_path: workspacePath,
+          task_id: taskId,
+          trigger_execution: true,
         });
       }
     } catch (error) {
@@ -412,7 +414,7 @@ export function useStuckDetection({
     } finally {
       setIsRecovering(false);
     }
-  }, [taskId, workspacePath, updateTaskStatus, isRecovering, autoRestartOnRecovery, onResumed]);
+  }, [taskId, workspacePath, taskLifecycle, isRecovering, autoRestartOnRecovery, onResumed]);
 
   // Manual reset
   const resetStuck = useCallback(() => {

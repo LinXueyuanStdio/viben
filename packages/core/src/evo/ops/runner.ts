@@ -972,7 +972,7 @@ export async function orchestrateMergeAndCleanup(
   // Approve and merge the winning task
   if (selectedTask) {
     onProgress?.(`Approving winning task: ${selectedTask}`);
-    const approveResult = approveTask(repoRoot, selectedTask, {
+    const approveResult = await approveTask(repoRoot, selectedTask, {
       cleanupIfMerged: cleanupApprovedWorktree,
       pullIfMerged: true,
     });
@@ -1173,7 +1173,7 @@ export async function waitForTasksCompletion(
     const nonFailedTasks = taskNames.filter(t => !failedTasks.includes(t));
     const nonFailedCompleted = nonFailedTasks.every(t => {
       const status = statusData.statuses[t]?.status;
-      return status === "completed" || status === "review" || status === "failed" || status === "cancelled";
+      return status === "completed" || status === "review" || status === "failed" || status === "cancelled" || status === "rejected";
     });
 
     if (statusData.allCompleted || (nonFailedCompleted && failedTasks.length > 0)) {

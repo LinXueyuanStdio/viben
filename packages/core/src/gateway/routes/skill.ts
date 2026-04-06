@@ -1,15 +1,21 @@
 /**
  * Skill management routes
  *
- * Provides unified endpoints for skill operations:
- * - GET /api/skill - List installed skills
- * - GET /api/skill/:name - Get skill by name
- * - POST /api/skill/install - Install a skill
- * - DELETE /api/skill/:name - Uninstall a skill
- * - GET /api/skill/available - List available skills from marketplace
- * - POST /api/skill/enable - Enable skill for agent
- * - POST /api/skill/disable - Disable skill for agent
- * - GET /api/skill/enabled - Get enabled skills for agent
+ * All endpoints share the same src/skill/ops implementation with CLI commands.
+ * Naming convention follows CLI: viben skill xxx -> /api/skill/xxx
+ *
+ * Endpoints:
+ * - GET  /api/skill/list      - List installed skills (viben skill list)
+ * - GET  /api/skill/view/:name - Get skill by name (viben skill view <name>)
+ * - POST /api/skill/install   - Install a skill (viben skill install <name>)
+ * - POST /api/skill/uninstall - Uninstall a skill (viben skill uninstall <name>)
+ * - POST /api/skill/enable    - Enable skill for agent (viben skill enable <name>)
+ * - POST /api/skill/disable   - Disable skill for agent (viben skill disable <name>)
+ * - GET  /api/skill/enabled   - Get enabled skills (viben skill enabled)
+ * - GET  /api/skill/search    - Search skills in marketplace (viben skill search <query>)
+ * - POST /api/skill/download  - Download skill (viben skill download <name>)
+ * - GET  /api/skill/available - List available skills from marketplace
+ * - GET  /api/skill/info/:id  - Get skill from marketplace
  */
 import type { FastifyInstance } from "fastify";
 import {
@@ -21,6 +27,10 @@ import {
   enableSkill,
   disableSkill,
   getEnabledSkills,
+  // Registry operations
+  searchSkillRegistry,
+  getSkillFromRegistry,
+  downloadSkillFromRegistry,
 } from "../../skill/ops";
 import type {
   SkillTarget,
@@ -31,6 +41,7 @@ import type {
   InstalledSkillInfo,
   SkillInfo,
 } from "../../skill/ops/types";
+import type { MarketplaceSkill } from "../../skill/ops/registry";
 
 // ============================================================================
 // Types
@@ -84,7 +95,8 @@ interface ErrorResponse {
  */
 export function registerSkillRoutes(fastify: FastifyInstance): void {
   /**
-   * GET /api/skill - List installed skills
+   * GET /api/skill/list - List installed skills
+   * CLI: viben skill list
    *
    * Query params:
    * - target: "agent" | "global" | "claude" | "custom" (optional)
@@ -98,7 +110,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       custom_path?: string;
     };
     Reply: ListSkillsResponse | ErrorResponse;
-  }>("/api/skill", {
+  }>("/api/skill/list", {
     schema: {
       description: "List installed skills",
       tags: ["skill"],
@@ -320,7 +332,8 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
   });
 
   /**
-   * GET /api/skill/:name - Get skill by name
+   * GET /api/skill/view/:name - Get skill by name
+   * CLI: viben skill view <name>
    *
    * Query params:
    * - target: "agent" | "global" | "claude" | "custom" (optional)
@@ -335,7 +348,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       custom_path?: string;
     };
     Reply: GetSkillResponse | ErrorResponse;
-  }>("/api/skill/:name", {
+  }>("/api/skill/view/:name", {
     schema: {
       description: "Get skill by name",
       tags: ["skill"],
@@ -572,35 +585,31 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
   });
 
   /**
-   * DELETE /api/skill/:name - Uninstall a skill
+   * POST /api/skill/uninstall - Uninstall a skill
+   * CLI: viben skill uninstall <name>
    *
-   * Query params:
+   * Body:
+   * - name: string (required)
    * - target: "agent" | "global" | "claude" | "custom" (default: "global")
    * - agent_id: string (required when target is "agent")
    * - custom_path: string (required when target is "custom")
    */
-  fastify.delete<{
-    Params: { name: string };
-    Querystring: {
+  fastify.post<{
+    Body: {
+      name: string;
       target?: SkillTarget;
       agent_id?: string;
       custom_path?: string;
     };
     Reply: UninstallSkillResult | ErrorResponse;
-  }>("/api/skill/:name", {
+  }>("/api/skill/uninstall", {
     schema: {
       description: "Uninstall a skill",
       tags: ["skill"],
-      params: {
+      body: {
         type: "object",
         properties: {
           name: { type: "string", description: "Skill name" },
-        },
-        required: ["name"],
-      },
-      querystring: {
-        type: "object",
-        properties: {
           target: {
             type: "string",
             enum: ["agent", "global", "claude", "custom"],
@@ -609,6 +618,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
           agent_id: { type: "string" },
           custom_path: { type: "string" },
         },
+        required: ["name"],
       },
       response: {
         200: {
@@ -636,12 +646,11 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { name } = request.params;
-    const { target = "global", agent_id, custom_path } = request.query;
+    const { name, target = "global", agent_id, custom_path } = request.body;
 
     if (!name) {
       reply.code(400);
-      return { error: "Skill name is required" };
+      return { error: "name is required" };
     }
 
     // Validate target-specific requirements
@@ -701,6 +710,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
 
   /**
    * POST /api/skill/enable - Enable a skill for an agent
+   * CLI: viben skill enable <name> --agent <id>
    *
    * Body:
    * - skill_name: string (required)
@@ -880,6 +890,252 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       fastify.log.error(`Failed to disable skill: ${message}`);
       reply.code(500);
       return { error: message };
+    }
+  });
+
+  // ========================================================================
+  // Marketplace Operations
+  // ========================================================================
+
+  /**
+   * GET /api/skill/search - Search skills in marketplace
+   * CLI: viben skill search <query>
+   */
+  fastify.get<{
+    Querystring: {
+      query: string;
+      limit?: string;
+      page?: string;
+      type?: "command" | "prompt" | "agent";
+    };
+  }>("/api/skill/search", {
+    schema: {
+      description: "Search skill packages in marketplace",
+      tags: ["skill"],
+      querystring: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query (required)" },
+          limit: { type: "string", description: "Maximum results" },
+          page: { type: "string", description: "Page number" },
+          type: {
+            type: "string",
+            enum: ["command", "prompt", "agent"],
+            description: "Filter by skill type",
+          },
+        },
+        required: ["query"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            skills: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  slug: { type: "string" },
+                  version: { type: "string" },
+                  description: { type: "string" },
+                  skill_type: { type: "string" },
+                  downloads_count: { type: "number" },
+                  favorites_count: { type: "number" },
+                },
+              },
+            },
+            total: { type: "number" },
+            page: { type: "number" },
+            total_pages: { type: "number" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { query, limit, page, type } = request.query;
+
+    if (!query) {
+      reply.code(400);
+      return { success: false, error: "query is required" };
+    }
+
+    try {
+      const result = await searchSkillRegistry({
+        query,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        page: page ? parseInt(page, 10) : undefined,
+        type,
+      });
+
+      if (!result.success) {
+        reply.code(400);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        skills: result.skills,
+        total: result.total,
+        page: result.page,
+        total_pages: result.total_pages,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to search marketplace: ${message}`);
+      reply.code(500);
+      return { success: false, error: message };
+    }
+  });
+
+  /**
+   * GET /api/skill/info/:idOrSlug - Get skill from marketplace
+   * (No direct CLI equivalent, but useful for showing marketplace skill details)
+   */
+  fastify.get<{
+    Params: { idOrSlug: string };
+  }>("/api/skill/info/:idOrSlug", {
+    schema: {
+      description: "Get skill package details from marketplace",
+      tags: ["skill"],
+      params: {
+        type: "object",
+        properties: {
+          idOrSlug: { type: "string", description: "Skill ID or slug" },
+        },
+        required: ["idOrSlug"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            skill: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                name: { type: "string" },
+                slug: { type: "string" },
+                version: { type: "string" },
+                description: { type: "string" },
+                skill_type: { type: "string" },
+                downloads_count: { type: "number" },
+                favorites_count: { type: "number" },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { idOrSlug } = request.params;
+
+    try {
+      const result = await getSkillFromRegistry(idOrSlug);
+
+      if (!result.success || !result.skill) {
+        reply.code(404);
+        return { success: false, error: result.error || `Skill not found: ${idOrSlug}` };
+      }
+
+      return {
+        success: true,
+        skill: result.skill,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to get skill from marketplace: ${message}`);
+      reply.code(500);
+      return { success: false, error: message };
+    }
+  });
+
+  /**
+   * POST /api/skill/download - Download skill from marketplace
+   * CLI: viben skill download <name> [version]
+   */
+  fastify.post<{
+    Body: {
+      name: string;
+      version?: string;
+      target_dir: string;
+    };
+  }>("/api/skill/download", {
+    schema: {
+      description: "Download skill package to a directory",
+      tags: ["skill"],
+      body: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Skill name or ID" },
+          version: { type: "string", description: "Version to download" },
+          target_dir: { type: "string", description: "Target directory" },
+        },
+        required: ["name", "target_dir"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            path: { type: "string" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { name, version, target_dir } = request.body;
+
+    if (!name) {
+      reply.code(400);
+      return { success: false, error: "name is required" };
+    }
+
+    if (!target_dir) {
+      reply.code(400);
+      return { success: false, error: "target_dir is required" };
+    }
+
+    try {
+      const result = await downloadSkillFromRegistry(name, version, target_dir);
+
+      if (!result.success) {
+        reply.code(400);
+        return { success: false, error: result.error };
+      }
+
+      return {
+        success: true,
+        path: target_dir,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      fastify.log.error(`Failed to download skill: ${message}`);
+      reply.code(500);
+      return { success: false, error: message };
     }
   });
 }

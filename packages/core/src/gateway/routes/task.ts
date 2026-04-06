@@ -66,6 +66,7 @@
  * CRUD endpoints:
  * - POST /api/task/list - List tasks
  * - POST /api/task/create - Create task
+ * - POST /api/task/update - Update task fields
  * - POST /api/task/view - View task details
  * - POST /api/task/delete - Delete task
  *
@@ -2145,7 +2146,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = pauseTask(workspace_path, task_id);
+    const result = await pauseTask(workspace_path, task_id);
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2229,7 +2230,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = resumeTask(workspace_path, task_id);
+    const result = await resumeTask(workspace_path, task_id);
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2315,7 +2316,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = approveTask(workspace_path, task_id);
+    const result = await approveTask(workspace_path, task_id);
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2401,7 +2402,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = rejectTask(workspace_path, task_id, reason);
+    const result = await rejectTask(workspace_path, task_id, reason);
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2485,7 +2486,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = retryTask(workspace_path, task_id);
+    const result = await retryTask(workspace_path, task_id);
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2573,7 +2574,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = cancelTask(workspace_path, task_id, { reason, force });
+    const result = await cancelTask(workspace_path, task_id, { reason, force });
 
     if (!result.success) {
       const isNotFound = result.error?.includes("not found");
@@ -2639,7 +2640,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = enqueueTask(workspace_path, task_id, { agent, executor, model, priority });
+    const result = await enqueueTask(workspace_path, task_id, { agent, executor, model, priority });
 
     if (!result.success) {
       const code = result.error?.includes("not found") ? 404 : 400;
@@ -2690,7 +2691,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       return { error: "task_id is required", code: "MISSING_TASK_ID" };
     }
 
-    const result = dequeueTask(workspace_path, task_id);
+    const result = await dequeueTask(workspace_path, task_id);
 
     if (!result.success) {
       const code = result.error?.includes("not found") ? 404 : 400;
@@ -4119,6 +4120,143 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       task_dir: result.task_dir,
       status: result.status,
       context_initialized: result.context_initialized,
+    };
+  });
+
+  // ============================================================================
+  // POST /api/task/update - Update task fields (not status - use lifecycle endpoints)
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      task_id: string;
+      title?: string;
+      description?: string;
+      agent?: string;
+      executor?: string;
+      model?: string;
+      priority?: string;
+      branch?: string;
+      base_branch?: string;
+      assignee?: string;
+      notes?: string;
+    };
+  }>("/api/task/update", {
+    schema: {
+      description: "Update task fields (not status - use lifecycle endpoints for status changes)",
+      tags: ["tasks"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          task_id: { type: "string", description: "Task ID or directory (required)" },
+          title: { type: "string", description: "Task title" },
+          description: { type: "string", description: "Task description" },
+          agent: { type: "string", description: "Associated agent ID" },
+          executor: { type: "string", description: "Executor type" },
+          model: { type: "string", description: "Model to use" },
+          priority: { type: "string", description: "Priority (urgent/high/medium/low/none)" },
+          branch: { type: "string", description: "Git branch name" },
+          base_branch: { type: "string", description: "Base branch (PR target)" },
+          assignee: { type: "string", description: "Assignee developer name" },
+          notes: { type: "string", description: "Task notes" },
+        },
+        required: ["workspace_path", "task_id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            task_id: { type: "string" },
+            updated_fields: { type: "array", items: { type: "string" } },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+            code: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, task_id, ...updates } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required", code: "MISSING_WORKSPACE_PATH" };
+    }
+    if (!task_id) {
+      reply.code(400);
+      return { error: "task_id is required", code: "MISSING_TASK_ID" };
+    }
+
+    // Resolve task directory
+    const taskDir = resolveTaskDirectory(task_id, workspace_path);
+    if (!taskDir || !existsSync(taskDir)) {
+      reply.code(404);
+      return { error: `Task not found: ${task_id}`, code: "TASK_NOT_FOUND" };
+    }
+
+    // Read existing task.json
+    const taskData = readTaskJsonFromWorkspace(taskDir);
+    if (!taskData) {
+      reply.code(404);
+      return { error: `Task data not found: ${task_id}`, code: "TASK_DATA_NOT_FOUND" };
+    }
+
+    // Track which fields are being updated
+    const updatedFields: string[] = [];
+
+    // Update only provided fields (non-undefined)
+    const allowedFields = [
+      "title",
+      "description",
+      "agent",
+      "executor",
+      "model",
+      "priority",
+      "branch",
+      "base_branch",
+      "assignee",
+      "notes",
+    ] as const;
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        taskData[field] = updates[field];
+        updatedFields.push(field);
+      }
+    }
+
+    // If no fields to update, return early
+    if (updatedFields.length === 0) {
+      return { success: true, task_id, updated_fields: [] };
+    }
+
+    // Write updated task.json
+    const writeSuccess = writeTaskJsonFile(taskDir, taskData);
+    if (!writeSuccess) {
+      reply.code(500);
+      return { error: "Failed to write task data", code: "WRITE_FAILED" };
+    }
+
+    // Clear cache entry if exists
+    deleteCacheEntry(task_id);
+
+    return {
+      success: true,
+      task_id,
+      updated_fields: updatedFields,
     };
   });
 

@@ -586,7 +586,7 @@ export function registerTaskCommand(program: Command): void {
         // If --start is provided, enqueue the task to queue system
         if (options.start && dir_name) {
           // Task was created with status "backlog", now enqueue to queue system
-          const enqueueResult = enqueueTask(repoRoot, dir_name, {
+          const enqueueResult = await enqueueTask(repoRoot, dir_name, {
             agent: options.agent,
             executor: options.executor,
             model: options.model,
@@ -974,6 +974,148 @@ export function registerTaskCommand(program: Command): void {
       }
     });
 
+  // task update
+  taskCmd
+    .command("update")
+    .description("Update task fields")
+    .argument("<task>", "Task name or directory")
+    .option("--title <title>", "Update task title")
+    .option("--description <desc>", "Update task description")
+    .option("--agent <agent>", "Update associated agent")
+    .option("--executor <executor>", "Update executor type")
+    .option("--model <model>", "Update model")
+    .option("--priority <priority>", "Update priority (P0/P1/P2/P3 or urgent/high/medium/low/none)")
+    .option("--branch <branch>", "Update git branch")
+    .option("--base-branch <branch>", "Update PR target branch")
+    .option("--assignee <name>", "Update assignee")
+    .option("--notes <notes>", "Update notes")
+    .action(async (task: string, options: {
+      title?: string;
+      description?: string;
+      agent?: string;
+      executor?: string;
+      model?: string;
+      priority?: string;
+      branch?: string;
+      baseBranch?: string;
+      assignee?: string;
+      notes?: string;
+    }) => {
+      const ctx = getContext(program);
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        // Resolve task directory
+        const taskDir = resolveTaskDirectory(task, repoRoot);
+        if (!taskDir || !existsSync(taskDir)) {
+          throw CliError.notFound("Task", task);
+        }
+
+        // Read current task.json
+        const taskJson = readTaskJsonFromWorkspace(taskDir);
+        if (!taskJson) {
+          throw CliError.operationFailed("Update task", `Failed to read task.json for: ${task}`);
+        }
+
+        // Collect updated fields
+        const updatedFields: Record<string, string> = {};
+
+        // Update only provided fields
+        if (options.title !== undefined) {
+          taskJson.title = options.title;
+          updatedFields.title = options.title;
+        }
+        if (options.description !== undefined) {
+          taskJson.description = options.description;
+          updatedFields.description = options.description;
+        }
+        if (options.agent !== undefined) {
+          taskJson.agent = options.agent;
+          updatedFields.agent = options.agent;
+        }
+        if (options.executor !== undefined) {
+          taskJson.executor = options.executor;
+          updatedFields.executor = options.executor;
+        }
+        if (options.model !== undefined) {
+          taskJson.model = options.model;
+          updatedFields.model = options.model;
+        }
+        if (options.priority !== undefined) {
+          // Normalize priority: P0/P1/P2/P3 -> urgent/high/medium/low
+          let normalizedPriority = options.priority.toLowerCase();
+          const priorityMap: Record<string, string> = {
+            p0: "urgent",
+            p1: "high",
+            p2: "medium",
+            p3: "low",
+          };
+          if (priorityMap[normalizedPriority]) {
+            normalizedPriority = priorityMap[normalizedPriority];
+          }
+          taskJson.priority = normalizedPriority;
+          updatedFields.priority = normalizedPriority;
+        }
+        if (options.branch !== undefined) {
+          taskJson.branch = options.branch;
+          updatedFields.branch = options.branch;
+        }
+        if (options.baseBranch !== undefined) {
+          taskJson.base_branch = options.baseBranch;
+          updatedFields.base_branch = options.baseBranch;
+        }
+        if (options.assignee !== undefined) {
+          taskJson.assignee = options.assignee;
+          updatedFields.assignee = options.assignee;
+        }
+        if (options.notes !== undefined) {
+          taskJson.notes = options.notes;
+          updatedFields.notes = options.notes;
+        }
+
+        // Check if any fields were provided
+        if (Object.keys(updatedFields).length === 0) {
+          output(ctx, errorResponse("NO_FIELDS", "No fields to update. Use --help to see available options."), () => {
+            console.log(chalk.yellow("No fields to update."));
+            console.log();
+            console.log("Available options:");
+            console.log("  --title <title>           Update task title");
+            console.log("  --description <desc>      Update task description");
+            console.log("  --agent <agent>           Update associated agent");
+            console.log("  --executor <executor>     Update executor type");
+            console.log("  --model <model>           Update model");
+            console.log("  --priority <priority>     Update priority (P0/P1/P2/P3)");
+            console.log("  --branch <branch>         Update git branch");
+            console.log("  --base-branch <branch>    Update PR target branch");
+            console.log("  --assignee <name>         Update assignee");
+            console.log("  --notes <notes>           Update notes");
+          });
+          return;
+        }
+
+        // Update timestamp
+        taskJson.updated_at = new Date().toISOString();
+
+        // Write back to task.json
+        if (!writeTaskJson(taskDir, taskJson)) {
+          throw CliError.operationFailed("Update task", "Failed to write task.json");
+        }
+
+        output(ctx, successResponse({ task, updated_fields: updatedFields }), () => {
+          console.log(chalk.green(`Updated task: ${task}`));
+          console.log();
+          console.log(chalk.blue("Updated fields:"));
+          for (const [field, value] of Object.entries(updatedFields)) {
+            console.log(`  ${field}: ${value}`);
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
   // ============================================================================
   // Status Commands
   // ============================================================================
@@ -1235,7 +1377,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = enqueueTask(repoRoot, task, options);
+        const result = await enqueueTask(repoRoot, task, options);
 
         if (!result.success) {
           throw CliError.operationFailed("Enqueue task", result.error!);
@@ -1264,7 +1406,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = dequeueTask(repoRoot, task);
+        const result = await dequeueTask(repoRoot, task);
 
         if (!result.success) {
           throw CliError.operationFailed("Dequeue task", result.error!);
@@ -1290,7 +1432,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = pauseTask(repoRoot, task);
+        const result = await pauseTask(repoRoot, task);
 
         if (!result.success) {
           throw CliError.operationFailed("Pause task", result.error!);
@@ -1316,7 +1458,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = resumeTask(repoRoot, task);
+        const result = await resumeTask(repoRoot, task);
 
         if (!result.success) {
           throw CliError.operationFailed("Resume task", result.error!);
@@ -1866,7 +2008,7 @@ export function registerTaskCommand(program: Command): void {
         // 2. Optionally cleanup worktree (if --cleanup-if-merged)
         // 3. Optionally git pull (if --pull-if-merged)
         // 4. task.json update with merged_at, merge_commit, status=completed
-        const result = approveTask(repoRoot, task, {
+        const result = await approveTask(repoRoot, task, {
           skipMerge: options.skipMerge,
           cleanupIfMerged: options.cleanupIfMerged,
           pullIfMerged: options.pullIfMerged,
@@ -1940,7 +2082,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = rejectTask(repoRoot, task, options.reason);
+        const result = await rejectTask(repoRoot, task, options.reason);
 
         if (!result.success) {
           throw CliError.operationFailed("Reject task", result.error!);
@@ -1969,7 +2111,7 @@ export function registerTaskCommand(program: Command): void {
 
       try {
         const repoRoot = ensureVibenDirWithRoot(cwd);
-        const result = retryTask(repoRoot, task);
+        const result = await retryTask(repoRoot, task);
 
         if (!result.success) {
           throw CliError.operationFailed("Retry task", result.error!);
@@ -1991,7 +2133,7 @@ export function registerTaskCommand(program: Command): void {
 
     try {
       const repoRoot = ensureVibenDirWithRoot(cwd);
-      const result = cancelTask(repoRoot, task, options);
+      const result = await cancelTask(repoRoot, task, options);
 
       if (!result.success) {
         throw CliError.operationFailed("Cancel task", result.error!);

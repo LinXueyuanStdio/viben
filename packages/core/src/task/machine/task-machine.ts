@@ -228,6 +228,8 @@ export const taskMachine = createMachine(
               actions: ["setReviewReason_stopped"],
             },
           ],
+          // Allow force cancel from any in_progress substate
+          CANCEL: { target: "#task.cancelled" },
         },
       },
 

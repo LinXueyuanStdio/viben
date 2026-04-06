@@ -563,7 +563,7 @@ export function registerIdeaCommand(program: Command): void {
           // Note: worktree flag is already saved in task.json by createTask,
           // and will be read by `viben task start` when executing
           if (options.start && result.task_id) {
-            const enqueueResult = enqueueTask(repoRoot, result.task_id, {
+            const enqueueResult = await enqueueTask(repoRoot, result.task_id, {
               agent: options.agent,
               executor: options.executor,
               model: options.model,
