@@ -24,11 +24,8 @@ Extract this path first, then read the required files from it.
    - Read ALL files listed in this jsonl
 2. **Review output** (if exists): `{task_dir}/codex-review-output.txt`
 
-If `fix.jsonl` doesn't exist, read these fallback files:
+If `fix.jsonl` doesn't exist, read the fallback file:
 - `{task_dir}/spec.jsonl`
-- `.claude/commands/viben/check-backend.md`
-- `.claude/commands/viben/check-frontend.md`
-- `.claude/commands/viben/check-cross-layer.md`
 
 ## Core Responsibilities
 

@@ -26,9 +26,6 @@ Extract this path first, then read the required files from it.
 
 If `check.jsonl` doesn't exist, read these fallback files:
 - `.claude/commands/viben/finish-work.md`
-- `.claude/commands/viben/check-cross-layer.md`
-- `.claude/commands/viben/check-backend.md`
-- `.claude/commands/viben/check-frontend.md`
 - `{task_dir}/spec.jsonl` (if exists)
 
 ### For [finish] Phase

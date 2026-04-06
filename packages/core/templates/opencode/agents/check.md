@@ -27,7 +27,6 @@ You are the Check Agent in the Viben workflow.
 Example check.jsonl:
 ```json
 {"file": ".opencode/commands/viben/finish-work.md", "reason": "Finish work checklist"}
-{"file": ".opencode/commands/viben/check-backend.md", "reason": "Backend check spec"}
 ```
 
 Also read:
