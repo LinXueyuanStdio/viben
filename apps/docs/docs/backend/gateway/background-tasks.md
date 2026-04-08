@@ -8,36 +8,27 @@ Background task management allows users to continue Agent task execution while n
 
 ## Architecture
 
-```
-+-------------------------------------------------------------+
-|                        Desktop App                           |
-|                                                              |
-|  +------------------+      +------------------+              |
-|  |  workspace-chat  |      |  useBackground   |              |
-|  |    (active)      |      |     Tasks        |              |
-|  +--------+---------+      +--------+---------+              |
-|           |                         |                        |
-|           |     State Sync          | Subscribe              |
-|           v                         v                        |
-|  +-------------------------------------------------------+   |
-|  |                  BackgroundTaskManager                 |  |
-|  |  +----------+  +----------+  +----------+             |   |
-|  |  |  Task 1  |  |  Task 2  |  |  Task 3  |             |   |
-|  |  | running  |  |completed |  |  error   |             |   |
-|  |  +----------+  +----------+  +----------+             |   |
-|  +-------------------------------------------------------+   |
-|                              |                               |
-+------------------------------+-------------------------------+
-                               |
-                               | AbortController
-                               v
-+-------------------------------------------------------------+
-|                     packages/core                            |
-|  +-------------------------------------------------------+   |
-|  |                  AgentService                          |  |
-|  |                   SSE Stream                           |  |
-|  +-------------------------------------------------------+   |
-+-------------------------------------------------------------+
+```mermaid
+flowchart TB
+    subgraph Desktop["Desktop App"]
+        WC["workspace-chat<br/>(active)"]
+        UBT["useBackgroundTasks"]
+
+        subgraph BTM["BackgroundTaskManager"]
+            T1["Task 1<br/>running"]
+            T2["Task 2<br/>completed"]
+            T3["Task 3<br/>error"]
+        end
+
+        WC -->|State Sync| BTM
+        UBT -->|Subscribe| BTM
+    end
+
+    subgraph Core["packages/core"]
+        AS["AgentService<br/>SSE Stream"]
+    end
+
+    BTM -->|AbortController| AS
 ```
 
 ---
@@ -274,36 +265,26 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
 
 ## Task Lifecycle
 
-```
-User sends message
-      |
-      v
-+-----------------+
-| addTask()       |  -> Add new task to Map
-| status: running |  -> Notify all listeners
-+--------+--------+
-         |
-         | SSE connection starts
-         v
-+-----------------+
-| Process SSE     |
-| - text          |
-| - tool_use      |
-| - tool_result   |
-+--------+--------+
-         |
-         | Task complete/error
-         v
-+-----------------+
-| updateStatus()  |  -> Update status
-| status: done    |  -> Notify all listeners
-+--------+--------+
-         |
-         | (Optional) User clicks clear
-         v
-+-----------------+
-| cleanup()       |  -> Remove from Map
-+-----------------+
+```mermaid
+flowchart TD
+    A[User sends message] --> B
+
+    B["addTask()<br/>status: running"]
+    B -.- B1["Add new task to Map<br/>Notify all listeners"]
+
+    B -->|SSE connection starts| C
+
+    C["Process SSE<br/>- text<br/>- tool_use<br/>- tool_result"]
+
+    C -->|Task complete/error| D
+
+    D["updateStatus()<br/>status: done"]
+    D -.- D1["Update status<br/>Notify all listeners"]
+
+    D -->|Optional: User clicks clear| E
+
+    E["cleanup()"]
+    E -.- E1["Remove from Map"]
 ```
 
 ---

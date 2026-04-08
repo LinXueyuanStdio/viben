@@ -40,29 +40,36 @@ Viben uses GitHub OAuth 2.0 for social login, allowing users to:
 
 ### Flow Diagram
 
-```
-User clicks "Continue with GitHub"
-    ↓
-Browser → GET /api/auth/github
-    ↓ (generates state, sets cookie)
-Redirect to GitHub OAuth authorization page
-    ↓
-User authorizes on GitHub
-    ↓
-GitHub redirects → GET /api/auth/github/callback?code=xxx&state=xxx
-    ↓ (verifies state)
-Exchange code for access token
-    ↓
-Fetch user profile from GitHub API
-    ↓
-Check if user exists in database
-    ↓
-├─ User exists → Link OAuth connection
-└─ User doesn't exist → Create new user + OAuth connection
-    ↓
-Create session (JWE token)
-    ↓
-Redirect to /mcp (dashboard)
+```mermaid
+flowchart TD
+    A["User clicks 'Continue with GitHub'"] --> B
+
+    B["Browser → GET /api/auth/github"]
+    B -.- B1["generates state, sets cookie"]
+    B --> C
+
+    C["Redirect to GitHub OAuth authorization page"] --> D
+
+    D["User authorizes on GitHub"]
+    D --> E
+
+    E["GitHub redirects → GET /api/auth/github/callback?code=xxx&state=xxx"]
+    E -.- E1["verifies state"]
+    E --> F
+
+    F["Exchange code for access token"] --> G
+
+    G["Fetch user profile from GitHub API"] --> H
+
+    H{"Check if user<br/>exists in DB"}
+
+    H -->|Yes| I["Link OAuth connection"]
+    H -->|No| J["Create new user + OAuth"]
+
+    I --> K
+    J --> K
+
+    K["Create session → Redirect to /mcp"]
 ```
 
 ### Database Schema

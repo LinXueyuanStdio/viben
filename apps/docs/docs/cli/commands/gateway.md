@@ -53,27 +53,30 @@ viben gateway status
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Gateway                               │
-├─────────────────────────────────────────────────────────────┤
-│  Channels (Input)                                            │
-│    ├── Telegram Bot                                          │
-│    ├── Discord Bot                                           │
-│    ├── WhatsApp (via bridge)                                 │
-│    ├── Feishu (WebSocket long connection)                    │
-│    └── CLI (direct input)                                    │
-│                                                              │
-│  Message Bus                                                 │
-│    ├── Inbound Queue (messages from channels)                │
-│    └── Outbound Queue (responses to channels)                │
-│                                                              │
-│  Agent Loop                                                  │
-│    ├── Context Builder (system prompt + memory + skills)     │
-│    ├── LLM Provider (API calls)                              │
-│    ├── Tool Registry (execute tool calls)                    │
-│    └── Subagent Manager (background tasks)                   │
-└─────────────────────────────────────────────────────────────┘
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                           Gateway                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────┐    ┌────────────────────────────┐  │
+│  │ Channels (Input)        │    │ Message Bus                │  │
+│  │ ├── Telegram Bot        │    │ ├── Inbound Queue          │  │
+│  │ ├── Discord Bot         │    │ │   (messages from         │  │
+│  │ ├── WhatsApp (via       │    │ │    channels)             │  │
+│  │ │   bridge)             │    │ └── Outbound Queue         │  │
+│  │ ├── Feishu (WebSocket)  │    │     (responses to          │  │
+│  │ └── CLI (direct input)  │    │      channels)             │  │
+│  └─────────────────────────┘    └────────────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Agent Loop                                                │   │
+│  │ ├── Context Builder (system prompt + memory + skills)     │   │
+│  │ ├── LLM Provider (API calls)                              │   │
+│  │ ├── Tool Registry (execute tool calls)                    │   │
+│  │ └── Subagent Manager (background tasks)                   │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Gateway Lifecycle
