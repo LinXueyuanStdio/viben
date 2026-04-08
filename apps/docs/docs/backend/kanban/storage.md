@@ -13,53 +13,48 @@ The Kanban storage system provides a complete file-based persistence layer. All 
 ## Architecture
 
 ```
-+-------------------------------------------------------------+
-|                    File Storage System                        |
-+-------------------------------------------------------------+
-|                                                              |
-|  KanbanStore                                                 |
-|      +-- ProjectStore      # Project storage                 |
-|      +-- TaskStore         # Task storage                    |
-|      +-- WorkspaceStore    # Workspace storage               |
-|      +-- SessionStore      # Session storage                 |
-|      +-- ScratchStore      # Draft storage                   |
-|                                                              |
-|  Dependencies:                                               |
-|      +-- YamlParser        # YAML parsing                    |
-|      +-- JsonlParser       # JSONL parsing (message history) |
-|      +-- FileWatcher       # File change monitoring          |
-|                                                              |
-+-------------------------------------------------------------+
+File Storage System
+├── KanbanStore
+│   ├── ProjectStore       # Project storage
+│   ├── TaskStore          # Task storage
+│   ├── WorkspaceStore     # Workspace storage
+│   ├── SessionStore       # Session storage
+│   └── ScratchStore       # Draft storage
+│
+└── Dependencies
+    ├── YamlParser         # YAML parsing
+    ├── JsonlParser        # JSONL parsing (message history)
+    └── FileWatcher        # File change monitoring
 ```
 
 ## Directory Structure
 
 ```
 <workspace-root>/.viben/kanban/
-+-- config.yaml                      # Global kanban config
-+-- projects/                        # Project directories
-|   +-- <project-id>/
-|       +-- project.yaml             # Project metadata
-|       +-- tasks/                   # Task files
-|       |   +-- <task-id>.yaml       # Individual task
-|       |   +-- ...
-|       +-- tags.yaml                # Project tag definitions
-|       +-- repositories/            # Associated repositories
-|           +-- <repo-id>.yaml
-+-- workspaces/                      # Kanban workspaces (Git Worktrees)
-|   +-- <workspace-id>/
-|       +-- workspace.yaml           # Workspace config
-|       +-- execution/               # Execution processes
-|       |   +-- <process-id>.yaml
-|       +-- sessions/                # Session storage
-|           +-- <session-id>/
-|               +-- config.yaml      # Session config
-|               +-- messages.jsonl   # Message history
-+-- scratch/                         # Draft storage
-|   +-- <scratch-type>/
-|       +-- <id>.yaml
-+-- images/                          # Image storage
-    +-- <image-id>.<ext>
+├── config.yaml                     # Global kanban config
+├── projects/                       # Project directories
+│   └── <project-id>/
+│       ├── project.yaml            # Project metadata
+│       ├── tasks/                  # Task files
+│       │   ├── <task-id>.yaml      # Individual task
+│       │   └── ...
+│       ├── tags.yaml               # Project tag definitions
+│       └── repositories/           # Associated repositories
+│           └── <repo-id>.yaml
+├── workspaces/                     # Kanban workspaces (Git Worktrees)
+│   └── <workspace-id>/
+│       ├── workspace.yaml          # Workspace config
+│       ├── execution/              # Execution processes
+│       │   └── <process-id>.yaml
+│       └── sessions/               # Session storage
+│           └── <session-id>/
+│               ├── config.yaml     # Session config
+│               └── messages.jsonl  # Message history
+├── scratch/                        # Draft storage
+│   └── <scratch-type>/
+│       └── <id>.yaml
+└── images/                         # Image storage
+    └── <image-id>.<ext>
 ```
 
 ## Core Types

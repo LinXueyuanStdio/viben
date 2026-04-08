@@ -22,11 +22,9 @@ MCP (Model Context Protocol) is an open protocol for standardizing the interacti
 
 ### MCP Architecture
 
-```
-┌─────────────┐     MCP Protocol    ┌─────────────┐
-│   Agent     │ ◄──────────────────► │ MCP Server  │
-│ (Claude,etc)│                      │(Tool Provider)│
-└─────────────┘                      └─────────────┘
+```mermaid
+flowchart LR
+    A["Agent<br/>(Claude, etc)"] <-->|MCP Protocol| B["MCP Server<br/>(Tool Provider)"]
 ```
 
 ## Quick Start

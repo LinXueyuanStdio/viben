@@ -23,11 +23,11 @@ Key features:
 |                    Desktop App (Tauri)                       |
 +-------------------------------------------------------------+
 |  Workspace -> Kanban Page                                    |
-|      |                                                       |
+|      │                                                       |
 |  packages/core/src/kanban/                                   |
-|      +-- models/          # Data models + file storage       |
-|      +-- services/        # Business logic services          |
-|      +-- api/             # Gateway API routes               |
+|      ├── models/          # Data models + file storage       |
+|      ├── services/        # Business logic services          |
+|      └── api/             # Gateway API routes               |
 +-------------------------------------------------------------+
 ```
 
@@ -37,22 +37,22 @@ All kanban data is stored under `<workspace>/.viben/kanban/`:
 
 ```
 <workspace>/.viben/kanban/
-+-- config.yaml              # Global kanban configuration
-+-- projects/                # Project directories
-|   +-- <project-id>/
-|       +-- project.yaml     # Project metadata
-|       +-- tasks/           # Task files
-|       |   +-- <task-id>.yaml
-|       +-- tags.yaml        # Project tags
-+-- workspaces/              # Kanban workspaces (Git Worktrees)
-|   +-- <workspace-id>/
-|       +-- workspace.yaml   # Workspace configuration
-|       +-- sessions/        # Session storage
-|           +-- <session-id>/
-|               +-- config.yaml
-|               +-- messages.jsonl
-+-- scratch/                 # Draft storage
-    +-- <type>/<id>.yaml
+├── config.yaml              # Global kanban configuration
+├── projects/                # Project directories
+│   └── <project-id>/
+│       ├── project.yaml     # Project metadata
+│       ├── tasks/           # Task files
+│       │   └── <task-id>.yaml
+│       └── tags.yaml        # Project tags
+├── workspaces/              # Kanban workspaces (Git Worktrees)
+│   └── <workspace-id>/
+│       ├── workspace.yaml   # Workspace configuration
+│       └── sessions/        # Session storage
+│           └── <session-id>/
+│               ├── config.yaml
+│               └── messages.jsonl
+└── scratch/                 # Draft storage
+    └── <type>/<id>.yaml
 ```
 
 ## Core Modules
@@ -152,29 +152,29 @@ Each workspace creates an isolated Git worktree:
 
 ```
 packages/core/
-+-- src/
-    +-- kanban/                    # Kanban core module
-    |   +-- index.ts               # Module entry
-    |   +-- models/                # Data models
-    |   |   +-- project.ts
-    |   |   +-- task.ts
-    |   |   +-- workspace.ts
-    |   |   +-- session.ts
-    |   +-- services/              # Business services
-    |   |   +-- project-service.ts
-    |   |   +-- task-service.ts
-    |   |   +-- workspace-service.ts
-    |   |   +-- git-service.ts
-    |   +-- storage/               # File storage
-    |       +-- file-store.ts
-    |       +-- yaml-parser.ts
-    +-- gateway/
-        +-- routes/
-            +-- kanban/            # Kanban API routes
-                +-- projects.ts
-                +-- tasks.ts
-                +-- workspaces.ts
-                +-- sessions.ts
+└── src/
+    ├── kanban/                    # Kanban core module
+    │   ├── index.ts               # Module entry
+    │   ├── models/                # Data models
+    │   │   ├── project.ts
+    │   │   ├── task.ts
+    │   │   ├── workspace.ts
+    │   │   └── session.ts
+    │   ├── services/              # Business services
+    │   │   ├── project-service.ts
+    │   │   ├── task-service.ts
+    │   │   ├── workspace-service.ts
+    │   │   └── git-service.ts
+    │   └── storage/               # File storage
+    │       ├── file-store.ts
+    │       └── yaml-parser.ts
+    └── gateway/
+        └── routes/
+            └── kanban/            # Kanban API routes
+                ├── projects.ts
+                ├── tasks.ts
+                ├── workspaces.ts
+                └── sessions.ts
 ```
 
 ## Related Documentation

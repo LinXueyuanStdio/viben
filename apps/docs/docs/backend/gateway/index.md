@@ -17,43 +17,40 @@ Viben Gateway is the core backend service of Viben, running on port **18790**, p
 ## Architecture
 
 ```
-+-------------------------------------------------------------+
-|                      Viben Gateway                           |
-|                      Port: 18790                             |
-+-------------------------------------------------------------+
-|  HTTP Layer (Axum)                                           |
-|  +-- CORS Middleware (Allow All Origins)                     |
-|  +-- Tracing Middleware (Request/Response Logging)           |
-|  +-- Router                                                  |
-+-------------------------------------------------------------+
-|  API Routes                                                  |
-|  +-- /health              Health Check                       |
-|  +-- /api/agent          Agent Management                    |
-|  +-- /api/executors       Executor Management                |
-|  +-- /api/models          Model Management                   |
-|  +-- /api/providers       Provider Management                |
-|  +-- /api/tasks           Task Management                    |
-|  +-- /api/sessions        Session Management                 |
-|  +-- /api/channels        Channel Management                 |
-|  +-- /api/cron            Scheduled Tasks                    |
-|  +-- /api/queue           Task Queue                         |
-|  +-- /api/workspaces      Workspace Management               |
-|  +-- /api/mcp             MCP Server Management              |
-|  +-- /api/kanban          Kanban Data Management             |
-|  +-- /api/group-chats     Group Chat Management              |
-|  +-- /api/chat-list       Chat List Aggregation              |
-|  +-- /api/telemetry       Observability Data                 |
-|  +-- /api/events          SSE Event Stream                   |
-+-------------------------------------------------------------+
-|  WebSocket Routes                                            |
-|  +-- /ws                  General WebSocket                  |
-|  +-- /api/group-chats/:id/sessions/:sid/ws  Group Chat WS    |
-|  +-- /terminal/ws         Terminal WebSocket                 |
-+-------------------------------------------------------------+
-|  Storage Layer                                               |
-|  +-- Global: ~/.viben/                                       |
-|  +-- Workspace: <project>/.viben/                            |
-+-------------------------------------------------------------+
+Viben Gateway (Port: 18790)
+│
+├── HTTP Layer (Axum)
+│   ├── CORS Middleware (Allow All Origins)
+│   ├── Tracing Middleware (Request/Response Logging)
+│   └── Router
+│
+├── API Routes
+│   ├── /health                Health Check
+│   ├── /api/agent             Agent Management
+│   ├── /api/executors         Executor Management
+│   ├── /api/models            Model Management
+│   ├── /api/providers         Provider Management
+│   ├── /api/tasks             Task Management
+│   ├── /api/sessions          Session Management
+│   ├── /api/channels          Channel Management
+│   ├── /api/cron              Scheduled Tasks
+│   ├── /api/queue             Task Queue
+│   ├── /api/workspaces        Workspace Management
+│   ├── /api/mcp               MCP Server Management
+│   ├── /api/kanban            Kanban Data Management
+│   ├── /api/group-chats       Group Chat Management
+│   ├── /api/chat-list         Chat List Aggregation
+│   ├── /api/telemetry         Observability Data
+│   └── /api/events            SSE Event Stream
+│
+├── WebSocket Routes
+│   ├── /ws                                      General WebSocket
+│   ├── /api/group-chats/:id/sessions/:sid/ws    Group Chat WS
+│   └── /terminal/ws                             Terminal WebSocket
+│
+└── Storage Layer
+    ├── Global: ~/.viben/
+    └── Workspace: <project>/.viben/
 ```
 
 ## Service Configuration
@@ -92,19 +89,17 @@ Viben Gateway is the core backend service of Viben, running on port **18790**, p
 All resources support two scope levels:
 
 ```
-+-------------------------------------------------------------+
-|  Global Scope: ~/.viben/                                     |
-|  +-- agents/              Global Agents                      |
-|  +-- providers/           Provider Configuration             |
-|  +-- models.yaml          Model Configuration                |
-|  +-- channels.yaml        Channel Configuration              |
-|  +-- sessions/            Session Storage                    |
-+-------------------------------------------------------------+
-|  Workspace Scope: <project>/.viben/                          |
-|  +-- agents/              Workspace Agents                   |
-|  +-- group-chats/         Group Chats                        |
-|  +-- config.yaml          Workspace Configuration            |
-+-------------------------------------------------------------+
+Global Scope: ~/.viben/
+├── agents/           Global Agents
+├── providers/        Provider Configuration
+├── models.yaml       Model Configuration
+├── channels.yaml     Channel Configuration
+└── sessions/         Session Storage
+
+Workspace Scope: <project>/.viben/
+├── agents/           Workspace Agents
+├── group-chats/      Group Chats
+└── config.yaml       Workspace Configuration
 ```
 
 **Query Parameters**:

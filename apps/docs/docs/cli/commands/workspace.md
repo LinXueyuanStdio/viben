@@ -199,4 +199,3 @@ No workspaces found. Run 'viben init' in a project directory to create one.
 - [viben config](./config) - Configuration management
 - [viben mcp](./mcp) - MCP server management
 - [viben skill](./skill) - Skill management
-- [viben team](./team) - Team workspace initialization

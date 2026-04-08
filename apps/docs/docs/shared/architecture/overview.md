@@ -490,38 +490,53 @@ const { packages: skills } = await client.skill.search('git');
 
 ### 7.1 Package Dependency Graph
 
-```
-                    @viben/core
-                        │
-          ┌─────────────┼─────────────┐
-          │             │             │
-      @viben/ui    @viben/api-client  │
-          │             │             │
-    @viben/kanban       │             │
-          │             │             │
-          └─────────────┼─────────────┘
-                        │
-          ┌─────────────┴─────────────┐
-          │                           │
-     @viben/web                 @viben/desktop
+```mermaid
+flowchart TD
+    core["@viben/core"]
+    ui["@viben/ui"]
+    api["@viben/api-client"]
+    kanban["@viben/kanban"]
+    web["@viben/web"]
+    desktop["@viben/desktop"]
+
+    core --> ui
+    core --> api
+    ui --> kanban
+    core --> kanban
+    ui --> web
+    api --> web
+    kanban --> web
+    ui --> desktop
+    api --> desktop
+    kanban --> desktop
 ```
 
 ### 7.2 Data Flow Patterns
 
 **Desktop Application Data Flow**:
-```
-User Action → React Component → Zustand Store → Tauri Command (IPC)
-                ↓                              ↓
-           React Query ←────── Response ←──── Rust Backend
-                ↓
-           UI State Update
+
+```mermaid
+flowchart LR
+    UA[User Action] --> RC[React Component]
+    RC --> ZS[Zustand Store]
+    ZS --> TC[Tauri Command<br/>IPC]
+    TC --> RB[Rust Backend]
+    RB --> |Response| RQ[React Query]
+    RQ --> RC
+    RQ --> UI[UI State Update]
 ```
 
 **Web Application Data Flow**:
-```
-User Action → React Component → API Route Handler → Drizzle ORM → PostgreSQL
-                ↓                                        ↓
-          Server Response ←─────────────────────────────┘
+
+```mermaid
+flowchart LR
+    UA[User Action] --> RC[React Component]
+    RC --> API[API Route Handler]
+    API --> ORM[Drizzle ORM]
+    ORM --> DB[(PostgreSQL)]
+    DB --> ORM
+    ORM --> API
+    API --> |Server Response| RC
 ```
 
 ### 7.3 State Management Patterns
