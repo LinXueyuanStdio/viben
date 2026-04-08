@@ -545,7 +545,7 @@ const EXECUTOR_METADATA: Partial<Record<ExecutorType, { name: string; descriptio
     name: "Droid",
     description: "Droid AI coding assistant",
   },
-  // Template-only executors (for team init configuration)
+  // Template-only executors (for viben init configuration)
   CURSOR: {
     name: "Cursor",
     description: "AI-first code editor",

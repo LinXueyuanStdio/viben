@@ -82,7 +82,6 @@ For Python MCP server development, see [Plugin Architecture](./architecture/plug
 | [CLI Executor](../modules/cli/executor.md) | `viben executor` 命令 | ✅ Complete |
 | [CLI MCP](../modules/cli/mcp.md) | `viben mcp` 命令 | ✅ Complete |
 | [CLI Skill](../modules/cli/skill.md) | `viben skill` 命令 | ✅ Complete |
-| [CLI Team](../modules/cli/team.md) | `viben team` 命令 | ✅ Complete |
 | [CLI Gateway](../modules/cli/gateway.md) | `viben gateway` 命令 | ✅ Complete |
 | [CLI Channel](../modules/cli/channel.md) | `viben channel` 命令 | ✅ Complete |
 | [CLI Cron](../modules/cli/cron.md) | `viben cron` 命令 | ✅ Complete |

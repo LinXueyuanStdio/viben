@@ -61,7 +61,6 @@ const sidebars: SidebarsConfig = {
         'commands/cron',
         'commands/executor',
         'commands/executor-chat',
-        'commands/team',
         'commands/task',
         'commands/queue',
         'commands/swarm',
