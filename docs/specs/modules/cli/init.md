@@ -218,12 +218,7 @@ docs/reward-types/
 │   └── research.md
 │
 └── commands/viben/          # 自定义命令
-    ├── before-backend-dev.md
-    ├── before-frontend-dev.md
     ├── break-loop.md
-    ├── check-backend.md
-    ├── check-cross-layer.md
-    ├── check-frontend.md
     ├── create-command.md
     ├── finish-work.md
     ├── integrate-skill.md
@@ -239,12 +234,7 @@ docs/reward-types/
 ```
 .cursor/
 └── commands/
-    ├── viben-before-backend-dev.md
-    ├── viben-before-frontend-dev.md
     ├── viben-break-loop.md
-    ├── viben-check-backend.md
-    ├── viben-check-cross-layer.md
-    ├── viben-check-frontend.md
     ├── viben-create-command.md
     ├── viben-finish-work.md
     ├── viben-integrate-skill.md

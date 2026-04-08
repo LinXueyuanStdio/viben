@@ -49,7 +49,6 @@ These commands represent the primary workflow for code evolution:
 | [`gateway`](./gateway.md) | Start Gateway (message bus + agent loop) |
 | [`channel`](./channel.md) | Manage chat channels (Telegram, Discord, etc.) |
 | [`cron`](./cron.md) | Manage scheduled tasks |
-| [`team`](./team.md) | Team collaboration workspace management |
 | [`workspace`](./workspace.md) | Workspace operations |
 | `version` | Show version information |
 | `help` | Show help |

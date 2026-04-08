@@ -31,7 +31,6 @@ packages/core/src/cli/
     ├── config.ts       # viben config
     ├── workspace.ts    # viben workspace
     ├── user.ts         # viben user
-    ├── team.ts         # viben team
     ├── gateway.ts      # viben gateway
     ├── service.ts      # viben service
     ├── executor.ts     # viben executor
@@ -119,7 +118,6 @@ packages/core/src/
 | [init.md](docs/specs/modules/cli/init.md) | `viben init` | 工作区初始化 |
 | [config.md](docs/specs/modules/cli/config.md) | `viben config` | Git 风格配置管理 |
 | [workspace.md](docs/specs/modules/cli/workspace.md) | `viben workspace` | 工作区操作 |
-| [team.md](docs/specs/modules/cli/team.md) | `viben team` | 团队协作工作区初始化 |
 | [user.md](docs/specs/modules/cli/user.md) | `viben user` | 用户身份管理 |
 
 ### 服务与运行时
