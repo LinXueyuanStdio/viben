@@ -8,28 +8,44 @@
 
 ### 1.1 Entity Relationship Diagram
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Contact   │     │Conversation │     │   Message   │
-├─────────────┤     ├─────────────┤     ├─────────────┤
-│ id          │     │ id          │     │ id          │
-│ type        │◀────│ type        │────▶│ conv_id     │
-│ name        │     │ participants│     │ sender_id   │
-│ avatar      │     │ name        │     │ type        │
-│ ...         │     │ ...         │     │ content     │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │
-       │                   │
-       ▼                   ▼
-┌─────────────┐     ┌─────────────┐
-│    Agent    │     │ AgentTeam   │
-├─────────────┤     ├─────────────┤
-│ id          │     │ id          │
-│ name        │     │ name        │
-│ model       │     │ workflow    │
-│ system_prompt│     │ nodes       │
-│ ...         │     │ ...         │
-└─────────────┘     └─────────────┘
+```mermaid
+erDiagram
+    Contact {
+        string id PK
+        string type
+        string name
+        string avatar
+    }
+    Conversation {
+        string id PK
+        string type
+        string[] participants
+        string name
+    }
+    Message {
+        string id PK
+        string conv_id FK
+        string sender_id FK
+        string type
+        string content
+    }
+    Agent {
+        string id PK
+        string name
+        string model
+        string system_prompt
+    }
+    AgentTeam {
+        string id PK
+        string name
+        json workflow
+        json nodes
+    }
+
+    Contact ||--o{ Conversation : "participates in"
+    Conversation ||--o{ Message : "contains"
+    Contact ||--o| Agent : "is type of"
+    Conversation ||--o| AgentTeam : "uses"
 ```
 
 ---

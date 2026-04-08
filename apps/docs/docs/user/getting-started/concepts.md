@@ -135,23 +135,21 @@ system_prompt: You are a helpful coding assistant.
 
 ### Relationship Diagram
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Agent                                 │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  name: My Agent                                      │   │
-│  │  executor_type: CLAUDE_CODE  ──────────────────┐    │   │
-│  │  model: claude-3-sonnet                        │    │   │
-│  │  system_prompt: "..."                          │    │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                    │        │
-│                                                    ▼        │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                    Executor                          │   │
-│  │  type: CLAUDE_CODE                                   │   │
-│  │  cli: claude                                         │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Agent["Agent (User-created configuration)"]
+        A1["name: My Agent"]
+        A2["executor_type: CLAUDE_CODE"]
+        A3["model: claude-3-sonnet"]
+        A4["system_prompt: '...'"]
+    end
+
+    subgraph Executor["Executor (System-detected runtime)"]
+        E1["type: CLAUDE_CODE"]
+        E2["cli: claude"]
+    end
+
+    A2 -.->|references| Executor
 ```
 
 ---

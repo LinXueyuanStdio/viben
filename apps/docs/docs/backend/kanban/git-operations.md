@@ -13,32 +13,27 @@ The Git operations module provides a high-level API for managing Git Worktrees a
 ## Architecture
 
 ```
-+-------------------------------------------------------------+
-|                   Git Operations Module                      |
-+-------------------------------------------------------------+
-|                                                              |
-|  GitService                                                  |
-|      +-- Worktree Management                                 |
-|      |   +-- createWorktree()                               |
-|      |   +-- removeWorktree()                               |
-|      |   +-- listWorktrees()                                |
-|      |                                                       |
-|      +-- Basic Operations                                    |
-|      |   +-- status()                                       |
-|      |   +-- commit()                                       |
-|      |   +-- push()                                         |
-|      |   +-- pull()                                         |
-|      |                                                       |
-|      +-- Branch Operations                                   |
-|      |   +-- createBranch()                                 |
-|      |   +-- deleteBranch()                                 |
-|      |   +-- listBranches()                                 |
-|      |                                                       |
-|      +-- GitHub Integration                                  |
-|          +-- createPR()                                     |
-|          +-- getPRStatus()                                  |
-|                                                              |
-+-------------------------------------------------------------+
+Git Operations Module
+└── GitService
+    ├── Worktree Management
+    │   ├── createWorktree()
+    │   ├── removeWorktree()
+    │   └── listWorktrees()
+    │
+    ├── Basic Operations
+    │   ├── status()
+    │   ├── commit()
+    │   ├── push()
+    │   └── pull()
+    │
+    ├── Branch Operations
+    │   ├── createBranch()
+    │   ├── deleteBranch()
+    │   └── listBranches()
+    │
+    └── GitHub Integration
+        ├── createPR()
+        └── getPRStatus()
 ```
 
 ## Core Types

@@ -399,9 +399,17 @@ Selected: task-a
 
 FileEvo tracks progress through phases for each iteration, supporting resumption after interruption:
 
-```
-init -> generate_ideas -> promote_ideas -> execute_tasks ->
-       wait_tasks -> compute_rewards -> select_best -> merge_cleanup -> completed
+```mermaid
+stateDiagram-v2
+    [*] --> init
+    init --> generate_ideas
+    generate_ideas --> promote_ideas
+    promote_ideas --> execute_tasks
+    execute_tasks --> wait_tasks
+    wait_tasks --> compute_rewards
+    compute_rewards --> select_best
+    select_best --> completed
+    completed --> [*]
 ```
 
 | Phase | Description |

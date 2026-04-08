@@ -20,8 +20,15 @@ FileEvo is Viben's core engine, driving code iteration optimization through heur
 
 ### How It Works
 
-```
-Code Input → Reward Model Evaluation → Generate Optimization Plan → Agent Execution → Re-evaluate → Loop
+```mermaid
+flowchart LR
+    A[Code Input] --> B[Reward Model<br/>Evaluation]
+    B --> C[Generate<br/>Optimization Plan]
+    C --> D[Agent<br/>Execution]
+    D --> E[Re-evaluate]
+    E --> F{Continue?}
+    F -->|Yes| B
+    F -->|No| G[Done]
 ```
 
 ### Reward Model
@@ -108,10 +115,15 @@ XState state machine-based workflow management system.
 
 Tasks flow through these states:
 
-```
-backlog → queue → in_progress → review → completed
-                      ↓
-                   archived
+```mermaid
+stateDiagram-v2
+    [*] --> backlog
+    backlog --> queue
+    queue --> in_progress
+    in_progress --> review
+    review --> completed
+    completed --> [*]
+    in_progress --> archived
 ```
 
 | Status | Description |
