@@ -39,25 +39,25 @@ This module adds WeChat-like social chat capabilities to Viben Desktop, unifying
 ## Feature Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Desktop Left Navigation              │
-├─────────────────────────────────────────────────────────┤
-│  [Chat]  [Contacts]  [Kanban]  [Marketplace]  [Settings]  ...      │
-└─────────────────────────────────────────────────────────┘
-         │          │
-         ▼          ▼
-┌─────────────┐ ┌─────────────────────────────────────────┐
-│   Chat Page   │ │              Contacts Page              │
-├─────────────┤ ├─────────────────────────────────────────┤
-│ Conversation │ │ Group List                              │
-│ List         │ │ ├─ Agents (collapsible)                 │
-│ - Agent Chat │ │ │   └─ Locally created agents           │
-│ - Private    │ │ ├─ Group Chats (collapsible)            │
-│ - Group Chat │ │ │   └─ Created group chat list          │
-│ - Workspace  │ │ └─ Agent Teams (collapsible)            │
-│              │ │     └─ Orchestrated workflow teams      │
-│ [Pinnable]   │ │                                         │
-└─────────────┘ └─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Desktop Left Navigation                               │
+├─────────┬──────────┬─────────┬─────────────┬──────────┬────────────────────┤
+│ [Chat]  │[Contacts]│ Kanban  │ Marketplace │ Settings │ ...                │
+└────┬────┴────┬─────┴─────────┴─────────────┴──────────┴────────────────────┘
+     │         │
+     ▼         ▼
+┌─────────────────┐  ┌───────────────────────────────────────────────────────┐
+│   Chat Page     │  │                    Contacts Page                       │
+├─────────────────┤  ├───────────────────────────────────────────────────────┤
+│ Conversation    │  │ Group List                                            │
+│ List            │  │ ├─ Agents (collapsible)                               │
+│ - Agent Chat    │  │ │  └─ Locally created agents                          │
+│ - Private       │  │ ├─ Group Chats (collapsible)                          │
+│ - Group Chat    │  │ │  └─ Created group chat list                         │
+│ - Workspace     │  │ └─ Agent Teams (collapsible)                          │
+│                 │  │    └─ Orchestrated workflow teams                     │
+│ [Pinnable]      │  │                                                       │
+└─────────────────┘  └───────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -71,7 +71,8 @@ The existing Workspace Chat will be integrated as a special conversation type in
 ```
 Chat List
 ├─ Pinned Conversations
-│   └─ Workspace: My Project  ← Workspace Chat conversation
+│   └─ Workspace: My Project       ← Workspace Chat conversation
+│
 ├─ Regular Conversations
 │   ├─ Agent: Claude Assistant
 │   ├─ Private: John Doe

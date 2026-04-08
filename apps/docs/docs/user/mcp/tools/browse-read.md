@@ -156,33 +156,25 @@ browse_read(searcher="zhihu", paper_id="123456789")
 4. **Apply pagination**: If pagination parameters are set, extracts only the requested pages
 5. **Return content**: Returns the extracted text string
 
-```
-browse_read(searcher, paper_id, page?, start_page?, end_page?)
-        |
-        v
-+------------------+
-| Check local file |
-+------------------+
-        |
-   Found? No -----> Download content
-        |               |
-       Yes              v
-        |          Save to disk
-        |               |
-        v               v
-+------------------+
-| Extract text     |
-| from content     |
-+------------------+
-        |
-        v
-+------------------+
-| Apply pagination |
-| (if specified)   |
-+------------------+
-        |
-        v
-  Return text content
+```mermaid
+flowchart TD
+    A["browse_read(searcher, paper_id, page?, ...)"] --> B[Check local file]
+    B --> C{Found?}
+    C -->|No| D[Download content]
+    D --> E[Save to disk]
+    E --> F
+    C -->|Yes| F[Extract text from content]
+    F --> G[Apply pagination<br/>if specified]
+    G --> H[Return text content]
+
+    style A fill:#e3f2fd,stroke:#1976d2
+    style B fill:#e8f5e9,stroke:#388e3c
+    style C fill:#fff3e0,stroke:#f57c00
+    style D fill:#fce4ec,stroke:#c2185b
+    style E fill:#f3e5f5,stroke:#7b1fa2
+    style F fill:#e0f7fa,stroke:#00838f
+    style G fill:#e8f5e9,stroke:#388e3c
+    style H fill:#e3f2fd,stroke:#1976d2
 ```
 
 ## Response Format

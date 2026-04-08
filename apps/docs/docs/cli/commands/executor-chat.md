@@ -44,35 +44,29 @@ viben executor chat -n CLAUDE_CODE -p "Continue the previous work" --resume abc1
 
 ## Data Flow Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        viben executor chat                       │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      ChatCommand::execute()                      │
-│  1. Parse arguments                                              │
-│  2. Read prompt (from -p or stdin)                               │
-│  3. Create CodingAgent based on --name                           │
-│  4. Call spawn_chat_process()                                    │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     ClaudeCode executor                          │
-│  Build command: claude -p "prompt" ...                           │
-│  - Add corresponding parameters based on input/output format     │
-│  - Handle --model, --dangerously-skip-permissions, etc.          │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Child process (claude)                      │
-│  stdin  ◄──── Inherits parent process stdin                      │
-│  stdout ────► Inherits parent process stdout                     │
-│  stderr ────► Inherits parent process stderr                     │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["viben executor chat"] --> B["ChatCommand::execute()"]
+    B --> C["ClaudeCode executor"]
+    C --> D["Child process (claude)"]
+
+    subgraph B_details ["ChatCommand::execute()"]
+        B1["1. Parse arguments"]
+        B2["2. Read prompt (from -p or stdin)"]
+        B3["3. Create CodingAgent based on --name"]
+    end
+
+    subgraph C_details ["ClaudeCode executor"]
+        C1["Build command: claude -p 'prompt' ..."]
+        C2["- Add corresponding parameters based on input/output format"]
+        C3["- Handle --model, --dangerously-skip-permissions, etc."]
+    end
+
+    subgraph D_details ["Child process (claude)"]
+        D1["stdin ← Inherits parent process stdin"]
+        D2["stdout → Inherits parent process stdout"]
+        D3["stderr → Inherits parent process stderr"]
+    end
 ```
 
 ## Code Implementation

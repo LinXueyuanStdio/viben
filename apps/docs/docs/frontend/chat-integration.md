@@ -82,20 +82,21 @@ import { MessageSquare } from "lucide-react";
 ### Core Layout
 
 ```
-+------------------------------------------------------------------+
-|  Header: Back | Workspace Name | Running Indicator | Actions     |
-+------------------------------------------------------------------+
-|                                              |                    |
-|  Chat Messages Area (scrollable)             |  Right Sidebar     |
-|    - User messages                           |    - Artifacts     |
-|    - AI text responses                       |    - Workspace     |
-|    - Tool executions (collapsible)           |    - MCP Tools     |
-|    - Plan approval UI                        |    - Skills        |
-|    - Question inputs                         |                    |
-|                                              |                    |
-+------------------------------------------------------------------+
-|  Reply Input: Textarea + File Attach + Send/Stop                 |
-+------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ Header: Back | Workspace Name | Running Indicator | Actions                         │
+├────────────────────────────────────────────────────────┬────────────────────────────┤
+│                                                        │                            │
+│ Chat Messages Area (scrollable)                        │ Right Sidebar              │
+│   - User messages                                      │   - Artifacts              │
+│   - AI text responses                                  │   - Workspace              │
+│   - Tool executions (collapsible)                      │   - MCP Tools              │
+│   - Plan approval UI                                   │   - Skills                 │
+│   - Question inputs                                    │                            │
+│                                                        │                            │
+│                                                        │                            │
+├────────────────────────────────────────────────────────┴────────────────────────────┤
+│ Reply Input: Textarea + File Attach + Send/Stop                                     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Components to Create/Port

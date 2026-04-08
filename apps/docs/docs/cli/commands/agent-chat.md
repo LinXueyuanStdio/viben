@@ -41,54 +41,44 @@ OPTIONS:
 
 ## Data Flow Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        viben agent chat                          │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      AgentChatCommand::execute()                 │
-│  1. Parse arguments                                              │
-│  2. Load Agent config (~/.viben/agents/<id>/config.yaml)         │
-│  3. Load Agent memory (MEMORY.md + today/yesterday logs)         │
-│  4. Read prompt (from -p or stdin)                               │
-│  5. Merge workspace config (<cwd>/.claude/ etc.)                 │
-│  6. Select executor based on Agent type                          │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Executor Selection                           │
-│  agent.type == "claude-code"  →  ClaudeCode executor            │
-│  agent.type == "gemini"       →  Gemini executor                │
-│  agent.type == "codex"        →  Codex executor                 │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     spawn_agent_chat_process()                   │
-│  Build command: claude -p "prompt" --append-system-prompt "mem" │
-│  - Inject Agent memory as system prompt                          │
-│  - Add corresponding args based on input/output format           │
-│  - Handle session, model and other parameters                    │
-│  - Load Agent's MCP servers configuration                        │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Child process (claude/gemini/...)           │
-│  stdin  ◄──── Inherits parent stdin                              │
-│  stdout ────► Inherits parent stdout                             │
-│  stderr ────► Inherits parent stderr                             │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Post-processing                             │
-│  - Update Agent daily log (memory/YYYY-MM-DD.md)                 │
-│  - Save session to .agent_sessions/<session_id>/                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["viben agent chat"] --> B["AgentChatCommand::execute()"]
+    B --> C["Executor Selection"]
+    C --> D["spawn_agent_chat_process()"]
+    D --> E["Child process (claude/gemini/...)"]
+    E --> F["Post-processing"]
+
+    subgraph B_details ["AgentChatCommand::execute()"]
+        B1["1. Parse arguments"]
+        B2["2. Load Agent config (~/.viben/agents/<id>/config.yaml)"]
+        B3["3. Load Agent memory (MEMORY.md + today/yesterday logs)"]
+        B4["4. Read prompt (from -p or stdin)"]
+        B5["5. Merge workspace config (<cwd>/.claude/ etc.)"]
+    end
+
+    subgraph C_details ["Executor Selection"]
+        C1["agent.type == 'claude-code' → ClaudeCode executor"]
+        C2["agent.type == 'gemini' → Gemini executor"]
+    end
+
+    subgraph D_details ["spawn_agent_chat_process()"]
+        D1["Build command: claude -p 'prompt' --append-system-prompt 'mem'"]
+        D2["- Inject Agent memory as system prompt"]
+        D3["- Add corresponding args based on input/output format"]
+        D4["- Handle session, model and other parameters"]
+    end
+
+    subgraph E_details ["Child process"]
+        E1["stdin ← Inherits parent stdin"]
+        E2["stdout → Inherits parent stdout"]
+        E3["stderr → Inherits parent stderr"]
+    end
+
+    subgraph F_details ["Post-processing"]
+        F1["- Update Agent daily log (memory/YYYY-MM-DD.md)"]
+        F2["- Save session to .agent_sessions/<session_id>/"]
+    end
 ```
 
 ---
@@ -156,33 +146,29 @@ viben agent chat -n my-agent -p "Quick task" --json
 
 Agent chat automatically loads and injects the Agent's memory:
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Memory Loading                               │
-├─────────────────────────────────────────────────────────────────┤
-│  1. ~/.viben/agents/<id>/memory/MEMORY.md      (Main memory)    │
-│  2. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (Today's log)    │
-│  3. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md  (Yesterday's log)│
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Prompt Construction                          │
-│                                                                  │
-│  [System Prompt]                                                 │
-│  # Agent Memory                                                  │
-│  <contents of MEMORY.md>                                         │
-│                                                                  │
-│  # Recent Activity                                               │
-│  ## Yesterday (2024-01-15)                                       │
-│  <contents of yesterday's log>                                   │
-│                                                                  │
-│  ## Today (2024-01-16)                                           │
-│  <contents of today's log>                                       │
-│                                                                  │
-│  [User Prompt]                                                   │
-│  <actual user prompt>                                            │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Memory["Memory Loading"]
+        M1["1. ~/.viben/agents/<id>/memory/MEMORY.md (Main memory)"]
+        M2["2. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md (Today's log)"]
+        M3["3. ~/.viben/agents/<id>/memory/YYYY-MM-DD.md (Yesterday's log)"]
+    end
+
+    Memory --> Prompt
+
+    subgraph Prompt["Prompt Construction"]
+        direction TB
+        S["[System Prompt]"]
+        S1["# Agent Memory"]
+        S2["<contents of MEMORY.md>"]
+        S3["# Recent Activity"]
+        S4["## Yesterday (2024-01-15)"]
+        S5["<contents of yesterday's log>"]
+        S6["## Today (2024-01-16)"]
+        S7["<contents of today's log>"]
+        U["[User Prompt]"]
+        U1["<actual user prompt>"]
+    end
 ```
 
 Use `--no-memory` to skip memory loading.
@@ -193,20 +179,19 @@ Use `--no-memory` to skip memory loading.
 
 When agent chat executes, configuration is merged by priority:
 
-```
 Priority from low to high:
-┌─────────────────────────────────────────────────────────────────┐
-│ 1. Agent Base Configuration                                      │
-│    ~/.viben/agents/<id>/config.yaml                             │
-│    - type, model, mcp, skills, etc.                              │
-├─────────────────────────────────────────────────────────────────┤
-│ 2. Workspace Configuration (based on agent type)                 │
-│    <cwd>/.claude/settings.json  (if type=claude-code)           │
-│    <cwd>/.cursor/settings.json  (if type=cursor)                │
-├─────────────────────────────────────────────────────────────────┤
-│ 3. Command Line Arguments                                        │
-│    --model, --session, --no-memory, etc.                        │
-└─────────────────────────────────────────────────────────────────┘
+
+```text
+1. Agent Base Configuration
+   ~/.viben/agents/<id>/config.yaml
+   - type, model, mcp, skills, etc.
+────────────────────────────────────────────────────
+2. Workspace Configuration (based on agent type)
+   <cwd>/.claude/settings.json  (if type=claude-code)
+   <cwd>/.cursor/settings.json  (if type=cursor)
+────────────────────────────────────────────────────
+3. Command Line Arguments
+   --model, --session, --no-memory, etc.
 ```
 
 ---

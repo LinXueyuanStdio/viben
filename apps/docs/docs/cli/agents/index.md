@@ -22,25 +22,25 @@ In the **Agent Swarm x Code Evolution** paradigm, multiple agents collaborate wi
 
 ### Swarm Coordination
 
-```
-                    Task Queue
-                        |
-                        v
-    +-------------------------------------------+
-    |              Swarm Orchestrator           |
-    |  (Distributes work, collects feedback)    |
-    +-------------------------------------------+
-         |          |          |          |
-         v          v          v          v
-    +--------+ +--------+ +--------+ +--------+
-    |Architect| |Implement| |Reviewer| | Tester |
-    +--------+ +--------+ +--------+ +--------+
-         |          |          |          |
-         +----------+----------+----------+
-                        |
-                        v
-                   FileEvo Loop
-              (Learn from outcomes)
+```mermaid
+flowchart TD
+    TQ[Task Queue]
+    SO[Swarm Orchestrator<br/><i>Distributes work, collects feedback</i>]
+    A[Architect]
+    I[Implementer]
+    R[Reviewer]
+    T[Tester]
+    FE[FileEvo Loop<br/><i>Learn from outcomes</i>]
+
+    TQ --> SO
+    SO --> A
+    SO --> I
+    SO --> R
+    SO --> T
+    A --> FE
+    I --> FE
+    R --> FE
+    T --> FE
 ```
 
 ### Quick Swarm Commands
@@ -70,20 +70,20 @@ viben swarm config --roles architect,implementer,reviewer
 ## Architecture Overview
 
 ```
-                          Viben CLI
+Viben CLI
 +---------------------------------------------------------+
 |  Agent Template (Reusable agent configuration template)  |
-|    |                                                     |
-|    +-- Agent Instance (Independent agent instance)       |
-|          |-- config.yaml (Agent configuration)           |
-|          |-- mcp_servers.json (MCP configuration)        |
-|          |-- skills/ (Agent-specific skills)             |
-|          |-- memory/ (Agent memory)                      |
-|          |   |-- MEMORY.md (Main memory)                 |
-|          |   +-- YYYY-MM-DD.md (Daily logs, append-only) |
-|          |-- .agentrc (Startup configuration)            |
-|          |-- .agent_history (Command history)            |
-|          +-- .agent_sessions/<session_id>/ (Sessions)    |
+|    │                                                     |
+|    └── Agent Instance (Independent agent instance)       |
+|          ├── config.yaml (Agent configuration)           |
+|          ├── mcp_servers.json (MCP configuration)        |
+|          ├── skills/ (Agent-specific skills)             |
+|          ├── memory/ (Agent memory)                      |
+|          │   ├── MEMORY.md (Main memory)                 |
+|          │   └── YYYY-MM-DD.md (Daily logs, append-only) |
+|          ├── .agentrc (Startup configuration)            |
+|          ├── .agent_history (Command history)            |
+|          └── .agent_sessions/<session_id>/ (Sessions)    |
 +---------------------------------------------------------+
 ```
 
@@ -93,20 +93,20 @@ Each agent is stored in `~/.viben/agents/<agent-id>/`:
 
 ```
 ~/.viben/agents/<agent-id>/
-|-- config.yaml              # Agent configuration
-|-- mcp_servers.json         # MCP servers configuration
-|-- skills/                  # Agent-specific skills
-|-- memory/                  # Agent memory
-|   |-- MEMORY.md            # Main memory file (structured knowledge)
-|   |-- 2024-01-15.md        # Daily log (append-only)
-|   |-- 2024-01-16.md        # Read today + yesterday at session start
-|   +-- ...
-|-- .agentrc                 # Agent startup configuration
-|-- .agent_history           # Command history
-+-- .agent_sessions/         # Session storage
-    +-- <session_id>/
-        |-- config.yaml              # Session configuration
-        +-- messages.rollout.jsonl   # Message history (JSONL)
+├── config.yaml              # Agent configuration
+├── mcp_servers.json         # MCP servers configuration
+├── skills/                  # Agent-specific skills
+├── memory/                  # Agent memory
+│   ├── MEMORY.md            # Main memory file (structured knowledge)
+│   ├── 2024-01-15.md        # Daily log (append-only)
+│   ├── 2024-01-16.md        # Read today + yesterday at session start
+│   └── ...
+├── .agentrc                 # Agent startup configuration
+├── .agent_history           # Command history
+└── .agent_sessions/         # Session storage
+    └── <session_id>/
+        ├── config.yaml              # Session configuration
+        └── messages.rollout.jsonl   # Message history (JSONL)
 ```
 
 ## Runtime Config Merging
@@ -114,9 +114,9 @@ Each agent is stored in `~/.viben/agents/<agent-id>/`:
 When an agent runs, configuration is merged in the following order:
 
 ```
-1. ~/.viben/agents/<id>/config.yaml     # Agent base configuration
-2. <project>/.claude/ (or other type)   # Workspace agent type config
-3. Command line arguments               # Runtime overrides
+1. ~/.viben/agents/<id>/config.yaml    # Agent base configuration
+2. <project>/.claude/ (or other type)  # Workspace agent type config
+3. Command line arguments              # Runtime overrides
 ```
 
 For example: Running agent `main` in `/projects/my-app` directory will first load `~/.viben/agents/main/config.yaml`, then overlay `/projects/my-app/.claude/` configuration.

@@ -274,27 +274,30 @@ GET    /api/admin/logs                  # List moderation logs (filterable)
 ### Admin Layout
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ Header (same as dashboard)                           🔔 👤  │
-├──────────────┬──────────────────────────────────────────────┤
-│              │                                              │
-│  Sidebar     │  Main Content                                │
-│              │                                              │
-│  Dashboard   │  ┌────────────────────────────────────────┐  │
-│              │  │ Stats Cards                            │  │
-│  ── Admin ── │  │ [Pending] [Reports] [Today's Actions] │  │
-│  📦 Packages │  └────────────────────────────────────────┘  │
-│    └ MCP     │                                              │
-│    └ Skills  │  ┌────────────────────────────────────────┐  │
-│  💬 Content  │  │ Recent Activity / Queue Preview        │  │
-│    └ Comments│  │                                        │  │
-│    └ Collec. │  │                                        │  │
-│  📋 Reports  │  └────────────────────────────────────────┘  │
-│              │                                              │
-│  ── User ──  │                                              │
-│  (normal nav)│                                              │
-│              │                                              │
-└──────────────┴──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ Header (same as dashboard)                                            🔔 👤    │
+├──────────────────┬──────────────────────────────────────────────────────────────┤
+│                  │                                                              │
+│ Sidebar          │  Main Content                                                │
+│                  │                                                              │
+│ Dashboard        │  ┌── Stats Cards ──────────────────────────────────────────┐ │
+│                  │  │ [Pending] [Reports] [Today's Actions]                   │ │
+│ ── Admin ──      │  └─────────────────────────────────────────────────────────┘ │
+│                  │                                                              │
+│ 📦 Packages      │  ┌── Recent Activity / Queue Preview ─────────────────────┐ │
+│   └ MCP          │  │                                                        │ │
+│   └ Skills       │  │                                                        │ │
+│                  │  │                                                        │ │
+│ 💬 Content       │  │                                                        │ │
+│   └ Comments     │  │                                                        │ │
+│   └ Collec.      │  └────────────────────────────────────────────────────────┘ │
+│                  │                                                              │
+│ 📋 Reports       │                                                              │
+│                  │                                                              │
+│ ── User ──       │                                                              │
+│ (normal nav)     │                                                              │
+│                  │                                                              │
+└──────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
 ### Admin Sidebar Extension
@@ -347,21 +350,23 @@ interface PackageReviewCardProps {
   onReject: (reason: string) => void;
   onFeature: () => void;
 }
+```
 
-// Visual structure:
-┌────────────────────────────────────────────────────┐
-│ [MCP Badge]                          Submitted 2h ago │
-│                                                    │
-│ Package Name                                v1.0.0 │
-│ by @username                                       │
-│                                                    │
-│ Description text here...                           │
-│                                                    │
-│ Tags: [tag1] [tag2] [tag3]                        │
-│                                                    │
-│ ───────────────────────────────────────────────── │
-│ [View Details]  [Reject ▾]           [✓ Approve]  │
-└────────────────────────────────────────────────────┘
+**Visual structure**:
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ [MCP]                                           Submitted 2h ago          │
+│                                                                           │
+│ Package Name                                                    v1.0.0    │
+│ by @username                                                              │
+│                                                                           │
+│ Description text here...                                                  │
+│                                                                           │
+│ Tags: [tag1] [tag2] [tag3]                                                │
+├───────────────────────────────────────────────────────────────────────────┤
+│ [View Details]  [Reject ▾]                              [✓ Approve]       │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Report Card
@@ -372,19 +377,23 @@ interface ReportCardProps {
   onResolve: (resolution: string) => void;
   onDismiss: () => void;
 }
+```
 
-// Visual structure:
-┌────────────────────────────────────────────────────┐
-│ 🚩 [Spam] Report                      2 hours ago │
-│                                                    │
-│ Reported: Comment on "mcp-package-name"           │
-│ Reporter: @username                                │
-│                                                    │
-│ "This comment contains spam links..."              │
-│                                                    │
-│ ───────────────────────────────────────────────── │
-│ [View Content]  [Dismiss]           [Resolve ▾]   │
-└────────────────────────────────────────────────────┘
+**Visual structure**:
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 🚩 [Spam] Report                                        2 hours ago       │
+│                                                                           │
+│ Reported: Comment on "mcp-package-name"                                   │
+│ Reporter: @username                                                       │
+│                                                                           │
+│ ┌───────────────────────────────────────────────────────────────────────┐ │
+│ │ "This comment contains spam links..."                                 │ │
+│ └───────────────────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────────────────┤
+│ [View Content]  [Dismiss]                                [Resolve ▾]      │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Moderation Action Modal

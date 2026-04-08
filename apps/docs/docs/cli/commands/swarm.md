@@ -185,34 +185,34 @@ File: .viben/agents/registry.json
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Main Repository                       │
-│  .viben/                                                 │
-│  ├── tasks/                                              │
-│  │   └── 03-03-add-user-auth/                           │
-│  │       ├── task.json                                   │
-│  │       ├── prd.md                                      │
-│  │       └── *.jsonl                                     │
-│  └── agents/                                             │
-│      └── registry.json                                   │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          │ viben task work-phase (recommended)
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│              Worktree (Isolated Branch)                  │
-│  ~/.viben/worktrees/feature/user-auth/                  │
-│  ├── (project files)                                     │
-│  ├── .viben/                                             │
-│  │   ├── .current-task                                   │
-│  │   └── tasks/03-03-add-user-auth/                     │
-│  ├── .agent-log                                          │
-│  └── .session-id                                         │
-│                                                          │
-│  [Work Agent Running]                                    │
-│    └── Executes task phases: implement → check → finish │
-└─────────────────────────────────────────────────────────┘
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                       Main Repository                            │
+├─────────────────────────────────────────────────────────────────┤
+│ .viben/                              └── agents/                 │
+│ ├── tasks/                               └── registry.json       │
+│ │   └── 03-03-add-user-auth/                                     │
+│ │       ├── task.json                                            │
+│ │       ├── prd.md                                               │
+│ │       └── *.jsonl                                              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │  viben task work-phase (recommended)
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Worktree (Isolated Branch)                     │
+├─────────────────────────────────────────────────────────────────┤
+│ ~/.viben/worktrees/feature/user-auth/                            │
+│ ├── (project files)                                              │
+│ ├── .viben/                                                      │
+│ │   ├── .current-task                                            │
+│ │   └── tasks/03-03-add-user-auth/                               │
+│ ├── .agent-log                                                   │
+│ └── .session-id                                                  │
+│                                                                  │
+│ [Work Agent Running]                                             │
+│ └── Executes task phases: implement → check → finish             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## registry.json Format

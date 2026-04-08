@@ -488,17 +488,24 @@ The Task system integrates with the Command Queue system to enable queued task e
 
 **Key Principle**: The Queue system has zero knowledge of the Task system. Queue only executes shell commands and doesn't understand task semantics.
 
-```
-┌─────────────────────┐      ┌─────────────────────┐
-│   Task System       │ ───> │   Queue System      │
-│                     │      │   (Zero Knowledge)  │
-│ - task.json mgmt    │      │                     │
-│ - State machine     │      │ - Command queuing   │
-│ - Agent scheduling  │      │ - Process management│
-│                     │      │ - Concurrency ctrl  │
-│ enqueueTask()       │      │                     │
-│  └─ queue.enqueue() │      │ Only executes shell │
-└─────────────────────┘      └─────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Task["Task System"]
+        T1["- task.json mgmt"]
+        T2["- State machine"]
+        T3["- Agent scheduling"]
+        T4["enqueueTask()"]
+        T5["└─ queue.enqueue()"]
+    end
+
+    subgraph Queue["Queue System<br/>(Zero Knowledge)"]
+        Q1["- Command queuing"]
+        Q2["- Process management"]
+        Q3["- Concurrency ctrl"]
+        Q4["Only executes shell"]
+    end
+
+    Task -->|"enqueue"| Queue
 ```
 
 ### Data Flow
