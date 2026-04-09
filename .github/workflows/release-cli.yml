@@ -213,6 +213,24 @@ jobs:
           mv package.tmp.json package.json
           echo "Updated version to: $(jq -r '.version' package.json)"
 
+      - name: Verify no workspace protocol references in runtime dependencies
+        run: |
+          cd apps/cli
+          # Check only dependencies and optionalDependencies (not devDependencies)
+          # devDependencies with workspace:* are safe since npm ignores them for registry packages
+          WORKSPACE_REFS=$(jq -r '
+            [(.dependencies // {}), (.optionalDependencies // {})] 
+            | map(to_entries[]) 
+            | map(select(.value | test("^workspace:"))) 
+            | map("\(.key): \(.value)") 
+            | .[]' package.json)
+          if [ -n "$WORKSPACE_REFS" ]; then
+            echo "::error::Runtime dependencies contain workspace: protocol references that will break npm install"
+            echo "$WORKSPACE_REFS"
+            exit 1
+          fi
+          echo "✅ No workspace: protocol references in runtime dependencies"
+
       - name: Publish to npm
         run: |
           cd apps/cli

@@ -10,8 +10,9 @@ export default defineConfig({
   minify: false,
   target: 'node18',
   outDir: 'dist',
-  // Don't bundle dependencies - let Node.js resolve them at runtime
-  external: ['@viben/core', 'commander', 'chalk'],
+  // Bundle workspace packages (@viben/*) since they are not published to npm separately.
+  // All other dependencies listed in package.json are auto-externalized by tsup.
+  noExternal: ['@viben/core', '@viben/api-client'],
   // Mark Node.js built-in modules as external
   platform: 'node',
 });

@@ -233,10 +233,10 @@ function handlePythonCommand(args) {
 
 async function runCoreCli(args) {
   try {
-    const { run } = await import('@viben/core/cli');
+    const { run } = await import('../dist/index.js');
     await run(['node', 'viben', ...args]);
   } catch (err) {
-    error('Failed to load @viben/core CLI');
+    error('Failed to load Viben CLI');
     console.error(err);
     process.exit(1);
   }
