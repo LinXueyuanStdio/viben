@@ -626,15 +626,17 @@ viben idea promote ci-001 --start --worktree
 # Shell (macOS/Linux)
 curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
 
-# npm
+# npm (macOS/Linux/Windows)
 npm install -g viben
 
-# Homebrew
+# Homebrew (macOS/Linux)
 brew tap LinXueyuanStdio/viben && brew install viben
 
-# 或直接运行 (无需安装)
+# 或直接运行 (无需安装, macOS/Linux/Windows)
 npx viben
 ```
+
+> 💡 **Windows 用户**: 推荐使用 `npm install -g viben` 或 `npx viben`，需要先安装 [Node.js 18+](https://nodejs.org)。
 
 ---
 

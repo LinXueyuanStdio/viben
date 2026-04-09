@@ -626,15 +626,17 @@ For full documentation, visit: **[linxueyuan.online/viben](https://linxueyuan.on
 # Shell (macOS/Linux)
 curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
 
-# npm
+# npm (macOS/Linux/Windows)
 npm install -g viben
 
-# Homebrew
+# Homebrew (macOS/Linux)
 brew tap LinXueyuanStdio/viben && brew install viben
 
-# Or run directly (no installation)
+# Or run directly (no installation, macOS/Linux/Windows)
 npx viben
 ```
+
+> 💡 **Windows users**: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
 
 ---
 
