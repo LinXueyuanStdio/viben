@@ -95,12 +95,12 @@ jobs:
             curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
             ```
 
-            #### 2. npx (Node.js 18+)
+            #### 2. npx (macOS/Linux/Windows, Node.js 18+)
             ```bash
             npx viben
             ```
 
-            #### 3. npm Global Install
+            #### 3. npm Global Install (macOS/Linux/Windows)
             ```bash
             npm install -g viben
             viben
@@ -114,6 +114,8 @@ jobs:
 
             ### Requirements
             - Node.js 18+
+
+            > 💡 **Windows users**: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
 
             ### Links
             - [Documentation](https://github.com/LinXueyuanStdio/viben)
@@ -212,6 +214,24 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
           echo "Updated version to: $(jq -r '.version' package.json)"
+
+      - name: Verify no workspace protocol references in runtime dependencies
+        run: |
+          cd apps/cli
+          # Check only dependencies and optionalDependencies (not devDependencies)
+          # devDependencies with workspace:* are safe since npm ignores them for registry packages
+          WORKSPACE_REFS=$(jq -r '
+            [(.dependencies // {}), (.optionalDependencies // {})] 
+            | map(to_entries[]) 
+            | map(select(.value | test("^workspace:"))) 
+            | map("\(.key): \(.value)") 
+            | .[]' package.json)
+          if [ -n "$WORKSPACE_REFS" ]; then
+            echo "::error::Runtime dependencies contain workspace: protocol references that will break npm install"
+            echo "$WORKSPACE_REFS"
+            exit 1
+          fi
+          echo "✅ No workspace: protocol references in runtime dependencies"
 
       - name: Publish to npm
         run: |
