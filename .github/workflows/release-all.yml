@@ -500,12 +500,12 @@ jobs:
           curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
           ```
 
-          #### npx (Node.js 18+)
+          #### npx (macOS/Linux/Windows, Node.js 18+)
           ```bash
           npx viben
           ```
 
-          #### npm Global Install
+          #### npm Global Install (macOS/Linux/Windows)
           ```bash
           npm install -g viben
           viben
@@ -516,6 +516,8 @@ jobs:
           brew tap LinXueyuanStdio/viben
           brew install viben
           ```
+
+          > 💡 **Windows users**: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
 
           EOFCLI
           fi
