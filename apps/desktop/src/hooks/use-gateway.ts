@@ -6,8 +6,9 @@
  * 通过 Tauri 命令管理 viben 网关进程。
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useVibenCli } from "./use-viben-cli";
 
 export interface GatewayStatus {
   running: boolean;
@@ -38,6 +39,8 @@ export interface UseGatewayReturn {
   binaryPath: string | null;
   /** Auto-discovered gateway URL (if different from configured) */
   discoveredUrl: string | null;
+  /** Currently selected viben path (user selection > bundled > auto-detected) */
+  vibenPath: string;
   /** Start the gateway */
   startGateway: () => Promise<void>;
   /** Stop the gateway */
@@ -60,6 +63,13 @@ export function useGateway(): UseGatewayReturn {
   const [error, setError] = useState<string | null>(null);
   const [binaryPath, setBinaryPath] = useState<string | null>(null);
   const [discoveredUrl, setDiscoveredUrl] = useState<string | null>(null);
+
+  // Get viben CLI selection (bundled > user-selected > auto-detected)
+  const { selectedPath: vibenPath } = useVibenCli();
+
+  // Keep a ref of vibenPath for use in callbacks without causing re-renders
+  const vibenPathRef = useRef(vibenPath);
+  vibenPathRef.current = vibenPath;
 
   // Fetch status
   const refreshStatus = useCallback(async () => {
@@ -123,7 +133,23 @@ export function useGateway(): UseGatewayReturn {
     setIsActioning(true);
     setError(null);
     try {
-      const result = await invoke<GatewayStatus>("start_gateway");
+      const currentVibenPath = vibenPathRef.current;
+      let result: GatewayStatus;
+
+      if (currentVibenPath) {
+        // Use selected/bundled viben path
+        console.log("[useGateway] Starting gateway with viben path:", currentVibenPath);
+        result = await invoke<GatewayStatus>("start_gateway_with_path", {
+          vibenPath: currentVibenPath,
+          port: config?.port,
+          host: config?.host,
+        });
+      } else {
+        // Fall back to default start (uses PATH lookup)
+        console.log("[useGateway] Starting gateway with default path lookup");
+        result = await invoke<GatewayStatus>("start_gateway");
+      }
+
       setStatus(result);
       if (result.error) {
         setError(result.error);
@@ -133,7 +159,7 @@ export function useGateway(): UseGatewayReturn {
     } finally {
       setIsActioning(false);
     }
-  }, []);
+  }, [config?.port, config?.host]);
 
   // Stop gateway
   const stopGateway = useCallback(async () => {
@@ -190,6 +216,7 @@ export function useGateway(): UseGatewayReturn {
     error,
     binaryPath,
     discoveredUrl,
+    vibenPath,
     startGateway,
     stopGateway,
     restartGateway,
