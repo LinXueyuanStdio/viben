@@ -340,7 +340,7 @@ const TOOL_CONFIGS: Record<CliToolName, ToolConfig> = {
   },
   viben: {
     versionArg: "--version",
-    versionRegex: /viben\/(\d+\.\d+\.\d+)/,
+    versionRegex: /(\d+\.\d+\.\d+)/,
     detectMethod: "npm-global",
   },
 };
