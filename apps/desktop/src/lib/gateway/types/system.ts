@@ -71,7 +71,8 @@ export type CliToolName =
   | "goose"
   | "cline"
   | "continue"
-  | "cursor";
+  | "cursor"
+  | "viben";
 
 /** All CLI tools detection result */
 export interface CliToolsInfo {
@@ -85,6 +86,7 @@ export interface CliToolsInfo {
   cline: CliToolInfo;
   continue: CliToolInfo;
   cursor: CliToolInfo;
+  viben: CliToolInfo;
 }
 
 /** CLI tools selected paths stored in config file */
@@ -99,4 +101,5 @@ export interface CliToolsConfig {
   cline?: string;
   continue?: string;
   cursor?: string;
+  viben?: string;
 }
