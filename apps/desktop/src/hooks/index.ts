@@ -1,5 +1,7 @@
 export { useAuth } from "./use-auth";
 export { usePython } from "./use-python";
+export { useVibenCli } from "./use-viben-cli";
+export type { UseVibenCliReturn, VibenCliPath, VibenCliSource } from "./use-viben-cli";
 export { useMcp } from "./use-mcp";
 export { useMcpStatusMonitor, useMcpStatusWebSocket, useOnPageEnter, useServerStatus } from "./use-mcp-status-monitor";
 export { useUsage } from "./use-usage";
