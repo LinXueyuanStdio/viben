@@ -183,6 +183,8 @@ interface AppState {
   setContinuePath: (path: string) => void;
   cursorPath: string;
   setCursorPath: (path: string) => void;
+  vibenPath: string;
+  setVibenPath: (path: string) => void;
 
   // CLI Tools Detection Cache
   cliToolsCache: CliToolsCache;
@@ -527,6 +529,8 @@ export const useAppStore = create<AppState>()(
       setContinuePath: (path) => set({ continuePath: path }),
       cursorPath: "",
       setCursorPath: (path) => set({ cursorPath: path }),
+      vibenPath: "",
+      setVibenPath: (path) => set({ vibenPath: path }),
 
       // CLI Tools Detection Cache
       cliToolsCache: { data: null, timestamp: 0 },
@@ -572,6 +576,7 @@ export const useAppStore = create<AppState>()(
         clinePath: state.clinePath,
         continuePath: state.continuePath,
         cursorPath: state.cursorPath,
+        vibenPath: state.vibenPath,
         cliToolsCache: state.cliToolsCache,
       }),
     }
