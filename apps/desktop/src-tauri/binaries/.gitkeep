@@ -1,0 +1,6 @@
+# This directory holds Tauri sidecar binaries for the viben CLI.
+# Binaries are built by CI and named according to Tauri's convention:
+#   - viben-aarch64-apple-darwin (macOS ARM)
+#   - viben-x86_64-apple-darwin (macOS Intel)
+#   - viben-x86_64-pc-windows-msvc.exe (Windows)
+#   - viben-x86_64-unknown-linux-gnu (Linux)
