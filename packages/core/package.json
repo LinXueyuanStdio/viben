@@ -57,6 +57,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "build:sidecar": "tsx scripts/build-sidecar.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
