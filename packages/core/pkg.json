@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/vercel/pkg/main/dictionary/pkg.json",
+  "name": "viben",
+  "pkg": {
+    "scripts": [
+      "dist/**/*.js",
+      "dist/**/*.cjs"
+    ],
+    "assets": [
+      "templates/**/*",
+      "node_modules/@modelcontextprotocol/sdk/**/*",
+      "node_modules/@anthropic-ai/sdk/**/*",
+      "node_modules/@anthropic-ai/claude-agent-sdk/**/*"
+    ],
+    "targets": [
+      "node18-macos-arm64",
+      "node18-macos-x64",
+      "node18-win-x64",
+      "node18-linux-x64"
+    ],
+    "outputPath": "../../apps/desktop/src-tauri/binaries"
+  }
+}
