@@ -276,6 +276,8 @@ pub fn run() {
             commands::gateway::set_gateway_config,
             commands::gateway::check_gateway_binary,
             commands::gateway::discover_gateway,
+            commands::gateway::get_bundled_viben_path,
+            commands::gateway::start_gateway_with_path,
             // Screenshot commands (native screen capture)
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,

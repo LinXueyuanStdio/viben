@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{AppHandle, Manager, Runtime, State};
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
 
@@ -350,4 +350,224 @@ pub async fn discover_gateway() -> Result<Option<String>, String> {
     }
 
     Ok(None)
+}
+
+/// Get the bundled viben sidecar binary path
+///
+/// Returns the path to the bundled viben binary if it exists in the app bundle.
+/// The sidecar binary is expected to be configured in tauri.conf.json under
+/// `bundle.externalBin` as "binaries/viben".
+///
+/// Platform-specific paths:
+/// - macOS: `$APP_BUNDLE/Contents/MacOS/viben`
+/// - Windows: `$APP_DIR\viben.exe`
+/// - Linux: `$APP_DIR/viben`
+#[tauri::command]
+pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
+    // Get the resource directory where bundled files are stored
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("Failed to get resource directory: {}", e))?;
+
+    // Construct the sidecar binary path based on platform
+    #[cfg(target_os = "windows")]
+    let binary_name = "viben.exe";
+    #[cfg(not(target_os = "windows"))]
+    let binary_name = "viben";
+
+    // Check in resource directory (for bundled resources)
+    let resource_path = resource_dir.join("binaries").join(binary_name);
+    if resource_path.exists() {
+        return Ok(resource_path.to_string_lossy().to_string());
+    }
+
+    // Also check directly in resource dir (some bundle configurations)
+    let direct_resource_path = resource_dir.join(binary_name);
+    if direct_resource_path.exists() {
+        return Ok(direct_resource_path.to_string_lossy().to_string());
+    }
+
+    // For macOS app bundles, check Contents/MacOS directory
+    #[cfg(target_os = "macos")]
+    {
+        // Try to find the app bundle path
+        if let Some(exe_path) = std::env::current_exe().ok() {
+            // The exe is at: MyApp.app/Contents/MacOS/MyApp
+            // We want: MyApp.app/Contents/MacOS/viben
+            if let Some(macos_dir) = exe_path.parent() {
+                let sidecar_path = macos_dir.join(binary_name);
+                if sidecar_path.exists() {
+                    return Ok(sidecar_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // For Windows/Linux, check next to the executable
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(exe_path) = std::env::current_exe().ok() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let sidecar_path = exe_dir.join(binary_name);
+                if sidecar_path.exists() {
+                    return Ok(sidecar_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    // Return empty string if bundled binary not found
+    // (This is expected during development when sidecar isn't built yet)
+    Ok(String::new())
+}
+
+/// Find the gateway binary path, checking bundled sidecar first
+/// Returns (binary_path, args) where args are additional arguments to pass
+///
+/// Priority:
+/// 1. Bundled sidecar (app bundle)
+/// 2. which viben (system PATH)
+/// 3. Known installation paths
+/// 4. npx viben (fallback)
+fn find_gateway_binary_with_bundled<R: Runtime>(
+    app: Option<&AppHandle<R>>,
+) -> Option<(PathBuf, Vec<String>)> {
+    // 1. First, check for bundled sidecar if we have an app handle
+    if let Some(app_handle) = app {
+        if let Ok(bundled_path) = get_bundled_viben_path(app_handle.clone()) {
+            if !bundled_path.is_empty() {
+                let path = PathBuf::from(&bundled_path);
+                if path.exists() {
+                    return Some((path, vec!["gateway".to_string()]));
+                }
+            }
+        }
+    }
+
+    // 2. Fall back to the original detection logic
+    find_gateway_binary()
+}
+
+/// Start gateway with a specified viben path
+///
+/// This allows explicitly specifying which viben binary to use for the gateway.
+/// Useful when the user has selected a specific viben installation from the UI.
+#[tauri::command]
+pub async fn start_gateway_with_path<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, GatewayState>,
+    viben_path: String,
+    port: Option<u16>,
+    host: Option<String>,
+) -> Result<GatewayStatus, String> {
+    let mut config = state.config.read().await.clone();
+
+    // Override config with provided values
+    if let Some(p) = port {
+        config.port = p;
+    }
+    if let Some(h) = host {
+        config.host = h;
+    }
+
+    let mut process_guard = state.process.write().await;
+
+    // Check if already running
+    if let Some(ref proc) = *process_guard {
+        if ping_gateway(&config.host, proc.port).await {
+            return Ok(GatewayStatus {
+                running: true,
+                pid: Some(proc.pid),
+                port: proc.port,
+                url: format!("http://{}:{}", config.host, proc.port),
+                error: None,
+            });
+        }
+        *process_guard = None;
+    }
+
+    // Validate the provided path exists
+    let binary_path = PathBuf::from(&viben_path);
+    if !binary_path.exists() {
+        // Try to find an alternative
+        if let Some((fallback_path, args)) = find_gateway_binary_with_bundled(Some(&app)) {
+            return start_gateway_internal(
+                &fallback_path,
+                &args,
+                &config,
+                &mut process_guard,
+            )
+            .await;
+        }
+        return Err(format!(
+            "Specified viben path does not exist: {}",
+            viben_path
+        ));
+    }
+
+    // Start with the specified path
+    start_gateway_internal(
+        &binary_path,
+        &["gateway".to_string()],
+        &config,
+        &mut process_guard,
+    )
+    .await
+}
+
+/// Internal helper to start the gateway process
+async fn start_gateway_internal(
+    binary_path: &PathBuf,
+    base_args: &[String],
+    config: &GatewayConfig,
+    process_guard: &mut Option<GatewayProcess>,
+) -> Result<GatewayStatus, String> {
+    let mut cmd = Command::new(binary_path);
+
+    for arg in base_args {
+        cmd.arg(arg);
+    }
+
+    cmd.arg("--port")
+        .arg(config.port.to_string())
+        .arg("--host")
+        .arg(&config.host)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to start gateway: {}", e))?;
+
+    let pid = child.id().unwrap_or(0);
+
+    // Wait for gateway to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // Check if it's reachable
+    let mut attempts = 0;
+    while attempts < 10 {
+        if ping_gateway(&config.host, config.port).await {
+            *process_guard = Some(GatewayProcess {
+                child,
+                pid,
+                port: config.port,
+            });
+
+            return Ok(GatewayStatus {
+                running: true,
+                pid: Some(pid),
+                port: config.port,
+                url: format!("http://{}:{}", config.host, config.port),
+                error: None,
+            });
+        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        attempts += 1;
+    }
+
+    let _ = child.kill().await;
+    Err("Gateway started but not reachable. Check logs for errors.".to_string())
 }
