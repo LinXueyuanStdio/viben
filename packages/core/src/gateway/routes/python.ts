@@ -73,7 +73,8 @@ export type CliToolName =
   | "goose"   // Goose coding assistant
   | "cline"   // Cline CLI
   | "continue" // Continue dev CLI
-  | "cursor"; // Cursor CLI (if available)
+  | "cursor"  // Cursor CLI (if available)
+  | "viben";  // Viben CLI
 
 /**
  * All CLI tools detection result
@@ -89,6 +90,7 @@ export interface CliToolsInfo {
   cline: CliToolInfo;
   continue: CliToolInfo;
   cursor: CliToolInfo;
+  viben: CliToolInfo;
 }
 
 /**
@@ -105,6 +107,7 @@ export interface CliToolsConfig {
   cline?: string;
   continue?: string;
   cursor?: string;
+  viben?: string;
 }
 
 // ============================================================================
@@ -335,6 +338,11 @@ const TOOL_CONFIGS: Record<CliToolName, ToolConfig> = {
     versionArg: "--version",
     versionRegex: /(\d+\.\d+\.\d+)/,
   },
+  viben: {
+    versionArg: "--version",
+    versionRegex: /viben\/(\d+\.\d+\.\d+)/,
+    detectMethod: "npm-global",
+  },
 };
 
 /**
@@ -389,6 +397,15 @@ function getCliToolCandidates(tool: CliToolName): string[] {
       );
     }
 
+    // viben-specific paths
+    if (tool === "viben") {
+      candidates.push(
+        "/opt/homebrew/bin/viben",
+        "/usr/local/bin/viben",
+        join(home, ".npm-global/bin/viben"),
+      );
+    }
+
     // Standard paths
     candidates.push(
       `/usr/bin/${tool}`,
@@ -430,6 +447,15 @@ function getCliToolCandidates(tool: CliToolName): string[] {
         join(home, "AppData/Local/Programs/Python/Python311/Scripts", `${tool}.exe`),
       );
     }
+
+    // viben-specific paths (Windows)
+    if (tool === "viben") {
+      const appData = process.env.APPDATA || join(home, "AppData/Roaming");
+      candidates.push(
+        join(appData, "npm/viben.cmd"),
+        join(home, "scoop/shims/viben.exe"),
+      );
+    }
   } else {
     // Linux paths
     candidates.push(
@@ -455,6 +481,16 @@ function getCliToolCandidates(tool: CliToolName): string[] {
       candidates.push(
         join(home, ".npm-global/bin", tool),
         join(home, ".nvm/versions/node/*/bin", tool),
+      );
+    }
+
+    // viben-specific paths (Linux)
+    if (tool === "viben") {
+      candidates.push(
+        "/usr/bin/viben",
+        "/usr/local/bin/viben",
+        join(home, ".npm-global/bin/viben"),
+        "/snap/bin/viben",
       );
     }
   }
@@ -727,7 +763,7 @@ async function detectCliTool(
 }
 
 /**
- * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor)
+ * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor, viben)
  * Also reads selected paths from ~/.viben/config.yaml
  */
 async function detectAllCliTools(config?: {
@@ -741,11 +777,12 @@ async function detectAllCliTools(config?: {
   clinePath?: string;
   continuePath?: string;
   cursorPath?: string;
+  vibenPath?: string;
 }): Promise<CliToolsInfo> {
   // Read selected paths from config file
   const selectedPaths = await readCliToolsConfig();
 
-  const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor] = await Promise.all([
+  const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor, viben] = await Promise.all([
     detectCliTool("python", config?.pythonPath),
     detectCliTool("git", config?.gitPath),
     detectCliTool("gh", config?.ghPath),
@@ -756,6 +793,7 @@ async function detectAllCliTools(config?: {
     detectCliTool("cline", config?.clinePath),
     detectCliTool("continue", config?.continuePath),
     detectCliTool("cursor", config?.cursorPath),
+    detectCliTool("viben", config?.vibenPath),
   ]);
 
   // Add selected paths from config
@@ -770,6 +808,7 @@ async function detectAllCliTools(config?: {
     cline: { ...cline, selectedPath: selectedPaths.cline },
     continue: { ...continueInfo, selectedPath: selectedPaths.continue },
     cursor: { ...cursor, selectedPath: selectedPaths.cursor },
+    viben: { ...viben, selectedPath: selectedPaths.viben },
   };
 }
 
@@ -916,7 +955,7 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
 
   /**
    * GET /api/cli-tools/detect
-   * Detect all CLI tools (python, git, gh, claude, codex, aider, goose, etc.)
+   * Detect all CLI tools (python, git, gh, claude, codex, aider, goose, viben, etc.)
    */
   fastify.get<{
     Querystring: {
@@ -930,6 +969,7 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       cline_path?: string;
       continue_path?: string;
       cursor_path?: string;
+      viben_path?: string;
     };
   }>("/api/cli-tools/detect", async (request) => {
     const {
@@ -943,6 +983,7 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       cline_path,
       continue_path,
       cursor_path,
+      viben_path,
     } = request.query;
     const tools = await detectAllCliTools({
       pythonPath: python_path,
@@ -955,6 +996,7 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       clinePath: cline_path,
       continuePath: continue_path,
       cursorPath: cursor_path,
+      vibenPath: viben_path,
     });
     return tools;
   });
