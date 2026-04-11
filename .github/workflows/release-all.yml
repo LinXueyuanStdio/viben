@@ -250,7 +250,7 @@ jobs:
           # Test basic commands
           viben --version
           viben --help
-          viben init
+          viben init --user ci-test -y
           viben config list
           viben --json config list | jq .
 
