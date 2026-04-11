@@ -26,24 +26,20 @@ env:
 
 jobs:
   # Build sidecar binaries for all platforms
+  # Note: pkg supports cross-compilation, so we build both macOS architectures on macos-latest
   build-sidecar:
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # macOS: build both ARM64 and x64 on the same runner (pkg cross-compiles)
           - platform: macos-latest
-            sidecar_platform: macos-arm64
-            sidecar_name: viben-aarch64-apple-darwin
-          - platform: macos-13
-            sidecar_platform: macos-x64
-            sidecar_name: viben-x86_64-apple-darwin
+            sidecar_platforms: macos-arm64,macos-x64
           - platform: windows-latest
-            sidecar_platform: win-x64
-            sidecar_name: viben-x86_64-pc-windows-msvc.exe
+            sidecar_platforms: win-x64
           - platform: ubuntu-22.04
-            sidecar_platform: linux-x64
-            sidecar_name: viben-x86_64-unknown-linux-gnu
+            sidecar_platforms: linux-x64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -75,17 +71,41 @@ jobs:
       - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
 
-      - name: Build sidecar binary
+      - name: Build sidecar binaries
         shell: bash
         run: |
           cd packages/core
-          npx tsx scripts/build-sidecar.ts --platform ${{ matrix.sidecar_platform }}
+          # Build for each platform in the comma-separated list
+          IFS=',' read -ra PLATFORMS <<< "${{ matrix.sidecar_platforms }}"
+          for platform in "${PLATFORMS[@]}"; do
+            echo "Building sidecar for $platform..."
+            npx tsx scripts/build-sidecar.ts --platform "$platform"
+          done
 
-      - name: Upload sidecar artifact
+      - name: Upload sidecar artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: sidecar-${{ matrix.sidecar_platform }}
-          path: apps/desktop/src-tauri/binaries/${{ matrix.sidecar_name }}
+          name: sidecar-macos
+          path: |
+            apps/desktop/src-tauri/binaries/viben-aarch64-apple-darwin
+            apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
+          retention-days: 1
+
+      - name: Upload sidecar artifact (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-win-x64
+          path: apps/desktop/src-tauri/binaries/viben-x86_64-pc-windows-msvc.exe
+          retention-days: 1
+
+      - name: Upload sidecar artifact (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-linux-x64
+          path: apps/desktop/src-tauri/binaries/viben-x86_64-unknown-linux-gnu
           retention-days: 1
 
   # Determine the version to release
@@ -199,9 +219,8 @@ jobs:
         if: matrix.platform == 'macos-latest'
         uses: actions/download-artifact@v4
         with:
-          pattern: sidecar-macos-*
+          name: sidecar-macos
           path: apps/desktop/src-tauri/binaries/
-          merge-multiple: true
 
       - name: Download sidecar artifacts (Windows)
         if: matrix.platform == 'windows-latest'
