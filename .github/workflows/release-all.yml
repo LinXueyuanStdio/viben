@@ -652,7 +652,9 @@ jobs:
           Desktop app includes bundled Viben CLI - no separate installation required!
 
           #### macOS
-          Download the `.dmg` file and drag Viben to Applications.
+          - **Apple Silicon (M1/M2/M3)**: Download the `aarch64` DMG file
+          - **Intel**: Download the `x86_64` DMG file
+          - Drag Viben to Applications
           - First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
           - Or run: `xattr -cr /Applications/Viben.app`
 
@@ -719,14 +721,17 @@ jobs:
           RELEASE_DATA=${RELEASE_DATA:-'{"assets":[]}'}
           ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
 
-          DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
+          # macOS has two DMG files: ARM64 (aarch64) and x64 (x86_64)
+          DMG_ARM64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("aarch64")) | .browser_download_url' | head -1)
+          DMG_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .browser_download_url' | head -1)
           MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
           EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
           APPIMAGE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
           DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
           INSTALL_SH_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "install.sh") | .browser_download_url' | head -1)
 
-          DMG_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .name' | head -1)
+          DMG_ARM64_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("aarch64")) | .name' | head -1)
+          DMG_X64_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .name' | head -1)
           MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
           EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
           APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
@@ -771,9 +776,13 @@ jobs:
             "desktop": {
               "assets": {
                 "macos": {
-                  "dmg": {
-                    "url": "${DMG_URL}",
-                    "name": "${DMG_NAME}"
+                  "arm64": {
+                    "url": "${DMG_ARM64_URL}",
+                    "name": "${DMG_ARM64_NAME}"
+                  },
+                  "x64": {
+                    "url": "${DMG_X64_URL}",
+                    "name": "${DMG_X64_NAME}"
                   }
                 },
                 "windows": {
