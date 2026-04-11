@@ -253,6 +253,22 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     log.warn({ err: e }, "Failed to start command queue");
   }
 
+  // Start mDNS discovery (advertise + browse for peers)
+  try {
+    await state.discovery.start();
+    log.info({ mdnsAvailable: await state.discovery.isMdnsAvailable() }, "Discovery service started");
+  } catch (e) {
+    log.warn({ err: e }, "Failed to start discovery service");
+  }
+
+  // Reconnect to previously known mesh peers
+  try {
+    await state.mesh.reconnectKnownPeers();
+    log.info("Mesh peer reconnection initiated");
+  } catch (e) {
+    log.warn({ err: e }, "Failed to reconnect known peers");
+  }
+
   // Run task recovery on startup for all known workspaces
   try {
     const workspaces = await workspaceManager.listWorkspaces();
@@ -313,6 +329,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     // Stop SSE heartbeat and cleanup all SSE connections
     state.taskSSEManager.stopHeartbeat();
     state.taskSSEManager.close();
+    // Stop discovery (mDNS unpublish) and mesh connections
+    state.discovery.stop();
+    state.mesh.shutdown();
     state.container.killAllRunningProcesses();
     if (telemetry) {
       await telemetry.shutdown();
