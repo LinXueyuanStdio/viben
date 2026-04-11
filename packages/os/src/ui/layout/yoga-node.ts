@@ -143,11 +143,7 @@ export class YogaNode {
   get computedHeight(): number { return this.yogaNode.getComputedHeight(); }
 
   calculateLayout(width?: number, height?: number): void {
-    this.yogaNode.calculateLayout(
-      width ?? this.yogaNode.getComputedWidth(),
-      height ?? this.yogaNode.getComputedHeight(),
-      DIRECTION_LTR,
-    );
+    this.yogaNode.calculateLayout(width, height, DIRECTION_LTR);
   }
 
   syncToObject3D(): void {

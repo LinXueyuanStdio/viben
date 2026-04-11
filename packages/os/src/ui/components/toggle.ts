@@ -63,7 +63,7 @@ export class Toggle extends BaseComponent {
   handleTap(): void { this.toggle(); }
 
   update(dt: number): void {
-    if (this._spring.done) return;
+    if (this._disposed || this._spring.done) return;
     this._spring.update(dt);
     const x = this._spring.value;
     this._thumb.mesh.position.x = x - this._width / 2 + this._thumbSize / 2;

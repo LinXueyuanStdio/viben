@@ -33,6 +33,7 @@ export class ImageView {
   }
 
   dispose(): void {
+    this.mesh.removeFromParent();
     this._material.dispose();
   }
 }

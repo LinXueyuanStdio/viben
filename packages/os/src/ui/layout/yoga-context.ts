@@ -1,13 +1,16 @@
 import type { Yoga } from "yoga-wasm-web";
 
 let _yoga: Yoga | null = null;
+let _initPromise: Promise<void> | null = null;
 
 export const YogaContext = {
-  async init(): Promise<void> {
-    if (_yoga) return;
-    // Use the auto entry which handles WASM loading for both browser and Node
-    const { default: yoga } = await import("yoga-wasm-web/auto");
-    _yoga = yoga;
+  init(): Promise<void> {
+    if (_yoga) return Promise.resolve();
+    if (_initPromise) return _initPromise;
+    _initPromise = import("yoga-wasm-web/auto").then(({ default: yoga }) => {
+      _yoga = yoga;
+    });
+    return _initPromise;
   },
 
   get instance(): Yoga {
@@ -21,5 +24,6 @@ export const YogaContext = {
 
   reset(): void {
     _yoga = null;
+    _initPromise = null;
   },
 };

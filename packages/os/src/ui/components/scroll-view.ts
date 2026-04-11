@@ -48,5 +48,9 @@ export class ScrollView extends BaseComponent {
     this.contentContainer.position.y = this._scrollOffset;
   }
 
-  dispose(): void { this._disposed = true; }
+  dispose(): void {
+    this.contentContainer.removeFromParent();
+    this.root.removeFromParent();
+    this._disposed = true;
+  }
 }

@@ -38,6 +38,7 @@ export class Icon {
   }
 
   dispose(): void {
+    this.mesh.removeFromParent();
     this._material.dispose();
   }
 }

@@ -10,12 +10,24 @@ export interface BoxConfig {
   borderWidth?: number;
 }
 
-function hexToVec4(hex: string, alpha = 1): Vector4 {
-  const c = hex.replace("#", "");
-  const r = parseInt(c.substring(0, 2), 16) / 255;
-  const g = parseInt(c.substring(2, 4), 16) / 255;
-  const b = parseInt(c.substring(4, 6), 16) / 255;
-  return new Vector4(r, g, b, alpha);
+function parseColorInto(out: Vector4, color: string, alpha = 1): void {
+  const rgbaMatch = color.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)$/);
+  if (rgbaMatch) {
+    out.set(
+      parseInt(rgbaMatch[1], 10) / 255,
+      parseInt(rgbaMatch[2], 10) / 255,
+      parseInt(rgbaMatch[3], 10) / 255,
+      rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : alpha,
+    );
+    return;
+  }
+  const c = color.replace("#", "");
+  out.set(
+    parseInt(c.substring(0, 2), 16) / 255,
+    parseInt(c.substring(2, 4), 16) / 255,
+    parseInt(c.substring(4, 6), 16) / 255,
+    alpha,
+  );
 }
 
 const _unitPlane = new PlaneGeometry(1, 1);
@@ -25,6 +37,10 @@ export class Box {
   private _material: ShaderMaterial;
 
   constructor(config: BoxConfig) {
+    const bgColor = new Vector4(1, 1, 1, 1);
+    if (config.backgroundColor) parseColorInto(bgColor, config.backgroundColor);
+    const borderColor = new Vector4(0, 0, 0, 0);
+    if (config.borderColor) parseColorInto(borderColor, config.borderColor);
     this._material = new ShaderMaterial({
       vertexShader: roundedRectVertexShader,
       fragmentShader: roundedRectFragmentShader,
@@ -34,8 +50,8 @@ export class Box {
       uniforms: {
         uSize: { value: new Vector2(config.width, config.height) },
         uRadius: { value: config.radius ?? 0 },
-        uBgColor: { value: config.backgroundColor ? hexToVec4(config.backgroundColor) : new Vector4(1, 1, 1, 1) },
-        uBorderColor: { value: config.borderColor ? hexToVec4(config.borderColor) : new Vector4(0, 0, 0, 0) },
+        uBgColor: { value: bgColor },
+        uBorderColor: { value: borderColor },
         uBorderWidth: { value: config.borderWidth ?? 0 },
       },
     });
@@ -48,12 +64,12 @@ export class Box {
     this._material.uniforms.uSize.value.set(width, height);
   }
 
-  setBackgroundColor(hex: string, alpha = 1): void {
-    this._material.uniforms.uBgColor.value = hexToVec4(hex, alpha);
+  setBackgroundColor(color: string, alpha = 1): void {
+    parseColorInto(this._material.uniforms.uBgColor.value as Vector4, color, alpha);
   }
 
-  setBorderColor(hex: string, alpha = 1): void {
-    this._material.uniforms.uBorderColor.value = hexToVec4(hex, alpha);
+  setBorderColor(color: string, alpha = 1): void {
+    parseColorInto(this._material.uniforms.uBorderColor.value as Vector4, color, alpha);
   }
 
   setBorderWidth(w: number): void {
@@ -65,6 +81,7 @@ export class Box {
   }
 
   dispose(): void {
+    this.mesh.removeFromParent();
     this._material.dispose();
   }
 }
