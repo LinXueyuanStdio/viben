@@ -55,6 +55,18 @@ viben agent create -n <id>           # Create new agent
 viben agent show -n <id>             # Show agent details
 ```
 
+### Update Commands
+
+```bash
+# Self-update CLI to latest version
+viben update                         # Update to latest
+viben update --check                 # Check for updates only
+
+# Update workspace templates
+viben update --idea-types            # Update idea-types templates
+viben update --reward-types          # Update reward-types templates
+```
+
 ### Server Commands
 
 ```bash
