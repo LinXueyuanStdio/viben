@@ -67,18 +67,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macOS ARM64 (Apple Silicon / M1/M2/M3)
           - platform: macos-latest
-            args: --target universal-apple-darwin
-            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
-            sidecar_platforms: macos-arm64,macos-x64
+            args: --target aarch64-apple-darwin
+            rust_targets: aarch64-apple-darwin
+            sidecar_platform: macos-arm64
+          # macOS x64 (Intel)
+          - platform: macos-13
+            args: --target x86_64-apple-darwin
+            rust_targets: x86_64-apple-darwin
+            sidecar_platform: macos-x64
           - platform: windows-latest
             args: --target x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
-            sidecar_platforms: win-x64
+            sidecar_platform: win-x64
           - platform: ubuntu-22.04
             args: ''
             rust_targets: x86_64-unknown-linux-gnu
-            sidecar_platforms: linux-x64
+            sidecar_platform: linux-x64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -139,23 +145,13 @@ jobs:
       - name: Build @viben/core (for CLI)
         run: pnpm turbo build --filter=@viben/core
 
-      # Build sidecar binaries using Bun
+      # Build sidecar binary for current platform
       - name: Build sidecar binary
         shell: bash
         run: |
           cd packages/core
-          echo "Building sidecar for current platform..."
-          npx tsx scripts/build-sidecar.ts --platform current
-
-      # For macOS universal build, we need both ARM64 and x64 binaries
-      # Bun can cross-compile on macOS
-      - name: Build additional macOS sidecar (x64 on ARM64 runner)
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        run: |
-          cd packages/core
-          # Build x64 version using Bun's cross-compilation
-          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
+          echo "Building sidecar for ${{ matrix.sidecar_platform }}..."
+          npx tsx scripts/build-sidecar.ts --platform ${{ matrix.sidecar_platform }}
 
       - name: List sidecar binaries
         shell: bash
@@ -190,11 +186,19 @@ jobs:
 
             ### Installation
 
-            - **macOS**: Download the `.dmg` file and drag Viben to Applications
-              - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-              - Or run: `xattr -cr /Applications/Viben.app` or `xattr -d com.apple.quarantine /Applications/Viben.app`
-            - **Windows**: Download the `.msi` or `.exe` installer and run it
-            - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
+            #### macOS
+            - **Apple Silicon (M1/M2/M3)**: Download the `aarch64` DMG file
+            - **Intel**: Download the `x86_64` DMG file
+            - Drag Viben to Applications
+            - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
+            - Or run: `xattr -cr /Applications/Viben.app`
+
+            #### Windows
+            Download the `.msi` or `.exe` installer and run it.
+
+            #### Linux
+            - **AppImage** (portable): Download and run `chmod +x` then execute
+            - **Debian/Ubuntu**: Download `.deb` and install with `sudo dpkg -i`
 
             ### Features
 
@@ -212,7 +216,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Remove macOS signature artifacts (unsigned build)
-        if: matrix.platform == 'macos-latest'
+        if: matrix.platform == 'macos-latest' || matrix.platform == 'macos-13'
         run: |
           # For unsigned builds, remove any .sig files that might cause confusion
           find apps/desktop/src-tauri/target -name "*.sig" -delete 2>/dev/null || true
@@ -287,15 +291,17 @@ jobs:
           # Extract asset URLs by pattern
           ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
 
-          # Find URLs for each platform
-          DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
+          # Find URLs for each platform (macOS has two DMG files)
+          DMG_ARM64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("aarch64")) | .browser_download_url' | head -1)
+          DMG_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .browser_download_url' | head -1)
           MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
           EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
           APPIMAGE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
           DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
 
           # Get file names
-          DMG_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .name' | head -1)
+          DMG_ARM64_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("aarch64")) | .name' | head -1)
+          DMG_X64_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .name' | head -1)
           MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
           EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
           APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
@@ -310,9 +316,13 @@ jobs:
             "repository": "${{ github.repository }}",
             "assets": {
               "macos": {
-                "dmg": {
-                  "url": "${DMG_URL}",
-                  "name": "${DMG_NAME}"
+                "arm64": {
+                  "url": "${DMG_ARM64_URL}",
+                  "name": "${DMG_ARM64_NAME}"
+                },
+                "x64": {
+                  "url": "${DMG_X64_URL}",
+                  "name": "${DMG_X64_NAME}"
                 }
               },
               "windows": {
