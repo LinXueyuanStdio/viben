@@ -167,6 +167,7 @@ export async function detectCliTools(
     clinePath?: string;
     continuePath?: string;
     cursorPath?: string;
+    vibenPath?: string;
   }
 ): Promise<CliToolsInfo> {
   const params = new URLSearchParams();
@@ -180,6 +181,7 @@ export async function detectCliTools(
   if (config?.clinePath) params.append("cline_path", config.clinePath);
   if (config?.continuePath) params.append("continue_path", config.continuePath);
   if (config?.cursorPath) params.append("cursor_path", config.cursorPath);
+  if (config?.vibenPath) params.append("viben_path", config.vibenPath);
 
   const url = params.toString()
     ? `${baseUrl}/api/cli-tools/detect?${params}`

@@ -2231,6 +2231,7 @@ export class GatewayClient {
     clinePath?: string;
     continuePath?: string;
     cursorPath?: string;
+    vibenPath?: string;
   }): Promise<CliToolsInfo> {
     return detectCliTools(this.baseUrl, config);
   }
