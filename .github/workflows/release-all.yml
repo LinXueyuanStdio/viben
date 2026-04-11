@@ -90,6 +90,7 @@ jobs:
   build-cli:
     needs: prepare
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -189,6 +190,7 @@ jobs:
     needs: [prepare, build-cli]
     if: needs.prepare.outputs.release_cli == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     outputs:
@@ -250,16 +252,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Wait for npm propagation
-        run: sleep 30
-
-      - name: Get package SHA256
+      - name: Wait for npm propagation and get SHA256
         id: get-sha256
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          SHA256=$(curl -sL "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz" | shasum -a 256 | cut -d' ' -f1)
-          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
-          echo "Package SHA256: ${SHA256}"
+          PACKAGE_URL="https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz"
+
+          echo "Waiting for npm package to be available..."
+          for i in {1..12}; do
+            if curl -sf "$PACKAGE_URL" -o /tmp/package.tgz; then
+              echo "Package available after $((i*10)) seconds"
+              SHA256=$(shasum -a 256 /tmp/package.tgz | cut -d' ' -f1)
+              echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+              echo "Package SHA256: ${SHA256}"
+              exit 0
+            fi
+            echo "Waiting for npm propagation... attempt $i/12"
+            sleep 10
+          done
+
+          echo "::error::Package not available after 2 minutes"
+          exit 1
 
       - name: Prepare install.sh for release
         run: |
@@ -309,12 +322,12 @@ jobs:
           cd homebrew-viben
           mkdir -p Formula
 
-          cat > Formula/viben.rb << 'EOF'
+          cat > Formula/viben.rb << EOF
           class Viben < Formula
             desc "Orchestrate AI agent clusters in your local workspace"
             homepage "https://github.com/LinXueyuanStdio/viben"
-            url "https://registry.npmjs.org/viben/-/viben-VERSION_PLACEHOLDER.tgz"
-            sha256 "SHA256_PLACEHOLDER"
+            url "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz"
+            sha256 "${SHA256}"
             license "MIT"
 
             depends_on "node@20"
@@ -329,9 +342,6 @@ jobs:
             end
           end
           EOF
-
-          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" Formula/viben.rb
-          sed -i "s/SHA256_PLACEHOLDER/${SHA256}/g" Formula/viben.rb
 
           echo "Updated formula:"
           cat Formula/viben.rb
@@ -352,6 +362,7 @@ jobs:
   build-desktop:
     needs: [prepare, build-cli]
     if: needs.prepare.outputs.release_desktop == 'true'
+    timeout-minutes: 45
     permissions:
       contents: write
     strategy:
@@ -491,6 +502,7 @@ jobs:
       (needs.release-cli.result == 'success' || needs.build-desktop.result == 'success') &&
       needs.prepare.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
@@ -668,9 +680,22 @@ jobs:
           CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
           DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
         run: |
-          sleep 5
+          # Wait for release to be available with retry
+          echo "Waiting for release to be available..."
+          for i in {1..6}; do
+            RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME 2>/dev/null || echo '')
+            if [ -n "$RELEASE_DATA" ] && [ "$RELEASE_DATA" != "" ]; then
+              ASSET_COUNT=$(echo "$RELEASE_DATA" | jq -r '.assets | length')
+              if [ "$ASSET_COUNT" -gt 0 ]; then
+                echo "Release found with $ASSET_COUNT assets after $((i*5)) seconds"
+                break
+              fi
+            fi
+            echo "Waiting for release... attempt $i/6"
+            sleep 5
+          done
 
-          RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME 2>/dev/null || echo '{"assets":[]}')
+          RELEASE_DATA=${RELEASE_DATA:-'{"assets":[]}'}
           ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
 
           DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
