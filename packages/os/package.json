@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.175.0",
+    "jsdom": "*",
     "tsup": "^8.3.5",
     "typescript": "^5.9.3",
     "vitest": "^3.2.1"
