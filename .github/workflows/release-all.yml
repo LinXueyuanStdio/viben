@@ -369,15 +369,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macOS ARM64 (Apple Silicon / M1/M2/M3)
           - platform: macos-latest
-            args: --target universal-apple-darwin
-            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target aarch64-apple-darwin
+            rust_targets: aarch64-apple-darwin
+            sidecar_artifact: sidecar-macos-latest
+            artifact_name: desktop-macos-arm64
+          # macOS x64 (Intel)
+          - platform: macos-13
+            args: --target x86_64-apple-darwin
+            rust_targets: x86_64-apple-darwin
+            sidecar_artifact: sidecar-macos-latest
+            artifact_name: desktop-macos-x64
           - platform: windows-latest
             args: --target x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
+            sidecar_artifact: sidecar-windows-latest
+            artifact_name: desktop-windows-latest
           - platform: ubuntu-22.04
             args: ''
             rust_targets: x86_64-unknown-linux-gnu
+            sidecar_artifact: sidecar-ubuntu-22.04
+            artifact_name: desktop-ubuntu-22.04
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -434,7 +447,7 @@ jobs:
       - name: Download sidecar artifact
         uses: actions/download-artifact@v4
         with:
-          name: sidecar-${{ matrix.platform }}
+          name: ${{ matrix.sidecar_artifact }}
           path: apps/desktop/src-tauri/binaries/
 
       - name: Make sidecar executable (Unix)
@@ -472,7 +485,7 @@ jobs:
         run: |
           mkdir -p desktop-artifacts
 
-          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+          if [[ "${{ matrix.platform }}" == "macos-latest" || "${{ matrix.platform }}" == "macos-13" ]]; then
             find apps/desktop/src-tauri/target -name "*.dmg" -exec cp {} desktop-artifacts/ \;
           elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
             find apps/desktop/src-tauri/target -name "*.msi" -exec cp {} desktop-artifacts/ \;
@@ -488,7 +501,7 @@ jobs:
       - name: Upload desktop artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-${{ matrix.platform }}
+          name: ${{ matrix.artifact_name }}
           path: desktop-artifacts/
           retention-days: 1
 
@@ -520,11 +533,19 @@ jobs:
           path: release-assets/
         continue-on-error: true
 
-      - name: Download macOS desktop artifacts
+      - name: Download macOS ARM64 desktop artifacts
         if: needs.build-desktop.result == 'success'
         uses: actions/download-artifact@v4
         with:
-          name: desktop-macos-latest
+          name: desktop-macos-arm64
+          path: release-assets/
+        continue-on-error: true
+
+      - name: Download macOS x64 desktop artifacts
+        if: needs.build-desktop.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-macos-x64
           path: release-assets/
         continue-on-error: true
 
