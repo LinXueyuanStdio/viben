@@ -25,89 +25,6 @@ env:
   RUST_BACKTRACE: short
 
 jobs:
-  # Build sidecar binaries for all platforms
-  # Note: pkg supports cross-compilation, so we build both macOS architectures on macos-latest
-  build-sidecar:
-    runs-on: ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macOS: build both ARM64 and x64 on the same runner (pkg cross-compiles)
-          - platform: macos-latest
-            sidecar_platforms: macos-arm64,macos-x64
-          - platform: windows-latest
-            sidecar_platforms: win-x64
-          - platform: ubuntu-22.04
-            sidecar_platforms: linux-x64
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build @viben/core
-        run: pnpm turbo build --filter=@viben/core
-
-      - name: Build sidecar binaries
-        shell: bash
-        run: |
-          cd packages/core
-          # Build for each platform in the comma-separated list
-          IFS=',' read -ra PLATFORMS <<< "${{ matrix.sidecar_platforms }}"
-          for platform in "${PLATFORMS[@]}"; do
-            echo "Building sidecar for $platform..."
-            npx tsx scripts/build-sidecar.ts --platform "$platform"
-          done
-
-      - name: Upload sidecar artifacts (macOS)
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sidecar-macos
-          path: |
-            apps/desktop/src-tauri/binaries/viben-aarch64-apple-darwin
-            apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
-          retention-days: 1
-
-      - name: Upload sidecar artifact (Windows)
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sidecar-win-x64
-          path: apps/desktop/src-tauri/binaries/viben-x86_64-pc-windows-msvc.exe
-          retention-days: 1
-
-      - name: Upload sidecar artifact (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sidecar-linux-x64
-          path: apps/desktop/src-tauri/binaries/viben-x86_64-unknown-linux-gnu
-          retention-days: 1
-
   # Determine the version to release
   prepare:
     runs-on: ubuntu-latest
@@ -141,9 +58,9 @@ jobs:
           echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
           echo "Building version: ${VERSION}"
 
-  # Build for all platforms
+  # Build for all platforms (includes sidecar build)
   build:
-    needs: [prepare, build-sidecar]
+    needs: prepare
     permissions:
       contents: write
     strategy:
@@ -153,15 +70,15 @@ jobs:
           - platform: macos-latest
             args: --target universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
-            sidecar_artifacts: sidecar-macos-arm64,sidecar-macos-x64
+            sidecar_platforms: macos-arm64,macos-x64
           - platform: windows-latest
             args: --target x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
-            sidecar_artifacts: sidecar-win-x64
+            sidecar_platforms: win-x64
           - platform: ubuntu-22.04
             args: ''
             rust_targets: x86_64-unknown-linux-gnu
-            sidecar_artifacts: sidecar-linux-x64
+            sidecar_platforms: linux-x64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -175,6 +92,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Get pnpm store directory
         shell: bash
@@ -214,31 +136,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Download sidecar binaries built in previous job
-      - name: Download sidecar artifacts (macOS)
+      - name: Build @viben/core (for CLI)
+        run: pnpm turbo build --filter=@viben/core
+
+      # Build sidecar binaries using Bun
+      - name: Build sidecar binary
+        shell: bash
+        run: |
+          cd packages/core
+          echo "Building sidecar for current platform..."
+          npx tsx scripts/build-sidecar.ts --platform current
+
+      # For macOS universal build, we need both ARM64 and x64 binaries
+      # Bun can cross-compile on macOS
+      - name: Build additional macOS sidecar (x64 on ARM64 runner)
         if: matrix.platform == 'macos-latest'
-        uses: actions/download-artifact@v4
-        with:
-          name: sidecar-macos
-          path: apps/desktop/src-tauri/binaries/
-
-      - name: Download sidecar artifacts (Windows)
-        if: matrix.platform == 'windows-latest'
-        uses: actions/download-artifact@v4
-        with:
-          name: sidecar-win-x64
-          path: apps/desktop/src-tauri/binaries/
-
-      - name: Download sidecar artifacts (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/download-artifact@v4
-        with:
-          name: sidecar-linux-x64
-          path: apps/desktop/src-tauri/binaries/
-
-      - name: Make sidecar executable (Unix)
-        if: matrix.platform != 'windows-latest'
-        run: chmod +x apps/desktop/src-tauri/binaries/viben-*
+        shell: bash
+        run: |
+          cd packages/core
+          # Build x64 version using Bun's cross-compilation
+          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
 
       - name: List sidecar binaries
         shell: bash
@@ -278,6 +195,10 @@ jobs:
               - Or run: `xattr -cr /Applications/Viben.app` or `xattr -d com.apple.quarantine /Applications/Viben.app`
             - **Windows**: Download the `.msi` or `.exe` installer and run it
             - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
+
+            ### Features
+
+            This release includes a bundled Viben CLI - no separate installation required!
 
             ### Checksums
 

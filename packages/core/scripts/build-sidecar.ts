@@ -5,11 +5,14 @@
  * This script compiles the Viben CLI as platform-specific standalone binaries
  * that can be bundled with the Tauri desktop application.
  *
+ * Uses Bun to compile the CLI into standalone executables.
+ * Bun handles Node.js built-in modules and complex dependencies better than pkg.
+ *
  * Usage:
  *   npx tsx packages/core/scripts/build-sidecar.ts [options]
  *
  * Options:
- *   --platform <platform>  Build for specific platform: macos-arm64, macos-x64, win-x64, linux-x64, all (default: current)
+ *   --platform <platform>  Build for specific platform: macos-arm64, macos-x64, win-x64, linux-x64, all, current (default: current)
  *   --output <dir>         Output directory (default: apps/desktop/src-tauri/binaries)
  *   --skip-build           Skip the TypeScript build step (use existing dist)
  *
@@ -19,21 +22,12 @@
  *   - viben-x86_64-pc-windows-msvc.exe (Windows x64)
  *   - viben-x86_64-unknown-linux-gnu (Linux x64)
  *
- * Known limitations:
- *   - The viben CLI has complex dependencies that may cause pkg warnings
- *   - Some dependencies like @modelcontextprotocol/sdk use subpath imports that
- *     pkg may not resolve correctly at build time
- *   - Consider using Node.js SEA (Single Executable Application) for Node 20+
- *     as an alternative if pkg fails
- *
- * Alternative approaches (future consideration):
- *   1. Node.js SEA (--experimental-sea-config) for Node 20+
- *   2. Bun compile (bun build --compile)
- *   3. Deno compile
+ * Note: Bun can only compile for the current platform. Cross-compilation requires
+ * running this script on each target platform (handled by CI matrix).
  */
 
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, copyFileSync, chmodSync } from "node:fs";
+import { existsSync, mkdirSync, chmodSync, renameSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -46,33 +40,27 @@ const REPO_ROOT = resolve(PACKAGE_ROOT, "../..");
 const DEFAULT_OUTPUT_DIR = join(REPO_ROOT, "apps/desktop/src-tauri/binaries");
 
 // Platform configurations
-// Maps our platform names to pkg targets and Tauri binary suffixes
 interface PlatformConfig {
-  pkgTarget: string;
+  bunTarget: string;
   tauriSuffix: string;
-  nodeVersion: string;
 }
 
 const PLATFORMS: Record<string, PlatformConfig> = {
   "macos-arm64": {
-    pkgTarget: "node18-macos-arm64",
+    bunTarget: "bun-darwin-arm64",
     tauriSuffix: "aarch64-apple-darwin",
-    nodeVersion: "18",
   },
   "macos-x64": {
-    pkgTarget: "node18-macos-x64",
+    bunTarget: "bun-darwin-x64",
     tauriSuffix: "x86_64-apple-darwin",
-    nodeVersion: "18",
   },
   "win-x64": {
-    pkgTarget: "node18-win-x64",
+    bunTarget: "bun-windows-x64",
     tauriSuffix: "x86_64-pc-windows-msvc",
-    nodeVersion: "18",
   },
   "linux-x64": {
-    pkgTarget: "node18-linux-x64",
+    bunTarget: "bun-linux-x64",
     tauriSuffix: "x86_64-unknown-linux-gnu",
-    nodeVersion: "18",
   },
 };
 
@@ -104,11 +92,13 @@ function parseArgs(): { platforms: string[]; outputDir: string; skipBuild: boole
       const platform = args[i + 1];
       if (platform === "all") {
         platforms = Object.keys(PLATFORMS);
+      } else if (platform === "current") {
+        platforms = [getCurrentPlatform()];
       } else if (PLATFORMS[platform]) {
         platforms = [platform];
       } else {
         console.error(`Unknown platform: ${platform}`);
-        console.error(`Available platforms: ${Object.keys(PLATFORMS).join(", ")}, all`);
+        console.error(`Available platforms: ${Object.keys(PLATFORMS).join(", ")}, all, current`);
         process.exit(1);
       }
       i++;
@@ -119,21 +109,24 @@ function parseArgs(): { platforms: string[]; outputDir: string; skipBuild: boole
       skipBuild = true;
     } else if (args[i] === "--help" || args[i] === "-h") {
       console.log(`
-Viben Sidecar Build Script
+Viben Sidecar Build Script (Bun)
 
 Usage: npx tsx build-sidecar.ts [options]
 
 Options:
   --platform <platform>  Build for specific platform (default: current)
-                         Available: ${Object.keys(PLATFORMS).join(", ")}, all
+                         Available: ${Object.keys(PLATFORMS).join(", ")}, all, current
   --output <dir>         Output directory (default: apps/desktop/src-tauri/binaries)
   --skip-build           Skip TypeScript compilation step
   -h, --help             Show this help message
 
 Examples:
   npx tsx build-sidecar.ts                          # Build for current platform
-  npx tsx build-sidecar.ts --platform all           # Build for all platforms
+  npx tsx build-sidecar.ts --platform current       # Build for current platform
   npx tsx build-sidecar.ts --platform macos-arm64   # Build for macOS ARM64 only
+
+Note: Bun can only compile for the current platform natively.
+      Cross-platform builds are handled by CI running on each target platform.
 `);
       process.exit(0);
     }
@@ -147,13 +140,30 @@ Examples:
   return { platforms, outputDir, skipBuild };
 }
 
-// Check if pkg is available
-function checkPkgInstalled(): boolean {
+// Check if Bun is available
+function checkBunInstalled(): boolean {
   try {
-    execSync("npx pkg --version", { stdio: "pipe" });
+    execSync("bun --version", { stdio: "pipe" });
     return true;
   } catch {
     return false;
+  }
+}
+
+// Install Bun
+function installBun(): void {
+  console.log("\n📦 Installing Bun...");
+  const platform = process.platform;
+
+  if (platform === "win32") {
+    // Windows: use npm to install bun
+    execSync("npm install -g bun", { stdio: "inherit" });
+  } else {
+    // macOS/Linux: use the official install script
+    execSync("curl -fsSL https://bun.sh/install | bash", { stdio: "inherit", shell: "/bin/bash" });
+    // Add bun to PATH for this session
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    process.env.PATH = `${home}/.bun/bin:${process.env.PATH}`;
   }
 }
 
@@ -174,16 +184,26 @@ function buildTypeScript(): void {
   console.log("✅ TypeScript build complete");
 }
 
-// Build binary for a specific platform
+// Build binary for a specific platform using Bun
 function buildPlatform(platform: string, outputDir: string): void {
   const config = PLATFORMS[platform];
+  const currentPlatform = getCurrentPlatform();
+
+  // Bun can only compile for the current platform
+  if (platform !== currentPlatform) {
+    console.log(`\n⚠️  Skipping ${platform} (current platform is ${currentPlatform})`);
+    console.log(`   Cross-compilation not supported. Run on target platform or use CI.`);
+    return;
+  }
+
   const inputFile = join(PACKAGE_ROOT, "dist/cli/bin.cjs");
   const extension = platform.startsWith("win") ? ".exe" : "";
   const outputName = `viben-${config.tauriSuffix}${extension}`;
   const outputPath = join(outputDir, outputName);
+  const tempOutput = join(outputDir, `viben${extension}`);
 
-  console.log(`\n🔨 Building for ${platform}...`);
-  console.log(`   Target: ${config.pkgTarget}`);
+  console.log(`\n🔨 Building for ${platform} using Bun...`);
+  console.log(`   Target: ${config.bunTarget}`);
   console.log(`   Output: ${outputPath}`);
 
   // Ensure input file exists
@@ -196,29 +216,32 @@ function buildPlatform(platform: string, outputDir: string): void {
     mkdirSync(outputDir, { recursive: true });
   }
 
-  // Build with pkg
-  // Using npx to run pkg without needing it installed globally
-  const pkgArgs = [
-    "pkg",
+  // Build with Bun
+  const bunArgs = [
+    "build",
     inputFile,
+    "--compile",
     "--target",
-    config.pkgTarget,
-    "--output",
-    outputPath,
-    "--compress",
-    "GZip",
+    config.bunTarget,
+    "--outfile",
+    tempOutput,
   ];
 
-  console.log(`   Running: npx ${pkgArgs.join(" ")}`);
+  console.log(`   Running: bun ${bunArgs.join(" ")}`);
 
-  const result = spawnSync("npx", pkgArgs, {
+  const result = spawnSync("bun", bunArgs, {
     cwd: PACKAGE_ROOT,
     stdio: "inherit",
     shell: true,
   });
 
   if (result.status !== 0) {
-    throw new Error(`pkg build failed for ${platform}`);
+    throw new Error(`Bun build failed for ${platform}`);
+  }
+
+  // Rename to Tauri sidecar naming convention
+  if (existsSync(tempOutput)) {
+    renameSync(tempOutput, outputPath);
   }
 
   // Verify output exists
@@ -236,8 +259,8 @@ function buildPlatform(platform: string, outputDir: string): void {
 
 // Main function
 async function main(): Promise<void> {
-  console.log("🚀 Viben Sidecar Build Script");
-  console.log("============================");
+  console.log("🚀 Viben Sidecar Build Script (Bun)");
+  console.log("===================================");
 
   const { platforms, outputDir, skipBuild } = parseArgs();
 
@@ -246,11 +269,19 @@ async function main(): Promise<void> {
   console.log(`  Output: ${outputDir}`);
   console.log(`  Skip build: ${skipBuild}`);
 
-  // Check pkg is available
-  if (!checkPkgInstalled()) {
-    console.log("\n⚠️  pkg not found. Installing...");
-    execSync("npm install -g pkg", { stdio: "inherit" });
+  // Check Bun is available
+  if (!checkBunInstalled()) {
+    console.log("\n⚠️  Bun not found. Installing...");
+    installBun();
+
+    // Verify installation
+    if (!checkBunInstalled()) {
+      throw new Error("Failed to install Bun. Please install manually: https://bun.sh");
+    }
   }
+
+  const bunVersion = execSync("bun --version", { encoding: "utf-8" }).trim();
+  console.log(`\nUsing Bun ${bunVersion}`);
 
   // Build TypeScript if not skipping
   if (!skipBuild) {
@@ -258,46 +289,61 @@ async function main(): Promise<void> {
   }
 
   // Build for each platform
-  const results: { platform: string; success: boolean; error?: string }[] = [];
+  const results: { platform: string; success: boolean; skipped: boolean; error?: string }[] = [];
 
   for (const platform of platforms) {
+    const currentPlatform = getCurrentPlatform();
+    if (platform !== currentPlatform) {
+      results.push({ platform, success: false, skipped: true });
+      continue;
+    }
+
     try {
       buildPlatform(platform, outputDir);
-      results.push({ platform, success: true });
+      results.push({ platform, success: true, skipped: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`\n❌ Failed to build for ${platform}: ${message}`);
-      results.push({ platform, success: false, error: message });
+      results.push({ platform, success: false, skipped: false, error: message });
     }
   }
 
   // Summary
-  console.log("\n============================");
+  console.log("\n===================================");
   console.log("Build Summary:");
-  console.log("============================");
+  console.log("===================================");
 
   const successful = results.filter((r) => r.success);
-  const failed = results.filter((r) => !r.success);
+  const skipped = results.filter((r) => r.skipped);
+  const failed = results.filter((r) => !r.success && !r.skipped);
 
   for (const result of results) {
-    const status = result.success ? "✅" : "❌";
     const config = PLATFORMS[result.platform];
     const extension = result.platform.startsWith("win") ? ".exe" : "";
     const filename = `viben-${config.tauriSuffix}${extension}`;
-    console.log(`  ${status} ${result.platform}: ${filename}`);
-    if (result.error) {
-      console.log(`     Error: ${result.error}`);
+
+    if (result.skipped) {
+      console.log(`  ⏭️  ${result.platform}: ${filename} (skipped - wrong platform)`);
+    } else if (result.success) {
+      console.log(`  ✅ ${result.platform}: ${filename}`);
+    } else {
+      console.log(`  ❌ ${result.platform}: ${filename}`);
+      if (result.error) {
+        console.log(`     Error: ${result.error}`);
+      }
     }
   }
 
-  console.log(`\nTotal: ${successful.length} succeeded, ${failed.length} failed`);
+  console.log(`\nTotal: ${successful.length} succeeded, ${skipped.length} skipped, ${failed.length} failed`);
 
   if (failed.length > 0) {
     process.exit(1);
   }
 
-  console.log("\n🎉 Build complete!");
-  console.log(`\nBinaries are located at: ${outputDir}`);
+  if (successful.length > 0) {
+    console.log("\n🎉 Build complete!");
+    console.log(`\nBinaries are located at: ${outputDir}`);
+  }
 }
 
 main().catch((error) => {
