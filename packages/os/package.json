@@ -25,7 +25,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "three": "^0.175.0"
+    "three": "^0.175.0",
+    "troika-three-text": "^0.52.4",
+    "yoga-wasm-web": "^0.3.3"
   },
   "devDependencies": {
     "@types/three": "^0.175.0",
