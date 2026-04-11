@@ -119,6 +119,11 @@ function eventToChannel(eventType: string): string {
     return "github";
   }
 
+  // Device/mesh events
+  if (eventType.startsWith("device") || eventType.startsWith("mesh")) {
+    return "devices";
+  }
+
   // Default to gateway channel
   return "gateway";
 }

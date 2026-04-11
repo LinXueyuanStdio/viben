@@ -15,9 +15,9 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AppState } from "../state";
 
 export function registerDeviceRoutes(fastify: FastifyInstance, state: AppState): void {
-  const registry = (state as any).deviceRegistry;
-  const mesh = (state as any).mesh;
-  const discovery = (state as any).discovery;
+  const registry = state.deviceRegistry;
+  const mesh = state.mesh;
+  const discovery = state.discovery;
 
   // --- QR code for mobile pairing (must be registered before :id) ---
   fastify.get("/api/devices/qr", async (_req: FastifyRequest, reply: FastifyReply) => {
