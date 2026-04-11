@@ -84,19 +84,109 @@ jobs:
           echo "  Draft: ${IS_DRAFT}"
           echo "=========================================="
 
-      - name: Verify version sync requirements
+  # =============================================================================
+  # BUILD CLI: Build CLI and create sidecar binaries for each platform
+  # =============================================================================
+  build-cli:
+    needs: prepare
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            sidecar_name: viben-aarch64-apple-darwin
+            sidecar_name_x64: viben-x86_64-apple-darwin
+          - platform: windows-latest
+            sidecar_name: viben-x86_64-pc-windows-msvc.exe
+          - platform: ubuntu-22.04
+            sidecar_name: viben-x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Get pnpm store directory
+        shell: bash
         run: |
-          VERSION="${{ steps.get-version.outputs.version }}"
-          echo "Will sync version ${VERSION} to:"
-          echo "  - package.json (root)"
-          echo "  - apps/cli/package.json"
-          echo "  - apps/desktop/src-tauri/tauri.conf.json"
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync version to package files
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # Update root package.json
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+
+          # Update apps/cli/package.json
+          cd apps/cli
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          cd ../..
+
+          echo "Updated version to: ${VERSION}"
+
+      - name: Build @viben/core
+        run: pnpm turbo build --filter=@viben/core
+
+      # Build sidecar binary for current platform
+      - name: Build sidecar binary
+        shell: bash
+        run: |
+          cd packages/core
+          echo "Building sidecar for current platform..."
+          npx tsx scripts/build-sidecar.ts --platform current
+
+      # For macOS, also build x64 version (cross-compile)
+      - name: Build additional macOS sidecar (x64)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          cd packages/core
+          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
+
+      - name: List sidecar binaries
+        shell: bash
+        run: ls -la apps/desktop/src-tauri/binaries/
+
+      # Upload sidecar artifact
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.platform }}
+          path: apps/desktop/src-tauri/binaries/viben-*
+          retention-days: 1
 
   # =============================================================================
-  # CLI RELEASE: npm publish and homebrew update
+  # RELEASE CLI: Publish to npm (depends on build-cli)
   # =============================================================================
   release-cli:
-    needs: prepare
+    needs: [prepare, build-cli]
     if: needs.prepare.outputs.release_cli == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -133,13 +223,6 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
           echo "Updated apps/cli/package.json to: $(jq -r '.version' package.json)"
-          cd ../..
-
-          # Update apps/desktop/src-tauri/tauri.conf.json
-          cd apps/desktop/src-tauri
-          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
-          mv tauri.conf.tmp.json tauri.conf.json
-          echo "Updated tauri.conf.json to: $(jq -r '.version' tauri.conf.json)"
 
       - name: Build CLI package and dependencies
         run: pnpm --filter viben... build
@@ -147,13 +230,11 @@ jobs:
       - name: Verify no workspace protocol references in runtime dependencies
         run: |
           cd apps/cli
-          # Check only dependencies and optionalDependencies (not devDependencies)
-          # devDependencies with workspace:* are safe since npm ignores them for registry packages
           WORKSPACE_REFS=$(jq -r '
-            [(.dependencies // {}), (.optionalDependencies // {})] 
-            | map(to_entries[]) 
-            | map(select(.value | test("^workspace:"))) 
-            | map("\(.key): \(.value)") 
+            [(.dependencies // {}), (.optionalDependencies // {})]
+            | map(to_entries[])
+            | map(select(.value | test("^workspace:")))
+            | map("\(.key): \(.value)")
             | .[]' package.json)
           if [ -n "$WORKSPACE_REFS" ]; then
             echo "::error::Runtime dependencies contain workspace: protocol references that will break npm install"
@@ -194,7 +275,7 @@ jobs:
           retention-days: 1
 
   # =============================================================================
-  # HOMEBREW UPDATE
+  # HOMEBREW UPDATE (depends on release-cli)
   # =============================================================================
   update-homebrew:
     needs: [prepare, release-cli]
@@ -266,10 +347,10 @@ jobs:
           git push
 
   # =============================================================================
-  # DESKTOP BUILD: Multi-platform builds
+  # BUILD DESKTOP: Multi-platform builds (depends on build-cli for sidecars)
   # =============================================================================
   build-desktop:
-    needs: prepare
+    needs: [prepare, build-cli]
     if: needs.prepare.outputs.release_desktop == 'true'
     permissions:
       contents: write
@@ -338,6 +419,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Download sidecar binaries from build-cli job
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-${{ matrix.platform }}
+          path: apps/desktop/src-tauri/binaries/
+
+      - name: Make sidecar executable (Unix)
+        if: matrix.platform != 'windows-latest'
+        run: chmod +x apps/desktop/src-tauri/binaries/viben-*
+
+      - name: List sidecar binaries
+        shell: bash
+        run: ls -la apps/desktop/src-tauri/binaries/
+
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
 
@@ -356,7 +452,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
-          # Don't create release here - we'll create a unified release later
           tagName: ''
           releaseName: ''
           args: ${{ matrix.args }}
@@ -366,7 +461,6 @@ jobs:
         run: |
           mkdir -p desktop-artifacts
 
-          # Find artifacts based on platform
           if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
             find apps/desktop/src-tauri/target -name "*.dmg" -exec cp {} desktop-artifacts/ \;
           elif [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
@@ -392,7 +486,6 @@ jobs:
   # =============================================================================
   create-unified-release:
     needs: [prepare, release-cli, build-desktop]
-    # Run if at least one of CLI or Desktop was released
     if: |
       always() &&
       (needs.release-cli.result == 'success' || needs.build-desktop.result == 'success') &&
@@ -478,19 +571,16 @@ jobs:
           echo "desktop_released=${DESKTOP_RELEASED}" >> $GITHUB_OUTPUT
 
       - name: Generate release body
-        id: release-body
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
-          TAG_NAME: ${{ needs.prepare.outputs.tag }}
           CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
           DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
         run: |
-          cat > release-body.md << 'EOFBODY'
+          cat > release-body.md << EOFBODY
           ## Viben v${VERSION}
 
           EOFBODY
 
-          # CLI section
           if [[ "$CLI_RELEASED" == "true" ]]; then
             cat >> release-body.md << 'EOFCLI'
           ### CLI Installation
@@ -522,10 +612,11 @@ jobs:
           EOFCLI
           fi
 
-          # Desktop section
           if [[ "$DESKTOP_RELEASED" == "true" ]]; then
             cat >> release-body.md << 'EOFDESKTOP'
           ### Desktop Installation
+
+          Desktop app includes bundled Viben CLI - no separate installation required!
 
           #### macOS
           Download the `.dmg` file and drag Viben to Applications.
@@ -542,16 +633,10 @@ jobs:
           EOFDESKTOP
           fi
 
-          # Common footer
           cat >> release-body.md << 'EOFFOOTER'
           ### Checksums
 
           See `checksums.txt` attached to this release for SHA256 checksums of all artifacts.
-
-          ### Requirements
-
-          - **CLI**: Node.js 18+
-          - **Desktop**: No additional requirements
 
           ### Links
 
@@ -559,9 +644,6 @@ jobs:
           - [npm Package](https://www.npmjs.com/package/viben)
           - [Changelog](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md)
           EOFFOOTER
-
-          # Substitute VERSION in the header
-          sed -i "s/\${VERSION}/${VERSION}/g" release-body.md
 
           echo "Generated release body:"
           cat release-body.md
@@ -586,14 +668,11 @@ jobs:
           CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
           DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
         run: |
-          # Wait for release to be fully available
           sleep 5
 
-          # Get release assets from GitHub API
           RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME 2>/dev/null || echo '{"assets":[]}')
           ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
 
-          # Find URLs for desktop assets
           DMG_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .browser_download_url' | head -1)
           MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
           EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
@@ -601,14 +680,12 @@ jobs:
           DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
           INSTALL_SH_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "install.sh") | .browser_download_url' | head -1)
 
-          # Get file names
           DMG_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | .name' | head -1)
           MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
           EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
           APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
           DEB_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .name' | head -1)
 
-          # Create releases.json
           cat > release-assets/releases.json << EOF
           {
             "version": "${VERSION}",
