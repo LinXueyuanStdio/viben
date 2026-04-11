@@ -25,6 +25,69 @@ env:
   RUST_BACKTRACE: short
 
 jobs:
+  # Build sidecar binaries for all platforms
+  build-sidecar:
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            sidecar_platform: macos-arm64
+            sidecar_name: viben-aarch64-apple-darwin
+          - platform: macos-13
+            sidecar_platform: macos-x64
+            sidecar_name: viben-x86_64-apple-darwin
+          - platform: windows-latest
+            sidecar_platform: win-x64
+            sidecar_name: viben-x86_64-pc-windows-msvc.exe
+          - platform: ubuntu-22.04
+            sidecar_platform: linux-x64
+            sidecar_name: viben-x86_64-unknown-linux-gnu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @viben/core
+        run: pnpm turbo build --filter=@viben/core
+
+      - name: Build sidecar binary
+        shell: bash
+        run: |
+          cd packages/core
+          npx tsx scripts/build-sidecar.ts --platform ${{ matrix.sidecar_platform }}
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-${{ matrix.sidecar_platform }}
+          path: apps/desktop/src-tauri/binaries/${{ matrix.sidecar_name }}
+          retention-days: 1
+
   # Determine the version to release
   prepare:
     runs-on: ubuntu-latest
@@ -60,7 +123,7 @@ jobs:
 
   # Build for all platforms
   build:
-    needs: prepare
+    needs: [prepare, build-sidecar]
     permissions:
       contents: write
     strategy:
@@ -70,12 +133,15 @@ jobs:
           - platform: macos-latest
             args: --target universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            sidecar_artifacts: sidecar-macos-arm64,sidecar-macos-x64
           - platform: windows-latest
             args: --target x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
+            sidecar_artifacts: sidecar-win-x64
           - platform: ubuntu-22.04
             args: ''
             rust_targets: x86_64-unknown-linux-gnu
+            sidecar_artifacts: sidecar-linux-x64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -127,6 +193,37 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Download sidecar binaries built in previous job
+      - name: Download sidecar artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sidecar-macos-*
+          path: apps/desktop/src-tauri/binaries/
+          merge-multiple: true
+
+      - name: Download sidecar artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-win-x64
+          path: apps/desktop/src-tauri/binaries/
+
+      - name: Download sidecar artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/download-artifact@v4
+        with:
+          name: sidecar-linux-x64
+          path: apps/desktop/src-tauri/binaries/
+
+      - name: Make sidecar executable (Unix)
+        if: matrix.platform != 'windows-latest'
+        run: chmod +x apps/desktop/src-tauri/binaries/viben-*
+
+      - name: List sidecar binaries
+        shell: bash
+        run: ls -la apps/desktop/src-tauri/binaries/
 
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
