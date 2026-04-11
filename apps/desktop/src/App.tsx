@@ -36,6 +36,7 @@ import {
   ChatMonitorPage,
   PageDebugPage,
   WorkspacePage,
+  OsPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -90,6 +91,9 @@ function App() {
           <Route path="search-service" element={<Navigate to="/mcp-services/search-service" replace />} />
           <Route path="logs" element={<Navigate to="/mcp-services/logs" replace />} />
           <Route path="agents" element={<Navigate to="/mcp-services/dashboard" replace />} />
+
+          {/* OS - iPad-style GPU-rendered OS */}
+          <Route path="os" element={<OsPage />} />
 
           {/* Top-level MCP routes (unchanged) */}
           <Route path="inspector" element={<InspectorPage />} />

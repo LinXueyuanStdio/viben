@@ -17,6 +17,7 @@ export class GestureRecognizer {
   private _isDragging = false;
   private _longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private _lastPos = new Vector2();
+  private _currentPos = new Vector2();
   private _onPointerDown: (e: PointerEvent) => void;
   private _onPointerMove: (e: PointerEvent) => void;
   private _onPointerUp: (e: PointerEvent) => void;
@@ -70,12 +71,12 @@ export class GestureRecognizer {
   private _handleMove(e: PointerEvent): void {
     if (!this._isDown) return;
     const rect = this._canvas.getBoundingClientRect();
-    const pos = new Vector2(e.clientX - rect.left, e.clientY - rect.top);
-    this._lastPos.copy(pos);
-    if (pos.distanceTo(this._startPos) > DRAG_THRESHOLD) {
+    this._currentPos.set(e.clientX - rect.left, e.clientY - rect.top);
+    this._lastPos.copy(this._currentPos);
+    if (this._currentPos.distanceTo(this._startPos) > DRAG_THRESHOLD) {
       this._clearLongPress();
       this._isDragging = true;
-      this._emit("drag", pos, e);
+      this._emit("drag", this._currentPos, e);
     }
   }
 

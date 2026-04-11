@@ -46,6 +46,7 @@
     "@tauri-apps/plugin-store": "^2.4.2",
     "@tauri-apps/plugin-window-state": "^2.4.1",
     "@viben/api-client": "workspace:*",
+    "@viben/os": "workspace:*",
     "@viben/chat": "workspace:*",
     "@viben/core": "workspace:*",
     "@viben/kanban": "workspace:*",

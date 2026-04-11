@@ -19,8 +19,10 @@ export class Renderer {
 
   constructor(canvas: HTMLCanvasElement) {
     this._canvas = canvas;
+    // Y-down pixel space: top=0, bottom=-1 so Y grows downward
     this._camera = new OrthographicCamera(0, 1, 0, -1, 0.1, 1000);
     this._camera.position.z = 100;
+    this._camera.updateProjectionMatrix();
     this._scene = new Scene();
   }
 
@@ -57,6 +59,7 @@ export class Renderer {
   }
 
   resize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
     this._width = width;
     this._height = height;
     this._renderer?.setSize(width, height);
@@ -73,6 +76,7 @@ export class Renderer {
   }
 
   dispose(): void {
+    this._scene.clear();
     this._renderer?.dispose();
     this._renderer = null;
     this._initialized = false;
