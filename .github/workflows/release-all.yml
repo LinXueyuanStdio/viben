@@ -177,18 +177,102 @@ jobs:
 
       # Upload sidecar artifact
       - name: Upload sidecar artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sidecar-${{ matrix.platform }}
           path: apps/desktop/src-tauri/binaries/viben-*
           retention-days: 1
 
+      # Upload CLI build for testing (only on ubuntu)
+      - name: Upload CLI build artifact
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v5
+        with:
+          name: cli-build
+          path: |
+            apps/cli/bin/
+            apps/cli/dist/
+            apps/cli/package.json
+            packages/core/dist/
+            packages/core/package.json
+          retention-days: 1
+
   # =============================================================================
-  # RELEASE CLI: Publish to npm (depends on build-cli)
+  # TEST CLI: Run integration tests before release (must pass to continue)
+  # =============================================================================
+  test-cli:
+    needs: [prepare, build-cli]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync version to package files
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          cd apps/cli
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+
+      - name: Build CLI and dependencies
+        run: pnpm --filter viben... build
+
+      - name: Run CLI integration tests
+        run: |
+          chmod +x scripts/test-cli.sh
+          ./scripts/test-cli.sh --local
+
+      - name: Test CLI via npx simulation
+        run: |
+          # Create a temporary directory and test the built CLI
+          TEST_DIR=$(mktemp -d)
+          cd "$TEST_DIR"
+
+          # Link the built CLI globally
+          npm link "$GITHUB_WORKSPACE/apps/cli"
+
+          # Test basic commands
+          viben --version
+          viben --help
+          viben init
+          viben config list
+          viben --json config list | jq .
+
+          # Cleanup
+          npm unlink -g viben
+          rm -rf "$TEST_DIR"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: cli-test-results
+          path: |
+            test-results/
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # =============================================================================
+  # RELEASE CLI: Publish to npm (depends on build-cli and test-cli)
   # =============================================================================
   release-cli:
-    needs: [prepare, build-cli]
-    if: needs.prepare.outputs.release_cli == 'true'
+    needs: [prepare, build-cli, test-cli]
+    if: needs.prepare.outputs.release_cli == 'true' && needs.test-cli.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -281,7 +365,7 @@ jobs:
           cp scripts/install.sh release-assets/install.sh
 
       - name: Upload CLI assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: cli-assets
           path: release-assets/
@@ -357,11 +441,11 @@ jobs:
           git push
 
   # =============================================================================
-  # BUILD DESKTOP: Multi-platform builds (depends on build-cli for sidecars)
+  # BUILD DESKTOP: Multi-platform builds (depends on build-cli and test-cli)
   # =============================================================================
   build-desktop:
-    needs: [prepare, build-cli]
-    if: needs.prepare.outputs.release_desktop == 'true'
+    needs: [prepare, build-cli, test-cli]
+    if: needs.prepare.outputs.release_desktop == 'true' && needs.test-cli.result == 'success'
     timeout-minutes: 45
     permissions:
       contents: write
@@ -438,7 +522,7 @@ jobs:
 
       # Download sidecar binaries from build-cli job
       - name: Download sidecar artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ matrix.sidecar_artifact }}
           path: apps/desktop/src-tauri/binaries/
@@ -517,7 +601,7 @@ jobs:
           ls -la desktop-artifacts/
 
       - name: Upload desktop artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: desktop-${{ matrix.platform }}
           path: desktop-artifacts/
@@ -545,7 +629,7 @@ jobs:
 
       - name: Download CLI assets
         if: needs.release-cli.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: cli-assets
           path: release-assets/
@@ -553,7 +637,7 @@ jobs:
 
       - name: Download macOS desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: desktop-macos-latest
           path: release-assets/
@@ -561,7 +645,7 @@ jobs:
 
       - name: Download Windows desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: desktop-windows-latest
           path: release-assets/
@@ -569,7 +653,7 @@ jobs:
 
       - name: Download Linux desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: desktop-ubuntu-22.04
           path: release-assets/
