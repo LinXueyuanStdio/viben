@@ -67,24 +67,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS ARM64 (Apple Silicon / M1/M2/M3)
+          # macOS: builds both ARM64 and x64 via cross-compilation
           - platform: macos-latest
-            args: --target aarch64-apple-darwin
-            rust_targets: aarch64-apple-darwin
-            sidecar_platform: macos-arm64
-          # macOS x64 (Intel)
-          - platform: macos-13
-            args: --target x86_64-apple-darwin
-            rust_targets: x86_64-apple-darwin
-            sidecar_platform: macos-x64
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
           - platform: windows-latest
             args: --target x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
-            sidecar_platform: win-x64
           - platform: ubuntu-22.04
             args: ''
             rust_targets: x86_64-unknown-linux-gnu
-            sidecar_platform: linux-x64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -145,13 +136,21 @@ jobs:
       - name: Build @viben/core (for CLI)
         run: pnpm turbo build --filter=@viben/core
 
-      # Build sidecar binary for current platform
+      # Build sidecar binaries
       - name: Build sidecar binary
         shell: bash
         run: |
           cd packages/core
-          echo "Building sidecar for ${{ matrix.sidecar_platform }}..."
-          npx tsx scripts/build-sidecar.ts --platform ${{ matrix.sidecar_platform }}
+          echo "Building sidecar for current platform..."
+          npx tsx scripts/build-sidecar.ts --platform current
+
+      # For macOS, also build x64 version (cross-compile from ARM64)
+      - name: Build additional macOS sidecar (x64)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          cd packages/core
+          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
 
       - name: List sidecar binaries
         shell: bash
@@ -170,13 +169,69 @@ jobs:
           mv tauri.conf.tmp.json tauri.conf.json
           echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
 
-      - name: Build Tauri app
+      # macOS: Build both ARM64 and x64 targets
+      - name: Build Tauri app (macOS ARM64)
+        if: matrix.platform == 'macos-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Note: macOS and Windows code signing disabled
-          # Users can install unsigned apps by right-clicking and selecting "Open"
-          # To enable signing later, add APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, etc.
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: 'Viben Desktop v${{ needs.prepare.outputs.version }}'
+          releaseBody: |
+            ## Viben Desktop v${{ needs.prepare.outputs.version }}
+
+            ### Installation
+
+            #### macOS
+            - **Apple Silicon (M1/M2/M3)**: Download the `aarch64` DMG file
+            - **Intel**: Download the `x86_64` DMG file
+            - Drag Viben to Applications
+            - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
+            - Or run: `xattr -cr /Applications/Viben.app`
+
+            #### Windows
+            Download the `.msi` or `.exe` installer and run it.
+
+            #### Linux
+            - **AppImage** (portable): Download and run `chmod +x` then execute
+            - **Debian/Ubuntu**: Download `.deb` and install with `sudo dpkg -i`
+
+            ### Features
+
+            This release includes a bundled Viben CLI - no separate installation required!
+
+            ### Checksums
+
+            See `checksums.txt` attached to this release for SHA256 checksums.
+
+            ### Changes
+
+            See [CHANGELOG](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md) for details.
+          releaseDraft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          args: --target aarch64-apple-darwin
+
+      - name: Build Tauri app (macOS x64)
+        if: matrix.platform == 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: 'Viben Desktop v${{ needs.prepare.outputs.version }}'
+          releaseDraft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          args: --target x86_64-apple-darwin
+
+      # Windows/Linux: Build single target
+      - name: Build Tauri app
+        if: matrix.platform != 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
           tagName: ${{ needs.prepare.outputs.tag }}
@@ -216,7 +271,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Remove macOS signature artifacts (unsigned build)
-        if: matrix.platform == 'macos-latest' || matrix.platform == 'macos-13'
+        if: matrix.platform == 'macos-latest'
         run: |
           # For unsigned builds, remove any .sig files that might cause confusion
           find apps/desktop/src-tauri/target -name "*.sig" -delete 2>/dev/null || true
