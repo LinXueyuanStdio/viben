@@ -23,21 +23,46 @@ function LinuxIcon({ className }: { className?: string }) {
   );
 }
 
+type MacosArch = 'arm64' | 'x64';
+
 interface DownloadOption {
   platform: Platform;
+  arch?: MacosArch;
   label: string;
   icon: typeof Apple | typeof Monitor | typeof LinuxIcon;
   getUrl: (release: DesktopRelease) => string;
   getFilename: (release: DesktopRelease) => string;
 }
 
+/**
+ * Detect macOS architecture from User Agent
+ */
+function detectMacosArch(): MacosArch {
+  if (typeof window === 'undefined') return 'arm64';
+
+  const ua = navigator.userAgent.toLowerCase();
+  // Intel Macs typically have "Intel" in the UA, ARM Macs don't
+  if (ua.includes('intel')) return 'x64';
+  // Default to ARM64 for newer Macs
+  return 'arm64';
+}
+
 const DOWNLOAD_OPTIONS: DownloadOption[] = [
   {
     platform: 'macos',
-    label: 'macOS (Universal)',
+    arch: 'arm64',
+    label: 'macOS (Apple Silicon)',
     icon: Apple,
-    getUrl: (r) => r.assets.macos.dmg.url,
-    getFilename: (r) => r.assets.macos.dmg.name,
+    getUrl: (r) => r.assets.macos.arm64.url,
+    getFilename: (r) => r.assets.macos.arm64.name,
+  },
+  {
+    platform: 'macos',
+    arch: 'x64',
+    label: 'macOS (Intel)',
+    icon: Apple,
+    getUrl: (r) => r.assets.macos.x64.url,
+    getFilename: (r) => r.assets.macos.x64.name,
   },
   {
     platform: 'windows',
@@ -63,13 +88,20 @@ export function DownloadButton({ className }: DownloadButtonProps) {
   const { t } = useTranslation();
   const { desktop, loading } = useReleaseData();
   const [currentPlatform, setCurrentPlatform] = useState<Platform>('unknown');
+  const [macosArch, setMacosArch] = useState<MacosArch>('arm64');
 
   useEffect(() => {
     setCurrentPlatform(detectPlatform());
+    setMacosArch(detectMacosArch());
   }, []);
 
   // Find the best download option for current platform
-  const primaryOption = DOWNLOAD_OPTIONS.find((o) => o.platform === currentPlatform) || DOWNLOAD_OPTIONS[0];
+  const primaryOption = DOWNLOAD_OPTIONS.find((o) => {
+    if (o.platform !== currentPlatform) return false;
+    // For macOS, match the architecture
+    if (o.platform === 'macos' && o.arch !== macosArch) return false;
+    return true;
+  }) || DOWNLOAD_OPTIONS[0];
 
   const handleDownload = (option: DownloadOption) => {
     if (!desktop) return;
@@ -129,19 +161,22 @@ export function DownloadButton({ className }: DownloadButtonProps) {
           const Icon = option.icon;
           const url = desktop ? option.getUrl(desktop) : '';
           const isAvailable = !!url;
+          const isRecommended = option.platform === currentPlatform &&
+            (option.platform !== 'macos' || option.arch === macosArch);
+          const optionKey = option.arch ? `${option.platform}-${option.arch}` : option.platform;
 
           return (
             <DropdownMenuItem
-              key={option.platform}
+              key={optionKey}
               onClick={() => handleDownload(option)}
               disabled={!isAvailable}
               className={`flex cursor-pointer items-center gap-2 text-sm transition-colors hover:bg-zinc-800 focus:bg-zinc-800 ${
-                option.platform === currentPlatform ? 'bg-zinc-800/50' : ''
+                isRecommended ? 'bg-zinc-800/50' : ''
               } ${!isAvailable ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               <Icon className="h-4 w-4" />
               <span>{option.label}</span>
-              {option.platform === currentPlatform && (
+              {isRecommended && (
                 <span className="ml-auto rounded bg-amber-300/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
                   {t('homepage.download.recommended')}
                 </span>

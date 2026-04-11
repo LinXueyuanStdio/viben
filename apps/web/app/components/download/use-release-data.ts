@@ -68,12 +68,54 @@ function setCachedData(desktop: DesktopRelease | null, cli: CLIRelease | null): 
   }
 }
 
+interface UnifiedRelease {
+  version: string;
+  tag: string;
+  date: string;
+  repository: string;
+  components: {
+    cli: boolean;
+    desktop: boolean;
+  };
+  cli: {
+    install_methods: {
+      shell: { command: string; platforms: string[] };
+      npx: { command: string; platforms: string[] };
+      npm: { command: string; platforms: string[] };
+      homebrew: { command: string; platforms: string[] };
+    };
+    assets: {
+      install_sh: { url: string; name: string };
+    };
+  };
+  desktop: {
+    assets: {
+      macos: {
+        arm64: { url: string; name: string };
+        x64: { url: string; name: string };
+      };
+      windows: {
+        msi: { url: string; name: string };
+        exe: { url: string; name: string };
+      };
+      linux: {
+        appimage: { url: string; name: string };
+        deb: { url: string; name: string };
+      };
+    };
+  };
+  links: {
+    npm: string;
+    documentation: string;
+    changelog: string;
+  };
+}
+
 /**
- * Fetch release JSON from GitHub releases
+ * Fetch releases.json from latest GitHub release
  */
-async function fetchReleaseJson<T>(tagPrefix: string, filename: string): Promise<T | null> {
+async function fetchUnifiedRelease(): Promise<UnifiedRelease | null> {
   try {
-    // First, get the latest release with the given tag prefix
     const releasesUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
     const response = await fetch(releasesUrl, {
       headers: {
@@ -85,72 +127,58 @@ async function fetchReleaseJson<T>(tagPrefix: string, filename: string): Promise
 
     const releases = await response.json();
 
-    // Find the latest release matching the tag prefix
-    const release = releases.find((r: { tag_name: string }) => r.tag_name.startsWith(tagPrefix));
+    // Find the latest release with 'v' prefix (unified release format)
+    const release = releases.find((r: { tag_name: string; prerelease: boolean }) =>
+      r.tag_name.startsWith('v') && !r.prerelease
+    );
     if (!release) return null;
 
-    // Find the JSON asset
-    const jsonAsset = release.assets?.find((a: { name: string }) => a.name === filename);
-    if (!jsonAsset) {
-      // Fallback: construct the download URL manually from release info
-      return constructFallbackData(release, tagPrefix) as T;
+    // Try to fetch releases.json from the release assets
+    const jsonAsset = release.assets?.find((a: { name: string }) => a.name === 'releases.json');
+    if (jsonAsset) {
+      const jsonResponse = await fetch(jsonAsset.browser_download_url);
+      if (jsonResponse.ok) {
+        return jsonResponse.json();
+      }
     }
 
-    // Fetch the JSON content
-    const jsonResponse = await fetch(jsonAsset.browser_download_url);
-    if (!jsonResponse.ok) return null;
-
-    return jsonResponse.json();
+    // Fallback: construct data from release assets
+    return constructUnifiedFallbackData(release);
   } catch {
     return null;
   }
 }
 
 /**
- * Construct fallback data from release info when JSON file is not available
+ * Construct fallback unified release data from release assets
  */
-function constructFallbackData(release: { tag_name: string; assets?: { name: string; browser_download_url: string }[]; published_at: string }, tagPrefix: string): DesktopRelease | CLIRelease | null {
-  const version = release.tag_name.replace(tagPrefix, '');
+function constructUnifiedFallbackData(release: {
+  tag_name: string;
+  assets?: { name: string; browser_download_url: string }[];
+  published_at: string;
+}): UnifiedRelease {
+  const version = release.tag_name.replace(/^v/, '');
   const assets = release.assets || [];
 
-  if (tagPrefix === 'desktop-v') {
-    // Desktop release fallback
-    const dmg = assets.find(a => a.name.endsWith('.dmg'));
-    const msi = assets.find(a => a.name.endsWith('.msi'));
-    const exe = assets.find(a => a.name.endsWith('-setup.exe'));
-    const appimage = assets.find(a => a.name.endsWith('.AppImage'));
-    const deb = assets.find(a => a.name.endsWith('.deb'));
+  // macOS has separate builds for ARM64 (Apple Silicon) and x64 (Intel)
+  const dmgArm64 = assets.find(a => a.name.endsWith('.dmg') && a.name.includes('aarch64'));
+  const dmgX64 = assets.find(a => a.name.endsWith('.dmg') && (a.name.includes('x86_64') || a.name.includes('x64')));
+  const msi = assets.find(a => a.name.endsWith('.msi'));
+  const exe = assets.find(a => a.name.endsWith('-setup.exe'));
+  const appimage = assets.find(a => a.name.endsWith('.AppImage'));
+  const deb = assets.find(a => a.name.endsWith('.deb'));
+  const installSh = assets.find(a => a.name === 'install.sh');
 
-    return {
-      version,
-      tag: release.tag_name,
-      date: release.published_at,
-      repository: GITHUB_REPO,
-      assets: {
-        macos: {
-          dmg: { url: dmg?.browser_download_url || '', name: dmg?.name || '' },
-        },
-        windows: {
-          msi: { url: msi?.browser_download_url || '', name: msi?.name || '' },
-          exe: { url: exe?.browser_download_url || '', name: exe?.name || '' },
-        },
-        linux: {
-          appimage: { url: appimage?.browser_download_url || '', name: appimage?.name || '' },
-          deb: { url: deb?.browser_download_url || '', name: deb?.name || '' },
-        },
-      },
-    } as DesktopRelease;
-  }
-
-  if (tagPrefix === 'cli-v') {
-    // CLI release fallback
-    const installSh = assets.find(a => a.name === 'install.sh');
-
-    return {
-      version,
-      tag: release.tag_name,
-      date: release.published_at,
-      repository: GITHUB_REPO,
+  return {
+    version,
+    tag: release.tag_name,
+    date: release.published_at,
+    repository: GITHUB_REPO,
+    components: {
+      cli: !!installSh,
+      desktop: !!(dmgArm64 || dmgX64 || msi || exe || appimage || deb),
+    },
+    cli: {
       install_methods: {
         shell: {
           command: `curl -fsSL https://github.com/${GITHUB_REPO}/releases/latest/download/install.sh | bash`,
@@ -175,15 +203,64 @@ function constructFallbackData(release: { tag_name: string; assets?: { name: str
           name: 'install.sh',
         },
       },
-      links: {
-        npm: 'https://www.npmjs.com/package/viben',
-        documentation: `https://github.com/${GITHUB_REPO}`,
+    },
+    desktop: {
+      assets: {
+        macos: {
+          arm64: { url: dmgArm64?.browser_download_url || '', name: dmgArm64?.name || '' },
+          x64: { url: dmgX64?.browser_download_url || '', name: dmgX64?.name || '' },
+        },
+        windows: {
+          msi: { url: msi?.browser_download_url || '', name: msi?.name || '' },
+          exe: { url: exe?.browser_download_url || '', name: exe?.name || '' },
+        },
+        linux: {
+          appimage: { url: appimage?.browser_download_url || '', name: appimage?.name || '' },
+          deb: { url: deb?.browser_download_url || '', name: deb?.name || '' },
+        },
       },
-    } as CLIRelease;
-  }
-
-  return null;
+    },
+    links: {
+      npm: 'https://www.npmjs.com/package/viben',
+      documentation: `https://github.com/${GITHUB_REPO}`,
+      changelog: `https://github.com/${GITHUB_REPO}/blob/main/CHANGELOG.md`,
+    },
+  };
 }
+
+/**
+ * Convert unified release to desktop release format
+ */
+function toDesktopRelease(unified: UnifiedRelease): DesktopRelease | null {
+  if (!unified.components.desktop) return null;
+  return {
+    version: unified.version,
+    tag: unified.tag,
+    date: unified.date,
+    repository: unified.repository,
+    assets: unified.desktop.assets,
+  };
+}
+
+/**
+ * Convert unified release to CLI release format
+ */
+function toCLIRelease(unified: UnifiedRelease): CLIRelease | null {
+  if (!unified.components.cli) return null;
+  return {
+    version: unified.version,
+    tag: unified.tag,
+    date: unified.date,
+    repository: unified.repository,
+    install_methods: unified.cli.install_methods as CLIRelease['install_methods'],
+    assets: unified.cli.assets,
+    links: {
+      npm: unified.links.npm,
+      documentation: unified.links.documentation,
+    },
+  };
+}
+
 
 export interface UseReleaseDataResult {
   desktop: DesktopRelease | null;
@@ -220,14 +297,18 @@ export function useReleaseData(): UseReleaseDataResult {
     }
 
     try {
-      const [desktopData, cliData] = await Promise.all([
-        fetchReleaseJson<DesktopRelease>('desktop-v', 'desktop-releases.json'),
-        fetchReleaseJson<CLIRelease>('cli-v', 'cli-releases.json'),
-      ]);
+      const unified = await fetchUnifiedRelease();
 
-      setDesktop(desktopData);
-      setCli(cliData);
-      setCachedData(desktopData, cliData);
+      if (unified) {
+        const desktopData = toDesktopRelease(unified);
+        const cliData = toCLIRelease(unified);
+        setDesktop(desktopData);
+        setCli(cliData);
+        setCachedData(desktopData, cliData);
+      } else {
+        setDesktop(null);
+        setCli(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch release data');
     } finally {

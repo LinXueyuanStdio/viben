@@ -141,11 +141,14 @@ export function DownloadSection() {
                   icon={<Apple className="h-5 w-5" />}
                   title="macOS"
                   description={t('homepage.download.macosDesc')}
-                  downloads={
-                    desktop?.assets.macos.dmg.url
-                      ? [{ label: '.dmg', url: desktop.assets.macos.dmg.url }]
-                      : []
-                  }
+                  downloads={[
+                    ...(desktop?.assets.macos.arm64.url
+                      ? [{ label: 'Apple Silicon (M1/M2/M3)', url: desktop.assets.macos.arm64.url }]
+                      : []),
+                    ...(desktop?.assets.macos.x64.url
+                      ? [{ label: 'Intel', url: desktop.assets.macos.x64.url }]
+                      : []),
+                  ]}
                   version={desktop?.version}
                 />
                 <DownloadCard

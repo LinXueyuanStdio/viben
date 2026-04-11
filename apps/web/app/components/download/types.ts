@@ -9,7 +9,8 @@ export interface DesktopAsset {
 
 export interface DesktopReleaseAssets {
   macos: {
-    dmg: DesktopAsset;
+    arm64: DesktopAsset;  // Apple Silicon (M1/M2/M3)
+    x64: DesktopAsset;    // Intel
   };
   windows: {
     msi: DesktopAsset;
