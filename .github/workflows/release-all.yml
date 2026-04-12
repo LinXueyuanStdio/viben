@@ -157,6 +157,9 @@ jobs:
       - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
 
+      - name: Build viben CLI
+        run: pnpm turbo build --filter=viben
+
       # Build sidecar binary for current platform
       - name: Build sidecar binary
         shell: bash
