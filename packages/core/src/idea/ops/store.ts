@@ -24,9 +24,9 @@ import {
   unlinkSync,
   rmSync,
 } from "node:fs";
-import { join, resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 import matter from "gray-matter";
+import { getTemplatesDir } from "../../utils/templates";
 
 import {
   CUSTOM_IDEA_TYPES_DIR,
@@ -153,15 +153,6 @@ export function getIdeaTypePromptPath(repoRoot: string, type: string): string {
   return join(getIdeaTypesDir(repoRoot), `${type}.md`);
 }
 
-/**
- * Get the templates directory path.
- * Templates are located in packages/core/templates/.
- */
-function getTemplatesDir(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  // Both dist and src resolve to packages/core/templates
-  return resolve(currentDir, "../../templates");
-}
 
 /**
  * Get the built-in prompt file path for a specific idea type
@@ -172,7 +163,7 @@ function getTemplatesDir(): string {
  * @returns Path to built-in prompt file
  */
 export function getBuiltinIdeaTypePromptPath(type: string): string {
-  return join(getTemplatesDir(), "viben", "idea-types", `${type}.md`);
+  return join(getTemplatesDir(import.meta.url), "viben", "idea-types", `${type}.md`);
 }
 
 // =============================================================================

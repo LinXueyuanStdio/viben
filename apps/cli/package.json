@@ -48,7 +48,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && npm run copy-templates",
+    "copy-templates": "rm -rf dist/templates && cp -r ../../packages/core/templates dist/templates",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",

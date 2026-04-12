@@ -4,8 +4,7 @@
  * Functions for loading and managing reward types.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import matter from "gray-matter";
 import {
   type RewardType,
@@ -14,26 +13,17 @@ import {
   CUSTOM_REWARD_TYPES_DIR,
   isBuiltinRewardType,
 } from "./types";
+import { getTemplatesDir } from "../../utils/templates";
 
 // =============================================================================
 // Path Utilities
 // =============================================================================
 
 /**
- * Get the templates directory path.
- * Templates are located in packages/core/templates/.
- */
-function getTemplatesDir(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-  // Both dist and src resolve to packages/core/templates
-  return resolve(currentDir, "../../templates");
-}
-
-/**
  * Get the directory containing built-in reward type prompts
  */
 function getBuiltinRewardTypesDir(): string {
-  return join(getTemplatesDir(), "viben", "reward-types");
+  return join(getTemplatesDir(import.meta.url), "viben", "reward-types");
 }
 
 /**

@@ -15,9 +15,8 @@
  */
 import * as fs from "node:fs";
 import { mkdir, writeFile, chmod, readdir, stat } from "node:fs/promises";
-import { join, dirname, resolve, basename } from "node:path";
+import { join, basename, dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { stringify } from "yaml";
 import type {
@@ -28,6 +27,7 @@ import type {
 } from "./types";
 import { EXECUTOR_TEMPLATE_CONFIGS } from "./types";
 import { initDeveloper } from "../cli/commands/user";
+import { getTemplatesDir as getTemplatesDirUtil } from "../utils/templates";
 
 export { EXECUTOR_TEMPLATE_CONFIGS } from "./types";
 export type { ExecutorType } from "./types";
@@ -75,18 +75,10 @@ export const DEFAULT_WORKSPACE_CONFIG: WorkspaceConfigFile = {
 // =============================================================================
 
 /**
- * Get the templates directory path.
- * Templates are located in packages/core/templates/.
+ * Get the templates directory path using shared utility.
  */
 function getTemplatesDir(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-
-  // Check if we're in dist (production) or src (development)
-  if (currentDir.includes("/dist/")) {
-    return resolve(currentDir, "../../templates");
-  } else {
-    return resolve(currentDir, "../../templates");
-  }
+  return getTemplatesDirUtil(import.meta.url);
 }
 
 /**

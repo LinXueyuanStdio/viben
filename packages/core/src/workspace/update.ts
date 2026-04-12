@@ -5,26 +5,18 @@
  */
 import * as fs from "node:fs";
 import { mkdir, writeFile, readdir, stat } from "node:fs/promises";
-import { join, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, dirname } from "node:path";
+import { getTemplatesDir as getTemplatesDirUtil } from "../utils/templates";
 
 // =============================================================================
 // Template Path Helpers
 // =============================================================================
 
 /**
- * Get the templates directory path.
- * Templates are located in packages/core/templates/.
+ * Get the templates directory using shared utility.
  */
 function getTemplatesDir(): string {
-  const currentDir = dirname(fileURLToPath(import.meta.url));
-
-  // Check if we're in dist (production) or src (development)
-  if (currentDir.includes("/dist/")) {
-    return resolve(currentDir, "../../templates");
-  } else {
-    return resolve(currentDir, "../../templates");
-  }
+  return getTemplatesDirUtil(import.meta.url);
 }
 
 /**
