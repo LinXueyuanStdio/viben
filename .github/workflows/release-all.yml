@@ -146,6 +146,12 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
 
+          # Update packages/core/package.json (source of __VERSION__ for CLI)
+          cd packages/core
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          cd ../..
+
           # Update apps/cli/package.json
           cd apps/cli
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
@@ -318,6 +324,13 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
           echo "Updated root package.json to: $(jq -r '.version' package.json)"
+
+          # Update packages/core/package.json (source of __VERSION__ for CLI)
+          cd packages/core
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          echo "Updated packages/core/package.json to: $(jq -r '.version' package.json)"
+          cd ../..
 
           # Update apps/cli/package.json
           cd apps/cli
