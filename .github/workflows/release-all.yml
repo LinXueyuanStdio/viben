@@ -218,11 +218,20 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
       - name: Download CLI build artifact
         uses: actions/download-artifact@v5
         with:
           name: cli-build
           path: .
+
+      # Install dependencies to simulate real npm install scenario.
+      # When users run `npm install -g viben`, npm automatically installs
+      # all dependencies declared in package.json (yaml, chalk, etc.).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Verify downloaded artifacts
         run: |
