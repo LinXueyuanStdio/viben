@@ -517,7 +517,8 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf \
-            libxdo-dev
+            libxdo-dev \
+            libfuse2
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -580,6 +581,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Fix linuxdeploy AppImage build on ubuntu runners
           APPIMAGE_EXTRACT_AND_RUN: '1'
+          # Prevent symbol stripping issues with Tauri updater
+          NO_STRIP: 'true'
         with:
           projectPath: apps/desktop
           tagName: ''
