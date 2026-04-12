@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { DesktopRelease, CLIRelease, Platform } from './types';
 
-const GITHUB_REPO = 'LinXueyuanStdio/viben';
 const CACHE_KEY = 'viben-releases-cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -112,121 +111,16 @@ interface UnifiedRelease {
 }
 
 /**
- * Fetch releases.json from latest GitHub release
+ * Fetch releases data from our API endpoint (avoids CORS issues with GitHub)
  */
 async function fetchUnifiedRelease(): Promise<UnifiedRelease | null> {
   try {
-    const releasesUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
-    const response = await fetch(releasesUrl, {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-
+    const response = await fetch('/api/releases');
     if (!response.ok) return null;
-
-    const releases = await response.json();
-
-    // Find the latest release with 'v' prefix (unified release format)
-    const release = releases.find((r: { tag_name: string; prerelease: boolean }) =>
-      r.tag_name.startsWith('v') && !r.prerelease
-    );
-    if (!release) return null;
-
-    // Try to fetch releases.json from the release assets
-    const jsonAsset = release.assets?.find((a: { name: string }) => a.name === 'releases.json');
-    if (jsonAsset) {
-      const jsonResponse = await fetch(jsonAsset.browser_download_url);
-      if (jsonResponse.ok) {
-        return jsonResponse.json();
-      }
-    }
-
-    // Fallback: construct data from release assets
-    return constructUnifiedFallbackData(release);
+    return response.json();
   } catch {
     return null;
   }
-}
-
-/**
- * Construct fallback unified release data from release assets
- */
-function constructUnifiedFallbackData(release: {
-  tag_name: string;
-  assets?: { name: string; browser_download_url: string }[];
-  published_at: string;
-}): UnifiedRelease {
-  const version = release.tag_name.replace(/^v/, '');
-  const assets = release.assets || [];
-
-  // macOS has separate builds for ARM64 (Apple Silicon) and x64 (Intel)
-  const dmgArm64 = assets.find(a => a.name.endsWith('.dmg') && a.name.includes('aarch64'));
-  const dmgX64 = assets.find(a => a.name.endsWith('.dmg') && (a.name.includes('x86_64') || a.name.includes('x64')));
-  const msi = assets.find(a => a.name.endsWith('.msi'));
-  const exe = assets.find(a => a.name.endsWith('-setup.exe'));
-  const appimage = assets.find(a => a.name.endsWith('.AppImage'));
-  const deb = assets.find(a => a.name.endsWith('.deb'));
-  const installSh = assets.find(a => a.name === 'install.sh');
-
-  return {
-    version,
-    tag: release.tag_name,
-    date: release.published_at,
-    repository: GITHUB_REPO,
-    components: {
-      cli: !!installSh,
-      desktop: !!(dmgArm64 || dmgX64 || msi || exe || appimage || deb),
-    },
-    cli: {
-      install_methods: {
-        shell: {
-          command: `curl -fsSL https://github.com/${GITHUB_REPO}/releases/latest/download/install.sh | bash`,
-          platforms: ['macos', 'linux'],
-        },
-        npx: {
-          command: 'npx viben',
-          platforms: ['macos', 'linux', 'windows'],
-        },
-        npm: {
-          command: 'npm install -g viben',
-          platforms: ['macos', 'linux', 'windows'],
-        },
-        homebrew: {
-          command: `brew tap ${GITHUB_REPO.split('/')[0]}/viben && brew install viben`,
-          platforms: ['macos', 'linux'],
-        },
-      },
-      assets: {
-        install_sh: {
-          url: installSh?.browser_download_url || `https://github.com/${GITHUB_REPO}/releases/download/${release.tag_name}/install.sh`,
-          name: 'install.sh',
-        },
-      },
-    },
-    desktop: {
-      assets: {
-        macos: {
-          arm64: { url: dmgArm64?.browser_download_url || '', name: dmgArm64?.name || '' },
-          x64: { url: dmgX64?.browser_download_url || '', name: dmgX64?.name || '' },
-        },
-        windows: {
-          msi: { url: msi?.browser_download_url || '', name: msi?.name || '' },
-          exe: { url: exe?.browser_download_url || '', name: exe?.name || '' },
-        },
-        linux: {
-          // AppImage is optional since CI may not build it (provide empty fallback for compatibility)
-          appimage: appimage ? { url: appimage.browser_download_url, name: appimage.name } : { url: '', name: '' },
-          deb: { url: deb?.browser_download_url || '', name: deb?.name || '' },
-        },
-      },
-    },
-    links: {
-      npm: 'https://www.npmjs.com/package/viben',
-      documentation: `https://github.com/${GITHUB_REPO}`,
-      changelog: `https://github.com/${GITHUB_REPO}/blob/main/CHANGELOG.md`,
-    },
-  };
 }
 
 /**

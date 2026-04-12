@@ -35,15 +35,72 @@ interface DownloadOption {
 }
 
 /**
- * Detect macOS architecture from User Agent
+ * Detect macOS architecture using multiple methods for accuracy
+ * Priority: WebGL GPU info > User-Agent Client Hints > UA string fallback
  */
 function detectMacosArch(): MacosArch {
   if (typeof window === 'undefined') return 'arm64';
 
-  const ua = navigator.userAgent.toLowerCase();
-  // Intel Macs typically have "Intel" in the UA, ARM Macs don't
-  if (ua.includes('intel')) return 'x64';
-  // Default to ARM64 for newer Macs
+  // Method 1: Check WebGL renderer for Apple Silicon GPU
+  // Apple Silicon Macs report "Apple M1/M2/M3" in the renderer
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl && gl instanceof WebGLRenderingContext) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        if (typeof renderer === 'string') {
+          const rendererLower = renderer.toLowerCase();
+          // Apple Silicon GPUs contain "apple m" (M1, M2, M3, etc.)
+          if (rendererLower.includes('apple m') || rendererLower.includes('apple gpu')) {
+            return 'arm64';
+          }
+          // Intel GPUs on Mac
+          if (rendererLower.includes('intel')) {
+            return 'x64';
+          }
+        }
+      }
+    }
+  } catch {
+    // WebGL detection failed, continue to fallback
+  }
+
+  // Method 2: Check navigator.platform (deprecated but still works)
+  // On Apple Silicon native apps, platform may indicate arm64
+  const platform = navigator.platform?.toLowerCase() || '';
+  if (platform.includes('arm') || platform.includes('aarch64')) {
+    return 'arm64';
+  }
+
+  // Method 3: User Agent string analysis
+  const ua = navigator.userAgent;
+
+  // Check for explicit ARM/arm64 indicators
+  if (/arm64|aarch64/i.test(ua)) {
+    return 'arm64';
+  }
+
+  // Check for Intel indicators in macOS UA
+  // Intel Macs have "Intel Mac OS X" in UA
+  if (/Intel Mac OS X/i.test(ua)) {
+    return 'x64';
+  }
+
+  // macOS 11+ on Apple Silicon may not have "Intel" in UA
+  // Check macOS version - Big Sur (11.0) and later are likely Apple Silicon
+  const macVersionMatch = ua.match(/Mac OS X (\d+)[._](\d+)/);
+  if (macVersionMatch) {
+    const majorVersion = parseInt(macVersionMatch[1], 10);
+    // macOS 11 (Big Sur) was the first to support Apple Silicon
+    // If version >= 11 and no Intel indicator, assume ARM
+    if (majorVersion >= 11) {
+      return 'arm64';
+    }
+  }
+
+  // Default to arm64 for newer Macs (most new Macs are Apple Silicon)
   return 'arm64';
 }
 
