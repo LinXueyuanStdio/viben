@@ -187,7 +187,8 @@ function getUpdateCommand(manager: "npm" | "pnpm" | "yarn" | "bun"): string[] {
       return ["bun", "add", "-g", NPM_PACKAGE];
     case "npm":
     default:
-      return ["npm", "install", "-g", NPM_PACKAGE];
+      // Use --force to overwrite existing binary (handles EEXIST error)
+      return ["npm", "install", "-g", "--force", NPM_PACKAGE];
   }
 }
 
@@ -208,7 +209,6 @@ async function runUpdate(
 
     const child = spawn(cmd, args, {
       stdio: ctx.quiet ? "ignore" : "inherit",
-      shell: true,
     });
 
     child.on("close", (code) => {

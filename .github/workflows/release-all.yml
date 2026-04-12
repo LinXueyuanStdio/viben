@@ -215,23 +215,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
+      - name: Download CLI build artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: cli-build
+          path: .
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Sync version to package files
+      - name: Verify downloaded artifacts
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          cd apps/cli
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
+          echo "=== CLI artifacts ==="
+          ls -la apps/cli/
+          ls -la apps/cli/dist/ || echo "No dist folder"
+          ls -la apps/cli/bin/ || echo "No bin folder"
+          echo "=== Core artifacts ==="
+          ls -la packages/core/
+          ls -la packages/core/dist/ || echo "No dist folder"
 
-      - name: Build CLI and dependencies
-        run: pnpm --filter viben... build
+      - name: Make CLI executable
+        run: chmod +x apps/cli/bin/viben.js
 
       - name: Run CLI integration tests
         run: |
