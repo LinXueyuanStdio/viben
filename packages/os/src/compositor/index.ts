@@ -16,3 +16,7 @@ export type {
   SystemGestureHandler,
   GestureRouterConfig,
 } from "./gesture-router";
+export { TransitionEngine } from "./transition-engine";
+export type { TransitionEngineConfig } from "./transition-engine";
+export { MultitaskView } from "./multitask-view";
+export type { AppSnapshot, MultitaskViewConfig } from "./multitask-view";
