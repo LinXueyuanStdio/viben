@@ -564,6 +564,7 @@ jobs:
           echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
 
       # macOS: Build both ARM64 and x64 targets
+      # Note: DMG bundling is flaky in CI, using retryAttempts to handle intermittent failures
       - name: Build Tauri app (macOS ARM64)
         if: matrix.platform == 'macos-latest'
         uses: tauri-apps/tauri-action@v0
@@ -574,6 +575,7 @@ jobs:
           tagName: ''
           releaseName: ''
           args: --target aarch64-apple-darwin
+          retryAttempts: 3
 
       - name: Build Tauri app (macOS x64)
         if: matrix.platform == 'macos-latest'
@@ -585,22 +587,31 @@ jobs:
           tagName: ''
           releaseName: ''
           args: --target x86_64-apple-darwin
+          retryAttempts: 3
 
-      # Windows/Linux: Build single target
-      - name: Build Tauri app
-        if: matrix.platform != 'macos-latest'
+      # Windows: Build single target
+      - name: Build Tauri app (Windows)
+        if: matrix.platform == 'windows-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Fix linuxdeploy AppImage build on ubuntu runners
-          APPIMAGE_EXTRACT_AND_RUN: '1'
-          # Prevent symbol stripping issues with Tauri updater
-          NO_STRIP: 'true'
         with:
           projectPath: apps/desktop
           tagName: ''
           releaseName: ''
           args: ${{ matrix.args }}
+
+      # Linux: Build only deb (AppImage is unreliable in CI)
+      - name: Build Tauri app (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tagName: ''
+          releaseName: ''
+          args: --bundles deb
 
       - name: Find and upload build artifacts
         shell: bash
@@ -613,7 +624,6 @@ jobs:
             find apps/desktop/src-tauri/target -name "*.msi" -exec cp {} desktop-artifacts/ \;
             find apps/desktop/src-tauri/target -name "*-setup.exe" -exec cp {} desktop-artifacts/ \;
           elif [[ "${{ matrix.platform }}" == "ubuntu-22.04" ]]; then
-            find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} desktop-artifacts/ \;
             find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} desktop-artifacts/ \;
           fi
 
@@ -776,7 +786,6 @@ jobs:
           Download the `.msi` or `.exe` installer and run it.
 
           #### Linux
-          - **AppImage** (portable): Download and run `chmod +x` then execute
           - **Debian/Ubuntu**: Download `.deb` and install with `sudo dpkg -i`
 
           EOFDESKTOP
@@ -840,7 +849,6 @@ jobs:
           DMG_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .browser_download_url' | head -1)
           MSI_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .browser_download_url' | head -1)
           EXE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url' | head -1)
-          APPIMAGE_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .browser_download_url' | head -1)
           DEB_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .browser_download_url' | head -1)
           INSTALL_SH_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name == "install.sh") | .browser_download_url' | head -1)
 
@@ -848,7 +856,6 @@ jobs:
           DMG_X64_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".dmg")) | select(.name | contains("x86_64") or contains("x64")) | .name' | head -1)
           MSI_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".msi")) | .name' | head -1)
           EXE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .name' | head -1)
-          APPIMAGE_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".AppImage")) | .name' | head -1)
           DEB_NAME=$(echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".deb")) | .name' | head -1)
 
           cat > release-assets/releases.json << EOF
@@ -910,10 +917,6 @@ jobs:
                   }
                 },
                 "linux": {
-                  "appimage": {
-                    "url": "${APPIMAGE_URL}",
-                    "name": "${APPIMAGE_NAME}"
-                  },
                   "deb": {
                     "url": "${DEB_URL}",
                     "name": "${DEB_NAME}"
