@@ -4,6 +4,7 @@ import {
   Mesh,
   DoubleSide,
 } from "three";
+import type { WebGLRenderTarget, Scene, OrthographicCamera } from "three";
 import { Spring } from "../ui/animation/spring";
 import type { AppSlotConfig, AppSlotState } from "./compositor-types";
 
@@ -13,6 +14,9 @@ export class AppSlot {
   readonly id: string;
   readonly mesh: Mesh;
   readonly material: MeshBasicMaterial;
+  readonly appScene: Scene;
+  readonly appCamera: OrthographicCamera;
+  readonly renderTarget: WebGLRenderTarget;
 
   private _springX: Spring;
   private _springY: Spring;
@@ -25,6 +29,9 @@ export class AppSlot {
 
   constructor(config: AppSlotConfig) {
     this.id = config.id;
+    this.appScene = config.scene;
+    this.appCamera = config.camera;
+    this.renderTarget = config.renderTarget;
 
     this.material = new MeshBasicMaterial({
       map: config.renderTarget.texture,
@@ -56,6 +63,8 @@ export class AppSlot {
 
     this._applyState(s);
   }
+
+  get currentState(): Readonly<AppSlotState> { return this._currentState; }
 
   get isAnimating(): boolean {
     return (

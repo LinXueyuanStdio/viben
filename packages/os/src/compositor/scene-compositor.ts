@@ -56,6 +56,7 @@ export class SceneCompositor {
     this.appLayer.position.z = 2;
     this.multitaskLayer.position.z = 5;
     this.multitaskLayer.visible = false;
+    this.multitaskLayer.add(this._multitaskView.root);
 
     // Wire up system gestures
     this._gestureRouter.onSystemGesture((evt) => {
@@ -152,10 +153,14 @@ export class SceneCompositor {
         this._slots.size > 0 ? this._slots.keys().next().value! : null;
     }
 
-    if (this._slots.size === 0) {
-      this.setMode("HOME");
-    } else if (this._focusedAppId) {
-      this.setMode("FULLSCREEN");
+    // Force re-transition to update TransitionEngine's slot array
+    // (bypasses the mode === this._mode guard in setMode)
+    const targetMode: CompositorMode = this._slots.size === 0 ? "HOME" : "FULLSCREEN";
+    const prevMode = this._mode;
+    this._mode = targetMode;
+    this._transitionEngine.transition(targetMode, this._slotsArray(), this._focusedAppId ?? undefined);
+    if (targetMode !== prevMode) {
+      this._emitEvent({ type: "mode-change", mode: targetMode, prevMode });
     }
   }
 
@@ -167,10 +172,9 @@ export class SceneCompositor {
     this.multitaskLayer.visible = mode === "MULTITASK";
 
     if (mode === "MULTITASK") {
-      // Use material.map as the texture snapshot from each slot
       const snapshots = this._slotsArray().map((s) => ({
         id: s.id,
-        texture: s.material.map!,
+        texture: s.renderTarget.texture,
       }));
       this._multitaskView.setCards(snapshots);
     }
@@ -198,7 +202,8 @@ export class SceneCompositor {
     this._gestureRouter.resize(width, height);
     this._multitaskView.resize(width, height);
     for (const slot of this._slots.values()) {
-      this._rttPool.acquire(slot.id, width, height);
+      const rt = this._rttPool.acquire(slot.id, width, height);
+      slot.material.map = rt.texture;
     }
   }
 
