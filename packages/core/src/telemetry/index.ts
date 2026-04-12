@@ -11,7 +11,7 @@ import {
 } from "@opentelemetry/semantic-conventions";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
-import { FastifyInstrumentation } from "@opentelemetry/instrumentation-fastify";
+import FastifyOtelInstrumentation from "@fastify/otel";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import * as fs from "fs";
 import * as path from "path";
@@ -189,7 +189,7 @@ export function initTelemetry(config: TelemetryConfig): TelemetryInstance {
           return false;
         },
       }),
-      new FastifyInstrumentation(),
+      new FastifyOtelInstrumentation({ registerOnInitialization: true }),
     ],
   });
 

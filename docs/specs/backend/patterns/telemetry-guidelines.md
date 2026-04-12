@@ -36,7 +36,7 @@ Viben 使用 OpenTelemetry 实现可观测性三大支柱：
 ```json
 {
   "@opentelemetry/api": "^1.9.0",
-  "@opentelemetry/instrumentation-fastify": "^0.55.0",
+  "@fastify/otel": "^0.18.1",
   "@opentelemetry/instrumentation-http": "^0.212.0",
   "@opentelemetry/sdk-metrics": "^2.5.1",
   "@opentelemetry/sdk-node": "^0.212.0",
