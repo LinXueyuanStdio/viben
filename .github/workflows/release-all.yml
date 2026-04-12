@@ -345,7 +345,7 @@ jobs:
           PACKAGE_URL="https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz"
 
           echo "Waiting for npm package to be available..."
-          for i in {1..30}; do
+          for i in {1..60}; do
             if curl -sf "$PACKAGE_URL" -o /tmp/package.tgz; then
               echo "Package available after $((i*10)) seconds"
               SHA256=$(shasum -a 256 /tmp/package.tgz | cut -d' ' -f1)
@@ -353,11 +353,11 @@ jobs:
               echo "Package SHA256: ${SHA256}"
               exit 0
             fi
-            echo "Waiting for npm propagation... attempt $i/30"
+            echo "Waiting for npm propagation... attempt $i/60"
             sleep 10
           done
 
-          echo "::error::Package not available after 5 minutes"
+          echo "::error::Package not available after 10 minutes"
           exit 1
 
       - name: Prepare install.sh for release
