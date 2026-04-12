@@ -170,9 +170,6 @@ export function DownloadSection() {
                   title="Linux"
                   description={t('homepage.download.linuxDesc')}
                   downloads={[
-                    ...(desktop?.assets.linux.appimage.url
-                      ? [{ label: '.AppImage', url: desktop.assets.linux.appimage.url }]
-                      : []),
                     ...(desktop?.assets.linux.deb.url
                       ? [{ label: '.deb', url: desktop.assets.linux.deb.url }]
                       : []),

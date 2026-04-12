@@ -73,12 +73,28 @@ const DOWNLOAD_OPTIONS: DownloadOption[] = [
   },
   {
     platform: 'linux',
-    label: 'Linux (AppImage)',
+    label: 'Linux (.deb)',
     icon: LinuxIcon,
-    getUrl: (r) => r.assets.linux.appimage.url,
-    getFilename: (r) => r.assets.linux.appimage.name,
+    getUrl: (r) => r.assets.linux.deb.url,
+    getFilename: (r) => r.assets.linux.deb.name,
   },
 ];
+
+/**
+ * Get platform-specific button text key
+ */
+function getButtonTextKey(platform: Platform): string {
+  switch (platform) {
+    case 'macos':
+      return 'homepage.download.downloadForMacos';
+    case 'windows':
+      return 'homepage.download.downloadForWindows';
+    case 'linux':
+      return 'homepage.download.downloadForLinux';
+    default:
+      return 'homepage.download.downloadDesktop';
+  }
+}
 
 interface DownloadButtonProps {
   className?: string;
@@ -143,7 +159,7 @@ export function DownloadButton({ className }: DownloadButtonProps) {
           ) : (
             <>
               <PrimaryIcon className="h-4 w-4" />
-              {t('homepage.download.downloadDesktop')}
+              {t(getButtonTextKey(currentPlatform))}
               <ChevronDown className="ml-1 h-4 w-4" />
             </>
           )}

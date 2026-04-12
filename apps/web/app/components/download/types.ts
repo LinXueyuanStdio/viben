@@ -17,7 +17,7 @@ export interface DesktopReleaseAssets {
     exe: DesktopAsset;
   };
   linux: {
-    appimage: DesktopAsset;
+    appimage?: DesktopAsset;  // Optional: AppImage bundling is disabled in CI
     deb: DesktopAsset;
   };
 }

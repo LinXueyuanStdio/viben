@@ -99,7 +99,7 @@ interface UnifiedRelease {
         exe: { url: string; name: string };
       };
       linux: {
-        appimage: { url: string; name: string };
+        appimage?: { url: string; name: string };  // Optional: AppImage bundling is disabled in CI
         deb: { url: string; name: string };
       };
     };
@@ -215,7 +215,8 @@ function constructUnifiedFallbackData(release: {
           exe: { url: exe?.browser_download_url || '', name: exe?.name || '' },
         },
         linux: {
-          appimage: { url: appimage?.browser_download_url || '', name: appimage?.name || '' },
+          // AppImage is optional since CI may not build it (provide empty fallback for compatibility)
+          appimage: appimage ? { url: appimage.browser_download_url, name: appimage.name } : { url: '', name: '' },
           deb: { url: deb?.browser_download_url || '', name: deb?.name || '' },
         },
       },
