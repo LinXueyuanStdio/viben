@@ -9,6 +9,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
 import { useWorkspaceStore, useAppStore } from "@/stores";
 import type { Workspace } from "@/types";
+import { pollWithBackoff, createPollController } from "@/lib/onboarding/polling";
+import { GATEWAY_READINESS_POLICY } from "@/lib/onboarding/runtime-policies";
 
 export type GatewayStatus = "connected" | "disconnected" | "connecting" | "error";
 
@@ -27,6 +29,8 @@ export interface UseGatewayStatusReturn {
   gatewayUrl: string;
   /** Manually check connection */
   checkConnection: () => Promise<boolean>;
+  /** Check connection with exponential backoff (for bootstrap) */
+  checkConnectionWithBackoff: () => Promise<boolean>;
   /** Update gateway URL */
   updateGatewayUrl: (url: string) => void;
 }
@@ -173,6 +177,56 @@ export function useGatewayStatus(): UseGatewayStatusReturn {
     return pingGateway();
   }, []);
 
+  /**
+   * Check connection with exponential backoff.
+   * Used during bootstrap for more reliable connection checking.
+   */
+  const checkConnectionWithBackoff = useCallback(async (): Promise<boolean> => {
+    globalStatus = "connecting";
+    notifyListeners();
+
+    const controller = createPollController();
+    const gatewayUrl = getGatewayUrl();
+
+    const result = await pollWithBackoff({
+      policy: GATEWAY_READINESS_POLICY,
+      poll: async () => {
+        try {
+          const response = await fetch(`${gatewayUrl}/health`, {
+            method: "GET",
+            signal: AbortSignal.timeout(5000),
+          });
+          if (response.ok) {
+            return { done: true, value: true };
+          }
+          return { done: false };
+        } catch {
+          return { done: false };
+        }
+      },
+      shouldAbort: controller.shouldAbort,
+      onAttempt: (attempt, nextInterval) => {
+        console.log(`[useGatewayStatus] Connection attempt ${attempt}, next in ${nextInterval}ms`);
+      },
+    });
+
+    if (result.success) {
+      globalStatus = "connected";
+      globalLastConnected = Date.now();
+      globalError = null;
+      notifyListeners();
+      // Load data on connect
+      loadWorkspacesOnConnect();
+      loadPreferencesOnConnect();
+      return true;
+    } else {
+      globalStatus = result.reason === "timeout" ? "error" : "disconnected";
+      globalError = result.reason === "timeout" ? "Connection timeout" : null;
+      notifyListeners();
+      return false;
+    }
+  }, []);
+
   const updateGatewayUrl = useCallback((url: string) => {
     setGatewayUrl(url);
     getGatewayClient().setBaseUrl(url);
@@ -188,6 +242,7 @@ export function useGatewayStatus(): UseGatewayStatusReturn {
     error: globalError,
     gatewayUrl: getGatewayUrl(),
     checkConnection,
+    checkConnectionWithBackoff,
     updateGatewayUrl,
   };
 }

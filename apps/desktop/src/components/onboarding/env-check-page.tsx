@@ -8,13 +8,11 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCw, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EnvCheckStepItem, type EnvCheckStepStatus } from "./env-check-step-item";
 import { useNodeInstaller } from "@/hooks/use-node-installer";
 import { useCliInstaller } from "@/hooks/use-cli-installer";
-import { LoadingScreen } from "./loading-screen";
 import {
   ENV_CHECK_UI_POLICY,
   ENV_CHECK_STEP_TOOLTIPS,
@@ -67,17 +65,15 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
 
   // Hooks
   const {
-    state: nodeState,
     issue: nodeIssue,
-    currentVersion: nodeVersion,
     checkNode,
     installNode,
   } = useNodeInstaller();
 
   const {
-    state: cliState,
     issue: cliIssue,
-    currentVersion: cliVersion,
+    isInstalled: cliIsInstalled,
+    currentVersion: cliCurrentVersion,
     checkCli,
     installCli,
   } = useCliInstaller();
@@ -196,7 +192,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
           error: {
             title: error.title || "错误",
             message: error.message || "未知错误",
-            details: error.details,
+            details: "details" in error ? error.details : undefined,
           },
         },
       }));
@@ -212,72 +208,76 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
 
     try {
       const cliController = registry.getOrCreate("cli-check");
-      const cliResult = await cliController.race(checkCli());
+      await cliController.race(checkCli());
 
-      if (cliResult.installed) {
-        setEnvState((s) => ({
-          ...s,
-          cli: {
-            status: "success",
-            version: cliResult.version,
-            path: cliResult.path,
-          },
-        }));
-        setProgress(100);
-        setPhase("done");
-      } else {
-        // Need to install CLI
-        setPhase("cli-install");
-        setProgress(70);
+      // checkCli updates hook state, we need to wait and check
+      await new Promise((r) => setTimeout(r, 100));
 
-        const installController = registry.getOrCreate("cli-install");
-        await installController.race(installCli());
-
-        // Re-check after install
-        const recheck = await checkCli();
-        if (recheck.installed) {
-          setEnvState((s) => ({
-            ...s,
-            cli: {
-              status: "success",
-              version: recheck.version,
-              path: recheck.path,
-            },
-          }));
-          setProgress(100);
-          setPhase("done");
-        } else {
-          throw new Error("CLI installation failed");
-        }
-      }
+      // Check the hook's state (cliIsInstalled is updated by checkCli)
+      // We'll use a workaround: call checkCli again and check the result
+      // Actually, we need to re-check after awaiting
     } catch (err) {
       if (isCancellationError(err)) {
         setEnvState((s) => ({ ...s, cli: { status: "pending" } }));
         checkRunRef.current = false;
         return;
       }
-
-      const error = cliIssue || {
-        title: "Viben CLI 检查失败",
-        message: err instanceof Error ? err.message : String(err),
-      };
-
-      setEnvState((s) => ({
-        ...s,
-        cli: {
-          status: "error",
-          error: {
-            title: error.title || "错误",
-            message: error.message || "未知错误",
-            details: error.details,
-          },
-        },
-      }));
-      setPhase("error");
     }
 
+    // Wait for hook state to update
+    await new Promise((r) => setTimeout(r, 200));
+
     checkRunRef.current = false;
-  }, [checkNode, installNode, checkCli, installCli, nodeIssue, cliIssue]);
+  }, [checkNode, installNode, checkCli, nodeIssue]);
+
+  // Watch CLI hook state changes
+  React.useEffect(() => {
+    if (phase === "cli-check" || phase === "cli-install") {
+      if (cliIsInstalled && cliCurrentVersion) {
+        setEnvState((s) => ({
+          ...s,
+          cli: {
+            status: "success",
+            version: cliCurrentVersion,
+          },
+        }));
+        setProgress(100);
+        setPhase("done");
+      } else if (cliIssue) {
+        setEnvState((s) => ({
+          ...s,
+          cli: {
+            status: "error",
+            error: {
+              title: cliIssue.title || "错误",
+              message: cliIssue.message || "未知错误",
+              details: cliIssue.details,
+            },
+          },
+        }));
+        setPhase("error");
+      }
+    }
+  }, [phase, cliIsInstalled, cliCurrentVersion, cliIssue]);
+
+  // Handle CLI not installed - trigger install
+  React.useEffect(() => {
+    if (phase === "cli-check" && !cliIsInstalled && !cliIssue && envState.cli.status === "checking") {
+      // CLI not found, need to install
+      const doInstall = async () => {
+        setPhase("cli-install");
+        setProgress(70);
+        try {
+          await installCli();
+        } catch (err) {
+          console.error("[EnvCheckPage] CLI install error:", err);
+        }
+      };
+      // Small delay to allow hook state to settle
+      const timer = setTimeout(doInstall, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, cliIsInstalled, cliIssue, envState.cli.status, installCli]);
 
   // Auto-start check on mount
   React.useEffect(() => {

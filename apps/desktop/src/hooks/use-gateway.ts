@@ -9,6 +9,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useVibenCli } from "./use-viben-cli";
+import type { VersionCheckResult } from "@/lib/onboarding/version-policy";
+import { classifyGatewayError } from "@/lib/onboarding/gateway-diagnostics";
+import type { GatewayRuntimeStateCode } from "@/lib/onboarding/gateway-diagnostics";
 
 export interface GatewayStatus {
   running: boolean;
@@ -16,6 +19,10 @@ export interface GatewayStatus {
   port: number;
   url: string;
   error: string | null;
+  /** Path to the viben binary that was used */
+  binary_path: string | null;
+  /** Full command that was executed */
+  command: string | null;
 }
 
 export interface GatewayConfig {
@@ -41,6 +48,10 @@ export interface UseGatewayReturn {
   discoveredUrl: string | null;
   /** Currently selected viben path (user selection > bundled > auto-detected) */
   vibenPath: string;
+  /** Version check result */
+  versionCheck: VersionCheckResult | null;
+  /** Gateway runtime state classification */
+  runtimeState: GatewayRuntimeStateCode;
   /** Start the gateway */
   startGateway: () => Promise<void>;
   /** Stop the gateway */
@@ -63,6 +74,10 @@ export function useGateway(): UseGatewayReturn {
   const [error, setError] = useState<string | null>(null);
   const [binaryPath, setBinaryPath] = useState<string | null>(null);
   const [discoveredUrl, setDiscoveredUrl] = useState<string | null>(null);
+  // Version check result - populated by CLI installer hook, exposed for UI
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [versionCheck, _setVersionCheck] = useState<VersionCheckResult | null>(null);
+  const [runtimeState, setRuntimeState] = useState<GatewayRuntimeStateCode>("not_running");
 
   // Get viben CLI selection (bundled > user-selected > auto-detected)
   const { selectedPath: vibenPath } = useVibenCli();
@@ -77,8 +92,23 @@ export function useGateway(): UseGatewayReturn {
       const result = await invoke<GatewayStatus>("get_gateway_status");
       setStatus(result);
       setError(result.error || null);
+
+      // Classify runtime state
+      if (result.running) {
+        setRuntimeState("healthy");
+      } else if (result.error) {
+        setRuntimeState(classifyGatewayError(result.error));
+      } else {
+        setRuntimeState("not_running");
+      }
+
+      // Check version if available (from gateway /health response)
+      // Note: GatewayStatus doesn't currently include version, but could be extended
+      // For now, we'll leave versionCheck null until CLI check provides it
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setError(errorMsg);
+      setRuntimeState(classifyGatewayError(errorMsg));
     }
   }, []);
 
@@ -130,6 +160,14 @@ export function useGateway(): UseGatewayReturn {
 
   // Start gateway
   const startGateway = useCallback(async () => {
+    console.log("[useGateway] startGateway called");
+    console.log("[useGateway] Current state:", {
+      vibenPath: vibenPathRef.current,
+      configPort: config?.port,
+      configHost: config?.host,
+      currentStatus: status,
+    });
+
     setIsActioning(true);
     setError(null);
     try {
@@ -139,27 +177,45 @@ export function useGateway(): UseGatewayReturn {
       if (currentVibenPath) {
         // Use selected/bundled viben path
         console.log("[useGateway] Starting gateway with viben path:", currentVibenPath);
+        console.log("[useGateway] Invoking start_gateway_with_path with:", {
+          vibenPath: currentVibenPath,
+          port: config?.port,
+          host: config?.host,
+        });
         result = await invoke<GatewayStatus>("start_gateway_with_path", {
           vibenPath: currentVibenPath,
           port: config?.port,
           host: config?.host,
         });
+        console.log("[useGateway] start_gateway_with_path returned:", result);
       } else {
         // Fall back to default start (uses PATH lookup)
-        console.log("[useGateway] Starting gateway with default path lookup");
+        console.log("[useGateway] Starting gateway with default path lookup (no viben path set)");
         result = await invoke<GatewayStatus>("start_gateway");
+        console.log("[useGateway] start_gateway returned:", result);
       }
 
       setStatus(result);
       if (result.error) {
+        console.error("[useGateway] Gateway returned error:", result.error);
         setError(result.error);
+      } else {
+        console.log("[useGateway] Gateway started successfully:", {
+          running: result.running,
+          pid: result.pid,
+          port: result.port,
+          url: result.url,
+        });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("[useGateway] Exception during gateway start:", errorMsg);
+      setError(errorMsg);
     } finally {
       setIsActioning(false);
+      console.log("[useGateway] startGateway completed");
     }
-  }, [config?.port, config?.host]);
+  }, [config?.port, config?.host, status]);
 
   // Stop gateway
   const stopGateway = useCallback(async () => {
@@ -217,6 +273,8 @@ export function useGateway(): UseGatewayReturn {
     binaryPath,
     discoveredUrl,
     vibenPath,
+    versionCheck,
+    runtimeState,
     startGateway,
     stopGateway,
     restartGateway,

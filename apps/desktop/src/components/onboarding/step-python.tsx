@@ -11,9 +11,10 @@ import type { PythonInfo } from "@/types";
 
 interface StepPythonProps {
   onComplete: () => void;
+  onBack?: () => void;
 }
 
-export function StepPython({ onComplete }: StepPythonProps) {
+export function StepPython({ onComplete, onBack }: StepPythonProps) {
   const { t } = useTranslation();
   const {
     pythons,
@@ -209,7 +210,14 @@ export function StepPython({ onComplete }: StepPythonProps) {
       )}
 
       {/* Continue button */}
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <div>
+          {onBack && (
+            <Button variant="ghost" onClick={onBack}>
+              {t("common.back")}
+            </Button>
+          )}
+        </div>
         <Button onClick={handleContinue} disabled={!canContinue}>
           {t("common.next")}
         </Button>

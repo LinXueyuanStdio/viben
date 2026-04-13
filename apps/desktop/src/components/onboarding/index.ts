@@ -3,3 +3,7 @@ export { OnboardingProgress } from "./onboarding-progress";
 export { StepPython } from "./step-python";
 export { StepClaude } from "./step-claude";
 export { StepLogin } from "./step-login";
+export { StepGateway } from "./step-gateway";
+export { FailureView } from "./failure-view";
+export { LoadingScreen } from "./loading-screen";
+export { StartupIssueDialog } from "./startup-issue-dialog";
