@@ -3021,6 +3021,8 @@
       "detected": "检测到的 Python 安装",
       "detecting": "正在检测 Python 安装...",
       "noPython": "未找到 Python 安装。请安装 Python 3.10 或更高版本。",
+      "notFound": "未检测到 Python",
+      "selectPython": "选择 Python 环境",
       "customPath": "自定义 Python 路径",
       "check": "检查",
       "invalidPath": "无效的 Python 路径或版本低于 3.10",
@@ -3034,6 +3036,7 @@
       "detecting": "正在检测 AI 客户端...",
       "download": "下载",
       "detected": "检测到 {{count}} 个 AI 客户端",
+      "clientsFound": "{{count}} 个可用",
       "readyToConfigure": "设置完成后，您可以为这些客户端配置 browse-mcp。",
       "noClients": "未检测到 AI 客户端",
       "noClientsHint": "您仍可以继续，稍后安装 AI 客户端。",
@@ -3113,7 +3116,9 @@
     "envCheck": {
       "title": "环境检查",
       "description": "正在检查和配置运行环境",
-      "cancelling": "取消中..."
+      "cancelling": "取消中...",
+      "gatewayRunning": "网关运行中",
+      "connected": "连接正常"
     },
     "progress": {
       "welcome": "欢迎",

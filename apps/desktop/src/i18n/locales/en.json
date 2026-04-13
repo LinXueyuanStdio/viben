@@ -2954,6 +2954,8 @@
       "detected": "Detected Python Installations",
       "detecting": "Detecting Python installations...",
       "noPython": "No Python installations found. Please install Python 3.10 or later.",
+      "notFound": "Python not detected",
+      "selectPython": "Select Python Environment",
       "customPath": "Custom Python Path",
       "check": "Check",
       "invalidPath": "Invalid Python path or version below 3.10",
@@ -2967,6 +2969,7 @@
       "detecting": "Detecting AI clients...",
       "download": "Download",
       "detected": "{{count}} AI client(s) detected",
+      "clientsFound": "{{count}} available",
       "readyToConfigure": "You can configure browse-mcp for these clients after setup.",
       "noClients": "No AI clients detected",
       "noClientsHint": "You can still continue and install an AI client later.",
@@ -3046,7 +3049,9 @@
     "envCheck": {
       "title": "Environment Check",
       "description": "Checking and configuring runtime environment",
-      "cancelling": "Cancelling..."
+      "cancelling": "Cancelling...",
+      "gatewayRunning": "Gateway running",
+      "connected": "Connected"
     },
     "progress": {
       "welcome": "Welcome",
