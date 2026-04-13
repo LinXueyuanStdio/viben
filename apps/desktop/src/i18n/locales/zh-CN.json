@@ -3065,6 +3065,8 @@
       "description": "网关服务为所有 Viben 功能提供后端支持。",
       "starting": "正在启动网关...",
       "checking": "正在检查网关状态...",
+      "installingCli": "正在安装 Viben CLI...",
+      "verifyingConnection": "正在验证连接...",
       "connected": "网关已运行",
       "failed": "网关启动失败",
       "retry": "重试",
@@ -3110,11 +3112,71 @@
     },
     "envCheck": {
       "title": "环境检查",
-      "description": "正在检查和配置运行环境"
+      "description": "正在检查和配置运行环境",
+      "cancelling": "取消中..."
     },
     "progress": {
       "welcome": "欢迎",
-      "envCheck": "环境检查"
+      "envCheck": "环境检查",
+      "gateway": "网关",
+      "python": "Python",
+      "claude": "AI 客户端",
+      "login": "登录"
+    },
+    "loadingTips": {
+      "checkingEnvironment": "正在检查系统环境...",
+      "multipleClients": "Viben 支持 Claude Code、Cursor、Codex 等多种 AI 客户端",
+      "localData": "所有配置和数据仅保存在您的电脑上",
+      "gatewayService": "Gateway 是 Viben 的本地后端服务",
+      "networkRequired": "安装过程可能需要网络连接",
+      "ensureNetwork": "请确保网络连接正常"
+    },
+    "issues": {
+      "stepsTitle": "操作步骤：",
+      "terminalHint": "也可以在终端中运行",
+      "detecting": "检测中...",
+      "retryDetect": "重试检测",
+      "xcodeClt": {
+        "title": "等待 Xcode Command Line Tools 安装",
+        "description": "已触发 Xcode 命令行工具安装。这是 macOS 开发所需的基础工具。",
+        "step1": "在弹出的系统对话框中点击「安装」",
+        "step2": "等待安装完成（可能需要几分钟）",
+        "step3": "如果没有看到弹窗，请点击屏幕右上角的安装图标",
+        "step4": "安装完成后，点击下方「重试检测」按钮"
+      },
+      "missingNode": {
+        "title": "需要安装 Node.js",
+        "description": "Viben CLI 需要 Node.js 运行环境才能工作。",
+        "step1": "访问 nodejs.org 下载 Node.js",
+        "step2": "推荐下载 LTS (长期支持) 版本",
+        "step3": "运行安装程序并完成安装",
+        "step4": "安装完成后，点击下方「重试检测」按钮",
+        "downloadLabel": "下载 Node.js"
+      },
+      "permissionDenied": {
+        "title": "权限不足",
+        "description": "安装操作需要更高的系统权限。",
+        "step1": "macOS/Linux: 尝试在终端中使用 sudo 运行命令",
+        "step2": "Windows: 右键点击终端，选择「以管理员身份运行」",
+        "step3": "或者使用 nvm 管理 Node.js 以避免权限问题",
+        "nvmLabel": "了解 nvm"
+      },
+      "networkError": {
+        "title": "网络连接问题",
+        "description": "无法连接到 npm 仓库，可能是网络问题。",
+        "step1": "检查网络连接是否正常",
+        "step2": "如果使用代理，请检查代理设置",
+        "step3": "尝试切换网络环境",
+        "step4": "稍后重试"
+      },
+      "unknown": {
+        "title": "遇到问题",
+        "description": "安装过程中遇到了问题。",
+        "step1": "查看详细错误信息",
+        "step2": "尝试手动安装",
+        "step3": "如果问题持续，请联系支持",
+        "reportLabel": "报告问题"
+      }
     }
   },
   "chat": {

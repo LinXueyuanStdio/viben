@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   X,
@@ -97,6 +98,7 @@ export function EnvCheckStepItem({
   isCancelling,
   className,
 }: EnvCheckStepItemProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = React.useState(false);
   const hasExpandableContent = !!(details || error?.details || path);
 
@@ -167,7 +169,7 @@ export function EnvCheckStepItem({
               onClick={onCancel}
               disabled={isCancelling}
             >
-              {isCancelling ? "取消中..." : "取消"}
+              {isCancelling ? t("onboarding.envCheck.cancelling") : t("common.cancel")}
             </Button>
           )}
           {status === "error" && onRetry && (
@@ -177,7 +179,7 @@ export function EnvCheckStepItem({
               onClick={onRetry}
               disabled={isRetrying}
             >
-              {isRetrying ? "重试中..." : "重试"}
+              {isRetrying ? t("common.retrying") : t("common.retry")}
             </Button>
           )}
           {hasExpandableContent && (
@@ -203,7 +205,7 @@ export function EnvCheckStepItem({
             <div className="space-y-2 text-sm">
               {path && (
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">路径:</span>
+                  <span className="text-muted-foreground">{t("common.path")}:</span>
                   <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                     {path}
                   </code>

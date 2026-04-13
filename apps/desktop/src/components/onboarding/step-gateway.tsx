@@ -358,7 +358,7 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
               )}
               {currentVersion && (
                 <div className="text-sm text-muted-foreground">
-                  Version: {currentVersion}
+                  {t("common.version")}: {currentVersion}
                 </div>
               )}
             </div>
@@ -459,11 +459,11 @@ function getPhaseStatus(phase: BootstrapPhase, t: (key: string) => string): stri
     case "cli-check":
       return t("onboarding.gateway.checking");
     case "cli-install":
-      return "正在安装 Viben CLI...";
+      return t("onboarding.gateway.installingCli");
     case "gateway-start":
       return t("onboarding.gateway.starting");
     case "connection-check":
-      return "正在验证连接...";
+      return t("onboarding.gateway.verifyingConnection");
     default:
       return "";
   }

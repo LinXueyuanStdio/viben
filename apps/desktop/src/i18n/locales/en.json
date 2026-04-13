@@ -2998,6 +2998,8 @@
       "description": "The gateway service provides the backend for all Viben features.",
       "starting": "Starting gateway...",
       "checking": "Checking gateway status...",
+      "installingCli": "Installing Viben CLI...",
+      "verifyingConnection": "Verifying connection...",
       "connected": "Gateway is running",
       "failed": "Failed to start gateway",
       "retry": "Retry",
@@ -3043,11 +3045,71 @@
     },
     "envCheck": {
       "title": "Environment Check",
-      "description": "Checking and configuring runtime environment"
+      "description": "Checking and configuring runtime environment",
+      "cancelling": "Cancelling..."
     },
     "progress": {
       "welcome": "Welcome",
-      "envCheck": "Environment"
+      "envCheck": "Environment",
+      "gateway": "Gateway",
+      "python": "Python",
+      "claude": "AI Clients",
+      "login": "Login"
+    },
+    "loadingTips": {
+      "checkingEnvironment": "Checking system environment...",
+      "multipleClients": "Viben supports Claude Code, Cursor, Codex and other AI clients",
+      "localData": "All configuration and data is stored locally on your computer",
+      "gatewayService": "Gateway is Viben's local backend service",
+      "networkRequired": "Installation may require network connection",
+      "ensureNetwork": "Please ensure network connection is available"
+    },
+    "issues": {
+      "stepsTitle": "Steps:",
+      "terminalHint": "You can also run in terminal",
+      "detecting": "Detecting...",
+      "retryDetect": "Retry Detection",
+      "xcodeClt": {
+        "title": "Waiting for Xcode Command Line Tools Installation",
+        "description": "Xcode command line tools installation has been triggered. These are required tools for macOS development.",
+        "step1": "Click 'Install' in the system dialog that appeared",
+        "step2": "Wait for installation to complete (may take a few minutes)",
+        "step3": "If you don't see the dialog, click the install icon in the top right corner",
+        "step4": "After installation completes, click 'Retry Detection' below"
+      },
+      "missingNode": {
+        "title": "Node.js Installation Required",
+        "description": "Viben CLI requires Node.js runtime to work.",
+        "step1": "Visit nodejs.org to download Node.js",
+        "step2": "Recommended: Download the LTS (Long Term Support) version",
+        "step3": "Run the installer and complete installation",
+        "step4": "After installation completes, click 'Retry Detection' below",
+        "downloadLabel": "Download Node.js"
+      },
+      "permissionDenied": {
+        "title": "Insufficient Permissions",
+        "description": "Installation requires elevated system permissions.",
+        "step1": "macOS/Linux: Try running the command with sudo in terminal",
+        "step2": "Windows: Right-click terminal and select 'Run as Administrator'",
+        "step3": "Or use nvm to manage Node.js to avoid permission issues",
+        "nvmLabel": "Learn about nvm"
+      },
+      "networkError": {
+        "title": "Network Connection Issue",
+        "description": "Cannot connect to npm registry. This may be a network problem.",
+        "step1": "Check if your network connection is working",
+        "step2": "If using a proxy, verify your proxy settings",
+        "step3": "Try switching to a different network",
+        "step4": "Try again later"
+      },
+      "unknown": {
+        "title": "Problem Encountered",
+        "description": "An issue occurred during installation.",
+        "step1": "Check detailed error information",
+        "step2": "Try manual installation",
+        "step3": "If the issue persists, contact support",
+        "reportLabel": "Report Issue"
+      }
     }
   },
   "chat": {

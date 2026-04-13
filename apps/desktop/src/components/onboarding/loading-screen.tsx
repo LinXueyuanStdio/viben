@@ -5,22 +5,10 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { UI_RUNTIME_DEFAULTS } from "@/lib/onboarding/runtime-policies";
-
-// ============================================================================
-// Loading Tips
-// ============================================================================
-
-const LOADING_TIPS = [
-  "正在检查系统环境...",
-  "Viben 支持 Claude Code、Cursor、Codex 等多种 AI 客户端",
-  "所有配置和数据仅保存在您的电脑上",
-  "Gateway 是 Viben 的本地后端服务",
-  "安装过程可能需要网络连接",
-  "请确保网络连接正常",
-];
 
 // ============================================================================
 // Props
@@ -51,22 +39,33 @@ export function LoadingScreen({
   status,
   showProgress = true,
   showTips = true,
-  tips = LOADING_TIPS,
+  tips,
   logo,
   className,
 }: LoadingScreenProps) {
+  const { t } = useTranslation();
   const [currentTipIndex, setCurrentTipIndex] = React.useState(0);
+
+  // Use translated tips if not provided
+  const loadingTips = tips ?? [
+    t("onboarding.loadingTips.checkingEnvironment"),
+    t("onboarding.loadingTips.multipleClients"),
+    t("onboarding.loadingTips.localData"),
+    t("onboarding.loadingTips.gatewayService"),
+    t("onboarding.loadingTips.networkRequired"),
+    t("onboarding.loadingTips.ensureNetwork"),
+  ];
 
   // 旋转提示
   React.useEffect(() => {
-    if (!showTips || tips.length === 0) return;
+    if (!showTips || loadingTips.length === 0) return;
 
     const interval = setInterval(() => {
-      setCurrentTipIndex((prev) => (prev + 1) % tips.length);
+      setCurrentTipIndex((prev) => (prev + 1) % loadingTips.length);
     }, UI_RUNTIME_DEFAULTS.envCheck.loadingTipRotateMs);
 
     return () => clearInterval(interval);
-  }, [showTips, tips]);
+  }, [showTips, loadingTips]);
 
   return (
     <div
@@ -96,13 +95,13 @@ export function LoadingScreen({
       )}
 
       {/* Rotating tips */}
-      {showTips && tips.length > 0 && (
+      {showTips && loadingTips.length > 0 && (
         <div className="h-6 overflow-hidden">
           <p
             key={currentTipIndex}
             className="text-sm text-muted-foreground text-center animate-fade-in"
           >
-            {tips[currentTipIndex]}
+            {loadingTips[currentTipIndex]}
           </p>
         </div>
       )}
