@@ -212,6 +212,10 @@ export type { KanbanActivity } from "./use-kanban-activities";
 export { useGatewayStatus } from "./use-gateway-status";
 export type { GatewayStatus, UseGatewayStatusReturn } from "./use-gateway-status";
 
+// Environment Orchestrator (Onboarding DAG)
+export { useEnvOrchestrator } from "./use-env-orchestrator";
+export type { UseEnvOrchestratorReturn } from "./use-env-orchestrator";
+
 // Gateway Management
 export { useGateway } from "./use-gateway";
 export type {
