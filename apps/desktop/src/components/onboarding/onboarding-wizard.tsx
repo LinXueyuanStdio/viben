@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
+import { WelcomePage } from "./welcome-page";
+import { EnvCheckPage } from "./env-check-page";
+import { StepGateway } from "./step-gateway";
 import { StepPython } from "./step-python";
 import { StepClaude } from "./step-claude";
 import { StepLogin } from "./step-login";
@@ -29,13 +32,40 @@ export function OnboardingWizard() {
     setLanguage(langCode);
   };
 
-  const [currentStep, setCurrentStep] = React.useState<OnboardingStep>("python");
+  const [currentStep, setCurrentStep] = React.useState<OnboardingStep>("welcome");
   const [completedSteps, setCompletedSteps] = React.useState<OnboardingStep[]>([]);
 
   const completeStep = (step: OnboardingStep) => {
     if (!completedSteps.includes(step)) {
       setCompletedSteps((prev) => [...prev, step]);
     }
+  };
+
+  const handleWelcomeAccept = () => {
+    completeStep("welcome");
+    setCurrentStep("envCheck");
+  };
+
+  const handleEnvCheckComplete = () => {
+    completeStep("envCheck");
+    setCurrentStep("gateway");
+  };
+
+  const handleEnvCheckBack = () => {
+    setCurrentStep("welcome");
+  };
+
+  const handleGatewayComplete = () => {
+    completeStep("gateway");
+    setCurrentStep("python");
+  };
+
+  const handleGatewayBack = () => {
+    setCurrentStep("envCheck");
+  };
+
+  const handlePythonBack = () => {
+    setCurrentStep("gateway");
   };
 
   const handlePythonComplete = () => {
@@ -95,8 +125,20 @@ export function OnboardingWizard() {
       {/* Step content */}
       <main className="flex flex-1 items-start justify-center overflow-auto py-8">
         <div className="w-full max-w-lg px-4">
+          {currentStep === "welcome" && (
+            <WelcomePage onAccept={handleWelcomeAccept} />
+          )}
+          {currentStep === "envCheck" && (
+            <EnvCheckPage
+              onComplete={handleEnvCheckComplete}
+              onBack={handleEnvCheckBack}
+            />
+          )}
+          {currentStep === "gateway" && (
+            <StepGateway onComplete={handleGatewayComplete} onBack={handleGatewayBack} />
+          )}
           {currentStep === "python" && (
-            <StepPython onComplete={handlePythonComplete} />
+            <StepPython onComplete={handlePythonComplete} onBack={handlePythonBack} />
           )}
           {currentStep === "claude" && (
             <StepClaude onComplete={handleClaudeComplete} onBack={handleClaudeBack} />
