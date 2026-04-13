@@ -278,6 +278,14 @@ pub fn run() {
             commands::gateway::discover_gateway,
             commands::gateway::get_bundled_viben_path,
             commands::gateway::start_gateway_with_path,
+            // CLI installer commands (CLI installation and version management)
+            commands::cli_installer::check_viben_cli,
+            commands::cli_installer::install_viben_cli,
+            commands::cli_installer::check_node,
+            commands::cli_installer::check_node_installation,
+            commands::cli_installer::install_node,
+            commands::cli_installer::trigger_xcode_clt_install,
+            commands::cli_installer::check_xcode_clt,
             // Screenshot commands (native screen capture)
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,
