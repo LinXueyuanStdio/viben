@@ -228,7 +228,7 @@ jobs:
         uses: pnpm/action-setup@v5
 
       - name: Download CLI build artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cli-build
           path: .
@@ -551,7 +551,7 @@ jobs:
 
       # Download sidecar binaries from build-cli job
       - name: Download sidecar artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.sidecar_artifact }}
           path: apps/desktop/src-tauri/binaries/
@@ -672,7 +672,7 @@ jobs:
 
       - name: Download CLI assets
         if: needs.release-cli.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: cli-assets
           path: release-assets/
@@ -680,7 +680,7 @@ jobs:
 
       - name: Download macOS desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: desktop-macos-latest
           path: release-assets/
@@ -688,7 +688,7 @@ jobs:
 
       - name: Download Windows desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: desktop-windows-latest
           path: release-assets/
@@ -696,7 +696,7 @@ jobs:
 
       - name: Download Linux desktop artifacts
         if: needs.build-desktop.result == 'success'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: desktop-ubuntu-22.04
           path: release-assets/
