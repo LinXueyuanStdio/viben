@@ -13,6 +13,11 @@ import {
   classifyMacGitToolsIssue,
 } from "@/lib/onboarding/node-installer-issues";
 
+// Debug logging helper
+const log = (message: string, ...args: unknown[]) => {
+  console.log(`[useNodeInstaller] ${message}`, ...args);
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -65,13 +70,17 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   const [currentPath, setCurrentPath] = React.useState<string | null>(null);
 
   const checkNode = React.useCallback(async (): Promise<NodeCheckResult> => {
+    log("checkNode started");
     setState("checking");
     setIssue(null);
 
     try {
+      log("Invoking check_node_installation...");
       const result = await invoke<TauriNodeCheckResult>("check_node_installation");
+      log("check_node_installation result:", result);
 
       if (result.found && result.version) {
+        log("Node.js found, version:", result.version, "path:", result.path);
         setCurrentVersion(result.version);
         setCurrentPath(result.path || null);
         setState("done");
@@ -82,14 +91,16 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
         };
       }
 
+      log("Node.js not found");
       setState("idle");
       return { installed: false };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("[useNodeInstaller] Check failed:", errorMsg);
+      log("Check failed:", errorMsg);
 
       // Check for specific error types
       if (errorMsg.includes("xcode") || errorMsg.includes("clt")) {
+        log("Detected xcode/clt issue");
         const nodeIssue = classifyMacGitToolsIssue({
           errorCode: "xcode_clt_pending",
           stderr: errorMsg,
@@ -103,13 +114,17 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   }, []);
 
   const installNode = React.useCallback(async (): Promise<void> => {
+    log("installNode started");
     setState("installing");
     setIssue(null);
 
     try {
+      log("Invoking install_node...");
       const result = await invoke<TauriNodeInstallResult>("install_node");
+      log("install_node result:", result);
 
       if (result.success && result.version) {
+        log("Node.js installed successfully, version:", result.version);
         setCurrentVersion(result.version);
         setCurrentPath(result.path || null);
         setState("done");
@@ -117,6 +132,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       }
 
       // Installation failed
+      log("Installation failed:", result.error);
       const nodeIssue = result.error
         ? classifyMacNodeInstallerFailure(result.error)
         : createNodeInstallerIssue("installer-failed");
@@ -125,7 +141,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       setState("error");
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error("[useNodeInstaller] Install failed:", errorMsg);
+      log("Install failed with exception:", errorMsg);
 
       const nodeIssue = classifyMacNodeInstallerFailure(errorMsg);
       setIssue(nodeIssue);
@@ -134,6 +150,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   }, []);
 
   const reset = React.useCallback(() => {
+    log("reset called");
     setState("idle");
     setIssue(null);
     setCurrentVersion(null);

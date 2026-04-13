@@ -10,7 +10,7 @@ import {
   Check,
   X,
   Loader2,
-  Circle,
+  Minus,
   AlertCircle,
   ChevronDown,
   ChevronUp,
@@ -75,7 +75,8 @@ function StatusIcon({ status }: { status: EnvCheckStepStatus }) {
     case "error":
       return <X className="h-4 w-4 text-destructive" />;
     default:
-      return <Circle className="h-4 w-4 text-muted-foreground" />;
+      // Use a dash/minus icon for pending state instead of Circle (which looks like radio button)
+      return <Minus className="h-4 w-4 text-muted-foreground" />;
   }
 }
 

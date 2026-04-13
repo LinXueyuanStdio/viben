@@ -11,6 +11,11 @@ import { createCliInstallerIssue, classifyInstallerError } from "@/lib/onboardin
 import type { VersionCheckResult } from "@/lib/onboarding/version-policy";
 import { checkVersion, PINNED_VERSION } from "@/lib/onboarding/version-policy";
 
+// Debug logging helper
+const log = (message: string, ...args: unknown[]) => {
+  console.log(`[useCliInstaller] ${message}`, ...args);
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -78,44 +83,54 @@ export function useCliInstaller(): UseCliInstallerReturn {
    * 检查 CLI 是否已安装及版本
    */
   const checkCli = React.useCallback(async () => {
+    log("checkCli started");
     setState("checking");
     setIssue(null);
 
     try {
       // 调用 Tauri 命令检查 CLI
+      log("Invoking check_viben_cli...");
       const result = await invoke<{
         installed: boolean;
         version: string | null;
         path: string | null;
         source: string | null;
       }>("check_viben_cli");
+      log("check_viben_cli result:", result);
 
       setIsInstalled(result.installed);
       setCurrentVersion(result.version);
 
       if (!result.installed) {
+        log("CLI not installed, setting missing-cli issue");
         setIssue(createCliInstallerIssue("missing-cli"));
         setState("error");
         return;
       }
 
       // 检查版本
+      log("Checking version:", result.version);
       const versionResult = checkVersion(result.version);
+      log("Version check result:", versionResult);
       setVersionCheck(versionResult);
 
       if (versionResult.actionRequired) {
         if (versionResult.enforcement === "required_upgrade") {
+          log("Version too low, upgrade required");
           setIssue(createCliInstallerIssue("version-too-low", result.version ?? undefined));
         } else if (versionResult.enforcement === "auto_downgrade") {
+          log("Version too high, downgrade required");
           setIssue(createCliInstallerIssue("version-too-high", result.version ?? undefined));
         }
         setState("error");
         return;
       }
 
+      log("CLI check successful, version:", result.version);
       setState("success");
     } catch (error) {
       const errorStr = error instanceof Error ? error.message : String(error);
+      log("Check failed with exception:", errorStr);
       const issueKind = classifyInstallerError(errorStr);
       setIssue(createCliInstallerIssue(issueKind, errorStr));
       setState("error");
@@ -126,6 +141,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
    * 安装 CLI (带镜像回退)
    */
   const installCli = React.useCallback(async () => {
+    log("installCli started");
     setState("installing");
     setIssue(null);
     setProgress({ stage: "download", percent: 0, message: "准备安装..." });
@@ -133,6 +149,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
     // 尝试每个镜像源
     for (let i = 0; i < NPM_MIRRORS.length; i++) {
       const mirror = NPM_MIRRORS[i];
+      log(`Trying mirror ${i + 1}/${NPM_MIRRORS.length}: ${mirror.name} (${mirror.url})`);
 
       try {
         setProgress({
@@ -142,58 +159,70 @@ export function useCliInstaller(): UseCliInstallerReturn {
         });
 
         // 调用 Tauri 命令安装
+        log("Invoking install_viben_cli with version:", PINNED_VERSION, "registry:", mirror.url);
         await invoke("install_viben_cli", {
           version: PINNED_VERSION,
           registry: mirror.url,
         });
+        log("install_viben_cli completed successfully");
 
         setProgress({ stage: "verify", percent: 90, message: "验证安装..." });
 
         // 验证安装
+        log("Verifying installation...");
         await checkCli();
+        log("Verification completed, isInstalled will be updated by state");
 
-        if (isInstalled) {
-          setProgress({ stage: "verify", percent: 100, message: "安装完成" });
-          setState("success");
-          return;
-        }
+        // Note: isInstalled is a stale closure here, we rely on checkCli to set state
+        // The success state will be set by checkCli if installation was successful
+        setProgress({ stage: "verify", percent: 100, message: "安装完成" });
+        return;
       } catch (error) {
+        const errorStr = error instanceof Error ? error.message : String(error);
+        log(`Mirror ${mirror.name} failed:`, errorStr);
+
         // 如果不是最后一个镜像，继续尝试
         if (i < NPM_MIRRORS.length - 1) {
-          console.warn(`Mirror ${mirror.name} failed, trying next...`);
+          log("Trying next mirror...");
           continue;
         }
 
         // 最后一个镜像也失败了
-        const errorStr = error instanceof Error ? error.message : String(error);
+        log("All mirrors failed");
         const issueKind = classifyInstallerError(errorStr);
         setIssue(createCliInstallerIssue(issueKind, errorStr));
         setState("error");
       }
     }
-  }, [checkCli, isInstalled]);
+  }, [checkCli]);
 
   /**
    * 升级 CLI
    */
   const upgradeCli = React.useCallback(async () => {
+    log("upgradeCli started");
     setState("upgrading");
     setIssue(null);
     setProgress({ stage: "download", percent: 0, message: "准备升级..." });
 
     try {
       // 使用 installCli 逻辑，但状态不同
+      log("Invoking install_viben_cli for upgrade, version:", PINNED_VERSION);
       await invoke("install_viben_cli", {
         version: PINNED_VERSION,
         registry: NPM_MIRRORS[0].url,
       });
+      log("Upgrade install completed");
 
       setProgress({ stage: "verify", percent: 90, message: "验证升级..." });
+      log("Verifying upgrade...");
       await checkCli();
       setProgress({ stage: "verify", percent: 100, message: "升级完成" });
+      log("Upgrade successful");
       setState("success");
     } catch (error) {
       const errorStr = error instanceof Error ? error.message : String(error);
+      log("Upgrade failed:", errorStr);
       const issueKind = classifyInstallerError(errorStr);
       setIssue(createCliInstallerIssue(issueKind, errorStr));
       setState("error");
@@ -204,6 +233,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
    * 重置状态
    */
   const reset = React.useCallback(() => {
+    log("reset called");
     setState("idle");
     setProgress(null);
     setIssue(null);

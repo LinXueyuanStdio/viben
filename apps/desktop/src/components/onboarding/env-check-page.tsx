@@ -23,6 +23,11 @@ import {
   isCancellationError,
 } from "@/lib/onboarding/cancellation";
 
+// Debug logging helper
+const log = (message: string, ...args: unknown[]) => {
+  console.log(`[EnvCheckPage] ${message}`, ...args);
+};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -63,6 +68,8 @@ interface EnvCheckState {
 export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   const { t } = useTranslation();
 
+  log("Component rendering");
+
   // Hooks
   const {
     issue: nodeIssue,
@@ -71,6 +78,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   } = useNodeInstaller();
 
   const {
+    state: cliState,
     issue: cliIssue,
     isInstalled: cliIsInstalled,
     currentVersion: cliCurrentVersion,
@@ -94,6 +102,9 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   const maxRetries = 3;
   const isChecking = phase !== "done" && phase !== "error" && phase !== "initial";
 
+  // Log state changes
+  log("Current state:", { phase, cliState, cliIsInstalled, cliCurrentVersion, envState });
+
   // ============================================================================
   // Loading Tips Rotation
   // ============================================================================
@@ -113,7 +124,9 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   // ============================================================================
 
   React.useEffect(() => {
+    log("Component mounted");
     return () => {
+      log("Component unmounting, disposing cancellation registry");
       cancellationRef.current.dispose();
     };
   }, []);
@@ -123,7 +136,11 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   // ============================================================================
 
   const runEnvCheck = React.useCallback(async () => {
-    if (checkRunRef.current) return;
+    log("runEnvCheck called, checkRunRef.current:", checkRunRef.current);
+    if (checkRunRef.current) {
+      log("runEnvCheck already running, skipping");
+      return;
+    }
     checkRunRef.current = true;
 
     const registry = cancellationRef.current;
@@ -132,14 +149,18 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
     setProgress(10);
 
     // Phase 1: Check Node.js
+    log("Phase transition: -> node-check");
     setPhase("node-check");
     setEnvState((s) => ({ ...s, node: { status: "checking" } }));
 
     try {
+      log("Starting Node.js check...");
       const nodeController = registry.getOrCreate("node-check");
       const nodeResult = await nodeController.race(checkNode());
+      log("Node check result:", nodeResult);
 
       if (nodeResult.installed) {
+        log("Node.js found, version:", nodeResult.version);
         setEnvState((s) => ({
           ...s,
           node: {
@@ -151,14 +172,18 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         setProgress(30);
       } else {
         // Need to install Node.js
+        log("Node.js not found, starting installation...");
+        log("Phase transition: node-check -> node-install");
         setPhase("node-install");
         setEnvState((s) => ({ ...s, node: { status: "checking" } }));
 
         const installController = registry.getOrCreate("node-install");
         await installController.race(installNode());
+        log("Node.js installation completed, re-checking...");
 
         // Re-check after install
         const recheck = await checkNode();
+        log("Node recheck result:", recheck);
         if (recheck.installed) {
           setEnvState((s) => ({
             ...s,
@@ -174,7 +199,9 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         }
       }
     } catch (err) {
+      log("Node check/install error:", err);
       if (isCancellationError(err)) {
+        log("Node check cancelled");
         setEnvState((s) => ({ ...s, node: { status: "pending" } }));
         checkRunRef.current = false;
         return;
@@ -196,92 +223,127 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
           },
         },
       }));
+      log("Phase transition: -> error (Node.js failed)");
       setPhase("error");
       checkRunRef.current = false;
       return;
     }
 
     // Phase 2: Check CLI
+    log("Phase transition: -> cli-check");
     setPhase("cli-check");
     setEnvState((s) => ({ ...s, cli: { status: "checking" } }));
     setProgress(50);
 
     try {
+      log("Starting CLI check...");
       const cliController = registry.getOrCreate("cli-check");
       await cliController.race(checkCli());
-
-      // checkCli updates hook state, we need to wait and check
-      await new Promise((r) => setTimeout(r, 100));
-
-      // Check the hook's state (cliIsInstalled is updated by checkCli)
-      // We'll use a workaround: call checkCli again and check the result
-      // Actually, we need to re-check after awaiting
+      log("CLI check completed, hook will update state via useEffect");
+      // The CLI hook updates its own state (cliIsInstalled, cliCurrentVersion, cliState)
+      // We rely on the useEffect watchers below to handle transitions
     } catch (err) {
+      log("CLI check error:", err);
       if (isCancellationError(err)) {
+        log("CLI check cancelled");
         setEnvState((s) => ({ ...s, cli: { status: "pending" } }));
         checkRunRef.current = false;
         return;
       }
+      // Non-cancellation errors will be caught by the useEffect watcher via cliIssue
     }
 
-    // Wait for hook state to update
-    await new Promise((r) => setTimeout(r, 200));
-
+    // Reset the check run flag - the useEffect watchers will handle the rest
     checkRunRef.current = false;
+    log("runEnvCheck finished, waiting for hook state updates");
   }, [checkNode, installNode, checkCli, nodeIssue]);
 
   // Watch CLI hook state changes
   React.useEffect(() => {
-    if (phase === "cli-check" || phase === "cli-install") {
-      if (cliIsInstalled && cliCurrentVersion) {
-        setEnvState((s) => ({
-          ...s,
-          cli: {
-            status: "success",
-            version: cliCurrentVersion,
-          },
-        }));
-        setProgress(100);
-        setPhase("done");
-      } else if (cliIssue) {
-        setEnvState((s) => ({
-          ...s,
-          cli: {
-            status: "error",
-            error: {
-              title: cliIssue.title || "错误",
-              message: cliIssue.message || "未知错误",
-              details: cliIssue.details,
-            },
-          },
-        }));
-        setPhase("error");
-      }
+    log("CLI state watcher triggered:", { phase, cliState, cliIsInstalled, cliCurrentVersion, cliIssue });
+
+    if (phase !== "cli-check" && phase !== "cli-install") {
+      log("Not in CLI phase, skipping state update");
+      return;
     }
-  }, [phase, cliIsInstalled, cliCurrentVersion, cliIssue]);
+
+    // Handle successful CLI state
+    if (cliState === "success" && cliIsInstalled) {
+      log("CLI check successful! Version:", cliCurrentVersion);
+      setEnvState((s) => ({
+        ...s,
+        cli: {
+          status: "success",
+          version: cliCurrentVersion || undefined,
+        },
+      }));
+      setProgress(100);
+      log("Phase transition: -> done");
+      setPhase("done");
+      return;
+    }
+
+    // Handle error state
+    if (cliState === "error" && cliIssue) {
+      log("CLI check failed:", cliIssue);
+      setEnvState((s) => ({
+        ...s,
+        cli: {
+          status: "error",
+          error: {
+            title: cliIssue.title || "错误",
+            message: cliIssue.message || "未知错误",
+            details: cliIssue.details,
+          },
+        },
+      }));
+      log("Phase transition: -> error (CLI failed)");
+      setPhase("error");
+      return;
+    }
+
+    log("CLI state not yet resolved, waiting...");
+  }, [phase, cliState, cliIsInstalled, cliCurrentVersion, cliIssue]);
 
   // Handle CLI not installed - trigger install
   React.useEffect(() => {
-    if (phase === "cli-check" && !cliIsInstalled && !cliIssue && envState.cli.status === "checking") {
-      // CLI not found, need to install
+    log("CLI install trigger check:", { phase, cliState, cliIsInstalled, cliIssue, envCliStatus: envState.cli.status });
+
+    // Only trigger install when:
+    // 1. We're in cli-check phase
+    // 2. CLI hook finished checking and found it's not installed (cliState === "error" with missing-cli issue)
+    // 3. We haven't already started installing
+    if (
+      phase === "cli-check" &&
+      cliState === "error" &&
+      !cliIsInstalled &&
+      cliIssue?.kind === "missing-cli"
+    ) {
+      log("CLI not installed, triggering installation...");
       const doInstall = async () => {
+        log("Phase transition: cli-check -> cli-install");
         setPhase("cli-install");
+        setEnvState((s) => ({ ...s, cli: { status: "checking" } }));
         setProgress(70);
         try {
+          log("Starting CLI installation...");
           await installCli();
+          log("CLI installation call completed");
         } catch (err) {
-          console.error("[EnvCheckPage] CLI install error:", err);
+          log("CLI install error:", err);
         }
       };
       // Small delay to allow hook state to settle
-      const timer = setTimeout(doInstall, 300);
+      const timer = setTimeout(doInstall, 100);
       return () => clearTimeout(timer);
     }
-  }, [phase, cliIsInstalled, cliIssue, envState.cli.status, installCli]);
+  }, [phase, cliState, cliIsInstalled, cliIssue, installCli, envState.cli.status]);
 
   // Auto-start check on mount
   React.useEffect(() => {
+    log("Auto-start check, phase:", phase);
     if (phase === "initial") {
+      log("Phase is initial, starting env check");
       runEnvCheck();
     }
   }, [phase, runEnvCheck]);
@@ -291,22 +353,29 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   // ============================================================================
 
   const handleRetry = () => {
-    if (retryCount >= maxRetries) return;
+    log("handleRetry called, retryCount:", retryCount, "maxRetries:", maxRetries);
+    if (retryCount >= maxRetries) {
+      log("Max retries reached, ignoring");
+      return;
+    }
     setRetryCount((c) => c + 1);
     setEnvState({
       node: { status: "pending" },
       cli: { status: "pending" },
     });
+    log("Resetting to initial phase for retry");
     setPhase("initial");
     checkRunRef.current = false;
     runEnvCheck();
   };
 
   const handleCancel = (domain: "node-check" | "node-install" | "cli-check" | "cli-install") => {
+    log("handleCancel called for domain:", domain);
     cancellationRef.current.cancel(domain, "user-requested");
   };
 
   const handleContinue = () => {
+    log("handleContinue called, proceeding to onComplete");
     onComplete();
   };
 
