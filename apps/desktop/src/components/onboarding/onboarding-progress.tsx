@@ -2,35 +2,36 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type OnboardingStep = "python" | "claude" | "login";
+export type OnboardingStep = "welcome" | "envCheck" | "gateway" | "python" | "claude" | "login";
 
 interface OnboardingProgressProps {
   currentStep: OnboardingStep;
   completedSteps: OnboardingStep[];
 }
 
-const STEPS: OnboardingStep[] = ["python", "claude", "login"];
+const STEPS: { key: OnboardingStep; labelKey: string }[] = [
+  { key: "welcome", labelKey: "onboarding.progress.welcome" },
+  { key: "envCheck", labelKey: "onboarding.progress.envCheck" },
+  { key: "gateway", labelKey: "onboarding.progress.gateway" },
+  { key: "python", labelKey: "onboarding.progress.python" },
+  { key: "claude", labelKey: "onboarding.progress.claude" },
+  { key: "login", labelKey: "onboarding.progress.login" },
+];
 
 export function OnboardingProgress({ currentStep, completedSteps }: OnboardingProgressProps) {
   const { t } = useTranslation();
 
-  const stepLabels: Record<OnboardingStep, string> = {
-    python: t("onboarding.steps.python"),
-    claude: t("onboarding.steps.claude"),
-    login: t("onboarding.steps.login"),
-  };
-
-  const currentIndex = STEPS.indexOf(currentStep);
+  const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   return (
     <div className="flex items-center justify-center gap-2">
       {STEPS.map((step, index) => {
-        const isCompleted = completedSteps.includes(step);
-        const isCurrent = step === currentStep;
+        const isCompleted = completedSteps.includes(step.key);
+        const isCurrent = step.key === currentStep;
         const isPast = index < currentIndex;
 
         return (
-          <div key={step} className="flex items-center">
+          <div key={step.key} className="flex items-center">
             {/* Step indicator */}
             <div className="flex flex-col items-center">
               <div
@@ -54,7 +55,7 @@ export function OnboardingProgress({ currentStep, completedSteps }: OnboardingPr
                   !isCurrent && "text-muted-foreground"
                 )}
               >
-                {stepLabels[step]}
+                {t(step.labelKey)}
               </span>
             </div>
 
