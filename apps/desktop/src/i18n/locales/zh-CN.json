@@ -100,6 +100,8 @@
     "daysShort": "{{count}}天",
     "comingSoon": "即将推出",
     "retry": "重试",
+    "retrying": "重试中...",
+    "skip": "跳过",
     "forward": "前进",
     "developer": "开发者",
     "loadingWorkspace": "正在加载工作空间...",
@@ -3010,7 +3012,8 @@
     "steps": {
       "python": "Python",
       "claude": "AI 客户端",
-      "login": "账户"
+      "login": "账户",
+      "gateway": "网关"
     },
     "python": {
       "title": "Python 环境",
@@ -3056,6 +3059,62 @@
       "error": "登录失败",
       "errorHint": "登录过程中出现错误。您可以重试或跳过此步骤。",
       "finish": "开始使用"
+    },
+    "gateway": {
+      "title": "启动 Viben 网关",
+      "description": "网关服务为所有 Viben 功能提供后端支持。",
+      "starting": "正在启动网关...",
+      "checking": "正在检查网关状态...",
+      "connected": "网关已运行",
+      "failed": "网关启动失败",
+      "retry": "重试",
+      "skip": "跳过继续",
+      "skipWarning": "部分功能可能无法使用。",
+      "port": "端口",
+      "status": "状态",
+      "running": "运行中",
+      "stopped": "已停止",
+      "error": "错误",
+      "autoStartHint": "网关将在应用启动时自动运行。",
+      "manualStart": "启动网关",
+      "vibenNotFound": "未找到 Viben CLI，请先安装。",
+      "installViben": "安装 Viben CLI"
+    },
+    "failure": {
+      "suggestions": "建议",
+      "manualDownload": "手动下载",
+      "contactSupport": "联系支持",
+      "copyCommand": "复制命令"
+    },
+    "welcome": {
+      "title": "欢迎使用 Viben",
+      "subtitle": "在开始之前，请阅读以下重要信息",
+      "cards": {
+        "security": {
+          "title": "本地运行",
+          "description": "Viben 完全在您的电脑上运行，所有数据存储在本地"
+        },
+        "data": {
+          "title": "数据隐私",
+          "description": "您的配置和对话数据仅保存在您的设备上"
+        },
+        "risk": {
+          "title": "使用须知",
+          "description": "AI 生成的内容可能存在错误，请在使用前仔细检查"
+        }
+      },
+      "disclaimer": "使用 Viben 前请确保您已阅读并理解上述信息。继续使用即表示您同意承担相关风险。",
+      "acceptTerms": "我已阅读并理解上述信息，同意继续使用",
+      "continue": "开始使用",
+      "license": "开源协议"
+    },
+    "envCheck": {
+      "title": "环境检查",
+      "description": "正在检查和配置运行环境"
+    },
+    "progress": {
+      "welcome": "欢迎",
+      "envCheck": "环境检查"
     }
   },
   "chat": {

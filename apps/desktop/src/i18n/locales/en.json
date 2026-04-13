@@ -99,6 +99,8 @@
     "daysShort": "{{count}}d",
     "comingSoon": "Coming Soon",
     "retry": "Retry",
+    "retrying": "Retrying...",
+    "skip": "Skip",
     "forward": "Forward",
     "developer": "Developer",
     "loadingWorkspace": "Loading workspace...",
@@ -2943,7 +2945,8 @@
     "steps": {
       "python": "Python",
       "claude": "AI Clients",
-      "login": "Account"
+      "login": "Account",
+      "gateway": "Gateway"
     },
     "python": {
       "title": "Python Environment",
@@ -2989,6 +2992,62 @@
       "error": "Sign-in failed",
       "errorHint": "There was an error during sign-in. You can try again or skip this step.",
       "finish": "Get Started"
+    },
+    "gateway": {
+      "title": "Starting Viben Gateway",
+      "description": "The gateway service provides the backend for all Viben features.",
+      "starting": "Starting gateway...",
+      "checking": "Checking gateway status...",
+      "connected": "Gateway is running",
+      "failed": "Failed to start gateway",
+      "retry": "Retry",
+      "skip": "Continue without gateway",
+      "skipWarning": "Some features may not work without the gateway.",
+      "port": "Port",
+      "status": "Status",
+      "running": "Running",
+      "stopped": "Stopped",
+      "error": "Error",
+      "autoStartHint": "Gateway will start automatically on app launch.",
+      "manualStart": "Start Gateway",
+      "vibenNotFound": "Viben CLI not found. Please install it first.",
+      "installViben": "Install Viben CLI"
+    },
+    "failure": {
+      "suggestions": "Suggestions",
+      "manualDownload": "Manual Download",
+      "contactSupport": "Contact Support",
+      "copyCommand": "Copy Command"
+    },
+    "welcome": {
+      "title": "Welcome to Viben",
+      "subtitle": "Please read the following important information before getting started",
+      "cards": {
+        "security": {
+          "title": "Local Execution",
+          "description": "Viben runs entirely on your computer, all data is stored locally"
+        },
+        "data": {
+          "title": "Data Privacy",
+          "description": "Your configuration and conversation data is only stored on your device"
+        },
+        "risk": {
+          "title": "Usage Notice",
+          "description": "AI-generated content may contain errors, please review carefully before use"
+        }
+      },
+      "disclaimer": "Please ensure you have read and understood the above information before using Viben. By continuing, you agree to assume the associated risks.",
+      "acceptTerms": "I have read and understand the above information, and agree to continue",
+      "continue": "Get Started",
+      "license": "License"
+    },
+    "envCheck": {
+      "title": "Environment Check",
+      "description": "Checking and configuring runtime environment"
+    },
+    "progress": {
+      "welcome": "Welcome",
+      "envCheck": "Environment"
     }
   },
   "chat": {
