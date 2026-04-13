@@ -85,7 +85,7 @@ jobs:
           cp scripts/install.sh release-assets/install.sh
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: Viben CLI v${{ needs.prepare.outputs.version }}
@@ -179,7 +179,7 @@ jobs:
           cat release-assets/cli-releases.json
 
       - name: Upload releases JSON to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           files: release-assets/cli-releases.json
