@@ -43,3 +43,6 @@ export {
 
 // Cancellation support
 export * from "./cancellation";
+
+// DAG engine for environment check
+export * from "./check-dag";
