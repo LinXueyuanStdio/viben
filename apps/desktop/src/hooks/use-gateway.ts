@@ -52,8 +52,8 @@ export interface UseGatewayReturn {
   versionCheck: VersionCheckResult | null;
   /** Gateway runtime state classification */
   runtimeState: GatewayRuntimeStateCode;
-  /** Start the gateway */
-  startGateway: () => Promise<void>;
+  /** Start the gateway, returns the status */
+  startGateway: () => Promise<GatewayStatus | null>;
   /** Stop the gateway */
   stopGateway: () => Promise<void>;
   /** Restart the gateway */
@@ -159,7 +159,7 @@ export function useGateway(): UseGatewayReturn {
   }, [refreshStatus, refreshConfig, checkBinary, discoverGateway]);
 
   // Start gateway
-  const startGateway = useCallback(async () => {
+  const startGateway = useCallback(async (): Promise<GatewayStatus | null> => {
     console.log("[useGateway] startGateway called");
     console.log("[useGateway] Current state:", {
       vibenPath: vibenPathRef.current,
@@ -207,10 +207,12 @@ export function useGateway(): UseGatewayReturn {
           url: result.url,
         });
       }
+      return result;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("[useGateway] Exception during gateway start:", errorMsg);
       setError(errorMsg);
+      return null;
     } finally {
       setIsActioning(false);
       console.log("[useGateway] startGateway completed");
