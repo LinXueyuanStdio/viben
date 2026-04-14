@@ -102,6 +102,15 @@
     "retry": "重试",
     "retrying": "重试中...",
     "skip": "跳过",
+    "pending": "待处理",
+    "blocked": "已阻止",
+    "checking": "检查中",
+    "success": "成功",
+    "warning": "警告",
+    "skipped": "已跳过",
+    "moreInfo": "更多信息",
+    "expand": "展开",
+    "collapse": "收起",
     "forward": "前进",
     "developer": "开发者",
     "loadingWorkspace": "正在加载工作空间...",
@@ -3027,7 +3036,8 @@
       "check": "检查",
       "invalidPath": "无效的 Python 路径或版本低于 3.10",
       "installHint": "运行此命令安装 browse-mcp：",
-      "installRequired": "请安装 browse-mcp 以继续"
+      "installRequired": "请安装 browse-mcp 以继续",
+      "source": "来源"
     },
     "claude": {
       "title": "AI 客户端检测",
@@ -3118,7 +3128,14 @@
       "description": "正在检查和配置运行环境",
       "cancelling": "取消中...",
       "gatewayRunning": "网关运行中",
-      "connected": "连接正常"
+      "connected": "连接正常",
+      "connectionDetails": "Gateway API 可正常访问",
+      "checkingNodejs": "检查 Node.js...",
+      "checkingCli": "检查/安装 viben@latest...",
+      "startingGateway": "启动网关服务...",
+      "verifyingConnection": "验证连接...",
+      "detectingPython": "检测 Python 环境...",
+      "detectingClients": "检测 AI 客户端..."
     },
     "progress": {
       "welcome": "欢迎",
