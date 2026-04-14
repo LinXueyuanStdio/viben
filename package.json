@@ -23,7 +23,7 @@
     "docs": "pnpm --filter @viben/docs"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
+    "turbo": "^2.9.6",
     "typescript": "^5.7.0"
   },
   "packageManager": "pnpm@10.32.1",
