@@ -23,8 +23,8 @@
     "docs": "pnpm --filter @viben/docs"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
+    "turbo": "^2.9.6",
+    "typescript": "^5.9.3"
   },
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
@@ -39,7 +39,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.41",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.105",
     "@anthropic-ai/sdk": "^0.74.0"
   }
 }
