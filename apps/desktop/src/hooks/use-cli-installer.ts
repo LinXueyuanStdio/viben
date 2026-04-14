@@ -34,6 +34,16 @@ export interface CliInstallProgress {
   message: string;
 }
 
+/**
+ * CLI 检查结果类型
+ */
+export interface CliCheckResult {
+  installed: boolean;
+  version: string | null;
+  path: string | null;
+  error?: string;
+}
+
 export interface UseCliInstallerReturn {
   /** 当前状态 */
   state: CliInstallState;
@@ -47,8 +57,8 @@ export interface UseCliInstallerReturn {
   isInstalled: boolean;
   /** 当前版本 */
   currentVersion: string | null;
-  /** 检查 CLI */
-  checkCli: () => Promise<void>;
+  /** 检查 CLI，返回检查结果 */
+  checkCli: () => Promise<CliCheckResult>;
   /** 安装 CLI */
   installCli: () => Promise<void>;
   /** 升级 CLI */
@@ -80,9 +90,20 @@ export function useCliInstaller(): UseCliInstallerReturn {
   const [currentVersion, setCurrentVersion] = React.useState<string | null>(null);
 
   /**
-   * 检查 CLI 是否已安装及版本
+   * CLI 检查结果类型
    */
-  const checkCli = React.useCallback(async () => {
+  interface CliCheckResult {
+    installed: boolean;
+    version: string | null;
+    path: string | null;
+    error?: string;
+  }
+
+  /**
+   * 检查 CLI 是否已安装及版本
+   * 返回检查结果，同时更新 hook 状态
+   */
+  const checkCli = React.useCallback(async (): Promise<CliCheckResult> => {
     log("checkCli started");
     setState("checking");
     setIssue(null);
@@ -103,9 +124,10 @@ export function useCliInstaller(): UseCliInstallerReturn {
 
       if (!result.installed) {
         log("CLI not installed, setting missing-cli issue");
-        setIssue(createCliInstallerIssue("missing-cli"));
+        const issue = createCliInstallerIssue("missing-cli");
+        setIssue(issue);
         setState("error");
-        return;
+        return { installed: false, version: null, path: null, error: issue.message };
       }
 
       // 检查版本
@@ -115,36 +137,46 @@ export function useCliInstaller(): UseCliInstallerReturn {
       setVersionCheck(versionResult);
 
       if (versionResult.actionRequired) {
+        let issue: CliInstallerIssue;
         if (versionResult.enforcement === "required_upgrade") {
           log("Version too low, upgrade required");
-          setIssue(createCliInstallerIssue("version-too-low", result.version ?? undefined));
+          issue = createCliInstallerIssue("version-too-low", result.version ?? undefined);
         } else if (versionResult.enforcement === "auto_downgrade") {
           log("Version too high, downgrade required");
-          setIssue(createCliInstallerIssue("version-too-high", result.version ?? undefined));
+          issue = createCliInstallerIssue("version-too-high", result.version ?? undefined);
+        } else {
+          issue = createCliInstallerIssue("unknown-error", versionResult.message);
         }
+        setIssue(issue);
         setState("error");
-        return;
+        return { installed: true, version: result.version, path: result.path, error: issue.message };
       }
 
       log("CLI check successful, version:", result.version);
       setState("success");
+      return { installed: true, version: result.version, path: result.path };
     } catch (error) {
       const errorStr = error instanceof Error ? error.message : String(error);
       log("Check failed with exception:", errorStr);
       const issueKind = classifyInstallerError(errorStr);
-      setIssue(createCliInstallerIssue(issueKind, errorStr));
+      const issue = createCliInstallerIssue(issueKind, errorStr);
+      setIssue(issue);
       setState("error");
+      return { installed: false, version: null, path: null, error: issue.message };
     }
   }, []);
 
   /**
    * 安装 CLI (带镜像回退)
+   * @throws Error 如果所有镜像都失败
    */
   const installCli = React.useCallback(async () => {
     log("installCli started");
     setState("installing");
     setIssue(null);
     setProgress({ stage: "download", percent: 0, message: "准备安装..." });
+
+    let lastError: string | null = null;
 
     // 尝试每个镜像源
     for (let i = 0; i < NPM_MIRRORS.length; i++) {
@@ -170,30 +202,39 @@ export function useCliInstaller(): UseCliInstallerReturn {
 
         // 验证安装
         log("Verifying installation...");
-        await checkCli();
-        log("Verification completed, isInstalled will be updated by state");
+        const verifyResult = await checkCli();
+        log("Verification completed:", verifyResult);
 
-        // Note: isInstalled is a stale closure here, we rely on checkCli to set state
-        // The success state will be set by checkCli if installation was successful
-        setProgress({ stage: "verify", percent: 100, message: "安装完成" });
-        return;
+        if (verifyResult.installed && !verifyResult.error) {
+          setProgress({ stage: "verify", percent: 100, message: "安装完成" });
+          return; // 安装成功
+        } else {
+          // 安装后验证失败
+          lastError = verifyResult.error || "Installation verification failed";
+          log("Verification failed:", lastError);
+          continue; // 尝试下一个镜像
+        }
       } catch (error) {
         const errorStr = error instanceof Error ? error.message : String(error);
         log(`Mirror ${mirror.name} failed:`, errorStr);
+        lastError = errorStr;
 
         // 如果不是最后一个镜像，继续尝试
         if (i < NPM_MIRRORS.length - 1) {
           log("Trying next mirror...");
           continue;
         }
-
-        // 最后一个镜像也失败了
-        log("All mirrors failed");
-        const issueKind = classifyInstallerError(errorStr);
-        setIssue(createCliInstallerIssue(issueKind, errorStr));
-        setState("error");
       }
     }
+
+    // 所有镜像都失败了
+    log("All mirrors failed, last error:", lastError);
+    const issueKind = classifyInstallerError(lastError || "Installation failed");
+    const issue = createCliInstallerIssue(issueKind, lastError || "Installation failed");
+    setIssue(issue);
+    setState("error");
+    // 抛出异常让调用方知道安装失败
+    throw new Error(lastError || "CLI installation failed after trying all mirrors");
   }, [checkCli]);
 
   /**
