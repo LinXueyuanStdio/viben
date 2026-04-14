@@ -37,6 +37,8 @@ export interface CheckNodeState {
   status: CheckNodeStatus;
   error?: string;
   data?: unknown;
+  /** Operation logs during checking (e.g., commands being executed) */
+  logs?: string[];
 }
 
 export interface DAGState {
