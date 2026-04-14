@@ -416,3 +416,104 @@ jobs:
           files: release-assets/desktop-releases.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate latest.json for Tauri updater
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+        run: |
+          # Get release info
+          RELEASE_DATA=$(gh api repos/${{ github.repository }}/releases/tags/$TAG_NAME)
+          PUB_DATE=$(echo "$RELEASE_DATA" | jq -r '.published_at')
+          NOTES=$(echo "$RELEASE_DATA" | jq -r '.body // "See release notes on GitHub"')
+
+          # Get assets
+          ASSETS=$(echo "$RELEASE_DATA" | jq -r '.assets')
+
+          # Find platform-specific updater artifacts (.tar.gz for macOS/Linux, .zip for Windows)
+          # macOS ARM64
+          MACOS_ARM64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("aarch64-apple-darwin.*\\.tar\\.gz$")) | .browser_download_url' | head -1)
+          MACOS_ARM64_SIG=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("aarch64-apple-darwin.*\\.tar\\.gz\\.sig$")) | .browser_download_url' | head -1)
+
+          # macOS x64
+          MACOS_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-apple-darwin.*\\.tar\\.gz$")) | .browser_download_url' | head -1)
+          MACOS_X64_SIG=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-apple-darwin.*\\.tar\\.gz\\.sig$")) | .browser_download_url' | head -1)
+
+          # Windows x64
+          WINDOWS_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-pc-windows-msvc.*\\.zip$")) | .browser_download_url' | head -1)
+          WINDOWS_X64_SIG=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-pc-windows-msvc.*\\.zip\\.sig$")) | .browser_download_url' | head -1)
+
+          # Linux x64
+          LINUX_X64_URL=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-unknown-linux-gnu.*\\.tar\\.gz$")) | .browser_download_url' | head -1)
+          LINUX_X64_SIG=$(echo "$ASSETS" | jq -r '.[] | select(.name | test("x86_64-unknown-linux-gnu.*\\.tar\\.gz\\.sig$")) | .browser_download_url' | head -1)
+
+          # Helper function to get signature content or empty string
+          get_sig() {
+            local url=$1
+            if [ -n "$url" ] && [ "$url" != "null" ]; then
+              curl -sL "$url" 2>/dev/null || echo ""
+            else
+              echo ""
+            fi
+          }
+
+          # Get signatures (if available - requires code signing setup)
+          MACOS_ARM64_SIG_CONTENT=$(get_sig "$MACOS_ARM64_SIG")
+          MACOS_X64_SIG_CONTENT=$(get_sig "$MACOS_X64_SIG")
+          WINDOWS_X64_SIG_CONTENT=$(get_sig "$WINDOWS_X64_SIG")
+          LINUX_X64_SIG_CONTENT=$(get_sig "$LINUX_X64_SIG")
+
+          # Escape notes for JSON
+          NOTES_ESCAPED=$(echo "$NOTES" | jq -Rs '.')
+
+          # Build platforms object dynamically
+          PLATFORMS="{}"
+
+          # Add macOS ARM64 if available
+          if [ -n "$MACOS_ARM64_URL" ] && [ "$MACOS_ARM64_URL" != "null" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$MACOS_ARM64_URL" --arg sig "$MACOS_ARM64_SIG_CONTENT" \
+              '. + {"darwin-aarch64": {"url": $url, "signature": $sig}}')
+          fi
+
+          # Add macOS x64 if available
+          if [ -n "$MACOS_X64_URL" ] && [ "$MACOS_X64_URL" != "null" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$MACOS_X64_URL" --arg sig "$MACOS_X64_SIG_CONTENT" \
+              '. + {"darwin-x86_64": {"url": $url, "signature": $sig}}')
+          fi
+
+          # Add Windows x64 if available
+          if [ -n "$WINDOWS_X64_URL" ] && [ "$WINDOWS_X64_URL" != "null" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$WINDOWS_X64_URL" --arg sig "$WINDOWS_X64_SIG_CONTENT" \
+              '. + {"windows-x86_64": {"url": $url, "signature": $sig}}')
+          fi
+
+          # Add Linux x64 if available
+          if [ -n "$LINUX_X64_URL" ] && [ "$LINUX_X64_URL" != "null" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$LINUX_X64_URL" --arg sig "$LINUX_X64_SIG_CONTENT" \
+              '. + {"linux-x86_64": {"url": $url, "signature": $sig}}')
+          fi
+
+          # Create the final JSON
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson notes "$NOTES_ESCAPED" \
+            --argjson platforms "$PLATFORMS" \
+            '{
+              "version": $version,
+              "pub_date": $pub_date,
+              "notes": $notes,
+              "platforms": $platforms
+            }' > release-assets/latest.json
+
+          echo "Generated latest.json:"
+          cat release-assets/latest.json
+
+      - name: Upload latest.json to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

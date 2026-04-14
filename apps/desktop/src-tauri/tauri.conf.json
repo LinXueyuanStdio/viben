@@ -8,6 +8,12 @@
       "desktop": {
         "schemes": ["viben"]
       }
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/LinXueyuanStdio/viben/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
     }
   },
   "build": {
@@ -56,6 +62,7 @@
     ],
     "externalBin": [
       "binaries/viben"
-    ]
+    ],
+    "createUpdaterArtifacts": true
   }
 }

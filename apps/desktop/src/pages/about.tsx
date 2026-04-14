@@ -1,4 +1,4 @@
-import { ExternalLink, Github, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User } from "lucide-react";
+import { ExternalLink, Github, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { usePython } from "@/hooks/use-python";
@@ -6,14 +6,34 @@ import { useAppStore } from "@/stores";
 import { motion, useReducedMotion } from "framer-motion";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { VibenLogo } from "@/components/ui/viben-logo";
+import { useUpdater } from "@/hooks/use-updater";
+import { Progress } from "@/components/ui/progress";
+import { getVersion } from "@tauri-apps/api/app";
+import { useEffect, useState } from "react";
 
 export function AboutPage() {
   const { t } = useTranslation();
-  const appVersion = "0.1.0";
-  const updateAvailable = false;
+  const [appVersion, setAppVersion] = useState("0.1.0");
   const { selectedPython, browseMcpInfo } = usePython();
   const { setupBannerDismissed, setSetupBannerDismissed } = useAppStore();
   const prefersReducedMotion = useReducedMotion();
+
+  const {
+    checking,
+    downloading,
+    downloadProgress,
+    updateAvailable,
+    updateInfo,
+    error,
+    checkForUpdates,
+    downloadAndInstall,
+    clearError,
+  } = useUpdater();
+
+  // Get actual app version on mount
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(console.error);
+  }, []);
 
   // Animation variants for staggered entrance
   const containerVariants = {
@@ -139,24 +159,72 @@ export function AboutPage() {
           {t("about.updates")}
         </h2>
         <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-          {updateAvailable ? (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{t("about.updateAvailable")}</p>
-                <p className="text-sm text-muted-foreground">
-                  {t("about.versionReady", { version: "0.2.0" })}
-                </p>
+          {/* Error state */}
+          {error && (
+            <div className="mb-3 p-2 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <Button variant="ghost" size="sm" onClick={clearError} className="h-6 px-2">
+                {t("common.dismiss")}
+              </Button>
+            </div>
+          )}
+
+          {/* Downloading state */}
+          {downloading ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm font-medium">{t("about.downloading")}</span>
+                </div>
+                <span className="text-sm text-muted-foreground">{downloadProgress}%</span>
               </div>
-              <Button size="sm">{t("about.updateNow")}</Button>
+              <Progress value={downloadProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground">
+                {t("about.downloadingDescription")}
+              </p>
+            </div>
+          ) : updateAvailable && updateInfo ? (
+            /* Update available state */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{t("about.updateAvailable")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("about.versionReady", { version: updateInfo.version })}
+                  </p>
+                </div>
+                <Button size="sm" onClick={downloadAndInstall}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {t("about.updateNow")}
+                </Button>
+              </div>
+              {updateInfo.body && (
+                <div className="pt-2 border-t">
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap max-h-32 overflow-y-auto">
+                    {updateInfo.body}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
+            /* No update / check for updates state */
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 {t("about.upToDate")}
               </p>
-              <Button variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {t("about.checkForUpdates")}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={checkForUpdates}
+                disabled={checking}
+              >
+                {checking ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                {checking ? t("about.checking") : t("about.checkForUpdates")}
               </Button>
             </div>
           )}
