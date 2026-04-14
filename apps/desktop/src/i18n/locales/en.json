@@ -2960,7 +2960,8 @@
       "check": "Check",
       "invalidPath": "Invalid Python path or version below 3.10",
       "installHint": "Run this command to install browse-mcp:",
-      "installRequired": "Please install browse-mcp to continue"
+      "installRequired": "Please install browse-mcp to continue",
+      "source": "Source"
     },
     "claude": {
       "title": "AI Client Detection",
@@ -3051,7 +3052,14 @@
       "description": "Checking and configuring runtime environment",
       "cancelling": "Cancelling...",
       "gatewayRunning": "Gateway running",
-      "connected": "Connected"
+      "connected": "Connected",
+      "connectionDetails": "Gateway API is accessible",
+      "checkingNodejs": "Checking Node.js...",
+      "checkingCli": "Checking/installing viben@latest...",
+      "startingGateway": "Starting gateway service...",
+      "verifyingConnection": "Verifying connection...",
+      "detectingPython": "Detecting Python environment...",
+      "detectingClients": "Detecting AI clients..."
     },
     "progress": {
       "welcome": "Welcome",
