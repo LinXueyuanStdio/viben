@@ -21,6 +21,7 @@ import {
   ExternalLink,
   Lightbulb,
   Home,
+  Smartphone,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
@@ -519,6 +520,10 @@ export function Sidebar() {
               <GatewayStatusIndicator collapsed={collapsed} />
             </div>
             <NavItemComponent
+              item={{ titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone }}
+              collapsed={collapsed}
+            />
+            <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
               collapsed={collapsed}
               onNavigate={handleGlobalNavClick}
@@ -540,6 +545,11 @@ export function Sidebar() {
           <div className="pb-4 px-2">
             <Separator className="mb-4 bg-sidebar-border" />
             <GatewayStatusIndicator collapsed={collapsed} />
+            <NavItemComponent
+              item={{ titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone }}
+              collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
+            />
             <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
               collapsed={collapsed}
