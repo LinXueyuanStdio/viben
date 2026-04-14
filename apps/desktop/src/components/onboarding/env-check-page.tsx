@@ -279,6 +279,12 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
     const errorInfo = parseError(nodeState.error);
     const checkingMessage = getCheckingMessage(id);
 
+    // Get progress for nodejs node
+    const nodeProgress =
+      id === "nodejs" && nodeState.status === "checking"
+        ? orchestrator.nodeInstallerProgress
+        : undefined;
+
     return (
       <EnvCheckStepItem
         key={id}
@@ -299,6 +305,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         }
         onSkip={optional ? () => orchestrator.skipNode(id) : undefined}
         contentType={contentType}
+        progress={nodeProgress ?? undefined}
       >
         {/* Operation logs - show during checking or when there are logs */}
         {nodeState.logs && nodeState.logs.length > 0 && (

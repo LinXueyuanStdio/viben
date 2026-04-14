@@ -77,6 +77,12 @@ export interface UseEnvOrchestratorReturn {
     loading: boolean;
     error: string | null;
   };
+
+  /** Node.js installer progress (for progress bar) */
+  nodeInstallerProgress: {
+    percent: number;
+    message: string;
+  } | null;
 }
 
 // ============================================================================
@@ -210,23 +216,139 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
       try {
         switch (nodeId) {
           case "nodejs": {
+            // macOS: First check Git/Xcode CLT (参考 Qclaw)
+            const isMacOS = navigator.platform.toLowerCase().includes("mac");
+            if (isMacOS) {
+              appendLog(nodeId, "$ git --version (checking Xcode CLT)");
+              const macGitResult = await nodeInstaller.prepareMacGitTools();
+              if (!macGitResult.ok) {
+                if (macGitResult.error_code === "xcode_clt_pending") {
+                  appendLog(
+                    nodeId,
+                    "⚠ Xcode Command Line Tools 安装中，请完成后重试"
+                  );
+                  updateNode(
+                    nodeId,
+                    "error",
+                    "请先完成 Xcode Command Line Tools 安装，再点击「重试」"
+                  );
+                  break;
+                } else {
+                  appendLog(
+                    nodeId,
+                    `✗ Git 工具准备失败: ${macGitResult.stderr}`
+                  );
+                  updateNode(
+                    nodeId,
+                    "error",
+                    macGitResult.stderr || "Git tools preparation failed"
+                  );
+                  break;
+                }
+              }
+              appendLog(nodeId, "✓ Git/Xcode CLT available");
+            }
+
+            // Check Node.js
             appendLog(nodeId, "$ node --version");
             const result = await nodeInstaller.checkNode();
-            if (result.installed) {
+
+            if (result.installed && !result.needsUpgrade) {
               appendLog(nodeId, `✓ Node.js ${result.version} found`);
               updateNode(nodeId, "success", undefined, result);
-            } else {
-              appendLog(nodeId, "✗ Node.js not found, attempting install...");
-              await nodeInstaller.installNode();
-              // Re-check after install
-              const recheck = await nodeInstaller.checkNode();
-              if (recheck.installed) {
-                appendLog(nodeId, `✓ Node.js ${recheck.version} installed`);
-                updateNode(nodeId, "success", undefined, recheck);
-              } else {
-                appendLog(nodeId, "✗ Installation failed");
-                updateNode(nodeId, "error", "Node.js installation failed");
+              break;
+            }
+
+            if (result.installed && result.needsUpgrade) {
+              appendLog(
+                nodeId,
+                `⚠ Node.js ${result.version} 版本过低，请手动升级`
+              );
+              updateNode(
+                nodeId,
+                "error",
+                `Node.js 版本过低 (${result.version})，请升级到 v22.16.0 或更高版本`
+              );
+              break;
+            }
+
+            // Node.js not installed - start auto-install flow (参考 Qclaw)
+            appendLog(nodeId, "✗ Node.js not found, starting auto-install...");
+
+            // Step 1: Get install plan
+            appendLog(nodeId, "Getting install plan...");
+            const plan = await nodeInstaller.getInstallPlan();
+            appendLog(
+              nodeId,
+              `Install plan: ${plan.version} (${plan.platform}/${plan.installer_arch})`
+            );
+
+            // Step 2: Download installer
+            appendLog(nodeId, `$ curl -O ${plan.url}`);
+            const installerPath = await nodeInstaller.downloadInstaller(plan);
+            appendLog(nodeId, `✓ Downloaded to ${installerPath}`);
+
+            // Step 3: Inspect installer (macOS only)
+            if (isMacOS) {
+              appendLog(nodeId, "$ pkgutil --check-signature && spctl --assess");
+              const inspection =
+                await nodeInstaller.inspectInstaller(installerPath);
+              if (!inspection.ok) {
+                appendLog(
+                  nodeId,
+                  `✗ Installer verification failed: ${inspection.message}`
+                );
+                updateNode(
+                  nodeId,
+                  "error",
+                  inspection.message || "Installer verification failed"
+                );
+                break;
               }
+              appendLog(nodeId, "✓ Installer signature verified");
+            }
+
+            // Step 4: Execute installation
+            appendLog(nodeId, "$ sudo installer -pkg ... -target /");
+            const installResult = await nodeInstaller.installEnv({
+              need_node: true,
+              node_installer_path: installerPath,
+            });
+
+            if (!installResult.ok) {
+              appendLog(
+                nodeId,
+                `✗ Installation failed: ${installResult.stderr || installResult.stage}`
+              );
+              updateNode(
+                nodeId,
+                "error",
+                installResult.stderr || "Installation failed"
+              );
+              break;
+            }
+            appendLog(nodeId, "✓ Node.js installed");
+
+            // Step 5: Refresh environment
+            appendLog(nodeId, "Refreshing environment variables...");
+            await nodeInstaller.refreshEnvironment();
+
+            // Step 6: Verify installation
+            appendLog(nodeId, "$ node --version (verify)");
+            const recheck = await nodeInstaller.checkNode();
+            if (recheck.installed) {
+              appendLog(nodeId, `✓ Node.js ${recheck.version} verified`);
+              updateNode(nodeId, "success", undefined, recheck);
+            } else {
+              appendLog(
+                nodeId,
+                "✗ Node.js still not found after installation"
+              );
+              updateNode(
+                nodeId,
+                "error",
+                "Node.js installation verification failed"
+              );
             }
             break;
           }
@@ -474,6 +596,18 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     [executors.executors, executors.loading, executors.error]
   );
 
+  // Node.js installer progress
+  const nodeInstallerProgress = useMemo(
+    () =>
+      nodeInstaller.progress
+        ? {
+            percent: nodeInstaller.progress.percent,
+            message: nodeInstaller.progress.message,
+          }
+        : null,
+    [nodeInstaller.progress]
+  );
+
   return {
     state: state.dagState,
     progress,
@@ -487,5 +621,6 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     cancelAll,
     pythonData,
     executorsData,
+    nodeInstallerProgress,
   };
 }

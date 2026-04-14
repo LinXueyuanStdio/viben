@@ -8,6 +8,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Shield, Database, AlertTriangle, ExternalLink } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,24 +134,22 @@ export function WelcomePage({ onAccept }: WelcomePageProps) {
 
       {/* Links */}
       <div className="flex justify-center gap-4 text-sm">
-        <a
-          href="https://github.com/LinXueyuanStdio/viben"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        <button
+          type="button"
+          onClick={() => openUrl("https://github.com/LinXueyuanStdio/viben")}
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
         >
           GitHub
           <ExternalLink className="h-3 w-3" />
-        </a>
-        <a
-          href="https://github.com/LinXueyuanStdio/viben/blob/main/LICENSE"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        </button>
+        <button
+          type="button"
+          onClick={() => openUrl("https://github.com/LinXueyuanStdio/viben/blob/main/LICENSE")}
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
         >
           {t("onboarding.welcome.license")}
           <ExternalLink className="h-3 w-3" />
-        </a>
+        </button>
       </div>
     </div>
   );

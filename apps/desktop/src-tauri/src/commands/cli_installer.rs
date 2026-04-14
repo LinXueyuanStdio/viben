@@ -6,10 +6,12 @@
 //!
 //! Qclaw 参考: /Users/lxy/Documents/GitHub/others/Qclaw/electron/main/cli.ts
 
+// Allow dead_code warnings for Tauri commands - they are called at runtime via IPC
+#![allow(dead_code)]
+
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::Command;
 use tauri::{command, Emitter, Window};
 

@@ -286,6 +286,14 @@ pub fn run() {
             commands::cli_installer::install_node,
             commands::cli_installer::trigger_xcode_clt_install,
             commands::cli_installer::check_xcode_clt,
+            // Node.js auto-install commands (参考 Qclaw)
+            commands::cli_installer::prepare_mac_git_tools,
+            commands::cli_installer::get_node_install_plan,
+            commands::cli_installer::check_node_enhanced,
+            commands::cli_installer::download_node_installer,
+            commands::cli_installer::inspect_node_installer,
+            commands::cli_installer::install_env,
+            commands::cli_installer::refresh_environment,
             // Screenshot commands (native screen capture)
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,

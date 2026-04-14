@@ -25,7 +25,9 @@ export type NodeInstallerIssueKind =
   | "user-cancelled"              // 用户取消
   | "permission-denied"           // 权限不足
   | "installer-failed"            // 安装器执行失败
-  | "download-failed";            // 下载失败
+  | "download-failed"             // 下载失败
+  | "version-too-low"             // 版本过低，需要升级
+  | "version-too-high";           // 版本过高，需要降级
 
 /**
  * Node.js 安装问题
@@ -115,6 +117,14 @@ export function createNodeInstallerIssue(
     "download-failed": {
       title: "Node 安装包下载失败",
       message: "自动下载 Node.js 安装包失败。请检查网络、代理或证书设置；如果仍然失败，可前往 Node.js 官网手动下载。",
+    },
+    "version-too-low": {
+      title: "Node.js 版本过低",
+      message: "当前 Node.js 版本低于最低要求 (v22.16.0)。请升级到最新 LTS 版本后重试。",
+    },
+    "version-too-high": {
+      title: "Node.js 版本过高",
+      message: "当前 Node.js 版本高于推荐版本。部分功能可能不兼容，建议使用 LTS 版本。",
     },
   };
 
