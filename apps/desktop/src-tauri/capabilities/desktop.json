@@ -1,0 +1,90 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Desktop-only capabilities",
+  "platforms": ["linux", "macOS", "windows"],
+  "windows": ["main", "tray-popup"],
+  "permissions": [
+    "global-shortcut:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "opener:default",
+    "opener:allow-reveal-item-in-dir",
+    {
+      "identifier": "opener:allow-reveal-item-in-dir",
+      "allow": [
+        { "path": "$HOME/**" }
+      ]
+    },
+    "shell:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+    "dialog:allow-confirm",
+    "fs:default",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$HOME/.viben" },
+        { "path": "$HOME/.viben/**" },
+        { "path": "$HOME/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$HOME/.viben/**" },
+        { "path": "$HOME/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$HOME/.viben/**" },
+        { "path": "$HOME/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$HOME/.viben" },
+        { "path": "$HOME/.viben/**" }
+      ]
+    },
+    "fs:allow-read",
+    "fs:allow-write",
+    "fs:allow-remove",
+    "fs:allow-rename",
+    "fs:allow-copy-file",
+    "fs:allow-read-dir",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/.viben/**" },
+        { "path": "$HOME/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$DATA/**" },
+        { "path": "$LOCALDATA/**" },
+        { "path": "$CACHE/**" },
+        { "path": "$CONFIG/**" },
+        { "path": "$RESOURCE/**" },
+        { "path": "$TEMP/**" },
+        { "path": "**" }
+      ]
+    },
+    "core:window:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-set-position",
+    "core:window:allow-unminimize",
+    "deep-link:default"
+  ]
+}
