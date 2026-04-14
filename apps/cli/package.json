@@ -61,7 +61,7 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.71",
     "@fastify/cors": "^11.2.0",
-    "@fastify/multipart": "^9.0.3",
+    "@fastify/multipart": "^10.0.0",
     "@fastify/swagger": "^9.7.0",
     "@fastify/swagger-ui": "^5.2.5",
     "@fastify/websocket": "^11.2.0",
