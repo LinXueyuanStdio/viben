@@ -38,6 +38,42 @@ export class DeviceRegistryService {
     return device;
   }
 
+  registerClientWithId(deviceId: string, info: ClientInfo): Device {
+    // Check if device already exists (reconnecting)
+    const existing = this.devices.get(deviceId);
+    if (existing) {
+      existing.status = "online";
+      existing.last_seen = new Date().toISOString();
+      existing.name = info.name;
+      existing.platform = info.platform;
+      existing.capabilities = info.capabilities ?? existing.capabilities;
+      this.events.broadcast({
+        type: "device_connected",
+        data: { device: existing },
+      });
+      return existing;
+    }
+
+    // New registration with client-provided ID
+    const device: Device = {
+      id: deviceId,
+      type: "client",
+      name: info.name,
+      gateway_id: this.gatewayId,
+      platform: info.platform,
+      status: "online",
+      capabilities: info.capabilities ?? [],
+      connected_at: new Date().toISOString(),
+      last_seen: new Date().toISOString(),
+    };
+    this.devices.set(device.id, device);
+    this.events.broadcast({
+      type: "device_connected",
+      data: { device },
+    });
+    return device;
+  }
+
   unregisterClient(deviceId: string): void {
     const device = this.devices.get(deviceId);
     if (!device) return;

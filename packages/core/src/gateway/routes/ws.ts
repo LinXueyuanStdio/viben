@@ -34,11 +34,16 @@ export function getActiveWsConnectionCount(): number {
  * Uses PascalCase for type field to match Rust gateway
  */
 interface ClientMessage {
-  type: "Ping" | "Subscribe" | "Unsubscribe" | "SendMessage";
+  type: "Ping" | "Subscribe" | "Unsubscribe" | "SendMessage" | "Register";
   data?: {
     channels?: string[];
     session_id?: string;
     content?: string;
+    // Register fields
+    name?: string;
+    platform?: string;
+    device_id?: string;
+    capabilities?: string[];
   };
 }
 
@@ -47,7 +52,7 @@ interface ClientMessage {
  * Must match the format expected by desktop/web clients (same as Rust gateway)
  */
 interface ServerMessage {
-  type: "Pong" | "Subscribed" | "Unsubscribed" | "Event" | "Error";
+  type: "Pong" | "Subscribed" | "Unsubscribed" | "Event" | "Error" | "Registered";
   data?: {
     channels?: string[];
     channel?: string;
@@ -56,6 +61,9 @@ interface ServerMessage {
       data: unknown;
     };
     message?: string;
+    // Registered fields
+    device_id?: string;
+    gateway_id?: string;
   };
 }
 
@@ -184,6 +192,9 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
         // Set of subscribed channels
         const subscribedChannels = new Set<string>();
 
+        // Track registered device for cleanup on disconnect
+        let registeredDeviceId: string | null = null;
+
         // Subscribe to all events by default
         const unsubscribe = state.events.subscribe((event) => {
           const channel = eventToChannel(event.type);
@@ -265,6 +276,44 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
                 }
                 break;
               }
+
+              case "Register": {
+                const name = msg.data?.name;
+                const platform = msg.data?.platform;
+                if (!name || !platform) {
+                  const errorMsg: ServerMessage = {
+                    type: "Error",
+                    data: { message: "Register requires name and platform" },
+                  };
+                  socket.send(JSON.stringify(errorMsg));
+                  messagesSent++;
+                  break;
+                }
+
+                const clientInfo = {
+                  name,
+                  platform: platform as "desktop" | "mobile" | "web" | "cli",
+                  capabilities: msg.data?.capabilities,
+                };
+
+                const device = msg.data?.device_id
+                  ? state.deviceRegistry.registerClientWithId(msg.data.device_id, clientInfo)
+                  : state.deviceRegistry.registerClient(clientInfo);
+
+                registeredDeviceId = device.id;
+
+                const regResponse: ServerMessage = {
+                  type: "Registered",
+                  data: {
+                    device_id: device.id,
+                    gateway_id: state.deviceRegistry.getGatewayId(),
+                  },
+                };
+                socket.send(JSON.stringify(regResponse));
+                messagesSent++;
+                messageSpan.setAttribute("ws.device.id", device.id);
+                break;
+              }
             }
 
             messageSpan.setStatus({ code: SpanStatusCode.OK });
@@ -283,6 +332,9 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
 
         // Handle close
         socket.on("close", () => {
+          if (registeredDeviceId) {
+            state.deviceRegistry.unregisterClient(registeredDeviceId);
+          }
           unsubscribe();
           sessionSpan.setAttribute("ws.messages.sent", messagesSent);
           sessionSpan.setAttribute("ws.messages.received", messagesReceived);
@@ -297,6 +349,9 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
         // Handle error
         socket.on("error", (err) => {
           log.error({ err }, "WebSocket error");
+          if (registeredDeviceId) {
+            state.deviceRegistry.unregisterClient(registeredDeviceId);
+          }
           unsubscribe();
           sessionSpan.setAttribute("ws.messages.sent", messagesSent);
           sessionSpan.setAttribute("ws.messages.received", messagesReceived);
