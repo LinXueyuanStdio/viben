@@ -4,7 +4,11 @@
 //! Most functionality has been migrated to the Gateway.
 
 pub mod cli_installer;
+#[cfg(desktop)]
 pub mod gateway;
+#[cfg(desktop)]
 pub mod screenshot;
+#[cfg(desktop)]
 pub mod tray;
+#[cfg(desktop)]
 pub mod window;

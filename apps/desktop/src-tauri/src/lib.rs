@@ -1,16 +1,21 @@
 mod commands;
 pub mod utils;
 
+#[cfg(desktop)]
 use commands::gateway::GatewayState;
 
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
+
+#[cfg(desktop)]
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Auto-start gateway on app startup
+#[cfg(desktop)]
 async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::PathBuf>) {
     // Check config for auto_start
     let config = state.config.read().await.clone();
@@ -45,6 +50,7 @@ async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::Pat
     }
 }
 
+#[cfg(desktop)]
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
     let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
@@ -158,11 +164,6 @@ pub fn run() {
     }
 
     builder = builder
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -175,8 +176,23 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build());
 
-    // MCP plugin for AI debugging - only in development builds
-    #[cfg(debug_assertions)]
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_opener::init())
+            .plugin(tauri_plugin_shell::init())
+            .plugin(tauri_plugin_dialog::init())
+            .plugin(tauri_plugin_fs::init())
+            .plugin(tauri_plugin_deep_link::init());
+    }
+
+    #[cfg(mobile)]
+    {
+        builder = builder.plugin(tauri_plugin_barcode_scanner::init());
+    }
+
+    // MCP plugin for AI debugging - only in desktop development builds
+    #[cfg(all(desktop, debug_assertions))]
     {
         eprintln!("[MCP] Enabling MCP plugin for AI debugging");
         builder = builder.plugin(
@@ -188,116 +204,125 @@ pub fn run() {
         );
     }
 
-    builder.setup(|app| {
-            setup_tray(app)?;
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .manage(GatewayState::default())
+            .invoke_handler(tauri::generate_handler![
+                // Tray commands (native system tray)
+                commands::tray::update_tray_status,
+                commands::tray::show_tray_popup,
+                commands::tray::hide_tray_popup,
+                commands::tray::show_main_window,
+                commands::tray::get_tray_position,
+                // Gateway commands (process management)
+                commands::gateway::start_gateway,
+                commands::gateway::stop_gateway,
+                commands::gateway::get_gateway_status,
+                commands::gateway::restart_gateway,
+                commands::gateway::get_gateway_config,
+                commands::gateway::set_gateway_config,
+                commands::gateway::check_gateway_binary,
+                commands::gateway::discover_gateway,
+                commands::gateway::get_bundled_viben_path,
+                commands::gateway::start_gateway_with_path,
+                // CLI installer commands (CLI installation and version management)
+                commands::cli_installer::check_viben_cli,
+                commands::cli_installer::install_viben_cli,
+                commands::cli_installer::install_node,
+                commands::cli_installer::trigger_xcode_clt_install,
+                commands::cli_installer::check_xcode_clt,
+                // Node.js auto-install commands (参考 Qclaw)
+                commands::cli_installer::prepare_mac_git_tools,
+                commands::cli_installer::get_node_install_plan,
+                commands::cli_installer::check_node_cli,
+                commands::cli_installer::scan_node_installations,
+                commands::cli_installer::check_node_at_path,
+                commands::cli_installer::download_node_installer,
+                commands::cli_installer::inspect_node_installer,
+                commands::cli_installer::install_env,
+                commands::cli_installer::refresh_environment,
+                // Screenshot commands (native screen capture)
+                commands::screenshot::take_screenshot,
+                commands::screenshot::take_screenshot_region,
+                // Window commands (multi-window support)
+                commands::window::open_workspace_in_new_window,
+                commands::window::get_workspace_windows,
+                commands::window::close_workspace_window,
+            ]);
+    }
 
-            // Auto-start gateway in background
-            let gateway_state = app.state::<GatewayState>();
-            let gateway_state_clone = GatewayState {
-                process: gateway_state.process.clone(),
-                config: gateway_state.config.clone(),
-            };
-            let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
-            tauri::async_runtime::spawn(async move {
-                auto_start_gateway(&gateway_state_clone, exe_dir).await;
-            });
+    builder
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                setup_tray(app)?;
 
-            // Set up blur handler for popup window and ensure it starts hidden
-            if let Some(popup) = app.get_webview_window("tray-popup") {
-                // Ensure popup is hidden on startup (safety net)
-                let _ = popup.hide();
+                // Auto-start gateway in background
+                let gateway_state = app.state::<GatewayState>();
+                let gateway_state_clone = GatewayState {
+                    process: gateway_state.process.clone(),
+                    config: gateway_state.config.clone(),
+                };
+                let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+                tauri::async_runtime::spawn(async move {
+                    auto_start_gateway(&gateway_state_clone, exe_dir).await;
+                });
 
-                let popup_clone = popup.clone();
-                popup.on_window_event(move |event| {
-                    if let tauri::WindowEvent::Focused(false) = event {
-                        // Hide popup when it loses focus
-                        let _ = popup_clone.hide();
+                // Set up blur handler for popup window and ensure it starts hidden
+                if let Some(popup) = app.get_webview_window("tray-popup") {
+                    // Ensure popup is hidden on startup (safety net)
+                    let _ = popup.hide();
+
+                    let popup_clone = popup.clone();
+                    popup.on_window_event(move |event| {
+                        if let tauri::WindowEvent::Focused(false) = event {
+                            // Hide popup when it loses focus
+                            let _ = popup_clone.hide();
+                        }
+                    });
+                }
+
+                // Register deep link handler for OAuth callback
+                // URL format: viben://oauth?session=<base64url-encoded-json>
+                let app_handle = app.handle().clone();
+                app.deep_link().on_open_url(move |event| {
+                    let urls = event.urls();
+                    for url in urls {
+                        if url.scheme() == "viben" && url.host_str() == Some("oauth") {
+                            // Check for error first
+                            if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
+                                // Emit error event to frontend
+                                let _ = app_handle.emit("oauth-error", error);
+
+                                // Focus main window
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.unminimize();
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                                continue;
+                            }
+
+                            // Extract session from query parameters (base64url encoded JSON)
+                            if let Some(session_b64) = url.query_pairs().find(|(k, _)| k == "session").map(|(_, v)| v.to_string()) {
+                                // Emit event to frontend with the session data
+                                let _ = app_handle.emit("oauth-callback", session_b64);
+
+                                // Focus main window
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.unminimize();
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                        }
                     }
                 });
             }
 
-            // Register deep link handler for OAuth callback
-            // URL format: viben://oauth?session=<base64url-encoded-json>
-            let app_handle = app.handle().clone();
-            app.deep_link().on_open_url(move |event| {
-                let urls = event.urls();
-                for url in urls {
-                    if url.scheme() == "viben" && url.host_str() == Some("oauth") {
-                        // Check for error first
-                        if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
-                            // Emit error event to frontend
-                            let _ = app_handle.emit("oauth-error", error);
-
-                            // Focus main window
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.unminimize();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                            continue;
-                        }
-
-                        // Extract session from query parameters (base64url encoded JSON)
-                        if let Some(session_b64) = url.query_pairs().find(|(k, _)| k == "session").map(|(_, v)| v.to_string()) {
-                            // Emit event to frontend with the session data
-                            let _ = app_handle.emit("oauth-callback", session_b64);
-
-                            // Focus main window
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                let _ = window.unminimize();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                    }
-                }
-            });
-
             Ok(())
         })
-        .manage(GatewayState::default())
-        .invoke_handler(tauri::generate_handler![
-            // Tray commands (native system tray)
-            commands::tray::update_tray_status,
-            commands::tray::show_tray_popup,
-            commands::tray::hide_tray_popup,
-            commands::tray::show_main_window,
-            commands::tray::get_tray_position,
-            // Gateway commands (process management)
-            commands::gateway::start_gateway,
-            commands::gateway::stop_gateway,
-            commands::gateway::get_gateway_status,
-            commands::gateway::restart_gateway,
-            commands::gateway::get_gateway_config,
-            commands::gateway::set_gateway_config,
-            commands::gateway::check_gateway_binary,
-            commands::gateway::discover_gateway,
-            commands::gateway::get_bundled_viben_path,
-            commands::gateway::start_gateway_with_path,
-            // CLI installer commands (CLI installation and version management)
-            commands::cli_installer::check_viben_cli,
-            commands::cli_installer::install_viben_cli,
-            commands::cli_installer::install_node,
-            commands::cli_installer::trigger_xcode_clt_install,
-            commands::cli_installer::check_xcode_clt,
-            // Node.js auto-install commands (参考 Qclaw)
-            commands::cli_installer::prepare_mac_git_tools,
-            commands::cli_installer::get_node_install_plan,
-            commands::cli_installer::check_node_cli,
-            commands::cli_installer::scan_node_installations,
-            commands::cli_installer::check_node_at_path,
-            commands::cli_installer::download_node_installer,
-            commands::cli_installer::inspect_node_installer,
-            commands::cli_installer::install_env,
-            commands::cli_installer::refresh_environment,
-            // Screenshot commands (native screen capture)
-            commands::screenshot::take_screenshot,
-            commands::screenshot::take_screenshot_region,
-            // Window commands (multi-window support)
-            commands::window::open_workspace_in_new_window,
-            commands::window::get_workspace_windows,
-            commands::window::close_workspace_window,
-        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
