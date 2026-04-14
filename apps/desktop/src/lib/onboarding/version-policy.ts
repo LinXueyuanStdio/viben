@@ -9,13 +9,13 @@
 // ============================================================================
 
 /** 最低支持版本 */
-export const MIN_SUPPORTED_VERSION = "0.5.0";
+export const MIN_SUPPORTED_VERSION = "1.0.0";
 
 /** 最高支持版本 (超过此版本可能不兼容) */
-export const MAX_SUPPORTED_VERSION = "1.0.0";
+export const MAX_SUPPORTED_VERSION = "2.0.0";
 
-/** 推荐安装版本 */
-export const PINNED_VERSION = "0.5.0";
+/** 推荐安装版本 - 使用 "latest" 让 npm 自动获取最新版本 */
+export const PINNED_VERSION = "latest";
 
 // ============================================================================
 // Version Enforcement Types
