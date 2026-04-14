@@ -329,7 +329,7 @@ jobs:
           cat checksums.txt
 
       - name: Upload checksums to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           files: release-assets/checksums.txt
@@ -410,7 +410,7 @@ jobs:
           cat release-assets/desktop-releases.json
 
       - name: Upload releases JSON to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           files: release-assets/desktop-releases.json
