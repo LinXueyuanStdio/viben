@@ -15,6 +15,14 @@ use std::io::Write;
 use std::process::Command;
 use tauri::{command, Emitter, Window};
 
+// Windows-specific imports for hiding console window
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+// Windows constant to create process without a visible window
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -142,7 +150,14 @@ pub struct InstallEnvOptions {
 #[command]
 pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
     // First, try to run viben directly
-    let output = Command::new("viben").arg("--version").output();
+    let mut cmd = Command::new("viben");
+    cmd.arg("--version");
+
+    // On Windows, hide the console window
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output();
 
     match output {
         Ok(output) if output.status.success() => {
@@ -188,7 +203,8 @@ pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
                     if let Ok(path) = path_result {
                         if path.exists() {
                             // Try to run this specific binary
-                            if let Ok(output) = Command::new(&path).arg("--version").output() {
+                            let output = Command::new(&path).arg("--version").output();
+                            if let Ok(output) = output {
                                 if output.status.success() {
                                     let version =
                                         String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -201,6 +217,38 @@ pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // On Windows, also check common paths
+    #[cfg(target_os = "windows")]
+    {
+        let home = std::env::var("USERPROFILE").unwrap_or_default();
+        let win_paths = [
+            format!(r"{}\AppData\Roaming\npm\viben.cmd", home),
+            format!(r"{}\AppData\Local\pnpm\viben.cmd", home),
+            r"C:\Program Files\nodejs\viben.cmd".to_string(),
+        ];
+
+        for path_str in &win_paths {
+            let path = std::path::PathBuf::from(path_str);
+            if path.exists() {
+                let mut cmd = Command::new(&path);
+                cmd.arg("--version");
+                cmd.creation_flags(CREATE_NO_WINDOW);
+
+                if let Ok(output) = cmd.output() {
+                    if output.status.success() {
+                        let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        return Ok(CliCheckResult {
+                            installed: true,
+                            version: Some(version),
+                            path: Some(path_str.clone()),
+                            source: Some("npm-global".to_string()),
+                        });
                     }
                 }
             }
@@ -229,16 +277,21 @@ pub async fn install_viben_cli(version: String, registry: String) -> Result<(), 
         "npm"
     };
 
-    let output = Command::new(install_cmd)
-        .args([
-            "install",
-            "-g",
-            "--force", // Overwrite existing files
-            &format!("viben@{}", version),
-            "--registry",
-            &registry,
-        ])
-        .output()
+    let mut cmd = Command::new(install_cmd);
+    cmd.args([
+        "install",
+        "-g",
+        "--force", // Overwrite existing files
+        &format!("viben@{}", version),
+        "--registry",
+        &registry,
+    ]);
+
+    // On Windows, hide the console window
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output()
         .map_err(|e| format!("Failed to run npm: {}", e))?;
 
     if output.status.success() {
@@ -257,12 +310,16 @@ fn get_cli_path() -> Option<String> {
         "which"
     };
 
-    Command::new(which_cmd)
-        .arg("viben")
-        .output()
+    let mut cmd = Command::new(which_cmd);
+    cmd.arg("viben");
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    cmd.output()
         .ok()
         .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").trim().to_string())
 }
 
 /// Check if Node.js is installed
@@ -276,9 +333,13 @@ pub async fn check_node() -> Result<bool, String> {
         "node"
     };
 
-    Command::new(node_cmd)
-        .arg("--version")
-        .output()
+    let mut cmd = Command::new(node_cmd);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    cmd.output()
         .map(|o| o.status.success())
         .map_err(|e| e.to_string())
 }
@@ -345,7 +406,13 @@ pub async fn check_node_installation() -> Result<NodeCheckResult, String> {
         "node"
     };
 
-    let output = Command::new(node_cmd).arg("--version").output();
+    let mut cmd = Command::new(node_cmd);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output();
 
     match output {
         Ok(output) if output.status.success() => {
@@ -361,12 +428,18 @@ pub async fn check_node_installation() -> Result<NodeCheckResult, String> {
                 "which"
             };
 
-            let path_output = Command::new(which_cmd).arg("node").output();
+            let mut path_cmd = Command::new(which_cmd);
+            path_cmd.arg("node");
+
+            #[cfg(target_os = "windows")]
+            path_cmd.creation_flags(CREATE_NO_WINDOW);
+
+            let path_output = path_cmd.output();
 
             let path = path_output
                 .ok()
                 .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+                .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").trim().to_string());
 
             Ok(NodeCheckResult {
                 found: true,
@@ -619,7 +692,13 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
         "node"
     };
 
-    let output = Command::new(node_cmd).arg("--version").output();
+    let mut cmd = Command::new(node_cmd);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output();
 
     match output {
         Ok(output) if output.status.success() => {
@@ -638,7 +717,13 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
                 "which"
             };
 
-            let path_output = Command::new(which_cmd).arg("node").output();
+            let mut which_cmd_exec = Command::new(which_cmd);
+            which_cmd_exec.arg("node");
+
+            #[cfg(target_os = "windows")]
+            which_cmd_exec.creation_flags(CREATE_NO_WINDOW);
+
+            let path_output = which_cmd_exec.output();
             let path = path_output
                 .ok()
                 .filter(|o| o.status.success())
@@ -999,9 +1084,12 @@ async fn install_node_macos(installer_path: &str, window: &Window) -> Result<Ins
 #[cfg(target_os = "windows")]
 async fn install_node_windows(installer_path: &str, window: &Window) -> Result<InstallEnvResult, String> {
     // Run msiexec with silent installation
-    let output = Command::new("msiexec")
-        .args(["/i", installer_path, "/qn", "/norestart"])
-        .output()
+    // Use CREATE_NO_WINDOW to prevent CMD window from flashing
+    let mut cmd = Command::new("msiexec");
+    cmd.args(["/i", installer_path, "/qn", "/norestart"]);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output()
         .map_err(|e| format!("Failed to run msiexec: {}", e))?;
 
     let _ = window.emit(
@@ -1035,16 +1123,37 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
 
 /// Refresh environment variables
 ///
-/// On Windows, reads the latest PATH from registry.
+/// On Windows, reads the latest PATH from registry using PowerShell.
 /// On macOS/Linux, re-evaluates common shell paths.
 #[command]
 pub async fn refresh_environment() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        // On Windows, we need to read from registry
-        // This is a simplified version - full implementation would use winreg crate
-        // For now, we'll just try to verify node is available
-        let _ = Command::new("node").arg("--version").output();
+        // On Windows, read the latest PATH from registry using PowerShell
+        // This captures changes made by the Node.js installer
+        let mut cmd = Command::new("powershell");
+        cmd.args([
+            "-NoProfile",
+            "-Command",
+            r#"[Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('PATH', 'User')"#,
+        ]);
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
+        if let Ok(output) = cmd.output() {
+            if output.status.success() {
+                let registry_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !registry_path.is_empty() {
+                    std::env::set_var("PATH", &registry_path);
+                }
+            }
+        }
+
+        // Verify node is now available with the updated PATH
+        let mut node_cmd = Command::new("node");
+        node_cmd.arg("--version");
+        node_cmd.creation_flags(CREATE_NO_WINDOW);
+        let _ = node_cmd.output();
+
         Ok(())
     }
 

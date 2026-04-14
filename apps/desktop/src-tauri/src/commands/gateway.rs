@@ -5,12 +5,21 @@
 //! 用于启动、停止和管理 viben 网关进程的命令。
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, Runtime, State};
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
+
+// Windows-specific imports for hiding console window
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+// Windows constant to create process without a visible window
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// Gateway process state
 pub struct GatewayState {
@@ -68,9 +77,9 @@ pub struct GatewayStatus {
 
 /// Find the gateway binary path
 /// Supports TypeScript gateway via `viben gateway` CLI command
-/// Priority: which viben > known paths > npx viben
+/// Priority: which/where viben > known paths > npx viben
 fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
-    // 1. First, try `which viben` to find the installed CLI (most reliable)
+    // 1. First, try `which viben` (Unix) or `where viben` (Windows)
     #[cfg(unix)]
     {
         if let Ok(output) = std::process::Command::new("which")
@@ -86,8 +95,31 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
         }
     }
 
+    #[cfg(windows)]
+    {
+        // On Windows, use `where` command
+        if let Ok(output) = std::process::Command::new("where")
+            .arg("viben")
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .trim()
+                    .to_string();
+                if !path.is_empty() && PathBuf::from(&path).exists() {
+                    return Some((PathBuf::from(path), vec!["gateway".to_string(), "serve".to_string()]));
+                }
+            }
+        }
+    }
+
     // 2. Check known installation paths for viben CLI
-    let viben_paths = [
+    #[cfg(unix)]
+    let viben_paths: Vec<Option<PathBuf>> = vec![
         // Global npm installation
         dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
         // Local project node_modules
@@ -99,6 +131,24 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
         dirs::home_dir().map(|h| h.join(".cargo/bin/viben")),
     ];
 
+    #[cfg(windows)]
+    let viben_paths: Vec<Option<PathBuf>> = vec![
+        // Global npm installation (npm global)
+        dirs::home_dir().map(|h| h.join("AppData/Roaming/npm/viben.cmd")),
+        // npm prefix global
+        dirs::home_dir().map(|h| h.join(".npm-global/viben.cmd")),
+        // pnpm global
+        dirs::home_dir().map(|h| h.join("AppData/Local/pnpm/viben.cmd")),
+        // Program Files Node.js
+        Some(PathBuf::from(r"C:\Program Files\nodejs\viben.cmd")),
+        // Local project node_modules
+        Some(PathBuf::from(r".\node_modules\.bin\viben.cmd")),
+        // Scoop installation
+        dirs::home_dir().map(|h| h.join("scoop/shims/viben.cmd")),
+        // Also check for .exe variant
+        dirs::home_dir().map(|h| h.join("AppData/Roaming/npm/viben.exe")),
+    ];
+
     for path in viben_paths.into_iter().flatten() {
         if path.exists() {
             return Some((path, vec!["gateway".to_string(), "serve".to_string()]));
@@ -106,7 +156,6 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
     }
 
     // 3. Fallback: use npx to run viben (always available if npm is installed)
-    // Check if npx exists first
     #[cfg(unix)]
     {
         if let Ok(output) = std::process::Command::new("which")
@@ -121,12 +170,15 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
 
     #[cfg(windows)]
     {
+        // On Windows, check for npx.cmd
         if let Ok(output) = std::process::Command::new("where")
             .arg("npx")
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
         {
             if output.status.success() {
-                return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
+                // Use npx.cmd on Windows
+                return Some((PathBuf::from("npx.cmd"), vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
             }
         }
     }
@@ -201,6 +253,10 @@ pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStat
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+
+    // On Windows, hide the console window
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
 
     let mut child = cmd.spawn().map_err(|e| format!("Failed to start gateway: {}", e))?;
 
@@ -610,6 +666,69 @@ async fn start_gateway_internal(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
+
+    // Set up environment variables with Node.js paths
+    let mut env: HashMap<String, String> = std::env::vars().collect();
+
+    #[cfg(target_os = "windows")]
+    {
+        // Add common Node.js paths to PATH on Windows
+        let current_path = env.get("PATH").cloned().unwrap_or_default();
+        let mut paths_to_add: Vec<String> = Vec::new();
+
+        // Common Windows Node.js installation paths
+        if let Some(home) = dirs::home_dir() {
+            paths_to_add.push(home.join("AppData/Roaming/npm").to_string_lossy().to_string());
+            paths_to_add.push(home.join("AppData/Local/pnpm").to_string_lossy().to_string());
+            paths_to_add.push(home.join(".npm-global").to_string_lossy().to_string());
+        }
+        paths_to_add.push(r"C:\Program Files\nodejs".to_string());
+
+        // Filter existing paths and add new ones
+        let new_paths: Vec<&str> = paths_to_add
+            .iter()
+            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
+            .map(|s| s.as_str())
+            .collect();
+
+        if !new_paths.is_empty() {
+            let updated_path = format!("{};{}", new_paths.join(";"), current_path);
+            env.insert("PATH".to_string(), updated_path.clone());
+            eprintln!("[gateway] Updated PATH for Windows: {}", updated_path);
+        }
+
+        // Set CREATE_NO_WINDOW flag to prevent CMD window from flashing
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        eprintln!("[gateway] Set CREATE_NO_WINDOW flag for Windows");
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Add common Unix paths
+        let current_path = env.get("PATH").cloned().unwrap_or_default();
+        let mut paths_to_add: Vec<String> = Vec::new();
+
+        if let Some(home) = dirs::home_dir() {
+            paths_to_add.push(home.join(".npm-global/bin").to_string_lossy().to_string());
+            paths_to_add.push(home.join("Library/pnpm").to_string_lossy().to_string());
+        }
+        paths_to_add.push("/usr/local/bin".to_string());
+        paths_to_add.push("/opt/homebrew/bin".to_string());
+
+        let new_paths: Vec<&str> = paths_to_add
+            .iter()
+            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
+            .map(|s| s.as_str())
+            .collect();
+
+        if !new_paths.is_empty() {
+            let updated_path = format!("{}:{}", new_paths.join(":"), current_path);
+            env.insert("PATH".to_string(), updated_path);
+        }
+    }
+
+    // Pass environment variables to the command
+    cmd.envs(&env);
 
     eprintln!("[gateway] Spawning process...");
     let mut child = cmd.spawn().map_err(|e| {
