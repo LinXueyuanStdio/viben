@@ -310,18 +310,12 @@ jobs:
           node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
       # Reuse CLI build from build-cli job (already version-synced and built)
       - name: Download CLI build artifact
         uses: actions/download-artifact@v8
         with:
           name: cli-build
           path: .
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Verify CLI build artifacts
         run: |
