@@ -15,4 +15,6 @@ export default defineConfig({
   noExternal: ['@viben/core', '@viben/api-client'],
   // Mark Node.js built-in modules as external
   platform: 'node',
+  // yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
+  external: ['yaml'],
 });
