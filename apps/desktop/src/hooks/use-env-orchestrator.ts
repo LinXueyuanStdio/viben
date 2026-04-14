@@ -87,6 +87,7 @@ type OrchestratorAction =
   | { type: "RESET" }
   | { type: "START" }
   | { type: "UPDATE_NODE"; nodeId: string; status: CheckNodeStatus; error?: string; data?: unknown }
+  | { type: "APPEND_LOG"; nodeId: string; log: string }
   | { type: "SET_RUNNING"; running: boolean };
 
 interface OrchestratorState {
@@ -120,6 +121,24 @@ function orchestratorReducer(state: OrchestratorState, action: OrchestratorActio
       return {
         ...state,
         dagState: newDagState,
+      };
+    }
+
+    case "APPEND_LOG": {
+      const currentNode = state.dagState.nodeStates[action.nodeId];
+      const currentLogs = currentNode?.logs || [];
+      return {
+        ...state,
+        dagState: {
+          ...state.dagState,
+          nodeStates: {
+            ...state.dagState.nodeStates,
+            [action.nodeId]: {
+              ...currentNode,
+              logs: [...currentLogs, action.log],
+            },
+          },
+        },
       };
     }
 
@@ -169,6 +188,12 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     []
   );
 
+  // Append log to node
+  const appendLog = useCallback((nodeId: string, logMsg: string) => {
+    log(`appendLog: ${nodeId} - ${logMsg}`);
+    dispatch({ type: "APPEND_LOG", nodeId, log: logMsg });
+  }, []);
+
   // Execute a single node check
   const executeNode = useCallback(
     async (nodeId: string) => {
@@ -185,21 +210,21 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
       try {
         switch (nodeId) {
           case "nodejs": {
-            log("nodejs: calling checkNode");
+            appendLog(nodeId, "$ node --version");
             const result = await nodeInstaller.checkNode();
             if (result.installed) {
-              log("nodejs: installed", result.version);
+              appendLog(nodeId, `✓ Node.js ${result.version} found`);
               updateNode(nodeId, "success", undefined, result);
             } else {
-              log("nodejs: not installed, attempting install");
+              appendLog(nodeId, "✗ Node.js not found, attempting install...");
               await nodeInstaller.installNode();
               // Re-check after install
               const recheck = await nodeInstaller.checkNode();
               if (recheck.installed) {
-                log("nodejs: installed after installation", recheck.version);
+                appendLog(nodeId, `✓ Node.js ${recheck.version} installed`);
                 updateNode(nodeId, "success", undefined, recheck);
               } else {
-                log("nodejs: installation failed");
+                appendLog(nodeId, "✗ Installation failed");
                 updateNode(nodeId, "error", "Node.js installation failed");
               }
             }
@@ -207,77 +232,78 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           }
 
           case "cli": {
-            log("cli: calling checkCli");
-            await cliInstaller.checkCli();
+            appendLog(nodeId, "$ viben --version");
+            const cliResult = await cliInstaller.checkCli();
 
-            if (cliInstaller.isInstalled && cliInstaller.state === "success") {
-              log("cli: installed", cliInstaller.currentVersion);
+            if (cliResult.installed && !cliResult.error) {
+              appendLog(nodeId, `✓ viben ${cliResult.version} found at ${cliResult.path}`);
               updateNode(nodeId, "success", undefined, {
-                version: cliInstaller.currentVersion,
+                version: cliResult.version,
+                path: cliResult.path,
               });
-            } else if (cliInstaller.issue) {
-              log("cli: has issue, attempting install");
+            } else if (!cliResult.installed) {
+              appendLog(nodeId, "✗ viben not found");
+              appendLog(nodeId, "$ npm install -g --force viben@latest");
               await cliInstaller.installCli();
               // Re-check after install
-              await cliInstaller.checkCli();
-              if (cliInstaller.isInstalled && cliInstaller.state === "success") {
-                log("cli: installed after installation");
+              appendLog(nodeId, "$ viben --version (verify)");
+              const recheckResult = await cliInstaller.checkCli();
+              if (recheckResult.installed && !recheckResult.error) {
+                appendLog(nodeId, `✓ viben ${recheckResult.version} installed`);
                 updateNode(nodeId, "success", undefined, {
-                  version: cliInstaller.currentVersion,
+                  version: recheckResult.version,
+                  path: recheckResult.path,
                 });
               } else {
-                log("cli: installation failed", cliInstaller.issue?.message);
-                updateNode(nodeId, "error", cliInstaller.issue?.message || "CLI installation failed");
+                appendLog(nodeId, `✗ Installation failed: ${recheckResult.error}`);
+                updateNode(nodeId, "error", recheckResult.error || "CLI installation failed");
               }
             } else {
-              log("cli: check failed");
-              updateNode(nodeId, "error", "CLI check failed");
+              // installed but has error (version issue)
+              appendLog(nodeId, `⚠ Version issue: ${cliResult.error}`);
+              updateNode(nodeId, "error", cliResult.error || "CLI version issue");
             }
             break;
           }
 
           case "gateway": {
-            log("gateway: calling startGateway");
-            await gateway.startGateway();
+            const vibenPath = gateway.vibenPath;
+            appendLog(nodeId, `$ ${vibenPath || "viben"} gateway start --port 18790`);
+            const gatewayResult = await gateway.startGateway();
 
-            // Wait a moment for gateway to start
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Refresh status
-            await gateway.refreshStatus();
-
-            if (gateway.status?.running) {
-              log("gateway: running", gateway.status.url);
-              updateNode(nodeId, "success", undefined, gateway.status);
+            if (gatewayResult?.running) {
+              appendLog(nodeId, `✓ Gateway running at ${gatewayResult.url} (PID: ${gatewayResult.pid})`);
+              updateNode(nodeId, "success", undefined, gatewayResult);
             } else {
-              log("gateway: not running", gateway.error);
-              updateNode(nodeId, "error", gateway.error || "Gateway failed to start");
+              appendLog(nodeId, `✗ Gateway failed: ${gatewayResult?.error || gateway.error}`);
+              updateNode(nodeId, "error", gatewayResult?.error || gateway.error || "Gateway failed to start");
             }
             break;
           }
 
           case "connection": {
-            log("connection: calling checkConnectionWithBackoff");
+            appendLog(nodeId, "$ curl http://127.0.0.1:18790/health");
             const connected = await gatewayStatus.checkConnectionWithBackoff();
             if (connected) {
-              log("connection: connected");
+              appendLog(nodeId, "✓ Gateway API accessible");
               updateNode(nodeId, "success");
             } else {
-              log("connection: failed", gatewayStatus.error);
+              appendLog(nodeId, `✗ Connection failed: ${gatewayStatus.error}`);
               updateNode(nodeId, "error", gatewayStatus.error || "Connection failed");
             }
             break;
           }
 
           case "python": {
-            log("python: calling detectPython");
+            appendLog(nodeId, "$ python3 --version");
+            appendLog(nodeId, "Scanning: /usr/bin, /usr/local/bin, ~/.pyenv, ...");
             await python.detectPython(true);
 
             if (python.selectedPython) {
-              log("python: found", python.selectedPython.version);
+              appendLog(nodeId, `✓ Python ${python.selectedPython.version} found at ${python.selectedPython.path}`);
               updateNode(nodeId, "success", undefined, python.selectedPython);
             } else {
-              log("python: not found");
+              appendLog(nodeId, "⚠ No Python installation found");
               // Python is optional, so we use warning instead of error
               updateNode(nodeId, "warning", "Python not found");
             }
@@ -285,15 +311,17 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           }
 
           case "ai-clients": {
-            log("ai-clients: refreshing executors");
+            appendLog(nodeId, "Scanning: ~/.claude, ~/.cursor, ~/.codex, ...");
             await executors.refresh();
 
             const availableExecutors = executors.getAvailableExecutors();
-            log("ai-clients: found", availableExecutors.length, "available");
-
             if (availableExecutors.length > 0) {
+              for (const executor of availableExecutors) {
+                appendLog(nodeId, `✓ Found: ${executor.name}`);
+              }
               updateNode(nodeId, "success", undefined, availableExecutors);
             } else {
+              appendLog(nodeId, "⚠ No AI clients detected");
               // AI clients are optional
               updateNode(nodeId, "warning", "No AI clients configured");
             }
@@ -307,15 +335,17 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
       } catch (error) {
         if (isCancellationError(error)) {
           log(`executeNode: ${nodeId} cancelled`);
+          appendLog(nodeId, "⊘ Cancelled");
           updateNode(nodeId, "pending");
         } else {
           const errorMsg = error instanceof Error ? error.message : String(error);
           log(`executeNode: ${nodeId} error`, errorMsg);
+          appendLog(nodeId, `✗ Error: ${errorMsg}`);
           updateNode(nodeId, "error", errorMsg);
         }
       }
     },
-    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode]
+    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode, appendLog]
   );
 
   // Process ready nodes
@@ -344,7 +374,12 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   const retryNode = useCallback(
     (nodeId: string) => {
       log(`retryNode: ${nodeId}`);
+      // Clear the node from running set in case it's stuck
+      runningNodesRef.current.delete(nodeId);
+      // Reset node status to pending
       updateNode(nodeId, "pending");
+      // Set isRunning to true to trigger the effect that processes ready nodes
+      dispatch({ type: "SET_RUNNING", running: true });
     },
     [updateNode]
   );
