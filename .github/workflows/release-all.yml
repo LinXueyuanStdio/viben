@@ -188,7 +188,7 @@ jobs:
 
       # Upload sidecar artifact
       - name: Upload sidecar artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sidecar-${{ matrix.platform }}
           path: apps/desktop/src-tauri/binaries/viben-*
@@ -197,7 +197,7 @@ jobs:
       # Upload CLI build for testing (only on ubuntu)
       - name: Upload CLI build artifact
         if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cli-build
           path: |
@@ -279,7 +279,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cli-test-results
           path: |
@@ -381,7 +381,7 @@ jobs:
           cp scripts/install.sh release-assets/install.sh
 
       - name: Upload CLI assets
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: cli-assets
           path: release-assets/
@@ -640,7 +640,7 @@ jobs:
           ls -la desktop-artifacts/
 
       - name: Upload desktop artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.platform }}
           path: desktop-artifacts/
