@@ -28,6 +28,9 @@
   },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
+    "overrides": {
+      "@swc/helpers": "^0.5.17"
+    },
     "peerDependencyRules": {
       "ignoreMissing": [
         "react",

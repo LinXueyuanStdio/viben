@@ -313,33 +313,27 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
 
+      # Reuse CLI build from build-cli job (already version-synced and built)
+      - name: Download CLI build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-build
+          path: .
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Sync version to all package files
+      - name: Verify CLI build artifacts
         run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-
-          # Update root package.json
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          echo "Updated root package.json to: $(jq -r '.version' package.json)"
-
-          # Update packages/core/package.json (source of __VERSION__ for CLI)
-          cd packages/core
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          echo "Updated packages/core/package.json to: $(jq -r '.version' package.json)"
-          cd ../..
-
-          # Update apps/cli/package.json
-          cd apps/cli
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          echo "Updated apps/cli/package.json to: $(jq -r '.version' package.json)"
-
-      - name: Build CLI package and dependencies
-        run: pnpm --filter viben... build
+          echo "=== CLI artifacts ==="
+          ls -la apps/cli/
+          ls -la apps/cli/dist/
+          ls -la apps/cli/bin/
+          echo "=== Core artifacts ==="
+          ls -la packages/core/dist/
+          echo "=== Version check ==="
+          echo "CLI version: $(jq -r '.version' apps/cli/package.json)"
+          echo "Core version: $(jq -r '.version' packages/core/package.json)"
 
       - name: Verify no workspace protocol references in runtime dependencies
         run: |

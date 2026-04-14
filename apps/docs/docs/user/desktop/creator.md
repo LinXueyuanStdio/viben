@@ -148,6 +148,6 @@ Authentication is handled automatically when you are signed in.
 
 ## Related Documentation
 
-- [Features](./features.md) - Complete feature list
+- [Features](./features) - Complete feature list
 - [MCP Marketplace](/user/mcp/configuration) - Browse and install packages
-- [Skills Management](./features.md#skills-management) - Manage skills
+- [Skills Management](./features#skills-management) - Manage skills

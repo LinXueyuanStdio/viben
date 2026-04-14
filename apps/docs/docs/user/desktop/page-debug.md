@@ -183,6 +183,6 @@ If debug commands fail:
 
 ## Related Documentation
 
-- [Features](./features.md) - Complete feature list
-- [Installation](./installation.md) - Install Viben Desktop
+- [Features](./features) - Complete feature list
+- [Installation](./installation) - Install Viben Desktop
 - [MCP Configuration](/user/mcp/configuration) - General MCP setup
