@@ -6,9 +6,6 @@ import { useAppStore } from "@/stores/app-store";
 import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { WelcomePage } from "./welcome-page";
 import { EnvCheckPage } from "./env-check-page";
-import { StepGateway } from "./step-gateway";
-import { StepPython } from "./step-python";
-import { StepClaude } from "./step-claude";
 import { StepLogin } from "./step-login";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { LANGUAGES } from "@/i18n/languages";
@@ -48,38 +45,11 @@ export function OnboardingWizard() {
 
   const handleEnvCheckComplete = () => {
     completeStep("envCheck");
-    setCurrentStep("gateway");
+    setCurrentStep("login");
   };
 
   const handleEnvCheckBack = () => {
     setCurrentStep("welcome");
-  };
-
-  const handleGatewayComplete = () => {
-    completeStep("gateway");
-    setCurrentStep("python");
-  };
-
-  const handleGatewayBack = () => {
-    setCurrentStep("envCheck");
-  };
-
-  const handlePythonBack = () => {
-    setCurrentStep("gateway");
-  };
-
-  const handlePythonComplete = () => {
-    completeStep("python");
-    setCurrentStep("claude");
-  };
-
-  const handleClaudeComplete = () => {
-    completeStep("claude");
-    setCurrentStep("login");
-  };
-
-  const handleClaudeBack = () => {
-    setCurrentStep("python");
   };
 
   const handleLoginComplete = () => {
@@ -89,7 +59,7 @@ export function OnboardingWizard() {
   };
 
   const handleLoginBack = () => {
-    setCurrentStep("claude");
+    setCurrentStep("envCheck");
   };
 
   return (
@@ -133,15 +103,6 @@ export function OnboardingWizard() {
               onComplete={handleEnvCheckComplete}
               onBack={handleEnvCheckBack}
             />
-          )}
-          {currentStep === "gateway" && (
-            <StepGateway onComplete={handleGatewayComplete} onBack={handleGatewayBack} />
-          )}
-          {currentStep === "python" && (
-            <StepPython onComplete={handlePythonComplete} onBack={handlePythonBack} />
-          )}
-          {currentStep === "claude" && (
-            <StepClaude onComplete={handleClaudeComplete} onBack={handleClaudeBack} />
           )}
           {currentStep === "login" && (
             <StepLogin onComplete={handleLoginComplete} onBack={handleLoginBack} />
