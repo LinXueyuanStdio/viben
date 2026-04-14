@@ -81,7 +81,7 @@
     "@opentelemetry/sdk-node": "^0.212.0",
     "@opentelemetry/sdk-trace-base": "^2.6.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.5.17",
     "chalk": "^5.3.0",
     "cloudflared": "^0.7.1",
     "commander": "^12.1.0",
