@@ -893,6 +893,7 @@ pub async fn install_env(options: InstallEnvOptions, window: Window) -> Result<I
         });
     }
 
+    #[allow(unused_variables)]
     let installer_path = options
         .node_installer_path
         .ok_or("node_installer_path is required when need_node is true")?;
