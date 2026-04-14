@@ -17,7 +17,7 @@ const nodeOnlyPackages = [
   "node-pty",
   // OpenTelemetry packages (use Node.js-specific modules like stream, zlib, http)
   "@opentelemetry/api",
-  "@opentelemetry/instrumentation-fastify",
+  "@fastify/otel",
   "@opentelemetry/instrumentation-http",
   "@opentelemetry/sdk-metrics",
   "@opentelemetry/sdk-node",
