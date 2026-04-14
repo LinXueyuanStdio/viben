@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[177],{10177(e,s,c){c.d(s,{createInfoServices:()=>a.v});var a=c(47620);c(39377)}}]);

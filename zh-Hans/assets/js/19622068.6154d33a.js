@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_viben_docs=self.webpackChunk_viben_docs||[]).push([["6118"],{77708(s){s.exports=JSON.parse('{"name":"docusaurus-plugin-content-docs","id":"cli"}')}}]);

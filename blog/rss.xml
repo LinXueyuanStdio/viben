@@ -16,17 +16,18 @@
             <description><![CDATA[欢迎来到 Viben —— 下一代 Agent Swarm 与代码进化平台！]]></description>
             <content:encoded><![CDATA[<p>欢迎来到 <strong>Viben</strong> —— 下一代 Agent Swarm 与代码进化平台！</p>
 <p>Viben 通过多智能体协作和迭代优化驱动的代码进化，重新定义软件开发体验。</p>
-<h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="什么是-viben">什么是 Viben？<a href="https://linxueyuan.online/viben/blog/welcome#%E4%BB%80%E4%B9%88%E6%98%AF-viben" class="hash-link" aria-label="Direct link to 什么是 Viben？" title="Direct link to 什么是 Viben？" translate="no">​</a></h2>
+<!-- -->
+<h2 class="anchor anchorTargetStickyNavbar_GzAV" id="什么是-viben">什么是 Viben？<a href="https://linxueyuan.online/viben/blog/welcome#%E4%BB%80%E4%B9%88%E6%98%AF-viben" class="hash-link" aria-label="Direct link to 什么是 Viben？" title="Direct link to 什么是 Viben？" translate="no">​</a></h2>
 <p>Viben 是一个融合 <strong>Agent Swarm（智能体集群）</strong> 与 <strong>Code Evolution（代码进化）</strong> 理念的开发平台。它不仅仅是工具，而是一套完整的智能开发生态系统。</p>
-<h3 class="anchor anchorTargetStickyNavbar_Kd7j" id="核心特性">核心特性<a href="https://linxueyuan.online/viben/blog/welcome#%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7" class="hash-link" aria-label="Direct link to 核心特性" title="Direct link to 核心特性" translate="no">​</a></h3>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-fileevo---代码迭代优化">🧬 FileEvo - 代码迭代优化<a href="https://linxueyuan.online/viben/blog/welcome#-fileevo---%E4%BB%A3%E7%A0%81%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96" class="hash-link" aria-label="Direct link to 🧬 FileEvo - 代码迭代优化" title="Direct link to 🧬 FileEvo - 代码迭代优化" translate="no">​</a></h4>
+<h3 class="anchor anchorTargetStickyNavbar_GzAV" id="核心特性">核心特性<a href="https://linxueyuan.online/viben/blog/welcome#%E6%A0%B8%E5%BF%83%E7%89%B9%E6%80%A7" class="hash-link" aria-label="Direct link to 核心特性" title="Direct link to 核心特性" translate="no">​</a></h3>
+<h4 class="anchor anchorTargetStickyNavbar_GzAV" id="-fileevo---代码迭代优化">🧬 FileEvo - 代码迭代优化<a href="https://linxueyuan.online/viben/blog/welcome#-fileevo---%E4%BB%A3%E7%A0%81%E8%BF%AD%E4%BB%A3%E4%BC%98%E5%8C%96" class="hash-link" aria-label="Direct link to 🧬 FileEvo - 代码迭代优化" title="Direct link to 🧬 FileEvo - 代码迭代优化" translate="no">​</a></h4>
 <p>基于启发式评估的代码进化引擎，通过持续迭代让代码自我优化：</p>
 <ul>
 <li class="">自动化代码质量评估</li>
 <li class="">智能重构建议</li>
 <li class="">渐进式性能优化</li>
 </ul>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-multi-agent---智能体集群编排">🤖 Multi-Agent - 智能体集群编排<a href="https://linxueyuan.online/viben/blog/welcome#-multi-agent---%E6%99%BA%E8%83%BD%E4%BD%93%E9%9B%86%E7%BE%A4%E7%BC%96%E6%8E%92" class="hash-link" aria-label="Direct link to 🤖 Multi-Agent - 智能体集群编排" title="Direct link to 🤖 Multi-Agent - 智能体集群编排" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_GzAV" id="-multi-agent---智能体集群编排">🤖 Multi-Agent - 智能体集群编排<a href="https://linxueyuan.online/viben/blog/welcome#-multi-agent---%E6%99%BA%E8%83%BD%E4%BD%93%E9%9B%86%E7%BE%A4%E7%BC%96%E6%8E%92" class="hash-link" aria-label="Direct link to 🤖 Multi-Agent - 智能体集群编排" title="Direct link to 🤖 Multi-Agent - 智能体集群编排" translate="no">​</a></h4>
 <p>多个专业智能体协同工作，各司其职：</p>
 <ul>
 <li class="">代码生成智能体</li>
@@ -34,31 +35,31 @@
 <li class="">测试生成智能体</li>
 <li class="">文档生成智能体</li>
 </ul>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-task-system---xstate-状态机驱动">📋 Task System - XState 状态机驱动<a href="https://linxueyuan.online/viben/blog/welcome#-task-system---xstate-%E7%8A%B6%E6%80%81%E6%9C%BA%E9%A9%B1%E5%8A%A8" class="hash-link" aria-label="Direct link to 📋 Task System - XState 状态机驱动" title="Direct link to 📋 Task System - XState 状态机驱动" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_GzAV" id="-task-system---xstate-状态机驱动">📋 Task System - XState 状态机驱动<a href="https://linxueyuan.online/viben/blog/welcome#-task-system---xstate-%E7%8A%B6%E6%80%81%E6%9C%BA%E9%A9%B1%E5%8A%A8" class="hash-link" aria-label="Direct link to 📋 Task System - XState 状态机驱动" title="Direct link to 📋 Task System - XState 状态机驱动" translate="no">​</a></h4>
 <p>基于 XState 的任务管理系统，让开发流程可视化、可追踪：</p>
 <ul>
 <li class="">任务状态流转：<code>backlog → queue → in_progress → review → completed</code></li>
 <li class="">并发控制与后台执行</li>
 <li class="">Gateway 重启自动恢复</li>
 </ul>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-idea-generation---创意孵化">💡 Idea Generation - 创意孵化<a href="https://linxueyuan.online/viben/blog/welcome#-idea-generation---%E5%88%9B%E6%84%8F%E5%AD%B5%E5%8C%96" class="hash-link" aria-label="Direct link to 💡 Idea Generation - 创意孵化" title="Direct link to 💡 Idea Generation - 创意孵化" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_GzAV" id="-idea-generation---创意孵化">💡 Idea Generation - 创意孵化<a href="https://linxueyuan.online/viben/blog/welcome#-idea-generation---%E5%88%9B%E6%84%8F%E5%AD%B5%E5%8C%96" class="hash-link" aria-label="Direct link to 💡 Idea Generation - 创意孵化" title="Direct link to 💡 Idea Generation - 创意孵化" translate="no">​</a></h4>
 <p>从灵感到实现的完整链路：</p>
 <ul>
 <li class="">需求分析与拆解</li>
 <li class="">技术方案生成</li>
 <li class="">原型快速验证</li>
 </ul>
-<h4 class="anchor anchorTargetStickyNavbar_Kd7j" id="-mcp-protocol---生态集成">🔌 MCP Protocol - 生态集成<a href="https://linxueyuan.online/viben/blog/welcome#-mcp-protocol---%E7%94%9F%E6%80%81%E9%9B%86%E6%88%90" class="hash-link" aria-label="Direct link to 🔌 MCP Protocol - 生态集成" title="Direct link to 🔌 MCP Protocol - 生态集成" translate="no">​</a></h4>
+<h4 class="anchor anchorTargetStickyNavbar_GzAV" id="-mcp-protocol---生态集成">🔌 MCP Protocol - 生态集成<a href="https://linxueyuan.online/viben/blog/welcome#-mcp-protocol---%E7%94%9F%E6%80%81%E9%9B%86%E6%88%90" class="hash-link" aria-label="Direct link to 🔌 MCP Protocol - 生态集成" title="Direct link to 🔌 MCP Protocol - 生态集成" translate="no">​</a></h4>
 <p>兼容 MCP (Model Context Protocol) 标准，无缝对接现有 AI 生态：</p>
 <ul>
 <li class="">与 Claude 等 MCP 客户端深度集成</li>
 <li class="">可扩展的工具集</li>
 <li class="">开放的协议标准</li>
 </ul>
-<h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="开始使用">开始使用<a href="https://linxueyuan.online/viben/blog/welcome#%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8" class="hash-link" aria-label="Direct link to 开始使用" title="Direct link to 开始使用" translate="no">​</a></h2>
-<div class="language-bash codeBlockContainer_SsO1 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_HJin"><pre tabindex="0" class="prism-code language-bash codeBlock_oEfN thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_IBae"><span class="token-line" style="color:#393A34"><span class="token comment" style="color:#999988;font-style:italic"># 安装 Viben CLI</span><span class="token plain"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token function" style="color:#d73a49">pnpm</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">install</span><span class="token plain"> </span><span class="token parameter variable" style="color:#36acaa">-g</span><span class="token plain"> viben</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic"># 初始化项目</span><span class="token plain"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">viben init</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic"># 启动 Gateway</span><span class="token plain"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">viben gateway start</span><br></span></code></pre></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_GzAV" id="开始使用">开始使用<a href="https://linxueyuan.online/viben/blog/welcome#%E5%BC%80%E5%A7%8B%E4%BD%BF%E7%94%A8" class="hash-link" aria-label="Direct link to 开始使用" title="Direct link to 开始使用" translate="no">​</a></h2>
+<div class="language-bash codeBlockContainer_qqAq theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_ZVpS"><pre tabindex="0" class="prism-code language-bash codeBlock_Iz6B thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_D4UM"><div class="token-line" style="color:#393A34"><span class="token comment" style="color:#999988;font-style:italic"># 安装 Viben CLI</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token function" style="color:#d73a49">pnpm</span><span class="token plain"> </span><span class="token function" style="color:#d73a49">install</span><span class="token plain"> </span><span class="token parameter variable" style="color:#36acaa">-g</span><span class="token plain"> viben</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic"># 初始化项目</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain">viben init</span><br></div><div class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token comment" style="color:#999988;font-style:italic"># 启动 Gateway</span><span class="token plain"></span><br></div><div class="token-line" style="color:#393A34"><span class="token plain">viben gateway start</span><br></div></code></pre></div></div>
 <p>查看我们的<a class="" href="https://linxueyuan.online/viben/user/intro">文档</a>了解更多！</p>
-<h2 class="anchor anchorTargetStickyNavbar_Kd7j" id="愿景">愿景<a href="https://linxueyuan.online/viben/blog/welcome#%E6%84%BF%E6%99%AF" class="hash-link" aria-label="Direct link to 愿景" title="Direct link to 愿景" translate="no">​</a></h2>
+<h2 class="anchor anchorTargetStickyNavbar_GzAV" id="愿景">愿景<a href="https://linxueyuan.online/viben/blog/welcome#%E6%84%BF%E6%99%AF" class="hash-link" aria-label="Direct link to 愿景" title="Direct link to 愿景" translate="no">​</a></h2>
 <p>我们相信，未来的软件开发将由智能体集群驱动，代码将像生命一样不断进化。Viben 正是为这个未来而生。</p>
 <p><strong>Agent Swarm × Code Evolution</strong> —— 让代码自己进化。</p>]]></content:encoded>
             <category>announcement</category>

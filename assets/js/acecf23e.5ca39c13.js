@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_viben_docs=self.webpackChunk_viben_docs||[]).push([["3220"],{1912(e){e.exports=JSON.parse('{"blogBasePath":"/viben/blog","blogTitle":"Blog","authorsListPath":"/viben/blog/authors"}')}}]);
