@@ -4,11 +4,16 @@
  * HTTP/WebSocket server for multi-agent orchestration and code evolution.
  * Supports Evo-based agent learning, XState task management, and
  * real-time collaboration through SSE/WebSocket streaming.
- *
- * Note: This module requires fastify as a dependency. It is designed to be
- * optionally loaded only when the gateway server is needed.
  */
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import fastify from "fastify";
 import type { FastifyInstance } from "fastify";
+import fastifyCors from "@fastify/cors";
+import fastifySwagger from "@fastify/swagger";
+import fastifySwaggerUi from "@fastify/swagger-ui";
+import fastifyMultipart from "@fastify/multipart";
+import fastifyWebsocket from "@fastify/websocket";
 import { AppState, createAppState } from "./state";
 import { registerRoutes } from "./routes";
 import { setGatewayStartupConfig } from "./routes/health";
@@ -92,14 +97,11 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     });
   }
 
-  // Dynamically import fastify to keep it optional
-  const fastify = (await import("fastify")).default;
   const app = fastify({ logger: true });
 
   // Enable CORS if configured
   if (cors) {
-    const corsPlugin = await import("@fastify/cors");
-    await app.register(corsPlugin.default, {
+    await app.register(fastifyCors, {
       origin: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [
@@ -122,10 +124,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register Swagger for API documentation
   try {
-    const swaggerPlugin = await import("@fastify/swagger");
-    const swaggerUiPlugin = await import("@fastify/swagger-ui");
-
-    await app.register(swaggerPlugin.default, {
+    await app.register(fastifySwagger, {
       openapi: {
         info: {
           title: "Viben Gateway API",
@@ -150,14 +149,20 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
       },
     });
 
-    await app.register(swaggerUiPlugin.default, {
+    // Determine baseDir for Swagger UI static files
+    // In bundled mode, static files are copied to swagger-ui-static/ alongside the binary
+    const execDir = dirname(process.execPath);
+    const bundledStaticDir = join(execDir, "swagger-ui-static");
+    const swaggerUiBaseDir = existsSync(bundledStaticDir) ? bundledStaticDir : undefined;
+
+    await app.register(fastifySwaggerUi, {
       routePrefix: "/docs",
+      baseDir: swaggerUiBaseDir,
       uiConfig: {
         docExpansion: "list",
         deepLinking: true,
       },
     });
-
     log.info("Swagger API documentation registered at /docs");
   } catch (e) {
     log.warn({ err: e }, "Failed to register Swagger plugin");
@@ -165,8 +170,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Enable multipart file uploads
   try {
-    const multipartPlugin = await import("@fastify/multipart");
-    await app.register(multipartPlugin.default, {
+    await app.register(fastifyMultipart, {
       limits: {
         fileSize: 100 * 1024 * 1024, // 100MB max file size
         files: 10, // Max 10 files per request
@@ -180,8 +184,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   // Register WebSocket plugin once at the top level
   // This prevents ERR_HTTP_SOCKET_ASSIGNED errors when multiple routes try to register it separately
   try {
-    const websocketPlugin = await import("@fastify/websocket");
-    await app.register(websocketPlugin.default);
+    await app.register(fastifyWebsocket);
     log.info("WebSocket plugin registered");
   } catch (e) {
     log.warn({ err: e }, "Failed to register WebSocket plugin");

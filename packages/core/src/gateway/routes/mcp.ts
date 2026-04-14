@@ -1553,8 +1553,18 @@ async function checkPortStatus(port: number): Promise<PortStatus> {
 
     try {
       const { stdout } = await execAsync(command, { timeout: 5000 });
-      const pidStr = stdout.trim().split("\n")[0];
-      const pid = parseInt(pidStr, 10);
+      const firstLine = stdout.trim().split("\n")[0];
+      let pid: number;
+
+      if (platform === "win32") {
+        // Windows netstat output: TCP    127.0.0.1:18790    0.0.0.0:0    LISTENING    12345
+        // PID is the last column
+        const parts = firstLine.trim().split(/\s+/);
+        pid = parseInt(parts[parts.length - 1], 10);
+      } else {
+        // Unix lsof -t output: just the PID
+        pid = parseInt(firstLine, 10);
+      }
 
       if (isNaN(pid)) {
         return { in_use: false, pid: null, process_name: null };
@@ -1566,6 +1576,14 @@ async function checkPortStatus(port: number): Promise<PortStatus> {
         if (platform === "darwin" || platform === "linux") {
           const { stdout: psOutput } = await execAsync(`ps -p ${pid} -o comm=`);
           processName = psOutput.trim();
+        } else if (platform === "win32") {
+          // Windows: use tasklist to get process name
+          const { stdout: taskOutput } = await execAsync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`);
+          // Output: "node.exe","12345","Console","1","50,000 K"
+          const match = taskOutput.match(/"([^"]+)"/);
+          if (match) {
+            processName = match[1];
+          }
         }
       } catch {
         // Ignore process name lookup failures

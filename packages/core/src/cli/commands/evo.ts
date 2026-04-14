@@ -15,7 +15,7 @@
 
 import chalk from "chalk";
 import type { Command } from "commander";
-import { writeFileSync, existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync, readFileSync } from "node:fs";
 import { join, basename, dirname, resolve } from "node:path";
 
 import type { OutputContext } from "../types";
@@ -904,7 +904,6 @@ export function registerEvoCommand(program: Command): void {
           };
         };
 
-        const { readdirSync, statSync, readFileSync } = await import("node:fs");
         const foundIdeaIds = new Set<string>();
 
         // 1. Check Evo directory structure: .viben/evo/<name>/iter{N}/<idea-id>/idea.md
@@ -1694,7 +1693,6 @@ export function registerEvoCommand(program: Command): void {
           // Find task from idea directory
           const ideaDir = join(iterDir, options.idea);
           if (existsSync(ideaDir)) {
-            const { readdirSync, statSync } = await import("node:fs");
             const taskDirs = readdirSync(ideaDir).filter(f =>
               statSync(join(ideaDir, f)).isDirectory()
             );

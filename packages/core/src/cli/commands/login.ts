@@ -3,6 +3,7 @@
  */
 import { createInterface } from "node:readline";
 import chalk from "chalk";
+import open from "open";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -53,7 +54,6 @@ async function promptConfirm(prompt: string): Promise<boolean> {
  */
 async function openBrowser(url: string): Promise<boolean> {
   try {
-    const open = (await import("open")).default;
     await open(url);
     return true;
   } catch {

@@ -35,13 +35,35 @@ const DEFAULT_LOG_LEVEL = "info";
 const DEFAULT_AGENT = "main";
 
 /**
- * Find process ID using a specific port
+ * Find process ID using a specific port (cross-platform)
  */
 function findProcessOnPort(port: number): number | null {
   try {
-    const result = execSync(`lsof -ti :${port}`, { encoding: "utf-8" });
-    const pid = parseInt(result.trim().split("\n")[0], 10);
-    return isNaN(pid) ? null : pid;
+    const isWindows = process.platform === "win32";
+    let result: string;
+
+    if (isWindows) {
+      // Windows: use netstat to find process on port
+      // netstat -ano | findstr :18790 | findstr LISTENING
+      result = execSync(
+        `netstat -ano | findstr :${port} | findstr LISTENING`,
+        { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
+      );
+      // Output format: TCP    127.0.0.1:18790    0.0.0.0:0    LISTENING    12345
+      // PID is the last column
+      const lines = result.trim().split("\n");
+      if (lines.length > 0) {
+        const parts = lines[0].trim().split(/\s+/);
+        const pid = parseInt(parts[parts.length - 1], 10);
+        return isNaN(pid) ? null : pid;
+      }
+      return null;
+    } else {
+      // Unix: use lsof
+      result = execSync(`lsof -ti :${port}`, { encoding: "utf-8" });
+      const pid = parseInt(result.trim().split("\n")[0], 10);
+      return isNaN(pid) ? null : pid;
+    }
   } catch {
     return null;
   }
