@@ -209,71 +209,104 @@ jobs:
           retention-days: 1
 
   # =============================================================================
-  # TEST CLI: Run integration tests before release (must pass to continue)
+  # TEST CLI: Run integration tests on bundled sidecar binaries (multi-platform)
   # =============================================================================
   test-cli:
     needs: [prepare, build-cli]
-    runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            binary: viben-aarch64-apple-darwin
+            test_script: scripts/macos/test-cli-gateway.sh
+          - platform: windows-latest
+            binary: viben-x86_64-pc-windows-msvc.exe
+            test_script: scripts/windows/test-cli-gateway.bat
+          - platform: ubuntu-22.04
+            binary: viben-x86_64-unknown-linux-gnu
+            test_script: scripts/linux/test-cli-gateway.sh
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Download the sidecar binary built by build-cli
+      - name: Download sidecar artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: sidecar-${{ matrix.platform }}
+          path: .
+
+      - name: List sidecar binaries
+        shell: bash
+        run: ls -la
+
+      - name: Make binary executable (Unix)
+        if: matrix.platform != 'windows-latest'
+        run: chmod +x "${{ matrix.binary }}"
+
+      # Run platform-specific bundled CLI + gateway test script (Unix)
+      - name: Run bundled CLI + gateway tests (Unix)
+        if: matrix.platform != 'windows-latest'
+        shell: bash
+        run: |
+          chmod +x "${{ matrix.test_script }}"
+          "${{ matrix.test_script }}" "./${{ matrix.binary }}"
+
+      # Run platform-specific bundled CLI + gateway test script (Windows)
+      - name: Run bundled CLI + gateway tests (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: cmd
+        run: ${{ matrix.test_script }} "${{ matrix.binary }}"
+
+      # Ubuntu-only: also run Node.js CLI integration tests
       - name: Setup Node.js
+        if: matrix.platform == 'ubuntu-22.04'
         uses: actions/setup-node@v6
         with:
           node-version: '22'
 
       - name: Setup pnpm
+        if: matrix.platform == 'ubuntu-22.04'
         uses: pnpm/action-setup@v6
 
       - name: Download CLI build artifact
+        if: matrix.platform == 'ubuntu-22.04'
         uses: actions/download-artifact@v8
         with:
           name: cli-build
           path: .
 
-      # Install dependencies to simulate real npm install scenario.
-      # When users run `npm install -g viben`, npm automatically installs
-      # all dependencies declared in package.json (yaml, chalk, etc.).
       - name: Install dependencies
+        if: matrix.platform == 'ubuntu-22.04'
         run: pnpm install --frozen-lockfile
 
-      - name: Verify downloaded artifacts
-        run: |
-          echo "=== CLI artifacts ==="
-          ls -la apps/cli/
-          ls -la apps/cli/dist/ || echo "No dist folder"
-          ls -la apps/cli/bin/ || echo "No bin folder"
-          echo "=== Core artifacts ==="
-          ls -la packages/core/
-          ls -la packages/core/dist/ || echo "No dist folder"
-
-      - name: Make CLI executable
+      - name: Make Node.js CLI executable
+        if: matrix.platform == 'ubuntu-22.04'
         run: chmod +x apps/cli/bin/viben.js
 
-      - name: Run CLI integration tests
+      - name: Run Node.js CLI integration tests
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           chmod +x scripts/test-cli.sh
           ./scripts/test-cli.sh --local
 
       - name: Test CLI via npx simulation
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
-          # Create a temporary directory and test the built CLI
           TEST_DIR=$(mktemp -d)
           cd "$TEST_DIR"
 
-          # Link the built CLI globally
           npm link "$GITHUB_WORKSPACE/apps/cli"
 
-          # Test basic commands
           viben --version
           viben --help
           viben init --user ci-test -y
           viben config list
           viben --json config list | jq .
 
-          # Cleanup
           npm unlink -g viben
           rm -rf "$TEST_DIR"
 
@@ -281,7 +314,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cli-test-results
+          name: cli-test-results-${{ matrix.platform }}
           path: |
             test-results/
             *.log
