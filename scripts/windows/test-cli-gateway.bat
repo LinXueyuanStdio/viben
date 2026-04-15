@@ -39,6 +39,9 @@ echo   Viben Bundled CLI Test (Windows)
 echo   Binary: %VIBEN%
 echo.
 
+REM Save original directory for CI log visibility
+set "ORIG_DIR=%CD%"
+
 REM Create temp test directory
 set "TEST_DIR=%TEMP%\viben-test-%RANDOM%"
 mkdir "%TEST_DIR%"
@@ -115,7 +118,8 @@ REM gateway status (expect stopped)
 call :pass "gateway status (stopped)"
 
 echo   [INFO] Starting gateway on port %GATEWAY_PORT%...
-start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% >nul 2>&1
+set "GATEWAY_LOG=%TEST_DIR%\gateway.log"
+start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% >"%GATEWAY_LOG%" 2>&1
 
 REM Wait for gateway to be ready (up to 30 seconds)
 set READY=false
@@ -151,6 +155,15 @@ if "%READY%"=="true" (
     ) else (
         call :fail "/api unexpected response"
     )
+
+    REM Test /ws WebSocket endpoint
+    set WS_OK=false
+    powershell -NoProfile -Command "try { $ws = New-Object System.Net.WebSockets.ClientWebSocket; $uri = [System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws'); $cts = New-Object System.Threading.CancellationTokenSource(5000); $ws.ConnectAsync($uri, $cts.Token).Wait(); if ($ws.State -eq 'Open') { $buf = [System.Text.Encoding]::UTF8.GetBytes('{\"type\":\"Ping\"}'); $seg = [System.ArraySegment[byte]]::new($buf); $ws.SendAsync($seg, 'Text', $true, $cts.Token).Wait(); $rbuf = New-Object byte[] 1024; $rseg = [System.ArraySegment[byte]]::new($rbuf); $result = $ws.ReceiveAsync($rseg, $cts.Token).GetAwaiter().GetResult(); $resp = [System.Text.Encoding]::UTF8.GetString($rbuf, 0, $result.Count); if ($resp -match 'Pong') { exit 0 } else { exit 1 } } else { exit 1 }; $ws.Dispose() } catch { exit 1 }" >nul 2>&1
+    if !errorlevel! equ 0 (
+        call :pass "/ws WebSocket Ping/Pong"
+    ) else (
+        call :fail "/ws WebSocket Ping/Pong"
+    )
 ) else (
     call :fail "gateway did not become ready within 30s"
 )
@@ -170,6 +183,16 @@ if %errorlevel% equ 0 (
     call :pass "port %GATEWAY_PORT% released after stop"
 )
 
+REM Print gateway log for CI visibility
+echo.
+echo   Gateway startup log
+echo   ----------------------------------------------
+if exist "%GATEWAY_LOG%" (
+    type "%GATEWAY_LOG%"
+) else (
+    echo   [INFO] No gateway log file found
+)
+
 REM ===== Summary =====
 
 echo.
@@ -180,7 +203,10 @@ echo   Passed: %PASSED_TESTS%
 echo   Failed: %FAILED_TESTS%
 echo.
 
-REM Cleanup
+REM Cleanup - save gateway log first
+if exist "%GATEWAY_LOG%" (
+    copy "%GATEWAY_LOG%" "%ORIG_DIR%\gateway-startup.log" >nul 2>&1
+)
 cd /d "%TEMP%"
 rmdir /S /Q "%TEST_DIR%" 2>nul
 
@@ -214,8 +240,8 @@ goto :eof
 REM %~1 = name, %~2 = command, %~3 = expected string
 set "RTO_NAME=%~1"
 set "RTO_EXPECTED=%~3"
-for /f "delims=" %%o in ('%~2 2^>^&1') do set "RTO_OUTPUT=%%o"
-echo !RTO_OUTPUT! | findstr /C:"%RTO_EXPECTED%" >nul 2>&1
+%~2 > "%TEST_DIR%\test_output.tmp" 2>&1
+findstr /C:"%RTO_EXPECTED%" "%TEST_DIR%\test_output.tmp" >nul 2>&1
 if !errorlevel! equ 0 (
     call :pass "%RTO_NAME%"
 ) else (
@@ -226,8 +252,8 @@ goto :eof
 :run_test_json
 REM %~1 = name, %~2 = command
 set "RTJ_NAME=%~1"
-for /f "delims=" %%o in ('%~2 2^>^&1') do set "RTJ_OUTPUT=%%o"
-echo !RTJ_OUTPUT! | findstr /C:"{" >nul 2>&1
+%~2 > "%TEST_DIR%\test_output.tmp" 2>&1
+findstr /C:"{" "%TEST_DIR%\test_output.tmp" >nul 2>&1
 if !errorlevel! equ 0 (
     call :pass "%RTJ_NAME%"
 ) else (

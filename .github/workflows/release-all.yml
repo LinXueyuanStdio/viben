@@ -261,6 +261,18 @@ jobs:
         shell: cmd
         run: ${{ matrix.test_script }} "${{ matrix.binary }}"
 
+      # Print gateway startup log for CI visibility
+      - name: Print gateway startup log
+        if: always()
+        shell: bash
+        run: |
+          echo "=== Gateway Startup Log ==="
+          if [ -f "gateway-startup.log" ]; then
+            cat gateway-startup.log
+          else
+            echo "No gateway-startup.log found (gateway may not have started)"
+          fi
+
       # Ubuntu-only: also run Node.js CLI integration tests
       - name: Setup Node.js
         if: matrix.platform == 'ubuntu-22.04'
