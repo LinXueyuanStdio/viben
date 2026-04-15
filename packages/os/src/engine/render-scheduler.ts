@@ -44,7 +44,8 @@ export class RenderScheduler {
   private _frame(time: number): void {
     this._rafId = null;
     if (this._disposed) return;
-    const dt = this._lastTime === 0 ? 16 : time - this._lastTime;
+    const rawDt = this._lastTime === 0 ? 16 : Math.min(time - this._lastTime, 100);
+    const dt = rawDt / 1000;
     this._lastTime = time;
     this._dirty = false;
     this._renderFn(dt);

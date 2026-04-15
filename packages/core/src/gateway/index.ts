@@ -187,8 +187,8 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     log.warn({ err: e }, "Failed to register WebSocket plugin");
   }
 
-  // Create application state
-  const state = createAppState();
+  // Create application state with configured host/port
+  const state = createAppState({ host, port });
 
   // Register routes
   registerRoutes(app, state);

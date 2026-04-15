@@ -22,10 +22,11 @@ function parseColorInto(out: Vector4, color: string, alpha = 1): void {
     return;
   }
   const c = color.replace("#", "");
+  const hex = c.length === 3 ? c[0] + c[0] + c[1] + c[1] + c[2] + c[2] : c;
   out.set(
-    parseInt(c.substring(0, 2), 16) / 255,
-    parseInt(c.substring(2, 4), 16) / 255,
-    parseInt(c.substring(4, 6), 16) / 255,
+    parseInt(hex.substring(0, 2), 16) / 255,
+    parseInt(hex.substring(2, 4), 16) / 255,
+    parseInt(hex.substring(4, 6), 16) / 255,
     alpha,
   );
 }

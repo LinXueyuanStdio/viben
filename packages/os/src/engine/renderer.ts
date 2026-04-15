@@ -45,7 +45,7 @@ export class Renderer {
         const { WebGPURenderer } = await import("three/webgpu");
         const gpuRenderer = new WebGPURenderer({ canvas: this._canvas, antialias: true });
         await gpuRenderer.init();
-        gpuRenderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO));
+        gpuRenderer.setPixelRatio(Math.min(globalThis.devicePixelRatio ?? 1, MAX_PIXEL_RATIO));
         this._renderer = gpuRenderer;
         this._useWebGPU = true;
         this._initialized = true;

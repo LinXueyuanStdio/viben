@@ -21,36 +21,28 @@ export function registerMeshRoutes(fastify: FastifyInstance, state: AppState): v
 
   // --- WebSocket: peer-to-peer gateway connections ---
   fastify.get("/api/mesh/ws", { websocket: true }, (socket: any) => {
-    let authenticated = false;
-
     const timeout = setTimeout(() => {
-      if (!authenticated) {
-        socket.send(JSON.stringify({ type: "Error", data: { error: "handshake_timeout" } }));
-        socket.close(4000, "handshake_timeout");
-      }
+      socket.send(JSON.stringify({ type: "Error", data: { error: "handshake_timeout" } }));
+      socket.close(4000, "handshake_timeout");
     }, 10000);
 
-    socket.on("message", (data: Buffer) => {
+    const onHandshake = (data: Buffer) => {
       try {
         const msg = JSON.parse(data.toString()) as MeshMessage;
-
-        if (!authenticated) {
-          if (msg.type !== "Hello") {
-            socket.send(JSON.stringify({ type: "Error", data: { error: "expected_hello" } }));
-            return;
-          }
-          clearTimeout(timeout);
-          authenticated = true;
-          mesh.acceptPeer(socket, msg.data);
+        if (msg.type !== "Hello") {
+          socket.send(JSON.stringify({ type: "Error", data: { error: "expected_hello" } }));
           return;
         }
-
-        // Post-handshake messages are handled by MeshService via PeerConnection
+        clearTimeout(timeout);
+        // Remove this listener — PeerConnection takes over message handling
+        socket.removeListener("message", onHandshake);
+        mesh.acceptPeer(socket, msg.data);
       } catch {
         socket.send(JSON.stringify({ type: "Error", data: { error: "parse_error" } }));
       }
-    });
+    };
 
+    socket.on("message", onHandshake);
     socket.on("close", () => clearTimeout(timeout));
     socket.on("error", () => clearTimeout(timeout));
   });

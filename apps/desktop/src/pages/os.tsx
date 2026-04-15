@@ -11,7 +11,6 @@ export function OsPage() {
 
     let disposed = false;
     const renderer = new Renderer(canvas);
-    let cleanup: (() => void) | undefined;
 
     (async () => {
       await renderer.init();
@@ -22,9 +21,14 @@ export function OsPage() {
 
       renderer.resize(window.innerWidth, window.innerHeight);
 
-      const scheduler = new RenderScheduler((dt) => {
+      const scheduler = new RenderScheduler((_dt) => {
         renderer.render();
       });
+      if (disposed) {
+        scheduler.dispose();
+        renderer.dispose();
+        return;
+      }
       scheduler.markDirty();
 
       const onResize = () => {
@@ -33,16 +37,26 @@ export function OsPage() {
       };
       window.addEventListener("resize", onResize);
 
-      cleanup = () => {
+      // Check once more after all setup — if disposed during setup, tear down immediately
+      if (disposed) {
+        window.removeEventListener("resize", onResize);
+        scheduler.dispose();
+        renderer.dispose();
+        return;
+      }
+
+      // Store teardown for the effect cleanup
+      teardown = () => {
         window.removeEventListener("resize", onResize);
         scheduler.dispose();
         renderer.dispose();
       };
     })();
 
+    let teardown: (() => void) | undefined;
     return () => {
       disposed = true;
-      cleanup?.();
+      teardown?.();
     };
   }, []);
 

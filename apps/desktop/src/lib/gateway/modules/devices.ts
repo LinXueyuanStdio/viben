@@ -4,6 +4,15 @@
  */
 
 import type { DeviceInfo } from "../../../stores/device-store";
+import { GatewayError } from "../error";
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new GatewayError(text || res.statusText, res.status);
+  }
+  return res.json();
+}
 
 export interface DeviceListResponse {
   devices: DeviceInfo[];
@@ -34,17 +43,17 @@ export interface SendMessageResponse {
 
 export async function getDevices(baseUrl: string): Promise<DeviceListResponse> {
   const res = await fetch(`${baseUrl}/api/devices`);
-  return res.json();
+  return handleResponse<DeviceListResponse>(res);
 }
 
 export async function getDevice(baseUrl: string, id: string): Promise<DeviceInfo> {
   const res = await fetch(`${baseUrl}/api/devices/${id}`);
-  return res.json();
+  return handleResponse<DeviceInfo>(res);
 }
 
 export async function getDeviceQr(baseUrl: string): Promise<QrResponse> {
   const res = await fetch(`${baseUrl}/api/devices/qr`);
-  return res.json();
+  return handleResponse<QrResponse>(res);
 }
 
 export async function sendDeviceMessage(baseUrl: string, req: SendMessageRequest): Promise<SendMessageResponse> {
@@ -53,12 +62,12 @@ export async function sendDeviceMessage(baseUrl: string, req: SendMessageRequest
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req),
   });
-  return res.json();
+  return handleResponse<SendMessageResponse>(res);
 }
 
 export async function getMeshPeers(baseUrl: string): Promise<{ peers: unknown[] }> {
   const res = await fetch(`${baseUrl}/api/mesh/peers`);
-  return res.json();
+  return handleResponse<{ peers: unknown[] }>(res);
 }
 
 export async function connectMeshPeer(baseUrl: string, address: string): Promise<{ status: string }> {
@@ -67,5 +76,5 @@ export async function connectMeshPeer(baseUrl: string, address: string): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ address }),
   });
-  return res.json();
+  return handleResponse<{ status: string }>(res);
 }

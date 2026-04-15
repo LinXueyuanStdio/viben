@@ -53,7 +53,7 @@ export class MeshService {
         name: info.name,
         lan: info.address,
         last_seen: new Date().toISOString(),
-      });
+      }).catch(() => {/* persistence is best-effort */});
       this.broadcastToPeers(
         { type: "PeerJoined", data: info },
         info.gateway_id,
@@ -104,7 +104,7 @@ export class MeshService {
       name: remoteInfo.name,
       lan: remoteInfo.address,
       last_seen: new Date().toISOString(),
-    });
+    }).catch(() => {/* persistence is best-effort */});
     this.broadcastToPeers(
       { type: "PeerJoined", data: remoteInfo },
       remoteInfo.gateway_id,
@@ -119,10 +119,7 @@ export class MeshService {
     }
     const conn = this.peers.get(msg.to_gateway);
     if (conn) return conn.send({ type: "DeviceMessage", data: msg });
-    // Try 1-hop relay: send to any connected peer
-    for (const [, peerConn] of this.peers) {
-      if (peerConn.send({ type: "DeviceMessage", data: msg })) return true;
-    }
+    // Target not directly connected — no blind relay to avoid silent drops
     return false;
   }
 
@@ -199,22 +196,31 @@ export class MeshService {
       }
       case "PeerJoined":
         this.events.broadcast({
-          type: "device_connected",
-          data: { device: msg.data },
-        } as any);
+          type: "mesh_peer_joined",
+          data: {
+            gateway_id: msg.data.gateway_id,
+            name: msg.data.name,
+            address: msg.data.address ?? "",
+          },
+        });
         break;
       case "PeerLeft":
         this.events.broadcast({
-          type: "device_disconnected",
-          data: { device_id: msg.data.gateway_id },
+          type: "mesh_peer_left",
+          data: { gateway_id: msg.data.gateway_id },
         });
         break;
-      case "DeviceEvent":
-        this.events.broadcast({
-          type: msg.data.type,
-          data: msg.data,
-        } as any);
+      case "DeviceEvent": {
+        const evt = msg.data;
+        if (evt.type === "device_connected" && evt.device) {
+          this.events.broadcast({ type: "device_connected", data: { device: evt.device } });
+        } else if (evt.type === "device_disconnected" && evt.device_id) {
+          this.events.broadcast({ type: "device_disconnected", data: { device_id: evt.device_id } });
+        } else if (evt.type === "device_updated" && evt.device) {
+          this.events.broadcast({ type: "device_updated", data: { device: evt.device } });
+        }
         break;
+      }
     }
   }
 

@@ -1,5 +1,4 @@
-import { Group, Mesh } from "three";
-import type { Material } from "three";
+import { Group } from "three";
 import { ScrollView } from "./scroll-view";
 import type { ScrollViewConfig } from "./scroll-view";
 
@@ -41,11 +40,6 @@ export class List<T> extends ScrollView {
 
   private _clearItems(): void {
     for (const g of this._itemGroups) {
-      g.traverse((child) => {
-        if (child instanceof Mesh) {
-          (child.material as Material).dispose();
-        }
-      });
       g.removeFromParent();
     }
     this._itemGroups.length = 0;

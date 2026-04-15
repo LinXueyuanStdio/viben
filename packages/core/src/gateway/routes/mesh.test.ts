@@ -20,10 +20,11 @@ interface MockSocket {
   send: Mock;
   on: Mock;
   close: Mock;
+  removeListener: Mock;
 }
 
 function createMockSocket(): MockSocket {
-  return { send: vi.fn(), on: vi.fn(), close: vi.fn() };
+  return { send: vi.fn(), on: vi.fn(), close: vi.fn(), removeListener: vi.fn() };
 }
 
 function createMockMeshService() {

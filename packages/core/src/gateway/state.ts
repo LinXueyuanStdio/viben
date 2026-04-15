@@ -62,10 +62,18 @@ export interface AppState {
   discovery: DiscoveryService;
 }
 
+export interface AppStateConfig {
+  /** Gateway host (default: "127.0.0.1") */
+  host?: string;
+  /** Gateway port (default: 18790) */
+  port?: number;
+}
+
 /**
  * Create application state with default services
  */
-export function createAppState(): AppState {
+export function createAppState(config: AppStateConfig = {}): AppState {
+  const { host = "127.0.0.1", port = 18790 } = config;
   const events = new EventService();
   const sessionStore = new SessionStoreService();
   const cron = new CronService(events);
@@ -140,7 +148,7 @@ export function createAppState(): AppState {
     name: `viben-${gatewayId.slice(0, 8)}`,
     version: "1.0.0",
     capabilities: ["navigate", "notify", "ping"],
-    address: "http://127.0.0.1:18790",
+    address: `http://${host}:${port}`,
   };
   const mesh = new MeshService(events, deviceRegistry, peerStore, localInfo);
 
@@ -149,7 +157,7 @@ export function createAppState(): AppState {
     gateway_id: gatewayId,
     name: localInfo.name,
     version: "1.0.0",
-    port: 18790,
+    port,
   });
 
   // Wire mDNS discovery to mesh auto-connect
