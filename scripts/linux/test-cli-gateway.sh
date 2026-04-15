@@ -171,7 +171,8 @@ section "Gateway tests"
 run_test "gateway status (stopped)" "$VIBEN gateway status --port $GATEWAY_PORT || true"
 
 info "Starting gateway on port $GATEWAY_PORT..."
-$VIBEN gateway serve --port $GATEWAY_PORT &
+GATEWAY_LOG="$TEST_DIR/gateway.log"
+$VIBEN gateway serve --port $GATEWAY_PORT > "$GATEWAY_LOG" 2>&1 &
 GATEWAY_PID=$!
 info "Gateway PID: $GATEWAY_PID"
 
@@ -204,6 +205,19 @@ if [ "$READY" = true ]; then
     else
         fail "/api unexpected response: $API"
     fi
+
+    # Test /ws WebSocket endpoint
+    WS_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+      -H "Connection: Upgrade" \
+      -H "Upgrade: websocket" \
+      -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+      -H "Sec-WebSocket-Version: 13" \
+      "http://127.0.0.1:$GATEWAY_PORT/ws" 2>&1 || echo "000")
+    if [ "$WS_STATUS" = "101" ]; then
+        success "/ws WebSocket upgrade (101)"
+    else
+        fail "/ws WebSocket upgrade (status=$WS_STATUS)"
+    fi
 else
     fail "gateway did not become ready within 30s"
 fi
@@ -220,6 +234,14 @@ if curl -sf "http://127.0.0.1:$GATEWAY_PORT/health" > /dev/null 2>&1; then
     fail "port $GATEWAY_PORT still in use after stop"
 else
     success "port $GATEWAY_PORT released after stop"
+fi
+
+# Print gateway log for CI visibility
+section "Gateway startup log"
+if [ -f "$GATEWAY_LOG" ]; then
+    cat "$GATEWAY_LOG"
+else
+    echo "  [INFO] No gateway log file found"
 fi
 
 # ===== Summary =====
