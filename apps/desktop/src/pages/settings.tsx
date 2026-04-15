@@ -11,7 +11,6 @@ import {
   HardDrive,
   Info,
   ExternalLink,
-  Github,
   CheckCircle2,
   XCircle,
   Home,
@@ -39,6 +38,7 @@ import {
   AlertTriangle,
   Type,
 } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

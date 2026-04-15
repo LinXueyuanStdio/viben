@@ -17,7 +17,8 @@ import Meta from "@lobehub/icons/es/Meta";
 import Groq from "@lobehub/icons/es/Groq";
 import Cohere from "@lobehub/icons/es/Cohere";
 import HuggingFace from "@lobehub/icons/es/HuggingFace";
-import { Bot, Sparkles, Terminal, Github } from "lucide-react";
+import { Bot, Sparkles, Terminal } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import type { ExecutorType } from "@/types";
 import i18n from "@/i18n";
 

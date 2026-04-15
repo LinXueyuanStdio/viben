@@ -12,7 +12,6 @@ import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Github,
   Loader2,
   ArrowLeft,
   CircleDot,
@@ -34,6 +33,7 @@ import {
   RefreshCw,
   CircleX,
 } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

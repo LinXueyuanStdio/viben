@@ -6,9 +6,9 @@ import Link from 'next/link';
 import {
   ArrowRight,
   ChevronRight,
-  Github,
   Globe,
 } from 'lucide-react';
+import { GithubIcon as Github } from '@/components/ui/icons';
 import { useTranslation } from 'react-i18next';
 import {
   LANGUAGES,

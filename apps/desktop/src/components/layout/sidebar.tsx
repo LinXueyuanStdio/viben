@@ -23,10 +23,10 @@ import {
   Check,
   ListTodo,
   Trash2,
-  Github,
   ExternalLink,
   Lightbulb,
 } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";

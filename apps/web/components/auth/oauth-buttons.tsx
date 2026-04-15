@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Github } from 'lucide-react';
+import { GithubIcon as Github } from '@/components/ui/icons';
 
 export function OAuthButtons() {
   const { t } = useTranslation();
