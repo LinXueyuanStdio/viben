@@ -1,0 +1,342 @@
+name: Release Mobile App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.1). Leave empty to use version from tauri.conf.json'
+        required: false
+        type: string
+      draft:
+        description: 'Create as draft release'
+        type: boolean
+        default: true
+      target:
+        description: 'Build target'
+        type: choice
+        options:
+          - both
+          - android
+          - ios
+        default: both
+  push:
+    tags:
+      - 'mobile-v*'
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-mobile-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # Determine the version to release
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag: ${{ steps.get-version.outputs.tag }}
+      is_draft: ${{ steps.get-version.outputs.is_draft }}
+      build_android: ${{ steps.get-version.outputs.build_android }}
+      build_ios: ${{ steps.get-version.outputs.build_ios }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Get version
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+            else
+              VERSION=$(jq -r '.version' apps/desktop/src-tauri/tauri.conf.json)
+            fi
+            IS_DRAFT="${{ inputs.draft }}"
+            TARGET="${{ inputs.target }}"
+          else
+            # Tag trigger - extract version from tag (mobile-v0.1.0 -> 0.1.0)
+            VERSION="${GITHUB_REF_NAME#mobile-v}"
+            IS_DRAFT="false"
+            TARGET="both"
+          fi
+
+          BUILD_ANDROID="false"
+          BUILD_IOS="false"
+          if [[ "$TARGET" == "both" || "$TARGET" == "android" ]]; then
+            BUILD_ANDROID="true"
+          fi
+          if [[ "$TARGET" == "both" || "$TARGET" == "ios" ]]; then
+            BUILD_IOS="true"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=mobile-v${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
+          echo "build_android=${BUILD_ANDROID}" >> $GITHUB_OUTPUT
+          echo "build_ios=${BUILD_IOS}" >> $GITHUB_OUTPUT
+          echo "Building mobile version: ${VERSION} (android=${BUILD_ANDROID}, ios=${BUILD_IOS})"
+
+  # Build Android APK/AAB
+  build-android:
+    needs: prepare
+    if: needs.prepare.outputs.build_android == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: android
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm turbo build --filter=@viben/desktop^...
+
+      - name: Update version in tauri.conf.json
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd apps/desktop/src-tauri
+          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+
+      - name: Initialize Android project
+        working-directory: apps/desktop
+        run: pnpm tauri android init
+
+      - name: Build Android APK (unsigned)
+        working-directory: apps/desktop
+        run: pnpm tauri android build --apk
+
+      - name: Collect Android artifacts
+        run: |
+          mkdir -p release-artifacts
+          find apps/desktop/src-tauri/gen/android -name "*.apk" -exec cp {} release-artifacts/ \;
+          find apps/desktop/src-tauri/gen/android -name "*.aab" -exec cp {} release-artifacts/ \; 2>/dev/null || true
+          echo "Collected artifacts:"
+          ls -la release-artifacts/
+
+      - name: Upload Android artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
+          body: |
+            ## Viben Mobile v${{ needs.prepare.outputs.version }}
+
+            ### Installation
+
+            #### Android
+            - Download the `.apk` file
+            - Enable "Install from unknown sources" in Settings if prompted
+            - Open the APK to install
+
+            ### Notes
+
+            This is a lightweight mobile companion app for Viben.
+            Connect to your desktop Viben instance by scanning the QR code.
+
+            ### Checksums
+
+            See `checksums.txt` attached to this release for SHA256 checksums.
+
+            ### Changes
+
+            See [CHANGELOG](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md) for details.
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          files: release-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build iOS IPA
+  build-ios:
+    needs: prepare
+    if: needs.prepare.outputs.build_ios == 'true'
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: ios
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm turbo build --filter=@viben/desktop^...
+
+      - name: Update version in tauri.conf.json
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd apps/desktop/src-tauri
+          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+
+      - name: Initialize iOS project
+        working-directory: apps/desktop
+        run: pnpm tauri ios init
+
+      - name: Build iOS (unsigned)
+        working-directory: apps/desktop
+        run: pnpm tauri ios build --export-method debugging
+
+      - name: Collect iOS artifacts
+        run: |
+          mkdir -p release-artifacts
+          find apps/desktop/src-tauri/gen/apple -name "*.ipa" -exec cp {} release-artifacts/ \; 2>/dev/null || true
+          find apps/desktop/src-tauri/gen/apple -name "*.app" -exec cp -r {} release-artifacts/ \; 2>/dev/null || true
+          echo "Collected artifacts:"
+          ls -la release-artifacts/
+
+      - name: Upload iOS artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          files: release-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Generate checksums after all builds complete
+  checksums:
+    needs: [prepare, build-android, build-ios]
+    if: always() && needs.prepare.result == 'success' && (needs.build-android.result == 'success' || needs.build-ios.result == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Publish draft release
+        if: needs.prepare.outputs.is_draft == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+        run: |
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases | \
+            jq -r --arg tag "$TAG_NAME" '.[] | select(.tag_name == $tag and .draft == true) | .id')
+
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Publishing draft release ID: $RELEASE_ID"
+            gh api -X PATCH repos/${{ github.repository }}/releases/$RELEASE_ID \
+              -f draft=false
+            echo "Release published successfully"
+            sleep 5
+          else
+            echo "No draft release found with tag $TAG_NAME"
+            gh release view "$TAG_NAME" || echo "Release not found"
+          fi
+
+      - name: Download release assets
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ needs.prepare.outputs.tag }}
+          fileName: '*'
+          out-file-path: 'release-assets'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          sha256sum * > checksums.txt || true
+          echo "Generated checksums:"
+          cat checksums.txt
+
+      - name: Upload checksums to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
