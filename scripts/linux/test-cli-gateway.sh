@@ -94,6 +94,10 @@ cleanup() {
         kill "$GATEWAY_PID" 2>/dev/null || true
         wait "$GATEWAY_PID" 2>/dev/null || true
     fi
+    # Save gateway log to original directory for CI visibility
+    if [ -n "$GATEWAY_LOG" ] && [ -f "$GATEWAY_LOG" ] && [ -n "$ORIG_DIR" ]; then
+        cp "$GATEWAY_LOG" "$ORIG_DIR/gateway-startup.log" 2>/dev/null || true
+    fi
     if [ -n "$TEST_DIR" ] && [ -d "$TEST_DIR" ]; then
         rm -rf "$TEST_DIR"
     fi
@@ -119,6 +123,7 @@ echo -e "${CYAN}${BOLD}  Viben Bundled CLI Test (Linux)${NC}"
 echo -e "${CYAN}  Binary: $VIBEN${NC}"
 echo ""
 
+ORIG_DIR="$(pwd)"
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
 

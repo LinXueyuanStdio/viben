@@ -39,6 +39,9 @@ echo   Viben Bundled CLI Test (Windows)
 echo   Binary: %VIBEN%
 echo.
 
+REM Save original directory for CI log visibility
+set "ORIG_DIR=%CD%"
+
 REM Create temp test directory
 set "TEST_DIR=%TEMP%\viben-test-%RANDOM%"
 mkdir "%TEST_DIR%"
@@ -200,7 +203,10 @@ echo   Passed: %PASSED_TESTS%
 echo   Failed: %FAILED_TESTS%
 echo.
 
-REM Cleanup
+REM Cleanup - save gateway log first
+if exist "%GATEWAY_LOG%" (
+    copy "%GATEWAY_LOG%" "%ORIG_DIR%\gateway-startup.log" >nul 2>&1
+)
 cd /d "%TEMP%"
 rmdir /S /Q "%TEST_DIR%" 2>nul
 
