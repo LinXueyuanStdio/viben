@@ -126,58 +126,107 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   try {
     // Determine baseDir for Swagger UI static files
     // In bundled mode, static files are copied to swagger-ui-static/ alongside the binary
+    // Check multiple possible locations:
+    // 1. Next to the executable (process.execPath directory)
+    // 2. Current working directory (for CI testing)
+    // 3. Next to the resolved binary path (for symlinks)
     const execDir = dirname(process.execPath);
-    const bundledStaticDir = join(execDir, "swagger-ui-static");
-    const hasBundledStatic = existsSync(bundledStaticDir);
+    const cwd = process.cwd();
+
+    // Possible locations for swagger-ui-static
+    const possibleStaticDirs = [
+      join(execDir, "swagger-ui-static"),
+      join(cwd, "swagger-ui-static"),
+    ];
+
+    // Find the first existing static directory
+    let bundledStaticDir: string | undefined;
+    for (const dir of possibleStaticDirs) {
+      if (existsSync(dir)) {
+        // Verify it has essential files (index.html)
+        if (existsSync(join(dir, "index.html"))) {
+          bundledStaticDir = dir;
+          break;
+        }
+      }
+    }
 
     // Check if we're running as a bundled binary (Bun compiled binary)
     // In bundled mode, process.execPath points to the binary itself, not node/bun
-    // and the binary name typically contains "viben" (e.g., viben-aarch64-apple-darwin)
+    // Detection methods:
+    // 1. Binary name contains "viben" (e.g., viben-aarch64-apple-darwin)
+    // 2. No node_modules/@fastify/swagger-ui available (bundled env)
     const execName = process.execPath.toLowerCase();
-    const isBundledBinary = execName.includes("viben") && !execName.includes("node") && !execName.includes("bun");
+    const hasVibenInName = execName.includes("viben");
+    const isNotNodeOrBun = !execName.includes("node") && !execName.includes("bun");
+    const isBundledBinary = hasVibenInName && isNotNodeOrBun;
 
-    // Skip Swagger UI if we're in bundled mode but static files aren't available
-    if (isBundledBinary && !hasBundledStatic) {
-      log.info("Swagger UI disabled: static files not available in bundled mode");
-    } else {
-      await app.register(fastifySwagger, {
-        openapi: {
-          info: {
-            title: "Viben Gateway API",
-            description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, Evo-based code evolution, and XState task management",
-            version: "1.0.0",
-          },
-          servers: [{ url: `http://${host}:${port}` }],
-          tags: [
-            { name: "health", description: "Health check endpoints" },
-            { name: "agents", description: "Agent management" },
-            { name: "executors", description: "Executor discovery and management" },
-            { name: "sessions", description: "Session management" },
-            { name: "providers", description: "Provider management" },
-            { name: "models", description: "Model management" },
-            { name: "workspaces", description: "Workspace management" },
-            { name: "channels", description: "Channel management" },
-            { name: "cron", description: "Cron job management" },
-            { name: "tasks", description: "Task management" },
-            { name: "mcp", description: "MCP server management" },
-            { name: "kanban", description: "Kanban board management" },
-          ],
+    log.info({
+      execPath: process.execPath,
+      execDir,
+      cwd,
+      bundledStaticDir,
+      isBundledBinary,
+    }, "Swagger UI static files detection");
+
+    // Register Swagger (OpenAPI spec generation)
+    await app.register(fastifySwagger, {
+      openapi: {
+        info: {
+          title: "Viben Gateway API",
+          description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, Evo-based code evolution, and XState task management",
+          version: "1.0.0",
         },
-      });
+        servers: [{ url: `http://${host}:${port}` }],
+        tags: [
+          { name: "health", description: "Health check endpoints" },
+          { name: "agents", description: "Agent management" },
+          { name: "executors", description: "Executor discovery and management" },
+          { name: "sessions", description: "Session management" },
+          { name: "providers", description: "Provider management" },
+          { name: "models", description: "Model management" },
+          { name: "workspaces", description: "Workspace management" },
+          { name: "channels", description: "Channel management" },
+          { name: "cron", description: "Cron job management" },
+          { name: "tasks", description: "Task management" },
+          { name: "mcp", description: "MCP server management" },
+          { name: "kanban", description: "Kanban board management" },
+        ],
+      },
+    });
 
-      const swaggerUiBaseDir = hasBundledStatic ? bundledStaticDir : undefined;
+    // Register Swagger UI with proper baseDir
+    if (bundledStaticDir) {
+      // Bundled mode: use static files from the detected directory
       await app.register(fastifySwaggerUi, {
         routePrefix: "/docs",
-        baseDir: swaggerUiBaseDir,
+        baseDir: bundledStaticDir,
         uiConfig: {
           docExpansion: "list",
           deepLinking: true,
         },
       });
-      log.info("Swagger API documentation registered at /docs");
+      log.info({ baseDir: bundledStaticDir }, "Swagger UI registered with bundled static files");
+    } else if (isBundledBinary) {
+      // Bundled binary but no static files found - this is an error
+      log.error({
+        searchedPaths: possibleStaticDirs,
+      }, "Swagger UI static files not found in bundled mode");
+      throw new Error(`Swagger UI static files not found. Searched: ${possibleStaticDirs.join(", ")}`);
+    } else {
+      // Development mode: use default node_modules location
+      await app.register(fastifySwaggerUi, {
+        routePrefix: "/docs",
+        uiConfig: {
+          docExpansion: "list",
+          deepLinking: true,
+        },
+      });
+      log.info("Swagger UI registered with default static files");
     }
   } catch (e) {
-    log.warn({ err: e }, "Failed to register Swagger plugin");
+    log.error({ err: e }, "Failed to register Swagger plugin");
+    throw e; // Re-throw to make it a hard failure
   }
 
   // Enable multipart file uploads

@@ -186,14 +186,24 @@ jobs:
         shell: bash
         run: ls -la apps/desktop/src-tauri/binaries/
 
-      # Upload sidecar artifact (including Swagger UI static files)
+      # Prepare flat artifact directory (binary + swagger-ui-static at same level)
+      - name: Prepare sidecar artifact
+        shell: bash
+        run: |
+          mkdir -p sidecar-artifact
+          cp apps/desktop/src-tauri/binaries/viben-* sidecar-artifact/
+          if [ -d "apps/desktop/src-tauri/binaries/swagger-ui-static" ]; then
+            cp -r apps/desktop/src-tauri/binaries/swagger-ui-static sidecar-artifact/
+          fi
+          echo "Sidecar artifact contents:"
+          ls -la sidecar-artifact/
+
+      # Upload sidecar artifact (flat structure: binary + swagger-ui-static at same level)
       - name: Upload sidecar artifact
         uses: actions/upload-artifact@v7
         with:
           name: sidecar-${{ matrix.platform }}
-          path: |
-            apps/desktop/src-tauri/binaries/viben-*
-            apps/desktop/src-tauri/binaries/swagger-ui-static/
+          path: sidecar-artifact/
           if-no-files-found: error
           retention-days: 1
 
