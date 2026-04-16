@@ -126,15 +126,15 @@ call :pass "gateway status (stopped)"
 
 echo   [INFO] Starting gateway on port %GATEWAY_PORT%...
 set "GATEWAY_LOG=%TEST_DIR%\gateway.log"
-REM Use PowerShell to start background process (Bun binaries don't support stdin redirection in cmd.exe)
-REM -PassThru returns process object, -WindowStyle Hidden runs without visible window
-powershell -NoProfile -Command "$p = Start-Process -FilePath '%VIBEN%' -ArgumentList 'gateway','serve','--port','%GATEWAY_PORT%' -WindowStyle Hidden -PassThru -RedirectStandardOutput '%GATEWAY_LOG%' -RedirectStandardError '%GATEWAY_LOG%.err'; if ($p) { Write-Output \"Started PID: $($p.Id)\" } else { exit 1 }"
+REM Start gateway in background using PowerShell Start-Process
+REM Suppress output to hide Bun stdin redirection warning (gateway still starts fine)
+powershell -NoProfile -Command "Start-Process -FilePath '%VIBEN%' -ArgumentList 'gateway','serve','--port','%GATEWAY_PORT%' -WindowStyle Hidden -RedirectStandardOutput '%GATEWAY_LOG%' -RedirectStandardError '%GATEWAY_LOG%.err'" >nul 2>nul
 
 REM Wait for gateway to be ready (up to 30 seconds)
 set READY=false
 for /L %%i in (1,1,30) do (
     if "!READY!"=="false" (
-        powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
+        powershell -NoProfile -Command "try { $null = Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop; exit 0 } catch { exit 1 }" >nul 2>&1
         if !errorlevel! equ 0 (
             set READY=true
             echo   [INFO] Gateway ready after %%is
@@ -144,37 +144,19 @@ for /L %%i in (1,1,30) do (
     )
 )
 
-if "!READY!"=="true" (
-    call :pass "gateway starts and becomes ready"
+REM Use goto-based flow to avoid nested parentheses parsing issues in cmd.exe
+if "!READY!"=="false" goto :gateway_not_ready
 
-    REM Test /health
-    for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "HEALTH=%%j"
-    echo !HEALTH! | findstr /C:"\"status\":\"ok\"" >nul 2>&1
-    if !errorlevel! equ 0 (
-        call :pass "/health returns {status: ok}"
-    ) else (
-        call :fail "/health unexpected response"
-    )
+call :pass "gateway starts and becomes ready"
+call :test_health
+call :test_api_agent
+call :test_ws_upgrade
+goto :gateway_tests_done
 
-    REM Test /api/agent (list agents)
-    for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api/agent' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API=%%j"
-    echo !API! | findstr /C:"agents" >nul 2>&1
-    if !errorlevel! equ 0 (
-        call :pass "/api/agent returns agent list"
-    ) else (
-        call :fail "/api/agent unexpected response"
-    )
+:gateway_not_ready
+call :fail "gateway did not become ready within 30s"
 
-    REM Test /ws WebSocket endpoint using inline PowerShell (avoid file locking issues)
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';try{$ws=New-Object System.Net.WebSockets.ClientWebSocket;$uri=[System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws');$cts=New-Object System.Threading.CancellationTokenSource(5000);$ws.ConnectAsync($uri,$cts.Token).Wait();if($ws.State -eq 'Open'){$payload='{\"type\":\"Ping\"}';$buf=[System.Text.Encoding]::UTF8.GetBytes($payload);$seg=[System.ArraySegment[byte]]::new($buf);$ws.SendAsync($seg,'Text',$true,$cts.Token).Wait();$rbuf=New-Object byte[] 1024;$rseg=[System.ArraySegment[byte]]::new($rbuf);$result=$ws.ReceiveAsync($rseg,$cts.Token).GetAwaiter().GetResult();$resp=[System.Text.Encoding]::UTF8.GetString($rbuf,0,$result.Count);$ws.Dispose();if($resp -match 'Pong'){exit 0}else{exit 1}}else{exit 1}}catch{exit 1}" >nul 2>&1
-    if !errorlevel! equ 0 (
-        call :pass "/ws WebSocket Ping/Pong"
-    ) else (
-        call :fail "/ws WebSocket Ping/Pong"
-    )
-) else (
-    call :fail "gateway did not become ready within 30s"
-)
+:gateway_tests_done
 
 REM Stop gateway - find and kill process on the port
 echo   [INFO] Stopping gateway...
@@ -286,4 +268,40 @@ goto :eof
 :fail
 set /a FAILED_TESTS+=1
 echo   [FAIL] %~1
+goto :eof
+
+:test_health
+REM Test /health endpoint - runs outside parentheses block to avoid cmd.exe parsing issues
+set "HEALTH="
+for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "HEALTH=%%j"
+echo !HEALTH! | findstr /C:"\"status\":\"ok\"" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "/health returns {status: ok}"
+) else (
+    call :fail "/health unexpected response"
+)
+goto :eof
+
+:test_api_agent
+REM Test /api/agent endpoint - runs outside parentheses block
+set "API="
+for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api/agent' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API=%%j"
+echo !API! | findstr /C:"agents" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "/api/agent returns agent list"
+) else (
+    call :fail "/api/agent unexpected response"
+)
+goto :eof
+
+:test_ws_upgrade
+REM Test /ws WebSocket endpoint - check for HTTP 101 Switching Protocols
+REM Uses curl.exe (available on Windows Server 2019+) matching Linux/macOS approach
+curl.exe -s -i --max-time 2 -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Version: 13" "http://127.0.0.1:%GATEWAY_PORT%/ws" > "%TEST_DIR%\ws_test.tmp" 2>&1
+findstr /C:"101 Switching Protocols" "%TEST_DIR%\ws_test.tmp" >nul 2>&1
+if !errorlevel! equ 0 (
+    call :pass "/ws WebSocket upgrade (101)"
+) else (
+    call :fail "/ws WebSocket upgrade (no 101 response)"
+)
 goto :eof
