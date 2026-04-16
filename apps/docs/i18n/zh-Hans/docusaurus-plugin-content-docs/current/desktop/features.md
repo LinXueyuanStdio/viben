@@ -279,7 +279,7 @@ Viben 自动检测系统中已安装的执行器：
 
 ---
 
-## Skills 管理 {#skills-management}
+## Skills Management
 
 ### Skills 概念
 
