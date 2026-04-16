@@ -126,7 +126,9 @@ call :pass "gateway status (stopped)"
 
 echo   [INFO] Starting gateway on port %GATEWAY_PORT%...
 set "GATEWAY_LOG=%TEST_DIR%\gateway.log"
-start /B "" "%VIBEN%" gateway serve --port %GATEWAY_PORT% >"%GATEWAY_LOG%" 2>&1
+REM Use PowerShell to start background process (Bun binaries don't support stdin redirection in cmd.exe)
+REM -PassThru returns process object, -WindowStyle Hidden runs without visible window
+powershell -NoProfile -Command "$p = Start-Process -FilePath '%VIBEN%' -ArgumentList 'gateway','serve','--port','%GATEWAY_PORT%' -WindowStyle Hidden -PassThru -RedirectStandardOutput '%GATEWAY_LOG%' -RedirectStandardError '%GATEWAY_LOG%.err'; if ($p) { Write-Output \"Started PID: $($p.Id)\" } else { exit 1 }"
 
 REM Wait for gateway to be ready (up to 30 seconds)
 set READY=false
@@ -163,37 +165,8 @@ if "!READY!"=="true" (
         call :fail "/api/agent unexpected response"
     )
 
-    REM Test /ws WebSocket endpoint
-    REM Create a PowerShell script file to avoid stdin redirection issues
-    echo $ErrorActionPreference = 'Stop' > "%TEST_DIR%\ws-test.ps1"
-    echo try { >> "%TEST_DIR%\ws-test.ps1"
-    echo     $ws = New-Object System.Net.WebSockets.ClientWebSocket >> "%TEST_DIR%\ws-test.ps1"
-    echo     $uri = [System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws') >> "%TEST_DIR%\ws-test.ps1"
-    echo     $cts = New-Object System.Threading.CancellationTokenSource(5000) >> "%TEST_DIR%\ws-test.ps1"
-    echo     $ws.ConnectAsync($uri, $cts.Token).Wait() >> "%TEST_DIR%\ws-test.ps1"
-    echo     if ($ws.State -eq 'Open') { >> "%TEST_DIR%\ws-test.ps1"
-    echo         $payload = @{ type = 'Ping' } ^| ConvertTo-Json -Compress >> "%TEST_DIR%\ws-test.ps1"
-    echo         $buf = [System.Text.Encoding]::UTF8.GetBytes($payload) >> "%TEST_DIR%\ws-test.ps1"
-    echo         $seg = [System.ArraySegment[byte]]::new($buf) >> "%TEST_DIR%\ws-test.ps1"
-    echo         $ws.SendAsync($seg, 'Text', $true, $cts.Token).Wait() >> "%TEST_DIR%\ws-test.ps1"
-    echo         $rbuf = New-Object byte[] 1024 >> "%TEST_DIR%\ws-test.ps1"
-    echo         $rseg = [System.ArraySegment[byte]]::new($rbuf) >> "%TEST_DIR%\ws-test.ps1"
-    echo         $result = $ws.ReceiveAsync($rseg, $cts.Token).GetAwaiter().GetResult() >> "%TEST_DIR%\ws-test.ps1"
-    echo         $resp = [System.Text.Encoding]::UTF8.GetString($rbuf, 0, $result.Count) >> "%TEST_DIR%\ws-test.ps1"
-    echo         if ($resp -match 'Pong') { >> "%TEST_DIR%\ws-test.ps1"
-    echo             exit 0 >> "%TEST_DIR%\ws-test.ps1"
-    echo         } else { >> "%TEST_DIR%\ws-test.ps1"
-    echo             exit 1 >> "%TEST_DIR%\ws-test.ps1"
-    echo         } >> "%TEST_DIR%\ws-test.ps1"
-    echo     } else { >> "%TEST_DIR%\ws-test.ps1"
-    echo         exit 1 >> "%TEST_DIR%\ws-test.ps1"
-    echo     } >> "%TEST_DIR%\ws-test.ps1"
-    echo     $ws.Dispose() >> "%TEST_DIR%\ws-test.ps1"
-    echo } catch { >> "%TEST_DIR%\ws-test.ps1"
-    echo     exit 1 >> "%TEST_DIR%\ws-test.ps1"
-    echo } >> "%TEST_DIR%\ws-test.ps1"
-
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%TEST_DIR%\ws-test.ps1" >nul 2>&1
+    REM Test /ws WebSocket endpoint using inline PowerShell (avoid file locking issues)
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';try{$ws=New-Object System.Net.WebSockets.ClientWebSocket;$uri=[System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws');$cts=New-Object System.Threading.CancellationTokenSource(5000);$ws.ConnectAsync($uri,$cts.Token).Wait();if($ws.State -eq 'Open'){$payload='{\"type\":\"Ping\"}';$buf=[System.Text.Encoding]::UTF8.GetBytes($payload);$seg=[System.ArraySegment[byte]]::new($buf);$ws.SendAsync($seg,'Text',$true,$cts.Token).Wait();$rbuf=New-Object byte[] 1024;$rseg=[System.ArraySegment[byte]]::new($rbuf);$result=$ws.ReceiveAsync($rseg,$cts.Token).GetAwaiter().GetResult();$resp=[System.Text.Encoding]::UTF8.GetString($rbuf,0,$result.Count);$ws.Dispose();if($resp -match 'Pong'){exit 0}else{exit 1}}else{exit 1}}catch{exit 1}" >nul 2>&1
     if !errorlevel! equ 0 (
         call :pass "/ws WebSocket Ping/Pong"
     ) else (
@@ -227,6 +200,12 @@ if exist "%GATEWAY_LOG%" (
 ) else (
     echo   [INFO] No gateway log file found
 )
+if exist "%GATEWAY_LOG%.err" (
+    echo.
+    echo   Gateway stderr log
+    echo   ----------------------------------------------
+    type "%GATEWAY_LOG%.err"
+)
 
 REM ===== Summary =====
 
@@ -238,9 +217,12 @@ echo   Passed: %PASSED_TESTS%
 echo   Failed: %FAILED_TESTS%
 echo.
 
-REM Cleanup - save gateway log first
+REM Cleanup - save gateway logs first
 if exist "%GATEWAY_LOG%" (
     copy "%GATEWAY_LOG%" "%ORIG_DIR%\gateway-startup.log" >nul 2>&1
+)
+if exist "%GATEWAY_LOG%.err" (
+    copy "%GATEWAY_LOG%.err" "%ORIG_DIR%\gateway-startup.err.log" >nul 2>&1
 )
 cd /d "%TEMP%"
 rmdir /S /Q "%TEST_DIR%" 2>nul
