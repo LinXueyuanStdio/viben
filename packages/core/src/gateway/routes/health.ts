@@ -5,6 +5,10 @@ import type { FastifyInstance } from "fastify";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+// Injected by tsup at build time
+declare const __VERSION__: string;
+const VERSION = typeof __VERSION__ !== "undefined" ? __VERSION__ : "0.0.0-dev";
+
 /**
  * Gateway startup configuration (set at boot time)
  */
@@ -114,7 +118,7 @@ export function registerHealthRoutes(fastify: FastifyInstance): void {
     const response: HealthResponse = {
       status: "ok",
       service: "viben-gateway",
-      version: "1.0.0",
+      version: VERSION,
       timestamp: new Date().toISOString(),
       uptime: uptimeStr,
       uptime_seconds: uptimeSeconds,
