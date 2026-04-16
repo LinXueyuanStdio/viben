@@ -157,8 +157,36 @@ if "%READY%"=="true" (
     )
 
     REM Test /ws WebSocket endpoint
-    set WS_OK=false
-    powershell -NoProfile -Command "try { $ws = New-Object System.Net.WebSockets.ClientWebSocket; $uri = [System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws'); $cts = New-Object System.Threading.CancellationTokenSource(5000); $ws.ConnectAsync($uri, $cts.Token).Wait(); if ($ws.State -eq 'Open') { $buf = [System.Text.Encoding]::UTF8.GetBytes('{\"type\":\"Ping\"}'); $seg = [System.ArraySegment[byte]]::new($buf); $ws.SendAsync($seg, 'Text', $true, $cts.Token).Wait(); $rbuf = New-Object byte[] 1024; $rseg = [System.ArraySegment[byte]]::new($rbuf); $result = $ws.ReceiveAsync($rseg, $cts.Token).GetAwaiter().GetResult(); $resp = [System.Text.Encoding]::UTF8.GetString($rbuf, 0, $result.Count); if ($resp -match 'Pong') { exit 0 } else { exit 1 } } else { exit 1 }; $ws.Dispose() } catch { exit 1 }" >nul 2>&1
+    REM Create a PowerShell script file to avoid stdin redirection issues
+    echo $ErrorActionPreference = 'Stop' > "%TEST_DIR%\ws-test.ps1"
+    echo try { >> "%TEST_DIR%\ws-test.ps1"
+    echo     $ws = New-Object System.Net.WebSockets.ClientWebSocket >> "%TEST_DIR%\ws-test.ps1"
+    echo     $uri = [System.Uri]::new('ws://127.0.0.1:%GATEWAY_PORT%/ws') >> "%TEST_DIR%\ws-test.ps1"
+    echo     $cts = New-Object System.Threading.CancellationTokenSource(5000) >> "%TEST_DIR%\ws-test.ps1"
+    echo     $ws.ConnectAsync($uri, $cts.Token).Wait() >> "%TEST_DIR%\ws-test.ps1"
+    echo     if ($ws.State -eq 'Open') { >> "%TEST_DIR%\ws-test.ps1"
+    echo         $payload = @{ type = 'Ping' } ^| ConvertTo-Json -Compress >> "%TEST_DIR%\ws-test.ps1"
+    echo         $buf = [System.Text.Encoding]::UTF8.GetBytes($payload) >> "%TEST_DIR%\ws-test.ps1"
+    echo         $seg = [System.ArraySegment[byte]]::new($buf) >> "%TEST_DIR%\ws-test.ps1"
+    echo         $ws.SendAsync($seg, 'Text', $true, $cts.Token).Wait() >> "%TEST_DIR%\ws-test.ps1"
+    echo         $rbuf = New-Object byte[] 1024 >> "%TEST_DIR%\ws-test.ps1"
+    echo         $rseg = [System.ArraySegment[byte]]::new($rbuf) >> "%TEST_DIR%\ws-test.ps1"
+    echo         $result = $ws.ReceiveAsync($rseg, $cts.Token).GetAwaiter().GetResult() >> "%TEST_DIR%\ws-test.ps1"
+    echo         $resp = [System.Text.Encoding]::UTF8.GetString($rbuf, 0, $result.Count) >> "%TEST_DIR%\ws-test.ps1"
+    echo         if ($resp -match 'Pong') { >> "%TEST_DIR%\ws-test.ps1"
+    echo             exit 0 >> "%TEST_DIR%\ws-test.ps1"
+    echo         } else { >> "%TEST_DIR%\ws-test.ps1"
+    echo             exit 1 >> "%TEST_DIR%\ws-test.ps1"
+    echo         } >> "%TEST_DIR%\ws-test.ps1"
+    echo     } else { >> "%TEST_DIR%\ws-test.ps1"
+    echo         exit 1 >> "%TEST_DIR%\ws-test.ps1"
+    echo     } >> "%TEST_DIR%\ws-test.ps1"
+    echo     $ws.Dispose() >> "%TEST_DIR%\ws-test.ps1"
+    echo } catch { >> "%TEST_DIR%\ws-test.ps1"
+    echo     exit 1 >> "%TEST_DIR%\ws-test.ps1"
+    echo } >> "%TEST_DIR%\ws-test.ps1"
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%TEST_DIR%\ws-test.ps1" >nul 2>&1
     if !errorlevel! equ 0 (
         call :pass "/ws WebSocket Ping/Pong"
     ) else (

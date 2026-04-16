@@ -186,12 +186,15 @@ jobs:
         shell: bash
         run: ls -la apps/desktop/src-tauri/binaries/
 
-      # Upload sidecar artifact
+      # Upload sidecar artifact (including Swagger UI static files)
       - name: Upload sidecar artifact
         uses: actions/upload-artifact@v7
         with:
           name: sidecar-${{ matrix.platform }}
-          path: apps/desktop/src-tauri/binaries/viben-*
+          path: |
+            apps/desktop/src-tauri/binaries/viben-*
+            apps/desktop/src-tauri/binaries/swagger-ui-static/
+          if-no-files-found: error
           retention-days: 1
 
       # Upload CLI build for testing (only on ubuntu)
@@ -241,7 +244,14 @@ jobs:
 
       - name: List sidecar binaries
         shell: bash
-        run: ls -la
+        run: |
+          ls -la
+          if [ -d "swagger-ui-static" ]; then
+            echo "Swagger UI static files found:"
+            ls -la swagger-ui-static/
+          else
+            echo "Warning: swagger-ui-static directory not found"
+          fi
 
       - name: Make binary executable (Unix)
         if: matrix.platform != 'windows-latest'
