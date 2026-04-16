@@ -98,7 +98,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register Swagger for OpenAPI spec generation (no UI)
   try {
-    await app.register(fastifySwagger, {
+await app.register(fastifySwagger, {
       openapi: {
         info: {
           title: "Viben Gateway API",
@@ -126,7 +126,18 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
         ],
       },
     });
-    log.info("Swagger plugin registered (OpenAPI spec only, no UI)");
+
+    // Register OpenAPI spec endpoints
+    app.get("/openapi.json", async () => {
+      return app.swagger();
+    });
+
+    app.get("/openapi.yaml", async (_, reply) => {
+      const yaml = app.swagger({ yaml: true });
+      reply.type("application/x-yaml").send(yaml);
+    });
+
+    log.info("Swagger plugin registered (OpenAPI spec at /openapi.json, /openapi.yaml)");
   } catch (e) {
     log.warn({ err: e }, "Failed to register Swagger plugin");
   }
