@@ -214,19 +214,18 @@ if [ "$READY" = true ]; then
     fi
 
     # Test /ws WebSocket endpoint
-    # Use --max-time to prevent curl from hanging on WebSocket upgrade (101 keeps connection open)
-    # Note: When WebSocket upgrade succeeds (101), curl keeps connection open until timeout,
-    # so we need to ignore curl's exit code and just check the HTTP status
-    WS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 \
+    # Use -i to include headers and --max-time to prevent hanging
+    # Check for "101 Switching Protocols" in the response headers
+    WS_RESPONSE=$(curl -s -i --max-time 2 \
       -H "Connection: Upgrade" \
       -H "Upgrade: websocket" \
       -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
       -H "Sec-WebSocket-Version: 13" \
-      "http://127.0.0.1:$GATEWAY_PORT/ws" 2>&1 || true)
-    if [ "$WS_STATUS" = "101" ]; then
+      "http://127.0.0.1:$GATEWAY_PORT/ws" 2>/dev/null || true)
+    if echo "$WS_RESPONSE" | grep -q "101 Switching Protocols"; then
         success "/ws WebSocket upgrade (101)"
     else
-        fail "/ws WebSocket upgrade (status=$WS_STATUS)"
+        fail "/ws WebSocket upgrade (no 101 response)"
     fi
 else
     fail "gateway did not become ready within 30s"
