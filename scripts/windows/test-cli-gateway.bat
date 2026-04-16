@@ -142,7 +142,7 @@ for /L %%i in (1,1,30) do (
     )
 )
 
-if "%READY%"=="true" (
+if "!READY!"=="true" (
     call :pass "gateway starts and becomes ready"
 
     REM Test /health
