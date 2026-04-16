@@ -1,4 +1,5 @@
-import { ExternalLink, Github, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User, Download, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User, Download, Loader2 } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { usePython } from "@/hooks/use-python";

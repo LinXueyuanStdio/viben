@@ -7,7 +7,8 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Github, AlertCircle, CircleDot, GitPullRequest, Tag } from "lucide-react";
+import { AlertCircle, CircleDot, GitPullRequest, Tag } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 import type { Workspace } from "@/types";

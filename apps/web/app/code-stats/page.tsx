@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Github } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { GithubIcon as Github } from '@/components/ui/icons';
 import {
   StatsHeader,
   LangChart,

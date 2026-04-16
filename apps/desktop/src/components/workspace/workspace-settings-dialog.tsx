@@ -15,8 +15,8 @@ import {
   Clock,
   Copy,
   Check,
-  Github,
 } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";

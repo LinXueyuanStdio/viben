@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Github, Loader2, AlertCircle, X, CheckCircle2, SkipForward, ExternalLink, Terminal } from "lucide-react";
+import { Loader2, AlertCircle, X, CheckCircle2, SkipForward, ExternalLink, Terminal } from "lucide-react";
+import { GithubIcon as Github } from "@/components/ui/icons";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

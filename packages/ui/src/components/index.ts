@@ -106,3 +106,7 @@ export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./popove
 
 // Tooltip
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
+
+// Icons
+export { GithubIcon } from "./icons";
+export type { IconProps } from "./icons";
