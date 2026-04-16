@@ -163,14 +163,6 @@ if "%READY%"=="true" (
         call :fail "/api/agent unexpected response"
     )
 
-    REM Test /docs (Swagger UI)
-    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/docs' -UseBasicParsing -TimeoutSec 5; exit 0 } catch { exit 1 }" >nul 2>&1
-    if !errorlevel! equ 0 (
-        call :pass "/docs Swagger UI available"
-    ) else (
-        call :fail "/docs Swagger UI not available"
-    )
-
     REM Test /ws WebSocket endpoint
     REM Create a PowerShell script file to avoid stdin redirection issues
     echo $ErrorActionPreference = 'Stop' > "%TEST_DIR%\ws-test.ps1"

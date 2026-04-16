@@ -27,7 +27,7 @@
  */
 
 import { execSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, chmodSync, renameSync, cpSync } from "node:fs";
+import { existsSync, mkdirSync, chmodSync, renameSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -252,14 +252,6 @@ function buildPlatform(platform: string, outputDir: string): void {
   // Make executable on Unix platforms
   if (!platform.startsWith("win")) {
     chmodSync(outputPath, 0o755);
-  }
-
-  // Copy Swagger UI static files alongside the binary
-  const swaggerUiStaticSrc = join(REPO_ROOT, "node_modules/@fastify/swagger-ui/static");
-  const swaggerUiStaticDest = join(outputDir, "swagger-ui-static");
-  if (existsSync(swaggerUiStaticSrc)) {
-    console.log(`   Copying Swagger UI static files to ${swaggerUiStaticDest}...`);
-    cpSync(swaggerUiStaticSrc, swaggerUiStaticDest, { recursive: true });
   }
 
   console.log(`✅ Built ${outputName}`);

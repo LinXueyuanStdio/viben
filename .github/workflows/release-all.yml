@@ -186,19 +186,16 @@ jobs:
         shell: bash
         run: ls -la apps/desktop/src-tauri/binaries/
 
-      # Prepare flat artifact directory (binary + swagger-ui-static at same level)
+      # Prepare sidecar artifact directory
       - name: Prepare sidecar artifact
         shell: bash
         run: |
           mkdir -p sidecar-artifact
           cp apps/desktop/src-tauri/binaries/viben-* sidecar-artifact/
-          if [ -d "apps/desktop/src-tauri/binaries/swagger-ui-static" ]; then
-            cp -r apps/desktop/src-tauri/binaries/swagger-ui-static sidecar-artifact/
-          fi
           echo "Sidecar artifact contents:"
           ls -la sidecar-artifact/
 
-      # Upload sidecar artifact (flat structure: binary + swagger-ui-static at same level)
+      # Upload sidecar artifact
       - name: Upload sidecar artifact
         uses: actions/upload-artifact@v7
         with:
@@ -254,14 +251,7 @@ jobs:
 
       - name: List sidecar binaries
         shell: bash
-        run: |
-          ls -la
-          if [ -d "swagger-ui-static" ]; then
-            echo "Swagger UI static files found:"
-            ls -la swagger-ui-static/
-          else
-            echo "Warning: swagger-ui-static directory not found"
-          fi
+        run: ls -la
 
       - name: Make binary executable (Unix)
         if: matrix.platform != 'windows-latest'

@@ -220,14 +220,6 @@ if [ "$READY" = true ]; then
         fail "/api/agent unexpected response: $API"
     fi
 
-    # Test /docs (Swagger UI)
-    DOCS_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://127.0.0.1:$GATEWAY_PORT/docs" 2>&1)
-    if [ "$DOCS_STATUS" = "200" ]; then
-        success "/docs Swagger UI available"
-    else
-        fail "/docs Swagger UI not available (status=$DOCS_STATUS)"
-    fi
-
     # Test /ws WebSocket endpoint
     # Use -i to include headers and --max-time to prevent hanging
     # Check for "101 Switching Protocols" in the response headers
