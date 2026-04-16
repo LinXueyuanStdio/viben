@@ -27,6 +27,8 @@ FAILED_TESTS=0
 PASSED_TESTS=0
 GATEWAY_PID=""
 TEST_DIR=""
+GATEWAY_LOG=""
+ORIG_DIR=""
 GATEWAY_PORT=19999
 
 # ---------------------------------------------------------------------------
@@ -212,12 +214,15 @@ if [ "$READY" = true ]; then
     fi
 
     # Test /ws WebSocket endpoint
-    WS_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+    # Use --max-time to prevent curl from hanging on WebSocket upgrade (101 keeps connection open)
+    # Note: When WebSocket upgrade succeeds (101), curl keeps connection open until timeout,
+    # so we need to ignore curl's exit code and just check the HTTP status
+    WS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 2 \
       -H "Connection: Upgrade" \
       -H "Upgrade: websocket" \
       -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
       -H "Sec-WebSocket-Version: 13" \
-      "http://127.0.0.1:$GATEWAY_PORT/ws" 2>&1 || echo "000")
+      "http://127.0.0.1:$GATEWAY_PORT/ws" 2>&1 || true)
     if [ "$WS_STATUS" = "101" ]; then
         success "/ws WebSocket upgrade (101)"
     else
