@@ -272,9 +272,9 @@ goto :eof
 
 :test_health
 REM Test /health endpoint - runs outside parentheses block to avoid cmd.exe parsing issues
-set "HEALTH_RESULT="
-for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "HEALTH_RESULT=%%j"
-echo !HEALTH_RESULT! | findstr /C:"\"status\":\"ok\"" >nul 2>&1
+set "HEALTH="
+for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/health' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "HEALTH=%%j"
+echo !HEALTH! | findstr /C:"\"status\":\"ok\"" >nul 2>&1
 if !errorlevel! equ 0 (
     call :pass "/health returns {status: ok}"
 ) else (
@@ -284,9 +284,9 @@ goto :eof
 
 :test_api_agent
 REM Test /api/agent endpoint - runs outside parentheses block
-set "API_RESULT="
-for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api/agent' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API_RESULT=%%j"
-echo !API_RESULT! | findstr /C:"agents" >nul 2>&1
+set "API="
+for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api/agent' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API=%%j"
+echo !API! | findstr /C:"agents" >nul 2>&1
 if !errorlevel! equ 0 (
     call :pass "/api/agent returns agent list"
 ) else (
