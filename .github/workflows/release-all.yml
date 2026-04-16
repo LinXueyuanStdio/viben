@@ -194,6 +194,7 @@ jobs:
           path: |
             apps/desktop/src-tauri/binaries/viben-*
             apps/desktop/src-tauri/binaries/swagger-ui-static/
+          if-no-files-found: error
           retention-days: 1
 
       # Upload CLI build for testing (only on ubuntu)
