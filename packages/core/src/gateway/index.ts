@@ -9,6 +9,7 @@ import fastify from "fastify";
 import type { FastifyInstance } from "fastify";
 import fastifyCors from "@fastify/cors";
 import fastifyMultipart from "@fastify/multipart";
+import fastifySwagger from "@fastify/swagger";
 import fastifyWebsocket from "@fastify/websocket";
 import { AppState, createAppState } from "./state";
 import { registerRoutes } from "./routes";
@@ -94,6 +95,41 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   }
 
   const app = fastify({ logger: true });
+
+  // Register Swagger for OpenAPI spec generation (no UI)
+  try {
+    await app.register(fastifySwagger, {
+      openapi: {
+        info: {
+          title: "Viben Gateway API",
+          description: "Agent Swarm × Code Evolution - Multi-agent orchestration and code evolution API",
+          version: "1.0.0",
+        },
+        servers: [
+          {
+            url: `http://${host}:${port}`,
+            description: "Local development server",
+          },
+        ],
+        tags: [
+          { name: "health", description: "Health check endpoints" },
+          { name: "agents", description: "Agent management" },
+          { name: "sessions", description: "Session management" },
+          { name: "tasks", description: "Task management" },
+          { name: "models", description: "Model configuration" },
+          { name: "providers", description: "Provider configuration" },
+          { name: "workspaces", description: "Workspace management" },
+          { name: "cron", description: "Scheduled jobs" },
+          { name: "channels", description: "Channel management" },
+          { name: "mcp", description: "MCP server management" },
+          { name: "executors", description: "Executor configuration" },
+        ],
+      },
+    });
+    log.info("Swagger plugin registered (OpenAPI spec only, no UI)");
+  } catch (e) {
+    log.warn({ err: e }, "Failed to register Swagger plugin");
+  }
 
   // Enable CORS if configured
   if (cors) {
