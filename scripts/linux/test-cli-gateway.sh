@@ -125,6 +125,13 @@ echo -e "${CYAN}${BOLD}  Viben Bundled CLI Test (Linux)${NC}"
 echo -e "${CYAN}  Binary: $VIBEN${NC}"
 echo ""
 
+# Ensure test port is free before starting
+if lsof -ti :$GATEWAY_PORT > /dev/null 2>&1; then
+    info "Port $GATEWAY_PORT is in use, cleaning up..."
+    lsof -ti :$GATEWAY_PORT | xargs kill -9 2>/dev/null || true
+    sleep 1
+fi
+
 ORIG_DIR="$(pwd)"
 TEST_DIR=$(mktemp -d)
 cd "$TEST_DIR"
@@ -205,12 +212,12 @@ if [ "$READY" = true ]; then
         fail "/health unexpected response: $HEALTH"
     fi
 
-    # Test /api
-    API=$(curl -sf "http://127.0.0.1:$GATEWAY_PORT/api" 2>&1)
-    if echo "$API" | jq -e '.endpoints' > /dev/null 2>&1; then
-        success "/api returns endpoints list"
+    # Test /api/agent (list agents)
+    API=$(curl -sf "http://127.0.0.1:$GATEWAY_PORT/api/agent" 2>&1)
+    if echo "$API" | jq -e '.agents' > /dev/null 2>&1; then
+        success "/api/agent returns agent list"
     else
-        fail "/api unexpected response: $API"
+        fail "/api/agent unexpected response: $API"
     fi
 
     # Test /ws WebSocket endpoint

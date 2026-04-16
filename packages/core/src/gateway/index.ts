@@ -124,46 +124,58 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register Swagger for API documentation
   try {
-    await app.register(fastifySwagger, {
-      openapi: {
-        info: {
-          title: "Viben Gateway API",
-          description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, Evo-based code evolution, and XState task management",
-          version: "1.0.0",
-        },
-        servers: [{ url: `http://${host}:${port}` }],
-        tags: [
-          { name: "health", description: "Health check endpoints" },
-          { name: "agents", description: "Agent management" },
-          { name: "executors", description: "Executor discovery and management" },
-          { name: "sessions", description: "Session management" },
-          { name: "providers", description: "Provider management" },
-          { name: "models", description: "Model management" },
-          { name: "workspaces", description: "Workspace management" },
-          { name: "channels", description: "Channel management" },
-          { name: "cron", description: "Cron job management" },
-          { name: "tasks", description: "Task management" },
-          { name: "mcp", description: "MCP server management" },
-          { name: "kanban", description: "Kanban board management" },
-        ],
-      },
-    });
-
     // Determine baseDir for Swagger UI static files
     // In bundled mode, static files are copied to swagger-ui-static/ alongside the binary
     const execDir = dirname(process.execPath);
     const bundledStaticDir = join(execDir, "swagger-ui-static");
-    const swaggerUiBaseDir = existsSync(bundledStaticDir) ? bundledStaticDir : undefined;
+    const hasBundledStatic = existsSync(bundledStaticDir);
 
-    await app.register(fastifySwaggerUi, {
-      routePrefix: "/docs",
-      baseDir: swaggerUiBaseDir,
-      uiConfig: {
-        docExpansion: "list",
-        deepLinking: true,
-      },
-    });
-    log.info("Swagger API documentation registered at /docs");
+    // Check if we're running as a bundled binary (Bun compiled binary)
+    // In bundled mode, process.execPath points to the binary itself, not node/bun
+    // and the binary name typically contains "viben" (e.g., viben-aarch64-apple-darwin)
+    const execName = process.execPath.toLowerCase();
+    const isBundledBinary = execName.includes("viben") && !execName.includes("node") && !execName.includes("bun");
+
+    // Skip Swagger UI if we're in bundled mode but static files aren't available
+    if (isBundledBinary && !hasBundledStatic) {
+      log.info("Swagger UI disabled: static files not available in bundled mode");
+    } else {
+      await app.register(fastifySwagger, {
+        openapi: {
+          info: {
+            title: "Viben Gateway API",
+            description: "Agent Swarm × Code Evolution — API for multi-agent orchestration, Evo-based code evolution, and XState task management",
+            version: "1.0.0",
+          },
+          servers: [{ url: `http://${host}:${port}` }],
+          tags: [
+            { name: "health", description: "Health check endpoints" },
+            { name: "agents", description: "Agent management" },
+            { name: "executors", description: "Executor discovery and management" },
+            { name: "sessions", description: "Session management" },
+            { name: "providers", description: "Provider management" },
+            { name: "models", description: "Model management" },
+            { name: "workspaces", description: "Workspace management" },
+            { name: "channels", description: "Channel management" },
+            { name: "cron", description: "Cron job management" },
+            { name: "tasks", description: "Task management" },
+            { name: "mcp", description: "MCP server management" },
+            { name: "kanban", description: "Kanban board management" },
+          ],
+        },
+      });
+
+      const swaggerUiBaseDir = hasBundledStatic ? bundledStaticDir : undefined;
+      await app.register(fastifySwaggerUi, {
+        routePrefix: "/docs",
+        baseDir: swaggerUiBaseDir,
+        uiConfig: {
+          docExpansion: "list",
+          deepLinking: true,
+        },
+      });
+      log.info("Swagger API documentation registered at /docs");
+    }
   } catch (e) {
     log.warn({ err: e }, "Failed to register Swagger plugin");
   }
