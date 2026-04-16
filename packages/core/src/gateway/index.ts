@@ -13,7 +13,7 @@ import fastifySwagger from "@fastify/swagger";
 import fastifyWebsocket from "@fastify/websocket";
 import { AppState, createAppState } from "./state";
 import { registerRoutes } from "./routes";
-import { setGatewayStartupConfig } from "./routes/health";
+import { VERSION, setGatewayStartupConfig } from "./routes/health";
 import {
   initTelemetry,
   getDefaultTelemetryDir,
@@ -98,12 +98,12 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
 
   // Register Swagger for OpenAPI spec generation (no UI)
   try {
-await app.register(fastifySwagger, {
+    await app.register(fastifySwagger, {
       openapi: {
         info: {
           title: "Viben Gateway API",
           description: "Agent Swarm × Code Evolution - Multi-agent orchestration and code evolution API",
-          version: "1.0.0",
+          version: VERSION,
         },
         servers: [
           {
