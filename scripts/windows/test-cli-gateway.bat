@@ -39,6 +39,13 @@ echo   Viben Bundled CLI Test (Windows)
 echo   Binary: %VIBEN%
 echo.
 
+REM Ensure test port is free before starting
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%GATEWAY_PORT%" ^| findstr "LISTENING" 2^>nul') do (
+    echo   [INFO] Port %GATEWAY_PORT% is in use, cleaning up...
+    taskkill /PID %%p /F >nul 2>&1
+    timeout /T 1 /NOBREAK >nul
+)
+
 REM Save original directory for CI log visibility
 set "ORIG_DIR=%CD%"
 
@@ -147,13 +154,21 @@ if "%READY%"=="true" (
         call :fail "/health unexpected response"
     )
 
-    REM Test /api
-    for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API=%%j"
-    echo !API! | findstr /C:"endpoints" >nul 2>&1
+    REM Test /api/agent (list agents)
+    for /f "delims=" %%j in ('powershell -NoProfile -Command "try { (Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/api/agent' -UseBasicParsing -TimeoutSec 5).Content } catch { Write-Output 'ERROR' }"') do set "API=%%j"
+    echo !API! | findstr /C:"agents" >nul 2>&1
     if !errorlevel! equ 0 (
-        call :pass "/api returns endpoints list"
+        call :pass "/api/agent returns agent list"
     ) else (
-        call :fail "/api unexpected response"
+        call :fail "/api/agent unexpected response"
+    )
+
+    REM Test /docs (Swagger UI)
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:%GATEWAY_PORT%/docs' -UseBasicParsing -TimeoutSec 5; exit 0 } catch { exit 1 }" >nul 2>&1
+    if !errorlevel! equ 0 (
+        call :pass "/docs Swagger UI available"
+    ) else (
+        call :fail "/docs Swagger UI not available"
     )
 
     REM Test /ws WebSocket endpoint
