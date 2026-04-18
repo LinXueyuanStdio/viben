@@ -832,7 +832,13 @@ export function getYearMonth(): string {
 // =============================================================================
 
 /**
- * Slugify a string (convert to lowercase, replace non-alphanumeric with hyphens)
+ * Slugify a string for use as task/file identifiers
+ *
+ * Supports:
+ * - ASCII letters and numbers (preserved, lowercased)
+ * - CJK characters (Chinese, Japanese, Korean - preserved as-is)
+ * - Other Unicode letters (preserved as-is)
+ * - Everything else replaced with hyphens
  *
  * @param input - Input string
  * @returns Slugified string
@@ -840,7 +846,10 @@ export function getYearMonth(): string {
 export function slugify(input: string): string {
   return input
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "-")
+    // Preserve letters (including Unicode), numbers, and CJK characters
+    // \p{L} matches any letter, \p{N} matches any number
+    // CJK ranges: U+4E00-9FFF (common), U+3400-4DBF (ext A), U+F900-FAFF (compat)
+    .replace(/[^\p{L}\p{N}\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/gu, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }

@@ -114,7 +114,9 @@ export class VibenClient {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;
-    this.fetchFn = config.fetch || fetch;
+    // Use bound fetch to preserve window context (required for Tauri/browser environments)
+    // Direct `fetch` reference loses `this` binding and causes "Can only call Window.fetch on instances of Window"
+    this.fetchFn = config.fetch || ((...args) => fetch(...args));
   }
 
   /**
@@ -249,10 +251,12 @@ export class VibenClient {
     /**
      * List MCP packages
      */
-    list: (params?: ListParams): Promise<PaginatedResponse<McpPackage>> =>
-      this.request<PaginatedResponse<McpPackage>>(
+    list: async (params?: ListParams): Promise<PaginatedResponse<McpPackage>> => {
+      const response = await this.request<{ packages: McpPackage[]; pagination: PaginatedResponse<McpPackage>['pagination'] }>(
         `/api/mcp${buildQuery(params)}`
-      ),
+      );
+      return { data: response.packages, pagination: response.pagination };
+    },
 
     /**
      * Get a specific MCP package by ID
@@ -330,10 +334,12 @@ export class VibenClient {
     /**
      * List skill packages
      */
-    list: (params?: SkillListParams): Promise<PaginatedResponse<SkillPackage>> =>
-      this.request<PaginatedResponse<SkillPackage>>(
+    list: async (params?: SkillListParams): Promise<PaginatedResponse<SkillPackage>> => {
+      const response = await this.request<{ packages: SkillPackage[]; pagination: PaginatedResponse<SkillPackage>['pagination'] }>(
         `/api/skill${buildQuery(params)}`
-      ),
+      );
+      return { data: response.packages, pagination: response.pagination };
+    },
 
     /**
      * Get a specific skill package by ID
