@@ -167,7 +167,11 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_window_state::Builder::new().build());
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_denylist(&["tray-popup"])
+                .build(),
+        );
 
     // MCP plugin for AI debugging - only in development builds
     #[cfg(debug_assertions)]
@@ -196,8 +200,11 @@ pub fn run() {
                 auto_start_gateway(&gateway_state_clone, exe_dir).await;
             });
 
-            // Set up blur handler for popup window
+            // Set up blur handler for popup window and ensure it starts hidden
             if let Some(popup) = app.get_webview_window("tray-popup") {
+                // Ensure popup is hidden on startup (safety net)
+                let _ = popup.hide();
+
                 let popup_clone = popup.clone();
                 popup.on_window_event(move |event| {
                     if let tauri::WindowEvent::Focused(false) = event {
