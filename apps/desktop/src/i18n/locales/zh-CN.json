@@ -82,6 +82,7 @@
     "rename": "重命名",
     "path": "路径",
     "copyPath": "复制路径",
+    "browse": "浏览",
     "yesterday": "昨天",
     "today": "今天",
     "daysAgo_one": "{{count}} 天前",
@@ -164,8 +165,6 @@
     "documents": "文档",
     "settings": "设置",
     "about": "关于",
-    "observability": "可观测性",
-    "chatMonitor": "对话监控",
     "github": "GitHub"
   },
   "sidebar": {
@@ -430,6 +429,8 @@
       "models": "模型",
       "model": "模型",
       "agents": "智能体",
+      "mcp": "MCP",
+      "skills": "技能",
       "gateway": "网关",
       "channels": "消息渠道",
       "executors": "执行器",
@@ -2817,6 +2818,8 @@
     "failedToLoadTasks": "加载任务失败",
     "chat": "对话",
     "chatDescription": "与 AI 开始对话",
+    "chatMonitor": "对话监控",
+    "chatMonitorDescription": "监控智能体对话的执行追踪",
     "recentActivity": "最近活跃",
     "kanban": "任务看板",
     "kanbanDescription": "使用看板管理任务",
@@ -3026,6 +3029,22 @@
       "claude": "智能体执行器",
       "login": "账户",
       "gateway": "网关"
+    },
+    "nodejs": {
+      "title": "Node.js 环境",
+      "description": "Viben 需要 Node.js 22.16.0+ 才能运行。请选择或配置您的 Node.js 安装。",
+      "detected": "检测到的 Node.js 安装",
+      "detecting": "正在检测 Node.js 安装...",
+      "noNode": "未找到 Node.js 安装。请安装 Node.js 22.16.0 或更高版本。",
+      "notFound": "未检测到 Node.js",
+      "selectNode": "选择 Node.js 环境",
+      "customPath": "自定义 Node.js 路径",
+      "customPathPlaceholder": "/path/to/node",
+      "check": "检查",
+      "invalidPath": "无效的 Node.js 路径或版本过低",
+      "requiresVersion": "需要 v{{version}}+",
+      "versionTooLow": "Node.js 版本过低 ({{version}})，需要 v{{required}} 或更高版本",
+      "source": "来源"
     },
     "python": {
       "title": "Python 环境",

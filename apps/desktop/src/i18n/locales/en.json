@@ -81,6 +81,7 @@
     "rename": "Rename",
     "path": "Path",
     "copyPath": "Copy path",
+    "browse": "Browse",
     "yesterday": "Yesterday",
     "today": "today",
     "daysAgo_one": "{{count}} day ago",
@@ -154,8 +155,6 @@
     "documents": "Documents",
     "settings": "Settings",
     "about": "About",
-    "observability": "Observability",
-    "chatMonitor": "Chat Monitor",
     "github": "GitHub"
   },
   "sidebar": {
@@ -420,6 +419,8 @@
       "models": "Models",
       "model": "Models",
       "agents": "Agents",
+      "mcp": "MCP",
+      "skills": "Skills",
       "gateway": "Gateway",
       "channels": "Channels",
       "executors": "Executors",
@@ -2771,6 +2772,8 @@
     "failedToLoadTasks": "Failed to load tasks",
     "chat": "Chat",
     "chatDescription": "Start a conversation with AI",
+    "chatMonitor": "Chat Monitor",
+    "chatMonitorDescription": "Monitor agent chat execution traces",
     "recentActivity": "Recent activity",
     "kanbanDescription": "Manage tasks with kanban board",
     "taskManagement": "Task management",
@@ -2950,6 +2953,22 @@
       "claude": "AI Clients",
       "login": "Account",
       "gateway": "Gateway"
+    },
+    "nodejs": {
+      "title": "Node.js Environment",
+      "description": "Viben requires Node.js 22.16.0+ to run. Select or configure your Node.js installation.",
+      "detected": "Detected Node.js Installations",
+      "detecting": "Detecting Node.js installations...",
+      "noNode": "No Node.js installations found. Please install Node.js 22.16.0 or later.",
+      "notFound": "Node.js not detected",
+      "selectNode": "Select Node.js Environment",
+      "customPath": "Custom Node.js Path",
+      "customPathPlaceholder": "/path/to/node",
+      "check": "Check",
+      "invalidPath": "Invalid Node.js path or version too low",
+      "requiresVersion": "Requires v{{version}}+",
+      "versionTooLow": "Node.js version too low ({{version}}), requires v{{required}} or higher",
+      "source": "Source"
     },
     "python": {
       "title": "Python Environment",

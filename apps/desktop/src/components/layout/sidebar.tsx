@@ -3,10 +3,6 @@ import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
-  SearchCode,
-  Store,
-  Sparkles,
-  Server,
   PanelLeftClose,
   Upload,
   PackageSearch,
@@ -56,7 +52,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
@@ -82,23 +77,6 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-// MCP section navigation items
-const mcpNav: NavItem[] = [
-  { titleKey: "nav.mcpMarketplace", href: "/mcp-marketplace", icon: Store },
-  { titleKey: "nav.inspector", href: "/inspector", icon: SearchCode },
-  { titleKey: "nav.mcpServices", href: "/mcp-services", icon: Server },
-];
-
-// Skills section navigation
-const skillsNav: NavItem[] = [
-  { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
-];
-
-// Observability section navigation
-const observabilityNav: NavItem[] = [
-  { titleKey: "nav.chatMonitor", href: "/chat-monitor", icon: Activity },
-];
-
 // Creator section navigation (only visible when authenticated)
 const creatorNav: NavItem[] = [
   { titleKey: "creator.publish", href: "/publish", icon: Upload },
@@ -121,6 +99,7 @@ const baseWorkspaceNavItems: WorkspaceNavItem[] = [
   { titleKey: "workspace.ideas", path: "ideas", icon: Lightbulb },
   { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
   { titleKey: "workspace.files", path: "files", icon: FolderOpen },
+  { titleKey: "workspace.chatMonitor", path: "chat-monitor", icon: Activity },
 ];
 
 // GitHub navigation item (shown only when integrated)
@@ -411,29 +390,6 @@ export function Sidebar() {
                 </>
               )}
 
-              {/* MCP Section */}
-              {mcpNav.map((item) => (
-                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-              ))}
-
-              <div className="grid place-items-center w-full py-2">
-                <Separator className="w-10 bg-sidebar-border" />
-              </div>
-
-              {/* Skills Section */}
-              {skillsNav.map((item) => (
-                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-              ))}
-
-              <div className="grid place-items-center w-full py-2">
-                <Separator className="w-10 bg-sidebar-border" />
-              </div>
-
-              {/* Observability Section */}
-              {observabilityNav.map((item) => (
-                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-              ))}
-
               {/* Creator Section (only when authenticated) */}
               {isAuthenticated && (
                 <>
@@ -472,45 +428,6 @@ export function Sidebar() {
                 </>
               )}
 
-              {/* MCP Section */}
-              <SidebarSection
-                title={t("workspace.sections.mcp")}
-                collapsible
-                defaultOpen
-              >
-                <nav className="flex flex-col gap-1">
-                  {mcpNav.map((item) => (
-                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                  ))}
-                </nav>
-              </SidebarSection>
-
-              {/* Skills Section */}
-              <SidebarSection
-                title={t("workspace.sections.skills")}
-                collapsible
-                defaultOpen
-              >
-                <nav className="flex flex-col gap-1">
-                  {skillsNav.map((item) => (
-                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                  ))}
-                </nav>
-              </SidebarSection>
-
-              {/* Observability Section */}
-              <SidebarSection
-                title={t("nav.observability")}
-                collapsible
-                defaultOpen
-              >
-                <nav className="flex flex-col gap-1">
-                  {observabilityNav.map((item) => (
-                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                  ))}
-                </nav>
-              </SidebarSection>
-
               {/* Creator Section (only when authenticated) */}
               {isAuthenticated && (
                 <SidebarSection
@@ -529,7 +446,7 @@ export function Sidebar() {
           )}
         </ScrollArea>
 
-        {/* Bottom Status & New Task */}
+        {/* Bottom Navigation & New Task */}
         {collapsed ? (
           // Collapsed: all items use grid centering
           <div className="pb-4 flex flex-col gap-1">
@@ -538,12 +455,6 @@ export function Sidebar() {
             </div>
             <div className="grid place-items-center w-full">
               <GatewayStatusIndicator collapsed={collapsed} />
-            </div>
-            <div className="grid place-items-center w-full">
-              <McpStatusIndicator collapsed={collapsed} />
-            </div>
-            <div className="grid place-items-center w-full py-2">
-              <Separator className="w-10 bg-sidebar-border" />
             </div>
             <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
@@ -578,17 +489,14 @@ export function Sidebar() {
           <div className="pb-4 px-2">
             <Separator className="mb-4 bg-sidebar-border" />
             <GatewayStatusIndicator collapsed={collapsed} />
-            <McpStatusIndicator collapsed={collapsed} />
-            <div className="mt-3 pt-3 border-t border-sidebar-border">
-              <NavItemComponent
-                item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
-                collapsed={collapsed}
-              />
-              <NavItemComponent
-                item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
-                collapsed={collapsed}
-              />
-            </div>
+            <NavItemComponent
+              item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
+              collapsed={collapsed}
+            />
+            <NavItemComponent
+              item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
+              collapsed={collapsed}
+            />
             {/* New Task Button */}
             <div className="mt-4">
               <Button

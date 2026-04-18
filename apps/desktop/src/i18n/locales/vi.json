@@ -146,8 +146,6 @@
     "documents": "Tài liệu",
     "settings": "Cài đặt",
     "about": "Giới thiệu",
-    "observability": "Observability",
-    "chatMonitor": "Chat Monitor",
     "github": "GitHub"
   },
   "sidebar": {
@@ -1768,8 +1766,7 @@
       "type": "Transport Type",
       "url": "URL",
       "command": "Command",
-    "url": "URL",
-    "tokenIncluded": "(token included)",
+      "tokenIncluded": "(token included)",
       "args": "Arguments",
       "argPlaceholder": "Enter argument...",
       "envVars": "Environment Variables",
@@ -2872,7 +2869,9 @@
       "qa_rejected": "QA Issues",
       "plan_review": "Plan Review",
       "stopped": "Stopped"
-    }
+    },
+    "chatMonitor": "Chat Monitor",
+    "chatMonitorDescription": "Monitor agent chat execution traces"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",

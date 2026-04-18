@@ -109,9 +109,6 @@ function App() {
             }
           />
 
-          {/* Observability routes */}
-          <Route path="chat-monitor" element={<ChatMonitorPage />} />
-
           {/* Documents, Settings and About */}
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="settings" element={<SettingsPage />}>
@@ -125,6 +122,8 @@ function App() {
             <Route path="executors" element={null} />
             <Route path="model" element={null} />
             <Route path="agents" element={null} />
+            <Route path="mcp" element={null} />
+            <Route path="skills" element={null} />
             <Route path="sandbox" element={null} />
             <Route path="environment" element={null} />
             <Route path="terminalFonts" element={null} />
@@ -157,6 +156,7 @@ function App() {
           <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
           <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
+          <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />
         </Route>
 
         {/* Tray popup - separate window without layout */}
