@@ -433,7 +433,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
             break;
           }
 
-          case "ai-clients": {
+          case "executors": {
             appendLog(nodeId, "Scanning: ~/.claude, ~/.cursor, ~/.codex, ...");
             await executors.refresh();
 

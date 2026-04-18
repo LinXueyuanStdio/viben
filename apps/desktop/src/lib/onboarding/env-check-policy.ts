@@ -51,7 +51,7 @@ export const ENV_CHECK_UI_POLICY = Object.freeze({
   /** 加载提示文案 */
   loadingTips: Object.freeze([
     "正在检查系统环境...",
-    "Viben 支持 Claude Code、Cursor、Codex 等多种 AI 客户端",
+    "Viben 支持 Claude Code、Cursor、Codex 等多种智能体执行器",
     "所有配置和数据仅保存在您的电脑上",
     "安装和配置速度会受到网络和电脑性能影响",
     "安装、配置过程可能会输入电脑密码",
@@ -69,7 +69,7 @@ export const ENV_CHECK_UI_POLICY = Object.freeze({
 export const ENV_CHECK_STEP_TOOLTIPS: Record<string, string> = {
   node: "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境",
   viben: "Viben CLI 是核心命令行工具，提供 Gateway 服务和 AI 交互功能",
-  gateway: "Gateway 是 Viben 的本地后端服务，负责与 AI 客户端通信",
+  gateway: "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信",
 };
 
 // ============================================================================

@@ -1247,7 +1247,7 @@
     "footer": "微本 - 您的 AI 研究助手",
     "steps": {
       "python": "Python",
-      "claude": "AI 客户端",
+      "claude": "智能体执行器",
       "login": "账户"
     },
     "python": {
@@ -1263,15 +1263,15 @@
       "installRequired": "请安装 browse-mcp 以继续"
     },
     "claude": {
-      "title": "AI 客户端检测",
-      "description": "微本可以与多种 AI 助手集成。我们在您的系统上检测到以下客户端。",
-      "aiClients": "AI 客户端",
-      "detecting": "正在检测 AI 客户端...",
+      "title": "智能体执行器检测",
+      "description": "微本可以与多种 AI 助手集成。我们在您的系统上检测到以下执行器。",
+      "aiClients": "智能体执行器",
+      "detecting": "正在检测智能体执行器...",
       "download": "下载",
-      "detected": "检测到 {{count}} 个 AI 客户端",
-      "readyToConfigure": "设置完成后，您可以为这些客户端配置 browse-mcp。",
-      "noClients": "未检测到 AI 客户端",
-      "noClientsHint": "您仍可以继续，稍后安装 AI 客户端。"
+      "detected": "检测到 {{count}} 个智能体执行器",
+      "readyToConfigure": "设置完成后，您可以为这些执行器配置 browse-mcp。",
+      "noClients": "未检测到智能体执行器",
+      "noClientsHint": "您仍可以继续，稍后安装智能体执行器。"
     },
     "login": {
       "title": "登录（可选）",

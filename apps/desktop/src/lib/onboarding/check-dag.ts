@@ -67,7 +67,7 @@ export const ENV_CHECK_NODES: CheckNode[] = [
   {
     id: "gateway",
     label: "Gateway",
-    tooltip: "Gateway 是 Viben 的本地后端服务，负责与 AI 客户端通信",
+    tooltip: "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信",
     dependsOn: ["cli"],
     contentType: "simple",
   },
@@ -87,9 +87,9 @@ export const ENV_CHECK_NODES: CheckNode[] = [
     contentType: "python-selector",
   },
   {
-    id: "ai-clients",
-    label: "AI 客户端",
-    tooltip: "配置和管理 Claude Code、Cursor 等 AI 客户端",
+    id: "executors",
+    label: "智能体执行器",
+    tooltip: "配置和管理 Claude Code、Cursor 等智能体执行器",
     dependsOn: ["connection"],
     optional: true,
     contentType: "client-list",

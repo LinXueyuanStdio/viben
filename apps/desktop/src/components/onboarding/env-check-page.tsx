@@ -202,7 +202,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
           detailItems: items.length > 0 ? items : undefined,
         };
       }
-      case "ai-clients": {
+      case "executors": {
         const executorData = data as unknown[] | undefined;
         const count = Array.isArray(executorData) ? executorData.length : 0;
         return {
@@ -263,7 +263,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         return t("onboarding.envCheck.verifyingConnection");
       case "python":
         return t("onboarding.envCheck.detectingPython");
-      case "ai-clients":
+      case "executors":
         return t("onboarding.envCheck.detectingClients");
       default:
         return t("common.checking");
@@ -343,7 +343,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
             executors={orchestrator.executorsData.executors}
             isLoading={orchestrator.executorsData.loading}
             error={orchestrator.executorsData.error}
-            onRefresh={() => orchestrator.retryNode("ai-clients")}
+            onRefresh={() => orchestrator.retryNode("executors")}
           />
         )}
       </EnvCheckStepItem>
