@@ -249,7 +249,8 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
               appendLog(nodeId, "✓ Git/Xcode CLT available");
             }
 
-            // Check Node.js
+            // Check Node.js (find_executable: which + known paths + nvm/fnm/volta)
+            appendLog(nodeId, "$ which node  (+ known paths, nvm/fnm/volta)");
             appendLog(nodeId, "$ node --version");
             const result = await nodeInstaller.checkNode();
 

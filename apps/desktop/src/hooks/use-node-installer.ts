@@ -119,7 +119,7 @@ export interface NodeInstallPlan {
 }
 
 /** 增强版 Node.js 检查结果 */
-interface TauriNodeCheckResultEnhanced {
+interface TauriNodeCheckResult {
   installed: boolean;
   version?: string;
   path?: string;
@@ -219,10 +219,10 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
     setIssue(null);
 
     try {
-      log("Invoking check_node_enhanced...");
+      log("Invoking check_node_cli...");
       const result =
-        await invoke<TauriNodeCheckResultEnhanced>("check_node_enhanced");
-      log("check_node_enhanced result:", result);
+        await invoke<TauriNodeCheckResult>("check_node_cli");
+      log("check_node_cli result:", result);
 
       setInstallStrategy(result.install_strategy);
 

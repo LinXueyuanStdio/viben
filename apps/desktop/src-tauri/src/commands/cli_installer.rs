@@ -93,7 +93,7 @@ pub struct NodeInstallPlan {
 
 /// Node.js 检查结果 (增强版)
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NodeCheckResultEnhanced {
+pub struct NodeCheckResult {
     pub installed: bool,
     pub version: Option<String>,
     pub path: Option<String>,
@@ -309,28 +309,6 @@ fn get_cli_path() -> Option<String> {
     crate::utils::find_executable("viben").map(|p| p.to_string_lossy().to_string())
 }
 
-/// Check if Node.js is installed
-///
-/// Returns true if Node.js is available in the system PATH.
-#[command]
-pub async fn check_node() -> Result<bool, String> {
-    let node_cmd = if cfg!(target_os = "windows") {
-        "node.exe"
-    } else {
-        "node"
-    };
-
-    let mut cmd = Command::new(node_cmd);
-    cmd.arg("--version");
-
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-
-    cmd.output()
-        .map(|o| o.status.success())
-        .map_err(|e| e.to_string())
-}
-
 /// Trigger macOS Xcode Command Line Tools installation
 ///
 /// On macOS, runs `xcode-select --install` to trigger the system dialog
@@ -370,82 +348,6 @@ pub async fn check_xcode_clt() -> Result<bool, String> {
         .output()
         .map(|o| o.status.success())
         .map_err(|e| e.to_string())
-}
-
-/// Node.js check result with detailed information
-#[derive(Debug, Serialize, Deserialize)]
-pub struct NodeCheckResult {
-    pub found: bool,
-    pub version: Option<String>,
-    pub path: Option<String>,
-    pub error: Option<String>,
-}
-
-/// Check if Node.js is installed with detailed information
-///
-/// Returns detailed information about Node.js installation including
-/// version, path, and any errors encountered.
-#[command]
-pub async fn check_node_installation() -> Result<NodeCheckResult, String> {
-    let node_cmd = if cfg!(target_os = "windows") {
-        "node.exe"
-    } else {
-        "node"
-    };
-
-    let mut cmd = Command::new(node_cmd);
-    cmd.arg("--version");
-
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-
-    let output = cmd.output();
-
-    match output {
-        Ok(output) if output.status.success() => {
-            let version = String::from_utf8_lossy(&output.stdout)
-                .trim()
-                .trim_start_matches('v')
-                .to_string();
-
-            // Try to get node path
-            let path = crate::utils::find_executable("node")
-                .map(|p| p.to_string_lossy().to_string());
-
-            Ok(NodeCheckResult {
-                found: true,
-                version: Some(version),
-                path,
-                error: None,
-            })
-        }
-        Ok(output) => {
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-            // Check for Xcode CLT issue on macOS
-            if stderr.contains("xcode-select") || stderr.contains("command line tools") {
-                return Ok(NodeCheckResult {
-                    found: false,
-                    version: None,
-                    path: None,
-                    error: Some("xcode_clt_pending".to_string()),
-                });
-            }
-
-            Ok(NodeCheckResult {
-                found: false,
-                version: None,
-                path: None,
-                error: Some(stderr),
-            })
-        }
-        Err(e) => Ok(NodeCheckResult {
-            found: false,
-            version: None,
-            path: None,
-            error: Some(e.to_string()),
-        }),
-    }
 }
 
 /// Node.js installation result
@@ -656,14 +558,22 @@ pub async fn get_node_install_plan() -> Result<NodeInstallPlan, String> {
 /// Returns detailed information including whether upgrade is needed
 /// and the recommended installation strategy.
 #[command]
-pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
-    let node_cmd = if cfg!(target_os = "windows") {
-        "node.exe"
-    } else {
-        "node"
+pub async fn check_node_cli() -> Result<NodeCheckResult, String> {
+    // First, use find_executable to locate node via which + known paths + version managers.
+    // macOS GUI apps don't inherit shell environment variables (.zshrc etc.),
+    // so bare `Command::new("node")` would fail for nvm/fnm/homebrew installs.
+    let node_path = crate::utils::find_executable("node");
+
+    let (cmd_path, resolved_path) = match &node_path {
+        Some(p) => (p.to_string_lossy().to_string(), Some(p.to_string_lossy().to_string())),
+        None => {
+            // Fallback: try bare command name in case PATH works (e.g., system install on Linux)
+            let name = if cfg!(target_os = "windows") { "node.exe" } else { "node" };
+            (name.to_string(), None)
+        }
     };
 
-    let mut cmd = Command::new(node_cmd);
+    let mut cmd = Command::new(&cmd_path);
     cmd.arg("--version");
 
     #[cfg(target_os = "windows")]
@@ -681,17 +591,13 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
             // Parse version to check if upgrade is needed
             let needs_upgrade = compare_versions(&version_str, NODE_REQUIRED_VERSION) < 0;
 
-            // Get node path
-            let path = crate::utils::find_executable("node")
-                .map(|p| p.to_string_lossy().to_string());
-
             // Detect installation strategy
-            let install_strategy = detect_node_install_strategy(&path);
+            let install_strategy = detect_node_install_strategy(&resolved_path);
 
-            Ok(NodeCheckResultEnhanced {
+            Ok(NodeCheckResult {
                 installed: true,
                 version: Some(version_str),
-                path,
+                path: resolved_path,
                 needs_upgrade,
                 required_version: NODE_REQUIRED_VERSION.to_string(),
                 target_version: if needs_upgrade {
@@ -708,7 +614,7 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
 
             // Check for Xcode CLT issue on macOS
             if stderr.contains("xcode-select") || stderr.contains("command line tools") {
-                return Ok(NodeCheckResultEnhanced {
+                return Ok(NodeCheckResult {
                     installed: false,
                     version: None,
                     path: None,
@@ -720,7 +626,7 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
                 });
             }
 
-            Ok(NodeCheckResultEnhanced {
+            Ok(NodeCheckResult {
                 installed: false,
                 version: None,
                 path: None,
@@ -731,7 +637,7 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
                 error: Some(stderr),
             })
         }
-        Err(e) => Ok(NodeCheckResultEnhanced {
+        Err(e) => Ok(NodeCheckResult {
             installed: false,
             version: None,
             path: None,
