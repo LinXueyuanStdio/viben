@@ -105,6 +105,22 @@ pub struct NodeCheckResult {
     pub error: Option<String>,
 }
 
+/// Single Node.js installation info
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeInfo {
+    pub path: String,
+    pub version: Option<String>,
+    pub is_valid: bool,
+    pub source: String,
+}
+
+/// Result of scanning all Node.js installations
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NodeScanResult {
+    pub nodes: Vec<NodeInfo>,
+    pub required_version: String,
+}
+
 /// 下载进度事件
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DownloadProgress {
@@ -589,6 +605,131 @@ pub async fn check_node_cli() -> Result<NodeCheckResult, String> {
             required_version: NODE_REQUIRED_VERSION.to_string(),
             target_version: Some(format!("v{}", NODE_LTS_VERSION)),
             install_strategy: "installer".to_string(),
+            error: Some(e.to_string()),
+        }),
+    }
+}
+
+/// Scan all Node.js installations
+///
+/// Returns a list of all detected Node.js installations with version info.
+/// This allows users to select which Node.js to use when multiple are installed.
+#[command]
+pub async fn scan_node_installations() -> Result<NodeScanResult, String> {
+    let paths = crate::utils::find_all_node_installations();
+
+    let nodes: Vec<NodeInfo> = paths
+        .into_iter()
+        .map(|path| {
+            let version = crate::utils::get_node_version(&path);
+            let is_valid = version
+                .as_ref()
+                .map(|v| compare_versions(v, NODE_REQUIRED_VERSION) >= 0)
+                .unwrap_or(false);
+
+            // Detect source from path
+            let path_str = path.to_string_lossy().to_string();
+            let source = if path_str.contains(".nvm") {
+                "nvm"
+            } else if path_str.contains("fnm") {
+                "fnm"
+            } else if path_str.contains(".volta") {
+                "volta"
+            } else if path_str.contains("homebrew") || path_str.contains("/opt/homebrew") {
+                "homebrew"
+            } else if path_str.contains("/usr/local") {
+                "system"
+            } else {
+                "other"
+            };
+
+            NodeInfo {
+                path: path_str,
+                version,
+                is_valid,
+                source: source.to_string(),
+            }
+        })
+        .collect();
+
+    Ok(NodeScanResult {
+        nodes,
+        required_version: NODE_REQUIRED_VERSION.to_string(),
+    })
+}
+
+/// Check a specific Node.js path
+///
+/// Validates that the given path is a valid Node.js executable with correct version.
+#[command]
+pub async fn check_node_at_path(path: String) -> Result<NodeCheckResult, String> {
+    let node_path = std::path::PathBuf::from(&path);
+
+    if !node_path.exists() {
+        return Ok(NodeCheckResult {
+            installed: false,
+            version: None,
+            path: Some(path),
+            needs_upgrade: false,
+            required_version: NODE_REQUIRED_VERSION.to_string(),
+            target_version: Some(format!("v{}", NODE_LTS_VERSION)),
+            install_strategy: "custom".to_string(),
+            error: Some("Path does not exist".to_string()),
+        });
+    }
+
+    let mut cmd = Command::new(&node_path);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    match cmd.output() {
+        Ok(output) if output.status.success() => {
+            let version_str = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .trim_start_matches('v')
+                .to_string();
+
+            let needs_upgrade = compare_versions(&version_str, NODE_REQUIRED_VERSION) < 0;
+            let install_strategy = detect_node_install_strategy(&Some(path.clone()));
+
+            Ok(NodeCheckResult {
+                installed: true,
+                version: Some(version_str),
+                path: Some(path),
+                needs_upgrade,
+                required_version: NODE_REQUIRED_VERSION.to_string(),
+                target_version: if needs_upgrade {
+                    Some(format!("v{}", NODE_LTS_VERSION))
+                } else {
+                    None
+                },
+                install_strategy,
+                error: None,
+            })
+        }
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            Ok(NodeCheckResult {
+                installed: false,
+                version: None,
+                path: Some(path),
+                needs_upgrade: false,
+                required_version: NODE_REQUIRED_VERSION.to_string(),
+                target_version: Some(format!("v{}", NODE_LTS_VERSION)),
+                install_strategy: "custom".to_string(),
+                error: Some(if stderr.is_empty() { "Failed to get version".to_string() } else { stderr }),
+            })
+        }
+        Err(e) => Ok(NodeCheckResult {
+            installed: false,
+            version: None,
+            path: Some(path),
+            needs_upgrade: false,
+            required_version: NODE_REQUIRED_VERSION.to_string(),
+            target_version: Some(format!("v{}", NODE_LTS_VERSION)),
+            install_strategy: "custom".to_string(),
             error: Some(e.to_string()),
         }),
     }

@@ -133,10 +133,11 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
       case "python_missing":
       case "package_checking":
       case "package_missing":
-        navigate("/settings");
+        navigate("/settings/environment");
         break;
       default:
-        navigate("/mcp-services/search-service");
+        // Navigate to MCP settings page with dashboard tab
+        navigate("/settings/mcp?tab=dashboard");
     }
   };
 

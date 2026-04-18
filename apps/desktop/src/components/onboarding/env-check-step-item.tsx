@@ -50,7 +50,7 @@ export type EnvCheckStepStatus =
   | "skipped";
 
 /** Content type for the expandable section */
-export type EnvCheckContentType = "simple" | "python-selector" | "client-list";
+export type EnvCheckContentType = "simple" | "nodejs-selector" | "python-selector" | "client-list";
 
 export interface EnvCheckStepItemProps {
   title: string;

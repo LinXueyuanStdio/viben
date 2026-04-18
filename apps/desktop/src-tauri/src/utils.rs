@@ -229,3 +229,83 @@ fn scan_version_managers(name: &str) -> Option<PathBuf> {
 
     None
 }
+
+/// Scan ALL Node.js installations and return a list of paths.
+/// Used to give users a choice when multiple versions are available.
+pub fn find_all_node_installations() -> Vec<PathBuf> {
+    let mut results = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    // Helper to add unique path
+    let mut add_if_valid = |path: PathBuf| {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+        if !seen.contains(&canonical) && path.exists() && verify_executable(&path) {
+            seen.insert(canonical);
+            results.push(path);
+        }
+    };
+
+    // 1. Try PATH via which/where
+    if let Some(path) = which_executable("node") {
+        add_if_valid(path);
+    }
+
+    // 2. Scan version managers (nvm, fnm, volta)
+    #[cfg(unix)]
+    {
+        if let Some(home) = dirs::home_dir() {
+            // nvm: ~/.nvm/versions/node/*/bin/node
+            let nvm_dir = home.join(".nvm/versions/node");
+            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+                for entry in entries.flatten() {
+                    let bin = entry.path().join("bin/node");
+                    add_if_valid(bin);
+                }
+            }
+
+            // fnm: ~/.local/share/fnm/node-versions/*/installation/bin/node
+            let fnm_dir = home.join(".local/share/fnm/node-versions");
+            if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
+                for entry in entries.flatten() {
+                    let bin = entry.path().join("installation/bin/node");
+                    add_if_valid(bin);
+                }
+            }
+
+            // volta: ~/.volta/bin/node
+            let volta_bin = home.join(".volta/bin/node");
+            add_if_valid(volta_bin);
+        }
+    }
+
+    // 3. Check known installation paths
+    for candidate in known_install_paths("node").into_iter().flatten() {
+        add_if_valid(candidate);
+    }
+
+    results
+}
+
+/// Get version string from a node executable path.
+pub fn get_node_version(path: &PathBuf) -> Option<String> {
+    let mut cmd = Command::new(path);
+    cmd.arg("--version")
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| {
+            String::from_utf8_lossy(&o.stdout)
+                .trim()
+                .trim_start_matches('v')
+                .to_string()
+        })
+}

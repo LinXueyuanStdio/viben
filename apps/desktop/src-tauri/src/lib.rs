@@ -282,6 +282,8 @@ pub fn run() {
             commands::cli_installer::prepare_mac_git_tools,
             commands::cli_installer::get_node_install_plan,
             commands::cli_installer::check_node_cli,
+            commands::cli_installer::scan_node_installations,
+            commands::cli_installer::check_node_at_path,
             commands::cli_installer::download_node_installer,
             commands::cli_installer::inspect_node_installer,
             commands::cli_installer::install_env,

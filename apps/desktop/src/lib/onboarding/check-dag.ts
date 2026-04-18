@@ -30,7 +30,7 @@ export interface CheckNode {
   tooltip?: string;
   dependsOn: string[];
   optional?: boolean;
-  contentType: "simple" | "python-selector" | "client-list";
+  contentType: "simple" | "nodejs-selector" | "python-selector" | "client-list";
 }
 
 export interface CheckNodeState {
@@ -55,7 +55,7 @@ export const ENV_CHECK_NODES: CheckNode[] = [
     label: "Node.js",
     tooltip: "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境",
     dependsOn: [],
-    contentType: "simple",
+    contentType: "nodejs-selector",
   },
   {
     id: "cli",

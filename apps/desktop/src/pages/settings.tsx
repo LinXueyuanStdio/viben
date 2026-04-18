@@ -69,6 +69,8 @@ import { SettingsGatewayPage } from "./settings-gateway";
 import { SettingsChannelsPage } from "./settings-channels";
 import { SettingsExecutorsPage } from "./settings-executors";
 import { SettingsSandboxPage } from "./settings-sandbox";
+import { SettingsMcpPage } from "./settings-mcp";
+import { SettingsSkillsPage } from "./settings-skills";
 import { TerminalFontsSection } from "@/components/settings/terminal-fonts-section";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
@@ -77,12 +79,18 @@ import { Input } from "@/components/ui/input";
 import * as React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, Apple, Rocket, Cat, Boxes, Wrench, SquareTerminal } from "lucide-react";
+import { LogOut, Apple, Rocket, Cat, Boxes, Wrench, SquareTerminal, PanelLeftClose } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import Cursor from "@lobehub/icons/es/Cursor";
 import Windsurf from "@lobehub/icons/es/Windsurf";
 
 // Settings section type
-type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "sandbox" | "environment" | "terminalFonts" | "storage" | "developer" | "about";
+type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "mcp" | "skills" | "sandbox" | "environment" | "terminalFonts" | "storage" | "developer" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -101,6 +109,8 @@ const SECTIONS: SectionConfig[] = [
   { id: "executors", labelKey: "settings.sections.executors", icon: Play },
   { id: "model", labelKey: "settings.sections.model", icon: Cpu },
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
+  { id: "mcp", labelKey: "settings.sections.mcp", icon: Boxes },
+  { id: "skills", labelKey: "settings.sections.skills", icon: Sparkles },
   { id: "sandbox", labelKey: "settings.sections.sandbox", icon: Box },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "terminalFonts", labelKey: "settings.sections.terminalFonts", icon: Type },
@@ -174,7 +184,10 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "sandbox", "environment", "terminalFonts", "storage", "developer", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "mcp", "skills", "sandbox", "environment", "terminalFonts", "storage", "developer", "about"];
+
+// LocalStorage key for settings sidebar collapsed state
+const SETTINGS_SIDEBAR_COLLAPSED_KEY = "settings-sidebar-collapsed";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -192,6 +205,19 @@ export function SettingsPage() {
   };
 
   const [activeSection, setActiveSection] = useState<SettingsSection>(getSectionFromPath);
+
+  // Collapsed state for settings sidebar
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY);
+    return saved === "true";
+  });
+
+  // Persist collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
+
+  const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   // Sync URL with active section (used in sidebar navigation)
   // Pre-load data when navigating to certain sections
@@ -285,6 +311,10 @@ export function SettingsPage() {
         return <SettingsModelPage key="model" />;
       case "agents":
         return <SettingsAgentsPage key="agents" />;
+      case "mcp":
+        return <SettingsMcpPage key="mcp" />;
+      case "skills":
+        return <SettingsSkillsPage key="skills" />;
       case "sandbox":
         return <SettingsSandboxPage key="sandbox" />;
       case "environment":
@@ -303,64 +333,148 @@ export function SettingsPage() {
   };
 
   return (
-    <motion.div
-      className="h-full flex flex-col md:flex-row"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* Left Navigation Sidebar */}
-      <motion.nav
-        className="w-full md:w-56 shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 p-4"
-        variants={itemVariants}
+    <TooltipProvider delayDuration={0}>
+      <motion.div
+        className="h-full flex flex-col md:flex-row"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
       >
-        <h1 className="text-lg font-semibold font-serif mb-4 px-2">
-          {t("settings.title")}
-        </h1>
-        <ul className="space-y-1">
-          {SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+        {/* Left Navigation Sidebar */}
+        <motion.nav
+          className={cn(
+            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300",
+            collapsed ? "w-full md:w-16" : "w-full md:w-56"
+          )}
+          variants={itemVariants}
+        >
+          {/* Header with collapse toggle - matches main sidebar h-14 */}
+          <div className={cn(
+            "flex h-14 items-center border-b border-border",
+            collapsed ? "justify-center px-2" : "justify-between px-3"
+          )}>
+            {collapsed ? (
+              // Collapsed: clickable settings icon to expand
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleCollapsed}
+                    className="transition-transform duration-200 hover:scale-105 p-2"
+                  >
+                    <Settings className="h-5 w-5 text-primary" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {t("settings.title")}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              // Expanded: show title and collapse button
+              <>
+                <h1 className="text-lg font-semibold font-serif">
+                  {t("settings.title")}
+                </h1>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={toggleCollapsed}
+                    >
+                      <PanelLeftClose className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    {t("sidebar.collapse")}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
 
-            return (
-              <li key={section.id}>
-                <button
-                  onClick={() => handleSectionChange(section.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
-                    "transition-all duration-200",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isActive
-                      ? [
-                          "bg-primary text-primary-foreground font-medium",
-                          "shadow-sm",
-                        ]
-                      : [
-                          "text-muted-foreground",
-                          "hover:bg-muted hover:text-foreground",
-                        ]
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      "transition-transform duration-200",
-                      isActive && "scale-110"
-                    )}
-                  />
-                  <span>{t(section.labelKey)}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </motion.nav>
+          {/* Navigation items */}
+          {collapsed ? (
+            // Collapsed view - icons only with tooltips
+            <div className="flex flex-col gap-1 py-4">
+              {SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+
+                return (
+                  <div key={section.id} className="grid place-items-center w-full">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleSectionChange(section.id)}
+                          className={cn(
+                            "flex items-center justify-center h-10 w-10 rounded-lg",
+                            "transition-all duration-200",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4", isActive && "scale-110")} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {t(section.labelKey)}
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Expanded view - full items
+            <ul className="space-y-1 py-4 px-2">
+              {SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+
+                return (
+                  <li key={section.id}>
+                    <button
+                      onClick={() => handleSectionChange(section.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
+                        "transition-all duration-200",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        isActive
+                          ? [
+                              "bg-primary text-primary-foreground font-medium",
+                              "shadow-sm",
+                            ]
+                          : [
+                              "text-muted-foreground",
+                              "hover:bg-muted hover:text-foreground",
+                            ]
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          "transition-transform duration-200",
+                          isActive && "scale-110"
+                        )}
+                      />
+                      <span>{t(section.labelKey)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </motion.nav>
 
       {/* Right Content Area */}
       <div className={cn(
         "flex-1 overflow-auto",
-        // Agents page needs full width, no padding, and no max-width
-        activeSection === "agents" ? "" : "p-6"
+        // Full-width pages need no padding
+        ["agents", "mcp", "skills"].includes(activeSection) ? "" : "p-6"
       )}>
         <AnimatePresence mode="wait">
           <motion.div
@@ -370,15 +484,16 @@ export function SettingsPage() {
             animate="animate"
             exit="exit"
             className={cn(
-              // Agents page needs full width and height
-              activeSection === "agents" ? "h-full" : "max-w-2xl"
+              // Full-width pages need full height
+              ["agents", "mcp", "skills"].includes(activeSection) ? "h-full" : "max-w-2xl"
             )}
           >
             {renderSectionContent()}
           </motion.div>
         </AnimatePresence>
       </div>
-    </motion.div>
+      </motion.div>
+    </TooltipProvider>
   );
 }
 

@@ -355,17 +355,28 @@ async fn start_gateway_process(
 
     let pid = child.id().unwrap_or(0);
 
+    // Capture stderr for error reporting
+    let stderr_lines = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::<String>::new()));
+    let stderr_lines_clone = stderr_lines.clone();
+
     if verbose {
         eprintln!("[gateway] Spawned PID: {}", pid);
 
-        // Capture stderr in background for debugging
+        // Capture stderr in background for debugging and error reporting
         if let Some(stderr) = child.stderr.take() {
+            let stderr_lines_inner = stderr_lines_clone.clone();
             tokio::spawn(async move {
                 use tokio::io::{AsyncBufReadExt, BufReader};
                 let reader = BufReader::new(stderr);
                 let mut lines = reader.lines();
                 while let Ok(Some(line)) = lines.next_line().await {
                     eprintln!("[gateway:stderr] {}", line);
+                    // Store for error reporting (keep last 20 lines)
+                    let mut stored = stderr_lines_inner.lock().await;
+                    stored.push(line);
+                    if stored.len() > 20 {
+                        stored.remove(0);
+                    }
                 }
             });
         }
@@ -420,12 +431,29 @@ async fn start_gateway_process(
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
     }
 
-    // Failed to start - kill the process
+    // Failed to start - collect stderr for error message
+    let collected_stderr = {
+        let lines = stderr_lines.lock().await;
+        lines.join("\n")
+    };
+
+    // Check for common error patterns
+    let error_msg = if collected_stderr.contains("Port") && collected_stderr.contains("already in use") {
+        format!("Port {} is already in use. Another process may be using this port.", config.port)
+    } else if collected_stderr.contains("EADDRINUSE") {
+        format!("Port {} is already in use (EADDRINUSE)", config.port)
+    } else if !collected_stderr.is_empty() {
+        format!("Gateway failed to start:\n{}", collected_stderr)
+    } else {
+        format!("Gateway started but not reachable at {}:{} after 10 attempts", config.host, config.port)
+    };
+
+    // Kill the process
     if verbose {
         eprintln!("[gateway] Not reachable after 10 attempts, killing PID: {}", pid);
     }
     let _ = child.kill().await;
-    Err("Gateway started but not reachable. Check logs for errors.".to_string())
+    Err(error_msg)
 }
 
 // ============================================================================

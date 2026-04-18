@@ -59,6 +59,12 @@ export interface UseNodeInstallerReturn {
   /** Check Node.js installation status */
   checkNode: () => Promise<NodeCheckResult>;
 
+  /** Scan all Node.js installations (returns list for user to select) */
+  scanNodeInstallations: () => Promise<NodeScanResult>;
+
+  /** Check Node.js at a specific path */
+  checkNodeAtPath: (path: string) => Promise<NodeCheckResult>;
+
   /** Prepare macOS Git tools (Xcode CLT) */
   prepareMacGitTools: () => Promise<MacGitToolsPrepareResult>;
 
@@ -159,6 +165,20 @@ interface DownloadProgressEvent {
   percent?: number;
   stage: string;
   message: string;
+}
+
+/** Single Node.js installation info */
+export interface NodeInfo {
+  path: string;
+  version?: string;
+  is_valid: boolean;
+  source: string;
+}
+
+/** Result of scanning all Node.js installations */
+export interface NodeScanResult {
+  nodes: NodeInfo[];
+  required_version: string;
 }
 
 // ============================================================================
@@ -281,6 +301,79 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
         setIssue(nodeIssue);
       }
 
+      setState("error");
+      return { installed: false, error: errorMsg };
+    }
+  }, []);
+
+  // ============================================================================
+  // Scan all Node.js installations
+  // ============================================================================
+
+  const scanNodeInstallations = React.useCallback(async (): Promise<NodeScanResult> => {
+    log("scanNodeInstallations started");
+
+    try {
+      log("Invoking scan_node_installations...");
+      const result = await invoke<NodeScanResult>("scan_node_installations");
+      log("scan_node_installations result:", result);
+      return result;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log("scanNodeInstallations failed:", errorMsg);
+      return { nodes: [], required_version: "22.16.0" };
+    }
+  }, []);
+
+  // ============================================================================
+  // Check Node.js at a specific path
+  // ============================================================================
+
+  const checkNodeAtPath = React.useCallback(async (path: string): Promise<NodeCheckResult> => {
+    log("checkNodeAtPath started, path:", path);
+    setState("checking");
+    setIssue(null);
+
+    try {
+      log("Invoking check_node_at_path...");
+      const result = await invoke<TauriNodeCheckResult>("check_node_at_path", { path });
+      log("check_node_at_path result:", result);
+
+      setInstallStrategy(result.install_strategy);
+
+      if (result.installed && result.version) {
+        log("Node.js found, version:", result.version, "path:", result.path);
+        setCurrentVersion(result.version);
+        setCurrentPath(result.path || null);
+
+        if (result.needs_upgrade) {
+          log("Node.js version too low, needs upgrade");
+          setIssue(createNodeInstallerIssue("version-too-low", result.version));
+          setState("error");
+          return {
+            installed: true,
+            version: result.version,
+            path: result.path,
+            needsUpgrade: true,
+          };
+        }
+
+        setState("done");
+        return {
+          installed: true,
+          version: result.version,
+          path: result.path,
+          needsUpgrade: false,
+        };
+      }
+
+      log("Invalid Node.js at path:", path, "error:", result.error);
+      setIssue(createNodeInstallerIssue("corrupted-installer", result.error));
+      setState("error");
+      return { installed: false, error: result.error };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log("checkNodeAtPath failed:", errorMsg);
       setState("error");
       return { installed: false, error: errorMsg };
     }
@@ -578,6 +671,8 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
     progress,
     installStrategy,
     checkNode,
+    scanNodeInstallations,
+    checkNodeAtPath,
     prepareMacGitTools,
     getInstallPlan,
     downloadInstaller,

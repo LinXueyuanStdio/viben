@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EnvCheckStepItem } from "./env-check-step-item";
 import { CommandDetails, type DetailItem } from "./command-details";
-import { PythonSection, AiClientsSection } from "./env-check-sections";
+import { NodejsSection, PythonSection, AiClientsSection } from "./env-check-sections";
 import { useEnvOrchestrator } from "@/hooks/use-env-orchestrator";
 import { useAppStore } from "@/stores";
 import {
@@ -54,6 +54,8 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
 
   // State for Python section
   const [customPythonPath, setCustomPythonPath] = React.useState("");
+  // State for Node.js section
+  const [customNodejsPath, setCustomNodejsPath] = React.useState("");
   const [expandedNodes, setExpandedNodes] = React.useState<Record<string, boolean>>({});
   const [tipIndex, setTipIndex] = React.useState(0);
 
@@ -87,6 +89,31 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   }, [orchestrator.startChecks]);
 
   // ============================================================================
+  // Auto-expand nodes with selector content types when check completes
+  // ============================================================================
+
+  // Track which nodes we've already auto-expanded to avoid repeated expansions
+  const autoExpandedRef = React.useRef<Set<string>>(new Set());
+
+  React.useEffect(() => {
+    // Auto-expand nodejs-selector or python-selector nodes when check completes
+    // so users can see the logs and selection options
+    for (const node of orchestrator.nodes) {
+      const isCompletedStatus = node.nodeState.status === "error" ||
+                                node.nodeState.status === "success" ||
+                                node.nodeState.status === "warning";
+      const isSelectorType = node.contentType === "nodejs-selector" ||
+                             node.contentType === "python-selector";
+
+      if (isSelectorType && isCompletedStatus && !autoExpandedRef.current.has(node.id)) {
+        log(`Auto-expanding ${node.id} due to ${node.nodeState.status} state`);
+        autoExpandedRef.current.add(node.id);
+        setExpandedNodes((prev) => ({ ...prev, [node.id]: true }));
+      }
+    }
+  }, [orchestrator.nodes]); // Remove expandedNodes from deps to avoid loop
+
+  // ============================================================================
   // Event Handlers
   // ============================================================================
 
@@ -106,6 +133,31 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
       }
     } catch (err) {
       console.error("Failed to browse for Python:", err);
+    }
+  };
+
+  const handleBrowseNodejs = async () => {
+    try {
+      const result = await openDialog({
+        title: t("onboarding.nodejs.selectNode"),
+        filters: [{ name: "Node.js", extensions: ["*"] }],
+      });
+      if (result) {
+        const path = typeof result === "string" ? result : Array.isArray(result) ? result[0] : null;
+        if (path) {
+          setCustomNodejsPath(path);
+          // Check the custom path
+          orchestrator.checkNodeAtPath(path);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to browse for Node.js:", err);
+    }
+  };
+
+  const handleCheckCustomNodejsPath = async () => {
+    if (customNodejsPath.trim()) {
+      await orchestrator.checkNodeAtPath(customNodejsPath.trim());
     }
   };
 
@@ -301,7 +353,11 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
           setExpandedNodes((prev) => ({ ...prev, [id]: exp }))
         }
         onRetry={
-          nodeState.status === "error" ? () => orchestrator.retryNode(id) : undefined
+          // Don't show retry button for nodejs-selector when there's an error
+          // (user should select a different Node.js version instead)
+          nodeState.status === "error" && contentType !== "nodejs-selector"
+            ? () => orchestrator.retryNode(id)
+            : undefined
         }
         onSkip={optional ? () => orchestrator.skipNode(id) : undefined}
         contentType={contentType}
@@ -320,6 +376,30 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         {/* Detail items for simple content types */}
         {detailItems && detailItems.length > 0 && contentType === "simple" && (
           <CommandDetails items={detailItems} />
+        )}
+        {contentType === "nodejs-selector" && (nodeState.status === "error" || nodeState.status === "success" || nodeState.status === "warning") && (
+          <>
+            {detailItems && detailItems.length > 0 && (
+              <CommandDetails items={detailItems} className="mb-3" />
+            )}
+            <NodejsSection
+              nodeVersions={orchestrator.nodejsData.nodes}
+              selectedPath={orchestrator.nodejsData.selectedPath}
+              onSelect={orchestrator.selectNodePath}
+              customPath={customNodejsPath}
+              onCustomPathChange={(path) => {
+                setCustomNodejsPath(path);
+                orchestrator.setNodeCustomPathError(null);
+              }}
+              onBrowse={handleBrowseNodejs}
+              isCheckingCustomPath={orchestrator.nodejsData.checkingCustomPath}
+              customPathError={orchestrator.nodejsData.customPathError}
+              onCheckCustomPath={handleCheckCustomNodejsPath}
+              isLoading={orchestrator.nodejsData.loading}
+              onRefresh={() => orchestrator.scanNodeInstallations()}
+              requiredVersion={orchestrator.nodejsData.requiredVersion}
+            />
+          </>
         )}
         {contentType === "python-selector" && (
           <>

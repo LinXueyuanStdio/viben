@@ -3,6 +3,8 @@ export { ProvidersPage } from "./providers";
 export { SearchServicePage } from "./search-service";
 export { LogsPage } from "./logs";
 export { SettingsPage } from "./settings";
+export { SettingsMcpPage } from "./settings-mcp";
+export { SettingsSkillsPage } from "./settings-skills";
 export { AboutPage } from "./about";
 export { InspectorPage } from "./inspector";
 export { TrayPopupPage } from "./tray-popup";

@@ -5,7 +5,7 @@
  * Composes existing hooks and executes checks in dependency order.
  */
 
-import { useReducer, useCallback, useEffect, useRef, useMemo } from "react";
+import { useReducer, useCallback, useEffect, useRef, useMemo, useState } from "react";
 import {
   ENV_CHECK_NODES,
   getInitialDAGState,
@@ -23,7 +23,7 @@ import {
   CancellationRegistry,
   isCancellationError,
 } from "@/lib/onboarding/cancellation";
-import { useNodeInstaller } from "./use-node-installer";
+import { useNodeInstaller, type NodeInfo, type NodeCheckResult } from "./use-node-installer";
 import { useCliInstaller } from "./use-cli-installer";
 import { useGateway } from "./use-gateway";
 import { useGatewayStatus } from "./use-gateway-status";
@@ -63,6 +63,16 @@ export interface UseEnvOrchestratorReturn {
   /** Cancel all checks */
   cancelAll: () => void;
 
+  /** Node.js related data (for expanded content) */
+  nodejsData: {
+    nodes: NodeInfo[];
+    selectedPath: string | null;
+    loading: boolean;
+    requiredVersion: string;
+    checkingCustomPath: boolean;
+    customPathError: string | null;
+  };
+
   /** Python related data (for expanded content) */
   pythonData: {
     pythons: PythonInfo[];
@@ -83,6 +93,18 @@ export interface UseEnvOrchestratorReturn {
     percent: number;
     message: string;
   } | null;
+
+  /** Scan Node.js installations */
+  scanNodeInstallations: () => Promise<void>;
+
+  /** Check Node.js at custom path */
+  checkNodeAtPath: (path: string) => Promise<NodeCheckResult>;
+
+  /** Select a Node.js installation */
+  selectNodePath: (path: string) => void;
+
+  /** Set custom path error */
+  setNodeCustomPathError: (error: string | null) => void;
 }
 
 // ============================================================================
@@ -184,6 +206,14 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   const python = usePython();
   const executors = useExecutors({ includeGlobal: true });
 
+  // Node.js data state
+  const [nodejsNodes, setNodejsNodes] = useState<NodeInfo[]>([]);
+  const [nodejsSelectedPath, setNodejsSelectedPath] = useState<string | null>(null);
+  const [nodejsLoading, setNodejsLoading] = useState(false);
+  const [nodejsRequiredVersion, setNodejsRequiredVersion] = useState("22.16.0");
+  const [nodejsCheckingCustomPath, setNodejsCheckingCustomPath] = useState(false);
+  const [nodejsCustomPathError, setNodejsCustomPathError] = useState<string | null>(null);
+
   // Update node status helper
   const updateNode = useCallback(
     (nodeId: string, status: CheckNodeStatus, error?: string, data?: unknown) => {
@@ -255,7 +285,48 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
             const result = await nodeInstaller.checkNode();
 
             if (result.installed && !result.needsUpgrade) {
-              appendLog(nodeId, `✓ Node.js ${result.version} found`);
+              appendLog(nodeId, `✓ Node.js ${result.version} found at ${result.path}`);
+              // Scan all Node.js installations for user reference
+              appendLog(nodeId, "Scanning all Node.js installations...");
+              try {
+                const scanResult = await nodeInstaller.scanNodeInstallations();
+                let nodes = scanResult.nodes;
+
+                // Ensure the currently found node is in the list
+                if (result.path && !nodes.some((n) => n.path === result.path)) {
+                  nodes = [
+                    {
+                      path: result.path,
+                      version: result.version,
+                      is_valid: true,
+                      source: "current",
+                    },
+                    ...nodes,
+                  ];
+                }
+
+                setNodejsNodes(nodes);
+                setNodejsRequiredVersion(scanResult.required_version);
+                setNodejsSelectedPath(result.path || null);
+                appendLog(
+                  nodeId,
+                  `✓ 发现 ${nodes.length} 个 Node.js 安装`
+                );
+              } catch (scanErr) {
+                // Even if scan fails, show the current node
+                if (result.path) {
+                  setNodejsNodes([
+                    {
+                      path: result.path,
+                      version: result.version,
+                      is_valid: true,
+                      source: "current",
+                    },
+                  ]);
+                  setNodejsSelectedPath(result.path);
+                }
+                appendLog(nodeId, `⚠ 扫描其他安装失败: ${scanErr}`);
+              }
               updateNode(nodeId, "success", undefined, result);
               break;
             }
@@ -263,12 +334,51 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
             if (result.installed && result.needsUpgrade) {
               appendLog(
                 nodeId,
-                `⚠ Node.js ${result.version} 版本过低，请手动升级`
+                `⚠ Node.js ${result.version} 版本过低 (at ${result.path})，请选择其他版本`
               );
+              // Scan all Node.js installations for user to select
+              appendLog(nodeId, "Scanning all Node.js installations...");
+              try {
+                const scanResult = await nodeInstaller.scanNodeInstallations();
+                let nodes = scanResult.nodes;
+
+                // Ensure the currently found (low version) node is in the list
+                if (result.path && !nodes.some((n) => n.path === result.path)) {
+                  nodes = [
+                    ...nodes,
+                    {
+                      path: result.path,
+                      version: result.version,
+                      is_valid: false, // version too low
+                      source: "current",
+                    },
+                  ];
+                }
+
+                setNodejsNodes(nodes);
+                setNodejsRequiredVersion(scanResult.required_version);
+                appendLog(
+                  nodeId,
+                  `✓ 发现 ${nodes.length} 个 Node.js 安装`
+                );
+              } catch (scanErr) {
+                // Even if scan fails, show the current node
+                if (result.path) {
+                  setNodejsNodes([
+                    {
+                      path: result.path,
+                      version: result.version,
+                      is_valid: false,
+                      source: "current",
+                    },
+                  ]);
+                }
+                appendLog(nodeId, `⚠ 扫描其他安装失败: ${scanErr}`);
+              }
               updateNode(
                 nodeId,
                 "error",
-                `Node.js 版本过低 (${result.version})，请升级到 v22.16.0 或更高版本`
+                `Node.js 版本过低 (${result.version})，请升级到 v22.16.0 或更高版本，或从下方列表选择其他版本`
               );
               break;
             }
@@ -391,6 +501,18 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
 
           case "gateway": {
             const vibenPath = gateway.vibenPath;
+
+            // First check if gateway is already running
+            appendLog(nodeId, "$ curl http://127.0.0.1:18790/health (checking if already running)");
+            await gateway.refreshStatus();
+
+            if (gateway.status?.running) {
+              appendLog(nodeId, `✓ Gateway already running at ${gateway.status.url} (PID: ${gateway.status.pid || "unknown"})`);
+              updateNode(nodeId, "success", undefined, gateway.status);
+              break;
+            }
+
+            // Gateway not running, try to start it
             appendLog(nodeId, `$ ${vibenPath || "viben"} gateway start --port 18790`);
             const gatewayResult = await gateway.startGateway();
 
@@ -398,8 +520,17 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
               appendLog(nodeId, `✓ Gateway running at ${gatewayResult.url} (PID: ${gatewayResult.pid})`);
               updateNode(nodeId, "success", undefined, gatewayResult);
             } else {
-              appendLog(nodeId, `✗ Gateway failed: ${gatewayResult?.error || gateway.error}`);
-              updateNode(nodeId, "error", gatewayResult?.error || gateway.error || "Gateway failed to start");
+              // Show detailed error
+              const errorDetail = gatewayResult?.error || gateway.error || "Gateway failed to start";
+              appendLog(nodeId, `✗ Gateway failed to start`);
+              appendLog(nodeId, `Error: ${errorDetail}`);
+              if (gatewayResult?.binary_path) {
+                appendLog(nodeId, `Binary: ${gatewayResult.binary_path}`);
+              }
+              if (gatewayResult?.command) {
+                appendLog(nodeId, `Command: ${gatewayResult.command}`);
+              }
+              updateNode(nodeId, "error", errorDetail);
             }
             break;
           }
@@ -529,6 +660,120 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     runningNodesRef.current.clear();
   }, []);
 
+  // ============================================================================
+  // Node.js Selection Methods
+  // ============================================================================
+
+  // Scan all Node.js installations
+  const scanNodeInstallations = useCallback(async () => {
+    log("scanNodeInstallations: scanning...");
+    setNodejsLoading(true);
+    setNodejsCustomPathError(null);
+
+    try {
+      const result = await nodeInstaller.scanNodeInstallations();
+      log("scanNodeInstallations: found", result.nodes.length, "installations");
+      setNodejsNodes(result.nodes);
+      setNodejsRequiredVersion(result.required_version);
+
+      // Auto-select the first valid node if available and no selection yet
+      if (!nodejsSelectedPath && result.nodes.length > 0) {
+        const firstValid = result.nodes.find((n) => n.is_valid);
+        if (firstValid) {
+          setNodejsSelectedPath(firstValid.path);
+        }
+      }
+    } catch (err) {
+      log("scanNodeInstallations: error", err);
+    } finally {
+      setNodejsLoading(false);
+    }
+  }, [nodeInstaller, nodejsSelectedPath]);
+
+  // Check Node.js at a specific path
+  const checkNodeAtPath = useCallback(
+    async (path: string): Promise<NodeCheckResult> => {
+      log("checkNodeAtPath:", path);
+      setNodejsCheckingCustomPath(true);
+      setNodejsCustomPathError(null);
+
+      try {
+        const result = await nodeInstaller.checkNodeAtPath(path);
+
+        if (result.installed && !result.needsUpgrade) {
+          // Valid Node.js found at path
+          log("checkNodeAtPath: valid node found", result.version);
+
+          // Add to list if not already present
+          setNodejsNodes((prev) => {
+            const exists = prev.some((n) => n.path === path);
+            if (!exists) {
+              return [
+                ...prev,
+                {
+                  path,
+                  version: result.version,
+                  is_valid: true,
+                  source: "custom",
+                },
+              ];
+            }
+            return prev;
+          });
+
+          // Auto-select this path
+          setNodejsSelectedPath(path);
+
+          // Update the nodejs node status to success
+          updateNode("nodejs", "success", undefined, result);
+        } else if (result.installed && result.needsUpgrade) {
+          // Node.js found but version too low
+          setNodejsCustomPathError(
+            `Node.js ${result.version} 版本过低，需要 v${nodejsRequiredVersion} 或更高`
+          );
+        } else {
+          // Not a valid Node.js
+          setNodejsCustomPathError(result.error || "无效的 Node.js 路径");
+        }
+
+        return result;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        log("checkNodeAtPath: error", errorMsg);
+        setNodejsCustomPathError(errorMsg);
+        return { installed: false, error: errorMsg };
+      } finally {
+        setNodejsCheckingCustomPath(false);
+      }
+    },
+    [nodeInstaller, nodejsRequiredVersion, updateNode]
+  );
+
+  // Select a Node.js installation (from the list)
+  const selectNodePath = useCallback(
+    (path: string) => {
+      log("selectNodePath:", path);
+      setNodejsSelectedPath(path);
+      setNodejsCustomPathError(null);
+
+      // Find the selected node info
+      const nodeInfo = nodejsNodes.find((n) => n.path === path);
+      if (nodeInfo?.is_valid) {
+        // Update the nodejs node status to success
+        updateNode("nodejs", "success", undefined, {
+          version: nodeInfo.version,
+          path: nodeInfo.path,
+        });
+      }
+    },
+    [nodejsNodes, updateNode]
+  );
+
+  // Set custom path error
+  const setNodeCustomPathError = useCallback((error: string | null) => {
+    setNodejsCustomPathError(error);
+  }, []);
+
   // Effect: Process ready nodes when state changes and running
   useEffect(() => {
     if (state.isRunning) {
@@ -578,6 +823,25 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   );
 
   // Prepared data for expanded content
+  const nodejsData = useMemo(
+    () => ({
+      nodes: nodejsNodes,
+      selectedPath: nodejsSelectedPath,
+      loading: nodejsLoading,
+      requiredVersion: nodejsRequiredVersion,
+      checkingCustomPath: nodejsCheckingCustomPath,
+      customPathError: nodejsCustomPathError,
+    }),
+    [
+      nodejsNodes,
+      nodejsSelectedPath,
+      nodejsLoading,
+      nodejsRequiredVersion,
+      nodejsCheckingCustomPath,
+      nodejsCustomPathError,
+    ]
+  );
+
   const pythonData = useMemo(
     () => ({
       pythons: python.pythons,
@@ -620,8 +884,13 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     retryNode,
     skipNode,
     cancelAll,
+    nodejsData,
     pythonData,
     executorsData,
     nodeInstallerProgress,
+    scanNodeInstallations,
+    checkNodeAtPath,
+    selectNodePath,
+    setNodeCustomPathError,
   };
 }
