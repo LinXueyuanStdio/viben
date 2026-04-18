@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Check,
@@ -485,7 +486,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => window.open(source.documentation, "_blank")}
+            onClick={() => openUrl(source.documentation!)}
             title={t("providers.documentation")}
             className="h-8 px-2"
           >
@@ -574,14 +575,13 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
           {source.documentation && (
             <p className="text-[10px] text-muted-foreground mt-2">
               {t("providers.getApiKeyFrom")}{" "}
-              <a
-                href={source.documentation}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => openUrl(source.documentation!)}
                 className="text-primary hover:underline"
               >
                 {t("providers.developerPortal", { name: source.name })}
-              </a>
+              </button>
             </p>
           )}
         </div>
@@ -932,7 +932,7 @@ function PluginCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(plugin.homepage, "_blank")}
+                    onClick={() => openUrl(plugin.homepage!)}
                     className="h-7 text-xs"
                   >
                     <Globe className="h-3 w-3 mr-1" />
@@ -943,7 +943,7 @@ function PluginCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(plugin.repository, "_blank")}
+                    onClick={() => openUrl(plugin.repository!)}
                     className="h-7 text-xs"
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
