@@ -144,7 +144,7 @@ export const OfficialServerCard = React.memo(function OfficialServerCard({
       </p>
 
       {/* Package Types */}
-      {server.packageTypes.length > 0 && (
+      {(server.packageTypes?.length ?? 0) > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {server.packageTypes.map((type) => (
             <Badge

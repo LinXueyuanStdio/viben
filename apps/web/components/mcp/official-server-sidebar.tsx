@@ -97,7 +97,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       </Card>
 
       {/* Package Types */}
-      {server.packageTypes.length > 0 && (
+      {(server.packageTypes?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">{t('marketplace.availablePackages')}</CardTitle>
