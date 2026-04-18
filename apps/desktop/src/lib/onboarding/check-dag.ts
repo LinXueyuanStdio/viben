@@ -89,7 +89,7 @@ export const ENV_CHECK_NODES: CheckNode[] = [
   {
     id: "executors",
     label: "智能体执行器",
-    tooltip: "配置和管理 Claude Code、Cursor 等智能体执行器",
+    tooltip: "配置和管理 Claude Code、Codex 等智能体执行器",
     dependsOn: ["connection"],
     optional: true,
     contentType: "client-list",

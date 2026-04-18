@@ -51,7 +51,7 @@ export const ENV_CHECK_UI_POLICY = Object.freeze({
   /** 加载提示文案 */
   loadingTips: Object.freeze([
     "正在检查系统环境...",
-    "Viben 支持 Claude Code、Cursor、Codex 等多种智能体执行器",
+    "Viben 支持 Claude Code、Codex 等多种智能体执行器",
     "所有配置和数据仅保存在您的电脑上",
     "安装和配置速度会受到网络和电脑性能影响",
     "安装、配置过程可能会输入电脑密码",

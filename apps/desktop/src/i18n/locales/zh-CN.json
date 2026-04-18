@@ -3158,7 +3158,7 @@
     },
     "loadingTips": {
       "checkingEnvironment": "正在检查系统环境...",
-      "multipleClients": "Viben 支持 Claude Code、Cursor、Codex 等多种智能体执行器",
+      "multipleClients": "Viben 支持 Claude Code、Codex 等多种智能体执行器",
       "localData": "所有配置和数据仅保存在您的电脑上",
       "gatewayService": "Gateway 是 Viben 的本地后端服务",
       "networkRequired": "安装过程可能需要网络连接",
