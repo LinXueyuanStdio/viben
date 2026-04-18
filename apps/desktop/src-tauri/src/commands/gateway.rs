@@ -75,6 +75,21 @@ pub struct GatewayStatus {
     pub command: Option<String>,
 }
 
+/// Options for starting the gateway
+#[derive(Debug, Clone, Default)]
+pub struct StartGatewayOptions {
+    /// Specific viben binary path (if None, auto-detect)
+    pub viben_path: Option<PathBuf>,
+    /// Override port (if None, use config)
+    pub port: Option<u16>,
+    /// Override host (if None, use config)
+    pub host: Option<String>,
+    /// Directory containing bundled sidecar (for auto-start at app launch)
+    pub exe_dir: Option<PathBuf>,
+    /// Enable verbose logging
+    pub verbose: bool,
+}
+
 /// Find the gateway binary path
 /// Supports TypeScript gateway via `viben gateway` CLI command
 /// Priority: which/where viben > known paths > nvm/fnm/volta > local node_modules > npx viben
@@ -89,14 +104,21 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
     // 2. Fallback: use npx to run viben
     let npx_name = if cfg!(windows) { "npx.cmd" } else { "npx" };
     if let Some(npx) = crate::utils::find_executable(npx_name) {
-        return Some((npx, vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
+        return Some((
+            npx,
+            vec![
+                "viben".to_string(),
+                "gateway".to_string(),
+                "serve".to_string(),
+            ],
+        ));
     }
 
     None
 }
 
 /// Check if the gateway is reachable
-async fn ping_gateway(host: &str, port: u16) -> bool {
+pub async fn ping_gateway(host: &str, port: u16) -> bool {
     let url = format!("http://{}:{}/health", host, port);
     match reqwest::Client::new()
         .get(&url)
@@ -109,35 +131,127 @@ async fn ping_gateway(host: &str, port: u16) -> bool {
     }
 }
 
-/// Start the gateway process
-#[tauri::command]
-pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStatus, String> {
-    let config = state.config.read().await.clone();
-    let mut process_guard = state.process.write().await;
+/// Bundled sidecar binary name.
+/// Tauri strips the target triple when bundling, so the file in
+/// Contents/MacOS/ is just "viben" (or "viben.exe" on Windows).
+#[cfg(target_os = "windows")]
+pub const SIDECAR_NAME: &str = "viben.exe";
+#[cfg(not(target_os = "windows"))]
+pub const SIDECAR_NAME: &str = "viben";
 
-    // Check if already running
-    if let Some(ref proc) = *process_guard {
-        // Verify it's actually running
-        if ping_gateway(&config.host, proc.port).await {
-            return Ok(GatewayStatus {
-                running: true,
-                pid: Some(proc.pid),
-                port: proc.port,
-                url: format!("http://{}:{}", config.host, proc.port),
-                error: None,
-                binary_path: None,
-                command: None,
-            });
+/// Find the gateway binary with priority:
+/// 1. Explicitly provided path
+/// 2. Bundled sidecar (from exe_dir)
+/// 3. System viben (PATH + known paths)
+/// 4. npx viben (fallback)
+fn find_gateway_binary_with_options(options: &StartGatewayOptions) -> Option<(PathBuf, Vec<String>)> {
+    let gateway_args = vec!["gateway".to_string(), "serve".to_string()];
+
+    // 1. Use explicitly provided path if valid
+    if let Some(ref path) = options.viben_path {
+        if path.exists() {
+            return Some((path.clone(), gateway_args));
         }
-        // Process died, clean up
+    }
+
+    // 2. Check bundled sidecar next to the main executable
+    if let Some(ref exe_dir) = options.exe_dir {
+        let bundled_path = exe_dir.join(SIDECAR_NAME);
+        if bundled_path.exists() {
+            return Some((bundled_path, gateway_args));
+        }
+    }
+
+    // 3. Fall back to system detection
+    find_gateway_binary()
+}
+
+/// Core gateway startup logic - used by both auto_start and tauri commands
+///
+/// This is the unified entry point for starting the gateway. It:
+/// 1. First checks if gateway is already running (ping health endpoint)
+/// 2. If running, returns success without starting a new process
+/// 3. If not running, finds the binary and starts the gateway
+/// 4. Waits for the gateway to become reachable
+/// 5. Stores the process in state for lifecycle management
+pub async fn ensure_gateway_running(
+    state: &GatewayState,
+    options: StartGatewayOptions,
+) -> Result<GatewayStatus, String> {
+    let verbose = options.verbose;
+
+    // Read and merge config
+    let mut config = state.config.read().await.clone();
+    if let Some(p) = options.port {
+        config.port = p;
+    }
+    if let Some(ref h) = options.host {
+        config.host = h.clone();
+    }
+
+    if verbose {
+        eprintln!(
+            "[gateway] ensure_gateway_running - port: {}, host: {}",
+            config.port, config.host
+        );
+    }
+
+    // CRITICAL: First check if gateway is already accessible
+    // This handles:
+    // 1. Gateway started externally (CLI, previous session)
+    // 2. Gateway started by another process
+    // 3. Port already in use by another service
+    if ping_gateway(&config.host, config.port).await {
+        if verbose {
+            eprintln!(
+                "[gateway] Gateway already accessible at {}:{}, skipping start",
+                config.host, config.port
+            );
+        }
+        return Ok(GatewayStatus {
+            running: true,
+            pid: None, // Unknown PID for external process
+            port: config.port,
+            url: format!("http://{}:{}", config.host, config.port),
+            error: None,
+            binary_path: None,
+            command: None,
+        });
+    }
+
+    // Acquire write lock and clean up dead process if any
+    let mut process_guard = state.process.write().await;
+    if let Some(ref proc) = *process_guard {
+        if verbose {
+            eprintln!(
+                "[gateway] Existing process PID {} not reachable, cleaning up",
+                proc.pid
+            );
+        }
         *process_guard = None;
     }
 
     // Find the gateway binary
-    let (binary_path, base_args) = find_gateway_binary().ok_or_else(|| {
+    let (binary_path, base_args) = find_gateway_binary_with_options(&options).ok_or_else(|| {
         "Gateway binary not found. Please install viben CLI: npm install -g @viben/cli".to_string()
     })?;
 
+    if verbose {
+        eprintln!("[gateway] Using binary: {}", binary_path.display());
+    }
+
+    // Start the gateway process
+    start_gateway_process(&binary_path, &base_args, &config, &mut process_guard, verbose).await
+}
+
+/// Internal helper to start the gateway process
+async fn start_gateway_process(
+    binary_path: &PathBuf,
+    base_args: &[String],
+    config: &GatewayConfig,
+    process_guard: &mut Option<GatewayProcess>,
+    verbose: bool,
+) -> Result<GatewayStatus, String> {
     let full_command = format!(
         "{} {} --port {} --host {}",
         binary_path.display(),
@@ -146,38 +260,146 @@ pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStat
         config.host
     );
 
-    // Start the gateway process
-    let mut cmd = Command::new(&binary_path);
+    if verbose {
+        eprintln!("[gateway] Starting: {}", full_command);
+    }
 
-    // Add base args (e.g., "gateway" for viben CLI)
-    for arg in &base_args {
+    let mut cmd = Command::new(binary_path);
+
+    for arg in base_args {
         cmd.arg(arg);
     }
 
-    // Add configuration args
     cmd.arg("--port")
         .arg(config.port.to_string())
         .arg("--host")
         .arg(&config.host)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .kill_on_drop(true);
 
-    // On Windows, hide the console window
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    // Set up environment variables with Node.js paths
+    let mut env: HashMap<String, String> = std::env::vars().collect();
 
-    let mut child = cmd.spawn().map_err(|e| format!("Failed to start gateway: {}", e))?;
+    #[cfg(target_os = "windows")]
+    {
+        let current_path = env.get("PATH").cloned().unwrap_or_default();
+        let mut paths_to_add: Vec<String> = Vec::new();
+
+        if let Some(home) = dirs::home_dir() {
+            paths_to_add.push(
+                home.join("AppData/Roaming/npm")
+                    .to_string_lossy()
+                    .to_string(),
+            );
+            paths_to_add.push(
+                home.join("AppData/Local/pnpm")
+                    .to_string_lossy()
+                    .to_string(),
+            );
+            paths_to_add.push(home.join(".npm-global").to_string_lossy().to_string());
+        }
+        paths_to_add.push(r"C:\Program Files\nodejs".to_string());
+
+        let new_paths: Vec<&str> = paths_to_add
+            .iter()
+            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
+            .map(|s| s.as_str())
+            .collect();
+
+        if !new_paths.is_empty() {
+            let updated_path = format!("{};{}", new_paths.join(";"), current_path);
+            env.insert("PATH".to_string(), updated_path);
+        }
+
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let current_path = env.get("PATH").cloned().unwrap_or_default();
+        let mut paths_to_add: Vec<String> = Vec::new();
+
+        if let Some(home) = dirs::home_dir() {
+            paths_to_add.push(home.join(".npm-global/bin").to_string_lossy().to_string());
+            paths_to_add.push(home.join("Library/pnpm").to_string_lossy().to_string());
+        }
+        paths_to_add.push("/usr/local/bin".to_string());
+        paths_to_add.push("/opt/homebrew/bin".to_string());
+
+        let new_paths: Vec<&str> = paths_to_add
+            .iter()
+            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
+            .map(|s| s.as_str())
+            .collect();
+
+        if !new_paths.is_empty() {
+            let updated_path = format!("{}:{}", new_paths.join(":"), current_path);
+            env.insert("PATH".to_string(), updated_path);
+        }
+    }
+
+    cmd.envs(&env);
+
+    // Configure stdio based on verbose mode
+    if verbose {
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    } else {
+        cmd.stdout(Stdio::null()).stderr(Stdio::null());
+    }
+
+    let mut child = cmd.spawn().map_err(|e| {
+        if verbose {
+            eprintln!("[gateway] Failed to spawn: {}", e);
+        }
+        format!("Failed to start gateway: {}", e)
+    })?;
 
     let pid = child.id().unwrap_or(0);
 
-    // Wait a bit for the gateway to start
+    if verbose {
+        eprintln!("[gateway] Spawned PID: {}", pid);
+
+        // Capture stderr in background for debugging
+        if let Some(stderr) = child.stderr.take() {
+            tokio::spawn(async move {
+                use tokio::io::{AsyncBufReadExt, BufReader};
+                let reader = BufReader::new(stderr);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    eprintln!("[gateway:stderr] {}", line);
+                }
+            });
+        }
+
+        // Capture stdout in background for debugging
+        if let Some(stdout) = child.stdout.take() {
+            tokio::spawn(async move {
+                use tokio::io::{AsyncBufReadExt, BufReader};
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
+                while let Ok(Some(line)) = lines.next_line().await {
+                    eprintln!("[gateway:stdout] {}", line);
+                }
+            });
+        }
+    }
+
+    // Wait for gateway to start
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
-    // Check if it's reachable
-    let mut attempts = 0;
-    while attempts < 10 {
+    // Check if it's reachable (with retries)
+    for attempt in 1..=10 {
+        if verbose {
+            eprintln!(
+                "[gateway] Ping attempt {}/10 to {}:{}",
+                attempt, config.host, config.port
+            );
+        }
+
         if ping_gateway(&config.host, config.port).await {
+            if verbose {
+                eprintln!("[gateway] Gateway is reachable! PID: {}", pid);
+            }
+
             *process_guard = Some(GatewayProcess {
                 child,
                 pid,
@@ -194,13 +416,33 @@ pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStat
                 command: Some(full_command),
             });
         }
+
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-        attempts += 1;
     }
 
-    // Failed to start properly
+    // Failed to start - kill the process
+    if verbose {
+        eprintln!("[gateway] Not reachable after 10 attempts, killing PID: {}", pid);
+    }
     let _ = child.kill().await;
     Err("Gateway started but not reachable. Check logs for errors.".to_string())
+}
+
+// ============================================================================
+// Tauri Commands
+// ============================================================================
+
+/// Start the gateway process
+#[tauri::command]
+pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStatus, String> {
+    ensure_gateway_running(
+        &state,
+        StartGatewayOptions {
+            verbose: true,
+            ..Default::default()
+        },
+    )
+    .await
 }
 
 /// Stop the gateway process
@@ -255,11 +497,11 @@ pub async fn get_gateway_status(state: State<'_, GatewayState>) -> Result<Gatewa
         }
     }
 
-    // Check if gateway is running externally (e.g., started manually)
+    // Check if gateway is running externally
     if ping_gateway(&config.host, config.port).await {
         return Ok(GatewayStatus {
             running: true,
-            pid: None, // Unknown PID for external process
+            pid: None,
             port: config.port,
             url: format!("http://{}:{}", config.host, config.port),
             error: None,
@@ -343,14 +585,6 @@ pub async fn discover_gateway() -> Result<Option<String>, String> {
     Ok(None)
 }
 
-/// Bundled sidecar binary name.
-/// Tauri strips the target triple when bundling, so the file in
-/// Contents/MacOS/ is just "viben" (or "viben.exe" on Windows).
-#[cfg(target_os = "windows")]
-pub const SIDECAR_NAME: &str = "viben.exe";
-#[cfg(not(target_os = "windows"))]
-pub const SIDECAR_NAME: &str = "viben";
-
 /// Get the bundled viben sidecar binary path
 ///
 /// Returns the path to the bundled viben binary if it exists in the app bundle.
@@ -393,304 +627,27 @@ pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, S
     Ok(String::new())
 }
 
-/// Find the gateway binary path, checking bundled sidecar first
-/// Returns (binary_path, args) where args are additional arguments to pass
-///
-/// Priority:
-/// 1. Bundled sidecar (app bundle)
-/// 2. which viben (system PATH)
-/// 3. Known installation paths
-/// 4. npx viben (fallback)
-fn find_gateway_binary_with_bundled<R: Runtime>(
-    app: Option<&AppHandle<R>>,
-) -> Option<(PathBuf, Vec<String>)> {
-    // 1. First, check for bundled sidecar if we have an app handle
-    if let Some(app_handle) = app {
-        if let Ok(bundled_path) = get_bundled_viben_path(app_handle.clone()) {
-            if !bundled_path.is_empty() {
-                let path = PathBuf::from(&bundled_path);
-                if path.exists() {
-                    return Some((path, vec!["gateway".to_string(), "serve".to_string()]));
-                }
-            }
-        }
-    }
-
-    // 2. Fall back to the original detection logic
-    find_gateway_binary()
-}
-
 /// Start gateway with a specified viben path
 ///
 /// This allows explicitly specifying which viben binary to use for the gateway.
 /// Useful when the user has selected a specific viben installation from the UI.
 #[tauri::command]
 pub async fn start_gateway_with_path<R: Runtime>(
-    app: AppHandle<R>,
+    _app: AppHandle<R>,
     state: State<'_, GatewayState>,
     viben_path: String,
     port: Option<u16>,
     host: Option<String>,
 ) -> Result<GatewayStatus, String> {
-    eprintln!("[gateway] start_gateway_with_path called");
-    eprintln!("[gateway] viben_path: {}", viben_path);
-    eprintln!("[gateway] port: {:?}, host: {:?}", port, host);
-
-    let mut config = state.config.read().await.clone();
-    eprintln!(
-        "[gateway] Current config - port: {}, host: {}, auto_start: {}",
-        config.port, config.host, config.auto_start
-    );
-
-    // Override config with provided values
-    if let Some(p) = port {
-        config.port = p;
-    }
-    if let Some(h) = host {
-        config.host = h;
-    }
-    eprintln!(
-        "[gateway] Final config - port: {}, host: {}",
-        config.port, config.host
-    );
-
-    let mut process_guard = state.process.write().await;
-
-    // Check if already running
-    if let Some(ref proc) = *process_guard {
-        eprintln!(
-            "[gateway] Existing process found with PID: {}, checking if alive...",
-            proc.pid
-        );
-        if ping_gateway(&config.host, proc.port).await {
-            eprintln!("[gateway] Existing process is still running, reusing it");
-            return Ok(GatewayStatus {
-                running: true,
-                pid: Some(proc.pid),
-                port: proc.port,
-                url: format!("http://{}:{}", config.host, proc.port),
-                error: None,
-                binary_path: None,
-                command: None,
-            });
-        }
-        eprintln!("[gateway] Existing process is dead, cleaning up");
-        *process_guard = None;
-    }
-
-    // Validate the provided path exists
-    let binary_path = PathBuf::from(&viben_path);
-    eprintln!(
-        "[gateway] Checking if binary path exists: {} -> {}",
-        viben_path,
-        binary_path.exists()
-    );
-
-    if !binary_path.exists() {
-        eprintln!(
-            "[gateway] Specified path does not exist, trying to find alternative..."
-        );
-        // Try to find an alternative
-        if let Some((fallback_path, args)) = find_gateway_binary_with_bundled(Some(&app)) {
-            eprintln!(
-                "[gateway] Found fallback: {} {}",
-                fallback_path.display(),
-                args.join(" ")
-            );
-            return start_gateway_internal(
-                &fallback_path,
-                &args,
-                &config,
-                &mut process_guard,
-            )
-            .await;
-        }
-        eprintln!("[gateway] No fallback found, returning error");
-        return Err(format!(
-            "Specified viben path does not exist: {}",
-            viben_path
-        ));
-    }
-
-    // Start with the specified path
-    // Note: The correct command is "viben gateway serve --port X --host Y"
-    eprintln!("[gateway] Starting with specified path: {}", viben_path);
-    start_gateway_internal(
-        &binary_path,
-        &["gateway".to_string(), "serve".to_string()],
-        &config,
-        &mut process_guard,
+    ensure_gateway_running(
+        &state,
+        StartGatewayOptions {
+            viben_path: Some(PathBuf::from(viben_path)),
+            port,
+            host,
+            verbose: true,
+            ..Default::default()
+        },
     )
     .await
-}
-
-/// Internal helper to start the gateway process
-async fn start_gateway_internal(
-    binary_path: &PathBuf,
-    base_args: &[String],
-    config: &GatewayConfig,
-    process_guard: &mut Option<GatewayProcess>,
-) -> Result<GatewayStatus, String> {
-    // Build the full command for logging
-    let full_command = format!(
-        "{} {} --port {} --host {}",
-        binary_path.display(),
-        base_args.join(" "),
-        config.port,
-        config.host
-    );
-    eprintln!("[gateway] Starting gateway with command: {}", full_command);
-    eprintln!("[gateway] Binary path exists: {}", binary_path.exists());
-
-    let mut cmd = Command::new(binary_path);
-
-    for arg in base_args {
-        cmd.arg(arg);
-    }
-
-    cmd.arg("--port")
-        .arg(config.port.to_string())
-        .arg("--host")
-        .arg(&config.host)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true);
-
-    // Set up environment variables with Node.js paths
-    let mut env: HashMap<String, String> = std::env::vars().collect();
-
-    #[cfg(target_os = "windows")]
-    {
-        // Add common Node.js paths to PATH on Windows
-        let current_path = env.get("PATH").cloned().unwrap_or_default();
-        let mut paths_to_add: Vec<String> = Vec::new();
-
-        // Common Windows Node.js installation paths
-        if let Some(home) = dirs::home_dir() {
-            paths_to_add.push(home.join("AppData/Roaming/npm").to_string_lossy().to_string());
-            paths_to_add.push(home.join("AppData/Local/pnpm").to_string_lossy().to_string());
-            paths_to_add.push(home.join(".npm-global").to_string_lossy().to_string());
-        }
-        paths_to_add.push(r"C:\Program Files\nodejs".to_string());
-
-        // Filter existing paths and add new ones
-        let new_paths: Vec<&str> = paths_to_add
-            .iter()
-            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
-            .map(|s| s.as_str())
-            .collect();
-
-        if !new_paths.is_empty() {
-            let updated_path = format!("{};{}", new_paths.join(";"), current_path);
-            env.insert("PATH".to_string(), updated_path.clone());
-            eprintln!("[gateway] Updated PATH for Windows: {}", updated_path);
-        }
-
-        // Set CREATE_NO_WINDOW flag to prevent CMD window from flashing
-        cmd.creation_flags(CREATE_NO_WINDOW);
-        eprintln!("[gateway] Set CREATE_NO_WINDOW flag for Windows");
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        // Add common Unix paths
-        let current_path = env.get("PATH").cloned().unwrap_or_default();
-        let mut paths_to_add: Vec<String> = Vec::new();
-
-        if let Some(home) = dirs::home_dir() {
-            paths_to_add.push(home.join(".npm-global/bin").to_string_lossy().to_string());
-            paths_to_add.push(home.join("Library/pnpm").to_string_lossy().to_string());
-        }
-        paths_to_add.push("/usr/local/bin".to_string());
-        paths_to_add.push("/opt/homebrew/bin".to_string());
-
-        let new_paths: Vec<&str> = paths_to_add
-            .iter()
-            .filter(|p| !current_path.contains(p.as_str()) && PathBuf::from(p).exists())
-            .map(|s| s.as_str())
-            .collect();
-
-        if !new_paths.is_empty() {
-            let updated_path = format!("{}:{}", new_paths.join(":"), current_path);
-            env.insert("PATH".to_string(), updated_path);
-        }
-    }
-
-    // Pass environment variables to the command
-    cmd.envs(&env);
-
-    eprintln!("[gateway] Spawning process...");
-    let mut child = cmd.spawn().map_err(|e| {
-        eprintln!("[gateway] Failed to spawn process: {}", e);
-        format!("Failed to start gateway: {}", e)
-    })?;
-
-    let pid = child.id().unwrap_or(0);
-    eprintln!("[gateway] Process spawned with PID: {}", pid);
-
-    // Capture stderr in background for debugging
-    if let Some(stderr) = child.stderr.take() {
-        tokio::spawn(async move {
-            use tokio::io::{AsyncBufReadExt, BufReader};
-            let reader = BufReader::new(stderr);
-            let mut lines = reader.lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                eprintln!("[gateway:stderr] {}", line);
-            }
-        });
-    }
-
-    // Capture stdout in background for debugging
-    if let Some(stdout) = child.stdout.take() {
-        tokio::spawn(async move {
-            use tokio::io::{AsyncBufReadExt, BufReader};
-            let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                eprintln!("[gateway:stdout] {}", line);
-            }
-        });
-    }
-
-    // Wait for gateway to start
-    eprintln!("[gateway] Waiting 500ms for process to initialize...");
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-
-    // Check if it's reachable
-    let mut attempts = 0;
-    while attempts < 10 {
-        eprintln!(
-            "[gateway] Ping attempt {}/10 to http://{}:{}/health",
-            attempts + 1,
-            config.host,
-            config.port
-        );
-        if ping_gateway(&config.host, config.port).await {
-            eprintln!("[gateway] Gateway is reachable! PID: {}", pid);
-            *process_guard = Some(GatewayProcess {
-                child,
-                pid,
-                port: config.port,
-            });
-
-            return Ok(GatewayStatus {
-                running: true,
-                pid: Some(pid),
-                port: config.port,
-                url: format!("http://{}:{}", config.host, config.port),
-                error: None,
-                binary_path: Some(binary_path.to_string_lossy().to_string()),
-                command: Some(full_command.clone()),
-            });
-        }
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-        attempts += 1;
-    }
-
-    eprintln!(
-        "[gateway] Gateway not reachable after 10 attempts, killing process PID: {}",
-        pid
-    );
-    let _ = child.kill().await;
-    Err("Gateway started but not reachable. Check logs for errors.".to_string())
 }

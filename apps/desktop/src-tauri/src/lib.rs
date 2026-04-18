@@ -21,73 +21,23 @@ async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::Pat
 
     eprintln!("[Gateway] Auto-starting on port {}...", config.port);
 
-    // Try to ping existing gateway first
-    let url = format!("http://{}:{}/health", config.host, config.port);
-    if let Ok(resp) = reqwest::Client::new()
-        .get(&url)
-        .timeout(std::time::Duration::from_secs(2))
-        .send()
-        .await
+    // Use unified ensure_gateway_running with silent mode
+    match commands::gateway::ensure_gateway_running(
+        state,
+        commands::gateway::StartGatewayOptions {
+            exe_dir,
+            verbose: false, // Silent mode for auto-start
+            ..Default::default()
+        },
+    )
+    .await
     {
-        if resp.status().is_success() {
-            eprintln!("[Gateway] Already running on port {}", config.port);
-            return;
-        }
-    }
-
-    // Find gateway binary
-    // 1. Check bundled sidecar next to the main executable (with target triple)
-    let sidecar_name = commands::gateway::SIDECAR_NAME;
-    let bundled_path = exe_dir.map(|dir| dir.join(sidecar_name));
-    let bundled_viben = bundled_path.filter(|p| p.exists());
-
-    // 2. Find system-installed viben (PATH + known paths + nvm/fnm/volta)
-    let system_viben = utils::find_executable("viben");
-
-    // Build the command: prefer bundled sidecar, fall back to system CLI
-    let cmd_result = if let Some(viben) = bundled_viben {
-        eprintln!("[Gateway] Using bundled sidecar: {:?}", viben);
-        let mut cmd = tokio::process::Command::new(&viben);
-        cmd.arg("gateway")
-            .arg("serve")
-            .arg("--port")
-            .arg(config.port.to_string())
-            .arg("--host")
-            .arg(&config.host)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .kill_on_drop(true);
-        cmd.spawn()
-    } else if let Some(viben) = system_viben {
-        eprintln!("[Gateway] Using system viben CLI: {:?}", viben);
-        let mut cmd = tokio::process::Command::new(&viben);
-        cmd.arg("gateway")
-            .arg("serve")
-            .arg("--port")
-            .arg(config.port.to_string())
-            .arg("--host")
-            .arg(&config.host)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .kill_on_drop(true);
-        cmd.spawn()
-    } else {
-        eprintln!("[Gateway] viben CLI not found, skipping auto-start");
-        return;
-    };
-
-    // Start the gateway
-    match cmd_result {
-        Ok(child) => {
-            let pid = child.id().unwrap_or(0);
-            eprintln!("[Gateway] Started with PID {}", pid);
-
-            // Store in state
-            *state.process.write().await = Some(commands::gateway::GatewayProcess {
-                child,
-                pid,
-                port: config.port,
-            });
+        Ok(status) => {
+            if status.pid.is_some() {
+                eprintln!("[Gateway] Started with PID {:?}", status.pid);
+            } else {
+                eprintln!("[Gateway] Already running on port {}", status.port);
+            }
         }
         Err(e) => {
             eprintln!("[Gateway] Failed to start: {}", e);
