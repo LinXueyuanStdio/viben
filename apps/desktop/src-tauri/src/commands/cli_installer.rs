@@ -295,6 +295,8 @@ pub async fn install_viben_cli(version: String, registry: String) -> Result<(), 
         .map_err(|e| format!("Failed to run npm: {}", e))?;
 
     if output.status.success() {
+        // Invalidate cached paths since a new binary was installed
+        crate::utils::clear_cache();
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -302,24 +304,9 @@ pub async fn install_viben_cli(version: String, registry: String) -> Result<(), 
     }
 }
 
-/// Get CLI path using which/where command
+/// Get CLI path using which/where + known paths + version managers
 fn get_cli_path() -> Option<String> {
-    let which_cmd = if cfg!(target_os = "windows") {
-        "where"
-    } else {
-        "which"
-    };
-
-    let mut cmd = Command::new(which_cmd);
-    cmd.arg("viben");
-
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
-
-    cmd.output()
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").trim().to_string())
+    crate::utils::find_executable("viben").map(|p| p.to_string_lossy().to_string())
 }
 
 /// Check if Node.js is installed
@@ -422,24 +409,8 @@ pub async fn check_node_installation() -> Result<NodeCheckResult, String> {
                 .to_string();
 
             // Try to get node path
-            let which_cmd = if cfg!(target_os = "windows") {
-                "where"
-            } else {
-                "which"
-            };
-
-            let mut path_cmd = Command::new(which_cmd);
-            path_cmd.arg("node");
-
-            #[cfg(target_os = "windows")]
-            path_cmd.creation_flags(CREATE_NO_WINDOW);
-
-            let path_output = path_cmd.output();
-
-            let path = path_output
-                .ok()
-                .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").trim().to_string());
+            let path = crate::utils::find_executable("node")
+                .map(|p| p.to_string_lossy().to_string());
 
             Ok(NodeCheckResult {
                 found: true,
@@ -711,23 +682,8 @@ pub async fn check_node_enhanced() -> Result<NodeCheckResultEnhanced, String> {
             let needs_upgrade = compare_versions(&version_str, NODE_REQUIRED_VERSION) < 0;
 
             // Get node path
-            let which_cmd = if cfg!(target_os = "windows") {
-                "where"
-            } else {
-                "which"
-            };
-
-            let mut which_cmd_exec = Command::new(which_cmd);
-            which_cmd_exec.arg("node");
-
-            #[cfg(target_os = "windows")]
-            which_cmd_exec.creation_flags(CREATE_NO_WINDOW);
-
-            let path_output = which_cmd_exec.output();
-            let path = path_output
-                .ok()
-                .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+            let path = crate::utils::find_executable("node")
+                .map(|p| p.to_string_lossy().to_string());
 
             // Detect installation strategy
             let install_strategy = detect_node_install_strategy(&path);
@@ -1056,6 +1012,8 @@ async fn install_node_macos(installer_path: &str, window: &Window) -> Result<Ins
     );
 
     if output.status.success() {
+        // Invalidate cached paths since node was installed
+        crate::utils::clear_cache();
         Ok(InstallEnvResult {
             ok: true,
             stdout: Some(String::from_utf8_lossy(&output.stdout).to_string()),
@@ -1104,6 +1062,8 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
     );
 
     if output.status.success() {
+        // Invalidate cached paths since node was installed
+        crate::utils::clear_cache();
         Ok(InstallEnvResult {
             ok: true,
             stdout: Some(String::from_utf8_lossy(&output.stdout).to_string()),
@@ -1125,8 +1085,10 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
 ///
 /// On Windows, reads the latest PATH from registry using PowerShell.
 /// On macOS/Linux, re-evaluates common shell paths.
+/// Also clears the executable path cache so subsequent lookups pick up new installs.
 #[command]
 pub async fn refresh_environment() -> Result<(), String> {
+    crate::utils::clear_cache();
     #[cfg(target_os = "windows")]
     {
         // On Windows, read the latest PATH from registry using PowerShell

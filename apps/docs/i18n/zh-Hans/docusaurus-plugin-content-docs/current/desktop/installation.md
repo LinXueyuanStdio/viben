@@ -49,7 +49,7 @@ description: "如何在 macOS、Windows 和 Linux 上安装微本桌面应用"
 这发生在 macOS 隔离应用时。移除隔离标记：
 
 ```bash
-xattr -cr /Applications/Viben.app
+sudo /usr/bin/xattr -cr /Applications/Viben.app
 ```
 
 **"无法打开微本，因为无法验证开发者"**

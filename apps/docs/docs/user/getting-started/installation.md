@@ -60,7 +60,7 @@ Download the latest version from [GitHub Releases](https://github.com/LinXueyuan
 :::note macOS Security Note
 If you see "Viben is damaged and can't be opened", run in terminal:
 ```bash
-xattr -cr /Applications/Viben.app
+sudo /usr/bin/xattr -cr /Applications/Viben.app
 ```
 :::
 

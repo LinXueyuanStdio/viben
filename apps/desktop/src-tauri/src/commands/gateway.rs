@@ -77,110 +77,19 @@ pub struct GatewayStatus {
 
 /// Find the gateway binary path
 /// Supports TypeScript gateway via `viben gateway` CLI command
-/// Priority: which/where viben > known paths > npx viben
+/// Priority: which/where viben > known paths > nvm/fnm/volta > local node_modules > npx viben
 fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
-    // 1. First, try `which viben` (Unix) or `where viben` (Windows)
-    #[cfg(unix)]
-    {
-        if let Ok(output) = std::process::Command::new("which")
-            .arg("viben")
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() {
-                    return Some((PathBuf::from(path), vec!["gateway".to_string(), "serve".to_string()]));
-                }
-            }
-        }
+    let gateway_args = vec!["gateway".to_string(), "serve".to_string()];
+
+    // 1. Find viben via PATH + known paths + version managers
+    if let Some(path) = crate::utils::find_executable("viben") {
+        return Some((path, gateway_args));
     }
 
-    #[cfg(windows)]
-    {
-        // On Windows, use `where` command
-        if let Ok(output) = std::process::Command::new("where")
-            .arg("viben")
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout)
-                    .lines()
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .to_string();
-                if !path.is_empty() && PathBuf::from(&path).exists() {
-                    return Some((PathBuf::from(path), vec!["gateway".to_string(), "serve".to_string()]));
-                }
-            }
-        }
-    }
-
-    // 2. Check known installation paths for viben CLI
-    #[cfg(unix)]
-    let viben_paths: Vec<Option<PathBuf>> = vec![
-        // Global npm installation
-        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
-        // Local project node_modules
-        Some(PathBuf::from("./node_modules/.bin/viben")),
-        // Homebrew installation (macOS)
-        Some(PathBuf::from("/opt/homebrew/bin/viben")),
-        Some(PathBuf::from("/usr/local/bin/viben")),
-        // Cargo bin path (if installed via cargo)
-        dirs::home_dir().map(|h| h.join(".cargo/bin/viben")),
-    ];
-
-    #[cfg(windows)]
-    let viben_paths: Vec<Option<PathBuf>> = vec![
-        // Global npm installation (npm global)
-        dirs::home_dir().map(|h| h.join("AppData/Roaming/npm/viben.cmd")),
-        // npm prefix global
-        dirs::home_dir().map(|h| h.join(".npm-global/viben.cmd")),
-        // pnpm global
-        dirs::home_dir().map(|h| h.join("AppData/Local/pnpm/viben.cmd")),
-        // Program Files Node.js
-        Some(PathBuf::from(r"C:\Program Files\nodejs\viben.cmd")),
-        // Local project node_modules
-        Some(PathBuf::from(r".\node_modules\.bin\viben.cmd")),
-        // Scoop installation
-        dirs::home_dir().map(|h| h.join("scoop/shims/viben.cmd")),
-        // Also check for .exe variant
-        dirs::home_dir().map(|h| h.join("AppData/Roaming/npm/viben.exe")),
-    ];
-
-    for path in viben_paths.into_iter().flatten() {
-        if path.exists() {
-            return Some((path, vec!["gateway".to_string(), "serve".to_string()]));
-        }
-    }
-
-    // 3. Fallback: use npx to run viben (always available if npm is installed)
-    #[cfg(unix)]
-    {
-        if let Ok(output) = std::process::Command::new("which")
-            .arg("npx")
-            .output()
-        {
-            if output.status.success() {
-                return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
-            }
-        }
-    }
-
-    #[cfg(windows)]
-    {
-        // On Windows, check for npx.cmd
-        if let Ok(output) = std::process::Command::new("where")
-            .arg("npx")
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-        {
-            if output.status.success() {
-                // Use npx.cmd on Windows
-                return Some((PathBuf::from("npx.cmd"), vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
-            }
-        }
+    // 2. Fallback: use npx to run viben
+    let npx_name = if cfg!(windows) { "npx.cmd" } else { "npx" };
+    if let Some(npx) = crate::utils::find_executable(npx_name) {
+        return Some((npx, vec!["viben".to_string(), "gateway".to_string(), "serve".to_string()]));
     }
 
     None
@@ -434,16 +343,21 @@ pub async fn discover_gateway() -> Result<Option<String>, String> {
     Ok(None)
 }
 
+/// Bundled sidecar binary name.
+/// Tauri strips the target triple when bundling, so the file in
+/// Contents/MacOS/ is just "viben" (or "viben.exe" on Windows).
+#[cfg(target_os = "windows")]
+pub const SIDECAR_NAME: &str = "viben.exe";
+#[cfg(not(target_os = "windows"))]
+pub const SIDECAR_NAME: &str = "viben";
+
 /// Get the bundled viben sidecar binary path
 ///
 /// Returns the path to the bundled viben binary if it exists in the app bundle.
 /// The sidecar binary is expected to be configured in tauri.conf.json under
 /// `bundle.externalBin` as "binaries/viben".
 ///
-/// Platform-specific paths:
-/// - macOS: `$APP_BUNDLE/Contents/MacOS/viben`
-/// - Windows: `$APP_DIR\viben.exe`
-/// - Linux: `$APP_DIR/viben`
+/// The main Tauri app binary is "viben-desktop", and the sidecar is "viben".
 #[tauri::command]
 pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
     // Get the resource directory where bundled files are stored
@@ -452,49 +366,24 @@ pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, S
         .resource_dir()
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
-    // Construct the sidecar binary path based on platform
-    #[cfg(target_os = "windows")]
-    let binary_name = "viben.exe";
-    #[cfg(not(target_os = "windows"))]
-    let binary_name = "viben";
-
     // Check in resource directory (for bundled resources)
-    let resource_path = resource_dir.join("binaries").join(binary_name);
+    let resource_path = resource_dir.join("binaries").join(SIDECAR_NAME);
     if resource_path.exists() {
         return Ok(resource_path.to_string_lossy().to_string());
     }
 
     // Also check directly in resource dir (some bundle configurations)
-    let direct_resource_path = resource_dir.join(binary_name);
+    let direct_resource_path = resource_dir.join(SIDECAR_NAME);
     if direct_resource_path.exists() {
         return Ok(direct_resource_path.to_string_lossy().to_string());
     }
 
-    // For macOS app bundles, check Contents/MacOS directory
-    #[cfg(target_os = "macos")]
-    {
-        // Try to find the app bundle path
-        if let Some(exe_path) = std::env::current_exe().ok() {
-            // The exe is at: MyApp.app/Contents/MacOS/MyApp
-            // We want: MyApp.app/Contents/MacOS/viben
-            if let Some(macos_dir) = exe_path.parent() {
-                let sidecar_path = macos_dir.join(binary_name);
-                if sidecar_path.exists() {
-                    return Ok(sidecar_path.to_string_lossy().to_string());
-                }
-            }
-        }
-    }
-
-    // For Windows/Linux, check next to the executable
-    #[cfg(not(target_os = "macos"))]
-    {
-        if let Some(exe_path) = std::env::current_exe().ok() {
-            if let Some(exe_dir) = exe_path.parent() {
-                let sidecar_path = exe_dir.join(binary_name);
-                if sidecar_path.exists() {
-                    return Ok(sidecar_path.to_string_lossy().to_string());
-                }
+    // Check next to the main executable (Tauri places sidecars here)
+    if let Some(exe_path) = std::env::current_exe().ok() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let sidecar_path = exe_dir.join(SIDECAR_NAME);
+            if sidecar_path.exists() {
+                return Ok(sidecar_path.to_string_lossy().to_string());
             }
         }
     }

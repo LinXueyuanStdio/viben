@@ -1,4 +1,5 @@
 mod commands;
+pub mod utils;
 
 use commands::gateway::GatewayState;
 
@@ -10,7 +11,7 @@ use tauri::{
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Auto-start gateway on app startup
-async fn auto_start_gateway(state: &GatewayState) {
+async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::PathBuf>) {
     // Check config for auto_start
     let config = state.config.read().await.clone();
     if !config.auto_start {
@@ -34,21 +35,34 @@ async fn auto_start_gateway(state: &GatewayState) {
         }
     }
 
-    // Find gateway binary or CLI command
-    // First try viben CLI
-    let viben_paths = [
-        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
-        Some(std::path::PathBuf::from("/opt/homebrew/bin/viben")),
-        Some(std::path::PathBuf::from("/usr/local/bin/viben")),
-    ];
+    // Find gateway binary
+    // 1. Check bundled sidecar next to the main executable (with target triple)
+    let sidecar_name = commands::gateway::SIDECAR_NAME;
+    let bundled_path = exe_dir.map(|dir| dir.join(sidecar_name));
+    let bundled_viben = bundled_path.filter(|p| p.exists());
 
-    let viben_path = viben_paths.into_iter().flatten().find(|p| p.exists());
+    // 2. Find system-installed viben (PATH + known paths + nvm/fnm/volta)
+    let system_viben = utils::find_executable("viben");
 
-    // Build the command using viben CLI
-    let cmd_result = if let Some(viben) = viben_path {
-        eprintln!("[Gateway] Using viben CLI: {:?}", viben);
+    // Build the command: prefer bundled sidecar, fall back to system CLI
+    let cmd_result = if let Some(viben) = bundled_viben {
+        eprintln!("[Gateway] Using bundled sidecar: {:?}", viben);
         let mut cmd = tokio::process::Command::new(&viben);
         cmd.arg("gateway")
+            .arg("serve")
+            .arg("--port")
+            .arg(config.port.to_string())
+            .arg("--host")
+            .arg(&config.host)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        cmd.spawn()
+    } else if let Some(viben) = system_viben {
+        eprintln!("[Gateway] Using system viben CLI: {:?}", viben);
+        let mut cmd = tokio::process::Command::new(&viben);
+        cmd.arg("gateway")
+            .arg("serve")
             .arg("--port")
             .arg(config.port.to_string())
             .arg("--host")
@@ -227,8 +241,9 @@ pub fn run() {
                 process: gateway_state.process.clone(),
                 config: gateway_state.config.clone(),
             };
+            let exe_dir = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf()));
             tauri::async_runtime::spawn(async move {
-                auto_start_gateway(&gateway_state_clone).await;
+                auto_start_gateway(&gateway_state_clone, exe_dir).await;
             });
 
             // Set up blur handler for popup window

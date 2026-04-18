@@ -51,7 +51,7 @@ Since Viben is not notarized by Apple, you may see a security warning on first l
 This is caused by macOS quarantine. Remove the quarantine flag:
 
 ```bash
-xattr -cr /Applications/Viben.app
+sudo /usr/bin/xattr -cr /Applications/Viben.app
 ```
 
 **"Cannot open Viben because the developer cannot be verified"**

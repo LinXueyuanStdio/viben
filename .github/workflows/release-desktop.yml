@@ -154,6 +154,15 @@ jobs:
           cd packages/core
           bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
 
+      - name: Ad-hoc codesign sidecar binaries (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          for bin in apps/desktop/src-tauri/binaries/viben-*; do
+            echo "Signing $bin..."
+            codesign --remove-signature "$bin" 2>/dev/null || true
+            codesign --entitlements apps/desktop/src-tauri/entitlements.plist --deep --sign - --force "$bin"
+          done
+
       - name: List sidecar binaries
         shell: bash
         run: ls -la apps/desktop/src-tauri/binaries/
@@ -191,7 +200,7 @@ jobs:
             - **Intel**: Download the `x86_64` DMG file
             - Drag Viben to Applications
             - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-            - Or run: `xattr -cr /Applications/Viben.app`
+            - Or run: `sudo /usr/bin/xattr -cr /Applications/Viben.app`
 
             #### Windows
             Download the `.msi` or `.exe` installer and run it.
@@ -248,7 +257,7 @@ jobs:
             - **Intel**: Download the `x86_64` DMG file
             - Drag Viben to Applications
             - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-            - Or run: `xattr -cr /Applications/Viben.app`
+            - Or run: `sudo /usr/bin/xattr -cr /Applications/Viben.app`
 
             #### Windows
             Download the `.msi` or `.exe` installer and run it.
