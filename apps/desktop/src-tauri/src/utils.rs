@@ -95,20 +95,22 @@ fn find_executable_uncached(name: &str) -> Option<PathBuf> {
         }
     }
 
-    // 2. Check known installation paths
-    for candidate in known_install_paths(name).into_iter().flatten() {
-        if candidate.exists() && verify_executable(&candidate) {
-            return Some(candidate);
-        }
-    }
-
-    // 3. Scan version-manager directories (nvm, fnm, volta)
+    // 2. Scan version-manager directories (nvm, fnm, volta) FIRST
+    //    These take priority because users explicitly choose to use version managers.
+    //    macOS GUI apps don't inherit shell PATH, so we must check these manually.
     #[cfg(unix)]
     {
         if let Some(path) = scan_version_managers(name) {
             if verify_executable(&path) {
                 return Some(path);
             }
+        }
+    }
+
+    // 3. Check known installation paths (Homebrew, system paths, etc.)
+    for candidate in known_install_paths(name).into_iter().flatten() {
+        if candidate.exists() && verify_executable(&candidate) {
+            return Some(candidate);
         }
     }
 

@@ -146,121 +146,65 @@ pub struct InstallEnvOptions {
 /// Check if Viben CLI is installed
 ///
 /// Attempts to run `viben --version` and returns installation status.
-/// On macOS/Linux, also tries common paths if direct execution fails.
+/// Uses find_executable to locate viben in PATH, version managers, and known paths.
 #[command]
 pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
-    // First, try to run viben directly
-    let mut cmd = Command::new("viben");
-    cmd.arg("--version");
+    // Use find_executable to locate viben (handles nvm/fnm/volta, Homebrew, etc.)
+    let viben_path = crate::utils::find_executable("viben");
 
-    // On Windows, hide the console window
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    match &viben_path {
+        Some(path) => {
+            let mut cmd = Command::new(path);
+            cmd.arg("--version");
 
-    let output = cmd.output();
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(CREATE_NO_WINDOW);
 
-    match output {
-        Ok(output) if output.status.success() => {
-            let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            let path = get_cli_path();
-
-            return Ok(CliCheckResult {
-                installed: true,
-                version: Some(version),
-                path,
-                source: Some("npm-global".to_string()),
-            });
-        }
-        Ok(output) => {
-            // Command found but failed - viben exists but has issues
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            eprintln!(
-                "[check_viben_cli] viben found but --version failed: stdout={}, stderr={}",
-                stdout, stderr
-            );
-        }
-        Err(e) => {
-            eprintln!("[check_viben_cli] viben not found in PATH: {}", e);
-        }
-    }
-
-    // On macOS/Linux, try common npm global paths
-    #[cfg(not(target_os = "windows"))]
-    {
-        let home = std::env::var("HOME").unwrap_or_default();
-        let common_paths = [
-            format!("{}/.nvm/versions/node/*/bin/viben", home),
-            format!("{}/Library/pnpm/viben", home),
-            "/usr/local/bin/viben".to_string(),
-            "/opt/homebrew/bin/viben".to_string(),
-        ];
-
-        // Try to find viben in common locations using glob
-        for pattern in &common_paths {
-            if let Ok(paths) = glob::glob(pattern) {
-                for path_result in paths {
-                    if let Ok(path) = path_result {
-                        if path.exists() {
-                            // Try to run this specific binary
-                            let output = Command::new(&path).arg("--version").output();
-                            if let Ok(output) = output {
-                                if output.status.success() {
-                                    let version =
-                                        String::from_utf8_lossy(&output.stdout).trim().to_string();
-                                    return Ok(CliCheckResult {
-                                        installed: true,
-                                        version: Some(version),
-                                        path: Some(path.to_string_lossy().to_string()),
-                                        source: Some("npm-global".to_string()),
-                                    });
-                                }
-                            }
-                        }
-                    }
+            match cmd.output() {
+                Ok(output) if output.status.success() => {
+                    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    Ok(CliCheckResult {
+                        installed: true,
+                        version: Some(version),
+                        path: Some(path.to_string_lossy().to_string()),
+                        source: Some("npm-global".to_string()),
+                    })
+                }
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    eprintln!(
+                        "[check_viben_cli] viben found but --version failed: stdout={}, stderr={}",
+                        stdout, stderr
+                    );
+                    Ok(CliCheckResult {
+                        installed: false,
+                        version: None,
+                        path: Some(path.to_string_lossy().to_string()),
+                        source: None,
+                    })
+                }
+                Err(e) => {
+                    eprintln!("[check_viben_cli] failed to run viben: {}", e);
+                    Ok(CliCheckResult {
+                        installed: false,
+                        version: None,
+                        path: None,
+                        source: None,
+                    })
                 }
             }
         }
-    }
-
-    // On Windows, also check common paths
-    #[cfg(target_os = "windows")]
-    {
-        let home = std::env::var("USERPROFILE").unwrap_or_default();
-        let win_paths = [
-            format!(r"{}\AppData\Roaming\npm\viben.cmd", home),
-            format!(r"{}\AppData\Local\pnpm\viben.cmd", home),
-            r"C:\Program Files\nodejs\viben.cmd".to_string(),
-        ];
-
-        for path_str in &win_paths {
-            let path = std::path::PathBuf::from(path_str);
-            if path.exists() {
-                let mut cmd = Command::new(&path);
-                cmd.arg("--version");
-                cmd.creation_flags(CREATE_NO_WINDOW);
-
-                if let Ok(output) = cmd.output() {
-                    if output.status.success() {
-                        let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        return Ok(CliCheckResult {
-                            installed: true,
-                            version: Some(version),
-                            path: Some(path_str.clone()),
-                            source: Some("npm-global".to_string()),
-                        });
-                    }
-                }
-            }
+        None => {
+            eprintln!("[check_viben_cli] viben not found");
+            Ok(CliCheckResult {
+                installed: false,
+                version: None,
+                path: None,
+                source: None,
+            })
         }
     }
-
-    Ok(CliCheckResult {
-        installed: false,
-        version: None,
-        path: None,
-        source: None,
-    })
 }
 
 /// Install Viben CLI via npm
@@ -270,14 +214,11 @@ pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
 /// Uses --force to overwrite existing installations.
 #[command]
 pub async fn install_viben_cli(version: String, registry: String) -> Result<(), String> {
-    // Build npm install command
-    let install_cmd = if cfg!(target_os = "windows") {
-        "npm.cmd"
-    } else {
-        "npm"
-    };
+    // Use find_executable to locate npm (handles nvm/fnm/volta, Homebrew, etc.)
+    let npm_path = crate::utils::find_executable("npm")
+        .ok_or("npm not found. Please ensure Node.js and npm are installed.")?;
 
-    let mut cmd = Command::new(install_cmd);
+    let mut cmd = Command::new(&npm_path);
     cmd.args([
         "install",
         "-g",
@@ -406,8 +347,11 @@ pub async fn prepare_mac_git_tools() -> Result<MacGitToolsPrepareResult, String>
 
     #[cfg(target_os = "macos")]
     {
-        // First, try to run git --version
-        let git_check = Command::new("git").arg("--version").output();
+        // First, try to find and run git --version
+        // Use find_executable to handle Homebrew git installations
+        let git_path = crate::utils::find_executable("git")
+            .unwrap_or_else(|| std::path::PathBuf::from("git"));
+        let git_check = Command::new(&git_path).arg("--version").output();
 
         match git_check {
             Ok(output) if output.status.success() => {
@@ -1016,11 +960,8 @@ pub async fn refresh_environment() -> Result<(), String> {
             }
         }
 
-        // Verify node is now available with the updated PATH
-        let mut node_cmd = Command::new("node");
-        node_cmd.arg("--version");
-        node_cmd.creation_flags(CREATE_NO_WINDOW);
-        let _ = node_cmd.output();
+        // Clear cache so next find_executable picks up the new PATH
+        crate::utils::clear_cache();
 
         Ok(())
     }
