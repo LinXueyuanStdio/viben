@@ -65,7 +65,7 @@ export function GitHubRepository({
     try {
       await onConnect(detectedRepository.owner, detectedRepository.name);
     } catch (err) {
-      setConnectError(err instanceof Error ? err.message : "Failed to connect");
+      setConnectError(err instanceof Error ? err.message : t("workspaceSettings.github.repo.connectFailed"));
     } finally {
       setConnectLoading(false);
     }
@@ -88,7 +88,7 @@ export function GitHubRepository({
         setManualName("");
       }
     } catch (err) {
-      setConnectError(err instanceof Error ? err.message : "Failed to connect");
+      setConnectError(err instanceof Error ? err.message : t("workspaceSettings.github.repo.connectFailed"));
     } finally {
       setConnectLoading(false);
     }

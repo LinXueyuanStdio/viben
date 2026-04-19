@@ -48,7 +48,7 @@ export interface NodejsSectionProps {
 // Helper
 // ============================================================================
 
-function getSourceLabel(source: string): string {
+function getSourceLabel(source: string, t: (key: string) => string): string {
   switch (source) {
     case "nvm":
       return "nvm";
@@ -59,13 +59,13 @@ function getSourceLabel(source: string): string {
     case "homebrew":
       return "Homebrew";
     case "system":
-      return "System";
+      return t("onboarding.nodejs.sourceSystem");
     case "current":
-      return "当前使用";
+      return t("onboarding.nodejs.sourceCurrent");
     case "custom":
-      return "自定义";
+      return t("onboarding.nodejs.sourceCustom");
     case "other":
-      return "其他";
+      return t("onboarding.nodejs.sourceOther");
     default:
       return source;
   }
@@ -156,7 +156,7 @@ export function NodejsSection({
                     <div className="font-medium text-sm flex items-center gap-2">
                       <span>Node.js {node.version || t("common.unknown")}</span>
                       <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
-                        {getSourceLabel(node.source)}
+                        {getSourceLabel(node.source, t)}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground truncate max-w-[280px]">

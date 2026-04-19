@@ -193,7 +193,7 @@ function MessageItem({
   const [showActions, setShowActions] = React.useState(false);
 
   // Get sender name from message or agent_name
-  const senderName = message.sender_name || message.agent_name || "Unknown";
+  const senderName = message.sender_name || message.agent_name || t("common.unknown");
 
   // System message styling
   if (message.type === "system") {

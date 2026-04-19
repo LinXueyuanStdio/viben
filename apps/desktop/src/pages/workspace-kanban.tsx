@@ -1428,7 +1428,7 @@ export function WorkspaceKanbanPage() {
         });
         toast.success(t("workspace.taskCreated", "Task created successfully"));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = error instanceof Error ? error.message : t("common.unknownError", "Unknown error");
         toast.error(t("workspace.taskCreateFailed", "Failed to create task: {{message}}", { message }));
         throw error; // Re-throw to let the dialog know it failed
       }

@@ -1723,7 +1723,10 @@
     "loggingLevel": "Logging Level",
     "selectLoggingLevel": "Select level...",
     "loggingLevelDesc": "Set the minimum logging level for server notifications.",
+    "setLoggingLevelFailed": "Failed to set logging level",
     "loadingSuggestions": "Loading suggestions...",
+    "select": "Select...",
+    "nullValue": "null",
     "addItem": "Add Item",
     "itemNumber": "Item {{number}}",
     "mcpApps": "MCP Apps",
@@ -2188,7 +2191,8 @@
         "owner": "Owner",
         "name": "Repository Name",
         "ownerNameRequired": "Owner and name are required",
-        "defaultBranch": "Default branch"
+        "defaultBranch": "Default branch",
+        "connectFailed": "Failed to connect"
       },
       "issues": {
         "open": "Open",
@@ -2671,7 +2675,8 @@
       "hint": "Tasks will automatically move from Queue to In Progress when capacity is available.",
       "errorNaN": "Please enter a valid number",
       "errorMin": "Minimum value is 1",
-      "errorMax": "Maximum value is 10"
+      "errorMax": "Maximum value is 10",
+      "saveFailed": "Failed to save settings"
     },
     "queueAutoPromotion": {
       "promoted": "Started task: {{title}}",
@@ -2968,7 +2973,11 @@
       "invalidPath": "Invalid Node.js path or version too low",
       "requiresVersion": "Requires v{{version}}+",
       "versionTooLow": "Node.js version too low ({{version}}), requires v{{required}} or higher",
-      "source": "Source"
+      "source": "Source",
+      "sourceSystem": "System",
+      "sourceCurrent": "Current",
+      "sourceCustom": "Custom",
+      "sourceOther": "Other"
     },
     "python": {
       "title": "Python Environment",
@@ -3039,7 +3048,11 @@
       "autoStartHint": "Gateway will start automatically on app launch.",
       "manualStart": "Start Gateway",
       "vibenNotFound": "Viben CLI not found. Please install it first.",
-      "installViben": "Install Viben CLI"
+      "installViben": "Install Viben CLI",
+      "binaryLabel": "Binary:",
+      "commandLabel": "Command:",
+      "copyBinaryPath": "Copy binary path",
+      "copyCommand": "Copy command"
     },
     "failure": {
       "suggestions": "Suggestions",
@@ -3746,6 +3759,7 @@
     "noAgentsAvailable": "No agents available",
     "selectedCount": "{{count}} agent(s) selected",
     "createButton": "Create Group",
+    "createFailed": "Failed to create group chat",
     "errorNameRequired": "Please enter a group name",
     "emptyTitle": "No messages yet",
     "emptyDescription": "Start the conversation by sending a message.",
