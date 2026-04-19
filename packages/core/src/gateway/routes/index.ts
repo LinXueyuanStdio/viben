@@ -50,6 +50,7 @@ import { registerCommandQueueRoutes } from "./command-queue";
 import { registerIdeaRoutes } from "./ideas";
 import { registerRewardRoutes } from "./reward";
 import { registerSkillRoutes } from "./skill";
+import { registerPageRoutes } from "./page";
 
 /**
  * Register all routes
@@ -102,6 +103,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerIdeaRoutes(fastify);
   registerRewardRoutes(fastify);
   registerSkillRoutes(fastify);
+  registerPageRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -158,6 +160,7 @@ export { registerCommandQueueRoutes } from "./command-queue";
 export { registerIdeaRoutes } from "./ideas";
 export { registerRewardRoutes } from "./reward";
 export { registerSkillRoutes } from "./skill";
+export { registerPageRoutes } from "./page";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";
 export type {

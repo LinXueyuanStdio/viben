@@ -74,3 +74,11 @@ export {
 // Serve
 export type { ServeOptions } from "./serve";
 export { servePage, serveStaticFileCompat } from "./serve";
+
+// Templates
+export {
+  listTemplates,
+  getTemplate,
+  loadTemplateFiles,
+  listTemplatesResult,
+} from "./templates";

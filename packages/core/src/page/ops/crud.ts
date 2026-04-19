@@ -5,7 +5,7 @@
  */
 
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   ListPagesResult,
   ViewPageResult,
@@ -14,6 +14,7 @@ import type {
   PageConfig,
 } from "./types";
 import { listPagesInWorkspace, getPageBySlug } from "./discovery";
+import { loadTemplateFiles, getTemplate } from "./templates";
 
 const PAGES_DIR = "pages";
 const SKILL_FILE = "SKILL.md";
@@ -88,6 +89,8 @@ export interface CreatePageOptions {
   name: string;
   description?: string;
   type: "static" | "markdown" | "server" | "proxy";
+  // Template support
+  template_id?: string;
   // Static-specific
   file?: string;
   // Server-specific
@@ -103,7 +106,7 @@ export interface CreatePageOptions {
 export async function createPage(
   options: CreatePageOptions
 ): Promise<CreatePageResult> {
-  const { workspace_path, slug, name, description, type } = options;
+  const { workspace_path, slug, name, description = "", type, template_id } = options;
 
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, slug);
@@ -120,7 +123,39 @@ export async function createPage(
   // Create directory
   mkdirSync(pageDir, { recursive: true });
 
-  // Build SKILL.md content
+  // If template_id is provided, use template system
+  if (template_id) {
+    const template = getTemplate(template_id, workspace_path);
+    if (!template) {
+      return {
+        success: false,
+        error: `Template not found: ${template_id}`,
+      };
+    }
+
+    const vars = { name, slug, description };
+    const files = loadTemplateFiles(template_id, vars, workspace_path);
+
+    for (const [filePath, content] of files) {
+      const fullPath = join(pageDir, filePath);
+      // Ensure parent directory exists for nested files
+      const parentDir = dirname(fullPath);
+      if (!existsSync(parentDir)) {
+        mkdirSync(parentDir, { recursive: true });
+      }
+      writeFileSync(fullPath, content, "utf-8");
+    }
+
+    // Return created page
+    const page = await getPageBySlug(workspace_path, slug);
+
+    return {
+      success: true,
+      page: page ?? undefined,
+    };
+  }
+
+  // Build SKILL.md content (default behavior without template)
   let skillContent = "---\n";
   skillContent += "page:\n";
   skillContent += `  type: ${type}\n`;
@@ -149,7 +184,7 @@ export async function createPage(
   }
   skillContent += "---\n\n";
   skillContent += `# ${name}\n\n`;
-  skillContent += description ?? "Page description here.";
+  skillContent += description || "Page description here.";
 
   // Write SKILL.md
   writeFileSync(skillPath, skillContent, "utf-8");
@@ -167,7 +202,7 @@ export async function createPage(
 </head>
 <body>
   <h1>${name}</h1>
-  <p>${description ?? "Welcome to the page."}</p>
+  <p>${description || "Welcome to the page."}</p>
 </body>
 </html>
 `;

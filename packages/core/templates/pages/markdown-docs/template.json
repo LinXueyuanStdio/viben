@@ -1,0 +1,8 @@
+{
+  "name": "Markdown Documentation",
+  "description": "Documentation page rendered from SKILL.md content",
+  "type": "markdown",
+  "default_config": {
+    "permission": ["read", "write"]
+  }
+}

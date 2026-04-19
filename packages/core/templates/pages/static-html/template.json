@@ -1,0 +1,9 @@
+{
+  "name": "Static HTML",
+  "description": "Simple static HTML page",
+  "type": "static",
+  "default_config": {
+    "file": "index.html",
+    "permission": ["read", "write"]
+  }
+}
