@@ -70,3 +70,7 @@ export {
   createPage,
   deletePage,
 } from "./crud";
+
+// Serve
+export type { ServeOptions } from "./serve";
+export { servePage, serveStaticFileCompat } from "./serve";
