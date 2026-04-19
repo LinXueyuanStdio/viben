@@ -111,7 +111,7 @@ export function enqueueTask(
       command,
       cwd: repoRoot,
       metadata: {
-        task_dir: taskDirRel,
+        task_dir: ".viben/tasks/" + taskName,
         task_name: taskName,
       },
     });
