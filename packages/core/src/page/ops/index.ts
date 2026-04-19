@@ -47,3 +47,11 @@ export {
 
 // Type guards for config types
 export { isStaticPage, isMarkdownPage, isServerPage, isProxyPage } from "./types";
+
+// Discovery
+export {
+  parseSkillMd,
+  discoverPages,
+  listPagesInWorkspace,
+  getPageBySlug,
+} from "./discovery";
