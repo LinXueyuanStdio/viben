@@ -454,46 +454,107 @@ export function readTaskJson(taskDir: string): Record<string, unknown> | null {
 }
 
 /**
+ * Task info returned by getActiveTasks
+ * Contains full task data from task.json plus computed fields
+ */
+export interface ActiveTaskInfo {
+  /** Task directory name (date-slug format) - used as unique ID */
+  dir: string;
+  /** Task ID (same as dir for compatibility) */
+  id: string;
+  /** Task slug name */
+  name: string;
+  /** Task status */
+  status: string;
+  /** Assignee developer name */
+  assignee: string;
+  /** Task title */
+  title: string;
+  /** Task priority */
+  priority: string;
+  /** Task description */
+  description: string | null;
+  /** Creation timestamp */
+  created_at: string;
+  /** Last update timestamp */
+  updated_at: string;
+  /** Workspace path */
+  workspace_path: string;
+  /** Executor type (CLAUDE_CODE, etc.) */
+  executor: string;
+  /** Feature branch name */
+  branch?: string;
+  /** Base branch for PR */
+  base_branch?: string;
+  /** PR URL if created */
+  pr_url?: string;
+  /** Git worktree path */
+  worktree_path?: string;
+  /** Session ID if running */
+  session_id?: string | null;
+  /** Agent ID if associated */
+  agent_id?: string | null;
+  /** Task creator */
+  creator?: string;
+  /** Current phase number */
+  current_phase?: number;
+  /** Next actions by phase */
+  next_action?: Array<{ phase: number; action: string }>;
+}
+
+/**
  * Get all active tasks (excluding archive)
  *
  * @param repoRoot - Repository root path
- * @returns Array of task info objects
+ * @returns Array of task info objects with full data
  */
-export function getActiveTasks(repoRoot: string): Array<{
-  dir: string;
-  name: string;
-  status: string;
-  assignee: string;
-  title: string;
-  priority: string;
-}> {
+export function getActiveTasks(repoRoot: string): ActiveTaskInfo[] {
   const tasksDir = getTasksDir(repoRoot);
   if (!existsSync(tasksDir)) {
     return [];
   }
 
-  const tasks: Array<{
-    dir: string;
-    name: string;
-    status: string;
-    assignee: string;
-    title: string;
-    priority: string;
-  }> = [];
+  const tasks: ActiveTaskInfo[] = [];
 
   try {
     const dirs = readdirSync(tasksDir, { withFileTypes: true });
     for (const dirent of dirs) {
       if (dirent.isDirectory() && dirent.name !== DIR_ARCHIVE) {
-        const taskData = readTaskJson(join(tasksDir, dirent.name));
+        const taskDir = join(tasksDir, dirent.name);
+        const taskData = readTaskJson(taskDir);
         if (taskData) {
+          // Get file modification time for updated_at
+          let updatedAt: string;
+          try {
+            const stats = statSync(join(taskDir, FILE_TASK_JSON));
+            updatedAt = stats.mtime.toISOString();
+          } catch {
+            updatedAt = String(taskData.created_at ?? new Date().toISOString());
+          }
+
           tasks.push({
             dir: dirent.name,
+            // Use dir as ID for consistency (date-slug format is unique)
+            id: dirent.name,
             name: String(taskData.name ?? taskData.id ?? "unknown"),
             status: String(taskData.status ?? "unknown"),
             assignee: String(taskData.assignee ?? "-"),
             title: String(taskData.title ?? taskData.name ?? "unknown"),
             priority: String(taskData.priority ?? "medium"),
+            description: taskData.description != null ? String(taskData.description) : null,
+            created_at: String(taskData.created_at ?? new Date().toISOString()),
+            updated_at: String(taskData.updated_at ?? updatedAt),
+            workspace_path: repoRoot,
+            executor: String(taskData.executor ?? "CLAUDE_CODE"),
+            branch: taskData.branch != null ? String(taskData.branch) : undefined,
+            base_branch: taskData.base_branch != null ? String(taskData.base_branch) : undefined,
+            pr_url: taskData.pr_url != null ? String(taskData.pr_url) : undefined,
+            worktree_path: taskData.worktree_path != null ? String(taskData.worktree_path) : undefined,
+            session_id: taskData.session_id != null ? String(taskData.session_id) : null,
+            agent_id: taskData.agent != null ? String(taskData.agent) : (taskData.agent_id != null ? String(taskData.agent_id) : null),
+            creator: taskData.creator != null ? String(taskData.creator) : undefined,
+            current_phase: typeof taskData.current_phase === "number" ? taskData.current_phase : undefined,
+            next_action: Array.isArray(taskData.next_action) ? taskData.next_action as Array<{ phase: number; action: string }> : undefined,
           });
         }
       }

@@ -53,6 +53,10 @@ export class CliError extends Error {
       : `${operation} failed`;
     return new CliError(message, "OPERATION_FAILED", 1);
   }
+
+  static validation(message: string): CliError {
+    return new CliError(message, "VALIDATION_ERROR", 1);
+  }
 }
 
 /**

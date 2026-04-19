@@ -29,6 +29,7 @@ import { registerRewardCommand } from "./reward";
 import { registerEvoCommand } from "./evo";
 import { registerIndexCommand } from "./index-cmd";
 import { registerLoginCommand } from "./login";
+import { registerPageCommand } from "./page";
 
 /**
  * Register all commands on the program
@@ -60,4 +61,5 @@ export function registerCommands(program: Command): void {
   registerEvoCommand(program);
   registerIndexCommand(program);
   registerLoginCommand(program);
+  registerPageCommand(program);
 }

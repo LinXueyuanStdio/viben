@@ -92,3 +92,6 @@ export * from "./telemetry";
 
 // Preview module
 export * from "./preview";
+
+// Pages module
+export * from "./pages";

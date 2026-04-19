@@ -28,3 +28,11 @@ export {
   useSavedConfigsStore,
   type SavedInspectorConfig,
 } from "./saved-configs-store";
+export {
+  useTabStore,
+  selectActiveTab,
+  selectPinnedTabs,
+  selectUnpinnedTabs,
+  type PageTab,
+} from "./tab-store";
+export { useUiStore } from "./ui-store";

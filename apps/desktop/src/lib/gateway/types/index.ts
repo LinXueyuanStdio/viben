@@ -233,3 +233,22 @@ export type {
   McpWebSocketEventType,
   McpWebSocketEvent,
 } from "./mcp-events";
+
+// Page Types
+export type {
+  PageType,
+  PagePermission,
+  PageConfig,
+  StaticPageConfig,
+  MarkdownPageConfig,
+  ServerPageConfig,
+  ProxyPageConfig,
+  PageResult,
+  ListPagesResult,
+  ViewPageResult,
+  CreatePageResult,
+  DeletePageResult,
+  CreatePageParams,
+  PageTemplate,
+  ListTemplatesResult,
+} from "./page";

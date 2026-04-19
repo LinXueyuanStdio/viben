@@ -51,37 +51,29 @@ export function SidebarSection({
   // Collapsible section
   return (
     <div className={cn("space-y-1", className)}>
-      <div
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex w-full items-center justify-between",
-          "text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          "flex w-full items-center gap-1 px-3 py-1.5",
+          "text-[11px] font-medium text-muted-foreground/70",
+          "hover:text-muted-foreground transition-colors duration-200",
+          "focus:outline-none"
         )}
       >
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
+        <span>{title}</span>
+        <ChevronDown
           className={cn(
-            "flex-1 flex items-center justify-between gap-1 px-3 py-2 -mx-0",
-            "hover:text-foreground hover:bg-sidebar-accent/50 transition-all duration-200",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg"
+            "h-3 w-3 transition-transform duration-200",
+            isOpen ? "rotate-0" : "-rotate-90"
           )}
-        >
-          <span>{title}</span>
-          <div className="flex items-center gap-1">
-            <ChevronDown
-              className={cn(
-                "h-3 w-3 transition-transform duration-200",
-                isOpen ? "rotate-0" : "-rotate-90"
-              )}
-            />
-          </div>
-        </button>
+        />
         {headerAction && (
-          <div className="flex items-center gap-1 pr-2" onClick={(e) => e.stopPropagation()}>
+          <div className="ml-auto flex items-center" onClick={(e) => e.stopPropagation()}>
             {headerAction}
           </div>
         )}
-      </div>
+      </button>
       <div
         className={cn(
           "overflow-hidden transition-all duration-200",

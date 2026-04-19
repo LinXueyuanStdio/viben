@@ -47,7 +47,12 @@ export function SidebarIconButton({
 
   const handleClick = () => {
     if (disabled) return;
-    onClick?.();
+    // If onClick is provided, let it handle navigation
+    if (onClick) {
+      onClick();
+      return;
+    }
+    // Fallback: use href for direct navigation
     if (href) {
       navigate(href);
     }

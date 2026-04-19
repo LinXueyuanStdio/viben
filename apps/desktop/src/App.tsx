@@ -34,6 +34,7 @@ import {
   DocumentsPage,
   ChatMonitorPage,
   PageDebugPage,
+  WorkspacePage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -149,6 +150,7 @@ function App() {
 
           {/* Workspace routes */}
           <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
+          <Route path="workspace/page" element={<WorkspacePage />} />
           <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
           <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />

@@ -288,3 +288,4 @@ logs/security/
 
 # Auto-generated index files
 docs/index/
+core.*

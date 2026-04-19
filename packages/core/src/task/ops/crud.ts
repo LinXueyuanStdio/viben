@@ -53,14 +53,11 @@ import { initContext } from "./context-files";
 // Result Types
 // =============================================================================
 
+import type { ActiveTaskInfo } from "../../cli/lib/viben-workspace";
+
 export interface ListTasksResult {
   success: boolean;
-  tasks: Array<{
-    dir: string;
-    status: string;
-    assignee: string;
-    priority: string;
-  }>;
+  tasks: ActiveTaskInfo[];
   error?: string;
 }
 
@@ -555,7 +552,7 @@ export function createTask(
   const branch = options.branch || `feature/${taskSlug}`;
 
   const taskData: TaskJson = {
-    id: taskSlug,
+    id: dirName,  // Use full directory name (with date prefix) as unique ID
     name: taskSlug,
     title: title,
     description: options.description || "",

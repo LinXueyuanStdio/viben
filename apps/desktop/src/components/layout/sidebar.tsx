@@ -1,6 +1,6 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
   PanelLeftClose,
@@ -70,6 +70,9 @@ import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
+import { PageSection } from "@/components/page/page-section";
+import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useUiStore } from "@/stores";
 
 interface NavItem {
   titleKey: string;
@@ -115,6 +118,7 @@ export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { openWorkspaceView, openGlobalView } = usePageTabs();
 
   const {
     workspaces,
@@ -149,8 +153,8 @@ export function Sidebar() {
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
-  // Create Task Dialog state
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  // Create Task Dialog state (from global UI store for keyboard shortcut support)
+  const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen } = useUiStore();
   const createTaskMutation = _useCreateTask();
 
   // Load agents and models for task creation
@@ -180,8 +184,25 @@ export function Sidebar() {
 
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
-    navigate(`/workspace/${workspaceId}/chat`);
+    // Navigate to chat and update current tab
+    openWorkspaceView(workspaceId, "chat", t("workspace.chat"), "message-square");
   };
+
+  // Handle workspace nav item click - updates current tab
+  const handleWorkspaceNavClick = useCallback(
+    (workspaceId: string, viewPath: string, viewName: string, iconName: string) => {
+      openWorkspaceView(workspaceId, viewPath, viewName, iconName);
+    },
+    [openWorkspaceView]
+  );
+
+  // Handle global nav item click - updates current tab
+  const handleGlobalNavClick = useCallback(
+    (href: string, name: string, iconName: string) => {
+      openGlobalView(href, name, iconName);
+    },
+    [openGlobalView]
+  );
 
   const handleConfigureWorkspace = (workspaceId: string) => {
     setWorkspaceToConfig(workspaceId);
@@ -246,7 +267,7 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
+          "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
           collapsed ? "w-16" : "w-56"
         )}
       >
@@ -382,11 +403,23 @@ export function Sidebar() {
                       item={item}
                       workspaceId={activeWorkspaceId}
                       collapsed={collapsed}
+                      onNavigate={handleWorkspaceNavClick}
                     />
                   ))}
                   <div className="grid place-items-center w-full py-2">
                     <Separator className="w-10 bg-sidebar-border" />
                   </div>
+                </>
+              )}
+
+              {/* Pages Section - Right after Workspace navigation */}
+              {activeWorkspaceId && activeWorkspace && (
+                <>
+                  <PageSection
+                    workspaceId={activeWorkspaceId}
+                    workspacePath={activeWorkspace.path}
+                    collapsed={collapsed}
+                  />
                 </>
               )}
 
@@ -397,7 +430,7 @@ export function Sidebar() {
                     <Separator className="w-10 bg-sidebar-border" />
                   </div>
                   {creatorNav.map((item) => (
-                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} onNavigate={handleGlobalNavClick} />
                   ))}
                 </>
               )}
@@ -420,11 +453,22 @@ export function Sidebar() {
                           item={item}
                           workspaceId={activeWorkspaceId}
                           collapsed={collapsed}
+                          onNavigate={handleWorkspaceNavClick}
                         />
                       ))}
                     </nav>
                   </SidebarSection>
-                  <Separator className="bg-sidebar-border" />
+                </>
+              )}
+
+              {/* Pages Section - Right after Workspace navigation */}
+              {activeWorkspaceId && activeWorkspace && (
+                <>
+                  <PageSection
+                    workspaceId={activeWorkspaceId}
+                    workspacePath={activeWorkspace.path}
+                    collapsed={collapsed}
+                  />
                 </>
               )}
 
@@ -437,7 +481,7 @@ export function Sidebar() {
                 >
                   <nav className="flex flex-col gap-1">
                     {creatorNav.map((item) => (
-                      <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                      <NavItemComponent key={item.href} item={item} collapsed={collapsed} onNavigate={handleGlobalNavClick} />
                     ))}
                   </nav>
                 </SidebarSection>
@@ -459,10 +503,12 @@ export function Sidebar() {
             <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
               collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
             />
             <NavItemComponent
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
             />
             {/* New Task Button */}
             <div className="grid place-items-center w-full">
@@ -492,10 +538,12 @@ export function Sidebar() {
             <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
               collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
             />
             <NavItemComponent
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
             />
             {/* New Task Button */}
             <div className="mt-4">
@@ -582,9 +630,10 @@ export function Sidebar() {
 interface NavItemComponentProps {
   item: NavItem;
   collapsed: boolean;
+  onNavigate?: (href: string, name: string, iconName: string) => void;
 }
 
-function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
+function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps) {
   const { t } = useTranslation();
   const location = useLocation();
   const title = t(item.titleKey);
@@ -594,14 +643,23 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
   const isActiveOrChild = location.pathname === item.href ||
     location.pathname.startsWith(item.href + "/");
 
+  // Extract icon name from href path (e.g., "/settings" -> "settings")
+  const iconName = item.href.split("/").filter(Boolean).pop() ?? "file";
+
+  const handleClick = () => {
+    if (onNavigate) {
+      onNavigate(item.href, title, iconName);
+    }
+  };
+
   // Collapsed view - use unified SidebarIconButton component with centering wrapper
   if (collapsed) {
     return (
       <div className="grid place-items-center w-full">
         <SidebarIconButton
-          href={item.href}
           icon={<item.icon className="h-4 w-4" />}
           tooltip={title}
+          onClick={handleClick}
         />
       </div>
     );
@@ -609,10 +667,11 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
 
   // Expanded view - full link with text
   return (
-    <NavLink
-      to={item.href}
+    <button
+      type="button"
+      onClick={handleClick}
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
+        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
         "transition-all duration-200",
         isActiveOrChild
           ? [
@@ -633,7 +692,7 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
         )}
       />
       <span>{title}</span>
-    </NavLink>
+    </button>
   );
 }
 
@@ -641,9 +700,10 @@ interface WorkspaceNavItemComponentProps {
   item: WorkspaceNavItem;
   workspaceId: string;
   collapsed: boolean;
+  onNavigate?: (workspaceId: string, viewPath: string, viewName: string, iconName: string) => void;
 }
 
-function WorkspaceNavItemComponent({ item, workspaceId, collapsed }: WorkspaceNavItemComponentProps) {
+function WorkspaceNavItemComponent({ item, workspaceId, collapsed, onNavigate }: WorkspaceNavItemComponentProps) {
   const { t } = useTranslation();
   const location = useLocation();
   const title = t(item.titleKey);
@@ -653,25 +713,35 @@ function WorkspaceNavItemComponent({ item, workspaceId, collapsed }: WorkspaceNa
   const isActive = location.pathname === href ||
     location.pathname.startsWith(href + "/");
 
+  // Use item path as icon name
+  const iconName = item.path;
+
+  const handleClick = () => {
+    if (onNavigate) {
+      onNavigate(workspaceId, item.path, title, iconName);
+    }
+  };
+
   // Collapsed view - use unified SidebarIconButton component with centering wrapper
   if (collapsed) {
     return (
       <div className="grid place-items-center w-full">
         <SidebarIconButton
-          href={href}
           icon={<item.icon className="h-4 w-4" />}
           tooltip={title}
+          onClick={handleClick}
         />
       </div>
     );
   }
 
-  // Expanded view - full link with text
+  // Expanded view - full button with text
   return (
-    <NavLink
-      to={href}
+    <button
+      type="button"
+      onClick={handleClick}
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
+        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
         "transition-all duration-200",
         isActive
           ? [
@@ -692,6 +762,6 @@ function WorkspaceNavItemComponent({ item, workspaceId, collapsed }: WorkspaceNa
         )}
       />
       <span>{title}</span>
-    </NavLink>
+    </button>
   );
 }

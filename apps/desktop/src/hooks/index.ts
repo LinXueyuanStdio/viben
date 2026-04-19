@@ -397,3 +397,32 @@ export type {
   UseIdeaDetailReturn,
   UseGenerateIdeasReturn,
 } from "./use-ideas";
+
+// Page Tabs
+export { usePageTabs } from "./use-page-tabs";
+export type { PageTab } from "./use-page-tabs";
+
+// Global Shortcuts
+export { useGlobalShortcuts } from "./use-global-shortcuts";
+
+// Workspace Pages (Gateway API)
+export {
+  usePages,
+  usePage,
+  useCreatePage,
+  useDeletePage,
+  usePageTemplates,
+  pageKeys,
+  templateKeys,
+} from "./use-pages";
+export type {
+  PageConfig,
+  PageType,
+  PagePermission,
+  StaticPageConfig,
+  MarkdownPageConfig,
+  ServerPageConfig,
+  ProxyPageConfig,
+  PageTemplate,
+  CreatePageParams,
+} from "./use-pages";

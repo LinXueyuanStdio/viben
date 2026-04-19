@@ -1,17 +1,22 @@
 import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
+import { GlobalTabBar } from "@/components/global-tab-bar";
 import { usePython } from "@/hooks/use-python";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
 import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
   const { selectedPython, browseMcpInfo } = usePython();
   const { setupStatus, setSetupStatus } = useAppStore();
+
+  // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
+  useGlobalShortcuts();
 
   // Initialize tray status synchronization
   useTrayStatusSync();
@@ -48,12 +53,18 @@ export function AppLayout() {
   }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-auto bg-background theme-transition">
-        {/* Page transition animation removed - causes blank screen during navigation */}
-        <Outlet />
-      </main>
+    <div className="flex h-screen flex-col">
+      {/* Global Tab Bar at top */}
+      <GlobalTabBar />
+
+      {/* Rest of the existing layout */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto bg-background theme-transition">
+          {/* Page transition animation removed - causes blank screen during navigation */}
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -72,19 +72,31 @@ import {
 const sampleTasks = [
   {
     dir: "03-02-fix-bug",
+    id: "03-02-fix-bug",
     name: "fix-bug",
     status: "plan",
     assignee: "alice",
     title: "Fix login bug",
     priority: "P2",
+    description: null,
+    created_at: "2025-03-02T10:00:00Z",
+    updated_at: "2025-03-02T10:00:00Z",
+    workspace_path: "/workspace",
+    executor: "CLAUDE_CODE",
   },
   {
     dir: "03-03-add-user-auth",
+    id: "03-03-add-user-auth",
     name: "add-user-auth",
     status: "in_progress",
     assignee: "john",
     title: "Add user authentication",
     priority: "P1",
+    description: null,
+    created_at: "2025-03-03T10:00:00Z",
+    updated_at: "2025-03-03T10:00:00Z",
+    workspace_path: "/workspace",
+    executor: "CLAUDE_CODE",
   },
 ];
 
@@ -425,11 +437,17 @@ describe("Context CLI Command", () => {
       vi.mocked(getActiveTasks).mockReturnValue([
         {
           dir: "03-02-fix-bug",
+          id: "03-02-fix-bug",
           name: "fix-bug",
           status: "plan",
           assignee: "alice",
           title: "Fix login bug",
           priority: "P2",
+          description: null,
+          created_at: "2025-03-02T10:00:00Z",
+          updated_at: "2025-03-02T10:00:00Z",
+          workspace_path: "/workspace",
+          executor: "CLAUDE_CODE",
         },
       ]);
 
@@ -822,11 +840,17 @@ describe("Context CLI Command", () => {
       vi.mocked(getActiveTasks).mockReturnValue([
         {
           dir: "03-03-completed-task",
+          id: "03-03-completed-task",
           name: "completed-task",
           status: "completed",
           assignee: "john",
           title: "Completed task",
           priority: "P1",
+          description: null,
+          created_at: "2025-03-03T10:00:00Z",
+          updated_at: "2025-03-03T10:00:00Z",
+          workspace_path: "/workspace",
+          executor: "CLAUDE_CODE",
         },
       ]);
 
