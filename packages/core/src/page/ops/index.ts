@@ -55,3 +55,18 @@ export {
   listPagesInWorkspace,
   getPageBySlug,
 } from "./discovery";
+
+// CRUD operations
+export type {
+  ListPagesOptions,
+  ViewPageOptions,
+  CreatePageOptions,
+  DeletePageOptions,
+} from "./crud";
+
+export {
+  listPages,
+  viewPage,
+  createPage,
+  deletePage,
+} from "./crud";
