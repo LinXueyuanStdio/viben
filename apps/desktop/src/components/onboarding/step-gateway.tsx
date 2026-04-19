@@ -479,6 +479,7 @@ interface CommandDetailsProps {
 }
 
 function CommandDetails({ binaryPath, command }: CommandDetailsProps) {
+  const { t } = useTranslation();
   const [copiedField, setCopiedField] = React.useState<"binary" | "command" | null>(null);
 
   const handleCopy = async (text: string, field: "binary" | "command") => {
@@ -497,14 +498,14 @@ function CommandDetails({ binaryPath, command }: CommandDetailsProps) {
     <div className="mt-4 space-y-2 rounded bg-muted/50 p-3 font-mono text-xs">
       {binaryPath && (
         <div className="flex items-start gap-2">
-          <span className="text-muted-foreground shrink-0 pt-0.5">Binary:</span>
+          <span className="text-muted-foreground shrink-0 pt-0.5">{t("onboarding.gateway.binaryLabel")}</span>
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
             <code className="whitespace-nowrap">{binaryPath}</code>
           </div>
           <button
             onClick={() => handleCopy(binaryPath, "binary")}
             className="shrink-0 p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-            title="Copy binary path"
+            title={t("onboarding.gateway.copyBinaryPath")}
           >
             {copiedField === "binary" ? (
               <CheckCheck className="h-3.5 w-3.5 text-green-500" />
@@ -516,14 +517,14 @@ function CommandDetails({ binaryPath, command }: CommandDetailsProps) {
       )}
       {command && (
         <div className="flex items-start gap-2">
-          <span className="text-muted-foreground shrink-0 pt-0.5">Command:</span>
+          <span className="text-muted-foreground shrink-0 pt-0.5">{t("onboarding.gateway.commandLabel")}</span>
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
             <code className="whitespace-nowrap">{command}</code>
           </div>
           <button
             onClick={() => handleCopy(command, "command")}
             className="shrink-0 p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-            title="Copy command"
+            title={t("onboarding.gateway.copyCommand")}
           >
             {copiedField === "command" ? (
               <CheckCheck className="h-3.5 w-3.5 text-green-500" />

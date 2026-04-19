@@ -643,7 +643,7 @@ export function WorkspaceChatPage() {
             result.push({
               id: msg.id,
               type: "error",
-              message: msg.content || "Unknown error",
+              message: msg.content || t("common.unknownError"),
               isError: true,
             });
             break;
@@ -654,7 +654,7 @@ export function WorkspaceChatPage() {
     };
 
     return convertMessages(executorMessages);
-  }, [executorMessages]);
+  }, [executorMessages, t]);
 
   // Compute executor session statistics for config bar
   const executorSessionStats = React.useMemo(() => {

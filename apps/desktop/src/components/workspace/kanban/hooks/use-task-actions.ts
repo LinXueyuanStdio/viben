@@ -498,7 +498,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
         });
         onSuccess?.(t("workspace.taskCreated", "Task created successfully"));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = error instanceof Error ? error.message : t("common.unknownError");
         onError?.(t("workspace.taskCreateFailed", "Failed to create task: {{message}}", { message }));
         throw error;
       } finally {

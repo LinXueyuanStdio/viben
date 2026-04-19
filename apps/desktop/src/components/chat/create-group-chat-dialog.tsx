@@ -131,7 +131,7 @@ export function CreateGroupChatDialog({
       });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create group chat");
+      setError(err instanceof Error ? err.message : t("groupChat.createFailed"));
     }
   };
 

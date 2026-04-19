@@ -74,7 +74,7 @@ export function LoggingLevelControl({
         setCurrentLevel(level);
       } catch (err) {
         console.error("Failed to set logging level:", err);
-        setError(err instanceof Error ? err.message : "Failed to set logging level");
+        setError(err instanceof Error ? err.message : t("inspector.setLoggingLevelFailed"));
       } finally {
         setIsChanging(false);
       }

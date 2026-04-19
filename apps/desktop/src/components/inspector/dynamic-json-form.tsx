@@ -570,12 +570,12 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                   onValueChange={(val) => handleFieldChange(path, val || (isNullable ? null : ""))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={resolved.description || "Select..."} />
+                    <SelectValue placeholder={resolved.description || t("inspector.select")} />
                   </SelectTrigger>
                   <SelectContent>
                     {isNullable && (
                       <SelectItem value="__null__">
-                        <span className="text-muted-foreground italic">null</span>
+                        <span className="text-muted-foreground italic">{t("inspector.nullValue")}</span>
                       </SelectItem>
                     )}
                     {titledOptions.map((opt) => (
@@ -608,12 +608,12 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={resolved.description || "Select..."} />
+                    <SelectValue placeholder={resolved.description || t("inspector.select")} />
                   </SelectTrigger>
                   <SelectContent>
                     {isNullable && (
                       <SelectItem value="__null__">
-                        <span className="text-muted-foreground italic">null</span>
+                        <span className="text-muted-foreground italic">{t("inspector.nullValue")}</span>
                       </SelectItem>
                     )}
                     {resolved.enum.map((opt, idx) => (
@@ -1004,7 +1004,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                 disabled={!canAdd}
               >
                 <Plus className="h-4 w-4 mr-1" />
-                Add Item
+                {t("inspector.addItem")}
                 {resolved.maxItems !== undefined && (
                   <span className="ml-1 text-muted-foreground">
                     ({arrayValue.length}/{resolved.maxItems})

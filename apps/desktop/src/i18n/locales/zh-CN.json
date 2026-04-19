@@ -1744,7 +1744,10 @@
     "loggingLevel": "日志级别",
     "selectLoggingLevel": "选择级别...",
     "loggingLevelDesc": "设置服务器通知的最低日志级别。",
+    "setLoggingLevelFailed": "设置日志级别失败",
     "loadingSuggestions": "正在加载建议...",
+    "select": "选择...",
+    "nullValue": "空值",
     "addItem": "添加项目",
     "itemNumber": "项目 {{number}}",
     "mcpApps": "MCP 应用",
@@ -2209,7 +2212,8 @@
         "owner": "所有者",
         "name": "仓库名称",
         "ownerNameRequired": "所有者和名称不能为空",
-        "defaultBranch": "默认分支"
+        "defaultBranch": "默认分支",
+        "connectFailed": "连接失败"
       },
       "issues": {
         "open": "开放",
@@ -2717,7 +2721,8 @@
       "hint": "当有空闲容量时，任务将自动从队列移动到进行中。",
       "errorNaN": "请输入有效数字",
       "errorMin": "最小值为 1",
-      "errorMax": "最大值为 10"
+      "errorMax": "最大值为 10",
+      "saveFailed": "保存设置失败"
     },
     "queueAutoPromotion": {
       "promoted": "已启动任务：{{title}}",
@@ -3044,7 +3049,11 @@
       "invalidPath": "无效的 Node.js 路径或版本过低",
       "requiresVersion": "需要 v{{version}}+",
       "versionTooLow": "Node.js 版本过低 ({{version}})，需要 v{{required}} 或更高版本",
-      "source": "来源"
+      "source": "来源",
+      "sourceSystem": "系统",
+      "sourceCurrent": "当前使用",
+      "sourceCustom": "自定义",
+      "sourceOther": "其他"
     },
     "python": {
       "title": "Python 环境",
@@ -3115,7 +3124,11 @@
       "autoStartHint": "网关将在应用启动时自动运行。",
       "manualStart": "启动网关",
       "vibenNotFound": "未找到 Viben CLI，请先安装。",
-      "installViben": "安装 Viben CLI"
+      "installViben": "安装 Viben CLI",
+      "binaryLabel": "程序路径:",
+      "commandLabel": "启动命令:",
+      "copyBinaryPath": "复制程序路径",
+      "copyCommand": "复制命令"
     },
     "failure": {
       "suggestions": "建议",
@@ -3831,6 +3844,7 @@
     "noAgentsAvailable": "暂无可用智能体",
     "selectedCount": "已选择 {{count}} 个智能体",
     "createButton": "创建群聊",
+    "createFailed": "创建群聊失败",
     "errorNameRequired": "请输入群聊名称",
     "emptyTitle": "暂无消息",
     "emptyDescription": "发送消息开始对话。",

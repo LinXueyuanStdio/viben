@@ -619,7 +619,7 @@ function getEventTypeBadgeClass(eventType: TaskEventType): string {
 }
 
 // Convert UI message to Agent message for display
-function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
+function uiMessageToAgentMessage(msg: UIMessage, unknownErrorFallback: string): AgentMessage | null {
   switch (msg.type) {
     case "user":
       return {
@@ -659,7 +659,7 @@ function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
       return {
         id: msg.id,
         type: "error",
-        message: msg.content || "Unknown error",
+        message: msg.content || unknownErrorFallback,
         isError: true,
       };
     case "sdk_session":
@@ -1037,8 +1037,9 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
         if (uiMessages.length > 0) {
           // Convert UI messages to agent messages
+          const unknownErrorMsg = t("common.unknownError", "Unknown error");
           const messages = uiMessages
-            .map(uiMessageToAgentMessage)
+            .map((msg) => uiMessageToAgentMessage(msg, unknownErrorMsg))
             .filter((msg): msg is AgentMessage => msg !== null);
 
           // Extract SDK session ID for resume functionality
@@ -1059,7 +1060,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     };
 
     loadTaskMessages();
-  }, [activeTab, task?.id, effectiveSessionId, workspacePath, taskAgentId]);
+  }, [activeTab, task?.id, effectiveSessionId, workspacePath, taskAgentId, t]);
 
   // Auto-start: send message via SSE when clicking "Run"
   // Use refs to prevent multiple triggers and avoid callback dependency issues
