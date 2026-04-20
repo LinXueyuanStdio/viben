@@ -430,3 +430,4 @@ export type {
 // Overlay
 export { useOverlay } from "./use-overlay";
 export { useDanmaku } from "./use-danmaku";
+export { useSubtitle } from "./use-subtitle";
