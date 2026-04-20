@@ -83,12 +83,12 @@ docs/idea-types/
 
 ```
 docs/reward-types/
-├── code_correctness.md    # 代码正确性评估
-├── code_quality.md        # 代码质量评估
-├── documentation.md       # 文档完整性评估
-├── performance.md         # 性能评估
-├── security.md            # 安全性评估
-└── test_coverage.md       # 测试覆盖率评估
+├── test_coverage.md          # 测试覆盖率评估
+├── code_quality.md           # 代码质量评估
+├── security_scan.md          # 安全扫描评估
+├── diff_penalty.md           # 变更惩罚评估
+├── agent_review.md           # 智能体审查评估
+└── benchmark_comparison.md   # 基准对比评估
 ```
 
 ---
