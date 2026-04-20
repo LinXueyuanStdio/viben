@@ -25,14 +25,18 @@ export function SubtitleLayer(): React.ReactElement | null {
   }, [streaming]);
 
   useEffect(() => {
-    if (!showCursor) return;
+    if (!streaming?.isStreaming) {
+      setShowCursor(false);
+      return;
+    }
 
+    setShowCursor(streaming.cursor ?? true);
     const interval = setInterval(() => {
       setShowCursor((prev) => !prev);
     }, 500);
 
     return () => clearInterval(interval);
-  }, [showCursor]);
+  }, [streaming?.isStreaming, streaming?.cursor]);
 
   if (!enabled) return null;
 
@@ -76,6 +80,7 @@ export function SubtitleLayer(): React.ReactElement | null {
           </div>
         )}
         <div
+          aria-live="polite"
           style={{
             color: "#ffffff",
             fontSize: config.fontSize,
