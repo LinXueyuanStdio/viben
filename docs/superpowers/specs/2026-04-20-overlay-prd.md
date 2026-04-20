@@ -1,6 +1,7 @@
 # Overlay 演示系统 - 产品需求文档 (PRD)
 
 > 创建时间: 2026-04-20
+> 更新时间: 2026-04-20
 
 ## 概述
 
@@ -91,13 +92,16 @@
 - 快捷键控制
 
 **快捷键**:
-| 快捷键 | 功能 |
-|--------|------|
-| `Cmd/Ctrl + Shift + O` | 切换 Overlay 显示/隐藏 |
-| `Cmd/Ctrl + Shift + D` | 切换弹幕显示 |
-| `Cmd/Ctrl + Shift + K` | 切换按键可视化 |
-| `Cmd/Ctrl + Shift + C` | 切换点击指示器 |
-| `Cmd/Ctrl + Shift + S` | 切换字幕显示 |
+
+使用 Tauri 风格快捷键格式，Mac 显示为符号，Windows 显示为文字。
+
+| 快捷键 | Mac 显示 | Windows 显示 | 功能 |
+|--------|----------|--------------|------|
+| `CommandOrControl+Shift+O` | ⌘⇧O | Ctrl+Shift+O | 切换 Overlay 显示/隐藏 |
+| `CommandOrControl+Shift+D` | ⌘⇧D | Ctrl+Shift+D | 切换弹幕显示 |
+| `CommandOrControl+Shift+K` | ⌘⇧K | Ctrl+Shift+K | 切换按键可视化 |
+| `CommandOrControl+Shift+C` | ⌘⇧C | Ctrl+Shift+C | 切换点击指示器 |
+| `CommandOrControl+Shift+S` | ⌘⇧S | Ctrl+Shift+S | 切换字幕显示 |
 
 ### F6: 设置页面
 
@@ -131,8 +135,27 @@
 
 ### 点击穿透行为
 
-- 默认: 所有点击穿透到下层窗口
-- 可交互元素（如字幕区域）: 不穿透，可点击
+采用双层架构实现灵活的交互控制:
+
+| 层 | 行为 | 用途 |
+|---|---|---|
+| Animation Layer (PixiJS) | 完全穿透 | 弹幕、点击涟漪、按键提示等纯动画 |
+| Interactive Layer (DOM) | 可交互 | 按钮、选择列表、输入框等需要用户操作的元素 |
+
+### 可交互元素类型 (预留)
+
+为未来功能预留完整的交互元素接口:
+
+| 元素类型 | 用途 | 预留场景 |
+|----------|------|----------|
+| `button` | 单个按钮 | 确认/取消操作 |
+| `button-group` | 按钮组 | 多选一操作 |
+| `choice-list` | 单选列表 | Galgame 风格对话选项 |
+| `multi-select` | 多选列表 | 多选问卷、设置 |
+| `text-input` | 文本输入 | 用户输入内容 |
+| `voice-input` | 语音输入 | 语音交互、语音识别 |
+| `slider` | 滑块 | 数值调节 |
+| `custom` | 自定义组件 | 扩展用 |
 
 ### 覆盖范围
 
@@ -143,7 +166,8 @@
 
 为未来功能预留扩展接口:
 - Live2D 角色显示
-- Galgame 风格对话交互
+- Galgame 风格对话交互 (含选项选择)
+- 语音交互 (语音输入、语音识别)
 - 自定义 Overlay 层
 
 ## 数据来源
@@ -152,6 +176,26 @@
 - 手动 API 调用
 - 实时流式输入（AI 对话）
 - 预定义脚本播放
+
+### 流式字幕 API
+
+为配合 AI 实时对话，提供专门的流式字幕接口:
+
+```typescript
+// 基础流式输入
+subtitle.startStream({ speaker: "AI" });
+for await (const chunk of aiResponse) {
+  subtitle.appendStream(chunk);
+}
+subtitle.finishStream();
+
+// 便捷方法 - 直接传入 AsyncIterable
+const fullText = await subtitle.streamFromAsyncIterator(aiStream, { speaker: "助手" });
+```
+
+## 配置持久化
+
+配置存储在 `~/.viben/overlay.yaml`，遵循项目 file-native 范式。
 
 ## 优先级
 
