@@ -136,35 +136,38 @@ function WorkspaceSelector() {
 
 ## Data Fetching
 
-### SWR Patterns
+### TanStack Query Patterns
 
-Use SWR for data fetching with caching and revalidation:
+Use TanStack Query for data fetching with caching, background refetching, and request state management:
 
 ```typescript
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 
 // Basic fetching
 function useAgents(workspacePath: string) {
-  const { data, error, isLoading, mutate } = useSWR(
-    workspacePath ? `/api/agent?workspace_path=${workspacePath}` : null,
-    fetcher
-  );
+  const { data, error, isLoading, refetch } = useQuery({
+    queryKey: ["agents", workspacePath],
+    queryFn: () =>
+      fetcher(`/api/agent?workspace_path=${workspacePath}`),
+    enabled: !!workspacePath,
+  });
 
   return {
     agents: data?.agents ?? [],
     isLoading,
     isError: !!error,
-    refresh: mutate,
+    refresh: refetch,
   };
 }
 
 // Conditional fetching
 function useTask(taskId: string | undefined) {
-  const { data, error } = useSWR(
-    taskId ? `/api/task/${taskId}` : null, // null key skips fetching
-    fetcher
-  );
-  return { task: data, isError: error };
+  const { data, error } = useQuery({
+    queryKey: ["task", taskId],
+    queryFn: () => fetcher(`/api/task/${taskId}`),
+    enabled: !!taskId, // disabled queries skip fetching
+  });
+  return { task: data, isError: !!error };
 }
 
 // Mutation with optimistic update
