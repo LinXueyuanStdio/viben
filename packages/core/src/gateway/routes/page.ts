@@ -32,6 +32,7 @@ import type {
   PageConfig,
   PageType,
   PageTemplate,
+  IconData,
   ListPagesResult,
   ViewPageResult,
   CreatePageResult,
@@ -56,13 +57,22 @@ const pagePermissionSchema = {
   description: "Page permissions",
 } as const;
 
+const iconDataSchema = {
+  type: "object",
+  properties: {
+    type: { type: "string", enum: ["lucide", "emoji", "image"] },
+    value: { type: "string" },
+  },
+  nullable: true,
+} as const;
+
 const pageConfigSchema = {
   type: "object",
   properties: {
     slug: { type: "string" },
     name: { type: "string" },
     description: { type: "string", nullable: true },
-    icon: { type: "string", nullable: true },
+    icon: iconDataSchema,
     type: pageTypeSchema,
     permission: pagePermissionSchema,
     path: { type: "string" },
@@ -252,6 +262,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       slug: string;
       name: string;
       description?: string;
+      icon?: IconData;
       type: PageType;
       // Static-specific
       file?: string;
@@ -276,6 +287,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           slug: { type: "string", description: "Page slug (required)" },
           name: { type: "string", description: "Page name (required)" },
           description: { type: "string", description: "Page description" },
+          icon: { ...iconDataSchema, description: "Page icon data" },
           type: { ...pageTypeSchema, description: "Page type (required)" },
           // Static-specific
           file: { type: "string", description: "Entry file for static pages" },
@@ -301,6 +313,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       slug,
       name,
       description,
+      icon,
       type,
       file,
       command,
@@ -336,6 +349,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       slug,
       name,
       description,
+      icon,
       type,
       file,
       command,

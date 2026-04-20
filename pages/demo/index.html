@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>问财语音助手</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .state-badge {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+    }
+
+    .state-badge.cold-start { background: #f39c12; color: #000; }
+    .state-badge.listening { background: #3498db; }
+    .state-badge.active { background: #2ecc71; }
+    .state-badge.speaking { background: #9b59b6; }
+
+    .orb-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin-bottom: 40px;
+      cursor: pointer;
+    }
+
+    .orb {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #4facfe 0%, #00f2fe 100%);
+      box-shadow: 0 0 60px rgba(79, 172, 254, 0.5);
+      transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .orb-icon {
+      font-size: 48px;
+      opacity: 0.9;
+    }
+
+    .orb:hover {
+      transform: scale(1.05);
+    }
+
+    .orb.listening {
+      animation: pulse-listening 1.5s infinite;
+      background: radial-gradient(circle at 30% 30%, #3498db 0%, #2980b9 100%);
+    }
+
+    .orb.active {
+      background: radial-gradient(circle at 30% 30%, #43e97b 0%, #38f9d7 100%);
+      box-shadow: 0 0 80px rgba(67, 233, 123, 0.6);
+      animation: pulse-active 1s infinite;
+    }
+
+    .orb.speaking {
+      background: radial-gradient(circle at 30% 30%, #fa709a 0%, #fee140 100%);
+      box-shadow: 0 0 80px rgba(250, 112, 154, 0.6);
+      animation: pulse-speaking 0.5s infinite;
+    }
+
+    .orb.cold-start {
+      background: radial-gradient(circle at 30% 30%, #f093fb 0%, #f5576c 100%);
+      animation: pulse-cold 1.5s infinite;
+    }
+
+    @keyframes pulse-listening {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(52, 152, 219, 0.5); }
+      50% { transform: scale(1.08); box-shadow: 0 0 100px rgba(52, 152, 219, 0.8); }
+    }
+
+    @keyframes pulse-active {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes pulse-speaking {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    @keyframes pulse-cold {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(240, 147, 251, 0.5); }
+      50% { transform: scale(1.08); box-shadow: 0 0 100px rgba(245, 87, 108, 0.7); }
+    }
+
+    .main-content {
+      text-align: center;
+      max-width: 600px;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+    }
+
+    .cold-start-section {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+
+    .cold-start-progress {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .progress-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .progress-dot.completed { background: #2ecc71; }
+    .progress-dot.active { background: #f39c12; animation: pulse-dot 1s infinite; }
+
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .record-btn {
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .record-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .record-btn.recording {
+      background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+      animation: pulse-btn 0.5s infinite;
+    }
+
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7); }
+      50% { box-shadow: 0 0 0 20px rgba(245, 87, 108, 0); }
+    }
+
+    .subtitle-container {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 800px;
+      text-align: center;
+    }
+
+    .subtitle-text {
+      font-size: 24px;
+      line-height: 1.5;
+      padding: 20px 30px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .subtitle-text.user { border-left: 4px solid #3498db; }
+    .subtitle-text.agent { border-left: 4px solid #2ecc71; }
+
+    .subtitle-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+
+    .hints {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .hidden { display: none !important; }
+
+    .greeting-bubble {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: rgba(255,255,255,0.95);
+      color: #333;
+      padding: 20px 40px;
+      border-radius: 30px;
+      font-size: 28px;
+      font-weight: 500;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 100;
+    }
+
+    .greeting-bubble.show {
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .live-transcript {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.6);
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 16px;
+      color: #fff;
+      max-width: 80%;
+      text-align: center;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .mode-btn {
+      padding: 10px 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      background: transparent;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn:hover, .mode-btn.active {
+      background: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.6);
+    }
+
+    .vosk-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .vosk-loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .vosk-loading p {
+      margin-top: 20px;
+      color: rgba(255,255,255,0.8);
+    }
+
+    .volume-meter {
+      width: 200px;
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .volume-meter-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3498db, #2ecc71);
+      border-radius: 4px;
+      transition: width 0.1s;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="state-badge" id="stateBadge">初始化中...</div>
+
+    <!-- Vosk Loading -->
+    <div class="vosk-loading hidden" id="voskLoading">
+      <div class="spinner"></div>
+      <p id="voskLoadingText">正在加载语音识别模型...</p>
+    </div>
+
+    <!-- Voice orb -->
+    <div class="orb-container" id="orbContainer">
+      <div class="orb" id="orb">
+        <span class="orb-icon" id="orbIcon">🎤</span>
+      </div>
+    </div>
+
+    <!-- Volume meter -->
+    <div class="volume-meter hidden" id="volumeMeter">
+      <div class="volume-meter-fill" id="volumeMeterFill"></div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content">
+      <h1 class="title">问财语音助手</h1>
+      <p class="subtitle" id="mainSubtitle">点击圆球开始</p>
+
+      <!-- Cold start section -->
+      <div class="cold-start-section hidden" id="coldStartSection">
+        <h3>声纹采集</h3>
+        <p style="color: rgba(255,255,255,0.7); margin: 10px 0;">请录制3句话，帮助我认识你的声音</p>
+        <div class="cold-start-progress">
+          <div class="progress-dot" id="dot1">1</div>
+          <div class="progress-dot" id="dot2">2</div>
+          <div class="progress-dot" id="dot3">3</div>
+        </div>
+        <p id="coldStartPrompt" style="margin: 15px 0; font-size: 18px;"></p>
+        <button class="record-btn" id="recordBtn">按住说话</button>
+      </div>
+    </div>
+
+    <!-- Live transcript -->
+    <div class="live-transcript hidden" id="liveTranscript"></div>
+
+    <!-- Subtitle display -->
+    <div class="subtitle-container hidden" id="subtitleContainer">
+      <div class="subtitle-label" id="subtitleLabel">正在听...</div>
+      <div class="subtitle-text" id="subtitleText"></div>
+    </div>
+
+    <!-- Greeting bubble -->
+    <div class="greeting-bubble" id="greetingBubble"></div>
+
+    <!-- Hints -->
+    <div class="hints" id="hints"></div>
+  </div>
+
+  <!-- Vosk WASM for local speech recognition -->
+  <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.0.8/dist/vosk.js"></script>
+
+  <!-- Vocal Bridge SDK -->
+  <script src="https://unpkg.com/@vocalbridgeai/sdk@latest/dist/vocal-bridge.umd.js"></script>
+
+  <script>
+    // ==================== Configuration ====================
+    const CONFIG = {
+      apiKey: 'vb_CFjVohGJ-_RuWvckZZDFjwyx8rdHQPWflnoFdw7oi7o',
+      agentId: '4aa0dbed-5a24-44a2-b432-08a302c0e51b',
+      wakeWords: ['你好问财', '问财', '嗨问财', '你好 问财'],
+      exitPhrases: ['退下', '不聊了', '再见', '拜拜', '结束', '不用了'],
+      idleTimeout: 3 * 60 * 1000,
+      voskModelUrl: 'https://cdn.jsdelivr.net/gh/nickvdz/vosk-model-small-cn-0.22.js@main/vosk-model-small-cn-0.22.tar.gz',
+    };
+
+    const GREETINGS = [
+      '嗯', '在呢', '我在', '嗯？', '来了',
+      '你好', '哎', '在的', '怎么了', '说吧',
+      '嗯，在', '我听着呢', '有什么事', '请说', '好的',
+      '嘿', '诶', '嗯哼', '讲', '我在听',
+      '你说', '怎么啦', '有事吗', '来吧', '好',
+      '嗯，你说', '我在这', '随时', '准备好了', '说',
+      '聊什么', '嗯呐', '好嘞', '行', '可以',
+      '问吧', '讲吧', '开始吧', '什么事', '找我',
+      '嗯，讲', '在在在', '到', '收到', '听着呢',
+      '嗯嗯', '好哒', '来啦', '诶诶', '干嘛'
+    ];
+
+    const COLD_START_PROMPTS = [
+      '"你好，我是问财的用户"',
+      '"今天天气怎么样"',
+      '"帮我查一下股票行情"'
+    ];
+
+    // ==================== State ====================
+    const State = {
+      INIT: 'init',
+      LOADING: 'loading',
+      IDLE: 'idle',
+      COLD_START: 'cold_start',
+      LISTENING: 'listening',
+      ACTIVE: 'active',
+      SPEAKING: 'speaking',
+    };
+
+    let currentState = State.INIT;
+    let voiceContext = [];
+    let vocalBridge = null;
+    let idleTimer = null;
+    let micStream = null;
+    let audioContext = null;
+    let voskModel = null;
+    let voskRecognizer = null;
+    let mediaStreamSource = null;
+    let scriptProcessor = null;
+
+    // ==================== UI Elements ====================
+    const $ = (id) => document.getElementById(id);
+    const elements = {
+      stateBadge: $('stateBadge'),
+      orb: $('orb'),
+      orbIcon: $('orbIcon'),
+      orbContainer: $('orbContainer'),
+      mainSubtitle: $('mainSubtitle'),
+      coldStartSection: $('coldStartSection'),
+      coldStartPrompt: $('coldStartPrompt'),
+      recordBtn: $('recordBtn'),
+      subtitleContainer: $('subtitleContainer'),
+      subtitleLabel: $('subtitleLabel'),
+      subtitleText: $('subtitleText'),
+      greetingBubble: $('greetingBubble'),
+      hints: $('hints'),
+      voskLoading: $('voskLoading'),
+      voskLoadingText: $('voskLoadingText'),
+      liveTranscript: $('liveTranscript'),
+      volumeMeter: $('volumeMeter'),
+      volumeMeterFill: $('volumeMeterFill'),
+    };
+
+    // ==================== Initialization ====================
+    async function init() {
+      console.log('Initializing...');
+      updateState(State.INIT);
+
+      // Load voice context
+      const savedContext = localStorage.getItem('voice_context');
+      if (savedContext) {
+        voiceContext = JSON.parse(savedContext);
+      }
+
+      // Setup orb click handler
+      elements.orbContainer.onclick = handleOrbClick;
+
+      updateState(State.IDLE);
+      elements.mainSubtitle.textContent = '点击圆球开始';
+      elements.orbIcon.textContent = '🎤';
+    }
+
+    async function handleOrbClick() {
+      if (currentState === State.IDLE) {
+        // First click - request mic and load Vosk
+        await startSystem();
+      } else if (currentState === State.LISTENING) {
+        // Already listening - do nothing or stop
+        stopListening();
+        updateState(State.IDLE);
+        elements.mainSubtitle.textContent = '点击圆球开始';
+      } else if (currentState === State.ACTIVE || currentState === State.SPEAKING) {
+        // In conversation - end it
+        await endConversation();
+      }
+    }
+
+    async function startSystem() {
+      try {
+        // Request mic permission once
+        updateState(State.LOADING);
+        elements.mainSubtitle.textContent = '正在获取麦克风权限...';
+
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            sampleRate: 16000,
+            echoCancellation: true,
+            noiseSuppression: true,
+          }
+        });
+
+        console.log('Microphone acquired');
+
+        // Load Vosk model
+        await loadVoskModel();
+
+        // Check if cold start needed
+        if (voiceContext.length < 3) {
+          startColdStart();
+        } else {
+          startListening();
+        }
+      } catch (err) {
+        console.error('Failed to start:', err);
+        elements.mainSubtitle.textContent = '麦克风权限被拒绝，请刷新重试';
+        updateState(State.IDLE);
+      }
+    }
+
+    async function loadVoskModel() {
+      if (voskModel) return; // Already loaded
+
+      elements.voskLoading.classList.remove('hidden');
+      elements.voskLoadingText.textContent = '正在加载语音识别模型 (首次约30MB)...';
+
+      try {
+        // Check if Vosk is available
+        if (typeof Vosk === 'undefined') {
+          throw new Error('Vosk not loaded');
+        }
+
+        // Create model
+        voskModel = await Vosk.createModel(CONFIG.voskModelUrl);
+        console.log('Vosk model loaded');
+
+        elements.voskLoading.classList.add('hidden');
+      } catch (err) {
+        console.error('Failed to load Vosk model:', err);
+        elements.voskLoadingText.textContent = '模型加载失败，使用简化模式...';
+
+        // Fallback: use simple mode without Vosk
+        setTimeout(() => {
+          elements.voskLoading.classList.add('hidden');
+          voskModel = null; // Mark as unavailable
+        }, 1500);
+      }
+    }
+
+    // ==================== State Updates ====================
+    function updateState(state) {
+      currentState = state;
+
+      elements.stateBadge.className = 'state-badge ' + state.replace('_', '-');
+      const stateNames = {
+        [State.INIT]: '初始化中...',
+        [State.LOADING]: '加载中...',
+        [State.IDLE]: '待机',
+        [State.COLD_START]: '声纹采集',
+        [State.LISTENING]: '监听中',
+        [State.ACTIVE]: '对话中',
+        [State.SPEAKING]: '回复中',
+      };
+      elements.stateBadge.textContent = stateNames[state] || state;
+
+      elements.orb.className = 'orb ' + state.replace('_', '-');
+
+      const icons = {
+        [State.IDLE]: '🎤',
+        [State.LISTENING]: '👂',
+        [State.ACTIVE]: '💬',
+        [State.SPEAKING]: '🔊',
+        [State.COLD_START]: '🎙️',
+      };
+      elements.orbIcon.textContent = icons[state] || '🎤';
+
+      const hints = {
+        [State.LISTENING]: '说「你好问财」唤醒 | 点击圆球停止',
+        [State.ACTIVE]: '说「退下」结束对话',
+        [State.SPEAKING]: '可以打断我',
+      };
+      elements.hints.textContent = hints[state] || '';
+    }
+
+    // ==================== Cold Start ====================
+    let coldStartIndex = 0;
+    let coldStartRecorder = null;
+    let coldStartChunks = [];
+
+    function startColdStart() {
+      updateState(State.COLD_START);
+      elements.coldStartSection.classList.remove('hidden');
+      elements.subtitleContainer.classList.add('hidden');
+      elements.volumeMeter.classList.add('hidden');
+
+      coldStartIndex = voiceContext.length;
+      updateColdStartUI();
+
+      const btn = elements.recordBtn;
+      btn.onmousedown = startColdStartRecording;
+      btn.onmouseup = stopColdStartRecording;
+      btn.onmouseleave = stopColdStartRecording;
+      btn.ontouchstart = (e) => { e.preventDefault(); startColdStartRecording(); };
+      btn.ontouchend = stopColdStartRecording;
+    }
+
+    function updateColdStartUI() {
+      for (let i = 1; i <= 3; i++) {
+        const dot = $(`dot${i}`);
+        dot.className = 'progress-dot';
+        if (i <= coldStartIndex) dot.classList.add('completed');
+        if (i === coldStartIndex + 1) dot.classList.add('active');
+      }
+
+      if (coldStartIndex < 3) {
+        elements.coldStartPrompt.textContent = COLD_START_PROMPTS[coldStartIndex];
+        elements.mainSubtitle.textContent = `请读出下面的句子 (${coldStartIndex + 1}/3)`;
+      }
+    }
+
+    function startColdStartRecording() {
+      if (coldStartRecorder && coldStartRecorder.state === 'recording') return;
+
+      coldStartRecorder = new MediaRecorder(micStream);
+      coldStartChunks = [];
+
+      coldStartRecorder.ondataavailable = (e) => coldStartChunks.push(e.data);
+      coldStartRecorder.onstop = () => {
+        const blob = new Blob(coldStartChunks, { type: 'audio/webm' });
+        saveColdStartSample(blob);
+      };
+
+      coldStartRecorder.start();
+      elements.recordBtn.textContent = '松开结束';
+      elements.recordBtn.classList.add('recording');
+
+      setTimeout(() => {
+        if (coldStartRecorder && coldStartRecorder.state === 'recording') {
+          stopColdStartRecording();
+        }
+      }, 5000);
+    }
+
+    function stopColdStartRecording() {
+      if (coldStartRecorder && coldStartRecorder.state === 'recording') {
+        coldStartRecorder.stop();
+        elements.recordBtn.textContent = '按住说话';
+        elements.recordBtn.classList.remove('recording');
+      }
+    }
+
+    function saveColdStartSample(blob) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        voiceContext.push({
+          data: reader.result,
+          timestamp: Date.now(),
+          prompt: COLD_START_PROMPTS[coldStartIndex]
+        });
+
+        localStorage.setItem('voice_context', JSON.stringify(voiceContext));
+        coldStartIndex++;
+
+        if (coldStartIndex >= 3) {
+          elements.coldStartSection.classList.add('hidden');
+          elements.mainSubtitle.textContent = '声纹采集完成！';
+          setTimeout(startListening, 1000);
+        } else {
+          updateColdStartUI();
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+
+    // ==================== Wake Word Detection with Vosk ====================
+    function startListening() {
+      updateState(State.LISTENING);
+      elements.coldStartSection.classList.add('hidden');
+      elements.subtitleContainer.classList.add('hidden');
+      elements.liveTranscript.classList.remove('hidden');
+      elements.volumeMeter.classList.remove('hidden');
+      elements.mainSubtitle.textContent = '说「你好问财」唤醒我';
+      elements.liveTranscript.textContent = '正在监听...';
+
+      if (voskModel) {
+        startVoskRecognition();
+      } else {
+        // Fallback: simple volume-based detection
+        startSimpleListening();
+      }
+    }
+
+    function startVoskRecognition() {
+      if (!audioContext) {
+        audioContext = new AudioContext({ sampleRate: 16000 });
+      }
+
+      voskRecognizer = new voskModel.KaldiRecognizer(16000);
+
+      voskRecognizer.on('result', (message) => {
+        const text = message.result?.text || '';
+        if (text) {
+          console.log('Vosk result:', text);
+          elements.liveTranscript.textContent = text;
+          checkWakeWord(text);
+        }
+      });
+
+      voskRecognizer.on('partialresult', (message) => {
+        const partial = message.result?.partial || '';
+        if (partial) {
+          elements.liveTranscript.textContent = partial + '...';
+        }
+      });
+
+      // Connect mic to Vosk
+      mediaStreamSource = audioContext.createMediaStreamSource(micStream);
+      scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+
+      scriptProcessor.onaudioprocess = (e) => {
+        if (currentState !== State.LISTENING) return;
+
+        const inputData = e.inputBuffer.getChannelData(0);
+
+        // Update volume meter
+        const volume = Math.sqrt(inputData.reduce((sum, x) => sum + x * x, 0) / inputData.length);
+        elements.volumeMeterFill.style.width = Math.min(volume * 500, 100) + '%';
+
+        // Send to Vosk
+        if (voskRecognizer) {
+          const int16Data = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            int16Data[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+          }
+          voskRecognizer.acceptWaveform(int16Data);
+        }
+      };
+
+      mediaStreamSource.connect(scriptProcessor);
+      scriptProcessor.connect(audioContext.destination);
+
+      console.log('Vosk recognition started');
+    }
+
+    function startSimpleListening() {
+      // Fallback mode: just show volume, detect via button press
+      if (!audioContext) {
+        audioContext = new AudioContext();
+      }
+
+      mediaStreamSource = audioContext.createMediaStreamSource(micStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+
+      mediaStreamSource.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      function updateVolume() {
+        if (currentState !== State.LISTENING) return;
+
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        elements.volumeMeterFill.style.width = Math.min(avg, 100) + '%';
+
+        requestAnimationFrame(updateVolume);
+      }
+
+      updateVolume();
+
+      elements.liveTranscript.textContent = '模型未加载，请直接点击圆球开始对话';
+      elements.mainSubtitle.textContent = '点击圆球开始对话';
+
+      // In simple mode, clicking orb starts conversation directly
+      elements.orbContainer.onclick = () => {
+        if (currentState === State.LISTENING) {
+          onWakeWordDetected();
+        }
+      };
+    }
+
+    function checkWakeWord(text) {
+      const lowerText = text.toLowerCase();
+      for (const word of CONFIG.wakeWords) {
+        if (lowerText.includes(word) || lowerText.includes('问财')) {
+          onWakeWordDetected();
+          return;
+        }
+      }
+    }
+
+    function stopListening() {
+      if (scriptProcessor) {
+        scriptProcessor.disconnect();
+        scriptProcessor = null;
+      }
+      if (mediaStreamSource) {
+        mediaStreamSource.disconnect();
+        mediaStreamSource = null;
+      }
+      if (voskRecognizer) {
+        voskRecognizer = null;
+      }
+
+      elements.liveTranscript.classList.add('hidden');
+      elements.volumeMeter.classList.add('hidden');
+    }
+
+    // ==================== Wake Word Detected ====================
+    function onWakeWordDetected() {
+      console.log('Wake word detected!');
+      stopListening();
+
+      const greeting = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+      showGreeting(greeting);
+      speakGreeting(greeting);
+
+      setTimeout(startConversation, 800);
+    }
+
+    function showGreeting(text) {
+      elements.greetingBubble.textContent = text;
+      elements.greetingBubble.classList.add('show');
+      setTimeout(() => elements.greetingBubble.classList.remove('show'), 1500);
+    }
+
+    function speakGreeting(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 1.1;
+
+      const voices = speechSynthesis.getVoices();
+      const zhVoice = voices.find(v => v.lang.includes('zh'));
+      if (zhVoice) utterance.voice = zhVoice;
+
+      speechSynthesis.speak(utterance);
+    }
+
+    // ==================== Voice Conversation ====================
+    async function startConversation() {
+      updateState(State.ACTIVE);
+      elements.subtitleContainer.classList.remove('hidden');
+      elements.mainSubtitle.textContent = '对话中...';
+
+      resetIdleTimer();
+
+      try {
+        if (!vocalBridge) {
+          vocalBridge = new VocalBridge({
+            auth: {
+              apiKey: CONFIG.apiKey,
+              agentId: CONFIG.agentId
+            },
+            participantName: 'User',
+            debug: true,
+          });
+
+          vocalBridge.on('transcript', ({ role, text }) => {
+            updateSubtitle(role, text);
+            resetIdleTimer();
+
+            if (role === 'user') {
+              for (const phrase of CONFIG.exitPhrases) {
+                if (text.includes(phrase)) {
+                  endConversation();
+                  return;
+                }
+              }
+            }
+          });
+
+          vocalBridge.on('connectionStateChanged', (state) => {
+            console.log('VB state:', state);
+            if (state === 'connected') updateState(State.ACTIVE);
+            else if (state === 'disconnected' && currentState !== State.LISTENING && currentState !== State.IDLE) {
+              endConversation();
+            }
+          });
+
+          vocalBridge.on('error', (err) => {
+            console.error('VB error:', err);
+            elements.mainSubtitle.textContent = '连接出错: ' + err.message;
+          });
+        }
+
+        await vocalBridge.connect();
+      } catch (err) {
+        console.error('Failed to connect:', err);
+        elements.mainSubtitle.textContent = '连接失败: ' + err.message;
+        setTimeout(() => {
+          updateState(State.IDLE);
+          elements.mainSubtitle.textContent = '点击圆球重试';
+        }, 2000);
+      }
+    }
+
+    function updateSubtitle(role, text) {
+      elements.subtitleLabel.textContent = role === 'user' ? '你说:' : '问财:';
+      elements.subtitleText.className = 'subtitle-text ' + (role === 'user' ? 'user' : 'agent');
+      elements.subtitleText.textContent = text;
+      updateState(role === 'user' ? State.ACTIVE : State.SPEAKING);
+    }
+
+    function resetIdleTimer() {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.log('Idle timeout');
+        endConversation();
+      }, CONFIG.idleTimeout);
+    }
+
+    async function endConversation() {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+
+      speakGreeting('好的，有事再叫我');
+
+      try {
+        if (vocalBridge) await vocalBridge.disconnect();
+      } catch (e) {
+        console.error('Disconnect error:', e);
+      }
+
+      elements.subtitleContainer.classList.add('hidden');
+
+      setTimeout(() => {
+        if (micStream) {
+          startListening();
+        } else {
+          updateState(State.IDLE);
+          elements.mainSubtitle.textContent = '点击圆球开始';
+        }
+      }, 2000);
+    }
+
+    // ==================== Start ====================
+    // Load voices
+    speechSynthesis.onvoiceschanged = () => console.log('Voices loaded');
+
+    // Initialize
+    if (document.readyState === 'complete') {
+      init();
+    } else {
+      window.onload = init;
+    }
+  </script>
+</body>
+</html>

@@ -27,6 +27,14 @@ export interface DanmakuItem {
   timestamp: number;
 }
 
+export interface DanmakuStyle {
+  color: string;
+  fontSize: number;
+  fontFamily: string;
+  opacity: number;
+  shadow: boolean;
+}
+
 export interface DanmakuConfig {
   maxTracks: number;
   defaultSpeed: number;
@@ -43,6 +51,17 @@ export interface SubtitleItem {
   speaker?: string;
   duration?: number;
   animation?: "fade" | "typewriter" | "slide";
+}
+
+export interface SubtitleStyle {
+  position: "top" | "center" | "bottom";
+  variant: "normal" | "dialog" | "narration";
+  animation: "fade" | "typewriter" | "slide";
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  backgroundColor: string;
+  opacity: number;
 }
 
 export interface SubtitleConfig {
@@ -72,6 +91,12 @@ export interface ClickEffect {
 
 export type ClickStyle = "ripple" | "spotlight" | "ring";
 
+export interface ClickIndicatorStyle {
+  effect: "ripple" | "spotlight" | "ring";
+  color: string;
+  size: number;
+}
+
 // === 按键可视化 ===
 export interface KeystrokeItem {
   id: string;
@@ -81,6 +106,12 @@ export interface KeystrokeItem {
 }
 
 export type KeystrokePosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+export interface KeystrokeStyle {
+  position: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  showModifiersOnly: boolean;
+  displayDuration: number;
+}
 
 // === 状态波浪 ===
 export type WaveState =
@@ -95,6 +126,12 @@ export interface WaveColorTheme {
   primary: string;
   secondary: string;
   accent?: string;
+}
+
+export interface WaveStyle {
+  height: number;
+  opacity: number;
+  colorTheme: WaveColorTheme;
 }
 
 export interface WaveConfig {
@@ -174,4 +211,72 @@ export interface OverlaySettings {
   };
 
   shortcuts: OverlayShortcuts;
+}
+
+// === Hook Return Types ===
+export interface UseDanmakuReturn {
+  items: DanmakuItem[];
+  add: (text: string, style?: Partial<DanmakuStyle>) => void;
+  addBatch: (items: Array<{ text: string; style?: Partial<DanmakuStyle> }>) => void;
+  pause: () => void;
+  resume: () => void;
+  clear: () => void;
+  isPaused: boolean;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+export interface UseSubtitleReturn {
+  current: SubtitleItem | null;
+  show: (text: string, options?: Partial<SubtitleItem>) => void;
+  hide: () => void;
+  startStream: (options?: { speaker?: string }) => void;
+  appendStream: (chunk: string) => void;
+  finishStream: () => void;
+  streamFromAsyncIterator: (
+    iterator: AsyncIterable<string>,
+    options?: { speaker?: string }
+  ) => Promise<string>;
+  isStreaming: boolean;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+export interface UseClickIndicatorReturn {
+  effects: ClickEffect[];
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+export interface UseKeystrokeReturn {
+  items: KeystrokeItem[];
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+export interface UseWaveReturn {
+  state: WaveState;
+  startListening: () => void;
+  startSpeaking: (mood: "calm" | "excited" | "happy") => void;
+  stopSpeaking: () => void;
+  reset: () => void;
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
+  error: Error | null;
+  isLoading: boolean;
+}
+
+export interface UseOverlayReturn {
+  visible: boolean;
+  setVisible: (visible: boolean) => void;
+  globalOpacity: number;
+  setGlobalOpacity: (opacity: number) => void;
+  settings: OverlaySettings;
+  updateSettings: (settings: Partial<OverlaySettings>) => void;
+  error: Error | null;
+  isLoading: boolean;
 }

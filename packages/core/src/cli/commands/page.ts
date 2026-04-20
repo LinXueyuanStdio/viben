@@ -162,7 +162,7 @@ export function registerPageCommand(program: Command): void {
             Description: page.description,
             Permission: page.permission.join(", "),
             Path: page.path,
-            Icon: page.icon,
+            Icon: page.icon ? `${page.icon.type}:${page.icon.value}` : undefined,
           };
 
           // Add type-specific fields

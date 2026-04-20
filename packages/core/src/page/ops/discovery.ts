@@ -35,11 +35,14 @@ export async function parseSkillMd(
   const relativePath = relative(join(workspacePath, PAGES_DIR), pageDir);
   const slug = relativePath.replace(/\\/g, "/"); // Normalize for Windows
 
+  // Process icon - read from top-level (icon is a top-level field, not inside page)
+  const iconValue = data.icon;
+
   const base = {
     slug,
     name: data.name,
     description: data.description,
-    icon: data.icon,                 // 页面图标（用于 Tab 显示）
+    icon: iconValue,
     permission: data.page.permission ?? ["read", "write"],
     path: pageDir,
     skill_content: markdownContent.trim() || undefined,

@@ -173,7 +173,6 @@ export function PagePreview({
   }, []);
 
   // Determine page type capabilities
-  const isStaticOrMarkdown = page.type === "static" || page.type === "markdown";
   const isServerType = page.type === "server";
   const isProxy = page.type === "proxy";
 

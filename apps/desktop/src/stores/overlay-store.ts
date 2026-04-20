@@ -132,7 +132,7 @@ const initialState: OverlayState = {
   keystrokeEnabled: true,
   keystrokePosition: "bottom-right",
   keystrokeItems: [],
-  keystrokeShowModifiersOnly: true,
+  keystrokeShowModifiersOnly: false,
   keystrokeShowKeys: ["Escape", "Enter", "Tab"],
 
   waveEnabled: true,

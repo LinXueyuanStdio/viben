@@ -5,7 +5,7 @@
  * URL format: /workspace/page?workspace_id=<id>&page_path=pages/<slug>/SKILL.md
  */
 
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2, FileQuestion, ArrowLeft, FileCode } from "lucide-react";

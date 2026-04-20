@@ -15,23 +15,6 @@ import {
   Loader2,
   FolderPlus,
   AlertCircle,
-  Smile,
-  Book,
-  Settings,
-  Home,
-  Star,
-  Heart,
-  Bookmark,
-  Folder,
-  File,
-  Image,
-  Music,
-  Video,
-  Code,
-  Database,
-  Cloud,
-  Link,
-  type LucideIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -45,40 +28,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 import { useCreatePage, usePageTemplates } from "@/hooks/use-pages";
 import { toast } from "@/hooks/use-toast";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import type { PageType, CreatePageParams } from "@/lib/gateway/types/page";
-
-// =============================================================================
-// Icon Options
-// =============================================================================
-
-const ICON_OPTIONS: { name: string; icon: LucideIcon }[] = [
-  { name: "file-text", icon: FileText },
-  { name: "file", icon: File },
-  { name: "folder", icon: Folder },
-  { name: "book", icon: Book },
-  { name: "code", icon: Code },
-  { name: "globe", icon: Globe },
-  { name: "home", icon: Home },
-  { name: "star", icon: Star },
-  { name: "heart", icon: Heart },
-  { name: "bookmark", icon: Bookmark },
-  { name: "settings", icon: Settings },
-  { name: "image", icon: Image },
-  { name: "music", icon: Music },
-  { name: "video", icon: Video },
-  { name: "database", icon: Database },
-  { name: "cloud", icon: Cloud },
-  { name: "link", icon: Link },
-  { name: "smile", icon: Smile },
-];
+import { cn } from "@/lib/utils";
+import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
+import type { IconData } from "@/components/ui/icon-picker";
+import type { PageType, CreatePageParams, IconData as GatewayIconData } from "@/lib/gateway/types/page";
 
 // =============================================================================
 // Types
@@ -166,7 +121,7 @@ export function CreatePageDialog({
   const [slug, setSlug] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("file-text");
+  const [icon, setIcon] = useState<IconData | null>({ type: "lucide", value: "file-text" });
   const [pageType, setPageType] = useState<PageType>("static");
 
   // Type-specific fields
@@ -190,7 +145,7 @@ export function CreatePageDialog({
       setSlug(parentSlug ? `${parentSlug}/` : "");
       setSlugManuallyEdited(false);
       setDescription("");
-      setIcon("file-text");
+      setIcon({ type: "lucide", value: "file-text" });
       setPageType("static");
       setFile("index.html");
       setCommand("npm run dev");
@@ -242,7 +197,7 @@ export function CreatePageDialog({
       slug: fullSlug,
       name: name.trim(),
       description: description.trim() || undefined,
-      icon: icon || undefined,
+      icon: icon ? { type: icon.type, value: icon.value } as GatewayIconData : undefined,
       type: pageType,
     };
 
@@ -366,42 +321,19 @@ export function CreatePageDialog({
             <Label htmlFor="page-name">{t("page.name", "Name")}</Label>
             <div className="flex items-center gap-2">
               {/* Icon Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
+              <IconPicker
+                value={icon}
+                onChange={setIcon}
+                workspacePath={workspacePath}
+                trigger={
                   <button
                     type="button"
-                    className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border",
-                      "hover:bg-muted/50 transition-colors"
-                    )}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border hover:bg-muted/50 transition-colors"
                   >
-                    {(() => {
-                      const IconComponent = ICON_OPTIONS.find(i => i.name === icon)?.icon ?? FileText;
-                      return <IconComponent className="h-4 w-4" />;
-                    })()}
+                    <IconDisplay icon={icon} size="md" workspacePath={workspacePath} />
                   </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-2" align="start">
-                  <div className="grid grid-cols-6 gap-1">
-                    {ICON_OPTIONS.map((opt) => {
-                      const IconComp = opt.icon;
-                      return (
-                        <button
-                          key={opt.name}
-                          type="button"
-                          onClick={() => setIcon(opt.name)}
-                          className={cn(
-                            "flex h-7 w-7 items-center justify-center rounded hover:bg-muted",
-                            icon === opt.name && "bg-primary/10 text-primary"
-                          )}
-                        >
-                          <IconComp className="h-4 w-4" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                }
+              />
               <Input
                 id="page-name"
                 placeholder={t("page.namePlaceholder", "My Page")}

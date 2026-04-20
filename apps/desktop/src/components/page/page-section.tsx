@@ -9,7 +9,6 @@ import { useState, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  FileText,
   Plus,
   ChevronRight,
   ChevronDown,
@@ -17,6 +16,7 @@ import {
   Trash2,
   Loader2,
   Shield,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "@/components/layout/sidebar-section";
@@ -34,6 +34,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -49,6 +56,7 @@ import { usePages, useDeletePage } from "@/hooks/use-pages";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { CreatePageDialog } from "./create-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
+import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
 
 // =============================================================================
@@ -131,6 +139,7 @@ interface PageTreeItemProps {
   workspacePath: string;
   depth: number;
   onPageClick: (page: PageConfig) => void;
+  onOpenInNewTab: (page: PageConfig) => void;
   onDeleteClick: (page: PageConfig) => void;
   onCreateSubpage: (parentSlug: string) => void;
   onPermissionsClick: (page: PageConfig) => void;
@@ -142,6 +151,7 @@ function PageTreeItem({
   workspacePath,
   depth,
   onPageClick,
+  onOpenInNewTab,
   onDeleteClick,
   onCreateSubpage,
   onPermissionsClick,
@@ -149,6 +159,7 @@ function PageTreeItem({
   const { t } = useTranslation();
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
   const hasChildren = node.children.length > 0;
 
   const href = getPageHref(workspaceId, node.page.slug);
@@ -160,113 +171,210 @@ function PageTreeItem({
     onPageClick(node.page);
   }, [node.page, onPageClick]);
 
+  // Handle icon click - toggle expand/collapse if has children, otherwise open page
+  const handleIconClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (hasChildren) {
+      setIsExpanded(!isExpanded);
+    } else {
+      onPageClick(node.page);
+    }
+  }, [hasChildren, isExpanded, node.page, onPageClick]);
+
   return (
     <div>
-      <div
-        className={cn(
-          "group relative flex items-center gap-1 rounded-md text-sm h-7",
-          "transition-all duration-200",
-          isActive
-            ? [
-                "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-              ]
-            : [
-                "text-sidebar-foreground/70",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              ]
-        )}
-        style={{ paddingLeft: depth === 0 ? "8px" : `${depth * 8 + 8}px` }}
-      >
-        {/* Expand/Collapse toggle - only show for items with children */}
-        {hasChildren && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded hover:bg-sidebar-accent"
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            className={cn(
+              "group relative flex items-center gap-1 rounded-md text-sm h-7",
+              "transition-all duration-200",
+              isActive
+                ? [
+                    "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+                  ]
+                : [
+                    "text-sidebar-foreground/70",
+                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  ]
             )}
-          </button>
-        )}
-
-        {/* Page link - click to open in tab */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={handlePageClick}
-              className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-1 text-left"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate text-[13px]">{node.page.name}</span>
-            </button>
-          </TooltipTrigger>
-          {node.page.description && (
-            <TooltipContent side="right" className="max-w-xs">
-              <p className="text-xs">{node.page.description}</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-
-        {/* Action buttons (visible on hover) */}
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          {/* Create subpage button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => {
+            style={{ paddingLeft: depth === 0 ? "8px" : `${depth * 8 + 8}px` }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            {/* Combined icon: smooth crossfade between page icon and expand/collapse icon */}
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleIconClick}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  e.stopPropagation();
-                  onCreateSubpage(node.page.slug);
-                }}
-                className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-accent"
+                  handleIconClick(e as unknown as React.MouseEvent);
+                }
+              }}
+              className={cn(
+                "relative flex h-4 w-4 shrink-0 items-center justify-center rounded cursor-pointer",
+                "transition-transform duration-150 ease-out",
+                hasChildren && "hover:bg-sidebar-accent hover:scale-110"
+              )}
+            >
+              {/* Page icon (custom or default) - fades out on hover when has children */}
+              <span
+                className={cn(
+                  "absolute flex items-center justify-center text-muted-foreground",
+                  "transition-all duration-150 ease-out",
+                  hasChildren && isHovered
+                    ? "opacity-0 scale-75"
+                    : "opacity-100 scale-100"
+                )}
               >
-                <Plus className="h-3 w-3" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {t("page.createSubpage")}
-            </TooltipContent>
-          </Tooltip>
+                <IconDisplay
+                  icon={node.page.icon}
+                  size="sm"
+                  workspacePath={workspacePath}
+                />
+              </span>
+              {/* Expand/collapse icon - fades in on hover when has children */}
+              {hasChildren && (
+                <span
+                  className={cn(
+                    "absolute flex items-center justify-center",
+                    "transition-all duration-150 ease-out",
+                    isHovered
+                      ? "opacity-100 scale-100"
+                      : "opacity-0 scale-75"
+                  )}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </span>
+              )}
+            </span>
 
-          {/* More actions menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="flex h-5 w-5 items-center justify-center rounded hover:bg-sidebar-accent"
-              >
-                <MoreHorizontal className="h-3 w-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                onClick={() => onPermissionsClick(node.page)}
-              >
-                <Shield className="mr-2 h-4 w-4" />
-                {t("page.permissions")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDeleteClick(node.page)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("common.delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+            {/* Page link - click to open in tab */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handlePageClick}
+                  className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-1 text-left"
+                >
+                  <span className="truncate text-[13px]">{node.page.name}</span>
+                </button>
+              </TooltipTrigger>
+              {node.page.description && (
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">{node.page.description}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+
+            {/* Action buttons - slide in from right with staggered timing */}
+            <div
+              className={cn(
+                "flex shrink-0 items-center gap-0.5 pr-1",
+                "transition-all duration-200 ease-out",
+                isHovered
+                  ? "opacity-100 translate-x-0"
+                  : "opacity-0 translate-x-2 pointer-events-none"
+              )}
+            >
+              {/* Create subpage button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onCreateSubpage(node.page.slug);
+                    }}
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded",
+                      "transition-all duration-150 ease-out",
+                      "hover:bg-sidebar-accent hover:scale-110",
+                      "active:scale-95"
+                    )}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("page.createSubpage")}
+                </TooltipContent>
+              </Tooltip>
+
+              {/* More actions menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded",
+                      "transition-all duration-150 ease-out",
+                      "hover:bg-sidebar-accent hover:scale-110",
+                      "active:scale-95"
+                    )}
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    onClick={() => onOpenInNewTab(node.page)}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {t("page.openInNewTab")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onPermissionsClick(node.page)}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    {t("page.permissions")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDeleteClick(node.page)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    {t("common.delete")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem onClick={() => onOpenInNewTab(node.page)}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {t("page.openInNewTab")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCreateSubpage(node.page.slug)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("page.createSubpage")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={() => onPermissionsClick(node.page)}>
+            <Shield className="mr-2 h-4 w-4" />
+            {t("page.permissions")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={() => onDeleteClick(node.page)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {t("common.delete")}
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       {/* Children */}
       {hasChildren && isExpanded && (
@@ -279,6 +387,7 @@ function PageTreeItem({
               workspacePath={workspacePath}
               depth={depth + 1}
               onPageClick={onPageClick}
+              onOpenInNewTab={onOpenInNewTab}
               onDeleteClick={onDeleteClick}
               onCreateSubpage={onCreateSubpage}
               onPermissionsClick={onPermissionsClick}
@@ -300,7 +409,7 @@ export function PageSection({
   collapsed = false,
 }: PageSectionProps) {
   const { t } = useTranslation();
-  const { openPageTab } = usePageTabs();
+  const { openPageTab, openPageInNewTab } = usePageTabs();
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const deletePageMutation = useDeletePage();
 
@@ -355,6 +464,11 @@ export function PageSection({
     openPageTab(page, workspaceId);
   }, [openPageTab, workspaceId]);
 
+  // Handle open in new tab
+  const handleOpenInNewTab = useCallback((page: PageConfig) => {
+    openPageInNewTab(page, workspaceId);
+  }, [openPageInNewTab, workspaceId]);
+
   // Handle page creation success - open new page in tab
   const handleCreateSuccess = useCallback((slug: string) => {
     // Find the newly created page from the pages list
@@ -392,7 +506,7 @@ export function PageSection({
           <Plus className="h-3.5 w-3.5" />
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="right">
+      <TooltipContent side="bottom">
         {t("page.createPage")}
       </TooltipContent>
     </Tooltip>
@@ -432,16 +546,37 @@ export function PageSection({
     );
   }
 
-  // Collapsed state: show single "Pages" icon button
+  // Collapsed state: show "Create Page" button + first-level page icons
   if (collapsed) {
     return (
-      <div className="grid place-items-center w-full">
-        <SidebarIconButton
-          icon={<FileText className="h-4 w-4" />}
-          tooltip={t("page.pages")}
-          onClick={handleCreatePage}
+      <>
+        {/* Create Page Button */}
+        <div className="grid place-items-center w-full">
+          <SidebarIconButton
+            icon={<Plus className="h-4 w-4" />}
+            tooltip={t("page.createPage")}
+            onClick={handleCreatePage}
+          />
+        </div>
+        {/* First-level page icons - use page's custom icon */}
+        {pageTree.map((node) => (
+          <div key={node.page.slug} className="grid place-items-center w-full">
+            <SidebarIconButton
+              icon={<IconDisplay icon={node.page.icon} size="md" workspacePath={workspacePath} />}
+              tooltip={node.page.name}
+              onClick={() => handlePageClick(node.page)}
+            />
+          </div>
+        ))}
+        {/* Create Page Dialog - must be rendered even in collapsed state */}
+        <CreatePageDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          workspacePath={workspacePath}
+          parentSlug={createParentSlug}
+          onSuccess={handleCreateSuccess}
         />
-      </div>
+      </>
     );
   }
 
@@ -468,6 +603,7 @@ export function PageSection({
                 workspacePath={workspacePath}
                 depth={0}
                 onPageClick={handlePageClick}
+                onOpenInNewTab={handleOpenInNewTab}
                 onDeleteClick={setPageToDelete}
                 onCreateSubpage={handleCreateSubpage}
                 onPermissionsClick={handlePermissionsClick}

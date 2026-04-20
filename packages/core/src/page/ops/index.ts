@@ -10,6 +10,7 @@ export {
   PAGE_PERMISSIONS,
   PAGE_VIEW_MODES,
   SERVER_STATUSES,
+  ICON_TYPES,
 } from "./types";
 
 // Types (Note: PageConfigBase is internal, not exported)
@@ -18,6 +19,8 @@ export type {
   PagePermission,
   PageViewMode,
   ServerStatus,
+  IconType,
+  IconData,
   StaticPageConfig,
   MarkdownPageConfig,
   ServerPageConfig,

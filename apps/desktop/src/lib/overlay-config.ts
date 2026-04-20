@@ -70,7 +70,7 @@ export const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   keystroke: {
     enabled: true,
     position: "bottom-right",
-    show_modifiers_only: true,
+    show_modifiers_only: false,
     show_keys: ["Escape", "Enter", "Tab"],
     duration: 1500,
   },

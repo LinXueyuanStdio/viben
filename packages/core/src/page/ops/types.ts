@@ -50,6 +50,20 @@ export function isPageViewMode(value: unknown): value is PageViewMode {
 }
 
 // =============================================================================
+// Icon Types
+// =============================================================================
+
+/** 图标类型 */
+export const ICON_TYPES = ["lucide", "emoji", "image"] as const;
+export type IconType = (typeof ICON_TYPES)[number];
+
+/** 图标数据结构 */
+export interface IconData {
+  type: IconType;
+  value: string;
+}
+
+// =============================================================================
 // Page Config Types (Union)
 // =============================================================================
 
@@ -58,7 +72,7 @@ interface PageConfigBase {
   slug: string;
   name: string;
   description?: string;
-  icon?: string;                   // 页面图标（用于 Tab 显示）
+  icon?: IconData;
   permission: PagePermission[];
   path: string;
   skill_content?: string;

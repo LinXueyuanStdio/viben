@@ -146,6 +146,7 @@ interface AppState {
     screenshot: string;
     lock: string;
     showHideWindow: string;
+    createTask: string;
   };
   showHideWindowScope: "all" | "chatRelated";
   setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
@@ -201,6 +202,7 @@ const DEFAULT_SHORTCUTS = {
   screenshot: "Ctrl+Cmd+A",
   lock: "Cmd+L",
   showHideWindow: "Shift+Cmd+W",
+  createTask: "Shift+Cmd+J",
 };
 
 export const useAppStore = create<AppState>()(
@@ -541,6 +543,19 @@ export const useAppStore = create<AppState>()(
       name: "viben-storage",
       // Note: mcpServers and mcpServerStatuses are NOT persisted to localStorage
       // They are synced with Gateway's ~/.viben/mcp-servers.json via use-store-sync.ts
+      // Merge persisted state with default state to handle new fields
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AppState>;
+        return {
+          ...currentState,
+          ...persisted,
+          // Merge shortcuts with defaults to handle new shortcut keys
+          shortcuts: {
+            ...DEFAULT_SHORTCUTS,
+            ...(persisted.shortcuts || {}),
+          },
+        };
+      },
       partialize: (state) => ({
         selectedPython: state.selectedPython,
         providers: state.providers,

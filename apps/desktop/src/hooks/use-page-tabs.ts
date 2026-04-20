@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
 import type { PageTab, TabType } from "@/stores/tab-store";
 import type { PageConfig } from "@/lib/gateway";
+import type { IconData } from "@/components/ui/icon-picker";
 
 /**
  * Tab info for navigation - used to update the current tab
@@ -19,7 +20,7 @@ import type { PageConfig } from "@/lib/gateway";
 export interface TabInfo {
   type: TabType;
   name: string;
-  icon: string;
+  icon?: IconData;
   slug?: string;
   workspaceId?: string;
 }
@@ -96,6 +97,7 @@ export function usePageTabs() {
 
   /**
    * Navigate to a workspace page (from pages/ directory)
+   * Updates current tab instead of creating new one.
    */
   const openPageTab = useCallback(
     (page: PageConfig, workspaceId: string) => {
@@ -105,17 +107,40 @@ export function usePageTabs() {
         slug: page.slug,
         workspaceId,
         name: page.name,
-        icon: page.icon ?? "file-text",
+        icon: page.icon ?? { type: "lucide", value: "file-text" },
       });
     },
     [navigateTo]
   );
 
   /**
+   * Open a workspace page in a NEW tab (always creates new tab)
+   */
+  const openPageInNewTab = useCallback(
+    (page: PageConfig, workspaceId: string) => {
+      const url = `/workspace/page?workspace_id=${workspaceId}&page_path=pages/${page.slug}/SKILL.md`;
+      const tabId = openTab(
+        {
+          type: "page",
+          slug: page.slug,
+          workspaceId,
+          name: page.name,
+          icon: page.icon ?? { type: "lucide", value: "file-text" },
+          pinned: false,
+        },
+        url
+      );
+      navigate(url);
+      return tabId;
+    },
+    [openTab, navigate]
+  );
+
+  /**
    * Navigate to a workspace view (chat, kanban, files, agents, etc.)
    */
   const openWorkspaceView = useCallback(
-    (workspaceId: string, viewPath: string, viewName: string, icon: string) => {
+    (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => {
       const url = `/workspace/${workspaceId}/${viewPath}`;
       return navigateTo(url, {
         type: "workspace",
@@ -132,7 +157,7 @@ export function usePageTabs() {
    * Navigate to a global route (settings, documents, etc.)
    */
   const openGlobalView = useCallback(
-    (path: string, name: string, icon: string) => {
+    (path: string, name: string, icon: IconData) => {
       return navigateTo(path, {
         type: "settings",
         name,
@@ -147,10 +172,16 @@ export function usePageTabs() {
    */
   const openWebUrl = useCallback(
     (url: string, title?: string) => {
+      let hostname = url;
+      try {
+        hostname = new URL(url).hostname;
+      } catch {
+        // Invalid URL, use the raw string
+      }
       return navigateTo(url, {
         type: "web",
-        name: title ?? new URL(url).hostname,
-        icon: "globe",
+        name: title ?? hostname,
+        icon: { type: "lucide", value: "globe" },
       });
     },
     [navigateTo]
@@ -165,7 +196,7 @@ export function usePageTabs() {
         slug: chatId,
         workspaceId,
         name: chatName,
-        icon: "message-square",
+        icon: { type: "lucide", value: "message-square" },
       });
     },
     [navigateTo]
@@ -259,6 +290,8 @@ export function usePageTabs() {
     openGlobalView,
     openWebUrl,
     openChatTab,
+    // New tab creation (explicitly creates new tab)
+    openPageInNewTab,
     // Tab switching (for tab bar)
     switchToTab,
     closeTab: closeTabWithNav,

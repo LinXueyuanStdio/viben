@@ -73,6 +73,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { PageSection } from "@/components/page/page-section";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useUiStore } from "@/stores";
+import type { IconData } from "@/components/ui/icon-picker";
 
 interface NavItem {
   titleKey: string;
@@ -185,21 +186,21 @@ export function Sidebar() {
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
     // Navigate to chat and update current tab
-    openWorkspaceView(workspaceId, "chat", t("workspace.chat"), "message-square");
+    openWorkspaceView(workspaceId, "chat", t("workspace.chat"), { type: "lucide", value: "message-square" });
   };
 
   // Handle workspace nav item click - updates current tab
   const handleWorkspaceNavClick = useCallback(
-    (workspaceId: string, viewPath: string, viewName: string, iconName: string) => {
-      openWorkspaceView(workspaceId, viewPath, viewName, iconName);
+    (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => {
+      openWorkspaceView(workspaceId, viewPath, viewName, icon);
     },
     [openWorkspaceView]
   );
 
   // Handle global nav item click - updates current tab
   const handleGlobalNavClick = useCallback(
-    (href: string, name: string, iconName: string) => {
-      openGlobalView(href, name, iconName);
+    (href: string, name: string, icon: IconData) => {
+      openGlobalView(href, name, icon);
     },
     [openGlobalView]
   );
@@ -630,7 +631,7 @@ export function Sidebar() {
 interface NavItemComponentProps {
   item: NavItem;
   collapsed: boolean;
-  onNavigate?: (href: string, name: string, iconName: string) => void;
+  onNavigate?: (href: string, name: string, icon: IconData) => void;
 }
 
 function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps) {
@@ -648,7 +649,7 @@ function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps
 
   const handleClick = () => {
     if (onNavigate) {
-      onNavigate(item.href, title, iconName);
+      onNavigate(item.href, title, { type: "lucide", value: iconName });
     }
   };
 
@@ -700,7 +701,7 @@ interface WorkspaceNavItemComponentProps {
   item: WorkspaceNavItem;
   workspaceId: string;
   collapsed: boolean;
-  onNavigate?: (workspaceId: string, viewPath: string, viewName: string, iconName: string) => void;
+  onNavigate?: (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => void;
 }
 
 function WorkspaceNavItemComponent({ item, workspaceId, collapsed, onNavigate }: WorkspaceNavItemComponentProps) {
@@ -718,7 +719,7 @@ function WorkspaceNavItemComponent({ item, workspaceId, collapsed, onNavigate }:
 
   const handleClick = () => {
     if (onNavigate) {
-      onNavigate(workspaceId, item.path, title, iconName);
+      onNavigate(workspaceId, item.path, title, { type: "lucide", value: iconName });
     }
   };
 

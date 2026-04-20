@@ -11,6 +11,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { IconData } from "@/components/ui/icon-picker";
 
 // =============================================================================
 // Types
@@ -33,7 +34,7 @@ export interface PageTab {
   slug?: string;                    // Page/route identifier
   workspaceId?: string;             // Workspace this tab belongs to
   name: string;                     // Display name
-  icon?: string;                    // Icon name (Lucide icon name)
+  icon?: IconData;                  // Icon data (structured)
   pinned: boolean;                  // Whether the tab is pinned
   history: string[];                // Navigation history (URL list)
   historyIndex: number;             // Current position in history
@@ -121,18 +122,9 @@ export const useTabStore = create<TabState & TabActions>()(
         };
 
         set((state) => {
-          // Find position: after last pinned tab if not pinned, or at end of pinned tabs
-          let insertIndex = state.tabs.length;
-          if (!tabData.pinned) {
-            const lastPinnedIndex = findLastPinnedIndex(state.tabs);
-            insertIndex = lastPinnedIndex + 1;
-          }
-
-          const newTabs = [...state.tabs];
-          newTabs.splice(insertIndex, 0, newTab);
-
+          // New tabs are always added at the end (rightmost position)
           return {
-            tabs: newTabs,
+            tabs: [...state.tabs, newTab],
             activeTabId: id,
           };
         });

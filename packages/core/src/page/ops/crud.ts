@@ -83,11 +83,14 @@ export async function viewPage(
 // Create Page
 // =============================================================================
 
+import type { IconData } from "./types";
+
 export interface CreatePageOptions {
   workspace_path: string;
   slug: string;
   name: string;
   description?: string;
+  icon?: IconData;
   type: "static" | "markdown" | "server" | "proxy";
   // Template support
   template_id?: string;
@@ -106,7 +109,7 @@ export interface CreatePageOptions {
 export async function createPage(
   options: CreatePageOptions
 ): Promise<CreatePageResult> {
-  const { workspace_path, slug, name, description = "", type, template_id } = options;
+  const { workspace_path, slug, name, description = "", icon, type, template_id } = options;
 
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, slug);
@@ -181,6 +184,12 @@ export async function createPage(
   skillContent += `name: "${name}"\n`;
   if (description) {
     skillContent += `description: "${description}"\n`;
+  }
+  if (icon) {
+    // Write icon as YAML structure
+    skillContent += `icon:\n`;
+    skillContent += `  type: ${icon.type}\n`;
+    skillContent += `  value: "${icon.value}"\n`;
   }
   skillContent += "---\n\n";
   skillContent += `# ${name}\n\n`;

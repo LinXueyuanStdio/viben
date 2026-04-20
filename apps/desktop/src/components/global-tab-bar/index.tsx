@@ -5,13 +5,29 @@
  *
  * Browser-like tab bar for the desktop app:
  * - Navigation buttons (back/forward)
- * - Tab items (pinned and regular)
+ * - Tab items (pinned and regular) with drag-and-drop reordering
  * - Window controls (Windows only)
  * - macOS traffic light space accommodation
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -22,7 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useTabStore } from "@/stores/tab-store";
-import { TabItem } from "./tab-item";
+import { SortableTabItem } from "./sortable-tab-item";
 import { WindowControls } from "./window-controls";
 
 export interface GlobalTabBarProps {
@@ -30,7 +46,11 @@ export interface GlobalTabBarProps {
 }
 
 export function GlobalTabBar({ className }: GlobalTabBarProps) {
+  const navigate = useNavigate();
   const [isMacOS, setIsMacOS] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set());
+  const prevTabIdsRef = useRef<string[]>([]);
 
   // Detect platform for macOS traffic light spacing
   useEffect(() => {
@@ -62,6 +82,70 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const pinTab = useTabStore((state) => state.pinTab);
   const unpinTab = useTabStore((state) => state.unpinTab);
   const closeOtherTabs = useTabStore((state) => state.closeOtherTabs);
+  const moveTab = useTabStore((state) => state.moveTab);
+
+  // Track newly added tabs for entrance animation
+  useEffect(() => {
+    const currentTabIds = tabs.map((t) => t.id);
+    const prevTabIds = prevTabIdsRef.current;
+
+    // Find new tabs (ids that exist now but didn't exist before)
+    const addedIds = currentTabIds.filter((id) => !prevTabIds.includes(id));
+
+    if (addedIds.length > 0) {
+      setNewTabIds((prev) => {
+        const next = new Set(prev);
+        addedIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      // Remove from new tabs after animation completes
+      const timer = setTimeout(() => {
+        setNewTabIds((prev) => {
+          const next = new Set(prev);
+          addedIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 350);
+
+      return () => clearTimeout(timer);
+    }
+
+    prevTabIdsRef.current = currentTabIds;
+  }, [tabs]);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // 5px movement before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // DnD handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveId(null);
+
+      if (over && active.id !== over.id) {
+        const oldIndex = tabs.findIndex((t) => t.id === active.id);
+        const newIndex = tabs.findIndex((t) => t.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          moveTab(oldIndex, newIndex);
+        }
+      }
+    },
+    [tabs, moveTab]
+  );
 
   // Handlers for tab actions
   const handlePinTab = useCallback(
@@ -90,30 +174,27 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
   // Handle new tab creation
   const handleNewTab = useCallback(() => {
-    // Create a new empty tab that navigates to workspace home or a blank page
     openTab(
       {
         type: "new-tab",
         name: "New Tab",
-        icon: "plus",
+        icon: { type: "lucide", value: "plus" },
         pinned: false,
       },
-      "/" // Navigate to home
+      "/"
     );
-  }, [openTab]);
+    navigate("/");
+  }, [openTab, navigate]);
 
-  // Separate pinned and unpinned tabs
-  const pinnedTabs = tabs.filter((t) => t.pinned);
-  const unpinnedTabs = tabs.filter((t) => !t.pinned);
+  // Tab IDs for sortable context
+  const tabIds = tabs.map((t) => t.id);
 
   return (
     <TooltipProvider delayDuration={300}>
       <div
         className={cn(
           "flex items-center border-b bg-muted/30",
-          // Height: macOS uses 32px to match system titlebar, Windows/Linux uses 40px
           isMacOS ? "h-8" : "h-10",
-          // Drag region for window - allow window dragging on empty space
           "app-region-drag",
           className
         )}
@@ -122,7 +203,6 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         <div
           className={cn(
             "flex items-center gap-1 px-2 shrink-0",
-            // Leave space for macOS traffic lights
             isMacOS && "pl-20"
           )}
         >
@@ -168,44 +248,34 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           <div className="h-5 w-px bg-border/50 mx-1 shrink-0" />
         )}
 
-        {/* Tabs + New Tab button (inline, not fixed right) */}
+        {/* Tabs with drag-and-drop */}
         <div className="flex items-center gap-1 px-1 overflow-x-auto scrollbar-none app-region-no-drag">
-          {/* Pinned tabs first */}
-          {pinnedTabs.map((tab) => (
-            <TabItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === activeTabId}
-              isOnlyTab={tabs.length === 1}
-              onSelect={() => switchToTab(tab.id)}
-              onClose={() => closeTab(tab.id)}
-              onPin={() => handlePinTab(tab.id)}
-              onUnpin={() => handleUnpinTab(tab.id)}
-              onCloseOthers={() => handleCloseOthers(tab.id)}
-            />
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={tabIds} strategy={horizontalListSortingStrategy}>
+              {tabs.map((tab) => (
+                <SortableTabItem
+                  key={tab.id}
+                  tab={tab}
+                  isActive={tab.id === activeTabId}
+                  isOnlyTab={tabs.length === 1}
+                  isDragging={activeId === tab.id}
+                  isNew={newTabIds.has(tab.id)}
+                  onSelect={() => switchToTab(tab.id)}
+                  onClose={() => closeTab(tab.id)}
+                  onPin={() => handlePinTab(tab.id)}
+                  onUnpin={() => handleUnpinTab(tab.id)}
+                  onCloseOthers={() => handleCloseOthers(tab.id)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
-          {/* Separator between pinned and unpinned */}
-          {pinnedTabs.length > 0 && unpinnedTabs.length > 0 && (
-            <div className="h-5 w-px bg-border/50 mx-1 shrink-0" />
-          )}
-
-          {/* Unpinned tabs */}
-          {unpinnedTabs.map((tab) => (
-            <TabItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === activeTabId}
-              isOnlyTab={tabs.length === 1}
-              onSelect={() => switchToTab(tab.id)}
-              onClose={() => closeTab(tab.id)}
-              onPin={() => handlePinTab(tab.id)}
-              onUnpin={() => handleUnpinTab(tab.id)}
-              onCloseOthers={() => handleCloseOthers(tab.id)}
-            />
-          ))}
-
-          {/* New Tab button - inline after tabs */}
+          {/* New Tab button */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -228,7 +298,6 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
         {/* Right side: Window Controls only */}
         <div className="flex items-center shrink-0 app-region-no-drag">
-          {/* Window Controls - only renders on Windows */}
           <WindowControls />
         </div>
       </div>
@@ -237,5 +306,5 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 }
 
 // Re-export sub-components for flexibility
-export { TabItem } from "./tab-item";
+export { SortableTabItem as TabItem } from "./sortable-tab-item";
 export { WindowControls } from "./window-controls";

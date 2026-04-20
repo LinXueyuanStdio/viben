@@ -15,6 +15,15 @@ export type PageType = "static" | "markdown" | "server" | "proxy";
 /** Page permission enumeration */
 export type PagePermission = "read" | "write";
 
+/** Icon type enumeration */
+export type IconType = "lucide" | "emoji" | "image";
+
+/** Icon data structure */
+export interface IconData {
+  type: IconType;
+  value: string;
+}
+
 // =============================================================================
 // Page Config Types (Union)
 // =============================================================================
@@ -23,7 +32,7 @@ interface PageConfigBase {
   slug: string;
   name: string;
   description?: string;
-  icon?: string;
+  icon?: IconData;
   permission: PagePermission[];
   path: string;
   skill_content?: string;
@@ -108,7 +117,7 @@ export interface CreatePageParams {
   slug: string;
   name: string;
   description?: string;
-  icon?: string;
+  icon?: IconData;
   type: PageType;
   file?: string;
   command?: string;
