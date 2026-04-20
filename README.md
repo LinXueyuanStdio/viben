@@ -616,7 +616,7 @@ viben idea promote ci-001 --start --worktree
 
 | 平台 | 下载 |
 |:----:|------|
-| 🍎 **macOS (Apple Silicon)** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (M1/M2/M3/M4) |
+| 🍎 **macOS (Apple Silicon)** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (arm64) |
 | 🍎 **macOS (Intel)** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (x86_64) |
 | 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
 | 🐧 **Linux** | [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) (Debian/Ubuntu) |
