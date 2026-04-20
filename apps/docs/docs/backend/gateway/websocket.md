@@ -34,10 +34,11 @@ Agent execution WebSocket connection, supports bidirectional communication and i
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | cwd | string | No | Working directory |
-| agentConfigPath | string | No | Agent config file path (e.g., `/path/to/agents/myagent/AGENTS.md`) |
-| sessionId | string | No | Session ID (for persistence) |
-| taskId | string | No | Task ID (for persistence) |
+| agent_config_path | string | No | Agent config file path (e.g., `/path/to/agents/myagent/AGENTS.md`) |
+| session_id | string | No | Session ID (for persistence) |
+| task_id | string | No | Task ID (for persistence) |
 
+Note: This endpoint also accepts the camelCase aliases `agentConfigPath`, `sessionId`, and `taskId` for backward compatibility, but snake_case is the documented gateway convention.
 **Client Messages**:
 
 ```typescript
