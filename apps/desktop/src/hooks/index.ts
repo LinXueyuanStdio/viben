@@ -426,3 +426,7 @@ export type {
   PageTemplate,
   CreatePageParams,
 } from "./use-pages";
+
+// Overlay
+export { useOverlay } from "./use-overlay";
+export { useDanmaku } from "./use-danmaku";
