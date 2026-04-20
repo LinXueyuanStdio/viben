@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -18,7 +17,7 @@ import {
   DEFAULT_OVERLAY_SETTINGS,
 } from "@/lib/overlay-config";
 import type { OverlaySettings, ClickStyle, KeystrokePosition } from "@/types/overlay";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, RotateCcw } from "lucide-react";
 
 // Helper to update nested settings
 function updateNestedSettings<
@@ -35,19 +34,20 @@ function updateNestedSettings<
   };
 }
 
-interface SettingRowProps {
-  label: string;
+// Settings item component - matches terminal-fonts-section style
+interface SettingsItemProps {
+  title: string;
   description?: string;
   children: React.ReactNode;
 }
 
-function SettingRow({ label, description, children }: SettingRowProps) {
+function SettingsItem({ title, description, children }: SettingsItemProps) {
   return (
-    <div className="flex items-center justify-between py-3">
-      <div className="space-y-0.5">
-        <Label className="text-sm font-medium">{label}</Label>
+    <div className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
+      <div className="flex-1 pr-4">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
         {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <div className="shrink-0">{children}</div>
@@ -55,17 +55,12 @@ function SettingRow({ label, description, children }: SettingRowProps) {
   );
 }
 
-interface SettingsSectionProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-function SettingsSection({ title, children }: SettingsSectionProps) {
+// Section header component
+function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="space-y-1">
-      <h3 className="text-sm font-semibold text-foreground mb-3">{title}</h3>
-      <div className="divide-y divide-border">{children}</div>
-    </div>
+    <h3 className="text-base font-semibold text-foreground mt-6 mb-2 first:mt-0">
+      {title}
+    </h3>
   );
 }
 
@@ -113,6 +108,12 @@ export function SettingsOverlay() {
     }
   }, [settings, store.actions]);
 
+  // Reset to defaults
+  const handleReset = useCallback(() => {
+    setSettings(DEFAULT_OVERLAY_SETTINGS);
+    setHasChanges(true);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -122,33 +123,48 @@ export function SettingsOverlay() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header with save button */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{t("settings.overlay.title")}</h2>
+          <h2 className="text-xl font-semibold font-serif mb-1">
+            {t("settings.sections.overlay")}
+          </h2>
           <p className="text-sm text-muted-foreground">
             {t("settings.overlay.description")}
           </p>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={!hasChanges || isSaving}
-          size="sm"
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          {t("common.save")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isSaving}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {t("common.reset")}
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            size="sm"
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {t("common.save")}
+          </Button>
+        </div>
       </div>
 
-      {/* Global Settings */}
-      <SettingsSection title={t("settings.overlay.global.title")}>
-        <SettingRow
-          label={t("settings.overlay.global.defaultEnabled")}
+      {/* Global Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.global.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.global.defaultEnabled")}
           description={t("settings.overlay.global.defaultEnabledDesc")}
         >
           <Switch
@@ -157,9 +173,10 @@ export function SettingsOverlay() {
               updateSettings({ ...settings, default_enabled: checked })
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.global.opacity")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.global.opacity")}
           description={t("settings.overlay.global.opacityDesc")}
         >
           <div className="flex items-center gap-3">
@@ -173,17 +190,19 @@ export function SettingsOverlay() {
               step={5}
               className="w-32"
             />
-            <span className="text-sm text-muted-foreground w-10">
+            <span className="text-sm text-muted-foreground w-10 text-right">
               {Math.round(settings.opacity * 100)}%
             </span>
           </div>
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
 
-      {/* Danmaku Settings */}
-      <SettingsSection title={t("settings.overlay.danmaku.title")}>
-        <SettingRow
-          label={t("settings.overlay.danmaku.enabled")}
+      {/* Danmaku Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.danmaku.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.danmaku.enabled")}
           description={t("settings.overlay.danmaku.enabledDesc")}
         >
           <Switch
@@ -194,9 +213,10 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.danmaku.speed")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.danmaku.speed")}
           description={t("settings.overlay.danmaku.speedDesc")}
         >
           <Select
@@ -222,9 +242,10 @@ export function SettingsOverlay() {
               </SelectItem>
             </SelectContent>
           </Select>
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.danmaku.maxTracks")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.danmaku.maxTracks")}
           description={t("settings.overlay.danmaku.maxTracksDesc")}
         >
           <div className="flex items-center gap-3">
@@ -240,17 +261,19 @@ export function SettingsOverlay() {
               step={1}
               className="w-32"
             />
-            <span className="text-sm text-muted-foreground w-6">
+            <span className="text-sm text-muted-foreground w-6 text-right">
               {settings.danmaku.max_tracks}
             </span>
           </div>
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
 
-      {/* Subtitle Settings */}
-      <SettingsSection title={t("settings.overlay.subtitle.title")}>
-        <SettingRow
-          label={t("settings.overlay.subtitle.enabled")}
+      {/* Subtitle Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.subtitle.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.subtitle.enabled")}
           description={t("settings.overlay.subtitle.enabledDesc")}
         >
           <Switch
@@ -261,9 +284,10 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.subtitle.position")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.subtitle.position")}
           description={t("settings.overlay.subtitle.positionDesc")}
         >
           <Select
@@ -289,13 +313,15 @@ export function SettingsOverlay() {
               </SelectItem>
             </SelectContent>
           </Select>
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
 
-      {/* Click Indicator Settings */}
-      <SettingsSection title={t("settings.overlay.clickIndicator.title")}>
-        <SettingRow
-          label={t("settings.overlay.clickIndicator.enabled")}
+      {/* Click Indicator Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.clickIndicator.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.clickIndicator.enabled")}
           description={t("settings.overlay.clickIndicator.enabledDesc")}
         >
           <Switch
@@ -306,9 +332,10 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.clickIndicator.style")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.clickIndicator.style")}
           description={t("settings.overlay.clickIndicator.styleDesc")}
         >
           <Select
@@ -334,13 +361,15 @@ export function SettingsOverlay() {
               </SelectItem>
             </SelectContent>
           </Select>
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
 
-      {/* Keystroke Settings */}
-      <SettingsSection title={t("settings.overlay.keystroke.title")}>
-        <SettingRow
-          label={t("settings.overlay.keystroke.enabled")}
+      {/* Keystroke Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.keystroke.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.keystroke.enabled")}
           description={t("settings.overlay.keystroke.enabledDesc")}
         >
           <Switch
@@ -351,9 +380,10 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.keystroke.position")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.keystroke.position")}
           description={t("settings.overlay.keystroke.positionDesc")}
         >
           <Select
@@ -382,9 +412,10 @@ export function SettingsOverlay() {
               </SelectItem>
             </SelectContent>
           </Select>
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.keystroke.showModifiersOnly")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.keystroke.showModifiersOnly")}
           description={t("settings.overlay.keystroke.showModifiersOnlyDesc")}
         >
           <Switch
@@ -400,13 +431,15 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
 
-      {/* Wave Settings */}
-      <SettingsSection title={t("settings.overlay.wave.title")}>
-        <SettingRow
-          label={t("settings.overlay.wave.enabled")}
+      {/* Wave Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.overlay.wave.title")} />
+
+        <SettingsItem
+          title={t("settings.overlay.wave.enabled")}
           description={t("settings.overlay.wave.enabledDesc")}
         >
           <Switch
@@ -417,9 +450,10 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.wave.height")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.wave.height")}
           description={t("settings.overlay.wave.heightDesc")}
         >
           <div className="flex items-center gap-3">
@@ -435,13 +469,14 @@ export function SettingsOverlay() {
               step={10}
               className="w-32"
             />
-            <span className="text-sm text-muted-foreground w-10">
+            <span className="text-sm text-muted-foreground w-12 text-right">
               {settings.wave.height}px
             </span>
           </div>
-        </SettingRow>
-        <SettingRow
-          label={t("settings.overlay.wave.particlesEnabled")}
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.overlay.wave.particlesEnabled")}
           description={t("settings.overlay.wave.particlesEnabledDesc")}
         >
           <Switch
@@ -452,8 +487,8 @@ export function SettingsOverlay() {
               )
             }
           />
-        </SettingRow>
-      </SettingsSection>
+        </SettingsItem>
+      </div>
     </div>
   );
 }
