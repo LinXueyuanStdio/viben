@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppLayout, McpServicesLayout } from "@/components/layout";
+import { OverlayRoot } from "@/components/overlay";
 import {
   DashboardPage,
   ProvidersPage,
@@ -65,8 +66,9 @@ function PageLoadingFallback() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <>
+      <BrowserRouter>
+        <Routes>
         {/* Main app routes with layout */}
         <Route path="/" element={<AppLayout />}>
           {/* Default route redirects to global workspace */}
@@ -166,8 +168,10 @@ function App() {
 
         {/* Onboarding - separate full-screen wizard without layout */}
         <Route path="/onboarding" element={<OnboardingPage />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+      <OverlayRoot />
+    </>
   );
 }
 
