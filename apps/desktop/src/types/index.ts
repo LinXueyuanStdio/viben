@@ -425,3 +425,6 @@ export * from "./group-chat";
 
 // Re-export notification types
 export * from "./notification";
+
+// Re-export overlay types
+export * from "./overlay";
