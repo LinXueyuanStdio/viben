@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useEffect, useState } from "react";
 import { Application } from "pixi.js";
 import { useOverlay } from "@/hooks/use-overlay";
 import { useGlobalInput } from "@/hooks/use-global-input";
+import { useOverlayShortcuts } from "@/hooks/use-overlay-shortcuts";
 import { DanmakuPool } from "@/lib/overlay/danmaku-pool";
 import { GreedyTrackAllocator } from "@/lib/overlay/track-allocator";
 
@@ -33,6 +34,7 @@ export function OverlayProvider({ children }: OverlayProviderProps): ReactElemen
   const [isReady, setIsReady] = useState(false);
 
   useGlobalInput();
+  useOverlayShortcuts();
 
   const danmakuPool = useMemo(() => new DanmakuPool(), []);
   const trackAllocator = useMemo(() => new GreedyTrackAllocator(), []);
