@@ -616,9 +616,12 @@ viben idea promote ci-001 --start --worktree
 
 | 平台 | 下载 |
 |:----:|------|
-| 🍎 **macOS** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (Universal) |
+| 🍎 **macOS (Apple Silicon)** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (arm64) |
+| 🍎 **macOS (Intel)** | [.dmg](https://github.com/LinXueyuanStdio/viben/releases/latest) (x86_64) |
 | 🪟 **Windows** | [.msi](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.exe](https://github.com/LinXueyuanStdio/viben/releases/latest) (64-bit) |
-| 🐧 **Linux** | [.AppImage](https://github.com/LinXueyuanStdio/viben/releases/latest) / [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) |
+| 🐧 **Linux** | [.deb](https://github.com/LinXueyuanStdio/viben/releases/latest) (Debian/Ubuntu) |
+
+> 💡 桌面应用已内置 Viben CLI，无需单独安装。
 
 ### 💻 CLI
 
