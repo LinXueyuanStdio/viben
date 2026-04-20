@@ -436,7 +436,8 @@
       "executors": "执行器",
       "sandbox": "沙箱",
       "setup": "设置向导",
-      "terminalFonts": "终端字体"
+      "terminalFonts": "终端字体",
+      "overlay": "覆盖层"
     },
     "terminalFonts": {
       "description": "自定义终端字体外观、光标行为和显示设置",
@@ -486,6 +487,71 @@
         "reset": "恢复默认"
       },
       "export": "复制配置"
+    },
+    "overlay": {
+      "title": "覆盖层",
+      "description": "配置弹幕、字幕和视觉反馈的覆盖显示效果",
+      "global": {
+        "title": "全局设置",
+        "defaultEnabled": "启动时启用",
+        "defaultEnabledDesc": "应用启动时自动显示覆盖层",
+        "opacity": "全局透明度",
+        "opacityDesc": "覆盖层元素的整体透明度"
+      },
+      "danmaku": {
+        "title": "弹幕",
+        "enabled": "启用弹幕",
+        "enabledDesc": "在屏幕上显示滚动文字消息",
+        "speed": "滚动速度",
+        "speedDesc": "弹幕消息的滚动速度",
+        "speedSlow": "慢速",
+        "speedNormal": "正常",
+        "speedFast": "快速",
+        "maxTracks": "最大轨道数",
+        "maxTracksDesc": "弹幕并行轨道的最大数量"
+      },
+      "subtitle": {
+        "title": "字幕",
+        "enabled": "启用字幕",
+        "enabledDesc": "在指定位置显示字幕文本",
+        "position": "位置",
+        "positionDesc": "字幕在屏幕上的显示位置",
+        "positionTop": "顶部",
+        "positionCenter": "居中",
+        "positionBottom": "底部"
+      },
+      "clickIndicator": {
+        "title": "点击指示器",
+        "enabled": "启用点击指示器",
+        "enabledDesc": "点击时显示视觉反馈",
+        "style": "效果样式",
+        "styleDesc": "点击效果的视觉样式",
+        "styleRipple": "涟漪",
+        "styleSpotlight": "聚光灯",
+        "styleRing": "圆环"
+      },
+      "keystroke": {
+        "title": "按键可视化",
+        "enabled": "启用按键显示",
+        "enabledDesc": "在屏幕上显示按下的键",
+        "position": "显示位置",
+        "positionDesc": "按键显示在屏幕的角落",
+        "positionTopLeft": "左上角",
+        "positionTopRight": "右上角",
+        "positionBottomLeft": "左下角",
+        "positionBottomRight": "右下角",
+        "showModifiersOnly": "仅显示修饰键",
+        "showModifiersOnlyDesc": "只显示修饰键和特殊键"
+      },
+      "wave": {
+        "title": "状态波浪",
+        "enabled": "启用波浪",
+        "enabledDesc": "在屏幕底部显示动画波浪",
+        "height": "波浪高度",
+        "heightDesc": "波浪动画的高度（像素）",
+        "particlesEnabled": "启用粒子",
+        "particlesEnabledDesc": "在波浪上方显示漂浮的粒子"
+      }
     },
     "account": {
       "description": "管理你的账户和登录状态",
@@ -672,6 +738,8 @@
     "controlScopeDescription": "选择快捷键控制的窗口范围",
     "chatRelatedWindows": "仅聊天相关窗口",
     "allWindows": "所有窗口",
+    "createTask": "创建任务",
+    "createTaskDescription": "打开创建任务弹窗的快捷键",
     "resetShortcuts": "恢复默认设置",
     "pressKeys": "按下快捷键...",
     "clearShortcut": "清除快捷键",
@@ -4676,6 +4744,7 @@
     "pages": "页面",
     "createPage": "创建页面",
     "createSubpage": "创建子页面",
+    "openInNewTab": "在新标签页打开",
     "createPageDescription": "在工作空间中创建新页面",
     "createSubpageDescription": "在 {{parent}} 下创建子页面",
     "createSuccess": "页面创建成功",
@@ -4730,5 +4799,35 @@
     "devTools": "开发工具",
     "proxyPage": "代理页面",
     "proxyComingSoon": "代理页面预览即将推出"
+  },
+  "iconPicker": {
+    "icons": "图标",
+    "emoji": "表情",
+    "image": "图片",
+    "upload": "上传",
+    "fromUrl": "从链接",
+    "uploading": "上传中...",
+    "clickToUpload": "点击上传",
+    "squareRequired": "图片必须为正方形（宽高相等）",
+    "urlPlaceholder": "https://example.com/icon.png",
+    "download": "下载",
+    "noWorkspace": "需要工作空间才能上传图片",
+    "category": {
+      "documents": "文档",
+      "code": "代码",
+      "navigation": "导航",
+      "favorites": "收藏",
+      "media": "媒体",
+      "communication": "通讯",
+      "people": "人物",
+      "time": "时间",
+      "security": "安全",
+      "actions": "操作",
+      "weather": "天气",
+      "achievement": "成就",
+      "layout": "布局",
+      "charts": "图表",
+      "business": "商务"
+    }
   }
 }

@@ -37,6 +37,7 @@ import {
   FileText,
   AlertTriangle,
   Type,
+  Layers,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { VibenLogo } from "@/components/ui/viben-logo";
@@ -72,6 +73,7 @@ import { SettingsSandboxPage } from "./settings-sandbox";
 import { SettingsMcpPage } from "./settings-mcp";
 import { SettingsSkillsPage } from "./settings-skills";
 import { TerminalFontsSection } from "@/components/settings/terminal-fonts-section";
+import { SettingsOverlay } from "@/components/settings/settings-overlay";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import type { NotificationCategory, NotificationMethod } from "@/types/notification";
@@ -90,7 +92,7 @@ import Cursor from "@lobehub/icons/es/Cursor";
 import Windsurf from "@lobehub/icons/es/Windsurf";
 
 // Settings section type
-type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "mcp" | "skills" | "sandbox" | "environment" | "terminalFonts" | "storage" | "developer" | "about";
+type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "mcp" | "skills" | "sandbox" | "environment" | "terminalFonts" | "overlay" | "storage" | "developer" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -114,6 +116,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "sandbox", labelKey: "settings.sections.sandbox", icon: Box },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "terminalFonts", labelKey: "settings.sections.terminalFonts", icon: Type },
+  { id: "overlay", labelKey: "settings.sections.overlay", icon: Layers },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
   { id: "developer", labelKey: "settings.sections.developer", icon: Bug },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -184,7 +187,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "mcp", "skills", "sandbox", "environment", "terminalFonts", "storage", "developer", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "mcp", "skills", "sandbox", "environment", "terminalFonts", "overlay", "storage", "developer", "about"];
 
 // LocalStorage key for settings sidebar collapsed state
 const SETTINGS_SIDEBAR_COLLAPSED_KEY = "settings-sidebar-collapsed";
@@ -321,6 +324,8 @@ export function SettingsPage() {
         return <EnvironmentSection key="environment" />;
       case "terminalFonts":
         return <TerminalFontsSection key="terminalFonts" />;
+      case "overlay":
+        return <SettingsOverlay key="overlay" />;
       case "storage":
         return <StorageSection key="storage" />;
       case "developer":
@@ -1081,26 +1086,35 @@ function usePlatform(): string {
   }
 }
 
-// Format shortcut string for display (convert to platform symbols)
+// Format shortcut string for display (convert to platform symbols with + separator)
 function formatShortcutForPlatform(shortcut: string, currentPlatform: string): string {
   if (!shortcut) return "";
 
   const isMac = currentPlatform === "macos";
 
-  if (isMac) {
-    return shortcut
-      .replace(/Ctrl\+/gi, "⌃")
-      .replace(/Alt\+/gi, "⌥")
-      .replace(/Shift\+/gi, "⇧")
-      .replace(/Cmd\+/gi, "⌘")
-      .replace(/Meta\+/gi, "⌘")
-      .replace(/Enter/gi, "↵");
-  } else {
-    // Windows/Linux: Show Ctrl instead of Cmd, Win instead of Meta
-    return shortcut
-      .replace(/Meta\+/gi, "Win+")
-      .replace(/Cmd\+/gi, "Ctrl+");
-  }
+  // Split by + and map each part to its symbol, then join with +
+  const parts = shortcut.split("+").map((part) => {
+    const key = part.trim().toLowerCase();
+    if (isMac) {
+      switch (key) {
+        case "ctrl": return "⌃";
+        case "alt": case "option": return "⌥";
+        case "shift": return "⇧";
+        case "cmd": case "meta": return "⌘";
+        case "enter": return "↵";
+        default: return part.trim().toUpperCase();
+      }
+    } else {
+      // Windows/Linux
+      switch (key) {
+        case "cmd": case "meta": return "Ctrl";
+        case "enter": return "Enter";
+        default: return part.trim();
+      }
+    }
+  });
+
+  return parts.join("+");
 }
 
 // Parse keyboard event to shortcut string
@@ -1325,6 +1339,19 @@ function ShortcutsSection() {
             </div>
           </div>
         </div>
+
+        {/* Create Task */}
+        <SettingsItem
+          title={t("settings.createTask")}
+          description={t("settings.createTaskDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.createTask}
+            onChange={(value) => setShortcut("createTask", value)}
+            onClear={() => setShortcut("createTask", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
 
         {/* Reset to Defaults Button */}
         <div className="pt-4">

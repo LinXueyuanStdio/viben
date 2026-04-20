@@ -426,7 +426,8 @@
       "executors": "Executors",
       "sandbox": "Sandbox",
       "setup": "Setup",
-      "terminalFonts": "Terminal Fonts"
+      "terminalFonts": "Terminal Fonts",
+      "overlay": "Overlay"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",
@@ -476,6 +477,71 @@
         "reset": "Reset to Default"
       },
       "export": "Copy Config"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "description": "Configure overlay display effects for danmaku, subtitles, and visual feedback",
+      "global": {
+        "title": "Global Settings",
+        "defaultEnabled": "Enable on Startup",
+        "defaultEnabledDesc": "Automatically show overlay when application starts",
+        "opacity": "Global Opacity",
+        "opacityDesc": "Overall transparency of overlay elements"
+      },
+      "danmaku": {
+        "title": "Danmaku (Scrolling Text)",
+        "enabled": "Enable Danmaku",
+        "enabledDesc": "Show scrolling text messages across the screen",
+        "speed": "Scroll Speed",
+        "speedDesc": "How fast danmaku messages scroll",
+        "speedSlow": "Slow",
+        "speedNormal": "Normal",
+        "speedFast": "Fast",
+        "maxTracks": "Max Tracks",
+        "maxTracksDesc": "Maximum number of parallel danmaku tracks"
+      },
+      "subtitle": {
+        "title": "Subtitles",
+        "enabled": "Enable Subtitles",
+        "enabledDesc": "Show subtitle text at specified position",
+        "position": "Position",
+        "positionDesc": "Where subtitles appear on screen",
+        "positionTop": "Top",
+        "positionCenter": "Center",
+        "positionBottom": "Bottom"
+      },
+      "clickIndicator": {
+        "title": "Click Indicator",
+        "enabled": "Enable Click Indicator",
+        "enabledDesc": "Show visual feedback when clicking",
+        "style": "Effect Style",
+        "styleDesc": "Visual style of click effects",
+        "styleRipple": "Ripple",
+        "styleSpotlight": "Spotlight",
+        "styleRing": "Ring"
+      },
+      "keystroke": {
+        "title": "Keystroke Visualization",
+        "enabled": "Enable Keystroke Display",
+        "enabledDesc": "Show pressed keys on screen",
+        "position": "Display Position",
+        "positionDesc": "Corner where keystrokes appear",
+        "positionTopLeft": "Top Left",
+        "positionTopRight": "Top Right",
+        "positionBottomLeft": "Bottom Left",
+        "positionBottomRight": "Bottom Right",
+        "showModifiersOnly": "Show Modifiers Only",
+        "showModifiersOnlyDesc": "Only display modifier keys and special keys"
+      },
+      "wave": {
+        "title": "Status Wave",
+        "enabled": "Enable Wave",
+        "enabledDesc": "Show animated wave at bottom of screen",
+        "height": "Wave Height",
+        "heightDesc": "Height of the wave animation in pixels",
+        "particlesEnabled": "Enable Particles",
+        "particlesEnabledDesc": "Show floating particles above the wave"
+      }
     },
     "account": {
       "description": "Manage your account and login status",
@@ -662,6 +728,8 @@
     "controlScopeDescription": "Select which windows the shortcut controls",
     "chatRelatedWindows": "Chat-related windows only",
     "allWindows": "All windows",
+    "createTask": "Create Task",
+    "createTaskDescription": "Shortcut to open create task dialog",
     "resetShortcuts": "Reset to Defaults",
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",
@@ -4591,6 +4659,7 @@
     "pages": "Pages",
     "createPage": "Create Page",
     "createSubpage": "Create Subpage",
+    "openInNewTab": "Open in New Tab",
     "createPageDescription": "Create a new page in the workspace",
     "createSubpageDescription": "Create a new subpage under {{parent}}",
     "createSuccess": "Page created successfully",
@@ -4645,5 +4714,35 @@
     "devTools": "DevTools",
     "proxyPage": "Proxy Page",
     "proxyComingSoon": "Proxy page preview is coming soon"
+  },
+  "iconPicker": {
+    "icons": "Icons",
+    "emoji": "Emoji",
+    "image": "Image",
+    "upload": "Upload",
+    "fromUrl": "From URL",
+    "uploading": "Uploading...",
+    "clickToUpload": "Click to upload",
+    "squareRequired": "Image must be square (equal width and height)",
+    "urlPlaceholder": "https://example.com/icon.png",
+    "download": "Download",
+    "noWorkspace": "Workspace required for image upload",
+    "category": {
+      "documents": "Documents",
+      "code": "Code",
+      "navigation": "Navigation",
+      "favorites": "Favorites",
+      "media": "Media",
+      "communication": "Communication",
+      "people": "People",
+      "time": "Time",
+      "security": "Security",
+      "actions": "Actions",
+      "weather": "Weather",
+      "achievement": "Achievement",
+      "layout": "Layout",
+      "charts": "Charts",
+      "business": "Business"
+    }
   }
 }
