@@ -38,14 +38,17 @@ export function WaveLayer(): null {
     const graphics = graphicsRef.current;
     if (!graphics) return;
 
+    // Reset time when state changes for smooth transition
+    timeRef.current = 0;
+
     const theme = config.customThemes?.[state] ?? WAVE_THEMES[state];
     const params = WAVE_PARAMS[state];
-    const width = window.innerWidth;
     const height = config.height;
 
     const tick = (ticker: { deltaMS: number }): void => {
       timeRef.current += ticker.deltaMS * 0.001 * params.speed * config.speed;
       const t = timeRef.current;
+      const width = window.innerWidth; // Read inside tick for resize support
 
       graphics.clear();
 
@@ -76,16 +79,11 @@ export function WaveLayer(): null {
     app.ticker.add(tick);
     return () => {
       app.ticker.remove(tick);
+      if (graphicsRef.current) {
+        graphicsRef.current.clear();
+      }
     };
   }, [app, isReady, enabled, state, config]);
-
-  useEffect(() => {
-    if (!graphicsRef.current) return;
-
-    if (!enabled || state === "idle") {
-      graphicsRef.current.clear();
-    }
-  }, [enabled, state]);
 
   return null;
 }
