@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import { useOverlayStore } from "@/stores/overlay-store";
 import { loadOverlayConfig } from "@/lib/overlay-config";
-import type { OverlayShortcuts } from "@/types/overlay";
 
 /**
  * Registers global keyboard shortcuts for overlay controls.
@@ -21,39 +20,51 @@ export function useOverlayShortcuts(): void {
   const actions = useOverlayStore((s) => s.actions);
 
   useEffect(() => {
-    let shortcuts: OverlayShortcuts | null = null;
+    const registeredShortcuts: string[] = [];
     let isUnmounted = false;
 
     const setupShortcuts = async (): Promise<void> => {
       try {
         const config = await loadOverlayConfig();
-        shortcuts = config.shortcuts;
+        const shortcuts = config.shortcuts;
 
-        if (isUnmounted) return;
+        const toRegister = [
+          { key: shortcuts.toggleOverlay, handler: () => actions.toggle() },
+          {
+            key: shortcuts.toggleDanmaku,
+            handler: () => {
+              const current = useOverlayStore.getState().danmakuEnabled;
+              actions.setDanmakuEnabled(!current);
+            },
+          },
+          {
+            key: shortcuts.toggleSubtitle,
+            handler: () => {
+              const current = useOverlayStore.getState().subtitleEnabled;
+              actions.setSubtitleEnabled(!current);
+            },
+          },
+          {
+            key: shortcuts.toggleClickIndicator,
+            handler: () => {
+              const current = useOverlayStore.getState().clickEnabled;
+              actions.setClickEnabled(!current);
+            },
+          },
+          {
+            key: shortcuts.toggleKeystroke,
+            handler: () => {
+              const current = useOverlayStore.getState().keystrokeEnabled;
+              actions.setKeystrokeEnabled(!current);
+            },
+          },
+        ];
 
-        await register(shortcuts.toggleOverlay, () => {
-          actions.toggle();
-        });
-
-        await register(shortcuts.toggleDanmaku, () => {
-          const current = useOverlayStore.getState().danmakuEnabled;
-          actions.setDanmakuEnabled(!current);
-        });
-
-        await register(shortcuts.toggleSubtitle, () => {
-          const current = useOverlayStore.getState().subtitleEnabled;
-          actions.setSubtitleEnabled(!current);
-        });
-
-        await register(shortcuts.toggleClickIndicator, () => {
-          const current = useOverlayStore.getState().clickEnabled;
-          actions.setClickEnabled(!current);
-        });
-
-        await register(shortcuts.toggleKeystroke, () => {
-          const current = useOverlayStore.getState().keystrokeEnabled;
-          actions.setKeystrokeEnabled(!current);
-        });
+        for (const { key, handler } of toRegister) {
+          if (isUnmounted) break;
+          await register(key, handler);
+          registeredShortcuts.push(key);
+        }
       } catch (error) {
         console.warn("[Overlay] Failed to register shortcuts:", error);
       }
@@ -63,15 +74,9 @@ export function useOverlayShortcuts(): void {
 
     return () => {
       isUnmounted = true;
-      if (shortcuts) {
-        Promise.all([
-          unregister(shortcuts.toggleOverlay),
-          unregister(shortcuts.toggleDanmaku),
-          unregister(shortcuts.toggleSubtitle),
-          unregister(shortcuts.toggleClickIndicator),
-          unregister(shortcuts.toggleKeystroke),
-        ]).catch(console.warn);
-      }
+      Promise.all(registeredShortcuts.map((key) => unregister(key))).catch(
+        (err) => console.warn("[Overlay] Failed to unregister shortcuts:", err)
+      );
     };
   }, [actions]);
 }
