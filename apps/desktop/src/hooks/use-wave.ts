@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { WaveState, WaveConfig } from "@/types/overlay";
 
@@ -19,6 +19,15 @@ export function useWave(): UseWaveReturn {
   const store = useOverlayStore();
   const { waveEnabled: enabled, waveState: state, waveConfig: config, actions } = store;
   const endingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timer on unmount to prevent stale state updates
+  useEffect(() => {
+    return () => {
+      if (endingTimeoutRef.current) {
+        clearTimeout(endingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const clearEndingTimeout = useCallback(() => {
     if (endingTimeoutRef.current) {
