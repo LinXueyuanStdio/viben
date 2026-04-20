@@ -434,3 +434,4 @@ export { useSubtitle } from "./use-subtitle";
 export { useClickIndicator } from "./use-click-indicator";
 export { useKeystroke } from "./use-keystroke";
 export { useWave } from "./use-wave";
+export { useGlobalInput } from "./use-global-input";
