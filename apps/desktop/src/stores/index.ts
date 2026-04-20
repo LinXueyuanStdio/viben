@@ -36,3 +36,4 @@ export {
   type PageTab,
 } from "./tab-store";
 export { useUiStore } from "./ui-store";
+export { useOverlayStore } from "./overlay-store";
