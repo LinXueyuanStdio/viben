@@ -48,8 +48,11 @@
 
 ### 层级定义
 
+PixiJS Canvas 和 React DOM 层是独立的层级系统，分开定义：
+
 ```typescript
-enum OverlayZIndex {
+// PixiJS Canvas 内部 z-index (数值越大越靠前)
+enum PixiZIndex {
   Background = 0,
   StatusWave = 5,           // 状态波浪 (顶部炫彩波浪)
   Live2D = 10,              // 预留: Live2D 角色
@@ -58,8 +61,13 @@ enum OverlayZIndex {
   ClickIndicator = 40,      // 点击涟漪
   Keystroke = 50,           // 按键可视化
   Danmaku = 60,             // 弹幕
-  Interactive = 70,         // 可交互元素 (DOM 层)
   Custom = 100,             // 用户自定义扩展
+}
+
+// DOM 层 z-index (远高于 PixiJS canvas)
+enum DOMZIndex {
+  OverlayCanvas = 9998,     // PixiJS canvas 容器
+  InteractiveLayer = 9999,  // 可交互元素 DOM 层
 }
 ```
 
@@ -302,6 +310,11 @@ interface UseWaveReturn {
   state: WaveState;
   config: WaveConfig;
 
+  // 加载和错误状态
+  isLoading: boolean;
+  error: Error | null;
+  clearError: () => void;
+
   // 控制
   setState: (state: WaveState) => void;
   setEnabled: (enabled: boolean) => void;
@@ -313,6 +326,38 @@ interface UseWaveReturn {
   stopSpeaking: () => void;     // 结束播报 (触发 ending 动画)
   reset: () => void;            // 重置为 idle
 }
+
+/**
+ * 状态转换规则:
+ *
+ *                 ┌─────────────┐
+ *                 │    idle     │
+ *                 └──────┬──────┘
+ *                        │ startListening()
+ *                        ▼
+ *                 ┌─────────────┐
+ *                 │  listening  │
+ *                 └──────┬──────┘
+ *                        │ startSpeaking(mood)
+ *                        ▼
+ *            ┌───────────┼───────────┐
+ *            ▼           ▼           ▼
+ *      speaking-calm  speaking-excited  speaking-happy
+ *            │           │           │
+ *            └───────────┼───────────┘
+ *                        │ stopSpeaking()
+ *                        ▼
+ *                 ┌─────────────┐
+ *                 │   ending    │
+ *                 └──────┬──────┘
+ *                        │ (300ms 后自动)
+ *                        ▼
+ *                 ┌─────────────┐
+ *                 │    idle     │
+ *                 └─────────────┘
+ *
+ * reset() 可从任意状态直接回到 idle
+ */
 
 // 使用示例
 const wave = useWave();
@@ -464,6 +509,11 @@ interface UseSubtitleReturn {
   streaming: StreamingSubtitleState | null;
   isStreaming: boolean;
 
+  // 加载和错误状态
+  isLoading: boolean;
+  error: Error | null;
+  clearError: () => void;
+
   // 基础控制
   show: (text: string, options?: Partial<SubtitleItem>) => void;
   hide: () => void;
@@ -519,12 +569,40 @@ const stream = await client.messages.stream({
 });
 
 subtitle.startStream({ speaker: "Claude" });
-for await (const event of stream) {
-  if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-    subtitle.appendStream(event.delta.text);
+try {
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      subtitle.appendStream(event.delta.text);
+    }
   }
+  subtitle.finishStream();
+} catch (error) {
+  subtitle.cancelStream();
+  console.error("Streaming error:", error);
 }
-subtitle.finishStream();
+
+// 4. 配合 OpenAI 兼容 API
+import OpenAI from "openai";
+
+const openai = new OpenAI({ baseURL: "...", apiKey: "..." });
+const stream = await openai.chat.completions.create({
+  model: "gpt-4",
+  messages: [{ role: "user", content: "Hello" }],
+  stream: true,
+});
+
+subtitle.startStream({ speaker: "GPT" });
+try {
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content;
+    if (text) {
+      subtitle.appendStream(text);
+    }
+  }
+  subtitle.finishStream();
+} catch (error) {
+  subtitle.cancelStream();
+}
 ```
 
 ### 流式渲染实现
@@ -535,29 +613,57 @@ subtitle.finishStream();
 function StreamingSubtitle({ state }: { state: StreamingSubtitleState }) {
   const [displayText, setDisplayText] = useState("");
   const textRef = useRef(state.text);
+  const rafRef = useRef<number>();
+  const charQueueRef = useRef<string[]>([]);
 
-  // 平滑显示新增文本，避免闪烁
+  // 使用 requestAnimationFrame 批量处理字符，避免延迟积累
   useEffect(() => {
     const newText = state.text;
     const oldText = textRef.current;
 
     if (newText.length > oldText.length) {
-      // 逐字符追加，每 16ms 一个字符 (约 60fps)
-      const newChars = newText.slice(oldText.length);
-      let i = 0;
-      const timer = setInterval(() => {
-        if (i < newChars.length) {
-          setDisplayText(prev => prev + newChars[i]);
-          i++;
-        } else {
-          clearInterval(timer);
-        }
-      }, 16);
-
+      const newChars = newText.slice(oldText.length).split("");
+      charQueueRef.current.push(...newChars);
       textRef.current = newText;
-      return () => clearInterval(timer);
+
+      // 如果 RAF 未运行，启动它
+      if (!rafRef.current) {
+        const processQueue = () => {
+          const queue = charQueueRef.current;
+          if (queue.length === 0) {
+            rafRef.current = undefined;
+            return;
+          }
+
+          // 每帧处理多个字符 (根据队列长度动态调整)
+          // 如果队列积压严重，加速处理
+          const charsPerFrame = Math.min(Math.ceil(queue.length / 10), 5);
+          const chars = queue.splice(0, charsPerFrame);
+          setDisplayText(prev => prev + chars.join(""));
+
+          rafRef.current = requestAnimationFrame(processQueue);
+        };
+
+        rafRef.current = requestAnimationFrame(processQueue);
+      }
     }
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = undefined;
+      }
+    };
   }, [state.text]);
+
+  // 清理
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="subtitle-streaming">
@@ -568,6 +674,134 @@ function StreamingSubtitle({ state }: { state: StreamingSubtitleState }) {
     </div>
   );
 }
+```
+
+## Gateway 模块集成
+
+为保持与项目现有架构一致，提供 Gateway API 路由：
+
+```typescript
+// lib/gateway/modules/overlay.ts
+
+import type { OverlaySettings } from "@/types/overlay";
+
+export interface OverlayModule {
+  getConfig(): Promise<OverlaySettings>;
+  updateConfig(config: Partial<OverlaySettings>): Promise<void>;
+}
+
+// Gateway 路由定义
+// GET  /api/overlay/config - 获取配置
+// PUT  /api/overlay/config - 更新配置
+
+export function createOverlayModule(baseUrl: string): OverlayModule {
+  return {
+    async getConfig(): Promise<OverlaySettings> {
+      const res = await fetch(`${baseUrl}/api/overlay/config`);
+      if (!res.ok) throw new Error("Failed to fetch overlay config");
+      return res.json();
+    },
+
+    async updateConfig(config: Partial<OverlaySettings>): Promise<void> {
+      const res = await fetch(`${baseUrl}/api/overlay/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      if (!res.ok) throw new Error("Failed to update overlay config");
+    },
+  };
+}
+```
+
+```typescript
+// lib/gateway/types/overlay.ts
+
+export interface OverlayConfigResponse {
+  config: OverlaySettings;
+}
+
+export interface OverlayConfigUpdateRequest {
+  config: Partial<OverlaySettings>;
+}
+```
+
+## Live2D 预留接口
+
+为未来 Live2D 角色集成预留完整接口：
+
+```typescript
+// types/overlay.ts
+
+// === Live2D 预留 ===
+interface Live2DConfig {
+  enabled: boolean;
+  modelPath: string;                          // 模型文件路径
+  position: "left" | "right" | "center";
+  scale: number;
+  offset: { x: number; y: number };           // 位置偏移
+  idleAnimation: string;                      // 空闲动画名称
+  speakingAnimation: string;                  // 说话动画名称
+  expressions: Record<string, string>;        // 表情映射
+}
+
+// hooks/use-live2d.ts (预留)
+interface UseLive2DReturn {
+  enabled: boolean;
+  isLoading: boolean;
+  error: Error | null;
+
+  setEnabled: (enabled: boolean) => void;
+  loadModel: (modelPath: string) => Promise<void>;
+  playAnimation: (name: string) => void;
+  setExpression: (expression: string) => void;
+  setPosition: (position: "left" | "right" | "center") => void;
+
+  // 与波浪联动
+  syncWithWave: (enabled: boolean) => void;
+}
+```
+
+## 性能监控
+
+```typescript
+// hooks/use-overlay-performance.ts
+
+interface UseOverlayPerformanceReturn {
+  // 指标
+  fps: number;
+  activeDanmakuCount: number;
+  activeClickEffects: number;
+  memoryUsage: number;           // MB
+
+  // 状态
+  isPerformanceDegraded: boolean;
+  degradationReason?: string;
+
+  // 控制
+  enableMonitoring: (enabled: boolean) => void;
+  forceDegrade: () => void;
+  restorePerformance: () => void;
+}
+
+// 自动降级策略
+const performanceMonitor = {
+  checkInterval: 1000,  // 每秒检查
+
+  check(metrics: { fps: number; danmakuCount: number }) {
+    if (metrics.fps < PERFORMANCE_LIMITS.fpsThreshold) {
+      return {
+        shouldDegrade: true,
+        reason: `FPS ${metrics.fps} below threshold ${PERFORMANCE_LIMITS.fpsThreshold}`,
+        actions: [
+          { type: "reduceDanmaku", maxCount: PERFORMANCE_LIMITS.degradedMaxDanmaku },
+          { type: "disableParticles" },
+        ],
+      };
+    }
+    return { shouldDegrade: false };
+  },
+};
 ```
 
 ## 目录结构
@@ -609,9 +843,15 @@ apps/desktop/src/
 │   ├── use-click-indicator.ts        # 点击指示器
 │   ├── use-keystroke.ts              # 按键可视化
 │   ├── use-overlay-interaction.ts    # 交互元素控制
-│   └── use-global-input.ts           # 全局输入监听
+│   ├── use-global-input.ts           # 全局输入监听
+│   └── use-overlay-performance.ts    # 性能监控
 ├── types/
 │   └── overlay.ts                    # 类型定义
+├── lib/
+│   ├── overlay-config.ts             # 配置读写
+│   └── overlay/
+│       ├── danmaku-pool.ts           # 弹幕对象池
+│       └── track-allocator.ts        # 轨道分配器
 └── components/settings/
     └── settings-overlay.tsx          # 设置组件
 ```
@@ -700,6 +940,7 @@ interface OverlayShortcuts {
 
 // === 完整设置 ===
 interface OverlaySettings {
+  version: number;              // 配置版本号，用于未来迁移
   default_enabled: boolean;
   opacity: number;
 
@@ -732,6 +973,15 @@ interface OverlaySettings {
     show_modifiers_only: boolean;  // 只显示带修饰键的组合
     show_keys: string[];           // 白名单: 额外显示的按键 (如 ["Escape", "Enter"])
     duration: number;
+  };
+
+  wave: {
+    enabled: boolean;
+    height: number;
+    opacity: number;
+    speed: number;
+    particles_enabled: boolean;
+    custom_themes?: Partial<Record<WaveState, WaveColorTheme>>;
   };
 
   shortcuts: OverlayShortcuts;
@@ -837,6 +1087,9 @@ interface OverlayActions {
 ```yaml
 # ~/.viben/overlay.yaml
 
+# 配置版本号 (用于未来迁移)
+version: 1
+
 default_enabled: false
 opacity: 1.0
 
@@ -876,6 +1129,23 @@ shortcuts:
   toggle_keystroke: "CommandOrControl+Shift+K"
   toggle_click_indicator: "CommandOrControl+Shift+C"
   toggle_subtitle: "CommandOrControl+Shift+S"
+
+# 状态波浪配置
+wave:
+  enabled: true
+  height: 60
+  opacity: 0.6
+  speed: 1.0
+  particles_enabled: true
+  # 自定义颜色主题 (可选，覆盖默认主题)
+  custom_themes:
+    listening:
+      primary: "#667eea"
+      secondary: "#764ba2"
+    speaking_happy:
+      primary: "#ed64a6"
+      secondary: "#fbd38d"
+      accent: "#faf089"
 ```
 
 ### 配置读写
@@ -918,6 +1188,7 @@ export async function saveOverlayConfig(settings: OverlaySettings): Promise<void
 }
 
 const DEFAULT_SETTINGS: OverlaySettings = {
+  version: 1,
   default_enabled: false,
   opacity: 1,
   danmaku: {
@@ -946,6 +1217,13 @@ const DEFAULT_SETTINGS: OverlaySettings = {
     show_modifiers_only: true,
     show_keys: ["Escape", "Enter", "Tab"],
     duration: 1500,
+  },
+  wave: {
+    enabled: true,
+    height: 60,
+    opacity: 0.6,
+    speed: 1,
+    particles_enabled: true,
   },
   shortcuts: {
     toggle_overlay: "CommandOrControl+Shift+O",
@@ -1167,8 +1445,8 @@ const PERFORMANCE_LIMITS = {
   maxKeystrokeItems: 5,
   maxInteractiveElements: 20,
 
-  // 对象池
-  danmakuPoolSize: 200,        // 与 maxDanmakuOnScreen 的比例约 40%
+  // 对象池 (60-70% 比例以减少频繁创建)
+  danmakuPoolSize: 350,        // 70% of maxDanmakuOnScreen
 
   // 动画时长
   clickEffectDuration: 400,
@@ -1176,7 +1454,132 @@ const PERFORMANCE_LIMITS = {
 
   // 流式字幕
   streamingCharInterval: 16,   // 约 60fps
+
+  // 降级阈值
+  fpsThreshold: 30,            // FPS 低于此值触发降级
+  degradedMaxDanmaku: 200,     // 降级后的最大弹幕数
 };
+```
+
+### 对象池实现
+
+```typescript
+// lib/overlay/danmaku-pool.ts
+
+import { Graphics } from "pixi.js";
+
+export class DanmakuPool {
+  private pool: Graphics[] = [];
+  private maxSize: number;
+
+  constructor(maxSize: number = PERFORMANCE_LIMITS.danmakuPoolSize) {
+    this.maxSize = maxSize;
+    // 预热: 创建一半的对象
+    for (let i = 0; i < maxSize / 2; i++) {
+      this.pool.push(new Graphics());
+    }
+  }
+
+  acquire(): Graphics {
+    if (this.pool.length > 0) {
+      return this.pool.pop()!;
+    }
+    return new Graphics();
+  }
+
+  release(item: Graphics): void {
+    item.clear();
+    item.visible = false;
+    if (this.pool.length < this.maxSize) {
+      this.pool.push(item);
+    } else {
+      item.destroy();
+    }
+  }
+
+  get size(): number {
+    return this.pool.length;
+  }
+
+  destroy(): void {
+    this.pool.forEach(item => item.destroy());
+    this.pool = [];
+  }
+}
+```
+
+### 轨道分配算法
+
+```typescript
+// lib/overlay/track-allocator.ts
+
+interface TrackOccupancy {
+  endTime: number;    // 该轨道最后一个弹幕的结束时间
+  itemId: string;
+}
+
+export class GreedyTrackAllocator {
+  private tracks: Map<number, TrackOccupancy> = new Map();
+  private maxTracks: number;
+
+  constructor(maxTracks: number = 8) {
+    this.maxTracks = maxTracks;
+  }
+
+  /**
+   * 分配一个可用轨道
+   * @returns 轨道号 (0-based)，-1 表示所有轨道都被占用
+   */
+  allocate(item: DanmakuItem, duration: number): number {
+    const now = Date.now();
+    const endTime = now + duration;
+
+    // 贪心策略: 选择最早空闲的轨道
+    for (let i = 0; i < this.maxTracks; i++) {
+      const occupancy = this.tracks.get(i);
+      if (!occupancy || occupancy.endTime < now) {
+        this.tracks.set(i, { endTime, itemId: item.id });
+        return i;
+      }
+    }
+
+    // 所有轨道都满，选择最快空闲的轨道 (允许轻微重叠)
+    let minEndTime = Infinity;
+    let bestTrack = 0;
+    for (let i = 0; i < this.maxTracks; i++) {
+      const occupancy = this.tracks.get(i)!;
+      if (occupancy.endTime < minEndTime) {
+        minEndTime = occupancy.endTime;
+        bestTrack = i;
+      }
+    }
+
+    // 只有当重叠时间小于 500ms 时才允许
+    if (now - minEndTime < 500) {
+      this.tracks.set(bestTrack, { endTime, itemId: item.id });
+      return bestTrack;
+    }
+
+    return -1; // 拒绝，队列已满
+  }
+
+  release(trackIndex: number, itemId: string): void {
+    const occupancy = this.tracks.get(trackIndex);
+    if (occupancy?.itemId === itemId) {
+      this.tracks.delete(trackIndex);
+    }
+  }
+
+  setMaxTracks(maxTracks: number): void {
+    this.maxTracks = maxTracks;
+    // 清理超出范围的轨道
+    for (const [track] of this.tracks) {
+      if (track >= maxTracks) {
+        this.tracks.delete(track);
+      }
+    }
+  }
+}
 ```
 
 ## 错误处理
@@ -1343,4 +1746,7 @@ function SettingsPage() {
 | 修改 | `src/App.tsx` |
 | 修改 | `src/pages/settings.tsx` |
 | 修改 | `src/pages/index.ts` |
+| 修改 | `src/lib/gateway/modules/index.ts` |
+| 新增 | `src/lib/gateway/modules/overlay.ts` |
+| 新增 | `src/lib/gateway/types/overlay.ts` |
 | 修改 | `package.json` |

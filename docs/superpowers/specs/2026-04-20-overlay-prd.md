@@ -83,6 +83,17 @@
 | `speaking-happy` | 播报中：幸福 | 粉金渐变波浪，轻快跳跃，带粒子 |
 | `ending` | 结束倾听/播报 | 波浪渐隐消散 |
 
+**状态转换规则**:
+
+```
+idle ──startListening()──► listening ──startSpeaking(mood)──► speaking-*
+                                                                   │
+                           idle ◄──(300ms 自动)── ending ◄──stopSpeaking()──┘
+```
+
+- `reset()` 可从任意状态直接回到 `idle`
+- `ending` 状态 300ms 后自动转换为 `idle`
+
 **功能点**:
 - 启用/禁用状态波浪
 - 状态切换时平滑过渡动画
@@ -229,6 +240,16 @@ const fullText = await subtitle.streamFromAsyncIterator(aiStream, { speaker: "�
 | 优先级 | 功能 |
 |--------|------|
 | P0 | 基础框架、弹幕、字幕 |
-| P1 | 点击指示器、按键可视化 |
-| P2 | 设置页面、配置持久化 |
-| P3 | 扩展接口预留 |
+| P1 | 点击指示器、按键可视化、状态波浪 |
+| P2 | 设置页面、配置持久化、Gateway 集成 |
+| P3 | 扩展接口预留 (Live2D、Galgame 对话) |
+
+## 降级策略
+
+当性能下降时自动降级以保持流畅:
+
+| 触发条件 | 降级措施 |
+|----------|----------|
+| FPS < 30 | 减少最大弹幕数至 200 |
+| FPS < 30 | 禁用波浪粒子效果 |
+| 内存 > 100MB | 清理对象池 |
