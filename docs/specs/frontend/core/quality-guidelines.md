@@ -35,11 +35,11 @@ export default [
 ### Running Linting
 
 ```bash
-# Check for lint errors
+# Check for lint errors from the repository root
 pnpm lint
 
-# Fix auto-fixable issues
-pnpm lint:fix
+# Fix auto-fixable issues in apps/web
+pnpm --dir apps/web next lint --fix
 ```
 
 ---
