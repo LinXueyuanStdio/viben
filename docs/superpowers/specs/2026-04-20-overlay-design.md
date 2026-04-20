@@ -37,6 +37,7 @@
 │  │  │  按键层 (z: 50)                          │  │  │
 │  │  │  点击层 (z: 40)                          │  │  │
 │  │  │  字幕动画层 (z: 20)                       │  │  │
+│  │  │  状态波浪层 (z: 5) ← 顶部炫彩波浪          │  │  │
 │  │  └─────────────────────────────────────────┘  │  │
 │  └───────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────┐  │
@@ -50,6 +51,7 @@
 ```typescript
 enum OverlayZIndex {
   Background = 0,
+  StatusWave = 5,           // 状态波浪 (顶部炫彩波浪)
   Live2D = 10,              // 预留: Live2D 角色
   Subtitle = 20,            // 字幕动画
   DialogueBox = 30,         // 预留: Galgame 对话框
@@ -222,6 +224,198 @@ const { text } = await interaction.showVoiceInput({
 });
 ```
 
+## 状态波浪系统
+
+### 状态定义
+
+```typescript
+// types/overlay.ts
+
+// === 状态波浪 ===
+type WaveState =
+  | "idle"              // 默认状态: 无波浪或微弱呼吸
+  | "listening"         // 倾听模式: 蓝紫渐变，缓慢起伏
+  | "speaking-calm"     // 播报-平缓: 绿色渐变，规律波动
+  | "speaking-excited"  // 播报-激动: 橙红渐变，快速起伏
+  | "speaking-happy"    // 播报-幸福: 粉金渐变，轻快跳跃
+  | "ending";           // 结束: 波浪渐隐消散
+
+interface WaveColorTheme {
+  primary: string;      // 主色
+  secondary: string;    // 辅色
+  accent?: string;      // 强调色 (用于粒子等)
+}
+
+// 预设颜色主题
+const WAVE_THEMES: Record<WaveState, WaveColorTheme> = {
+  idle: { primary: "#4a5568", secondary: "#2d3748" },
+  listening: { primary: "#667eea", secondary: "#764ba2" },
+  "speaking-calm": { primary: "#38b2ac", secondary: "#48bb78" },
+  "speaking-excited": { primary: "#ed8936", secondary: "#f56565" },
+  "speaking-happy": { primary: "#ed64a6", secondary: "#fbd38d", accent: "#faf089" },
+  ending: { primary: "#a0aec0", secondary: "#718096" },
+};
+
+interface WaveConfig {
+  enabled: boolean;
+  height: number;           // 波浪高度 px，默认 60
+  opacity: number;          // 透明度 0-1，默认 0.6
+  speed: number;            // 动画速度倍率，默认 1
+  particlesEnabled: boolean; // 是否启用粒子效果
+  customThemes?: Partial<Record<WaveState, WaveColorTheme>>;
+}
+
+interface WaveAnimationParams {
+  amplitude: number;        // 振幅
+  frequency: number;        // 频率
+  speed: number;            // 速度
+  layers: number;           // 波浪层数
+  particles?: {
+    count: number;
+    size: number;
+    speed: number;
+  };
+}
+
+// 各状态的动画参数
+const WAVE_PARAMS: Record<WaveState, WaveAnimationParams> = {
+  idle: { amplitude: 5, frequency: 0.5, speed: 0.3, layers: 2 },
+  listening: { amplitude: 15, frequency: 1, speed: 0.5, layers: 3 },
+  "speaking-calm": { amplitude: 20, frequency: 1.2, speed: 0.6, layers: 3 },
+  "speaking-excited": { amplitude: 35, frequency: 2, speed: 1.2, layers: 4 },
+  "speaking-happy": {
+    amplitude: 25, frequency: 1.5, speed: 0.8, layers: 4,
+    particles: { count: 20, size: 4, speed: 1.5 }
+  },
+  ending: { amplitude: 10, frequency: 0.8, speed: 0.4, layers: 2 },
+};
+```
+
+### Wave Hook 接口
+
+```typescript
+// hooks/use-wave.ts
+
+interface UseWaveReturn {
+  // 状态
+  enabled: boolean;
+  state: WaveState;
+  config: WaveConfig;
+
+  // 控制
+  setState: (state: WaveState) => void;
+  setEnabled: (enabled: boolean) => void;
+  setConfig: (config: Partial<WaveConfig>) => void;
+
+  // 便捷方法
+  startListening: () => void;   // 进入倾听
+  startSpeaking: (mood?: "calm" | "excited" | "happy") => void;
+  stopSpeaking: () => void;     // 结束播报 (触发 ending 动画)
+  reset: () => void;            // 重置为 idle
+}
+
+// 使用示例
+const wave = useWave();
+
+// AI 开始倾听用户输入
+wave.startListening();
+
+// AI 开始播报，根据内容情绪选择状态
+wave.startSpeaking("happy");  // 幸福的内容
+
+// AI 播报结束
+wave.stopSpeaking();  // 触发 ending 动画，然后自动回到 idle
+```
+
+### PixiJS 波浪渲染
+
+```typescript
+// components/overlay/layers/wave-layer.tsx
+
+class WaveRenderer {
+  private graphics: Graphics;
+  private time: number = 0;
+  private currentState: WaveState = "idle";
+  private targetParams: WaveAnimationParams;
+  private currentParams: WaveAnimationParams;
+  private transitionProgress: number = 1;
+
+  constructor(private width: number, private height: number) {
+    this.graphics = new Graphics();
+    this.targetParams = WAVE_PARAMS.idle;
+    this.currentParams = { ...this.targetParams };
+  }
+
+  setState(state: WaveState) {
+    if (state === this.currentState) return;
+    this.currentState = state;
+    this.targetParams = WAVE_PARAMS[state];
+    this.transitionProgress = 0;  // 开始过渡
+  }
+
+  update(delta: number) {
+    this.time += delta * 0.001;
+
+    // 平滑过渡参数
+    if (this.transitionProgress < 1) {
+      this.transitionProgress = Math.min(1, this.transitionProgress + delta * 0.003);
+      const t = easeOutCubic(this.transitionProgress);
+      this.currentParams = lerpParams(this.currentParams, this.targetParams, t);
+    }
+
+    this.render();
+  }
+
+  private render() {
+    const { amplitude, frequency, speed, layers } = this.currentParams;
+    const theme = WAVE_THEMES[this.currentState];
+
+    this.graphics.clear();
+
+    // 绘制多层波浪
+    for (let layer = 0; layer < layers; layer++) {
+      const layerOffset = layer * 0.3;
+      const layerAmplitude = amplitude * (1 - layer * 0.2);
+      const alpha = 0.6 - layer * 0.15;
+
+      this.graphics.beginPath();
+      this.graphics.moveTo(0, 0);
+
+      // 使用正弦波叠加
+      for (let x = 0; x <= this.width; x += 4) {
+        const y =
+          layerAmplitude * Math.sin(frequency * x * 0.01 + this.time * speed + layerOffset) +
+          layerAmplitude * 0.5 * Math.sin(frequency * 2 * x * 0.01 + this.time * speed * 1.5);
+        this.graphics.lineTo(x, y + this.height * 0.5);
+      }
+
+      this.graphics.lineTo(this.width, 0);
+      this.graphics.closePath();
+
+      // 渐变填充
+      this.graphics.fill({
+        color: interpolateColor(theme.primary, theme.secondary, layer / layers),
+        alpha,
+      });
+    }
+  }
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function lerpParams(a: WaveAnimationParams, b: WaveAnimationParams, t: number): WaveAnimationParams {
+  return {
+    amplitude: a.amplitude + (b.amplitude - a.amplitude) * t,
+    frequency: a.frequency + (b.frequency - a.frequency) * t,
+    speed: a.speed + (b.speed - a.speed) * t,
+    layers: Math.round(a.layers + (b.layers - a.layers) * t),
+    particles: b.particles,
+  };
+}
+```
+
 ## 流式字幕系统
 
 ### 流式输入设计
@@ -386,6 +580,7 @@ apps/desktop/src/
 │   ├── overlay-provider.tsx          # Context Provider
 │   ├── overlay-interactive.tsx       # 可交互元素容器 (DOM)
 │   ├── layers/
+│   │   ├── wave-layer.tsx            # 状态波浪层 (顶部炫彩波浪)
 │   │   ├── danmaku-layer.tsx         # 弹幕层
 │   │   ├── subtitle-layer.tsx        # 字幕层 (含流式)
 │   │   ├── click-indicator-layer.tsx # 鼠标点击指示器
@@ -395,7 +590,8 @@ apps/desktop/src/
 │   │   ├── subtitle-box.tsx          # 字幕框
 │   │   ├── streaming-subtitle.tsx    # 流式字幕
 │   │   ├── click-ripple.tsx          # 点击涟漪效果
-│   │   └── key-badge.tsx             # 按键徽章
+│   │   ├── key-badge.tsx             # 按键徽章
+│   │   └── wave-renderer.tsx         # 波浪渲染器
 │   └── interactive/                  # 可交互元素组件
 │       ├── overlay-button.tsx
 │       ├── overlay-button-group.tsx
@@ -407,6 +603,7 @@ apps/desktop/src/
 │   └── overlay-store.ts              # Zustand 状态
 ├── hooks/
 │   ├── use-overlay.ts                # 主控制 hook
+│   ├── use-wave.ts                   # 状态波浪控制
 │   ├── use-danmaku.ts                # 弹幕控制
 │   ├── use-subtitle.ts               # 字幕控制 (含流式)
 │   ├── use-click-indicator.ts        # 点击指示器
