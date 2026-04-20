@@ -6,21 +6,26 @@ description: "Update Viben workspace components (template files)"
 
 # viben update
 
-Update Viben workspace components (template files).
+Update Viben workspace components (template files) or self-update Viben.
 
 ## Overview
 
 `viben update` is used to update template files in your workspace, including:
 - `docs/idea-types/` - Idea type templates (used by `viben idea generate`)
-- `docs/reward-types/` - Reward type templates (used by `viben filerl reward`)
+- `docs/reward-types/` - Reward type templates (used by `viben reward`)
 
-These template files improve with Viben version updates. Use this command to get the latest versions.
+These template files improve with Viben version updates. Use this command to get the latest versions. When run without workspace template flags, `viben update` performs a self-update of the Viben CLI. You can also use `--check` to check for available updates without applying them.
 
 ---
 
 ## Command
 
 ```bash
+# Self-update Viben
+viben update
+
+# Check whether an update is available
+viben update --check
 # Update idea-types templates
 viben update --idea-types
 
