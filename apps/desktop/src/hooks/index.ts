@@ -431,3 +431,6 @@ export type {
 export { useOverlay } from "./use-overlay";
 export { useDanmaku } from "./use-danmaku";
 export { useSubtitle } from "./use-subtitle";
+export { useClickIndicator } from "./use-click-indicator";
+export { useKeystroke } from "./use-keystroke";
+export { useWave } from "./use-wave";
