@@ -11,6 +11,7 @@ export const PERFORMANCE_LIMITS = {
   streamingCharInterval: 16,
   fpsThreshold: 30,
   degradedMaxDanmaku: 200,
+  trackOverlapTolerance: 500,
 } as const;
 
 export const WAVE_THEMES: Record<WaveState, WaveColorTheme> = {

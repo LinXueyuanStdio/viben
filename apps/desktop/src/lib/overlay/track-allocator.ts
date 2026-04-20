@@ -1,4 +1,5 @@
 import type { DanmakuItem } from "@/types/overlay";
+import { PERFORMANCE_LIMITS } from "./constants";
 
 interface TrackOccupancy {
   endTime: number;
@@ -35,7 +36,7 @@ export class GreedyTrackAllocator {
       }
     }
 
-    if (now - minEndTime < 500) {
+    if (minEndTime - now < PERFORMANCE_LIMITS.trackOverlapTolerance) {
       this.tracks.set(bestTrack, { endTime, itemId: item.id });
       return bestTrack;
     }
@@ -57,5 +58,9 @@ export class GreedyTrackAllocator {
         this.tracks.delete(track);
       }
     }
+  }
+
+  clear(): void {
+    this.tracks.clear();
   }
 }
