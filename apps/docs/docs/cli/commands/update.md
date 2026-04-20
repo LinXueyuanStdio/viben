@@ -83,12 +83,12 @@ Reward type templates for `viben filerl reward` command:
 
 ```
 docs/reward-types/
-├── code_correctness.md    # Code correctness evaluation
-├── code_quality.md        # Code quality evaluation
-├── documentation.md       # Documentation completeness evaluation
-├── performance.md         # Performance evaluation
-├── security.md            # Security evaluation
-└── test_coverage.md       # Test coverage evaluation
+├── test_coverage.md         # Test coverage evaluation
+├── code_quality.md         # Code quality evaluation
+├── security_scan.md        # Security scan evaluation
+├── diff_penalty.md         # Diff penalty evaluation
+├── agent_review.md         # Agent review evaluation
+└── benchmark_comparison.md # Benchmark comparison evaluation
 ```
 
 ---
