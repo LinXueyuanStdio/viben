@@ -4781,6 +4781,7 @@
     "deleteFailed": "删除页面失败",
     "selectPage": "请选择页面",
     "notFound": "页面不存在",
+    "readOnly": "只读",
     "page": "页面",
     "pageType": "页面类型",
     "type": {

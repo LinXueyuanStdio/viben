@@ -52,6 +52,7 @@ export function SettingsVoice() {
   const voiceAgent = useVoiceAgent();
 
   const [apiKey, setApiKey] = useState("");
+  const [agentId, setAgentId] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +67,7 @@ export function SettingsVoice() {
       .then((loadedConfig) => {
         actions.setConfig(loadedConfig);
         setApiKey(loadedConfig.vocalBridgeApiKey || "");
+        setAgentId(loadedConfig.vocalBridgeAgentId || "");
         actions.setConfigLoaded(true);
         setHasChanges(false);
       })
@@ -77,8 +79,8 @@ export function SettingsVoice() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const newConfig = { ...config, vocalBridgeApiKey: apiKey };
-      actions.setConfig({ vocalBridgeApiKey: apiKey });
+      const newConfig = { ...config, vocalBridgeApiKey: apiKey, vocalBridgeAgentId: agentId };
+      actions.setConfig({ vocalBridgeApiKey: apiKey, vocalBridgeAgentId: agentId });
       await saveVoiceConfig(newConfig);
       setHasChanges(false);
     } catch (err) {
@@ -86,11 +88,12 @@ export function SettingsVoice() {
     } finally {
       setIsSaving(false);
     }
-  }, [apiKey, config, actions]);
+  }, [apiKey, agentId, config, actions]);
 
   // Reset to defaults
   const handleReset = useCallback(() => {
     setApiKey("");
+    setAgentId("");
     actions.setConfig({
       wakeWord: "你好微本",
       autoStartOnLaunch: false,
@@ -106,9 +109,11 @@ export function SettingsVoice() {
     if (voiceAgent.isConnected) {
       voiceAgent.disconnect();
     } else {
+      // 确保使用最新输入的 API Key 和 Agent ID（即使尚未保存）
+      actions.setConfig({ vocalBridgeApiKey: apiKey, vocalBridgeAgentId: agentId });
       await voiceAgent.connect();
     }
-  }, [voiceAgent]);
+  }, [voiceAgent, apiKey, agentId, actions]);
 
   if (isLoading) {
     return (
@@ -187,6 +192,25 @@ export function SettingsVoice() {
                 : t("common.show", "显示")}
             </Button>
           </div>
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.voice.api.agentId", "Agent ID")}
+          description={t(
+            "settings.voice.api.agentIdDesc",
+            "Vocal Bridge 语音智能体 ID"
+          )}
+        >
+          <Input
+            type="text"
+            value={agentId}
+            onChange={(e) => {
+              setAgentId(e.target.value);
+              setHasChanges(true);
+            }}
+            placeholder="agent_..."
+            className="w-48"
+          />
         </SettingsItem>
       </div>
 
@@ -349,7 +373,7 @@ export function SettingsVoice() {
           {/* Test button */}
           <Button
             onClick={handleTestToggle}
-            disabled={voiceAgent.state === "connecting" || !apiKey}
+            disabled={voiceAgent.state === "connecting" || !apiKey || !agentId}
             variant={voiceAgent.isConnected ? "destructive" : "default"}
           >
             {voiceAgent.isConnected ? (
@@ -365,9 +389,9 @@ export function SettingsVoice() {
             )}
           </Button>
 
-          {!apiKey && (
+          {(!apiKey || !agentId) && (
             <p className="text-xs text-destructive">
-              {t("settings.voice.test.noApiKey", "请先配置 API Key")}
+              {t("settings.voice.test.noConfig", "请先配置 API Key 和 Agent ID")}
             </p>
           )}
         </div>

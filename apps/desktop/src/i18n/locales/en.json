@@ -4696,6 +4696,7 @@
     "deleteFailed": "Failed to delete page",
     "selectPage": "Select a page",
     "notFound": "Page not found",
+    "readOnly": "Read-only",
     "page": "Page",
     "pageType": "Page Type",
     "type": {
