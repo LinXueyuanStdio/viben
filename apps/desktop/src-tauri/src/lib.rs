@@ -172,7 +172,8 @@ pub fn run() {
                 .with_denylist(&["tray-popup"])
                 .build(),
         )
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_store::Builder::new().build());
 
     // MCP plugin for AI debugging - only in development builds
     #[cfg(debug_assertions)]
