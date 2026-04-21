@@ -6,6 +6,8 @@ import { useGlobalInput } from "@/hooks/use-global-input";
 import { useOverlayShortcuts } from "@/hooks/use-overlay-shortcuts";
 import { DanmakuPool } from "@/lib/overlay/danmaku-pool";
 import { GreedyTrackAllocator } from "@/lib/overlay/track-allocator";
+import { VoiceSubtitleLayer } from "./layers/voice-subtitle-layer";
+import { AgentPopup } from "./agent-popup";
 
 interface OverlayContextValue {
   app: Application | null;
@@ -42,24 +44,42 @@ export function OverlayProvider({ children }: OverlayProviderProps): ReactElemen
   useEffect(() => {
     if (!configLoaded) return;
 
-    const pixiApp = new Application();
+    let pixiApp: Application | null = null;
+    let resizeHandler: (() => void) | null = null;
 
-    pixiApp
-      .init({
+    const initApp = async () => {
+      pixiApp = new Application();
+
+      await pixiApp.init({
         backgroundAlpha: 0,
-        resizeTo: window,
+        width: window.innerWidth,
+        height: window.innerHeight,
         antialias: true,
         autoDensity: true,
         resolution: window.devicePixelRatio || 1,
-      })
-      .then(() => {
-        setApp(pixiApp);
-        setIsReady(true);
-      })
-      .catch(console.error);
+      });
+
+      // 手动处理 resize，避免 PixiJS v8 的 resizeTo bug
+      resizeHandler = () => {
+        if (pixiApp?.renderer) {
+          pixiApp.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+      };
+      window.addEventListener("resize", resizeHandler);
+
+      setApp(pixiApp);
+      setIsReady(true);
+    };
+
+    initApp().catch(console.error);
 
     return () => {
-      pixiApp.destroy(true, { children: true });
+      if (resizeHandler) {
+        window.removeEventListener("resize", resizeHandler);
+      }
+      if (pixiApp) {
+        pixiApp.destroy(true, { children: true });
+      }
       danmakuPool.destroy();
     };
   }, [configLoaded, danmakuPool]);
@@ -69,5 +89,11 @@ export function OverlayProvider({ children }: OverlayProviderProps): ReactElemen
     [app, danmakuPool, trackAllocator, isReady]
   );
 
-  return <OverlayContext.Provider value={value}>{children}</OverlayContext.Provider>;
+  return (
+    <OverlayContext.Provider value={value}>
+      <VoiceSubtitleLayer />
+      <AgentPopup />
+      {children}
+    </OverlayContext.Provider>
+  );
 }
