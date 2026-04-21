@@ -427,7 +427,8 @@
       "sandbox": "Sandbox",
       "setup": "Setup",
       "terminalFonts": "Terminal Fonts",
-      "overlay": "Overlay"
+      "overlay": "Overlay",
+      "voice": "Voice"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",
@@ -541,6 +542,32 @@
         "heightDesc": "Height of the wave animation in pixels",
         "particlesEnabled": "Enable Particles",
         "particlesEnabledDesc": "Show floating particles above the wave"
+      }
+    },
+    "voice": {
+      "description": "Configure voice assistant and wake word detection",
+      "api": {
+        "title": "API Configuration",
+        "vocalBridgeKey": "Vocal Bridge API Key",
+        "vocalBridgeKeyDesc": "API key for connecting to voice service"
+      },
+      "wakeWord": {
+        "title": "Wake Word Settings",
+        "word": "Wake Word",
+        "wordDesc": "Say this word to activate voice assistant",
+        "autoStart": "Auto-start on launch",
+        "autoStartDesc": "Start listening for wake word when app launches",
+        "silenceTimeout": "Silence Timeout",
+        "silenceTimeoutDesc": "Time before auto-disconnect when no speech"
+      },
+      "test": {
+        "title": "Test Voice Function",
+        "idle": "Click to start speaking",
+        "connecting": "Connecting...",
+        "listening": "Listening...",
+        "start": "Start Test",
+        "stop": "Stop",
+        "noApiKey": "Please configure API Key first"
       }
     },
     "account": {

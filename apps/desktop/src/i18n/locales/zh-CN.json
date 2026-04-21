@@ -437,7 +437,8 @@
       "sandbox": "沙箱",
       "setup": "设置向导",
       "terminalFonts": "终端字体",
-      "overlay": "覆盖层"
+      "overlay": "覆盖层",
+      "voice": "语音交互"
     },
     "terminalFonts": {
       "description": "自定义终端字体外观、光标行为和显示设置",
@@ -551,6 +552,32 @@
         "heightDesc": "波浪动画的高度（像素）",
         "particlesEnabled": "启用粒子",
         "particlesEnabledDesc": "在波浪上方显示漂浮的粒子"
+      }
+    },
+    "voice": {
+      "description": "配置语音助手和唤醒词检测",
+      "api": {
+        "title": "API 配置",
+        "vocalBridgeKey": "Vocal Bridge API Key",
+        "vocalBridgeKeyDesc": "用于连接语音服务的 API 密钥"
+      },
+      "wakeWord": {
+        "title": "唤醒词设置",
+        "word": "唤醒词",
+        "wordDesc": "说出这个词来激活语音助手",
+        "autoStart": "启动时自动监听",
+        "autoStartDesc": "应用启动后自动开始监听唤醒词",
+        "silenceTimeout": "静默超时",
+        "silenceTimeoutDesc": "无语音输入后自动退出的时间"
+      },
+      "test": {
+        "title": "测试语音功能",
+        "idle": "点击开始说话",
+        "connecting": "正在连接...",
+        "listening": "正在监听...",
+        "start": "开始测试",
+        "stop": "停止",
+        "noApiKey": "请先配置 API Key"
       }
     },
     "account": {
