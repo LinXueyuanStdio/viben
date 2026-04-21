@@ -1,10 +1,6 @@
 // apps/desktop/src/lib/voice/vocal-bridge-client.ts
-
-export interface VocalBridgeConfig {
-  apiKey: string;
-  agentId?: string;
-  tokenUrl?: string;
-}
+import { VocalBridge } from '@vocalbridgeai/sdk';
+import { getClient } from '@/lib/viben';
 
 export interface TranscriptEvent {
   role: 'user' | 'agent';
@@ -25,11 +21,11 @@ type ErrorCallback = (error: Error) => void;
 
 /**
  * Vocal Bridge SDK 封装
- * 注：实际 SDK 可能尚未发布，此为基于文档的实现
- * 后续需要根据实际 SDK API 进行调整
+ * 使用官方 @vocalbridgeai/sdk，通过 api-client 获取 token
  */
 export class VocalBridgeClient {
-  private config: VocalBridgeConfig | null = null;
+  private apiKey: string | null = null;
+  private agentId: string | null = null;
   private state: VocalBridgeState = 'disconnected';
   private transcript: TranscriptEvent[] = [];
 
@@ -37,146 +33,150 @@ export class VocalBridgeClient {
   private transcriptCallbacks: Set<TranscriptCallback> = new Set();
   private errorCallbacks: Set<ErrorCallback> = new Set();
 
-  // WebRTC 相关
-  private peerConnection: RTCPeerConnection | null = null;
-  private dataChannel: RTCDataChannel | null = null;
-  private localStream: MediaStream | null = null;
+  // Vocal Bridge SDK 实例
+  private vb: VocalBridge | null = null;
 
   /** 配置客户端 */
-  configure(config: VocalBridgeConfig): void {
-    this.config = config;
+  configure(apiKey: string, agentId: string): void {
+    this.apiKey = apiKey;
+    this.agentId = agentId;
+  }
+
+  /**
+   * 自定义 token provider
+   * 通过 api-client 获取 token，绕过 CORS
+   */
+  private createTokenProvider() {
+    const apiKey = this.apiKey!;
+    const agentId = this.agentId!;
+
+    return async () => {
+      console.log('[VocalBridgeClient] Fetching token via api-client...');
+
+      const client = getClient();
+      const data = await client.voice.getToken({
+        api_key: apiKey,
+        agent_id: agentId,
+        participant_name: 'Viben User',
+      });
+
+      console.log('[VocalBridgeClient] Token received:', {
+        room_name: data.room_name,
+        livekit_url: data.livekit_url,
+      });
+
+      // SDK 期望的字段名是 url，但 API 返回 livekit_url
+      // 返回完整的 TokenResponse 对象
+      return {
+        url: data.livekit_url,
+        token: data.token,
+        room_name: data.room_name,
+        participant_identity: data.participant_identity,
+        expires_in: data.expires_in,
+        agent_mode: data.agent_mode,
+      };
+    };
   }
 
   /** 连接到 Voice Agent */
   async connect(): Promise<void> {
-    if (!this.config) {
-      throw new Error('Config not set. Call configure() first.');
+    if (!this.apiKey) {
+      throw new Error('API Key not configured. Call configure() first.');
+    }
+
+    if (!this.agentId) {
+      throw new Error('Agent ID not configured. Call configure() first.');
     }
 
     this.setState('connecting');
     this.transcript = [];
 
     try {
-      // 获取麦克风权限
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 16000,
+      console.log('[VocalBridgeClient] Creating VocalBridge instance...');
+      console.log('[VocalBridgeClient] Agent ID:', this.agentId);
+
+      // 使用 tokenProvider 模式，通过 api-client 获取 token
+      this.vb = new VocalBridge({
+        auth: {
+          tokenProvider: this.createTokenProvider(),
         },
+        participantName: 'Viben User',
+        debug: true,
       });
 
-      // 创建 WebRTC 连接
-      this.peerConnection = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
-
-      // 添加音频轨道
-      this.localStream.getTracks().forEach((track) => {
-        this.peerConnection?.addTrack(track, this.localStream!);
-      });
-
-      // 创建数据通道用于文本消息
-      this.dataChannel = this.peerConnection.createDataChannel('transcript');
-      this.setupDataChannel();
-
-      // 监听远程音频
-      this.peerConnection.ontrack = (event) => {
-        const audio = new Audio();
-        audio.srcObject = event.streams[0];
-        audio.play().catch(console.error);
-      };
-
-      // ICE 连接状态
-      this.peerConnection.oniceconnectionstatechange = () => {
-        const iceState = this.peerConnection?.iceConnectionState;
-        if (iceState === 'connected') {
-          this.setState('connected');
-        } else if (iceState === 'disconnected' || iceState === 'failed') {
-          this.setState('disconnected');
+      // 监听连接状态变化
+      this.vb.on('connectionStateChanged', (state: string) => {
+        console.log('[VocalBridgeClient] Connection state:', state);
+        switch (state) {
+          case 'connecting':
+            this.setState('connecting');
+            break;
+          case 'waiting_for_agent':
+            this.setState('waiting_for_agent');
+            break;
+          case 'connected':
+            this.setState('connected');
+            break;
+          case 'disconnected':
+            this.setState('disconnected');
+            break;
         }
-      };
+      });
 
-      // 注：实际连接需要与 Vocal Bridge 服务器进行信令交换
-      // 这里仅为框架实现，需要根据实际 API 完善
-      this.setState('waiting_for_agent');
+      // 监听 transcript 事件
+      this.vb.on('transcript', ({ role, text }: { role: 'user' | 'agent'; text: string }) => {
+        console.log(`[VocalBridgeClient] Transcript [${role}]:`, text);
+        const event: TranscriptEvent = {
+          role,
+          text,
+          timestamp: Date.now(),
+        };
+        this.transcript.push(event);
+        this.notifyTranscript(event);
+      });
 
-      // 模拟连接成功（实际需要信令服务器）
-      setTimeout(() => {
-        if (this.state === 'waiting_for_agent') {
-          this.setState('connected');
-        }
-      }, 1000);
+      // 监听错误
+      this.vb.on('error', (error: Error) => {
+        console.error('[VocalBridgeClient] Error:', error);
+        this.setState('error');
+        this.notifyError(error);
+      });
+
+      // 开始连接
+      console.log('[VocalBridgeClient] Connecting...');
+      await this.vb.connect();
+
+      console.log('[VocalBridgeClient] Connected successfully');
     } catch (err) {
+      console.error('[VocalBridgeClient] Connection error:', err);
       this.setState('error');
-      this.notifyError(err instanceof Error ? err : new Error(String(err)));
-      throw err;
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.notifyError(error);
+      throw error;
     }
-  }
-
-  private setupDataChannel(): void {
-    if (!this.dataChannel) return;
-
-    this.dataChannel.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'transcript') {
-          const transcriptEvent: TranscriptEvent = {
-            role: data.role,
-            text: data.text,
-            timestamp: Date.now(),
-          };
-          this.transcript.push(transcriptEvent);
-          this.notifyTranscript(transcriptEvent);
-        }
-      } catch (err) {
-        console.error('[VocalBridgeClient] Failed to parse message:', err);
-      }
-    };
-
-    this.dataChannel.onerror = (event) => {
-      console.error('[VocalBridgeClient] DataChannel error:', event);
-      this.notifyError(new Error('DataChannel error'));
-    };
   }
 
   /** 断开连接 */
   async disconnect(): Promise<void> {
-    if (this.dataChannel) {
-      this.dataChannel.close();
-      this.dataChannel = null;
+    if (this.vb) {
+      console.log('[VocalBridgeClient] Disconnecting...');
+      await this.vb.disconnect();
+      this.vb = null;
     }
-
-    if (this.peerConnection) {
-      this.peerConnection.close();
-      this.peerConnection = null;
-    }
-
-    if (this.localStream) {
-      this.localStream.getTracks().forEach((track) => track.stop());
-      this.localStream = null;
-    }
-
     this.setState('disconnected');
   }
 
   /** 静音/取消静音 */
   async toggleMicrophone(): Promise<void> {
-    if (this.localStream) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-      }
+    if (this.vb) {
+      await this.vb.toggleMicrophone();
     }
   }
 
   /** 设置麦克风状态 */
   async setMicrophoneEnabled(enabled: boolean): Promise<void> {
-    if (this.localStream) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = enabled;
-      }
+    if (this.vb) {
+      await this.vb.setMicrophoneEnabled(enabled);
     }
   }
 
@@ -193,6 +193,9 @@ export class VocalBridgeClient {
   /** 清除对话历史 */
   clearTranscript(): void {
     this.transcript = [];
+    if (this.vb) {
+      this.vb.clearTranscript();
+    }
   }
 
   /** 订阅状态变化 */
@@ -215,6 +218,7 @@ export class VocalBridgeClient {
 
   private setState(state: VocalBridgeState): void {
     if (this.state === state) return;
+    console.log('[VocalBridgeClient] State:', this.state, '->', state);
     this.state = state;
     for (const callback of this.stateCallbacks) {
       callback(state);

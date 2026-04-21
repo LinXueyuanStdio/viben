@@ -20,6 +20,7 @@ export type WakeWordState =
 export interface VoiceConfig {
   // API Keys
   vocalBridgeApiKey: string;
+  vocalBridgeAgentId: string;
 
   // 唤醒词
   wakeWord: string;
@@ -58,6 +59,7 @@ export interface VoiceConfigFile {
 /** 默认配置 */
 export const DEFAULT_VOICE_CONFIG: VoiceConfig = {
   vocalBridgeApiKey: '',
+  vocalBridgeAgentId: '',
   wakeWord: '你好微本',
   wakeWordModelPath: undefined,
   builtinWakeWord: 'hey_jarvis',

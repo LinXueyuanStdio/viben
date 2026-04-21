@@ -70,9 +70,12 @@ export async function saveVoiceConfig(config: VoiceConfig): Promise<void> {
   });
   await writeTextFile(configPath, content);
 
-  // API Key 单独加密存储
+  // API Key 和 Agent ID 单独加密存储
   if (config.vocalBridgeApiKey) {
     await saveApiKey('vocal_bridge_api_key', config.vocalBridgeApiKey);
+  }
+  if (config.vocalBridgeAgentId) {
+    await saveApiKey('vocal_bridge_agent_id', config.vocalBridgeAgentId);
   }
 }
 
@@ -91,9 +94,11 @@ export async function loadVoiceConfig(): Promise<VoiceConfig> {
   }
 
   const apiKey = await loadApiKey('vocal_bridge_api_key');
+  const agentId = await loadApiKey('vocal_bridge_agent_id');
 
   return {
     vocalBridgeApiKey: apiKey ?? '',
+    vocalBridgeAgentId: agentId ?? '',
     wakeWord: fileConfig.wake_word ?? DEFAULT_VOICE_CONFIG.wakeWord,
     wakeWordModelPath: fileConfig.wake_word_model_path ?? undefined,
     builtinWakeWord: fileConfig.builtin_wake_word ?? DEFAULT_VOICE_CONFIG.builtinWakeWord,

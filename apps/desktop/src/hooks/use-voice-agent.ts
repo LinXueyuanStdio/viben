@@ -139,12 +139,27 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
 
   // 连接
   const connect = useCallback(async () => {
-    if (connectionState !== "idle") return;
+    if (connectionState !== "idle") {
+      console.log("[useVoiceAgent] Already connected, state:", connectionState);
+      return;
+    }
+
+    if (!config.vocalBridgeApiKey) {
+      console.error("[useVoiceAgent] No API Key configured");
+      store.actions.setError("请先配置 API Key");
+      return;
+    }
+
+    if (!config.vocalBridgeAgentId) {
+      console.error("[useVoiceAgent] No Agent ID configured");
+      store.actions.setError("请先配置 Agent ID");
+      return;
+    }
+
+    console.log("[useVoiceAgent] Connecting with API Key:", config.vocalBridgeApiKey.slice(0, 8) + "...", "Agent ID:", config.vocalBridgeAgentId);
 
     // 配置客户端
-    vocalBridgeClient.configure({
-      apiKey: config.vocalBridgeApiKey,
-    });
+    vocalBridgeClient.configure(config.vocalBridgeApiKey, config.vocalBridgeAgentId);
 
     store.actions.setConnectionState("connecting");
     store.actions.clearAgentResponse();
@@ -152,10 +167,12 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
 
     try {
       await vocalBridgeClient.connect();
+      console.log("[useVoiceAgent] Connected successfully");
       if (config.enableSoundEffects) {
         playSound("wake-up");
       }
     } catch (err) {
+      console.error("[useVoiceAgent] Connection failed:", err);
       store.actions.setConnectionState("error");
       store.actions.setError(err instanceof Error ? err.message : String(err));
       throw err;
