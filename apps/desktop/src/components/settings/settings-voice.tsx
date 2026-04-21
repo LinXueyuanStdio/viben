@@ -1,0 +1,377 @@
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useVoiceStore } from "@/stores/voice-store";
+import { useVoiceAgent } from "@/hooks/use-voice-agent";
+import { loadVoiceConfig, saveVoiceConfig } from "@/lib/voice/secure-config";
+import { Loader2, Save, RotateCcw, Mic, MicOff, Square } from "lucide-react";
+
+// Settings item component - matches terminal-fonts-section style
+interface SettingsItemProps {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}
+
+function SettingsItem({ title, description, children }: SettingsItemProps) {
+  return (
+    <div className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
+      <div className="flex-1 pr-4">
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+        {description && (
+          <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+        )}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+// Section header component
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <h3 className="text-base font-semibold text-foreground mt-6 mb-2 first:mt-0">
+      {title}
+    </h3>
+  );
+}
+
+export function SettingsVoice() {
+  const { t } = useTranslation();
+  const store = useVoiceStore();
+  const voiceAgent = useVoiceAgent();
+
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const { config, actions } = store;
+
+  // Load config on mount
+  useEffect(() => {
+    setIsLoading(true);
+    loadVoiceConfig()
+      .then((loadedConfig) => {
+        actions.setConfig(loadedConfig);
+        setApiKey(loadedConfig.vocalBridgeApiKey || "");
+        actions.setConfigLoaded(true);
+        setHasChanges(false);
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, [actions]);
+
+  // Save config
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const newConfig = { ...config, vocalBridgeApiKey: apiKey };
+      actions.setConfig({ vocalBridgeApiKey: apiKey });
+      await saveVoiceConfig(newConfig);
+      setHasChanges(false);
+    } catch (err) {
+      console.error("Failed to save config:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [apiKey, config, actions]);
+
+  // Reset to defaults
+  const handleReset = useCallback(() => {
+    setApiKey("");
+    actions.setConfig({
+      wakeWord: "你好微本",
+      autoStartOnLaunch: false,
+      silenceTimeout: 30,
+      enableSoundEffects: true,
+      wakeWordThreshold: 0.5,
+    });
+    setHasChanges(true);
+  }, [actions]);
+
+  // Test connection toggle
+  const handleTestToggle = useCallback(async () => {
+    if (voiceAgent.isConnected) {
+      voiceAgent.disconnect();
+    } else {
+      await voiceAgent.connect();
+    }
+  }, [voiceAgent]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold font-serif mb-1">
+            {t("settings.sections.voice", "语音交互")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.voice.description", "配置语音助手和唤醒词检测")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isSaving}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {t("common.reset", "重置")}
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            size="sm"
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {t("common.save", "保存")}
+          </Button>
+        </div>
+      </div>
+
+      {/* API Config Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.voice.api.title", "API 配置")} />
+
+        <SettingsItem
+          title={t("settings.voice.api.vocalBridgeKey", "Vocal Bridge API Key")}
+          description={t(
+            "settings.voice.api.vocalBridgeKeyDesc",
+            "用于连接语音服务的 API 密钥"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Input
+              type={showApiKey ? "text" : "password"}
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.target.value);
+                setHasChanges(true);
+              }}
+              placeholder="vb_..."
+              className="w-48"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowApiKey(!showApiKey)}
+            >
+              {showApiKey
+                ? t("common.hide", "隐藏")
+                : t("common.show", "显示")}
+            </Button>
+          </div>
+        </SettingsItem>
+      </div>
+
+      {/* Wake Word Settings Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader
+          title={t("settings.voice.wakeWord.title", "唤醒词设置")}
+        />
+
+        <SettingsItem
+          title={t("settings.voice.wakeWord.word", "唤醒词")}
+          description={t(
+            "settings.voice.wakeWord.wordDesc",
+            "说出这个词来激活语音助手"
+          )}
+        >
+          <Select
+            value={config.wakeWord}
+            onValueChange={(value) => {
+              actions.setConfig({ wakeWord: value });
+              setHasChanges(true);
+            }}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="你好微本">你好微本</SelectItem>
+              <SelectItem value="hey_jarvis">Hey Jarvis</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.voice.wakeWord.threshold", "检测灵敏度")}
+          description={t(
+            "settings.voice.wakeWord.thresholdDesc",
+            "唤醒词检测的置信度阈值"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <Slider
+              value={[config.wakeWordThreshold]}
+              onValueChange={([val]) => {
+                actions.setConfig({ wakeWordThreshold: val });
+                setHasChanges(true);
+              }}
+              min={0.1}
+              max={0.9}
+              step={0.1}
+              className="w-32"
+            />
+            <span className="text-sm text-muted-foreground w-10 text-right">
+              {config.wakeWordThreshold.toFixed(1)}
+            </span>
+          </div>
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.voice.wakeWord.autoStart", "启动时自动监听")}
+          description={t(
+            "settings.voice.wakeWord.autoStartDesc",
+            "应用启动后自动开始监听唤醒词"
+          )}
+        >
+          <Switch
+            checked={config.autoStartOnLaunch}
+            onCheckedChange={(checked) => {
+              actions.setConfig({ autoStartOnLaunch: checked });
+              setHasChanges(true);
+            }}
+          />
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.voice.wakeWord.silenceTimeout", "静默超时")}
+          description={t(
+            "settings.voice.wakeWord.silenceTimeoutDesc",
+            "无语音输入后自动退出的时间"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <Slider
+              value={[config.silenceTimeout]}
+              onValueChange={([val]) => {
+                actions.setConfig({ silenceTimeout: val });
+                setHasChanges(true);
+              }}
+              min={10}
+              max={120}
+              step={5}
+              className="w-32"
+            />
+            <span className="text-sm text-muted-foreground w-10 text-right">
+              {config.silenceTimeout}s
+            </span>
+          </div>
+        </SettingsItem>
+      </div>
+
+      {/* Sound Effects Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.voice.sound.title", "音效设置")} />
+
+        <SettingsItem
+          title={t("settings.voice.sound.enabled", "启用音效")}
+          description={t(
+            "settings.voice.sound.enabledDesc",
+            "播放唤醒和错误等操作的音效反馈"
+          )}
+        >
+          <Switch
+            checked={config.enableSoundEffects}
+            onCheckedChange={(checked) => {
+              actions.setConfig({ enableSoundEffects: checked });
+              setHasChanges(true);
+            }}
+          />
+        </SettingsItem>
+      </div>
+
+      {/* Test Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.voice.test.title", "测试语音功能")} />
+
+        <div className="flex flex-col items-center py-6 gap-4">
+          {/* Status icon */}
+          <div className="relative">
+            {voiceAgent.isListening ? (
+              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse">
+                <Mic className="w-8 h-8 text-red-500" />
+              </div>
+            ) : voiceAgent.state === "connecting" ? (
+              <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-yellow-500 animate-spin" />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <MicOff className="w-8 h-8 text-muted-foreground" />
+              </div>
+            )}
+          </div>
+
+          {/* Status text */}
+          <p className="text-sm text-muted-foreground">
+            {voiceAgent.isListening
+              ? t("settings.voice.test.listening", "正在监听...")
+              : voiceAgent.state === "connecting"
+                ? t("settings.voice.test.connecting", "正在连接...")
+                : t("settings.voice.test.idle", "点击开始说话")}
+          </p>
+
+          {/* User transcript */}
+          {voiceAgent.userTranscript && (
+            <p className="text-sm text-foreground bg-muted px-3 py-1 rounded">
+              {voiceAgent.userTranscript}
+            </p>
+          )}
+
+          {/* Test button */}
+          <Button
+            onClick={handleTestToggle}
+            disabled={voiceAgent.state === "connecting" || !apiKey}
+            variant={voiceAgent.isConnected ? "destructive" : "default"}
+          >
+            {voiceAgent.isConnected ? (
+              <>
+                <Square className="w-4 h-4 mr-2" />
+                {t("settings.voice.test.stop", "停止")}
+              </>
+            ) : (
+              <>
+                <Mic className="w-4 h-4 mr-2" />
+                {t("settings.voice.test.start", "开始测试")}
+              </>
+            )}
+          </Button>
+
+          {!apiKey && (
+            <p className="text-xs text-destructive">
+              {t("settings.voice.test.noApiKey", "请先配置 API Key")}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
