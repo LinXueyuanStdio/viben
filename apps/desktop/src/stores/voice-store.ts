@@ -43,6 +43,7 @@ interface VoiceActions {
   appendAgentResponse: (chunk: string) => void;
   clearAgentResponse: () => void;
   setPopupOpacity: (opacity: number) => void;
+  hidePopup: () => void;
 
   // 静默计时
   startSilenceTimer: () => void;
@@ -71,7 +72,7 @@ const initialState: VoiceState = {
   silenceStartTime: null,
 };
 
-export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set, get) => ({
+export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set) => ({
   ...initialState,
 
   actions: {
@@ -105,6 +106,10 @@ export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set
 
     setPopupOpacity: (opacity) => set((s) => ({
       agentResponse: { ...s.agentResponse, popupOpacity: opacity },
+    })),
+
+    hidePopup: () => set((s) => ({
+      agentResponse: { ...s.agentResponse, showPopup: false },
     })),
 
     startSilenceTimer: () => set({ silenceStartTime: Date.now() }),
