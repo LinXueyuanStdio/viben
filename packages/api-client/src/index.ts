@@ -72,4 +72,7 @@ export type {
   TokenValidationResponse,
   OAuthProvider,
   OAuthUrlOptions,
+  // Voice
+  VoiceTokenRequest,
+  VoiceTokenResponse,
 } from './types';

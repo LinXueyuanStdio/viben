@@ -27,6 +27,8 @@ import type {
   TokenValidationResponse,
   OAuthProvider,
   OAuthUrlOptions,
+  VoiceTokenRequest,
+  VoiceTokenResponse,
 } from './types';
 
 /**
@@ -716,4 +718,23 @@ export class VibenClient {
       expiresAt: response.expiresAt,
     };
   }
+
+  // ============================================
+  // Voice API
+  // ============================================
+
+  /**
+   * Voice endpoints for Vocal Bridge integration
+   */
+  voice = {
+    /**
+     * Get voice token for LiveKit connection
+     * Proxies through viben-web to bypass CORS
+     */
+    getToken: (request: VoiceTokenRequest): Promise<VoiceTokenResponse> =>
+      this.request<VoiceTokenResponse>('/api/voice-token', {
+        method: 'POST',
+        body: JSON.stringify(request),
+      }),
+  };
 }

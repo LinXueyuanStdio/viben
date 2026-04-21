@@ -340,3 +340,37 @@ export interface OAuthUrlOptions {
   /** OAuth state parameter for CSRF protection */
   state?: string;
 }
+
+// ============================================
+// Voice Token Types
+// ============================================
+
+/**
+ * Request for voice token
+ */
+export interface VoiceTokenRequest {
+  /** Vocal Bridge API key */
+  api_key: string;
+  /** Agent ID */
+  agent_id: string;
+  /** Participant name (optional) */
+  participant_name?: string;
+}
+
+/**
+ * Response from voice token endpoint
+ */
+export interface VoiceTokenResponse {
+  /** LiveKit server URL */
+  livekit_url: string;
+  /** JWT token for LiveKit */
+  token: string;
+  /** Room name */
+  room_name: string;
+  /** Participant identity */
+  participant_identity: string;
+  /** Token expiration time in seconds */
+  expires_in: number;
+  /** Agent mode */
+  agent_mode: string;
+}
