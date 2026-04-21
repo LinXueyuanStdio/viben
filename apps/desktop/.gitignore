@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# openWakeWord ONNX models (downloaded at build time)
+public/openwakeword/models/*.onnx
+public/openwakeword/ort/*.wasm
+!public/openwakeword/models/.gitkeep
+!public/openwakeword/ort/.gitkeep

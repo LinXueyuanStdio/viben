@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri-dev": "pnpm run tauri dev",
-    "tauri-build": "pnpm run tauri build"
+    "tauri-build": "pnpm run tauri build",
+    "download:wakeword-models": "bash scripts/download-wakeword-models.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
