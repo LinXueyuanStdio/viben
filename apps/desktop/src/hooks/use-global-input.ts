@@ -18,6 +18,24 @@ function formatKeyDisplay(keys: string[]): string {
     .join(isMac ? "" : "+");
 }
 
+function buildKeysFromEvent(e: KeyboardEvent): string[] {
+  const keys: string[] = [];
+  if (e.metaKey) keys.push("Meta");
+  if (e.ctrlKey) keys.push("Control");
+  if (e.altKey) keys.push("Alt");
+  if (e.shiftKey) keys.push("Shift");
+
+  const key = e.key;
+  if (!MODIFIER_KEYS.includes(key)) {
+    keys.push(key);
+  }
+  return keys;
+}
+
+function keysToString(keys: string[]): string {
+  return keys.slice().sort().join("+");
+}
+
 export function useGlobalInput(): void {
   const { enabled: clickEnabled, addEffect, removeEffect } = useClickIndicator();
   const {
@@ -29,6 +47,8 @@ export function useGlobalInput(): void {
   } = useKeystroke();
 
   const pressedKeysRef = useRef<Set<string>>(new Set());
+  const currentComboRef = useRef<string | null>(null);
+  const activeKeystrokeIdRef = useRef<string | null>(null);
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
@@ -63,40 +83,53 @@ export function useGlobalInput(): void {
       pressedKeysRef.current.add(key);
 
       const hasModifier = e.metaKey || e.ctrlKey || e.altKey || e.shiftKey;
-      const isModifierKey = MODIFIER_KEYS.includes(key);
 
       if (showModifiersOnly && !hasModifier && !showKeys.includes(key)) {
         return;
       }
 
-      const keys: string[] = [];
-      if (e.metaKey && key !== "Meta") keys.push("Meta");
-      if (e.ctrlKey && key !== "Control") keys.push("Control");
-      if (e.altKey && key !== "Alt") keys.push("Alt");
-      if (e.shiftKey && key !== "Shift") keys.push("Shift");
-      if (!isModifierKey) keys.push(key);
-
+      const keys = buildKeysFromEvent(e);
       if (keys.length === 0) return;
 
-      const item: KeystrokeItem = {
-        id: nanoid(),
-        keys,
-        displayText: formatKeyDisplay(keys),
-        timestamp: Date.now(),
-      };
+      const comboStr = keysToString(keys);
 
-      addKeystroke(item);
+      // 如果组合键变化了，移除旧的并创建新的
+      if (currentComboRef.current !== comboStr) {
+        if (activeKeystrokeIdRef.current) {
+          removeKeystroke(activeKeystrokeIdRef.current);
+        }
 
-      setTimeout(() => {
-        removeKeystroke(item.id);
-      }, PERFORMANCE_LIMITS.keystrokeDuration);
+        const item: KeystrokeItem = {
+          id: nanoid(),
+          keys,
+          displayText: formatKeyDisplay(keys),
+          timestamp: Date.now(),
+        };
+
+        addKeystroke(item);
+        currentComboRef.current = comboStr;
+        activeKeystrokeIdRef.current = item.id;
+      }
     },
     [keystrokeEnabled, showModifiersOnly, showKeys, addKeystroke, removeKeystroke]
   );
 
-  const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    pressedKeysRef.current.delete(e.key);
-  }, []);
+  const handleKeyUp = useCallback(
+    (e: KeyboardEvent) => {
+      pressedKeysRef.current.delete(e.key);
+
+      // 当所有键都释放时，延迟移除显示
+      if (pressedKeysRef.current.size === 0 && activeKeystrokeIdRef.current) {
+        const idToRemove = activeKeystrokeIdRef.current;
+        setTimeout(() => {
+          removeKeystroke(idToRemove);
+        }, PERFORMANCE_LIMITS.keystrokeDuration);
+        currentComboRef.current = null;
+        activeKeystrokeIdRef.current = null;
+      }
+    },
+    [removeKeystroke]
+  );
 
   useEffect(() => {
     window.addEventListener("mousedown", handleMouseDown);
