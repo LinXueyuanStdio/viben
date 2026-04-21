@@ -37,8 +37,8 @@ export function SidebarSection({
   if (!collapsible) {
     return (
       <div className={cn("space-y-1", className)}>
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="flex h-7 items-center justify-between px-3">
+          <span className="text-[11px] font-medium text-muted-foreground/70">
             {title}
           </span>
           {headerAction}
@@ -51,29 +51,47 @@ export function SidebarSection({
   // Collapsible section
   return (
     <div className={cn("space-y-1", className)}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
+      <div
         className={cn(
-          "flex w-full items-center gap-1 px-3 py-1.5",
-          "text-[11px] font-medium text-muted-foreground/70",
-          "hover:text-muted-foreground transition-colors duration-200",
-          "focus:outline-none"
+          "group flex h-7 w-full items-center gap-1 px-3",
+          "rounded-md cursor-pointer",
+          "hover:bg-accent/50 transition-colors duration-200"
         )}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
       >
-        <span>{title}</span>
-        <ChevronDown
+        <div
           className={cn(
-            "h-3 w-3 transition-transform duration-200",
-            isOpen ? "rotate-0" : "-rotate-90"
+            "flex items-center gap-1",
+            "text-[11px] font-medium text-muted-foreground/70",
+            "group-hover:text-muted-foreground transition-colors duration-200"
           )}
-        />
+        >
+          <span>{title}</span>
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 transition-transform duration-200",
+              isOpen ? "rotate-0" : "-rotate-90"
+            )}
+          />
+        </div>
         {headerAction && (
-          <div className="ml-auto flex items-center" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="ml-auto flex items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             {headerAction}
           </div>
         )}
-      </button>
+      </div>
       <div
         className={cn(
           "overflow-hidden transition-all duration-200",

@@ -257,19 +257,26 @@ export function SortableTabItem({
             )}
             <span className="truncate text-[13px]">{tab.name}</span>
 
-            {/* Close button */}
+            {/* Close button - use span with role="button" to avoid nested button error */}
             {canClose && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={handleCloseClick}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleCloseClick(e as unknown as MouseEvent);
+                  }
+                }}
                 className={cn(
                   "shrink-0 h-4 w-4 rounded flex items-center justify-center",
                   "opacity-0 group-hover:opacity-100 transition-opacity",
-                  "hover:bg-foreground/10"
+                  "hover:bg-foreground/10 cursor-pointer"
                 )}
               >
                 <X className="h-3 w-3" />
-              </button>
+              </span>
             )}
 
             {isActive && (

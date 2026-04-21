@@ -17,6 +17,7 @@ import {
   Loader2,
   Shield,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "@/components/layout/sidebar-section";
@@ -160,7 +161,14 @@ function PageTreeItem({
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasChildren = node.children.length > 0;
+
+  // Show action buttons when hovered OR when dropdown menu is open
+  const showActions = isHovered || isMenuOpen;
+
+  // Check if page is read-only (has read but not write permission)
+  const isReadOnly = node.page.permission.includes("read") && !node.page.permission.includes("write");
 
   const href = getPageHref(workspaceId, node.page.slug);
   const isActive = location.pathname + location.search === href;
@@ -274,14 +282,28 @@ function PageTreeItem({
               )}
             </Tooltip>
 
-            {/* Action buttons - slide in from right with staggered timing */}
+            {/* Read-only indicator */}
+            {isReadOnly && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex shrink-0 items-center text-muted-foreground/50">
+                    <Lock className="h-3 w-3" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t("page.readOnly")}
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {/* Action buttons - only use opacity for show/hide to avoid layout shifts */}
             <div
               className={cn(
                 "flex shrink-0 items-center gap-0.5 pr-1",
-                "transition-all duration-200 ease-out",
-                isHovered
-                  ? "opacity-100 translate-x-0"
-                  : "opacity-0 translate-x-2 pointer-events-none"
+                "transition-opacity duration-150 ease-out",
+                showActions
+                  ? "opacity-100"
+                  : "opacity-0 pointer-events-none"
               )}
             >
               {/* Create subpage button */}
@@ -310,7 +332,7 @@ function PageTreeItem({
               </Tooltip>
 
               {/* More actions menu */}
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={setIsMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
@@ -325,7 +347,12 @@ function PageTreeItem({
                     <MoreHorizontal className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuContent
+                  side="right"
+                  align="start"
+                  sideOffset={4}
+                  className="w-40"
+                >
                   <DropdownMenuItem
                     onClick={() => onOpenInNewTab(node.page)}
                   >
