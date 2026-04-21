@@ -64,7 +64,14 @@ export function WaveLayer(): null {
           const wave1 = Math.sin((normalizedX * params.frequency * Math.PI * 2) + t + layerOffset);
           const wave2 = Math.sin((normalizedX * params.frequency * 1.5 * Math.PI * 2) + t * 1.3 + layerOffset);
           const combined = (wave1 + wave2 * 0.5) / 1.5;
-          const y = height * 0.5 + combined * params.amplitude;
+
+          // 凹形包络函数：中央振幅小，两侧振幅大
+          // 使用二次曲线: 4*(x-0.5)^2 使得中央(x=0.5)时乘数最小
+          const concaveFactor = config.concave
+            ? Math.max(0.1, 4 * Math.pow(normalizedX - 0.5, 2))
+            : 1;
+
+          const y = height * 0.5 + combined * params.amplitude * concaveFactor;
 
           graphics.lineTo(x, y);
         }

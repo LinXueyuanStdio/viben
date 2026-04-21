@@ -140,6 +140,7 @@ export interface WaveConfig {
   opacity: number;
   speed: number;
   particlesEnabled: boolean;
+  concave?: boolean;  // 是否使用凹形波浪（语音交互时使用）
   customThemes?: Partial<Record<WaveState, WaveColorTheme>>;
 }
 
