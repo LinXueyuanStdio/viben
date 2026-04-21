@@ -38,6 +38,7 @@ import {
   AlertTriangle,
   Type,
   Layers,
+  Mic,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { VibenLogo } from "@/components/ui/viben-logo";
@@ -74,6 +75,7 @@ import { SettingsMcpPage } from "./settings-mcp";
 import { SettingsSkillsPage } from "./settings-skills";
 import { TerminalFontsSection } from "@/components/settings/terminal-fonts-section";
 import { SettingsOverlay } from "@/components/settings/settings-overlay";
+import { SettingsVoice } from "@/components/settings/settings-voice";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import type { NotificationCategory, NotificationMethod } from "@/types/notification";
@@ -92,7 +94,7 @@ import Cursor from "@lobehub/icons/es/Cursor";
 import Windsurf from "@lobehub/icons/es/Windsurf";
 
 // Settings section type
-type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "mcp" | "skills" | "sandbox" | "environment" | "terminalFonts" | "overlay" | "storage" | "developer" | "about";
+type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "mcp" | "skills" | "sandbox" | "environment" | "terminalFonts" | "overlay" | "voice" | "storage" | "developer" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -117,6 +119,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "terminalFonts", labelKey: "settings.sections.terminalFonts", icon: Type },
   { id: "overlay", labelKey: "settings.sections.overlay", icon: Layers },
+  { id: "voice", labelKey: "settings.sections.voice", icon: Mic },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
   { id: "developer", labelKey: "settings.sections.developer", icon: Bug },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -326,6 +329,8 @@ export function SettingsPage() {
         return <TerminalFontsSection key="terminalFonts" />;
       case "overlay":
         return <SettingsOverlay key="overlay" />;
+      case "voice":
+        return <SettingsVoice key="voice" />;
       case "storage":
         return <StorageSection key="storage" />;
       case "developer":
