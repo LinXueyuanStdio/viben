@@ -1,0 +1,28 @@
+[project]
+name = "wakeword-trainer"
+version = "0.1.0"
+description = "Custom wake word training for Viben"
+requires-python = ">=3.9"
+
+dependencies = [
+    "openwakeword>=0.6.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "onnx>=1.14.0",
+    "numpy>=1.24.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
