@@ -10,7 +10,6 @@ export type { WakeWordDetection, WakeWordCallback } from './wake-word-engine';
 // Vocal Bridge 客户端
 export { vocalBridgeClient, VocalBridgeClient } from './vocal-bridge-client';
 export type {
-  VocalBridgeConfig,
   VocalBridgeState,
   TranscriptEvent,
 } from './vocal-bridge-client';
