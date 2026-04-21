@@ -190,7 +190,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "mcp", "skills", "sandbox", "environment", "terminalFonts", "overlay", "storage", "developer", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "mcp", "skills", "sandbox", "environment", "terminalFonts", "overlay", "voice", "storage", "developer", "about"];
 
 // LocalStorage key for settings sidebar collapsed state
 const SETTINGS_SIDEBAR_COLLAPSED_KEY = "settings-sidebar-collapsed";

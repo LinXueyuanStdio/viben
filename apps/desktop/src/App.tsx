@@ -131,6 +131,7 @@ function App() {
             <Route path="environment" element={null} />
             <Route path="terminalFonts" element={null} />
             <Route path="overlay" element={null} />
+            <Route path="voice" element={null} />
             <Route path="storage" element={null} />
             <Route path="developer" element={null} />
             <Route path="about" element={null} />

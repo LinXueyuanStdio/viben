@@ -29,14 +29,40 @@
       box-shadow: 0 0 60px rgba(79,172,254,0.5);
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       font-size: 48px; margin-bottom: 30px; transition: all 0.3s;
+      position: relative;
     }
     .orb:hover { transform: scale(1.05); }
-    .orb.listening { background: radial-gradient(circle at 30% 30%, #3498db, #2980b9); animation: pulse 1.5s infinite; }
+    .orb.listening {
+      background: radial-gradient(circle at 30% 30%, #3498db, #2980b9);
+      animation: pulse 1.5s infinite;
+    }
     .orb.active { background: radial-gradient(circle at 30% 30%, #2ecc71, #27ae60); }
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.08); }
     }
+
+    /* 麦克风状态指示器 */
+    .mic-status {
+      position: absolute;
+      bottom: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #e74c3c;
+      border: 3px solid #1a1a2e;
+      transition: background 0.2s;
+    }
+    .mic-status.active {
+      background: #2ecc71;
+      animation: mic-pulse 0.5s infinite;
+    }
+    @keyframes mic-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
     .subtitle { font-size: 18px; color: rgba(255,255,255,0.7); margin-bottom: 20px; }
     .transcript {
       background: rgba(0,0,0,0.5); padding: 15px 25px; border-radius: 12px;
@@ -56,6 +82,10 @@
       background: #e74c3c; padding: 15px 25px; border-radius: 10px;
       margin-bottom: 20px; text-align: center;
     }
+    .debug-info {
+      position: fixed; bottom: 60px; font-size: 12px;
+      color: rgba(255,255,255,0.3); font-family: monospace;
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -63,15 +93,20 @@
   <div class="badge" id="badge">待机</div>
 
   <div class="browser-warning hidden" id="warning">
-    请使用 <b>Safari</b> 浏览器以获得最佳体验<br>
-    <small>Chrome 的语音识别会频繁请求权限</small>
+    请使用 <b>HTTPS</b> 访问本页面<br>
+    <small>HTTP 模式下语音识别会频繁请求权限</small><br>
+    <small>运行: node serve-https.js</small>
   </div>
 
-  <div class="orb" id="orb">🎤</div>
+  <div class="orb" id="orb">
+    🎤
+    <div class="mic-status" id="micStatus"></div>
+  </div>
   <p class="subtitle" id="subtitle">点击开始</p>
   <div class="transcript" id="transcript"></div>
   <div class="greeting" id="greeting"></div>
   <div class="hints" id="hints"></div>
+  <div class="debug-info" id="debug"></div>
 
   <script src="https://unpkg.com/@vocalbridgeai/sdk@latest/dist/vocal-bridge.umd.js"></script>
   <script>
@@ -90,20 +125,27 @@
     let recognition = null;
     let vocalBridge = null;
     let idleTimer = null;
-    let recognitionRestarting = false;
+    let mediaStream = null;      // 保持麦克风流始终打开
+    let audioContext = null;
+    let analyser = null;
 
-    // Elements
     const $ = id => document.getElementById(id);
 
-    // 检测浏览器
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isChrome = /chrome/i.test(navigator.userAgent) && !/edge/i.test(navigator.userAgent);
-
-    if (isChrome) {
+    // 检测 HTTPS
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       $('warning').classList.remove('hidden');
     }
 
-    // 初始化语音识别（只创建一次）
+    function debug(msg) {
+      console.log(msg);
+      $('debug').textContent = msg;
+    }
+
+    function setMicStatus(active) {
+      $('micStatus').className = 'mic-status' + (active ? ' active' : '');
+    }
+
+    // 初始化语音识别
     function initRecognition() {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) {
@@ -115,10 +157,23 @@
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'zh-CN';
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
-        console.log('Recognition started');
-        recognitionRestarting = false;
+        debug('recognition.onstart');
+        setMicStatus(true);
+      };
+
+      recognition.onaudiostart = () => {
+        debug('recognition.onaudiostart - 麦克风已激活');
+      };
+
+      recognition.onsoundstart = () => {
+        debug('recognition.onsoundstart - 检测到声音');
+      };
+
+      recognition.onspeechstart = () => {
+        debug('recognition.onspeechstart - 检测到语音');
       };
 
       recognition.onresult = e => {
@@ -126,89 +181,142 @@
 
         const result = e.results[e.results.length - 1];
         const text = result[0].transcript;
-        $('transcript').textContent = text;
+        const isFinal = result.isFinal;
 
-        // 检查唤醒词
-        for (const w of CONFIG.wakeWords) {
-          if (text.includes(w) || text.includes('问财')) {
-            onWake();
-            return;
+        $('transcript').textContent = text + (isFinal ? '' : '...');
+        debug(`result: "${text}" (final: ${isFinal})`);
+
+        // 只在 final 结果时检查唤醒词
+        if (isFinal) {
+          for (const w of CONFIG.wakeWords) {
+            if (text.includes(w) || text.includes('问财')) {
+              onWake();
+              return;
+            }
           }
         }
       };
 
+      recognition.onspeechend = () => {
+        debug('recognition.onspeechend - 语音结束');
+      };
+
+      recognition.onsoundend = () => {
+        debug('recognition.onsoundend - 声音结束');
+      };
+
+      recognition.onaudioend = () => {
+        debug('recognition.onaudioend - 麦克风关闭');
+        setMicStatus(false);
+      };
+
       recognition.onerror = e => {
-        console.log('Recognition error:', e.error);
-        // 不在 error 中重启，让 onend 处理
+        debug(`recognition.onerror: ${e.error}`);
+        setMicStatus(false);
+
+        // no-speech 错误是正常的，不需要特殊处理
+        if (e.error === 'no-speech') {
+          debug('无语音输入，将自动重启...');
+        }
       };
 
       recognition.onend = () => {
-        console.log('Recognition ended, state:', state, 'restarting:', recognitionRestarting);
+        debug('recognition.onend');
+        setMicStatus(false);
 
-        // 只有在 listening 状态且未在重启中才重启
-        if (state === 'listening' && !recognitionRestarting) {
-          recognitionRestarting = true;
-          // 延迟重启，避免过于频繁
+        // 智能重启：避免过于频繁
+        if (state === 'listening') {
+          const now = Date.now();
+          const timeSinceLastRestart = now - lastRestartTime;
+
+          // 如果距离上次重启不到 500ms，等待更长时间
+          const delay = timeSinceLastRestart < 500 ? 1000 : 100;
+
+          debug(`将在 ${delay}ms 后重启...`);
+
           setTimeout(() => {
             if (state === 'listening') {
+              lastRestartTime = Date.now();
+              restartCount++;
+              debug(`重启 #${restartCount}`);
+
               try {
                 recognition.start();
               } catch (e) {
-                console.log('Restart failed:', e.message);
-                recognitionRestarting = false;
+                debug(`重启失败: ${e.message}`);
+                // 如果启动失败，等待更长时间再试
+                setTimeout(() => {
+                  if (state === 'listening') {
+                    try { recognition.start(); } catch (e2) {}
+                  }
+                }, 1000);
               }
             }
-          }, 300);
+          }, delay);
         }
       };
 
       return true;
     }
 
-    // 状态管理
     function setState(s) {
       state = s;
       $('orb').className = 'orb ' + s;
       $('badge').className = 'badge ' + s;
       $('badge').textContent = { idle: '待机', listening: '监听中', active: '对话中' }[s] || s;
-      $('orb').textContent = { idle: '🎤', listening: '👂', active: '💬' }[s] || '🎤';
+
+      // 更新 orb 内容但保留 mic-status
+      const orbEl = $('orb');
+      const icon = { idle: '🎤', listening: '👂', active: '💬' }[s] || '🎤';
+      orbEl.childNodes[0].textContent = icon;
+
       $('hints').textContent = {
         listening: '说「你好问财」唤醒 | 点击停止',
         active: '说「退下」结束对话'
       }[s] || '';
     }
 
-    // 开始监听
     function startListening() {
       setState('listening');
       $('subtitle').textContent = '说「你好问财」唤醒我';
       $('transcript').textContent = '正在监听...';
+      restartCount = 0;
+      lastRestartTime = 0;
 
       if (!recognition && !initRecognition()) return;
 
       try {
         recognition.start();
+        debug('recognition.start() 已调用');
       } catch (e) {
-        console.log('Start failed (may already be running):', e.message);
+        debug(`start 失败: ${e.message}`);
+        // 可能已经在运行，尝试先停止再启动
+        try {
+          recognition.stop();
+          setTimeout(() => {
+            if (state === 'listening') {
+              try { recognition.start(); } catch (e2) {}
+            }
+          }, 100);
+        } catch (e2) {}
       }
     }
 
-    // 停止监听
     function stopListening() {
       setState('idle');
       $('subtitle').textContent = '点击开始';
       $('transcript').textContent = '';
+      setMicStatus(false);
 
       if (recognition) {
-        try {
-          recognition.stop();
-        } catch (e) {}
+        try { recognition.stop(); } catch (e) {}
       }
     }
 
-    // 唤醒
     function onWake() {
-      // 先停止语音识别
+      debug('唤醒词检测到！');
+
+      // 停止语音识别
       if (recognition) {
         try { recognition.stop(); } catch (e) {}
       }
@@ -219,7 +327,6 @@
       $('greeting').classList.add('show');
       setTimeout(() => $('greeting').classList.remove('show'), 1500);
 
-      // 系统 TTS
       const u = new SpeechSynthesisUtterance(g);
       u.lang = 'zh-CN';
       u.rate = 1.1;
@@ -228,7 +335,6 @@
       setTimeout(startConversation, 800);
     }
 
-    // 开始对话
     async function startConversation() {
       setState('active');
       $('subtitle').textContent = '对话中...';
@@ -286,15 +392,13 @@
       setTimeout(startListening, 2000);
     }
 
-    // 点击事件
     $('orb').onclick = () => {
       if (state === 'idle') startListening();
       else if (state === 'listening') stopListening();
       else if (state === 'active') endConversation();
     };
 
-    // 初始化
-    console.log('Browser:', isSafari ? 'Safari' : isChrome ? 'Chrome' : 'Other');
+    debug('就绪');
   </script>
 </body>
 </html>
