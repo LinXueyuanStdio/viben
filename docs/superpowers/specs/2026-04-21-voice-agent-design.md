@@ -8,6 +8,7 @@
 
 | 版本 | 日期 | 修改内容 |
 |-----|------|---------|
+| 1.2 | 2026-04-21 | 将 Porcupine 替换为 openWakeWord (WASM)，添加本地 Python 训练流程 |
 | 1.1 | 2026-04-21 | 根据 Review 意见更新：API Key 加密存储、400字符阈值、共享音频流、静默计时逻辑、新增 error 状态 |
 | 1.0 | 2026-04-21 | 初始版本 |
 
@@ -24,10 +25,10 @@
 │                  │                 │                        │
 │                  ▼                 ▼                        │
 │  ┌─────────────────┐    ┌──────────────────────────────┐   │
-│  │  Porcupine      │    │  Vocal Bridge SDK            │   │
+│  │  openWakeWord   │    │  Vocal Bridge SDK            │   │
 │  │  (Wake Word)    │───▶│  (WebRTC Voice Agent)        │   │
-│  │  @picovoice/    │    │  @vocalbridgeai/sdk          │   │
-│  │  porcupine-web  │    └──────────┬───────────────────┘   │
+│  │  WASM + ONNX    │    │  @vocalbridgeai/sdk          │   │
+│  │  onnxruntime-web│    └──────────┬───────────────────┘   │
 │  └─────────────────┘               │                        │
 │           │                        │                        │
 │           ▼                        ▼                        │
@@ -102,18 +103,18 @@ apps/desktop/src/
 │
 ├── hooks/
 │   ├── use-voice-agent.ts          # Voice Agent 连接管理
-│   ├── use-porcupine.ts            # 唤醒词检测
-│   └── use-shared-audio.ts         # 共享音频流管理 (新增)
+│   ├── use-wake-word.ts            # 唤醒词检测 (openWakeWord)
+│   └── use-shared-audio.ts         # 共享音频流管理
 │
 ├── lib/
 │   └── voice/
 │       ├── index.ts                # 导出
-│       ├── shared-audio-stream.ts  # 共享 AudioContext 管理 (新增)
+│       ├── shared-audio-stream.ts  # 共享 AudioContext 管理
 │       ├── vocal-bridge-client.ts  # Vocal Bridge SDK 封装
-│       ├── porcupine-engine.ts     # Porcupine 引擎封装
+│       ├── wake-word-engine.ts     # openWakeWord WASM 引擎封装
 │       ├── audio-feedback.ts       # 提示音/音效管理
 │       ├── markdown-renderer.ts    # Canvas Markdown 渲染器
-│       └── secure-config.ts        # API Key 加密存储 (新增)
+│       └── secure-config.ts        # API Key 加密存储
 │
 ├── components/
 │   ├── settings/
@@ -165,12 +166,12 @@ type WakeWordState =
 interface VoiceConfig {
   // API Keys
   vocalBridgeApiKey: string;
-  porcupineAccessKey: string;
+  // 注：openWakeWord 无需 API Key，使用本地 ONNX 模型
 
   // 唤醒词
   wakeWord: string;               // 默认 "你好微本"
-  wakeWordModelPath?: string;     // 自定义模型路径
-  builtinWakeWord?: string;       // 内置唤醒词 (开发阶段)
+  wakeWordModelPath?: string;     // 自定义 ONNX 模型路径
+  builtinWakeWord?: string;       // 内置唤醒词 (开发阶段用 hey_jarvis)
 
   // 行为配置
   autoStartOnLaunch: boolean;     // 启动时自动监听
@@ -262,20 +263,24 @@ function useVoiceAgent(): {
 }
 ```
 
-### 5.2 usePorcupine
+### 5.2 useWakeWord
 
 ```typescript
-function usePorcupine(): {
+function useWakeWord(): {
   // 状态
   state: WakeWordState;
   isListening: boolean;
 
+  // 配置
+  activeKeywords: string[];       // 当前激活的唤醒词列表
+
   // 操作
   start: () => Promise<void>;
   stop: () => void;
+  setActiveKeywords: (keywords: string[]) => void;
 
   // 事件
-  onWakeWordDetected: (callback: () => void) => void;
+  onWakeWordDetected: (callback: (keyword: string, score: number) => void) => void;
 }
 ```
 
@@ -288,7 +293,7 @@ function usePorcupine(): {
 **结构**:
 - API 配置卡片
   - Vocal Bridge API Key (密码输入框)
-  - Porcupine Access Key (密码输入框)
+  - 唤醒词模型状态显示 (无需配置 API Key)
 - 唤醒词设置卡片
   - 唤醒词选择 (下拉框)
   - 启动时自动监听 (开关)
@@ -376,7 +381,7 @@ app.stage
 
 ### 7.0 共享音频流架构
 
-Porcupine 和 Vocal Bridge 都需要麦克风访问，使用共享音频流避免资源竞争：
+openWakeWord 和 Vocal Bridge 都需要麦克风访问，使用共享音频流避免资源竞争：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -389,7 +394,7 @@ Porcupine 和 Vocal Bridge 都需要麦克风访问，使用共享音频流避�
 │  │         ▼                   ▼                   │   │
 │  │  ┌─────────────┐     ┌─────────────┐           │   │
 │  │  │ ScriptNode  │     │ MediaStream │           │   │
-│  │  │ (Porcupine) │     │ (VocalBridge)│           │   │
+│  │  │(openWakeWord│     │ (VocalBridge)│           │   │
 │  │  └─────────────┘     └─────────────┘           │   │
 │  └─────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
@@ -397,7 +402,7 @@ Porcupine 和 Vocal Bridge 都需要麦克风访问，使用共享音频流避�
 工作流程:
 1. 应用启动时创建 SharedAudioStream 单例
 2. 获取一次麦克风权限，创建 MediaStream
-3. Porcupine 通过 ScriptProcessorNode 分析音频
+3. openWakeWord 通过 ScriptProcessorNode 分析音频 (80ms 帧)
 4. Vocal Bridge 使用同一 MediaStream 建立 WebRTC 连接
 5. 两个服务可同时运行，无需切换
 ```
@@ -405,10 +410,10 @@ Porcupine 和 Vocal Bridge 都需要麦克风访问，使用共享音频流避�
 ### 7.1 唤醒词激活流程
 
 ```
-Porcupine 检测到唤醒词
+openWakeWord 检测到唤醒词 (score > threshold)
     │
     ▼
-usePorcupine.onWakeWordDetected()
+useWakeWord.onWakeWordDetected(keyword, score)
     │
     ▼
 playSound('wake-up')
@@ -469,7 +474,8 @@ connectionState: → 'idle'
 | 包名 | 版本 | 用途 |
 |-----|------|------|
 | @vocalbridgeai/sdk | ^1.0.0 | 语音服务 SDK |
-| @picovoice/porcupine-web | ^3.0.6 | 唤醒词检测 |
+| openwakeword-wasm-browser | ^0.1.0 | 唤醒词检测 (WASM) |
+| onnxruntime-web | ^1.17.0 | ONNX 模型推理 |
 | @pixi/ui | ^2.3.2 | Canvas UI 组件 |
 | marked | ^12.0.0 | Markdown 解析 |
 | @tauri-apps/plugin-store | ^2.0.0 | API Key 加密存储 |
@@ -485,6 +491,20 @@ connectionState: → 'idle'
 > **重要**: 在开发前需验证 @vocalbridgeai/sdk 的可用性。如果 SDK 不可用，需要：
 > 1. 直接使用 LiveKit SDK (@livekit/client) 实现
 > 2. 参考 Vocal Bridge Developer Guide 中的 Direct WebRTC Integration 方案
+
+### 8.4 openWakeWord ONNX 模型
+
+运行时需要以下 ONNX 模型文件：
+
+| 模型文件 | 用途 | 大小 |
+|---------|------|------|
+| melspectrogram.onnx | 音频转频谱图 | ~50KB |
+| embedding_model.onnx | 通用语音嵌入 | ~1.5MB |
+| silero_vad.onnx | 语音活动检测 | ~2MB |
+| hey_jarvis_v0.1.onnx | 内置唤醒词（开发用） | ~200KB |
+| ni_hao_wei_ben.onnx | 自定义唤醒词（待训练） | ~200KB |
+
+模型文件放置位置：`apps/desktop/public/openwakeword/models/`
 
 ## 9. 配置存储
 
@@ -511,7 +531,8 @@ await secureStore.save();
 
 wake_word: "你好微本"
 wake_word_model_path: null
-builtin_wake_word: "hey google"  # 开发阶段
+builtin_wake_word: "hey_jarvis"  # 开发阶段使用内置模型
+wake_word_threshold: 0.5         # 检测阈值 (0-1)
 
 auto_start_on_launch: false
 silence_timeout: 30
@@ -526,7 +547,7 @@ enable_sound_effects: true
 | API Key 未配置 | 启动时检查 | Toast 提示，引导到设置页 |
 | 麦克风权限拒绝 | connect() 失败 | Toast 提示授权方式 |
 | 网络连接失败 | SDK error 事件 | Toast + 错误音效 |
-| Porcupine 加载失败 | start() 失败 | Toast 提示检查 Access Key |
+| ONNX 模型加载失败 | engine.load() 失败 | Toast 提示检查模型文件 |
 | 语音服务超时 | 30s 无响应 | 自动重连或提示用户 |
 
 ## 11. 实现阶段
@@ -566,10 +587,17 @@ enable_sound_effects: true
 
 ### 阶段 6: 唤醒词
 
-- [ ] 创建 porcupine-engine.ts
-- [ ] 创建 use-porcupine.ts
-- [ ] 集成内置唤醒词测试
-- [ ] (后续) 训练"你好微本"模型
+- [ ] 创建 wake-word-engine.ts (封装 openwakeword-wasm-browser)
+- [ ] 创建 use-wake-word.ts
+- [ ] 部署 ONNX 模型文件到 public 目录
+- [ ] 集成内置唤醒词 (hey_jarvis) 测试
+
+### 阶段 6.5: 自定义唤醒词训练
+
+- [ ] 搭建 backend/wakeword Python 训练项目
+- [ ] 配置 Piper TTS 生成中文合成语音
+- [ ] 训练"你好微本"模型
+- [ ] 导出 ONNX 模型并集成到应用
 
 ### 阶段 7: 音效与优化
 
@@ -590,7 +618,7 @@ enable_sound_effects: true
 ### 12.2 集成测试
 
 - Vocal Bridge 连接/断开
-- Porcupine 唤醒词检测
+- openWakeWord 唤醒词检测
 - 波浪状态联动
 - 共享音频流资源管理
 
@@ -613,3 +641,109 @@ enable_sound_effects: true
 - 网络抖动/断开重连
 - 快速连续唤醒
 - 应用最小化时的行为
+
+## 13. Python 唤醒词训练项目
+
+### 13.1 项目结构
+
+```
+backend/wakeword/
+├── README.md                    # 使用说明
+├── pyproject.toml              # Python 项目配置
+├── configs/
+│   ├── hey_jarvis.yaml         # 示例配置
+│   └── ni_hao_wei_ben.yaml     # "你好微本" 配置
+├── src/
+│   └── wakeword_trainer/
+│       ├── __init__.py
+│       ├── train.py            # 训练入口
+│       ├── generate.py         # 合成语音生成
+│       └── export.py           # ONNX 导出
+├── models/                     # 训练产出
+│   └── .gitkeep
+└── data/                       # 训练数据
+    └── .gitkeep
+```
+
+### 13.2 训练流程
+
+openWakeWord 使用合成语音进行训练，无需真人录音：
+
+```
+1. generate    - 使用 Piper TTS 生成目标唤醒词的合成语音
+2. augment     - 数据增强（加噪声、混响、变速）
+3. train       - 训练分类模型
+4. export      - 导出 ONNX 模型
+```
+
+### 13.3 配置文件示例
+
+```yaml
+# configs/ni_hao_wei_ben.yaml
+model_name: "ni_hao_wei_ben"
+target_phrase: "你好微本"
+
+# TTS 配置 (使用中文 Piper 模型)
+tts:
+  model: "zh_CN-huayan-medium"
+  num_samples: 5000           # 生成样本数
+
+# 训练配置
+training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.001
+
+# 数据增强
+augmentation:
+  noise_snr_range: [5, 20]    # 信噪比范围
+  speed_range: [0.9, 1.1]     # 语速变化
+  reverb: true                # 添加混响
+
+# 导出配置
+export:
+  output_dir: "../../apps/desktop/public/openwakeword/models"
+  threshold: 0.5              # 推荐检测阈值
+```
+
+### 13.4 依赖项
+
+```toml
+# pyproject.toml
+[project]
+dependencies = [
+    "openwakeword>=0.6.0",
+    "piper-tts>=1.0.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "onnx>=1.14.0",
+    "speechbrain>=0.5.0",
+]
+```
+
+### 13.5 使用命令
+
+```bash
+# 安装依赖
+cd backend/wakeword
+pip install -e .
+
+# 训练模型 (一键执行)
+python -m wakeword_trainer.train --config configs/ni_hao_wei_ben.yaml
+
+# 分步执行
+python -m wakeword_trainer.generate --config configs/ni_hao_wei_ben.yaml
+python -m wakeword_trainer.train --config configs/ni_hao_wei_ben.yaml --skip-generate
+python -m wakeword_trainer.export --config configs/ni_hao_wei_ben.yaml
+
+# 测试模型
+python -m wakeword_trainer.test --model models/ni_hao_wei_ben.onnx --audio test.wav
+```
+
+### 13.6 中文 TTS 模型选择
+
+| 模型 | 来源 | 质量 | 备注 |
+|-----|------|------|------|
+| zh_CN-huayan-medium | Piper | 中等 | 推荐，开源免费 |
+| zh_CN-huayan-high | Piper | 高 | 效果更好，文件较大 |
+| 自定义 | 本地训练 | 可变 | 需要额外准备数据 |

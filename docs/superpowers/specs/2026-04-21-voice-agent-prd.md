@@ -8,6 +8,7 @@
 
 | 版本 | 日期 | 修改内容 |
 |-----|------|---------|
+| 1.2 | 2026-04-21 | 将 Porcupine 替换为 openWakeWord，添加本地训练流程 |
 | 1.1 | 2026-04-21 | 弹窗触发阈值从 200 词改为 400 字符 |
 | 1.0 | 2026-04-21 | 初始版本 |
 
@@ -39,8 +40,8 @@ Viben Desktop 应用需要集成语音交互能力，让用户能够通过语音
 **验收标准**:
 - 设置页有独立的「语音交互」区域
 - 可以输入 Vocal Bridge API Key
-- 可以输入 Porcupine Access Key
 - 输入框支持显示/隐藏密钥
+- 唤醒词模型无需 API Key（本地 ONNX 模型）
 
 ### 2.2 唤醒词激活
 
@@ -91,7 +92,8 @@ Viben Desktop 应用需要集成语音交互能力，让用户能够通过语音
 | 设置项 | 类型 | 说明 |
 |-------|------|------|
 | Vocal Bridge API Key | 密码输入框 | 语音服务 API 密钥 |
-| Porcupine Access Key | 密码输入框 | 唤醒词检测服务密钥 |
+
+> 注：唤醒词检测使用 openWakeWord，本地 ONNX 模型运行，无需 API Key
 
 #### 3.1.2 唤醒词设置卡片
 
@@ -201,9 +203,10 @@ Viben Desktop 应用需要集成语音交互能力，让用户能够通过语音
 
 ### 第二阶段：唤醒词
 
-- Porcupine 集成
-- 先用内置唤醒词测试
-- 训练"你好微本"自定义模型
+- openWakeWord 集成（openwakeword-wasm-browser）
+- 先用内置唤醒词（hey_jarvis）测试
+- 使用 Python openWakeWord 训练"你好微本"自定义模型
+- 导出 ONNX 模型供浏览器使用
 
 ### 第三阶段：增强体验
 
@@ -216,11 +219,14 @@ Viben Desktop 应用需要集成语音交互能力，让用户能够通过语音
 
 | 问题 | 状态 | 备注 |
 |-----|------|------|
-| Porcupine "你好微本" 模型训练 | 待处理 | 需要在 Picovoice Console 训练 |
+| openWakeWord "你好微本" 模型训练 | 待处理 | 使用 backend/wakeword Python 项目本地训练 |
 | 音效文件来源 | 待确定 | 需要设计或采购音效素材 |
+| 中文 TTS 模型选择 | 待确定 | 训练数据生成需要中文 TTS（如 Piper TTS）|
 
 ## 7. 参考资料
 
 - [Vocal Bridge Developer Guide](https://vocalbridgeai.com/dashboard)
-- [Picovoice Porcupine](https://github.com/picovoice/porcupine)
+- [openWakeWord](https://github.com/dscripka/openWakeWord) - Python 唤醒词训练框架
+- [openwakeword_wasm](https://github.com/dnavarrom/openwakeword_wasm) - 浏览器 WASM 运行时
+- [openwakeword-trainer](https://github.com/lgpearson1771/openwakeword-trainer) - 13步训练流水线
 - [@pixi/ui](https://github.com/pixijs/ui)
