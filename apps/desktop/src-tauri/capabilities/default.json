@@ -5,6 +5,10 @@
   "windows": ["main", "tray-popup"],
   "permissions": [
     "core:default",
+    "global-shortcut:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
     "opener:default",
     "opener:allow-reveal-item-in-dir",
     {
@@ -23,6 +27,7 @@
     {
       "identifier": "fs:allow-exists",
       "allow": [
+        { "path": "$HOME/.viben" },
         { "path": "$HOME/.viben/**" },
         { "path": "$HOME/**" }
       ]
@@ -93,6 +98,12 @@
     "process:default",
     "process:allow-restart",
     "process:allow-exit",
-    "window-state:default"
+    "window-state:default",
+    "store:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-load",
+    "store:allow-delete"
   ]
 }
