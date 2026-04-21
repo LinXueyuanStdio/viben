@@ -113,7 +113,6 @@ apps/desktop/src/
 │       ├── vocal-bridge-client.ts  # Vocal Bridge SDK 封装
 │       ├── wake-word-engine.ts     # openWakeWord WASM 引擎封装
 │       ├── audio-feedback.ts       # 提示音/音效管理
-│       ├── markdown-renderer.ts    # Canvas Markdown 渲染器
 │       └── secure-config.ts        # API Key 加密存储
 │
 ├── components/
@@ -339,42 +338,44 @@ function useWakeWord(): {
 
 ### 6.4 Overlay - AI 弹窗层 (AgentPopupLayer)
 
-**渲染方式**: PixiJS Canvas + @pixi/ui ScrollBox
+**渲染方式**: DOM + Streamdown (React 组件)
+
+> 注：使用 DOM 而非 Canvas 实现，以便利用 Streamdown 的流式 Markdown 渲染能力
 
 **触发条件**: Agent 回复 ≥400 字符
 
 **位置**: 用户字幕下方
 
 **功能**:
-- 流式 Markdown 渲染 (marked.js + 自定义 PixiJS renderer)
-- 可滚动 (ScrollBox)
-- 可选中复制
-- 代码块高亮
+- 流式 Markdown 渲染 (Streamdown - Vercel 开源组件)
+- 原生滚动支持
+- 可选中复制 (DOM 原生)
+- 代码块高亮 (Shiki)
 - 链接可点击
-- 闪烁光标（流式输出时）
+- 流式输出动画
 
 **交互**:
 - 点击弹窗外部消失
 - 用户说话时透明度降至 30%
 - 新内容自动滚动到底部
 
-### 6.5 Canvas 层级结构
+### 6.5 层级结构
 
 ```
-app.stage
+Overlay Canvas (PixiJS)
 ├── WaveContainer (zIndex: 0)
 │   ├── WaveLayer1 (蓝紫渐变，慢速)
 │   ├── WaveLayer2 (青蓝渐变，中速)
 │   ├── WaveLayer3 (紫粉渐变，快速)
 │   └── ParticleContainer (可选)
-├── SubtitleContainer (zIndex: 1)
-│   ├── Background (半透明圆角矩形)
-│   ├── Text (流式文字)
-│   └── Cursor (闪烁光标)
-└── AgentPopupContainer (zIndex: 2)
-    └── ScrollBox
-        ├── Background
-        └── MarkdownContent
+└── SubtitleContainer (zIndex: 1)
+    ├── Background (半透明圆角矩形)
+    ├── Text (流式文字)
+    └── Cursor (闪烁光标)
+
+Overlay DOM (React Portal)
+└── AgentPopup (fixed position, z-index: 9999)
+    └── Streamdown (流式 Markdown)
 ```
 
 ## 7. 数据流
@@ -476,8 +477,7 @@ connectionState: → 'idle'
 | @vocalbridgeai/sdk | ^1.0.0 | 语音服务 SDK |
 | openwakeword-wasm-browser | ^0.1.0 | 唤醒词检测 (WASM) |
 | onnxruntime-web | ^1.17.0 | ONNX 模型推理 |
-| @pixi/ui | ^2.3.2 | Canvas UI 组件 |
-| marked | ^12.0.0 | Markdown 解析 |
+| streamdown | ^2.0.0 | 流式 Markdown 渲染 |
 | @tauri-apps/plugin-store | ^2.0.0 | API Key 加密存储 |
 
 ### 8.2 现有依赖
@@ -580,10 +580,9 @@ enable_sound_effects: true
 
 ### 阶段 5: AI 弹窗
 
-- [ ] 创建 agent-popup-layer.tsx
-- [ ] 创建 markdown-renderer.ts
-- [ ] 实现 ScrollBox 集成
-- [ ] 实现流式 Markdown 渲染
+- [ ] 创建 agent-popup.tsx (DOM React 组件)
+- [ ] 集成 Streamdown 流式 Markdown
+- [ ] 实现弹窗交互逻辑
 
 ### 阶段 6: 唤醒词
 
