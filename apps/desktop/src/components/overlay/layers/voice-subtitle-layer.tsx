@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
 import { useOverlayContext } from "../overlay-context";
 import { useVoiceStore } from "@/stores/voice-store";
@@ -16,6 +16,9 @@ const SUBTITLE_CONFIG = {
   maxWidth: 600,
   topMargin: 60,
   cursorBlinkInterval: 500,
+  // 打字机效果配置
+  typewriterCharDelay: 30, // 每个字符的延迟（毫秒）
+  typewriterMinDelay: 10, // 最小延迟（快速追赶时）
 };
 
 export function VoiceSubtitleLayer(): null {
@@ -29,6 +32,11 @@ export function VoiceSubtitleLayer(): null {
   const cursorRef = useRef<Graphics | null>(null);
   const cursorVisibleRef = useRef(true);
   const blinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 打字机效果状态
+  const displayedTextRef = useRef("");
+  const targetTextRef = useRef("");
+  const typewriterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 初始化容器
   useEffect(() => {
@@ -68,6 +76,9 @@ export function VoiceSubtitleLayer(): null {
       if (blinkIntervalRef.current) {
         clearInterval(blinkIntervalRef.current);
       }
+      if (typewriterTimerRef.current) {
+        clearTimeout(typewriterTimerRef.current);
+      }
       container.destroy({ children: true });
       containerRef.current = null;
       bgRef.current = null;
@@ -76,8 +87,8 @@ export function VoiceSubtitleLayer(): null {
     };
   }, [app, isReady]);
 
-  // 更新字幕内容
-  useEffect(() => {
+  // 更新布局（背景、光标位置等）
+  const updateLayout = useCallback((displayedText: string) => {
     const container = containerRef.current;
     const bg = bgRef.current;
     const text = textRef.current;
@@ -85,22 +96,7 @@ export function VoiceSubtitleLayer(): null {
 
     if (!container || !bg || !text || !cursor) return;
 
-    const isActive =
-      connectionState === "listening" ||
-      connectionState === "processing" ||
-      connectionState === "speaking";
-
-    if (!isActive || !userTranscript) {
-      container.visible = false;
-      if (blinkIntervalRef.current) {
-        clearInterval(blinkIntervalRef.current);
-        blinkIntervalRef.current = null;
-      }
-      return;
-    }
-
-    container.visible = true;
-    text.text = userTranscript;
+    text.text = displayedText;
 
     // 计算尺寸
     const textWidth = Math.min(
@@ -131,6 +127,103 @@ export function VoiceSubtitleLayer(): null {
     const screenWidth = window.innerWidth;
     container.x = (screenWidth - boxWidth) / 2;
     container.y = SUBTITLE_CONFIG.topMargin;
+  }, []);
+
+  // 打字机动画：逐字符显示
+  const animateNextChar = useCallback(() => {
+    const target = targetTextRef.current;
+    const displayed = displayedTextRef.current;
+
+    // 如果目标文本发生变化且当前显示的文本不是目标的前缀，重置
+    if (!target.startsWith(displayed) && displayed.length > 0) {
+      // 目标文本完全改变了，从头开始
+      displayedTextRef.current = "";
+    }
+
+    const currentDisplayed = displayedTextRef.current;
+
+    // 已经显示完成
+    if (currentDisplayed.length >= target.length) {
+      return;
+    }
+
+    // 显示下一个字符
+    const nextChar = target[currentDisplayed.length];
+    const newDisplayed = currentDisplayed + nextChar;
+    displayedTextRef.current = newDisplayed;
+
+    // 更新 UI
+    updateLayout(newDisplayed);
+
+    // 计算延迟：如果落后太多，加速追赶
+    const lag = target.length - newDisplayed.length;
+    const delay =
+      lag > 10
+        ? SUBTITLE_CONFIG.typewriterMinDelay
+        : SUBTITLE_CONFIG.typewriterCharDelay;
+
+    // 继续动画
+    typewriterTimerRef.current = setTimeout(animateNextChar, delay);
+  }, [updateLayout]);
+
+  // 启动打字机动画
+  const startTypewriter = useCallback(
+    (newTarget: string) => {
+      targetTextRef.current = newTarget;
+
+      // 如果新目标是当前显示文本的扩展，继续动画
+      // 如果不是，重置并重新开始
+      if (!newTarget.startsWith(displayedTextRef.current)) {
+        displayedTextRef.current = "";
+      }
+
+      // 如果动画已在运行，让它继续
+      // 如果没有在运行，启动它
+      if (!typewriterTimerRef.current) {
+        animateNextChar();
+      }
+    },
+    [animateNextChar]
+  );
+
+  // 停止打字机动画
+  const stopTypewriter = useCallback(() => {
+    if (typewriterTimerRef.current) {
+      clearTimeout(typewriterTimerRef.current);
+      typewriterTimerRef.current = null;
+    }
+    displayedTextRef.current = "";
+    targetTextRef.current = "";
+  }, []);
+
+  // 更新字幕内容
+  useEffect(() => {
+    const container = containerRef.current;
+    const bg = bgRef.current;
+    const text = textRef.current;
+    const cursor = cursorRef.current;
+
+    if (!container || !bg || !text || !cursor) return;
+
+    const isActive =
+      connectionState === "listening" ||
+      connectionState === "processing" ||
+      connectionState === "speaking";
+
+    if (!isActive || !userTranscript) {
+      container.visible = false;
+      if (blinkIntervalRef.current) {
+        clearInterval(blinkIntervalRef.current);
+        blinkIntervalRef.current = null;
+      }
+      stopTypewriter();
+      return;
+    }
+
+    container.visible = true;
+
+    // 启动/更新打字机动画
+    startTypewriter(userTranscript);
 
     // 启动光标闪烁
     if (!blinkIntervalRef.current) {
@@ -141,7 +234,7 @@ export function VoiceSubtitleLayer(): null {
         }
       }, SUBTITLE_CONFIG.cursorBlinkInterval);
     }
-  }, [connectionState, userTranscript]);
+  }, [connectionState, userTranscript, startTypewriter, stopTypewriter]);
 
   return null;
 }
