@@ -43,6 +43,7 @@ export interface AgentResponse {
   isStreaming: boolean;
   showPopup: boolean;
   popupOpacity: number;
+  responseId: string | null; // 用于标识每次新回复，触发 loading 状态
 }
 
 /** 语音配置文件格式 (YAML) - API Key 不存储在此，使用 Tauri secure-storage */

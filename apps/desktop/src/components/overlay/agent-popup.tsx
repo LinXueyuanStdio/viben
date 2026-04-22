@@ -8,12 +8,24 @@ const POPUP_CONFIG = {
   maxWidth: 500,
   maxHeight: 400,
   topMargin: 140, // 字幕下方
-  charThreshold: 20, // ≥20 字符时显示弹窗
   // 打字机效果配置
   charsPerFrame: 3, // 每帧显示的字符数
   catchUpCharsPerFrame: 8, // 追赶时每帧显示的字符数
   lagThreshold: 20, // 超过这个字符数开始加速追赶
 };
+
+/**
+ * Loading 动画组件 - 三个跳动的点
+ */
+function LoadingDots(): ReactElement {
+  return (
+    <div className="flex items-center gap-1 py-2">
+      <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+      <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+      <span className="w-2 h-2 bg-white/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+    </div>
+  );
+}
 
 /**
  * Agent 弹窗组件
@@ -35,8 +47,34 @@ export function AgentPopup(): ReactElement | null {
   const rafIdRef = useRef<number | null>(null);
   const isAnimatingRef = useRef(false);
 
+  // 跟踪上一次的 responseId 来检测新回复
+  const lastResponseIdRef = useRef<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const isActive = connectionState === 'speaking' || connectionState === 'processing';
-  const shouldShow = agentResponse.showPopup && agentResponse.charCount >= POPUP_CONFIG.charThreshold;
+  // 只要 agent 开始说话就显示弹窗（不再等待字符阈值）
+  const shouldShow = agentResponse.showPopup && isActive;
+
+  // 检测新回复，进入 loading 状态
+  useEffect(() => {
+    const currentId = agentResponse.responseId;
+
+    if (currentId && currentId !== lastResponseIdRef.current) {
+      // 新的回复开始
+      lastResponseIdRef.current = currentId;
+
+      // 清空之前的内容，进入 loading 状态
+      displayedTextRef.current = '';
+      targetTextRef.current = '';
+      setDisplayedText('');
+      setIsLoading(true);
+    }
+
+    // 当有文本内容时，退出 loading 状态
+    if (agentResponse.text && agentResponse.text.length > 0) {
+      setIsLoading(false);
+    }
+  }, [agentResponse.responseId, agentResponse.text]);
 
   // 打字机动画帧循环
   const animationLoop = useCallback(() => {
@@ -71,7 +109,7 @@ export function AgentPopup(): ReactElement | null {
 
   // 启动/停止打字机动画
   useEffect(() => {
-    if (shouldShow && agentResponse.text) {
+    if (shouldShow && agentResponse.text && !isLoading) {
       targetTextRef.current = agentResponse.text;
 
       // 如果新目标不是当前显示文本的扩展，重置
@@ -85,16 +123,13 @@ export function AgentPopup(): ReactElement | null {
         isAnimatingRef.current = true;
         rafIdRef.current = requestAnimationFrame(animationLoop);
       }
-    } else {
-      // 停止动画
+    } else if (!shouldShow) {
+      // 弹窗关闭时停止动画
       isAnimatingRef.current = false;
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
       }
-      displayedTextRef.current = '';
-      targetTextRef.current = '';
-      setDisplayedText('');
     }
 
     return () => {
@@ -102,7 +137,18 @@ export function AgentPopup(): ReactElement | null {
         cancelAnimationFrame(rafIdRef.current);
       }
     };
-  }, [shouldShow, agentResponse.text, animationLoop]);
+  }, [shouldShow, agentResponse.text, isLoading, animationLoop]);
+
+  // 当不再 active 时，重置状态
+  useEffect(() => {
+    if (!isActive) {
+      lastResponseIdRef.current = null;
+      setIsLoading(false);
+      displayedTextRef.current = '';
+      targetTextRef.current = '';
+      setDisplayedText('');
+    }
+  }, [isActive]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -130,9 +176,9 @@ export function AgentPopup(): ReactElement | null {
     if (scrollRef.current && agentResponse.isStreaming) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [agentResponse.text, agentResponse.isStreaming]);
+  }, [displayedText, agentResponse.isStreaming]);
 
-  if (!isActive || !shouldShow) {
+  if (!shouldShow) {
     return null;
   }
 
@@ -143,7 +189,9 @@ export function AgentPopup(): ReactElement | null {
         'fixed z-[9999] left-1/2 -translate-x-1/2',
         'bg-[#1a1a1a]/95 backdrop-blur-sm',
         'rounded-xl shadow-2xl border border-white/10',
-        'transition-opacity duration-200',
+        'transition-all duration-300 ease-out',
+        // 入场动画
+        'animate-in fade-in slide-in-from-top-2',
       )}
       style={{
         top: POPUP_CONFIG.topMargin,
@@ -156,18 +204,24 @@ export function AgentPopup(): ReactElement | null {
       <div
         ref={scrollRef}
         className="overflow-y-auto overflow-x-hidden p-5"
-        style={{ maxHeight: POPUP_CONFIG.maxHeight }}
+        style={{ maxHeight: POPUP_CONFIG.maxHeight, minHeight: 60 }}
       >
-        <div className="prose prose-invert prose-sm max-w-none">
-          {/* 使用打字机效果显示文本 */}
-          <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
-            {displayedText}
+        {isLoading ? (
+          // Loading 状态
+          <div className="flex items-center justify-center">
+            <LoadingDots />
           </div>
-        </div>
-
-        {/* 流式输出时的闪烁光标 */}
-        {agentResponse.isStreaming && (
-          <span className="inline-block w-0.5 h-4 bg-white/80 ml-1 animate-pulse" />
+        ) : (
+          <div className="prose prose-invert prose-sm max-w-none">
+            {/* 使用打字机效果显示文本 */}
+            <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
+              {displayedText}
+              {/* 流式输出时的闪烁光标 */}
+              {agentResponse.isStreaming && (
+                <span className="inline-block w-0.5 h-4 bg-white/80 ml-0.5 animate-pulse align-middle" />
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

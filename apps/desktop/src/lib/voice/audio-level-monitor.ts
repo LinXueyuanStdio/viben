@@ -1,28 +1,35 @@
 /**
- * 麦克风音量监控器
- * 使用 Web Audio API 实时采集麦克风音量电平
+ * 音量监控器
+ * 使用 Web Audio API 实时采集麦克风和系统音频电平
  */
 
 export type AudioLevelCallback = (level: number) => void;
 
 export class AudioLevelMonitor {
   private audioContext: AudioContext | null = null;
-  private analyser: AnalyserNode | null = null;
-  private mediaStream: MediaStream | null = null;
-  private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private micAnalyser: AnalyserNode | null = null;
+  private systemAnalyser: AnalyserNode | null = null;
+  private micStream: MediaStream | null = null;
+  private micSourceNode: MediaStreamAudioSourceNode | null = null;
+  private systemSourceNode: MediaElementAudioSourceNode | null = null;
   private rafId: number | null = null;
   private isRunning = false;
   private callbacks: Set<AudioLevelCallback> = new Set();
 
   // 音量数据缓冲
-  private dataArray: Uint8Array | null = null;
+  private micDataArray: Uint8Array | null = null;
+  private systemDataArray: Uint8Array | null = null;
 
   // 平滑参数
-  private smoothedLevel = 0;
-  private readonly smoothingFactor = 0.3; // 0-1, 越大越平滑
+  private smoothedMicLevel = 0;
+  private smoothedSystemLevel = 0;
+  private readonly smoothingFactor = 0.3;
+
+  // 系统音频元素引用
+  private audioElement: HTMLAudioElement | null = null;
 
   /**
-   * 开始监控麦克风音量
+   * 开始监控音量
    * @returns 是否成功启动
    */
   async start(): Promise<boolean> {
@@ -32,30 +39,14 @@ export class AudioLevelMonitor {
     }
 
     try {
-      // 获取麦克风权限
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
-
       // 创建音频上下文
       this.audioContext = new AudioContext();
 
-      // 创建分析器节点
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.8;
+      // 1. 设置麦克风监控
+      await this.setupMicrophoneMonitor();
 
-      // 连接麦克风到分析器
-      this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
-      this.sourceNode.connect(this.analyser);
-
-      // 初始化数据缓冲
-      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+      // 2. 设置系统音频监控（通过页面上的 audio 元素）
+      this.setupSystemAudioMonitor();
 
       // 开始采样循环
       this.isRunning = true;
@@ -68,6 +59,90 @@ export class AudioLevelMonitor {
       this.cleanup();
       return false;
     }
+  }
+
+  /**
+   * 设置麦克风监控
+   */
+  private async setupMicrophoneMonitor(): Promise<void> {
+    this.micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+
+    this.micAnalyser = this.audioContext!.createAnalyser();
+    this.micAnalyser.fftSize = 256;
+    this.micAnalyser.smoothingTimeConstant = 0.8;
+
+    this.micSourceNode = this.audioContext!.createMediaStreamSource(this.micStream);
+    this.micSourceNode.connect(this.micAnalyser);
+
+    this.micDataArray = new Uint8Array(this.micAnalyser.frequencyBinCount);
+  }
+
+  /**
+   * 设置系统音频监控
+   * 查找页面上的 audio 元素并监控其输出
+   */
+  private setupSystemAudioMonitor(): void {
+    // 查找 VocalBridge 使用的 audio 元素
+    // 通常是页面上的第一个 audio 元素，或者我们可以通过 ID 查找
+    const audioElements = document.querySelectorAll("audio");
+
+    if (audioElements.length > 0) {
+      this.audioElement = audioElements[0] as HTMLAudioElement;
+      this.connectAudioElement(this.audioElement);
+    }
+
+    // 使用 MutationObserver 监听新的 audio 元素
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLAudioElement && !this.audioElement) {
+            this.audioElement = node;
+            this.connectAudioElement(node);
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  /**
+   * 连接 audio 元素到分析器
+   */
+  private connectAudioElement(audioElement: HTMLAudioElement): void {
+    if (!this.audioContext || this.systemSourceNode) return;
+
+    try {
+      this.systemAnalyser = this.audioContext.createAnalyser();
+      this.systemAnalyser.fftSize = 256;
+      this.systemAnalyser.smoothingTimeConstant = 0.8;
+
+      this.systemSourceNode = this.audioContext.createMediaElementSource(audioElement);
+      this.systemSourceNode.connect(this.systemAnalyser);
+      // 同时连接到输出，否则听不到声音
+      this.systemSourceNode.connect(this.audioContext.destination);
+
+      this.systemDataArray = new Uint8Array(this.systemAnalyser.frequencyBinCount);
+      console.log("[AudioLevelMonitor] Connected to audio element for system audio monitoring");
+    } catch (err) {
+      console.warn("[AudioLevelMonitor] Failed to connect audio element:", err);
+    }
+  }
+
+  /**
+   * 手动连接 audio 元素（供外部调用）
+   */
+  connectAudio(audioElement: HTMLAudioElement): void {
+    if (this.audioElement === audioElement) return;
+    this.audioElement = audioElement;
+    this.connectAudioElement(audioElement);
   }
 
   /**
@@ -91,7 +166,7 @@ export class AudioLevelMonitor {
    * 获取当前音量级别 (0-1)
    */
   getCurrentLevel(): number {
-    return this.smoothedLevel;
+    return Math.max(this.smoothedMicLevel, this.smoothedSystemLevel);
   }
 
   /**
@@ -102,41 +177,65 @@ export class AudioLevelMonitor {
   }
 
   /**
-   * 采样循环 - 使用 requestAnimationFrame 实现平滑更新
+   * 计算 RMS 音量
    */
-  private sampleLoop = (): void => {
-    if (!this.isRunning || !this.analyser || !this.dataArray) {
-      return;
-    }
-
-    // 获取时域数据（波形）
-    this.analyser.getByteTimeDomainData(this.dataArray);
-
-    // 计算 RMS (Root Mean Square) 音量
+  private calculateRMS(dataArray: Uint8Array): number {
     let sumSquares = 0;
-    for (let i = 0; i < this.dataArray.length; i++) {
-      // 将 0-255 映射到 -1 到 1
-      const normalized = (this.dataArray[i] - 128) / 128;
+    for (let i = 0; i < dataArray.length; i++) {
+      const normalized = (dataArray[i] - 128) / 128;
       sumSquares += normalized * normalized;
     }
-    const rms = Math.sqrt(sumSquares / this.dataArray.length);
+    return Math.sqrt(sumSquares / dataArray.length);
+  }
 
-    // 将 RMS 映射到 0-1 范围，并应用非线性变换使小音量更明显
-    // RMS 通常在 0-0.3 范围内，我们将其放大并应用平方根使小音量更敏感
-    const amplified = Math.min(1, rms * 5);
-    const rawLevel = Math.sqrt(amplified); // 平方根让小音量更明显
+  /**
+   * 采样循环
+   */
+  private sampleLoop = (): void => {
+    if (!this.isRunning) return;
 
-    // 平滑处理，避免音量跳动
-    this.smoothedLevel =
-      this.smoothedLevel * (1 - this.smoothingFactor) +
-      rawLevel * this.smoothingFactor;
-
-    // 通知所有回调
-    for (const callback of this.callbacks) {
-      callback(this.smoothedLevel);
+    // 麦克风音量
+    if (this.micAnalyser && this.micDataArray) {
+      this.micAnalyser.getByteTimeDomainData(this.micDataArray);
+      const micRms = this.calculateRMS(this.micDataArray);
+      const micAmplified = Math.min(1, micRms * 5);
+      const micRawLevel = Math.sqrt(micAmplified);
+      this.smoothedMicLevel =
+        this.smoothedMicLevel * (1 - this.smoothingFactor) +
+        micRawLevel * this.smoothingFactor;
     }
 
-    // 继续循环
+    // 系统音量
+    if (this.systemAnalyser && this.systemDataArray) {
+      this.systemAnalyser.getByteTimeDomainData(this.systemDataArray);
+      const systemRms = this.calculateRMS(this.systemDataArray);
+      const systemAmplified = Math.min(1, systemRms * 5);
+      const systemRawLevel = Math.sqrt(systemAmplified);
+      this.smoothedSystemLevel =
+        this.smoothedSystemLevel * (1 - this.smoothingFactor) +
+        systemRawLevel * this.smoothingFactor;
+    }
+
+    // 取麦克风和系统音量的较大值
+    const combinedLevel = Math.max(this.smoothedMicLevel, this.smoothedSystemLevel);
+
+    // 通知回调
+    for (const callback of this.callbacks) {
+      callback(combinedLevel);
+    }
+
+    // 调试日志
+    if (Math.random() < 0.02 && combinedLevel > 0.01) {
+      console.log(
+        "[AudioLevelMonitor] mic:",
+        this.smoothedMicLevel.toFixed(3),
+        "sys:",
+        this.smoothedSystemLevel.toFixed(3),
+        "combined:",
+        combinedLevel.toFixed(3)
+      );
+    }
+
     this.rafId = requestAnimationFrame(this.sampleLoop);
   };
 
@@ -149,14 +248,24 @@ export class AudioLevelMonitor {
       this.rafId = null;
     }
 
-    if (this.sourceNode) {
-      this.sourceNode.disconnect();
-      this.sourceNode = null;
+    if (this.micSourceNode) {
+      this.micSourceNode.disconnect();
+      this.micSourceNode = null;
     }
 
-    if (this.analyser) {
-      this.analyser.disconnect();
-      this.analyser = null;
+    if (this.systemSourceNode) {
+      this.systemSourceNode.disconnect();
+      this.systemSourceNode = null;
+    }
+
+    if (this.micAnalyser) {
+      this.micAnalyser.disconnect();
+      this.micAnalyser = null;
+    }
+
+    if (this.systemAnalyser) {
+      this.systemAnalyser.disconnect();
+      this.systemAnalyser = null;
     }
 
     if (this.audioContext) {
@@ -164,13 +273,16 @@ export class AudioLevelMonitor {
       this.audioContext = null;
     }
 
-    if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((track) => track.stop());
-      this.mediaStream = null;
+    if (this.micStream) {
+      this.micStream.getTracks().forEach((track) => track.stop());
+      this.micStream = null;
     }
 
-    this.dataArray = null;
-    this.smoothedLevel = 0;
+    this.micDataArray = null;
+    this.systemDataArray = null;
+    this.audioElement = null;
+    this.smoothedMicLevel = 0;
+    this.smoothedSystemLevel = 0;
     this.isRunning = false;
   }
 }

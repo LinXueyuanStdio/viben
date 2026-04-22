@@ -103,6 +103,9 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
       }
     });
 
+    // 跟踪是否是 agent 的新回复
+    let isNewAgentResponse = true;
+
     const unsubTranscript = vocalBridgeClient.onTranscript((event: TranscriptEvent) => {
       if (!mountedRef.current) return;
 
@@ -112,7 +115,15 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
         resetSilenceTimer();
         // 弹窗降低透明度
         store.actions.setPopupOpacity(0.3);
+        // 下一次 agent 说话是新回复
+        isNewAgentResponse = true;
       } else {
+        // Agent 回复
+        if (isNewAgentResponse) {
+          // 新回复开始，显示 loading 状态
+          store.actions.startNewAgentResponse();
+          isNewAgentResponse = false;
+        }
         store.actions.appendAgentResponse(event.text);
         // Agent 说话时切换波浪状态
         store.actions.setConnectionState("speaking");
@@ -134,6 +145,10 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
     // 监听音频级别变化，驱动波浪动效（使用 Web Audio API 独立采集）
     const unsubAudioLevel = audioLevelMonitor.onLevelChange((level) => {
       if (!mountedRef.current) return;
+      // 调试日志
+      if (level > 0.05 && Math.random() < 0.03) {
+        console.log("[useVoiceAgent] audioLevel callback:", level.toFixed(3));
+      }
       wave.setAudioLevel(level);
     });
 
