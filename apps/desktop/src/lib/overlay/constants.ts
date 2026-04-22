@@ -24,18 +24,18 @@ export const WAVE_THEMES: Record<WaveState, WaveColorTheme> = {
 };
 
 export const WAVE_PARAMS: Record<WaveState, WaveAnimationParams> = {
-  idle: { amplitude: 5, frequency: 0.5, speed: 0.3, layers: 2 },
-  listening: { amplitude: 15, frequency: 1, speed: 0.5, layers: 3 },
-  "speaking-calm": { amplitude: 20, frequency: 1.2, speed: 0.6, layers: 3 },
-  "speaking-excited": { amplitude: 35, frequency: 2, speed: 1.2, layers: 4 },
+  idle: { amplitude: 8, frequency: 0.5, speed: 0.3, layers: 2 },
+  listening: { amplitude: 30, frequency: 1.2, speed: 0.6, layers: 3 },
+  "speaking-calm": { amplitude: 35, frequency: 1.4, speed: 0.7, layers: 3 },
+  "speaking-excited": { amplitude: 50, frequency: 2.2, speed: 1.4, layers: 4 },
   "speaking-happy": {
-    amplitude: 25,
-    frequency: 1.5,
-    speed: 0.8,
+    amplitude: 40,
+    frequency: 1.8,
+    speed: 1.0,
     layers: 4,
     particles: { count: 20, size: 4, speed: 1.5 },
   },
-  ending: { amplitude: 10, frequency: 0.8, speed: 0.4, layers: 2 },
+  ending: { amplitude: 15, frequency: 0.8, speed: 0.4, layers: 2 },
 };
 
 export const SPEED_VALUES: Record<"slow" | "normal" | "fast", number> = {

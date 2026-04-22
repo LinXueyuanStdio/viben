@@ -558,7 +558,19 @@
         "autoStart": "Auto-start on launch",
         "autoStartDesc": "Start listening for wake word when app launches",
         "silenceTimeout": "Silence Timeout",
-        "silenceTimeoutDesc": "Time before auto-disconnect when no speech"
+        "silenceTimeoutDesc": "Time before auto-disconnect when no speech",
+        "threshold": "Detection Sensitivity",
+        "thresholdDesc": "Confidence threshold for wake word detection",
+        "test": {
+          "detected": "Wake word detected!",
+          "loading": "Loading model...",
+          "listening": "Say \"{{wakeWord}}\"",
+          "idle": "Test wake word detection",
+          "start": "Test Wake Word",
+          "stop": "Stop Test",
+          "score": "Confidence",
+          "modelNotFound": "Wake word model not found, please download models first"
+        }
       },
       "test": {
         "title": "Test Voice Function",

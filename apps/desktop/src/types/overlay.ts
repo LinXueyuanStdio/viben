@@ -142,6 +142,7 @@ export interface WaveConfig {
   particlesEnabled: boolean;
   concave?: boolean;  // 是否使用凹形波浪（语音交互时使用）
   customThemes?: Partial<Record<WaveState, WaveColorTheme>>;
+  audioLevel?: number;  // 麦克风音量 0-1，用于驱动波浪振幅
 }
 
 export interface WaveAnimationParams {

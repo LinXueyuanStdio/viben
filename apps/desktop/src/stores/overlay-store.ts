@@ -139,10 +139,11 @@ const initialState: OverlayState = {
   waveState: "idle",
   waveConfig: {
     enabled: true,
-    height: 60,
-    opacity: 0.6,
+    height: 80,
+    opacity: 0.7,
     speed: 1,
     particlesEnabled: true,
+    audioLevel: 0,
   },
 };
 

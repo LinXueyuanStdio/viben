@@ -1,5 +1,5 @@
 import type { ReactNode, ReactElement } from "react";
-import { createContext, useContext, useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Application } from "pixi.js";
 import { useOverlay } from "@/hooks/use-overlay";
 import { useGlobalInput } from "@/hooks/use-global-input";
@@ -8,23 +8,10 @@ import { DanmakuPool } from "@/lib/overlay/danmaku-pool";
 import { GreedyTrackAllocator } from "@/lib/overlay/track-allocator";
 import { VoiceSubtitleLayer } from "./layers/voice-subtitle-layer";
 import { AgentPopup } from "./agent-popup";
+import { OverlayContext } from "./overlay-context";
 
-interface OverlayContextValue {
-  app: Application | null;
-  danmakuPool: DanmakuPool;
-  trackAllocator: GreedyTrackAllocator;
-  isReady: boolean;
-}
-
-const OverlayContext = createContext<OverlayContextValue | null>(null);
-
-export function useOverlayContext(): OverlayContextValue {
-  const ctx = useContext(OverlayContext);
-  if (!ctx) {
-    throw new Error("useOverlayContext must be used within OverlayProvider");
-  }
-  return ctx;
-}
+// Re-export for backwards compatibility
+export { useOverlayContext } from "./overlay-context";
 
 interface OverlayProviderProps {
   children: ReactNode;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Container, Text, TextStyle } from "pixi.js";
-import { useOverlayContext } from "../overlay-provider";
+import { useOverlayContext } from "../overlay-context";
 import { useDanmaku } from "@/hooks/use-danmaku";
 import { PixiZIndex } from "@/types/overlay";
 import type { DanmakuItem } from "@/types/overlay";

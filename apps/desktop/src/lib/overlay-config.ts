@@ -82,11 +82,11 @@ export const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
     particles_enabled: true,
   },
   shortcuts: {
-    toggleOverlay: "CommandOrControl+Shift+O",
-    toggleDanmaku: "CommandOrControl+Shift+D",
-    toggleKeystroke: "CommandOrControl+Shift+K",
-    toggleClickIndicator: "CommandOrControl+Shift+C",
-    toggleSubtitle: "CommandOrControl+Shift+S",
+    toggleOverlay: "CommandOrControl+Option+O",
+    toggleDanmaku: "CommandOrControl+Option+D",
+    toggleKeystroke: "CommandOrControl+Option+K",
+    toggleClickIndicator: "CommandOrControl+Option+C",
+    toggleSubtitle: "CommandOrControl+Option+S",
   },
 };
 

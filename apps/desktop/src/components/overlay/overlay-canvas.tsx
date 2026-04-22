@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef } from "react";
-import { useOverlayContext } from "./overlay-provider";
+import { useOverlayContext } from "./overlay-context";
 import { useOverlay } from "@/hooks/use-overlay";
 import { DOMZIndex } from "@/types/overlay";
 

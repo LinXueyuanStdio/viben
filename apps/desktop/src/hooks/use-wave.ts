@@ -9,6 +9,7 @@ interface UseWaveReturn {
   setEnabled: (enabled: boolean) => void;
   setState: (state: WaveState) => void;
   setConfig: (config: Partial<WaveConfig>) => void;
+  setAudioLevel: (level: number) => void;
   startListening: () => void;
   startSpeaking: (mood?: "calm" | "excited" | "happy") => void;
   stopSpeaking: () => void;
@@ -60,7 +61,15 @@ export function useWave(): UseWaveReturn {
   const reset = useCallback(() => {
     clearEndingTimeout();
     actions.setWaveState("idle");
+    actions.setWaveConfig({ audioLevel: 0 });
   }, [actions, clearEndingTimeout]);
+
+  const setAudioLevel = useCallback(
+    (level: number) => {
+      actions.setWaveConfig({ audioLevel: Math.max(0, Math.min(1, level)) });
+    },
+    [actions]
+  );
 
   return useMemo(
     () => ({
@@ -70,11 +79,12 @@ export function useWave(): UseWaveReturn {
       setEnabled: actions.setWaveEnabled,
       setState: actions.setWaveState,
       setConfig: actions.setWaveConfig,
+      setAudioLevel,
       startListening,
       startSpeaking,
       stopSpeaking,
       reset,
     }),
-    [enabled, state, config, actions, startListening, startSpeaking, stopSpeaking, reset]
+    [enabled, state, config, actions, setAudioLevel, startListening, startSpeaking, stopSpeaking, reset]
   );
 }

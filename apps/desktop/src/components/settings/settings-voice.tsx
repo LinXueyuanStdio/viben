@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/select";
 import { useVoiceStore } from "@/stores/voice-store";
 import { useVoiceAgent } from "@/hooks/use-voice-agent";
+import { useWakeWord } from "@/hooks/use-wake-word";
 import { loadVoiceConfig, saveVoiceConfig } from "@/lib/voice/secure-config";
-import { Loader2, Save, RotateCcw, Mic, MicOff, Square } from "lucide-react";
+import { Loader2, Save, RotateCcw, Mic, MicOff, Square, AudioWaveform, CheckCircle2 } from "lucide-react";
 
 // Settings item component - matches terminal-fonts-section style
 interface SettingsItemProps {
@@ -57,6 +58,21 @@ export function SettingsVoice() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Wake word test state
+  const [wakeWordDetected, setWakeWordDetected] = useState(false);
+  const [lastDetection, setLastDetection] = useState<{ keyword: string; score: number } | null>(null);
+  const [wakeWordError, setWakeWordError] = useState<string | null>(null);
+
+  const wakeWord = useWakeWord(
+    (detection) => {
+      setWakeWordDetected(true);
+      setLastDetection({ keyword: detection.keyword, score: detection.score });
+      // Reset detected state after 2 seconds
+      setTimeout(() => setWakeWordDetected(false), 2000);
+    },
+    { threshold: store.config.wakeWordThreshold }
+  );
 
   const { config, actions } = store;
 
@@ -114,6 +130,31 @@ export function SettingsVoice() {
       await voiceAgent.connect();
     }
   }, [voiceAgent, apiKey, agentId, actions]);
+
+  // Wake word test toggle
+  const handleWakeWordTestToggle = useCallback(async () => {
+    setWakeWordError(null);
+    if (wakeWord.isListening) {
+      wakeWord.stop();
+      setLastDetection(null);
+    } else {
+      // Load and activate the selected wake word
+      const selectedWakeWord = config.wakeWord === "你好微本" ? "nihao_weiben" : "hey_jarvis";
+      try {
+        await wakeWord.loadKeyword(selectedWakeWord);
+        wakeWord.setActiveKeywords([selectedWakeWord]);
+        await wakeWord.start();
+      } catch (err) {
+        console.error("Failed to start wake word detection:", err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("Failed to fetch")) {
+          setWakeWordError(t("settings.voice.wakeWord.test.modelNotFound", "唤醒词模型文件未找到，请先下载模型"));
+        } else {
+          setWakeWordError(errorMsg);
+        }
+      }
+    }
+  }, [wakeWord, config.wakeWord, t]);
 
   if (isLoading) {
     return (
@@ -309,6 +350,77 @@ export function SettingsVoice() {
             </span>
           </div>
         </SettingsItem>
+
+        {/* Wake Word Test */}
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="flex flex-col items-center py-4 gap-3">
+            {/* Status icon */}
+            <div className="relative">
+              {wakeWordDetected ? (
+                <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center animate-pulse">
+                  <CheckCircle2 className="w-7 h-7 text-green-500" />
+                </div>
+              ) : wakeWord.state === "loading" ? (
+                <div className="w-14 h-14 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                  <Loader2 className="w-7 h-7 text-yellow-500 animate-spin" />
+                </div>
+              ) : wakeWord.isListening ? (
+                <div className="w-14 h-14 rounded-full bg-blue-500/20 flex items-center justify-center animate-pulse">
+                  <AudioWaveform className="w-7 h-7 text-blue-500" />
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                  <AudioWaveform className="w-7 h-7 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+
+            {/* Status text */}
+            <p className="text-sm text-muted-foreground">
+              {wakeWordDetected
+                ? t("settings.voice.wakeWord.test.detected", "检测到唤醒词！")
+                : wakeWord.state === "loading"
+                  ? t("settings.voice.wakeWord.test.loading", "正在加载模型...")
+                  : wakeWord.isListening
+                    ? t("settings.voice.wakeWord.test.listening", { wakeWord: config.wakeWord })
+                    : t("settings.voice.wakeWord.test.idle", "测试唤醒词检测")}
+            </p>
+
+            {/* Detection result */}
+            {lastDetection && (
+              <p className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded">
+                {t("settings.voice.wakeWord.test.score", "置信度")}: {(lastDetection.score * 100).toFixed(1)}%
+              </p>
+            )}
+
+            {/* Error message */}
+            {wakeWordError && (
+              <p className="text-xs text-destructive bg-destructive/10 px-3 py-1 rounded max-w-xs text-center">
+                {wakeWordError}
+              </p>
+            )}
+
+            {/* Test button */}
+            <Button
+              onClick={handleWakeWordTestToggle}
+              disabled={wakeWord.state === "loading"}
+              variant={wakeWord.isListening ? "destructive" : "outline"}
+              size="sm"
+            >
+              {wakeWord.isListening ? (
+                <>
+                  <Square className="w-4 h-4 mr-2" />
+                  {t("settings.voice.wakeWord.test.stop", "停止测试")}
+                </>
+              ) : (
+                <>
+                  <AudioWaveform className="w-4 h-4 mr-2" />
+                  {t("settings.voice.wakeWord.test.start", "测试唤醒词")}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Sound Effects Card */}

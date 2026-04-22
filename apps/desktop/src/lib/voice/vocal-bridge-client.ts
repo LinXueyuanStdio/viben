@@ -18,6 +18,7 @@ export type VocalBridgeState =
 type StateCallback = (state: VocalBridgeState) => void;
 type TranscriptCallback = (event: TranscriptEvent) => void;
 type ErrorCallback = (error: Error) => void;
+type AudioLevelCallback = (level: number) => void;
 
 /**
  * Vocal Bridge SDK 封装
@@ -32,6 +33,7 @@ export class VocalBridgeClient {
   private stateCallbacks: Set<StateCallback> = new Set();
   private transcriptCallbacks: Set<TranscriptCallback> = new Set();
   private errorCallbacks: Set<ErrorCallback> = new Set();
+  private audioLevelCallbacks: Set<AudioLevelCallback> = new Set();
 
   // Vocal Bridge SDK 实例
   private vb: VocalBridge | null = null;
@@ -142,6 +144,19 @@ export class VocalBridgeClient {
         this.notifyError(error);
       });
 
+      // 监听音频级别（如果 SDK 支持）
+      // @ts-expect-error - audioLevel event may not be in type definitions
+      this.vb.on('audioLevel', (level: number) => {
+        this.notifyAudioLevel(level);
+      });
+
+      // 监听用户说话状态变化
+      // @ts-expect-error - userSpeakingChanged event may not be in type definitions
+      this.vb.on('userSpeakingChanged', (isSpeaking: boolean) => {
+        // 用户说话时提高音量指示
+        this.notifyAudioLevel(isSpeaking ? 0.7 : 0);
+      });
+
       // 开始连接
       console.log('[VocalBridgeClient] Connecting...');
       await this.vb.connect();
@@ -216,6 +231,12 @@ export class VocalBridgeClient {
     return () => this.errorCallbacks.delete(callback);
   }
 
+  /** 订阅音频级别变化 */
+  onAudioLevel(callback: AudioLevelCallback): () => void {
+    this.audioLevelCallbacks.add(callback);
+    return () => this.audioLevelCallbacks.delete(callback);
+  }
+
   private setState(state: VocalBridgeState): void {
     if (this.state === state) return;
     console.log('[VocalBridgeClient] State:', this.state, '->', state);
@@ -234,6 +255,12 @@ export class VocalBridgeClient {
   private notifyError(error: Error): void {
     for (const callback of this.errorCallbacks) {
       callback(error);
+    }
+  }
+
+  private notifyAudioLevel(level: number): void {
+    for (const callback of this.audioLevelCallbacks) {
+      callback(level);
     }
   }
 }

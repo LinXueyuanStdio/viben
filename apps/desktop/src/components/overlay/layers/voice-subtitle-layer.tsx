@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Container, Graphics, Text, TextStyle } from "pixi.js";
-import { useOverlayContext } from "../overlay-provider";
+import { useOverlayContext } from "../overlay-context";
 import { useVoiceStore } from "@/stores/voice-store";
 import { PixiZIndex } from "@/types/overlay";
 

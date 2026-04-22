@@ -23,6 +23,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -66,6 +67,12 @@
     "externalBin": [
       "binaries/viben"
     ],
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "macOS": {
+      "entitlements": "entitlements.plist"
+    },
+    "iOS": {
+      "developmentTeam": ""
+    }
   }
 }

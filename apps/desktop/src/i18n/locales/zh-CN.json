@@ -568,7 +568,19 @@
         "autoStart": "启动时自动监听",
         "autoStartDesc": "应用启动后自动开始监听唤醒词",
         "silenceTimeout": "静默超时",
-        "silenceTimeoutDesc": "无语音输入后自动退出的时间"
+        "silenceTimeoutDesc": "无语音输入后自动退出的时间",
+        "threshold": "检测灵敏度",
+        "thresholdDesc": "唤醒词检测的置信度阈值",
+        "test": {
+          "detected": "检测到唤醒词！",
+          "loading": "正在加载模型...",
+          "listening": "请说 \"{{wakeWord}}\"",
+          "idle": "测试唤醒词检测",
+          "start": "测试唤醒词",
+          "stop": "停止测试",
+          "score": "置信度",
+          "modelNotFound": "唤醒词模型文件未找到，请先下载模型"
+        }
       },
       "test": {
         "title": "测试语音功能",

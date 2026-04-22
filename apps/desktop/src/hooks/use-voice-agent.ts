@@ -130,10 +130,17 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
       }
     });
 
+    // 监听音频级别变化，驱动波浪动效
+    const unsubAudioLevel = vocalBridgeClient.onAudioLevel((level) => {
+      if (!mountedRef.current) return;
+      wave.setAudioLevel(level);
+    });
+
     return () => {
       unsubState();
       unsubTranscript();
       unsubError();
+      unsubAudioLevel();
     };
   }, [store, wave, config.enableSoundEffects, startSilenceTimer, resetSilenceTimer, clearSilenceTimer]);
 
