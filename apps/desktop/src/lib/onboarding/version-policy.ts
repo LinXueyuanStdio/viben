@@ -4,6 +4,8 @@
  * Qclaw 参考: /Users/lxy/Documents/GitHub/others/Qclaw/src/shared/openclaw-version-policy.ts
  */
 
+import i18next from "i18next";
+
 // ============================================================================
 // Version Constants
 // ============================================================================
@@ -146,18 +148,18 @@ export function checkVersion(version: string | null | undefined): VersionCheckRe
 
   switch (state) {
     case "supported_target":
-      message = `当前版本 ${version} 是推荐版本`;
+      message = i18next.t("onboarding.versionPolicy.supportedTarget", { defaultValue: "当前版本 {{version}} 是推荐版本", version });
       break;
     case "supported_not_target":
-      message = `当前版本 ${version} 可用，推荐升级到 ${PINNED_VERSION}`;
+      message = i18next.t("onboarding.versionPolicy.supportedNotTarget", { defaultValue: "当前版本 {{version}} 可用，推荐升级到 {{pinnedVersion}}", version, pinnedVersion: PINNED_VERSION });
       targetVersion = PINNED_VERSION;
       break;
     case "below_min":
-      message = `当前版本 ${version ?? "未知"} 低于最低要求 ${MIN_SUPPORTED_VERSION}，需要升级`;
+      message = i18next.t("onboarding.versionPolicy.belowMin", { defaultValue: "当前版本 {{version}} 低于最低要求 {{minVersion}}，需要升级", version: version ?? i18next.t("common.unknown", "未知"), minVersion: MIN_SUPPORTED_VERSION });
       targetVersion = PINNED_VERSION;
       break;
     case "above_max":
-      message = `当前版本 ${version} 高于测试版本 ${MAX_SUPPORTED_VERSION}，可能存在兼容性问题`;
+      message = i18next.t("onboarding.versionPolicy.aboveMax", { defaultValue: "当前版本 {{version}} 高于测试版本 {{maxVersion}}，可能存在兼容性问题", version, maxVersion: MAX_SUPPORTED_VERSION });
       targetVersion = PINNED_VERSION;
       break;
   }

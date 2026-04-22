@@ -212,15 +212,15 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         const gatewayData = data as { url?: string; pid?: number; running?: boolean; command?: string; binary_path?: string } | undefined;
         const items: DetailItem[] = [];
         if (gatewayData?.running) {
-          items.push({ label: "URL", value: gatewayData.url || "http://127.0.0.1:18790", copyable: true });
+          items.push({ label: t("onboarding.envCheck.labels.url", "URL"), value: gatewayData.url || "http://127.0.0.1:18790", copyable: true });
           if (gatewayData.pid) {
-            items.push({ label: "PID", value: String(gatewayData.pid), copyable: false });
+            items.push({ label: t("common.pid", "PID"), value: String(gatewayData.pid), copyable: false });
           }
           if (gatewayData.binary_path) {
-            items.push({ label: "Binary", value: gatewayData.binary_path, copyable: true });
+            items.push({ label: t("onboarding.envCheck.labels.binary", "Binary"), value: gatewayData.binary_path, copyable: true });
           }
           if (gatewayData.command) {
-            items.push({ label: "Command", value: gatewayData.command, copyable: true });
+            items.push({ label: t("onboarding.envCheck.labels.command", "Command"), value: gatewayData.command, copyable: true });
           }
         }
         return {

@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export function CommandDetails({
   command,
   className,
 }: CommandDetailsProps) {
+  const { t } = useTranslation();
   const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
 
   const handleCopy = async (text: string, index: number) => {
@@ -60,10 +62,10 @@ export function CommandDetails({
 
     const legacyItems: DetailItem[] = [];
     if (binaryPath) {
-      legacyItems.push({ label: "Binary", value: binaryPath, copyable: true });
+      legacyItems.push({ label: t("onboarding.envCheck.labels.binary", "Binary"), value: binaryPath, copyable: true });
     }
     if (command) {
-      legacyItems.push({ label: "Command", value: command, copyable: true });
+      legacyItems.push({ label: t("onboarding.envCheck.labels.command", "Command"), value: command, copyable: true });
     }
     return legacyItems;
   }, [items, binaryPath, command]);

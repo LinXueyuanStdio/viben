@@ -74,7 +74,7 @@ const mapCurrentPhaseToExecution = (currentPhase?: number): ExecutionPhase | und
   return mapping[currentPhase];
 };
 
-// Action labels for display (fallback values, i18n keys used in component)
+// Action labels for display (fallback values for i18n)
 const ACTION_LABELS: Record<string, string> = {
   plan: "Planning",
   implement: "Implementing",
@@ -83,6 +83,11 @@ const ACTION_LABELS: Record<string, string> = {
   finish: "Finishing",
   "create-pr": "Creating PR",
 };
+
+// Note: These ACTION_LABELS are used as fallback values.
+// The actual i18n translation happens in the component via:
+// t(`workspace.taskCard.action.${actionInfo.currentAction}`, ACTION_LABELS[...])
+// Translation keys like workspace.taskCard.action.plan, etc. are defined in locale files.
 
 // Get current action info from task's next_action array
 interface ActionInfo {

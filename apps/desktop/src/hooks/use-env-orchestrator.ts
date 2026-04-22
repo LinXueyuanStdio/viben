@@ -6,6 +6,7 @@
  */
 
 import { useReducer, useCallback, useEffect, useRef, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ENV_CHECK_NODES,
   getInitialDAGState,
@@ -186,6 +187,8 @@ function orchestratorReducer(state: OrchestratorState, action: OrchestratorActio
 // ============================================================================
 
 export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
+  const { t } = useTranslation();
+
   // Initialize state
   const [state, dispatch] = useReducer(orchestratorReducer, {
     dagState: getInitialDAGState(ENV_CHECK_NODES),
@@ -255,18 +258,18 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                 if (macGitResult.error_code === "xcode_clt_pending") {
                   appendLog(
                     nodeId,
-                    "⚠ Xcode Command Line Tools 安装中，请完成后重试"
+                    `⚠ ${t("onboarding.orchestrator.xcodeCltInstalling", "Xcode Command Line Tools 安装中，请完成后重试")}`
                   );
                   updateNode(
                     nodeId,
                     "error",
-                    "请先完成 Xcode Command Line Tools 安装，再点击「重试」"
+                    t("onboarding.orchestrator.xcodeCltRetry", "请先完成 Xcode Command Line Tools 安装，再点击「重试」")
                   );
                   break;
                 } else {
                   appendLog(
                     nodeId,
-                    `✗ Git 工具准备失败: ${macGitResult.stderr}`
+                    `✗ ${t("onboarding.orchestrator.gitToolsFailed", "Git 工具准备失败")}: ${macGitResult.stderr}`
                   );
                   updateNode(
                     nodeId,
@@ -310,7 +313,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                 setNodejsSelectedPath(result.path || null);
                 appendLog(
                   nodeId,
-                  `✓ 发现 ${nodes.length} 个 Node.js 安装`
+                  `✓ ${t("onboarding.orchestrator.foundNodeInstalls", { defaultValue: "发现 {{count}} 个 Node.js 安装", count: nodes.length })}`
                 );
               } catch (scanErr) {
                 // Even if scan fails, show the current node
@@ -325,7 +328,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                   ]);
                   setNodejsSelectedPath(result.path);
                 }
-                appendLog(nodeId, `⚠ 扫描其他安装失败: ${scanErr}`);
+                appendLog(nodeId, `⚠ ${t("onboarding.orchestrator.scanFailed", "扫描其他安装失败")}: ${scanErr}`);
               }
               updateNode(nodeId, "success", undefined, result);
               break;
@@ -334,7 +337,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
             if (result.installed && result.needsUpgrade) {
               appendLog(
                 nodeId,
-                `⚠ Node.js ${result.version} 版本过低 (at ${result.path})，请选择其他版本`
+                `⚠ ${t("onboarding.orchestrator.nodeVersionTooLow", { defaultValue: "Node.js {{version}} 版本过低 (at {{path}})，请选择其他版本", version: result.version, path: result.path })}`
               );
               // Scan all Node.js installations for user to select
               appendLog(nodeId, "Scanning all Node.js installations...");
@@ -359,7 +362,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                 setNodejsRequiredVersion(scanResult.required_version);
                 appendLog(
                   nodeId,
-                  `✓ 发现 ${nodes.length} 个 Node.js 安装`
+                  `✓ ${t("onboarding.orchestrator.foundNodeInstalls", { defaultValue: "发现 {{count}} 个 Node.js 安装", count: nodes.length })}`
                 );
               } catch (scanErr) {
                 // Even if scan fails, show the current node
@@ -373,12 +376,12 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                     },
                   ]);
                 }
-                appendLog(nodeId, `⚠ 扫描其他安装失败: ${scanErr}`);
+                appendLog(nodeId, `⚠ ${t("onboarding.orchestrator.scanFailed", "扫描其他安装失败")}: ${scanErr}`);
               }
               updateNode(
                 nodeId,
                 "error",
-                `Node.js 版本过低 (${result.version})，请升级到 v22.16.0 或更高版本，或从下方列表选择其他版本`
+                t("onboarding.orchestrator.nodeVersionTooLowUpgrade", { defaultValue: "Node.js 版本过低 ({{version}})，请升级到 v22.16.0 或更高版本，或从下方列表选择其他版本", version: result.version })
               );
               break;
             }
@@ -729,11 +732,15 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
         } else if (result.installed && result.needsUpgrade) {
           // Node.js found but version too low
           setNodejsCustomPathError(
-            `Node.js ${result.version} 版本过低，需要 v${nodejsRequiredVersion} 或更高`
+            t("onboarding.orchestrator.nodeVersionTooLowCustom", {
+              defaultValue: "Node.js {{version}} 版本过低，需要 v{{required}} 或更高",
+              version: result.version,
+              required: nodejsRequiredVersion,
+            })
           );
         } else {
           // Not a valid Node.js
-          setNodejsCustomPathError(result.error || "无效的 Node.js 路径");
+          setNodejsCustomPathError(result.error || t("onboarding.orchestrator.invalidNodePath", "无效的 Node.js 路径"));
         }
 
         return result;

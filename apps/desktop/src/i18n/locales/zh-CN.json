@@ -54,7 +54,6 @@
     "available": "可用",
     "required": "必需",
     "optional": "可选",
-    "port": "端口",
     "auto": "自动",
     "export": "导出",
     "cleanup": "清理",
@@ -84,7 +83,6 @@
     "copyPath": "复制路径",
     "browse": "浏览",
     "yesterday": "昨天",
-    "today": "今天",
     "daysAgo_one": "{{count}} 天前",
     "daysAgo_other": "{{count}} 天前",
     "weeksAgo_one": "{{count}} 周前",
@@ -117,12 +115,14 @@
     "loadingWorkspace": "正在加载工作空间...",
     "submit": "提交",
     "creating": "创建中...",
-    "saving": "保存中...",
     "loadMore": "加载更多",
     "send": "发送",
     "you": "你",
     "unknown": "未知",
     "unknownError": "未知错误",
+    "hide": "隐藏",
+    "show": "显示",
+    "reset": "重置",
     "openInExplorer": "在文件管理器中打开",
     "learnMore": "了解更多",
     "noData": "无数据",
@@ -559,7 +559,9 @@
       "api": {
         "title": "API 配置",
         "vocalBridgeKey": "Vocal Bridge API Key",
-        "vocalBridgeKeyDesc": "用于连接语音服务的 API 密钥"
+        "vocalBridgeKeyDesc": "用于连接语音服务的 API 密钥",
+        "agentId": "Agent ID",
+        "agentIdDesc": "Vocal Bridge 语音智能体 ID"
       },
       "wakeWord": {
         "title": "唤醒词设置",
@@ -589,7 +591,17 @@
         "listening": "正在监听...",
         "start": "开始测试",
         "stop": "停止",
-        "noApiKey": "请先配置 API Key"
+        "noApiKey": "请先配置 API Key",
+        "noConfig": "请先配置 API Key 和 Agent ID"
+      },
+      "sound": {
+        "title": "音效设置",
+        "enabled": "启用音效",
+        "enabledDesc": "播放唤醒和错误等操作的音效反馈"
+      },
+      "errors": {
+        "noApiKey": "请先配置 API Key",
+        "noAgentId": "请先配置 Agent ID"
       }
     },
     "account": {
@@ -955,7 +967,18 @@
     "addFirst": "添加您的第一个智能体",
     "noAgents": "未配置智能体",
     "fromTemplate": "从模板创建",
-    "templates": "模板",
+    "templates": {
+      "blank": "空白创建",
+      "blankDesc": "从零开始创建智能体",
+      "general": "通用结构",
+      "generalDesc": "适用于多种场景的提示词结构",
+      "task": "任务执行",
+      "taskDesc": "适用于明确工作步骤的任务执行",
+      "roleplay": "角色扮演",
+      "roleplayDesc": "适用于聊天场景",
+      "coding": "编程助手",
+      "codingDesc": "专为代码开发优化"
+    },
     "created": "创建时间",
     "setDefault": "设为默认",
     "saveAsTemplate": "保存为模板",
@@ -1089,18 +1112,6 @@
     "globalLocation": "全局工作空间",
     "workspaceAgents": "工作空间智能体",
     "globalAgents": "全局智能体",
-    "templates": {
-      "blank": "空白创建",
-      "blankDesc": "从零开始创建智能体",
-      "general": "通用结构",
-      "generalDesc": "适用于多种场景的提示词结构",
-      "task": "任务执行",
-      "taskDesc": "适用于明确工作步骤的任务执行",
-      "roleplay": "角色扮演",
-      "roleplayDesc": "适用于聊天场景",
-      "coding": "编程助手",
-      "codingDesc": "专为代码开发优化"
-    },
     "copyName": "{{name}} (副本)",
     "noGlobalWorkspace": "全局工作空间未找到",
     "noGlobalWorkspaceDesc": "请先创建或初始化全局工作空间",
@@ -2629,7 +2640,7 @@
       "cancelled": "已取消",
       "archived": "已归档"
     },
-    "taskDetail": "任务详情",
+    "taskDetail": "详情",
     "taskName": "任务名称",
     "description": "描述",
     "priority": {
@@ -2933,45 +2944,17 @@
     "chatMonitor": "对话监控",
     "chatMonitorDescription": "监控智能体对话的执行追踪",
     "recentActivity": "最近活跃",
-    "kanban": "任务看板",
     "kanbanDescription": "使用看板管理任务",
     "taskManagement": "任务管理",
-    "scheduledTasks": "定时任务",
-    "scheduledTasksDescription": "管理定时任务和自动化",
     "automation": "自动化",
     "ideas": "想法",
     "ideasDescription": "AI 生成的改进想法",
     "agentsDetected": "个智能体",
     "browseFiles": "浏览文件",
-    "kanbanStatus": {
-      "backlog": "待办",
-      "queue": "排队中",
-      "inProgress": "执行中",
-      "paused": "暂停中",
-      "review": "审查",
-      "completed": "已完成",
-      "failed": "失败",
-      "cancelled": "已取消",
-      "archived": "已归档"
-    },
-    "column": {
-      "backlog": "待办",
-      "queue": "排队中",
-      "inProgress": "执行中",
-      "paused": "暂停中",
-      "review": "审查",
-      "completed": "已完成",
-      "failed": "失败",
-      "cancelled": "已取消",
-      "archived": "已归档"
-    },
-    "addTask": "添加任务",
     "hideStats": "隐藏统计",
     "showStats": "显示统计",
     "viewKanban": "看板视图",
     "viewList": "列表视图",
-    "taskDetail": "详情",
-    "description": "描述",
     "taskCard": {
       "stuck": "卡住",
       "archived": "已归档",
@@ -3058,7 +3041,8 @@
       "completed": "已完成",
       "sequenceMismatch": "序列号不匹配 - 请刷新",
       "invalidTransition": "无效的状态转换",
-      "submitFailed": "提交事件失败"
+      "submitFailed": "提交事件失败",
+      "unnamedTask": "未命名任务"
     },
     "taskEvents": {
       "title": "事件",
@@ -3278,6 +3262,11 @@
       "verifyingConnection": "验证连接...",
       "detectingPython": "检测 Python 环境...",
       "detectingClients": "检测智能体执行器...",
+      "labels": {
+        "url": "URL",
+        "binary": "程序",
+        "command": "命令"
+      },
       "checkingGitTools": "正在检查 Git 与 Xcode Command Line Tools...",
       "xcodeCltPending": "请先完成 Xcode Command Line Tools 安装，再点击「重试」",
       "nodeDownloading": "正在下载 Node.js {{version}}...",
@@ -3349,6 +3338,356 @@
         "step3": "如果问题持续，请联系支持",
         "reportLabel": "报告问题"
       }
+    },
+    "diagnostics": {
+      "portConflictSame": {
+        "title": "检测到另一个 Gateway 实例",
+        "detail": "端口 {{port}} 已被另一个 Viben Gateway 占用。",
+        "hint1": "点击「重试」将尝试接管现有实例",
+        "hint2": "或在设置中更改 Gateway 端口"
+      },
+      "portConflictForeign": {
+        "title": "端口被其他程序占用",
+        "detail": "端口 {{port}} 被其他程序占用，无法启动 Gateway。",
+        "hint1": "查找并关闭占用端口 {{port}} 的程序",
+        "hint2": "或在设置中更改 Gateway 端口",
+        "hint3": "可以运行 'lsof -i :{{port}}' (macOS/Linux) 查看占用进程"
+      },
+      "authRefresh": {
+        "title": "认证信息需要刷新",
+        "detail": "Gateway 的认证 Token 已过期或不匹配。",
+        "hint1": "点击「重试」将重新加载认证信息",
+        "hint2": "如果问题持续，尝试重新启动 Gateway"
+      },
+      "configInvalid": {
+        "title": "配置文件无效",
+        "detail": "Gateway 配置文件存在问题，无法启动服务。",
+        "hint1": "检查 ~/.viben/config.yaml 配置文件",
+        "hint2": "尝试删除配置文件后重新设置",
+        "hint3": "查看日志获取详细错误信息"
+      },
+      "cliNotFound": {
+        "title": "Viben CLI 未安装",
+        "detail": "无法找到 Viben CLI，需要先安装才能启动 Gateway。",
+        "hint1": "点击「安装 Viben CLI」自动安装",
+        "hint2": "或手动运行: npm install -g viben",
+        "hint3": "访问 https://github.com/LinXueyuanStdio/viben 获取更多安装方式"
+      },
+      "versionMismatch": {
+        "title": "版本不兼容",
+        "detail": "当前 Viben CLI 版本 {{version}} 与应用不兼容。",
+        "hint1": "点击「升级」将自动更新到兼容版本",
+        "hint2": "或手动运行: npm update -g viben"
+      },
+      "versionTooLow": {
+        "title": "Viben CLI 版本过低",
+        "detail": "当前版本 {{version}} 不满足最低要求。",
+        "hint1": "点击「升级」自动更新到最新版本",
+        "hint2": "或手动运行: npm update -g viben"
+      },
+      "versionTooHigh": {
+        "title": "Viben CLI 版本可能不兼容",
+        "detail": "当前版本 {{version}} 高于测试版本，可能存在兼容性问题。",
+        "hint1": "可以继续使用，但某些功能可能异常",
+        "hint2": "如遇问题，可降级到推荐版本"
+      },
+      "connectionRefused": {
+        "title": "无法连接到 Gateway",
+        "detail": "Gateway 服务可能未正常启动或已崩溃。",
+        "hint1": "点击「重试」将尝试重新启动 Gateway",
+        "hint2": "检查系统日志是否有错误信息"
+      },
+      "connectionTimeout": {
+        "title": "连接超时",
+        "detail": "连接 Gateway 超时，服务响应过慢。",
+        "hint1": "检查系统资源是否充足",
+        "hint2": "点击「重试」再次尝试连接"
+      },
+      "networkBlocked": {
+        "title": "网络连接被阻断",
+        "detail": "本地网络连接被防火墙或安全软件阻断。",
+        "hint1": "检查防火墙设置，允许 localhost 连接",
+        "hint2": "如果使用 VPN 或代理，尝试暂时禁用",
+        "hint3": "检查是否有安全软件阻止本地服务"
+      },
+      "serviceStale": {
+        "title": "服务状态过期",
+        "detail": "Gateway 服务状态异常，需要重新启动。",
+        "hint1": "点击「重试」将重新启动 Gateway"
+      },
+      "unknownError": {
+        "title": "启动 Gateway 时出错",
+        "detail": "发生了未知错误。",
+        "detailFallback": "发生了未知错误。",
+        "hint1": "点击「重试」再次尝试",
+        "hint2": "查看应用日志获取详细信息",
+        "hint3": "如果问题持续，请联系支持"
+      },
+      "missingCli": {
+        "title": "需要安装 Viben CLI",
+        "detail": "系统中未检测到 Viben CLI，需要安装后才能继续。",
+        "hint1": "点击「自动安装」将通过 npm 安装",
+        "hint2": "或手动运行: npm install -g viben"
+      },
+      "missingNode": {
+        "title": "需要安装 Node.js",
+        "detail": "Viben CLI 需要 Node.js 运行环境，但系统中未检测到。",
+        "hint1": "访问 https://nodejs.org 下载安装 Node.js",
+        "hint2": "推荐使用 Node.js 18 LTS 或更高版本",
+        "hint3": "如果已安装，请确保 node 命令在 PATH 中"
+      },
+      "npmRegistryError": {
+        "title": "npm 仓库连接失败",
+        "detail": "无法连接到 npm 仓库，将尝试使用镜像源。",
+        "hint1": "检查网络连接",
+        "hint2": "点击「重试」将使用备用镜像源"
+      },
+      "downloadFailed": {
+        "title": "下载失败",
+        "detailFallback": "下载过程中出错。",
+        "hint1": "检查网络连接后重试",
+        "hint2": "如果问题持续，尝试手动安装"
+      },
+      "installFailed": {
+        "title": "安装失败",
+        "detailFallback": "安装过程中出错。",
+        "hint1": "查看详细错误信息",
+        "hint2": "尝试手动运行安装命令",
+        "hint3": "检查是否有权限问题"
+      },
+      "permissionDenied": {
+        "title": "权限不足",
+        "detail": "安装操作需要更高权限。",
+        "hint1": "macOS/Linux: 尝试使用 sudo 运行",
+        "hint2": "Windows: 以管理员身份运行",
+        "hint3": "或使用 nvm 安装 Node.js 避免权限问题"
+      },
+      "xcodeCltPending": {
+        "title": "等待 Xcode Command Line Tools 安装",
+        "detail": "已触发 Xcode 命令行工具安装，请在系统弹窗中完成安装。",
+        "hint1": "在弹出的系统对话框中点击「安装」",
+        "hint2": "如果没有弹窗，点击屏幕右上角的安装图标",
+        "hint3": "安装完成后，点击「重试」继续"
+      },
+      "userCancelled": {
+        "title": "安装已取消",
+        "detail": "您取消了安装操作。",
+        "hint1": "点击「重试」重新开始安装",
+        "hint2": "或点击「跳过」继续（部分功能可能不可用）"
+      },
+      "networkError": {
+        "title": "网络连接失败",
+        "detail": "无法建立网络连接。",
+        "hint1": "检查网络连接",
+        "hint2": "如果使用代理，请检查代理设置",
+        "hint3": "点击「重试」再次尝试"
+      },
+      "installerUnknownError": {
+        "title": "安装时出错",
+        "detailFallback": "发生了未知错误。",
+        "hint1": "查看详细错误信息",
+        "hint2": "点击「重试」再次尝试",
+        "hint3": "如果问题持续，请联系支持"
+      }
+    },
+    "nodeInstaller": {
+      "missingInstaller": {
+        "title": "Node 安装包不存在",
+        "message": "已下载的 Node.js 安装包没有找到，安装无法继续。请点击「继续安装」再次尝试。"
+      },
+      "downloadFailed": {
+        "title": "Node 安装包下载失败",
+        "message": "自动下载 Node.js 安装包失败。请检查网络、代理或证书设置；如果仍然失败，可前往 Node.js 官网手动下载。"
+      },
+      "installerFailed": {
+        "title": "Node 安装器执行失败",
+        "message": "Node.js 安装器执行时报错。请稍后重试；如果仍然失败，建议去 Node.js 官网手动安装。"
+      },
+      "permissionDenied": {
+        "title": "没有足够权限安装 Node.js",
+        "message": "安装 Node.js 时权限不足。请确认当前账号具备管理员权限，并允许系统弹出的安装授权。"
+      },
+      "userCancelled": {
+        "title": "已取消 Node 安装",
+        "message": "你已取消管理员授权或安装流程，因此 Node.js 未安装。"
+      },
+      "versionTooLow": {
+        "title": "Node.js 版本过低",
+        "message": "当前 Node.js 版本低于最低要求 (v22.16.0)。请升级到最新 LTS 版本后重试。"
+      },
+      "versionTooHigh": {
+        "title": "Node.js 版本过高",
+        "message": "当前 Node.js 版本高于推荐版本。部分功能可能不兼容，建议使用 LTS 版本。"
+      },
+      "xcodeCltPending": {
+        "title": "等待 Xcode Command Line Tools 安装完成",
+        "message": "已尝试触发 Xcode 命令行工具系统安装弹窗。如果没有弹窗，请点击屏幕右下角的安装图标继续安装；安装完成后，点击「重试检测」刷新状态。"
+      },
+      "gitUnavailable": {
+        "title": "Git 命令不可用",
+        "message": "当前系统无法使用 Git，无法继续环境准备。请先修复 Git 或安装 Xcode Command Line Tools 后重试。"
+      },
+      "devToolsFailed": {
+        "title": "macOS 开发者工具预检失败",
+        "message": "在准备 Git / Xcode Command Line Tools 时遇到问题。请稍后重试；如果仍失败，请手动检查系统开发者工具状态。"
+      },
+      "corruptedInstaller": {
+        "title": "Node 安装包无效或已损坏",
+        "message": "下载到的 Node.js 安装包未通过签名/完整性检查，可能已损坏或被代理替换。请检查网络环境后重试。"
+      },
+      "unsupportedMacos": {
+        "title": "当前 macOS 版本不支持该 Node 安装包",
+        "message": "当前系统版本与目标 Node.js 安装包不兼容，无法继续自动安装。请先升级系统，或手动安装兼容的 Node.js 版本。"
+      },
+      "notAdminUser": {
+        "title": "当前账户没有管理员权限",
+        "message": "自动安装 Node.js 需要 macOS 管理员权限。请使用管理员账户登录，或联系设备管理员处理。"
+      },
+      "blockedByPolicy": {
+        "title": "系统策略阻止了安装",
+        "message": "这台电脑的安全策略阻止了 Node.js 安装。请联系管理员处理，或改为手动安装 Node.js。"
+      },
+      "missingSystemCommand": {
+        "title": "系统缺少安装预检命令",
+        "message": "当前系统缺少 Node.js 自动安装所需的系统命令，无法继续自动预检。请联系管理员修复系统工具，或改为手动安装 Node.js。"
+      },
+      "installComplete": "安装完成",
+      "checkingGitXcode": "正在检查 Git 与 Xcode Command Line Tools...",
+      "downloadingNode": "正在下载 Node.js {{version}}...",
+      "verifyingPackage": "正在校验安装包...",
+      "installingNode": "正在安装 Node.js...",
+      "refreshingEnv": "正在刷新环境变量..."
+    },
+    "gatewayState": {
+      "healthy": {
+        "title": "Gateway 运行正常",
+        "detail": "所有服务正常运行中。"
+      },
+      "notRunning": {
+        "title": "Gateway 未运行",
+        "detail": "Gateway 服务尚未启动。"
+      },
+      "starting": {
+        "title": "Gateway 正在启动",
+        "detail": "请稍候..."
+      },
+      "stopping": {
+        "title": "Gateway 正在停止",
+        "detail": "请稍候..."
+      },
+      "portConflictSame": {
+        "title": "端口被占用",
+        "detail": "检测到另一个 Gateway 实例正在运行。"
+      },
+      "portConflictForeign": {
+        "title": "端口冲突",
+        "detail": "端口被其他程序占用。建议更换端口或关闭冲突程序。"
+      },
+      "tokenMismatch": {
+        "title": "认证 Token 不匹配",
+        "detail": "尝试重新启动 Gateway 以刷新认证。"
+      },
+      "authMissing": {
+        "title": "认证信息缺失",
+        "detail": "需要重新配置认证信息。"
+      },
+      "connectionRefused": {
+        "title": "连接被拒绝",
+        "detail": "无法连接到 Gateway。服务可能未启动。"
+      },
+      "connectionTimeout": {
+        "title": "连接超时",
+        "detail": "连接 Gateway 超时。请检查网络或重试。"
+      },
+      "networkBlocked": {
+        "title": "网络被阻断",
+        "detail": "网络连接被防火墙或代理阻断。"
+      },
+      "versionMismatch": {
+        "title": "版本不匹配",
+        "detail": "Gateway 版本与应用不兼容。建议更新。"
+      },
+      "configInvalid": {
+        "title": "配置无效",
+        "detail": "Gateway 配置文件存在问题。请检查配置。"
+      },
+      "cliNotFound": {
+        "title": "CLI 未找到",
+        "detail": "无法找到 Viben CLI。请先安装。"
+      },
+      "cliError": {
+        "title": "CLI 执行错误",
+        "detail": "执行 Viben CLI 命令时出错。"
+      },
+      "serviceStale": {
+        "title": "服务过期",
+        "detail": "Gateway 服务状态过期，需要重新启动。"
+      },
+      "websocketError": {
+        "title": "WebSocket 错误",
+        "detail": "WebSocket 连接异常。"
+      },
+      "unknownError": {
+        "title": "未知错误",
+        "detail": "发生未知错误。请查看日志获取详情。"
+      }
+    },
+    "envCheckPolicy": {
+      "tips": {
+        "checking": "正在检查系统环境...",
+        "ensureNetwork": "请确保网络连接正常",
+        "localData": "所有配置和数据仅保存在您的电脑上",
+        "multipleExecutors": "Viben 支持 Claude Code、Codex 等多种智能体执行器",
+        "networkPerformance": "安装和配置速度会受到网络和电脑性能影响",
+        "passwordMayBeNeeded": "安装、配置过程可能会输入电脑密码"
+      },
+      "tooltips": {
+        "node": "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境",
+        "viben": "Viben CLI 是核心命令行工具，提供 Gateway 服务和 AI 交互功能",
+        "gateway": "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信"
+      },
+      "openNodeWebsite": "打开 Node 官网",
+      "reportIssue": "报告问题"
+    },
+    "checkDag": {
+      "labels": {
+        "connection": "连接验证",
+        "executors": "智能体执行器"
+      },
+      "tooltips": {
+        "nodejs": "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境",
+        "cli": "Viben CLI 是核心命令行工具，提供 Gateway 服务和 AI 交互功能",
+        "gateway": "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信",
+        "connection": "验证桌面应用与 Gateway 的通信连接",
+        "python": "Python 环境用于运行部分 AI 工具和脚本",
+        "executors": "配置和管理 Claude Code、Codex 等智能体执行器"
+      }
+    },
+    "versionPolicy": {
+      "supportedTarget": "当前版本 {{version}} 是推荐版本",
+      "supportedNotTarget": "当前版本 {{version}} 可用，推荐升级到 {{pinnedVersion}}",
+      "belowMin": "当前版本 {{version}} 低于最低要求 {{minVersion}}，需要升级",
+      "aboveMax": "当前版本 {{version}} 高于测试版本 {{maxVersion}}，可能存在兼容性问题"
+    },
+    "cliInstaller": {
+      "preparingInstall": "准备安装...",
+      "downloadingFrom": "正在从 {{mirror}} 下载...",
+      "verifyingInstall": "验证安装...",
+      "installComplete": "安装完成",
+      "preparingUpgrade": "准备升级...",
+      "verifyingUpgrade": "验证升级...",
+      "upgradeComplete": "升级完成"
+    },
+    "orchestrator": {
+      "xcodeCltInstalling": "Xcode Command Line Tools 安装中，请完成后重试",
+      "xcodeCltRetry": "请先完成 Xcode Command Line Tools 安装，再点击「重试」",
+      "foundNodeInstalls": "发现 {{count}} 个 Node.js 安装",
+      "scanFailed": "扫描其他安装失败",
+      "nodeVersionTooLow": "Node.js {{version}} 版本过低 (at {{path}})，请选择其他版本",
+      "nodeVersionTooLowUpgrade": "Node.js 版本过低 ({{version}})，请升级到 v22.16.0 或更高版本，或从下方列表选择其他版本",
+      "gitToolsFailed": "Git 工具准备失败",
+      "nodeVersionTooLowCustom": "Node.js {{version}} 版本过低，需要 v{{required}} 或更高",
+      "invalidNodePath": "无效的 Node.js 路径"
     }
   },
   "chat": {
@@ -3478,7 +3817,7 @@
     "archiveConversation": "归档对话",
     "searchInConversationDesc": "在当前对话中搜索消息",
     "searchPlaceholder": "输入关键词搜索...",
-    "noSearchResults": "未找到结果",
+    "noSearchResults": "未找到匹配的会话",
     "you": "你",
     "viewHistoryDesc": "查看完整的消息历史",
     "exportConversationDesc": "将此对话导出为 JSON 文件",
@@ -3510,7 +3849,6 @@
     "olderSessions": "更早",
     "totalSessions": "个会话",
     "searchSessions": "搜索会话...",
-    "noSearchResults": "未找到匹配的会话",
     "agentSessions": "{{agent}} 的会话",
     "showPanel": "显示面板",
     "hidePanel": "隐藏面板",
@@ -4416,15 +4754,7 @@
       "commentsLoadMoreFailed": "加载更多评论失败"
     },
     "channels": {
-      "loadFailed": "加载渠道配置失败",
-      "saveFailed": "保存渠道配置失败",
-      "syncFailed": "同步渠道失败",
-      "createFailed": "创建渠道失败",
-      "updateFailed": "更新渠道失败",
-      "deleteFailed": "删除渠道失败",
-      "setDefaultFailed": "设置默认渠道失败",
-      "testFailed": "测试渠道失败",
-      "sendTestFailed": "发送测试消息失败"
+      "chatIdRequired": "发送测试消息需要 Chat ID"
     },
     "mcp": {
       "invalidConfigMissingUrl": "配置无效：缺少 URL",
@@ -4448,7 +4778,7 @@
       "startAgentFailed": "启动智能体失败：{{error}}"
     },
     "gateway": {
-      "notAuthenticated": "未认证"
+      "notConnected": "网关未连接"
     },
     "connection": {
       "failed": "连接失败",
@@ -4528,9 +4858,6 @@
       "loadMessagesFailed": "加载消息失败",
       "sendMessageFailed": "发送消息失败"
     },
-    "gateway": {
-      "notConnected": "网关未连接"
-    },
     "sandbox": {
       "gatewayNotConnected": "网关未连接",
       "fetchProvidersFailed": "获取提供者失败：{{error}}",
@@ -4555,9 +4882,6 @@
     },
     "unifiedAgents": {
       "cannotRemoveExecutor": "无法通过此方式移除执行器。请直接删除配置文件。"
-    },
-    "channels": {
-      "chatIdRequired": "发送测试消息需要 Chat ID"
     },
     "skillInstaller": {
       "downloadComplete": "下载完成",
@@ -4869,5 +5193,11 @@
       "charts": "图表",
       "business": "商务"
     }
+  },
+  "windowControls": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "还原",
+    "close": "关闭"
   }
 }

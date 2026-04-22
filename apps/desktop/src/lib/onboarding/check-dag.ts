@@ -11,6 +11,8 @@
  * ```
  */
 
+import i18next from "i18next";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -53,43 +55,43 @@ export const ENV_CHECK_NODES: CheckNode[] = [
   {
     id: "nodejs",
     label: "Node.js",
-    tooltip: "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境",
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.nodejs", "Node.js 是运行 Viben CLI 所需的 JavaScript 运行时环境"); },
     dependsOn: [],
     contentType: "nodejs-selector",
   },
   {
     id: "cli",
     label: "Viben CLI",
-    tooltip: "Viben CLI 是核心命令行工具，提供 Gateway 服务和 AI 交互功能",
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.cli", "Viben CLI 是核心命令行工具，提供 Gateway 服务和 AI 交互功能"); },
     dependsOn: ["nodejs"],
     contentType: "simple",
   },
   {
     id: "gateway",
     label: "Gateway",
-    tooltip: "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信",
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.gateway", "Gateway 是 Viben 的本地后端服务，负责与智能体执行器通信"); },
     dependsOn: ["cli"],
     contentType: "simple",
   },
   {
     id: "connection",
-    label: "连接验证",
-    tooltip: "验证桌面应用与 Gateway 的通信连接",
+    get label() { return i18next.t("onboarding.checkDag.labels.connection", "连接验证"); },
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.connection", "验证桌面应用与 Gateway 的通信连接"); },
     dependsOn: ["gateway"],
     contentType: "simple",
   },
   {
     id: "python",
     label: "Python",
-    tooltip: "Python 环境用于运行部分 AI 工具和脚本",
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.python", "Python 环境用于运行部分 AI 工具和脚本"); },
     dependsOn: [],
     optional: true,
     contentType: "python-selector",
   },
   {
     id: "executors",
-    label: "智能体执行器",
-    tooltip: "配置和管理 Claude Code、Codex 等智能体执行器",
+    get label() { return i18next.t("onboarding.checkDag.labels.executors", "智能体执行器"); },
+    get tooltip() { return i18next.t("onboarding.checkDag.tooltips.executors", "配置和管理 Claude Code、Codex 等智能体执行器"); },
     dependsOn: ["connection"],
     optional: true,
     contentType: "client-list",

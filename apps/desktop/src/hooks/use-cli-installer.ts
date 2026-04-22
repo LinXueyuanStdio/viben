@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import type { CliInstallerIssue } from "@/lib/onboarding/installer-issues";
 import { createCliInstallerIssue, classifyInstallerError } from "@/lib/onboarding/installer-issues";
@@ -82,6 +83,7 @@ const NPM_MIRRORS = [
 // ============================================================================
 
 export function useCliInstaller(): UseCliInstallerReturn {
+  const { t } = useTranslation();
   const [state, setState] = React.useState<CliInstallState>("idle");
   const [progress, setProgress] = React.useState<CliInstallProgress | null>(null);
   const [versionCheck, setVersionCheck] = React.useState<VersionCheckResult | null>(null);
@@ -174,7 +176,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
     log("installCli started");
     setState("installing");
     setIssue(null);
-    setProgress({ stage: "download", percent: 0, message: "准备安装..." });
+    setProgress({ stage: "download", percent: 0, message: t("onboarding.cliInstaller.preparingInstall", "准备安装...") });
 
     let lastError: string | null = null;
 
@@ -187,7 +189,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
         setProgress({
           stage: "download",
           percent: 10 + (i * 20),
-          message: `正在从 ${mirror.name} 下载...`,
+          message: t("onboarding.cliInstaller.downloadingFrom", { defaultValue: "正在从 {{mirror}} 下载...", mirror: mirror.name }),
         });
 
         // 调用 Tauri 命令安装
@@ -198,7 +200,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
         });
         log("install_viben_cli completed successfully");
 
-        setProgress({ stage: "verify", percent: 90, message: "验证安装..." });
+        setProgress({ stage: "verify", percent: 90, message: t("onboarding.cliInstaller.verifyingInstall", "验证安装...") });
 
         // 验证安装
         log("Verifying installation...");
@@ -206,7 +208,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
         log("Verification completed:", verifyResult);
 
         if (verifyResult.installed && !verifyResult.error) {
-          setProgress({ stage: "verify", percent: 100, message: "安装完成" });
+          setProgress({ stage: "verify", percent: 100, message: t("onboarding.cliInstaller.installComplete", "安装完成") });
           return; // 安装成功
         } else {
           // 安装后验证失败
@@ -244,7 +246,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
     log("upgradeCli started");
     setState("upgrading");
     setIssue(null);
-    setProgress({ stage: "download", percent: 0, message: "准备升级..." });
+    setProgress({ stage: "download", percent: 0, message: t("onboarding.cliInstaller.preparingUpgrade", "准备升级...") });
 
     try {
       // 使用 installCli 逻辑，但状态不同
@@ -255,10 +257,10 @@ export function useCliInstaller(): UseCliInstallerReturn {
       });
       log("Upgrade install completed");
 
-      setProgress({ stage: "verify", percent: 90, message: "验证升级..." });
+      setProgress({ stage: "verify", percent: 90, message: t("onboarding.cliInstaller.verifyingUpgrade", "验证升级...") });
       log("Verifying upgrade...");
       await checkCli();
-      setProgress({ stage: "verify", percent: 100, message: "升级完成" });
+      setProgress({ stage: "verify", percent: 100, message: t("onboarding.cliInstaller.upgradeComplete", "升级完成") });
       log("Upgrade successful");
       setState("success");
     } catch (error) {
