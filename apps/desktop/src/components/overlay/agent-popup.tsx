@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useVoiceStore } from '@/stores/voice-store';
 import { cn } from '@/lib/utils';
@@ -8,7 +8,11 @@ const POPUP_CONFIG = {
   maxWidth: 500,
   maxHeight: 400,
   topMargin: 140, // 字幕下方
-  charThreshold: 400, // ≥400 字符时显示弹窗
+  charThreshold: 20, // ≥20 字符时显示弹窗
+  // 打字机效果配置
+  charsPerFrame: 3, // 每帧显示的字符数
+  catchUpCharsPerFrame: 8, // 追赶时每帧显示的字符数
+  lagThreshold: 20, // 超过这个字符数开始加速追赶
 };
 
 /**
@@ -24,8 +28,81 @@ export function AgentPopup(): ReactElement | null {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // 打字机效果状态
+  const [displayedText, setDisplayedText] = useState('');
+  const displayedTextRef = useRef('');
+  const targetTextRef = useRef('');
+  const rafIdRef = useRef<number | null>(null);
+  const isAnimatingRef = useRef(false);
+
   const isActive = connectionState === 'speaking' || connectionState === 'processing';
   const shouldShow = agentResponse.showPopup && agentResponse.charCount >= POPUP_CONFIG.charThreshold;
+
+  // 打字机动画帧循环
+  const animationLoop = useCallback(() => {
+    const target = targetTextRef.current;
+    let displayed = displayedTextRef.current;
+
+    // 如果目标文本变化且当前显示的文本不是目标的前缀，重置
+    if (!target.startsWith(displayed) && displayed.length > 0) {
+      displayed = '';
+      displayedTextRef.current = '';
+    }
+
+    // 还有字符要显示
+    if (displayed.length < target.length) {
+      const lag = target.length - displayed.length;
+      const charsToAdd =
+        lag > POPUP_CONFIG.lagThreshold
+          ? POPUP_CONFIG.catchUpCharsPerFrame
+          : POPUP_CONFIG.charsPerFrame;
+
+      const endIndex = Math.min(displayed.length + charsToAdd, target.length);
+      const newDisplayed = target.slice(0, endIndex);
+      displayedTextRef.current = newDisplayed;
+      setDisplayedText(newDisplayed);
+    }
+
+    // 继续动画循环
+    if (isAnimatingRef.current) {
+      rafIdRef.current = requestAnimationFrame(animationLoop);
+    }
+  }, []);
+
+  // 启动/停止打字机动画
+  useEffect(() => {
+    if (shouldShow && agentResponse.text) {
+      targetTextRef.current = agentResponse.text;
+
+      // 如果新目标不是当前显示文本的扩展，重置
+      if (!agentResponse.text.startsWith(displayedTextRef.current)) {
+        displayedTextRef.current = '';
+        setDisplayedText('');
+      }
+
+      // 启动动画
+      if (!isAnimatingRef.current) {
+        isAnimatingRef.current = true;
+        rafIdRef.current = requestAnimationFrame(animationLoop);
+      }
+    } else {
+      // 停止动画
+      isAnimatingRef.current = false;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      displayedTextRef.current = '';
+      targetTextRef.current = '';
+      setDisplayedText('');
+    }
+
+    return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, [shouldShow, agentResponse.text, animationLoop]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -82,9 +159,9 @@ export function AgentPopup(): ReactElement | null {
         style={{ maxHeight: POPUP_CONFIG.maxHeight }}
       >
         <div className="prose prose-invert prose-sm max-w-none">
-          {/* Simple markdown-like rendering - streamdown can be added later */}
+          {/* 使用打字机效果显示文本 */}
           <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
-            {agentResponse.text}
+            {displayedText}
           </div>
         </div>
 

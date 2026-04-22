@@ -4,6 +4,7 @@ import { useVoiceStore } from "@/stores/voice-store";
 import { vocalBridgeClient } from "@/lib/voice/vocal-bridge-client";
 import type { TranscriptEvent, VocalBridgeState } from "@/lib/voice/vocal-bridge-client";
 import { playSound } from "@/lib/voice/audio-feedback";
+import { audioLevelMonitor } from "@/lib/voice/audio-level-monitor";
 import { useWave } from "./use-wave";
 import type { VoiceConnectionState, AgentResponse } from "@/types/voice";
 
@@ -130,8 +131,8 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
       }
     });
 
-    // 监听音频级别变化，驱动波浪动效
-    const unsubAudioLevel = vocalBridgeClient.onAudioLevel((level) => {
+    // 监听音频级别变化，驱动波浪动效（使用 Web Audio API 独立采集）
+    const unsubAudioLevel = audioLevelMonitor.onLevelChange((level) => {
       if (!mountedRef.current) return;
       wave.setAudioLevel(level);
     });
@@ -175,6 +176,13 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
     try {
       await vocalBridgeClient.connect();
       console.log("[useVoiceAgent] Connected successfully");
+
+      // 启动音量监控（用于波浪动效）
+      const monitorStarted = await audioLevelMonitor.start();
+      if (!monitorStarted) {
+        console.warn("[useVoiceAgent] Audio level monitor failed to start, wave effects may not respond to voice");
+      }
+
       if (config.enableSoundEffects) {
         playSound("wake-up");
       }
@@ -189,6 +197,8 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
   // 断开
   const disconnect = useCallback(async () => {
     clearSilenceTimer();
+    // 停止音量监控
+    audioLevelMonitor.stop();
     await vocalBridgeClient.disconnect();
     store.actions.setConnectionState("idle");
     store.actions.clearAgentResponse();

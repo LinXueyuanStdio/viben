@@ -70,6 +70,9 @@ export function WaveLayer(): null {
   const isExpandingRef = useRef(false);
   const isCollapsingRef = useRef(false);
 
+  // 使用 ref 跟踪 audioLevel 以避免闭包问题（频繁更新时不重建 ticker）
+  const audioLevelRef = useRef(config.audioLevel ?? 0);
+
   useEffect(() => {
     if (!app || !isReady) return;
 
@@ -88,6 +91,11 @@ export function WaveLayer(): null {
       graphicsRef.current = null;
     };
   }, [app, isReady]);
+
+  // 更新 audioLevel ref（避免重建 ticker）
+  useEffect(() => {
+    audioLevelRef.current = config.audioLevel ?? 0;
+  }, [config.audioLevel]);
 
   useEffect(() => {
     if (!app || !isReady || !enabled) return;
@@ -171,8 +179,12 @@ export function WaveLayer(): null {
       }
 
       const params = currentParamsRef.current!;
-      const audioBoost = 1 + (config.audioLevel ?? 0) * 1.5;
-      const effectiveAmplitude = params.amplitude * audioBoost;
+      // 使用 ref 读取 audioLevel，避免闭包问题
+      // audioLevel 范围 0-1，映射到振幅倍数 1x - 3x
+      const audioBoost = 1 + audioLevelRef.current * 2;
+      // 限制最大振幅不超过 height 的一半，防止超出窗口
+      const maxAmplitude = height * 0.45;
+      const effectiveAmplitude = Math.min(params.amplitude * audioBoost, maxAmplitude);
 
       timeRef.current += deltaSeconds * params.speed * config.speed;
       const width = window.innerWidth;

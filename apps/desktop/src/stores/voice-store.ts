@@ -97,7 +97,7 @@ export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set
           text: newText,
           charCount,
           isStreaming: true,
-          showPopup: charCount >= 400,
+          showPopup: charCount >= 20,
         },
       };
     }),

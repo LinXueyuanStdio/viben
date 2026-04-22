@@ -16,9 +16,10 @@ const SUBTITLE_CONFIG = {
   maxWidth: 600,
   topMargin: 60,
   cursorBlinkInterval: 500,
-  // 打字机效果配置
-  typewriterCharDelay: 30, // 每个字符的延迟（毫秒）
-  typewriterMinDelay: 10, // 最小延迟（快速追赶时）
+  // 打字机效果配置 - 使用 requestAnimationFrame
+  charsPerFrame: 2, // 每帧显示的字符数（60fps 下约 120 字符/秒）
+  catchUpCharsPerFrame: 5, // 追赶时每帧显示的字符数
+  lagThreshold: 10, // 超过这个字符数开始加速追赶
 };
 
 export function VoiceSubtitleLayer(): null {
@@ -36,7 +37,8 @@ export function VoiceSubtitleLayer(): null {
   // 打字机效果状态
   const displayedTextRef = useRef("");
   const targetTextRef = useRef("");
-  const typewriterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const isAnimatingRef = useRef(false);
 
   // 初始化容器
   useEffect(() => {
@@ -76,8 +78,8 @@ export function VoiceSubtitleLayer(): null {
       if (blinkIntervalRef.current) {
         clearInterval(blinkIntervalRef.current);
       }
-      if (typewriterTimerRef.current) {
-        clearTimeout(typewriterTimerRef.current);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
       }
       container.destroy({ children: true });
       containerRef.current = null;
@@ -129,41 +131,39 @@ export function VoiceSubtitleLayer(): null {
     container.y = SUBTITLE_CONFIG.topMargin;
   }, []);
 
-  // 打字机动画：逐字符显示
-  const animateNextChar = useCallback(() => {
+  // 打字机动画帧循环 (使用 requestAnimationFrame 实现平滑动画)
+  const animationLoop = useCallback(() => {
     const target = targetTextRef.current;
-    const displayed = displayedTextRef.current;
+    let displayed = displayedTextRef.current;
 
-    // 如果目标文本发生变化且当前显示的文本不是目标的前缀，重置
+    // 如果目标文本变化且当前显示的文本不是目标的前缀，重置
     if (!target.startsWith(displayed) && displayed.length > 0) {
-      // 目标文本完全改变了，从头开始
+      displayed = "";
       displayedTextRef.current = "";
     }
 
-    const currentDisplayed = displayedTextRef.current;
+    // 已经显示完成，但保持动画循环以响应新数据
+    if (displayed.length < target.length) {
+      // 计算落后字符数，决定每帧显示多少字符
+      const lag = target.length - displayed.length;
+      const charsToAdd =
+        lag > SUBTITLE_CONFIG.lagThreshold
+          ? SUBTITLE_CONFIG.catchUpCharsPerFrame
+          : SUBTITLE_CONFIG.charsPerFrame;
 
-    // 已经显示完成
-    if (currentDisplayed.length >= target.length) {
-      return;
+      // 添加字符
+      const endIndex = Math.min(displayed.length + charsToAdd, target.length);
+      const newDisplayed = target.slice(0, endIndex);
+      displayedTextRef.current = newDisplayed;
+
+      // 更新 UI
+      updateLayout(newDisplayed);
     }
 
-    // 显示下一个字符
-    const nextChar = target[currentDisplayed.length];
-    const newDisplayed = currentDisplayed + nextChar;
-    displayedTextRef.current = newDisplayed;
-
-    // 更新 UI
-    updateLayout(newDisplayed);
-
-    // 计算延迟：如果落后太多，加速追赶
-    const lag = target.length - newDisplayed.length;
-    const delay =
-      lag > 10
-        ? SUBTITLE_CONFIG.typewriterMinDelay
-        : SUBTITLE_CONFIG.typewriterCharDelay;
-
-    // 继续动画
-    typewriterTimerRef.current = setTimeout(animateNextChar, delay);
+    // 继续动画循环
+    if (isAnimatingRef.current) {
+      rafIdRef.current = requestAnimationFrame(animationLoop);
+    }
   }, [updateLayout]);
 
   // 启动打字机动画
@@ -177,20 +177,21 @@ export function VoiceSubtitleLayer(): null {
         displayedTextRef.current = "";
       }
 
-      // 如果动画已在运行，让它继续
-      // 如果没有在运行，启动它
-      if (!typewriterTimerRef.current) {
-        animateNextChar();
+      // 如果动画未在运行，启动它
+      if (!isAnimatingRef.current) {
+        isAnimatingRef.current = true;
+        rafIdRef.current = requestAnimationFrame(animationLoop);
       }
     },
-    [animateNextChar]
+    [animationLoop]
   );
 
   // 停止打字机动画
   const stopTypewriter = useCallback(() => {
-    if (typewriterTimerRef.current) {
-      clearTimeout(typewriterTimerRef.current);
-      typewriterTimerRef.current = null;
+    isAnimatingRef.current = false;
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
     displayedTextRef.current = "";
     targetTextRef.current = "";
