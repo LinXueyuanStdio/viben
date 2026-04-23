@@ -1,5 +1,6 @@
 // apps/desktop/src/hooks/use-voice-agent.ts
 import { useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useVoiceStore } from "@/stores/voice-store";
 import { vocalBridgeClient } from "@/lib/voice/vocal-bridge-client";
 import type { TranscriptEvent, VocalBridgeState } from "@/lib/voice/vocal-bridge-client";
@@ -30,6 +31,7 @@ interface UseVoiceAgentReturn {
  * 管理与 Vocal Bridge 的连接和状态
  */
 export function useVoiceAgent(): UseVoiceAgentReturn {
+  const { t } = useTranslation();
   const store = useVoiceStore();
   const wave = useWave();
   const mountedRef = useRef(true);
@@ -169,13 +171,13 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
 
     if (!config.vocalBridgeApiKey) {
       console.error("[useVoiceAgent] No API Key configured");
-      store.actions.setError("请先配置 API Key");
+      store.actions.setError(t("settings.voice.errors.noApiKey", "请先配置 API Key"));
       return;
     }
 
     if (!config.vocalBridgeAgentId) {
       console.error("[useVoiceAgent] No Agent ID configured");
-      store.actions.setError("请先配置 Agent ID");
+      store.actions.setError(t("settings.voice.errors.noAgentId", "请先配置 Agent ID"));
       return;
     }
 

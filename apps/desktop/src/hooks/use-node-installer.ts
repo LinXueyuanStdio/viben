@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { NodeInstallerIssue } from "@/lib/onboarding/node-installer-issues";
@@ -186,6 +187,7 @@ export interface NodeScanResult {
 // ============================================================================
 
 export function useNodeInstaller(): UseNodeInstallerReturn {
+  const { t } = useTranslation();
   const [state, setState] = React.useState<NodeInstallerState>("idle");
   const [issue, setIssue] = React.useState<NodeInstallerIssue | null>(null);
   const [currentVersion, setCurrentVersion] = React.useState<string | null>(
@@ -391,7 +393,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       setProgress({
         stage: "planning",
         percent: 0,
-        message: "正在检查 Git 与 Xcode Command Line Tools...",
+        message: t("onboarding.nodeInstaller.checkingGitXcode", "正在检查 Git 与 Xcode Command Line Tools..."),
       });
 
       try {
@@ -461,7 +463,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       setProgress({
         stage: "downloading",
         percent: 0,
-        message: `正在下载 Node.js ${plan.version}...`,
+        message: t("onboarding.nodeInstaller.downloadingNode", { defaultValue: "正在下载 Node.js {{version}}...", version: plan.version }),
       });
 
       try {
@@ -495,7 +497,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       setProgress({
         stage: "verifying",
         percent: 0,
-        message: "正在校验安装包...",
+        message: t("onboarding.nodeInstaller.verifyingPackage", "正在校验安装包..."),
       });
 
       try {
@@ -547,7 +549,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
       setProgress({
         stage: "installing",
         percent: 0,
-        message: "正在安装 Node.js...",
+        message: t("onboarding.nodeInstaller.installingNode", "正在安装 Node.js..."),
       });
 
       try {
@@ -566,7 +568,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
           setProgress({
             stage: "finalizing",
             percent: 100,
-            message: "安装完成",
+            message: t("onboarding.nodeInstaller.installComplete", "安装完成"),
           });
         }
 
@@ -598,7 +600,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
     setProgress({
       stage: "finalizing",
       percent: 90,
-      message: "正在刷新环境变量...",
+      message: t("onboarding.nodeInstaller.refreshingEnv", "正在刷新环境变量..."),
     });
 
     try {

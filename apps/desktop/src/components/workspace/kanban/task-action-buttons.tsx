@@ -161,8 +161,8 @@ export function TaskActionButtons({
           if (executionTriggeringEvents.includes(eventType)) {
             // Build prompt from task title and description
             const prompt = taskDescription
-              ? `Task: ${taskTitle || "Unnamed task"}\n\nDescription: ${taskDescription}`
-              : `Task: ${taskTitle || "Unnamed task"}`;
+              ? `Task: ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}\n\nDescription: ${taskDescription}`
+              : `Task: ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}`;
 
             try {
               // Enqueue task for background execution

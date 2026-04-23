@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Minus, Square, Copy, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ type TauriWindow = {
 };
 
 export function WindowControls() {
+  const { t } = useTranslation();
   const [currentPlatform, setCurrentPlatform] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [appWindow, setAppWindow] = useState<TauriWindow | null>(null);
@@ -110,7 +112,7 @@ export function WindowControls() {
           "h-9 w-11 flex items-center justify-center",
           "hover:bg-muted/80 transition-colors"
         )}
-        aria-label="Minimize"
+        aria-label={t("windowControls.minimize", "Minimize")}
       >
         <Minus className="h-4 w-4" />
       </button>
@@ -122,7 +124,7 @@ export function WindowControls() {
           "h-9 w-11 flex items-center justify-center",
           "hover:bg-muted/80 transition-colors"
         )}
-        aria-label={isMaximized ? "Restore" : "Maximize"}
+        aria-label={isMaximized ? t("windowControls.restore", "Restore") : t("windowControls.maximize", "Maximize")}
       >
         {isMaximized ? (
           <Copy className="h-3.5 w-3.5" />
@@ -138,7 +140,7 @@ export function WindowControls() {
           "h-9 w-11 flex items-center justify-center",
           "hover:bg-red-500 hover:text-white transition-colors"
         )}
-        aria-label="Close"
+        aria-label={t("windowControls.close", "Close")}
       >
         <X className="h-4 w-4" />
       </button>

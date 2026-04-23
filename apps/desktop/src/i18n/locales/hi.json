@@ -119,7 +119,19 @@
       "terabytes": "TB",
       "chars": "अक्षर",
       "lines": "पंक्तियाँ"
-    }
+    },
+    "hide": "Hide",
+    "show": "Show",
+    "reset": "Reset",
+    "blocked": "Blocked",
+    "checking": "Checking",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "moreInfo": "More info",
+    "pending": "Pending",
+    "skipped": "Skipped",
+    "success": "Success",
+    "warning": "Warning"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -682,6 +694,24 @@
       "arch": "आर्किटेक्चर",
       "logs": "लॉग्स",
       "config": "कॉन्फिग"
+    },
+    "voice": {
+      "sound": {
+        "title": "Sound Effects",
+        "enabled": "Enable Sound Effects",
+        "enabledDesc": "Play sound feedback for wake and error events"
+      },
+      "errors": {
+        "noApiKey": "Please configure API Key first",
+        "noAgentId": "Please configure Agent ID first"
+      },
+      "api": {
+        "agentId": "Agent ID",
+        "agentIdDesc": "Vocal Bridge voice agent ID"
+      },
+      "test": {
+        "noConfig": "Please configure API Key and Agent ID first"
+      }
     }
   },
   "sandbox": {
@@ -1870,7 +1900,17 @@
       "invalidUrl": "Invalid URL",
       "stdioRequiresCommand": "STDIO transport requires command"
     },
-    "enterAuthCode": "After authorizing in the browser, paste the authorization code here:"
+    "enterAuthCode": "After authorizing in the browser, paste the authorization code here:",
+    "annotations": {
+      "destructive": "Destructive",
+      "destructiveDesc": "Tool may perform destructive updates",
+      "idempotent": "Idempotent",
+      "idempotentDesc": "Repeated calls will not produce additional effects",
+      "openWorld": "Open World",
+      "openWorldDesc": "Tool may interact with external entities",
+      "readOnly": "Read-only",
+      "readOnlyDesc": "Tool does not modify its environment"
+    }
   },
   "updates": {
     "title": "Package Updates",
@@ -2277,6 +2317,32 @@
         "assets": "Assets",
         "moreAssets": "more assets",
         "publishedBy": "Published by {{user}} on {{date}}"
+      },
+      "issueDetail": {
+        "assignees": "Assignees",
+        "checkingTask": "Checking task...",
+        "closedAt": "Closed on {{date}}",
+        "commentedAt": "Commented {{time}}",
+        "commentsCount": "{{count}} comments",
+        "createTask": "Create task",
+        "createdAt": "Created on {{date}}",
+        "daysAgo": "{{count}} days ago",
+        "goToTask": "Go to task",
+        "hoursAgo": "{{count}} hours ago",
+        "labels": "Labels",
+        "linkedTask": "Linked task",
+        "loadMoreComments": "Load more comments",
+        "loadingComments": "Loading comments...",
+        "milestone": "Milestone",
+        "minutesAgo": "{{count}} minutes ago",
+        "noAssignees": "No assignees",
+        "noDescription": "No description",
+        "noLabels": "No labels",
+        "noLinkedTask": "No linked task",
+        "noMilestone": "No milestone",
+        "openedThisIssue": "opened this issue",
+        "timeline": "Timeline",
+        "updatedAt": "Updated on {{date}}"
       }
     }
   },
@@ -2835,7 +2901,8 @@
       "completed": "Completed",
       "sequenceMismatch": "Sequence mismatch - please refresh",
       "invalidTransition": "Invalid state transition",
-      "submitFailed": "Failed to submit event"
+      "submitFailed": "Failed to submit event",
+      "unnamedTask": "Unnamed task"
     },
     "taskEvents": {
       "title": "Events",
@@ -2871,7 +2938,8 @@
       "stopped": "Stopped"
     },
     "chatMonitor": "Chat Monitor",
-    "chatMonitorDescription": "Monitor agent chat execution traces"
+    "chatMonitorDescription": "Monitor agent chat execution traces",
+    "selectFolderTitle": "Select workspace folder"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -2964,6 +3032,371 @@
       "error": "Sign-in failed",
       "errorHint": "There was an error during sign-in. You can try again or skip this step.",
       "finish": "Get Started"
+    },
+    "diagnostics": {
+      "portConflictSame": {
+        "title": "Another Gateway instance detected",
+        "detail": "Port {{port}} is already occupied by another Viben Gateway.",
+        "hint1": "Click \"Retry\" to attempt taking over the existing instance",
+        "hint2": "Or change the Gateway port in settings"
+      },
+      "portConflictForeign": {
+        "title": "Port occupied by another program",
+        "detail": "Port {{port}} is occupied by another program, unable to start Gateway.",
+        "hint1": "Find and close the program using port {{port}}",
+        "hint2": "Or change the Gateway port in settings",
+        "hint3": "You can run 'lsof -i :{{port}}' (macOS/Linux) to find the occupying process"
+      },
+      "authRefresh": {
+        "title": "Authentication needs refresh",
+        "detail": "The Gateway authentication token has expired or mismatched.",
+        "hint1": "Click \"Retry\" to reload authentication info",
+        "hint2": "If the problem persists, try restarting the Gateway"
+      },
+      "configInvalid": {
+        "title": "Configuration file invalid",
+        "detail": "There is a problem with the Gateway configuration file, unable to start the service.",
+        "hint1": "Check the ~/.viben/config.yaml configuration file",
+        "hint2": "Try deleting the configuration file and reconfiguring",
+        "hint3": "Check logs for detailed error information"
+      },
+      "cliNotFound": {
+        "title": "Viben CLI not installed",
+        "detail": "Cannot find Viben CLI, needs to be installed before starting Gateway.",
+        "hint1": "Click \"Install Viben CLI\" to install automatically",
+        "hint2": "Or manually run: npm install -g viben",
+        "hint3": "Visit https://github.com/LinXueyuanStdio/viben for more installation options"
+      },
+      "versionMismatch": {
+        "title": "Version incompatible",
+        "detail": "Current Viben CLI version {{version}} is incompatible with the app.",
+        "hint1": "Click \"Upgrade\" to automatically update to a compatible version",
+        "hint2": "Or manually run: npm update -g viben"
+      },
+      "versionTooLow": {
+        "title": "Viben CLI version too low",
+        "detail": "Current version {{version}} does not meet the minimum requirement.",
+        "hint1": "Click \"Upgrade\" to automatically update to the latest version",
+        "hint2": "Or manually run: npm update -g viben"
+      },
+      "versionTooHigh": {
+        "title": "Viben CLI version may be incompatible",
+        "detail": "Current version {{version}} is higher than the tested version, may have compatibility issues.",
+        "hint1": "You can continue using it, but some features may not work properly",
+        "hint2": "If you encounter issues, you can downgrade to the recommended version"
+      },
+      "connectionRefused": {
+        "title": "Cannot connect to Gateway",
+        "detail": "The Gateway service may not have started properly or has crashed.",
+        "hint1": "Click \"Retry\" to attempt restarting the Gateway",
+        "hint2": "Check system logs for error information"
+      },
+      "connectionTimeout": {
+        "title": "Connection timeout",
+        "detail": "Connection to Gateway timed out, service response too slow.",
+        "hint1": "Check if system resources are sufficient",
+        "hint2": "Click \"Retry\" to try connecting again"
+      },
+      "networkBlocked": {
+        "title": "Network connection blocked",
+        "detail": "Local network connection is blocked by firewall or security software.",
+        "hint1": "Check firewall settings, allow localhost connections",
+        "hint2": "If using VPN or proxy, try disabling temporarily",
+        "hint3": "Check if security software is blocking local services"
+      },
+      "serviceStale": {
+        "title": "Service state expired",
+        "detail": "The Gateway service state is abnormal, needs to be restarted.",
+        "hint1": "Click \"Retry\" to restart the Gateway"
+      },
+      "unknownError": {
+        "title": "Error starting Gateway",
+        "detail": "An unknown error occurred.",
+        "detailFallback": "An unknown error occurred.",
+        "hint1": "Click \"Retry\" to try again",
+        "hint2": "Check application logs for details",
+        "hint3": "If the problem persists, please contact support"
+      },
+      "missingCli": {
+        "title": "Viben CLI installation required",
+        "detail": "Viben CLI is not detected on the system, installation is needed to continue.",
+        "hint1": "Click \"Auto Install\" to install via npm",
+        "hint2": "Or manually run: npm install -g viben"
+      },
+      "missingNode": {
+        "title": "Node.js installation required",
+        "detail": "Viben CLI requires Node.js runtime, but it is not detected on the system.",
+        "hint1": "Visit https://nodejs.org to download and install Node.js",
+        "hint2": "Recommended: Node.js 18 LTS or higher",
+        "hint3": "If already installed, make sure the node command is in PATH"
+      },
+      "npmRegistryError": {
+        "title": "npm registry connection failed",
+        "detail": "Cannot connect to npm registry, will try using mirror source.",
+        "hint1": "Check network connection",
+        "hint2": "Click \"Retry\" to use alternative mirror source"
+      },
+      "downloadFailed": {
+        "title": "Download failed",
+        "detailFallback": "An error occurred during download.",
+        "hint1": "Check network connection and retry",
+        "hint2": "If the problem persists, try manual installation"
+      },
+      "installFailed": {
+        "title": "Installation failed",
+        "detailFallback": "An error occurred during installation.",
+        "hint1": "Check detailed error information",
+        "hint2": "Try running the install command manually",
+        "hint3": "Check for permission issues"
+      },
+      "permissionDenied": {
+        "title": "Insufficient permissions",
+        "detail": "Installation requires elevated permissions.",
+        "hint1": "macOS/Linux: Try running with sudo",
+        "hint2": "Windows: Run as administrator",
+        "hint3": "Or use nvm to install Node.js to avoid permission issues"
+      },
+      "xcodeCltPending": {
+        "title": "Waiting for Xcode Command Line Tools installation",
+        "detail": "Xcode Command Line Tools installation has been triggered, please complete the installation in the system dialog.",
+        "hint1": "Click \"Install\" in the system dialog that appeared",
+        "hint2": "If no dialog appears, click the install icon in the top right corner",
+        "hint3": "After installation completes, click \"Retry\" to continue"
+      },
+      "userCancelled": {
+        "title": "Installation cancelled",
+        "detail": "You cancelled the installation.",
+        "hint1": "Click \"Retry\" to start installation again",
+        "hint2": "Or click \"Skip\" to continue (some features may be unavailable)"
+      },
+      "networkError": {
+        "title": "Network connection failed",
+        "detail": "Cannot establish network connection.",
+        "hint1": "Check network connection",
+        "hint2": "If using a proxy, check proxy settings",
+        "hint3": "Click \"Retry\" to try again"
+      },
+      "installerUnknownError": {
+        "title": "Error during installation",
+        "detailFallback": "An unknown error occurred.",
+        "hint1": "Check detailed error information",
+        "hint2": "Click \"Retry\" to try again",
+        "hint3": "If the problem persists, please contact support"
+      }
+    },
+    "nodeInstaller": {
+      "missingInstaller": {
+        "title": "Node installer package not found",
+        "message": "The downloaded Node.js installer package was not found, installation cannot continue. Please click \"Continue Install\" to try again."
+      },
+      "downloadFailed": {
+        "title": "Node installer download failed",
+        "message": "Automatic download of Node.js installer failed. Please check network, proxy, or certificate settings; if it still fails, you can download manually from the Node.js website."
+      },
+      "installerFailed": {
+        "title": "Node installer execution failed",
+        "message": "The Node.js installer encountered an error. Please try again later; if it still fails, consider installing manually from the Node.js website."
+      },
+      "permissionDenied": {
+        "title": "Insufficient permissions to install Node.js",
+        "message": "Insufficient permissions to install Node.js. Please confirm your account has administrator privileges and allow the system installation prompt."
+      },
+      "userCancelled": {
+        "title": "Node installation cancelled",
+        "message": "You cancelled the administrator authorization or installation process, so Node.js was not installed."
+      },
+      "versionTooLow": {
+        "title": "Node.js version too low",
+        "message": "Current Node.js version is below the minimum requirement (v22.16.0). Please upgrade to the latest LTS version and retry."
+      },
+      "versionTooHigh": {
+        "title": "Node.js version too high",
+        "message": "Current Node.js version is higher than recommended. Some features may be incompatible, consider using an LTS version."
+      },
+      "xcodeCltPending": {
+        "title": "Waiting for Xcode Command Line Tools installation",
+        "message": "Xcode Command Line Tools system installation dialog has been triggered. If no dialog appears, click the install icon at the bottom right of the screen; after installation completes, click \"Retry Detection\" to refresh status."
+      },
+      "gitUnavailable": {
+        "title": "Git command unavailable",
+        "message": "Git is not available on the current system, environment preparation cannot continue. Please fix Git or install Xcode Command Line Tools first, then retry."
+      },
+      "devToolsFailed": {
+        "title": "macOS developer tools pre-check failed",
+        "message": "An issue was encountered while preparing Git / Xcode Command Line Tools. Please try again later; if it still fails, manually check the system developer tools status."
+      },
+      "corruptedInstaller": {
+        "title": "Node installer package invalid or corrupted",
+        "message": "The downloaded Node.js installer failed signature/integrity check, may be corrupted or replaced by proxy. Please check network environment and retry."
+      },
+      "unsupportedMacos": {
+        "title": "Current macOS version does not support this Node installer",
+        "message": "Current system version is incompatible with the target Node.js installer, automatic installation cannot continue. Please upgrade the system first, or manually install a compatible Node.js version."
+      },
+      "notAdminUser": {
+        "title": "Current account does not have administrator privileges",
+        "message": "Automatic Node.js installation requires macOS administrator privileges. Please log in with an administrator account, or contact the device administrator."
+      },
+      "blockedByPolicy": {
+        "title": "System policy blocked installation",
+        "message": "This computer's security policy prevented Node.js installation. Please contact the administrator, or install Node.js manually."
+      },
+      "missingSystemCommand": {
+        "title": "System missing pre-check commands",
+        "message": "The current system is missing system commands required for automatic Node.js installation pre-check. Please contact the administrator to fix system tools, or install Node.js manually."
+      },
+      "installComplete": "Installation complete",
+      "checkingGitXcode": "Checking Git and Xcode Command Line Tools...",
+      "downloadingNode": "Downloading Node.js {{version}}...",
+      "verifyingPackage": "Verifying package...",
+      "installingNode": "Installing Node.js...",
+      "refreshingEnv": "Refreshing environment variables..."
+    },
+    "gatewayState": {
+      "healthy": {
+        "title": "Gateway running normally",
+        "detail": "All services running normally."
+      },
+      "notRunning": {
+        "title": "Gateway not running",
+        "detail": "Gateway service has not been started."
+      },
+      "starting": {
+        "title": "Gateway starting",
+        "detail": "Please wait..."
+      },
+      "stopping": {
+        "title": "Gateway stopping",
+        "detail": "Please wait..."
+      },
+      "portConflictSame": {
+        "title": "Port occupied",
+        "detail": "Another Gateway instance is running."
+      },
+      "portConflictForeign": {
+        "title": "Port conflict",
+        "detail": "Port is occupied by another program. Consider changing the port or closing the conflicting program."
+      },
+      "tokenMismatch": {
+        "title": "Authentication token mismatch",
+        "detail": "Try restarting Gateway to refresh authentication."
+      },
+      "authMissing": {
+        "title": "Authentication info missing",
+        "detail": "Authentication info needs to be reconfigured."
+      },
+      "connectionRefused": {
+        "title": "Connection refused",
+        "detail": "Cannot connect to Gateway. Service may not be started."
+      },
+      "connectionTimeout": {
+        "title": "Connection timeout",
+        "detail": "Connection to Gateway timed out. Check network or retry."
+      },
+      "networkBlocked": {
+        "title": "Network blocked",
+        "detail": "Network connection blocked by firewall or proxy."
+      },
+      "versionMismatch": {
+        "title": "Version mismatch",
+        "detail": "Gateway version is incompatible with the app. Consider updating."
+      },
+      "configInvalid": {
+        "title": "Configuration invalid",
+        "detail": "Gateway configuration file has issues. Please check configuration."
+      },
+      "cliNotFound": {
+        "title": "CLI not found",
+        "detail": "Cannot find Viben CLI. Please install first."
+      },
+      "cliError": {
+        "title": "CLI execution error",
+        "detail": "Error occurred executing Viben CLI command."
+      },
+      "serviceStale": {
+        "title": "Service expired",
+        "detail": "Gateway service state expired, needs to be restarted."
+      },
+      "websocketError": {
+        "title": "WebSocket error",
+        "detail": "WebSocket connection abnormal."
+      },
+      "unknownError": {
+        "title": "Unknown error",
+        "detail": "An unknown error occurred. Please check logs for details."
+      }
+    },
+    "envCheckPolicy": {
+      "tips": {
+        "checking": "Checking system environment...",
+        "ensureNetwork": "Please ensure network connection is available",
+        "localData": "All configuration and data is stored locally on your computer",
+        "multipleExecutors": "Viben supports Claude Code, Codex, and other agent executors",
+        "networkPerformance": "Installation and configuration speed is affected by network and computer performance",
+        "passwordMayBeNeeded": "Installation and configuration may require your computer password"
+      },
+      "tooltips": {
+        "node": "Node.js is the JavaScript runtime required to run Viben CLI",
+        "viben": "Viben CLI is the core command-line tool providing Gateway service and AI interaction",
+        "gateway": "Gateway is Viben's local backend service, responsible for communicating with agent executors"
+      },
+      "openNodeWebsite": "Open Node.js Website",
+      "reportIssue": "Report Issue"
+    },
+    "checkDag": {
+      "labels": {
+        "connection": "Connection Verification",
+        "executors": "Agent Executors"
+      },
+      "tooltips": {
+        "nodejs": "Node.js is the JavaScript runtime required to run Viben CLI",
+        "cli": "Viben CLI is the core command-line tool providing Gateway service and AI interaction",
+        "gateway": "Gateway is Viben's local backend service, responsible for communicating with agent executors",
+        "connection": "Verifies communication between the desktop app and Gateway",
+        "python": "Python environment is used for running some AI tools and scripts",
+        "executors": "Configure and manage agent executors like Claude Code, Codex, etc."
+      }
+    },
+    "versionPolicy": {
+      "supportedTarget": "Current version {{version}} is the recommended version",
+      "supportedNotTarget": "Current version {{version}} is usable, recommend upgrading to {{pinnedVersion}}",
+      "belowMin": "Current version {{version}} is below the minimum requirement {{minVersion}}, needs upgrade",
+      "aboveMax": "Current version {{version}} is higher than the tested version {{maxVersion}}, may have compatibility issues"
+    },
+    "cliInstaller": {
+      "preparingInstall": "Preparing installation...",
+      "downloadingFrom": "Downloading from {{mirror}}...",
+      "verifyingInstall": "Verifying installation...",
+      "installComplete": "Installation complete",
+      "preparingUpgrade": "Preparing upgrade...",
+      "verifyingUpgrade": "Verifying upgrade...",
+      "upgradeComplete": "Upgrade complete"
+    },
+    "orchestrator": {
+      "xcodeCltInstalling": "Xcode Command Line Tools installing, please complete and retry",
+      "xcodeCltRetry": "Please complete Xcode Command Line Tools installation first, then click \"Retry\"",
+      "foundNodeInstalls": "Found {{count}} Node.js installation(s)",
+      "scanFailed": "Scanning other installations failed",
+      "nodeVersionTooLow": "Node.js {{version}} version too low (at {{path}}), please select another version",
+      "nodeVersionTooLowUpgrade": "Node.js version too low ({{version}}), please upgrade to v22.16.0 or higher, or select another version from the list below",
+      "gitToolsFailed": "Git tools preparation failed",
+      "nodeVersionTooLowCustom": "Node.js {{version}} version too low, requires v{{required}} or higher",
+      "invalidNodePath": "Invalid Node.js path"
+    },
+    "envCheck": {
+      "labels": {
+        "url": "URL",
+        "binary": "Binary",
+        "command": "Command"
+      },
+      "checkingGitTools": "Checking Git and Xcode Command Line Tools...",
+      "continueInstall": "Continue installation",
+      "nodeDownloading": "Downloading Node.js {{version}}...",
+      "nodeInstalling": "Installing Node.js...",
+      "nodeVerifying": "Verifying installation package...",
+      "refreshingEnv": "Refreshing environment variables...",
+      "retryDetect": "Retry detection",
+      "xcodeCltPending": "Please complete Xcode Command Line Tools installation first, then click \"Retry\""
     }
   },
   "chat": {
@@ -4272,5 +4705,11 @@
     "currentYearDesc": "Current year",
     "currentMonthDesc": "Current month (01-12)",
     "currentDayDesc": "Current day (01-31)"
+  },
+  "windowControls": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
   }
 }
