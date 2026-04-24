@@ -88,19 +88,27 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
           break;
         case "connected":
         case "waiting_for_agent":
+          // 如果之前是 speaking，标记流式输出结束
+          if (store.connectionState === "speaking") {
+            store.actions.finishAgentResponse();
+          }
           store.actions.setConnectionState("listening");
           wave.startListening();
           startSilenceTimer();
           break;
         case "disconnected":
+          store.actions.finishAgentResponse();
           store.actions.setConnectionState("idle");
           wave.stopSpeaking();
           clearSilenceTimer();
+          audioLevelMonitor.stop();
           break;
         case "error":
+          store.actions.finishAgentResponse();
           store.actions.setConnectionState("error");
           wave.stopSpeaking();
           clearSilenceTimer();
+          audioLevelMonitor.stop();
           break;
       }
     });
@@ -181,6 +189,7 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
       return;
     }
 
+    const startTime = performance.now();
     console.log("[useVoiceAgent] Connecting with API Key:", config.vocalBridgeApiKey.slice(0, 8) + "...", "Agent ID:", config.vocalBridgeAgentId);
 
     // 配置客户端
@@ -191,11 +200,20 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
     store.actions.updateUserTranscript("");
 
     try {
-      await vocalBridgeClient.connect();
-      console.log("[useVoiceAgent] Connected successfully");
+      // 并行执行：VocalBridge 连接 + 音量监控启动
+      // 这两个操作互相独立，可以同时进行
+      const [, monitorStarted] = await Promise.all([
+        vocalBridgeClient.connect().then(() => {
+          console.log("[useVoiceAgent] VocalBridge connected in", (performance.now() - startTime).toFixed(0), "ms");
+        }),
+        audioLevelMonitor.start().then((started) => {
+          console.log("[useVoiceAgent] AudioLevelMonitor started in", (performance.now() - startTime).toFixed(0), "ms, success:", started);
+          return started;
+        }),
+      ]);
 
-      // 启动音量监控（用于波浪动效）
-      const monitorStarted = await audioLevelMonitor.start();
+      console.log("[useVoiceAgent] Total connect time:", (performance.now() - startTime).toFixed(0), "ms");
+
       if (!monitorStarted) {
         console.warn("[useVoiceAgent] Audio level monitor failed to start, wave effects may not respond to voice");
       }
@@ -205,6 +223,8 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
       }
     } catch (err) {
       console.error("[useVoiceAgent] Connection failed:", err);
+      // 连接失败时停止音频监控
+      audioLevelMonitor.stop();
       store.actions.setConnectionState("error");
       store.actions.setError(err instanceof Error ? err.message : String(err));
       throw err;

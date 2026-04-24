@@ -353,10 +353,11 @@ export function SettingsPage() {
         {/* Left Navigation Sidebar */}
         <motion.nav
           className={cn(
-            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300",
-            collapsed ? "w-full md:w-16" : "w-full md:w-56"
+            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300 overflow-hidden whitespace-nowrap",
+            collapsed ? "w-16" : "w-56"
           )}
           variants={itemVariants}
+          initial="visible"
         >
           {/* Header with collapse toggle - matches main sidebar h-14 */}
           <div className={cn(

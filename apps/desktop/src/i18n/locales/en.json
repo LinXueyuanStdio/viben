@@ -173,6 +173,7 @@
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "workspacePages": "Workspace",
+    "workspaceHome": "Workspace Home",
     "newTask": "New Task",
     "taskCreated": "Task created successfully",
     "taskCreateFailed": "Failed to create task",

@@ -173,6 +173,7 @@
     "collapse": "收起侧边栏",
     "expand": "展开侧边栏",
     "workspacePages": "工作空间",
+    "workspaceHome": "工作空间首页",
     "newTask": "新建任务",
     "taskCreated": "任务创建成功",
     "taskCreateFailed": "任务创建失败",

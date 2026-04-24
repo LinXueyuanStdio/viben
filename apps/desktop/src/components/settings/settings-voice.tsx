@@ -17,6 +17,28 @@ import { useWakeWord } from "@/hooks/use-wake-word";
 import { loadVoiceConfig, saveVoiceConfig } from "@/lib/voice/secure-config";
 import { Loader2, Save, RotateCcw, Mic, MicOff, Square, AudioWaveform, CheckCircle2 } from "lucide-react";
 
+/**
+ * 预热麦克风权限
+ * 在设置页面加载时提前请求麦克风权限，避免点击测试按钮时的延迟
+ */
+async function warmupMicrophonePermission(): Promise<void> {
+  try {
+    // 检查是否已有权限（不会弹出提示）
+    const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+    if (result.state === "granted") {
+      console.log("[SettingsVoice] Microphone permission already granted");
+      return;
+    }
+
+    // 如果权限是 prompt 状态，我们不在这里请求，避免意外弹窗
+    // 用户点击测试按钮时再请求
+    console.log("[SettingsVoice] Microphone permission state:", result.state);
+  } catch (err) {
+    // permissions API 可能不支持 microphone，忽略错误
+    console.log("[SettingsVoice] Permissions API not available for microphone");
+  }
+}
+
 // Settings item component - matches terminal-fonts-section style
 interface SettingsItemProps {
   title: string;
@@ -76,11 +98,16 @@ export function SettingsVoice() {
 
   const { config, actions } = store;
 
-  // Load config on mount
+  // Load config on mount + warmup microphone permission
   useEffect(() => {
     setIsLoading(true);
-    loadVoiceConfig()
-      .then((loadedConfig) => {
+
+    // 并行执行：加载配置 + 预热麦克风权限
+    Promise.all([
+      loadVoiceConfig(),
+      warmupMicrophonePermission(),
+    ])
+      .then(([loadedConfig]) => {
         actions.setConfig(loadedConfig);
         setApiKey(loadedConfig.vocalBridgeApiKey || "");
         setAgentId(loadedConfig.vocalBridgeAgentId || "");

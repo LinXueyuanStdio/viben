@@ -65,7 +65,12 @@ export function OverlayProvider({ children }: OverlayProviderProps): ReactElemen
         window.removeEventListener("resize", resizeHandler);
       }
       if (pixiApp) {
-        pixiApp.destroy(true, { children: true });
+        try {
+          pixiApp.destroy(true, { children: true });
+        } catch (err) {
+          // PixiJS v8 有时在销毁时会抛出 _cancelResize 错误，可以安全忽略
+          console.warn("[OverlayProvider] PixiJS destroy warning:", err);
+        }
       }
       danmakuPool.destroy();
     };

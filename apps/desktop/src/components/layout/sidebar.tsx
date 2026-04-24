@@ -21,6 +21,7 @@ import {
   Trash2,
   ExternalLink,
   Lightbulb,
+  Home,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
@@ -155,7 +156,7 @@ export function Sidebar() {
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   // Create Task Dialog state (from global UI store for keyboard shortcut support)
-  const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen } = useUiStore();
+  const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen, openCreateTaskPopup } = useUiStore();
   const createTaskMutation = _useCreateTask();
 
   // Load agents and models for task creation
@@ -395,6 +396,20 @@ export function Sidebar() {
           {collapsed ? (
             // Collapsed: all items use SidebarIconButton with unified centering
             <div className="flex flex-col gap-1">
+              {/* Pages Section - Before Workspace navigation */}
+              {activeWorkspaceId && activeWorkspace && (
+                <>
+                  <PageSection
+                    workspaceId={activeWorkspaceId}
+                    workspacePath={activeWorkspace.path}
+                    collapsed={collapsed}
+                  />
+                  <div className="grid place-items-center w-full py-2">
+                    <Separator className="w-10 bg-sidebar-border" />
+                  </div>
+                </>
+              )}
+
               {/* Workspace Pages Section (only when workspace is selected) */}
               {activeWorkspaceId && (
                 <>
@@ -407,20 +422,6 @@ export function Sidebar() {
                       onNavigate={handleWorkspaceNavClick}
                     />
                   ))}
-                  <div className="grid place-items-center w-full py-2">
-                    <Separator className="w-10 bg-sidebar-border" />
-                  </div>
-                </>
-              )}
-
-              {/* Pages Section - Right after Workspace navigation */}
-              {activeWorkspaceId && activeWorkspace && (
-                <>
-                  <PageSection
-                    workspaceId={activeWorkspaceId}
-                    workspacePath={activeWorkspace.path}
-                    collapsed={collapsed}
-                  />
                 </>
               )}
 
@@ -439,38 +440,54 @@ export function Sidebar() {
           ) : (
             // Expanded: full layout with sections
             <div className="space-y-4 px-2">
-              {/* Workspace Pages Section (only when workspace is selected) */}
-              {activeWorkspaceId && (
-                <>
-                  <SidebarSection
-                    title={t("sidebar.workspacePages")}
-                    collapsible
-                    defaultOpen
-                  >
-                    <nav className="flex flex-col gap-1">
-                      {workspaceNavItems.map((item) => (
-                        <WorkspaceNavItemComponent
-                          key={item.path}
-                          item={item}
-                          workspaceId={activeWorkspaceId}
-                          collapsed={collapsed}
-                          onNavigate={handleWorkspaceNavClick}
-                        />
-                      ))}
-                    </nav>
-                  </SidebarSection>
-                </>
+              {/* Pages Section - Before Workspace navigation */}
+              {activeWorkspaceId && activeWorkspace && (
+                <PageSection
+                  workspaceId={activeWorkspaceId}
+                  workspacePath={activeWorkspace.path}
+                  collapsed={collapsed}
+                />
               )}
 
-              {/* Pages Section - Right after Workspace navigation */}
-              {activeWorkspaceId && activeWorkspace && (
-                <>
-                  <PageSection
-                    workspaceId={activeWorkspaceId}
-                    workspacePath={activeWorkspace.path}
-                    collapsed={collapsed}
-                  />
-                </>
+              {/* Workspace Pages Section (only when workspace is selected) */}
+              {activeWorkspaceId && (
+                <SidebarSection
+                  title={t("sidebar.workspacePages")}
+                  collapsible
+                  defaultOpen
+                  headerAction={
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                          onClick={() => {
+                            // Navigate to workspace root page (WorkspaceDetailPage)
+                            openWorkspaceView(activeWorkspaceId, "", t("sidebar.workspaceHome"), { type: "lucide", value: "home" });
+                          }}
+                        >
+                          <Home className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {t("sidebar.workspaceHome")}
+                      </TooltipContent>
+                    </Tooltip>
+                  }
+                >
+                  <nav className="flex flex-col gap-1">
+                    {workspaceNavItems.map((item) => (
+                      <WorkspaceNavItemComponent
+                        key={item.path}
+                        item={item}
+                        workspaceId={activeWorkspaceId}
+                        collapsed={collapsed}
+                        onNavigate={handleWorkspaceNavClick}
+                      />
+                    ))}
+                  </nav>
+                </SidebarSection>
               )}
 
               {/* Creator Section (only when authenticated) */}
@@ -519,7 +536,7 @@ export function Sidebar() {
                     variant="ghost"
                     size="icon"
                     className="h-10 w-10"
-                    onClick={() => setIsCreateTaskOpen(true)}
+                    onClick={openCreateTaskPopup}
                     disabled={!activeWorkspace}
                   >
                     <ListTodo className="h-4 w-4" />
@@ -551,7 +568,7 @@ export function Sidebar() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => setIsCreateTaskOpen(true)}
+                onClick={openCreateTaskPopup}
                 disabled={!activeWorkspace}
               >
                 <Plus className="mr-2 h-4 w-4" />

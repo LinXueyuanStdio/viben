@@ -42,6 +42,7 @@ interface VoiceActions {
   // Agent 回复
   startNewAgentResponse: () => void; // 开始新回复（生成新 responseId，清空文本，显示 loading）
   appendAgentResponse: (chunk: string) => void;
+  finishAgentResponse: () => void; // 结束流式输出
   clearAgentResponse: () => void;
   setPopupOpacity: (opacity: number) => void;
   hidePopup: () => void;
@@ -90,16 +91,16 @@ export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set
     updateUserTranscript: (text) => set({ userTranscript: text }),
     clearUserTranscript: () => set({ userTranscript: '' }),
 
-    startNewAgentResponse: () => set((s) => ({
+    startNewAgentResponse: () => set({
       agentResponse: {
         text: '',
         charCount: 0,
         isStreaming: true,
-        showPopup: true, // 立即显示弹窗
+        showPopup: true,
         popupOpacity: 1,
         responseId: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       },
-    })),
+    }),
 
     appendAgentResponse: (chunk) => set((s) => {
       const newText = s.agentResponse.text + chunk;
@@ -110,10 +111,14 @@ export const useVoiceStore = create<VoiceState & { actions: VoiceActions }>((set
           text: newText,
           charCount,
           isStreaming: true,
-          showPopup: true, // 始终显示
+          showPopup: true,
         },
       };
     }),
+
+    finishAgentResponse: () => set((s) => ({
+      agentResponse: { ...s.agentResponse, isStreaming: false },
+    })),
 
     clearAgentResponse: () => set({ agentResponse: initialAgentResponse }),
 

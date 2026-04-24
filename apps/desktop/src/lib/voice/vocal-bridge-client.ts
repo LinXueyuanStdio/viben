@@ -90,6 +90,7 @@ export class VocalBridgeClient {
       throw new Error('Agent ID not configured. Call configure() first.');
     }
 
+    const startTime = performance.now();
     this.setState('connecting');
     this.transcript = [];
 
@@ -106,9 +107,11 @@ export class VocalBridgeClient {
         debug: true,
       });
 
+      console.log('[VocalBridgeClient] SDK instance created in', (performance.now() - startTime).toFixed(0), 'ms');
+
       // 监听连接状态变化
       this.vb.on('connectionStateChanged', (state: string) => {
-        console.log('[VocalBridgeClient] Connection state:', state);
+        console.log('[VocalBridgeClient] Connection state:', state, 'at', (performance.now() - startTime).toFixed(0), 'ms');
         switch (state) {
           case 'connecting':
             this.setState('connecting');
@@ -158,12 +161,12 @@ export class VocalBridgeClient {
       });
 
       // 开始连接
-      console.log('[VocalBridgeClient] Connecting...');
+      console.log('[VocalBridgeClient] Connecting to LiveKit...');
       await this.vb.connect();
 
-      console.log('[VocalBridgeClient] Connected successfully');
+      console.log('[VocalBridgeClient] Connected successfully in', (performance.now() - startTime).toFixed(0), 'ms');
     } catch (err) {
-      console.error('[VocalBridgeClient] Connection error:', err);
+      console.error('[VocalBridgeClient] Connection error after', (performance.now() - startTime).toFixed(0), 'ms:', err);
       this.setState('error');
       const error = err instanceof Error ? err : new Error(String(err));
       this.notifyError(error);
