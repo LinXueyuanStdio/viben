@@ -93,8 +93,8 @@ export function WakeWordTaskButton({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={toggleWakeWord}
-                disabled={disabled || isLoading}
+                onClick={onCreateTask}
+                disabled={disabled}
                 className={cn(
                   "relative flex items-center justify-center h-10 w-10 rounded-lg transition-all duration-200",
                   "hover:bg-sidebar-accent",
