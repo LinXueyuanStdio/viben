@@ -96,23 +96,20 @@ export function WakeWordTaskButton({
                 onClick={onCreateTask}
                 disabled={disabled}
                 className={cn(
-                  "relative flex items-center justify-center h-10 w-10 rounded-lg transition-all duration-200",
+                  "relative flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
                   "hover:bg-sidebar-accent",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  isActive && "bg-blue-500/10",
                   disabled && "opacity-50 cursor-not-allowed",
-                  isLoading && "cursor-wait",
                 )}
               >
-                <ListeningIcon
-                  className={cn(
-                    "h-4 w-4 transition-all duration-300",
-                    isLoading && "animate-spin text-yellow-500",
-                    wakeWord.state === "detected" && "text-green-500 drop-shadow-[0_0_6px_rgba(34,197,94,0.7)]",
-                    wakeWord.state === "listening" && "text-blue-500 drop-shadow-[0_0_6px_rgba(59,130,246,0.6)]",
-                    wakeWord.state === "inactive" && "text-muted-foreground",
-                  )}
-                />
+                <AudioWaveform className="h-4 w-4 text-sidebar-foreground" />
+                {/* Small green dot when listening */}
+                {isActive && (
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]" />
+                )}
+                {isLoading && (
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+                )}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium max-w-48">
