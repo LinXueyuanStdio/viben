@@ -159,7 +159,7 @@ jobs:
 
       - name: Build Android APK (unsigned)
         working-directory: apps/desktop
-        run: pnpm tauri android build --apk
+        run: pnpm tauri android build --apk true
 
       - name: Collect Android artifacts
         run: |
