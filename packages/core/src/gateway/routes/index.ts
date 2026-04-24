@@ -51,6 +51,8 @@ import { registerIdeaRoutes } from "./ideas";
 import { registerRewardRoutes } from "./reward";
 import { registerSkillRoutes } from "./skill";
 import { registerPageRoutes } from "./page";
+import { registerMeshRoutes } from "./mesh";
+import { registerDeviceRoutes } from "./devices";
 
 /**
  * Register all routes
@@ -104,6 +106,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerRewardRoutes(fastify);
   registerSkillRoutes(fastify);
   registerPageRoutes(fastify);
+  registerMeshRoutes(fastify, state);
+  registerDeviceRoutes(fastify, state);
 }
 
 // Re-export individual route registrations
@@ -161,6 +165,8 @@ export { registerIdeaRoutes } from "./ideas";
 export { registerRewardRoutes } from "./reward";
 export { registerSkillRoutes } from "./skill";
 export { registerPageRoutes } from "./page";
+export { registerMeshRoutes } from "./mesh";
+export { registerDeviceRoutes } from "./devices";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";
 export type {

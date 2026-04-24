@@ -9,6 +9,7 @@
  */
 import { EventEmitter } from "node:events";
 import type { Task, Session } from "../db/types";
+import type { Device } from "../devices/types";
 
 /**
  * Gateway event types
@@ -78,7 +79,13 @@ export type GatewayEvent =
   // Task state machine events
   | { type: "task_state_changed"; data: TaskStateChangedData }
   | { type: "task_recovered"; data: TaskRecoveredData }
-  | { type: "task_event_applied"; data: TaskEventAppliedData };
+  | { type: "task_event_applied"; data: TaskEventAppliedData }
+  // Device mesh events
+  | { type: "device_connected"; data: { device: Device } }
+  | { type: "device_disconnected"; data: { device_id: string } }
+  | { type: "device_updated"; data: { device: Device } }
+  | { type: "mesh_peer_joined"; data: { gateway_id: string; name: string; address: string } }
+  | { type: "mesh_peer_left"; data: { gateway_id: string } };
 
 /**
  * Queue task summary for events

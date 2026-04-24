@@ -306,6 +306,14 @@ import {
   getTrace,
   listTraces,
   getTelemetryStats,
+
+  // Devices & Mesh module
+  getDevices,
+  getDevice,
+  getDeviceQr,
+  sendDeviceMessage,
+  getMeshPeers,
+  connectMeshPeer,
 } from "./modules";
 
 // Import types
@@ -439,6 +447,9 @@ import type { TaskSpecsDataResponse } from "./modules/tasks";
 
 // Import Telemetry module types
 import type { TraceDetailResponse, TracesListResponse } from "./modules/telemetry";
+
+// Import Devices module types
+import type { DeviceListResponse, QrResponse, SendMessageRequest, SendMessageResponse } from "./modules/devices";
 
 // ============================================================================
 // GatewayClient Class
@@ -2839,5 +2850,31 @@ export class GatewayClient {
     totalSizeMB: string;
   }> {
     return getTelemetryStats(this.baseUrl);
+  }
+
+  // ── Device & Mesh methods ──
+
+  async getDevices(): Promise<DeviceListResponse> {
+    return getDevices(this.baseUrl);
+  }
+
+  async getDevice(id: string) {
+    return getDevice(this.baseUrl, id);
+  }
+
+  async getDeviceQr(): Promise<QrResponse> {
+    return getDeviceQr(this.baseUrl);
+  }
+
+  async sendDeviceMessage(req: SendMessageRequest): Promise<SendMessageResponse> {
+    return sendDeviceMessage(this.baseUrl, req);
+  }
+
+  async getMeshPeers() {
+    return getMeshPeers(this.baseUrl);
+  }
+
+  async connectMeshPeer(address: string) {
+    return connectMeshPeer(this.baseUrl, address);
   }
 }

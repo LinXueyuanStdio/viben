@@ -95,3 +95,6 @@ export * from "./preview";
 
 // Pages module
 export * from "./pages";
+
+// Devices & Mesh module
+export * from "./devices";

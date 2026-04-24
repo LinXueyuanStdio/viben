@@ -1,304 +1,458 @@
-import { useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useCallback, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
-  Loader2,
-  FolderOpen,
-  Bot,
-  Server,
-  ChevronRight,
+  Settings,
+  FileText,
   MessageCircle,
   KanbanSquare,
-  ArrowLeft,
-  Users,
   Clock,
-  TrendingUp,
+  Bot,
+  FolderOpen,
+  Lightbulb,
   Activity,
+  Smartphone,
+  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { DashboardCard } from "@/components/ui/dashboard-card";
-import { PageWrapper } from "@/components/layout";
-import { WorkspaceHeader } from "@/components/workspace";
-import { useLocalWorkspaces, useExecutors } from "@/hooks";
-import { useTranslation } from "react-i18next";
+import { Renderer, RenderScheduler } from "@viben/os";
+import { useLocalWorkspaces } from "@/hooks";
 import { cn } from "@/lib/utils";
-import type { ExecutorInfo } from "@/lib/gateway";
 
-// Auto-refresh interval (10 minutes)
-const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
+// Gradient color configurations for dock icons
+const GRADIENT_COLORS = {
+  green: { from: "#4ade80", to: "#16a34a" },    // green-400 to green-600
+  violet: { from: "#a78bfa", to: "#7c3aed" },   // violet-400 to violet-600
+  orange: { from: "#fb923c", to: "#ea580c" },   // orange-400 to orange-600
+  yellow: { from: "#facc15", to: "#ca8a04" },   // yellow-400 to yellow-600
+  cyan: { from: "#22d3ee", to: "#0891b2" },     // cyan-400 to cyan-600
+  blue: { from: "#60a5fa", to: "#2563eb" },     // blue-400 to blue-600
+  rose: { from: "#fb7185", to: "#e11d48" },     // rose-400 to rose-600
+  zinc: { from: "#71717a", to: "#3f3f46" },     // zinc-500 to zinc-700 (darker for visibility)
+  sky: { from: "#38bdf8", to: "#0284c7" },      // sky-400 to sky-600
+  purple: { from: "#c084fc", to: "#9333ea" },   // purple-400 to purple-600
+} as const;
 
+type GradientColorKey = keyof typeof GRADIENT_COLORS;
+
+interface AppInfo {
+  id: string;
+  name: string;
+  icon: React.ElementType;
+  path: string;
+  gradient: GradientColorKey;
+  isSystem?: boolean;
+}
+
+// Gaussian-based magnification for smooth macOS-style dock effect
+function getIconScale(index: number, hoveredIndex: number | null, maxScale = 1.6): number {
+  if (hoveredIndex === null) return 1;
+  const distance = Math.abs(index - hoveredIndex);
+  if (distance > 3) return 1;
+  // Gaussian falloff
+  const sigma = 1.2;
+  return 1 + (maxScale - 1) * Math.exp(-(distance * distance) / (2 * sigma * sigma));
+}
+
+function getTranslateY(scale: number): number {
+  return -(scale - 1) * 28;
+}
+
+/**
+ * WorkspaceDetailPage - macOS-style workspace home with Dock
+ */
 export function WorkspaceDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
-  const {
-    removeWorkspace,
-    getWorkspace,
-    isLoading: isLoadingWorkspaces,
-    workspaces,
-  } = useLocalWorkspaces();
+  const { getWorkspace, isLoading } = useLocalWorkspaces();
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [clickedApp, setClickedApp] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
-  // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
-  const {
-    executors,
-    loading: isDiscovering,
-    refresh: loadAgents,
-  } = useExecutors({ workspacePath: workspace?.path });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
-  const initialLoadDoneRef = useRef<string | null>(null);
-
-  // Auto-refresh on workspace enter (only once per workspace)
+  // Update clock every minute
   useEffect(() => {
-    if (!workspaceId || !workspace || isLoadingWorkspaces) {
-      return;
-    }
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-    if (initialLoadDoneRef.current !== workspaceId) {
-      initialLoadDoneRef.current = workspaceId;
-      loadAgents();
-    }
-  }, [workspaceId, workspace, isLoadingWorkspaces, loadAgents]);
-
-  // Auto-refresh every 10 minutes
+  // Initialize Three.js renderer
   useEffect(() => {
-    if (!workspaceId) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const interval = setInterval(() => {
-      loadAgents();
-    }, AUTO_REFRESH_INTERVAL);
+    let disposed = false;
+    const renderer = new Renderer(canvas);
 
-    return () => clearInterval(interval);
-  }, [workspaceId, loadAgents]);
+    (async () => {
+      await renderer.init();
+      if (disposed) {
+        renderer.dispose();
+        return;
+      }
 
-  // Show loading state while workspaces are being fetched
-  if (isLoadingWorkspaces && !workspace) {
-    return (
-      <PageWrapper>
-        <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">{t("common.loadingWorkspace", "Loading workspace...")}</p>
-        </div>
-      </PageWrapper>
-    );
-  }
+      const container = canvas.parentElement;
+      if (!container) return;
 
-  // Only show "not found" after workspaces have loaded
-  if (!workspace && workspaces.length > 0) {
-    return (
-      <PageWrapper>
-        <div className="flex flex-col items-center justify-center h-[60vh]">
-          <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">
-            {t("workspace.notFound")}
-          </h2>
-          <p className="text-muted-foreground mb-4">
-            {t("workspace.notFoundDesc")}
-          </p>
-          <Button asChild>
-            <Link to="/mcp-services/dashboard">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t("workspace.backToDashboard")}
-            </Link>
-          </Button>
-        </div>
-      </PageWrapper>
-    );
-  }
+      renderer.resize(container.clientWidth, container.clientHeight);
 
-  // Fallback - still loading or no workspaces
-  if (!workspace) {
-    return (
-      <PageWrapper>
-        <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">{t("common.loading")}</p>
-        </div>
-      </PageWrapper>
-    );
-  }
+      const scheduler = new RenderScheduler((_dt) => {
+        renderer.render();
+      });
+      if (disposed) {
+        scheduler.dispose();
+        renderer.dispose();
+        return;
+      }
+      scheduler.markDirty();
 
-  const handleRemove = async () => {
-    if (workspaceId) {
-      await removeWorkspace(workspaceId);
+      const onResize = () => {
+        if (container) {
+          renderer.resize(container.clientWidth, container.clientHeight);
+          scheduler.markDirty();
+        }
+      };
+      window.addEventListener("resize", onResize);
+
+      if (disposed) {
+        window.removeEventListener("resize", onResize);
+        scheduler.dispose();
+        renderer.dispose();
+        return;
+      }
+
+      cleanupRef.current = () => {
+        window.removeEventListener("resize", onResize);
+        scheduler.dispose();
+        renderer.dispose();
+      };
+    })();
+
+    return () => {
+      disposed = true;
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      } else {
+        renderer.dispose();
+      }
+    };
+  }, []);
+
+  // Workspace apps
+  const workspaceApps: AppInfo[] = workspaceId ? [
+    { id: "chat", name: t("workspace.chat"), icon: MessageCircle, path: `/workspace/${workspaceId}/chat`, gradient: "green" },
+    { id: "kanban", name: t("workspace.kanban"), icon: KanbanSquare, path: `/workspace/${workspaceId}/kanban`, gradient: "violet" },
+    { id: "cron", name: t("workspace.scheduledTasks"), icon: Clock, path: `/workspace/${workspaceId}/cron`, gradient: "orange" },
+    { id: "ideas", name: t("workspace.ideas"), icon: Lightbulb, path: `/workspace/${workspaceId}/ideas`, gradient: "yellow" },
+    { id: "agents", name: t("workspace.sections.agents"), icon: Bot, path: `/workspace/${workspaceId}/agents`, gradient: "cyan" },
+    { id: "files", name: t("workspace.files"), icon: FolderOpen, path: `/workspace/${workspaceId}/files`, gradient: "blue" },
+    { id: "monitor", name: t("workspace.chatMonitor"), icon: Activity, path: `/workspace/${workspaceId}/chat-monitor`, gradient: "rose" },
+  ] : [];
+
+  // System apps
+  const systemApps: AppInfo[] = [
+    { id: "settings", name: t("nav.settings"), icon: Settings, path: "/settings", gradient: "zinc", isSystem: true },
+    { id: "documents", name: t("nav.documents"), icon: FileText, path: "/documents", gradient: "sky", isSystem: true },
+    { id: "devices", name: t("nav.devices"), icon: Smartphone, path: "/devices/pair", gradient: "purple", isSystem: true },
+  ];
+
+  // All dock apps with separator marker
+  const dockItems: (AppInfo | "separator")[] = [
+    ...workspaceApps,
+    ...(workspaceApps.length > 0 ? ["separator" as const] : []),
+    ...systemApps,
+  ];
+
+  const handleAppClick = useCallback((app: AppInfo) => {
+    setClickedApp(app.id);
+    // Bounce animation then navigate
+    setTimeout(() => {
+      setClickedApp(null);
+      navigate(app.path);
+    }, 400);
+  }, [navigate]);
+
+  // Check if app is "running" (current route starts with app path)
+  const isAppRunning = useCallback((app: AppInfo) => {
+    return location.pathname.startsWith(app.path);
+  }, [location.pathname]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, _index: number, app: AppInfo) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleAppClick(app);
     }
-  };
+  }, [handleAppClick]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
-    <PageWrapper className="flex flex-col h-full">
-      {/* Header with breadcrumb */}
-      <WorkspaceHeader
-        workspace={workspace}
-        onRefresh={loadAgents}
-        onRemove={handleRemove}
-        isRefreshing={isDiscovering}
+    <div className="relative w-full h-full overflow-hidden">
+      {/* Wallpaper Background - using inline styles for gradients to ensure they work in Tailwind v4 */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "linear-gradient(to bottom right, #0f172a, #581c87, #0f172a)",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse at top, rgba(29, 78, 216, 0.2), transparent, transparent)",
+        }}
       />
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-6 max-w-6xl mx-auto w-full">
-        {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-          <DashboardCard
-            color="blue"
-            icon={MessageCircle}
-            title={t("chat.chatButton")}
-            description={t("workspace.chatDescription", "Start a conversation with AI")}
-            actionLabel={t("common.open", "打开")}
-            footer={t("workspace.recentActivity", "最近活跃")}
-            footerIcon={Activity}
-            onClick={() => navigate(`/workspace/${workspaceId}/chat`)}
-          />
+      {/* Three.js Canvas Overlay */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full opacity-30 pointer-events-none"
+        style={{ mixBlendMode: "soft-light" }}
+      />
 
-          <DashboardCard
-            color="purple"
-            icon={KanbanSquare}
-            title={t("workspace.kanban", "Task Board")}
-            description={t("workspace.kanbanDescription", "Manage tasks with kanban board")}
-            actionLabel={t("common.open", "打开")}
-            footer={t("workspace.taskManagement", "任务管理")}
-            footerIcon={TrendingUp}
-            onClick={() => navigate(`/workspace/${workspaceId}/kanban`)}
-          />
-
-          <DashboardCard
-            color="orange"
-            icon={Clock}
-            title={t("workspace.scheduledTasks", "Scheduled Tasks")}
-            description={t("workspace.scheduledTasksDescription", "Manage scheduled tasks and automation")}
-            actionLabel={t("common.open", "打开")}
-            footer={t("workspace.automation", "自动化")}
-            footerIcon={Clock}
-            onClick={() => navigate(`/workspace/${workspaceId}/cron`)}
-          />
-
-          <DashboardCard
-            color="emerald"
-            icon={Users}
-            title={t("agents.title")}
-            description={t("agents.list", "Manage your AI agents")}
-            actionLabel={t("common.open", "打开")}
-            footer={`${executors.length} ${t("workspace.agentsDetected", "个智能体")}`}
-            footerIcon={Bot}
-            onClick={() => navigate(`/workspace/${workspaceId}/agents`)}
-          />
-
-          <DashboardCard
-            color="cyan"
-            icon={FolderOpen}
-            title={t("workspace.files", "File System")}
-            description={t("workspace.filesDescription", "Browse and manage files")}
-            actionLabel={t("common.open", "打开")}
-            footer={t("workspace.browseFiles", "浏览文件")}
-            footerIcon={FolderOpen}
-            onClick={() => navigate(`/workspace/${workspaceId}/files`)}
-          />
+      {/* Desktop Area */}
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Menu Bar */}
+        <div
+          className="h-7 flex items-center px-4 text-[13px]"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.3)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            color: "rgba(255, 255, 255, 0.9)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
+          }}
+        >
+          <div className="flex items-center gap-4">
+            <span className="font-semibold">
+              {workspace?.type === "global" ? t("workspace.global") : workspace?.name || "Viben"}
+            </span>
+            <span style={{ color: "rgba(255, 255, 255, 0.5)" }}>
+              {t("nav.documents")}
+            </span>
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-3" style={{ color: "rgba(255, 255, 255, 0.8)" }}>
+            <span>
+              {currentTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+            <span>
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
         </div>
 
-        {/* Agents Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold font-serif flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              {t("workspace.detectedAgents")}
-            </h2>
-          </div>
-
-          {isDiscovering && executors.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : executors.length === 0 ? (
-            <Card interactive={false}>
-              <CardContent className="py-12 text-center">
-                <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold mb-2">
-                  {t("workspace.noAgentsFound")}
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  {t("workspace.noAgentsFoundDesc")}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4" key={workspaceId}>
-              {executors.map((executor) => (
-                <ExecutorCard
-                  key={executor.type}
-                  executor={executor}
-                  workspacePath={workspace.path}
-                />
-              ))}
+        {/* Main Desktop - Workspace info */}
+        <div className="flex-1 flex items-center justify-center">
+          {workspace && (
+            <div className="text-center" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
+              <div className="text-lg font-medium mb-2">
+                {workspace.type === "global" ? t("workspace.global") : workspace.name}
+              </div>
+              <div className="text-sm font-mono" style={{ color: "rgba(255, 255, 255, 0.4)" }}>
+                {workspace.path}
+              </div>
             </div>
           )}
         </div>
+
+        {/* Dock */}
+        <div className="flex justify-center pb-3" role="menubar" aria-label="Dock">
+          <div
+            className={cn(
+              "flex items-end gap-1 px-3 pt-2.5 pb-2 rounded-2xl"
+            )}
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              backdropFilter: "blur(40px)",
+              WebkitBackdropFilter: "blur(40px)",
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+            }}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            {dockItems.map((item, index) => {
+              if (item === "separator") {
+                return (
+                  <div
+                    key="separator"
+                    className="self-center mx-2"
+                    style={{
+                      width: "1px",
+                      height: "48px",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                    }}
+                  />
+                );
+              }
+
+              const app = item;
+              const appIndex = dockItems.filter((i, idx) => i !== "separator" && idx <= index).length - 1;
+              const scale = getIconScale(appIndex, hoveredIndex);
+              const translateY = getTranslateY(scale);
+              const isRunning = isAppRunning(app);
+              const isBouncing = clickedApp === app.id;
+
+              return (
+                <DockIcon
+                  key={app.id}
+                  app={app}
+                  scale={scale}
+                  translateY={translateY}
+                  isRunning={isRunning}
+                  isBouncing={isBouncing}
+                  onHover={() => setHoveredIndex(appIndex)}
+                  onClick={() => handleAppClick(app)}
+                  onKeyDown={(e) => handleKeyDown(e, appIndex, app)}
+                />
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </PageWrapper>
+
+      {/* CSS for dock bounce animation */}
+      <style>{`
+        @keyframes dock-bounce {
+          0%, 100% {
+            transform: scale(var(--dock-scale, 1)) translateY(var(--dock-translate-y, 0px));
+          }
+          25% {
+            transform: scale(var(--dock-scale, 1)) translateY(calc(var(--dock-translate-y, 0px) - 20px));
+          }
+          50% {
+            transform: scale(var(--dock-scale, 1)) translateY(var(--dock-translate-y, 0px));
+          }
+          75% {
+            transform: scale(var(--dock-scale, 1)) translateY(calc(var(--dock-translate-y, 0px) - 10px));
+          }
+        }
+        .dock-bounce {
+          animation: dock-bounce 0.4s ease-in-out;
+        }
+      `}</style>
+    </div>
   );
 }
 
-interface ExecutorCardProps {
-  executor: ExecutorInfo;
-  workspacePath: string;
+interface DockIconProps {
+  app: AppInfo;
+  scale: number;
+  translateY: number;
+  isRunning: boolean;
+  isBouncing: boolean;
+  onHover: () => void;
+  onClick: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
 }
 
-function ExecutorCard({ executor, workspacePath }: ExecutorCardProps) {
-  const { t } = useTranslation();
-
-  const executorIcons: Record<string, string> = {
-    CLAUDE_CODE: "CC",
-    CODEX: "Cx",
-    CURSOR: "Cu",
-    WINDSURF: "W",
-    VSCODE: "VS",
-    CONTINUE: "Co",
-    ZED: "Z",
-    UNKNOWN: "?",
-  };
-
-  // Use new routing with query params
-  const executorUrl = workspacePath
-    ? `/executor/${executor.type}?workspace_path=${encodeURIComponent(workspacePath)}`
-    : `/executor/${executor.type}`;
+function DockIcon({
+  app,
+  scale,
+  translateY,
+  isRunning,
+  isBouncing,
+  onHover,
+  onClick,
+  onKeyDown,
+}: DockIconProps) {
+  const Icon = app.icon;
+  const isHovered = scale > 1.1;
+  const gradientColors = GRADIENT_COLORS[app.gradient];
 
   return (
-    <Link to={executorUrl}>
-      <Card
+    <div className="relative flex flex-col items-center px-1">
+      {/* Tooltip */}
+      <div
         className={cn(
-          "cursor-pointer",
-          "hover:border-primary/30 hover:shadow-md"
+          "absolute -top-10 px-3 py-1.5 rounded-md text-xs whitespace-nowrap",
+          "transition-all duration-200",
+          isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1 pointer-events-none"
         )}
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.9)",
+          color: "white",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+        }}
       >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-sm">
-                {executorIcons[executor.type] || executor.name[0]}
-              </div>
-              <div>
-                <h3 className="font-semibold">{executor.name}</h3>
-                <p className="text-xs text-muted-foreground font-mono truncate max-w-xs">
-                  {executor.workspace_config_path || executor.global_config_path}
-                </p>
-              </div>
-            </div>
+        {app.name}
+        {/* Tooltip arrow */}
+        <div
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.9)",
+            borderRight: "1px solid rgba(255, 255, 255, 0.1)",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          }}
+        />
+      </div>
 
-            <div className="flex items-center gap-4">
-              {/* MCP Support Status */}
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Server className="h-3 w-3" />
-                <span>
-                  {executor.supports_mcp
-                    ? t("workspace.mcpConfigured")
-                    : t("workspace.mcpNotConfigured")}
-                </span>
-              </div>
+      {/* Icon Button */}
+      <button
+        type="button"
+        onClick={onClick}
+        onMouseEnter={onHover}
+        onKeyDown={onKeyDown}
+        tabIndex={0}
+        aria-label={app.name}
+        role="menuitem"
+        className={cn(
+          "relative outline-none rounded-xl",
+          isBouncing && "dock-bounce"
+        )}
+        style={{
+          "--dock-scale": scale,
+          "--dock-translate-y": `${translateY}px`,
+          transform: `scale(${scale}) translateY(${translateY}px)`,
+          transition: isBouncing ? "none" : "transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        } as React.CSSProperties}
+      >
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{
+            background: `linear-gradient(to bottom right, ${gradientColors.from}, ${gradientColors.to})`,
+            boxShadow: `0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)`,
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+          }}
+        >
+          <Icon className="h-6 w-6 text-white" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
+        </div>
 
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+        {/* Subtle shine/reflection at top */}
+        <div
+          className="absolute inset-x-1 top-0.5 h-4 rounded-t-lg pointer-events-none"
+          style={{
+            background: "linear-gradient(to bottom, rgba(255,255,255,0.25), transparent)",
+            borderRadius: "10px 10px 0 0",
+          }}
+        />
+      </button>
+
+      {/* Running indicator dot */}
+      <div
+        className={cn(
+          "w-1.5 h-1.5 rounded-full mt-1 transition-opacity duration-200"
+        )}
+        style={{
+          backgroundColor: isRunning ? "rgba(255, 255, 255, 0.9)" : "transparent",
+          opacity: isRunning ? 1 : 0,
+          boxShadow: isRunning ? "0 0 4px rgba(255, 255, 255, 0.5)" : "none",
+        }}
+      />
+    </div>
   );
 }

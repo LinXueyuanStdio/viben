@@ -1,92 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window and tray popup",
-  "windows": ["main", "tray-popup"],
+  "description": "Common capabilities for all platforms",
   "permissions": [
     "core:default",
-    "global-shortcut:default",
-    "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
-    "global-shortcut:allow-is-registered",
-    "opener:default",
-    "opener:allow-reveal-item-in-dir",
-    {
-      "identifier": "opener:allow-reveal-item-in-dir",
-      "allow": [
-        { "path": "$HOME/**" }
-      ]
-    },
-    "dialog:default",
-    "dialog:allow-open",
-    "dialog:allow-save",
-    "dialog:allow-message",
-    "dialog:allow-ask",
-    "dialog:allow-confirm",
-    "fs:default",
-    {
-      "identifier": "fs:allow-exists",
-      "allow": [
-        { "path": "$HOME/.viben" },
-        { "path": "$HOME/.viben/**" },
-        { "path": "$HOME/**" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-read-text-file",
-      "allow": [
-        { "path": "$HOME/.viben/**" },
-        { "path": "$HOME/**" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-write-text-file",
-      "allow": [
-        { "path": "$HOME/.viben/**" },
-        { "path": "$HOME/**" }
-      ]
-    },
-    {
-      "identifier": "fs:allow-mkdir",
-      "allow": [
-        { "path": "$HOME/.viben" },
-        { "path": "$HOME/.viben/**" }
-      ]
-    },
-    "fs:allow-read",
-    "fs:allow-write",
-    "fs:allow-remove",
-    "fs:allow-rename",
-    "fs:allow-copy-file",
-    "fs:allow-read-dir",
-    "fs:allow-read-file",
-    "fs:allow-write-file",
-    {
-      "identifier": "fs:scope",
-      "allow": [
-        { "path": "$HOME/.viben/**" },
-        { "path": "$HOME/**" },
-        { "path": "$DOCUMENT/**" },
-        { "path": "$DOWNLOAD/**" },
-        { "path": "$DESKTOP/**" },
-        { "path": "$DATA/**" },
-        { "path": "$LOCALDATA/**" },
-        { "path": "$CACHE/**" },
-        { "path": "$CONFIG/**" },
-        { "path": "$RESOURCE/**" },
-        { "path": "$TEMP/**" },
-        { "path": "**" }
-      ]
-    },
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",
-    "core:window:default",
-    "core:window:allow-show",
-    "core:window:allow-hide",
-    "core:window:allow-set-focus",
-    "core:window:allow-set-position",
-    "core:window:allow-unminimize",
     "notification:default",
     "notification:allow-is-permission-granted",
     "notification:allow-request-permission",
