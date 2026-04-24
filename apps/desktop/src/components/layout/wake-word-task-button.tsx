@@ -22,10 +22,9 @@ interface WakeWordTaskButtonProps {
  *
  * - Text shows the configured wake word (e.g. "你好微本").
  * - Clicking the button body opens the create-task dialog.
- * - A small listening-status icon sits inside the button (left side in
- *   expanded mode, top-right badge in collapsed mode). Clicking that icon
- *   toggles wake-word listening on/off; a green check badge appears when
- *   listening is active.
+ * - A listening-status icon inside the button toggles wake-word
+ *   listening on/off. In collapsed mode the whole icon changes color
+ *   and glows; in expanded mode a small check badge appears.
  */
 export function WakeWordTaskButton({
   collapsed,
@@ -81,17 +80,10 @@ export function WakeWordTaskButton({
         ? error
         : t("sidebar.wakeWord.inactive", "点击开始监听唤醒词");
 
-  // --- Shared listening icon piece ---
   const ListeningIcon = isLoading ? Loader2 : AudioWaveform;
-  const iconColor = cn(
-    isLoading && "text-yellow-500",
-    wakeWord.state === "detected" && "text-green-500",
-    wakeWord.state === "listening" && "text-blue-500",
-    wakeWord.state === "inactive" && "text-muted-foreground",
-  );
 
   /* ------------------------------------------------------------------ */
-  /*  Collapsed mode                                                     */
+  /*  Collapsed mode — icon changes color + glow, no badge              */
   /* ------------------------------------------------------------------ */
   if (collapsed) {
     return (
@@ -101,54 +93,31 @@ export function WakeWordTaskButton({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={onCreateTask}
-                disabled={disabled}
+                onClick={toggleWakeWord}
+                disabled={disabled || isLoading}
                 className={cn(
-                  "relative flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
+                  "relative flex items-center justify-center h-10 w-10 rounded-lg transition-all duration-200",
                   "hover:bg-sidebar-accent",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isActive && "bg-blue-500/10",
                   disabled && "opacity-50 cursor-not-allowed",
+                  isLoading && "cursor-wait",
                 )}
               >
-                {/* Wake word icon as the main visual */}
-                <AudioWaveform className="h-4 w-4 text-sidebar-foreground" />
-
-                {/* Listening status badge — top-right corner */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={toggleWakeWord}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          toggleWakeWord(e as unknown as React.MouseEvent);
-                        }
-                      }}
-                      className={cn(
-                        "absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full",
-                        "h-3.5 w-3.5 cursor-pointer transition-all",
-                        "ring-1 ring-background",
-                        isActive && "bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]",
-                        isLoading && "bg-yellow-500",
-                        !isActive && !isLoading && "bg-muted-foreground/30 hover:bg-muted-foreground/60",
-                      )}
-                    >
-                      {isActive ? (
-                        <Check className="h-2 w-2 text-white" strokeWidth={3} />
-                      ) : isLoading ? (
-                        <Loader2 className="h-2 w-2 text-white animate-spin" strokeWidth={3} />
-                      ) : null}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className="text-xs max-w-48">
-                    {listeningTooltip}
-                  </TooltipContent>
-                </Tooltip>
+                <ListeningIcon
+                  className={cn(
+                    "h-4 w-4 transition-all duration-300",
+                    isLoading && "animate-spin text-yellow-500",
+                    wakeWord.state === "detected" && "text-green-500 drop-shadow-[0_0_6px_rgba(34,197,94,0.7)]",
+                    wakeWord.state === "listening" && "text-blue-500 drop-shadow-[0_0_6px_rgba(59,130,246,0.6)]",
+                    wakeWord.state === "inactive" && "text-muted-foreground",
+                  )}
+                />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {config.wakeWord}
+            <TooltipContent side="right" className="font-medium max-w-48">
+              <div>{config.wakeWord}</div>
+              <div className="text-xs text-muted-foreground">{listeningTooltip}</div>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -157,7 +126,7 @@ export function WakeWordTaskButton({
   }
 
   /* ------------------------------------------------------------------ */
-  /*  Expanded mode                                                      */
+  /*  Expanded mode — icon + text centered, check badge on icon         */
   /* ------------------------------------------------------------------ */
   return (
     <div className="mt-4">
@@ -166,7 +135,7 @@ export function WakeWordTaskButton({
         onClick={onCreateTask}
         disabled={disabled}
         className={cn(
-          "group relative w-full flex items-center gap-2.5 rounded-md border-2 px-3 py-2 text-sm font-medium",
+          "group relative w-full flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2 text-sm font-medium",
           "transition-all duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
@@ -175,7 +144,7 @@ export function WakeWordTaskButton({
           "active:translate-y-0",
         )}
       >
-        {/* Listening toggle icon — inside button, left side */}
+        {/* Listening toggle icon — inside button, left of text */}
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -190,14 +159,21 @@ export function WakeWordTaskButton({
                 }}
                 className={cn(
                   "relative flex items-center justify-center shrink-0",
-                  "h-6 w-6 rounded-md transition-colors",
+                  "h-6 w-6 rounded-md transition-all duration-200",
                   "hover:bg-primary/15",
-                  isActive && "bg-blue-500/15",
+                  isActive && "bg-blue-500/10",
                   isLoading && "cursor-wait",
                 )}
               >
-                <ListeningIcon className={cn("h-3.5 w-3.5", iconColor, isLoading && "animate-spin")} />
-                {/* Green check badge when active */}
+                <ListeningIcon
+                  className={cn(
+                    "h-3.5 w-3.5 transition-all duration-300",
+                    isLoading && "animate-spin text-yellow-500",
+                    wakeWord.state === "detected" && "text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.6)]",
+                    wakeWord.state === "listening" && "text-blue-500 drop-shadow-[0_0_5px_rgba(59,130,246,0.5)]",
+                    wakeWord.state === "inactive" && "text-muted-foreground",
+                  )}
+                />
                 {isActive && (
                   <span className="absolute -bottom-0.5 -right-0.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-green-500 ring-1 ring-background shadow-[0_0_4px_rgba(34,197,94,0.4)]">
                     <Check className="h-1.5 w-1.5 text-white" strokeWidth={3} />
