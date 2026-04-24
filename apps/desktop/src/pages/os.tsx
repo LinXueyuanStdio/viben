@@ -4,6 +4,7 @@ import { Renderer, RenderScheduler } from "@viben/os";
 export function OsPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,18 +46,24 @@ export function OsPage() {
         return;
       }
 
-      // Store teardown for the effect cleanup
-      teardown = () => {
+      // Store cleanup function in ref for effect cleanup
+      cleanupRef.current = () => {
         window.removeEventListener("resize", onResize);
         scheduler.dispose();
         renderer.dispose();
       };
     })();
 
-    let teardown: (() => void) | undefined;
     return () => {
       disposed = true;
-      teardown?.();
+      // If async setup completed, cleanup is in ref; otherwise renderer.dispose() handles it
+      if (cleanupRef.current) {
+        cleanupRef.current();
+        cleanupRef.current = null;
+      } else {
+        // Async init still pending — it will check `disposed` and clean up itself
+        renderer.dispose();
+      }
     };
   }, []);
 
