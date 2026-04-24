@@ -28,7 +28,7 @@ File-based group chat feature supporting human users and multiple AI agents in r
 | View | File | Content |
 |------|------|---------|
 | **User View** | `messages.ui.jsonl` | Message stream seen by users, without tool call details |
-| **Agent View** | agents/<agent-id>/messages.rollout.jsonl | Raw messages from an Agent, including tool calls |
+| **Agent View** | `agents/<agent-id>/messages.rollout.jsonl` | Raw messages from an Agent, including tool calls |
 
 After a user sends a message:
 1. All Agents in the group chat **think in parallel**

@@ -205,4 +205,3 @@ No files were updated (all files already exist).
 
 - [init](./init.md) - Workspace initialization
 - [idea](./idea.md) - Idea generation and management
-- [filerl](./filerl.md) - FileRL reinforcement learning
