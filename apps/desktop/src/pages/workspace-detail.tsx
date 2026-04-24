@@ -17,9 +17,10 @@ import {
 import { Renderer, RenderScheduler } from "@viben/os";
 import { useLocalWorkspaces } from "@/hooks";
 import { cn } from "@/lib/utils";
+import { PageAppGrid } from "@/components/page/page-app-grid";
 
-// Gradient color configurations for dock icons
-const GRADIENT_COLORS = {
+// Gradient color configurations for dock icons and page app icons
+export const GRADIENT_COLORS = {
   green: { from: "#4ade80", to: "#16a34a" },    // green-400 to green-600
   violet: { from: "#a78bfa", to: "#7c3aed" },   // violet-400 to violet-600
   orange: { from: "#fb923c", to: "#ea580c" },   // orange-400 to orange-600
@@ -32,7 +33,19 @@ const GRADIENT_COLORS = {
   purple: { from: "#c084fc", to: "#9333ea" },   // purple-400 to purple-600
 } as const;
 
-type GradientColorKey = keyof typeof GRADIENT_COLORS;
+export type GradientColorKey = keyof typeof GRADIENT_COLORS;
+
+/**
+ * Get gradient colors for a page based on its name (djb2 hash).
+ */
+export function getPageGradientColors(name: string): { from: string; to: string } {
+  const keys = Object.keys(GRADIENT_COLORS) as GradientColorKey[];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash + name.charCodeAt(i)) | 0;
+  }
+  return GRADIENT_COLORS[keys[Math.abs(hash) % keys.length]];
+}
 
 interface AppInfo {
   id: string;
@@ -255,15 +268,19 @@ export function WorkspaceDetailPage() {
           </div>
         </div>
 
-        {/* Main Desktop - Workspace info */}
-        <div className="flex-1 flex items-center justify-center">
-          {workspace && (
-            <div className="text-center" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
-              <div className="text-lg font-medium mb-2">
-                {workspace.type === "global" ? t("workspace.global") : workspace.name}
-              </div>
-              <div className="text-sm font-mono" style={{ color: "rgba(255, 255, 255, 0.4)" }}>
-                {workspace.path}
+        {/* Main Desktop - Page App Grid (iPad home screen) */}
+        <div className="flex-1 relative overflow-hidden">
+          {workspace && workspaceId ? (
+            <PageAppGrid
+              workspaceId={workspaceId}
+              workspacePath={workspace.path}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
+                <div className="text-lg font-medium mb-2">
+                  {workspace?.type === "global" ? t("workspace.global") : workspace?.name || "Viben"}
+                </div>
               </div>
             </div>
           )}

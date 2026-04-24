@@ -59,6 +59,8 @@ import { CreatePageDialog } from "./create-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
+import { buildPageTree, getPageHref } from "./page-utils";
+import type { PageTreeNode } from "./page-utils";
 
 // =============================================================================
 // Types
@@ -68,66 +70,6 @@ export interface PageSectionProps {
   workspaceId: string;
   workspacePath: string;
   collapsed?: boolean;
-}
-
-interface PageTreeNode {
-  page: PageConfig;
-  children: PageTreeNode[];
-}
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Build a tree structure from flat page list.
- * Pages with slugs like "parent/child" are nested under "parent".
- */
-function buildPageTree(pages: PageConfig[]): PageTreeNode[] {
-  // Sort pages by slug for consistent ordering
-  const sortedPages = [...pages].sort((a, b) => a.slug.localeCompare(b.slug));
-
-  // Map to store nodes by their slug
-  const nodeMap = new Map<string, PageTreeNode>();
-  const rootNodes: PageTreeNode[] = [];
-
-  // First pass: create all nodes
-  for (const page of sortedPages) {
-    nodeMap.set(page.slug, { page, children: [] });
-  }
-
-  // Second pass: build tree structure
-  for (const page of sortedPages) {
-    const node = nodeMap.get(page.slug)!;
-    const parts = page.slug.split("/");
-
-    if (parts.length === 1) {
-      // Root level page
-      rootNodes.push(node);
-    } else {
-      // Find parent by removing last part
-      const parentSlug = parts.slice(0, -1).join("/");
-      const parentNode = nodeMap.get(parentSlug);
-
-      if (parentNode) {
-        parentNode.children.push(node);
-      } else {
-        // Parent doesn't exist, treat as root
-        rootNodes.push(node);
-      }
-    }
-  }
-
-  return rootNodes;
-}
-
-/**
- * Get the page path for NavLink
- * Per spec: /workspace/page?workspace_id=<id>&page_path=pages/xxx/SKILL.md
- */
-function getPageHref(workspaceId: string, pageSlug: string): string {
-  const pagePath = `pages/${pageSlug}/SKILL.md`;
-  return `/workspace/page?workspace_id=${encodeURIComponent(workspaceId)}&page_path=${encodeURIComponent(pagePath)}`;
 }
 
 // =============================================================================
