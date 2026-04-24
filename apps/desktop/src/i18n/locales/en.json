@@ -177,7 +177,13 @@
     "newTask": "New Task",
     "taskCreated": "Task created successfully",
     "taskCreateFailed": "Failed to create task",
-    "noWorkspaceSelected": "Please select a workspace first"
+    "noWorkspaceSelected": "Please select a workspace first",
+    "wakeWord": {
+      "inactive": "Click to start wake word listening",
+      "loading": "Loading wake word model...",
+      "listening": "Listening for \"{{wakeWord}}\" - click to stop",
+      "detected": "Wake word detected!"
+    }
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",

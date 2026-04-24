@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Plus,
   Check,
-  ListTodo,
   Trash2,
   ExternalLink,
   Lightbulb,
@@ -59,6 +58,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
+import { WakeWordTaskButton } from "./wake-word-task-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { AddWorkspaceModal } from "@/components/workspace";
 import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
@@ -528,25 +528,12 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleGlobalNavClick}
             />
-            {/* New Task Button */}
-            <div className="grid place-items-center w-full">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10"
-                    onClick={openCreateTaskPopup}
-                    disabled={!activeWorkspace}
-                  >
-                    <ListTodo className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {t("sidebar.newTask")}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+            {/* Wake Word + New Task Button */}
+            <WakeWordTaskButton
+              collapsed
+              onCreateTask={openCreateTaskPopup}
+              disabled={!activeWorkspace}
+            />
           </div>
         ) : (
           // Expanded: full layout
@@ -563,18 +550,12 @@ export function Sidebar() {
               collapsed={collapsed}
               onNavigate={handleGlobalNavClick}
             />
-            {/* New Task Button */}
-            <div className="mt-4">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={openCreateTaskPopup}
-                disabled={!activeWorkspace}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t("sidebar.newTask")}
-              </Button>
-            </div>
+            {/* Wake Word + New Task Button */}
+            <WakeWordTaskButton
+              collapsed={false}
+              onCreateTask={openCreateTaskPopup}
+              disabled={!activeWorkspace}
+            />
           </div>
         )}
 

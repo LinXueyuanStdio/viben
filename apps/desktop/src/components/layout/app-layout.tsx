@@ -9,6 +9,7 @@ import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
 import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { useVoiceConfigInit } from "@/hooks/use-voice-config-init";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
@@ -35,6 +36,9 @@ export function AppLayout() {
   // Initialize cron job notification adapter
   // This listens for cron job completion events and displays notifications
   useCronNotificationAdapter();
+
+  // Load voice configuration from disk so sidebar can display wake word
+  useVoiceConfigInit();
 
   // Setup status detection - updates whenever browseMcpInfo changes
   // This ensures status is updated when user installs browse-mcp

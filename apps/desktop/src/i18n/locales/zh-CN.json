@@ -177,7 +177,13 @@
     "newTask": "新建任务",
     "taskCreated": "任务创建成功",
     "taskCreateFailed": "任务创建失败",
-    "noWorkspaceSelected": "请先选择一个工作空间"
+    "noWorkspaceSelected": "请先选择一个工作空间",
+    "wakeWord": {
+      "inactive": "点击开始监听唤醒词",
+      "loading": "正在加载唤醒词模型...",
+      "listening": "正在监听「{{wakeWord}}」- 点击关闭",
+      "detected": "唤醒词已检测到！"
+    }
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
