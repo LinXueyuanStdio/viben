@@ -112,9 +112,8 @@ export function WakeWordTaskButton({
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium max-w-48">
-              <div>{config.wakeWord}</div>
-              <div className="text-xs text-muted-foreground">{listeningTooltip}</div>
+            <TooltipContent side="right" className="font-medium">
+              {config.wakeWord} · {t("sidebar.newTask")}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
