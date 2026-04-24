@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 
 // Lazy load skills market page
 const SkillsMarketPage = lazy(() =>
-  import("./skills-market").then((m) => ({ default: m.SkillsMarketPage }))
+  import("@/pages/skills-market").then((m) => ({ default: m.SkillsMarketPage }))
 );
 
 function PageLoadingFallback() {

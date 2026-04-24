@@ -23,32 +23,32 @@ import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
-import { InspectorPage } from "./inspector";
+import { InspectorPage } from "@/pages/inspector";
 
 // Lazy load marketplace page
 const MarketplacePage = lazy(() =>
-  import("./marketplace").then((m) => ({ default: m.MarketplacePage }))
+  import("@/pages/marketplace").then((m) => ({ default: m.MarketplacePage }))
 );
 
 // Lazy load MCP service pages
 const DashboardPage = lazy(() =>
-  import("./dashboard").then((m) => ({ default: m.DashboardPage }))
+  import("@/pages/dashboard").then((m) => ({ default: m.DashboardPage }))
 );
 
 const ProvidersPage = lazy(() =>
-  import("./providers").then((m) => ({ default: m.ProvidersPage }))
+  import("@/pages/providers").then((m) => ({ default: m.ProvidersPage }))
 );
 
 const SearchServicePage = lazy(() =>
-  import("./search-service").then((m) => ({ default: m.SearchServicePage }))
+  import("@/pages/search-service").then((m) => ({ default: m.SearchServicePage }))
 );
 
 const PageDebugPage = lazy(() =>
-  import("./page-debug").then((m) => ({ default: m.PageDebugPage }))
+  import("@/pages/page-debug").then((m) => ({ default: m.PageDebugPage }))
 );
 
 const LogsPage = lazy(() =>
-  import("./logs").then((m) => ({ default: m.LogsPage }))
+  import("@/pages/logs").then((m) => ({ default: m.LogsPage }))
 );
 
 // Navigation item type

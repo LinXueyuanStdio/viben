@@ -6,7 +6,7 @@
  */
 import { Loader2, Bot } from "lucide-react";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
-import { WorkspaceAgentsPage } from "./workspace-agents";
+import { WorkspaceAgentsPage } from "@/pages/workspace-agents";
 import { useTranslation } from "react-i18next";
 
 export function SettingsAgentsPage() {
