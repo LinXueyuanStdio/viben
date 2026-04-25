@@ -72,7 +72,7 @@ import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
-import { PageSection } from "@/components/page/page-section";
+import { PageSection } from "@/pages/apps/components/page-section";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useUiStore } from "@/stores";
 import type { IconData } from "@/components/ui/icon-picker";
