@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { scan, Format } from "@tauri-apps/plugin-barcode-scanner";
 import { Button } from "@/components/ui/button";
 import { Camera, AlertCircle } from "lucide-react";
@@ -29,6 +30,7 @@ interface QrScannerProps {
 }
 
 export function QrScanner({ onScan, onError }: QrScannerProps) {
+  const { t } = useTranslation();
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +46,7 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
 
       const payload = parseQrPayload(result.content);
       if (!payload) {
-        const msg = "Invalid QR code. Please scan a Viben desktop QR code.";
+        const msg = t("mobile.qrScanner.invalidQrCode", "Invalid QR code. Please scan a Viben desktop QR code.");
         setError(msg);
         onError?.(msg);
         setScanning(false);
@@ -55,11 +57,11 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
       onScan(payload);
     } catch (err) {
       setScanning(false);
-      const msg = err instanceof Error ? err.message : "Camera access failed";
+      const msg = err instanceof Error ? err.message : t("mobile.qrScanner.cameraFailed", "Camera access failed");
       setError(msg);
       onError?.(msg);
     }
-  }, [onScan, onError]);
+  }, [onScan, onError, t]);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -70,7 +72,7 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
         className="gap-2"
       >
         <Camera className="h-5 w-5" />
-        {scanning ? "Scanning..." : "Scan QR Code"}
+        {scanning ? t("mobile.qrScanner.scanning", "Scanning...") : t("mobile.qrScanner.scanQrCode", "Scan QR Code")}
       </Button>
       {error && (
         <div className="flex items-center gap-2 text-sm text-destructive">

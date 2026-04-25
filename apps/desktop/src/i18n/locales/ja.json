@@ -37,6 +37,7 @@
     "confirm": "確認",
     "status": "状態",
     "name": "名前",
+    "description": "Description",
     "version": "バージョン",
     "actions": "アクション",
     "settings": "設定",
@@ -72,11 +73,15 @@
     "open": "開く",
     "search": "検索...",
     "selectAll": "すべて選択",
+    "deselectAll": "Deselect all",
     "selected": "選択済み",
+    "clearSelection": "Clear selection",
+    "selectItem": "Select {{name}}",
     "noResults": "結果が見つかりません",
     "rename": "名前を変更",
     "path": "パス",
     "copyPath": "パスをコピー",
+    "browse": "Browse",
     "yesterday": "昨日",
     "daysAgo_one": "{{count}}日前",
     "daysAgo_other": "{{count}}日前",
@@ -94,6 +99,8 @@
     "daysShort": "{{count}}日",
     "comingSoon": "近日公開",
     "retry": "再試行",
+    "retrying": "Retrying...",
+    "skip": "Skip",
     "forward": "進む",
     "developer": "開発者",
     "loadingWorkspace": "ワークスペースを読み込み中...",
@@ -104,6 +111,9 @@
     "you": "あなた",
     "unknown": "不明",
     "unknownError": "不明なエラー",
+    "hide": "Hide",
+    "show": "Show",
+    "reset": "Reset",
     "openInExplorer": "ファイルマネージャーで開く",
     "learnMore": "詳細を見る",
     "noData": "データなし",
@@ -120,9 +130,6 @@
       "chars": "文字",
       "lines": "行"
     },
-    "hide": "Hide",
-    "show": "Show",
-    "reset": "Reset",
     "blocked": "Blocked",
     "checking": "Checking",
     "collapse": "Collapse",
@@ -155,10 +162,38 @@
     "pageDebug": "ページデバッグ",
     "skillsMarket": "スキルマーケット",
     "logs": "ログ",
+    "devices": "Devices",
     "documents": "ドキュメント",
     "settings": "設定",
     "about": "概要",
     "github": "GitHub"
+  },
+  "devices": {
+    "pairTitle": "Device Pairing",
+    "pairDescription": "Scan the QR code with your mobile device to connect",
+    "qrCode": "QR Code",
+    "qrDescription": "Scan with your mobile device",
+    "qrRefreshed": "QR code refreshed",
+    "qrRefreshFailed": "Failed to refresh QR code",
+    "qrGenerateFailed": "Failed to generate QR code",
+    "retry": "Retry",
+    "connectedDevices": "Connected Devices",
+    "noDevices": "No devices connected",
+    "scanToConnect": "Scan the QR code to connect your device",
+    "online": "Online",
+    "offline": "Offline",
+    "gateway": "Gateway",
+    "client": "Client",
+    "lastSeen": "Last seen",
+    "never": "Never",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "viewDetails": "View Details",
+    "disconnect": "Disconnect",
+    "deviceDetails": "Device Details",
+    "deviceId": "Device ID",
+    "type": "Type",
+    "platform": "Platform"
   },
   "sidebar": {
     "setupComplete": "セットアップ完了",
@@ -166,10 +201,17 @@
     "collapse": "サイドバーを折りたたむ",
     "expand": "サイドバーを展開",
     "workspacePages": "ワークスペース",
+    "workspaceHome": "Workspace Home",
     "newTask": "新しいタスク",
     "taskCreated": "タスクが正常に作成されました",
     "taskCreateFailed": "タスクの作成に失敗しました",
-    "noWorkspaceSelected": "まずワークスペースを選択してください"
+    "noWorkspaceSelected": "まずワークスペースを選択してください",
+    "wakeWord": {
+      "inactive": "Click to start wake word listening",
+      "loading": "Loading wake word model...",
+      "listening": "Listening for \"{{wakeWord}}\" - click to stop",
+      "detected": "Wake word detected!"
+    }
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -422,12 +464,16 @@
       "models": "Models",
       "model": "Models",
       "agents": "Agents",
+      "mcp": "MCP",
+      "skills": "Skills",
       "gateway": "Gateway",
       "channels": "Channels",
       "executors": "Executors",
       "sandbox": "Sandbox",
       "setup": "Setup",
-      "terminalFonts": "Terminal Fonts"
+      "terminalFonts": "Terminal Fonts",
+      "overlay": "Overlay",
+      "voice": "Voice"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",
@@ -477,6 +523,121 @@
         "reset": "Reset to Default"
       },
       "export": "Copy Config"
+    },
+    "overlay": {
+      "title": "Overlay",
+      "description": "Configure overlay display effects for danmaku, subtitles, and visual feedback",
+      "global": {
+        "title": "Global Settings",
+        "defaultEnabled": "Enable on Startup",
+        "defaultEnabledDesc": "Automatically show overlay when application starts",
+        "opacity": "Global Opacity",
+        "opacityDesc": "Overall transparency of overlay elements"
+      },
+      "danmaku": {
+        "title": "Danmaku (Scrolling Text)",
+        "enabled": "Enable Danmaku",
+        "enabledDesc": "Show scrolling text messages across the screen",
+        "speed": "Scroll Speed",
+        "speedDesc": "How fast danmaku messages scroll",
+        "speedSlow": "Slow",
+        "speedNormal": "Normal",
+        "speedFast": "Fast",
+        "maxTracks": "Max Tracks",
+        "maxTracksDesc": "Maximum number of parallel danmaku tracks"
+      },
+      "subtitle": {
+        "title": "Subtitles",
+        "enabled": "Enable Subtitles",
+        "enabledDesc": "Show subtitle text at specified position",
+        "position": "Position",
+        "positionDesc": "Where subtitles appear on screen",
+        "positionTop": "Top",
+        "positionCenter": "Center",
+        "positionBottom": "Bottom"
+      },
+      "clickIndicator": {
+        "title": "Click Indicator",
+        "enabled": "Enable Click Indicator",
+        "enabledDesc": "Show visual feedback when clicking",
+        "style": "Effect Style",
+        "styleDesc": "Visual style of click effects",
+        "styleRipple": "Ripple",
+        "styleSpotlight": "Spotlight",
+        "styleRing": "Ring"
+      },
+      "keystroke": {
+        "title": "Keystroke Visualization",
+        "enabled": "Enable Keystroke Display",
+        "enabledDesc": "Show pressed keys on screen",
+        "position": "Display Position",
+        "positionDesc": "Corner where keystrokes appear",
+        "positionTopLeft": "Top Left",
+        "positionTopRight": "Top Right",
+        "positionBottomLeft": "Bottom Left",
+        "positionBottomRight": "Bottom Right",
+        "showModifiersOnly": "Show Modifiers Only",
+        "showModifiersOnlyDesc": "Only display modifier keys and special keys"
+      },
+      "wave": {
+        "title": "Status Wave",
+        "enabled": "Enable Wave",
+        "enabledDesc": "Show animated wave at bottom of screen",
+        "height": "Wave Height",
+        "heightDesc": "Height of the wave animation in pixels",
+        "particlesEnabled": "Enable Particles",
+        "particlesEnabledDesc": "Show floating particles above the wave"
+      }
+    },
+    "voice": {
+      "description": "Configure voice assistant and wake word detection",
+      "api": {
+        "title": "API Configuration",
+        "vocalBridgeKey": "Vocal Bridge API Key",
+        "vocalBridgeKeyDesc": "API key for connecting to voice service",
+        "agentId": "Agent ID",
+        "agentIdDesc": "Vocal Bridge voice agent ID"
+      },
+      "wakeWord": {
+        "title": "Wake Word Settings",
+        "word": "Wake Word",
+        "wordDesc": "Say this word to activate voice assistant",
+        "autoStart": "Auto-start on launch",
+        "autoStartDesc": "Start listening for wake word when app launches",
+        "silenceTimeout": "Silence Timeout",
+        "silenceTimeoutDesc": "Time before auto-disconnect when no speech",
+        "threshold": "Detection Sensitivity",
+        "thresholdDesc": "Confidence threshold for wake word detection",
+        "test": {
+          "detected": "Wake word detected!",
+          "loading": "Loading model...",
+          "listening": "Say \"{{wakeWord}}\"",
+          "idle": "Test wake word detection",
+          "start": "Test Wake Word",
+          "stop": "Stop Test",
+          "score": "Confidence",
+          "modelNotFound": "Wake word model not found, please download models first"
+        }
+      },
+      "test": {
+        "title": "Test Voice Function",
+        "idle": "Click to start speaking",
+        "connecting": "Connecting...",
+        "listening": "Listening...",
+        "start": "Start Test",
+        "stop": "Stop",
+        "noApiKey": "Please configure API Key first",
+        "noConfig": "Please configure API Key and Agent ID first"
+      },
+      "sound": {
+        "title": "Sound Effects",
+        "enabled": "Enable Sound Effects",
+        "enabledDesc": "Play sound feedback for wake and error events"
+      },
+      "errors": {
+        "noApiKey": "Please configure API Key first",
+        "noAgentId": "Please configure Agent ID first"
+      }
     },
     "account": {
       "description": "Manage your account and login status",
@@ -663,6 +824,8 @@
     "controlScopeDescription": "Select which windows the shortcut controls",
     "chatRelatedWindows": "Chat-related windows only",
     "allWindows": "All windows",
+    "createTask": "Create Task",
+    "createTaskDescription": "Shortcut to open create task dialog",
     "resetShortcuts": "Reset to Defaults",
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",
@@ -694,24 +857,6 @@
       "arch": "アーキテクチャ",
       "logs": "ログ",
       "config": "設定"
-    },
-    "voice": {
-      "sound": {
-        "title": "Sound Effects",
-        "enabled": "Enable Sound Effects",
-        "enabledDesc": "Play sound feedback for wake and error events"
-      },
-      "errors": {
-        "noApiKey": "Please configure API Key first",
-        "noAgentId": "Please configure Agent ID first"
-      },
-      "api": {
-        "agentId": "Agent ID",
-        "agentIdDesc": "Vocal Bridge voice agent ID"
-      },
-      "test": {
-        "noConfig": "Please configure API Key and Agent ID first"
-      }
     }
   },
   "sandbox": {
@@ -753,6 +898,9 @@
     "updateNow": "今すぐ更新",
     "upToDate": "最新版です！",
     "checkForUpdates": "更新を確認",
+    "checking": "Checking...",
+    "downloading": "Downloading update...",
+    "downloadingDescription": "Please wait while the update is being downloaded. The app will restart automatically once the installation is complete.",
     "links": "リンク",
     "homepage": "ホームページ",
     "githubRepo": "GitHubリポジトリ",
@@ -1739,7 +1887,10 @@
     "loggingLevel": "Logging Level",
     "selectLoggingLevel": "Select level...",
     "loggingLevelDesc": "Set the minimum logging level for server notifications.",
+    "setLoggingLevelFailed": "Failed to set logging level",
     "loadingSuggestions": "Loading suggestions...",
+    "select": "Select...",
+    "nullValue": "null",
     "addItem": "Add Item",
     "itemNumber": "Item {{number}}",
     "mcpApps": "MCP Apps",
@@ -1796,7 +1947,6 @@
       "type": "Transport Type",
       "url": "URL",
       "command": "Command",
-      "tokenIncluded": "(token included)",
       "args": "Arguments",
       "argPlaceholder": "Enter argument...",
       "envVars": "Environment Variables",
@@ -2215,7 +2365,8 @@
         "owner": "Owner",
         "name": "Repository Name",
         "ownerNameRequired": "Owner and name are required",
-        "defaultBranch": "Default branch"
+        "defaultBranch": "Default branch",
+        "connectFailed": "Failed to connect"
       },
       "issues": {
         "open": "Open",
@@ -2500,6 +2651,8 @@
     "github": "GitHub",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
+    "ideas": "Ideas",
+    "ideasDescription": "AI-generated improvement ideas",
     "addTask": "Add Task",
     "kanbanStatus": {
       "backlog": "Backlog",
@@ -2722,7 +2875,8 @@
       "hint": "Tasks will automatically move from Queue to In Progress when capacity is available.",
       "errorNaN": "Please enter a valid number",
       "errorMin": "Minimum value is 1",
-      "errorMax": "Maximum value is 10"
+      "errorMax": "Maximum value is 10",
+      "saveFailed": "Failed to save settings"
     },
     "queueAutoPromotion": {
       "promoted": "Started task: {{title}}",
@@ -2823,6 +2977,8 @@
     "failedToLoadTasks": "Failed to load tasks",
     "chat": "Chat",
     "chatDescription": "Start a conversation with AI",
+    "chatMonitor": "チャットモニター",
+    "chatMonitorDescription": "Monitor agent chat execution traces",
     "recentActivity": "Recent activity",
     "kanbanDescription": "Manage tasks with kanban board",
     "taskManagement": "Task management",
@@ -2844,6 +3000,24 @@
       "stop": "Stop",
       "interrupted": "Interrupted",
       "progress": "Progress",
+      "step": "Step {{current}}/{{total}}",
+      "action": {
+        "plan": "Planning",
+        "implement": "Implementing",
+        "check": "Checking",
+        "fix": "Fixing",
+        "finish": "Finishing",
+        "create-pr": "Creating PR"
+      },
+      "actionDesc": {
+        "plan": "Planning and requirement analysis",
+        "implement": "Writing code and implementing features",
+        "check": "Code review and quality validation",
+        "fix": "Fixing issues and bugs",
+        "finish": "Final touches and cleanup",
+        "create-pr": "Creating pull request for review",
+        "default": "Executing action"
+      },
       "phase": {
         "idle": "Idle",
         "plan": "Planning",
@@ -2937,8 +3111,6 @@
       "plan_review": "Plan Review",
       "stopped": "Stopped"
     },
-    "chatMonitor": "チャットモニター",
-    "chatMonitorDescription": "Monitor agent chat execution traces",
     "selectFolderTitle": "Select workspace folder"
   },
   "sync": {
@@ -2986,7 +3158,28 @@
     "steps": {
       "python": "Python",
       "claude": "AIクライアント",
-      "login": "アカウント"
+      "login": "アカウント",
+      "gateway": "Gateway"
+    },
+    "nodejs": {
+      "title": "Node.js Environment",
+      "description": "Viben requires Node.js 22.16.0+ to run. Select or configure your Node.js installation.",
+      "detected": "Detected Node.js Installations",
+      "detecting": "Detecting Node.js installations...",
+      "noNode": "No Node.js installations found. Please install Node.js 22.16.0 or later.",
+      "notFound": "Node.js not detected",
+      "selectNode": "Select Node.js Environment",
+      "customPath": "Custom Node.js Path",
+      "customPathPlaceholder": "/path/to/node",
+      "check": "Check",
+      "invalidPath": "Invalid Node.js path or version too low",
+      "requiresVersion": "Requires v{{version}}+",
+      "versionTooLow": "Node.js version too low ({{version}}), requires v{{required}} or higher",
+      "source": "Source",
+      "sourceSystem": "System",
+      "sourceCurrent": "Current",
+      "sourceCustom": "Custom",
+      "sourceOther": "Other"
     },
     "python": {
       "title": "Python環境",
@@ -2994,11 +3187,14 @@
       "detected": "検出されたPythonインストール",
       "detecting": "Pythonインストールを検出中...",
       "noPython": "Pythonインストールが見つかりません。Python 3.10以降をインストールしてください。",
+      "notFound": "Python not detected",
+      "selectPython": "Select Python Environment",
       "customPath": "カスタムPythonパス",
       "check": "チェック",
       "invalidPath": "無効なPythonパスまたはバージョンが3.10未満です",
       "installHint": "browse-mcpをインストールするには次のコマンドを実行してください:",
-      "installRequired": "続行するにはbrowse-mcpをインストールしてください"
+      "installRequired": "続行するにはbrowse-mcpをインストールしてください",
+      "source": "Source"
     },
     "claude": {
       "title": "AIクライアント検出",
@@ -3007,6 +3203,7 @@
       "detecting": "AIクライアントを検出中...",
       "download": "ダウンロード",
       "detected": "{{count}}個のAIクライアントが検出されました",
+      "clientsFound": "{{count}} available",
       "readyToConfigure": "セットアップ後、これらのクライアント用にbrowse-mcpを設定できます。",
       "noClients": "AIクライアントが検出されませんでした",
       "noClientsHint": "続行して、後でAIクライアントをインストールすることもできます。",
@@ -3032,6 +3229,150 @@
       "error": "サインインに失敗しました",
       "errorHint": "サインイン中にエラーが発生しました。再試行するか、このステップをスキップできます。",
       "finish": "開始"
+    },
+    "gateway": {
+      "title": "Starting Viben Gateway",
+      "description": "The gateway service provides the backend for all Viben features.",
+      "starting": "Starting gateway...",
+      "checking": "Checking gateway status...",
+      "installingCli": "Installing Viben CLI...",
+      "verifyingConnection": "Verifying connection...",
+      "connected": "Gateway is running",
+      "failed": "Failed to start gateway",
+      "retry": "Retry",
+      "skip": "Continue without gateway",
+      "skipWarning": "Some features may not work without the gateway.",
+      "port": "Port",
+      "status": "Status",
+      "running": "Running",
+      "stopped": "Stopped",
+      "error": "Error",
+      "autoStartHint": "Gateway will start automatically on app launch.",
+      "manualStart": "Start Gateway",
+      "vibenNotFound": "Viben CLI not found. Please install it first.",
+      "installViben": "Install Viben CLI",
+      "binaryLabel": "Binary:",
+      "commandLabel": "Command:",
+      "copyBinaryPath": "Copy binary path",
+      "copyCommand": "Copy command"
+    },
+    "failure": {
+      "suggestions": "Suggestions",
+      "manualDownload": "Manual Download",
+      "contactSupport": "Contact Support",
+      "copyCommand": "Copy Command"
+    },
+    "welcome": {
+      "title": "Welcome to Viben",
+      "subtitle": "Please read the following important information before getting started",
+      "cards": {
+        "security": {
+          "title": "Local Execution",
+          "description": "Viben runs entirely on your computer, all data is stored locally"
+        },
+        "data": {
+          "title": "Data Privacy",
+          "description": "Your configuration and conversation data is only stored on your device"
+        },
+        "risk": {
+          "title": "Usage Notice",
+          "description": "AI-generated content may contain errors, please review carefully before use"
+        }
+      },
+      "disclaimer": "Please ensure you have read and understood the above information before using Viben. By continuing, you agree to assume the associated risks.",
+      "acceptTerms": "I have read and understand the above information, and agree to continue",
+      "continue": "Get Started",
+      "license": "License"
+    },
+    "envCheck": {
+      "title": "Environment Check",
+      "description": "Checking and configuring runtime environment",
+      "cancelling": "Cancelling...",
+      "gatewayRunning": "Gateway running",
+      "connected": "Connected",
+      "connectionDetails": "Gateway API is accessible",
+      "checkingNodejs": "Checking Node.js...",
+      "checkingCli": "Checking/installing viben@latest...",
+      "startingGateway": "Starting gateway service...",
+      "verifyingConnection": "Verifying connection...",
+      "detectingPython": "Detecting Python environment...",
+      "detectingClients": "Detecting AI clients...",
+      "labels": {
+        "url": "URL",
+        "binary": "Binary",
+        "command": "Command"
+      },
+      "checkingGitTools": "Checking Git and Xcode Command Line Tools...",
+      "continueInstall": "Continue installation",
+      "nodeDownloading": "Downloading Node.js {{version}}...",
+      "nodeInstalling": "Installing Node.js...",
+      "nodeVerifying": "Verifying installation package...",
+      "refreshingEnv": "Refreshing environment variables...",
+      "retryDetect": "Retry detection",
+      "xcodeCltPending": "Please complete Xcode Command Line Tools installation first, then click \"Retry\""
+    },
+    "progress": {
+      "welcome": "Welcome",
+      "envCheck": "Environment",
+      "gateway": "Gateway",
+      "python": "Python",
+      "claude": "AI Clients",
+      "login": "Login"
+    },
+    "loadingTips": {
+      "checkingEnvironment": "Checking system environment...",
+      "multipleClients": "Viben supports Claude Code, Cursor, Codex and other AI clients",
+      "localData": "All configuration and data is stored locally on your computer",
+      "gatewayService": "Gateway is Viben's local backend service",
+      "networkRequired": "Installation may require network connection",
+      "ensureNetwork": "Please ensure network connection is available"
+    },
+    "issues": {
+      "stepsTitle": "Steps:",
+      "terminalHint": "You can also run in terminal",
+      "detecting": "Detecting...",
+      "retryDetect": "Retry Detection",
+      "xcodeClt": {
+        "title": "Waiting for Xcode Command Line Tools Installation",
+        "description": "Xcode command line tools installation has been triggered. These are required tools for macOS development.",
+        "step1": "Click 'Install' in the system dialog that appeared",
+        "step2": "Wait for installation to complete (may take a few minutes)",
+        "step3": "If you don't see the dialog, click the install icon in the top right corner",
+        "step4": "After installation completes, click 'Retry Detection' below"
+      },
+      "missingNode": {
+        "title": "Node.js Installation Required",
+        "description": "Viben CLI requires Node.js runtime to work.",
+        "step1": "Visit nodejs.org to download Node.js",
+        "step2": "Recommended: Download the LTS (Long Term Support) version",
+        "step3": "Run the installer and complete installation",
+        "step4": "After installation completes, click 'Retry Detection' below",
+        "downloadLabel": "Download Node.js"
+      },
+      "permissionDenied": {
+        "title": "Insufficient Permissions",
+        "description": "Installation requires elevated system permissions.",
+        "step1": "macOS/Linux: Try running the command with sudo in terminal",
+        "step2": "Windows: Right-click terminal and select 'Run as Administrator'",
+        "step3": "Or use nvm to manage Node.js to avoid permission issues",
+        "nvmLabel": "Learn about nvm"
+      },
+      "networkError": {
+        "title": "Network Connection Issue",
+        "description": "Cannot connect to npm registry. This may be a network problem.",
+        "step1": "Check if your network connection is working",
+        "step2": "If using a proxy, verify your proxy settings",
+        "step3": "Try switching to a different network",
+        "step4": "Try again later"
+      },
+      "unknown": {
+        "title": "Problem Encountered",
+        "description": "An issue occurred during installation.",
+        "step1": "Check detailed error information",
+        "step2": "Try manual installation",
+        "step3": "If the issue persists, contact support",
+        "reportLabel": "Report Issue"
+      }
     },
     "diagnostics": {
       "portConflictSame": {
@@ -3383,20 +3724,63 @@
       "nodeVersionTooLowCustom": "Node.js {{version}} version too low, requires v{{required}} or higher",
       "invalidNodePath": "Invalid Node.js path"
     },
-    "envCheck": {
-      "labels": {
-        "url": "URL",
-        "binary": "Binary",
-        "command": "Command"
+    "installerIssues": {
+      "missingCli": {
+        "title": "Viben CLI not installed",
+        "message": "Viben CLI needs to be installed to continue. The system will attempt automatic installation."
       },
-      "checkingGitTools": "Checking Git and Xcode Command Line Tools...",
-      "continueInstall": "Continue installation",
-      "nodeDownloading": "Downloading Node.js {{version}}...",
-      "nodeInstalling": "Installing Node.js...",
-      "nodeVerifying": "Verifying installation package...",
-      "refreshingEnv": "Refreshing environment variables...",
-      "retryDetect": "Retry detection",
-      "xcodeCltPending": "Please complete Xcode Command Line Tools installation first, then click \"Retry\""
+      "versionTooLow": {
+        "title": "Viben CLI version too low",
+        "message": "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded."
+      },
+      "versionTooHigh": {
+        "title": "Viben CLI version too high",
+        "message": "The installed Viben CLI version may not be compatible with this application."
+      },
+      "missingNode": {
+        "title": "Node.js not installed",
+        "message": "Viben CLI requires Node.js runtime. Please install Node.js first."
+      },
+      "nodeVersionMismatch": {
+        "title": "Node.js version mismatch",
+        "message": "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher."
+      },
+      "npmNotFound": {
+        "title": "npm not found",
+        "message": "Cannot find npm command. Please ensure Node.js is installed correctly."
+      },
+      "npmRegistryError": {
+        "title": "npm registry error",
+        "message": "Cannot connect to npm registry. Will try using mirror sources."
+      },
+      "downloadFailed": {
+        "title": "Download failed",
+        "message": "Failed to download Viben CLI. Please check network connection and retry."
+      },
+      "installFailed": {
+        "title": "Install failed",
+        "message": "Failed to install Viben CLI. Please check detailed error information."
+      },
+      "permissionDenied": {
+        "title": "Permission denied",
+        "message": "Installation requires higher permissions. Please run as administrator or install manually."
+      },
+      "userCancelled": {
+        "title": "Cancelled",
+        "message": "Installation was cancelled."
+      },
+      "networkError": {
+        "title": "Network error",
+        "message": "Network connection failed. Please check network settings and retry."
+      },
+      "xcodeCltPending": {
+        "title": "Waiting for Xcode Command Line Tools installation",
+        "message": "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry."
+      },
+      "unknownError": {
+        "title": "Unknown error",
+        "message": "An unknown error occurred. Please check details or contact support."
+      }
     }
   },
   "chat": {
@@ -3649,7 +4033,12 @@
       "diagnosticsNone": "None",
       "diagnosticsDefault": "Default",
       "compactPromptWithFocus": "Please compress the conversation history with this focus: {{focus}}",
-      "compactPromptDefault": "Please compress and summarize the conversation history so far, keeping only the essential context needed to continue our work. Remove redundant information while preserving key decisions, code changes, and important details."
+      "compactPromptDefault": "Please compress and summarize the conversation history so far, keeping only the essential context needed to continue our work. Remove redundant information while preserving key decisions, code changes, and important details.",
+      "reviewPromptWithTarget": "Please review the following: {{target}}\n\nProvide a thorough code review including:\n1. Code quality and readability\n2. Potential bugs or issues\n3. Performance considerations\n4. Security concerns\n5. Suggestions for improvement\n\nBe specific and actionable in your feedback.",
+      "reviewPromptDefault": "Please review the recent changes in this workspace.\n\nRun `git diff` to see unstaged changes, and `git diff --staged` for staged changes.\n\nProvide a thorough code review including:\n1. Code quality and readability\n2. Potential bugs or issues\n3. Performance considerations\n4. Security concerns\n5. Suggestions for improvement",
+      "initPrompt": "Please initialize this project by creating a CLAUDE.md file in the workspace root ({{workspacePath}}).\n\nThe CLAUDE.md should include:\n1. Project overview and architecture\n2. Key directories and their purposes\n3. Build and test commands\n4. Important conventions and patterns\n5. Any project-specific instructions for AI assistants\n\nAnalyze the existing codebase structure first to generate accurate and helpful content.",
+      "prCommentsPromptWithNumber": "Please fetch and display the comments from GitHub PR #{{prNumber}}.\n\nUse the `gh` CLI to get PR comments:\n```\ngh pr view {{prNumber}} --comments\n```\n\nSummarize the feedback and any action items.",
+      "prCommentsPromptDefault": "Please check if there's an open PR for the current branch and display its comments.\n\nUse the `gh` CLI:\n```\ngh pr view --comments\n```\n\nIf there's no PR, let me know. Otherwise, summarize the feedback and any action items."
     },
     "fileErrors": {
       "failedToReadFile": "Failed to read file",
@@ -3864,7 +4253,107 @@
     "output": "Output",
     "chars": "chars",
     "triggerManual": "Manual",
-    "triggerScheduled": "Scheduled"
+    "triggerScheduled": "Scheduled",
+    "selectedCount": "{{count}} selected",
+    "batchEnable": "Enable",
+    "batchDisable": "Disable",
+    "batchDelete": "Delete",
+    "batchDeleteConfirm": "Delete {{count}} selected task(s)? ({{names}}) This cannot be undone.",
+    "desc": {
+      "invalid": "Invalid cron expression",
+      "everyMinute": "Every minute",
+      "everyNMinutes": "Every {n} minutes",
+      "everyNSeconds": "Every {n} seconds",
+      "everyHour": "Every hour on the hour",
+      "everyHourAtMinute": "Every hour at minute {m}",
+      "everyNHours": "Every {n} hours",
+      "everyNDays": "Every {n} days",
+      "everyDayAt": "Every day at {time}",
+      "weekdaysAt": "Weekdays at {time}",
+      "weekendsAt": "Weekends at {time}",
+      "onDaysAt": "Every {days} at {time}",
+      "firstOfMonthAt": "First of every month at {time}",
+      "dayOfMonthAt": "Day {day} of every month at {time}",
+      "specificDate": "{month} {day} at {time}",
+      "partEveryMinute": "every minute",
+      "partEveryNMinutes": "every {n} minutes",
+      "partAtMinute": "at minute {m}",
+      "partEveryNHours": "every {n} hours",
+      "partAtHour": "at hour {h}",
+      "partOnDay": "on day {d}",
+      "partInMonth": "in {month}",
+      "partOnWeekday": "on {days}"
+    },
+    "days": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    },
+    "months": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    }
+  },
+  "ideas": {
+    "title": "Ideas",
+    "subtitle": "AI-Generated Ideas",
+    "generateIdeas": "Generate Ideas",
+    "generateAllIdeas": "Generate ideas for all types",
+    "generatingAllIdeas": "Generating ideas for all types",
+    "generatingTypeIdeas": "Generating {{type}} ideas",
+    "generateThisType": "Generate This Type",
+    "createIdeaType": "Create Idea Type",
+    "createTaskFromIdea": "Create Task from Idea",
+    "promoteToTask": "Promote to Task",
+    "dismiss": "Dismiss",
+    "hidePanel": "Hide Panel",
+    "showPanel": "Show Panel",
+    "selectItem": "Select an item to view details",
+    "selectItemToView": "Select an idea type or idea to view details",
+    "ideaTypes": "Idea Types",
+    "ideas": "Ideas",
+    "noTypes": "No idea types",
+    "noIdeas": "No ideas yet",
+    "noIdeasDesc": "Generate ideas to get AI suggestions",
+    "noTypesAvailable": "No idea types available",
+    "generateTaskSubmitted": "Generate ideas task submitted",
+    "generateTaskFailed": "Failed to submit generate ideas task",
+    "promoteSuccess": "\"{{title}}\" promoted to task",
+    "promoteFailed": "Failed to promote idea",
+    "dismissSuccess": "Idea dismissed",
+    "dismissFailed": "Failed to dismiss idea",
+    "removeConfirm": "Are you sure you want to remove \"{{title}}\"?",
+    "removeSuccess": "Idea removed",
+    "removeFailed": "Failed to remove idea",
+    "generate": "Generate",
+    "promote": "Promote",
+    "generateIdeasTitle": "Generate Ideas",
+    "generateIdeasDescription": "Select idea types to generate",
+    "selectTypes": "Select Types",
+    "noTypesSelected": "Please select at least one type",
+    "generateSelected": "Generate ({{count}})",
+    "unsavedChangesConfirm": "You have unsaved changes. Are you sure you want to leave?",
+    "noFilePath": "No file path to save",
+    "fileSaved": "File saved",
+    "fileSaveFailed": "Failed to save file",
+    "noFileContent": "No file content to display",
+    "cannotDeleteBuiltinType": "Cannot delete built-in idea type",
+    "typeDeleted": "Idea type \"{{name}}\" deleted",
+    "deleteTypeFailed": "Failed to delete idea type"
   },
   "preview": {
     "livePreview": "Live Preview",
@@ -3893,6 +4382,7 @@
     "noAgentsAvailable": "No agents available",
     "selectedCount": "{{count}} agent(s) selected",
     "createButton": "Create Group",
+    "createFailed": "Failed to create group chat",
     "errorNameRequired": "Please enter a group name",
     "emptyTitle": "No messages yet",
     "emptyDescription": "Start the conversation by sending a message.",
@@ -4706,10 +5196,145 @@
     "currentMonthDesc": "Current month (01-12)",
     "currentDayDesc": "Current day (01-31)"
   },
+  "page": {
+    "pages": "Pages",
+    "createPage": "Create Page",
+    "createSubpage": "Create Subpage",
+    "openInNewTab": "Open in New Tab",
+    "createPageDescription": "Create a new page in the workspace",
+    "createSubpageDescription": "Create a new subpage under {{parent}}",
+    "createSuccess": "Page created successfully",
+    "createFailed": "Failed to create page",
+    "noPages": "No pages yet",
+    "deleteSuccess": "Page deleted",
+    "deleteFailed": "Failed to delete page",
+    "selectPage": "Select a page",
+    "notFound": "Page not found",
+    "readOnly": "Read-only",
+    "page": "Page",
+    "pageType": "Page Type",
+    "type": {
+      "static": "Static",
+      "staticDescription": "Serve static HTML files",
+      "markdown": "Markdown",
+      "markdownDescription": "Render markdown content",
+      "server": "Dev Server",
+      "serverDescription": "Run a development server",
+      "proxy": "Proxy",
+      "proxyDescription": "Reverse proxy to external URL"
+    },
+    "name": "Name",
+    "namePlaceholder": "My Page",
+    "slug": "Slug",
+    "slugPlaceholder": "my-page",
+    "slugHint": "URL path: /pages/{{slug}}/",
+    "description": "Description",
+    "descriptionPlaceholder": "A brief description of this page",
+    "entryFile": "Entry File",
+    "startCommand": "Start Command",
+    "port": "Port",
+    "targetUrl": "Target URL",
+    "serverHint": "The server will be started when you view the page.",
+    "serverType": "Server Type Page",
+    "clickLiveToStart": "Click 'Live' to start the dev server",
+    "serverNotImplemented": "Server type pages coming soon",
+    "proxyNotImplemented": "Proxy type pages coming soon",
+    "permissions": "Permissions",
+    "permissionsDescription": "Manage access permissions for \"{{name}}\"",
+    "permissionsSaved": "Permissions saved",
+    "permissionsSaveFailed": "Failed to save permissions",
+    "permissionRead": "Read",
+    "permissionReadDescription": "Allow viewing page content",
+    "permissionWrite": "Write",
+    "permissionWriteDescription": "Allow modifying page content",
+    "permissionsNote": "These permissions control what AI agents can do with this page.",
+    "invalidPath": "Invalid Page Path",
+    "invalidPathDesc": "The page path format is invalid. Expected: pages/<slug>/SKILL.md",
+    "notFoundDesc": "The requested page could not be found in this workspace.",
+    "backToFiles": "Back to Files",
+    "viewPage": "Page",
+    "devTools": "DevTools",
+    "proxyPage": "Proxy Page",
+    "proxyComingSoon": "Proxy page preview is coming soon"
+  },
+  "iconPicker": {
+    "icons": "Icons",
+    "emoji": "Emoji",
+    "image": "Image",
+    "upload": "Upload",
+    "fromUrl": "From URL",
+    "uploading": "Uploading...",
+    "clickToUpload": "Click to upload",
+    "squareRequired": "Image must be square (equal width and height)",
+    "urlPlaceholder": "https://example.com/icon.png",
+    "download": "Download",
+    "noWorkspace": "Workspace required for image upload",
+    "category": {
+      "documents": "Documents",
+      "code": "Code",
+      "navigation": "Navigation",
+      "favorites": "Favorites",
+      "media": "Media",
+      "communication": "Communication",
+      "people": "People",
+      "time": "Time",
+      "security": "Security",
+      "actions": "Actions",
+      "weather": "Weather",
+      "achievement": "Achievement",
+      "layout": "Layout",
+      "charts": "Charts",
+      "business": "Business"
+    }
+  },
   "windowControls": {
     "minimize": "Minimize",
     "maximize": "Maximize",
     "restore": "Restore",
     "close": "Close"
+  },
+  "mobile": {
+    "status": {
+      "connected": "Connected",
+      "connecting": "Connecting...",
+      "disconnected": "Disconnected"
+    },
+    "tabs": {
+      "devices": "Devices",
+      "connect": "Connect",
+      "chat": "Chat"
+    },
+    "qrScanner": {
+      "invalidQrCode": "Invalid QR code. Please scan a Viben desktop QR code.",
+      "cameraFailed": "Camera access failed",
+      "scanning": "Scanning...",
+      "scanQrCode": "Scan QR Code"
+    },
+    "connect": {
+      "title": "Connect to Desktop",
+      "subtitle": "Scan the QR code shown on your desktop's Devices page",
+      "or": "or",
+      "enterUrlManually": "Enter URL manually",
+      "recentConnections": "Recent connections",
+      "enterGatewayUrl": "Enter Gateway URL",
+      "connectButton": "Connect",
+      "cannotReach": "Cannot reach desktop Gateway. Ensure you're on the same network.",
+      "cannotReachUrl": "Cannot reach {{url}}"
+    },
+    "devices": {
+      "gateway": "Gateway",
+      "client": "Client",
+      "notConnected": "Not connected to any Gateway",
+      "goToConnect": "Go to Connect to pair with your desktop",
+      "title": "Devices ({{count}})",
+      "noDevices": "No devices found in the mesh."
+    },
+    "chat": {
+      "connectToStart": "Connect to a Gateway to start chatting",
+      "sendMessage": "Send a message to the agent on {{name}}",
+      "placeholder": "Type a message...",
+      "error": "Error",
+      "failedToSend": "Failed to send"
+    }
   }
 }

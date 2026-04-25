@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useConnectionStore } from "@/stores/connection-store";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ interface ChatMessage {
 }
 
 export function MobileChatPage() {
+  const { t } = useTranslation();
   const active = useConnectionStore((s) => s.getActive());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -59,20 +61,20 @@ export function MobileChatPage() {
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `Error: ${err instanceof Error ? err.message : "Failed to send"}`,
+        content: `${t("mobile.chat.error", "Error")}: ${err instanceof Error ? err.message : t("mobile.chat.failedToSend", "Failed to send")}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setSending(false);
     }
-  }, [input, sending]);
+  }, [input, sending, t]);
 
   if (!active) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 p-6">
         <Monitor className="h-12 w-12" />
-        <p>Connect to a Gateway to start chatting</p>
+        <p>{t("mobile.chat.connectToStart", "Connect to a Gateway to start chatting")}</p>
       </div>
     );
   }
@@ -82,7 +84,7 @@ export function MobileChatPage() {
       <div ref={scrollRef} className="flex-1 overflow-auto p-4 space-y-3">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground pt-8">
-            Send a message to the agent on {active.name}
+            {t("mobile.chat.sendMessage", { name: active.name, defaultValue: "Send a message to the agent on {{name}}" })}
           </p>
         )}
         {messages.map((msg) => (
@@ -111,7 +113,7 @@ export function MobileChatPage() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
+          placeholder={t("mobile.chat.placeholder", "Type a message...")}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           disabled={sending}
         />
