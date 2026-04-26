@@ -76,7 +76,7 @@ import { cn } from "@/lib/utils";
 import {
   getGradientByName,
   formatRelativeTime,
-} from "@/components/chat/list-item";
+} from "@/pages/conversation/components/list-item";
 
 // =============================================================================
 // Helpers

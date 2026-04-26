@@ -180,10 +180,10 @@ export { useUnifiedAgents, useVibenAgentsOnly } from "./use-unified-agents";
 export type { UseUnifiedAgentsOptions, UseUnifiedAgentsReturn } from "./use-unified-agents";
 
 // Workspace Chat - Agent Conversation
-export { useAgentConversation } from "./use-agent-conversation";
-export type { AgentConfig, UseAgentConversationOptions } from "./use-agent-conversation";
-export { useConversation } from "./use-conversation";
-export type { UseConversationOptions, UseConversationReturn } from "./use-conversation";
+export { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
+export type { AgentConfig, UseAgentConversationOptions } from "@/pages/conversation/hooks/use-agent-conversation";
+export { useConversation } from "@/pages/conversation/hooks/use-conversation";
+export type { UseConversationOptions, UseConversationReturn } from "@/pages/conversation/hooks/use-conversation";
 export { useTaskAgent } from "./use-task-agent";
 export type { TaskContext } from "./use-task-agent";
 export { useVitePreview } from "./use-vite-preview";
@@ -240,8 +240,8 @@ export type {
 } from "./use-screenshot";
 
 // Chat Config
-export { useChatConfig } from "./use-chat-config";
-export type { UseChatConfigReturn } from "./use-chat-config";
+export { useChatConfig } from "@/pages/conversation/hooks/use-chat-config";
+export type { UseChatConfigReturn } from "@/pages/conversation/hooks/use-chat-config";
 
 // Cron Job Management
 export {
@@ -259,30 +259,30 @@ export type { CronJobStatus, UseCronNotificationsReturn } from "./use-cron-notif
 export { useCronNotificationAdapter } from "./use-cron-notification-adapter";
 
 // Chat Notifications
-export { useChatNotifications } from "./use-chat-notifications";
+export { useChatNotifications } from "@/pages/conversation/hooks/use-chat-notifications";
 export type {
   ChatNotificationType,
   UseChatNotificationsReturn,
-} from "./use-chat-notifications";
+} from "@/pages/conversation/hooks/use-chat-notifications";
 
 // Group Chat
-export { useGroupChat } from "./use-group-chat";
-export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks, GroupChatViewMode } from "./use-group-chat";
+export { useGroupChat } from "@/pages/conversation/hooks/use-group-chat";
+export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks, GroupChatViewMode } from "@/pages/conversation/hooks/use-group-chat";
 
 // Group Chat Notifications
-export { useGroupNotifications } from "./use-group-notifications";
-export type { UseGroupNotificationsReturn } from "./use-group-notifications";
+export { useGroupNotifications } from "@/pages/conversation/hooks/use-group-notifications";
+export type { UseGroupNotificationsReturn } from "@/pages/conversation/hooks/use-group-notifications";
 
 // File Browser
 export { useFileBrowser } from "./use-file-browser";
 export type { ViewMode } from "./use-file-browser";
 
 // Executor Sessions
-export { useExecutorSessions, useExecutorSessionMessages } from "./use-executor-sessions";
+export { useExecutorSessions, useExecutorSessionMessages } from "@/pages/conversation/hooks/use-executor-sessions";
 export type {
   UseExecutorSessionsReturn,
   UseExecutorSessionMessagesReturn,
-} from "./use-executor-sessions";
+} from "@/pages/conversation/hooks/use-executor-sessions";
 
 // Toast Notifications
 export { useToast, toast } from "./use-toast";
