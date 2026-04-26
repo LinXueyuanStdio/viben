@@ -66,7 +66,7 @@ export function MobileLayout() {
             }
           >
             <tab.icon className="h-5 w-5" />
-            <span>{t(tab.labelKey)}</span>
+            <span>{t(tab.labelKey, tab.label)}</span>
           </NavLink>
         ))}
       </nav>
