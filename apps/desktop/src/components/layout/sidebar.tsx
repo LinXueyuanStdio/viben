@@ -157,7 +157,7 @@ export function Sidebar() {
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   // Create Task Dialog state (from global UI store for keyboard shortcut support)
-  const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen, openCreateTaskPopup } = useUiStore();
+  const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen, openChatPopup } = useUiStore();
   const createTaskMutation = _useCreateTask();
 
   // Load agents and models for task creation
@@ -536,7 +536,7 @@ export function Sidebar() {
             {/* Wake Word + New Task Button */}
             <WakeWordTaskButton
               collapsed
-              onCreateTask={openCreateTaskPopup}
+              onCreateTask={openChatPopup}
               disabled={!activeWorkspace}
             />
           </div>
@@ -563,7 +563,7 @@ export function Sidebar() {
             {/* Wake Word + New Task Button */}
             <WakeWordTaskButton
               collapsed={false}
-              onCreateTask={openCreateTaskPopup}
+              onCreateTask={openChatPopup}
               disabled={!activeWorkspace}
             />
           </div>

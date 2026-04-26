@@ -2,12 +2,15 @@
  * useChatConfig Hook
  *
  * Provides context-aware agent and model selection for ChatInput.
- * Reads from global store and filters based on current route.
+ * Optionally filters based on a ChatContextInfo (e.g. derived from route).
  *
  * Context-aware filtering:
  * - Agent debug page (/agents/:id): Hide agent/model selectors completely
  * - Workspace chat (/workspace/:id/chat): Show workspace-specific + global agents
  * - Default: Show all available agents/models
+ *
+ * Route detection is decoupled into useRouteChatContext() so that
+ * useChatConfig can be used outside of a <Router> context.
  */
 
 import { useEffect, useMemo, useCallback } from "react";
@@ -26,13 +29,17 @@ import type { ExecutorType } from "@viben/core/shared";
 import type { ExecutorInfo } from "@/lib/gateway";
 
 // ============================================================================
-// Route Detection
+// Route Detection (requires <Router> context)
 // ============================================================================
 
 /**
- * Extract chat context from current location/params
+ * Extract chat context from current route location/params.
+ *
+ * IMPORTANT: This hook uses useLocation/useParams and must be called
+ * inside a <Router> context. For Router-free usage, pass context
+ * directly to useChatConfig({ context }).
  */
-function useChatContext(): ChatContextInfo {
+export function useRouteChatContext(): ChatContextInfo {
   const location = useLocation();
   const params = useParams<{
     workspaceId?: string;
@@ -68,9 +75,18 @@ function useChatContext(): ChatContextInfo {
   }, [location.pathname, params.agentId, params.workspaceId]);
 }
 
+const DEFAULT_CONTEXT: ChatContextInfo = { type: "default" };
+
 // ============================================================================
 // Hook Interface
 // ============================================================================
+
+export interface UseChatConfigOptions {
+  /** Chat context for filtering agents/models/visibility.
+   *  Defaults to { type: "default" } (show everything).
+   *  Use useRouteChatContext() inside a <Router> for route-aware filtering. */
+  context?: ChatContextInfo;
+}
 
 export interface UseChatConfigReturn {
   // Filtered lists based on context
@@ -106,9 +122,8 @@ export interface UseChatConfigReturn {
 // Hook Implementation
 // ============================================================================
 
-export function useChatConfig(): UseChatConfigReturn {
-  // Get context from route
-  const context = useChatContext();
+export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigReturn {
+  const context = options?.context ?? DEFAULT_CONTEXT;
 
   // Get store state
   const {

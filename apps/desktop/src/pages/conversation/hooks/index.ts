@@ -5,8 +5,8 @@ export { useConversation } from "./use-conversation";
 export type { UseConversationOptions, UseConversationReturn } from "./use-conversation";
 
 // Chat Config
-export { useChatConfig } from "./use-chat-config";
-export type { UseChatConfigReturn } from "./use-chat-config";
+export { useChatConfig, useRouteChatContext } from "./use-chat-config";
+export type { UseChatConfigOptions, UseChatConfigReturn } from "./use-chat-config";
 
 // Chat Notifications
 export { useChatNotifications } from "./use-chat-notifications";

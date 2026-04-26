@@ -11,10 +11,10 @@ interface UiState {
   closeCreateTaskDialog: () => void;
   setCreateTaskDialogOpen: (open: boolean) => void;
 
-  // Create Task Popup (overlay version, triggered by button click)
-  isCreateTaskPopupOpen: boolean;
-  openCreateTaskPopup: () => void;
-  closeCreateTaskPopup: () => void;
+  // Chat Popup (overlay version, triggered by button click or hover)
+  isChatPopupOpen: boolean;
+  openChatPopup: () => void;
+  closeChatPopup: () => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -24,8 +24,8 @@ export const useUiStore = create<UiState>()((set) => ({
   closeCreateTaskDialog: () => set({ isCreateTaskDialogOpen: false }),
   setCreateTaskDialogOpen: (open) => set({ isCreateTaskDialogOpen: open }),
 
-  // Create Task Popup (overlay version)
-  isCreateTaskPopupOpen: false,
-  openCreateTaskPopup: () => set({ isCreateTaskPopupOpen: true }),
-  closeCreateTaskPopup: () => set({ isCreateTaskPopupOpen: false }),
+  // Chat Popup (overlay version)
+  isChatPopupOpen: false,
+  openChatPopup: () => set({ isChatPopupOpen: true }),
+  closeChatPopup: () => set({ isChatPopupOpen: false }),
 }));

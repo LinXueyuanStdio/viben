@@ -240,8 +240,8 @@ export type {
 } from "./use-screenshot";
 
 // Chat Config
-export { useChatConfig } from "@/pages/conversation/hooks/use-chat-config";
-export type { UseChatConfigReturn } from "@/pages/conversation/hooks/use-chat-config";
+export { useChatConfig, useRouteChatContext } from "@/pages/conversation/hooks/use-chat-config";
+export type { UseChatConfigOptions, UseChatConfigReturn } from "@/pages/conversation/hooks/use-chat-config";
 
 // Cron Job Management
 export {

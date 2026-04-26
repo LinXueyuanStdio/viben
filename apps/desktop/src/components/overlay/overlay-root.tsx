@@ -5,7 +5,7 @@ import { SubtitleLayer } from "./layers/subtitle-layer";
 import { ClickIndicatorLayer } from "./layers/click-indicator-layer";
 import { KeystrokeLayer } from "./layers/keystroke-layer";
 import { WaveLayer } from "./layers/wave-layer";
-import { CreateTaskLayer } from "./create-task-popup";
+import { ChatPopupLayer } from "./chat-popup";
 
 export function OverlayRoot() {
   return (
@@ -16,7 +16,7 @@ export function OverlayRoot() {
       <SubtitleLayer />
       <ClickIndicatorLayer />
       <KeystrokeLayer />
-      <CreateTaskLayer />
+      <ChatPopupLayer />
     </OverlayProvider>
   );
 }
