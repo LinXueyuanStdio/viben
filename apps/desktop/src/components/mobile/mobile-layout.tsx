@@ -39,9 +39,9 @@ function MobileHeader() {
 }
 
 const tabKeys = [
-  { to: "/m/devices", icon: Smartphone, labelKey: "mobile.tabs.devices" },
-  { to: "/m/connect", icon: Link, labelKey: "mobile.tabs.connect" },
-  { to: "/m/chat", icon: MessageSquare, labelKey: "mobile.tabs.chat" },
+  { to: "/m/devices", icon: Smartphone, labelKey: "mobile.tabs.devices", label: "Devices" },
+  { to: "/m/connect", icon: Link, labelKey: "mobile.tabs.connect", label: "Connect" },
+  { to: "/m/chat", icon: MessageSquare, labelKey: "mobile.tabs.chat", label: "Chat" },
 ] as const;
 
 export function MobileLayout() {
