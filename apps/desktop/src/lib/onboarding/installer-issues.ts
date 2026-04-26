@@ -4,6 +4,8 @@
  * Qclaw reference: /Users/lxy/Documents/GitHub/others/Qclaw/src/shared/node-installer-issues.ts
  */
 
+import i18next from "i18next";
+
 // ============================================================================
 // CLI Installer Issue Types (14 types)
 // ============================================================================
@@ -65,77 +67,78 @@ export function createCliInstallerIssue(
 }
 
 function getIssueContent(kind: CliInstallerIssueKind): { title: string; message: string } {
+  const t = i18next.t.bind(i18next);
   switch (kind) {
     case "missing-cli":
       return {
-        title: "Viben CLI not installed",
-        message: "Viben CLI needs to be installed to continue. The system will attempt automatic installation.",
+        title: t("onboarding.installerIssues.missingCli.title", "Viben CLI not installed"),
+        message: t("onboarding.installerIssues.missingCli.message", "Viben CLI needs to be installed to continue. The system will attempt automatic installation."),
       };
     case "version-too-low":
       return {
-        title: "Viben CLI version too low",
-        message: "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded.",
+        title: t("onboarding.installerIssues.versionTooLow.title", "Viben CLI version too low"),
+        message: t("onboarding.installerIssues.versionTooLow.message", "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded."),
       };
     case "version-too-high":
       return {
-        title: "Viben CLI version too high",
-        message: "The installed Viben CLI version may not be compatible with this application.",
+        title: t("onboarding.installerIssues.versionTooHigh.title", "Viben CLI version too high"),
+        message: t("onboarding.installerIssues.versionTooHigh.message", "The installed Viben CLI version may not be compatible with this application."),
       };
     case "missing-node":
       return {
-        title: "Node.js not installed",
-        message: "Viben CLI requires Node.js runtime. Please install Node.js first.",
+        title: t("onboarding.installerIssues.missingNode.title", "Node.js not installed"),
+        message: t("onboarding.installerIssues.missingNode.message", "Viben CLI requires Node.js runtime. Please install Node.js first."),
       };
     case "node-version-mismatch":
       return {
-        title: "Node.js version mismatch",
-        message: "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher.",
+        title: t("onboarding.installerIssues.nodeVersionMismatch.title", "Node.js version mismatch"),
+        message: t("onboarding.installerIssues.nodeVersionMismatch.message", "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher."),
       };
     case "npm-not-found":
       return {
-        title: "npm not found",
-        message: "Cannot find npm command. Please ensure Node.js is installed correctly.",
+        title: t("onboarding.installerIssues.npmNotFound.title", "npm not found"),
+        message: t("onboarding.installerIssues.npmNotFound.message", "Cannot find npm command. Please ensure Node.js is installed correctly."),
       };
     case "npm-registry-error":
       return {
-        title: "npm registry error",
-        message: "Cannot connect to npm registry. Will try using mirror sources.",
+        title: t("onboarding.installerIssues.npmRegistryError.title", "npm registry error"),
+        message: t("onboarding.installerIssues.npmRegistryError.message", "Cannot connect to npm registry. Will try using mirror sources."),
       };
     case "download-failed":
       return {
-        title: "Download failed",
-        message: "Failed to download Viben CLI. Please check network connection and retry.",
+        title: t("onboarding.installerIssues.downloadFailed.title", "Download failed"),
+        message: t("onboarding.installerIssues.downloadFailed.message", "Failed to download Viben CLI. Please check network connection and retry."),
       };
     case "install-failed":
       return {
-        title: "Install failed",
-        message: "Failed to install Viben CLI. Please check detailed error information.",
+        title: t("onboarding.installerIssues.installFailed.title", "Install failed"),
+        message: t("onboarding.installerIssues.installFailed.message", "Failed to install Viben CLI. Please check detailed error information."),
       };
     case "permission-denied":
       return {
-        title: "Permission denied",
-        message: "Installation requires higher permissions. Please run as administrator or install manually.",
+        title: t("onboarding.installerIssues.permissionDenied.title", "Permission denied"),
+        message: t("onboarding.installerIssues.permissionDenied.message", "Installation requires higher permissions. Please run as administrator or install manually."),
       };
     case "user-cancelled":
       return {
-        title: "Cancelled",
-        message: "Installation was cancelled.",
+        title: t("onboarding.installerIssues.userCancelled.title", "Cancelled"),
+        message: t("onboarding.installerIssues.userCancelled.message", "Installation was cancelled."),
       };
     case "network-error":
       return {
-        title: "Network error",
-        message: "Network connection failed. Please check network settings and retry.",
+        title: t("onboarding.installerIssues.networkError.title", "Network error"),
+        message: t("onboarding.installerIssues.networkError.message", "Network connection failed. Please check network settings and retry."),
       };
     case "xcode-clt-pending":
       return {
-        title: "Waiting for Xcode Command Line Tools installation",
-        message: "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry.",
+        title: t("onboarding.installerIssues.xcodeCltPending.title", "Waiting for Xcode Command Line Tools installation"),
+        message: t("onboarding.installerIssues.xcodeCltPending.message", "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry."),
       };
     case "unknown-error":
     default:
       return {
-        title: "Unknown error",
-        message: "An unknown error occurred. Please check details or contact support.",
+        title: t("onboarding.installerIssues.unknownError.title", "Unknown error"),
+        message: t("onboarding.installerIssues.unknownError.message", "An unknown error occurred. Please check details or contact support."),
       };
   }
 }

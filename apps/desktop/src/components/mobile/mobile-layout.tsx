@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Smartphone, Link, MessageSquare, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useConnectionStore } from "@/stores/connection-store";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,7 @@ import { cn } from "@/lib/utils";
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
 function MobileHeader() {
+  const { t } = useTranslation();
   const active = useConnectionStore((s) => s.getActive());
   const status: ConnectionStatus = (active ? "connected" : "disconnected") as ConnectionStatus;
 
@@ -16,19 +18,19 @@ function MobileHeader() {
         {status === "connected" && (
           <>
             <Wifi className="h-4 w-4 text-green-500" />
-            <span className="text-green-500">{active?.name ?? "Connected"}</span>
+            <span className="text-green-500">{active?.name ?? t("mobile.status.connected", "Connected")}</span>
           </>
         )}
         {status === "connecting" && (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Connecting...</span>
+            <span>{t("mobile.status.connecting", "Connecting...")}</span>
           </>
         )}
         {status === "disconnected" && (
           <>
             <WifiOff className="h-4 w-4 text-destructive" />
-            <span className="text-destructive">Disconnected</span>
+            <span className="text-destructive">{t("mobile.status.disconnected", "Disconnected")}</span>
           </>
         )}
       </div>
@@ -36,13 +38,15 @@ function MobileHeader() {
   );
 }
 
-const tabs = [
-  { to: "/m/devices", icon: Smartphone, label: "Devices" },
-  { to: "/m/connect", icon: Link, label: "Connect" },
-  { to: "/m/chat", icon: MessageSquare, label: "Chat" },
+const tabKeys = [
+  { to: "/m/devices", icon: Smartphone, labelKey: "mobile.tabs.devices", label: "Devices" },
+  { to: "/m/connect", icon: Link, labelKey: "mobile.tabs.connect", label: "Connect" },
+  { to: "/m/chat", icon: MessageSquare, labelKey: "mobile.tabs.chat", label: "Chat" },
 ] as const;
 
 export function MobileLayout() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col h-screen bg-background">
       <MobileHeader />
@@ -50,7 +54,7 @@ export function MobileLayout() {
         <Outlet />
       </main>
       <nav className="flex border-t bg-background">
-        {tabs.map((tab) => (
+        {tabKeys.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
@@ -62,7 +66,7 @@ export function MobileLayout() {
             }
           >
             <tab.icon className="h-5 w-5" />
-            <span>{tab.label}</span>
+            <span>{t(tab.labelKey, tab.label)}</span>
           </NavLink>
         ))}
       </nav>

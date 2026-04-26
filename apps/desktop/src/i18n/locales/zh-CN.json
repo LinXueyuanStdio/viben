@@ -3723,6 +3723,64 @@
       "gitToolsFailed": "Git 工具准备失败",
       "nodeVersionTooLowCustom": "Node.js {{version}} 版本过低，需要 v{{required}} 或更高",
       "invalidNodePath": "无效的 Node.js 路径"
+    },
+    "installerIssues": {
+      "missingCli": {
+        "title": "Viben CLI 未安装",
+        "message": "需要安装 Viben CLI 才能继续。系统将尝试自动安装。"
+      },
+      "versionTooLow": {
+        "title": "Viben CLI 版本过低",
+        "message": "已安装的 Viben CLI 版本不满足最低要求，需要升级。"
+      },
+      "versionTooHigh": {
+        "title": "Viben CLI 版本过高",
+        "message": "已安装的 Viben CLI 版本可能与本应用不兼容。"
+      },
+      "missingNode": {
+        "title": "未安装 Node.js",
+        "message": "Viben CLI 需要 Node.js 运行时，请先安装 Node.js。"
+      },
+      "nodeVersionMismatch": {
+        "title": "Node.js 版本不匹配",
+        "message": "当前 Node.js 版本不满足要求，建议使用 Node.js 18 或更高版本。"
+      },
+      "npmNotFound": {
+        "title": "未找到 npm",
+        "message": "无法找到 npm 命令，请确保 Node.js 已正确安装。"
+      },
+      "npmRegistryError": {
+        "title": "npm 仓库错误",
+        "message": "无法连接到 npm 仓库，将尝试使用镜像源。"
+      },
+      "downloadFailed": {
+        "title": "下载失败",
+        "message": "下载 Viben CLI 失败，请检查网络连接后重试。"
+      },
+      "installFailed": {
+        "title": "安装失败",
+        "message": "安装 Viben CLI 失败，请查看详细错误信息。"
+      },
+      "permissionDenied": {
+        "title": "权限不足",
+        "message": "安装需要更高权限，请以管理员身份运行或手动安装。"
+      },
+      "userCancelled": {
+        "title": "已取消",
+        "message": "安装已取消。"
+      },
+      "networkError": {
+        "title": "网络错误",
+        "message": "网络连接失败，请检查网络设置后重试。"
+      },
+      "xcodeCltPending": {
+        "title": "等待安装 Xcode 命令行工具",
+        "message": "已触发 Xcode 命令行工具安装，请在系统对话框中完成安装后点击重试。"
+      },
+      "unknownError": {
+        "title": "未知错误",
+        "message": "发生未知错误，请查看详细信息或联系支持。"
+      }
     }
   },
   "chat": {
@@ -5234,5 +5292,49 @@
     "maximize": "最大化",
     "restore": "还原",
     "close": "关闭"
+  },
+  "mobile": {
+    "status": {
+      "connected": "已连接",
+      "connecting": "连接中...",
+      "disconnected": "未连接"
+    },
+    "tabs": {
+      "devices": "设备",
+      "connect": "连接",
+      "chat": "聊天"
+    },
+    "qrScanner": {
+      "invalidQrCode": "无效的二维码，请扫描 Viben 桌面端显示的二维码。",
+      "cameraFailed": "相机访问失败",
+      "scanning": "扫描中...",
+      "scanQrCode": "扫描二维码"
+    },
+    "connect": {
+      "title": "连接到桌面端",
+      "subtitle": "扫描桌面端设备页面上显示的二维码",
+      "or": "或",
+      "enterUrlManually": "手动输入 URL",
+      "recentConnections": "最近连接",
+      "enterGatewayUrl": "输入 Gateway URL",
+      "connectButton": "连接",
+      "cannotReach": "无法连接到桌面端 Gateway，请确保在同一网络下。",
+      "cannotReachUrl": "无法连接到 {{url}}"
+    },
+    "devices": {
+      "gateway": "Gateway",
+      "client": "客户端",
+      "notConnected": "未连接到任何 Gateway",
+      "goToConnect": "前往连接页面与桌面端配对",
+      "title": "设备 ({{count}})",
+      "noDevices": "未发现网络中的设备。"
+    },
+    "chat": {
+      "connectToStart": "连接到 Gateway 开始聊天",
+      "sendMessage": "向 {{name}} 上的智能体发送消息",
+      "placeholder": "输入消息...",
+      "error": "错误",
+      "failedToSend": "发送失败"
+    }
   }
 }

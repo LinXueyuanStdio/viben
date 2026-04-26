@@ -3723,6 +3723,64 @@
       "gitToolsFailed": "Git tools preparation failed",
       "nodeVersionTooLowCustom": "Node.js {{version}} version too low, requires v{{required}} or higher",
       "invalidNodePath": "Invalid Node.js path"
+    },
+    "installerIssues": {
+      "missingCli": {
+        "title": "Viben CLI not installed",
+        "message": "Viben CLI needs to be installed to continue. The system will attempt automatic installation."
+      },
+      "versionTooLow": {
+        "title": "Viben CLI version too low",
+        "message": "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded."
+      },
+      "versionTooHigh": {
+        "title": "Viben CLI version too high",
+        "message": "The installed Viben CLI version may not be compatible with this application."
+      },
+      "missingNode": {
+        "title": "Node.js not installed",
+        "message": "Viben CLI requires Node.js runtime. Please install Node.js first."
+      },
+      "nodeVersionMismatch": {
+        "title": "Node.js version mismatch",
+        "message": "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher."
+      },
+      "npmNotFound": {
+        "title": "npm not found",
+        "message": "Cannot find npm command. Please ensure Node.js is installed correctly."
+      },
+      "npmRegistryError": {
+        "title": "npm registry error",
+        "message": "Cannot connect to npm registry. Will try using mirror sources."
+      },
+      "downloadFailed": {
+        "title": "Download failed",
+        "message": "Failed to download Viben CLI. Please check network connection and retry."
+      },
+      "installFailed": {
+        "title": "Install failed",
+        "message": "Failed to install Viben CLI. Please check detailed error information."
+      },
+      "permissionDenied": {
+        "title": "Permission denied",
+        "message": "Installation requires higher permissions. Please run as administrator or install manually."
+      },
+      "userCancelled": {
+        "title": "Cancelled",
+        "message": "Installation was cancelled."
+      },
+      "networkError": {
+        "title": "Network error",
+        "message": "Network connection failed. Please check network settings and retry."
+      },
+      "xcodeCltPending": {
+        "title": "Waiting for Xcode Command Line Tools installation",
+        "message": "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry."
+      },
+      "unknownError": {
+        "title": "Unknown error",
+        "message": "An unknown error occurred. Please check details or contact support."
+      }
     }
   },
   "chat": {
@@ -5234,5 +5292,49 @@
     "maximize": "Maximize",
     "restore": "Restore",
     "close": "Close"
+  },
+  "mobile": {
+    "status": {
+      "connected": "Connected",
+      "connecting": "Connecting...",
+      "disconnected": "Disconnected"
+    },
+    "tabs": {
+      "devices": "Devices",
+      "connect": "Connect",
+      "chat": "Chat"
+    },
+    "qrScanner": {
+      "invalidQrCode": "Invalid QR code. Please scan a Viben desktop QR code.",
+      "cameraFailed": "Camera access failed",
+      "scanning": "Scanning...",
+      "scanQrCode": "Scan QR Code"
+    },
+    "connect": {
+      "title": "Connect to Desktop",
+      "subtitle": "Scan the QR code shown on your desktop's Devices page",
+      "or": "or",
+      "enterUrlManually": "Enter URL manually",
+      "recentConnections": "Recent connections",
+      "enterGatewayUrl": "Enter Gateway URL",
+      "connectButton": "Connect",
+      "cannotReach": "Cannot reach desktop Gateway. Ensure you're on the same network.",
+      "cannotReachUrl": "Cannot reach {{url}}"
+    },
+    "devices": {
+      "gateway": "Gateway",
+      "client": "Client",
+      "notConnected": "Not connected to any Gateway",
+      "goToConnect": "Go to Connect to pair with your desktop",
+      "title": "Devices ({{count}})",
+      "noDevices": "No devices found in the mesh."
+    },
+    "chat": {
+      "connectToStart": "Connect to a Gateway to start chatting",
+      "sendMessage": "Send a message to the agent on {{name}}",
+      "placeholder": "Type a message...",
+      "error": "Error",
+      "failedToSend": "Failed to send"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { QrScanner, type QrPayload } from "@/components/mobile/qr-scanner";
 import { useConnectionStore } from "@/stores/connection-store";
@@ -16,6 +17,7 @@ import { Loader2, Keyboard } from "lucide-react";
 import { isMobile } from "@/lib/platform";
 
 export function ConnectPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const addConnection = useConnectionStore((s) => s.addConnection);
   const setActive = useConnectionStore((s) => s.setActive);
@@ -46,7 +48,7 @@ export function ConnectPage() {
     }
 
     if (!reachableUrl) {
-      setError("Cannot reach desktop Gateway. Ensure you're on the same network.");
+      setError(t("mobile.connect.cannotReach", "Cannot reach desktop Gateway. Ensure you're on the same network."));
       setConnecting(false);
       return;
     }
@@ -62,7 +64,7 @@ export function ConnectPage() {
     setActive(gatewayId);
     setConnecting(false);
     navigate("/m/devices");
-  }, [addConnection, setActive, navigate]);
+  }, [addConnection, setActive, navigate, t]);
 
   const handleQrScan = useCallback((payload: QrPayload) => {
     connectToGateway(payload.gateway_id, payload.name, payload.lan, payload.tunnel);
@@ -76,7 +78,7 @@ export function ConnectPage() {
     setError(null);
 
     if (!(await pingGatewayUrl(url))) {
-      setError(`Cannot reach ${url}`);
+      setError(t("mobile.connect.cannotReachUrl", { url, defaultValue: "Cannot reach {{url}}" }));
       setConnecting(false);
       return;
     }
@@ -92,21 +94,21 @@ export function ConnectPage() {
     setConnecting(false);
     setManualOpen(false);
     navigate("/m/devices");
-  }, [manualUrl, addConnection, setActive, navigate]);
+  }, [manualUrl, addConnection, setActive, navigate, t]);
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-8 p-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-2">Connect to Desktop</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("mobile.connect.title", "Connect to Desktop")}</h1>
         <p className="text-muted-foreground">
-          Scan the QR code shown on your desktop's Devices page
+          {t("mobile.connect.subtitle", "Scan the QR code shown on your desktop's Devices page")}
         </p>
       </div>
 
       {connecting ? (
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="text-sm text-muted-foreground">Connecting...</span>
+          <span className="text-sm text-muted-foreground">{t("mobile.status.connecting", "Connecting...")}</span>
         </div>
       ) : (
         <>
@@ -114,13 +116,13 @@ export function ConnectPage() {
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <div className="h-px flex-1 bg-border" />
-            <span>or</span>
+            <span>{t("mobile.connect.or", "or")}</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
           <Button variant="outline" onClick={() => setManualOpen(true)} className="gap-2">
             <Keyboard className="h-4 w-4" />
-            Enter URL manually
+            {t("mobile.connect.enterUrlManually", "Enter URL manually")}
           </Button>
         </>
       )}
@@ -131,7 +133,7 @@ export function ConnectPage() {
 
       {connections.length > 0 && (
         <div className="w-full max-w-sm">
-          <h3 className="text-sm font-medium mb-2">Recent connections</h3>
+          <h3 className="text-sm font-medium mb-2">{t("mobile.connect.recentConnections", "Recent connections")}</h3>
           <div className="space-y-2">
             {connections.map((conn) => (
               <Button
@@ -155,7 +157,7 @@ export function ConnectPage() {
       <Dialog open={manualOpen} onOpenChange={setManualOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enter Gateway URL</DialogTitle>
+            <DialogTitle>{t("mobile.connect.enterGatewayUrl", "Enter Gateway URL")}</DialogTitle>
           </DialogHeader>
           <Input
             placeholder="http://192.168.1.100:18790"
@@ -165,7 +167,7 @@ export function ConnectPage() {
           />
           <DialogFooter>
             <Button onClick={handleManualConnect} disabled={connecting || !manualUrl.trim()}>
-              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Connect"}
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("mobile.connect.connectButton", "Connect")}
             </Button>
           </DialogFooter>
         </DialogContent>
