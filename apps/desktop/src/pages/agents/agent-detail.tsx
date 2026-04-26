@@ -793,7 +793,7 @@ export function AgentDetailPage() {
         onValueChange={(v) => setActiveTab(v as "debug" | "settings")}
         className="flex-1 flex flex-col min-h-0"
       >
-        <div className="flex items-center justify-between px-4 border-b h-[57px]">
+        <div className="flex items-center justify-between px-4 border-b h-14">
           {/* Left side: Back button + Tabs */}
           <div className="flex items-center gap-2 h-full">
             <Button variant="ghost" size="icon" onClick={handleNavigateBack}>

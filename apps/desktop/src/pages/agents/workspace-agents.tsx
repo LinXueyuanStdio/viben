@@ -463,7 +463,7 @@ export function WorkspaceAgentsPage({
         {/* Left: Agent List */}
         <div className="w-60 border-r flex flex-col bg-muted/20">
           {/* Search and Create */}
-          <div className="px-3 py-2.5 border-b h-[57px] flex items-center">
+          <div className="px-3 py-2.5 border-b h-14 flex items-center">
             <div className="flex items-center gap-2 flex-1">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

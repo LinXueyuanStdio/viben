@@ -255,7 +255,7 @@ export function AgentDebugTab({
         style={{ width: `${leftPanelWidth}%` }}
       >
         {/* Conversation Header - WeChat style (same as workspace-chat) */}
-        <div className="flex items-center justify-between px-4 border-b border-border bg-background h-[57px] shrink-0">
+        <div className="flex items-center justify-between px-4 border-b border-border bg-background h-14 shrink-0">
           <div className="flex items-center gap-3">
             {/* Agent avatar */}
             <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm">

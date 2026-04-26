@@ -560,7 +560,7 @@ export function RightSidebar({
       {onResize && <ResizeHandle onResize={onResize} />}
 
       {/* Tab bar - same height as header (57px) */}
-      <div className="flex items-center border-b border-border shrink-0 h-[57px] px-1">
+      <div className="flex items-center border-b border-border shrink-0 h-14 px-1">
         <div className="flex-1 flex items-center h-full overflow-x-auto scrollbar-none">
           {openTabs.map((tab) => (
             <SidebarTab

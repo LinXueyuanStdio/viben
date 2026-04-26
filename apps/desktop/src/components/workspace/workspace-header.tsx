@@ -64,7 +64,7 @@ export function WorkspaceHeader({
   return (
     <header
       className={cn(
-        "flex items-center gap-4 px-4 py-2 border-b bg-background",
+        "flex h-14 items-center gap-4 px-4 border-b bg-background",
         className
       )}
     >
