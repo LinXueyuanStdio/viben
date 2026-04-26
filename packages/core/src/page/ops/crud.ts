@@ -4,13 +4,14 @@
  * Page CRUD operations
  */
 
-import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
   ListPagesResult,
   ViewPageResult,
   CreatePageResult,
   DeletePageResult,
+  UpdatePageContentResult,
   PageConfig,
 } from "./types";
 import { listPagesInWorkspace, getPageBySlug } from "./discovery";
@@ -253,6 +254,47 @@ export async function deletePage(
 
   // Remove directory recursively
   rmSync(pageDir, { recursive: true, force: true });
+
+  return {
+    success: true,
+    slug,
+  };
+}
+
+// =============================================================================
+// Update Page Content (preserves YAML frontmatter)
+// =============================================================================
+
+export interface UpdatePageContentOptions {
+  workspace_path: string;
+  slug: string;
+  content: string;
+}
+
+export async function updatePageContent(
+  options: UpdatePageContentOptions
+): Promise<UpdatePageContentResult> {
+  const { workspace_path, slug, content } = options;
+
+  const pagesDir = join(workspace_path, PAGES_DIR);
+  const pageDir = join(pagesDir, slug);
+  const skillPath = join(pageDir, SKILL_FILE);
+
+  if (!existsSync(skillPath)) {
+    return {
+      success: false,
+      error: `Page not found: ${slug}`,
+    };
+  }
+
+  // Read existing file and extract frontmatter
+  const existing = readFileSync(skillPath, "utf-8");
+  const matter = (await import("gray-matter")).default;
+  const { data } = matter(existing);
+
+  // Rebuild SKILL.md with original frontmatter + new content
+  const result = matter.stringify(content, data);
+  writeFileSync(skillPath, result, "utf-8");
 
   return {
     success: true,

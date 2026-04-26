@@ -150,6 +150,45 @@ export async function deletePage(
 }
 
 // =============================================================================
+// Update Page Content
+// =============================================================================
+
+export interface UpdatePageContentResult {
+  success: boolean;
+  slug?: string;
+  error?: string;
+}
+
+/**
+ * Update page markdown content (preserves YAML frontmatter)
+ */
+export async function updatePageContent(
+  baseUrl: string,
+  workspacePath: string,
+  slug: string,
+  content: string
+): Promise<UpdatePageContentResult> {
+  const response = await fetch(`${baseUrl}/api/page/update-content`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ workspace_path: workspacePath, slug, content }),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to update page content: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
 // Page Serve URL Helper
 // =============================================================================
 

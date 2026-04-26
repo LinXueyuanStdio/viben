@@ -5,10 +5,24 @@
  * URL format: /workspace/page?workspace_id=<id>&page_path=pages/<slug>/SKILL.md
  */
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Loader2, FileQuestion, ArrowLeft, FileCode } from "lucide-react";
+import {
+  Loader2,
+  FileQuestion,
+  ArrowLeft,
+  FileCode,
+  FileText,
+  Eye,
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Square,
+  Wrench,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
@@ -17,6 +31,7 @@ import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { usePage } from "@/hooks/use-pages";
 import { useVitePreview } from "@/hooks/use-vite-preview";
+import { getGatewayUrl } from "@/lib/gateway/config";
 
 /**
  * Extract slug from page path
@@ -43,6 +58,192 @@ function extractSlugFromPath(pagePath: string | null): string | null {
   return null;
 }
 
+/**
+ * Get the gateway URL for serving a page
+ */
+function getPageServeUrl(workspacePath: string, slug: string): string {
+  const baseUrl = getGatewayUrl();
+  const params = new URLSearchParams({
+    workspace_path: workspacePath,
+    slug: slug,
+  });
+  return `${baseUrl}/api/page/serve?${params.toString()}`;
+}
+
+/**
+ * Toolbar for page preview — rendered inside WorkspaceHeader's rightContent.
+ * Layout: [view toggle] [status dot] [action buttons]
+ */
+function PageToolbar({
+  page,
+  viewMode,
+  onViewModeChange,
+  livePreviewStatus,
+  livePreviewUrl,
+  gatewayServeUrl,
+  onStopLivePreview,
+  onRefresh,
+  isFullscreen,
+  onToggleFullscreen,
+}: {
+  page: { type: string; name: string };
+  viewMode: PageViewMode;
+  onViewModeChange: (mode: PageViewMode) => void;
+  livePreviewStatus: string;
+  livePreviewUrl?: string | null;
+  gatewayServeUrl: string | null;
+  onStopLivePreview?: () => void;
+  onRefresh: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
+}) {
+  const { t } = useTranslation();
+  const isServerType = page.type === "server";
+  const showViewToggle = page.type !== "markdown";
+
+  const getStatusColor = () => {
+    if (viewMode === "skill") return "bg-gray-400";
+    if (viewMode === "page" && isServerType) {
+      switch (livePreviewStatus) {
+        case "running":
+          return "bg-green-500";
+        case "starting":
+          return "animate-pulse bg-yellow-500";
+        case "error":
+          return "bg-red-500";
+        default:
+          return "bg-gray-400";
+      }
+    }
+    return "bg-gray-400";
+  };
+
+  const getStatusText = () => {
+    if (viewMode === "skill") return "";
+    if (viewMode === "page" && isServerType) {
+      switch (livePreviewStatus) {
+        case "running":
+          return t("preview.running", "Running");
+        case "starting":
+          return t("preview.starting", "Starting...");
+        case "error":
+          return t("preview.error", "Error");
+        default:
+          return t("preview.stopped", "Stopped");
+      }
+    }
+    return "";
+  };
+
+  const handleOpenExternal = useCallback(async () => {
+    const url = viewMode === "page" && page.type === "server" ? livePreviewUrl : gatewayServeUrl;
+    if (url) {
+      try {
+        const { openUrl } = await import("@tauri-apps/plugin-opener");
+        await openUrl(url);
+      } catch {
+        window.open(url, "_blank");
+      }
+    }
+  }, [viewMode, page.type, livePreviewUrl, gatewayServeUrl]);
+
+  const handleDevTools = useCallback(() => {
+    console.log("DevTools clicked");
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* View mode toggle */}
+      {showViewToggle && (
+        <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+          <button
+            onClick={() => onViewModeChange("skill")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              viewMode === "skill"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            SKILL.md
+          </button>
+          <button
+            onClick={() => onViewModeChange("page")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              viewMode === "page"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            {t("page.viewPage", "页面")}
+          </button>
+        </div>
+      )}
+
+      {/* Status indicator (server type in page view) */}
+      {viewMode === "page" && isServerType && (
+        <div className="flex items-center gap-1.5">
+          <div className={cn("h-2 w-2 rounded-full", getStatusColor())} />
+          <span className="text-xs text-muted-foreground">{getStatusText()}</span>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      {viewMode === "page" && (
+        <>
+          <button
+            onClick={onRefresh}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t("common.refresh")}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={handleDevTools}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t("page.devTools", "DevTools")}
+          >
+            <Wrench className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={handleOpenExternal}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t("preview.openInNewTab")}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+          </button>
+        </>
+      )}
+
+      <button
+        onClick={onToggleFullscreen}
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        title={isFullscreen ? t("preview.exitFullscreen") : t("preview.fullscreen")}
+      >
+        {isFullscreen ? (
+          <Minimize2 className="h-3.5 w-3.5" />
+        ) : (
+          <Maximize2 className="h-3.5 w-3.5" />
+        )}
+      </button>
+
+      {/* Stop server (only for server type when running) */}
+      {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
+        <button
+          onClick={onStopLivePreview}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950"
+          title={t("preview.stopServer")}
+        >
+          <Square className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function WorkspacePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -54,13 +255,17 @@ export function WorkspacePage() {
   const viewParam = searchParams.get("view") as PageViewMode | null;
   const slug = useMemo(() => extractSlugFromPath(pagePath), [pagePath]);
 
-  // Validate view parameter (default to "skill" if invalid)
+  // View mode state — default to "page" (preview), URL param can override
   const initialViewMode: PageViewMode = useMemo(() => {
     if (viewParam === "skill" || viewParam === "page") {
       return viewParam;
     }
-    return "skill";
+    return "page";
   }, [viewParam]);
+
+  const [viewMode, setViewMode] = useState<PageViewMode>(initialViewMode);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
 
   // Get workspace
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
@@ -85,16 +290,24 @@ export function WorkspacePage() {
     error: previewError,
     startPreview,
     stopPreview,
-    isNodeAvailable,
   } = useVitePreview(pageId);
+
+  // Gateway serve URL
+  const gatewayServeUrl = useMemo(() => {
+    if (!workspace?.path || !page?.slug) return null;
+    return getPageServeUrl(workspace.path, page.slug);
+  }, [workspace?.path, page?.slug]);
 
   // Handler to start live preview
   const handleStartLivePreview = () => {
     if (!workspace?.path || !page) return;
-    // Start preview in the page directory
     const pageDir = `${workspace.path}/pages/${page.slug}`;
     startPreview(pageDir);
   };
+
+  const handleRefresh = useCallback(() => {
+    setIframeKey((k) => k + 1);
+  }, []);
 
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
@@ -237,9 +450,9 @@ export function WorkspacePage() {
     );
   }
 
-  // Render page preview
+  // Render page preview — single-row header: [breadcrumb][ ][toggle][actions]
   return (
-    <PageWrapper className="flex flex-col h-full">
+    <PageWrapper className={cn("flex flex-col h-full", isFullscreen && "fixed inset-0 z-50")}>
       <WorkspaceHeader
         workspace={workspace}
         segments={[
@@ -248,18 +461,32 @@ export function WorkspacePage() {
         ]}
         showRemove={false}
         showRefresh={false}
+        rightContent={
+          <PageToolbar
+            page={page}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            livePreviewStatus={previewStatus}
+            livePreviewUrl={previewUrl}
+            gatewayServeUrl={gatewayServeUrl}
+            onStopLivePreview={stopPreview}
+            onRefresh={handleRefresh}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+          />
+        }
       />
       <div className="flex-1 overflow-hidden">
         <PagePreview
           page={page}
           workspacePath={workspace.path}
+          viewMode={viewMode}
+          iframeKey={iframeKey}
           livePreviewUrl={previewUrl}
           livePreviewStatus={previewStatus}
           livePreviewError={previewError}
           onStartLivePreview={handleStartLivePreview}
           onStopLivePreview={stopPreview}
-          isNodeAvailable={isNodeAvailable}
-          initialViewMode={initialViewMode}
           className="h-full"
         />
       </div>

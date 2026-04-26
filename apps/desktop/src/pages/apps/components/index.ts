@@ -4,3 +4,4 @@ export { CreatePageDialog, type CreatePageDialogProps } from "./create-page-dial
 export { PagePermissionsDialog, type PagePermissionsDialogProps } from "./page-permissions-dialog";
 export { PageAppGrid, type PageAppGridProps } from "./page-app-grid";
 export { PageAppIcon, type PageAppIconProps } from "./page-app-icon";
+export { TiptapMarkdownRenderer, type TiptapMarkdownRendererProps } from "./tiptap-markdown-renderer";

@@ -11,6 +11,7 @@
  * - POST /api/page/delete    - Delete a page
  * - POST /api/page/serve     - Serve page content (POST for body params)
  * - GET  /api/page/serve     - Serve page content (GET for query params)
+ * - POST /api/page/update-content - Update page markdown content (preserves YAML frontmatter)
  * - POST /api/page/templates - List available page templates
  */
 import type { FastifyInstance } from "fastify";
@@ -20,6 +21,7 @@ import {
   viewPage,
   createPage,
   deletePage,
+  updatePageContent,
   // Serve
   servePage,
   // Templates
@@ -37,6 +39,7 @@ import type {
   ViewPageResult,
   CreatePageResult,
   DeletePageResult,
+  UpdatePageContentResult,
   ServePageResult,
   ListTemplatesResult,
 } from "../../page/ops";
@@ -407,6 +410,66 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     }
 
     const result = await deletePage({ workspace_path, slug });
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return result;
+    }
+
+    return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/update-content - Update page markdown content
+  // ============================================================================
+  fastify.post<{
+    Body: { workspace_path: string; slug: string; content: string };
+    Reply: UpdatePageContentResult;
+  }>("/api/page/update-content", {
+    schema: {
+      description: "Update page markdown content (preserves YAML frontmatter)",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          slug: { type: "string", description: "Page slug (required)" },
+          content: { type: "string", description: "New markdown content (required)" },
+        },
+        required: ["workspace_path", "slug", "content"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            slug: { type: "string", nullable: true },
+            error: { type: "string", nullable: true },
+          },
+        },
+        400: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, slug, content } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    if (!slug) {
+      reply.code(400);
+      return { success: false, error: "slug is required" };
+    }
+
+    if (content === undefined || content === null) {
+      reply.code(400);
+      return { success: false, error: "content is required" };
+    }
+
+    const result = await updatePageContent({ workspace_path, slug, content });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);

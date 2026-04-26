@@ -167,6 +167,10 @@ export interface DeletePageResult extends PageResult {
   deleted_path?: string;           // 被删除的完整路径
 }
 
+export interface UpdatePageContentResult extends PageResult {
+  slug?: string;
+}
+
 export interface ServePageResult extends PageResult {
   content?: Buffer;
   content_type?: string;

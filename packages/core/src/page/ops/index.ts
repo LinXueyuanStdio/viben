@@ -32,6 +32,7 @@ export type {
   ViewPageResult,
   CreatePageResult,
   DeletePageResult,
+  UpdatePageContentResult,
   ServePageResult,
   ServerStatusResult,
   PageTemplate,
@@ -65,6 +66,7 @@ export type {
   ViewPageOptions,
   CreatePageOptions,
   DeletePageOptions,
+  UpdatePageContentOptions,
 } from "./crud";
 
 export {
@@ -72,6 +74,7 @@ export {
   viewPage,
   createPage,
   deletePage,
+  updatePageContent,
 } from "./crud";
 
 // Serve

@@ -90,6 +90,10 @@ export interface DeletePageResult extends PageResult {
   deleted_path?: string;
 }
 
+export interface UpdatePageContentResult extends PageResult {
+  slug?: string;
+}
+
 // =============================================================================
 // Template Types
 // =============================================================================
