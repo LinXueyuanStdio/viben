@@ -1,31 +1,36 @@
 #!/bin/bash
 # Restart Desktop App Script
-# Kills all related processes and restarts Tauri desktop
+#
+# Automatically builds workspace dependencies if dist/ is missing,
+# kills all related processes, and restarts Tauri desktop.
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# --- Auto-build workspace dependencies ---
+echo "📦 Checking workspace dependencies..."
+"$SCRIPT_DIR/build-deps.sh" "$ROOT_DIR/apps/desktop"
+
+# --- Kill existing processes ---
+echo ""
 echo "🔄 Restarting Viben Desktop..."
 
-# Kill processes on port 1420 (Vite dev server)
 echo "  Killing processes on port 1420..."
 lsof -ti:1420 | xargs kill -9 2>/dev/null || true
 
-# Kill Tauri processes
 echo "  Killing Tauri processes..."
 pkill -9 -f "tauri" 2>/dev/null || true
 
-# Kill Vite processes
 echo "  Killing Vite processes..."
 pkill -9 -f "vite" 2>/dev/null || true
 
-# Kill viben-desktop processes
 echo "  Killing viben-desktop processes..."
 pkill -9 -f "viben-desktop" 2>/dev/null || true
 
-# Wait for processes to fully terminate
 sleep 2
 
-# Verify port is free
 if lsof -i:1420 > /dev/null 2>&1; then
   echo "❌ Error: Port 1420 is still in use"
   exit 1
@@ -33,7 +38,7 @@ fi
 
 echo "✅ All processes killed, port 1420 is free"
 
-# Start Tauri dev
+# --- Start Tauri dev ---
 echo "🚀 Starting Tauri desktop..."
-cd "$(dirname "$0")/../apps/desktop"
+cd "$ROOT_DIR/apps/desktop"
 pnpm tauri dev

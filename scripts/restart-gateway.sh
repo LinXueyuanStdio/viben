@@ -1,10 +1,12 @@
 #!/bin/bash
 # Restart Viben Gateway (Node.js - packages/core)
 #
-# Starts the Node.js gateway from packages/core for development.
-# All operations are logged with timestamps.
+# Automatically builds workspace dependencies if dist/ is missing,
+# then restarts the gateway.
 #
-# Usage: ./scripts/restart-gateway.sh
+# Usage: ./scripts/restart-gateway.sh [--force]
+#
+#   --force   Pass --force to `viben gateway restart`
 #
 # Log files (in ~/.viben/logs/):
 #   gateway.log          - Gateway runtime output
@@ -14,6 +16,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Parse flags
+FLAG_FORCE=false
+for arg in "$@"; do
+    case "$arg" in
+        --force) FLAG_FORCE=true ;;
+    esac
+done
+
 LOG_DIR="$HOME/.viben/logs"
 RUNTIME_LOG="$LOG_DIR/gateway.log"
 RESTART_LOG="$LOG_DIR/gateway-restart.log"
@@ -111,6 +122,24 @@ log "INFO" "=========================================="
 # Log system information
 log_system_info
 
+# ============================================================
+# Auto-build workspace dependencies (if dist/ missing)
+# ============================================================
+
+log "INFO" "Checking workspace dependencies..."
+"$SCRIPT_DIR/build-deps.sh" "$PROJECT_ROOT/packages/core"
+
+# npm link so `viben` CLI points to latest build
+CORE_DIR="$PROJECT_ROOT/packages/core"
+if [ -f "$CORE_DIR/dist/cli/bin.js" ]; then
+    log "INFO" "Linking viben CLI..."
+    (cd "$CORE_DIR" && npm link 2>/dev/null) || log "WARN" "npm link failed (non-fatal)"
+fi
+
+# ============================================================
+# Stop & Restart Gateway
+# ============================================================
+
 # Kill existing gateway processes
 log "INFO" "Stopping existing gateway processes..."
 kill_processes "viben.*gateway" && sleep 0.5 || log "DEBUG" "No viben gateway process found"
@@ -139,25 +168,29 @@ fi
 log "INFO" "Port $PORT is free"
 
 # Change to packages/core directory
-cd "$PROJECT_ROOT/packages/core"
+cd "$CORE_DIR"
 log "DEBUG" "Changed to directory: $(pwd)"
 
-# Check if CLI binary exists
+# Verify CLI binary exists
 if [ ! -f "./dist/cli/bin.js" ]; then
-    log "ERROR" "CLI binary not found: ./dist/cli/bin.js"
-    log "ERROR" "Please run 'pnpm build' in packages/core first"
+    log "ERROR" "CLI binary not found after build: ./dist/cli/bin.js"
     exit 1
 fi
 
 # Start gateway
-log "INFO" "Starting Node.js gateway on port $PORT..."
-log "DEBUG" "Command: node ./dist/cli/bin.js gateway start --daemon --port $PORT"
+FORCE_FLAG=""
+if $FLAG_FORCE; then
+    FORCE_FLAG="--force"
+fi
+
+log "INFO" "Starting Node.js gateway on port $PORT... ${FORCE_FLAG:+(force mode)}"
+log "DEBUG" "Command: node ./dist/cli/bin.js gateway start --daemon --port $PORT $FORCE_FLAG"
 
 # Clear previous runtime log and start gateway
 echo "" > "$RUNTIME_LOG"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway starting..." >> "$RUNTIME_LOG"
 
-node ./dist/cli/bin.js gateway start --daemon --port $PORT >> "$RUNTIME_LOG" 2>&1 &
+node ./dist/cli/bin.js gateway start --daemon --port $PORT $FORCE_FLAG >> "$RUNTIME_LOG" 2>&1 &
 START_CMD_PID=$!
 log "DEBUG" "Start command PID: $START_CMD_PID"
 
