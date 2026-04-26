@@ -8,7 +8,9 @@ import {
   Settings2,
   Send,
   Mic,
+  MicOff,
   FolderTree,
+  ListTodo,
   Square,
   Smile,
   Paperclip,
@@ -47,6 +49,9 @@ import { useWorkspaceStore } from '@/stores';
 import { useChatConfigStore } from '@/stores/chat-config-store';
 import { useAgentConversation, useChatConfig } from '@/hooks';
 import { filterModelsByExecutor } from '@/lib/executor-constraints';
+import { useVoiceAgent } from '@/hooks/use-voice-agent';
+import { getGatewayUrl } from '@/lib/gateway';
+import { startBackgroundTask } from '@/lib/gateway/modules/agent-execution';
 import { ChatCapsule } from './chat-capsule';
 
 // ============================================================================
@@ -100,10 +105,12 @@ function ChatPopup({
   isStreaming,
   onSend,
   onCancel,
+  onSendBackground,
 }: {
   isStreaming: boolean;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
+  onSendBackground: (content: string) => void;
 }): ReactElement {
   const { t } = useTranslation();
   const { isChatPopupOpen, closeChatPopup } = useUiStore();
@@ -123,6 +130,7 @@ function ChatPopup({
   const [triggerSource, setTriggerSource] = useState<TriggerSource>(null);
   const [content, setContent] = useState('');
   const [worktree, setWorktree] = useState(false);
+  const [backgroundTask, setBackgroundTask] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isSendAnimating, setIsSendAnimating] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
@@ -133,6 +141,9 @@ function ChatPopup({
 
   // Global agent/model config
   const chatConfig = useChatConfig();
+
+  // Voice agent
+  const voice = useVoiceAgent();
 
   // Filter models based on selected agent's executor_type
   const selectedAgent = chatConfig.agents.find(
@@ -259,12 +270,16 @@ function ChatPopup({
     }
     // P1-3: Trigger send pulse animation, then close after it finishes
     setIsSendAnimating(true);
-    onSend(text, currentAttachments);
+    if (backgroundTask) {
+      onSendBackground(text);
+    } else {
+      onSend(text, currentAttachments);
+    }
     setTimeout(() => {
       setIsSendAnimating(false);
       handleClose();
     }, 300);
-  }, [content, attachments, handleClose, onSend]);
+  }, [content, attachments, backgroundTask, handleClose, onSend, onSendBackground]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -706,6 +721,25 @@ function ChatPopup({
                   className="data-[state=checked]:bg-blue-500"
                 />
               </div>
+              {/* Background task toggle */}
+              <div className="flex items-center justify-between">
+                <Label
+                  htmlFor="popup-background-task"
+                  className={cn(
+                    'text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors',
+                    backgroundTask ? 'text-green-500' : 'text-muted-foreground',
+                  )}
+                >
+                  <ListTodo className="h-3.5 w-3.5" />
+                  {t('chat.backgroundTask', '后台任务')}
+                </Label>
+                <Switch
+                  id="popup-background-task"
+                  checked={backgroundTask}
+                  onCheckedChange={setBackgroundTask}
+                  className="data-[state=checked]:bg-green-500"
+                />
+              </div>
             </div>
           </PopoverContent>
         </Popover>
@@ -713,17 +747,40 @@ function ChatPopup({
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Voice input icon (placeholder) */}
+        {/* Voice input */}
         <button
           type="button"
+          onClick={async () => {
+            if (voice.isConnected) {
+              await voice.disconnect();
+            } else {
+              await voice.connect();
+            }
+          }}
           className={cn(
             'h-7 w-7 flex items-center justify-center rounded-full',
-            'hover:bg-muted/80 transition-colors',
-            'text-muted-foreground hover:text-foreground',
+            'transition-colors',
+            voice.isListening
+              ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse'
+              : voice.state === 'connecting'
+                ? 'bg-amber-500/20 text-amber-500'
+                : 'hover:bg-muted/80 text-muted-foreground hover:text-foreground',
           )}
-          title={t('chat.voiceInput', '语音输入')}
+          title={
+            voice.isListening
+              ? t('chat.voiceListening', '正在倾听... 点击停止')
+              : voice.state === 'connecting'
+                ? t('chat.voiceConnecting', '连接中...')
+                : t('chat.voiceInput', '语音输入')
+          }
         >
-          <Mic className="h-3.5 w-3.5" />
+          {voice.state === 'connecting' ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : voice.isConnected ? (
+            <MicOff className="h-3.5 w-3.5" />
+          ) : (
+            <Mic className="h-3.5 w-3.5" />
+          )}
         </button>
 
         {/* Send / Stop button */}
@@ -800,6 +857,18 @@ export function ChatPopupLayer(): ReactElement {
     cancel();
   }, [cancel]);
 
+  const handleSendBackground = useCallback(async (content: string) => {
+    try {
+      const baseUrl = await getGatewayUrl();
+      await startBackgroundTask(baseUrl, {
+        prompt: content,
+        cwd: workspacePath || undefined,
+      });
+    } catch (err) {
+      console.error('[ChatPopupLayer] Background task failed:', err);
+    }
+  }, [workspacePath]);
+
   useEffect(() => {
     if (messages.length > 0 && !capsuleVisible) {
       setCapsuleVisible(true);
@@ -827,6 +896,7 @@ export function ChatPopupLayer(): ReactElement {
         isStreaming={isStreaming}
         onSend={handleSend}
         onCancel={handleCancel}
+        onSendBackground={handleSendBackground}
       />
     </>
   );
