@@ -590,23 +590,38 @@ pub async fn check_gateway_binary() -> Result<Option<String>, String> {
     }))
 }
 
-/// Auto-discover running gateway by probing known ports
+/// Auto-discover running gateway by probing known ports (parallel)
 #[tauri::command]
 pub async fn discover_gateway() -> Result<Option<String>, String> {
-    let ports = [18790, 18791, 18800, 3790, 8790];
+    let ports: Vec<u16> = vec![18790, 18791, 18800, 3790, 8790];
+    let client = reqwest::Client::new();
 
-    for port in ports {
-        let url = format!("http://127.0.0.1:{}/health", port);
-        match reqwest::Client::new()
-            .get(&url)
-            .timeout(std::time::Duration::from_secs(1))
-            .send()
-            .await
-        {
-            Ok(resp) if resp.status().is_success() => {
-                return Ok(Some(format!("http://127.0.0.1:{}", port)));
-            }
-            _ => continue,
+    // Probe all ports in parallel, return the first successful one (by port order)
+    let handles: Vec<_> = ports
+        .iter()
+        .map(|&port| {
+            let client = client.clone();
+            tokio::spawn(async move {
+                let url = format!("http://127.0.0.1:{}/health", port);
+                match client
+                    .get(&url)
+                    .timeout(std::time::Duration::from_millis(1500))
+                    .send()
+                    .await
+                {
+                    Ok(resp) if resp.status().is_success() => Some(port),
+                    _ => None,
+                }
+            })
+        })
+        .collect();
+
+    let results = futures::future::join_all(handles).await;
+
+    // Return the first port (by priority order) that responded successfully
+    for result in results {
+        if let Ok(Some(port)) = result {
+            return Ok(Some(format!("http://127.0.0.1:{}", port)));
         }
     }
 

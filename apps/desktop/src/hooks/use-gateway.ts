@@ -144,12 +144,16 @@ export function useGateway(): UseGatewayReturn {
     }
   }, []);
 
-  // Initial load
+  // Initial load: prioritize status + config (fast), defer discovery + binary check
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await Promise.all([refreshStatus(), refreshConfig(), checkBinary(), discoverGateway()]);
+      // Phase 1: Fast operations - render page ASAP
+      await Promise.all([refreshStatus(), refreshConfig()]);
       setIsLoading(false);
+      // Phase 2: Slower operations - run in background after page is visible
+      checkBinary();
+      discoverGateway();
     };
     init();
 

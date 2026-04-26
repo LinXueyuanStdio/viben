@@ -227,14 +227,6 @@ export function SettingsGatewayPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
@@ -260,25 +252,35 @@ export function SettingsGatewayPage() {
           <div className="flex items-center gap-3">
             <div
               className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                status?.running
-                  ? "bg-green-100 dark:bg-green-900/30"
-                  : "bg-muted"
+                isLoading
+                  ? "bg-muted"
+                  : status?.running
+                    ? "bg-green-100 dark:bg-green-900/30"
+                    : "bg-muted"
               }`}
             >
-              <Server
-                className={`h-5 w-5 ${
-                  status?.running
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-muted-foreground"
-                }`}
-              />
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Server
+                  className={`h-5 w-5 ${
+                    status?.running
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-muted-foreground"
+                  }`}
+                />
+              )}
             </div>
             <div>
               <h3 className="text-sm font-semibold">
                 {t("settings.gatewayStatus", "网关状态")}
               </h3>
               <div className="flex items-center gap-2 mt-0.5">
-                {status?.running ? (
+                {isLoading ? (
+                  <span className="text-sm text-muted-foreground">
+                    {t("gateway.checking", "检测中...")}
+                  </span>
+                ) : status?.running ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                     <span className="text-sm text-green-600">
@@ -310,7 +312,7 @@ export function SettingsGatewayPage() {
                   variant="outline"
                   size="sm"
                   onClick={restartGateway}
-                  disabled={isActioning}
+                  disabled={isActioning || isLoading}
                   className="gap-1.5"
                 >
                   {isActioning ? (
@@ -324,7 +326,7 @@ export function SettingsGatewayPage() {
                   variant="destructive"
                   size="sm"
                   onClick={stopGateway}
-                  disabled={isActioning}
+                  disabled={isActioning || isLoading}
                   className="gap-1.5"
                 >
                   {isActioning ? (
@@ -339,7 +341,7 @@ export function SettingsGatewayPage() {
               <Button
                 size="sm"
                 onClick={startGateway}
-                disabled={isActioning}
+                disabled={isActioning || isLoading}
                 className="gap-1.5"
               >
                 {isActioning ? (
