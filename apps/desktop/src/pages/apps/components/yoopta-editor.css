@@ -184,7 +184,22 @@
 
 /* Drag overlay styling for block DnD */
 .yoopta-notion-editor [data-dnd-dragging="true"] {
-  opacity: 0.5;
+  opacity: 0.4;
+  transform: scale(0.98);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Drop target indicator - blue line between blocks */
+.yoopta-notion-editor [data-dnd-over="true"]::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: oklch(0.6 0.15 250);
+  border-radius: 2px;
+  z-index: 5;
 }
 
 /* Focus ring for the editor area */
@@ -262,6 +277,38 @@
 
 .yoopta-page-icon:active {
   transform: scale(0.95);
+}
+
+/* Block new insertion animation */
+.yoopta-notion-editor [data-yoopta-block] {
+  animation: yoopta-block-appear 0.2s ease;
+}
+
+@keyframes yoopta-block-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slash command menu & action menu subtle entrance */
+.yoopta-notion-editor [data-floating-ui-portal] {
+  animation: yoopta-menu-appear 0.12s ease;
+}
+
+@keyframes yoopta-menu-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Print styles */
