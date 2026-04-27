@@ -19,6 +19,7 @@
  */
 
 import * as React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Send,
@@ -105,15 +106,15 @@ export function ChatInput({
   const { t } = useTranslation();
 
   // State
-  const [content, setContent] = React.useState("");
-  const [isWritingMode, setIsWritingMode] = React.useState(false);
-  const [isScreenshotCapturing, setIsScreenshotCapturing] = React.useState(false);
+  const [content, setContent] = useState("");
+  const [isWritingMode, setIsWritingMode] = useState(false);
+  const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
 
   // Refs
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const imageInputRef = React.useRef<HTMLInputElement>(null);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Hooks
   const {
@@ -168,7 +169,7 @@ export function ChatInput({
   const shouldShowExecutorSelector = !hideExecutorSelector && executors.length > 0 && !!onExecutorChange;
 
   // Auto-resize textarea based on content (only for non-toolbar mode)
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasToolbar && !isWritingMode) return;
 
     const textarea = textareaRef.current;
@@ -189,7 +190,7 @@ export function ChatInput({
   }, [content, hasToolbar, isWritingMode]);
 
   // Content change handler
-  const handleContentChange = React.useCallback(
+  const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newContent = e.target.value;
       setContent(newContent);
@@ -199,7 +200,7 @@ export function ChatInput({
   );
 
   // Paste handler
-  const handlePaste = React.useCallback(
+  const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       // Try custom paste handler first
       if (customOnPaste) {
@@ -249,7 +250,7 @@ export function ChatInput({
   };
 
   // File button click handler
-  const handleFileClick = React.useCallback(async () => {
+  const handleFileClick = useCallback(async () => {
     if (onOpenFile) {
       const attachments = await onOpenFile();
       if (attachments && attachments.length > 0) {
@@ -261,7 +262,7 @@ export function ChatInput({
   }, [onOpenFile, addAttachment]);
 
   // Screenshot handler
-  const handleScreenshot = React.useCallback(
+  const handleScreenshot = useCallback(
     async (hideWindow?: boolean) => {
       if (!onScreenshot) return;
 
@@ -281,7 +282,7 @@ export function ChatInput({
   );
 
   // Emoji insert handler
-  const insertEmoji = React.useCallback(
+  const insertEmoji = useCallback(
     (emoji: string) => {
       const textarea = textareaRef.current;
       if (!textarea) {
@@ -313,7 +314,7 @@ export function ChatInput({
     !isAnyLoading;
 
   // Send handler
-  const handleSend = React.useCallback(() => {
+  const handleSend = useCallback(() => {
     if (!canSubmit || isLoading) {
       return;
     }
@@ -335,7 +336,7 @@ export function ChatInput({
   }, [canSubmit, isLoading, content, attachments, clearAttachments, onSend]);
 
   // Key down handler
-  const handleKeyDown = React.useCallback(
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // Handle slash command navigation first
       if (handleSlashKeyDown(e)) {
