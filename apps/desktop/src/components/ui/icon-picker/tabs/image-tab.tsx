@@ -8,6 +8,7 @@
  */
 
 import * as React from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Upload, Link, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,13 @@ export interface ImageTabProps {
 
 export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   const { t } = useTranslation();
-  const [mode, setMode] = React.useState<"upload" | "url">("upload");
-  const [urlInput, setUrlInput] = React.useState("");
-  const [preview, setPreview] = React.useState<string | null>(null);
-  const previewTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mode, setMode] = useState<"upload" | "url">("upload");
+  const [urlInput, setUrlInput] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup preview timer on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     };
@@ -42,7 +43,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   /**
    * Handle local file selection
    */
-  const handleFileSelect = React.useCallback(async () => {
+  const handleFileSelect = useCallback(async () => {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
 
@@ -61,6 +62,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
         const result = await uploadFile(selected);
         if (result) {
           setPreview(result);
+          if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
           previewTimerRef.current = setTimeout(() => onSelect(result), 1200);
           return;
         }
@@ -73,7 +75,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   /**
    * Handle URL download
    */
-  const handleUrlDownload = React.useCallback(async () => {
+  const handleUrlDownload = useCallback(async () => {
     if (!urlInput.trim()) return;
 
     clearError();
@@ -81,6 +83,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
     if (result) {
       setUrlInput("");
       setPreview(result);
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
       previewTimerRef.current = setTimeout(() => onSelect(result), 1200);
       return;
     }
@@ -89,7 +92,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   /**
    * Handle Enter key in URL input
    */
-  const handleUrlKeyDown = React.useCallback(
+  const handleUrlKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !uploading) {
         handleUrlDownload();
@@ -199,7 +202,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
             />
           </div>
           <span className="text-xs text-muted-foreground">
-            Uploaded!
+            {t("iconPicker.uploaded", "Uploaded!")}
           </span>
         </div>
       )}
