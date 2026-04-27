@@ -25,7 +25,7 @@ export function DynamicLucideIcon({ name, size = 16, className }: DynamicLucideI
     // Check cache first (may have loaded since initial render)
     const cached = getCachedIcon(name);
     if (cached) {
-      setIcon(cached);
+      setIcon(() => cached);
       setFailed(false);
       return;
     }
@@ -37,7 +37,7 @@ export function DynamicLucideIcon({ name, size = 16, className }: DynamicLucideI
     loadIcon(name).then((loaded) => {
       if (cancelled) return;
       if (loaded) {
-        setIcon(loaded);
+        setIcon(() => loaded);
       } else {
         setFailed(true);
       }

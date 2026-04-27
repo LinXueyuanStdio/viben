@@ -26,6 +26,14 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   const [mode, setMode] = React.useState<"upload" | "url">("upload");
   const [urlInput, setUrlInput] = React.useState("");
   const [preview, setPreview] = React.useState<string | null>(null);
+  const previewTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup preview timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
+  }, []);
 
   const { uploadFile, uploadUrl, uploading, error, clearError } = useImageUpload({
     workspacePath,
@@ -53,7 +61,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
         const result = await uploadFile(selected);
         if (result) {
           setPreview(result);
-          setTimeout(() => onSelect(result), 1200);
+          previewTimerRef.current = setTimeout(() => onSelect(result), 1200);
           return;
         }
       }
@@ -73,7 +81,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
     if (result) {
       setUrlInput("");
       setPreview(result);
-      setTimeout(() => onSelect(result), 1200);
+      previewTimerRef.current = setTimeout(() => onSelect(result), 1200);
       return;
     }
   }, [urlInput, uploadUrl, onSelect, clearError]);

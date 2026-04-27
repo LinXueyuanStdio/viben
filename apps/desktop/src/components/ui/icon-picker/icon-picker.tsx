@@ -35,6 +35,10 @@ import emojiData from "@emoji-mart/data";
 export interface IconPickerProps {
   value?: IconData | string | null;
   onChange?: (icon: IconData | null) => void;
+  /** Controlled open state */
+  open?: boolean;
+  /** Callback when open state changes (for controlled mode) */
+  onOpenChange?: (open: boolean) => void;
   workspacePath?: string;
   disabled?: boolean;
   trigger?: React.ReactNode;
@@ -92,6 +96,8 @@ function getRandomLucideIcon(): string {
 export function IconPicker({
   value,
   onChange,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   workspacePath,
   disabled = false,
   trigger,
@@ -104,7 +110,13 @@ export function IconPicker({
   showRandom = true,
 }: IconPickerProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = React.useCallback((v: boolean) => {
+    if (!isControlled) setUncontrolledOpen(v);
+    controlledOnOpenChange?.(v);
+  }, [isControlled, controlledOnOpenChange]);
   const [randomSpin, setRandomSpin] = React.useState(false);
 
   // Smart default tab
@@ -114,11 +126,14 @@ export function IconPicker({
   );
   const [activeTab, setActiveTab] = React.useState<IconType>(smartDefault);
 
-  // Reset active tab when popover opens
+  // Reset active tab only when popover first opens (not on value changes)
+  const prevOpenRef = React.useRef(false);
   React.useEffect(() => {
-    if (open) {
+    if (open && !prevOpenRef.current) {
+      // Just opened — pick smart default
       setActiveTab(getSmartDefaultTab(value, allowedTypes, defaultTab));
     }
+    prevOpenRef.current = open;
   }, [open, value, allowedTypes, defaultTab]);
 
   // Handlers
@@ -200,7 +215,7 @@ export function IconPicker({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => { console.log("[DEBUG:IconPicker:Popover] onOpenChange:", v, "isControlled:", isControlled); setOpen(v); }}>
       <PopoverTrigger asChild disabled={disabled}>
         {trigger ?? defaultTrigger}
       </PopoverTrigger>

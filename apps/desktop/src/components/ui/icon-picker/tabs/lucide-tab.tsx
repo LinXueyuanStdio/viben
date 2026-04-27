@@ -50,8 +50,11 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
     overscan: 2,
   });
 
-  // Preload icons for visible rows
+  // Preload icons for visible rows (stabilize dependency via index range key)
   const visibleItems = virtualizer.getVirtualItems();
+  const visibleRangeKey = visibleItems.length > 0
+    ? `${visibleItems[0].index}-${visibleItems[visibleItems.length - 1].index}`
+    : "";
   useEffect(() => {
     const names: string[] = [];
     for (const item of visibleItems) {
@@ -63,7 +66,8 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
     if (names.length > 0) {
       requestLoad(names);
     }
-  }, [visibleItems, virtualRows, requestLoad]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleRangeKey, virtualRows, requestLoad]);
 
   // Scroll to category
   const scrollToCategory = useCallback(

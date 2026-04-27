@@ -57,8 +57,13 @@ async function writeToWorkspace(
     }),
   });
 
-  // Convert Uint8Array to base64
-  const base64 = btoa(String.fromCharCode(...data));
+  // Convert Uint8Array to base64 (chunked to avoid call stack overflow on large files)
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    binary += String.fromCharCode(...data.subarray(i, i + chunkSize));
+  }
+  const base64 = btoa(binary);
 
   // Write the file
   const response = await fetch(`${gatewayUrl}/api/file/write`, {

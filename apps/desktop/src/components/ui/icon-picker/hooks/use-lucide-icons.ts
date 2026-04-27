@@ -8,7 +8,7 @@
  * - Module-level cache integration
  */
 
-import { useState, useMemo, useDeferredValue, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useDeferredValue, useCallback, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ALL_ICON_NAMES, getCachedIcon, loadIcons as batchLoadIcons } from "../icon-cache";
 import { LUCIDE_CATEGORIES, CATEGORIZED_ICON_NAMES } from "../constants";
@@ -107,6 +107,13 @@ export function useLucideIcons(): UseLucideIconsReturn {
   // Debounce timer ref for batch loading
   const loadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLoadRef = useRef<Set<string>>(new Set());
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (loadTimerRef.current) clearTimeout(loadTimerRef.current);
+    };
+  }, []);
 
   const categoryGroups = useMemo(() => getCategoryGroups(), []);
 
