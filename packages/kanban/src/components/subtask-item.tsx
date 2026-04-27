@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@viben/ui";
 import { Check, Trash2 } from "lucide-react";
 import type { Subtask } from "./subtask-types";
@@ -15,9 +16,9 @@ export interface SubtaskItemProps {
 
 export const SubtaskItem = React.forwardRef<HTMLDivElement, SubtaskItemProps>(
   ({ subtask, onToggle, onDelete, onUpdate, disabled = false }, ref) => {
-    const [isEditing, setIsEditing] = React.useState(false);
-    const [editValue, setEditValue] = React.useState(subtask.title);
-    const inputRef = React.useRef<HTMLInputElement>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(subtask.title);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleToggle = () => {
       if (disabled) return;
@@ -49,7 +50,7 @@ export const SubtaskItem = React.forwardRef<HTMLDivElement, SubtaskItemProps>(
       }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (isEditing && inputRef.current) {
         inputRef.current.focus();
         inputRef.current.select();
