@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useMemo } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -109,7 +110,7 @@ export function FileToolbar({
   className,
 }: FileToolbarProps) {
   const { t } = useTranslation();
-  const breadcrumbs = React.useMemo(
+  const breadcrumbs = useMemo(
     () => parsePathToBreadcrumbs(currentPath),
     [currentPath]
   );
