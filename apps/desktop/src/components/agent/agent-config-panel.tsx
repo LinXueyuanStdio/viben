@@ -10,7 +10,7 @@
  *
  * Supports scroll-to-section functionality via ref.
  */
-import * as React from "react";
+import React, { useRef, useImperativeHandle, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Brain,
@@ -155,15 +155,15 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     } = props;
 
     // Section refs for scroll-to functionality
-    const promptsRef = React.useRef<HTMLDivElement>(null);
-    const modelRef = React.useRef<HTMLDivElement>(null);
-    const capabilitiesRef = React.useRef<HTMLDivElement>(null);
-    const memoryRef = React.useRef<HTMLDivElement>(null);
-    const variablesRef = React.useRef<HTMLDivElement>(null);
-    const scrollViewportRef = React.useRef<HTMLDivElement>(null);
+    const promptsRef = useRef<HTMLDivElement>(null);
+    const modelRef = useRef<HTMLDivElement>(null);
+    const capabilitiesRef = useRef<HTMLDivElement>(null);
+    const memoryRef = useRef<HTMLDivElement>(null);
+    const variablesRef = useRef<HTMLDivElement>(null);
+    const scrollViewportRef = useRef<HTMLDivElement>(null);
 
     // Expose scrollToSection method via ref
-    React.useImperativeHandle(ref, () => ({
+    useImperativeHandle(ref, () => ({
       scrollToSection: (sectionId: ConfigSectionId) => {
         const sectionRefs: Record<ConfigSectionId, React.RefObject<HTMLDivElement | null>> = {
           prompts: promptsRef,
@@ -181,11 +181,11 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     }));
 
     // Local state for adding new custom variable
-    const [newVarName, setNewVarName] = React.useState("");
-    const [newVarDefault, setNewVarDefault] = React.useState("");
+    const [newVarName, setNewVarName] = useState("");
+    const [newVarDefault, setNewVarDefault] = useState("");
 
     // Local state for adding new env variable
-    const [newEnvVar, setNewEnvVar] = React.useState("");
+    const [newEnvVar, setNewEnvVar] = useState("");
 
     const handleAddCustomVariable = () => {
       if (newVarName.trim()) {
