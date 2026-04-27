@@ -4,7 +4,7 @@
  * Dialog for configuring skills for an agent.
  * Allows selecting from installed skills or browsing the marketplace.
  */
-import * as React from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -57,11 +57,11 @@ export function AgentSkillsDialog({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { packages, loading: isLoading, error } = useCloudSkillPackages();
-  const [localSelected, setLocalSelected] = React.useState<string[]>(selectedSkillIds);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Sync local state when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setLocalSelected(selectedSkillIds);
       setSearchQuery("");
@@ -69,7 +69,7 @@ export function AgentSkillsDialog({
   }, [open, selectedSkillIds]);
 
   // Transform packages to skills and filter by search
-  const filteredSkills = React.useMemo(() => {
+  const filteredSkills = useMemo(() => {
     const skills: Skill[] = packages.map((pkg: CloudSkillPackage) => ({
       id: pkg.id,
       name: pkg.name,
