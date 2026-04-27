@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import { Button, cn } from "@viben/ui";
 import { Check, ChevronDown, Plus, Tag as TagIcon } from "lucide-react";
 import type { Tag } from "./tag-config";
@@ -23,7 +24,7 @@ interface PopoverContextValue {
 const PopoverContext = React.createContext<PopoverContextValue | null>(null);
 
 function usePopoverContext() {
-  const context = React.useContext(PopoverContext);
+  const context = useContext(PopoverContext);
   if (!context) {
     throw new Error("Popover components must be used within a Popover provider");
   }
@@ -39,7 +40,7 @@ function Popover({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
@@ -92,9 +93,9 @@ const PopoverContent = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & { align?: "start" | "center" | "end" }
 >(({ className, align = "start", children, ...props }, ref) => {
   const { open, setOpen } = usePopoverContext();
-  const contentRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -153,10 +154,10 @@ export const TagSelect = ({
   onCreateTag,
   disabled = false,
 }: TagSelectProps) => {
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [newTagName, setNewTagName] = React.useState("");
-  const [selectedColor, setSelectedColor] = React.useState<string>(TAG_COLORS[5].value);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [selectedColor, setSelectedColor] = useState<string>(TAG_COLORS[5].value);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedTags = availableTags.filter((tag) =>
     selectedTagIds.includes(tag.id)
@@ -188,7 +189,7 @@ export const TagSelect = ({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isCreating && inputRef.current) {
       inputRef.current.focus();
     }
