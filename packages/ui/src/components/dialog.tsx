@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useContext, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -10,7 +11,7 @@ interface DialogContextValue {
 const DialogContext = React.createContext<DialogContextValue | null>(null);
 
 function useDialogContext() {
-  const context = React.useContext(DialogContext);
+  const context = useContext(DialogContext);
   if (!context) {
     throw new Error("Dialog components must be used within a Dialog provider");
   }
@@ -24,7 +25,7 @@ interface DialogProps {
 }
 
 function Dialog({ children, open: controlledOpen, onOpenChange }: DialogProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
@@ -103,7 +104,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, ...props }, ref) => {
     const { open, setOpen } = useDialogContext();
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (!open) return;
 
       const handleEscape = (e: KeyboardEvent) => {
@@ -114,7 +115,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       return () => document.removeEventListener("keydown", handleEscape);
     }, [open, setOpen]);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (open) {
         document.body.style.overflow = "hidden";
       } else {
