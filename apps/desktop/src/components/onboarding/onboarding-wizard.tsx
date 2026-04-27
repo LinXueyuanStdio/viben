@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
@@ -29,8 +29,8 @@ export function OnboardingWizard() {
     setLanguage(langCode);
   };
 
-  const [currentStep, setCurrentStep] = React.useState<OnboardingStep>("welcome");
-  const [completedSteps, setCompletedSteps] = React.useState<OnboardingStep[]>([]);
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome");
+  const [completedSteps, setCompletedSteps] = useState<OnboardingStep[]>([]);
 
   const completeStep = (step: OnboardingStep) => {
     if (!completedSteps.includes(step)) {
