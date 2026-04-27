@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
   ChevronRight,
   File,
@@ -177,8 +178,8 @@ interface ColumnProps {
 
 function Column({ state, onSelectItem, onDoubleClickItem }: ColumnProps) {
   const { t } = useTranslation();
-  const columnRef = React.useRef<HTMLDivElement>(null);
-  const [focusedIndex, setFocusedIndex] = React.useState(-1);
+  const columnRef = useRef<HTMLDivElement>(null);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
 
   // Handle keyboard navigation within column
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -210,7 +211,7 @@ function Column({ state, onSelectItem, onDoubleClickItem }: ColumnProps) {
   };
 
   // Update selection when focused index changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (focusedIndex >= 0 && focusedIndex < state.files.length) {
       onSelectItem(state.files[focusedIndex]);
     }
@@ -389,7 +390,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function useFileTypeDescription() {
   const { t } = useTranslation();
 
-  return React.useCallback((name: string): string => {
+  return useCallback((name: string): string => {
     const ext = name.split(".").pop()?.toLowerCase();
     if (!ext) return t("fileBrowser.unknownFileType");
 
@@ -420,12 +421,12 @@ export function FileColumnView({
   onUpdateColumns,
   loadDirectory,
 }: FileColumnViewProps) {
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const [columns, setColumns] = React.useState<ColumnState[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState<ColumnState[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Initialize columns from columnPaths
-  React.useEffect(() => {
+  useEffect(() => {
     const initializeColumns = async () => {
       if (columnPaths.length === 0) return;
 
@@ -466,7 +467,7 @@ export function FileColumnView({
   }, [columnPaths.join(",")]);
 
   // Update last column's files when files prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (columns.length > 0 && files.length > 0) {
       setColumns((prev) => {
         const updated = [...prev];
@@ -483,7 +484,7 @@ export function FileColumnView({
   }, [files, selectedFile]);
 
   // Scroll to the rightmost column when columns change
-  React.useEffect(() => {
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
     }
