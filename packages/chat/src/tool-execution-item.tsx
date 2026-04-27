@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -412,10 +413,10 @@ export function ToolExecutionItem({
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [showModal, setShowModal] = React.useState(false);
+  const [showModal, setShowModal] = useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
   // Default to expanded when there are subagent messages
-  const [isExpanded, setIsExpanded] = React.useState(hasSubagentMessages);
+  const [isExpanded, setIsExpanded] = useState(hasSubagentMessages);
 
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
