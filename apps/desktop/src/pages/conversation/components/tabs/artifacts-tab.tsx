@@ -1,7 +1,7 @@
 /**
  * Artifacts tab content for the right sidebar
  */
-import * as React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Package, FileEdit, Globe, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,13 +68,13 @@ export function ArtifactsTabContent({
   onArtifactMessageClick,
 }: ArtifactsTabContentProps) {
   const { t } = useTranslation();
-  const [showAll, setShowAll] = React.useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   // Ref for scrolling to highlighted artifact
-  const artifactRefs = React.useRef<Map<string, HTMLButtonElement>>(new Map());
+  const artifactRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   // Auto-scroll to highlighted artifact
-  React.useEffect(() => {
+  useEffect(() => {
     if (highlightedArtifactId) {
       const element = artifactRefs.current.get(highlightedArtifactId);
       if (element) {
