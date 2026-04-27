@@ -4,7 +4,7 @@
  * Dialog for configuring MCP servers for an agent.
  * Allows selecting from existing MCP servers or creating new ones.
  */
-import * as React from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
@@ -48,11 +48,11 @@ export function AgentMcpDialog({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const mcpServers = useAppStore((state) => state.mcpServers);
-  const [localSelected, setLocalSelected] = React.useState<string[]>(selectedServerIds);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [localSelected, setLocalSelected] = useState<string[]>(selectedServerIds);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Sync local state when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setLocalSelected(selectedServerIds);
       setSearchQuery("");
@@ -60,7 +60,7 @@ export function AgentMcpDialog({
   }, [open, selectedServerIds]);
 
   // Filter servers by search
-  const filteredServers = React.useMemo(() => {
+  const filteredServers = useMemo(() => {
     if (!searchQuery.trim()) return mcpServers;
     const query = searchQuery.toLowerCase();
     return mcpServers.filter(
