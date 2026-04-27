@@ -6,8 +6,7 @@
  * 2. Custom Variables - User-defined variables with default values
  * 3. Environment Variables - References to system env vars with status
  */
-import * as React from "react";
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Plus,
@@ -223,7 +222,7 @@ function AddCustomVariableDialog({
   const [error, setError] = useState<string | null>(null);
 
   // Reset form when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setName("");
       setDefaultValue("");
@@ -378,7 +377,7 @@ function AddEnvVariableDialog({
   const [error, setError] = useState<string | null>(null);
 
   // Reset form when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setName("");
       setError(null);
