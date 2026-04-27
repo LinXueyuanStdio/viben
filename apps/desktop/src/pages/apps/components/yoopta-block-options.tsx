@@ -113,6 +113,15 @@ export const YooptaBlockOptions = ({
     onOpenChange?.(false);
   };
 
+  // Debug: log anchor positioning info
+  if (open) {
+    console.log("[YooptaBlockOptions] render open", {
+      anchor,
+      anchorRect: anchor?.getBoundingClientRect(),
+      blockId,
+    });
+  }
+
   return (
     <>
       <BlockOptions open={open} onOpenChange={onOpenChange} anchor={anchor}>
