@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -131,7 +131,7 @@ function SessionCard({
   onDuplicate,
 }: SessionCardProps) {
   const { t } = useTranslation();
-  const [showActions, setShowActions] = React.useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const hasActions = onRename || onDelete || onPin || onArchive || onStar || onDuplicate;
 
@@ -302,14 +302,14 @@ export function SessionSelector({
   totalCount,
 }: SessionSelectorProps) {
   const { t } = useTranslation();
-  const [renameSessionId, setRenameSessionId] = React.useState<string | null>(null);
-  const [renameValue, setRenameValue] = React.useState("");
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Handle scroll to bottom for infinite loading
-  const handleScroll = React.useCallback(() => {
+  const handleScroll = useCallback(() => {
     if (!scrollRef.current || !hasMore || isLoadingMore || !onLoadMore) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
@@ -320,7 +320,7 @@ export function SessionSelector({
   }, [hasMore, isLoadingMore, onLoadMore]);
 
   // Sort sessions: pinned first, starred second, then by updatedAt descending
-  const sortedSessions = React.useMemo(() => {
+  const sortedSessions = useMemo(() => {
     return [...sessions].sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
@@ -331,7 +331,7 @@ export function SessionSelector({
   }, [sessions]);
 
   // Filter sessions by search query
-  const filteredSessions = React.useMemo(() => {
+  const filteredSessions = useMemo(() => {
     if (!searchQuery.trim()) return sortedSessions;
     const query = searchQuery.toLowerCase();
     return sortedSessions.filter(
@@ -342,7 +342,7 @@ export function SessionSelector({
   }, [sortedSessions, searchQuery]);
 
   // Group sessions by date
-  const groupedSessions = React.useMemo(() => {
+  const groupedSessions = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
