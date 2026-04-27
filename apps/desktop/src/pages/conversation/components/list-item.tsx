@@ -10,7 +10,7 @@
  * - Bottom-left: source badge (workspace/global/project)
  */
 
-import * as React from "react";
+import React, { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { MoreHorizontal, type LucideIcon } from "lucide-react";
@@ -174,7 +174,7 @@ export function formatRelativeTime(
  */
 export function useFormatRelativeTime() {
   const { t } = useTranslation();
-  return React.useCallback(
+  return useCallback(
     (dateStr: string) => formatRelativeTime(dateStr, t),
     [t]
   );
