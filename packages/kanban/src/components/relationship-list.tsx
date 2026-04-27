@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useMemo } from "react";
 import { cn } from "@viben/ui";
 import type { TaskRelationship, RelationshipType } from "./relationship-types";
 import { RELATIONSHIP_CONFIG, RELATIONSHIP_TYPES } from "./relationship-types";
@@ -20,7 +20,7 @@ export function RelationshipList({
   className,
 }: RelationshipListProps) {
   // Group relationships by type
-  const groupedRelationships = React.useMemo(() => {
+  const groupedRelationships = useMemo(() => {
     const groups: Record<RelationshipType, TaskRelationship[]> = {
       blocks: [],
       blocked_by: [],
