@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   cn,
   ScrollArea,
@@ -241,8 +241,8 @@ function PhaseSection({
   defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
-  const [expandedEntries, setExpandedEntries] = React.useState<Set<string>>(new Set());
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(new Set());
 
   const toggleEntry = (entryId: string) => {
     setExpandedEntries((prev) => {
@@ -343,18 +343,18 @@ export function TaskLogsTab({
 }: TaskLogsTabProps) {
   void _taskId; // Reserved for future use
   const { t } = useTranslation();
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-  const [isLiveUpdating, setIsLiveUpdating] = React.useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isLiveUpdating, setIsLiveUpdating] = useState(false);
 
   // Auto-scroll to bottom when new logs arrive
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoScroll && scrollRef.current && logs?.phases.length) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [logs?.phases, autoScroll]);
 
   // Auto-refresh when task is running (polling-based live updates)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isTaskRunning || !onRefresh) {
       setIsLiveUpdating(false);
       return;
