@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils";
 import { Check } from "lucide-react";
 
@@ -10,7 +11,7 @@ interface DropdownMenuContextValue {
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
 
 function useDropdownMenuContext() {
-  const context = React.useContext(DropdownMenuContext);
+  const context = useContext(DropdownMenuContext);
   if (!context) {
     throw new Error("DropdownMenu components must be used within a DropdownMenu provider");
   }
@@ -24,12 +25,12 @@ interface DropdownMenuProps {
 }
 
 function DropdownMenu({ children, open: controlledOpen, onOpenChange }: DropdownMenuProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
 
-  const setOpen = React.useCallback((newOpen: boolean) => {
+  const setOpen = useCallback((newOpen: boolean) => {
     if (!isControlled) {
       setUncontrolledOpen(newOpen);
     }
@@ -92,9 +93,9 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
   ({ className, align = "start", children, ...props }, ref) => {
     const { open, setOpen } = useDropdownMenuContext();
-    const contentRef = React.useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (!open) return;
 
       const handleClickOutside = (e: MouseEvent) => {
