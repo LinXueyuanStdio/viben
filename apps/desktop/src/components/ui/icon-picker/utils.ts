@@ -163,52 +163,6 @@ export function getIconSizeClass(size: string | number): string {
 }
 
 /**
- * Validate image dimensions (must be square)
- */
-export async function validateImageDimensions(
-  imageData: Uint8Array | Blob | string
-): Promise<{ valid: boolean; width: number; height: number; error?: string }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-
-    img.onload = () => {
-      const { width, height } = img;
-      if (width !== height) {
-        resolve({
-          valid: false,
-          width,
-          height,
-          error: `Image must be square. Got ${width}x${height}`,
-        });
-      } else {
-        resolve({ valid: true, width, height });
-      }
-    };
-
-    img.onerror = () => {
-      resolve({
-        valid: false,
-        width: 0,
-        height: 0,
-        error: "Failed to load image",
-      });
-    };
-
-    // Create object URL based on input type
-    if (typeof imageData === "string") {
-      // Already a URL or data URL
-      img.src = imageData;
-    } else if (imageData instanceof Blob) {
-      img.src = URL.createObjectURL(imageData);
-    } else {
-      // Uint8Array
-      const blob = new Blob([new Uint8Array(imageData)]);
-      img.src = URL.createObjectURL(blob);
-    }
-  });
-}
-
-/**
  * Generate a unique filename for uploaded icons
  */
 export function generateIconFilename(extension = "png"): string {

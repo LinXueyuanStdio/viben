@@ -40,7 +40,6 @@ export {
   isImagePath,
   getIconPixelSize,
   getIconSizeClass,
-  validateImageDimensions,
   generateIconFilename,
   getIconStorageDir,
   getIconStoragePath,

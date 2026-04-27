@@ -10,7 +10,7 @@
 
 import { useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,7 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) =>
       virtualRows[index].type === "header" ? HEADER_HEIGHT : ROW_HEIGHT,
-    overscan: 2,
+    overscan: 5,
   });
 
   // Preload icons for visible rows (stabilize dependency via index range key)
@@ -96,6 +96,7 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
           isSelected && "bg-primary/10 text-primary ring-1 ring-primary/30"
         )}
         title={iconName}
+        aria-label={iconName}
       >
         {StaticIcon ? (
           <StaticIcon className="h-4 w-4" />
@@ -131,8 +132,17 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
           placeholder={t("iconPicker.searchIcons", "Search icons...")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-8 pl-8 text-xs"
+          className="h-8 pl-8 pr-7 text-xs"
         />
+        {search && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="absolute right-4 top-1/2 -translate-y-1/2 mt-0.5 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Category quick-jump bar (hidden during search) */}
@@ -148,6 +158,7 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                 onClick={() => scrollToCategory(group.id)}
                 title={t(group.labelKey, group.id)}
+                aria-label={t(group.labelKey, group.id)}
               >
                 {FirstIcon ? (
                   <FirstIcon className="h-3.5 w-3.5" />
@@ -160,36 +171,35 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
         </div>
       )}
 
-      {/* Virtual scroll area */}
-      <div ref={scrollRef} className="h-[280px] overflow-auto">
-        <div
-          style={{
-            height: virtualizer.getTotalSize(),
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          {virtualizer.getVirtualItems().map((virtualItem) => (
-            <div
-              key={virtualItem.key}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: virtualItem.size,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-            >
-              {renderRow(virtualRows[virtualItem.index])}
-            </div>
-          ))}
+      {/* Virtual scroll area / Empty state */}
+      {virtualRows.length > 0 ? (
+        <div ref={scrollRef} className="h-[280px] overflow-auto">
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              width: "100%",
+              position: "relative",
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualItem) => (
+              <div
+                key={virtualItem.key}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: virtualItem.size,
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                {renderRow(virtualRows[virtualItem.index])}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-
-      {/* Empty state */}
-      {isSearching && virtualRows.length === 0 && (
-        <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
+      ) : (
+        <div className="flex items-center justify-center h-[280px] text-xs text-muted-foreground">
           {t("iconPicker.noResults", "No icons found")}
         </div>
       )}
