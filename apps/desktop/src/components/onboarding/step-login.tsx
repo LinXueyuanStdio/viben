@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, AlertCircle, X, CheckCircle2, SkipForward, ExternalLink, Terminal } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
@@ -26,18 +26,18 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   const { t } = useTranslation();
   const { isAuthenticated, user, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, setLoading } = useAuth();
 
-  const [oauthStatus, setOauthStatus] = React.useState<OAuthStatus>("idle");
-  const [currentStep, setCurrentStep] = React.useState(0);
-  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stepIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const [oauthStatus, setOauthStatus] = useState<OAuthStatus>("idle");
+  const [currentStep, setCurrentStep] = useState(0);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Dev mode: manual OAuth code input
-  const [showDevOAuth, setShowDevOAuth] = React.useState(false);
-  const [oauthCode, setOauthCode] = React.useState("");
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const [showDevOAuth, setShowDevOAuth] = useState(false);
+  const [oauthCode, setOauthCode] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Clear timers
-  const clearTimers = React.useCallback(() => {
+  const clearTimers = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
@@ -49,7 +49,7 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   }, []);
 
   // Handle successful auth
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && oauthStatus === "waiting") {
       clearTimers();
       setOauthStatus("success");
@@ -58,7 +58,7 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   }, [isAuthenticated, oauthStatus, clearTimers]);
 
   // Cleanup on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => clearTimers();
   }, [clearTimers]);
 
