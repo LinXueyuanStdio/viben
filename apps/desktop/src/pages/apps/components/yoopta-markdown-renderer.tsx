@@ -106,6 +106,8 @@ export function YooptaMarkdownRenderer({
   const frontmatterRef = useRef<string>("");
   const [pageTitle, setPageTitle] = useState(title || "");
   const [pageIcon, setPageIcon] = useState<IconData | null>(icon ?? null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const iconAnchorRef = useRef<HTMLDivElement | null>(null);
   const iconSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentPageWidth, setCurrentPageWidth] = useState<PageWidth>(pageWidth || "default");
   const [currentShowToc, setCurrentShowToc] = useState(showToc ?? false);
@@ -695,10 +697,22 @@ export function YooptaMarkdownRenderer({
             coverUrl={coverUrl}
             workspacePath={workspacePath}
             slug={slug}
-            onIconChange={handleIconChange}
+            iconAnchorRef={iconAnchorRef}
+            onOpenIconPicker={() => { console.log("[DEBUG:Main] onOpenIconPicker called"); setShowIconPicker(true); }}
             onCoverChange={handleCoverChange}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}
+          />
+        )}
+        {/* Single IconPicker instance — positioned relative to iconAnchorRef */}
+        {isEditable && (
+          <IconPicker
+            open={showIconPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+            anchorRef={iconAnchorRef}
+            value={pageIcon}
+            onChange={handleIconChange}
+            workspacePath={workspacePath}
           />
         )}
         {!isEditable && (pageTitle || pageIcon) && (
@@ -806,25 +820,31 @@ const PageTitleArea = memo(function PageTitleArea({
         hoverLeaveTimerRef.current = setTimeout(() => { setIsTitleHovered(false); }, 150);
       }}
     >
-      {/* Page icon — Notion style: large, above title, overlaps cover */}
-      {pageIcon && (
-        <IconPicker
-          open={showIconPicker}
-          onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
-          value={pageIcon}
-          onChange={onIconChange}
-          workspacePath={workspacePath}
-          trigger={
+      {/* Single IconPicker instance — anchor differs based on whether icon exists */}
+      <IconPicker
+        open={showIconPicker}
+        onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+        value={pageIcon}
+        onChange={onIconChange}
+        workspacePath={workspacePath}
+        trigger={
+          pageIcon ? (
             <div
-              className="yoopta-page-icon mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+              className="yoopta-page-icon mb-1 cursor-pointer group/icon relative inline-block"
               role="button"
               tabIndex={0}
             >
-              <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
+              {/* Notion-style hover: rounded bg overlay + slight scale */}
+              <div className="rounded-lg p-1 -m-1 transition-all duration-150 group-hover/icon:bg-foreground/5 group-hover/icon:scale-105">
+                <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
+              </div>
             </div>
-          }
-        />
-      )}
+          ) : (
+            /* Hidden anchor — picker opens from action row button via setShowIconPicker(true) */
+            <span className="hidden" />
+          )
+        }
+      />
 
       {/* Action row — Notion: between icon and title, visible on hover */}
       <div
@@ -834,40 +854,24 @@ const PageTitleArea = memo(function PageTitleArea({
         )}
       >
         {!pageIcon && (
-          <IconPicker
-            open={showIconPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
-            value={pageIcon}
-            onChange={onIconChange}
-            workspacePath={workspacePath}
-            trigger={
-              <button
-                type="button"
-                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-              >
-                <SmilePlus size={14} />
-                <span>Add icon</span>
-              </button>
-            }
-          />
+          <button
+            type="button"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+            onClick={() => { console.log("[DEBUG:ActionRow] Add icon clicked"); setShowIconPicker(true); }}
+          >
+            <SmilePlus size={14} />
+            <span>Add icon</span>
+          </button>
         )}
         {pageIcon && (
-          <IconPicker
-            open={showIconPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
-            value={pageIcon}
-            onChange={onIconChange}
-            workspacePath={workspacePath}
-            trigger={
-              <button
-                type="button"
-                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-              >
-                <SmilePlus size={14} />
-                <span>Change icon</span>
-              </button>
-            }
-          />
+          <button
+            type="button"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+            onClick={() => { console.log("[DEBUG:ActionRow] Change icon clicked"); setShowIconPicker(true); }}
+          >
+            <SmilePlus size={14} />
+            <span>Change icon</span>
+          </button>
         )}
         {!coverUrl && (
           <CoverPicker
