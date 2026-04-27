@@ -9,12 +9,15 @@
  * Tests are organized into:
  * 1. Exact roundtrip — output === input (lossless)
  * 2. Idempotent roundtrip — f(f(x)) === f(x) (stable after first pass)
- * 3. Upstream known issues — tests that SHOULD pass but fail due to @yoopta bugs
+ * 3. Upstream known issues — SHOULD pass but fail due to @yoopta bugs
  * 4. Frontmatter preservation
  * 5. Special preprocessing (TOC, math)
- * 6. Real-world SKILL.md content
- * 7. Structural preservation (block count)
- * 8. Edge cases
+ * 6. Inline marks
+ * 7. Nested structures
+ * 8. Tables (advanced)
+ * 9. Real-world SKILL.md content
+ * 10. Structural preservation (block count)
+ * 11. Edge cases
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -35,6 +38,8 @@ import Link from "@yoopta/link";
 import Table from "@yoopta/table";
 import Image from "@yoopta/image";
 import Embed from "@yoopta/embed";
+import TableOfContents from "@yoopta/table-of-contents";
+import { MathInline, MathBlock } from "@yoopta/math";
 
 import { deserializeMarkdown, serializeMarkdown } from "../markdown";
 
@@ -42,6 +47,7 @@ import { deserializeMarkdown, serializeMarkdown } from "../markdown";
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Full plugin set matching plugins.ts (minus upload/search-dependent ones) */
 const PLUGINS = [
   Paragraph,
   HeadingOne,
@@ -58,6 +64,9 @@ const PLUGINS = [
   Table,
   Image,
   Embed,
+  TableOfContents,
+  MathInline,
+  MathBlock,
 ];
 
 function createTestEditor(): YooEditor {
@@ -127,6 +136,15 @@ describe("exact roundtrip (output === input)", () => {
       "table",
       "| Name | Age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 25 |",
     ],
+    // Headings with inline marks
+    ["heading with bold", "# **Bold** heading"],
+    ["heading with code", "# Heading with `code`"],
+    ["heading with italic", "## An *italic* heading"],
+    // Table with inline marks
+    [
+      "table with bold and italic cells",
+      "| **bold** | *italic* |\n| --- | --- |\n| a | b |",
+    ],
   ];
 
   for (const [name, input] of cases) {
@@ -139,9 +157,6 @@ describe("exact roundtrip (output === input)", () => {
 
 // =============================================================================
 // 2. Idempotent roundtrip — f(f(x)) === f(x)
-//
-// Even if the first roundtrip changes the input (upstream normalization),
-// a second roundtrip must produce the same output as the first.
 // =============================================================================
 
 describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
@@ -173,6 +188,13 @@ describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
       "table",
       "| A | B |\n| --- | --- |\n| 1 | 2 |",
     ],
+    // Headings with inline marks
+    ["heading with bold", "# **Bold** heading"],
+    ["heading with code", "# Heading with `code`"],
+    // Multiple dividers
+    ["multiple dividers", "---\n\n---\n\n---"],
+    // Nested bulleted list
+    ["nested bulleted list", "- Item 1\n  - Sub item\n    - Deep item"],
   ];
 
   for (const [name, input] of cases) {
@@ -186,18 +208,21 @@ describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
 // =============================================================================
 // 3. Upstream known issues (@yoopta bugs)
 //
-// These tests document bugs in @yoopta/exports that break roundtrip.
-// They are marked with `it.fails` so CI stays green, but the failures are
-// visible. When upstream fixes land, these tests will start passing and
-// `it.fails` will alert us to remove the annotation.
+// Marked with `it.fails` so CI stays green. When upstream fixes land, these
+// will start passing and `it.fails` will alert us to remove the annotation.
 // =============================================================================
 
 describe("upstream known issues", () => {
   // @yoopta/blockquote serialize adds an extra leading space on every roundtrip.
-  // Input "> quote" → first pass ">  quote " → second pass ">   quote  " (diverges)
+  // Input "> quote" → ">  quote " → ">   quote  " (diverges)
   it.fails("blockquote idempotency (upstream adds extra space each roundtrip)", () => {
     const { first, second } = doubleRoundtrip(editor, "> This is a quote");
     expect(second).toBe(first);
+  });
+
+  it.fails("blockquote exact roundtrip (upstream adds trailing/leading spaces)", () => {
+    const output = roundtrip(editor, "> This is a quote");
+    expect(output).toBe("> This is a quote");
   });
 
   // Mixed content containing a blockquote also diverges due to the same bug.
@@ -227,10 +252,23 @@ describe("upstream known issues", () => {
     expect(second).toBe(first);
   });
 
-  // Blockquote exact roundtrip also fails — upstream adds trailing space.
-  it.fails("blockquote exact roundtrip (upstream adds trailing/leading spaces)", () => {
-    const output = roundtrip(editor, "> This is a quote");
-    expect(output).toBe("> This is a quote");
+  // ~~strikethrough~~ marks are silently stripped by upstream deserialize.
+  it.fails("strikethrough mark is preserved (upstream strips ~~)", () => {
+    const output = roundtrip(editor, "This is ~~strikethrough~~ text.");
+    expect(output).toBe("This is ~~strikethrough~~ text.");
+  });
+
+  // Table column alignment (:--- :---: ---:) is lost on roundtrip.
+  it.fails("table alignment is preserved (upstream drops :--- syntax)", () => {
+    const md = "| Left | Center | Right |\n| :--- | :---: | ---: |\n| a | b | c |";
+    const output = roundtrip(editor, md);
+    expect(output).toBe(md);
+  });
+
+  // Nested numbered list loses nesting on second roundtrip.
+  it.fails("nested numbered list idempotency (upstream flattens nesting)", () => {
+    const { first, second } = doubleRoundtrip(editor, "1. First\n   1. Sub first");
+    expect(second).toBe(first);
   });
 });
 
@@ -320,7 +358,9 @@ describe("frontmatter preservation through roundtrip", () => {
 // =============================================================================
 
 describe("special preprocessing structures", () => {
-  it("[TOC] roundtrip is idempotent", () => {
+  // UPSTREAM BUG: @yoopta/table-of-contents <nav> HTML deserializer swallows
+  // sibling elements after the nav tag, losing content on re-deserialize.
+  it.fails("[TOC] roundtrip is idempotent", () => {
     const md = "[TOC]\n\n# Section 1\n\nContent.";
     const { first, second } = doubleRoundtrip(editor, md);
     expect(second).toBe(first);
@@ -338,7 +378,8 @@ describe("special preprocessing structures", () => {
     expect(second).toBe(first);
   });
 
-  it("mixed [TOC] + math is idempotent", () => {
+  // UPSTREAM BUG: Same @yoopta/table-of-contents nav swallowing issue.
+  it.fails("mixed [TOC] + math is idempotent", () => {
     const md = [
       "[TOC]",
       "",
@@ -374,7 +415,133 @@ describe("special preprocessing structures", () => {
 });
 
 // =============================================================================
-// 6. Real-world SKILL.md files
+// 6. Inline marks
+// =============================================================================
+
+describe("inline marks roundtrip", () => {
+  // Marks with standard markdown syntax
+  it("bold exact", () => {
+    expect(roundtrip(editor, "**bold text**")).toBe("**bold text**");
+  });
+
+  it("italic exact", () => {
+    expect(roundtrip(editor, "*italic text*")).toBe("*italic text*");
+  });
+
+  it("inline code exact", () => {
+    expect(roundtrip(editor, "`code text`")).toBe("`code text`");
+  });
+
+  it("bold + italic in same paragraph", () => {
+    const md = "This has **bold** and *italic* words.";
+    expect(roundtrip(editor, md)).toBe(md);
+  });
+
+  it("bold + code in same paragraph", () => {
+    const md = "Use **important** and `code` together.";
+    expect(roundtrip(editor, md)).toBe(md);
+  });
+
+  // Strikethrough — upstream strips it (documented in upstream issues)
+  it("strikethrough is idempotent (even if lossy)", () => {
+    const { first, second } = doubleRoundtrip(editor, "This is ~~gone~~ text.");
+    expect(second).toBe(first);
+  });
+
+  // Underline has no standard markdown syntax — verify it doesn't crash
+  it("underline HTML tag is idempotent", () => {
+    const { first, second } = doubleRoundtrip(editor, "This is <u>underlined</u> text.");
+    expect(second).toBe(first);
+  });
+
+  // Highlight — ==text== or <mark>
+  it("highlight HTML tag is idempotent", () => {
+    const { first, second } = doubleRoundtrip(editor, "This is <mark>highlighted</mark> text.");
+    expect(second).toBe(first);
+  });
+});
+
+// =============================================================================
+// 7. Nested structures
+// =============================================================================
+
+describe("nested structures", () => {
+  it("nested bulleted list is idempotent", () => {
+    const md = "- Item 1\n  - Sub item\n    - Deep item";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("nested bulleted list preserves content", () => {
+    const md = "- Item 1\n  - Sub item\n    - Deep item";
+    const output = roundtrip(editor, md);
+    expect(output).toContain("Item 1");
+    expect(output).toContain("Sub item");
+    expect(output).toContain("Deep item");
+  });
+
+  it("multi-item nested list is idempotent", () => {
+    const md = [
+      "- A",
+      "  - A1",
+      "  - A2",
+      "- B",
+      "  - B1",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("heading + nested list + paragraph is idempotent", () => {
+    const md = [
+      "# Title",
+      "",
+      "- Top",
+      "  - Nested",
+      "",
+      "After list.",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+});
+
+// =============================================================================
+// 8. Tables (advanced)
+// =============================================================================
+
+describe("tables (advanced)", () => {
+  it("simple table exact roundtrip", () => {
+    const md = "| A | B |\n| --- | --- |\n| 1 | 2 |";
+    expect(roundtrip(editor, md)).toBe(md);
+  });
+
+  it("table with bold and italic cells exact roundtrip", () => {
+    const md = "| **bold** | *italic* |\n| --- | --- |\n| a | b |";
+    expect(roundtrip(editor, md)).toBe(md);
+  });
+
+  it("multi-row table is idempotent", () => {
+    const md = [
+      "| Name | Score |",
+      "| --- | --- |",
+      "| Alice | 100 |",
+      "| Bob | 95 |",
+      "| Charlie | 88 |",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("table alignment is idempotent (even if lossy)", () => {
+    const md = "| Left | Center | Right |\n| :--- | :---: | ---: |\n| a | b | c |";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+});
+
+// =============================================================================
+// 9. Real-world SKILL.md files
 // =============================================================================
 
 describe("real-world SKILL.md roundtrip", () => {
@@ -427,7 +594,7 @@ describe("real-world SKILL.md roundtrip", () => {
 });
 
 // =============================================================================
-// 7. Structural preservation — block count survives roundtrip
+// 10. Structural preservation — block count survives roundtrip
 // =============================================================================
 
 describe("structural preservation (block count survives roundtrip)", () => {
@@ -454,7 +621,7 @@ describe("structural preservation (block count survives roundtrip)", () => {
 });
 
 // =============================================================================
-// 8. Edge cases
+// 11. Edge cases
 // =============================================================================
 
 describe("edge cases", () => {
@@ -473,7 +640,6 @@ describe("edge cases", () => {
     const output = roundtrip(editor, input);
     expect(output).toContain("# Heading");
     expect(output).toContain("Paragraph");
-    // Stable after first pass
     const second = roundtrip(editor, output);
     expect(second).toBe(output);
   });
@@ -482,7 +648,6 @@ describe("edge cases", () => {
     const input = "# Heading\n\n\n\nParagraph";
     const output = roundtrip(editor, input);
     expect(output).not.toContain("\n\n\n");
-    // Stable after first pass
     const second = roundtrip(editor, output);
     expect(second).toBe(output);
   });
@@ -502,6 +667,11 @@ describe("edge cases", () => {
   it("very long paragraph is preserved", () => {
     const longText = "Word ".repeat(500).trim() + ".";
     const { first, second } = doubleRoundtrip(editor, longText);
+    expect(second).toBe(first);
+  });
+
+  it("multiple dividers is idempotent", () => {
+    const { first, second } = doubleRoundtrip(editor, "---\n\n---\n\n---");
     expect(second).toBe(first);
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractFrontmatter,
   prependFrontmatter,
+  preprocessTocForDeserialize,
   preprocessMathForDeserialize,
   normalizeBlockSeparators,
 } from "../markdown";
@@ -62,6 +63,44 @@ describe("prependFrontmatter", () => {
   it("adds newline if frontmatter doesn't end with one", () => {
     const result = prependFrontmatter("---\nkey: val\n---", "# Hello");
     expect(result).toBe("---\nkey: val\n---\n# Hello");
+  });
+});
+
+// =============================================================================
+// preprocessTocForDeserialize
+// =============================================================================
+
+describe("preprocessTocForDeserialize", () => {
+  it("converts [TOC] to nav element", () => {
+    const md = "[TOC]\n\n# Heading";
+    const result = preprocessTocForDeserialize(md);
+    expect(result).toContain('data-type="table-of-contents"');
+    expect(result).not.toContain("[TOC]");
+    expect(result).toContain("# Heading");
+  });
+
+  it("converts [TOC] on its own line only", () => {
+    const md = "Some text with [TOC] inline";
+    const result = preprocessTocForDeserialize(md);
+    expect(result).toBe(md); // No replacement — [TOC] is not on its own line
+  });
+
+  it("handles [TOC] at start of document", () => {
+    const md = "[TOC]";
+    const result = preprocessTocForDeserialize(md);
+    expect(result).toBe('<nav data-type="table-of-contents"></nav>');
+  });
+
+  it("handles [TOC] with trailing whitespace", () => {
+    const md = "[TOC]   \n\n# Heading";
+    const result = preprocessTocForDeserialize(md);
+    expect(result).toContain('data-type="table-of-contents"');
+  });
+
+  it("leaves non-TOC content untouched", () => {
+    const md = "# Heading\n\nJust a paragraph.";
+    const result = preprocessTocForDeserialize(md);
+    expect(result).toBe(md);
   });
 });
 
