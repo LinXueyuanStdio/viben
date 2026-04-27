@@ -5,7 +5,7 @@
  * Beautiful card design with status indicators and animations
  */
 
-import * as React from "react";
+import React, { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   CheckCircle2,
@@ -204,12 +204,12 @@ export function EnvCheckStepItem({
   const { t } = useTranslation();
 
   // Generate unique IDs for ARIA
-  const titleId = React.useId();
-  const descriptionId = React.useId();
-  const errorId = React.useId();
+  const titleId = useId();
+  const descriptionId = useId();
+  const errorId = useId();
 
   // Use internal state if expanded/onExpandedChange not provided (controlled vs uncontrolled)
-  const [internalOpen, setInternalOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = expanded !== undefined;
   const isOpen = isControlled ? expanded : internalOpen;
   const setIsOpen = isControlled
