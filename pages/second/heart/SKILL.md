@@ -5,8 +5,8 @@ page:
     - read
     - write
 icon:
-  type: lucide
-  value: book
+  type: emoji
+  value: "\U0001F44D\U0001F3FC"
 name: heart
 description: the icon is heart
 ---
@@ -15,3 +15,9 @@ description: the icon is heart
 $$
 
 $$
+
+```javascript
+dsfsd;
+sdf;
+
+```
