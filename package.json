@@ -35,7 +35,10 @@
       "ignoreMissing": [
         "react",
         "react-dom"
-      ]
+      ],
+      "allowedVersions": {
+        "@emoji-mart/react>react": ">=19"
+      }
     }
   },
   "engines": {
