@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useMemo } from "react";
 import { Bell, CheckCheck, Trash2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -185,23 +185,23 @@ const NotificationCenter = React.forwardRef<HTMLDivElement, NotificationCenterPr
     ref
   ) => {
     const { t } = useTranslation();
-    const [activeFilter, setActiveFilter] = React.useState<NotificationFilterType>("all");
+    const [activeFilter, setActiveFilter] = useState<NotificationFilterType>("all");
 
     // Calculate counts and filter notifications
-    const counts = React.useMemo(() => calculateCounts(notifications), [notifications]);
-    const filteredNotifications = React.useMemo(
+    const counts = useMemo(() => calculateCounts(notifications), [notifications]);
+    const filteredNotifications = useMemo(
       () => filterNotifications(notifications, activeFilter),
       [notifications, activeFilter]
     );
 
     // Group filtered notifications by time
-    const groupedNotifications = React.useMemo(
+    const groupedNotifications = useMemo(
       () => groupNotificationsByTime(filteredNotifications),
       [filteredNotifications]
     );
 
     // Calculate unread count
-    const unreadCount = React.useMemo(
+    const unreadCount = useMemo(
       () => notifications.filter((n) => !n.read).length,
       [notifications]
     );
