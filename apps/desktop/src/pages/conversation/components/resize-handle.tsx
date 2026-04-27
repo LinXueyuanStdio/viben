@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useRef } from "react";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +9,8 @@ export interface ResizeHandleProps {
 }
 
 export function ResizeHandle({ side, onResize, className }: ResizeHandleProps) {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const startXRef = React.useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
