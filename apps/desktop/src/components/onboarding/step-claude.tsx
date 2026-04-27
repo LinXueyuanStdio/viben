@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -59,12 +59,12 @@ export function StepClaude({ onComplete, onBack }: StepClaudeProps) {
     useExecutors();
 
   // Get available (installed) executors
-  const availableExecutors = React.useMemo(() => {
+  const availableExecutors = useMemo(() => {
     return getAvailableExecutors();
   }, [getAvailableExecutors]);
 
   // Sort executors: available first, then by name
-  const sortedExecutors = React.useMemo(() => {
+  const sortedExecutors = useMemo(() => {
     return [...executors].sort((a, b) => {
       const aAvailable = a.availability && isAgentAvailable(a.availability);
       const bAvailable = b.availability && isAgentAvailable(b.availability);
