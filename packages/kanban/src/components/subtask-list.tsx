@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef } from "react";
 import { cn, Input } from "@viben/ui";
 import { Plus } from "lucide-react";
 import type { Subtask, SubtaskCallbacks } from "./subtask-types";
@@ -16,8 +17,8 @@ export interface SubtaskListProps {
 
 export const SubtaskList = React.forwardRef<HTMLDivElement, SubtaskListProps>(
   ({ subtasks, callbacks, disabled = false, className }, ref) => {
-    const [newSubtaskTitle, setNewSubtaskTitle] = React.useState("");
-    const inputRef = React.useRef<HTMLInputElement>(null);
+    const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const completedCount = subtasks.filter((s) => s.completed).length;
     const totalCount = subtasks.length;
