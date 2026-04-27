@@ -5,7 +5,7 @@
  * with a copy button. Used in list items to show where an item comes from.
  */
 
-import * as React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, Check, Folder, Globe, FolderGit2 } from "lucide-react";
 import {
@@ -76,7 +76,7 @@ export function SourceTooltip({
   className,
 }: SourceTooltipProps) {
   const { t } = useTranslation();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
   const config = sourceConfig[type];
   const Icon = config.icon;
   const displayLabel = label || t(config.labelKey);
