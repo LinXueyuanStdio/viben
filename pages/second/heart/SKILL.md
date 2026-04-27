@@ -1,11 +1,10 @@
 ---
 page:
   type: markdown
-  permission: [read, write]
-name: "heart"
-description: "the icon is heart"
+  permission:
+    - read
+    - write
+name: heart
+description: the icon is heart
 ---
 
-# Heart
-
-the icon is heart
