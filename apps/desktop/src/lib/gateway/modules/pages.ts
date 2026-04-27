@@ -13,6 +13,8 @@ import type {
   CreatePageResult,
   DeletePageResult,
   CreatePageParams,
+  UpdatePageConfigParams,
+  UpdatePageConfigResult,
   ListTemplatesResult,
 } from "../types/page";
 
@@ -31,6 +33,8 @@ export type {
   CreatePageResult,
   DeletePageResult,
   CreatePageParams,
+  UpdatePageConfigParams,
+  UpdatePageConfigResult,
   PageTemplate,
   ListTemplatesResult,
 } from "../types/page";
@@ -181,6 +185,71 @@ export async function updatePageContent(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to update page content: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Update Page Config
+// =============================================================================
+
+/**
+ * Update page config (name, description, icon)
+ */
+export async function updatePageConfig(
+  baseUrl: string,
+  params: UpdatePageConfigParams
+): Promise<UpdatePageConfigResult> {
+  const response = await fetch(`${baseUrl}/api/page/update-config`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to update page config: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Upload Page Asset
+// =============================================================================
+
+/**
+ * Upload a file asset for a page
+ */
+export async function uploadPageAsset(
+  baseUrl: string,
+  workspacePath: string,
+  slug: string,
+  file: File
+): Promise<{ success: boolean; url?: string; filename?: string; error?: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("workspace_path", workspacePath);
+  formData.append("slug", slug);
+
+  const response = await fetch(`${baseUrl}/api/page/asset/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to upload page asset: ${errorMessage}`,
       response.status
     );
   }

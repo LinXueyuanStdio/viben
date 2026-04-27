@@ -94,6 +94,19 @@ export interface UpdatePageContentResult extends PageResult {
   slug?: string;
 }
 
+export interface UpdatePageConfigParams {
+  workspace_path: string;
+  slug: string;
+  name?: string;
+  description?: string | null;
+  icon?: IconData | null;
+}
+
+export interface UpdatePageConfigResult extends PageResult {
+  slug?: string;
+  page?: PageConfig;
+}
+
 // =============================================================================
 // Template Types
 // =============================================================================

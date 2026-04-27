@@ -16,9 +16,10 @@ import {
   viewPage as viewPageApi,
   createPage as createPageApi,
   deletePage as deletePageApi,
+  updatePageConfig as updatePageConfigApi,
   listTemplates as listTemplatesApi,
 } from "@/lib/gateway";
-import type { CreatePageParams } from "@/lib/gateway";
+import type { CreatePageParams, UpdatePageConfigParams } from "@/lib/gateway";
 
 // Re-export types for convenience
 export type {
@@ -31,6 +32,7 @@ export type {
   ProxyPageConfig,
   PageTemplate,
   CreatePageParams,
+  UpdatePageConfigParams,
 } from "@/lib/gateway";
 
 // =============================================================================
@@ -116,6 +118,28 @@ export function useDeletePage() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: pageKeys.list(variables.workspacePath),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for updating page config (name, description, icon)
+ *
+ * @returns Mutation for updating a page config
+ */
+export function useUpdatePageConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: UpdatePageConfigParams) =>
+      updatePageConfigApi(getGatewayUrl(), params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.list(variables.workspace_path),
+      });
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.detail(variables.workspace_path, variables.slug),
       });
     },
   });
