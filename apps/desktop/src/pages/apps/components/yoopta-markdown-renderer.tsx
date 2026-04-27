@@ -1,6 +1,8 @@
 import "./yoopta-editor.css";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { pageKeys } from "@/hooks/use-pages";
 import YooptaEditor, {
   Blocks,
   Marks,
@@ -95,6 +97,7 @@ export function YooptaMarkdownRenderer({
 }: YooptaMarkdownRendererProps) {
   const canSave = !!(workspacePath && slug);
   const isEditable = editable ?? canSave;
+  const queryClient = useQueryClient();
 
   const containerBoxRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,12 +159,16 @@ export function YooptaMarkdownRenderer({
             slug: slug!,
             icon: iconData,
           });
+          // Invalidate page list cache so sidebar tree updates
+          queryClient.invalidateQueries({
+            queryKey: pageKeys.list(workspacePath!),
+          });
         } catch (err) {
           console.error("[YooptaMarkdownRenderer] icon save failed:", err);
         }
       }, 500);
     },
-    [canSave, workspacePath, slug]
+    [canSave, workspacePath, slug, queryClient]
   );
 
   const persistLayoutConfig = useCallback(
