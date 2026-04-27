@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { McpCard } from '@/components/mcp/mcp-card';
 import { SkillCard } from '@/components/skills/skill-card';
@@ -42,12 +42,12 @@ interface ProfilePackagesProps {
 
 export function ProfilePackages({ userId }: ProfilePackagesProps) {
   const { t } = useTranslation();
-  const [mcps, setMcps] = React.useState<DbMcpPackage[]>([]);
-  const [skills, setSkills] = React.useState<DbSkillPackage[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [mcps, setMcps] = useState<DbMcpPackage[]>([]);
+  const [skills, setSkills] = useState<DbSkillPackage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchPackages = React.useCallback(async () => {
+  const fetchPackages = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -66,7 +66,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
     }
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchPackages();
   }, [fetchPackages]);
 
