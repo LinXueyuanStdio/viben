@@ -4,7 +4,7 @@
  * Dialog to view, add, and remove members from a group chat.
  */
 
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -254,8 +254,8 @@ function AddMemberSection({
   isLoading,
 }: AddMemberSectionProps) {
   const { t } = useTranslation();
-  const [selectedAgentId, setSelectedAgentId] = React.useState<string>("");
-  const [isAdding, setIsAdding] = React.useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
 
   // Filter out agents that are already members
   const availableToAdd = availableAgents.filter(
@@ -344,7 +344,7 @@ export function GroupChatMembersDialog({
   isLoading,
 }: GroupChatMembersDialogProps) {
   const { t } = useTranslation();
-  const [removingMemberId, setRemovingMemberId] = React.useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const handleRemoveMember = async (memberId: string) => {
     if (!onRemoveMember) return;
@@ -358,7 +358,7 @@ export function GroupChatMembersDialog({
   };
 
   // Sort members: owner first, then admins, then regular members
-  const sortedMembers = React.useMemo(() => {
+  const sortedMembers = useMemo(() => {
     return [...members].sort((a, b) => {
       const roleOrder = { owner: 0, admin: 1, member: 2 };
       return roleOrder[a.role] - roleOrder[b.role];
