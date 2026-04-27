@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { memo, useRef, useCallback, useEffect } from "react";
 import { Search, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ interface SearchBarProps {
  * SearchBar component for skills marketplace search
  * Memoized to prevent unnecessary re-renders
  */
-export const SearchBar = React.memo(function SearchBar({
+export const SearchBar = memo(function SearchBar({
   value,
   onChange,
   placeholder,
@@ -29,16 +29,16 @@ export const SearchBar = React.memo(function SearchBar({
   className,
 }: SearchBarProps) {
   const { t } = useTranslation();
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Clear search
-  const handleClear = React.useCallback(() => {
+  const handleClear = useCallback(() => {
     onChange("");
     inputRef.current?.focus();
   }, [onChange]);
 
   // Handle input change
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onChange(e.target.value);
     },
@@ -46,7 +46,7 @@ export const SearchBar = React.memo(function SearchBar({
   );
 
   // Handle keyboard shortcuts
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + K to focus search
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
