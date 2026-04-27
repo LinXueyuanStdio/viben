@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Folder,
@@ -240,12 +241,12 @@ export function FileListView({
   className,
 }: FileListViewProps) {
   const { t } = useTranslation();
-  const [sortField, setSortField] = React.useState<SortField>("name");
+  const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] =
-    React.useState<SortDirection>("asc");
+    useState<SortDirection>("asc");
 
   // Sort files
-  const sortedFiles = React.useMemo(() => {
+  const sortedFiles = useMemo(() => {
     return [...files].sort((a, b) =>
       compareFiles(a, b, sortField, sortDirection)
     );
