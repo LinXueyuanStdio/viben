@@ -5,7 +5,7 @@
  * - Left: Conversation area (messages + chat input)
  * - Right: Trace visualization (call tree / timeline)
  */
-import * as React from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Copy,
@@ -108,8 +108,8 @@ interface ResizeHandleProps {
 }
 
 function ResizeHandle({ onResize, className }: ResizeHandleProps) {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const startXRef = React.useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -204,13 +204,13 @@ export function AgentDebugTab({
   className,
 }: AgentDebugTabProps) {
   const { t } = useTranslation();
-  const [leftPanelWidth, setLeftPanelWidth] = React.useState(50); // percentage
-  const [copiedId, setCopiedId] = React.useState<string | null>(null);
-  const [activeTraceTab, setActiveTraceTab] = React.useState<"tree" | "timeline">("tree");
-  const [searchQuery] = React.useState("");
+  const [leftPanelWidth, setLeftPanelWidth] = useState(50); // percentage
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeTraceTab, setActiveTraceTab] = useState<"tree" | "timeline">("tree");
+  const [searchQuery] = useState("");
 
   // Handle resize
-  const handleResize = React.useCallback((delta: number) => {
+  const handleResize = useCallback((delta: number) => {
     setLeftPanelWidth((prev) => {
       const containerWidth = window.innerWidth;
       const deltaPercent = (delta / containerWidth) * 100;
@@ -229,18 +229,18 @@ export function AgentDebugTab({
   };
 
   // Flatten spans for timeline view
-  const flattenedSpans = React.useMemo(() => {
+  const flattenedSpans = useMemo(() => {
     if (!traceTree) return [];
     return flattenSpans(traceTree);
   }, [traceTree]);
 
   // Filter spans by search query
-  const filteredSpans = React.useMemo(() => {
+  const filteredSpans = useMemo(() => {
     return filterSpans(flattenedSpans, searchQuery);
   }, [flattenedSpans, searchQuery]);
 
   // Handle send message
-  const handleSendMessage = React.useCallback(
+  const handleSendMessage = useCallback(
     (content: string, attachments?: MessageAttachment[]) => {
       onSendMessage(content, attachments);
     },
