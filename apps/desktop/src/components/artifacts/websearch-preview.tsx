@@ -5,7 +5,7 @@
  * website icons, titles, and domain names.
  */
 
-import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ChevronDown, ChevronUp, ExternalLink, Globe } from "lucide-react";
@@ -249,7 +249,7 @@ function SearchGroupCard({
   defaultExpanded?: boolean;
 }) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   return (
     <div className="border-border overflow-hidden rounded-xl border">
