@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, Pencil, Trash2, Smile } from "lucide-react";
 import {
   Avatar,
@@ -48,11 +49,11 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
     },
     ref
   ) => {
-    const [isEditing, setIsEditing] = React.useState(false);
-    const [editValue, setEditValue] = React.useState(comment.content);
-    const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
-    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-    const emojiPickerRef = React.useRef<HTMLDivElement>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState(comment.content);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const emojiPickerRef = useRef<HTMLDivElement>(null);
 
     const isOwner = comment.author.id === currentUserId;
 
@@ -91,7 +92,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
     };
 
     // Close emoji picker when clicking outside
-    React.useEffect(() => {
+    useEffect(() => {
       if (!showEmojiPicker) return;
 
       const handleClickOutside = (e: MouseEvent) => {
@@ -108,7 +109,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
     }, [showEmojiPicker]);
 
     // Focus textarea when editing
-    React.useEffect(() => {
+    useEffect(() => {
       if (isEditing && textareaRef.current) {
         textareaRef.current.focus();
         textareaRef.current.selectionStart = textareaRef.current.value.length;
