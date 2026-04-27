@@ -34,7 +34,6 @@ export function LucideTab({ value, onSelect }: LucideTabProps) {
   const {
     virtualRows,
     isSearching,
-    getIcon,
     requestLoad,
     search,
     setSearch,

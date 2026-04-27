@@ -2,14 +2,15 @@
  * Icon Picker Components
  *
  * Unified icon selection and display system supporting:
- * - Lucide icons (categorized)
- * - Emoji (categorized)
+ * - Lucide icons (1500+ with async loading)
+ * - Emoji (full set via emoji-mart)
  * - Custom images (upload or URL)
  */
 
 // Main components
 export { IconPicker, type IconPickerProps } from "./icon-picker";
 export { IconDisplay, type IconDisplayProps } from "./icon-display";
+export { DynamicLucideIcon } from "./dynamic-lucide-icon";
 
 // Tab components (for advanced use cases)
 export { LucideTab, type LucideTabProps } from "./tabs/lucide-tab";
@@ -18,9 +19,13 @@ export { ImageTab, type ImageTabProps } from "./tabs/image-tab";
 
 // Hooks
 export { useImageUpload, type UseImageUploadOptions, type UseImageUploadResult } from "./hooks/use-image-upload";
+export { useLucideIcons, type UseLucideIconsReturn } from "./hooks/use-lucide-icons";
+
+// Icon cache
+export { ALL_ICON_NAMES, getCachedIcon, loadIcon, loadIcons } from "./icon-cache";
 
 // Types
-export type { IconData, IconType, IconSize } from "./types";
+export type { IconData, IconType, IconSize, VirtualRow, CategoryGroup } from "./types";
 
 // Utilities
 export {
