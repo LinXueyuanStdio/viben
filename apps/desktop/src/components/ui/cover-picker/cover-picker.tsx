@@ -13,6 +13,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -32,6 +33,8 @@ export interface CoverPickerProps {
   workspacePath?: string;
   slug?: string;
   disabled?: boolean;
+  /** When provided, the popover positions relative to this element instead of using trigger. */
+  anchorRef?: React.RefObject<HTMLElement | null>;
   trigger?: React.ReactNode;
   align?: "start" | "center" | "end";
   allowRemove?: boolean;
@@ -45,6 +48,7 @@ export function CoverPicker({
   workspacePath,
   slug,
   disabled = false,
+  anchorRef,
   trigger,
   align = "start",
   allowRemove = true,
@@ -119,9 +123,13 @@ export function CoverPicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
-        {trigger ?? defaultTrigger}
-      </PopoverTrigger>
+      {anchorRef ? (
+        <PopoverAnchor virtualRef={anchorRef} />
+      ) : (
+        <PopoverTrigger asChild disabled={disabled}>
+          {trigger ?? defaultTrigger}
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-[352px] p-0" align={align} sideOffset={4}>
         <Tabs
           value={activeTab}
