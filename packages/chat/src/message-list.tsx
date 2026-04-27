@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
 import { cn, ScrollArea } from "@viben/ui";
@@ -143,10 +144,10 @@ function TaskGroupComponent({
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
-  const [isExpanded, setIsExpanded] = React.useState(!isCompleted || isRunning);
+  const [isExpanded, setIsExpanded] = useState(!isCompleted || isRunning);
 
   // Auto-collapse when task completes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isCompleted && !isRunning) {
       setIsExpanded(false);
     }
@@ -543,23 +544,23 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 }, ref) {
   const { t } = useTranslation();
 
-  const viewportRef = React.useRef<HTMLDivElement>(null);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll management state
-  const [showScrollButton, setShowScrollButton] = React.useState(false);
-  const userScrolledUpRef = React.useRef(false);
-  const lastScrollTopRef = React.useRef(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const userScrolledUpRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
 
   // Debug
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("[MessageList] Render - messages:", messages.length, "isStreaming:", isStreaming);
     console.log("[MessageList] Message types:", messages.map(m => m.type));
   }, [messages, isStreaming]);
 
   // Group messages for display - must be called before any conditional returns
   // In simpleMode, skip grouping and just create "other" groups for each message
-  const groups = React.useMemo(
+  const groups = useMemo(
     () => simpleMode
       ? messages.map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
       : groupMessages(messages, isStreaming || false),
@@ -567,7 +568,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   );
 
   // Debug groups
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("[MessageList] Groups:", groups.length, "from messages:", messages.length);
     groups.forEach((g, i) => {
       if (g.type === "task") {
@@ -580,13 +581,13 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
 
   // Scroll to bottom function
-  const scrollToBottom = React.useCallback(() => {
+  const scrollToBottom = useCallback(() => {
     userScrolledUpRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   // Check scroll position to show/hide scroll button and detect manual scroll
-  const checkScrollPosition = React.useCallback(() => {
+  const checkScrollPosition = useCallback(() => {
     const container = viewportRef.current;
     if (!container) return;
 
@@ -614,8 +615,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }, [isStreaming]);
 
   // Scroll to bottom on initial load
-  const hasInitialScrolledRef = React.useRef(false);
-  React.useEffect(() => {
+  const hasInitialScrolledRef = useRef(false);
+  useEffect(() => {
     if (messages.length > 0 && !hasInitialScrolledRef.current) {
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
@@ -628,7 +629,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Auto-scroll to bottom when new messages arrive (only if user hasn't scrolled up)
   // Use autoScroll prop if provided, otherwise default to auto-scroll when streaming
   const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
-  React.useEffect(() => {
+  useEffect(() => {
     if (shouldAutoScroll && !userScrolledUpRef.current) {
       // Use instant scroll during active streaming to prevent jitter
       // Use smooth scroll when streaming just started (new message) or stopped
@@ -639,14 +640,14 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }, [messages, shouldAutoScroll, isStreaming, pendingQuestions]);
 
   // Reset userScrolledUp when streaming stops
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isStreaming) {
       userScrolledUpRef.current = false;
     }
   }, [isStreaming]);
 
   // Add scroll listener to viewport
-  React.useEffect(() => {
+  useEffect(() => {
     const container = viewportRef.current;
     if (!container) return;
 
@@ -660,7 +661,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }, [checkScrollPosition]);
 
   // Re-check scroll position when messages load
-  React.useEffect(() => {
+  useEffect(() => {
     if (messages.length > 0) {
       requestAnimationFrame(() => {
         checkScrollPosition();
@@ -670,11 +671,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   // Track container width for content constraint
   // NOTE: These hooks must be declared before any early returns to follow React's rules of hooks
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const [_containerWidth, setContainerWidth] = React.useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [_containerWidth, setContainerWidth] = useState<number | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
         const width = containerRef.current.getBoundingClientRect().width;
@@ -692,13 +693,13 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }, []);
 
   // Message refs for scroll-to-message functionality
-  const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
+  const messageRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Track highlight animation state
-  const [activeHighlight, setActiveHighlight] = React.useState<string | null>(null);
+  const [activeHighlight, setActiveHighlight] = useState<string | null>(null);
 
   // Scroll to message function
-  const scrollToMessage = React.useCallback((messageId: string) => {
+  const scrollToMessage = useCallback((messageId: string) => {
     const element = messageRefsMap.current.get(messageId);
     if (element) {
       // Temporarily disable auto-scroll during manual scroll
@@ -714,19 +715,19 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   }, [onScrollToMessage]);
 
   // Expose scrollToMessage via ref
-  React.useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     scrollToMessage,
   }), [scrollToMessage]);
 
   // Handle highlightedMessageId prop changes - scroll and highlight
-  React.useEffect(() => {
+  useEffect(() => {
     if (highlightedMessageId) {
       scrollToMessage(highlightedMessageId);
     }
   }, [highlightedMessageId, scrollToMessage]);
 
   // Auto-clear highlight after animation (2.5 seconds)
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeHighlight) {
       const timer = setTimeout(() => {
         setActiveHighlight(null);
