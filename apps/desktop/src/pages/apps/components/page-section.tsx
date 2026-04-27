@@ -18,6 +18,7 @@ import {
   Shield,
   ExternalLink,
   Lock,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "@/components/layout/sidebar-section";
@@ -56,6 +57,7 @@ import { toast } from "@/hooks/use-toast";
 import { usePages, useDeletePage } from "@/hooks/use-pages";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { CreatePageDialog } from "./create-page-dialog";
+import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
@@ -85,6 +87,7 @@ interface PageTreeItemProps {
   onOpenInNewTab: (page: PageConfig) => void;
   onDeleteClick: (page: PageConfig) => void;
   onCreateSubpage: (parentSlug: string) => void;
+  onEditClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
 }
 
@@ -97,6 +100,7 @@ function PageTreeItem({
   onOpenInNewTab,
   onDeleteClick,
   onCreateSubpage,
+  onEditClick,
   onPermissionsClick,
 }: PageTreeItemProps) {
   const { t } = useTranslation();
@@ -218,7 +222,12 @@ function PageTreeItem({
                 </button>
               </TooltipTrigger>
               {node.page.description && (
-                <TooltipContent side="bottom" className="max-w-xs">
+                <TooltipContent
+                  side="right"
+                  align="start"
+                  sideOffset={72}
+                  className="max-w-xs pointer-events-none"
+                >
                   <p className="text-xs">{node.page.description}</p>
                 </TooltipContent>
               )}
@@ -302,6 +311,12 @@ function PageTreeItem({
                     {t("page.openInNewTab")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    onClick={() => onEditClick(node.page)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    {t("common.edit", "Edit")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => onPermissionsClick(node.page)}
                   >
                     <Shield className="mr-2 h-4 w-4" />
@@ -328,6 +343,10 @@ function PageTreeItem({
           <ContextMenuItem onClick={() => onCreateSubpage(node.page.slug)}>
             <Plus className="mr-2 h-4 w-4" />
             {t("page.createSubpage")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onEditClick(node.page)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("common.edit", "Edit")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={() => onPermissionsClick(node.page)}>
@@ -359,6 +378,7 @@ function PageTreeItem({
               onOpenInNewTab={onOpenInNewTab}
               onDeleteClick={onDeleteClick}
               onCreateSubpage={onCreateSubpage}
+              onEditClick={onEditClick}
               onPermissionsClick={onPermissionsClick}
             />
           ))}
@@ -388,6 +408,9 @@ export function PageSection({
   // Create page dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createParentSlug, setCreateParentSlug] = useState<string | undefined>(undefined);
+
+  // Edit page dialog state
+  const [editPage, setEditPage] = useState<PageConfig | null>(null);
 
   // Permissions dialog state
   const [permissionsPage, setPermissionsPage] = useState<PageConfig | null>(null);
@@ -456,6 +479,11 @@ export function PageSection({
       } as PageConfig, workspaceId);
     }
   }, [pages, openPageTab, workspaceId]);
+
+  // Handle edit click
+  const handleEditClick = useCallback((page: PageConfig) => {
+    setEditPage(page);
+  }, []);
 
   // Handle permissions click
   const handlePermissionsClick = useCallback((page: PageConfig) => {
@@ -575,6 +603,7 @@ export function PageSection({
                 onOpenInNewTab={handleOpenInNewTab}
                 onDeleteClick={setPageToDelete}
                 onCreateSubpage={handleCreateSubpage}
+                onEditClick={handleEditClick}
                 onPermissionsClick={handlePermissionsClick}
               />
             ))}
@@ -622,6 +651,14 @@ export function PageSection({
         workspacePath={workspacePath}
         parentSlug={createParentSlug}
         onSuccess={handleCreateSuccess}
+      />
+
+      {/* Edit Page Dialog */}
+      <EditPageDialog
+        open={!!editPage}
+        onOpenChange={(open) => !open && setEditPage(null)}
+        page={editPage}
+        workspacePath={workspacePath}
       />
 
       {/* Permissions Dialog */}

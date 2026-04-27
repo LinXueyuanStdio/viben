@@ -16,8 +16,9 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
+import { updatePageConfig } from "@/lib/gateway/modules/pages";
 import { VitePreview } from "@/pages/conversation/components/vite-preview";
-import { TiptapMarkdownRenderer } from "./tiptap-markdown-renderer";
+import { YooptaMarkdownRenderer } from "./yoopta-markdown-renderer";
 import type { PageConfig } from "@/hooks/use-pages";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
@@ -77,6 +78,34 @@ export function PagePreview({
 }: PagePreviewProps) {
   const { t } = useTranslation();
 
+  // Debounced title save
+  const titleSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTitleChange = React.useCallback(
+    (newTitle: string) => {
+      if (!workspacePath || !page.slug) return;
+      if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+      titleSaveTimerRef.current = setTimeout(async () => {
+        try {
+          const baseUrl = getGatewayUrl();
+          await updatePageConfig(baseUrl, {
+            workspace_path: workspacePath,
+            slug: page.slug,
+            name: newTitle || "Untitled",
+          });
+        } catch (err) {
+          console.error("[PagePreview] title save failed:", err);
+        }
+      }, 800);
+    },
+    [workspacePath, page.slug]
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
+    };
+  }, []);
+
   // Determine the gateway serve URL for static/markdown pages
   const gatewayServeUrl = React.useMemo(() => {
     if (!workspacePath || !page.slug) return null;
@@ -95,10 +124,12 @@ export function PagePreview({
       <div className="flex-1 overflow-auto">
         {/* Markdown type pages - always show rendered markdown (no toggle, single view) */}
         {!showViewToggle && (
-          <TiptapMarkdownRenderer
+          <YooptaMarkdownRenderer
             content={page.skill_content || ""}
             workspacePath={workspacePath}
             slug={page.slug}
+            title={page.name}
+            onTitleChange={handleTitleChange}
             className="h-full"
           />
         )}
@@ -108,10 +139,12 @@ export function PagePreview({
           <>
             {/* SKILL.md view - Render markdown content */}
             {viewMode === "skill" && (
-              <TiptapMarkdownRenderer
+              <YooptaMarkdownRenderer
                 content={page.skill_content || ""}
                 workspacePath={workspacePath}
                 slug={page.slug}
+                title={page.name}
+                onTitleChange={handleTitleChange}
                 className="h-full"
               />
             )}
