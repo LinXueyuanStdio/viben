@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, AlertCircle, X, Terminal } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
@@ -46,18 +46,18 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const { t } = useTranslation();
   const { loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, setLoading, isAuthenticated } = useAuth();
 
-  const [open, setOpen] = React.useState(false);
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // OAuth waiting state
-  const [isWaitingOAuth, setIsWaitingOAuth] = React.useState(false);
+  const [isWaitingOAuth, setIsWaitingOAuth] = useState(false);
 
   // Dev mode: manual OAuth code input
-  const [showDevOAuth, setShowDevOAuth] = React.useState(false);
-  const [oauthCode, setOauthCode] = React.useState("");
+  const [showDevOAuth, setShowDevOAuth] = useState(false);
+  const [oauthCode, setOauthCode] = useState("");
 
   // Close dialog when authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && open) {
       setOpen(false);
       onSuccess?.();
@@ -65,7 +65,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   }, [isAuthenticated, open, onSuccess]);
 
   // Clear errors when dialog opens/closes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       setFormError(null);
       clearError();
@@ -76,7 +76,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   }, [open, clearError]);
 
   // Reset OAuth waiting state when auth completes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       setIsWaitingOAuth(false);
     }
