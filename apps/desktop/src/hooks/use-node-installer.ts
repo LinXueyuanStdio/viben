@@ -5,7 +5,7 @@
  * Enhanced with auto-install support (参考 Qclaw).
  */
 
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -188,20 +188,20 @@ export interface NodeScanResult {
 
 export function useNodeInstaller(): UseNodeInstallerReturn {
   const { t } = useTranslation();
-  const [state, setState] = React.useState<NodeInstallerState>("idle");
-  const [issue, setIssue] = React.useState<NodeInstallerIssue | null>(null);
-  const [currentVersion, setCurrentVersion] = React.useState<string | null>(
+  const [state, setState] = useState<NodeInstallerState>("idle");
+  const [issue, setIssue] = useState<NodeInstallerIssue | null>(null);
+  const [currentVersion, setCurrentVersion] = useState<string | null>(
     null
   );
-  const [currentPath, setCurrentPath] = React.useState<string | null>(null);
-  const [progress, setProgress] = React.useState<NodeInstallProgress | null>(
+  const [currentPath, setCurrentPath] = useState<string | null>(null);
+  const [progress, setProgress] = useState<NodeInstallProgress | null>(
     null
   );
   const [installStrategy, setInstallStrategy] =
-    React.useState<string>("installer");
+    useState<string>("installer");
 
   // Listen to progress events from Tauri
-  React.useEffect(() => {
+  useEffect(() => {
     const unlistenPromise = listen<DownloadProgressEvent>(
       "node-install-progress",
       (event) => {
@@ -235,7 +235,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Check Node.js (enhanced)
   // ============================================================================
 
-  const checkNode = React.useCallback(async (): Promise<NodeCheckResult> => {
+  const checkNode = useCallback(async (): Promise<NodeCheckResult> => {
     log("checkNode started");
     setState("checking");
     setIssue(null);
@@ -312,7 +312,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Scan all Node.js installations
   // ============================================================================
 
-  const scanNodeInstallations = React.useCallback(async (): Promise<NodeScanResult> => {
+  const scanNodeInstallations = useCallback(async (): Promise<NodeScanResult> => {
     log("scanNodeInstallations started");
 
     try {
@@ -331,7 +331,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Check Node.js at a specific path
   // ============================================================================
 
-  const checkNodeAtPath = React.useCallback(async (path: string): Promise<NodeCheckResult> => {
+  const checkNodeAtPath = useCallback(async (path: string): Promise<NodeCheckResult> => {
     log("checkNodeAtPath started, path:", path);
     setState("checking");
     setIssue(null);
@@ -386,7 +386,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // ============================================================================
 
   const prepareMacGitTools =
-    React.useCallback(async (): Promise<MacGitToolsPrepareResult> => {
+    useCallback(async (): Promise<MacGitToolsPrepareResult> => {
       log("prepareMacGitTools started");
       setState("checking");
       setIssue(null);
@@ -443,7 +443,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // ============================================================================
 
   const getInstallPlan =
-    React.useCallback(async (): Promise<NodeInstallPlan> => {
+    useCallback(async (): Promise<NodeInstallPlan> => {
       log("getInstallPlan started");
 
       const result = await invoke<NodeInstallPlan>("get_node_install_plan");
@@ -456,7 +456,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Download Node.js installer
   // ============================================================================
 
-  const downloadInstaller = React.useCallback(
+  const downloadInstaller = useCallback(
     async (plan: NodeInstallPlan): Promise<string> => {
       log("downloadInstaller started, plan:", plan);
       setState("downloading");
@@ -490,7 +490,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Inspect installer (macOS)
   // ============================================================================
 
-  const inspectInstaller = React.useCallback(
+  const inspectInstaller = useCallback(
     async (path: string): Promise<InstallerInspectResult> => {
       log("inspectInstaller started, path:", path);
       setState("verifying");
@@ -542,7 +542,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Install environment (execute installer)
   // ============================================================================
 
-  const installEnv = React.useCallback(
+  const installEnv = useCallback(
     async (options: InstallEnvOptions): Promise<InstallEnvResult> => {
       log("installEnv started, options:", options);
       setState("installing");
@@ -595,7 +595,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Refresh environment variables
   // ============================================================================
 
-  const refreshEnvironment = React.useCallback(async (): Promise<void> => {
+  const refreshEnvironment = useCallback(async (): Promise<void> => {
     log("refreshEnvironment started");
     setProgress({
       stage: "finalizing",
@@ -616,7 +616,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Legacy: install Node.js (placeholder, for backwards compatibility)
   // ============================================================================
 
-  const installNode = React.useCallback(async (): Promise<void> => {
+  const installNode = useCallback(async (): Promise<void> => {
     log("installNode started");
     setState("installing");
     setIssue(null);
@@ -656,7 +656,7 @@ export function useNodeInstaller(): UseNodeInstallerReturn {
   // Reset
   // ============================================================================
 
-  const reset = React.useCallback(() => {
+  const reset = useCallback(() => {
     log("reset called");
     setState("idle");
     setIssue(null);
