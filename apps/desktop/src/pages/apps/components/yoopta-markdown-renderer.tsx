@@ -236,6 +236,16 @@ export function YooptaMarkdownRenderer({
     [persistCover]
   );
 
+  /** Open the single CoverPicker, anchoring to the given element. */
+  const openCoverPicker = useCallback(
+    (anchor: HTMLElement, align: "start" | "center" | "end" = "start") => {
+      coverPickerAnchorRef.current = anchor;
+      setCoverPickerAlign(align);
+      setShowCoverPicker(true);
+    },
+    []
+  );
+
   const handleIconChange = useCallback(
     (iconData: IconData | null) => {
       setPageIcon(iconData);
@@ -689,9 +699,8 @@ export function YooptaMarkdownRenderer({
           <CoverBanner
             coverUrl={coverUrl}
             isEditable={isEditable}
-            workspacePath={workspacePath}
-            slug={slug}
             onCoverChange={handleCoverChange}
+            onOpenCoverPicker={openCoverPicker}
           />
         )}
         {isEditable && (
@@ -700,10 +709,9 @@ export function YooptaMarkdownRenderer({
             pageTitle={pageTitle}
             coverUrl={coverUrl}
             workspacePath={workspacePath}
-            slug={slug}
             iconAnchorRef={iconAnchorRef}
             onOpenIconPicker={() => { console.log("[DEBUG:Main] onOpenIconPicker called"); setShowIconPicker(true); }}
-            onCoverChange={handleCoverChange}
+            onOpenCoverPicker={openCoverPicker}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}
           />
