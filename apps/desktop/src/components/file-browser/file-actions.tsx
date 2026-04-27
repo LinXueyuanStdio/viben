@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
   List,
   LayoutGrid,
@@ -256,17 +257,17 @@ export const FileSearchInput = React.memo(function FileSearchInput({
   className,
 }: FileSearchInputProps) {
   const { t } = useTranslation();
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const [localValue, setLocalValue] = React.useState(value);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [localValue, setLocalValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync local value with external value
-  React.useEffect(() => {
+  useEffect(() => {
     setLocalValue(value);
   }, [value]);
 
   // Handle input change with debounce
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       setLocalValue(newValue);
@@ -285,14 +286,14 @@ export const FileSearchInput = React.memo(function FileSearchInput({
   );
 
   // Clear search
-  const handleClear = React.useCallback(() => {
+  const handleClear = useCallback(() => {
     setLocalValue("");
     onChange("");
     inputRef.current?.focus();
   }, [onChange]);
 
   // Cleanup timeout on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
