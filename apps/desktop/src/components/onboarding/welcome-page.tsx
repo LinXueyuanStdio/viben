@@ -5,7 +5,7 @@
  * Qclaw 参考: /Users/lxy/Documents/GitHub/others/Qclaw/src/pages/Welcome.tsx
  */
 
-import * as React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Shield, Database, AlertTriangle, ExternalLink } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -55,7 +55,7 @@ function InfoCard({ icon, title, description, className }: InfoCardProps) {
 
 export function WelcomePage({ onAccept }: WelcomePageProps) {
   const { t } = useTranslation();
-  const [accepted, setAccepted] = React.useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   const infoCards = [
     {
