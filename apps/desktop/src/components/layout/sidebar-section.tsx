@@ -1,15 +1,16 @@
-import * as React from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarSectionProps {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
   collapsed?: boolean; // Sidebar collapsed state
   className?: string;
-  headerAction?: React.ReactNode;
+  headerAction?: ReactNode;
 }
 
 /**
@@ -25,7 +26,7 @@ export function SidebarSection({
   className,
   headerAction,
 }: SidebarSectionProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // When sidebar is collapsed, don't show section headers, just pass through children
   // The children (nav) will handle their own centering
