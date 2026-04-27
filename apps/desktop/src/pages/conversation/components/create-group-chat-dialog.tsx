@@ -5,7 +5,7 @@
  * and initial member selection (agents from the workspace).
  */
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Users, Bot, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,13 +75,13 @@ export function CreateGroupChatDialog({
   const { t } = useTranslation();
 
   // Form state
-  const [name, setName] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [selectedAgentIds, setSelectedAgentIds] = React.useState<Set<string>>(new Set());
-  const [error, setError] = React.useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [selectedAgentIds, setSelectedAgentIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   // Reset form when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setName("");
       setDescription("");
