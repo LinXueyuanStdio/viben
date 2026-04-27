@@ -146,7 +146,7 @@ export function SettingsVoice() {
         console.error("Failed to start wake word detection:", err);
         const errorMsg = err instanceof Error ? err.message : String(err);
         if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("Failed to fetch")) {
-          setWakeWordError(t("settings.voice.wakeWord.test.modelNotFound", "唤醒词模型文件未找到，请先下载模型"));
+          setWakeWordError(t("settings.voice.wakeWord.test.modelNotFound", "Wake word model file not found. Please download the model first."));
         } else {
           setWakeWordError(errorMsg);
         }
@@ -168,10 +168,10 @@ export function SettingsVoice() {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold font-serif mb-1">
-            {t("settings.sections.voice", "语音交互")}
+            {t("settings.sections.voice", "Voice Interaction")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t("settings.voice.description", "配置语音助手和唤醒词检测")}
+            {t("settings.voice.description", "Configure voice assistant and wake word detection")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ export function SettingsVoice() {
             disabled={isSaving}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            {t("common.reset", "重置")}
+            {t("common.reset", "Reset")}
           </Button>
           <Button
             onClick={handleSave}
@@ -194,20 +194,20 @@ export function SettingsVoice() {
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            {t("common.save", "保存")}
+            {t("common.save", "Save")}
           </Button>
         </div>
       </div>
 
       {/* API Config Card */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <SectionHeader title={t("settings.voice.api.title", "API 配置")} />
+        <SectionHeader title={t("settings.voice.api.title", "API Configuration")} />
 
         <SettingsItem
           title={t("settings.voice.api.vocalBridgeKey", "Vocal Bridge API Key")}
           description={t(
             "settings.voice.api.vocalBridgeKeyDesc",
-            "用于连接语音服务的 API 密钥"
+            "API key for connecting to the voice service"
           )}
         >
           <div className="flex items-center gap-2">
@@ -227,8 +227,8 @@ export function SettingsVoice() {
               onClick={() => setShowApiKey(!showApiKey)}
             >
               {showApiKey
-                ? t("common.hide", "隐藏")
-                : t("common.show", "显示")}
+                ? t("common.hide", "Hide")
+                : t("common.show", "Show")}
             </Button>
           </div>
         </SettingsItem>
@@ -237,7 +237,7 @@ export function SettingsVoice() {
           title={t("settings.voice.api.agentId", "Agent ID")}
           description={t(
             "settings.voice.api.agentIdDesc",
-            "Vocal Bridge 语音智能体 ID"
+            "Vocal Bridge voice agent ID"
           )}
         >
           <Input
@@ -256,14 +256,14 @@ export function SettingsVoice() {
       {/* Wake Word Settings Card */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
         <SectionHeader
-          title={t("settings.voice.wakeWord.title", "唤醒词设置")}
+          title={t("settings.voice.wakeWord.title", "Wake Word Settings")}
         />
 
         <SettingsItem
-          title={t("settings.voice.wakeWord.word", "唤醒词")}
+          title={t("settings.voice.wakeWord.word", "Wake Word")}
           description={t(
             "settings.voice.wakeWord.wordDesc",
-            "说出这个词来激活语音助手"
+            "Say this word to activate the voice assistant"
           )}
         >
           <Select
@@ -284,10 +284,10 @@ export function SettingsVoice() {
         </SettingsItem>
 
         <SettingsItem
-          title={t("settings.voice.wakeWord.threshold", "检测灵敏度")}
+          title={t("settings.voice.wakeWord.threshold", "Detection Sensitivity")}
           description={t(
             "settings.voice.wakeWord.thresholdDesc",
-            "唤醒词检测的置信度阈值"
+            "Confidence threshold for wake word detection"
           )}
         >
           <div className="flex items-center gap-3">
@@ -309,10 +309,10 @@ export function SettingsVoice() {
         </SettingsItem>
 
         <SettingsItem
-          title={t("settings.voice.wakeWord.autoStart", "启动时自动监听")}
+          title={t("settings.voice.wakeWord.autoStart", "Auto-listen on Launch")}
           description={t(
             "settings.voice.wakeWord.autoStartDesc",
-            "应用启动后自动开始监听唤醒词"
+            "Automatically start listening for wake word after app launch"
           )}
         >
           <Switch
@@ -325,10 +325,10 @@ export function SettingsVoice() {
         </SettingsItem>
 
         <SettingsItem
-          title={t("settings.voice.wakeWord.silenceTimeout", "静默超时")}
+          title={t("settings.voice.wakeWord.silenceTimeout", "Silence Timeout")}
           description={t(
             "settings.voice.wakeWord.silenceTimeoutDesc",
-            "无语音输入后自动退出的时间"
+            "Time to auto-exit after no voice input"
           )}
         >
           <div className="flex items-center gap-3">
@@ -376,18 +376,18 @@ export function SettingsVoice() {
             {/* Status text */}
             <p className="text-sm text-muted-foreground">
               {wakeWordDetected
-                ? t("settings.voice.wakeWord.test.detected", "检测到唤醒词！")
+                ? t("settings.voice.wakeWord.test.detected", "Wake word detected!")
                 : wakeWord.state === "loading"
-                  ? t("settings.voice.wakeWord.test.loading", "正在加载模型...")
+                  ? t("settings.voice.wakeWord.test.loading", "Loading model...")
                   : wakeWord.isListening
                     ? t("settings.voice.wakeWord.test.listening", { wakeWord: config.wakeWord })
-                    : t("settings.voice.wakeWord.test.idle", "测试唤醒词检测")}
+                    : t("settings.voice.wakeWord.test.idle", "Test wake word detection")}
             </p>
 
             {/* Detection result */}
             {lastDetection && (
               <p className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-1 rounded">
-                {t("settings.voice.wakeWord.test.score", "置信度")}: {(lastDetection.score * 100).toFixed(1)}%
+                {t("settings.voice.wakeWord.test.score", "Confidence")}: {(lastDetection.score * 100).toFixed(1)}%
               </p>
             )}
 
@@ -408,12 +408,12 @@ export function SettingsVoice() {
               {wakeWord.isListening ? (
                 <>
                   <Square className="w-4 h-4 mr-2" />
-                  {t("settings.voice.wakeWord.test.stop", "停止测试")}
+                  {t("settings.voice.wakeWord.test.stop", "Stop Test")}
                 </>
               ) : (
                 <>
                   <AudioWaveform className="w-4 h-4 mr-2" />
-                  {t("settings.voice.wakeWord.test.start", "测试唤醒词")}
+                  {t("settings.voice.wakeWord.test.start", "Test Wake Word")}
                 </>
               )}
             </Button>
@@ -423,13 +423,13 @@ export function SettingsVoice() {
 
       {/* Sound Effects Card */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <SectionHeader title={t("settings.voice.sound.title", "音效设置")} />
+        <SectionHeader title={t("settings.voice.sound.title", "Sound Effects")} />
 
         <SettingsItem
-          title={t("settings.voice.sound.enabled", "启用音效")}
+          title={t("settings.voice.sound.enabled", "Enable Sound Effects")}
           description={t(
             "settings.voice.sound.enabledDesc",
-            "播放唤醒和错误等操作的音效反馈"
+            "Play sound feedback for wake and error events"
           )}
         >
           <Switch
@@ -444,7 +444,7 @@ export function SettingsVoice() {
 
       {/* Test Card */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <SectionHeader title={t("settings.voice.test.title", "测试语音功能")} />
+        <SectionHeader title={t("settings.voice.test.title", "Test Voice Features")} />
 
         <div className="flex flex-col items-center py-6 gap-4">
           {/* Status icon */}
@@ -467,10 +467,10 @@ export function SettingsVoice() {
           {/* Status text */}
           <p className="text-sm text-muted-foreground">
             {voiceAgent.isListening
-              ? t("settings.voice.test.listening", "正在监听...")
+              ? t("settings.voice.test.listening", "Listening...")
               : voiceAgent.state === "connecting"
-                ? t("settings.voice.test.connecting", "正在连接...")
-                : t("settings.voice.test.idle", "点击开始说话")}
+                ? t("settings.voice.test.connecting", "Connecting...")
+                : t("settings.voice.test.idle", "Click to start speaking")}
           </p>
 
           {/* User transcript */}
@@ -489,19 +489,19 @@ export function SettingsVoice() {
             {voiceAgent.isConnected ? (
               <>
                 <Square className="w-4 h-4 mr-2" />
-                {t("settings.voice.test.stop", "停止")}
+                {t("settings.voice.test.stop", "Stop")}
               </>
             ) : (
               <>
                 <Mic className="w-4 h-4 mr-2" />
-                {t("settings.voice.test.start", "开始测试")}
+                {t("settings.voice.test.start", "Start Test")}
               </>
             )}
           </Button>
 
           {(!apiKey || !agentId) && (
             <p className="text-xs text-destructive">
-              {t("settings.voice.test.noConfig", "请先配置 API Key 和 Agent ID")}
+              {t("settings.voice.test.noConfig", "Please configure API Key and Agent ID first")}
             </p>
           )}
         </div>

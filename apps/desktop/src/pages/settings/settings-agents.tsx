@@ -29,10 +29,10 @@ export function SettingsAgentsPage() {
       <div className="flex flex-col items-center justify-center h-full">
         <Bot className="h-12 w-12 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">
-          {t("settingsAgents.noGlobalWorkspace", { defaultValue: "全局工作空间未找到" })}
+          {t("settingsAgents.noGlobalWorkspace", { defaultValue: "Global workspace not found" })}
         </h2>
         <p className="text-muted-foreground">
-          {t("settingsAgents.noGlobalWorkspaceDesc", { defaultValue: "请先创建或初始化全局工作空间" })}
+          {t("settingsAgents.noGlobalWorkspaceDesc", { defaultValue: "Please create or initialize the global workspace first" })}
         </p>
       </div>
     );

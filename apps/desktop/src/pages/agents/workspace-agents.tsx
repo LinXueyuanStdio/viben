@@ -363,7 +363,7 @@ export function WorkspaceAgentsPage({
   // Promote workspace template to global
   const handlePromoteToGlobal = async (agentId: string, agentName: string) => {
     if (!workspace?.path) return;
-    if (!confirm(t("agent.promoteTemplateConfirm", { defaultValue: '将 "{{agentName}}" 提升为全局模板？', agentName }))) return;
+    if (!confirm(t("agent.promoteTemplateConfirm", { defaultValue: 'Promote "{{agentName}}" to a global template?', agentName }))) return;
     try {
       const client = getGatewayClient();
       // Call the promote endpoint
@@ -483,13 +483,13 @@ export function WorkspaceAgentsPage({
                 <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => openCreateDialog(null)}>
                   <Bot className="h-4 w-4 mr-2" />
-                  {t("agent.createAgent", "创建智能体")}
+                  {t("agent.createAgent", "Create Agent")}
                 </DropdownMenuItem>
                 {apiTemplates.length > 0 && (
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
                       <LayoutTemplate className="h-4 w-4 mr-2" />
-                      {t("settingsAgents.createFromTemplate", "从模板创建")}
+                      {t("settingsAgents.createFromTemplate", "Create from Template")}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent className="w-64">
                       {loadingTemplates ? (
@@ -507,7 +507,7 @@ export function WorkspaceAgentsPage({
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">{template.name}</span>
                                   <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                    {isGlobal ? t("agent.globalTemplate", "全局") : t("agent.workspaceTemplate", "工作区")}
+                                    {isGlobal ? t("agent.globalTemplate", "Global") : t("agent.workspaceTemplate", "Workspace")}
                                   </Badge>
                                 </div>
                                 {template.description && (
@@ -609,7 +609,7 @@ export function WorkspaceAgentsPage({
                       // Build badges array
                       const badges: Array<{ label: string; variant: "primary" | "secondary" | "default" }> = [];
                       if (isTemplate) {
-                        badges.push({ label: t("agent.template", "模板"), variant: "secondary" });
+                        badges.push({ label: t("agent.template", "Template"), variant: "secondary" });
                       }
 
                       return (
@@ -708,8 +708,8 @@ export function WorkspaceAgentsPage({
                     <p className="font-medium">{selectedTemplate.name}</p>
                     <Badge variant="outline" className="text-[9px] px-1.5 py-0">
                       {!(selectedTemplate as any).source || (selectedTemplate as any).source === "global"
-                        ? t("agent.globalTemplate", "全局")
-                        : t("agent.workspaceTemplate", "工作区")}
+                        ? t("agent.globalTemplate", "Global")
+                        : t("agent.workspaceTemplate", "Workspace")}
                     </Badge>
                   </div>
                   {selectedTemplate.description && (

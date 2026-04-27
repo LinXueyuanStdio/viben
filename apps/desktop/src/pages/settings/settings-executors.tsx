@@ -202,7 +202,7 @@ export function SettingsExecutorsPage() {
     if (executor.checking) {
       return {
         icon: <Loader2 className="h-4 w-4 animate-spin" />,
-        text: t("settingsExecutors.checking", "检测中..."),
+        text: t("settingsExecutors.checking", "Checking..."),
         variant: "neutral" as const,
       };
     }
@@ -218,7 +218,7 @@ export function SettingsExecutorsPage() {
     if (!executor.availability) {
       return {
         icon: <AlertCircle className="h-4 w-4" />,
-        text: t("settingsExecutors.unknown", "未检测"),
+        text: t("settingsExecutors.unknown", "Not Checked"),
         variant: "neutral" as const,
       };
     }
@@ -227,25 +227,25 @@ export function SettingsExecutorsPage() {
       case "LOGIN_DETECTED":
         return {
           icon: <CheckCircle2 className="h-4 w-4" />,
-          text: t("settingsExecutors.loggedIn", "已登录"),
+          text: t("settingsExecutors.loggedIn", "Logged In"),
           variant: "success" as const,
         };
       case "INSTALLATION_FOUND":
         return {
           icon: <CheckCircle2 className="h-4 w-4" />,
-          text: t("settingsExecutors.installed", "已安装"),
+          text: t("settingsExecutors.installed", "Installed"),
           variant: "success" as const,
         };
       case "NOT_FOUND":
         return {
           icon: <XCircle className="h-4 w-4" />,
-          text: t("settingsExecutors.notFound", "未找到"),
+          text: t("settingsExecutors.notFound", "Not Found"),
           variant: "warning" as const,
         };
       default:
         return {
           icon: <AlertCircle className="h-4 w-4" />,
-          text: t("settingsExecutors.unknown", "未知"),
+          text: t("settingsExecutors.unknown", "Unknown"),
           variant: "neutral" as const,
         };
     }
@@ -263,7 +263,7 @@ export function SettingsExecutorsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold font-serif mb-1">
-            {t("settings.sections.executors", "执行器")}
+            {t("settings.sections.executors", "Executors")}
           </h2>
           <p className="text-sm text-muted-foreground">
             {t("settings.executorsDescription")}
@@ -278,7 +278,7 @@ export function SettingsExecutorsPage() {
           <RefreshCw
             className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")}
           />
-          {t("settingsExecutors.refresh", "刷新")}
+          {t("settingsExecutors.refresh", "Refresh")}
         </Button>
       </div>
 
@@ -300,10 +300,10 @@ export function SettingsExecutorsPage() {
           </div>
           <div>
             <h3 className="font-semibold">
-              {t("settingsExecutors.summary", "执行器状态")}
+              {t("settingsExecutors.summary", "Executor Status")}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {t("settingsExecutors.summaryText", "{{installed}}/{{total}} 个执行器可用", {
+              {t("settingsExecutors.summaryText", "{{installed}}/{{total}} executors available", {
                 installed: installedCount,
                 total: EXECUTORS.length,
               })}
@@ -363,7 +363,7 @@ export function SettingsExecutorsPage() {
                     executor.info.installCommand && (
                       <div className="mt-3 p-2 rounded-lg bg-muted/50">
                         <p className="text-xs text-muted-foreground mb-1">
-                          {t("settingsExecutors.installHint", "安装命令:")}
+                          {t("settingsExecutors.installHint", "Install command:")}
                         </p>
                         <code className="text-xs font-mono">
                           {executor.info.installCommand}
