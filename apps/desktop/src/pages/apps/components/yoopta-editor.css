@@ -2,23 +2,15 @@
 
 .yoopta-notion-editor {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
-  line-height: 1.6;
+  line-height: 1.5;
   color: var(--foreground);
-}
-
-/* Editor header - top-right operations */
-.yoopta-editor-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--background);
 }
 
 /* Block hover - Notion shows floating actions on hover, not background highlight */
 
-/* Smooth transitions for blocks */
+/* Smooth transitions for blocks (opacity + indentation) */
 .yoopta-notion-editor [data-yoopta-block] {
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, padding-left 0.15s ease;
 }
 
 /* Placeholder styling */
@@ -130,11 +122,11 @@
   font-weight: 600;
 }
 
-/* Blockquote */
+/* Blockquote - Notion uses a solid foreground-colored left border */
 .yoopta-notion-editor blockquote {
-  border-left: 3px solid var(--foreground);
+  border-left: 3px solid currentColor;
   padding-left: 1rem;
-  color: var(--muted-foreground);
+  color: var(--foreground);
 }
 
 /* Todo list checkboxes */
@@ -207,10 +199,8 @@
   outline: none;
 }
 
-/* Smooth scrolling for the editor */
-.yoopta-notion-editor {
-  scroll-behavior: smooth;
-}
+/* scroll-behavior: smooth removed - it causes sluggish scrolling during normal editing.
+   TOC sidebar uses scrollIntoView({ behavior: "smooth" }) directly when needed. */
 
 /* Link popover animation */
 .yoopta-link-popover {
@@ -228,40 +218,32 @@
   }
 }
 
-/* Page title hover actions (Notion-style "Add icon" / "Add cover") */
-.yoopta-page-title-actions {
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.yoopta-page-title-area:hover .yoopta-page-title-actions {
-  opacity: 1;
+/* Cover image banner */
+.yoopta-cover-area {
+  overflow: hidden;
+  transition: height 0.2s ease;
 }
 
-/* Emoji input popover */
-.yoopta-emoji-input {
-  display: inline-block;
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.yoopta-cover-area img {
+  transition: transform 0.3s ease;
 }
 
-.yoopta-emoji-input input {
-  width: 8rem;
-  font-size: 1.5rem;
-  text-align: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-  outline: none;
-  color: var(--foreground);
+.yoopta-cover-area:hover img {
+  transform: scale(1.01);
 }
 
-.yoopta-emoji-input input:focus {
-  border-color: var(--ring, oklch(0.7 0.1 250));
+/* Subtle bottom gradient so icon/title reads clearly over cover */
+.yoopta-cover-area::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top, var(--background), transparent);
+  pointer-events: none;
 }
+
 
 /* Page icon display */
 .yoopta-page-icon {
@@ -279,21 +261,54 @@
   transform: scale(0.95);
 }
 
-/* Block new insertion animation */
-.yoopta-notion-editor [data-yoopta-block] {
-  animation: yoopta-block-appear 0.2s ease;
+/* Floating block actions (+ and drag handle) - smooth appearance */
+.yoopta-notion-editor [data-yoopta-floating-block-actions] {
+  animation: yoopta-fade-in 0.1s ease;
 }
 
-@keyframes yoopta-block-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Ensure floating block actions stay above BlockOptions overlay (z-index: 200) */
+.yoopta-ui-floating-block-actions {
+  z-index: 250 !important;
 }
+
+@keyframes yoopta-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Checkbox toggle animation */
+.yoopta-notion-editor [data-yoopta-plugin="TodoList"] input[type="checkbox"] {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Callout block subtle border animation */
+.yoopta-notion-editor [data-yoopta-plugin="Callout"] {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+
+/* Table cell focus highlight */
+.yoopta-notion-editor table td:focus-within {
+  background: oklch(0.7 0.1 250 / 0.04);
+}
+
+/* Accordion open/close transition */
+.yoopta-notion-editor [data-yoopta-plugin="Accordion"] {
+  transition: border-color 0.15s ease;
+}
+
+/* Embed iframe loading state */
+.yoopta-notion-editor [data-yoopta-plugin="Embed"] iframe {
+  transition: opacity 0.3s ease;
+}
+
+/* Save status in footer - smooth transition */
+.yoopta-editor-footer span {
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+/* Block appearance is handled by opacity transition, not animation.
+   CSS animations would re-fire on every React re-render, causing jitter. */
 
 /* Slash command menu & action menu subtle entrance */
 .yoopta-notion-editor [data-floating-ui-portal] {
@@ -311,12 +326,77 @@
   }
 }
 
+/* Notion-like text selection highlight */
+.yoopta-notion-editor ::selection {
+  background: oklch(0.7 0.1 250 / 0.15);
+}
+
+/* Notion-like caret color */
+.yoopta-notion-editor [contenteditable] {
+  caret-color: var(--foreground);
+}
+
+/* Block selection highlight (when block is selected via selection box) */
+.yoopta-notion-editor [data-yoopta-block][data-selected="true"] {
+  background: oklch(0.7 0.1 250 / 0.06);
+  border-radius: 4px;
+}
+
+/* List styling - Notion-like nested bullets */
+.yoopta-notion-editor [data-yoopta-plugin="BulletedList"] ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="BulletedList"][data-meta-depth="1"] ul {
+  list-style: circle;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="BulletedList"][data-meta-depth="2"] ul {
+  list-style: square;
+}
+
+/* Numbered list styling */
+.yoopta-notion-editor [data-yoopta-plugin="NumberedList"] ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="NumberedList"][data-meta-depth="1"] ol {
+  list-style: lower-alpha;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="NumberedList"][data-meta-depth="2"] ol {
+  list-style: lower-roman;
+}
+
+/* TOC sidebar panel - fixed to the right of the editor */
+.yoopta-toc-panel {
+  position: fixed;
+  top: 6rem;
+  right: 1rem;
+  width: 14rem;
+  max-height: calc(100vh - 8rem);
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--background);
+  z-index: 5;
+  animation: yoopta-fade-in 0.15s ease;
+}
+
+/* Hide TOC on narrow screens */
+@media (max-width: 1280px) {
+  .yoopta-toc-panel {
+    display: none;
+  }
+}
+
 /* Print styles */
 @media print {
-  .yoopta-editor-header,
   .yoopta-editor-footer,
   .yoopta-notion-editor [data-floating-ui-portal],
-  .yoopta-notion-editor .yoopta-selection-box {
+  .yoopta-notion-editor .yoopta-selection-box,
+  .yoopta-toc-panel {
     display: none !important;
   }
   .yoopta-notion-editor {

@@ -73,7 +73,13 @@ export function createYooptaPlugins(uploadAsset?: (file: File) => Promise<string
     Table,
     Accordion,
     Divider,
-    Paragraph,
+    Paragraph.extend({
+      elements: {
+        paragraph: {
+          placeholder: "Type '/' for commands...",
+        },
+      },
+    }),
     HeadingOne.extend({
       elements: {
         'heading-one': {

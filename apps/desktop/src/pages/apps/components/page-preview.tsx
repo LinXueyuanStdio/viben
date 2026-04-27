@@ -46,6 +46,8 @@ export interface PagePreviewProps {
   onStopLivePreview?: () => void;
   /** Additional class names */
   className?: string;
+  /** Portal target for editor header buttons */
+  headerPortal?: HTMLElement | null;
 }
 
 /**
@@ -75,6 +77,7 @@ export function PagePreview({
   onStartLivePreview,
   onStopLivePreview,
   className,
+  headerPortal,
 }: PagePreviewProps) {
   const { t } = useTranslation();
 
@@ -129,7 +132,12 @@ export function PagePreview({
             workspacePath={workspacePath}
             slug={page.slug}
             title={page.name}
+            icon={page.icon}
+            cover={page.cover}
+            pageWidth={page.page_width}
+            showToc={page.show_toc}
             onTitleChange={handleTitleChange}
+            headerPortal={headerPortal}
             className="h-full"
           />
         )}
@@ -144,7 +152,12 @@ export function PagePreview({
                 workspacePath={workspacePath}
                 slug={page.slug}
                 title={page.name}
+                icon={page.icon}
+                cover={page.cover}
+                pageWidth={page.page_width}
+                showToc={page.show_toc}
                 onTitleChange={handleTitleChange}
+                headerPortal={headerPortal}
                 className="h-full"
               />
             )}

@@ -11,6 +11,10 @@ import {
   LockIcon,
   UnlockIcon,
   KeyboardIcon,
+  AlignLeftIcon,
+  AlignCenterIcon,
+  MaximizeIcon,
+  ListTreeIcon,
 } from "lucide-react";
 import { html } from "@yoopta/exports";
 import { serializeMarkdown } from "./yoopta-markdown";
@@ -29,13 +33,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import type { PageWidth } from "@/lib/gateway/types/page";
+import { IS_MAC } from "./yoopta-constants";
+
+type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 type YooptaEditorHeaderProps = {
   editor: YooEditor;
   title?: string;
+  pageWidth?: PageWidth;
+  showToc?: boolean;
+  saveStatus?: SaveStatus;
+  onPageWidthChange?: (width: PageWidth) => void;
+  onShowTocChange?: (show: boolean) => void;
 };
 
-export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) => {
+export const YooptaEditorHeader = ({ editor, title, pageWidth = "default", showToc = false, saveStatus = "idle", onPageWidthChange, onShowTocChange }: YooptaEditorHeaderProps) => {
   const [copied, setCopied] = useState(false);
   const [isLocked, setIsLocked] = useState(editor.readOnly);
   const [, forceUpdate] = useState(0);
@@ -64,8 +77,14 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
       const a = document.createElement("a");
       a.href = url;
       a.download = `${filename}.md`;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      // Delay cleanup to allow download to start
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       console.error("Export markdown failed:", err);
     }
@@ -79,8 +98,13 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
       const a = document.createElement("a");
       a.href = url;
       a.download = `${filename}.html`;
+      a.style.display = "none";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       console.error("Export HTML failed:", err);
     }
@@ -114,12 +138,23 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
     setIsLocked(editor.readOnly);
   }, [editor]);
 
-  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent);
+  const isMac = IS_MAC;
   const canUndo = editor.historyStack.undos.length > 0;
   const canRedo = editor.historyStack.redos.length > 0;
 
   return (
-    <div role="toolbar" aria-label="Editor actions" className="yoopta-editor-header flex items-center justify-end gap-1 px-4 py-2">
+    <div role="toolbar" aria-label="Editor actions" className="flex items-center justify-end gap-1">
+      {saveStatus !== "idle" && (
+        <span
+          aria-live="polite"
+          className={`text-xs mr-auto ${saveStatus === 'error' ? 'text-destructive' : 'text-muted-foreground/50'}`}
+        >
+          {saveStatus === 'pending' && 'Editing...'}
+          {saveStatus === 'saving' && 'Saving...'}
+          {saveStatus === 'saved' && 'Saved'}
+          {saveStatus === 'error' && 'Save failed'}
+        </span>
+      )}
       <button
         type="button"
         onClick={handleUndo}
@@ -152,15 +187,15 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleExportMarkdown}>
+          <DropdownMenuItem onSelect={handleExportMarkdown}>
             <FileTextIcon className="mr-2 h-4 w-4" />
             Export Markdown
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleExportHTML}>
+          <DropdownMenuItem onSelect={handleExportHTML}>
             <CodeIcon className="mr-2 h-4 w-4" />
             Export HTML
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleCopyMarkdown}>
+          <DropdownMenuItem onSelect={handleCopyMarkdown}>
             {copied ? (
               <CheckIcon className="mr-2 h-4 w-4 text-green-500" />
             ) : (
@@ -169,12 +204,12 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
             {copied ? "Copied!" : "Copy as Markdown"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handlePrint}>
+          <DropdownMenuItem onSelect={handlePrint}>
             <PrinterIcon className="mr-2 h-4 w-4" />
             Print
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleToggleLock}>
+          <DropdownMenuItem onSelect={handleToggleLock}>
             {isLocked ? (
               <UnlockIcon className="mr-2 h-4 w-4" />
             ) : (
@@ -182,6 +217,38 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
             )}
             {isLocked ? "Unlock editing" : "Lock editing"}
           </DropdownMenuItem>
+          {onPageWidthChange && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onPageWidthChange("default")}>
+                <AlignLeftIcon className="mr-2 h-4 w-4" />
+                <span className="flex items-center justify-between flex-1">
+                  Default width
+                  {pageWidth === "default" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPageWidthChange("wide")}>
+                <AlignCenterIcon className="mr-2 h-4 w-4" />
+                <span className="flex items-center justify-between flex-1">
+                  Wide layout
+                  {pageWidth === "wide" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPageWidthChange("full")}>
+                <MaximizeIcon className="mr-2 h-4 w-4" />
+                <span className="flex items-center justify-between flex-1">
+                  Full width
+                  {pageWidth === "full" && <CheckIcon className="ml-2 h-3.5 w-3.5" />}
+                </span>
+              </DropdownMenuItem>
+            </>
+          )}
+          {onShowTocChange && (
+            <DropdownMenuItem onSelect={() => onShowTocChange(!showToc)}>
+              <ListTreeIcon className="mr-2 h-4 w-4" />
+              {showToc ? "Hide table of contents" : "Show table of contents"}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <Dialog>
@@ -223,6 +290,8 @@ export const YooptaEditorHeader = ({ editor, title }: YooptaEditorHeaderProps) =
               <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Enter`} label="Toggle checkbox" />
               <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↑`} label="Move block up" />
               <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+Shift+↓`} label="Move block down" />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+D`} label="Duplicate block" />
+              <Shortcut keys={`${isMac ? '⌘' : 'Ctrl'}+⌫`} label="Delete block" />
               <Shortcut keys="Tab" label="Indent" />
               <Shortcut keys="Shift+Tab" label="Outdent" />
             </ShortcutSection>

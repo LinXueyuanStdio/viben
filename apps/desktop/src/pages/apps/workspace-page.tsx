@@ -305,6 +305,10 @@ export function WorkspacePage() {
     startPreview(pageDir);
   };
 
+  // Portal target for editor header buttons (rendered in breadcrumb bar)
+  // Use callback ref to trigger re-render when the DOM element mounts
+  const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
+
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
   }, []);
@@ -462,18 +466,21 @@ export function WorkspacePage() {
         showRemove={false}
         showRefresh={false}
         rightContent={
-          <PageToolbar
-            page={page}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            livePreviewStatus={previewStatus}
-            livePreviewUrl={previewUrl}
-            gatewayServeUrl={gatewayServeUrl}
-            onStopLivePreview={stopPreview}
-            onRefresh={handleRefresh}
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-          />
+          <div className="flex items-center gap-2">
+            <div ref={setEditorHeaderEl} />
+            <PageToolbar
+              page={page}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              livePreviewStatus={previewStatus}
+              livePreviewUrl={previewUrl}
+              gatewayServeUrl={gatewayServeUrl}
+              onStopLivePreview={stopPreview}
+              onRefresh={handleRefresh}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+            />
+          </div>
         }
       />
       <div className="flex-1 overflow-hidden">
@@ -487,6 +494,7 @@ export function WorkspacePage() {
           livePreviewError={previewError}
           onStartLivePreview={handleStartLivePreview}
           onStopLivePreview={stopPreview}
+          headerPortal={editorHeaderEl}
           className="h-full"
         />
       </div>

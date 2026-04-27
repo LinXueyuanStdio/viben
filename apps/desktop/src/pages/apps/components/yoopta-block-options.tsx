@@ -12,12 +12,13 @@ import {
   IndentDecreaseIcon,
 } from "lucide-react";
 import { YooptaActionMenuList } from "./yoopta-action-menu";
+import { IS_MAC, MOD_KEY } from "./yoopta-constants";
 
 type YooptaBlockOptionsProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   blockId: string | null;
-  anchor?: HTMLButtonElement | null;
+  anchor?: HTMLElement | null;
 };
 
 export const YooptaBlockOptions = ({
@@ -27,7 +28,6 @@ export const YooptaBlockOptions = ({
   anchor,
 }: YooptaBlockOptionsProps) => {
   const editor = useYooptaEditor();
-  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent);
   const { duplicateBlock, copyBlockLink, deleteBlock } = useBlockActions();
   const turnIntoRef = useRef<HTMLButtonElement>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -118,8 +118,50 @@ export const YooptaBlockOptions = ({
       <BlockOptions open={open} onOpenChange={onOpenChange} anchor={anchor}>
         <BlockOptions.Content side="right" align="end">
           <BlockOptions.Group>
+            <BlockOptions.Item variant="destructive" onSelect={onDelete}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Delete
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Del</span>
+              </span>
+            </BlockOptions.Item>
+            <BlockOptions.Item onSelect={onDuplicate}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Duplicate
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{MOD_KEY}+D</span>
+              </span>
+            </BlockOptions.Item>
             <BlockOptions.Item ref={turnIntoRef} onSelect={onTurnInto} keepOpen>
               Turn into
+            </BlockOptions.Item>
+            <BlockOptions.Item onSelect={onCopyLink}>
+              Copy link to block
+            </BlockOptions.Item>
+          </BlockOptions.Group>
+          <BlockOptions.Separator />
+          <BlockOptions.Group>
+            <BlockOptions.Item icon={<ArrowUpIcon size={16} />} onSelect={onMoveUp}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Move up
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{IS_MAC ? '⌘⇧↑' : 'Ctrl+Shift+↑'}</span>
+              </span>
+            </BlockOptions.Item>
+            <BlockOptions.Item icon={<ArrowDownIcon size={16} />} onSelect={onMoveDown}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Move down
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{IS_MAC ? '⌘⇧↓' : 'Ctrl+Shift+↓'}</span>
+              </span>
+            </BlockOptions.Item>
+            <BlockOptions.Item icon={<IndentIncreaseIcon size={16} />} onSelect={onIndent}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Indent
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Tab</span>
+              </span>
+            </BlockOptions.Item>
+            <BlockOptions.Item icon={<IndentDecreaseIcon size={16} />} onSelect={onOutdent}>
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                Outdent
+                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Shift+Tab</span>
+              </span>
             </BlockOptions.Item>
           </BlockOptions.Group>
           <BlockOptions.Separator />
@@ -150,51 +192,6 @@ export const YooptaBlockOptions = ({
               <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
                 Right
                 {currentAlign === "right" && <Check size={14} />}
-              </span>
-            </BlockOptions.Item>
-          </BlockOptions.Group>
-          <BlockOptions.Separator />
-          <BlockOptions.Group>
-            <BlockOptions.Item icon={<ArrowUpIcon size={16} />} onSelect={onMoveUp}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Move up
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{isMac ? '⌘⇧↑' : 'Ctrl+Shift+↑'}</span>
-              </span>
-            </BlockOptions.Item>
-            <BlockOptions.Item icon={<ArrowDownIcon size={16} />} onSelect={onMoveDown}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Move down
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{isMac ? '⌘⇧↓' : 'Ctrl+Shift+↓'}</span>
-              </span>
-            </BlockOptions.Item>
-            <BlockOptions.Item icon={<IndentIncreaseIcon size={16} />} onSelect={onIndent}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Indent
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Tab</span>
-              </span>
-            </BlockOptions.Item>
-            <BlockOptions.Item icon={<IndentDecreaseIcon size={16} />} onSelect={onOutdent}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Outdent
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Shift+Tab</span>
-              </span>
-            </BlockOptions.Item>
-          </BlockOptions.Group>
-          <BlockOptions.Separator />
-          <BlockOptions.Group>
-            <BlockOptions.Item onSelect={onDuplicate}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Duplicate
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">{isMac ? '\u2318' : 'Ctrl'}+D</span>
-              </span>
-            </BlockOptions.Item>
-            <BlockOptions.Item onSelect={onCopyLink}>
-              Copy link to block
-            </BlockOptions.Item>
-            <BlockOptions.Item variant="destructive" onSelect={onDelete}>
-              <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                Delete
-                <span className="text-muted-foreground/50 text-xs ml-4 font-mono">Del</span>
               </span>
             </BlockOptions.Item>
           </BlockOptions.Group>

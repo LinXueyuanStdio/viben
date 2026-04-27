@@ -5,6 +5,7 @@ import {
   BoldIcon,
   ItalicIcon,
   LinkIcon,
+  Unlink2Icon,
   SigmaIcon,
   Strikethrough,
   Underline,
@@ -19,6 +20,7 @@ import { Editor, Element as SlateElement, Range } from "slate";
 import { FloatingToolbar } from "@yoopta/ui/floating-toolbar";
 import { HighlightColorPicker } from "@yoopta/ui/highlight-color-picker";
 import { YooptaActionMenuList } from "./yoopta-action-menu";
+import { MOD_KEY } from "./yoopta-constants";
 
 export const YooptaToolbar = () => {
   const editor = useYooptaEditor();
@@ -30,8 +32,7 @@ export const YooptaToolbar = () => {
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
 
-  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent);
-  const mod = isMac ? '\u2318' : 'Ctrl';
+  const mod = MOD_KEY;
 
   const highlightValue = Marks.getValue(editor, { type: "highlight" }) as
     | { color?: string; backgroundColor?: string }
@@ -62,31 +63,56 @@ export const YooptaToolbar = () => {
     setActionMenuOpen(true);
   };
 
+  const getActiveLinkUrl = useCallback(() => {
+    const slate = getCurrentSlate();
+    if (!slate || !slate.selection) return "";
+    const [linkEntry] = Editor.nodes(slate, {
+      match: (n: unknown) =>
+        !Editor.isEditor(n as Editor) &&
+        SlateElement.isElement(n) &&
+        (n as { type?: string }).type === "link",
+    });
+    if (!linkEntry) return "";
+    const linkNode = linkEntry[0] as { props?: { url?: string } };
+    return linkNode.props?.url || "";
+  }, [getCurrentSlate]);
+
   const onLinkClick = useCallback(() => {
     const slate = getCurrentSlate();
     if (!slate || !slate.selection) return;
 
+    // If link already active, populate with existing URL for editing
     if (isLinkActive()) {
-      LinkCommands.deleteLink(editor, { slate });
-      return;
+      const existingUrl = getActiveLinkUrl();
+      setLinkUrl(existingUrl);
+    } else {
+      setLinkUrl("");
     }
 
-    setLinkUrl("");
     setLinkPopoverOpen(true);
-    // Focus the input after it appears
     setTimeout(() => linkInputRef.current?.focus(), 0);
-  }, [editor, getCurrentSlate, isLinkActive]);
+  }, [editor, getCurrentSlate, isLinkActive, getActiveLinkUrl]);
 
   const onLinkApply = () => {
-    if (!linkUrl.trim()) {
-      setLinkPopoverOpen(false);
-      return;
-    }
-
     const slate = getCurrentSlate();
     if (!slate || !slate.selection) {
       setLinkPopoverOpen(false);
       return;
+    }
+
+    // Empty URL = remove existing link
+    if (!linkUrl.trim()) {
+      if (isLinkActive()) {
+        LinkCommands.deleteLink(editor, { slate });
+      }
+      setLinkPopoverOpen(false);
+      setLinkUrl("");
+      return;
+    }
+
+    // Remove existing link before inserting updated one
+    if (isLinkActive()) {
+      LinkCommands.deleteLink(editor, { slate });
     }
 
     const selectedText = !Range.isCollapsed(slate.selection)
@@ -295,6 +321,31 @@ export const YooptaToolbar = () => {
                   >
                     Apply
                   </button>
+                  {isLinkActive() && (
+                    <button
+                      onClick={() => {
+                        const slate = getCurrentSlate();
+                        if (slate) LinkCommands.deleteLink(editor, { slate });
+                        setLinkPopoverOpen(false);
+                        setLinkUrl("");
+                      }}
+                      aria-label="Remove link"
+                      title="Remove link"
+                      style={{
+                        border: "1px solid var(--border, #e2e2e2)",
+                        borderRadius: 4,
+                        padding: "2px 6px",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        background: "transparent",
+                        color: "var(--destructive, #e53e3e)",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Unlink2Icon width={14} height={14} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -302,6 +353,7 @@ export const YooptaToolbar = () => {
               <HighlightColorPicker
                 value={{ color: highlightValue?.color }}
                 presets={[
+                  "currentColor",
                   "#787774",
                   "#9F6B53",
                   "#D9730D",
@@ -313,30 +365,19 @@ export const YooptaToolbar = () => {
                   "#D44C47",
                 ]}
                 onChange={(values) => {
+                  const newColor = values.color === "currentColor" ? undefined : values.color;
                   Marks.add(editor, {
                     type: "highlight",
                     value: {
                       ...highlightValue,
-                      color: values.color,
+                      color: newColor,
                     },
                   });
                 }}
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.color}
-                  title="Text color (right-click to clear)"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (highlightValue?.color) {
-                      Marks.add(editor, {
-                        type: "highlight",
-                        value: {
-                          ...highlightValue,
-                          color: undefined,
-                        },
-                      });
-                    }
-                  }}
+                  title="Text color"
                 >
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                     <BaselineIcon />
@@ -359,6 +400,7 @@ export const YooptaToolbar = () => {
               <HighlightColorPicker
                 value={{ backgroundColor: highlightValue?.backgroundColor }}
                 presets={[
+                  "transparent",
                   "#F1F1EF",
                   "#F4EEEE",
                   "#FBECDD",
@@ -370,30 +412,19 @@ export const YooptaToolbar = () => {
                   "#FDEBEC",
                 ]}
                 onChange={(values) => {
+                  const newBg = values.backgroundColor === "transparent" ? undefined : values.backgroundColor;
                   Marks.add(editor, {
                     type: "highlight",
                     value: {
                       ...highlightValue,
-                      backgroundColor: values.backgroundColor,
+                      backgroundColor: newBg,
                     },
                   });
                 }}
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.backgroundColor}
-                  title="Highlight (right-click to clear)"
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    if (highlightValue?.backgroundColor) {
-                      Marks.add(editor, {
-                        type: "highlight",
-                        value: {
-                          ...highlightValue,
-                          backgroundColor: undefined,
-                        },
-                      });
-                    }
-                  }}
+                  title="Highlight"
                   style={{
                     backgroundColor: highlightValue?.backgroundColor || undefined,
                   }}
