@@ -208,14 +208,21 @@ export const YooptaFloatingBlockActions = () => {
   // ── Plus button ──────────────────────────────────────────────────────────
   const onPlusClick = useCallback(
     (id: string | null) => {
+      console.log("[DEBUG:PlusClick] id:", id);
       if (!id) return;
       const floatingBlock = Blocks.getBlock(editor, { id });
+      console.log("[DEBUG:PlusClick] floatingBlock:", floatingBlock?.type, "order:", floatingBlock?.meta.order, "path.current:", editor.path.current);
       if (!floatingBlock) return;
 
+      // Set path so insertBlock has a valid context
+      editor.setPath({ current: floatingBlock.meta.order });
       const nextOrder = floatingBlock.meta.order + 1;
-      editor.insertBlock("Paragraph", { at: nextOrder, focus: true });
+      console.log("[DEBUG:PlusClick] inserting at:", nextOrder);
+      const newId = editor.insertBlock("Paragraph", { at: nextOrder, focus: true });
+      console.log("[DEBUG:PlusClick] inserted id:", newId);
 
       setTimeout(() => {
+        console.log("[DEBUG:PlusClick] dispatching slash key");
         dispatchSlashKeyEvent(editor);
       }, 50);
     },
@@ -229,15 +236,6 @@ export const YooptaFloatingBlockActions = () => {
       const block = Blocks.getBlock(editor, { id });
       if (!block) return;
       editor.setPath({ current: block.meta.order });
-
-      // Debug: log anchor state at click time
-      console.log("[FloatingBlockActions] onDragClick", {
-        blockId: id,
-        dragHandleEl,
-        dragHandleElRect: dragHandleEl?.getBoundingClientRect(),
-        containerPos: posRef.current,
-        containerRect: containerRef.current?.getBoundingClientRect(),
-      });
 
       setBlockOptionsOpen((prev) => !prev);
     },

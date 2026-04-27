@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDownIcon,
   CodeIcon,
@@ -23,6 +24,7 @@ import { YooptaActionMenuList } from "./yoopta-action-menu";
 import { MOD_KEY } from "./yoopta-constants";
 
 export const YooptaToolbar = () => {
+  const { t } = useTranslation();
   const editor = useYooptaEditor();
   const turnIntoRef = useRef<HTMLButtonElement>(null);
   const linkButtonRef = useRef<HTMLButtonElement>(null);
@@ -192,7 +194,7 @@ export const YooptaToolbar = () => {
         <FloatingToolbar.Content>
           <FloatingToolbar.Group>
             <FloatingToolbar.Button ref={turnIntoRef} onClick={onTurnIntoClick}>
-              Turn into
+              {t("editor.toolbar.turnInto")}
               <ChevronDownIcon width={16} height={16} />
             </FloatingToolbar.Button>
           </FloatingToolbar.Group>
@@ -202,7 +204,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "bold" })}
                 active={Marks.isActive(editor, { type: "bold" })}
-                title={`Bold (${mod}+B)`}
+                title={t("editor.toolbar.bold", { shortcut: `${mod}+B` })}
               >
                 <BoldIcon />
               </FloatingToolbar.Button>
@@ -211,7 +213,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "italic" })}
                 active={Marks.isActive(editor, { type: "italic" })}
-                title={`Italic (${mod}+I)`}
+                title={t("editor.toolbar.italic", { shortcut: `${mod}+I` })}
               >
                 <ItalicIcon />
               </FloatingToolbar.Button>
@@ -220,7 +222,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "underline" })}
                 active={Marks.isActive(editor, { type: "underline" })}
-                title={`Underline (${mod}+U)`}
+                title={t("editor.toolbar.underline", { shortcut: `${mod}+U` })}
               >
                 <Underline />
               </FloatingToolbar.Button>
@@ -229,7 +231,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "strike" })}
                 active={Marks.isActive(editor, { type: "strike" })}
-                title={`Strikethrough (${mod}+Shift+S)`}
+                title={t("editor.toolbar.strikethrough", { shortcut: `${mod}+Shift+S` })}
               >
                 <Strikethrough />
               </FloatingToolbar.Button>
@@ -238,7 +240,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Button
                 onClick={() => Marks.toggle(editor, { type: "code" })}
                 active={Marks.isActive(editor, { type: "code" })}
-                title={`Code (${mod}+E)`}
+                title={t("editor.toolbar.code", { shortcut: `${mod}+E` })}
               >
                 <CodeIcon />
               </FloatingToolbar.Button>
@@ -248,7 +250,7 @@ export const YooptaToolbar = () => {
                 ref={linkButtonRef}
                 onClick={onLinkClick}
                 active={isLinkActive()}
-                title={`Link (${mod}+K)`}
+                title={t("editor.toolbar.link", { shortcut: `${mod}+K` })}
               >
                 <LinkIcon />
               </FloatingToolbar.Button>
@@ -256,7 +258,7 @@ export const YooptaToolbar = () => {
                 <div
                   ref={linkPopoverRef}
                   role="dialog"
-                  aria-label="Insert link"
+                  aria-label={t("editor.toolbar.insertLink")}
                   className="yoopta-link-popover"
                   style={{
                     position: "absolute",
@@ -280,7 +282,7 @@ export const YooptaToolbar = () => {
                   <input
                     ref={linkInputRef}
                     type="text"
-                    aria-label="Link URL"
+                    aria-label={t("editor.toolbar.linkUrl")}
                     placeholder="https://..."
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
@@ -308,7 +310,7 @@ export const YooptaToolbar = () => {
                   />
                   <button
                     onClick={onLinkApply}
-                    aria-label="Apply"
+                    aria-label={t("editor.toolbar.apply")}
                     style={{
                       border: "1px solid var(--border, #e2e2e2)",
                       borderRadius: 4,
@@ -319,7 +321,7 @@ export const YooptaToolbar = () => {
                       color: "var(--primary-foreground, #fff)",
                     }}
                   >
-                    Apply
+                    {t("editor.toolbar.apply")}
                   </button>
                   {isLinkActive() && (
                     <button
@@ -329,8 +331,8 @@ export const YooptaToolbar = () => {
                         setLinkPopoverOpen(false);
                         setLinkUrl("");
                       }}
-                      aria-label="Remove link"
-                      title="Remove link"
+                      aria-label={t("editor.toolbar.removeLink")}
+                      title={t("editor.toolbar.removeLink")}
                       style={{
                         border: "1px solid var(--border, #e2e2e2)",
                         borderRadius: 4,
@@ -377,7 +379,7 @@ export const YooptaToolbar = () => {
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.color}
-                  title="Text color"
+                  title={t("editor.toolbar.textColor")}
                 >
                   <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
                     <BaselineIcon />
@@ -424,7 +426,7 @@ export const YooptaToolbar = () => {
               >
                 <FloatingToolbar.Button
                   active={!!highlightValue?.backgroundColor}
-                  title="Highlight"
+                  title={t("editor.toolbar.highlight")}
                   style={{
                     backgroundColor: highlightValue?.backgroundColor || undefined,
                   }}
@@ -440,7 +442,7 @@ export const YooptaToolbar = () => {
               <FloatingToolbar.Group>
                 <FloatingToolbar.Button
                   onClick={onInsertMath}
-                  title="Insert inline math"
+                  title={t("editor.toolbar.insertInlineMath")}
                 >
                   <SigmaIcon />
                 </FloatingToolbar.Button>

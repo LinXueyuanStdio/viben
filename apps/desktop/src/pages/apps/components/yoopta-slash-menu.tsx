@@ -1,7 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { SlashCommandMenu } from "@yoopta/ui/slash-command-menu";
 import { BLOCK_ICONS, BLOCK_CATEGORIES, CATEGORY_ORDER } from "./yoopta-constants";
 
-export const YooptaSlashCommandMenu = () => (
+export const YooptaSlashCommandMenu = () => {
+  const { t } = useTranslation();
+  return (
   <SlashCommandMenu>
     {(props) => {
       // Group items by category
@@ -21,7 +24,7 @@ export const YooptaSlashCommandMenu = () => (
       return (
         <SlashCommandMenu.Content>
           <SlashCommandMenu.List>
-            <SlashCommandMenu.Empty>No blocks found</SlashCommandMenu.Empty>
+            <SlashCommandMenu.Empty>{t("editor.slashMenu.noBlocksFound")}</SlashCommandMenu.Empty>
             {sortedGroups.map(([category, items]) => (
               <SlashCommandMenu.Group key={category} heading={category}>
                 {items.map((item) => {
@@ -44,4 +47,5 @@ export const YooptaSlashCommandMenu = () => (
       );
     }}
   </SlashCommandMenu>
-);
+  );
+};

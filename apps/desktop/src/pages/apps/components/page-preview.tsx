@@ -93,7 +93,7 @@ export function PagePreview({
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath,
             slug: page.slug,
-            name: newTitle || "Untitled",
+            name: newTitle || t("page.untitled", "Untitled"),
           });
         } catch (err) {
           console.error("[PagePreview] title save failed:", err);
@@ -136,6 +136,7 @@ export function PagePreview({
             cover={page.cover}
             pageWidth={page.page_width}
             showToc={page.show_toc}
+            updatedAt={page.updated_at}
             onTitleChange={handleTitleChange}
             headerPortal={headerPortal}
             className="h-full"
@@ -156,6 +157,7 @@ export function PagePreview({
                 cover={page.cover}
                 pageWidth={page.page_width}
                 showToc={page.show_toc}
+                updatedAt={page.updated_at}
                 onTitleChange={handleTitleChange}
                 headerPortal={headerPortal}
                 className="h-full"

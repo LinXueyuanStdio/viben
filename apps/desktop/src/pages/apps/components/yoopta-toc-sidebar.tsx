@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Blocks, useYooptaEditor } from "@yoopta/editor";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ interface TocItem {
 }
 
 export function YooptaTocSidebar({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const editor = useYooptaEditor();
   const [items, setItems] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export function YooptaTocSidebar({ className }: { className?: string }) {
   if (items.length === 0) {
     return (
       <div className={cn("text-xs text-muted-foreground/50 px-3 py-4", className)}>
-        Add headings to see table of contents
+        {t("editor.toc.emptyState")}
       </div>
     );
   }
@@ -127,10 +129,10 @@ export function YooptaTocSidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn("yoopta-toc-sidebar text-sm", className)}
-      aria-label="Table of contents"
+      aria-label={t("editor.toc.title")}
     >
       <div className="px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Table of Contents
+        {t("editor.toc.title")}
       </div>
       <ul className="space-y-0.5 px-1">
         {items.map((item) => (

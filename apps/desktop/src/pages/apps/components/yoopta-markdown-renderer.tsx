@@ -1,5 +1,6 @@
 import "./yoopta-editor.css";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { pageKeys } from "@/hooks/use-pages";
@@ -62,7 +63,6 @@ const SAVE_DEBOUNCE_MS = 1000;
 
 const EDITOR_STYLES = {
   width: "100%",
-  paddingBottom: 100,
 };
 
 export interface YooptaMarkdownRendererProps {
@@ -76,6 +76,8 @@ export interface YooptaMarkdownRendererProps {
   cover?: string | null;
   pageWidth?: PageWidth;
   showToc?: boolean;
+  /** ISO timestamp of the page's last modification */
+  updatedAt?: string;
   onTitleChange?: (newTitle: string) => void;
   /** Portal target for editor header buttons. If provided, header renders into this DOM element instead of inside the editor. */
   headerPortal?: HTMLElement | null;
@@ -92,9 +94,11 @@ export function YooptaMarkdownRenderer({
   cover,
   pageWidth,
   showToc,
+  updatedAt,
   onTitleChange,
   headerPortal,
 }: YooptaMarkdownRendererProps) {
+  const { t } = useTranslation();
   const canSave = !!(workspacePath && slug);
   const isEditable = editable ?? canSave;
   const queryClient = useQueryClient();
@@ -227,12 +231,16 @@ export function YooptaMarkdownRenderer({
             slug: slug!,
             cover: url,
           });
+          // Invalidate page cache so other views reflect the cover change
+          queryClient.invalidateQueries({
+            queryKey: pageKeys.list(workspacePath!),
+          });
         } catch (err) {
           console.error("[YooptaMarkdownRenderer] cover save failed:", err);
         }
       }, 500);
     },
-    [canSave, workspacePath, slug]
+    [canSave, workspacePath, slug, queryClient]
   );
 
   const handleCoverChange = useCallback(
@@ -425,14 +433,25 @@ export function YooptaMarkdownRenderer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [canSave, editor, handleSave]);
 
-  // Handle Chinese full-width slash ／ (U+FF0F) to trigger slash command menu.
+  // Handle Chinese IME slash variants to trigger slash command menu.
+  // ／ (U+FF0F) — full-width solidus, 、(U+3001) — ideographic comma (common on Chinese IME / key)
   // IME input bypasses keydown (isComposing=true), so we intercept at input/compositionend level.
+  // Attach to document level so we don't depend on editor.refElement mounting timing.
+  // Filter events by checking if the target is inside the editor.
   useEffect(() => {
     if (!isEditable) return;
-    const refEl = editor.refElement;
-    if (!refEl) return;
+
+    const CJK_SLASH_CHARS = new Set(["／", "\uFF0F", "、", "\u3001"]);
+    const isCjkSlash = (ch: string | null | undefined) => ch != null && CJK_SLASH_CHARS.has(ch);
+
+    const isInsideEditor = (target: EventTarget | null) => {
+      if (!target || !(target instanceof Node)) return false;
+      const refEl = editor.refElement;
+      return refEl ? refEl.contains(target) : false;
+    };
 
     const tryConvertFullWidthSlash = () => {
+      console.log("[DEBUG:SlashIME] tryConvert, path.current:", editor.path.current);
       if (editor.path.current === null) return;
       const currentBlockId = Object.keys(editor.children).find(
         (id) => editor.children[id]?.meta.order === editor.path.current
@@ -446,15 +465,17 @@ export function YooptaMarkdownRenderer({
         .join("");
 
       const trimmed = blockText.trim();
-      if (trimmed === "／" || trimmed === "\uFF0F") {
-        // Delete the full-width slash and dispatch a real "/" keydown
+      console.log("[DEBUG:SlashIME] blockText:", JSON.stringify(blockText), "trimmed:", JSON.stringify(trimmed), "isCjk:", trimmed.length === 1 && isCjkSlash(trimmed));
+      if (trimmed.length === 1 && isCjkSlash(trimmed)) {
+        console.log("[DEBUG:SlashIME] deleting CJK slash and dispatching /");
         Transforms.delete(slate, {
           at: { anchor: { path: [0, 0], offset: 0 }, focus: { path: [0, 0], offset: blockText.length } },
         });
         setTimeout(() => {
           const target =
             document.activeElement?.closest("[contenteditable]") ??
-            refEl.querySelector("[contenteditable]");
+            editor.refElement?.querySelector("[contenteditable]");
+          console.log("[DEBUG:SlashIME] dispatching keydown on target:", !!target);
           if (target) {
             target.dispatchEvent(new KeyboardEvent("keydown", {
               key: "/", code: "Slash", keyCode: 191, which: 191,
@@ -466,26 +487,40 @@ export function YooptaMarkdownRenderer({
     };
 
     const handleInput = (e: Event) => {
+      if (!isInsideEditor(e.target)) return;
       const data = (e as InputEvent).data;
-      if (data === "／" || data === "\uFF0F") {
+      console.log("[DEBUG:SlashIME] input event, data:", JSON.stringify(data), "isCjk:", isCjkSlash(data));
+      if (isCjkSlash(data)) {
         tryConvertFullWidthSlash();
       }
     };
 
-    // compositionend fires after IME commits text — backup for IME variants
-    // that don't produce a separate input event with data="／"
-    const handleCompositionEnd = (e: CompositionEvent) => {
-      if (e.data === "／" || e.data === "\uFF0F") {
-        // Delay slightly to let Slate process the committed text first
+    const handleCompositionEnd = (e: Event) => {
+      if (!isInsideEditor(e.target)) return;
+      const data = (e as CompositionEvent).data;
+      console.log("[DEBUG:SlashIME] compositionend, data:", JSON.stringify(data), "isCjk:", isCjkSlash(data));
+      if (isCjkSlash(data)) {
         setTimeout(tryConvertFullWidthSlash, 10);
       }
     };
 
-    refEl.addEventListener("input", handleInput, true);
-    refEl.addEventListener("compositionend", handleCompositionEnd, true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isInsideEditor(e.target)) return;
+      if (e.key === "/" || e.code === "Slash" || e.keyCode === 191) {
+        console.log("[DEBUG:SlashIME] keydown slash detected:", {
+          key: e.key, code: e.code, keyCode: e.keyCode,
+          isComposing: e.isComposing, isTrusted: e.isTrusted,
+        });
+      }
+    };
+
+    document.addEventListener("input", handleInput, true);
+    document.addEventListener("compositionend", handleCompositionEnd, true);
+    document.addEventListener("keydown", handleKeyDown, true);
     return () => {
-      refEl.removeEventListener("input", handleInput, true);
-      refEl.removeEventListener("compositionend", handleCompositionEnd, true);
+      document.removeEventListener("input", handleInput, true);
+      document.removeEventListener("compositionend", handleCompositionEnd, true);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [isEditable, editor]);
 
@@ -677,6 +712,66 @@ export function YooptaMarkdownRenderer({
     []
   );
 
+  // Notion behavior: click on empty area below content → focus or create last block
+  const handleEmptyAreaClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("[DEBUG:EmptyArea] clicked, isEditable:", isEditable, "path.current:", editor.path.current);
+    if (!isEditable) return;
+
+    const blockIds = Object.keys(editor.children);
+    const totalBlocks = blockIds.length;
+    console.log("[DEBUG:EmptyArea] totalBlocks:", totalBlocks, "children:", Object.keys(editor.children));
+    if (totalBlocks === 0) {
+      console.log("[DEBUG:EmptyArea] no blocks, inserting first paragraph");
+      const newId = editor.insertBlock("Paragraph", { focus: true });
+      console.log("[DEBUG:EmptyArea] inserted id:", newId);
+      return;
+    }
+
+    // Find the last block by highest order
+    let lastBlockId: string | null = null;
+    let maxOrder = -1;
+    for (const id of blockIds) {
+      const order = editor.children[id]?.meta.order ?? -1;
+      if (order > maxOrder) {
+        maxOrder = order;
+        lastBlockId = id;
+      }
+    }
+    console.log("[DEBUG:EmptyArea] lastBlockId:", lastBlockId, "maxOrder:", maxOrder);
+    if (!lastBlockId) return;
+
+    const lastBlock = Blocks.getBlock(editor, { id: lastBlockId });
+    console.log("[DEBUG:EmptyArea] lastBlock type:", lastBlock?.type);
+    if (!lastBlock) return;
+
+    // Check if last block is an empty paragraph
+    const isEmptyParagraph = lastBlock.type === "Paragraph" && (() => {
+      const slate = Blocks.getBlockSlate(editor, { id: lastBlockId! });
+      if (!slate?.children?.[0]) return true;
+      const text = (slate.children as any[])
+        .map((node: any) => node.children?.map((c: any) => c.text || "").join("") || "")
+        .join("");
+      return text.trim() === "";
+    })();
+
+    console.log("[DEBUG:EmptyArea] isEmptyParagraph:", isEmptyParagraph);
+    if (isEmptyParagraph) {
+      console.log("[DEBUG:EmptyArea] focusing existing empty paragraph");
+      editor.focusBlock(lastBlockId);
+    } else {
+      // Set path to last block first so insertBlock knows where to insert
+      editor.setPath({ current: maxOrder });
+      console.log("[DEBUG:EmptyArea] inserting new paragraph at:", maxOrder + 1);
+      const newId = editor.insertBlock("Paragraph", {
+        at: maxOrder + 1,
+        focus: true,
+      });
+      console.log("[DEBUG:EmptyArea] inserted id:", newId);
+    }
+  }, [isEditable, editor]);
+
   return (
     <div
       className={cn(
@@ -695,6 +790,8 @@ export function YooptaMarkdownRenderer({
               pageWidth={currentPageWidth}
               showToc={currentShowToc}
               saveStatus={canSave ? saveStatus : undefined}
+              wordCount={wordCount}
+              updatedAt={updatedAt}
               onPageWidthChange={canSave ? handlePageWidthChange : undefined}
               onShowTocChange={canSave ? handleShowTocChange : undefined}
             />
@@ -706,6 +803,7 @@ export function YooptaMarkdownRenderer({
           <CoverBanner
             coverUrl={coverUrl}
             isEditable={isEditable}
+            contentWidthClass={currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl"}
             onCoverChange={handleCoverChange}
             onOpenCoverPicker={openCoverPicker}
           />
@@ -717,7 +815,7 @@ export function YooptaMarkdownRenderer({
             coverUrl={coverUrl}
             workspacePath={workspacePath}
             iconAnchorRef={iconAnchorRef}
-            onOpenIconPicker={() => { console.log("[DEBUG:Main] onOpenIconPicker called"); setShowIconPicker(true); }}
+            onOpenIconPicker={() => setShowIconPicker(true)}
             onOpenCoverPicker={openCoverPicker}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}
@@ -727,7 +825,7 @@ export function YooptaMarkdownRenderer({
         {isEditable && (
           <IconPicker
             open={showIconPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+            onOpenChange={setShowIconPicker}
             anchorRef={iconAnchorRef}
             value={pageIcon}
             onChange={handleIconChange}
@@ -738,7 +836,7 @@ export function YooptaMarkdownRenderer({
         {isEditable && (
           <CoverPicker
             open={showCoverPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
+            onOpenChange={setShowCoverPicker}
             anchorRef={coverPickerAnchorRef}
             value={coverUrl}
             onChange={handleCoverChange}
@@ -773,7 +871,7 @@ export function YooptaMarkdownRenderer({
               editor={editor}
               style={EDITOR_STYLES}
               renderBlock={renderBlock}
-              placeholder="Type / to open menu, or start typing..."
+              placeholder={t("editor.renderer.placeholder")}
               onChange={handleChange}
             >
               {isEditable && <YooptaToolbar />}
@@ -787,12 +885,22 @@ export function YooptaMarkdownRenderer({
               )}
             </YooptaEditor>
           </BlockDndContext>
-          <div className="yoopta-editor-footer px-14 py-2 text-xs text-muted-foreground/60 select-none">
-            <span>
-              {wordCount.words} {wordCount.words === 1 ? "word" : "words"} &middot;{" "}
-              {wordCount.characters} {wordCount.characters === 1 ? "character" : "characters"}
-            </span>
-          </div>
+        </div>
+        {/* Notion behavior: click empty area below blocks → create / focus last block.
+            MUST be outside containerBoxRef — SelectionBox calls preventDefault() on
+            mousedown for anything inside containerBoxRef but outside editor.refElement. */}
+        {isEditable && (
+          <div
+            className="min-h-[30vh] cursor-text"
+            onMouseDown={(e) => { console.log("[DEBUG:EmptyArea] mousedown"); e.stopPropagation(); }}
+            onClick={handleEmptyAreaClick}
+          />
+        )}
+        {!isEditable && <div className="h-24" />}
+        <div className="yoopta-editor-footer px-14 py-2 text-xs text-muted-foreground/60 select-none">
+          <span>
+            {t("editor.renderer.wordCount", { words: wordCount.words, characters: wordCount.characters })}
+          </span>
         </div>
       </YooptaErrorBoundary>
     </div>
@@ -831,13 +939,12 @@ const PageTitleArea = memo(function PageTitleArea({
   onTitleChange,
   onTitleKeyDown,
 }: PageTitleAreaProps) {
+  const { t } = useTranslation();
   const [isTitleHovered, setIsTitleHovered] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showActions = isTitleHovered;
-  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
-
   return (
     <div
       className={cn(
@@ -861,7 +968,7 @@ const PageTitleArea = memo(function PageTitleArea({
           className="yoopta-page-icon mb-1 cursor-pointer group/icon relative inline-block"
           role="button"
           tabIndex={0}
-          onClick={() => { console.log("[DEBUG:PageIcon] clicked"); onOpenIconPicker(); }}
+          onClick={() => onOpenIconPicker()}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpenIconPicker(); }}
         >
           {/* Notion-style hover: rounded bg overlay + slight scale */}
@@ -884,30 +991,30 @@ const PageTitleArea = memo(function PageTitleArea({
           <button
             type="button"
             className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-            onClick={() => { console.log("[DEBUG:ActionRow] Add icon clicked"); onOpenIconPicker(); }}
+            onClick={() => onOpenIconPicker()}
           >
             <SmilePlus size={14} />
-            <span>Add icon</span>
+            <span>{t("editor.renderer.addIcon")}</span>
           </button>
         )}
         {pageIcon && (
           <button
             type="button"
             className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-            onClick={() => { console.log("[DEBUG:ActionRow] Change icon clicked"); onOpenIconPicker(); }}
+            onClick={() => onOpenIconPicker()}
           >
             <SmilePlus size={14} />
-            <span>Change icon</span>
+            <span>{t("editor.renderer.changeIcon")}</span>
           </button>
         )}
         {!coverUrl && (
           <button
             type="button"
             className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-            onClick={(e) => { console.log("[DEBUG:ActionRow] Add cover clicked"); onOpenCoverPicker(e.currentTarget); }}
+            onClick={(e) => onOpenCoverPicker(e.currentTarget)}
           >
             <ImageLucideIcon size={14} />
-            <span>Add cover</span>
+            <span>{t("editor.renderer.addCover")}</span>
           </button>
         )}
       </div>
@@ -918,7 +1025,7 @@ const PageTitleArea = memo(function PageTitleArea({
         value={pageTitle}
         onChange={onTitleChange}
         onKeyDown={onTitleKeyDown}
-        placeholder="Untitled"
+        placeholder={t("editor.renderer.untitled")}
         rows={1}
         className="w-full resize-none overflow-hidden bg-transparent text-4xl font-bold leading-tight text-foreground placeholder:text-muted-foreground/30 focus:outline-none"
         style={{ fieldSizing: "content" } as React.CSSProperties}
@@ -935,6 +1042,8 @@ const PageTitleArea = memo(function PageTitleArea({
 type CoverBannerProps = {
   coverUrl: string;
   isEditable: boolean;
+  /** Tailwind max-w class matching the parent editor container (e.g. "max-w-4xl") */
+  contentWidthClass: string;
   onCoverChange: (cover: string | null) => void;
   /** Open the parent-level CoverPicker, anchored to the given element */
   onOpenCoverPicker: (anchor: HTMLElement, align?: "start" | "center" | "end") => void;
@@ -943,39 +1052,60 @@ type CoverBannerProps = {
 const CoverBanner = memo(function CoverBanner({
   coverUrl,
   isEditable,
+  contentWidthClass,
   onCoverChange,
   onOpenCoverPicker,
 }: CoverBannerProps) {
+  const { t } = useTranslation();
+  const [isHovered, setIsHovered] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isColorCover = coverUrl.startsWith("gradient:") || coverUrl.startsWith("solid:");
   const bgStyle = isColorCover ? parseCoverBackground(coverUrl) : undefined;
 
   return (
-    <div className="yoopta-cover-area group relative w-full" style={{ height: 280 }}>
+    <div
+      className="yoopta-cover-area relative"
+      style={{ height: 280, width: "100vw", marginLeft: "calc(50% - 50vw)" }}
+      onMouseEnter={() => {
+        if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        hoverTimerRef.current = setTimeout(() => setIsHovered(false), 150);
+      }}
+    >
       {isColorCover ? (
         <div className="h-full w-full" style={bgStyle} />
       ) : (
         <img
           src={coverUrl}
-          alt="Page cover"
+          alt={t("editor.renderer.pageCover")}
           className="h-full w-full object-cover"
         />
       )}
+      {/* Button overlay — constrained to content width via inner wrapper */}
       {isEditable && (
-        <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            type="button"
-            className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
-            onClick={(e) => { console.log("[DEBUG:CoverBanner] Change cover clicked"); onOpenCoverPicker(e.currentTarget, "end"); }}
-          >
-            Change cover
-          </button>
-          <button
-            type="button"
-            onClick={() => onCoverChange(null)}
-            className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
-          >
-            Remove
-          </button>
+        <div className={cn(
+          "absolute bottom-2 right-0 left-0 mx-auto flex justify-end px-2 z-10 transition-opacity",
+          contentWidthClass,
+          isHovered ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
+              onClick={(e) => onOpenCoverPicker(e.currentTarget, "end")}
+            >
+              {t("editor.renderer.changeCover")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onCoverChange(null)}
+              className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
+            >
+              {t("editor.renderer.remove")}
+            </button>
+          </div>
         </div>
       )}
     </div>
