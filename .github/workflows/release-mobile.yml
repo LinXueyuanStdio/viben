@@ -170,7 +170,7 @@ jobs:
           ls -la release-artifacts/
 
       - name: Upload Android artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
@@ -277,7 +277,7 @@ jobs:
           ls -la release-artifacts/
 
       - name: Upload iOS artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
@@ -334,7 +334,7 @@ jobs:
           cat checksums.txt
 
       - name: Upload checksums to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           files: release-assets/checksums.txt
