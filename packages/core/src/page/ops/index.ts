@@ -33,7 +33,10 @@ export type {
   CreatePageResult,
   DeletePageResult,
   UpdatePageContentResult,
+  UpdatePageConfigOptions,
+  UpdatePageConfigResult,
   ServePageResult,
+  UploadPageAssetResult,
   ServerStatusResult,
   PageTemplate,
   TemplateFile,
@@ -67,6 +70,7 @@ export type {
   CreatePageOptions,
   DeletePageOptions,
   UpdatePageContentOptions,
+  UploadPageAssetOptions,
 } from "./crud";
 
 export {
@@ -75,6 +79,8 @@ export {
   createPage,
   deletePage,
   updatePageContent,
+  updatePageConfig,
+  uploadPageAsset,
 } from "./crud";
 
 // Serve

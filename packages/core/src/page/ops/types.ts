@@ -171,6 +171,23 @@ export interface UpdatePageContentResult extends PageResult {
   slug?: string;
 }
 
+export interface UpdatePageConfigOptions {
+  workspace_path: string;
+  slug: string;
+  name?: string;
+  description?: string | null;
+  icon?: IconData | null;
+}
+
+export interface UpdatePageConfigResult extends PageResult {
+  slug?: string;
+  page?: PageConfig;
+}
+
+export interface UploadPageAssetResult extends PageResult {
+  filename?: string;
+}
+
 export interface ServePageResult extends PageResult {
   content?: Buffer;
   content_type?: string;

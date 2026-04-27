@@ -5,6 +5,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type {
   ListPagesResult,
@@ -12,6 +13,9 @@ import type {
   CreatePageResult,
   DeletePageResult,
   UpdatePageContentResult,
+  UpdatePageConfigOptions,
+  UpdatePageConfigResult,
+  UploadPageAssetResult,
   PageConfig,
 } from "./types";
 import { listPagesInWorkspace, getPageBySlug } from "./discovery";
@@ -299,5 +303,104 @@ export async function updatePageContent(
   return {
     success: true,
     slug,
+  };
+}
+
+// =============================================================================
+// Update Page Config (updates YAML frontmatter, preserves markdown body)
+// =============================================================================
+
+export async function updatePageConfig(
+  options: UpdatePageConfigOptions
+): Promise<UpdatePageConfigResult> {
+  const { workspace_path, slug, name, description, icon } = options;
+
+  const pagesDir = join(workspace_path, PAGES_DIR);
+  const pageDir = join(pagesDir, slug);
+  const skillPath = join(pageDir, SKILL_FILE);
+
+  if (!existsSync(skillPath)) {
+    return {
+      success: false,
+      error: `Page not found: ${slug}`,
+    };
+  }
+
+  // Read existing file and extract frontmatter + content
+  const existing = readFileSync(skillPath, "utf-8");
+  const matter = (await import("gray-matter")).default;
+  const { data, content } = matter(existing);
+
+  // Merge only provided fields into frontmatter
+  if (name !== undefined) {
+    data.name = name;
+  }
+  if (description !== undefined) {
+    if (description === null) {
+      delete data.description;
+    } else {
+      data.description = description;
+    }
+  }
+  if (icon !== undefined) {
+    if (icon === null) {
+      delete data.icon;
+    } else {
+      data.icon = icon;
+    }
+  }
+
+  // Rebuild SKILL.md with updated frontmatter + original content
+  const updated = matter.stringify(content, data);
+  writeFileSync(skillPath, updated, "utf-8");
+
+  // Return updated page config
+  const page = await getPageBySlug(workspace_path, slug);
+  return {
+    success: true,
+    slug,
+    page: page ?? undefined,
+  };
+}
+
+// =============================================================================
+// Upload Page Asset
+// =============================================================================
+
+export interface UploadPageAssetOptions {
+  workspace_path: string;
+  slug: string;
+  filename: string;
+  data: Buffer;
+}
+
+export async function uploadPageAsset(
+  options: UploadPageAssetOptions
+): Promise<UploadPageAssetResult> {
+  const { workspace_path, slug, filename, data } = options;
+
+  const page = await getPageBySlug(workspace_path, slug);
+
+  if (!page) {
+    return {
+      success: false,
+      error: `Page not found: ${slug}`,
+    };
+  }
+
+  const assetsDir = join(page.path, "_assets");
+
+  // Create _assets directory if it doesn't exist
+  await mkdir(assetsDir, { recursive: true });
+
+  // Generate a unique filename to avoid collisions
+  const uniqueFilename = `${Date.now()}-${filename}`;
+  const filePath = join(assetsDir, uniqueFilename);
+
+  await writeFile(filePath, data);
+
+  return {
+    success: true,
+    filename: uniqueFilename,
   };
 }

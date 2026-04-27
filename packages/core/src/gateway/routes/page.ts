@@ -12,6 +12,7 @@
  * - POST /api/page/serve     - Serve page content (POST for body params)
  * - GET  /api/page/serve     - Serve page content (GET for query params)
  * - POST /api/page/update-content - Update page markdown content (preserves YAML frontmatter)
+ * - POST /api/page/update-config - Update page config (name, description, icon)
  * - POST /api/page/templates - List available page templates
  */
 import type { FastifyInstance } from "fastify";
@@ -22,6 +23,8 @@ import {
   createPage,
   deletePage,
   updatePageContent,
+  updatePageConfig,
+  uploadPageAsset,
   // Serve
   servePage,
   // Templates
@@ -40,6 +43,7 @@ import type {
   CreatePageResult,
   DeletePageResult,
   UpdatePageContentResult,
+  UpdatePageConfigResult,
   ServePageResult,
   ListTemplatesResult,
 } from "../../page/ops";
@@ -600,6 +604,62 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   });
 
   // ============================================================================
+  // POST /api/page/update-config - Update page config (name, description, icon)
+  // ============================================================================
+  fastify.post<{
+    Body: {
+      workspace_path: string;
+      slug: string;
+      name?: string;
+      description?: string | null;
+      icon?: IconData | null;
+    };
+    Reply: UpdatePageConfigResult;
+  }>("/api/page/update-config", {
+    schema: {
+      description: "Update page config (name, description, icon)",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          slug: { type: "string", description: "Page slug (required)" },
+          name: { type: "string", description: "New page name" },
+          description: { type: "string", nullable: true, description: "New page description (null to remove)" },
+          icon: { ...iconDataSchema, description: "New page icon (null to remove)" },
+        },
+        required: ["workspace_path", "slug"],
+      },
+      response: {
+        200: viewPageResponseSchema,
+        400: errorResponseSchema,
+        404: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, slug, name, description, icon } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    if (!slug) {
+      reply.code(400);
+      return { success: false, error: "slug is required" };
+    }
+
+    const result = await updatePageConfig({ workspace_path, slug, name, description, icon });
+
+    if (!result.success) {
+      reply.code(result.error?.includes("not found") ? 404 : 400);
+      return result;
+    }
+
+    return result;
+  });
+
+  // ============================================================================
   // POST /api/page/templates - List available page templates
   // ============================================================================
   fastify.post<{
@@ -631,5 +691,80 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     }
 
     return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/asset/upload - Upload a file asset for a page
+  // ============================================================================
+  fastify.post("/api/page/asset/upload", async (request, reply) => {
+    // Handle multipart form data
+    const contentType = request.headers["content-type"] || "";
+    if (!contentType.includes("multipart/form-data")) {
+      reply.code(400);
+      return { success: false, error: "Expected multipart/form-data" };
+    }
+
+    // Type assertion for multipart-enabled request
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const multipartRequest = request as any;
+    if (typeof multipartRequest.parts !== "function") {
+      reply.code(400);
+      return {
+        success: false,
+        error: "Multipart upload not configured. Please ensure @fastify/multipart is registered.",
+      };
+    }
+
+    const parts = multipartRequest.parts();
+    let fileData: Buffer | null = null;
+    let filename = "unnamed";
+    let wsPath = "";
+    let slugStr = "";
+
+    for await (const part of parts) {
+      if (part.type === "file" && part.fieldname === "file") {
+        filename = part.filename || "unnamed";
+        const chunks: Buffer[] = [];
+        for await (const chunk of part.file) {
+          chunks.push(chunk);
+        }
+        fileData = Buffer.concat(chunks);
+      } else if (part.type === "field" && part.fieldname === "workspace_path") {
+        wsPath = part.value as string;
+      } else if (part.type === "field" && part.fieldname === "slug") {
+        slugStr = part.value as string;
+      }
+    }
+
+    if (!fileData) {
+      reply.code(400);
+      return { success: false, error: "No file uploaded" };
+    }
+
+    if (!wsPath || !slugStr) {
+      reply.code(400);
+      return { success: false, error: "workspace_path and slug are required" };
+    }
+
+    const result = await uploadPageAsset({
+      workspace_path: wsPath,
+      slug: slugStr,
+      filename,
+      data: fileData,
+    });
+
+    if (!result.success) {
+      reply.code(400);
+      return result;
+    }
+
+    // Construct the serve URL
+    const serveUrl = `/api/page/serve?workspace_path=${encodeURIComponent(wsPath)}&slug=${encodeURIComponent(slugStr)}&path=_assets/${encodeURIComponent(result.filename!)}`;
+
+    return {
+      success: true,
+      url: serveUrl,
+      filename: result.filename,
+    };
   });
 }
