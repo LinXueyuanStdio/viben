@@ -81,10 +81,14 @@ const pageConfigSchema = {
     name: { type: "string" },
     description: { type: "string", nullable: true },
     icon: iconDataSchema,
+    cover: { type: "string", nullable: true },
+    page_width: { type: "string", nullable: true, enum: ["default", "wide", "full"] },
+    show_toc: { type: "boolean", nullable: true },
     type: pageTypeSchema,
     permission: pagePermissionSchema,
     path: { type: "string" },
     skill_content: { type: "string", nullable: true },
+    updated_at: { type: "string", nullable: true },
     // Static-specific
     file: { type: "string", nullable: true },
     // Server-specific

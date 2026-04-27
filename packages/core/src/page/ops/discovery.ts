@@ -38,6 +38,9 @@ export async function parseSkillMd(
   // Process icon - read from top-level (icon is a top-level field, not inside page)
   const iconValue = data.icon;
 
+  // Get file modification time
+  const updatedAt = statSync(skillPath).mtime.toISOString();
+
   const base = {
     slug,
     name: data.name,
@@ -49,6 +52,7 @@ export async function parseSkillMd(
     permission: data.page.permission ?? ["read", "write"],
     path: pageDir,
     skill_content: markdownContent.trim() || undefined,
+    updated_at: updatedAt,
   };
 
   switch (data.page.type) {

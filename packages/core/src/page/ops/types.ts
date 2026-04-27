@@ -87,6 +87,8 @@ interface PageConfigBase {
   permission: PagePermission[];
   path: string;
   skill_content?: string;
+  /** ISO timestamp of the last modification (from file mtime) */
+  updated_at?: string;
 }
 
 export interface StaticPageConfig extends PageConfigBase {
