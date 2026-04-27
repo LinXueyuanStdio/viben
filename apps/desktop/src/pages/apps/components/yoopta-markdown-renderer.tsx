@@ -894,23 +894,14 @@ const PageTitleArea = memo(function PageTitleArea({
           </button>
         )}
         {!coverUrl && (
-          <CoverPicker
-            open={showCoverPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
-            value={coverUrl}
-            onChange={onCoverChange}
-            workspacePath={workspacePath}
-            slug={slug}
-            trigger={
-              <button
-                type="button"
-                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-              >
-                <ImageLucideIcon size={14} />
-                <span>Add cover</span>
-              </button>
-            }
-          />
+          <button
+            type="button"
+            className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+            onClick={(e) => { console.log("[DEBUG:ActionRow] Add cover clicked"); onOpenCoverPicker(e.currentTarget); }}
+          >
+            <ImageLucideIcon size={14} />
+            <span>Add cover</span>
+          </button>
         )}
       </div>
 
@@ -937,19 +928,17 @@ const PageTitleArea = memo(function PageTitleArea({
 type CoverBannerProps = {
   coverUrl: string;
   isEditable: boolean;
-  workspacePath?: string;
-  slug?: string;
   onCoverChange: (cover: string | null) => void;
+  /** Open the parent-level CoverPicker, anchored to the given element */
+  onOpenCoverPicker: (anchor: HTMLElement, align?: "start" | "center" | "end") => void;
 };
 
 const CoverBanner = memo(function CoverBanner({
   coverUrl,
   isEditable,
-  workspacePath,
-  slug,
   onCoverChange,
+  onOpenCoverPicker,
 }: CoverBannerProps) {
-  const [showCoverPicker, setShowCoverPicker] = useState(false);
   const isColorCover = coverUrl.startsWith("gradient:") || coverUrl.startsWith("solid:");
   const bgStyle = isColorCover ? parseCoverBackground(coverUrl) : undefined;
 
@@ -966,23 +955,13 @@ const CoverBanner = memo(function CoverBanner({
       )}
       {isEditable && (
         <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <CoverPicker
-            open={showCoverPicker}
-            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
-            value={coverUrl}
-            onChange={onCoverChange}
-            workspacePath={workspacePath}
-            slug={slug}
-            align="end"
-            trigger={
-              <button
-                type="button"
-                className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
-              >
-                Change cover
-              </button>
-            }
-          />
+          <button
+            type="button"
+            className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
+            onClick={(e) => { console.log("[DEBUG:CoverBanner] Change cover clicked"); onOpenCoverPicker(e.currentTarget, "end"); }}
+          >
+            Change cover
+          </button>
           <button
             type="button"
             onClick={() => onCoverChange(null)}
