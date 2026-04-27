@@ -5,7 +5,7 @@
  * Loads font files via Tauri fs plugin and creates a dynamic @font-face rule.
  */
 
-import * as React from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
@@ -30,14 +30,14 @@ type FontErrorKey = "noFontPath" | "noFontSource" | null;
 
 export function FontPreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
-  const [fontLoaded, setFontLoaded] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-  const [errorKey, setErrorKey] = React.useState<FontErrorKey>(null);
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [fontFamily, setFontFamily] = React.useState<string>("");
+  const [fontLoaded, setFontLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorKey, setErrorKey] = useState<FontErrorKey>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fontFamily, setFontFamily] = useState<string>("");
 
   // Get translated error message
-  const error = React.useMemo(() => {
+  const error = useMemo(() => {
     if (errorKey === "noFontPath") return t("artifacts.noFontPath", "No font file path available");
     if (errorKey === "noFontSource") return t("artifacts.noFontSource", "No font source available");
     return errorMessage;
@@ -53,7 +53,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     let styleElement: HTMLStyleElement | null = null;
 
     async function loadFont() {
