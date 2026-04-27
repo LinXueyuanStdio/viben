@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { WifiOff, X, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,10 @@ export function OfflineBanner({ className }: OfflineBannerProps) {
   const { t } = useTranslation();
   const { isOffline, cacheInfo, refreshing, refreshCache, checkOffline, formatLastUpdated } =
     useOfflineStatus();
-  const [dismissed, setDismissed] = React.useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   // Reset dismissed state when going back online
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOffline) {
       setDismissed(false);
     }
