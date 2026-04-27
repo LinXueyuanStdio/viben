@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useMemo } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -118,10 +119,10 @@ export function GroupedListView<T extends { id: string }>({
   className,
   dragDisabled = false,
 }: GroupedListViewProps<T>) {
-  const [activeItem, setActiveItem] = React.useState<T | null>(null);
+  const [activeItem, setActiveItem] = useState<T | null>(null);
 
   // Group items by their group ID
-  const groupedItems = React.useMemo(() => {
+  const groupedItems = useMemo(() => {
     const grouped = new Map<string, T[]>();
 
     // Initialize all groups with empty arrays
@@ -148,7 +149,7 @@ export function GroupedListView<T extends { id: string }>({
   }, [items, groups, groupBy]);
 
   // Update group counts
-  const groupsWithCounts = React.useMemo(() => {
+  const groupsWithCounts = useMemo(() => {
     return groups.map((group) => ({
       ...group,
       count: groupedItems.get(group.id)?.length ?? 0,
