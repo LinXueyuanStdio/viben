@@ -1,4 +1,4 @@
-import * as React from "react";
+import { memo, useState, useCallback } from "react";
 import {
   GitBranch,
   Globe,
@@ -57,16 +57,16 @@ interface OfficialServerDetailProps {
 /**
  * Copy button with feedback
  */
-const CopyButton = React.memo(function CopyButton({
+const CopyButton = memo(function CopyButton({
   text,
   className,
 }: {
   text: string;
   className?: string;
 }) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const handleCopy = React.useCallback(async () => {
+  const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -91,7 +91,7 @@ const CopyButton = React.memo(function CopyButton({
 /**
  * Package option card
  */
-const PackageOption = React.memo(function PackageOption({
+const PackageOption = memo(function PackageOption({
   pkg,
   onInstall,
 }: {
