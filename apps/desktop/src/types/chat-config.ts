@@ -18,6 +18,8 @@ export interface ChatAgentConfig {
   model?: string;
   /** Executor type for the agent (e.g., "CLAUDE_CODE", "CODEX") */
   executor_type?: string;
+  /** Source: "global" or "workspace" */
+  source?: "global" | "workspace";
 }
 
 // ============================================================================

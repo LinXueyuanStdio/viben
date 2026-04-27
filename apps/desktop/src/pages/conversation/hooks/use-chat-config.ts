@@ -86,6 +86,10 @@ export interface UseChatConfigOptions {
    *  Defaults to { type: "default" } (show everything).
    *  Use useRouteChatContext() inside a <Router> for route-aware filtering. */
   context?: ChatContextInfo;
+  /** Active workspace path for loading workspace-scoped agents */
+  workspacePath?: string;
+  /** Active workspace display name (used for group labels) */
+  workspaceName?: string;
 }
 
 export interface UseChatConfigReturn {
@@ -101,6 +105,12 @@ export interface UseChatConfigReturn {
   selectedAgent: ChatAgentConfig | undefined;
   selectedModel: ChatModelConfig | undefined;
   selectedExecutor: ExecutorType;
+
+  // Grouped agents for display (global vs workspace)
+  globalAgentGroup: ChatAgentConfig[];
+  workspaceAgentGroup: ChatAgentConfig[];
+  /** Workspace display name for group label */
+  workspaceName: string | undefined;
 
   // Actions
   setSelectedAgentId: (id: string | null) => void;
@@ -124,6 +134,8 @@ export interface UseChatConfigReturn {
 
 export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigReturn {
   const context = options?.context ?? DEFAULT_CONTEXT;
+  const workspacePath = options?.workspacePath;
+  const workspaceName = options?.workspaceName;
 
   // Get store state
   const {
@@ -145,12 +157,15 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
     getSelectedModel,
   } = useChatConfigStore();
 
-  // Load agents and models from Gateway API
+  // Load agents and models from Gateway API (workspace-aware)
   const {
     agents: vibenAgents,
     loading: agentsLoading,
     error: agentsError,
-  } = useAgents();
+  } = useAgents({
+    workspacePath: workspacePath || undefined,
+    includeGlobal: true,
+  });
 
   const {
     models: vibenModels,
@@ -165,7 +180,7 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
     error: executorsError,
   } = useExecutors();
 
-  // Sync viben agents to store
+  // Sync viben agents to store (with source info)
   useEffect(() => {
     if (!agentsLoading && vibenAgents.length > 0) {
       const chatAgents: ChatAgentConfig[] = vibenAgents.map((a) => ({
@@ -174,6 +189,7 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
         description: a.description,
         model: a.model,
         executor_type: a.executor_type,
+        source: a.source,
       }));
       setGlobalAgents(chatAgents);
     }
@@ -286,6 +302,16 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
   const selectedAgent = getSelectedAgent();
   const selectedModel = getSelectedModel();
 
+  // Split agents into global vs workspace groups
+  const globalAgentGroup = useMemo(
+    () => filteredAgents.filter((a) => a.source !== "workspace"),
+    [filteredAgents],
+  );
+  const workspaceAgentGroup = useMemo(
+    () => filteredAgents.filter((a) => a.source === "workspace"),
+    [filteredAgents],
+  );
+
   return {
     // Filtered lists
     agents: filteredAgents,
@@ -298,6 +324,11 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
     selectedAgent,
     selectedModel,
     selectedExecutor,
+
+    // Grouped agents
+    globalAgentGroup,
+    workspaceAgentGroup,
+    workspaceName,
 
     // Actions
     setSelectedAgentId: handleSetAgentId,

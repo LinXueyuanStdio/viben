@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChevronLeft, Square } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { DesktopMessageList } from '@/pages/conversation/components/desktop-message-list';
 import type { AgentMessage, AgentPhase } from '@/types';
@@ -60,6 +61,7 @@ export function ChatCapsule({
   const [expanded, setExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const msgListRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   // Derive capsule mode from phase
   const mode: CapsuleMode = useMemo(() => {
@@ -71,17 +73,17 @@ export function ChatCapsule({
 
   // Status text derived from messages
   const statusText = useMemo(() => {
-    if (mode === 'done') return '完成';
-    if (phase === 'error') return '错误';
-    if (phase === 'awaiting_approval') return '等待审批';
-    if (phase === 'awaiting_input') return '等待输入';
+    if (mode === 'done') return t('chat.capsule.done', '完成');
+    if (phase === 'error') return t('chat.capsule.error', '错误');
+    if (phase === 'awaiting_approval') return t('chat.capsule.awaitingApproval', '等待审批');
+    if (phase === 'awaiting_input') return t('chat.capsule.awaitingInput', '等待输入');
 
     // Find the last tool_use message for tool name display
     const lastTool = [...messages].reverse().find(m => m.type === 'tool_use');
     if (lastTool?.name) return lastTool.name;
 
     return randomThinkingWord();
-  }, [mode, phase, messages]);
+  }, [mode, phase, messages, t]);
 
   // Body content for collapsed view: last assistant text or tool info
   const bodyContent = useMemo(() => {

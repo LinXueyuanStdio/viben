@@ -28,7 +28,9 @@ import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
 } from '@/components/ui/select';
 import {
@@ -106,11 +108,15 @@ function ChatPopup({
   onSend,
   onCancel,
   onSendBackground,
+  workspacePath,
+  workspaceName,
 }: {
   isStreaming: boolean;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
   onSendBackground: (content: string) => void;
+  workspacePath?: string;
+  workspaceName?: string;
 }): ReactElement {
   const { t } = useTranslation();
   const { isChatPopupOpen, closeChatPopup } = useUiStore();
@@ -139,8 +145,8 @@ function ChatPopup({
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
 
-  // Global agent/model config
-  const chatConfig = useChatConfig();
+  // Workspace-aware agent/model config
+  const chatConfig = useChatConfig({ workspacePath, workspaceName });
 
   // Voice agent
   const voice = useVoiceAgent();
@@ -331,11 +337,11 @@ function ChatPopup({
       const selected = await open({
         multiple: true,
         filters: [
-          { name: '图片', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
-          { name: '文档', extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'json', 'csv'] },
-          { name: '表格', extensions: ['xlsx', 'xls'] },
-          { name: '演示文稿', extensions: ['pptx', 'ppt'] },
-          { name: '所有文件', extensions: ['*'] },
+          { name: t('chat.fileFilter.images', '图片'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
+          { name: t('chat.fileFilter.documents', '文档'), extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'json', 'csv'] },
+          { name: t('chat.fileFilter.spreadsheets', '表格'), extensions: ['xlsx', 'xls'] },
+          { name: t('chat.fileFilter.presentations', '演示文稿'), extensions: ['pptx', 'ppt'] },
+          { name: t('chat.fileFilter.allFiles', '所有文件'), extensions: ['*'] },
         ],
       });
       if (!selected) return;
@@ -369,7 +375,7 @@ function ChatPopup({
     } catch (err) {
       console.error('[ChatPopup] File dialog failed:', err);
     }
-  }, []);
+  }, [t]);
 
   const handleScreenshot = useCallback(async (hideWindow = false) => {
     try {
@@ -609,7 +615,7 @@ function ChatPopup({
 
       {/* Bottom bar */}
       <div className="flex items-center gap-1.5 px-3 pb-3">
-        {/* Agent selector chip */}
+        {/* Agent selector chip (grouped by global / workspace) */}
         <Select
           value={chatConfig.selectedAgentId || ''}
           onValueChange={chatConfig.setSelectedAgentId}
@@ -623,11 +629,30 @@ function ChatPopup({
             </span>
           </SelectTrigger>
           <SelectContent className="z-[10001]">
-            {chatConfig.agents.map((agent) => (
-              <SelectItem key={agent.id} value={agent.id}>
-                <span className="text-sm">{agent.name}</span>
-              </SelectItem>
-            ))}
+            {chatConfig.workspaceAgentGroup.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="text-xs text-muted-foreground">
+                  {chatConfig.workspaceName || t('chat.workspace', '工作空间')}
+                </SelectLabel>
+                {chatConfig.workspaceAgentGroup.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    <span className="text-sm">{agent.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+            {chatConfig.globalAgentGroup.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="text-xs text-muted-foreground">
+                  {t('chat.global', '全局')}
+                </SelectLabel>
+                {chatConfig.globalAgentGroup.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    <span className="text-sm">{agent.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
 
@@ -731,7 +756,7 @@ function ChatPopup({
                   )}
                 >
                   <ListTodo className="h-3.5 w-3.5" />
-                  {t('chat.backgroundTask', '后台任务')}
+                  {t('chat.backgroundTask.title', '后台任务')}
                 </Label>
                 <Switch
                   id="popup-background-task"
@@ -897,6 +922,8 @@ export function ChatPopupLayer(): ReactElement {
         onSend={handleSend}
         onCancel={handleCancel}
         onSendBackground={handleSendBackground}
+        workspacePath={workspacePath}
+        workspaceName={activeWorkspace?.name}
       />
     </>
   );

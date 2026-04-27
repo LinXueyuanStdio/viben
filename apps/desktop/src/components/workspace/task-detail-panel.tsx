@@ -1030,10 +1030,13 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     const loadTaskMessages = async () => {
       try {
         const client = getGatewayClient();
-        console.log(`[TaskDetailPanel] Loading messages for task ${task.id}, session ${effectiveSessionId}`);
+        // Use worktree_path if available (task may run in a git worktree),
+        // otherwise fall back to the main workspace path
+        const effectiveWorkspace = task.worktree_path || workspacePath;
+        console.log(`[TaskDetailPanel] Loading messages for task ${task.id}, session ${effectiveSessionId}, workspace ${effectiveWorkspace}`);
 
         // Load messages using session_id
-        const uiMessages = await client.listSessionUIMessages(taskAgentId, effectiveSessionId, workspacePath);
+        const uiMessages = await client.listSessionUIMessages(taskAgentId, effectiveSessionId, effectiveWorkspace);
 
         if (uiMessages.length > 0) {
           // Convert UI messages to agent messages
