@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -139,7 +140,7 @@ export function WritingMode({
   className,
 }: WritingModeProps) {
   const { t } = useTranslation();
-  const [isEmojiOpen, setIsEmojiOpen] = React.useState(false);
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
 
   if (!isOpen) {
     return null;
