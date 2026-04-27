@@ -4,7 +4,7 @@
  * Shows a list of available skills with enable/disable toggles.
  */
 
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,9 +31,9 @@ export function SkillsConfigPopover({
   className,
 }: SkillsConfigPopoverProps) {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredSkills = React.useMemo(() => {
+  const filteredSkills = useMemo(() => {
     if (!searchQuery.trim()) return skills;
     const query = searchQuery.toLowerCase();
     return skills.filter(
