@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect, useContext } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 const DialogNestingContext = React.createContext<number>(0);
 
 function useDialogNesting() {
-  return React.useContext(DialogNestingContext);
+  return useContext(DialogNestingContext);
 }
 
 /* -----------------------------------------------------------------------------
@@ -27,7 +28,7 @@ interface DialogContextValue {
 const DialogContext = React.createContext<DialogContextValue | null>(null);
 
 function useDialogContext() {
-  const context = React.useContext(DialogContext);
+  const context = useContext(DialogContext);
   if (!context) {
     throw new Error("Dialog components must be used within a Dialog provider");
   }
@@ -45,7 +46,7 @@ interface DialogProps {
 }
 
 function Dialog({ children, open: controlledOpen, onOpenChange }: DialogProps) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const parentNestingLevel = useDialogNesting();
   const nestingLevel = parentNestingLevel + 1;
 
@@ -146,7 +147,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     const { open, setOpen, nestingLevel } = useDialogContext();
 
     // Handle escape key - only close the topmost dialog
-    React.useEffect(() => {
+    useEffect(() => {
       if (!open) return;
 
       const handleEscape = (e: KeyboardEvent) => {
@@ -161,7 +162,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     }, [open, setOpen]);
 
     // Prevent body scroll when dialog is open (only for first level)
-    React.useEffect(() => {
+    useEffect(() => {
       if (nestingLevel === 1) {
         if (open) {
           document.body.style.overflow = "hidden";
