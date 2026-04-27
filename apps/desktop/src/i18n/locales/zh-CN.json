@@ -3105,7 +3105,8 @@
       "combinedPlaceholder": "你需要我做什么？",
       "contentHint": "Content Hint",
       "worktree": "工作树",
-      "worktreeHint": "在隔离的 git 工作树中运行任务"
+      "worktreeHint": "在隔离的 git 工作树中运行任务",
+      "agentAndModel": "智能体和模型"
     },
     "filesDescription": "浏览和管理文件",
     "connectingToKanban": "正在连接任务看板...",
@@ -3225,7 +3226,9 @@
       "taskStarted": "任务已启动",
       "enqueueWarning": "警告",
       "queue": "队列",
-      "archive": "归档"
+      "archive": "归档",
+      "taskLabel": "任务：",
+      "descriptionLabel": "描述："
     },
     "taskEvents": {
       "title": "事件",
@@ -3349,7 +3352,11 @@
         "description": "此任务已成功完成。"
       }
     },
-    "missingAgentId": "缺少 agent_id 参数"
+    "missingAgentId": "缺少 agent_id 参数",
+    "stepConfigure": {
+      "defaultDeveloperName": "开发者"
+    },
+    "default": "默认"
   },
   "sync": {
     "workspaceSync": "工作区同步",
@@ -3493,7 +3500,8 @@
       "binaryLabel": "程序路径:",
       "commandLabel": "启动命令:",
       "copyBinaryPath": "复制程序路径",
-      "copyCommand": "复制命令"
+      "copyCommand": "复制命令",
+      "retryWithCount": "重试（剩余 {{count}} 次）"
     },
     "failure": {
       "suggestions": "建议",
@@ -4135,7 +4143,8 @@
       "writingFile": "正在写入 {{file}}...",
       "editingFile": "正在编辑 {{file}}...",
       "searchingWeb": "正在搜索网页...",
-      "runningTool": "正在运行 {{tool}}..."
+      "runningTool": "正在运行 {{tool}}...",
+      "executingTask": "执行任务中"
     },
     "capsule": {
       "done": "完成",
@@ -4385,7 +4394,11 @@
       }
     },
     "hideSteps": "Hide Steps",
-    "showSteps": "Show Steps"
+    "showSteps": "Show Steps",
+    "gatewayConnected": "网关已连接",
+    "gatewayMock": "模拟",
+    "gatewayChecking": "...",
+    "sessionFallbackName": "会话 {{id}}"
   },
   "creator": {
     "title": "创作者",
@@ -4662,7 +4675,11 @@
     "staticPreview": "静态预览",
     "preview": "预览",
     "viewCode": "查看代码",
-    "code": "代码"
+    "code": "代码",
+    "noContent": "无内容",
+    "noInput": "无输入",
+    "noOutput": "无输出",
+    "mcp": "MCP"
   },
   "groupChat": {
     "createTitle": "创建群聊",
@@ -4734,7 +4751,11 @@
     "noAgents": "会话中没有智能体",
     "thinking": "思考中...",
     "selectSession": "选择或创建会话以开始聊天",
-    "agentViewReadOnly": "智能体视图为只读。切换到聊天视图以发送消息。"
+    "agentViewReadOnly": "智能体视图为只读。切换到聊天视图以发送消息。",
+    "executorDescription": "{{name}} 执行器",
+    "aiAgent": "AI 智能体",
+    "initialSession": "初始会话",
+    "sessionNumber": "会话 {{number}}"
   },
   "notifications": {
     "title": "通知",
@@ -4970,7 +4991,11 @@
     },
     "failedToReadContent": "读取文件内容失败",
     "failedToLoadFile": "加载文件失败",
-    "fileTooLarge": "文件可能太大或为二进制格式"
+    "fileTooLarge": "文件可能太大或为二进制格式",
+    "deleteConfirmWithName": "确定要删除 {{name}} 吗？",
+    "folderWithName": "文件夹：{{name}}",
+    "sizeWithValue": "大小：{{size}}",
+    "modifiedWithValue": "修改时间：{{date}}"
   },
   "filePicker": {
     "images": "图片",
@@ -5049,7 +5074,10 @@
     "xlsxPreview": {
       "description": "电子表格可以在 Microsoft Excel 或兼容的应用程序中打开。",
       "openButton": "在 Excel 中打开"
-    }
+    },
+    "failedToPlay": "播放失败：{{error}}",
+    "fetchImageFailed": "获取图片失败：{{status}} {{statusText}}",
+    "fetchPdfFailed": "获取 PDF 失败：{{status}} {{statusText}}"
   },
   "observability": {
     "title": "可观测性",
@@ -5572,7 +5600,8 @@
     "updateSuccess": "页面更新成功",
     "updateFailed": "更新页面失败",
     "editPage": "编辑页面",
-    "editPageDescription": "修改页面名称、描述和图标"
+    "editPageDescription": "修改页面名称、描述和图标",
+    "untitled": "无标题"
   },
   "iconPicker": {
     "icons": "图标",
@@ -5680,7 +5709,9 @@
         "timeline": "时间线",
         "createdAt": "Created {{date}}",
         "updatedAt": "Updated {{date}}",
-        "closedAt": "Closed {{date}}"
+        "closedAt": "Closed {{date}}",
+        "commentsCount_one": "{{count}} 条评论",
+        "commentsCount_other": "{{count}} 条评论"
       },
       "issues": {
         "open": "打开",
@@ -5721,5 +5752,422 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "coverPicker": {
+    "chooseCover": "选择封面",
+    "gallery": "图库",
+    "upload": "上传",
+    "link": "链接",
+    "removeCover": "移除封面",
+    "uploading": "上传中...",
+    "clickToUpload": "点击上传图片",
+    "uploadFailed": "上传失败",
+    "preview": "预览",
+    "invalidUrl": "无效的 URL",
+    "linkPlaceholder": "https://example.com/cover.jpg"
+  },
+  "kanban": {
+    "common": {
+      "save": "保存",
+      "cancel": "取消",
+      "noItems": "暂无项目",
+      "yes": "是",
+      "no": "否"
+    },
+    "board": {
+      "addTask": "添加任务",
+      "moreActions": "更多操作",
+      "emptyColumn": "暂无任务",
+      "dropHere": "拖放到此处"
+    },
+    "boardSettings": {
+      "title": "看板设置",
+      "description": "拖拽可重新排列列。双击可重命名。切换可见性可显示/隐藏列。",
+      "noColumns": "未配置列",
+      "saveChanges": "保存更改"
+    },
+    "column": {
+      "collapse": "折叠列",
+      "expand": "展开列",
+      "itemCount_one": "{{count}} 个项目",
+      "itemCount_other": "{{count}} 个项目"
+    },
+    "columnSettings": {
+      "title": "列设置",
+      "columnName": "列名称",
+      "columnNamePlaceholder": "输入列名称",
+      "columnColor": "列颜色",
+      "color": "颜色",
+      "selectColor": "选择颜色",
+      "changeColor": "更改颜色",
+      "wipLimit": "WIP 限制",
+      "wipLimitPlaceholder": "无限制",
+      "wipLimitHelp": "此列中的最大任务数",
+      "noLimit": "无限制",
+      "wipLimitDescription": "限制此列中的任务数量。留空表示不限制。",
+      "description": "描述",
+      "descriptionPlaceholder": "输入列描述",
+      "save": "保存更改",
+      "cancel": "取消",
+      "delete": "删除列",
+      "deleteColumn": "删除列",
+      "deleteConfirm": "确定要删除此列吗？",
+      "confirmDelete": "删除列",
+      "deleteWarning": "此列包含 {{count}} 个任务。它们将被移动到第一个可用列。",
+      "addColumn": "添加列",
+      "moveLeft": "左移",
+      "moveRight": "右移"
+    },
+    "comment": {
+      "addPlaceholder": "写下评论...",
+      "submitHint": "按 Ctrl+Enter 提交",
+      "send": "发送",
+      "edit": "编辑",
+      "delete": "删除",
+      "edited": "(已编辑)",
+      "addReaction": "添加表情",
+      "noComments": "暂无评论"
+    },
+    "sort": {
+      "manual": "手动排序",
+      "priority": "优先级",
+      "dueDate": "截止日期",
+      "title": "标题",
+      "created": "创建时间",
+      "updated": "更新时间",
+      "status": "状态",
+      "assignee": "负责人",
+      "ascending": "升序",
+      "descending": "降序"
+    },
+    "command": {
+      "navigation": "导航",
+      "action": "操作",
+      "filter": "筛选",
+      "sort": "排序",
+      "view": "视图",
+      "settings": "设置"
+    },
+    "commandPalette": {
+      "placeholder": "输入命令...",
+      "noResults": "未找到结果",
+      "hint": "使用方向键导航，回车键选择"
+    },
+    "quickTask": {
+      "placeholder": "添加新任务...",
+      "addTask": "添加任务",
+      "add": "添加"
+    },
+    "stats": {
+      "completed": "已完成",
+      "inProgress": "进行中",
+      "overdue": "已逾期"
+    },
+    "relationship": {
+      "blockedBy": "被阻塞",
+      "blocks": "阻塞",
+      "relatedTo": "相关",
+      "duplicateOf": "重复",
+      "parentOf": "父任务",
+      "childOf": "子任务",
+      "addRelationship": "添加关联",
+      "selectType": "选择类型",
+      "searchPlaceholder": "搜索任务...",
+      "noTasksFound": "未找到任务",
+      "add": "添加",
+      "cancel": "取消"
+    },
+    "priority": {
+      "urgent": "紧急",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "none": "无优先级",
+      "setPriority": "设置优先级"
+    },
+    "dueDate": {
+      "today": "今天",
+      "tomorrow": "明天",
+      "overdueDays": "已逾期 {{count}} 天",
+      "inDays": "{{count}} 天后",
+      "selectDate": "选择日期",
+      "clearDate": "清除日期",
+      "dueSoon": "即将到期"
+    },
+    "subtask": {
+      "markComplete": "标记为完成",
+      "markIncomplete": "标记为未完成",
+      "delete": "删除子任务",
+      "addPlaceholder": "添加子任务..."
+    },
+    "bulk": {
+      "selected": "已选择 {{count}} 项",
+      "moveTo": "移动到",
+      "setPriority": "设置优先级",
+      "assign": "分配",
+      "delete": "删除",
+      "clearSelection": "清除选择",
+      "priority": "优先级"
+    },
+    "filter": {
+      "filters": "筛选",
+      "clearAll": "清除全部",
+      "status": "状态",
+      "priority": "优先级",
+      "assignee": "负责人",
+      "tag": "标签",
+      "dueDate": "截止日期",
+      "noFilters": "无活跃筛选",
+      "allStatuses": "所有状态",
+      "allPriorities": "所有优先级",
+      "allAssignees": "所有负责人",
+      "allTags": "所有标签",
+      "overdue": "已逾期",
+      "dueToday": "今天到期",
+      "dueThisWeek": "本周到期",
+      "noDueDate": "无截止日期"
+    },
+    "activity": {
+      "created": "已创建",
+      "statusChanged": "状态已变更",
+      "priorityChanged": "优先级已变更",
+      "assigneeChanged": "负责人已变更",
+      "titleChanged": "标题已变更",
+      "descriptionChanged": "描述已变更",
+      "commentAdded": "已添加评论",
+      "tagAdded": "已添加标签",
+      "tagRemoved": "已移除标签",
+      "dueDateChanged": "截止日期已变更",
+      "subtaskAdded": "已添加子任务",
+      "subtaskCompleted": "子任务已完成",
+      "relationshipAdded": "已添加关联",
+      "noActivity": "暂无活动",
+      "moreActivities": "还有 {{count}} 条活动"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "hoursAgo": "{{count}} 小时前",
+      "yesterday": "昨天",
+      "daysAgo": "{{count}} 天前",
+      "weeksAgo": "{{count}} 周前",
+      "monthsAgo": "{{count}} 个月前",
+      "yearsAgo": "{{count}} 年前"
+    },
+    "editable": {
+      "clickToEdit": "点击编辑",
+      "doubleClickToEdit": "双击编辑",
+      "doubleClickMultiline": "双击编辑（多行）"
+    },
+    "table": {
+      "title": "标题",
+      "status": "状态",
+      "priority": "优先级",
+      "assignee": "负责人",
+      "dueDate": "截止日期",
+      "tags": "标签",
+      "noItemsFound": "未找到项目",
+      "sortAsc": "升序排列",
+      "sortDesc": "降序排列"
+    },
+    "tag": {
+      "addTag": "添加标签",
+      "createTag": "创建标签",
+      "searchTags": "搜索标签...",
+      "noTags": "暂无标签",
+      "tagName": "标签名称",
+      "tagColor": "标签颜色",
+      "create": "创建",
+      "remove": "移除标签"
+    },
+    "assignee": {
+      "assign": "分配",
+      "unassign": "取消分配"
+    },
+    "color": {
+      "red": "红色",
+      "orange": "橙色",
+      "amber": "琥珀色",
+      "yellow": "黄色",
+      "lime": "青柠色",
+      "green": "绿色",
+      "emerald": "翡翠绿",
+      "teal": "蓝绿色",
+      "cyan": "青色",
+      "sky": "天蓝色",
+      "blue": "蓝色",
+      "indigo": "靛蓝色",
+      "violet": "紫罗兰",
+      "purple": "紫色",
+      "fuchsia": "品红色",
+      "pink": "粉色",
+      "rose": "玫瑰色",
+      "gray": "灰色",
+      "slate": "石板灰",
+      "zinc": "锌灰色"
+    },
+    "phase": {
+      "idle": "空闲",
+      "plan": "规划中",
+      "implement": "实现中",
+      "rateLimitPaused": "限频暂停",
+      "authFailurePaused": "需要认证",
+      "check": "AI 审查",
+      "fix": "修复中",
+      "complete": "已完成",
+      "failed": "已失败"
+    },
+    "taskCategory": {
+      "feature": "功能",
+      "bugFix": "修复缺陷",
+      "refactoring": "重构",
+      "documentation": "文档",
+      "security": "安全",
+      "performance": "性能",
+      "uiUx": "UI/UX",
+      "infrastructure": "基础设施",
+      "testing": "测试"
+    },
+    "taskComplexity": {
+      "trivial": "微小",
+      "small": "小型",
+      "medium": "中等",
+      "large": "大型",
+      "complex": "复杂"
+    },
+    "taskImpact": {
+      "low": "低影响",
+      "medium": "中等影响",
+      "high": "高影响",
+      "critical": "关键影响"
+    },
+    "reviewReason": {
+      "completed": "已完成",
+      "errors": "存在错误",
+      "qaRejected": "QA 问题",
+      "planReview": "待审批计划",
+      "stopped": "已停止"
+    }
+  },
+  "editor": {
+    "header": {
+      "editorActions": "编辑器操作",
+      "editing": "编辑中...",
+      "saving": "保存中...",
+      "saved": "已保存",
+      "saveFailed": "保存失败",
+      "undo": "撤销 ({{shortcut}})",
+      "redo": "重做 ({{shortcut}})",
+      "moreOptions": "更多选项",
+      "exportMarkdown": "导出 Markdown",
+      "exportHtml": "导出 HTML",
+      "copied": "已复制！",
+      "copyAsMarkdown": "复制为 Markdown",
+      "print": "打印",
+      "unlockEditing": "解锁编辑",
+      "lockEditing": "锁定编辑",
+      "defaultWidth": "默认宽度",
+      "wideLayout": "宽屏布局",
+      "fullWidth": "全屏宽度",
+      "showToc": "显示目录",
+      "hideToc": "隐藏目录",
+      "wordCount": "{{words}} 个字词 · {{characters}} 个字符",
+      "lastEdited": "最后编辑于 {{time}}",
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "hoursAgo": "{{count}} 小时前",
+      "daysAgo": "{{count}} 天前",
+      "keyboardShortcuts": "键盘快捷键",
+      "shortcuts": {
+        "textFormatting": "文本格式",
+        "bold": "加粗",
+        "italic": "斜体",
+        "underline": "下划线",
+        "inlineCode": "行内代码",
+        "strikethrough": "删除线",
+        "highlight": "高亮",
+        "insertLink": "插入链接",
+        "blockTypes": "块类型",
+        "text": "文本",
+        "heading1": "标题 1",
+        "heading2": "标题 2",
+        "heading3": "标题 3",
+        "todoList": "待办列表",
+        "bulletedList": "无序列表",
+        "numberedList": "有序列表",
+        "blockActions": "块操作",
+        "openSlashMenu": "打开斜杠菜单",
+        "toggleCheckbox": "切换复选框",
+        "moveBlockUp": "上移块",
+        "moveBlockDown": "下移块",
+        "duplicateBlock": "复制块",
+        "deleteBlock": "删除块",
+        "indent": "增加缩进",
+        "outdent": "减少缩进",
+        "markdownShortcuts": "Markdown 快捷键",
+        "quote": "引用",
+        "divider": "分割线",
+        "codeBlock": "代码块",
+        "general": "通用",
+        "save": "保存",
+        "undo": "撤销",
+        "redo": "重做"
+      }
+    },
+    "blockOptions": {
+      "delete": "删除",
+      "duplicate": "复制",
+      "turnInto": "转换为",
+      "copyLinkToBlock": "复制块链接",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "indent": "增加缩进",
+      "outdent": "减少缩进",
+      "align": "对齐",
+      "alignLeft": "左对齐",
+      "alignCenter": "居中对齐",
+      "alignRight": "右对齐"
+    },
+    "blockActions": {
+      "addBlock": "添加块",
+      "dragToReorder": "拖动以重新排序"
+    },
+    "toc": {
+      "title": "目录",
+      "emptyState": "添加标题以查看目录"
+    },
+    "slashMenu": {
+      "noBlocksFound": "未找到块"
+    },
+    "actionMenu": {
+      "noActionsAvailable": "没有可用操作"
+    },
+    "toolbar": {
+      "turnInto": "转换为",
+      "bold": "加粗 ({{shortcut}})",
+      "italic": "斜体 ({{shortcut}})",
+      "underline": "下划线 ({{shortcut}})",
+      "strikethrough": "删除线 ({{shortcut}})",
+      "code": "代码 ({{shortcut}})",
+      "link": "链接 ({{shortcut}})",
+      "insertLink": "插入链接",
+      "linkUrl": "链接 URL",
+      "apply": "应用",
+      "removeLink": "移除链接",
+      "textColor": "文字颜色",
+      "highlight": "高亮",
+      "insertInlineMath": "插入行内公式"
+    },
+    "renderer": {
+      "addIcon": "添加图标",
+      "changeIcon": "更换图标",
+      "addCover": "添加封面",
+      "untitled": "无标题",
+      "placeholder": "输入 / 打开菜单，或开始输入...",
+      "wordCount": "{{words}} 个字词 · {{characters}} 个字符",
+      "pageCover": "页面封面",
+      "changeCover": "更换封面",
+      "remove": "移除"
+    }
   }
 }
