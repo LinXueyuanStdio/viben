@@ -27,7 +27,7 @@
  * ```
  */
 
-import * as React from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -153,7 +153,7 @@ export function DesktopChatInput({
    * @param hideWindow - If true, hides the window before capturing
    * @returns MessageAttachment containing the screenshot, or null on error
    */
-  const handleScreenshot = React.useCallback(
+  const handleScreenshot = useCallback(
     async (hideWindow?: boolean): Promise<MessageAttachment | null> => {
       try {
         const result = await invoke<ScreenshotResult>("take_screenshot", {
@@ -183,7 +183,7 @@ export function DesktopChatInput({
    *
    * @returns Array of MessageAttachment, or null if cancelled/error
    */
-  const handleOpenFile = React.useCallback(async (): Promise<
+  const handleOpenFile = useCallback(async (): Promise<
     MessageAttachment[] | null
   > => {
     try {
@@ -272,7 +272,7 @@ export function DesktopChatInput({
   }, []);
 
   // Build config bar extra content
-  const configBarLeftExtra = React.useMemo(() => {
+  const configBarLeftExtra = useMemo(() => {
     // If custom content provided, use that
     if (propConfigBarLeftExtra) {
       return propConfigBarLeftExtra;
