@@ -5,7 +5,7 @@
  * members list, sessions management, and settings.
  */
 
-import * as React from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -213,9 +213,9 @@ function EditableField({
   inputClassName,
   disabled = false,
 }: EditableFieldProps) {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(value);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (editValue.trim() === value) {
@@ -248,7 +248,7 @@ function EditableField({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     setEditValue(value);
   }, [value]);
 
@@ -445,8 +445,8 @@ function AddMemberSection({
   isLoading,
 }: AddMemberSectionProps) {
   const { t } = useTranslation();
-  const [selectedAgentId, setSelectedAgentId] = React.useState<string>("");
-  const [isAdding, setIsAdding] = React.useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
 
   // Filter out agents that are already members
   const availableToAdd = availableAgents.filter(
@@ -541,9 +541,9 @@ function SessionListSection({
   canManage,
 }: SessionListSectionProps) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = React.useState(true);
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleCreate = async () => {
     setIsCreating(true);
@@ -670,7 +670,7 @@ function WorkspaceInfo({ workspacePath, isGlobal }: WorkspaceInfoProps) {
   const { t } = useTranslation();
 
   // Get displayable path (last 2 segments or full path if short)
-  const displayPath = React.useMemo(() => {
+  const displayPath = useMemo(() => {
     const parts = workspacePath.split("/").filter(Boolean);
     if (parts.length <= 2) return workspacePath;
     return ".../" + parts.slice(-2).join("/");
@@ -715,7 +715,7 @@ interface SettingsSectionProps {
 
 function SettingsSection({ settings, canManage: _canManage }: SettingsSectionProps) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   if (!settings) return null;
 
@@ -792,10 +792,10 @@ export function GroupChatSidebar({
   isLoading,
 }: GroupChatSidebarProps) {
   const { t } = useTranslation();
-  const [removingMemberId, setRemovingMemberId] = React.useState<string | null>(null);
-  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isLeavingOrDeleting, setIsLeavingOrDeleting] = React.useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLeavingOrDeleting, setIsLeavingOrDeleting] = useState(false);
 
   const handleRemoveMember = async (memberId: string) => {
     setRemovingMemberId(memberId);
@@ -837,7 +837,7 @@ export function GroupChatSidebar({
   };
 
   // Sort members: owner first, then admins, then regular members
-  const sortedMembers = React.useMemo(() => {
+  const sortedMembers = useMemo(() => {
     return [...members].sort((a, b) => {
       const roleOrder = { owner: 0, admin: 1, member: 2 };
       return roleOrder[a.role] - roleOrder[b.role];
