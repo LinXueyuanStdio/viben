@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Button, cn } from "@viben/ui";
 import type { DragEndEvent, Modifier } from "@dnd-kit/core";
 import {
@@ -145,10 +145,10 @@ export const KanbanCard = ({
   onMenuOpenChange,
 }: KanbanCardProps) => {
   const localRef = useRef<HTMLDivElement | null>(null);
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Notify parent when menu open state changes
-  const handleMenuOpenChange = React.useCallback((open: boolean) => {
+  const handleMenuOpenChange = useCallback((open: boolean) => {
     setIsMenuOpen(open);
     onMenuOpenChange?.(open);
   }, [onMenuOpenChange]);
@@ -479,7 +479,7 @@ export const KanbanProvider = ({
   className,
   renderDragOverlay,
 }: KanbanProviderProps) => {
-  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
