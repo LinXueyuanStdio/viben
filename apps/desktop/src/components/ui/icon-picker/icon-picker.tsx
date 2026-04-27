@@ -234,7 +234,7 @@ export function IconPicker({
       {useExternalAnchor ? (
         /* Virtual anchor: wrap the external element so Radix positions the
            content relative to it. PopoverTrigger is hidden (open controlled externally). */
-        <PopoverAnchor virtualRef={anchorRef} />
+        <PopoverAnchor virtualRef={anchorRef as React.RefObject<{ getBoundingClientRect(): DOMRect }>} />
       ) : (
         <PopoverTrigger asChild disabled={disabled}>
           {trigger ?? defaultTrigger}
@@ -251,7 +251,7 @@ export function IconPicker({
               {showEmoji && (
                 <TabsTrigger
                   value="emoji"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className={cn("px-3 py-2 text-xs", activeTab === "emoji" && "border-primary text-foreground")}
                 >
                   {t("iconPicker.emoji", "Emoji")}
                 </TabsTrigger>
@@ -259,7 +259,7 @@ export function IconPicker({
               {showLucide && (
                 <TabsTrigger
                   value="lucide"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className={cn("px-3 py-2 text-xs", activeTab === "lucide" && "border-primary text-foreground")}
                 >
                   {t("iconPicker.icons", "Icons")}
                 </TabsTrigger>
@@ -267,7 +267,7 @@ export function IconPicker({
               {showImage && (
                 <TabsTrigger
                   value="image"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className={cn("px-3 py-2 text-xs", activeTab === "image" && "border-primary text-foreground")}
                 >
                   {t("iconPicker.image", "Image")}
                 </TabsTrigger>
