@@ -5,7 +5,7 @@
  * Uses simple markdown rendering without external dependencies.
  */
 
-import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PreviewComponentProps } from "./types";
 import { parseFrontmatter } from "./utils";
@@ -129,7 +129,7 @@ function ExpandableText({
   maxLength?: number;
 }) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const needsTruncation = text.length > maxLength;
 
   if (!needsTruncation) {
