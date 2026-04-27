@@ -5,7 +5,7 @@
  * Extracted from step-claude.tsx for use in EnvCheckStepItem expandable content.
  */
 
-import * as React from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -231,7 +231,7 @@ export function AiClientsSection({
   const { t } = useTranslation();
 
   // Sort executors: available first, then by name
-  const sortedExecutors = React.useMemo(() => {
+  const sortedExecutors = useMemo(() => {
     return [...executors].sort((a, b) => {
       const aAvailable = a.availability && isAgentAvailable(a.availability);
       const bAvailable = b.availability && isAgentAvailable(b.availability);
