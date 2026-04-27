@@ -317,7 +317,6 @@ export function EmojiPicker({
 
   // Reset search when popover opens
   useEffect(() => {
-    console.log("[DEBUG:EmojiPicker] open changed:", open);
     if (open) {
       setSearch("");
       setActiveCategoryId(EMOJI_DATA[0].id);
@@ -390,7 +389,7 @@ export function EmojiPicker({
   const isSearching = searchResults !== null;
 
   return (
-    <Popover open={open} onOpenChange={(v) => { console.log("[DEBUG:EmojiPicker] Popover onOpenChange:", v); onOpenChange(v); }}>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
         align="start"

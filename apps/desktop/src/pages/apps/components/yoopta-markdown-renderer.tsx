@@ -40,6 +40,7 @@ import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
 import { CoverPicker } from "@/components/ui/cover-picker";
 import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
+import { ensureBlockFocus } from "./yoopta-focus-utils";
 
 /** Parse a cover value into CSS background style. */
 function parseCoverBackground(cover: string): React.CSSProperties {
@@ -451,7 +452,6 @@ export function YooptaMarkdownRenderer({
     };
 
     const tryConvertFullWidthSlash = () => {
-      console.log("[DEBUG:SlashIME] tryConvert, path.current:", editor.path.current);
       if (editor.path.current === null) return;
       const currentBlockId = Object.keys(editor.children).find(
         (id) => editor.children[id]?.meta.order === editor.path.current
@@ -465,9 +465,7 @@ export function YooptaMarkdownRenderer({
         .join("");
 
       const trimmed = blockText.trim();
-      console.log("[DEBUG:SlashIME] blockText:", JSON.stringify(blockText), "trimmed:", JSON.stringify(trimmed), "isCjk:", trimmed.length === 1 && isCjkSlash(trimmed));
       if (trimmed.length === 1 && isCjkSlash(trimmed)) {
-        console.log("[DEBUG:SlashIME] deleting CJK slash and dispatching /");
         Transforms.delete(slate, {
           at: { anchor: { path: [0, 0], offset: 0 }, focus: { path: [0, 0], offset: blockText.length } },
         });
@@ -475,7 +473,6 @@ export function YooptaMarkdownRenderer({
           const target =
             document.activeElement?.closest("[contenteditable]") ??
             editor.refElement?.querySelector("[contenteditable]");
-          console.log("[DEBUG:SlashIME] dispatching keydown on target:", !!target);
           if (target) {
             target.dispatchEvent(new KeyboardEvent("keydown", {
               key: "/", code: "Slash", keyCode: 191, which: 191,
@@ -489,7 +486,6 @@ export function YooptaMarkdownRenderer({
     const handleInput = (e: Event) => {
       if (!isInsideEditor(e.target)) return;
       const data = (e as InputEvent).data;
-      console.log("[DEBUG:SlashIME] input event, data:", JSON.stringify(data), "isCjk:", isCjkSlash(data));
       if (isCjkSlash(data)) {
         tryConvertFullWidthSlash();
       }
@@ -498,29 +494,16 @@ export function YooptaMarkdownRenderer({
     const handleCompositionEnd = (e: Event) => {
       if (!isInsideEditor(e.target)) return;
       const data = (e as CompositionEvent).data;
-      console.log("[DEBUG:SlashIME] compositionend, data:", JSON.stringify(data), "isCjk:", isCjkSlash(data));
       if (isCjkSlash(data)) {
         setTimeout(tryConvertFullWidthSlash, 10);
       }
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isInsideEditor(e.target)) return;
-      if (e.key === "/" || e.code === "Slash" || e.keyCode === 191) {
-        console.log("[DEBUG:SlashIME] keydown slash detected:", {
-          key: e.key, code: e.code, keyCode: e.keyCode,
-          isComposing: e.isComposing, isTrusted: e.isTrusted,
-        });
-      }
-    };
-
     document.addEventListener("input", handleInput, true);
     document.addEventListener("compositionend", handleCompositionEnd, true);
-    document.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("input", handleInput, true);
       document.removeEventListener("compositionend", handleCompositionEnd, true);
-      document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [isEditable, editor]);
 
@@ -712,20 +695,18 @@ export function YooptaMarkdownRenderer({
     []
   );
 
-  // Notion behavior: click on empty area below content → focus or create last block
+  // Notion behavior: click on empty area below content → focus or create last block.
+  // Uses ensureBlockFocus for reliable DOM-level focus that doesn't depend on
+  // Yoopta's internal setTimeout(0) timing.
   const handleEmptyAreaClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
-    console.log("[DEBUG:EmptyArea] clicked, isEditable:", isEditable, "path.current:", editor.path.current);
     if (!isEditable) return;
 
     const blockIds = Object.keys(editor.children);
     const totalBlocks = blockIds.length;
-    console.log("[DEBUG:EmptyArea] totalBlocks:", totalBlocks, "children:", Object.keys(editor.children));
     if (totalBlocks === 0) {
-      console.log("[DEBUG:EmptyArea] no blocks, inserting first paragraph");
-      const newId = editor.insertBlock("Paragraph", { focus: true });
-      console.log("[DEBUG:EmptyArea] inserted id:", newId);
+      const newId = editor.insertBlock("Paragraph");
+      if (newId) ensureBlockFocus(editor, newId);
       return;
     }
 
@@ -739,11 +720,9 @@ export function YooptaMarkdownRenderer({
         lastBlockId = id;
       }
     }
-    console.log("[DEBUG:EmptyArea] lastBlockId:", lastBlockId, "maxOrder:", maxOrder);
     if (!lastBlockId) return;
 
     const lastBlock = Blocks.getBlock(editor, { id: lastBlockId });
-    console.log("[DEBUG:EmptyArea] lastBlock type:", lastBlock?.type);
     if (!lastBlock) return;
 
     // Check if last block is an empty paragraph
@@ -756,19 +735,11 @@ export function YooptaMarkdownRenderer({
       return text.trim() === "";
     })();
 
-    console.log("[DEBUG:EmptyArea] isEmptyParagraph:", isEmptyParagraph);
     if (isEmptyParagraph) {
-      console.log("[DEBUG:EmptyArea] focusing existing empty paragraph");
-      editor.focusBlock(lastBlockId);
+      ensureBlockFocus(editor, lastBlockId);
     } else {
-      // Set path to last block first so insertBlock knows where to insert
-      editor.setPath({ current: maxOrder });
-      console.log("[DEBUG:EmptyArea] inserting new paragraph at:", maxOrder + 1);
-      const newId = editor.insertBlock("Paragraph", {
-        at: maxOrder + 1,
-        focus: true,
-      });
-      console.log("[DEBUG:EmptyArea] inserted id:", newId);
+      const newId = editor.insertBlock("Paragraph", { at: maxOrder + 1 });
+      if (newId) ensureBlockFocus(editor, newId);
     }
   }, [isEditable, editor]);
 
@@ -892,7 +863,7 @@ export function YooptaMarkdownRenderer({
         {isEditable && (
           <div
             className="min-h-[30vh] cursor-text"
-            onMouseDown={(e) => { console.log("[DEBUG:EmptyArea] mousedown"); e.stopPropagation(); }}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={handleEmptyAreaClick}
           />
         )}

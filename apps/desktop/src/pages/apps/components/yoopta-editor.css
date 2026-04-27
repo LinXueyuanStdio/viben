@@ -335,8 +335,10 @@
 /* Block appearance is handled by opacity transition, not animation.
    CSS animations would re-fire on every React re-render, causing jitter. */
 
-/* Slash command menu & action menu subtle entrance */
-.yoopta-notion-editor [data-floating-ui-portal] {
+/* Slash command menu & action menu subtle entrance.
+   Exclude image-inline-toolbar — it manages its own opacity transition
+   and the animation conflicts with its internal state-driven visibility. */
+.yoopta-notion-editor [data-floating-ui-portal]:not(:has(#image-inline-toolbar)) {
   animation: yoopta-menu-appear 0.12s ease;
 }
 

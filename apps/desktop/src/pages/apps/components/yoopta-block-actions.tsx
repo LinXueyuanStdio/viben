@@ -4,6 +4,7 @@ import { GripVertical, PlusIcon } from "lucide-react";
 import { Blocks, useYooptaEditor } from "@yoopta/editor";
 import { DragHandle } from "@yoopta/ui/block-dnd";
 import { YooptaBlockOptions } from "./yoopta-block-options";
+import { ensureBlockFocus } from "./yoopta-focus-utils";
 
 /**
  * Dispatch a synthetic "/" keydown event on the editor's focused contenteditable
@@ -39,11 +40,30 @@ function getBlockMarginOffset(blockElement: HTMLElement): number {
 }
 
 /**
+ * Find the DOM element for a block by its order index.
+ */
+function findBlockElementByOrder(
+  editor: ReturnType<typeof useYooptaEditor>,
+  order: number,
+): { element: HTMLElement; id: string } | null {
+  if (!editor.refElement) return null;
+  const blockId = Object.keys(editor.children).find(
+    (id) => editor.children[id]?.meta.order === order,
+  );
+  if (!blockId) return null;
+  const el = editor.refElement.querySelector<HTMLElement>(
+    `[data-yoopta-block-id="${blockId}"]`,
+  );
+  return el ? { element: el, id: blockId } : null;
+}
+
+/**
  * Notion-style floating block actions.
  *
  * Design:
  * - A single global floating container that is never removed from the DOM.
  * - Tracks the hovered block via mousemove; only top changes (vertical slide).
+ * - Also follows the focused block when path.current changes (e.g. Enter key).
  * - left is fixed relative to the editor left edge (no horizontal slide animation).
  * - Hides with opacity fade when the mouse leaves all blocks.
  * - "Frozen" mode when BlockOptions menu is open (stops tracking hover).
@@ -59,7 +79,7 @@ export const YooptaFloatingBlockActions = () => {
   // setState functions are stable across renders, so DragHandle won't infinite-loop.
   const [dragHandleEl, setDragHandleEl] = useState<HTMLButtonElement | null>(null);
 
-  // Current hovered block
+  // Current tracked block (hovered or focused)
   const [blockId, setBlockId] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   // Position: top/left in fixed coordinates (mutated directly for performance)
@@ -131,6 +151,33 @@ export const YooptaFloatingBlockActions = () => {
     },
     [editor],
   );
+
+  // ── Follow focused block on path change ────────────────────────────────────
+  // When user presses Enter or navigates with arrows, path.current changes.
+  // Move the floating handle to the newly focused block so it stays in sync.
+  useEffect(() => {
+    if (editor.readOnly || blockOptionsOpen) return;
+
+    const handlePathChange = () => {
+      const current = editor.path.current;
+      if (typeof current !== "number") return;
+
+      // Small delay to let React render any newly created block DOM
+      requestAnimationFrame(() => {
+        const found = findBlockElementByOrder(editor, current);
+        if (found) {
+          setBlockId(found.id);
+          updatePosition(found.element);
+          setVisible(true);
+        }
+      });
+    };
+
+    editor.on("path-change", handlePathChange);
+    return () => {
+      editor.off("path-change", handlePathChange);
+    };
+  }, [editor, blockOptionsOpen, updatePosition]);
 
   // ── Mouse move handler ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -208,23 +255,20 @@ export const YooptaFloatingBlockActions = () => {
   // ── Plus button ──────────────────────────────────────────────────────────
   const onPlusClick = useCallback(
     (id: string | null) => {
-      console.log("[DEBUG:PlusClick] id:", id);
       if (!id) return;
       const floatingBlock = Blocks.getBlock(editor, { id });
-      console.log("[DEBUG:PlusClick] floatingBlock:", floatingBlock?.type, "order:", floatingBlock?.meta.order, "path.current:", editor.path.current);
       if (!floatingBlock) return;
 
-      // Set path so insertBlock has a valid context
-      editor.setPath({ current: floatingBlock.meta.order });
       const nextOrder = floatingBlock.meta.order + 1;
-      console.log("[DEBUG:PlusClick] inserting at:", nextOrder);
-      const newId = editor.insertBlock("Paragraph", { at: nextOrder, focus: true });
-      console.log("[DEBUG:PlusClick] inserted id:", newId);
-
-      setTimeout(() => {
-        console.log("[DEBUG:PlusClick] dispatching slash key");
-        dispatchSlashKeyEvent(editor);
-      }, 50);
+      // Don't use focus: true — Yoopta's focusBlock uses setTimeout(0) + ReactEditor.focus
+      // which silently fails if DOM isn't ready. Use ensureBlockFocus instead.
+      const newId = editor.insertBlock("Paragraph", { at: nextOrder });
+      if (newId) {
+        ensureBlockFocus(editor, newId, () => {
+          // Dispatch slash key only after DOM focus is confirmed
+          dispatchSlashKeyEvent(editor);
+        });
+      }
     },
     [editor],
   );
