@@ -1,14 +1,18 @@
 /**
- * IconPicker Component
+ * IconPicker Component — Notion-like
  *
- * Unified icon picker supporting:
- * - Lucide icons (categorized)
- * - Emoji (categorized)
- * - Custom images (upload or URL)
+ * Unified icon picker with:
+ * - Emoji tab (emoji-mart)
+ * - Icons tab (full Lucide async)
+ * - Image tab (upload/URL)
+ * - Random icon button
+ * - Remove icon button
+ * - Smart default tab based on current value
  */
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { Dices, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -16,41 +20,75 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { LucideTab } from "./tabs/lucide-tab";
 import { EmojiTab } from "./tabs/emoji-tab";
 import { ImageTab } from "./tabs/image-tab";
 import { IconDisplay } from "./icon-display";
-import { createLucideIcon, createEmojiIcon, createImageIcon } from "./utils";
+import { createLucideIcon, createEmojiIcon, createImageIcon, parseIconData } from "./utils";
+import { ALL_ICON_NAMES } from "./icon-cache";
 import type { IconData, IconType } from "./types";
 
+// For random emoji selection
+import emojiData from "@emoji-mart/data";
+
 export interface IconPickerProps {
-  /** Current icon value */
   value?: IconData | string | null;
-  /** Callback when icon changes */
   onChange?: (icon: IconData | null) => void;
-  /** Workspace path for saving uploaded images */
   workspacePath?: string;
-  /** Whether the picker is disabled */
   disabled?: boolean;
-  /** Custom trigger element */
   trigger?: React.ReactNode;
-  /** Popover alignment */
   align?: "start" | "center" | "end";
-  /** Default tab to show */
   defaultTab?: IconType;
-  /** Allowed icon types */
   allowedTypes?: IconType[];
-  /** Additional CSS classes for the trigger */
   className?: string;
-  /** Size of the icon in the trigger */
   iconSize?: "xs" | "sm" | "md" | "lg" | "xl" | number;
+  /** Show remove button (default: true) */
+  allowRemove?: boolean;
+  /** Show random button (default: true) */
+  showRandom?: boolean;
 }
 
 /**
- * IconPicker component
- *
- * A popover-based picker for selecting icons from various sources.
+ * Determine default tab based on current icon value.
  */
+function getSmartDefaultTab(
+  value: IconData | string | null | undefined,
+  allowedTypes: IconType[],
+  explicitDefault?: IconType
+): IconType {
+  if (explicitDefault && allowedTypes.includes(explicitDefault)) {
+    return explicitDefault;
+  }
+
+  if (value) {
+    const parsed = typeof value === "string" ? parseIconData(value) : value;
+    if (parsed && allowedTypes.includes(parsed.type)) {
+      return parsed.type;
+    }
+  }
+
+  // Default to emoji (Notion-style)
+  return allowedTypes.includes("emoji") ? "emoji" : allowedTypes[0] ?? "lucide";
+}
+
+/**
+ * Get a random emoji from emoji-mart data.
+ */
+function getRandomEmoji(): string {
+  const emojis = (emojiData as { emojis: Record<string, { skins: { native: string }[] }> }).emojis;
+  const keys = Object.keys(emojis);
+  const randomKey = keys[Math.floor(Math.random() * keys.length)];
+  return emojis[randomKey]?.skins?.[0]?.native ?? "😀";
+}
+
+/**
+ * Get a random Lucide icon name.
+ */
+function getRandomLucideIcon(): string {
+  return ALL_ICON_NAMES[Math.floor(Math.random() * ALL_ICON_NAMES.length)];
+}
+
 export function IconPicker({
   value,
   onChange,
@@ -58,53 +96,93 @@ export function IconPicker({
   disabled = false,
   trigger,
   align = "start",
-  defaultTab = "lucide",
+  defaultTab,
   allowedTypes = ["lucide", "emoji", "image"],
   className,
   iconSize = "md",
+  allowRemove = true,
+  showRandom = true,
 }: IconPickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<IconType>(defaultTab);
+  const [randomSpin, setRandomSpin] = React.useState(false);
 
-  // Handle Lucide icon selection
+  // Smart default tab
+  const smartDefault = React.useMemo(
+    () => getSmartDefaultTab(value, allowedTypes, defaultTab),
+    [value, allowedTypes, defaultTab]
+  );
+  const [activeTab, setActiveTab] = React.useState<IconType>(smartDefault);
+
+  // Reset active tab when popover opens
+  React.useEffect(() => {
+    if (open) {
+      setActiveTab(getSmartDefaultTab(value, allowedTypes, defaultTab));
+    }
+  }, [open, value, allowedTypes, defaultTab]);
+
+  // Handlers
   const handleLucideSelect = React.useCallback(
     (iconName: string) => {
-      const iconData = createLucideIcon(iconName);
-      onChange?.(iconData);
+      onChange?.(createLucideIcon(iconName));
       setOpen(false);
     },
     [onChange]
   );
 
-  // Handle Emoji selection
   const handleEmojiSelect = React.useCallback(
     (emoji: string) => {
-      const iconData = createEmojiIcon(emoji);
-      onChange?.(iconData);
+      onChange?.(createEmojiIcon(emoji));
       setOpen(false);
     },
     [onChange]
   );
 
-  // Handle Image selection
   const handleImageSelect = React.useCallback(
     (imagePath: string) => {
-      const iconData = createImageIcon(imagePath);
-      onChange?.(iconData);
+      onChange?.(createImageIcon(imagePath));
       setOpen(false);
     },
     [onChange]
   );
 
-  // Get current icon value for display
+  const handleRemove = React.useCallback(() => {
+    onChange?.(null);
+    setOpen(false);
+  }, [onChange]);
+
+  const handleRandom = React.useCallback(() => {
+    // Spin animation
+    setRandomSpin(true);
+    setTimeout(() => setRandomSpin(false), 500);
+
+    if (activeTab === "emoji") {
+      const emoji = getRandomEmoji();
+      onChange?.(createEmojiIcon(emoji));
+    } else if (activeTab === "lucide") {
+      const iconName = getRandomLucideIcon();
+      onChange?.(createLucideIcon(iconName));
+    }
+    // Don't close popover — allow rapid re-rolls
+  }, [activeTab, onChange]);
+
+  // Current icon for display
   const currentIconValue = React.useMemo(() => {
     if (!value) return undefined;
     if (typeof value === "string") return value;
     return value;
   }, [value]);
 
-  // Default trigger button
+  const hasValue = !!value;
+
+  // Tab visibility
+  const showEmoji = allowedTypes.includes("emoji");
+  const showLucide = allowedTypes.includes("lucide");
+  const showImage = allowedTypes.includes("image");
+  const showRandomBtn = showRandom && activeTab !== "image";
+  const showRemoveBtn = allowRemove && hasValue;
+
+  // Default trigger
   const defaultTrigger = (
     <button
       type="button"
@@ -117,67 +195,83 @@ export function IconPicker({
         className
       )}
     >
-      <IconDisplay
-        icon={currentIconValue}
-        size={iconSize}
-        workspacePath={workspacePath}
-      />
+      <IconDisplay icon={currentIconValue} size={iconSize} workspacePath={workspacePath} />
     </button>
   );
-
-  // Filter tabs based on allowedTypes
-  const showLucide = allowedTypes.includes("lucide");
-  const showEmoji = allowedTypes.includes("emoji");
-  const showImage = allowedTypes.includes("image");
-
-  // Ensure activeTab is valid
-  React.useEffect(() => {
-    if (!allowedTypes.includes(activeTab)) {
-      setActiveTab(allowedTypes[0] ?? "lucide");
-    }
-  }, [allowedTypes, activeTab]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
         {trigger ?? defaultTrigger}
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[300px] p-0"
-        align={align}
-        sideOffset={4}
-      >
+      <PopoverContent className="w-[352px] p-0" align={align} sideOffset={4}>
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as IconType)}
           className="w-full"
         >
-          <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-            {showLucide && (
-              <TabsTrigger
-                value="lucide"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-              >
-                {t("iconPicker.icons", "Icons")}
-              </TabsTrigger>
-            )}
-            {showEmoji && (
-              <TabsTrigger
-                value="emoji"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-              >
-                {t("iconPicker.emoji", "Emoji")}
-              </TabsTrigger>
-            )}
-            {showImage && (
-              <TabsTrigger
-                value="image"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-              >
-                {t("iconPicker.image", "Image")}
-              </TabsTrigger>
-            )}
-          </TabsList>
+          {/* Tab bar with tools */}
+          <div className="flex items-center border-b border-border">
+            <TabsList className="flex-1 justify-start rounded-none bg-transparent p-0 h-auto">
+              {showEmoji && (
+                <TabsTrigger
+                  value="emoji"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                >
+                  {t("iconPicker.emoji", "Emoji")}
+                </TabsTrigger>
+              )}
+              {showLucide && (
+                <TabsTrigger
+                  value="lucide"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                >
+                  {t("iconPicker.icons", "Icons")}
+                </TabsTrigger>
+              )}
+              {showImage && (
+                <TabsTrigger
+                  value="image"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                >
+                  {t("iconPicker.image", "Image")}
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            {/* Tool buttons */}
+            <div className="flex items-center gap-0.5 px-2">
+              {showRandomBtn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn("h-7 w-7 p-0", randomSpin && "animate-spin")}
+                  onClick={handleRandom}
+                  title={t("iconPicker.random", "Random")}
+                >
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {showRemoveBtn && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                  onClick={handleRemove}
+                  title={t("iconPicker.remove", "Remove")}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Tab content */}
+          {showEmoji && (
+            <TabsContent value="emoji" className="m-0">
+              <EmojiTab onSelect={handleEmojiSelect} />
+            </TabsContent>
+          )}
 
           {showLucide && (
             <TabsContent value="lucide" className="m-0">
@@ -185,12 +279,6 @@ export function IconPicker({
                 value={typeof value === "object" && value?.type === "lucide" ? value.value : undefined}
                 onSelect={handleLucideSelect}
               />
-            </TabsContent>
-          )}
-
-          {showEmoji && (
-            <TabsContent value="emoji" className="m-0">
-              <EmojiTab onSelect={handleEmojiSelect} />
             </TabsContent>
           )}
 
