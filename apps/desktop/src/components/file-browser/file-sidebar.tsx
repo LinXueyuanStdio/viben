@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Star,
@@ -162,7 +163,7 @@ function SidebarSection({
   defaultOpen = true,
   children,
 }: SidebarSectionProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -224,7 +225,7 @@ export function FileSidebar({
   const { t } = useTranslation();
 
   // Extract home path from workspace path
-  const homePath = React.useMemo(() => {
+  const homePath = useMemo(() => {
     const extracted = extractHomePath(workspacePath);
     if (extracted) {
       // Store for future use
@@ -234,7 +235,7 @@ export function FileSidebar({
   }, [workspacePath]);
 
   // Build favorites list
-  const favorites = React.useMemo(() => {
+  const favorites = useMemo(() => {
     const items: Array<{
       id: string;
       path: string;
@@ -269,7 +270,7 @@ export function FileSidebar({
   }, [workspacePath, homePath, t]);
 
   // Filter recent paths (remove current and duplicates, limit to 10)
-  const filteredRecent = React.useMemo(() => {
+  const filteredRecent = useMemo(() => {
     const seen = new Set<string>();
     return recentPaths
       .filter((path) => {
@@ -281,7 +282,7 @@ export function FileSidebar({
   }, [recentPaths, currentPath]);
 
   // Get workspace name for locations section
-  const workspaceName = React.useMemo(
+  const workspaceName = useMemo(
     () => getFolderName(workspacePath),
     [workspacePath]
   );
