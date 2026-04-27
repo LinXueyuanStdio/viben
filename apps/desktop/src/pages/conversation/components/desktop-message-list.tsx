@@ -16,7 +16,7 @@
  * ```
  */
 
-import * as React from "react";
+import React, { useCallback } from "react";
 import { MessageList, type MessageListProps, type MessageListHandle } from "@viben/chat";
 
 // ============================================================================
@@ -52,7 +52,7 @@ export const DesktopMessageList = React.forwardRef<MessageListHandle, DesktopMes
     /**
      * Handle link clicks by opening in system browser via Tauri shell
      */
-    const handleLinkClick = React.useCallback(async (href: string) => {
+    const handleLinkClick = useCallback(async (href: string) => {
       try {
         const { open } = await import("@tauri-apps/plugin-shell");
         await open(href);
