@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,10 @@ export interface NotificationBellProps {
 const NotificationBell = React.forwardRef<HTMLButtonElement, NotificationBellProps>(
   ({ unreadCount, isOpen, onClick, hasNewNotification, className }, ref) => {
     const { t } = useTranslation();
-    const [isAnimating, setIsAnimating] = React.useState(false);
+    const [isAnimating, setIsAnimating] = useState(false);
 
     // Trigger animation when new notification arrives
-    React.useEffect(() => {
+    useEffect(() => {
       if (hasNewNotification) {
         setIsAnimating(true);
         const timer = setTimeout(() => setIsAnimating(false), 500);
