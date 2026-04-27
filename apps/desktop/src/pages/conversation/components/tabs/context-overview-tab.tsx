@@ -2,7 +2,7 @@
  * Context overview tab - unified view of workspace, artifacts, tools, and skills
  * Displays all context items as collapsible sections in a single scrollable list
  */
-import * as React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -110,7 +110,7 @@ function FileTreeItem({
   onSelect?: (file: WorkingFile) => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = React.useState(file.isExpanded ?? false);
+  const [isExpanded, setIsExpanded] = useState(file.isExpanded ?? false);
 
   const handleClick = () => {
     if (file.isDir) {
@@ -374,10 +374,10 @@ export function ContextOverviewTabContent({
   const prefersReducedMotion = useReducedMotion();
 
   // Section expansion states
-  const [workspaceExpanded, setWorkspaceExpanded] = React.useState(true);
-  const [artifactsExpanded, setArtifactsExpanded] = React.useState(true);
-  const [toolsExpanded, setToolsExpanded] = React.useState(true);
-  const [skillsExpanded, setSkillsExpanded] = React.useState(true);
+  const [workspaceExpanded, setWorkspaceExpanded] = useState(true);
+  const [artifactsExpanded, setArtifactsExpanded] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(true);
+  const [skillsExpanded, setSkillsExpanded] = useState(true);
 
   // Counts
   const workspaceCount = workingFiles.length + externalFolders.length;
