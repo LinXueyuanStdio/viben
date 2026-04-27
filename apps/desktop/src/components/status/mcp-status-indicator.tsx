@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Server, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   const { selectedPython, browseMcpInfo, loading: pythonLoading } = usePython();
 
   // Calculate MCP server statistics
-  const stats = React.useMemo(() => getStats(), [getStats, mcpServers, mcpServerStatuses]);
+  const stats = useMemo(() => getStats(), [getStats, mcpServers, mcpServerStatuses]);
 
   // Extract stable values for memo dependencies
   const pythonValid = selectedPython?.is_valid ?? false;
@@ -64,7 +64,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   const browseMcpChecked = browseMcpInfo !== null;
 
   // Determine the current status phase
-  const phase: StatusPhase = React.useMemo(() => {
+  const phase: StatusPhase = useMemo(() => {
     // Phase 1 & 2: Python check
     if (pythonLoading) {
       return "python_checking";
@@ -105,7 +105,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   }, [pythonLoading, pythonValid, browseMcpChecked, browseMcpInstalled, stats, mcpServerStatuses]);
 
   // Determine variant based on phase
-  const variant: StatusVariant = React.useMemo(() => {
+  const variant: StatusVariant = useMemo(() => {
     switch (phase) {
       case "python_checking":
       case "package_checking":
@@ -142,7 +142,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   };
 
   // Get display text
-  const displayText = React.useMemo(() => {
+  const displayText = useMemo(() => {
     switch (phase) {
       case "python_checking":
         return t("mcpStatus.pythonChecking");
@@ -166,7 +166,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   }, [phase, stats, t]);
 
   // Get tooltip content
-  const tooltipContent = React.useMemo(() => {
+  const tooltipContent = useMemo(() => {
     switch (phase) {
       case "python_checking":
         return t("mcpStatus.pythonCheckingTooltip");
@@ -192,7 +192,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   }, [phase, stats, t]);
 
   // Get icon based on phase
-  const Icon = React.useMemo(() => {
+  const Icon = useMemo(() => {
     switch (phase) {
       case "python_checking":
       case "package_checking":
