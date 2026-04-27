@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import {
   cn,
   ScrollArea,
@@ -117,7 +117,7 @@ export function TaskSubtasksTab({
   onFileClick,
 }: TaskSubtasksTabProps) {
   const { t } = useTranslation();
-  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const completedCount = subtasks.filter((s) => s.completed).length;
   const totalCount = subtasks.length;
