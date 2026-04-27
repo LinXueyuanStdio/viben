@@ -18,7 +18,7 @@
  * - enableWritingMode: Fullscreen writing mode
  */
 
-import * as React from "react";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Send,
@@ -266,31 +266,31 @@ export function ChatInput({
       ? chatConfig.visibility.showModelSelector
       : true
   );
-  const [content, setContent] = React.useState("");
-  const [attachments, setAttachments] = React.useState<MessageAttachment[]>([]);
-  const [isWritingMode, setIsWritingMode] = React.useState(false);
-  const [inputHeight, setInputHeight] = React.useState(80);
-  const [isEmojiOpen, setIsEmojiOpen] = React.useState(false);
-  const [isToolsOpen, setIsToolsOpen] = React.useState(false);
-  const [isSkillsOpen, setIsSkillsOpen] = React.useState(false);
-  const [isContextOpen, setIsContextOpen] = React.useState(false);
+  const [content, setContent] = useState("");
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [isWritingMode, setIsWritingMode] = useState(false);
+  const [inputHeight, setInputHeight] = useState(80);
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isSkillsOpen, setIsSkillsOpen] = useState(false);
+  const [isContextOpen, setIsContextOpen] = useState(false);
   // Slash command state
-  const [isSlashMenuOpen, setIsSlashMenuOpen] = React.useState(false);
-  const [slashQuery, setSlashQuery] = React.useState("");
-  const [slashSelectedIndex, setSlashSelectedIndex] = React.useState(0);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const imageInputRef = React.useRef<HTMLInputElement>(null);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const slashMenuRef = React.useRef<HTMLDivElement>(null);
+  const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const slashMenuRef = useRef<HTMLDivElement>(null);
   // Track IME composition state to prevent send on Enter during composition
-  const isComposingRef = React.useRef(false);
+  const isComposingRef = useRef(false);
   // Track previous isLoading state for auto-focus
-  const prevIsLoadingRef = React.useRef(isLoading);
+  const prevIsLoadingRef = useRef(isLoading);
   // Resize drag refs
-  const isDraggingRef = React.useRef(false);
-  const startYRef = React.useRef(0);
-  const startHeightRef = React.useRef(0);
+  const isDraggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(0);
 
   // Determine if we have toolbar/config bar features enabled
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
@@ -306,7 +306,7 @@ export function ChatInput({
   });
 
   // Screenshot handler - uses prop if provided, otherwise uses internal handler
-  const handleScreenshot = React.useCallback(
+  const handleScreenshot = useCallback(
     async (hideWindow?: boolean) => {
       if (onScreenshot) {
         // Use external handler if provided
@@ -320,7 +320,7 @@ export function ChatInput({
   );
 
   // Filter slash commands based on query
-  const filteredSlashCommands = React.useMemo(() => {
+  const filteredSlashCommands = useMemo(() => {
     if (!slashQuery) return slashCommands;
     const query = slashQuery.toLowerCase();
     return slashCommands.filter(
@@ -331,7 +331,7 @@ export function ChatInput({
   }, [slashCommands, slashQuery]);
 
   // Handle content change with slash command detection
-  const handleContentChange = React.useCallback(
+  const handleContentChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newContent = e.target.value;
       setContent(newContent);
@@ -353,7 +353,7 @@ export function ChatInput({
   );
 
   // Handle slash command selection
-  const handleSlashCommandSelect = React.useCallback(
+  const handleSlashCommandSelect = useCallback(
     (command: SlashCommand) => {
       setContent("");
       setIsSlashMenuOpen(false);
@@ -365,7 +365,7 @@ export function ChatInput({
   );
 
   // Load saved height from localStorage (only when resize handle is shown)
-  React.useEffect(() => {
+  useEffect(() => {
     if (!showResizeHandle) return;
     const savedHeight = localStorage.getItem("chat_input_height");
     if (savedHeight) {
@@ -377,14 +377,14 @@ export function ChatInput({
   }, [showResizeHandle]);
 
   // Auto focus on mount if autoFocus is true
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoFocus && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [autoFocus]);
 
   // Auto focus when agent stops running (reply completed)
-  React.useEffect(() => {
+  useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading && textareaRef.current) {
       textareaRef.current.focus();
     }
@@ -392,7 +392,7 @@ export function ChatInput({
   }, [isLoading]);
 
   // Auto-resize textarea based on content (only for non-toolbar mode)
-  React.useEffect(() => {
+  useEffect(() => {
     if (hasToolbar && !isWritingMode) return; // Fixed height in toolbar mode
 
     const textarea = textareaRef.current;
@@ -413,7 +413,7 @@ export function ChatInput({
   }, [content, hasToolbar, isWritingMode]);
 
   // Handle resize drag
-  const handleResizeStart = React.useCallback(
+  const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       if (!showResizeHandle) return;
       e.preventDefault();
@@ -442,7 +442,7 @@ export function ChatInput({
   );
 
   // Create preview for files with error handling
-  const createFilePreview = React.useCallback((file: File): Promise<string> => {
+  const createFilePreview = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -460,7 +460,7 @@ export function ChatInput({
 
   // Add files to attachments
   // forceImage: when true, treat all files as images (e.g., from clipboard paste)
-  const addFiles = React.useCallback(
+  const addFiles = useCallback(
     async (files: FileList | File[], forceImage = false) => {
       const fileArray = Array.from(files);
 
@@ -504,7 +504,7 @@ export function ChatInput({
   );
 
   // Handle paste event for image upload
-  const handlePaste = React.useCallback(
+  const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
       const items = e.clipboardData.items;
       const imageFiles: File[] = [];
@@ -632,7 +632,7 @@ export function ChatInput({
   };
 
   // Insert emoji at cursor position
-  const insertEmoji = React.useCallback(
+  const insertEmoji = useCallback(
     (emoji: string) => {
       const textarea = textareaRef.current;
       if (!textarea) {
