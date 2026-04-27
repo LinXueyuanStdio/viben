@@ -5,7 +5,7 @@
  * @mentions highlighting, and system messages.
  */
 
-import * as React from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Bot, User, ArrowDown, MessageSquare, Reply } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -190,7 +190,7 @@ function MessageItem({
   void _onMentionClick;
 
   const { t } = useTranslation();
-  const [showActions, setShowActions] = React.useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   // Get sender name from message or agent_name
   const senderName = message.sender_name || message.agent_name || t("common.unknown");
@@ -385,22 +385,22 @@ export function GroupChatMessageList({
   void onMentionClick;
 
   const { t } = useTranslation();
-  const viewportRef = React.useRef<HTMLDivElement>(null);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll state
-  const [showScrollButton, setShowScrollButton] = React.useState(false);
-  const userScrolledUpRef = React.useRef(false);
-  const lastScrollTopRef = React.useRef(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const userScrolledUpRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
 
   // Scroll to bottom
-  const scrollToBottom = React.useCallback(() => {
+  const scrollToBottom = useCallback(() => {
     userScrolledUpRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   // Check scroll position
-  const checkScrollPosition = React.useCallback(() => {
+  const checkScrollPosition = useCallback(() => {
     const container = viewportRef.current;
     if (!container) return;
 
@@ -422,14 +422,14 @@ export function GroupChatMessageList({
   }, []);
 
   // Auto-scroll on new messages
-  React.useEffect(() => {
+  useEffect(() => {
     if (!userScrolledUpRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
   // Add scroll listener
-  React.useEffect(() => {
+  useEffect(() => {
     const container = viewportRef.current;
     if (!container) return;
 
