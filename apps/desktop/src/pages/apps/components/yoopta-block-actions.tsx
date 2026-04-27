@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, PlusIcon } from "lucide-react";
 import { Blocks, useYooptaEditor } from "@yoopta/editor";
 import { DragHandle } from "@yoopta/ui/block-dnd";
@@ -52,16 +52,10 @@ export const YooptaFloatingBlockActions = () => {
   const editor = useYooptaEditor();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Use useState callback ref for drag handle — guarantees re-render when
-  // the DOM element mounts, so BlockOptions always receives a non-null anchor.
+  // Callback ref (useState setter) for drag handle — stable identity, triggers
+  // re-render when element mounts so BlockOptions receives a non-null anchor.
+  // setState functions are stable across renders, so DragHandle won't infinite-loop.
   const [dragHandleEl, setDragHandleEl] = useState<HTMLButtonElement | null>(null);
-  const dragHandleRef = useMemo(
-    () => ({
-      get current() { return dragHandleEl; },
-      set current(node: HTMLButtonElement | null) { setDragHandleEl(node); },
-    }),
-    [dragHandleEl],
-  ) as React.RefObject<HTMLButtonElement | null>;
 
   // Current hovered block
   const [blockId, setBlockId] = useState<string | null>(null);
@@ -288,7 +282,7 @@ export const YooptaFloatingBlockActions = () => {
       >
         <PlusIcon />
       </button>
-      <DragHandle blockId={blockId} ref={dragHandleRef} asChild>
+      <DragHandle blockId={blockId} ref={setDragHandleEl} asChild>
         <button
           type="button"
           className="yoopta-ui-floating-action-button"
