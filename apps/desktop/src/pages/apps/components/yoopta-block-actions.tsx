@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { GripVertical, PlusIcon } from "lucide-react";
 import { Blocks, useYooptaEditor } from "@yoopta/editor";
 import { DragHandle } from "@yoopta/ui/block-dnd";
@@ -49,6 +50,7 @@ function getBlockMarginOffset(blockElement: HTMLElement): number {
  * - Considers picker/popover overlays — doesn't hide when mouse is over them.
  */
 export const YooptaFloatingBlockActions = () => {
+  const { t } = useTranslation();
   const editor = useYooptaEditor();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -254,8 +256,8 @@ export const YooptaFloatingBlockActions = () => {
     alignItems: "center",
     gap: 1,
     padding: 3,
-    background: "hsl(var(--background))",
-    border: "1px solid hsl(var(--border))",
+    background: "var(--background)",
+    border: "1px solid var(--border)",
     borderRadius: "0.5rem",
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
     opacity: isShown ? 1 : 0,
@@ -277,8 +279,8 @@ export const YooptaFloatingBlockActions = () => {
         type="button"
         className="yoopta-ui-floating-action-button"
         onClick={() => onPlusClick(blockId)}
-        title="Add block"
-        aria-label="Add block"
+        title={t("editor.blockActions.addBlock")}
+        aria-label={t("editor.blockActions.addBlock")}
       >
         <PlusIcon />
       </button>
@@ -287,8 +289,8 @@ export const YooptaFloatingBlockActions = () => {
           type="button"
           className="yoopta-ui-floating-action-button"
           onClick={() => onDragClick(blockId)}
-          title="Drag to reorder"
-          aria-label="Drag to reorder"
+          title={t("editor.blockActions.dragToReorder")}
+          aria-label={t("editor.blockActions.dragToReorder")}
         >
           <GripVertical />
         </button>

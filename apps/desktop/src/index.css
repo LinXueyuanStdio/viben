@@ -390,9 +390,9 @@
 
 /* Chat Popup send button pulse animation */
 @keyframes sendPulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 hsl(var(--primary) / 0.5); }
-  50% { transform: scale(1.15); box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 50%, transparent); }
+  50% { transform: scale(1.15); box-shadow: 0 0 0 8px transparent; }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 transparent; }
 }
 
 /* Chat Capsule (Dynamic Island) animations */

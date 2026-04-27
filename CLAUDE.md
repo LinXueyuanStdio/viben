@@ -162,6 +162,27 @@ const variants = cva([...], {
 />
 ```
 
+**FORBIDDEN**: 不要用 `hsl()` 包裹 oklch 格式的 CSS 变量。项目的语义色彩变量（`--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`, `--sidebar`, `--surface` 等）均为 **oklch** 格式。`hsl(oklch(...))` 是无效 CSS，浏览器会渲染为透明色。
+
+```css
+/* ❌ BAD - oklch 值被 hsl() 包裹，结果为透明 */
+background: hsl(var(--background));
+color: hsl(var(--foreground));
+border: 1px solid hsl(var(--border));
+box-shadow: 0 0 0 4px hsl(var(--primary) / 0.5);
+
+/* ✅ GOOD - 直接使用变量 */
+background: var(--background);
+color: var(--foreground);
+border: 1px solid var(--border);
+box-shadow: 0 0 0 4px color-mix(in oklch, var(--primary) 50%, transparent);
+
+/* ✅ GOOD - 在 Tailwind 类中使用 */
+className="bg-popover text-foreground border-border"
+```
+
+**例外**: `--info`, `--warning`, `--error`, `--success` 及 `--cyan-500` 等 Kanban 颜色变量是 HSL 分量格式（如 `210 70% 50%`），可以用 `hsl(var(--info))`。
+
 ## Desktop App Development
 
 ### Restart Desktop App

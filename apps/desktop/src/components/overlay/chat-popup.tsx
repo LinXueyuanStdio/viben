@@ -437,7 +437,7 @@ function ChatPopup({
       className={cn(
         'fixed z-[10000] bottom-0 left-1/2 -translate-x-1/2',
         'w-[90vw]',
-        'bg-[hsl(var(--popover))] rounded-t-[18px] rounded-b-none',
+        'bg-popover rounded-t-[18px] rounded-b-none',
         'shadow-[0_-4px_24px_rgba(0,0,0,0.4)]',
         'border border-b-0 border-border/50',
         isVisible ? 'translate-y-0' : 'translate-y-full',

@@ -16,7 +16,7 @@ em-emoji-picker {
   --em-rgb-background: 255, 255, 255;
   --em-rgb-input: 245, 245, 245;
   --em-rgb-color: 23, 23, 23;
-  --em-color-border-over: hsl(var(--primary));
+  --em-color-border-over: var(--primary);
 }
 
 /* Dark theme */
@@ -24,5 +24,5 @@ em-emoji-picker {
   --em-rgb-background: 23, 23, 23;
   --em-rgb-input: 38, 38, 38;
   --em-rgb-color: 245, 245, 245;
-  --em-color-border-over: hsl(var(--primary));
+  --em-color-border-over: var(--primary);
 }
