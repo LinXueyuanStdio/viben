@@ -36,6 +36,7 @@ import {
 import type {
   PageConfig,
   PageType,
+  PageWidth,
   PageTemplate,
   IconData,
   ListPagesResult,
@@ -604,7 +605,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   });
 
   // ============================================================================
-  // POST /api/page/update-config - Update page config (name, description, icon)
+  // POST /api/page/update-config - Update page config (name, description, icon, cover, page_width, show_toc)
   // ============================================================================
   fastify.post<{
     Body: {
@@ -613,11 +614,14 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       name?: string;
       description?: string | null;
       icon?: IconData | null;
+      cover?: string | null;
+      page_width?: PageWidth | null;
+      show_toc?: boolean | null;
     };
     Reply: UpdatePageConfigResult;
   }>("/api/page/update-config", {
     schema: {
-      description: "Update page config (name, description, icon)",
+      description: "Update page config (name, description, icon, cover, page_width, show_toc)",
       tags: ["page"],
       body: {
         type: "object",
@@ -627,6 +631,9 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           name: { type: "string", description: "New page name" },
           description: { type: "string", nullable: true, description: "New page description (null to remove)" },
           icon: { ...iconDataSchema, description: "New page icon (null to remove)" },
+          cover: { type: "string", nullable: true, description: "Cover image URL (null to remove)" },
+          page_width: { type: "string", nullable: true, enum: ["default", "wide", "full"], description: "Page width (null to reset)" },
+          show_toc: { type: "boolean", nullable: true, description: "Show table of contents sidebar (null to reset)" },
         },
         required: ["workspace_path", "slug"],
       },
@@ -637,7 +644,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug, name, description, icon } = request.body;
+    const { workspace_path, slug, name, description, icon, cover, page_width, show_toc } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
@@ -649,7 +656,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       return { success: false, error: "slug is required" };
     }
 
-    const result = await updatePageConfig({ workspace_path, slug, name, description, icon });
+    const result = await updatePageConfig({ workspace_path, slug, name, description, icon, cover, page_width, show_toc });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);

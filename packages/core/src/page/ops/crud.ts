@@ -313,7 +313,7 @@ export async function updatePageContent(
 export async function updatePageConfig(
   options: UpdatePageConfigOptions
 ): Promise<UpdatePageConfigResult> {
-  const { workspace_path, slug, name, description, icon } = options;
+  const { workspace_path, slug, name, description, icon, cover, page_width, show_toc } = options;
 
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, slug);
@@ -347,6 +347,27 @@ export async function updatePageConfig(
       delete data.icon;
     } else {
       data.icon = icon;
+    }
+  }
+  if (cover !== undefined) {
+    if (cover === null) {
+      delete data.cover;
+    } else {
+      data.cover = cover;
+    }
+  }
+  if (page_width !== undefined) {
+    if (page_width === null) {
+      delete data.page_width;
+    } else {
+      data.page_width = page_width;
+    }
+  }
+  if (show_toc !== undefined) {
+    if (show_toc === null) {
+      delete data.show_toc;
+    } else {
+      data.show_toc = show_toc;
     }
   }
 

@@ -24,6 +24,9 @@ export interface IconData {
   value: string;
 }
 
+/** Page width options */
+export type PageWidth = "default" | "wide" | "full";
+
 // =============================================================================
 // Page Config Types (Union)
 // =============================================================================
@@ -33,6 +36,9 @@ interface PageConfigBase {
   name: string;
   description?: string;
   icon?: IconData;
+  cover?: string;
+  page_width?: PageWidth;
+  show_toc?: boolean;
   permission: PagePermission[];
   path: string;
   skill_content?: string;
@@ -100,6 +106,9 @@ export interface UpdatePageConfigParams {
   name?: string;
   description?: string | null;
   icon?: IconData | null;
+  cover?: string | null;
+  page_width?: PageWidth | null;
+  show_toc?: boolean | null;
 }
 
 export interface UpdatePageConfigResult extends PageResult {

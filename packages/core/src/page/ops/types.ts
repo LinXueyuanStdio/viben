@@ -64,6 +64,14 @@ export interface IconData {
 }
 
 // =============================================================================
+// Page Layout Types
+// =============================================================================
+
+/** 页面宽度 */
+export const PAGE_WIDTHS = ["default", "wide", "full"] as const;
+export type PageWidth = (typeof PAGE_WIDTHS)[number];
+
+// =============================================================================
 // Page Config Types (Union)
 // =============================================================================
 
@@ -73,6 +81,9 @@ interface PageConfigBase {
   name: string;
   description?: string;
   icon?: IconData;
+  cover?: string;
+  page_width?: PageWidth;
+  show_toc?: boolean;
   permission: PagePermission[];
   path: string;
   skill_content?: string;
@@ -177,6 +188,9 @@ export interface UpdatePageConfigOptions {
   name?: string;
   description?: string | null;
   icon?: IconData | null;
+  cover?: string | null;
+  page_width?: PageWidth | null;
+  show_toc?: boolean | null;
 }
 
 export interface UpdatePageConfigResult extends PageResult {
