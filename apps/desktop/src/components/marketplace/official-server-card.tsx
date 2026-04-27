@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { memo, useCallback } from "react";
 import { Package, GitBranch, Globe, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ interface OfficialServerCardProps {
 /**
  * Get icon for package type
  */
-const PackageTypeIcon = React.memo(function PackageTypeIcon({
+const PackageTypeIcon = memo(function PackageTypeIcon({
   type,
 }: {
   type: string;
@@ -49,14 +49,14 @@ const PackageTypeIcon = React.memo(function PackageTypeIcon({
  * OfficialServerCard component displays an official registry server
  * Styled to match web version
  */
-export const OfficialServerCard = React.memo(function OfficialServerCard({
+export const OfficialServerCard = memo(function OfficialServerCard({
   server,
   onSelect,
   className,
 }: OfficialServerCardProps) {
   const { t } = useTranslation();
 
-  const handleOpenRepo = React.useCallback(
+  const handleOpenRepo = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -67,7 +67,7 @@ export const OfficialServerCard = React.memo(function OfficialServerCard({
     [server.repositoryUrl]
   );
 
-  const handleOpenWebsite = React.useCallback(
+  const handleOpenWebsite = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
