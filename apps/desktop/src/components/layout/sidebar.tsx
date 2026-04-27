@@ -1,5 +1,4 @@
-import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
@@ -170,7 +169,7 @@ export function Sidebar() {
   const isGitHubIntegrated = !!(githubAuth.status?.authenticated && githubRepo.repository);
 
   // Build workspace nav items based on GitHub integration status
-  const workspaceNavItems = React.useMemo(() => {
+  const workspaceNavItems = useMemo(() => {
     if (isGitHubIntegrated) {
       // Insert GitHub after agents, before files
       const items = [...baseWorkspaceNavItems];
