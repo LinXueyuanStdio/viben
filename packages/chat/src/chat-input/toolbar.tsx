@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Smile,
@@ -65,9 +66,9 @@ export function ChatInputToolbar({
   className,
 }: ChatInputToolbarProps) {
   const { t } = useTranslation();
-  const [isEmojiOpen, setIsEmojiOpen] = React.useState(false);
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
 
-  const handleEmojiSelect = React.useCallback(
+  const handleEmojiSelect = useCallback(
     (emoji: string) => {
       onEmojiSelect(emoji);
       setIsEmojiOpen(false);
