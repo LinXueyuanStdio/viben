@@ -90,9 +90,9 @@
     "overview": "概览",
     "created": "创建",
     "justNow": "刚刚",
-    "minutesAgo": "分钟前",
-    "hoursAgo": "小时前",
-    "daysAgo": "天前",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前",
     "now": "刚刚",
     "minutesShort": "{{count}}分钟",
     "hoursShort": "{{count}}小时",
@@ -138,7 +138,17 @@
       "terabytes": "TB",
       "chars": "字符",
       "lines": "行"
-    }
+    },
+    "duplicate": "复制",
+    "copyFailed": "Copy Failed",
+    "system": "系统",
+    "completed": "已完成",
+    "analyzed": "已分析",
+    "done": "完成",
+    "updated": "Updated",
+    "weeksAgo": "Weeks Ago",
+    "failed": "Failed",
+    "dismiss": "Dismiss"
   },
   "elapsedTime": {
     "justNow": "刚刚",
@@ -284,7 +294,8 @@
     "invalidUrlProtocol": "无效的协议，请使用 http 或 https",
     "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
-    "installHint": "请安装微本: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
+    "installHint": "请安装微本: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart",
+    "checking": "检测中..."
   },
   "channels": {
     "telegramBot": "Telegram 机器人",
@@ -401,6 +412,50 @@
       "whatsapp": {
         "bridgeConnectionFailed": "无法连接到 WhatsApp Bridge。桥接服务器是否正在运行？"
       }
+    },
+    "configureWebhook": "配置 Webhook",
+    "webhook": {
+      "noToken": "请先配置 Bot Token",
+      "setSuccess": "Webhook 设置成功",
+      "setFailed": "Webhook 设置失败",
+      "deleteSuccess": "Webhook 已删除",
+      "deleteFailed": "删除失败",
+      "copied": "已复制到剪贴板",
+      "oneClickSuccess": "一键配置成功！",
+      "oneClickSuccessDesc": "隧道已启动，Webhook 已设置",
+      "title": "配置 Webhook",
+      "description": "配置 Telegram Bot 的 Webhook，让 Bot 能够接收消息并路由到绑定的智能体。",
+      "loading": "加载中...",
+      "currentStatus": "当前状态",
+      "active": "已配置",
+      "notConfigured": "未配置",
+      "pendingUpdates": "待处理消息",
+      "url": "Webhook URL",
+      "copy": "复制",
+      "urlHint": "Webhook URL 必须是公网可访问的 HTTPS 地址。本地开发可使用 ngrok 等工具。",
+      "manualSetup": "手动配置方法",
+      "learnMore": "了解更多",
+      "delete": "删除 Webhook",
+      "setting": "设置中...",
+      "set": "设置 Webhook"
+    },
+    "tunnel": {
+      "started": "隧道已启动",
+      "startFailed": "隧道启动失败",
+      "stopped": "隧道已停止",
+      "stopFailed": "隧道停止失败",
+      "title": "Cloudflare 隧道",
+      "description": "一键创建公网地址，无需安装额外工具",
+      "connected": "已连接",
+      "starting": "启动中...",
+      "reconnecting": "重连中...",
+      "error": "错误",
+      "connections": "连接点",
+      "stopping": "停止中...",
+      "stop": "停止隧道",
+      "start": "启动隧道",
+      "settingUp": "配置中...",
+      "oneClick": "一键配置"
     }
   },
   "dashboard": {
@@ -608,6 +663,10 @@
         "silenceTimeoutDesc": "无语音输入后自动退出的时间",
         "threshold": "检测灵敏度",
         "thresholdDesc": "唤醒词检测的置信度阈值",
+        "options": {
+          "nihaoWeiben": "你好微本",
+          "heyJarvis": "Hey Jarvis"
+        },
         "test": {
           "detected": "检测到唤醒词！",
           "loading": "正在加载模型...",
@@ -888,7 +947,10 @@
       "codex": "Codex",
       "claude": "Claude",
       "native": "原生"
-    }
+    },
+    "off": "沙箱",
+    "sandboxMode": "沙箱模式",
+    "selectProvider": "选择供应商"
   },
   "about": {
     "title": "微本",
@@ -1178,7 +1240,39 @@
     "notLoggedIn": "未登录",
     "memoryDescription": "用于偏好设置和上下文的长期记忆文件",
     "executor": "执行器",
-    "selectExecutor": "选择执行器"
+    "selectExecutor": "选择执行器",
+    "mcpNotFound": "未找到 MCP 服务器",
+    "mcpNotFoundDesc": "无法找到请求的 MCP 服务器。",
+    "transport": "传输方式",
+    "command": "命令",
+    "arguments": "参数",
+    "environment": "环境变量",
+    "url": "URL",
+    "mcpServerDesc": "MCP（模型上下文协议）服务器为 AI 智能体提供额外的工具和能力。此服务器已为所选执行器配置。",
+    "promptNotFound": "未找到提示",
+    "promptNotFoundDesc": "无法找到请求的提示。",
+    "prompt": "提示",
+    "type": "类型",
+    "usage": "用法",
+    "promptContent": "提示内容",
+    "editInFilesTab": "从侧边栏选择文件以编辑完整内容。",
+    "promptTemplateDesc": "提示是存储在 .claude/prompts/ 中的可复用文本模板。它们可以使用 @提及 语法快速插入预定义指令或上下文到对话中。",
+    "subagent": "子智能体",
+    "subagentContent": "子智能体内容",
+    "subagentDesc": "子智能体是在 .claude/agents/*.md 文件中定义的专用智能体配置。它们可以通过 Task 工具调用，使用自己的工具和上下文处理特定类型的任务。",
+    "subagentNotFound": "未找到子智能体",
+    "subagentNotFoundDesc": "无法找到请求的子智能体配置。",
+    "saveSuccess": "智能体保存成功",
+    "saveFailed": "保存智能体失败",
+    "subAgents": "子智能体",
+    "noSubAgents": "未找到子智能体配置。",
+    "noSubAgentsHint": "创建 .claude/agents/*.md 文件以添加子智能体配置。",
+    "commandNotFound": "未找到命令",
+    "commandNotFoundDesc": "无法找到请求的命令。",
+    "slashCommand": "Slash 命令",
+    "namespace": "命名空间",
+    "commandContent": "命令内容",
+    "commandDesc": "Slash 命令是展开为预定义提示或操作的快捷方式。它们帮助自动化常见任务并确保与 AI 智能体的一致交互。"
   },
   "settingsModels": {
     "title": "AI 模型",
@@ -1301,7 +1395,12 @@
       "wos": "Clarivate 引用数据库",
       "jstor": "学术期刊数字图书馆",
       "researchgate": "研究人员社交网络"
-    }
+    },
+    "pluginsAvailable": "Plugins Available",
+    "categoriesAvailable": "Categories Available",
+    "noPluginsMatch": "No Plugins Match",
+    "noPluginsAvailable": "No Plugins Available",
+    "checkBackLater": "Check Back Later"
   },
   "agent": {
     "searchAgents": "搜索智能体...",
@@ -1328,13 +1427,15 @@
     "markAsTemplate": "设为模板",
     "unmarkAsTemplate": "取消模板",
     "promoteToGlobal": "提升为全局",
-    "promoteTemplateConfirm": "将此模板提升为全局模板？",
+    "promoteTemplateConfirm": "将 \"{{agentName}}\" 提升为全局模板？",
     "globalTemplate": "全局",
     "workspaceTemplate": "工作区",
     "variablePlaceholder": "变量名",
     "apiKeyPlaceholder": "API密钥名",
     "envVarPlaceholder": "环境变量名",
-    "memoryFile": "MEMORY.md"
+    "memoryFile": "MEMORY.md",
+    "sessionCount": "{{count}} 个会话",
+    "notFound": "未找到智能体"
   },
   "agents": {
     "title": "智能体",
@@ -2060,7 +2161,14 @@
       "invalidUrl": "无效 URL",
       "stdioRequiresCommand": "STDIO 传输需要命令"
     },
-    "enterAuthCode": "在浏览器中完成授权后，将授权码粘贴到此处："
+    "enterAuthCode": "在浏览器中完成授权后，将授权码粘贴到此处：",
+    "checkingProxy": "检查中...",
+    "proxyBuiltIn": "内置",
+    "sessions": "会话",
+    "proxyUnavailable": "不可用",
+    "authDisabled": "认证：已禁用",
+    "authEnabled": "认证：已启用",
+    "apps": "应用"
   },
   "updates": {
     "title": "包更新",
@@ -2197,7 +2305,11 @@
       "integrationsDesc": "第三方集成",
       "utility": "工具",
       "utilityDesc": "通用工具技能"
-    }
+    },
+    "gridView": "Grid View",
+    "listView": "List View",
+    "previous": "Previous",
+    "next": "Next"
   },
   "marketplace": {
     "title": "MCP 市场",
@@ -2273,7 +2385,8 @@
       "aiMlDesc": "AI 和机器学习工具",
       "utility": "工具",
       "utilityDesc": "通用工具"
-    }
+    },
+    "viewDetails": "View Details"
   },
   "workspaceSettings": {
     "sections": {
@@ -2390,7 +2503,10 @@
         "estimatedFiles": "预估文件数",
         "affectedAreas": "影响范围",
         "implementationHints": "实现建议",
-        "specSaved": "Spec 文件已保存到工作区"
+        "specSaved": "Spec 文件已保存到工作区",
+        "loadingComments": "加载评论中...",
+        "noComments": "暂无评论。",
+        "assignees": "负责人"
       },
       "analysis": {
         "summary": "摘要",
@@ -2411,7 +2527,9 @@
           "medium": "中",
           "high": "高",
           "critical": "关键"
-        }
+        },
+        "affectedAreas": "影响范围",
+        "estimatedFiles": "预估文件数"
       },
       "autoFix": {
         "queue": "自动修复队列",
@@ -2457,7 +2575,10 @@
         "noPRs": "没有找到 Pull Request",
         "draft": "草稿",
         "openedBy": "由 {{user}} 于 {{date}} 创建",
-        "files": "个文件"
+        "files": "个文件",
+        "merged": "已合并",
+        "comments": "评论",
+        "noDescription": "暂无描述。"
       },
       "releases": {
         "title": "发布版本",
@@ -2662,7 +2783,9 @@
       "completed": "已完成",
       "failed": "失败",
       "cancelled": "已取消",
-      "archived": "已归档"
+      "archived": "已归档",
+      "todo": "待办",
+      "done": "完成"
     },
     "column": {
       "backlog": "待办",
@@ -2714,7 +2837,13 @@
       "cancelled": "筛选：仅取消",
       "archived": "筛选：仅归档",
       "clear": "清除所有筛选",
-      "search": "搜索任务"
+      "search": "搜索任务",
+      "searchPlaceholder": "搜索...",
+      "priority": "优先级",
+      "byPriority": "按优先级筛选",
+      "tags": "标签",
+      "byTag": "按标签筛选",
+      "active": "活跃"
     },
     "selectAll": "全选任务",
     "clearSelection": "取消选择",
@@ -2823,7 +2952,10 @@
       "failed": "失败",
       "entries": "条记录",
       "hideDetails": "隐藏详情",
-      "showDetails": "显示详情"
+      "showDetails": "显示详情",
+      "planning": "规划中",
+      "coding": "编码中",
+      "liveUpdating": "实时更新中..."
     },
     "filesTab": {
       "title": "文件",
@@ -2932,7 +3064,8 @@
       "resultsCount": "{{count}} 个结果",
       "navigateHint": "导航",
       "selectHint": "选择",
-      "closeHint": "关闭"
+      "closeHint": "关闭",
+      "gotoCompletedDesc": "Jump to first completed task"
     },
     "connectionError": "连接错误",
     "noProjectFound": "暂无任务",
@@ -2968,7 +3101,11 @@
       "shortcut": "⌘+Enter 快速创建",
       "noAgentsWarning": "未配置智能体。请在设置中配置智能体。",
       "noModelsWarning": "未配置模型。请在设置中配置模型。",
-      "noAgentsOrModels": "未配置智能体和模型。请在设置中进行配置。"
+      "noAgentsOrModels": "未配置智能体和模型。请在设置中进行配置。",
+      "combinedPlaceholder": "你需要我做什么？",
+      "contentHint": "Content Hint",
+      "worktree": "工作树",
+      "worktreeHint": "在隔离的 git 工作树中运行任务"
     },
     "filesDescription": "浏览和管理文件",
     "connectingToKanban": "正在连接任务看板...",
@@ -3060,7 +3197,9 @@
         "qa_rejected": "QA 问题",
         "plan_review": "审批计划",
         "stopped": "已停止"
-      }
+      },
+      "approve": "批准",
+      "reject": "驳回"
     },
     "taskActions": {
       "start": "开始",
@@ -3077,7 +3216,16 @@
       "sequenceMismatch": "序列号不匹配 - 请刷新",
       "invalidTransition": "无效的状态转换",
       "submitFailed": "提交事件失败",
-      "unnamedTask": "未命名任务"
+      "unnamedTask": "未命名任务",
+      "error": "操作失败",
+      "approved": "任务已批准",
+      "approveFailed": "批准任务失败",
+      "rejected": "任务已退回修改",
+      "rejectFailed": "驳回任务失败",
+      "taskStarted": "任务已启动",
+      "enqueueWarning": "警告",
+      "queue": "队列",
+      "archive": "归档"
     },
     "taskEvents": {
       "title": "事件",
@@ -3111,7 +3259,97 @@
       "qa_rejected": "QA 问题",
       "plan_review": "计划审核",
       "stopped": "已停止"
-    }
+    },
+    "taskDetails": "任务详情",
+    "executionProgress": "执行进度",
+    "inProgress": "进行中",
+    "done": "完成",
+    "started": "已开始",
+    "completed": "已完成",
+    "stepsCompleted": "已完成",
+    "stepsRemaining": "剩余",
+    "creator": "创建者",
+    "executor": "执行器",
+    "model": "模型",
+    "runtime": "运行时",
+    "gitInfo": "Git 信息",
+    "worktree": {
+      "cleanedUp": "已清理",
+      "isolated": "隔离工作树"
+    },
+    "branch": "分支",
+    "baseBranch": "基础分支",
+    "path": "路径",
+    "notes": "备注",
+    "stopAgent": "停止选中任务",
+    "stopTask": "停止",
+    "recoverTask": "恢复",
+    "actions": {
+      "resumeTask": "继续任务",
+      "viewPR": "查看 PR"
+    },
+    "archiveTask": "归档",
+    "expandAll": "全部展开",
+    "expandAllHint": "展开所有折叠列",
+    "resizeColumn": "Resize Column",
+    "deselectAllInColumn": "取消全选列中任务",
+    "selectAllInColumn": "全选列中任务",
+    "taskDeleted": "任务已删除",
+    "taskDuplicated": "任务已复制",
+    "bulkDeleteSuccess": "已删除 {{count}} 个任务",
+    "statusContext": {
+      "stuck": {
+        "title": "任务卡住",
+        "description": "任务执行已停滞。点击恢复以重新启动任务。"
+      },
+      "failed": {
+        "title": "任务失败",
+        "description": "任务遇到错误。你可以重试或放弃。"
+      },
+      "review": {
+        "completed": {
+          "title": "等待批准",
+          "description": "任务已完成。审查更改并批准以标记为完成。"
+        },
+        "plan": {
+          "title": "计划需要审查",
+          "description": "审查实施计划。批准以继续编码，或驳回修改。"
+        },
+        "errors": {
+          "title": "错误需要关注",
+          "description": "任务执行过程中遇到错误。审查并点击继续重试。"
+        },
+        "qa": {
+          "title": "QA 发现问题",
+          "description": "质量保证发现了问题。点击继续以解决。"
+        },
+        "stopped": {
+          "title": "任务已停止",
+          "description": "任务被手动停止。点击继续以恢复执行。"
+        },
+        "default": {
+          "title": "等待审查",
+          "description": "此任务需要你的审查才能继续。"
+        }
+      },
+      "running": {
+        "title": "任务运行中",
+        "description": "智能体正在处理此任务。如需可以停止。"
+      },
+      "backlog": {
+        "title": "在待办列表中",
+        "description": "此任务正等待加入队列。点击队列将其添加到执行队列。"
+      },
+      "queue": {
+        "title": "准备开始",
+        "description": "此任务已排队就绪。点击开始执行。"
+      },
+      "completed": {
+        "title": "任务已完成",
+        "description": "此任务已成功完成。"
+      }
+    },
+    "missingAgentId": "缺少 agent_id 参数"
   },
   "sync": {
     "workspaceSync": "工作区同步",
@@ -3150,7 +3388,8 @@
     "conflictResolution": "冲突解决",
     "conflictResolutionDesc": "发生同步冲突时的处理方式",
     "preferLocal": "优先本地",
-    "preferCloud": "优先云端"
+    "preferCloud": "优先云端",
+    "updatedAt": "Updated At"
   },
   "onboarding": {
     "footer": "微本 - Agent Swarm × Code Evolution",
@@ -3842,11 +4081,36 @@
     "otherPlaceholder": "输入您的自定义回复...",
     "waitingForApproval": "等待计划审批...",
     "waitingForInput": "请回答上面的问题...",
-    "sidebar": "侧边栏",
+    "sidebar": {
+      "noArtifacts": "暂无产物",
+      "noTools": "暂无已使用工具",
+      "noTasks": "此工作区暂无任务",
+      "noSkills": "暂无已使用技能",
+      "noWorkingDir": "无工作目录",
+      "emptyFolder": "文件夹为空",
+      "context": "上下文",
+      "tasks": "任务",
+      "skills": "技能",
+      "workspace": "工作区",
+      "outputFolder": "输出文件夹",
+      "externalFolders": "外部文件夹",
+      "showMore": "展开更多 {{count}} 项",
+      "showLess": "收起"
+    },
     "closeSidebar": "关闭侧边栏",
     "openSidebar": "打开侧边栏",
     "clearMessages": "清空消息",
     "commandExecuted": "命令已执行",
+    "openFullChat": "跳转到对话页面",
+    "placeholder": "输入消息...",
+    "agent": "智能体",
+    "workspace": "工作空间",
+    "global": "全局",
+    "model": "模型",
+    "voiceListening": "正在倾听... 点击停止",
+    "voiceConnecting": "连接中...",
+    "voiceInput": "语音输入",
+    "stop": "停止",
     "artifacts": {
       "title": "产物",
       "createdBy": "已创建",
@@ -3872,6 +4136,19 @@
       "editingFile": "正在编辑 {{file}}...",
       "searchingWeb": "正在搜索网页...",
       "runningTool": "正在运行 {{tool}}..."
+    },
+    "capsule": {
+      "done": "完成",
+      "error": "错误",
+      "awaitingApproval": "等待审批",
+      "awaitingInput": "等待输入"
+    },
+    "fileFilter": {
+      "images": "图片",
+      "documents": "文档",
+      "spreadsheets": "表格",
+      "presentations": "演示文稿",
+      "allFiles": "所有文件"
     },
     "sidebar.workspace": "工作区",
     "sidebar.outputFolder": "输出文件夹",
@@ -4038,7 +4315,12 @@
       "reviewPromptDefault": "请审查此工作区中的最近更改。\n\n运行 `git diff` 查看未暂存的更改，运行 `git diff --staged` 查看已暂存的更改。\n\n提供全面的代码审查，包括：\n1. 代码质量和可读性\n2. 潜在的 bug 或问题\n3. 性能考虑\n4. 安全问题\n5. 改进建议",
       "initPrompt": "请在工作区根目录 ({{workspacePath}}) 创建 CLAUDE.md 文件来初始化此项目。\n\nCLAUDE.md 应包括：\n1. 项目概述和架构\n2. 关键目录及其用途\n3. 构建和测试命令\n4. 重要的约定和模式\n5. 任何针对 AI 助手的项目特定说明\n\n请先分析现有代码库结构，以生成准确且有帮助的内容。",
       "prCommentsPromptWithNumber": "请获取并显示 GitHub PR #{{prNumber}} 的评论。\n\n使用 `gh` CLI 获取 PR 评论：\n```\ngh pr view {{prNumber}} --comments\n```\n\n总结反馈意见和待办事项。",
-      "prCommentsPromptDefault": "请检查当前分支是否有打开的 PR 并显示其评论。\n\n使用 `gh` CLI：\n```\ngh pr view --comments\n```\n\n如果没有 PR，请告诉我。否则，请总结反馈意见和待办事项。"
+      "prCommentsPromptDefault": "请检查当前分支是否有打开的 PR 并显示其评论。\n\n使用 `gh` CLI：\n```\ngh pr view --comments\n```\n\n如果没有 PR，请告诉我。否则，请总结反馈意见和待办事项。",
+      "availableCommands": "可用命令",
+      "tips": "提示",
+      "tipTask": "询问当前任务以获取上下文感知建议",
+      "tipCode": "粘贴代码片段并请求帮助调试或改进",
+      "tipPlan": "请求智能体帮助规划实现方案"
     },
     "fileErrors": {
       "failedToReadFile": "读取文件失败",
@@ -4054,16 +4336,15 @@
       "symbols": "符号"
     },
     "backgroundTask": {
-      "title": "后台任务",
       "running": "运行中",
-      "completed": "已完成",
       "failed": "失败",
       "cancelled": "已取消",
-      "stop": "停止任务",
-      "noTasks": "无后台任务",
-      "clearCompleted": "清除已完成",
-      "connected": "已连接服务器",
-      "disconnected": "已断开服务器连接"
+      "stop": "停止",
+      "title": "后台任务",
+      "connected": "已连接",
+      "disconnected": "已断开",
+      "noTasks": "暂无后台任务",
+      "clearCompleted": "清除已完成"
     },
     "agentInput": {
       "placeholder": "从任何想法开始... 按 ⌘ ↵ 换行...",
@@ -4102,7 +4383,9 @@
         "compression": "开启自动上下文压缩",
         "compressionTooltip": "自动压缩上下文以节省令牌"
       }
-    }
+    },
+    "hideSteps": "Hide Steps",
+    "showSteps": "Show Steps"
   },
   "creator": {
     "title": "创作者",
@@ -4369,7 +4652,17 @@
     "openInNewTab": "在新标签页打开",
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏",
-    "close": "关闭"
+    "close": "关闭",
+    "static": "静态",
+    "live": "实时",
+    "running": "运行中",
+    "starting": "启动中...",
+    "error": "错误",
+    "stopped": "已停止",
+    "staticPreview": "静态预览",
+    "preview": "预览",
+    "viewCode": "查看代码",
+    "code": "代码"
   },
   "groupChat": {
     "createTitle": "创建群聊",
@@ -4433,7 +4726,15 @@
     "broadcastMention": "仅@提及",
     "showThinking": "显示思考过程",
     "historyLimit": "历史记录限制",
-    "isThinking": "正在思考..."
+    "isThinking": "正在思考...",
+    "global": "全局",
+    "viewUI": "聊天视图",
+    "viewAgent": "智能体视图",
+    "agentViews": "智能体视图",
+    "noAgents": "会话中没有智能体",
+    "thinking": "思考中...",
+    "selectSession": "选择或创建会话以开始聊天",
+    "agentViewReadOnly": "智能体视图为只读。切换到聊天视图以发送消息。"
   },
   "notifications": {
     "title": "通知",
@@ -4668,7 +4969,8 @@
       "plaintext": "纯文本"
     },
     "failedToReadContent": "读取文件内容失败",
-    "failedToLoadFile": "加载文件失败"
+    "failedToLoadFile": "加载文件失败",
+    "fileTooLarge": "文件可能太大或为二进制格式"
   },
   "filePicker": {
     "images": "图片",
@@ -4847,7 +5149,16 @@
       "commentsLoadMoreFailed": "加载更多评论失败"
     },
     "channels": {
-      "chatIdRequired": "发送测试消息需要 Chat ID"
+      "chatIdRequired": "发送测试消息需要 Chat ID",
+      "loadFailed": "Load Failed",
+      "saveFailed": "Save Failed",
+      "syncFailed": "Sync Failed",
+      "createFailed": "Create Failed",
+      "updateFailed": "Update Failed",
+      "deleteFailed": "Delete Failed",
+      "setDefaultFailed": "Set Default Failed",
+      "testFailed": "Test Failed",
+      "sendTestFailed": "Send Test Failed"
     },
     "mcp": {
       "invalidConfigMissingUrl": "配置无效：缺少 URL",
@@ -4871,7 +5182,8 @@
       "startAgentFailed": "启动智能体失败：{{error}}"
     },
     "gateway": {
-      "notConnected": "网关未连接"
+      "notConnected": "网关未连接",
+      "notAuthenticated": "Not Authenticated"
     },
     "connection": {
       "failed": "连接失败",
@@ -5148,7 +5460,8 @@
     "debugDescription": "消息和工具调用将显示在此处",
     "copyTraceId": "复制 Trace ID",
     "copySessionId": "复制 Session ID",
-    "inputPlaceholder": "输入消息..."
+    "inputPlaceholder": "输入消息...",
+    "debugSession": "调试会话"
   },
   "agentVariables": {
     "sectionTitle": "变量",
@@ -5255,7 +5568,11 @@
     "viewPage": "页面",
     "devTools": "开发工具",
     "proxyPage": "代理页面",
-    "proxyComingSoon": "代理页面预览即将推出"
+    "proxyComingSoon": "代理页面预览即将推出",
+    "updateSuccess": "页面更新成功",
+    "updateFailed": "更新页面失败",
+    "editPage": "编辑页面",
+    "editPageDescription": "修改页面名称、描述和图标"
   },
   "iconPicker": {
     "icons": "图标",
@@ -5336,5 +5653,73 @@
       "error": "错误",
       "failedToSend": "发送失败"
     }
+  },
+  "workspaceDetail": {
+    "github": {
+      "issueDetail": {
+        "minutesAgo": "{{count}}m ago",
+        "hoursAgo": "{{count}}h ago",
+        "daysAgo": "{{count}}d ago",
+        "commentedAt": "commented {{time}}",
+        "openedThisIssue": "打开了此议题",
+        "noDescription": "暂无描述。",
+        "commentsCount": "{{count}} comment",
+        "checkingTask": "检查任务中...",
+        "goToTask": "前往任务",
+        "createTask": "创建任务",
+        "loadMoreComments": "加载更多评论",
+        "loadingComments": "加载评论中...",
+        "assignees": "负责人",
+        "noAssignees": "暂无负责人",
+        "labels": "Labels",
+        "noLabels": "暂无",
+        "milestone": "里程碑",
+        "noMilestone": "无里程碑",
+        "linkedTask": "关联任务",
+        "noLinkedTask": "无关联任务",
+        "timeline": "时间线",
+        "createdAt": "Created {{date}}",
+        "updatedAt": "Updated {{date}}",
+        "closedAt": "Closed {{date}}"
+      },
+      "issues": {
+        "open": "打开",
+        "closed": "已关闭"
+      },
+      "viewOnGitHub": "在 GitHub 上查看"
+    }
+  },
+  "noTraceYet": "发送消息以查看调用追踪",
+  "debugDescription": "消息和工具调用将显示在此处",
+  "inputPlaceholder": "输入消息...",
+  "traceId": "追踪 ID",
+  "copyTraceId": "复制追踪 ID",
+  "sessionId": "会话 ID",
+  "copySessionId": "复制会话 ID",
+  "callTree": "调用树",
+  "timeline": "时间线",
+  "refreshTrace": "刷新追踪数据",
+  "loadingTrace": "正在加载追踪数据...",
+  "vibenCli": {
+    "pathValid": "路径有效",
+    "pathSelected": "已选择 Viben CLI 路径",
+    "pathInvalid": "无效的 viben 路径",
+    "sourceBundled": "内置",
+    "sourceSystemPath": "系统路径",
+    "sourceUserConfig": "用户配置",
+    "sourceFallback": "默认",
+    "title": "Viben CLI",
+    "description": "选择网关服务使用的 Viben CLI 路径",
+    "detectedPaths": "检测到的路径",
+    "detecting": "正在检测...",
+    "noPaths": "未检测到 Viben CLI，请使用下方输入框指定路径",
+    "bundled": "内置",
+    "customPath": "自定义路径",
+    "customPathPlaceholder": "/path/to/viben",
+    "check": "检测"
+  },
+  "commands": {
+    "helpAvailable": "{{count}} commands available. Type / to browse.",
+    "helpTip": "Use ↑↓ to navigate, Enter to select"
   }
 }

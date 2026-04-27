@@ -138,7 +138,17 @@
     "pending": "Pending",
     "skipped": "Skipped",
     "success": "Success",
-    "warning": "Warning"
+    "warning": "Warning",
+    "duplicate": "Duplicate",
+    "copyFailed": "Copy Failed",
+    "system": "System",
+    "completed": "Completed",
+    "analyzed": "Analyzed",
+    "done": "Done",
+    "updated": "Updated",
+    "weeksAgo": "Weeks Ago",
+    "failed": "Failed",
+    "dismiss": "Dismiss"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -284,7 +294,8 @@
     "invalidUrlProtocol": "Invalid protocol, please use http or https",
     "connectivityTestDescription": "गेटवे सेवा की कनेक्शन स्थिति और उपलब्ध एंडपॉइंट्स की जाँच करें",
     "binaryNotFound": "Gateway binary not found",
-    "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart"
+    "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
+    "checking": "Checking"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -401,6 +412,50 @@
       "whatsapp": {
         "bridgeConnectionFailed": "Cannot connect to WhatsApp Bridge. Is the bridge server running?"
       }
+    },
+    "configureWebhook": "Configure Webhook",
+    "webhook": {
+      "noToken": "Please configure Bot Token first",
+      "setSuccess": "Webhook set successfully",
+      "setFailed": "Failed to set Webhook",
+      "deleteSuccess": "Webhook deleted",
+      "deleteFailed": "Failed to delete",
+      "copied": "Copied to clipboard",
+      "oneClickSuccess": "One-click setup successful!",
+      "oneClickSuccessDesc": "Tunnel started and Webhook configured",
+      "title": "Configure Webhook",
+      "description": "Configure the Telegram Bot Webhook so the bot can receive messages and route them to the bound agent.",
+      "loading": "Loading...",
+      "currentStatus": "Current Status",
+      "active": "Configured",
+      "notConfigured": "Not Configured",
+      "pendingUpdates": "Pending Updates",
+      "url": "Webhook URL",
+      "copy": "Copy",
+      "urlHint": "The Webhook URL must be a publicly accessible HTTPS address. For local development, you can use tools like ngrok.",
+      "manualSetup": "Manual Setup Guide",
+      "learnMore": "Learn More",
+      "delete": "Delete Webhook",
+      "setting": "Setting up...",
+      "set": "Set Webhook"
+    },
+    "tunnel": {
+      "started": "Tunnel started",
+      "startFailed": "Failed to start tunnel",
+      "stopped": "Tunnel stopped",
+      "stopFailed": "Failed to stop tunnel",
+      "title": "Cloudflare Tunnel",
+      "description": "Create a public URL with one click, no additional tools required",
+      "connected": "Connected",
+      "starting": "Starting...",
+      "reconnecting": "Reconnecting...",
+      "error": "Error",
+      "connections": "Connection Points",
+      "stopping": "Stopping...",
+      "stop": "Stop Tunnel",
+      "start": "Start Tunnel",
+      "settingUp": "Setting up...",
+      "oneClick": "One-Click Setup"
     }
   },
   "dashboard": {
@@ -617,6 +672,10 @@
           "stop": "Stop Test",
           "score": "Confidence",
           "modelNotFound": "Wake word model not found, please download models first"
+        },
+        "options": {
+          "nihaoWeiben": "你好微本 (Hi Viben)",
+          "heyJarvis": "Hey Jarvis"
         }
       },
       "test": {
@@ -888,7 +947,10 @@
       "codex": "Codex",
       "claude": "Claude",
       "native": "Native"
-    }
+    },
+    "off": "Sandbox",
+    "sandboxMode": "Sandbox Mode",
+    "selectProvider": "Select Provider"
   },
   "about": {
     "title": "Viben",
@@ -1178,7 +1240,39 @@
     "notLoggedIn": "Not logged in",
     "memoryDescription": "Long-term memory file for preferences and context",
     "executor": "Executor",
-    "selectExecutor": "Select an executor"
+    "selectExecutor": "Select an executor",
+    "mcpNotFound": "MCP Server Not Found",
+    "mcpNotFoundDesc": "The requested MCP server could not be found.",
+    "transport": "Transport",
+    "command": "Command",
+    "arguments": "Arguments",
+    "environment": "Environment Variables",
+    "url": "URL",
+    "mcpServerDesc": "MCP (Model Context Protocol) servers provide additional tools and capabilities to AI agents. This server is configured for the selected executor.",
+    "promptNotFound": "Prompt Not Found",
+    "promptNotFoundDesc": "The requested prompt could not be found.",
+    "prompt": "Prompt",
+    "type": "Type",
+    "usage": "Usage",
+    "promptContent": "Prompt Content",
+    "editInFilesTab": "Select a file from the sidebar to edit the full content.",
+    "promptTemplateDesc": "Prompts are reusable text templates stored in .claude/prompts/. They can be referenced using @mention syntax to quickly insert predefined instructions or context into conversations.",
+    "subagent": "SubAgent",
+    "subagentContent": "SubAgent Content",
+    "subagentDesc": "SubAgents are specialized agent configurations defined in .claude/agents/*.md files. They can be invoked using the Task tool to handle specific types of tasks with their own tools and context.",
+    "subagentNotFound": "SubAgent Not Found",
+    "subagentNotFoundDesc": "The requested subagent configuration could not be found.",
+    "saveSuccess": "Agent saved successfully",
+    "saveFailed": "Failed to save agent",
+    "subAgents": "SubAgents",
+    "noSubAgents": "No subagent configurations found.",
+    "noSubAgentsHint": "Create .claude/agents/*.md files to add subagent configurations.",
+    "commandNotFound": "Command Not Found",
+    "commandNotFoundDesc": "The requested command could not be found.",
+    "slashCommand": "Slash Command",
+    "namespace": "Namespace",
+    "commandContent": "Command Content",
+    "commandDesc": "Slash commands are shortcuts that expand into predefined prompts or actions. They help automate common tasks and ensure consistent interactions with AI agents."
   },
   "settingsModels": {
     "title": "AI Models",
@@ -1301,7 +1395,12 @@
       "wos": "Clarivate's citation database",
       "jstor": "Digital library of academic journals",
       "researchgate": "Social network for researchers"
-    }
+    },
+    "pluginsAvailable": "Plugins Available",
+    "categoriesAvailable": "Categories Available",
+    "noPluginsMatch": "No Plugins Match",
+    "noPluginsAvailable": "No Plugins Available",
+    "checkBackLater": "Check Back Later"
   },
   "agent": {
     "searchAgents": "Search agents...",
@@ -1334,7 +1433,9 @@
     "variablePlaceholder": "my_variable",
     "apiKeyPlaceholder": "MY_API_KEY",
     "envVarPlaceholder": "ENV_VAR_NAME",
-    "memoryFile": "MEMORY.md"
+    "memoryFile": "MEMORY.md",
+    "sessionCount": "{{count}} sessions",
+    "notFound": "Agent not found"
   },
   "agents": {
     "title": "AI एजेंट",
@@ -2060,7 +2161,14 @@
       "openWorldDesc": "Tool may interact with external entities",
       "readOnly": "Read-only",
       "readOnlyDesc": "Tool does not modify its environment"
-    }
+    },
+    "checkingProxy": "Checking...",
+    "proxyBuiltIn": "Built-in",
+    "sessions": "sessions",
+    "proxyUnavailable": "Unavailable",
+    "authDisabled": "Auth: disabled",
+    "authEnabled": "Auth: enabled",
+    "apps": "Apps"
   },
   "updates": {
     "title": "Package Updates",
@@ -2197,7 +2305,11 @@
       "integrationsDesc": "Third-party integrations",
       "utility": "Utility",
       "utilityDesc": "General utility skills"
-    }
+    },
+    "gridView": "Grid View",
+    "listView": "List View",
+    "previous": "Previous",
+    "next": "Next"
   },
   "marketplace": {
     "title": "MCP Marketplace",
@@ -2273,7 +2385,8 @@
       "aiMlDesc": "AI and machine learning tools",
       "utility": "Utility",
       "utilityDesc": "General utility tools"
-    }
+    },
+    "viewDetails": "View Details"
   },
   "workspaceSettings": {
     "sections": {
@@ -2390,7 +2503,10 @@
         "estimatedFiles": "Estimated Files",
         "affectedAreas": "Affected Areas",
         "implementationHints": "Implementation Hints",
-        "specSaved": "Spec file saved to workspace"
+        "specSaved": "Spec file saved to workspace",
+        "loadingComments": "Loading comments...",
+        "noComments": "No comments yet.",
+        "assignees": "Assignees"
       },
       "analysis": {
         "summary": "Summary",
@@ -2411,7 +2527,9 @@
           "medium": "Medium",
           "high": "High",
           "critical": "Critical"
-        }
+        },
+        "affectedAreas": "Affected Areas",
+        "estimatedFiles": "Estimated Files"
       },
       "autoFix": {
         "queue": "Auto-Fix Queue",
@@ -2457,7 +2575,10 @@
         "noPRs": "No pull requests found",
         "draft": "Draft",
         "openedBy": "Opened by {{user}} on {{date}}",
-        "files": "files"
+        "files": "files",
+        "merged": "Merged",
+        "comments": "comments",
+        "noDescription": "No description provided."
       },
       "releases": {
         "title": "Releases",
@@ -2663,7 +2784,9 @@
       "completed": "Completed",
       "failed": "Failed",
       "cancelled": "Cancelled",
-      "archived": "Archived"
+      "archived": "Archived",
+      "todo": "To Do",
+      "done": "Done"
     },
     "column": {
       "backlog": "Backlog",
@@ -2715,7 +2838,13 @@
       "cancelled": "Filter: Cancelled Only",
       "archived": "Filter: Archived Only",
       "clear": "Clear All Filters",
-      "search": "Search Tasks"
+      "search": "Search Tasks",
+      "searchPlaceholder": "Search...",
+      "priority": "Priority",
+      "byPriority": "Filter by Priority",
+      "tags": "Tags",
+      "byTag": "Filter by Tag",
+      "active": "active"
     },
     "selectAll": "Select All Tasks",
     "clearSelection": "Clear Selection",
@@ -2824,7 +2953,10 @@
       "failed": "Failed",
       "entries": "entries",
       "hideDetails": "Hide details",
-      "showDetails": "Show details"
+      "showDetails": "Show details",
+      "planning": "Planning",
+      "coding": "Coding",
+      "liveUpdating": "Live updating..."
     },
     "filesTab": {
       "title": "Files",
@@ -2933,7 +3065,8 @@
       "resultsCount": "{{count}} results",
       "navigateHint": "navigate",
       "selectHint": "select",
-      "closeHint": "close"
+      "closeHint": "close",
+      "gotoCompletedDesc": "Jump to first completed task"
     },
     "connectionError": "Connection Error",
     "noProjectFound": "No Tasks Yet",
@@ -2969,7 +3102,11 @@
       "shortcut": "⌘+Enter to create",
       "noAgentsWarning": "No agents configured. Please configure an agent in Settings.",
       "noModelsWarning": "No models configured. Please configure a model in Settings.",
-      "noAgentsOrModels": "No agents or models configured. Please configure them in Settings."
+      "noAgentsOrModels": "No agents or models configured. Please configure them in Settings.",
+      "combinedPlaceholder": "What would you like me to do?",
+      "contentHint": "Content Hint",
+      "worktree": "Worktree",
+      "worktreeHint": "Run task in isolated git worktree"
     },
     "filesDescription": "Browse and manage files",
     "connectingToKanban": "Connecting to task board...",
@@ -3059,7 +3196,9 @@
         "qa_rejected": "QA Issues",
         "plan_review": "Approve Plan",
         "stopped": "Stopped"
-      }
+      },
+      "approve": "Approve",
+      "reject": "Reject"
     },
     "taskActions": {
       "start": "Start",
@@ -3076,7 +3215,16 @@
       "sequenceMismatch": "Sequence mismatch - please refresh",
       "invalidTransition": "Invalid state transition",
       "submitFailed": "Failed to submit event",
-      "unnamedTask": "Unnamed task"
+      "unnamedTask": "Unnamed task",
+      "error": "Action failed",
+      "approved": "Task approved",
+      "approveFailed": "Failed to approve task",
+      "rejected": "Task sent back for revision",
+      "rejectFailed": "Failed to reject task",
+      "taskStarted": "Task started",
+      "enqueueWarning": "Warning",
+      "queue": "Queue",
+      "archive": "Archive"
     },
     "taskEvents": {
       "title": "Events",
@@ -3111,7 +3259,97 @@
       "plan_review": "Plan Review",
       "stopped": "Stopped"
     },
-    "selectFolderTitle": "Select workspace folder"
+    "selectFolderTitle": "Select workspace folder",
+    "taskDetails": "Task Details",
+    "executionProgress": "Execution Progress",
+    "inProgress": "In Progress",
+    "done": "Done",
+    "started": "Started",
+    "completed": "Completed",
+    "stepsCompleted": "completed",
+    "stepsRemaining": "remaining",
+    "creator": "Creator",
+    "executor": "Executor",
+    "model": "Model",
+    "runtime": "Runtime",
+    "gitInfo": "Git Info",
+    "worktree": {
+      "cleanedUp": "Cleaned Up",
+      "isolated": "Isolated Worktree"
+    },
+    "branch": "Branch",
+    "baseBranch": "Base",
+    "path": "Path",
+    "notes": "Notes",
+    "stopAgent": "Stop Selected Task",
+    "stopTask": "Stop",
+    "recoverTask": "Recover",
+    "actions": {
+      "resumeTask": "Resume Task",
+      "viewPR": "View PR"
+    },
+    "archiveTask": "Archive",
+    "expandAll": "Expand All",
+    "expandAllHint": "Expand all collapsed columns",
+    "resizeColumn": "Resize Column",
+    "deselectAllInColumn": "Deselect all in column",
+    "selectAllInColumn": "Select all in column",
+    "taskDeleted": "Task deleted",
+    "taskDuplicated": "Task duplicated",
+    "bulkDeleteSuccess": "Deleted {{count}} tasks",
+    "statusContext": {
+      "stuck": {
+        "title": "Task is stuck",
+        "description": "The task execution has stalled. Click Recover to restart the task."
+      },
+      "failed": {
+        "title": "Task failed",
+        "description": "The task encountered an error. You can retry or abandon it."
+      },
+      "review": {
+        "completed": {
+          "title": "Ready for approval",
+          "description": "The task has been completed. Review the changes and approve to mark as done."
+        },
+        "plan": {
+          "title": "Plan needs review",
+          "description": "Review the implementation plan. Approve to proceed with coding, or reject to revise."
+        },
+        "errors": {
+          "title": "Errors need attention",
+          "description": "The task encountered errors during execution. Review and click Resume to retry."
+        },
+        "qa": {
+          "title": "QA found issues",
+          "description": "Quality assurance has identified issues. Click Resume to address them."
+        },
+        "stopped": {
+          "title": "Task was stopped",
+          "description": "The task was manually stopped. Click Resume to continue execution."
+        },
+        "default": {
+          "title": "Awaiting review",
+          "description": "This task requires your review before proceeding."
+        }
+      },
+      "running": {
+        "title": "Task is running",
+        "description": "The agent is currently working on this task. You can stop it if needed."
+      },
+      "backlog": {
+        "title": "In backlog",
+        "description": "This task is waiting to be queued. Click Queue to add it to the execution queue."
+      },
+      "queue": {
+        "title": "Ready to start",
+        "description": "This task is queued and ready. Click Start to begin execution."
+      },
+      "completed": {
+        "title": "Task completed",
+        "description": "This task has been successfully completed."
+      }
+    },
+    "missingAgentId": "Missing agent_id parameter"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -3150,7 +3388,8 @@
     "conflictResolution": "Conflict Resolution",
     "conflictResolutionDesc": "How to handle sync conflicts",
     "preferLocal": "Prefer Local",
-    "preferCloud": "Prefer Cloud"
+    "preferCloud": "Prefer Cloud",
+    "updatedAt": "Updated At"
   },
   "onboarding": {
     "footer": "Viben - Your AI-powered research assistant",
@@ -3842,7 +4081,22 @@
     "otherPlaceholder": "Type your custom response...",
     "waitingForApproval": "Waiting for plan approval...",
     "waitingForInput": "Please answer the question above...",
-    "sidebar": "Sidebar",
+    "sidebar": {
+      "noArtifacts": "No artifacts yet",
+      "noTools": "No tools used yet",
+      "noTasks": "No tasks in this workspace",
+      "noSkills": "No skills used yet",
+      "noWorkingDir": "No working directory",
+      "emptyFolder": "Folder is empty",
+      "context": "Context",
+      "tasks": "Tasks",
+      "skills": "Skills",
+      "workspace": "Workspace",
+      "outputFolder": "Output Folder",
+      "externalFolders": "External Folders",
+      "showMore": "Show {{count}} more",
+      "showLess": "Show less"
+    },
     "closeSidebar": "Close sidebar",
     "openSidebar": "Open sidebar",
     "clearMessages": "Clear messages",
@@ -4038,7 +4292,12 @@
       "reviewPromptDefault": "Please review the recent changes in this workspace.\n\nRun `git diff` to see unstaged changes, and `git diff --staged` for staged changes.\n\nProvide a thorough code review including:\n1. Code quality and readability\n2. Potential bugs or issues\n3. Performance considerations\n4. Security concerns\n5. Suggestions for improvement",
       "initPrompt": "Please initialize this project by creating a CLAUDE.md file in the workspace root ({{workspacePath}}).\n\nThe CLAUDE.md should include:\n1. Project overview and architecture\n2. Key directories and their purposes\n3. Build and test commands\n4. Important conventions and patterns\n5. Any project-specific instructions for AI assistants\n\nAnalyze the existing codebase structure first to generate accurate and helpful content.",
       "prCommentsPromptWithNumber": "Please fetch and display the comments from GitHub PR #{{prNumber}}.\n\nUse the `gh` CLI to get PR comments:\n```\ngh pr view {{prNumber}} --comments\n```\n\nSummarize the feedback and any action items.",
-      "prCommentsPromptDefault": "Please check if there's an open PR for the current branch and display its comments.\n\nUse the `gh` CLI:\n```\ngh pr view --comments\n```\n\nIf there's no PR, let me know. Otherwise, summarize the feedback and any action items."
+      "prCommentsPromptDefault": "Please check if there's an open PR for the current branch and display its comments.\n\nUse the `gh` CLI:\n```\ngh pr view --comments\n```\n\nIf there's no PR, let me know. Otherwise, summarize the feedback and any action items.",
+      "availableCommands": "Available Commands",
+      "tips": "Tips",
+      "tipTask": "Ask about the current task to get context-aware suggestions",
+      "tipCode": "Paste code snippets and ask for help debugging or improving them",
+      "tipPlan": "Ask the agent to help plan the implementation approach"
     },
     "fileErrors": {
       "failedToReadFile": "Failed to read file",
@@ -4102,7 +4361,32 @@
         "compression": "Enable context compression",
         "compressionTooltip": "Automatically compress context to save tokens"
       }
-    }
+    },
+    "openFullChat": "Open full chat page",
+    "placeholder": "Type a message...",
+    "agent": "Agent",
+    "workspace": "Workspace",
+    "global": "Global",
+    "model": "Model",
+    "voiceListening": "Listening... Click to stop",
+    "voiceConnecting": "Connecting...",
+    "voiceInput": "Voice input",
+    "stop": "Stop",
+    "capsule": {
+      "done": "Done",
+      "error": "Error",
+      "awaitingApproval": "Awaiting Approval",
+      "awaitingInput": "Awaiting Input"
+    },
+    "fileFilter": {
+      "images": "Images",
+      "documents": "Documents",
+      "spreadsheets": "Spreadsheets",
+      "presentations": "Presentations",
+      "allFiles": "All Files"
+    },
+    "hideSteps": "Hide Steps",
+    "showSteps": "Show Steps"
   },
   "creator": {
     "title": "Creator",
@@ -4369,7 +4653,17 @@
     "openInNewTab": "Open in New Tab",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
-    "close": "Close"
+    "close": "Close",
+    "static": "Static",
+    "live": "Live",
+    "running": "Running",
+    "starting": "Starting...",
+    "error": "Error",
+    "stopped": "Stopped",
+    "staticPreview": "Static Preview",
+    "preview": "Preview",
+    "viewCode": "View Code",
+    "code": "Code"
   },
   "groupChat": {
     "createTitle": "Create Group Chat",
@@ -4433,7 +4727,15 @@
     "broadcastMention": "Mentions Only",
     "showThinking": "Show Thinking",
     "historyLimit": "History Limit",
-    "isThinking": "is thinking..."
+    "isThinking": "is thinking...",
+    "global": "Global",
+    "viewUI": "Chat View",
+    "viewAgent": "Agent View",
+    "agentViews": "Agent Views",
+    "noAgents": "No agents in session",
+    "thinking": "thinking...",
+    "selectSession": "Select or create a session to start chatting",
+    "agentViewReadOnly": "Agent view is read-only. Switch to Chat View to send messages."
   },
   "notifications": {
     "title": "Notifications",
@@ -4668,7 +4970,8 @@
       "plaintext": "Plain Text"
     },
     "failedToReadContent": "Failed to read file content",
-    "failedToLoadFile": "Failed to load file"
+    "failedToLoadFile": "Failed to load file",
+    "fileTooLarge": "File may be too large or binary"
   },
   "filePicker": {
     "images": "Images",
@@ -4847,7 +5150,16 @@
       "commentsLoadMoreFailed": "Failed to load more comments"
     },
     "channels": {
-      "chatIdRequired": "Chat ID is required to send test message"
+      "chatIdRequired": "Chat ID is required to send test message",
+      "loadFailed": "Load Failed",
+      "saveFailed": "Save Failed",
+      "syncFailed": "Sync Failed",
+      "createFailed": "Create Failed",
+      "updateFailed": "Update Failed",
+      "deleteFailed": "Delete Failed",
+      "setDefaultFailed": "Set Default Failed",
+      "testFailed": "Test Failed",
+      "sendTestFailed": "Send Test Failed"
     },
     "mcp": {
       "invalidConfigMissingUrl": "Invalid config: missing url",
@@ -4871,7 +5183,8 @@
       "startAgentFailed": "Failed to start agent: {{error}}"
     },
     "gateway": {
-      "notConnected": "Gateway not connected"
+      "notConnected": "Gateway not connected",
+      "notAuthenticated": "Not Authenticated"
     },
     "connection": {
       "failed": "Connection failed",
@@ -5148,7 +5461,8 @@
     "debugDescription": "Messages and tool calls will appear here",
     "copyTraceId": "Copy Trace ID",
     "copySessionId": "Copy Session ID",
-    "inputPlaceholder": "Type a message..."
+    "inputPlaceholder": "Type a message...",
+    "debugSession": "Debug Session"
   },
   "agentVariables": {
     "sectionTitle": "Variables",
@@ -5255,7 +5569,11 @@
     "viewPage": "Page",
     "devTools": "DevTools",
     "proxyPage": "Proxy Page",
-    "proxyComingSoon": "Proxy page preview is coming soon"
+    "proxyComingSoon": "Proxy page preview is coming soon",
+    "updateSuccess": "Page updated successfully",
+    "updateFailed": "Failed to update page",
+    "editPage": "Edit Page",
+    "editPageDescription": "Modify page name, description, and icon"
   },
   "iconPicker": {
     "icons": "Icons",
@@ -5336,5 +5654,73 @@
       "error": "Error",
       "failedToSend": "Failed to send"
     }
+  },
+  "workspaceDetail": {
+    "github": {
+      "issueDetail": {
+        "minutesAgo": "{{count}}m ago",
+        "hoursAgo": "{{count}}h ago",
+        "daysAgo": "{{count}}d ago",
+        "commentedAt": "commented {{time}}",
+        "openedThisIssue": "opened this issue",
+        "noDescription": "No description provided.",
+        "commentsCount": "{{count}} comment",
+        "checkingTask": "Checking task...",
+        "goToTask": "Go to Task",
+        "createTask": "Create Task",
+        "loadMoreComments": "Load more comments",
+        "loadingComments": "Loading comments...",
+        "assignees": "Assignees",
+        "noAssignees": "No one assigned",
+        "labels": "Labels",
+        "noLabels": "None yet",
+        "milestone": "Milestone",
+        "noMilestone": "No milestone",
+        "linkedTask": "Linked Task",
+        "noLinkedTask": "No linked task",
+        "timeline": "Timeline",
+        "createdAt": "Created {{date}}",
+        "updatedAt": "Updated {{date}}",
+        "closedAt": "Closed {{date}}"
+      },
+      "issues": {
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "viewOnGitHub": "View on GitHub"
+    }
+  },
+  "noTraceYet": "Send a message to see the call trace",
+  "debugDescription": "Messages and tool calls will appear here",
+  "inputPlaceholder": "Type a message...",
+  "traceId": "Trace ID",
+  "copyTraceId": "Copy Trace ID",
+  "sessionId": "Session ID",
+  "copySessionId": "Copy Session ID",
+  "callTree": "Call Tree",
+  "timeline": "Timeline",
+  "refreshTrace": "Refresh trace data",
+  "loadingTrace": "Loading trace data...",
+  "vibenCli": {
+    "pathValid": "Path is valid",
+    "pathSelected": "Viben CLI path selected",
+    "pathInvalid": "Invalid viben path",
+    "sourceBundled": "Bundled",
+    "sourceSystemPath": "System Path",
+    "sourceUserConfig": "User Config",
+    "sourceFallback": "Default",
+    "title": "Viben CLI",
+    "description": "Select the Viben CLI path used by the gateway service",
+    "detectedPaths": "Detected Paths",
+    "detecting": "Detecting...",
+    "noPaths": "No Viben CLI detected. Please specify the path using the input below",
+    "bundled": "Bundled",
+    "customPath": "Custom Path",
+    "customPathPlaceholder": "/path/to/viben",
+    "check": "Detect"
+  },
+  "commands": {
+    "helpAvailable": "{{count}} commands available. Type / to browse.",
+    "helpTip": "Use ↑↓ to navigate, Enter to select"
   }
 }
