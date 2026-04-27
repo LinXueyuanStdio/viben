@@ -727,6 +727,19 @@ export function YooptaMarkdownRenderer({
             workspacePath={workspacePath}
           />
         )}
+        {/* Single CoverPicker instance — positioned relative to coverPickerAnchorRef */}
+        {isEditable && (
+          <CoverPicker
+            open={showCoverPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
+            anchorRef={coverPickerAnchorRef}
+            value={coverUrl}
+            onChange={handleCoverChange}
+            workspacePath={workspacePath}
+            slug={slug}
+            align={coverPickerAlign}
+          />
+        )}
         {!isEditable && (pageTitle || pageIcon) && (
           <div className={cn(
             "px-14 pb-2",
@@ -789,13 +802,13 @@ type PageTitleAreaProps = {
   pageTitle: string;
   coverUrl: string | null;
   workspacePath?: string;
-  slug?: string;
   /** Ref attached to the icon display area so the parent-level IconPicker
    *  can position its Popover relative to the icon. */
   iconAnchorRef: React.RefObject<HTMLDivElement | null>;
   /** Open the parent-level IconPicker */
   onOpenIconPicker: () => void;
-  onCoverChange: (cover: string | null) => void;
+  /** Open the parent-level CoverPicker, anchored to the given element */
+  onOpenCoverPicker: (anchor: HTMLElement, align?: "start" | "center" | "end") => void;
   onTitleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onTitleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 };
@@ -805,20 +818,18 @@ const PageTitleArea = memo(function PageTitleArea({
   pageTitle,
   coverUrl,
   workspacePath,
-  slug,
   iconAnchorRef,
   onOpenIconPicker,
-  onCoverChange,
+  onOpenCoverPicker,
   onTitleChange,
   onTitleKeyDown,
 }: PageTitleAreaProps) {
   const [isTitleHovered, setIsTitleHovered] = useState(false);
-  const [showCoverPicker, setShowCoverPicker] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showActions = isTitleHovered || showCoverPicker;
-  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showCoverPicker, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
+  const showActions = isTitleHovered;
+  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
 
   return (
     <div
