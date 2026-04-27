@@ -5,7 +5,7 @@
  * Supports both local files (via Tauri fs plugin) and remote URLs.
  */
 
-import * as React from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Loader2, Music, Pause, Play } from "lucide-react";
@@ -16,15 +16,15 @@ import { getAudioMimeType, isRemoteUrl } from "./utils";
 
 export function AudioPreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
-  const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [currentTime, setCurrentTime] = React.useState(0);
-  const [duration, setDuration] = React.useState(0);
-  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let blobUrl: string | null = null;
 
     async function loadAudio() {
