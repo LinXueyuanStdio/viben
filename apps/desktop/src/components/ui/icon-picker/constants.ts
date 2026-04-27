@@ -217,7 +217,7 @@ export const LUCIDE_ICON_MAP: Record<string, LucideIcon> = {
 /**
  * Icon categories for organized display
  */
-export const ICON_CATEGORIES: IconCategory[] = [
+export const LUCIDE_CATEGORIES: IconCategory[] = [
   {
     id: "documents",
     labelKey: "iconPicker.category.documents",
@@ -293,12 +293,21 @@ export const ICON_CATEGORIES: IconCategory[] = [
     labelKey: "iconPicker.category.business",
     icons: ["briefcase", "shopping-cart", "credit-card", "dollar-sign", "tag", "hash"],
   },
+  {
+    id: "other",
+    labelKey: "iconPicker.category.other",
+    icons: [], // Dynamically filled at runtime
+  },
 ];
 
 /**
- * Flat list of all icon names (for quick access)
+ * Set of icon names that have been manually categorized.
+ * Used to determine which icons go into the "Other" category.
  */
-export const ALL_ICON_NAMES = Object.keys(LUCIDE_ICON_MAP);
+export const CATEGORIZED_ICON_NAMES = new Set(
+  LUCIDE_CATEGORIES.filter((c) => c.id !== "other")
+    .flatMap((c) => c.icons)
+);
 
 /**
  * Default icon when no icon is specified

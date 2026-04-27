@@ -60,3 +60,20 @@ export interface IconCategory {
   labelKey: string;
   icons: string[];
 }
+
+/**
+ * Virtual scroll row types for Lucide tab
+ */
+export type VirtualRow =
+  | { type: "header"; categoryId: string; label: string }
+  | { type: "icons"; names: string[] };
+
+/**
+ * Category group for organized icon display
+ */
+export interface CategoryGroup {
+  id: string;
+  labelKey: string;
+  label: string;
+  icons: string[];
+}

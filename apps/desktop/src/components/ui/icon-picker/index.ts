@@ -44,7 +44,8 @@ export {
 // Constants
 export {
   LUCIDE_ICON_MAP,
-  ICON_CATEGORIES,
+  LUCIDE_CATEGORIES,
+  CATEGORIZED_ICON_NAMES,
   ICON_SIZE_MAP,
   DEFAULT_ICON_NAME,
 } from "./constants";
