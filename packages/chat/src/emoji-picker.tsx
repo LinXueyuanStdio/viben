@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useState } from "react";
 import { cn, Button } from "@viben/ui";
 
 // Common emojis organized by category
@@ -181,7 +182,7 @@ export interface EmojiPickerProps {
 
 export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
   const [selectedCategory, setSelectedCategory] =
-    React.useState<CategoryKey>("smileys");
+    useState<CategoryKey>("smileys");
 
   const categories = Object.keys(EMOJI_CATEGORIES) as CategoryKey[];
 
