@@ -179,7 +179,7 @@ export class AudioLevelMonitor {
   /**
    * 计算 RMS 音量
    */
-  private calculateRMS(dataArray: Uint8Array): number {
+  private calculateRMS(dataArray: Uint8Array<ArrayBufferLike>): number {
     let sumSquares = 0;
     for (let i = 0; i < dataArray.length; i++) {
       const normalized = (dataArray[i] - 128) / 128;

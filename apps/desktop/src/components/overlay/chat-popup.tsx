@@ -166,7 +166,10 @@ function ChatPopup({
     if (isChatPopupOpen && !isOpen) {
       setIsOpen(true);
       setTriggerSource('click');
-      requestAnimationFrame(() => setIsVisible(true));
+      // Double rAF: first frame lets browser paint translate-y-full, second triggers transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
     }
   }, [isChatPopupOpen, isOpen]);
 
@@ -202,8 +205,8 @@ function ChatPopup({
     if (selectOpenRef.current || settingsOpen) return;
     // P0-2: Don't close during settings close protection window
     if (settingsCloseGuardRef.current) return;
-    // P0-1: If textarea has content or is focused, promote to click behavior
-    if (content.trim().length > 0 || textareaFocusedRef.current) {
+    // P0-1: If textarea has content, promote to click behavior (keep open)
+    if (content.trim().length > 0) {
       setTriggerSource('click');
       return;
     }
@@ -216,7 +219,10 @@ function ChatPopup({
     if (!isOpen) {
       setIsOpen(true);
       setTriggerSource('hover');
-      requestAnimationFrame(() => setIsVisible(true));
+      // Double rAF: first frame lets browser paint translate-y-full, second triggers transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
     }
   }, [isOpen, clearCloseTimeout]);
 
@@ -434,14 +440,15 @@ function ChatPopup({
         'bg-[hsl(var(--popover))] rounded-t-[18px] rounded-b-none',
         'shadow-[0_-4px_24px_rgba(0,0,0,0.4)]',
         'border border-b-0 border-border/50',
-        'transition-transform ease-[cubic-bezier(0.4,0,0.2,1)]',
         isVisible ? 'translate-y-0' : 'translate-y-full',
       )}
       style={{
         maxWidth: POPUP_CONFIG.maxWidth,
+        transitionProperty: 'translate',
         transitionDuration: isVisible
           ? `${POPUP_CONFIG.openDuration}ms`
           : `${POPUP_CONFIG.closeDuration}ms`,
+        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {/* Toolbar (first row) */}

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -178,7 +179,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     // Base z-index is 50, each nesting level adds 10 (content is 1 higher than overlay)
     const zIndex = 50 + (nestingLevel - 1) * 10 + 1;
 
-    return (
+    // Render via portal to escape stacking contexts (e.g., sticky headers)
+    return createPortal(
       <>
         <DialogOverlay />
         <div
@@ -212,7 +214,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
             <span className="sr-only">{t("common.close")}</span>
           </button>
         </div>
-      </>
+      </>,
+      document.body
     );
   }
 );
