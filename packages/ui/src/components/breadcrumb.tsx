@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useMemo } from "react";
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 import { cn } from "../lib/utils";
 
@@ -31,7 +32,7 @@ export function Breadcrumb({
     <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
   );
 
-  const displayItems = React.useMemo(() => {
+  const displayItems = useMemo(() => {
     if (items.length <= maxItems) return items;
 
     const first = items[0];
