@@ -363,7 +363,7 @@ export function WorkspaceAgentsPage({
   // Promote workspace template to global
   const handlePromoteToGlobal = async (agentId: string, agentName: string) => {
     if (!workspace?.path) return;
-    if (!confirm(t("agent.promoteTemplateConfirm", `将 "${agentName}" 提升为全局模板？`))) return;
+    if (!confirm(t("agent.promoteTemplateConfirm", { defaultValue: '将 "{{agentName}}" 提升为全局模板？', agentName }))) return;
     try {
       const client = getGatewayClient();
       // Call the promote endpoint

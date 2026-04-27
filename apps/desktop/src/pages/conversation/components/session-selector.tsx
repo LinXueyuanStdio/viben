@@ -92,9 +92,9 @@ function formatRelativeTime(dateStr: string, t: (key: string, fallback: string) 
   const days = Math.floor(diff / 86400000);
 
   if (minutes < 1) return t("common.justNow", "刚刚");
-  if (minutes < 60) return `${minutes}${t("common.minutesAgo", "分钟前")}`;
-  if (hours < 24) return `${hours}${t("common.hoursAgo", "小时前")}`;
-  if (days < 7) return `${days}${t("common.daysAgo", "天前")}`;
+  if (minutes < 60) return t("common.minutesAgo", { defaultValue: "{{count}}分钟前", count: minutes });
+  if (hours < 24) return t("common.hoursAgo", { defaultValue: "{{count}}小时前", count: hours });
+  if (days < 7) return t("common.daysAgo", { defaultValue: "{{count}}天前", count: days });
   return date.toLocaleDateString();
 }
 

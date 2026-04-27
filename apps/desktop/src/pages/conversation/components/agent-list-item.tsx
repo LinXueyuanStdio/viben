@@ -128,7 +128,7 @@ export function AgentListItem({
 
   if (sessionCount !== undefined) {
     actions.push({
-      label: `${sessionCount} ${t("agent.sessions", "个会话")}`,
+      label: t("agent.sessionCount", { defaultValue: "{{count}} 个会话", count: sessionCount }),
       icon: History,
       onClick: () => {},
       disabled: true,

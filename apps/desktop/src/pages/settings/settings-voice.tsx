@@ -277,8 +277,8 @@ export function SettingsVoice() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="你好微本">你好微本</SelectItem>
-              <SelectItem value="hey_jarvis">Hey Jarvis</SelectItem>
+              <SelectItem value="你好微本">{t("settings.voice.wakeWord.options.nihaoWeiben", "你好微本")}</SelectItem>
+              <SelectItem value="hey_jarvis">{t("settings.voice.wakeWord.options.heyJarvis", "Hey Jarvis")}</SelectItem>
             </SelectContent>
           </Select>
         </SettingsItem>

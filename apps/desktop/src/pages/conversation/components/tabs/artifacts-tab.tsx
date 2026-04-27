@@ -197,7 +197,7 @@ export function ArtifactsTabContent({
         >
           {showAll
             ? t("chat.sidebar.showLess", "Show less")
-            : t("chat.sidebar.showMore", `Show ${artifacts.length - DEFAULT_VISIBLE_COUNT} more`)}
+            : t("chat.sidebar.showMore", { defaultValue: "Show {{count}} more", count: artifacts.length - DEFAULT_VISIBLE_COUNT })}
         </button>
       )}
     </div>
