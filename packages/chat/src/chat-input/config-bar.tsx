@@ -160,7 +160,7 @@ export function ChatInputConfigBar({
               >
                 <Bot className="h-3.5 w-3.5 shrink-0" />
                 <span className="max-w-[200px] truncate">
-                  {selectedAgent?.name || t("chat.agent", "智能体")}
+                  {selectedAgent?.name || t("chat.agent", "Agent")}
                   {selectedAgent?.model && (
                     <span className="text-muted-foreground ml-1">
                       ({selectedAgent.model})
@@ -173,7 +173,7 @@ export function ChatInputConfigBar({
             <PopoverContent className="w-64 p-2" align="start">
               {agents.length === 0 ? (
                 <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                  {t("chat.noAgents", "暂无智能体")}
+                  {t("chat.noAgents", "No agents")}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -254,7 +254,7 @@ export function ChatInputConfigBar({
                   {getModelIcon(selectedModelId || undefined, { size: 14 })}
                 </span>
                 <span className="max-w-[80px] truncate">
-                  {selectedModel?.name || t("chat.model", "模型")}
+                  {selectedModel?.name || t("chat.model", "Model")}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -262,7 +262,7 @@ export function ChatInputConfigBar({
             <PopoverContent className="w-56 p-1" align="start">
               {models.length === 0 ? (
                 <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                  {t("chat.noModels", "暂无模型")}
+                  {t("chat.noModels", "No models")}
                 </div>
               ) : (
                 models.map((model) => (
@@ -305,7 +305,7 @@ export function ChatInputConfigBar({
                 disabled={isLoading || disabled}
               >
                 <Wrench className="h-3.5 w-3.5" />
-                <span>{t("chat.tools", "工具")}</span>
+                <span>{t("chat.tools", "Tools")}</span>
                 {actualToolsCount > 0 && (
                   <Badge
                     variant="secondary"
@@ -330,7 +330,7 @@ export function ChatInputConfigBar({
             onClick={onToolsClick}
           >
             <Wrench className="h-3.5 w-3.5" />
-            <span>{t("chat.tools", "工具")}</span>
+            <span>{t("chat.tools", "Tools")}</span>
             {actualToolsCount > 0 && (
               <Badge
                 variant="secondary"
@@ -374,7 +374,7 @@ export function ChatInputConfigBar({
                 <Terminal className="h-3.5 w-3.5" />
                 <span className="max-w-[80px] truncate">
                   {executors.find((e) => e.id === selectedExecutor)?.name ||
-                    t("chat.executor", "执行器")}
+                    t("chat.executor", "Executor")}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -411,7 +411,7 @@ export function ChatInputConfigBar({
                 disabled={isLoading || disabled}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>{t("chat.skills", "技能")}</span>
+                <span>{t("chat.skills", "Skills")}</span>
                 {actualSkillsCount > 0 && (
                   <Badge
                     variant="secondary"
@@ -436,7 +436,7 @@ export function ChatInputConfigBar({
             onClick={onSkillsClick}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            <span>{t("chat.skills", "技能")}</span>
+            <span>{t("chat.skills", "Skills")}</span>
             {actualSkillsCount > 0 && (
               <Badge
                 variant="secondary"

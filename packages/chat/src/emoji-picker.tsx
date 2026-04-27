@@ -5,8 +5,8 @@
  * Click an emoji to insert it at the cursor position.
  */
 
-import * as React from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { cn, Button } from "@viben/ui";
 
 // Common emojis organized by category
@@ -181,10 +181,20 @@ export interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryKey>("smileys");
 
   const categories = Object.keys(EMOJI_CATEGORIES) as CategoryKey[];
+
+  const categoryLabels: Record<CategoryKey, string> = {
+    smileys: t("chat.emoji.smileys", "Smileys"),
+    gestures: t("chat.emoji.gestures", "Gestures"),
+    objects: t("chat.emoji.objects", "Objects"),
+    nature: t("chat.emoji.nature", "Nature"),
+    food: t("chat.emoji.food", "Food"),
+    symbols: t("chat.emoji.symbols", "Symbols"),
+  };
 
   return (
     <div className={cn("w-[280px]", className)}>
@@ -200,7 +210,7 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
               size="sm"
               className="h-8 w-8 p-0 text-base flex-shrink-0"
               onClick={() => setSelectedCategory(key)}
-              title={category.label}
+              title={categoryLabels[key]}
             >
               {firstEmoji}
             </Button>

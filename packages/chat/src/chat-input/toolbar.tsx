@@ -4,7 +4,6 @@
  * Top toolbar with emoji picker, file attachment, screenshot, and expand buttons.
  */
 
-import * as React from "react";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {

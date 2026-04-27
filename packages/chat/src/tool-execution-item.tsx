@@ -166,7 +166,8 @@ interface ResultInfo {
 function getResultSummary(
   toolName: string,
   output: string | undefined,
-  isError: boolean | undefined
+  isError: boolean | undefined,
+  t: (key: string, options?: string | Record<string, unknown>) => string
 ): ResultInfo {
   // Handle non-string output (could be object at runtime despite types)
   if (!output || typeof output !== "string") {
@@ -184,11 +185,11 @@ function getResultSummary(
     // Show first line or truncated output as error summary
     const firstLine = cleanOutput.split("\n").find((l) => l.trim()) || cleanOutput;
     const truncated = firstLine.length > 80 ? firstLine.slice(0, 80) + "..." : firstLine;
-    return { summary: truncated || "Error occurred", isWarning };
+    return { summary: truncated || t("chat.toolResult.errorOccurred", "Error occurred"), isWarning };
   }
 
   if (!cleanOutput || cleanOutput.trim() === "") {
-    return { summary: "(No output)", isWarning: false };
+    return { summary: t("chat.toolResult.noOutput", "(No output)"), isWarning: false };
   }
 
   const lines = cleanOutput.split("\n").filter((l) => l.trim());
@@ -196,47 +197,47 @@ function getResultSummary(
 
   switch (toolName) {
     case "Bash":
-      if (lineCount === 0) return { summary: "(No output)", isWarning: false };
+      if (lineCount === 0) return { summary: t("chat.toolResult.noOutput", "(No output)"), isWarning: false };
       if (lineCount === 1) return { summary: lines[0].slice(0, 80), isWarning: false };
-      return { summary: `${lineCount} lines of output`, isWarning: false };
+      return { summary: t("chat.toolResult.linesOfOutput", { defaultValue: "{{count}} lines of output", count: lineCount }) as string, isWarning: false };
 
     case "Read":
-      return { summary: `Read ${lineCount} lines`, isWarning: false };
+      return { summary: t("chat.toolResult.readLines", { defaultValue: "Read {{count}} lines", count: lineCount }) as string, isWarning: false };
 
     case "Write":
-      return { summary: "File created successfully", isWarning: false };
+      return { summary: t("chat.toolResult.fileCreated", "File created successfully"), isWarning: false };
 
     case "Edit":
     case "MultiEdit":
-      return { summary: "File modified successfully", isWarning: false };
+      return { summary: t("chat.toolResult.fileModified", "File modified successfully"), isWarning: false };
 
     case "Grep":
-      if (lineCount === 0) return { summary: "No matches found", isWarning: false };
-      return { summary: `Found matches in ${lineCount} files`, isWarning: false };
+      if (lineCount === 0) return { summary: t("chat.toolResult.noMatchesFound", "No matches found"), isWarning: false };
+      return { summary: t("chat.toolResult.foundMatchesInFiles", { defaultValue: "Found matches in {{count}} files", count: lineCount }) as string, isWarning: false };
 
     case "Glob":
-      if (lineCount === 0) return { summary: "No files found", isWarning: false };
-      return { summary: `Found ${lineCount} files`, isWarning: false };
+      if (lineCount === 0) return { summary: t("chat.toolResult.noFilesFound", "No files found"), isWarning: false };
+      return { summary: t("chat.toolResult.foundFiles", { defaultValue: "Found {{count}} files", count: lineCount }) as string, isWarning: false };
 
     case "WebFetch":
-      return { summary: `Fetched ${cleanOutput.length} characters`, isWarning: false };
+      return { summary: t("chat.toolResult.fetchedCharacters", { defaultValue: "Fetched {{count}} characters", count: cleanOutput.length }) as string, isWarning: false };
 
     case "WebSearch":
-      return { summary: "Search completed", isWarning: false };
+      return { summary: t("chat.toolResult.searchCompleted", "Search completed"), isWarning: false };
 
     case "TodoWrite":
     case "TaskCreate":
-      return { summary: "Task created", isWarning: false };
+      return { summary: t("chat.toolResult.taskCreated", "Task created"), isWarning: false };
 
     case "TaskUpdate":
-      return { summary: "Task updated", isWarning: false };
+      return { summary: t("chat.toolResult.taskUpdated", "Task updated"), isWarning: false };
 
     case "Task":
-      return { summary: "Subtask completed", isWarning: false };
+      return { summary: t("chat.toolResult.subtaskCompleted", "Subtask completed"), isWarning: false };
 
     default:
       return {
-        summary: lineCount > 0 ? `${lineCount} lines` : "(No content)",
+        summary: lineCount > 0 ? t("chat.toolResult.lines", { defaultValue: "{{count}} lines", count: lineCount }) as string : t("chat.toolResult.noContent", "(No content)"),
         isWarning: false,
       };
   }
@@ -266,7 +267,7 @@ function ToolDetailModal({
   const { t } = useTranslation();
 
   const formatInput = (input: unknown): string => {
-    if (!input) return "No input";
+    if (!input) return t("chat.toolResult.noInput", "No input");
     try {
       return JSON.stringify(input, null, 2);
     } catch {
@@ -275,7 +276,7 @@ function ToolDetailModal({
   };
 
   const formatOutput = (output: string | undefined): string => {
-    if (!output) return "No output";
+    if (!output) return t("chat.toolResult.noOutputLabel", "No output");
     // Handle non-string output (could be object at runtime despite types)
     if (typeof output !== "string") {
       return JSON.stringify(output, null, 2);
@@ -287,7 +288,7 @@ function ToolDetailModal({
     let cleanOutput = toolUseErrorMatch ? toolUseErrorMatch[1].trim() : output;
     // Truncate very long output
     if (cleanOutput.length > 10000) {
-      return cleanOutput.slice(0, 10000) + "\n\n... (truncated)";
+      return cleanOutput.slice(0, 10000) + "\n\n" + t("chat.toolResult.truncated", "... (truncated)");
     }
     return cleanOutput;
   };
@@ -421,7 +422,7 @@ export function ToolExecutionItem({
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
   const truncatedParam = truncateParam(param);
-  const { summary, isWarning } = getResultSummary(name, output, isError);
+  const { summary, isWarning } = getResultSummary(name, output, isError, t);
 
   // Determine status
   const isRunning = isExecuting && !output;

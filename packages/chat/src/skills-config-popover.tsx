@@ -4,7 +4,6 @@
  * Shows a list of available skills with enable/disable toggles.
  */
 
-import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Sparkles } from "lucide-react";

@@ -493,6 +493,8 @@ export function MessageItem({
   className,
   maxWidth,
 }: MessageItemProps) {
+  const { t } = useTranslation();
+
   // Style for max width constraint
   const maxWidthStyle = maxWidth
     ? { maxWidth } as React.CSSProperties
@@ -555,7 +557,7 @@ export function MessageItem({
   else if (message.type === "tool_result") {
     content = (
       <ToolExecutionItem
-        name="Tool Result"
+        name={t("chat.toolResult.label", "Tool Result")}
         output={message.output}
         isError={message.isError}
       />

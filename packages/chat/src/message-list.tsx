@@ -227,7 +227,8 @@ function TaskGroupComponent({
  */
 function groupMessages(
   messages: AgentMessage[],
-  isRunning: boolean
+  isRunning: boolean,
+  t: (key: string, defaultValue: string) => string
 ): MessageGroup[] {
   const groups: MessageGroup[] = [];
 
@@ -322,7 +323,7 @@ function groupMessages(
     if (!state.currentGroup) {
       state.currentGroup = {
         type: "task",
-        title: "Executing task",
+        title: t("chat.activity.executingTask", "Executing task"),
         description: "",
         tools: [],
         isCompleted: false,
@@ -456,37 +457,37 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
 
     switch (lastToolUse.name) {
       case "Bash":
-        return "Running command...";
+        return t("chat.activity.runningCommand", "Running command...");
       case "Read": {
         const readFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Reading ${readFile || "file"}...`;
+        return t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: readFile || "file" });
       }
       case "Write": {
         const writeFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Writing ${writeFile || "file"}...`;
+        return t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: writeFile || "file" });
       }
       case "Edit": {
         const editFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Editing ${editFile || "file"}...`;
+        return t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: editFile || "file" });
       }
       case "Grep":
-        return "Searching...";
+        return t("chat.activity.searching", "Searching...");
       case "Glob":
-        return "Finding files...";
+        return t("chat.activity.findingFiles", "Finding files...");
       case "WebSearch":
-        return "Searching web...";
+        return t("chat.activity.searchingWeb", "Searching web...");
       case "WebFetch":
-        return "Fetching page...";
+        return t("chat.activity.fetchingPage", "Fetching page...");
       case "Task":
-        return "Running subtask...";
+        return t("chat.activity.runningSubtask", "Running subtask...");
       default:
-        return `Running ${lastToolUse.name}...`;
+        return t("chat.activity.runningTool", { defaultValue: "Running {{name}}...", name: lastToolUse.name });
     }
   };
 
@@ -563,8 +564,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const groups = useMemo(
     () => simpleMode
       ? messages.map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
-      : groupMessages(messages, isStreaming || false),
-    [messages, isStreaming, simpleMode]
+      : groupMessages(messages, isStreaming || false, t),
+    [messages, isStreaming, simpleMode, t]
   );
 
   // Debug groups
