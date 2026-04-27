@@ -5,7 +5,7 @@
  * Supports theme switching between light and dark modes.
  */
 
-import * as React from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores";
@@ -15,8 +15,8 @@ import { getLanguageHint } from "./utils";
 export function CodePreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
   const { theme } = useAppStore();
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [lineNumbers, setLineNumbers] = React.useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [lineNumbers, setLineNumbers] = useState<string[]>([]);
 
   // Determine if dark mode
   const isDark =
@@ -26,7 +26,7 @@ export function CodePreview({ artifact }: PreviewComponentProps) {
       window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   // Generate line numbers when content changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (artifact.content) {
       const lines = artifact.content.split("\n");
       setLineNumbers(lines.map((_, i) => String(i + 1)));
