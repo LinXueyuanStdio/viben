@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { Wifi, WifiOff, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOfflineStatus } from "@/hooks/use-offline-status";
@@ -42,19 +42,19 @@ export function OfflineIndicator({ collapsed = false, className }: OfflineIndica
     }
   };
 
-  const Icon = React.useMemo(() => {
+  const Icon = useMemo(() => {
     if (refreshing) return Loader2;
     if (isOffline) return WifiOff;
     return Wifi;
   }, [isOffline, refreshing]);
 
-  const statusText = React.useMemo(() => {
+  const statusText = useMemo(() => {
     if (refreshing) return t("offline.syncing");
     if (isOffline) return t("offline.offline");
     return t("offline.online");
   }, [isOffline, refreshing, t]);
 
-  const tooltipText = React.useMemo(() => {
+  const tooltipText = useMemo(() => {
     if (refreshing) return t("offline.syncingTooltip");
     if (isOffline) {
       const lastUpdated = cacheInfo?.last_updated
