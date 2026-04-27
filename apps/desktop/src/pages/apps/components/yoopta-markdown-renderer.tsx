@@ -34,7 +34,27 @@ import { YooptaFloatingBlockActions } from "./yoopta-block-actions";
 import { YooptaEditorHeader } from "./yoopta-editor-header";
 import { YooptaErrorBoundary } from "./yoopta-error-boundary";
 import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
+import { CoverPicker } from "@/components/ui/cover-picker";
+import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
+
+/** Parse a cover value into CSS background style. */
+function parseCoverBackground(cover: string): React.CSSProperties {
+  if (cover.startsWith("gradient:")) {
+    const key = cover.slice(9) as keyof typeof GRADIENT_COLORS;
+    const g = GRADIENT_COLORS[key];
+    if (g) return { background: `linear-gradient(135deg, ${g.from}, ${g.to})` };
+  }
+  if (cover.startsWith("solid:")) {
+    const solidMap: Record<string, string> = {
+      "warm-gray": "#d6d3d1", slate: "#94a3b8", stone: "#a8a29e", neutral: "#a3a3a3",
+    };
+    const color = solidMap[cover.slice(6)];
+    if (color) return { background: color };
+  }
+  // URL — use as background-image for img tag (handled separately)
+  return {};
+}
 
 const SAVE_DEBOUNCE_MS = 1000;
 
@@ -75,7 +95,6 @@ export function YooptaMarkdownRenderer({
 }: YooptaMarkdownRendererProps) {
   const canSave = !!(workspacePath && slug);
   const isEditable = editable ?? canSave;
-  console.log("[DEBUG:Renderer] props:", { editable, canSave, isEditable, workspacePath, slug, icon, cover, pageWidth, showToc });
 
   const containerBoxRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,7 +140,6 @@ export function YooptaMarkdownRenderer({
 
   const persistIcon = useCallback(
     (iconData: IconData | null) => {
-      console.log("[DEBUG:AddIcon] persistIcon called, icon:", iconData, "canSave:", canSave);
       if (!canSave) return;
       if (iconSaveTimerRef.current) clearTimeout(iconSaveTimerRef.current);
       iconSaveTimerRef.current = setTimeout(async () => {
@@ -177,18 +195,12 @@ export function YooptaMarkdownRenderer({
   );
 
   const [coverUrl, setCoverUrl] = useState<string | null>(cover || null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const coverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync cover from props
   useEffect(() => {
     setCoverUrl(cover || null);
   }, [cover]);
-
-  const handleAddCoverClick = useCallback(() => {
-    console.log("[DEBUG:AddCover] clicked, coverInputRef.current:", coverInputRef.current);
-    coverInputRef.current?.click();
-  }, []);
 
   const persistCover = useCallback(
     (url: string | null) => {
@@ -210,41 +222,16 @@ export function YooptaMarkdownRenderer({
     [canSave, workspacePath, slug]
   );
 
-  const handleCoverFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      console.log("[DEBUG:AddCover] file input changed, file:", file?.name, file?.size);
-      if (!file) return;
-      e.target.value = "";
-
-      if (!canSave) {
-        setCoverUrl(URL.createObjectURL(file));
-        return;
-      }
-
-      try {
-        const baseUrl = getGatewayUrl();
-        const result = await uploadPageAsset(baseUrl, workspacePath!, slug!, file);
-        if (result.success && result.url) {
-          const fullUrl = `${baseUrl}${result.url}`;
-          setCoverUrl(fullUrl);
-          persistCover(fullUrl);
-        }
-      } catch (err) {
-        console.error("[YooptaMarkdownRenderer] cover upload failed:", err);
-      }
+  const handleCoverChange = useCallback(
+    (newCover: string | null) => {
+      setCoverUrl(newCover);
+      persistCover(newCover);
     },
-    [canSave, workspacePath, slug, persistCover]
+    [persistCover]
   );
-
-  const handleRemoveCover = useCallback(() => {
-    setCoverUrl(null);
-    persistCover(null);
-  }, [persistCover]);
 
   const handleIconChange = useCallback(
     (iconData: IconData | null) => {
-      console.log("[DEBUG:AddIcon] handleIconChange:", iconData);
       setPageIcon(iconData);
       persistIcon(iconData);
     },
@@ -669,7 +656,6 @@ export function YooptaMarkdownRenderer({
 
   return (
     <div
-      ref={containerBoxRef}
       className={cn(
         "yoopta-notion-editor w-full mx-auto relative",
         currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl",
@@ -692,42 +678,15 @@ export function YooptaMarkdownRenderer({
           );
           return headerPortal ? createPortal(headerEl, headerPortal) : headerEl;
         })()}
-        {/* Hidden file input for cover image */}
-        <input
-          ref={coverInputRef}
-          type="file"
-          accept="image/*"
-          className="absolute opacity-0 w-0 h-0 overflow-hidden"
-          onChange={handleCoverFileChange}
-          tabIndex={-1}
-        />
-        {/* Cover image banner */}
+        {/* Cover banner */}
         {coverUrl && (
-          <div className="yoopta-cover-area group relative w-full" style={{ height: 280 }}>
-            <img
-              src={coverUrl}
-              alt="Page cover"
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={handleAddCoverClick}
-                className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
-              >
-                Change cover
-              </button>
-              {isEditable && (
-                <button
-                  type="button"
-                  onClick={handleRemoveCover}
-                  className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
+          <CoverBanner
+            coverUrl={coverUrl}
+            isEditable={isEditable}
+            workspacePath={workspacePath}
+            slug={slug}
+            onCoverChange={handleCoverChange}
+          />
         )}
         {isEditable && (
           <PageTitleArea
@@ -735,17 +694,21 @@ export function YooptaMarkdownRenderer({
             pageTitle={pageTitle}
             coverUrl={coverUrl}
             workspacePath={workspacePath}
+            slug={slug}
             onIconChange={handleIconChange}
-            onAddCoverClick={handleAddCoverClick}
+            onCoverChange={handleCoverChange}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}
           />
         )}
         {!isEditable && (pageTitle || pageIcon) && (
-          <div className="px-14 pt-8 pb-2">
+          <div className={cn(
+            "px-14 pb-2",
+            coverUrl && pageIcon ? "-mt-6" : "pt-8"
+          )}>
             {pageIcon && (
-              <div className="yoopta-page-icon mb-2">
-                <IconDisplay icon={pageIcon} size={60} workspacePath={workspacePath} />
+              <div className="yoopta-page-icon mb-1">
+                <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
               </div>
             )}
             {pageTitle && (
@@ -753,32 +716,258 @@ export function YooptaMarkdownRenderer({
             )}
           </div>
         )}
-        <BlockDndContext editor={editor}>
-          <YooptaEditor
-            editor={editor}
-            style={EDITOR_STYLES}
-            renderBlock={renderBlock}
-            placeholder="Type / to open menu, or start typing..."
-            onChange={handleChange}
-          >
-            {isEditable && <YooptaToolbar />}
-            {isEditable && <YooptaFloatingBlockActions />}
-            {isEditable && <YooptaSlashCommandMenu />}
-            {isEditable && <SelectionBox selectionBoxElement={containerBoxRef} />}
-            {isEditable && <MentionDropdown />}
-            {isEditable && <EmojiDropdown />}
-            {currentShowToc && (
-              <YooptaTocSidebar className="yoopta-toc-panel" />
-            )}
-          </YooptaEditor>
-        </BlockDndContext>
-        <div className="yoopta-editor-footer px-14 py-2 text-xs text-muted-foreground/60 select-none">
-          <span>
-            {wordCount.words} {wordCount.words === 1 ? "word" : "words"} &middot;{" "}
-            {wordCount.characters} {wordCount.characters === 1 ? "character" : "characters"}
-          </span>
+        {/* containerBoxRef wraps ONLY the editor + footer so SelectionBox's
+            mousedown handler does not intercept clicks in PageTitleArea / CoverBanner.
+            SelectionBox calls preventDefault() on mousedown for anything inside
+            containerBoxRef but outside editor.refElement, which kills the
+            subsequent click event that Radix PopoverTrigger relies on. */}
+        <div ref={containerBoxRef}>
+          <BlockDndContext editor={editor}>
+            <YooptaEditor
+              editor={editor}
+              style={EDITOR_STYLES}
+              renderBlock={renderBlock}
+              placeholder="Type / to open menu, or start typing..."
+              onChange={handleChange}
+            >
+              {isEditable && <YooptaToolbar />}
+              {isEditable && <YooptaFloatingBlockActions />}
+              {isEditable && <YooptaSlashCommandMenu />}
+              {isEditable && <SelectionBox selectionBoxElement={containerBoxRef} />}
+              {isEditable && <MentionDropdown />}
+              {isEditable && <EmojiDropdown />}
+              {currentShowToc && (
+                <YooptaTocSidebar className="yoopta-toc-panel" />
+              )}
+            </YooptaEditor>
+          </BlockDndContext>
+          <div className="yoopta-editor-footer px-14 py-2 text-xs text-muted-foreground/60 select-none">
+            <span>
+              {wordCount.words} {wordCount.words === 1 ? "word" : "words"} &middot;{" "}
+              {wordCount.characters} {wordCount.characters === 1 ? "character" : "characters"}
+            </span>
+          </div>
         </div>
       </YooptaErrorBoundary>
     </div>
   );
 }
+
+/* ─── PageTitleArea ──────────────────────────────────────────────────────────
+ * Extracted as a memo'd sub-component so that hover / icon-picker state
+ * changes only re-render this lightweight area, NOT the heavy editor tree.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+type PageTitleAreaProps = {
+  pageIcon: IconData | null;
+  pageTitle: string;
+  coverUrl: string | null;
+  workspacePath?: string;
+  slug?: string;
+  onIconChange: (icon: IconData | null) => void;
+  onCoverChange: (cover: string | null) => void;
+  onTitleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onTitleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+};
+
+const PageTitleArea = memo(function PageTitleArea({
+  pageIcon,
+  pageTitle,
+  coverUrl,
+  workspacePath,
+  slug,
+  onIconChange,
+  onCoverChange,
+  onTitleChange,
+  onTitleKeyDown,
+}: PageTitleAreaProps) {
+  const [isTitleHovered, setIsTitleHovered] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isPickerOpen = showIconPicker || showCoverPicker;
+  const showActions = isTitleHovered || isPickerOpen;
+  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showIconPicker, showCoverPicker, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
+
+  return (
+    <div
+      className={cn(
+        "yoopta-page-title-area px-14 pb-2 relative",
+        // Notion: icon overlaps cover bottom by ~24px when cover exists
+        coverUrl && pageIcon ? "-mt-6" : "pt-8"
+      )}
+      onMouseEnter={() => {
+        if (hoverLeaveTimerRef.current) { clearTimeout(hoverLeaveTimerRef.current); hoverLeaveTimerRef.current = null; }
+        setIsTitleHovered(true);
+      }}
+      onMouseLeave={() => {
+        hoverLeaveTimerRef.current = setTimeout(() => { setIsTitleHovered(false); }, 150);
+      }}
+    >
+      {/* Page icon — Notion style: large, above title, overlaps cover */}
+      {pageIcon && (
+        <IconPicker
+          open={showIconPicker}
+          onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+          value={pageIcon}
+          onChange={onIconChange}
+          workspacePath={workspacePath}
+          trigger={
+            <div
+              className="yoopta-page-icon mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+              role="button"
+              tabIndex={0}
+            >
+              <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
+            </div>
+          }
+        />
+      )}
+
+      {/* Action row — Notion: between icon and title, visible on hover */}
+      <div
+        className={cn(
+          "flex items-center gap-1 py-1 transition-opacity duration-150",
+          showActions ? "opacity-100" : "opacity-0"
+        )}
+      >
+        {!pageIcon && (
+          <IconPicker
+            open={showIconPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+            value={pageIcon}
+            onChange={onIconChange}
+            workspacePath={workspacePath}
+            trigger={
+              <button
+                type="button"
+                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+              >
+                <SmilePlus size={14} />
+                <span>Add icon</span>
+              </button>
+            }
+          />
+        )}
+        {pageIcon && (
+          <IconPicker
+            open={showIconPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
+            value={pageIcon}
+            onChange={onIconChange}
+            workspacePath={workspacePath}
+            trigger={
+              <button
+                type="button"
+                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+              >
+                <SmilePlus size={14} />
+                <span>Change icon</span>
+              </button>
+            }
+          />
+        )}
+        {!coverUrl && (
+          <CoverPicker
+            open={showCoverPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
+            value={coverUrl}
+            onChange={onCoverChange}
+            workspacePath={workspacePath}
+            slug={slug}
+            trigger={
+              <button
+                type="button"
+                className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
+              >
+                <ImageLucideIcon size={14} />
+                <span>Add cover</span>
+              </button>
+            }
+          />
+        )}
+      </div>
+
+      {/* Title textarea */}
+      <textarea
+        ref={titleRef}
+        value={pageTitle}
+        onChange={onTitleChange}
+        onKeyDown={onTitleKeyDown}
+        placeholder="Untitled"
+        rows={1}
+        className="w-full resize-none overflow-hidden bg-transparent text-4xl font-bold leading-tight text-foreground placeholder:text-muted-foreground/30 focus:outline-none"
+        style={{ fieldSizing: "content" } as React.CSSProperties}
+      />
+    </div>
+  );
+});
+
+/* ─── CoverBanner ────────────────────────────────────────────────────────────
+ * Extracted as memo'd sub-component. Renders either a gradient/solid color
+ * or an image cover, with hover overlay for Change/Remove actions.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+type CoverBannerProps = {
+  coverUrl: string;
+  isEditable: boolean;
+  workspacePath?: string;
+  slug?: string;
+  onCoverChange: (cover: string | null) => void;
+};
+
+const CoverBanner = memo(function CoverBanner({
+  coverUrl,
+  isEditable,
+  workspacePath,
+  slug,
+  onCoverChange,
+}: CoverBannerProps) {
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const isColorCover = coverUrl.startsWith("gradient:") || coverUrl.startsWith("solid:");
+  const bgStyle = isColorCover ? parseCoverBackground(coverUrl) : undefined;
+
+  return (
+    <div className="yoopta-cover-area group relative w-full" style={{ height: 280 }}>
+      {isColorCover ? (
+        <div className="h-full w-full" style={bgStyle} />
+      ) : (
+        <img
+          src={coverUrl}
+          alt="Page cover"
+          className="h-full w-full object-cover"
+        />
+      )}
+      {isEditable && (
+        <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <CoverPicker
+            open={showCoverPicker}
+            onOpenChange={(v) => { console.log("[DEBUG:CoverPicker] onOpenChange:", v); setShowCoverPicker(v); }}
+            value={coverUrl}
+            onChange={onCoverChange}
+            workspacePath={workspacePath}
+            slug={slug}
+            align="end"
+            trigger={
+              <button
+                type="button"
+                className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
+              >
+                Change cover
+              </button>
+            }
+          />
+          <button
+            type="button"
+            onClick={() => onCoverChange(null)}
+            className="rounded bg-background/80 px-2 py-1 text-xs text-foreground backdrop-blur-sm hover:bg-background/90 transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
