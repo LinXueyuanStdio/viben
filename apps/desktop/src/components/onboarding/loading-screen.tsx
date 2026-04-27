@@ -4,7 +4,7 @@
  * Qclaw reference: /Users/lxy/Documents/GitHub/others/Qclaw/src/components/LoadingScreen.tsx
  */
 
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -44,7 +44,7 @@ export function LoadingScreen({
   className,
 }: LoadingScreenProps) {
   const { t } = useTranslation();
-  const [currentTipIndex, setCurrentTipIndex] = React.useState(0);
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
 
   // Use translated tips if not provided
   const loadingTips = tips ?? [
@@ -57,7 +57,7 @@ export function LoadingScreen({
   ];
 
   // 旋转提示
-  React.useEffect(() => {
+  useEffect(() => {
     if (!showTips || loadingTips.length === 0) return;
 
     const interval = setInterval(() => {
