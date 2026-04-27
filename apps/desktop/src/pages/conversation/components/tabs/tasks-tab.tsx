@@ -2,7 +2,7 @@
  * Tasks tab content for the right sidebar
  * Displays kanban tasks grouped by status
  */
-import * as React from "react";
+import React, { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -172,7 +172,7 @@ function TaskGroup({
 }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = React.useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
   const StatusIcon = getStatusIcon(status);
   const statusColor = getStatusColor(status);
 
@@ -236,7 +236,7 @@ export function TasksTabContent({
   const { t } = useTranslation();
 
   // Group tasks by status
-  const tasksByStatus = React.useMemo(() => {
+  const tasksByStatus = useMemo(() => {
     const groups: Record<TaskStatus, TaskWithAttemptStatus[]> = {
       backlog: [],
       queue: [],
