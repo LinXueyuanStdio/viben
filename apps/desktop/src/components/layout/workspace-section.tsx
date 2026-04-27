@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { FolderOpen, Plus, Globe, Folder, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
     selectWorkspace,
   } = useLocalWorkspaces();
 
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAddWorkspace = () => {
     setIsModalOpen(true);
