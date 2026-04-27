@@ -5,7 +5,7 @@
  * with provider selection in a popover.
  */
 
-import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Shield,
@@ -76,7 +76,7 @@ export function SandboxToggle({ className }: { className?: string }) {
     setSandboxProvider,
   } = useChatConfigStore();
 
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Get current provider info
   const currentProvider = sandboxConfig.provider || "native";
