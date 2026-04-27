@@ -1,9 +1,11 @@
 ---
 page:
   type: markdown
-  permission: [read, write]
-name: "first"
-description: "first page"
+  permission:
+    - read
+    - write
+name: first
+description: first page
 ---
 
 # First

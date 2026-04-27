@@ -123,18 +123,21 @@ log "INFO" "=========================================="
 log_system_info
 
 # ============================================================
-# Auto-build workspace dependencies (if dist/ missing)
+# Build core package and re-link CLI
 # ============================================================
 
-log "INFO" "Checking workspace dependencies..."
-"$SCRIPT_DIR/build-deps.sh" "$PROJECT_ROOT/packages/core"
-
-# npm link so `viben` CLI points to latest build
 CORE_DIR="$PROJECT_ROOT/packages/core"
-if [ -f "$CORE_DIR/dist/cli/bin.js" ]; then
-    log "INFO" "Linking viben CLI..."
-    (cd "$CORE_DIR" && npm link 2>/dev/null) || log "WARN" "npm link failed (non-fatal)"
+
+log "INFO" "Building @viben/core..."
+(cd "$PROJECT_ROOT" && pnpm --filter @viben/core build) >> "$RESTART_LOG" 2>&1
+if [ $? -ne 0 ]; then
+    log "ERROR" "Failed to build @viben/core"
+    exit 1
 fi
+log "INFO" "Build successful"
+
+log "INFO" "Linking viben CLI..."
+(cd "$CORE_DIR" && npm link 2>/dev/null) || log "WARN" "npm link failed (non-fatal)"
 
 # ============================================================
 # Stop & Restart Gateway
