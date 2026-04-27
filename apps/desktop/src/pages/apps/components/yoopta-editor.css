@@ -1,0 +1,282 @@
+/* Yoopta Editor - Notion-like styles */
+
+.yoopta-notion-editor {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
+  line-height: 1.6;
+  color: var(--foreground);
+}
+
+/* Editor header - top-right operations */
+.yoopta-editor-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background);
+}
+
+/* Block hover - Notion shows floating actions on hover, not background highlight */
+
+/* Smooth transitions for blocks */
+.yoopta-notion-editor [data-yoopta-block] {
+  transition: opacity 0.15s ease;
+}
+
+/* Placeholder styling */
+.yoopta-notion-editor [data-placeholder]::before {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  font-style: normal;
+}
+
+/* Heading placeholders hidden by default - only visible on focus (Notion behavior) */
+.yoopta-notion-editor [data-yoopta-plugin="HeadingOne"] [data-placeholder]::before,
+.yoopta-notion-editor [data-yoopta-plugin="HeadingTwo"] [data-placeholder]::before,
+.yoopta-notion-editor [data-yoopta-plugin="HeadingThree"] [data-placeholder]::before {
+  opacity: 0;
+}
+
+/* Show heading placeholders only when the block is focused */
+.yoopta-notion-editor [data-yoopta-plugin="HeadingOne"]:focus-within [data-placeholder]::before,
+.yoopta-notion-editor [data-yoopta-plugin="HeadingTwo"]:focus-within [data-placeholder]::before,
+.yoopta-notion-editor [data-yoopta-plugin="HeadingThree"]:focus-within [data-placeholder]::before {
+  opacity: 0.5;
+}
+
+/* Heading-specific placeholder sizing (match heading font size) */
+.yoopta-notion-editor [data-yoopta-plugin="HeadingOne"] [data-placeholder]::before {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="HeadingTwo"] [data-placeholder]::before {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="HeadingThree"] [data-placeholder]::before {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Inline code styling */
+.yoopta-notion-editor code:not(pre code) {
+  background: var(--muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  color: var(--destructive, #eb5757);
+}
+
+/* Link styling */
+.yoopta-notion-editor a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--muted-foreground);
+  transition: text-decoration-color 0.15s ease;
+}
+
+.yoopta-notion-editor a:hover {
+  text-decoration-color: var(--foreground);
+}
+
+/* Selection box styling */
+.yoopta-notion-editor .yoopta-selection-box {
+  background: oklch(0.7 0.1 250 / 0.08);
+  border: 1px solid oklch(0.7 0.1 250 / 0.2);
+}
+
+/* Code block styling */
+.yoopta-notion-editor pre {
+  background: var(--muted);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.yoopta-notion-editor pre code {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+}
+
+/* Callout blocks */
+.yoopta-notion-editor [data-yoopta-plugin="Callout"] {
+  border-radius: 6px;
+}
+
+/* Divider */
+.yoopta-notion-editor [data-yoopta-plugin="Divider"] hr {
+  border-color: var(--border);
+  margin: 1rem 0;
+}
+
+/* Table styling */
+.yoopta-notion-editor table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.yoopta-notion-editor table td,
+.yoopta-notion-editor table th {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  min-width: 100px;
+}
+
+.yoopta-notion-editor table th {
+  background: var(--muted);
+  font-weight: 600;
+}
+
+/* Blockquote */
+.yoopta-notion-editor blockquote {
+  border-left: 3px solid var(--foreground);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+
+/* Todo list checkboxes */
+.yoopta-notion-editor [data-yoopta-plugin="TodoList"] input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+/* Image blocks - Notion-like centered images */
+.yoopta-notion-editor [data-yoopta-plugin="Image"] img {
+  border-radius: 4px;
+  max-width: 100%;
+}
+
+/* Accordion styling */
+.yoopta-notion-editor [data-yoopta-plugin="Accordion"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* Embed blocks */
+.yoopta-notion-editor [data-yoopta-plugin="Embed"] iframe {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* Heading styles - Notion-like weight and spacing */
+.yoopta-notion-editor [data-yoopta-plugin="HeadingOne"] {
+  margin-top: 1.5rem;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="HeadingTwo"] {
+  margin-top: 1.25rem;
+}
+
+.yoopta-notion-editor [data-yoopta-plugin="HeadingThree"] {
+  margin-top: 1rem;
+}
+
+/* TodoList checked state - Notion grays out completed items */
+.yoopta-notion-editor [data-yoopta-plugin="TodoList"] input[type="checkbox"]:checked ~ * {
+  text-decoration: line-through;
+  color: var(--muted-foreground);
+}
+
+/* Drag overlay styling for block DnD */
+.yoopta-notion-editor [data-dnd-dragging="true"] {
+  opacity: 0.5;
+}
+
+/* Focus ring for the editor area */
+.yoopta-notion-editor:focus-within {
+  outline: none;
+}
+
+/* Smooth scrolling for the editor */
+.yoopta-notion-editor {
+  scroll-behavior: smooth;
+}
+
+/* Link popover animation */
+.yoopta-link-popover {
+  animation: yoopta-link-popover-in 150ms ease;
+}
+
+@keyframes yoopta-link-popover-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Page title hover actions (Notion-style "Add icon" / "Add cover") */
+.yoopta-page-title-actions {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.yoopta-page-title-area:hover .yoopta-page-title-actions {
+  opacity: 1;
+}
+
+/* Emoji input popover */
+.yoopta-emoji-input {
+  display: inline-block;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.yoopta-emoji-input input {
+  width: 8rem;
+  font-size: 1.5rem;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  outline: none;
+  color: var(--foreground);
+}
+
+.yoopta-emoji-input input:focus {
+  border-color: var(--ring, oklch(0.7 0.1 250));
+}
+
+/* Page icon display */
+.yoopta-page-icon {
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+  transition: transform 0.1s ease;
+}
+
+.yoopta-page-icon:hover {
+  transform: scale(1.05);
+}
+
+.yoopta-page-icon:active {
+  transform: scale(0.95);
+}
+
+/* Print styles */
+@media print {
+  .yoopta-editor-header,
+  .yoopta-editor-footer,
+  .yoopta-notion-editor [data-floating-ui-portal],
+  .yoopta-notion-editor .yoopta-selection-box {
+    display: none !important;
+  }
+  .yoopta-notion-editor {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .yoopta-notion-editor [data-yoopta-block] {
+    page-break-inside: avoid;
+  }
+}
