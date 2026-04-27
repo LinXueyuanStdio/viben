@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Package, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,8 +45,8 @@ export function OfficialServerGrid({
   });
 
   // Infinite scroll observer
-  const observerRef = React.useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = React.useCallback(
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useCallback(
     (node: HTMLDivElement | null) => {
       if (isLoading) return;
 
@@ -71,7 +71,7 @@ export function OfficialServerGrid({
   );
 
   // Update search when prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (searchQuery !== currentSearchQuery) {
       search(searchQuery);
     }
