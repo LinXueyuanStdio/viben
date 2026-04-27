@@ -5,7 +5,7 @@
  * Uses a temporary workdir and the current (unsaved) agent config.
  */
 
-import * as React from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Bot, Trash2, Loader2, AlertCircle, X, Settings2, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -106,11 +106,11 @@ export function DebugChatPanel({
   executorConfig,
 }: DebugChatPanelProps) {
   const { t } = useTranslation();
-  const client = React.useMemo(() => getGatewayClient(), []);
+  const client = useMemo(() => getGatewayClient(), []);
   const { executors } = useExecutors();
 
   // Helper to get executor display name from Gateway API
-  const getExecutorName = React.useCallback(
+  const getExecutorName = useCallback(
     (execType: ExecutorType) => {
       const executor = executors.find((e) => e.type === execType);
       return executor?.name || execType;
@@ -119,44 +119,44 @@ export function DebugChatPanel({
   );
 
   // Chat state
-  const [messages, setMessages] = React.useState<AgentMessage[]>([]);
-  const [phase, setPhase] = React.useState<AgentPhase>("idle");
-  const [isStreaming, setIsStreaming] = React.useState(false);
-  const [pendingPlan, setPendingPlan] = React.useState<TaskPlan | null>(null);
-  const [pendingQuestions, setPendingQuestions] = React.useState<PendingQuestion | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [sessionId, setSessionId] = React.useState<string | null>(null);
-  const [_toolUsages, setToolUsages] = React.useState<ToolUsage[]>([]);
+  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [phase, setPhase] = useState<AgentPhase>("idle");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<TaskPlan | null>(null);
+  const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [_toolUsages, setToolUsages] = useState<ToolUsage[]>([]);
 
   // Gateway state
-  const [gatewayConnected, setGatewayConnected] = React.useState<boolean | null>(null);
-  const [availability, setAvailability] = React.useState<AvailabilityInfo | null>(null);
-  const [checkingAvailability, setCheckingAvailability] = React.useState(false);
+  const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
+  const [availability, setAvailability] = useState<AvailabilityInfo | null>(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   // Settings state
-  const [showSettings, setShowSettings] = React.useState(false);
-  const [gatewayUrlInput, setGatewayUrlInput] = React.useState(getGatewayUrl());
-  const [workdirInput, setWorkdirInput] = React.useState(DEBUG_WORKDIR);
+  const [showSettings, setShowSettings] = useState(false);
+  const [gatewayUrlInput, setGatewayUrlInput] = useState(getGatewayUrl());
+  const [workdirInput, setWorkdirInput] = useState(DEBUG_WORKDIR);
 
   // WebSocket ref
-  const wsRef = React.useRef<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   // Check gateway connection on open
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       checkGateway();
     }
   }, [open]);
 
   // Check agent availability when agent type changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (open && gatewayConnected) {
       checkAgentAvailability();
     }
   }, [open, gatewayConnected, agentType]);
 
   // Cleanup WebSocket on unmount or close
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -201,7 +201,7 @@ export function DebugChatPanel({
   /**
    * Handle incoming WebSocket event
    */
-  const handleWsEvent = React.useCallback((eventType: string, eventData: GatewayEventData, targetSessionId: string) => {
+  const handleWsEvent = useCallback((eventType: string, eventData: GatewayEventData, targetSessionId: string) => {
     // Filter by session ID
     if (eventData.session_id !== targetSessionId) {
       console.log("[DebugChatPanel] Ignoring event for different session:", eventData.session_id);
@@ -327,7 +327,7 @@ export function DebugChatPanel({
    * Subscribe to WebSocket events for a session
    * Returns a promise that resolves when the connection is open
    */
-  const subscribeToEvents = React.useCallback((targetSessionId: string): Promise<WebSocket> => {
+  const subscribeToEvents = useCallback((targetSessionId: string): Promise<WebSocket> => {
     return new Promise((resolve, reject) => {
       // Close existing connection
       if (wsRef.current) {
@@ -472,7 +472,7 @@ export function DebugChatPanel({
   const availabilityStatus = availability ? getAvailabilityStatus(availability) : null;
 
   // Slash commands for debug chat
-  const slashCommands = React.useMemo<SlashCommand[]>(() => [
+  const slashCommands = useMemo<SlashCommand[]>(() => [
     {
       id: "clear",
       name: t("chat.slashCommands.clear", "clear"),
@@ -488,7 +488,7 @@ export function DebugChatPanel({
   ], [t]);
 
   // Handle slash command execution
-  const handleSlashCommand = React.useCallback((command: SlashCommand) => {
+  const handleSlashCommand = useCallback((command: SlashCommand) => {
     switch (command.id) {
       case "clear":
         handleClearMessages();
