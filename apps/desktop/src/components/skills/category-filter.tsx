@@ -1,4 +1,4 @@
-import * as React from "react";
+import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Folder, Layers, Check } from "lucide-react";
@@ -32,7 +32,7 @@ interface CategoryFilterProps {
  * CategoryFilter component for skills marketplace filtering
  * Memoized to prevent unnecessary re-renders
  */
-export const CategoryFilter = React.memo(function CategoryFilter({
+export const CategoryFilter = memo(function CategoryFilter({
   categories,
   selectedCategory,
   onCategoryChange,
@@ -43,7 +43,7 @@ export const CategoryFilter = React.memo(function CategoryFilter({
   const { t } = useTranslation();
 
   // Memoize the "All Categories" click handler
-  const handleSelectAllCategories = React.useCallback(() => {
+  const handleSelectAllCategories = useCallback(() => {
     onCategoryChange(null);
   }, [onCategoryChange]);
 
@@ -137,7 +137,7 @@ export const CategoryFilter = React.memo(function CategoryFilter({
  * Individual skill type button component
  * Memoized to prevent re-renders when other types change
  */
-const SkillTypeButton = React.memo(function SkillTypeButton({
+const SkillTypeButton = memo(function SkillTypeButton({
   typeId,
   label,
   isSelected,
@@ -148,7 +148,7 @@ const SkillTypeButton = React.memo(function SkillTypeButton({
   isSelected: boolean;
   onSelect: (type: string | null) => void;
 }) {
-  const handleClick = React.useCallback(() => {
+  const handleClick = useCallback(() => {
     onSelect(typeId === "all" ? null : typeId);
   }, [onSelect, typeId]);
 
@@ -173,7 +173,7 @@ const SkillTypeButton = React.memo(function SkillTypeButton({
  * Individual category button component
  * Memoized to prevent re-renders when other categories change
  */
-const CategoryButton = React.memo(function CategoryButton({
+const CategoryButton = memo(function CategoryButton({
   category,
   isSelected,
   onSelect,
@@ -182,7 +182,7 @@ const CategoryButton = React.memo(function CategoryButton({
   isSelected: boolean;
   onSelect: (categoryId: string | null) => void;
 }) {
-  const handleClick = React.useCallback(() => {
+  const handleClick = useCallback(() => {
     onSelect(category.id);
   }, [onSelect, category.id]);
 
