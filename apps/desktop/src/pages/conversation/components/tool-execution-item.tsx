@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -35,7 +35,7 @@ export function ToolExecutionItem({
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const hasDetails = input || output;
   const status = isExecuting
