@@ -108,6 +108,10 @@ export function YooptaMarkdownRenderer({
   const [pageIcon, setPageIcon] = useState<IconData | null>(icon ?? null);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const iconAnchorRef = useRef<HTMLDivElement | null>(null);
+  // Single CoverPicker instance — lifted to editor level (like IconPicker)
+  const [showCoverPicker, setShowCoverPicker] = useState(false);
+  const [coverPickerAlign, setCoverPickerAlign] = useState<"start" | "center" | "end">("start");
+  const coverPickerAnchorRef = useRef<HTMLElement | null>(null);
   const iconSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentPageWidth, setCurrentPageWidth] = useState<PageWidth>(pageWidth || "default");
   const [currentShowToc, setCurrentShowToc] = useState(showToc ?? false);
@@ -778,7 +782,11 @@ type PageTitleAreaProps = {
   coverUrl: string | null;
   workspacePath?: string;
   slug?: string;
-  onIconChange: (icon: IconData | null) => void;
+  /** Ref attached to the icon display area so the parent-level IconPicker
+   *  can position its Popover relative to the icon. */
+  iconAnchorRef: React.RefObject<HTMLDivElement | null>;
+  /** Open the parent-level IconPicker */
+  onOpenIconPicker: () => void;
   onCoverChange: (cover: string | null) => void;
   onTitleChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onTitleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -790,20 +798,19 @@ const PageTitleArea = memo(function PageTitleArea({
   coverUrl,
   workspacePath,
   slug,
-  onIconChange,
+  iconAnchorRef,
+  onOpenIconPicker,
   onCoverChange,
   onTitleChange,
   onTitleKeyDown,
 }: PageTitleAreaProps) {
   const [isTitleHovered, setIsTitleHovered] = useState(false);
-  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showCoverPicker, setShowCoverPicker] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isPickerOpen = showIconPicker || showCoverPicker;
-  const showActions = isTitleHovered || isPickerOpen;
-  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showIconPicker, showCoverPicker, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
+  const showActions = isTitleHovered || showCoverPicker;
+  console.log("[DEBUG:PageTitleArea] render:", { isTitleHovered, showCoverPicker, showActions, pageIcon: pageIcon?.type, coverUrl: !!coverUrl });
 
   return (
     <div
@@ -820,31 +827,25 @@ const PageTitleArea = memo(function PageTitleArea({
         hoverLeaveTimerRef.current = setTimeout(() => { setIsTitleHovered(false); }, 150);
       }}
     >
-      {/* Single IconPicker instance — anchor differs based on whether icon exists */}
-      <IconPicker
-        open={showIconPicker}
-        onOpenChange={(v) => { console.log("[DEBUG:IconPicker] onOpenChange:", v); setShowIconPicker(v); }}
-        value={pageIcon}
-        onChange={onIconChange}
-        workspacePath={workspacePath}
-        trigger={
-          pageIcon ? (
-            <div
-              className="yoopta-page-icon mb-1 cursor-pointer group/icon relative inline-block"
-              role="button"
-              tabIndex={0}
-            >
-              {/* Notion-style hover: rounded bg overlay + slight scale */}
-              <div className="rounded-lg p-1 -m-1 transition-all duration-150 group-hover/icon:bg-foreground/5 group-hover/icon:scale-105">
-                <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
-              </div>
-            </div>
-          ) : (
-            /* Hidden anchor — picker opens from action row button via setShowIconPicker(true) */
-            <span className="hidden" />
-          )
-        }
-      />
+      {/* Page icon — Notion style: large, above title, overlaps cover.
+          This div is the anchor for the parent-level IconPicker via iconAnchorRef. */}
+      {pageIcon && (
+        <div
+          ref={iconAnchorRef}
+          className="yoopta-page-icon mb-1 cursor-pointer group/icon relative inline-block"
+          role="button"
+          tabIndex={0}
+          onClick={() => { console.log("[DEBUG:PageIcon] clicked"); onOpenIconPicker(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpenIconPicker(); }}
+        >
+          {/* Notion-style hover: rounded bg overlay + slight scale */}
+          <div className="rounded-lg p-1 -m-1 transition-all duration-150 group-hover/icon:bg-foreground/5 group-hover/icon:scale-105">
+            <IconDisplay icon={pageIcon} size={78} workspacePath={workspacePath} />
+          </div>
+        </div>
+      )}
+      {/* When no icon, place a hidden anchor so IconPicker still has a position ref */}
+      {!pageIcon && <div ref={iconAnchorRef} className="h-0 w-0" />}
 
       {/* Action row — Notion: between icon and title, visible on hover */}
       <div
@@ -857,7 +858,7 @@ const PageTitleArea = memo(function PageTitleArea({
           <button
             type="button"
             className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-            onClick={() => { console.log("[DEBUG:ActionRow] Add icon clicked"); setShowIconPicker(true); }}
+            onClick={() => { console.log("[DEBUG:ActionRow] Add icon clicked"); onOpenIconPicker(); }}
           >
             <SmilePlus size={14} />
             <span>Add icon</span>
@@ -867,7 +868,7 @@ const PageTitleArea = memo(function PageTitleArea({
           <button
             type="button"
             className="flex items-center gap-1 px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted rounded transition-colors"
-            onClick={() => { console.log("[DEBUG:ActionRow] Change icon clicked"); setShowIconPicker(true); }}
+            onClick={() => { console.log("[DEBUG:ActionRow] Change icon clicked"); onOpenIconPicker(); }}
           >
             <SmilePlus size={14} />
             <span>Change icon</span>
