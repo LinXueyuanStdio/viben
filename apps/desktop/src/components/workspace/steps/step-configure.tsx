@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { AlertTriangle, ChevronDown, ChevronUp, Folder, Loader2 } from "lucide-react";
@@ -51,17 +51,17 @@ export function StepConfigure({
   const { t } = useTranslation();
 
   // Form state
-  const [name, setName] = React.useState(folderStatus?.folderName || "");
-  const [parentPath, setParentPath] = React.useState(selectedPath || "");
-  const [initGit, setInitGit] = React.useState(true);
-  const [initViben, setInitViben] = React.useState(true);
-  const [reinitialize, setReinitialize] = React.useState(false);
-  const [showAdvanced, setShowAdvanced] = React.useState(false);
-  const [developerName, setDeveloperName] = React.useState("developer");
-  const [includeCursor, setIncludeCursor] = React.useState(true);
+  const [name, setName] = useState(folderStatus?.folderName || "");
+  const [parentPath, setParentPath] = useState(selectedPath || "");
+  const [initGit, setInitGit] = useState(true);
+  const [initViben, setInitViben] = useState(true);
+  const [reinitialize, setReinitialize] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [developerName, setDeveloperName] = useState("developer");
+  const [includeCursor, setIncludeCursor] = useState(true);
 
   // Update name when folder status changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (folderStatus?.folderName && method === "open-existing") {
       setName(folderStatus.folderName);
     }
@@ -99,7 +99,7 @@ export function StepConfigure({
   };
 
   // Form validation
-  const isValid = React.useMemo(() => {
+  const isValid = useMemo(() => {
     if (method === "open-existing") {
       return !!selectedPath && !!name.trim();
     }
