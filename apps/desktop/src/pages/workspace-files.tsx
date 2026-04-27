@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import * as React from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Loader2, FolderOpen, ArrowLeft, File, FileCode, FileImage, FileText, X, GripVertical, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,8 +127,8 @@ function ResizeHandle({
 }: {
   onResize: (delta: number) => void;
 }) {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const startXRef = React.useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
