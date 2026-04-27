@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef } from "react";
 import { Send } from "lucide-react";
 import { Button, Textarea, cn } from "@viben/ui";
 
@@ -21,8 +22,8 @@ export const CommentInput = React.forwardRef<HTMLDivElement, CommentInputProps>(
     },
     ref
   ) => {
-    const [value, setValue] = React.useState("");
-    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const [value, setValue] = useState("");
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleSubmit = () => {
       const trimmedValue = value.trim();
