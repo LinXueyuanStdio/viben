@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, AlertCircle, Loader2, Terminal, Copy, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,14 +30,14 @@ export function StepPython({ onComplete, onBack }: StepPythonProps) {
 
   const { setPythonPath } = useAppStore();
 
-  const [customPath, setCustomPath] = React.useState("");
-  const [customError, setCustomError] = React.useState<string | null>(null);
-  const [checkingCustom, setCheckingCustom] = React.useState(false);
-  const [installCommand, setInstallCommand] = React.useState<string | null>(null);
-  const [copied, setCopied] = React.useState(false);
+  const [customPath, setCustomPath] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [checkingCustom, setCheckingCustom] = useState(false);
+  const [installCommand, setInstallCommand] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Fetch install command when Python is selected but package not installed
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedPython?.path && browseMcpInfo && !browseMcpInfo.installed) {
       getInstallCommand(selectedPython.path).then(setInstallCommand);
     } else {
