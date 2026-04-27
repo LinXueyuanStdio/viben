@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import {
   Download,
   Star,
@@ -49,7 +49,7 @@ export function SkillDetail({
   onInstall,
 }: SkillDetailProps) {
   const { t } = useTranslation();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   if (!skill) return null;
 
