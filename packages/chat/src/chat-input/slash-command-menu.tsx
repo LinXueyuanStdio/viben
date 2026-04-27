@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import type { SlashCommand } from "../types";
@@ -75,19 +76,19 @@ export function SlashCommandMenu({
   className,
 }: SlashCommandMenuProps) {
   const { t } = useTranslation();
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Reset expanded state when menu closes or commands change
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen) {
       setIsExpanded(false);
     }
   }, [isOpen]);
 
   // Handle scroll to expand menu (Telegram-style)
-  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;
     // Expand when user scrolls up (trying to see more items)
     if (container.scrollTop > 0 && !isExpanded) {
@@ -96,7 +97,7 @@ export function SlashCommandMenu({
   }, [isExpanded]);
 
   // Scroll selected item into view
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isOpen || !scrollContainerRef.current) return;
 
     const selectedElement = scrollContainerRef.current.querySelector(
@@ -108,7 +109,7 @@ export function SlashCommandMenu({
   }, [selectedIndex, isOpen]);
 
   // Expand when navigating with keyboard to items outside initial view
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedIndex >= INITIAL_VISIBLE_ITEMS && !isExpanded) {
       setIsExpanded(true);
     }
