@@ -141,6 +141,27 @@ Icons without `.Color` (use default): OpenAI, Ollama, Groq, Anthropic
 - `ChatInput` - Simple chat input with attachment support (used in task panels, debug panels)
 - `AgentChatInput` - Full-featured agent chat input with model selector, parameters, token usage (used in workspace chat)
 
+## Tailwind v4 注意事项
+
+项目使用 **Tailwind v4**（`@import "tailwindcss"`，非 v3 的 `@tailwind` 指令）。
+
+**`data-[state=active]:` 等任意 data 属性变体在 CVA 中不可靠**：自定义组件（如 `tabs.tsx`）通过 CVA 数组定义的 `data-[state=active]:border-primary` 类可能无法被 Tailwind v4 正确扫描生成 CSS，或生成后优先级不足以覆盖同层基础类（如 `border-transparent`）。
+
+```tsx
+// ❌ 不可靠 - CVA 中的 data-* 变体可能不生效
+const variants = cva([...], {
+  variants: {
+    default: ["border-transparent", "data-[state=active]:border-primary"]
+  }
+});
+
+// ✅ 可靠 - 通过 className 条件性传入，twMerge 会正确覆盖 CVA 中的基础类
+<TabsTrigger
+  value="gallery"
+  className={cn("px-3 py-2", activeTab === "gallery" && "border-primary text-foreground")}
+/>
+```
+
 ## Desktop App Development
 
 ### Restart Desktop App
