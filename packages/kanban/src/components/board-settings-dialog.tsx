@@ -19,6 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslation } from "react-i18next";
 import {
   GripVertical,
   Eye,
@@ -76,8 +77,8 @@ function SortableColumnItem({
   column,
   onUpdate,
   onDelete,
-  translations,
 }: SortableColumnItemProps) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(column.name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -203,7 +204,7 @@ function SortableColumnItem({
               "transition-colors duration-150"
             )}
             onDoubleClick={handleDoubleClick}
-            title={translations?.doubleClickToEdit ?? "Double-click to edit"}
+            title={t("kanban.editable.doubleClickToEdit")}
           >
             {column.name}
           </span>
@@ -217,7 +218,7 @@ function SortableColumnItem({
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0"
-            title={translations?.changeColor ?? "Change color"}
+            title={t("kanban.columnSettings.changeColor")}
           >
             <Palette className="h-4 w-4" />
           </Button>
@@ -233,7 +234,7 @@ function SortableColumnItem({
                 className="w-4 h-4 rounded-full border"
                 style={{ backgroundColor: colorOption.value }}
               />
-              <span className="flex-1">{translations?.colors?.[colorOption.key] ?? colorOption.name}</span>
+              <span className="flex-1">{t(colorOption.nameKey)}</span>
               {column.color === colorOption.value && (
                 <Check className="h-4 w-4 text-primary" />
               )}
@@ -261,7 +262,7 @@ function SortableColumnItem({
         size="icon"
         className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
         onClick={() => onDelete(column.id)}
-        title={translations?.deleteColumn ?? "Delete column"}
+        title={t("kanban.columnSettings.deleteColumn")}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -276,6 +277,7 @@ export function BoardSettingsDialog({
   onColumnsChange,
   translations,
 }: BoardSettingsDialogProps) {
+  const { t } = useTranslation();
   const [localColumns, setLocalColumns] = useState<ColumnConfig[]>([]);
 
   // Initialize local state when dialog opens
@@ -349,13 +351,13 @@ export function BoardSettingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            {translations?.title ?? "Board Settings"}
+            {translations?.title ?? t("kanban.boardSettings.title")}
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-4">
           <p className="text-sm text-muted-foreground mb-4">
-            {translations?.description ?? "Drag to reorder columns. Double-click to rename. Toggle visibility to show/hide columns."}
+            {translations?.description ?? t("kanban.boardSettings.description")}
           </p>
 
           <DndContext
@@ -383,16 +385,16 @@ export function BoardSettingsDialog({
 
           {localColumns.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              {translations?.noColumns ?? "No columns configured"}
+              {translations?.noColumns ?? t("kanban.boardSettings.noColumns")}
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            {translations?.cancel ?? "Cancel"}
+            {translations?.cancel ?? t("kanban.common.cancel")}
           </Button>
-          <Button onClick={handleSave}>{translations?.saveChanges ?? "Save Changes"}</Button>
+          <Button onClick={handleSave}>{translations?.saveChanges ?? t("kanban.boardSettings.saveChanges")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
