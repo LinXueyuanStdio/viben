@@ -2,7 +2,7 @@
  * Right sidebar for workspace chat
  * Displays workspace files, artifacts, tools, skills, and detail tabs
  */
-import * as React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Layers,
@@ -53,8 +53,8 @@ function ResizeHandle({
 }: {
   onResize: (delta: number) => void;
 }) {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const startXRef = React.useRef(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -333,11 +333,11 @@ export function RightSidebar({
   onStopLivePreview,
 }: RightSidebarProps) {
   const { t } = useTranslation();
-  const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
+  const [loadedWorkingFiles, setLoadedWorkingFiles] = useState<WorkingFile[]>([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 
   // Load working directory files via Tauri command
-  React.useEffect(() => {
+  useEffect(() => {
     async function loadWorkingDirFiles() {
       if (!workingDir) {
         setLoadedWorkingFiles([]);
@@ -400,16 +400,16 @@ export function RightSidebar({
   const groupChatMembersCount = groupChatMembers.length;
 
   // Open tabs state - includes category tabs and opened preview tabs
-  const [openTabs, setOpenTabs] = React.useState<OpenTab[]>([]);
-  const [activeTabId, setActiveTabId] = React.useState<string>("context");
+  const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>("context");
 
   // Track previous groupChat, agentDetail, executorDetail to detect when they change
-  const prevGroupChatRef = React.useRef<GroupChat | null | undefined>(undefined);
-  const prevAgentDetailRef = React.useRef<AgentDetailData | null | undefined>(undefined);
-  const prevExecutorDetailRef = React.useRef<ExecutorDetailData | null | undefined>(undefined);
+  const prevGroupChatRef = useRef<GroupChat | null | undefined>(undefined);
+  const prevAgentDetailRef = useRef<AgentDetailData | null | undefined>(undefined);
+  const prevExecutorDetailRef = useRef<ExecutorDetailData | null | undefined>(undefined);
 
   // Initialize category tabs - dynamically include group chat, agent, executor tabs when available
-  React.useEffect(() => {
+  useEffect(() => {
     const baseTabs: OpenTab[] = [
       { id: "context", type: "category", category: "context", label: t("chat.sidebar.context", "Context"), icon: Layers },
       { id: "tasks", type: "category", category: "tasks", label: t("chat.sidebar.tasks", "Tasks"), icon: CheckSquare },
