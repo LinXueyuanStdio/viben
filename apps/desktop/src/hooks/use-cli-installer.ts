@@ -4,7 +4,7 @@
  * Qclaw 参考: /Users/lxy/Documents/GitHub/others/Qclaw/electron/main/cli.ts
  */
 
-import * as React from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import type { CliInstallerIssue } from "@/lib/onboarding/installer-issues";
@@ -84,12 +84,12 @@ const NPM_MIRRORS = [
 
 export function useCliInstaller(): UseCliInstallerReturn {
   const { t } = useTranslation();
-  const [state, setState] = React.useState<CliInstallState>("idle");
-  const [progress, setProgress] = React.useState<CliInstallProgress | null>(null);
-  const [versionCheck, setVersionCheck] = React.useState<VersionCheckResult | null>(null);
-  const [issue, setIssue] = React.useState<CliInstallerIssue | null>(null);
-  const [isInstalled, setIsInstalled] = React.useState(false);
-  const [currentVersion, setCurrentVersion] = React.useState<string | null>(null);
+  const [state, setState] = useState<CliInstallState>("idle");
+  const [progress, setProgress] = useState<CliInstallProgress | null>(null);
+  const [versionCheck, setVersionCheck] = useState<VersionCheckResult | null>(null);
+  const [issue, setIssue] = useState<CliInstallerIssue | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState<string | null>(null);
 
   /**
    * CLI 检查结果类型
@@ -105,7 +105,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
    * 检查 CLI 是否已安装及版本
    * 返回检查结果，同时更新 hook 状态
    */
-  const checkCli = React.useCallback(async (): Promise<CliCheckResult> => {
+  const checkCli = useCallback(async (): Promise<CliCheckResult> => {
     log("checkCli started");
     setState("checking");
     setIssue(null);
@@ -172,7 +172,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
    * 安装 CLI (带镜像回退)
    * @throws Error 如果所有镜像都失败
    */
-  const installCli = React.useCallback(async () => {
+  const installCli = useCallback(async () => {
     log("installCli started");
     setState("installing");
     setIssue(null);
@@ -242,7 +242,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
   /**
    * 升级 CLI
    */
-  const upgradeCli = React.useCallback(async () => {
+  const upgradeCli = useCallback(async () => {
     log("upgradeCli started");
     setState("upgrading");
     setIssue(null);
@@ -275,7 +275,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
   /**
    * 重置状态
    */
-  const reset = React.useCallback(() => {
+  const reset = useCallback(() => {
     log("reset called");
     setState("idle");
     setProgress(null);
