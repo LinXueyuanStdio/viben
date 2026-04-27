@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { MoreHorizontal, Pencil, Trash2, Smile } from "lucide-react";
 import {
   Avatar,
@@ -49,6 +50,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(comment.content);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -141,10 +143,10 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium">{comment.author.name}</span>
             <span className="text-xs text-muted-foreground">
-              {formatRelativeTime(comment.createdAt)}
+              {formatRelativeTime(comment.createdAt, t)}
             </span>
             {comment.updatedAt && comment.updatedAt !== comment.createdAt && (
-              <span className="text-xs text-muted-foreground">(已编辑)</span>
+              <span className="text-xs text-muted-foreground">{t("kanban.comment.edited")}</span>
             )}
 
             {/* Actions Menu - Only visible for owner */}
@@ -167,7 +169,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
                         className="gap-2"
                       >
                         <Pencil className="h-4 w-4" />
-                        编辑
+                        {t("kanban.comment.edit")}
                       </DropdownMenuItem>
                     )}
                     {onEdit && onDelete && <DropdownMenuSeparator />}
@@ -177,7 +179,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
                         className="gap-2 text-destructive focus:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
-                        删除
+                        {t("kanban.comment.delete")}
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -199,7 +201,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
               />
               <div className="flex items-center gap-2">
                 <Button size="sm" onClick={handleSaveEdit} className="h-7">
-                  保存
+                  {t("kanban.common.save")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -207,7 +209,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
                   onClick={handleCancelEdit}
                   className="h-7"
                 >
-                  取消
+                  {t("kanban.common.cancel")}
                 </Button>
               </div>
             </div>
@@ -253,7 +255,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
                       "opacity-0 group-hover:opacity-100",
                       showEmojiPicker && "opacity-100"
                     )}
-                    title="添加表情"
+                    title={t("kanban.comment.addReaction")}
                   >
                     <Smile className="h-3.5 w-3.5" />
                   </button>

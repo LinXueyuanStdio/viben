@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { MessageSquare } from "lucide-react";
 import { cn, Separator } from "@viben/ui";
 import type { Comment } from "./comment-types";
@@ -31,11 +32,15 @@ export const CommentList = React.forwardRef<HTMLDivElement, CommentListProps>(
       onToggleReaction,
       disabled = false,
       className,
-      inputPlaceholder = "添加评论...",
-      emptyMessage = "暂无评论",
+      inputPlaceholder,
+      emptyMessage,
     },
     ref
   ) => {
+    const { t } = useTranslation();
+    const resolvedInputPlaceholder = inputPlaceholder ?? t("kanban.comment.addPlaceholder");
+    const resolvedEmptyMessage = emptyMessage ?? t("kanban.comment.noComments");
+
     return (
       <div ref={ref} className={cn("space-y-4", className)}>
         {/* Comments List */}
@@ -62,7 +67,7 @@ export const CommentList = React.forwardRef<HTMLDivElement, CommentListProps>(
             <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
               <MessageSquare className="h-6 w-6 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            <p className="text-sm text-muted-foreground">{resolvedEmptyMessage}</p>
           </div>
         )}
 
@@ -72,7 +77,7 @@ export const CommentList = React.forwardRef<HTMLDivElement, CommentListProps>(
             {comments.length > 0 && <Separator />}
             <CommentInput
               onSubmit={onAdd}
-              placeholder={inputPlaceholder}
+              placeholder={resolvedInputPlaceholder}
               disabled={disabled}
             />
           </>

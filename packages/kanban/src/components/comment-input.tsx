@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Send } from "lucide-react";
 import { Button, Textarea, cn } from "@viben/ui";
 
@@ -16,14 +17,17 @@ export const CommentInput = React.forwardRef<HTMLDivElement, CommentInputProps>(
   (
     {
       onSubmit,
-      placeholder = "添加评论...",
+      placeholder,
       disabled = false,
       className,
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const [value, setValue] = useState("");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const resolvedPlaceholder = placeholder ?? t("kanban.comment.addPlaceholder");
 
     const handleSubmit = () => {
       const trimmedValue = value.trim();
@@ -50,7 +54,7 @@ export const CommentInput = React.forwardRef<HTMLDivElement, CommentInputProps>(
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           disabled={disabled}
           rows={3}
           className={cn(
@@ -60,7 +64,7 @@ export const CommentInput = React.forwardRef<HTMLDivElement, CommentInputProps>(
         />
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
-            按 ⌘+Enter 发送
+            {t("kanban.comment.submitHint")}
           </span>
           <Button
             size="sm"
@@ -69,7 +73,7 @@ export const CommentInput = React.forwardRef<HTMLDivElement, CommentInputProps>(
             className="h-8"
           >
             <Send className="h-4 w-4 mr-1.5" />
-            发送
+            {t("kanban.comment.send")}
           </Button>
         </div>
       </div>

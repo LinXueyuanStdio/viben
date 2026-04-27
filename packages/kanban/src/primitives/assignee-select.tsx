@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -28,10 +29,12 @@ const AssigneeSelect = React.forwardRef<HTMLButtonElement, AssigneeSelectProps>(
       value,
       onChange,
       disabled = false,
-      placeholder = "Assign",
+      placeholder,
     },
     ref
   ) => {
+    const { t } = useTranslation();
+    const resolvedPlaceholder = placeholder ?? t("kanban.assignee.assign");
     const selectedUser = value
       ? availableUsers.find((user) => user.id === value)
       : undefined;
@@ -59,7 +62,7 @@ const AssigneeSelect = React.forwardRef<HTMLButtonElement, AssigneeSelectProps>(
             ) : (
               <>
                 <User className="h-4 w-4" />
-                <span className="sr-only">{placeholder}</span>
+                <span className="sr-only">{resolvedPlaceholder}</span>
               </>
             )}
           </button>
@@ -85,7 +88,7 @@ const AssigneeSelect = React.forwardRef<HTMLButtonElement, AssigneeSelectProps>(
                 className="flex items-center gap-2 cursor-pointer text-muted-foreground"
               >
                 <X className="h-4 w-4" />
-                <span>Unassign</span>
+                <span>{t("kanban.assignee.unassign")}</span>
               </DropdownMenuItem>
             </>
           )}

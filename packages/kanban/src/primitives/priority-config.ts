@@ -5,8 +5,8 @@ export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
 export interface PriorityConfig {
   value: IssuePriority;
-  label: string;
-  labelEn: string;
+  /** i18n key for the label */
+  labelKey: string;
   color: string;
   Icon: LucideIcon;
 }
@@ -14,37 +14,32 @@ export interface PriorityConfig {
 export const PRIORITY_CONFIG: Record<IssuePriority, PriorityConfig> = {
   urgent: {
     value: "urgent",
-    label: "紧急",
-    labelEn: "Urgent",
-    color: "#ef4444",  // Red 500 - 🔥 Fire
+    labelKey: "kanban.priority.urgent",
+    color: "#ef4444",  // Red 500
     Icon: Flame,
   },
   high: {
     value: "high",
-    label: "高",
-    labelEn: "High",
-    color: "#f59e0b",  // Amber 500 - ⚡ Lightning
+    labelKey: "kanban.priority.high",
+    color: "#f59e0b",  // Amber 500
     Icon: Zap,
   },
   medium: {
     value: "medium",
-    label: "中",
-    labelEn: "Medium",
-    color: "#3b82f6",  // Blue 500 - ☀️ Sun
+    labelKey: "kanban.priority.medium",
+    color: "#3b82f6",  // Blue 500
     Icon: Sun,
   },
   low: {
     value: "low",
-    label: "低",
-    labelEn: "Low",
-    color: "#22c55e",  // Green 500 - 🌿 Leaf
+    labelKey: "kanban.priority.low",
+    color: "#22c55e",  // Green 500
     Icon: Leaf,
   },
   none: {
     value: "none",
-    label: "无",
-    labelEn: "None",
-    color: "#94a3b8",  // Slate 400 - ❄️ Snowflake
+    labelKey: "kanban.priority.none",
+    color: "#94a3b8",  // Slate 400
     Icon: Snowflake,
   },
 };

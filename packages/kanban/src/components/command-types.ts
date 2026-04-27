@@ -13,11 +13,12 @@ export interface Command {
 
 export type CommandCategory = "navigation" | "action" | "view" | "settings" | "sort" | "filter";
 
-export const CATEGORY_LABELS: Record<CommandCategory, string> = {
-  navigation: "导航",
-  action: "操作",
-  view: "视图",
-  settings: "设置",
-  sort: "排序",
-  filter: "筛选",
+/** i18n keys for command category labels */
+export const CATEGORY_LABEL_KEYS: Record<CommandCategory, string> = {
+  navigation: "kanban.command.navigation",
+  action: "kanban.command.action",
+  view: "kanban.command.view",
+  settings: "kanban.command.settings",
+  sort: "kanban.command.sort",
+  filter: "kanban.command.filter",
 };

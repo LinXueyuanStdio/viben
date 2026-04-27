@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import { PRIORITY_CONFIG, type IssuePriority } from "./priority-config";
 
@@ -35,6 +36,7 @@ export function PriorityIcon({
   showLabel = false,
   className,
 }: PriorityIconProps) {
+  const { t } = useTranslation();
   const config = PRIORITY_CONFIG[priority];
 
   // Guard against invalid priority values
@@ -60,7 +62,7 @@ export function PriorityIcon({
       />
       {showLabel && (
         <span className={cn(sizeStyles.textClass)} style={{ color: config.color }}>
-          {config.label}
+          {t(config.labelKey)}
         </span>
       )}
     </span>

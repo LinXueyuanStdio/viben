@@ -18,6 +18,20 @@ export type ExecutionPhase =
   | "complete"
   | "failed";
 
+/** i18n keys for execution phase labels */
+export const EXECUTION_PHASE_LABEL_KEYS: Record<ExecutionPhase, string> = {
+  idle: "kanban.phase.idle",
+  plan: "kanban.phase.plan",
+  implement: "kanban.phase.implement",
+  rate_limit_paused: "kanban.phase.rateLimitPaused",
+  auth_failure_paused: "kanban.phase.authFailurePaused",
+  check: "kanban.phase.check",
+  fix: "kanban.phase.fix",
+  complete: "kanban.phase.complete",
+  failed: "kanban.phase.failed",
+};
+
+/** @deprecated Use EXECUTION_PHASE_LABEL_KEYS with t() instead */
 export const EXECUTION_PHASE_LABELS: Record<ExecutionPhase, string> = {
   idle: "Idle",
   plan: "Planning",
@@ -57,6 +71,20 @@ export type TaskCategory =
   | "infrastructure"
   | "testing";
 
+/** i18n keys for task category labels */
+export const TASK_CATEGORY_LABEL_KEYS: Record<TaskCategory, string> = {
+  feature: "kanban.taskCategory.feature",
+  bug_fix: "kanban.taskCategory.bugFix",
+  refactoring: "kanban.taskCategory.refactoring",
+  documentation: "kanban.taskCategory.documentation",
+  security: "kanban.taskCategory.security",
+  performance: "kanban.taskCategory.performance",
+  ui_ux: "kanban.taskCategory.uiUx",
+  infrastructure: "kanban.taskCategory.infrastructure",
+  testing: "kanban.taskCategory.testing",
+};
+
+/** @deprecated Use TASK_CATEGORY_LABEL_KEYS with t() instead */
 export const TASK_CATEGORY_LABELS: Record<TaskCategory, string> = {
   feature: "Feature",
   bug_fix: "Bug Fix",
@@ -105,6 +133,16 @@ export type TaskComplexity =
   | "large"
   | "complex";
 
+/** i18n keys for task complexity labels */
+export const TASK_COMPLEXITY_LABEL_KEYS: Record<TaskComplexity, string> = {
+  trivial: "kanban.taskComplexity.trivial",
+  small: "kanban.taskComplexity.small",
+  medium: "kanban.taskComplexity.medium",
+  large: "kanban.taskComplexity.large",
+  complex: "kanban.taskComplexity.complex",
+};
+
+/** @deprecated Use TASK_COMPLEXITY_LABEL_KEYS with t() instead */
 export const TASK_COMPLEXITY_LABELS: Record<TaskComplexity, string> = {
   trivial: "Trivial",
   small: "Small",
@@ -127,6 +165,15 @@ export const TASK_COMPLEXITY_COLORS: Record<TaskComplexity, string> = {
 
 export type TaskImpact = "low" | "medium" | "high" | "critical";
 
+/** i18n keys for task impact labels */
+export const TASK_IMPACT_LABEL_KEYS: Record<TaskImpact, string> = {
+  low: "kanban.taskImpact.low",
+  medium: "kanban.taskImpact.medium",
+  high: "kanban.taskImpact.high",
+  critical: "kanban.taskImpact.critical",
+};
+
+/** @deprecated Use TASK_IMPACT_LABEL_KEYS with t() instead */
 export const TASK_IMPACT_LABELS: Record<TaskImpact, string> = {
   low: "Low Impact",
   medium: "Medium Impact",
@@ -152,6 +199,16 @@ export type ReviewReason =
   | "plan_review"
   | "stopped";
 
+/** i18n keys for review reason labels */
+export const REVIEW_REASON_LABEL_KEYS: Record<ReviewReason, string> = {
+  completed: "kanban.reviewReason.completed",
+  errors: "kanban.reviewReason.errors",
+  qa_rejected: "kanban.reviewReason.qaRejected",
+  plan_review: "kanban.reviewReason.planReview",
+  stopped: "kanban.reviewReason.stopped",
+};
+
+/** @deprecated Use REVIEW_REASON_LABEL_KEYS with t() instead */
 export const REVIEW_REASON_LABELS: Record<ReviewReason, string> = {
   completed: "Completed",
   errors: "Has Errors",

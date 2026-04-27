@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   cn,
   DropdownMenu,
@@ -57,39 +58,38 @@ const PRIORITY_SHORTCUTS: Record<IssuePriority, string> = {
   none: "0",
 };
 
-// Priority label lookup with i18n support
-const getPriorityLabel = (
-  priority: IssuePriority,
-  labels?: PrioritySelectProps["labels"]
-): string => {
-  if (labels) {
-    const labelMap: Record<IssuePriority, string | undefined> = {
-      urgent: labels.urgent,
-      high: labels.high,
-      medium: labels.medium,
-      low: labels.low,
-      none: labels.none,
-    };
-    if (labelMap[priority]) return labelMap[priority]!;
-  }
-  return PRIORITY_CONFIG[priority].label;
-};
-
 export function PrioritySelect({
   value,
   onValueChange,
   disabled = false,
   className,
   triggerClassName,
-  placeholder = "Priority",
+  placeholder,
   showLabel = true,
   size = "md",
   showShortcuts = false,
   labels,
 }: PrioritySelectProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("kanban.bulk.priority");
   const [open, setOpen] = useState(false);
 
   const selectedConfig = value ? PRIORITY_CONFIG[value] : null;
+
+  // Priority label lookup with i18n support
+  const getPriorityLabel = (priority: IssuePriority): string => {
+    if (labels) {
+      const labelMap: Record<IssuePriority, string | undefined> = {
+        urgent: labels.urgent,
+        high: labels.high,
+        medium: labels.medium,
+        low: labels.low,
+        none: labels.none,
+      };
+      if (labelMap[priority]) return labelMap[priority]!;
+    }
+    return t(PRIORITY_CONFIG[priority].labelKey);
+  };
 
   const handleSelect = useCallback(
     (priority: IssuePriority) => {
@@ -140,7 +140,7 @@ export function PrioritySelect({
               showLabel={showLabel}
             />
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-muted-foreground">{resolvedPlaceholder}</span>
           )}
           <ChevronDown
             className={cn(
@@ -157,13 +157,13 @@ export function PrioritySelect({
         sideOffset={4}
       >
         <DropdownMenuLabel className="text-xs text-muted-foreground font-normal px-2">
-          {labels?.setPriority ?? "Set priority"}
+          {labels?.setPriority ?? t("kanban.priority.setPriority")}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {PRIORITY_ORDER.map((priority) => {
           const config = PRIORITY_CONFIG[priority];
           const isSelected = value === priority;
-          const label = getPriorityLabel(priority, labels);
+          const label = getPriorityLabel(priority);
 
           return (
             <DropdownMenuItem

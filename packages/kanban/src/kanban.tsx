@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Button, cn } from "@viben/ui";
 import type { DragEndEvent, Modifier } from "@dnd-kit/core";
 import {
@@ -144,6 +145,7 @@ export const KanbanCard = ({
   renderMoreMenu,
   onMenuOpenChange,
 }: KanbanCardProps) => {
+  const { t } = useTranslation();
   const localRef = useRef<HTMLDivElement | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -239,7 +241,7 @@ export const KanbanCard = ({
                 onMoreClick?.(e);
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              aria-label="More actions"
+              aria-label={t("kanban.board.moreActions")}
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -274,12 +276,16 @@ export const KanbanCards = ({
   children,
   className,
   count,
-  emptyMessage = "No tasks",
-  emptyHint = "Drag tasks here or click + to create",
+  emptyMessage,
+  emptyHint,
   emptyIcon,
   isOver = false,
-  dropHereText = "Drop here",
+  dropHereText,
 }: KanbanCardsProps) => {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage = emptyMessage ?? t("kanban.board.noTasks");
+  const resolvedEmptyHint = emptyHint ?? t("kanban.board.dragTasksHint");
+  const resolvedDropHereText = dropHereText ?? t("kanban.board.dropHere");
   const isEmpty = count === 0;
 
   return (
@@ -299,7 +305,7 @@ export const KanbanCards = ({
                 <Plus className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm font-medium text-primary">
-                {dropHereText}
+                {resolvedDropHereText}
               </p>
             </>
           ) : (
@@ -308,10 +314,10 @@ export const KanbanCards = ({
                 {emptyIcon || <ClipboardList className="h-5 w-5 text-muted-foreground/50" />}
               </div>
               <p className="text-sm font-medium text-muted-foreground/70">
-                {emptyMessage}
+                {resolvedEmptyMessage}
               </p>
               <p className="text-xs text-muted-foreground/50 mt-1 max-w-[180px]">
-                {emptyHint}
+                {resolvedEmptyHint}
               </p>
             </>
           )}
@@ -346,7 +352,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     return props.children;
   }
 
-  const addTaskLabel = props.addTaskLabel ?? "Add task";
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { t } = useTranslation();
+  const addTaskLabel = props.addTaskLabel ?? t("kanban.board.addTask");
   const taskCount = props.taskCount;
   const wipLimit = props.wipLimit;
   const isOverWip = wipLimit !== undefined && taskCount !== undefined && taskCount > wipLimit;

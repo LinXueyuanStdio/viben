@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronsLeft, ChevronsRight, Lock, GripVertical } from "lucide-react";
 import { Button, Badge, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@viben/ui";
 
@@ -49,10 +50,12 @@ export function ResizableColumn({
   isResizing = false,
   onResizeStart,
   onAddTask,
-  addTaskLabel = "Add task",
+  addTaskLabel,
   children,
   className,
 }: ResizableColumnProps) {
+  const { t } = useTranslation();
+  const resolvedAddTaskLabel = addTaskLabel ?? t("kanban.board.addTask");
   const isOverWip = wipLimit !== undefined && count > wipLimit;
 
   // Handle resize drag start
@@ -84,7 +87,7 @@ export function ResizableColumn({
             onToggleCollapse?.(false);
           }
         }}
-        aria-label={`Expand ${title} column`}
+        aria-label={t("kanban.column.expand", { title })}
       >
         <div
           className="w-2.5 h-2.5 rounded-full mb-3 shrink-0"
@@ -168,13 +171,13 @@ export function ResizableColumn({
                     isLocked && "text-amber-500"
                   )}
                   onClick={onToggleLock}
-                  aria-label={isLocked ? "Unlock column width" : "Lock column width"}
+                  aria-label={isLocked ? t("kanban.column.unlockWidth") : t("kanban.column.lockWidth")}
                 >
                   <Lock className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                {isLocked ? "Unlock column width" : "Lock column width"}
+                {isLocked ? t("kanban.column.unlockWidth") : t("kanban.column.lockWidth")}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -190,13 +193,13 @@ export function ResizableColumn({
                 className="h-6 w-6 rounded-md transition-colors"
                 style={{ color: `hsl(var(${color}) / 0.7)` }}
                 onClick={() => onToggleCollapse?.(true)}
-                aria-label="Collapse column"
+                aria-label={t("kanban.column.collapse")}
               >
                 <ChevronsLeft className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
-              Collapse column
+              {t("kanban.column.collapse")}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -212,9 +215,9 @@ export function ResizableColumn({
                   className="h-6 w-6 rounded-md transition-colors"
                   style={{ color: `hsl(var(${color}) / 0.7)` }}
                   onClick={onAddTask}
-                  aria-label={addTaskLabel}
+                  aria-label={resolvedAddTaskLabel}
                 >
-                  <span className="sr-only">{addTaskLabel}</span>
+                  <span className="sr-only">{resolvedAddTaskLabel}</span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -232,7 +235,7 @@ export function ResizableColumn({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                {addTaskLabel}
+                {resolvedAddTaskLabel}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -253,7 +256,7 @@ export function ResizableColumn({
         onMouseDown={handleResizeMouseDown}
         role="separator"
         aria-orientation="vertical"
-        aria-label={`Resize ${title} column`}
+        aria-label={t("kanban.column.resize", { title })}
       >
         {/* Visual indicator on hover */}
         <div

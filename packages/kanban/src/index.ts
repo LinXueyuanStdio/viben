@@ -120,7 +120,7 @@ export {
   // Command palette system
   type Command,
   type CommandCategory,
-  CATEGORY_LABELS,
+  CATEGORY_LABEL_KEYS,
   CommandPalette,
   type CommandPaletteProps,
   // Collapsible column
@@ -142,7 +142,7 @@ export {
   type ActivityType,
   type ActivityActor,
   type ActivityEvent,
-  ACTIVITY_LABELS,
+  ACTIVITY_LABEL_KEYS,
   ActivityItem,
   type ActivityItemProps,
   ActivityFeed,
@@ -199,22 +199,27 @@ export {
   // Execution phases
   type ExecutionPhase,
   EXECUTION_PHASE_LABELS,
+  EXECUTION_PHASE_LABEL_KEYS,
   EXECUTION_PHASE_BADGE_COLORS,
   // Task categories
   type TaskCategory,
   TASK_CATEGORY_LABELS,
+  TASK_CATEGORY_LABEL_KEYS,
   TASK_CATEGORY_COLORS,
   TASK_CATEGORY_ICONS,
   // Task complexity
   type TaskComplexity,
   TASK_COMPLEXITY_LABELS,
+  TASK_COMPLEXITY_LABEL_KEYS,
   TASK_COMPLEXITY_COLORS,
   // Task impact
   type TaskImpact,
   TASK_IMPACT_LABELS,
+  TASK_IMPACT_LABEL_KEYS,
   TASK_IMPACT_COLORS,
   // Review reasons
   type ReviewReason,
   REVIEW_REASON_LABELS,
+  REVIEW_REASON_LABEL_KEYS,
   REVIEW_REASON_COLORS,
 } from "./constants";

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Input, Textarea, cn } from "@viben/ui";
 
 export interface EditableTextProps {
@@ -24,13 +25,15 @@ export function EditableText({
   value,
   onChange,
   multiline = false,
-  placeholder = "Click to edit...",
+  placeholder,
   className,
   inputClassName,
   disabled,
   maxLength,
   required = true,
 }: EditableTextProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("kanban.editable.clickToEdit");
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +107,7 @@ export function EditableText({
       onKeyDown: handleKeyDown,
       onClick: (e: React.MouseEvent) => e.stopPropagation(),
       maxLength,
-      placeholder,
+      placeholder: resolvedPlaceholder,
     };
 
     if (multiline) {
@@ -135,7 +138,7 @@ export function EditableText({
     );
   }
 
-  const displayValue = value || placeholder;
+  const displayValue = value || resolvedPlaceholder;
   const isEmpty = !value;
 
   return (
@@ -150,7 +153,7 @@ export function EditableText({
         className
       )}
       onDoubleClick={handleDoubleClick}
-      title={multiline ? "Double-click to edit (Ctrl+Enter to save)" : "Double-click to edit"}
+      title={multiline ? t("kanban.editable.doubleClickMultiline") : t("kanban.editable.doubleClickToEdit")}
     >
       {displayValue}
     </span>

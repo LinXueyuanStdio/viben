@@ -28,9 +28,11 @@
     "@viben/ui": "workspace:*"
   },
   "peerDependencies": {
+    "i18next": ">=23.0.0",
     "lucide-react": ">=1.0.0",
     "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-i18next": ">=14.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

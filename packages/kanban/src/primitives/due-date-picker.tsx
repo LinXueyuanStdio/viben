@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRef } from "react";
-import { cn, Input, Button } from "@viben/ui";
+import { useTranslation } from "react-i18next";
+import { cn, Button } from "@viben/ui";
 import { Calendar, X } from "lucide-react";
 
 export interface DueDatePickerProps {
@@ -22,12 +23,15 @@ export const DueDatePicker = React.forwardRef<
       value,
       onChange,
       disabled = false,
-      placeholder = "选择截止日期",
+      placeholder,
       className,
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const inputRef = useRef<HTMLInputElement>(null);
+
+    const resolvedPlaceholder = placeholder ?? t("kanban.dueDate.selectDate");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
@@ -83,7 +87,7 @@ export const DueDatePicker = React.forwardRef<
               "[&::-webkit-calendar-picker-indicator]:cursor-pointer",
               !value && "text-muted-foreground"
             )}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
           />
           {value && !disabled && (
             <Button
@@ -92,7 +96,7 @@ export const DueDatePicker = React.forwardRef<
               size="sm"
               className="h-4 w-4 p-0 hover:bg-transparent"
               onClick={handleClear}
-              aria-label="清除日期"
+              aria-label={t("kanban.dueDate.clearDate")}
             >
               <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
             </Button>

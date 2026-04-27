@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   DndContext,
   DragEndEvent,
@@ -115,10 +116,12 @@ export function GroupedListView<T extends { id: string }>({
   onToggleGroup,
   renderItem,
   onDragEnd,
-  emptyMessage = "No items",
+  emptyMessage,
   className,
   dragDisabled = false,
 }: GroupedListViewProps<T>) {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage = emptyMessage ?? t("kanban.common.noItems");
   const [activeItem, setActiveItem] = useState<T | null>(null);
 
   // Group items by their group ID
@@ -197,7 +200,7 @@ export function GroupedListView<T extends { id: string }>({
           className
         )}
       >
-        <p className="text-sm">{emptyMessage}</p>
+        <p className="text-sm">{resolvedEmptyMessage}</p>
       </div>
     );
   }
@@ -229,7 +232,7 @@ export function GroupedListView<T extends { id: string }>({
               <DroppableGroup groupId={group.id}>
                 {groupItems.length === 0 ? (
                   <div className="flex items-center justify-center py-6 text-muted-foreground">
-                    <p className="text-sm">{emptyMessage}</p>
+                    <p className="text-sm">{resolvedEmptyMessage}</p>
                   </div>
                 ) : (
                   groupItems.map((item) => (

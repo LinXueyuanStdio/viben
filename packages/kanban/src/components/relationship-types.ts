@@ -10,8 +10,8 @@ export interface TaskRelationship {
 
 export interface RelationshipConfig {
   type: RelationshipType;
-  label: string;
-  labelEn: string;
+  /** i18n key for the label */
+  labelKey: string;
   color: string;
   icon: string; // Lucide icon name
 }
@@ -19,29 +19,25 @@ export interface RelationshipConfig {
 export const RELATIONSHIP_CONFIG: Record<RelationshipType, RelationshipConfig> = {
   blocks: {
     type: "blocks",
-    label: "阻塞",
-    labelEn: "Blocks",
+    labelKey: "kanban.relationship.blocks",
     color: "hsl(var(--destructive))",
     icon: "Ban",
   },
   blocked_by: {
     type: "blocked_by",
-    label: "被阻塞",
-    labelEn: "Blocked by",
+    labelKey: "kanban.relationship.blockedBy",
     color: "hsl(var(--destructive))",
     icon: "CircleSlash",
   },
   relates_to: {
     type: "relates_to",
-    label: "关联",
-    labelEn: "Relates to",
+    labelKey: "kanban.relationship.relatesTo",
     color: "hsl(var(--primary))",
     icon: "Link",
   },
   duplicates: {
     type: "duplicates",
-    label: "重复",
-    labelEn: "Duplicates",
+    labelKey: "kanban.relationship.duplicates",
     color: "hsl(var(--muted-foreground))",
     icon: "Copy",
   },

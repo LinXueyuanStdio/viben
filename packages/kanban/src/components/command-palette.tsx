@@ -4,7 +4,8 @@ import * as React from "react";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Search, Command as CommandIcon, X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, Input, cn } from "@viben/ui";
-import { type Command, type CommandCategory, CATEGORY_LABELS } from "./command-types";
+import { useTranslation } from "react-i18next";
+import { type Command, type CommandCategory, CATEGORY_LABEL_KEYS } from "./command-types";
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -34,10 +35,12 @@ export function CommandPalette({
   open,
   onOpenChange,
   commands,
-  placeholder = "Search commands...",
+  placeholder,
   loading = false,
   labels,
 }: CommandPaletteProps) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t("kanban.commandPalette.searchPlaceholder");
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -161,7 +164,7 @@ export function CommandPalette({
     if (labels?.resultsCount) {
       return labels.resultsCount.replace("{{count}}", String(count));
     }
-    return `${count} ${count === 1 ? "result" : "results"}`;
+    return t("kanban.commandPalette.resultsCount", { count });
   }, [search, filteredCommands.length, labels?.resultsCount]);
 
   return (
@@ -179,7 +182,7 @@ export function CommandPalette({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             className="h-12 border-0 focus-visible:ring-0 px-0 bg-transparent"
             autoFocus
           />
@@ -199,7 +202,7 @@ export function CommandPalette({
                 "text-muted-foreground hover:text-foreground",
                 "hover:bg-muted/80 transition-colors"
               )}
-              aria-label="Clear search"
+              aria-label={t("kanban.commandPalette.clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -213,7 +216,7 @@ export function CommandPalette({
         <div ref={listRef} className="max-h-[300px] overflow-y-auto p-2">
           {filteredCommands.length === 0 ? (
             <div className="py-6 text-center text-muted-foreground text-sm">
-              {labels?.noResults ?? "No matching commands"}
+              {labels?.noResults ?? t("kanban.commandPalette.noResults")}
             </div>
           ) : (
             Object.entries(groupedCommands).map(([category, cmds]) => {
@@ -230,7 +233,8 @@ export function CommandPalette({
                   };
                   if (labelMap[cat]) return labelMap[cat]!;
                 }
-                return CATEGORY_LABELS[cat as CommandCategory] || cat;
+                const key = CATEGORY_LABEL_KEYS[cat as CommandCategory];
+                return key ? t(key) : cat;
               };
 
               return (
@@ -301,16 +305,16 @@ export function CommandPalette({
               <span className="flex items-center gap-1">
                 <kbd className="px-1 py-0.5 rounded bg-muted border border-border">↑</kbd>
                 <kbd className="px-1 py-0.5 rounded bg-muted border border-border">↓</kbd>
-                <span className="ml-1">{labels?.navigate ?? "navigate"}</span>
+                <span className="ml-1">{labels?.navigate ?? t("kanban.commandPalette.navigate")}</span>
               </span>
               <span className="flex items-center gap-1">
                 <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border">↵</kbd>
-                <span className="ml-1">{labels?.select ?? "select"}</span>
+                <span className="ml-1">{labels?.select ?? t("kanban.commandPalette.select")}</span>
               </span>
             </div>
             <span className="flex items-center gap-1">
               <kbd className="px-1 py-0.5 rounded bg-muted border border-border">esc</kbd>
-              <span className="ml-1">{labels?.close ?? "close"}</span>
+              <span className="ml-1">{labels?.close ?? t("kanban.commandPalette.close")}</span>
             </span>
           </div>
         )}

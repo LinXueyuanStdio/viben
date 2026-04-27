@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { cn, Input } from "@viben/ui";
 import { Plus } from "lucide-react";
 import type { Subtask, SubtaskCallbacks } from "./subtask-types";
@@ -17,6 +18,7 @@ export interface SubtaskListProps {
 
 export const SubtaskList = React.forwardRef<HTMLDivElement, SubtaskListProps>(
   ({ subtasks, callbacks, disabled = false, className }, ref) => {
+    const { t } = useTranslation();
     const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,7 +88,7 @@ export const SubtaskList = React.forwardRef<HTMLDivElement, SubtaskListProps>(
             <Input
               ref={inputRef}
               type="text"
-              placeholder="Add subtask..."
+              placeholder={t("kanban.subtask.addPlaceholder")}
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
               onKeyDown={handleKeyDown}

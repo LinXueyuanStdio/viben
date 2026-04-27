@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, cn } from "@viben/ui";
 import { Check, ChevronDown, Plus, Tag as TagIcon } from "lucide-react";
 import type { Tag } from "./tag-config";
@@ -154,6 +155,7 @@ export const TagSelect = ({
   onCreateTag,
   disabled = false,
 }: TagSelectProps) => {
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>(TAG_COLORS[5].value);
@@ -209,9 +211,9 @@ export const TagSelect = ({
         >
           <TagIcon className="mr-2 h-4 w-4" />
           {selectedTags.length > 0 ? (
-            <span>{selectedTags.length} tag{selectedTags.length > 1 ? "s" : ""}</span>
+            <span>{t("kanban.tag.tagCount", { count: selectedTags.length })}</span>
           ) : (
-            <span>Add tags</span>
+            <span>{t("kanban.tag.addTags")}</span>
           )}
           <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
         </Button>
@@ -269,7 +271,7 @@ export const TagSelect = ({
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Tag name"
+                  placeholder={t("kanban.tag.tagNamePlaceholder")}
                   className={cn(
                     "w-full rounded-md border bg-transparent px-2 py-1.5 text-sm",
                     "focus:outline-none focus:ring-1 focus:ring-ring"
@@ -288,7 +290,7 @@ export const TagSelect = ({
                         selectedColor === color.value && "ring-2 ring-offset-1 ring-foreground"
                       )}
                       style={{ backgroundColor: color.value }}
-                      aria-label={color.name}
+                      aria-label={t(color.nameKey)}
                     />
                   ))}
                 </div>
@@ -302,7 +304,7 @@ export const TagSelect = ({
                       setNewTagName("");
                     }}
                   >
-                    Cancel
+                    {t("kanban.common.cancel")}
                   </Button>
                   <Button
                     size="sm"
@@ -310,7 +312,7 @@ export const TagSelect = ({
                     onClick={handleCreateTag}
                     disabled={!newTagName.trim()}
                   >
-                    Create
+                    {t("kanban.tag.create")}
                   </Button>
                 </div>
               </div>
@@ -327,7 +329,7 @@ export const TagSelect = ({
                 )}
               >
                 <Plus className="h-4 w-4" />
-                <span>Create new tag</span>
+                <span>{t("kanban.tag.createNewTag")}</span>
               </button>
             )}
           </div>

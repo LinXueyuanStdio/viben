@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Avatar, AvatarImage, AvatarFallback, cn } from "@viben/ui";
 import {
   Plus,
@@ -15,7 +16,7 @@ import {
   Flag,
 } from "lucide-react";
 import type { ActivityEvent, ActivityType } from "./activity-types";
-import { ACTIVITY_LABELS } from "./activity-types";
+import { ACTIVITY_LABEL_KEYS } from "./activity-types";
 
 export interface ActivityItemProps {
   event: ActivityEvent;
@@ -44,7 +45,7 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function formatRelativeTime(timestamp: string): string {
+function formatRelativeTime(timestamp: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   const date = new Date(timestamp);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -56,17 +57,17 @@ function formatRelativeTime(timestamp: string): string {
   const diffMonth = Math.floor(diffDay / 30);
 
   if (diffSec < 60) {
-    return "just now";
+    return t("kanban.time.justNow");
   } else if (diffMin < 60) {
-    return `${diffMin}m ago`;
+    return t("kanban.time.minutesAgo", { count: diffMin });
   } else if (diffHour < 24) {
-    return `${diffHour}h ago`;
+    return t("kanban.time.hoursAgo", { count: diffHour });
   } else if (diffDay < 7) {
-    return `${diffDay}d ago`;
+    return t("kanban.time.daysAgo", { count: diffDay });
   } else if (diffWeek < 4) {
-    return `${diffWeek}w ago`;
+    return t("kanban.time.weeksAgo", { count: diffWeek });
   } else if (diffMonth < 12) {
-    return `${diffMonth}mo ago`;
+    return t("kanban.time.monthsAgo", { count: diffMonth });
   } else {
     return date.toLocaleDateString();
   }
@@ -74,8 +75,9 @@ function formatRelativeTime(timestamp: string): string {
 
 export const ActivityItem = React.forwardRef<HTMLDivElement, ActivityItemProps>(
   ({ event, className }, ref) => {
+    const { t } = useTranslation();
     const Icon = ACTIVITY_ICONS[event.type];
-    const label = ACTIVITY_LABELS[event.type];
+    const label = t(ACTIVITY_LABEL_KEYS[event.type]);
     const { oldValue, newValue } = event.data;
     const hasValueChange = oldValue !== undefined && newValue !== undefined;
 
@@ -131,7 +133,7 @@ export const ActivityItem = React.forwardRef<HTMLDivElement, ActivityItemProps>(
 
           {/* Timestamp */}
           <div className="mt-1 text-xs text-muted-foreground/60">
-            {formatRelativeTime(event.timestamp)}
+            {formatRelativeTime(event.timestamp, t)}
           </div>
         </div>
       </div>

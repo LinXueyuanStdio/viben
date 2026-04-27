@@ -1,3 +1,5 @@
+import type { TFunction } from "i18next";
+
 export interface CommentAuthor {
   id: string;
   name: string;
@@ -22,11 +24,12 @@ export interface Comment {
 export const REACTION_EMOJIS = ["👍", "👎", "❤️", "🎉", "😄", "🤔", "👀", "🚀"];
 
 /**
- * Format a date string to a relative time string (Chinese)
+ * Format a date string to a relative time string
  * @param date - ISO date string
- * @returns Relative time string like "刚刚", "5分钟前", "1小时前", "昨天", "3天前"
+ * @param t - i18n translation function
+ * @returns Relative time string like "just now", "5m ago", "1h ago", "yesterday", "3d ago"
  */
-export function formatRelativeTime(date: string): string {
+export function formatRelativeTime(date: string, t: TFunction): string {
   const now = new Date();
   const then = new Date(date);
   const diffMs = now.getTime() - then.getTime();
@@ -39,32 +42,32 @@ export function formatRelativeTime(date: string): string {
   const diffYears = Math.floor(diffDays / 365);
 
   if (diffSeconds < 60) {
-    return "刚刚";
+    return t("kanban.time.justNow");
   }
 
   if (diffMinutes < 60) {
-    return `${diffMinutes}分钟前`;
+    return t("kanban.time.minutesAgo", { count: diffMinutes });
   }
 
   if (diffHours < 24) {
-    return `${diffHours}小时前`;
+    return t("kanban.time.hoursAgo", { count: diffHours });
   }
 
   if (diffDays === 1) {
-    return "昨天";
+    return t("kanban.time.yesterday");
   }
 
   if (diffDays < 7) {
-    return `${diffDays}天前`;
+    return t("kanban.time.daysAgo", { count: diffDays });
   }
 
   if (diffWeeks < 4) {
-    return `${diffWeeks}周前`;
+    return t("kanban.time.weeksAgo", { count: diffWeeks });
   }
 
   if (diffMonths < 12) {
-    return `${diffMonths}个月前`;
+    return t("kanban.time.monthsAgo", { count: diffMonths });
   }
 
-  return `${diffYears}年前`;
+  return t("kanban.time.yearsAgo", { count: diffYears });
 }

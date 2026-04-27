@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import {
   ArrowUpDown,
@@ -59,7 +60,7 @@ export function TableView<T extends { id: string }>({
   columns,
   onItemClick,
   selectedId,
-  emptyMessage = "No items found",
+  emptyMessage,
   className,
   pagination = false,
   pageSize = 20,
@@ -69,6 +70,8 @@ export function TableView<T extends { id: string }>({
   rowClassName,
   labels,
 }: TableViewProps<T>) {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage = emptyMessage ?? t("kanban.table.noItemsFound");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,7 +149,7 @@ export function TableView<T extends { id: string }>({
     }
     const value = item[column.accessor];
     if (value === null || value === undefined) return "-";
-    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (typeof value === "boolean") return value ? t("kanban.common.yes") : t("kanban.common.no");
     return String(value);
   };
 
@@ -170,7 +173,7 @@ export function TableView<T extends { id: string }>({
           className
         )}
       >
-        <p className="text-sm">{emptyMessage}</p>
+        <p className="text-sm">{resolvedEmptyMessage}</p>
       </div>
     );
   }
@@ -269,9 +272,9 @@ export function TableView<T extends { id: string }>({
       {pagination && totalPages > 1 && (
         <div className="flex items-center justify-between px-2 py-3 text-sm text-muted-foreground">
           <div>
-            {labels?.showing ?? "Showing"} {(currentPage - 1) * pageSize + 1}-
+            {labels?.showing ?? t("kanban.table.showing")} {(currentPage - 1) * pageSize + 1}-
             {Math.min(currentPage * pageSize, sortedItems.length)}{" "}
-            {labels?.of ?? "of"} {sortedItems.length} {labels?.items ?? "items"}
+            {labels?.of ?? t("kanban.table.of")} {sortedItems.length} {labels?.items ?? t("kanban.table.items")}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -283,12 +286,12 @@ export function TableView<T extends { id: string }>({
                   ? "text-muted-foreground/50 cursor-not-allowed"
                   : "hover:bg-muted text-muted-foreground"
               )}
-              aria-label="Previous page"
+              aria-label={t("kanban.table.previousPage")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="px-2">
-              {labels?.page ?? "Page"} {currentPage} {labels?.of ?? "of"} {totalPages}
+              {labels?.page ?? t("kanban.table.page")} {currentPage} {labels?.of ?? t("kanban.table.of")} {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
@@ -299,7 +302,7 @@ export function TableView<T extends { id: string }>({
                   ? "text-muted-foreground/50 cursor-not-allowed"
                   : "hover:bg-muted text-muted-foreground"
               )}
-              aria-label="Next page"
+              aria-label={t("kanban.table.nextPage")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>

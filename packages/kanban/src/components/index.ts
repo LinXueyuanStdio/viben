@@ -106,7 +106,7 @@ export type { SortModeSelectProps } from "./sort-mode-select";
 
 // Command palette types
 export type { Command, CommandCategory } from "./command-types";
-export { CATEGORY_LABELS } from "./command-types";
+export { CATEGORY_LABEL_KEYS } from "./command-types";
 
 // Command palette component
 export { CommandPalette } from "./command-palette";
@@ -118,7 +118,7 @@ export type {
   ActivityActor,
   ActivityEvent,
 } from "./activity-types";
-export { ACTIVITY_LABELS } from "./activity-types";
+export { ACTIVITY_LABEL_KEYS } from "./activity-types";
 
 // Activity feed components
 export { ActivityItem } from "./activity-item";

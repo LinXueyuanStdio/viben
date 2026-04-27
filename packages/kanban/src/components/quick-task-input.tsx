@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, X } from "lucide-react";
 import { Button, Input, cn } from "@viben/ui";
 
@@ -15,14 +16,18 @@ export interface QuickTaskInputProps {
 
 export function QuickTaskInput({
   onSubmit,
-  placeholder = "输入任务标题...",
+  placeholder,
   className,
-  buttonLabel = "添加任务",
+  buttonLabel,
   autoFocus = true,
 }: QuickTaskInputProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const resolvedPlaceholder = placeholder ?? t("kanban.quickTask.placeholder");
+  const resolvedButtonLabel = buttonLabel ?? t("kanban.quickTask.addTask");
 
   useEffect(() => {
     if (isOpen && autoFocus) {
@@ -56,7 +61,7 @@ export function QuickTaskInput({
         onClick={() => setIsOpen(true)}
       >
         <Plus className="h-4 w-4 mr-2" />
-        {buttonLabel}
+        {resolvedButtonLabel}
       </Button>
     );
   }
@@ -67,7 +72,7 @@ export function QuickTaskInput({
         ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -86,7 +91,7 @@ export function QuickTaskInput({
           disabled={!value.trim()}
           className="h-7"
         >
-          添加
+          {t("kanban.quickTask.add")}
         </Button>
         <Button
           variant="ghost"

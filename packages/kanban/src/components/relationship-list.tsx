@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import type { TaskRelationship, RelationshipType } from "./relationship-types";
 import { RELATIONSHIP_CONFIG, RELATIONSHIP_TYPES } from "./relationship-types";
@@ -19,6 +20,8 @@ export function RelationshipList({
   onNavigate,
   className,
 }: RelationshipListProps) {
+  const { t } = useTranslation();
+
   // Group relationships by type
   const groupedRelationships = useMemo(() => {
     const groups: Record<RelationshipType, TaskRelationship[]> = {
@@ -55,7 +58,7 @@ export function RelationshipList({
         return (
           <div key={type} className="space-y-1.5">
             <h4 className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              {config.labelEn}
+              {t(config.labelKey)}
             </h4>
             <div className="flex flex-wrap gap-1.5">
               {rels.map((rel) => (

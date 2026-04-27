@@ -28,15 +28,16 @@ export interface ActivityEvent {
   };
 }
 
-export const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  created: "created the task",
-  status_changed: "changed the status",
-  priority_changed: "changed the priority",
-  assignee_changed: "changed the assignee",
-  title_changed: "changed the title",
-  description_changed: "changed the description",
-  tag_added: "added a tag",
-  tag_removed: "removed a tag",
-  due_date_changed: "changed the due date",
-  comment_added: "added a comment",
+/** i18n keys for activity labels */
+export const ACTIVITY_LABEL_KEYS: Record<ActivityType, string> = {
+  created: "kanban.activity.created",
+  status_changed: "kanban.activity.statusChanged",
+  priority_changed: "kanban.activity.priorityChanged",
+  assignee_changed: "kanban.activity.assigneeChanged",
+  title_changed: "kanban.activity.titleChanged",
+  description_changed: "kanban.activity.descriptionChanged",
+  tag_added: "kanban.activity.tagAdded",
+  tag_removed: "kanban.activity.tagRemoved",
+  due_date_changed: "kanban.activity.dueDateChanged",
+  comment_added: "kanban.activity.commentAdded",
 };

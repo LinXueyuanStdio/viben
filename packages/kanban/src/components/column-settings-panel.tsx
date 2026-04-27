@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2, AlertTriangle, Check } from "lucide-react";
 import {
   Button,
@@ -38,6 +39,7 @@ export function ColumnSettingsPanel({
   taskCount = 0,
   className,
 }: ColumnSettingsPanelProps) {
+  const { t } = useTranslation();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,18 +81,18 @@ export function ColumnSettingsPanel({
     <div className={cn("space-y-4 p-4 border rounded-lg bg-card", className)}>
       {/* Column Name */}
       <div className="space-y-2">
-        <Label htmlFor={`column-name-${column.id}`}>列名</Label>
+        <Label htmlFor={`column-name-${column.id}`}>{t("kanban.columnSettings.columnName")}</Label>
         <Input
           id={`column-name-${column.id}`}
           value={column.name}
           onChange={handleNameChange}
-          placeholder="输入列名..."
+          placeholder={t("kanban.columnSettings.columnNamePlaceholder")}
         />
       </div>
 
       {/* Color Picker */}
       <div className="space-y-2">
-        <Label>颜色</Label>
+        <Label>{t("kanban.columnSettings.color")}</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -101,7 +103,7 @@ export function ColumnSettingsPanel({
                 className="w-4 h-4 rounded-full border shrink-0"
                 style={{ backgroundColor: column.color }}
               />
-              <span>{currentColor?.name || "选择颜色"}</span>
+              <span>{currentColor ? t(currentColor.nameKey) : t("kanban.columnSettings.selectColor")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-[200px]">
@@ -115,7 +117,7 @@ export function ColumnSettingsPanel({
                   className="w-4 h-4 rounded-full border shrink-0"
                   style={{ backgroundColor: colorOption.value }}
                 />
-                <span className="flex-1">{colorOption.name}</span>
+                <span className="flex-1">{t(colorOption.nameKey)}</span>
                 {column.color === colorOption.value && (
                   <Check className="h-4 w-4 text-primary shrink-0" />
                 )}
@@ -127,17 +129,17 @@ export function ColumnSettingsPanel({
 
       {/* WIP Limit */}
       <div className="space-y-2">
-        <Label htmlFor={`wip-limit-${column.id}`}>WIP 限制 (可选)</Label>
+        <Label htmlFor={`wip-limit-${column.id}`}>{t("kanban.columnSettings.wipLimit")}</Label>
         <Input
           id={`wip-limit-${column.id}`}
           type="number"
           min={0}
           value={column.wipLimit ?? ""}
           onChange={handleWipLimitChange}
-          placeholder="无限制"
+          placeholder={t("kanban.columnSettings.noLimit")}
         />
         <p className="text-xs text-muted-foreground">
-          设置此列可同时包含的最大任务数
+          {t("kanban.columnSettings.wipLimitDescription")}
         </p>
       </div>
 
@@ -150,7 +152,7 @@ export function ColumnSettingsPanel({
             onClick={handleDeleteClick}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            删除此列
+            {t("kanban.columnSettings.deleteColumn")}
           </Button>
         </div>
       )}
@@ -161,10 +163,10 @@ export function ColumnSettingsPanel({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              确认删除
+              {t("kanban.columnSettings.confirmDelete")}
             </DialogTitle>
             <DialogDescription>
-              此列当前包含 <strong>{taskCount}</strong> 个任务。删除此列将同时移除这些任务。此操作无法撤销。
+              {t("kanban.columnSettings.deleteWarning", { count: taskCount })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -172,13 +174,13 @@ export function ColumnSettingsPanel({
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
             >
-              取消
+              {t("kanban.common.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirmDelete}
             >
-              确认删除
+              {t("kanban.columnSettings.confirmDelete")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import { PriorityIcon, PRIORITY_CONFIG } from "../primitives";
 import type { KanbanStats } from "./stats-types";
@@ -46,6 +47,7 @@ function StatBadge({
 }
 
 export function StatsPanel({ stats, className, compact = false }: StatsPanelProps) {
+  const { t } = useTranslation();
   const hasPriorityTasks = Object.values(stats.tasksByPriority).some(count => count > 0);
 
   if (compact) {
@@ -87,10 +89,10 @@ export function StatsPanel({ stats, className, compact = false }: StatsPanelProp
 
       {/* Core stats */}
       <div className="flex items-center gap-1.5">
-        <StatBadge value={stats.completedTasks} label="完成" variant="success" />
-        <StatBadge value={stats.inProgressTasks} label="进行" variant="warning" />
+        <StatBadge value={stats.completedTasks} label={t("kanban.stats.completed")} variant="success" />
+        <StatBadge value={stats.inProgressTasks} label={t("kanban.stats.inProgress")} variant="warning" />
         {stats.overdueTasks > 0 && (
-          <StatBadge value={stats.overdueTasks} label="逾期" variant="destructive" />
+          <StatBadge value={stats.overdueTasks} label={t("kanban.stats.overdue")} variant="destructive" />
         )}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   cn,
   Button,
@@ -37,6 +38,7 @@ export function BulkActionsBar({
   statuses = [],
   className,
 }: BulkActionsBarProps) {
+  const { t } = useTranslation();
   const isAllSelected = selectedCount === totalCount && totalCount > 0;
 
   return (
@@ -60,12 +62,12 @@ export function BulkActionsBar({
               size="sm"
               onClick={onClearSelection}
               className="h-8 w-8 p-0"
-              aria-label="Clear selection"
+              aria-label={t("kanban.bulk.clearSelection")}
             >
               <X className="h-4 w-4" />
             </Button>
             <span className="text-sm font-medium">
-              {selectedCount} selected
+              {t("kanban.bulk.selected", { count: selectedCount })}
             </span>
             <Button
               variant="ghost"
@@ -76,12 +78,12 @@ export function BulkActionsBar({
               {isAllSelected ? (
                 <>
                   <CheckSquare className="h-3.5 w-3.5" />
-                  Deselect All
+                  {t("kanban.bulk.deselectAll")}
                 </>
               ) : (
                 <>
                   <Square className="h-3.5 w-3.5" />
-                  Select All ({totalCount})
+                  {t("kanban.bulk.selectAll", { count: totalCount })}
                 </>
               )}
             </Button>
@@ -95,12 +97,12 @@ export function BulkActionsBar({
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1.5">
                     <CircleDot className="h-4 w-4" />
-                    Status
+                    {t("kanban.bulk.status")}
                     <ChevronDown className="h-3.5 w-3.5 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Set Status</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t("kanban.bulk.setStatus")}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {statuses.map((status) => (
                     <DropdownMenuItem
@@ -130,12 +132,12 @@ export function BulkActionsBar({
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 gap-1.5">
                     <Flag className="h-4 w-4" />
-                    Priority
+                    {t("kanban.bulk.priority")}
                     <ChevronDown className="h-3.5 w-3.5 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Set Priority</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t("kanban.bulk.setPriority")}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {PRIORITY_ORDER.map((priority) => {
                     const config = PRIORITY_CONFIG[priority];
@@ -147,7 +149,7 @@ export function BulkActionsBar({
                       >
                         <span className="flex items-center gap-2">
                           <Icon className="h-4 w-4" style={{ color: config.color }} />
-                          {config.label}
+                          {t(config.labelKey)}
                         </span>
                       </DropdownMenuItem>
                     );
@@ -165,7 +167,7 @@ export function BulkActionsBar({
                 className="h-8 gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete
+                {t("kanban.common.delete")}
               </Button>
             )}
           </div>

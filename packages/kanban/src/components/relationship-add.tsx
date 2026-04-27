@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useMemo, useContext, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button, cn } from "@viben/ui";
 import { Ban, CircleSlash, Link, Copy, ChevronDown, Plus, Search } from "lucide-react";
 import type { RelationshipType } from "./relationship-types";
@@ -156,6 +157,7 @@ export function RelationshipAdd({
   onAdd,
   disabled = false,
 }: RelationshipAddProps) {
+  const { t } = useTranslation();
   const [selectedType, setSelectedType] = useState<RelationshipType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -217,7 +219,7 @@ export function RelationshipAdd({
           )}
         >
           <Plus className="h-4 w-4" />
-          <span>Add relation</span>
+          <span>{t("kanban.relationship.addRelation")}</span>
           <ChevronDown className="ml-auto h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -226,7 +228,7 @@ export function RelationshipAdd({
           // Step 1: Select relationship type
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium px-2 py-1">
-              Select type
+              {t("kanban.relationship.selectType")}
             </p>
             {RELATIONSHIP_TYPES.map((type) => {
               const config = RELATIONSHIP_CONFIG[type];
@@ -247,10 +249,7 @@ export function RelationshipAdd({
                     className="h-4 w-4 shrink-0"
                     style={{ color: config.color }}
                   />
-                  <span className="flex-1 text-left">{config.labelEn}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {config.label}
-                  </span>
+                  <span className="flex-1 text-left">{t(config.labelKey)}</span>
                 </button>
               );
             })}
@@ -268,14 +267,14 @@ export function RelationshipAdd({
                   "transition-colors duration-150"
                 )}
               >
-                Back
+                {t("kanban.common.back")}
               </button>
               <span className="text-xs text-muted-foreground">/</span>
               <span
                 className="text-xs font-medium"
                 style={{ color: RELATIONSHIP_CONFIG[selectedType].color }}
               >
-                {RELATIONSHIP_CONFIG[selectedType].labelEn}
+                {t(RELATIONSHIP_CONFIG[selectedType].labelKey)}
               </span>
             </div>
 
@@ -287,7 +286,7 @@ export function RelationshipAdd({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tasks..."
+                placeholder={t("kanban.relationship.searchTasks")}
                 className={cn(
                   "w-full rounded-md border bg-transparent pl-8 pr-2 py-1.5 text-sm",
                   "focus:outline-none focus:ring-1 focus:ring-ring"
@@ -299,7 +298,7 @@ export function RelationshipAdd({
             <div className="space-y-1 max-h-[200px] overflow-y-auto">
               {filteredTasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No tasks found
+                  {t("kanban.relationship.noTasksFound")}
                 </p>
               ) : (
                 filteredTasks.map((task) => (

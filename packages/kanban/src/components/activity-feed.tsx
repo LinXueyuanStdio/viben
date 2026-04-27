@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import { Activity } from "lucide-react";
 import type { ActivityEvent } from "./activity-types";
@@ -14,6 +15,7 @@ export interface ActivityFeedProps {
 
 export const ActivityFeed = React.forwardRef<HTMLDivElement, ActivityFeedProps>(
   ({ events, maxItems, className }, ref) => {
+    const { t } = useTranslation();
     const displayedEvents = maxItems ? events.slice(0, maxItems) : events;
 
     // Empty state
@@ -27,7 +29,7 @@ export const ActivityFeed = React.forwardRef<HTMLDivElement, ActivityFeedProps>(
           )}
         >
           <Activity className="h-8 w-8 mb-2 opacity-50" />
-          <p className="text-sm">No activity yet</p>
+          <p className="text-sm">{t("kanban.activity.noActivity")}</p>
         </div>
       );
     }
@@ -53,7 +55,7 @@ export const ActivityFeed = React.forwardRef<HTMLDivElement, ActivityFeedProps>(
         {/* More items indicator */}
         {maxItems && events.length > maxItems && (
           <div className="mt-2 pl-9 text-xs text-muted-foreground">
-            +{events.length - maxItems} more activities
+            {t("kanban.activity.moreActivities", { count: events.length - maxItems })}
           </div>
         )}
       </div>

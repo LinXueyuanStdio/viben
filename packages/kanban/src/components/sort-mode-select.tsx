@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   GripVertical,
   Signal,
@@ -44,6 +45,7 @@ export function SortModeSelect({
   onChange,
   className,
 }: SortModeSelectProps) {
+  const { t } = useTranslation();
   const currentOption = SORT_OPTIONS.find((o) => o.value === value);
   const Icon = currentOption ? ICONS[currentOption.icon] : GripVertical;
 
@@ -68,7 +70,7 @@ export function SortModeSelect({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 gap-1.5">
             <Icon className="h-4 w-4" />
-            <span className="hidden sm:inline">{currentOption?.label}</span>
+            <span className="hidden sm:inline">{currentOption ? t(currentOption.labelKey) : ""}</span>
             <ChevronDown className="h-3 w-3 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
@@ -82,7 +84,7 @@ export function SortModeSelect({
                 className={cn(value === option.value && "bg-accent")}
               >
                 <OptionIcon className="h-4 w-4 mr-2" />
-                {option.label}
+                {t(option.labelKey)}
               </DropdownMenuItem>
             );
           })}
@@ -94,7 +96,7 @@ export function SortModeSelect({
         size="icon"
         className="h-8 w-8"
         onClick={toggleDirection}
-        title={direction === "asc" ? "升序" : "降序"}
+        title={direction === "asc" ? t("kanban.sort.ascending") : t("kanban.sort.descending")}
       >
         {direction === "asc" ? (
           <ArrowUp className="h-4 w-4" />

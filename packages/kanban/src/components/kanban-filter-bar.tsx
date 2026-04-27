@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   cn,
   Input,
@@ -32,6 +33,7 @@ export function KanbanFilterBar({
   availableTags = [],
   className,
 }: KanbanFilterBarProps) {
+  const { t } = useTranslation();
   const activeFilterCount = countActiveFilters(filter);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,7 +79,7 @@ export function KanbanFilterBar({
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
-          placeholder="Search..."
+          placeholder={t("kanban.filter.searchPlaceholder")}
           value={filter.search || ""}
           onChange={handleSearchChange}
           className="pl-9 pr-3"
@@ -89,7 +91,7 @@ export function KanbanFilterBar({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
             <Filter className="h-4 w-4" />
-            Priority
+            {t("kanban.bulk.priority")}
             {filter.priorities?.length ? (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5">
                 {filter.priorities.length}
@@ -99,7 +101,7 @@ export function KanbanFilterBar({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuLabel>Filter by Priority</DropdownMenuLabel>
+          <DropdownMenuLabel>{t("kanban.filter.filterByPriority")}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {PRIORITY_ORDER.map((priority) => {
             const config = PRIORITY_CONFIG[priority];
@@ -113,7 +115,7 @@ export function KanbanFilterBar({
               >
                 <span className="flex items-center gap-2">
                   <Icon className="h-4 w-4" style={{ color: config.color }} />
-                  {config.label}
+                  {t(config.labelKey)}
                 </span>
               </DropdownMenuCheckboxItem>
             );
@@ -127,7 +129,7 @@ export function KanbanFilterBar({
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1.5">
               <Tag className="h-4 w-4" />
-              Tags
+              {t("kanban.filter.tags")}
               {filter.tagIds?.length ? (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">
                   {filter.tagIds.length}
@@ -137,7 +139,7 @@ export function KanbanFilterBar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuLabel>Filter by Tag</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("kanban.filter.filterByTag")}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {availableTags.map((tag) => {
               const isChecked = filter.tagIds?.includes(tag.id) || false;
@@ -166,7 +168,7 @@ export function KanbanFilterBar({
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="gap-1">
             <Filter className="h-3 w-3" />
-            {activeFilterCount} active
+            {t("kanban.filter.activeCount", { count: activeFilterCount })}
           </Badge>
           <Button
             variant="ghost"
@@ -175,7 +177,7 @@ export function KanbanFilterBar({
             className="h-8 px-2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
-            Clear
+            {t("kanban.filter.clear")}
           </Button>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import { Check, Trash2 } from "lucide-react";
 import type { Subtask } from "./subtask-types";
@@ -16,6 +17,7 @@ export interface SubtaskItemProps {
 
 export const SubtaskItem = React.forwardRef<HTMLDivElement, SubtaskItemProps>(
   ({ subtask, onToggle, onDelete, onUpdate, disabled = false }, ref) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editValue, setEditValue] = useState(subtask.title);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +84,7 @@ export const SubtaskItem = React.forwardRef<HTMLDivElement, SubtaskItemProps>(
               : "border-input hover:border-primary/50",
             disabled && "cursor-not-allowed"
           )}
-          aria-label={subtask.completed ? "Mark as incomplete" : "Mark as complete"}
+          aria-label={subtask.completed ? t("kanban.subtask.markIncomplete") : t("kanban.subtask.markComplete")}
         >
           {subtask.completed && <Check className="h-3 w-3" />}
         </button>
@@ -131,7 +133,7 @@ export const SubtaskItem = React.forwardRef<HTMLDivElement, SubtaskItemProps>(
               "transition-all duration-200",
               "focus:outline-none focus:ring-2 focus:ring-destructive/20 focus:opacity-100"
             )}
-            aria-label="Delete subtask"
+            aria-label={t("kanban.subtask.delete")}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

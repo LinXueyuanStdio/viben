@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 
 export interface ListViewProps<T extends { id: string }> {
@@ -19,11 +20,14 @@ export function ListView<T extends { id: string }>({
   onItemClick,
   selectedId,
   renderItem,
-  emptyMessage = "No items found",
+  emptyMessage,
   className,
   showHeader = false,
   headerContent,
 }: ListViewProps<T>) {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage = emptyMessage ?? t("kanban.table.noItemsFound");
+
   if (items.length === 0) {
     return (
       <div
@@ -33,7 +37,7 @@ export function ListView<T extends { id: string }>({
           className
         )}
       >
-        <p className="text-sm">{emptyMessage}</p>
+        <p className="text-sm">{resolvedEmptyMessage}</p>
       </div>
     );
   }
