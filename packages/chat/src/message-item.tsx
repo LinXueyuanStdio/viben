@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -260,8 +261,8 @@ function ThinkingMessage({
 }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = React.useState(false);
-  const markdownComponents = React.useMemo(
+  const [isExpanded, setIsExpanded] = useState(false);
+  const markdownComponents = useMemo(
     () => createMarkdownComponents(onLinkClick),
     [onLinkClick]
   );
@@ -336,7 +337,7 @@ function AssistantMessage({
   onLinkClick?: (href: string) => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const markdownComponents = React.useMemo(
+  const markdownComponents = useMemo(
     () => createMarkdownComponents(onLinkClick),
     [onLinkClick]
   );
