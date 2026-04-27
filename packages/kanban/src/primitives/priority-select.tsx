@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   cn,
   DropdownMenu,
@@ -87,11 +87,11 @@ export function PrioritySelect({
   showShortcuts = false,
   labels,
 }: PrioritySelectProps) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
 
   const selectedConfig = value ? PRIORITY_CONFIG[value] : null;
 
-  const handleSelect = React.useCallback(
+  const handleSelect = useCallback(
     (priority: IssuePriority) => {
       onValueChange?.(priority);
       setOpen(false);
@@ -100,7 +100,7 @@ export function PrioritySelect({
   );
 
   // Handle keyboard shortcuts when dropdown is open
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
