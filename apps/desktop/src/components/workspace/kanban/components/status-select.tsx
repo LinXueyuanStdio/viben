@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   cn,
@@ -71,7 +71,7 @@ export function StatusSelect({
   const { t } = useTranslation();
 
   // Default labels using i18n
-  const defaultLabels = React.useMemo(() => ({
+  const defaultLabels = useMemo(() => ({
     setStatus: t("workspace.setStatus", "Set status"),
     backlog: t("workspace.kanbanStatus.backlog", "Backlog"),
     queue: t("workspace.kanbanStatus.queue", "Queue"),
@@ -85,18 +85,18 @@ export function StatusSelect({
   }), [t]);
 
   // Merge custom labels with defaults
-  const mergedLabels = React.useMemo(() => ({
+  const mergedLabels = useMemo(() => ({
     ...defaultLabels,
     ...labels,
   }), [defaultLabels, labels]);
 
   // Get status label
-  const getStatusLabel = React.useCallback((status: TaskStatus): string => {
+  const getStatusLabel = useCallback((status: TaskStatus): string => {
     return (mergedLabels as Record<string, string>)[status] ?? status;
   }, [mergedLabels]);
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
 
-  const handleSelect = React.useCallback(
+  const handleSelect = useCallback(
     (status: TaskStatus) => {
       onValueChange?.(status);
       setOpen(false);
@@ -105,7 +105,7 @@ export function StatusSelect({
   );
 
   // Get available statuses based on current status
-  const availableStatuses = React.useMemo(() => {
+  const availableStatuses = useMemo(() => {
     if (!restrictTransitions) {
       // Show all columns when not restricting
       return KANBAN_COLUMNS as unknown as KanbanColumnId[];
