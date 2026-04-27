@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useMemo } from "react";
 import {
   ArrowUpCircle,
   Package,
@@ -170,7 +170,7 @@ const UpdatesList = React.forwardRef<HTMLDivElement, UpdatesListProps>(
     const { t } = useTranslation();
 
     // Format last checked time
-    const lastCheckedText = React.useMemo(() => {
+    const lastCheckedText = useMemo(() => {
       if (!lastChecked) return null;
 
       const now = new Date();
