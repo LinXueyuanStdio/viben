@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { memo, useCallback } from "react";
 import {
   Download,
   Star,
@@ -66,7 +66,7 @@ interface SkillCardProps {
  * SkillCard component displays a cloud skill package in the marketplace
  * Memoized to prevent unnecessary re-renders in list views
  */
-export const SkillCard = React.memo(function SkillCard({
+export const SkillCard = memo(function SkillCard({
   skill,
   onViewDetails,
   isInstalled = false,
@@ -77,11 +77,11 @@ export const SkillCard = React.memo(function SkillCard({
   const { t } = useTranslation();
 
   // Memoize callbacks to prevent child re-renders
-  const handleViewDetails = React.useCallback(() => {
+  const handleViewDetails = useCallback(() => {
     onViewDetails(skill);
   }, [onViewDetails, skill]);
 
-  const handleInstall = React.useCallback(
+  const handleInstall = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!isInstalled && !isInstalling && onInstall) {
@@ -91,7 +91,7 @@ export const SkillCard = React.memo(function SkillCard({
     [isInstalled, isInstalling, onInstall, skill]
   );
 
-  const handleOpenRepo = React.useCallback(
+  const handleOpenRepo = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (skill.repositoryUrl) {
