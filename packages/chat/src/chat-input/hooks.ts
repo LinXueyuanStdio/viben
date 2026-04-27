@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { MessageAttachment, SlashCommand } from "../types";
 import { isImageFile } from "../utils";
 
@@ -33,10 +34,10 @@ export function useAttachments(
   options: UseAttachmentsOptions = {}
 ): UseAttachmentsReturn {
   const { maxAttachments = 10 } = options;
-  const [attachments, setAttachments] = React.useState<MessageAttachment[]>([]);
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
 
   // Create preview for files with error handling
-  const createFilePreview = React.useCallback((file: File): Promise<string> => {
+  const createFilePreview = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -53,7 +54,7 @@ export function useAttachments(
   }, []);
 
   // Add files to attachments
-  const addFiles = React.useCallback(
+  const addFiles = useCallback(
     async (files: FileList | File[], forceImage = false) => {
       const fileArray = Array.from(files);
 
@@ -103,22 +104,22 @@ export function useAttachments(
   );
 
   // Add a single attachment directly
-  const addAttachment = React.useCallback((attachment: MessageAttachment) => {
+  const addAttachment = useCallback((attachment: MessageAttachment) => {
     setAttachments((prev) => [...prev, attachment]);
   }, []);
 
   // Remove attachment by id
-  const removeAttachment = React.useCallback((id: string) => {
+  const removeAttachment = useCallback((id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   // Clear all attachments
-  const clearAttachments = React.useCallback(() => {
+  const clearAttachments = useCallback(() => {
     setAttachments([]);
   }, []);
 
   // Check if any attachment is loading
-  const isAnyLoading = React.useMemo(
+  const isAnyLoading = useMemo(
     () => attachments.some((a) => a.isLoading),
     [attachments]
   );
@@ -161,12 +162,12 @@ export function useSlashCommands(
   options: UseSlashCommandsOptions
 ): UseSlashCommandsReturn {
   const { commands, onSelect, enabled = true } = options;
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Filter commands based on query
-  const filteredCommands = React.useMemo(() => {
+  const filteredCommands = useMemo(() => {
     if (!query) return commands;
     const lowerQuery = query.toLowerCase();
     return commands.filter(
@@ -177,12 +178,12 @@ export function useSlashCommands(
   }, [commands, query]);
 
   // Reset selected index when filtered commands change
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedIndex(0);
   }, [filteredCommands.length]);
 
   // Handle content change to detect slash commands
-  const handleContentChange = React.useCallback(
+  const handleContentChange = useCallback(
     (content: string) => {
       if (!enabled || commands.length === 0) {
         setIsOpen(false);
@@ -216,7 +217,7 @@ export function useSlashCommands(
   );
 
   // Handle command selection
-  const handleSelect = React.useCallback(
+  const handleSelect = useCallback(
     (command: SlashCommand) => {
       setIsOpen(false);
       setQuery("");
@@ -226,7 +227,7 @@ export function useSlashCommands(
   );
 
   // Handle keyboard navigation
-  const handleKeyDown = React.useCallback(
+  const handleKeyDown = useCallback(
     (e: React.KeyboardEvent): boolean => {
       if (!isOpen || filteredCommands.length === 0) {
         return false;
@@ -266,7 +267,7 @@ export function useSlashCommands(
   );
 
   // Close the menu
-  const close = React.useCallback(() => {
+  const close = useCallback(() => {
     setIsOpen(false);
     setQuery("");
   }, []);
@@ -319,13 +320,13 @@ export function useResizableHeight(
     enabled = true,
   } = options;
 
-  const [height, setHeight] = React.useState(defaultHeight);
-  const isDraggingRef = React.useRef(false);
-  const startYRef = React.useRef(0);
-  const startHeightRef = React.useRef(0);
+  const [height, setHeight] = useState(defaultHeight);
+  const isDraggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(0);
 
   // Load saved height from localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     if (!enabled) return;
 
     try {
@@ -342,7 +343,7 @@ export function useResizableHeight(
   }, [enabled, storageKey, minHeight, maxHeight]);
 
   // Save height to localStorage
-  const saveHeight = React.useCallback(
+  const saveHeight = useCallback(
     (newHeight: number) => {
       try {
         localStorage.setItem(storageKey, newHeight.toString());
@@ -354,7 +355,7 @@ export function useResizableHeight(
   );
 
   // Handle resize start
-  const handleResizeStart = React.useCallback(
+  const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       if (!enabled) return;
 
@@ -408,14 +409,14 @@ export interface UseIMECompositionReturn {
  * Hook for tracking IME composition state
  */
 export function useIMEComposition(): UseIMECompositionReturn {
-  const isComposingRef = React.useRef(false);
-  const [, forceUpdate] = React.useState({});
+  const isComposingRef = useRef(false);
+  const [, forceUpdate] = useState({});
 
-  const handleCompositionStart = React.useCallback(() => {
+  const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
   }, []);
 
-  const handleCompositionEnd = React.useCallback(() => {
+  const handleCompositionEnd = useCallback(() => {
     // Delay reset to handle composition end event order
     setTimeout(() => {
       isComposingRef.current = false;
@@ -451,17 +452,17 @@ export function useAutoFocus(
   options: UseAutoFocusOptions = {}
 ): void {
   const { autoFocus = false, focusOnLoadComplete = true, isLoading } = options;
-  const prevIsLoadingRef = React.useRef(isLoading);
+  const prevIsLoadingRef = useRef(isLoading);
 
   // Auto focus on mount
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoFocus && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [autoFocus, textareaRef]);
 
   // Focus when loading completes
-  React.useEffect(() => {
+  useEffect(() => {
     if (
       focusOnLoadComplete &&
       prevIsLoadingRef.current &&
