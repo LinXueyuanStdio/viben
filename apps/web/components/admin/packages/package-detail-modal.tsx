@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -48,16 +48,7 @@ export function PackageDetailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && packageId) {
-      fetchPackageDetails(packageId);
-    } else {
-      setPkg(null);
-      setError(null);
-    }
-  }, [isOpen, packageId]);
-
-  async function fetchPackageDetails(id: string) {
+  const fetchPackageDetails = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -72,7 +63,16 @@ export function PackageDetailModal({
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
+
+  useEffect(() => {
+    if (isOpen && packageId) {
+      fetchPackageDetails(packageId);
+    } else {
+      setPkg(null);
+      setError(null);
+    }
+  }, [isOpen, packageId, fetchPackageDetails]);
 
   const handleClose = () => {
     onClose();

@@ -64,7 +64,7 @@ export function ProfilePackages({ userId }: ProfilePackagesProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchPackages();

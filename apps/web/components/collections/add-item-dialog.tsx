@@ -92,7 +92,7 @@ export function AddItemDialog({
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, t]);
 
   useEffect(() => {
     if (open) {

@@ -71,7 +71,7 @@ export function CommentSection({
     } finally {
       setIsLoading(false);
     }
-  }, [apiPath, entityId]);
+  }, [apiPath, entityId, t]);
 
   useEffect(() => {
     fetchComments();
