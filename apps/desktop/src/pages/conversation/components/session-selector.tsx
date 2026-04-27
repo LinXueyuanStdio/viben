@@ -83,7 +83,8 @@ interface SessionSelectorProps {
 // Helper Functions
 // ============================================================================
 
-function formatRelativeTime(dateStr: string, t: (key: string, fallback: string) => string): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatRelativeTime(dateStr: string, t: (key: string, options?: any) => string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
@@ -91,10 +92,10 @@ function formatRelativeTime(dateStr: string, t: (key: string, fallback: string) 
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return t("common.justNow", "刚刚");
-  if (minutes < 60) return t("common.minutesAgo", { defaultValue: "{{count}}分钟前", count: minutes });
-  if (hours < 24) return t("common.hoursAgo", { defaultValue: "{{count}}小时前", count: hours });
-  if (days < 7) return t("common.daysAgo", { defaultValue: "{{count}}天前", count: days });
+  if (minutes < 1) return t("common.justNow", "Just now");
+  if (minutes < 60) return t("common.minutesAgo", { defaultValue: "{{count}} min ago", count: minutes });
+  if (hours < 24) return t("common.hoursAgo", { defaultValue: "{{count}}h ago", count: hours });
+  if (days < 7) return t("common.daysAgo", { defaultValue: "{{count}}d ago", count: days });
   return date.toLocaleDateString();
 }
 
@@ -217,7 +218,7 @@ function SessionCard({
               {onRename && (
                 <DropdownMenuItem onClick={onRename} className="text-xs">
                   <Pencil className="h-3.5 w-3.5 mr-2" />
-                  {t("chat.renameSession", "重命名")}
+                  {t("chat.renameSession", "Rename")}
                 </DropdownMenuItem>
               )}
               {onStar && (
@@ -225,12 +226,12 @@ function SessionCard({
                   {session.isStarred ? (
                     <>
                       <StarOff className="h-3.5 w-3.5 mr-2" />
-                      {t("chat.unstarSession", "取消收藏")}
+                      {t("chat.unstarSession", "Unfavorite")}
                     </>
                   ) : (
                     <>
                       <Star className="h-3.5 w-3.5 mr-2" />
-                      {t("chat.starSession", "收藏")}
+                      {t("chat.starSession", "Favorite")}
                     </>
                   )}
                 </DropdownMenuItem>
@@ -239,14 +240,14 @@ function SessionCard({
                 <DropdownMenuItem onClick={onPin} className="text-xs">
                   <Pin className="h-3.5 w-3.5 mr-2" />
                   {session.isPinned
-                    ? t("chat.unpinSession", "取消置顶")
-                    : t("chat.pinSession", "置顶")}
+                    ? t("chat.unpinSession", "Unpin")
+                    : t("chat.pinSession", "Pin")}
                 </DropdownMenuItem>
               )}
               {onDuplicate && (
                 <DropdownMenuItem onClick={onDuplicate} className="text-xs">
                   <Copy className="h-3.5 w-3.5 mr-2" />
-                  {t("chat.duplicateSession", "复制会话")}
+                  {t("chat.duplicateSession", "Duplicate")}
                 </DropdownMenuItem>
               )}
               {onArchive && (
@@ -254,7 +255,7 @@ function SessionCard({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onArchive} className="text-xs">
                     <Archive className="h-3.5 w-3.5 mr-2" />
-                    {t("chat.archiveSession", "归档")}
+                    {t("chat.archiveSession", "Archive")}
                   </DropdownMenuItem>
                 </>
               )}
@@ -266,7 +267,7 @@ function SessionCard({
                     className="text-destructive focus:text-destructive text-xs"
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-2" />
-                    {t("chat.deleteSession", "删除")}
+                    {t("chat.deleteSession", "Delete")}
                   </DropdownMenuItem>
                 </>
               )}
@@ -374,19 +375,19 @@ export function SessionSelector({
     });
 
     if (pinned.length > 0) {
-      groups.push({ label: t("chat.pinnedSessions", "置顶"), sessions: pinned });
+      groups.push({ label: t("chat.pinnedSessions", "Pinned"), sessions: pinned });
     }
     if (todaySessions.length > 0) {
-      groups.push({ label: t("common.today", "今天"), sessions: todaySessions });
+      groups.push({ label: t("common.today", "Today"), sessions: todaySessions });
     }
     if (yesterdaySessions.length > 0) {
-      groups.push({ label: t("common.yesterday", "昨天"), sessions: yesterdaySessions });
+      groups.push({ label: t("common.yesterday", "Yesterday"), sessions: yesterdaySessions });
     }
     if (thisWeekSessions.length > 0) {
-      groups.push({ label: t("common.thisWeek", "本周"), sessions: thisWeekSessions });
+      groups.push({ label: t("common.thisWeek", "This week"), sessions: thisWeekSessions });
     }
     if (olderSessions.length > 0) {
-      groups.push({ label: t("chat.olderSessions", "更早"), sessions: olderSessions });
+      groups.push({ label: t("chat.olderSessions", "Older"), sessions: olderSessions });
     }
 
     return groups;
@@ -395,7 +396,7 @@ export function SessionSelector({
   // Get display name for current session
   const displayName = currentSession
     ? truncateText(currentSession.name, 24)
-    : t("chat.newSession", "新会话");
+    : t("chat.newSession", "New Session");
 
   // Handle rename
   const handleStartRename = (session: Session) => {
@@ -437,17 +438,17 @@ export function SessionSelector({
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium text-sm">
                 {agentName
-                  ? t("chat.agentSessions", "{{agent}} 的会话", { agent: agentName })
-                  : t("chat.recentSessions", "最近会话")}
+                  ? t("chat.agentSessions", "{{agent}}'s Sessions", { agent: agentName })
+                  : t("chat.recentSessions", "Recent Sessions")}
               </h3>
               <span className="text-xs text-muted-foreground">
-                {displayCount} {t("chat.totalSessions", "个会话")}
+                {displayCount} {t("chat.totalSessions", "sessions")}
               </span>
             </div>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder={t("chat.searchSessions", "搜索会话...")}
+                placeholder={t("chat.searchSessions", "Search sessions...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 h-7 text-sm"
@@ -466,8 +467,8 @@ export function SessionSelector({
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">
                   {searchQuery
-                    ? t("chat.noSearchResults", "未找到匹配的会话")
-                    : t("chat.noSessions", "暂无会话历史")}
+                    ? t("chat.noSearchResults", "No matching sessions found")
+                    : t("chat.noSessions", "No session history")}
                 </p>
               </div>
             ) : (
@@ -503,7 +504,7 @@ export function SessionSelector({
                 {isLoadingMore && (
                   <div className="py-2 text-center">
                     <span className="text-xs text-muted-foreground">
-                      {t("common.loading", "加载中...")}
+                      {t("common.loading", "Loading...")}
                     </span>
                   </div>
                 )}
@@ -517,7 +518,7 @@ export function SessionSelector({
                       className="h-7 text-xs text-muted-foreground"
                       onClick={onLoadMore}
                     >
-                      {t("common.loadMore", "加载更多")}
+                      {t("common.loadMore", "Load more")}
                     </Button>
                   </div>
                 )}
@@ -538,7 +539,7 @@ export function SessionSelector({
                 }}
               >
                 <Plus className="h-3.5 w-3.5" />
-                {t("chat.createNewSession", "新建会话")}
+                {t("chat.createNewSession", "New Session")}
               </Button>
             </div>
           )}
@@ -552,7 +553,7 @@ export function SessionSelector({
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={onCreateNew}
-          title={t("chat.createNewSession", "新建会话")}
+          title={t("chat.createNewSession", "New Session")}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -562,7 +563,7 @@ export function SessionSelector({
       {renameSessionId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-background rounded-lg p-4 shadow-lg w-80 border">
-            <h3 className="font-medium mb-3">{t("chat.renameSession", "重命名会话")}</h3>
+            <h3 className="font-medium mb-3">{t("chat.renameSession", "Rename Session")}</h3>
             <Input
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
@@ -579,10 +580,10 @@ export function SessionSelector({
                 size="sm"
                 onClick={() => setRenameSessionId(null)}
               >
-                {t("common.cancel", "取消")}
+                {t("common.cancel", "Cancel")}
               </Button>
               <Button size="sm" onClick={handleConfirmRename}>
-                {t("common.confirm", "确定")}
+                {t("common.confirm", "Confirm")}
               </Button>
             </div>
           </div>

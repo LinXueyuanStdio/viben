@@ -178,13 +178,13 @@ export function LeftPanel({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => onCreateAgent(null)}>
                 <Bot className="h-4 w-4 mr-2" />
-                {t("agent.createAgent", "创建智能体")}
+                {t("agent.createAgent", "Create Agent")}
               </DropdownMenuItem>
               {agentTemplates.length > 0 && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <LayoutTemplate className="h-4 w-4 mr-2" />
-                    {t("settingsAgents.createFromTemplate", "从模板创建")}
+                    {t("settingsAgents.createFromTemplate", "Create from Template")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent className="w-64">
                     {agentTemplates.map((template) => (

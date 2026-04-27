@@ -107,13 +107,13 @@ export function SettingsGatewayPage() {
         const availableWs = result.websockets.filter((w) => w.available).length;
         const totalWs = result.websockets.length;
 
-        toast.success(t("gateway.connectionSuccess", "网关连接成功"), {
+        toast.success(t("gateway.connectionSuccess", "Gateway connected"), {
           description: [
             result.service && result.version
               ? `${result.service} v${result.version}`
               : null,
-            `${t("gateway.address", "地址")}: ${result.url}`,
-            `${t("gateway.availableEndpoints", "可用端点")}: ${availableEndpoints}/${totalEndpoints}`,
+            `${t("gateway.address", "Address")}: ${result.url}`,
+            `${t("gateway.availableEndpoints", "Available endpoints")}: ${availableEndpoints}/${totalEndpoints}`,
             `WebSocket: ${availableWs}/${totalWs}`,
           ]
             .filter(Boolean)
@@ -121,17 +121,17 @@ export function SettingsGatewayPage() {
           duration: 5000,
         });
       } else {
-        toast.error(t("gateway.connectionFailed", "网关连接失败"), {
+        toast.error(t("gateway.connectionFailed", "Gateway connection failed"), {
           description: result.reachable
-            ? t("gateway.healthCheckFailed", "健康检查未通过")
-            : t("gateway.unreachableDescription", "无法连接到网关服务，请检查网关是否已启动"),
+            ? t("gateway.healthCheckFailed", "Health check failed")
+            : t("gateway.unreachableDescription", "Unable to connect to gateway service. Please check if the gateway is running."),
           duration: 5000,
         });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setTestError(errorMsg);
-      toast.error(t("gateway.connectionError", "连接错误"), {
+      toast.error(t("gateway.connectionError", "Connection error"), {
         description: errorMsg,
         duration: 5000,
       });
@@ -146,15 +146,15 @@ export function SettingsGatewayPage() {
     try {
       const url = new URL(baseUrlInput);
       if (!["http:", "https:"].includes(url.protocol)) {
-        toast.error(t("gateway.invalidUrlProtocol", "无效的协议，请使用 http 或 https"));
+        toast.error(t("gateway.invalidUrlProtocol", "Invalid protocol. Please use http or https."));
         return;
       }
       setGatewayUrl(baseUrlInput);
-      toast.success(t("gateway.urlSaved", "网关地址已保存"));
+      toast.success(t("gateway.urlSaved", "Gateway URL saved"));
       // Trigger re-discovery to update connection
       discoverGateway();
     } catch {
-      toast.error(t("gateway.invalidUrl", "无效的 URL 格式"));
+      toast.error(t("gateway.invalidUrl", "Invalid URL format"));
     }
   }, [baseUrlInput, t, discoverGateway]);
 
@@ -177,16 +177,16 @@ export function SettingsGatewayPage() {
       if (isValid) {
         setVibenPathValidationResult({
           valid: true,
-          message: t("vibenCli.pathValid", "路径有效"),
+          message: t("vibenCli.pathValid", "Path is valid"),
         });
         // Automatically select this path
         await selectVibenPath(customVibenPath.trim());
-        toast.success(t("vibenCli.pathSelected", "已选择 Viben CLI 路径"));
+        toast.success(t("vibenCli.pathSelected", "Viben CLI path selected"));
         setCustomVibenPath("");
       } else {
         setVibenPathValidationResult({
           valid: false,
-          message: t("vibenCli.pathInvalid", "无效的 viben 路径"),
+          message: t("vibenCli.pathInvalid", "Invalid viben path"),
         });
       }
     } catch (err) {
@@ -203,7 +203,7 @@ export function SettingsGatewayPage() {
   const getSourceLabel = (source: VibenCliSource): string => {
     switch (source) {
       case "bundled":
-        return t("vibenCli.sourceBundled", "内置");
+        return t("vibenCli.sourceBundled", "Bundled");
       case "homebrew":
         return "Homebrew";
       case "npm":
@@ -211,9 +211,9 @@ export function SettingsGatewayPage() {
       case "cargo":
         return "Cargo";
       case "system-path":
-        return t("vibenCli.sourceSystemPath", "系统路径");
+        return t("vibenCli.sourceSystemPath", "System Path");
       case "user-config":
-        return t("vibenCli.sourceUserConfig", "用户配置");
+        return t("vibenCli.sourceUserConfig", "User Config");
       case "nvm":
         return "nvm";
       case "pyenv":
@@ -221,7 +221,7 @@ export function SettingsGatewayPage() {
       case "pip":
         return "pip";
       case "fallback":
-        return t("vibenCli.sourceFallback", "默认");
+        return t("vibenCli.sourceFallback", "Default");
       default:
         return source;
     }
@@ -231,10 +231,10 @@ export function SettingsGatewayPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold font-serif mb-1">
-          {t("settings.sections.gateway", "网关")}
+          {t("settings.sections.gateway", "Gateway")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {t("settings.gatewayDescription", "管理 AI 智能体网关服务")}
+          {t("settings.gatewayDescription", "Manage the AI agent gateway service")}
         </p>
       </div>
 
@@ -273,18 +273,18 @@ export function SettingsGatewayPage() {
             </div>
             <div>
               <h3 className="text-sm font-semibold">
-                {t("settings.gatewayStatus", "网关状态")}
+                {t("settings.gatewayStatus", "Gateway Status")}
               </h3>
               <div className="flex items-center gap-2 mt-0.5">
                 {isLoading ? (
                   <span className="text-sm text-muted-foreground">
-                    {t("gateway.checking", "检测中...")}
+                    {t("gateway.checking", "Checking...")}
                   </span>
                 ) : status?.running ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
                     <span className="text-sm text-green-600">
-                      {t("gateway.running", "运行中")}
+                      {t("gateway.running", "Running")}
                     </span>
                     {status.pid && (
                       <span className="text-xs text-muted-foreground">
@@ -296,7 +296,7 @@ export function SettingsGatewayPage() {
                   <>
                     <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">
-                      {t("gateway.stopped", "已停止")}
+                      {t("gateway.stopped", "Stopped")}
                     </span>
                   </>
                 )}
@@ -320,7 +320,7 @@ export function SettingsGatewayPage() {
                   ) : (
                     <RefreshCw className="h-4 w-4" />
                   )}
-                  {t("gateway.restart", "重启")}
+                  {t("gateway.restart", "Restart")}
                 </Button>
                 <Button
                   variant="destructive"
@@ -334,7 +334,7 @@ export function SettingsGatewayPage() {
                   ) : (
                     <Square className="h-4 w-4" />
                   )}
-                  {t("gateway.stop", "停止")}
+                  {t("gateway.stop", "Stop")}
                 </Button>
               </>
             ) : (
@@ -349,7 +349,7 @@ export function SettingsGatewayPage() {
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
-                {t("gateway.start", "启动")}
+                {t("gateway.start", "Start")}
               </Button>
             )}
           </div>
@@ -359,10 +359,10 @@ export function SettingsGatewayPage() {
         {(status?.url || discoveredUrl) && (
           <div className="pt-3 border-t">
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              {t("gateway.url", "网关地址")}
+              {t("gateway.url", "Gateway URL")}
               {discoveredUrl && discoveredUrl !== status?.url && (
                 <span className="ml-2 text-green-600">
-                  ({t("gateway.autoDiscovered", "已自动发现")})
+                  ({t("gateway.autoDiscovered", "Auto-discovered")})
                 </span>
               )}
             </Label>
@@ -383,7 +383,7 @@ export function SettingsGatewayPage() {
                 size="icon"
                 className="h-9 w-9"
                 onClick={discoverGateway}
-                title={t("gateway.refreshDiscover", "重新发现")}
+                title={t("gateway.refreshDiscover", "Re-discover")}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -401,7 +401,7 @@ export function SettingsGatewayPage() {
             </div>
             <div>
               <h3 className="text-sm font-semibold">
-                {t("gateway.connectivityTest", "连通性检测")}
+                {t("gateway.connectivityTest", "Connectivity Test")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {t("gateway.connectivityTestDescription")}
@@ -420,7 +420,7 @@ export function SettingsGatewayPage() {
             ) : (
               <Wifi className="h-4 w-4" />
             )}
-            {t("gateway.testConnection", "检测")}
+            {t("gateway.testConnection", "Test")}
           </Button>
         </div>
 
@@ -441,14 +441,14 @@ export function SettingsGatewayPage() {
                 <>
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600">
-                    {t("gateway.reachable", "网关可达")}
+                    {t("gateway.reachable", "Gateway reachable")}
                   </span>
                 </>
               ) : (
                 <>
                   <XCircle className="h-4 w-4 text-destructive" />
                   <span className="text-sm text-destructive">
-                    {t("gateway.unreachable", "网关不可达")}
+                    {t("gateway.unreachable", "Gateway unreachable")}
                   </span>
                 </>
               )}
@@ -475,7 +475,7 @@ export function SettingsGatewayPage() {
             {testResult.url && (
               <div className="flex items-center gap-1.5 text-sm">
                 <span className="text-xs text-muted-foreground">
-                  {t("gateway.address", "地址")}:
+                  {t("gateway.address", "Address")}:
                 </span>
                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
                   {testResult.url}
@@ -487,7 +487,7 @@ export function SettingsGatewayPage() {
             {testResult.endpoints.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  {t("gateway.endpoints", "端点状态")} ({testResult.endpoints.filter(e => e.available).length}/{testResult.endpoints.length})
+                  {t("gateway.endpoints", "Endpoint Status")} ({testResult.endpoints.filter(e => e.available).length}/{testResult.endpoints.length})
                 </Label>
                 <div className="grid grid-cols-2 gap-1">
                   {testResult.endpoints.map((endpoint) => (
@@ -546,10 +546,10 @@ export function SettingsGatewayPage() {
           </div>
           <div>
             <h3 className="text-sm font-semibold">
-              {t("settings.gatewayConfig", "网关配置")}
+              {t("settings.gatewayConfig", "Gateway Configuration")}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t("gateway.baseUrlDescription", "设置网关服务的基础地址")}
+              {t("gateway.baseUrlDescription", "Set the base URL for the gateway service")}
             </p>
           </div>
         </div>
@@ -573,11 +573,11 @@ export function SettingsGatewayPage() {
               onClick={handleBaseUrlChange}
               disabled={!baseUrlInput || baseUrlInput === getGatewayUrl()}
             >
-              {t("common.apply", "应用")}
+              {t("common.apply", "Apply")}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            {t("gateway.baseUrlHint", "例如: http://127.0.0.1:18790 或 https://gateway.example.com")}
+            {t("gateway.baseUrlHint", "e.g., http://127.0.0.1:18790 or https://gateway.example.com")}
           </p>
         </div>
       </div>
@@ -594,7 +594,7 @@ export function SettingsGatewayPage() {
                 {t("vibenCli.title", "Viben CLI")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {t("vibenCli.description", "选择网关服务使用的 Viben CLI 路径")}
+                {t("vibenCli.description", "Select the Viben CLI path used by the gateway service")}
               </p>
             </div>
           </div>
@@ -604,7 +604,7 @@ export function SettingsGatewayPage() {
             className="h-9 w-9"
             onClick={() => detectViben(true)}
             disabled={isVibenLoading}
-            title={t("common.refresh", "刷新")}
+            title={t("common.refresh", "Refresh")}
           >
             {isVibenLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -625,17 +625,17 @@ export function SettingsGatewayPage() {
         {/* Detected CLI Paths */}
         <div className="pt-3 border-t space-y-2">
           <Label className="text-xs text-muted-foreground">
-            {t("vibenCli.detectedPaths", "检测到的路径")}
+            {t("vibenCli.detectedPaths", "Detected Paths")}
           </Label>
 
           {isVibenLoading && vibenAlternatives.length === 0 ? (
             <div className="flex items-center justify-center py-6 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t("vibenCli.detecting", "正在检测...")}
+              {t("vibenCli.detecting", "Detecting...")}
             </div>
           ) : vibenAlternatives.length === 0 ? (
             <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              {t("vibenCli.noPaths", "未检测到 Viben CLI，请使用下方输入框指定路径")}
+              {t("vibenCli.noPaths", "No Viben CLI detected. Please specify a path using the input below.")}
             </div>
           ) : (
             <div className="space-y-2">
@@ -669,7 +669,7 @@ export function SettingsGatewayPage() {
                         {alt.source === "bundled" && (
                           <Badge variant="secondary" className="shrink-0 text-xs">
                             <Package className="h-3 w-3 mr-1" />
-                            {t("vibenCli.bundled", "内置")}
+                            {t("vibenCli.bundled", "Bundled")}
                           </Badge>
                         )}
                       </div>
@@ -695,7 +695,7 @@ export function SettingsGatewayPage() {
         {/* Custom Path Input */}
         <div className="pt-3 border-t space-y-2">
           <Label className="text-xs text-muted-foreground">
-            {t("vibenCli.customPath", "自定义路径")}
+            {t("vibenCli.customPath", "Custom Path")}
           </Label>
           <div className="flex items-center gap-2">
             <Input
@@ -718,7 +718,7 @@ export function SettingsGatewayPage() {
               {isValidatingVibenPath ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                t("vibenCli.check", "检测")
+                t("vibenCli.check", "Check")
               )}
             </Button>
           </div>

@@ -353,11 +353,11 @@ export function CreateAgentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t("settingsAgents.addAgent", "添加智能体")}</DialogTitle>
+          <DialogTitle>{t("settingsAgents.addAgent", "Add Agent")}</DialogTitle>
           <DialogDescription>
             {selectedTemplate
-              ? t("settingsAgents.createFromTemplateDescription", "基于模板创建新智能体")
-              : t("settingsAgents.addDescription", "创建一个新的智能体")}
+              ? t("settingsAgents.createFromTemplateDescription", "Create a new agent from a template")
+              : t("settingsAgents.addDescription", "Create a new agent")}
           </DialogDescription>
         </DialogHeader>
 
@@ -377,27 +377,27 @@ export function CreateAgentDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="agent-name">{t("settingsAgents.name", "名称")}</Label>
+            <Label htmlFor="agent-name">{t("settingsAgents.name", "Name")}</Label>
             <Input
               id="agent-name"
               value={agentName}
               onChange={(e) => onAgentNameChange(e.target.value)}
-              placeholder={t("settingsAgents.namePlaceholder", "输入智能体名称")}
+              placeholder={t("settingsAgents.namePlaceholder", "Enter agent name")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="agent-description">{t("settingsAgents.descriptionLabel", "描述")}</Label>
+            <Label htmlFor="agent-description">{t("settingsAgents.descriptionLabel", "Description")}</Label>
             <Input
               id="agent-description"
               value={agentDescription}
               onChange={(e) => onAgentDescriptionChange(e.target.value)}
-              placeholder={t("settingsAgents.descriptionPlaceholder", "输入智能体描述")}
+              placeholder={t("settingsAgents.descriptionPlaceholder", "Enter agent description")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>{t("settingsAgents.createLocation", "创建位置")}</Label>
+            <Label>{t("settingsAgents.createLocation", "Location")}</Label>
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
@@ -415,7 +415,7 @@ export function CreateAgentDialog({
                 )} />
                 <div className="min-w-0 flex-1">
                   <p className={cn("font-medium text-sm", createLocation === "workspace" && "text-primary")}>
-                    {t("settingsAgents.workspaceLocation", "工作空间")}
+                    {t("settingsAgents.workspaceLocation", "Workspace")}
                   </p>
                   <p className="text-xs text-muted-foreground truncate mt-0.5" title={workspacePath ? `${workspacePath}/.viben/agents/` : ""}>
                     {workspacePath ? `${workspacePath}/.viben/agents/` : ""}
@@ -439,7 +439,7 @@ export function CreateAgentDialog({
                 )} />
                 <div className="min-w-0 flex-1">
                   <p className={cn("font-medium text-sm", createLocation === "global" && "text-primary")}>
-                    {t("settingsAgents.globalLocation", "全局")}
+                    {t("settingsAgents.globalLocation", "Global")}
                   </p>
                   <p className="text-xs text-muted-foreground truncate mt-0.5" title={globalVibenPath}>
                     {globalVibenPath}
@@ -452,11 +452,11 @@ export function CreateAgentDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("common.cancel", "取消")}
+            {t("common.cancel", "Cancel")}
           </Button>
           <Button onClick={onCreate} disabled={!agentName.trim() || isCreating}>
             {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t("common.create", "创建")}
+            {t("common.create", "Create")}
           </Button>
         </DialogFooter>
       </DialogContent>

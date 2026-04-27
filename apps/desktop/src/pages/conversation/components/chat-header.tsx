@@ -152,7 +152,7 @@ export function ChatHeader({
             />
             {gatewayConnected === true ? (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
-                Gateway
+                {t("chat.gatewayConnected", "Gateway")}
               </span>
             ) : gatewayConnected === false ? (
               <span
@@ -160,11 +160,11 @@ export function ChatHeader({
                 onClick={onCheckGateway}
                 title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
               >
-                Mock
+                {t("chat.gatewayMock", "Mock")}
               </span>
             ) : (
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                ...
+                {t("chat.gatewayChecking", "...")}
               </span>
             )}
           </div>

@@ -231,7 +231,7 @@ export function CreateGroupChatDialog({
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground truncate">
-                            {agent.description || (agent.executor_type ? `${getExecutorDisplayName(agent.executor_type)} executor` : "AI Agent")}
+                            {agent.description || (agent.executor_type ? t("groupChat.executorDescription", "{{name}} executor", { name: getExecutorDisplayName(agent.executor_type) }) : t("groupChat.aiAgent", "AI Agent"))}
                           </p>
                         </div>
                       </div>

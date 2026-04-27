@@ -752,7 +752,7 @@ export function useWorkspaceChat() {
   const executorSessionsForSelector = useMemo(() => {
     return executorSessions.map((session) => ({
       id: session.id,
-      name: session.name || `Session ${session.id.slice(0, 8)}`,
+      name: session.name || t("chat.sessionFallbackName", "Session {{id}}", { id: session.id.slice(0, 8) }),
       createdAt: session.created_at,
       updatedAt: session.updated_at,
       messageCount: session.message_count ?? 0,
@@ -1106,7 +1106,7 @@ export function useWorkspaceChat() {
       setIsCreateGroupDialogOpen(false);
       if (result.group_chat.id) {
         try {
-          const session = await createGroupChatSession(result.group_chat.id, "Initial Session");
+          const session = await createGroupChatSession(result.group_chat.id, t("groupChat.initialSession", "Initial Session"));
           setSelectedGroupSessionId(session.id);
         } catch (err) {
           console.error("[WorkspaceChat] Failed to create initial session:", err);
@@ -1162,7 +1162,7 @@ export function useWorkspaceChat() {
   const handleCreateGroupChatSession = async () => {
     if (!selectedGroupChatId) return;
     try {
-      const session = await createGroupChatSession(selectedGroupChatId, `Session ${groupChatSessions.length + 1}`);
+      const session = await createGroupChatSession(selectedGroupChatId, t("groupChat.sessionNumber", "Session {{number}}", { number: groupChatSessions.length + 1 }));
       setSelectedGroupSessionId(session.id);
     } catch (error) {
       console.error("[WorkspaceChat] Failed to create group chat session:", error);

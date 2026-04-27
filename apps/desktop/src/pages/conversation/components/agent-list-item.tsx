@@ -77,14 +77,14 @@ export function AgentListItem({
   const { t } = useTranslation();
 
   // Check if this is a template by looking at badges
-  const isTemplate = additionalBadges?.some(b => b.label === t("agent.template", "模板"));
+  const isTemplate = additionalBadges?.some(b => b.label === t("agent.template", "Template"));
 
   // Build actions list
   const actions: ListItemAction[] = [];
 
   if (onSettings) {
     actions.push({
-      label: t("agent.settings", "智能体设置"),
+      label: t("agent.settings", "Agent Settings"),
       icon: Settings,
       onClick: onSettings,
     });
@@ -92,7 +92,7 @@ export function AgentListItem({
 
   if (onCopy) {
     actions.push({
-      label: t("common.copy", "复制"),
+      label: t("common.copy", "Copy"),
       icon: Copy,
       onClick: onCopy,
     });
@@ -100,7 +100,7 @@ export function AgentListItem({
 
   if (onSetDefault && !isDefault) {
     actions.push({
-      label: t("agent.setAsDefault", "设为默认"),
+      label: t("agent.setAsDefault", "Set as Default"),
       icon: Star,
       onClick: onSetDefault,
     });
@@ -110,8 +110,8 @@ export function AgentListItem({
   if (onToggleTemplate) {
     actions.push({
       label: isTemplate
-        ? t("agent.unmarkAsTemplate", "取消模板")
-        : t("agent.markAsTemplate", "设为模板"),
+        ? t("agent.unmarkAsTemplate", "Unmark as Template")
+        : t("agent.markAsTemplate", "Mark as Template"),
       icon: Tag,
       onClick: onToggleTemplate,
       separator: true,
@@ -120,7 +120,7 @@ export function AgentListItem({
 
   if (onPromoteToGlobal) {
     actions.push({
-      label: t("agent.promoteToGlobal", "提升为全局"),
+      label: t("agent.promoteToGlobal", "Promote to Global"),
       icon: Upload,
       onClick: onPromoteToGlobal,
     });
@@ -128,7 +128,7 @@ export function AgentListItem({
 
   if (sessionCount !== undefined) {
     actions.push({
-      label: t("agent.sessionCount", { defaultValue: "{{count}} 个会话", count: sessionCount }),
+      label: t("agent.sessionCount", { defaultValue: "{{count}} sessions", count: sessionCount }),
       icon: History,
       onClick: () => {},
       disabled: true,
@@ -138,7 +138,7 @@ export function AgentListItem({
 
   if (onDelete) {
     actions.push({
-      label: t("common.delete", "删除"),
+      label: t("common.delete", "Delete"),
       icon: Trash2,
       onClick: onDelete,
       destructive: true,
@@ -149,7 +149,7 @@ export function AgentListItem({
   // Build badges
   const badges: ListItemBadge[] = [];
   if (isDefault) {
-    badges.push({ label: t("agent.default", "默认"), variant: "primary" });
+    badges.push({ label: t("agent.default", "Default"), variant: "primary" });
   }
   if (additionalBadges) {
     badges.push(...additionalBadges);
@@ -161,7 +161,7 @@ export function AgentListItem({
       description={
         agent.description ||
         agent.model ||
-        t("agent.noDescription", "暂无描述")
+        t("agent.noDescription", "No description")
       }
       avatar={{
         icon: getModelIcon(agent.model, { size: 20, className: "text-white" }),

@@ -542,7 +542,7 @@ function InstanceCard({
           </div>
           {channel.is_default && (
             <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-              {t("channels.default", "默认")}
+              {t("channels.default", "Default")}
             </span>
           )}
           {channel.agent_binding && (
@@ -567,7 +567,7 @@ function InstanceCard({
             size="icon"
             className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30"
             onClick={onConfigureWebhook}
-            title={t("channels.configureWebhook", "配置 Webhook")}
+            title={t("channels.configureWebhook", "Configure Webhook")}
           >
             <Link className="h-4 w-4" />
           </Button>
@@ -647,7 +647,7 @@ function TelegramForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Label>{t("channels.instanceName", "Instance Name")}</Label>
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -656,7 +656,7 @@ function TelegramForm({
       </div>
       <SecretInput
         label={t("channels.telegram.token", "Bot Token")}
-        description={t("channels.telegram.tokenDescription", "从 @BotFather 获取")}
+        description={t("channels.telegram.tokenDescription", "Get from @BotFather")}
         value={token}
         onChange={(token) => onChange({ token })}
         placeholder={t("channels.telegram.tokenPlaceholder", "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ")}
@@ -667,7 +667,7 @@ function TelegramForm({
           <span className="text-destructive ml-1">*</span>
         </Label>
         <p className="text-xs text-muted-foreground/70">
-          {t("channels.telegram.chatIdDescription", "消息发送的目标聊天 ID，可从 @userinfobot 获取")}
+          {t("channels.telegram.chatIdDescription", "Target chat ID for sending messages, get from @userinfobot")}
         </p>
         <Input
           value={chat_id}
@@ -677,7 +677,7 @@ function TelegramForm({
       </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">
-          {t("channels.telegram.proxy", "代理 (可选)")}
+          {t("channels.telegram.proxy", "Proxy (Optional)")}
         </Label>
         <Input
           value={proxy}
@@ -703,7 +703,7 @@ function DiscordForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Label>{t("channels.instanceName", "Instance Name")}</Label>
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -712,7 +712,7 @@ function DiscordForm({
       </div>
       <SecretInput
         label={t("channels.discord.token", "Bot Token")}
-        description={t("channels.discord.tokenDescription", "从 Discord Developer Portal 获取")}
+        description={t("channels.discord.tokenDescription", "Get from Discord Developer Portal")}
         value={token}
         onChange={(token) => onChange({ token })}
         placeholder={t("channels.discord.tokenPlaceholder", "MTIzNDU2Nzg5...")}
@@ -736,7 +736,7 @@ function FeishuForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Label>{t("channels.instanceName", "Instance Name")}</Label>
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -745,7 +745,7 @@ function FeishuForm({
       </div>
       <SecretInput
         label={t("channels.feishu.appId", "App ID")}
-        description={t("channels.feishu.appIdDescription", "从飞书开放平台获取")}
+        description={t("channels.feishu.appIdDescription", "Get from Feishu Open Platform")}
         value={app_id}
         onChange={(app_id) => onChange({ app_id })}
         placeholder={t("channels.feishu.appIdPlaceholder", "cli_xxxxx")}
@@ -773,7 +773,7 @@ function WhatsAppForm({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Label>{t("channels.instanceName", "Instance Name")}</Label>
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
@@ -781,7 +781,7 @@ function WhatsAppForm({
         />
       </div>
       <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-        <p>{t("channels.whatsapp.note", "WhatsApp 需要配置 Bridge 服务器。")}</p>
+        <p>{t("channels.whatsapp.note", "WhatsApp requires a Bridge server configuration.")}</p>
       </div>
     </div>
   );
@@ -836,21 +836,21 @@ function AgentBindingSelector({
   return (
     <div className="space-y-1.5">
       <Label className="text-xs text-muted-foreground">
-        {t("channels.agentBinding", "绑定智能体/执行器")}
+        {t("channels.agentBinding", "Bind Agent/Executor")}
       </Label>
       <p className="text-xs text-muted-foreground/70">
-        {t("channels.agentBindingDescription", "接收到消息时自动路由给指定的智能体或执行器")}
+        {t("channels.agentBindingDescription", "Automatically route received messages to the specified agent or executor")}
       </p>
       <Select value={selectedValue} onValueChange={handleChange}>
         <SelectTrigger>
-          <SelectValue placeholder={t("channels.noBinding", "不绑定")} />
+          <SelectValue placeholder={t("channels.noBinding", "No Binding")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">{t("channels.noBinding", "不绑定")}</SelectItem>
+          <SelectItem value="none">{t("channels.noBinding", "No Binding")}</SelectItem>
           {agents.length > 0 && (
             <>
               <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
-                {t("channels.agents", "智能体")}
+                {t("channels.agents", "Agents")}
               </div>
               {agents.map((agent) => (
                 <SelectItem key={`agent:${agent.id}`} value={`agent:${agent.id}`}>
@@ -862,7 +862,7 @@ function AgentBindingSelector({
           {executorSessions.length > 0 && (
             <>
               <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
-                {t("channels.executors", "执行器 (Claude Code)")}
+                {t("channels.executors", "Executors (Claude Code)")}
               </div>
               {executorSessions.map((exec) => (
                 <SelectItem key={`executor:${exec.id}`} value={`executor:${exec.id}`}>
@@ -1048,9 +1048,9 @@ export function SettingsChannelsPage() {
       const config = buildConfigFromForm(formState);
       await createInstance(formState.channel_type, formState.name.trim(), config, formState.agent_binding || undefined);
       handleCloseCreateDialog();
-      toast.success(t("channels.createSuccess", "渠道创建成功"));
+      toast.success(t("channels.createSuccess", "Channel created successfully"));
     } catch (err) {
-      toast.error(t("channels.createFailed", "创建失败"), {
+      toast.error(t("channels.createFailed", "Creation failed"), {
         description: err instanceof Error ? err.message : String(err),
       });
     } finally {
@@ -1062,7 +1062,7 @@ export function SettingsChannelsPage() {
     if (!confirm(t("channels.deleteConfirm", { name: channel.name }))) return;
     const success = await deleteInstance(channel.id);
     if (success) {
-      toast.success(t("channels.deleteSuccess", "渠道已删除"));
+      toast.success(t("channels.deleteSuccess", "Channel deleted"));
     }
   };
 
@@ -1083,9 +1083,9 @@ export function SettingsChannelsPage() {
         agent_binding: formState.agent_binding,
       });
       setEditingChannel(null);
-      toast.success(t("channels.updateSuccess", "渠道已更新"));
+      toast.success(t("channels.updateSuccess", "Channel updated"));
     } catch (err) {
-      toast.error(t("channels.updateFailed", "更新失败"), {
+      toast.error(t("channels.updateFailed", "Update failed"), {
         description: err instanceof Error ? err.message : String(err),
       });
     } finally {
@@ -1177,7 +1177,7 @@ export function SettingsChannelsPage() {
     const token = config.token as string;
 
     if (!token) {
-      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      toast.error(t("channels.webhook.noToken", "Please configure the Bot Token first"));
       return;
     }
 
@@ -1218,7 +1218,7 @@ export function SettingsChannelsPage() {
     const token = config.token as string;
 
     if (!token) {
-      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      toast.error(t("channels.webhook.noToken", "Please configure the Bot Token first"));
       return;
     }
 
@@ -1227,14 +1227,14 @@ export function SettingsChannelsPage() {
     setIsSettingWebhook(false);
 
     if (result.success) {
-      toast.success(t("channels.webhook.setSuccess", "Webhook 设置成功"));
+      toast.success(t("channels.webhook.setSuccess", "Webhook set successfully"));
       // Refresh webhook info
       const infoResult = await getTelegramWebhookInfo(token);
       if (infoResult.success && infoResult.result) {
         setWebhookInfo(infoResult.result);
       }
     } else {
-      toast.error(t("channels.webhook.setFailed", "Webhook 设置失败"), {
+      toast.error(t("channels.webhook.setFailed", "Failed to set Webhook"), {
         description: result.error,
       });
     }
@@ -1254,11 +1254,11 @@ export function SettingsChannelsPage() {
     setIsSettingWebhook(false);
 
     if (result.success) {
-      toast.success(t("channels.webhook.deleteSuccess", "Webhook 已删除"));
+      toast.success(t("channels.webhook.deleteSuccess", "Webhook deleted"));
       setWebhookInfo(null);
       setWebhookUrl("");
     } else {
-      toast.error(t("channels.webhook.deleteFailed", "删除失败"), {
+      toast.error(t("channels.webhook.deleteFailed", "Delete failed"), {
         description: result.error,
       });
     }
@@ -1267,7 +1267,7 @@ export function SettingsChannelsPage() {
   // Copy webhook URL to clipboard
   const handleCopyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
-    toast.success(t("channels.webhook.copied", "已复制到剪贴板"));
+    toast.success(t("channels.webhook.copied", "Copied to clipboard"));
   };
 
   // Start tunnel
@@ -1280,11 +1280,11 @@ export function SettingsChannelsPage() {
       const tunnelWebhookUrl = `${result.url}/api/channels/webhook`;
       setWebhookUrl(tunnelWebhookUrl);
       setTunnelState(result.state || null);
-      toast.success(t("channels.tunnel.started", "隧道已启动"), {
+      toast.success(t("channels.tunnel.started", "Tunnel started"), {
         description: result.url,
       });
     } else {
-      toast.error(t("channels.tunnel.startFailed", "隧道启动失败"), {
+      toast.error(t("channels.tunnel.startFailed", "Failed to start tunnel"), {
         description: result.error,
       });
       if (result.state) {
@@ -1304,9 +1304,9 @@ export function SettingsChannelsPage() {
       // Reset to local URL
       const gatewayUrl = getGatewayUrl();
       setWebhookUrl(`${gatewayUrl}/api/channels/webhook`);
-      toast.success(t("channels.tunnel.stopped", "隧道已停止"));
+      toast.success(t("channels.tunnel.stopped", "Tunnel stopped"));
     } else {
-      toast.error(t("channels.tunnel.stopFailed", "隧道停止失败"), {
+      toast.error(t("channels.tunnel.stopFailed", "Failed to stop tunnel"), {
         description: result.error,
       });
     }
@@ -1320,7 +1320,7 @@ export function SettingsChannelsPage() {
     const token = config.token as string;
 
     if (!token) {
-      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      toast.error(t("channels.webhook.noToken", "Please configure the Bot Token first"));
       return;
     }
 
@@ -1330,7 +1330,7 @@ export function SettingsChannelsPage() {
     setIsStartingTunnel(false);
 
     if (!tunnelResult.success || !tunnelResult.url) {
-      toast.error(t("channels.tunnel.startFailed", "隧道启动失败"), {
+      toast.error(t("channels.tunnel.startFailed", "Failed to start tunnel"), {
         description: tunnelResult.error,
       });
       return;
@@ -1346,8 +1346,8 @@ export function SettingsChannelsPage() {
     setIsSettingWebhook(false);
 
     if (webhookResult.success) {
-      toast.success(t("channels.webhook.oneClickSuccess", "一键配置成功！"), {
-        description: t("channels.webhook.oneClickSuccessDesc", "隧道已启动，Webhook 已设置"),
+      toast.success(t("channels.webhook.oneClickSuccess", "One-click setup successful!"), {
+        description: t("channels.webhook.oneClickSuccessDesc", "Tunnel started and Webhook configured"),
       });
       // Refresh webhook info
       const infoResult = await getTelegramWebhookInfo(token);
@@ -1355,7 +1355,7 @@ export function SettingsChannelsPage() {
         setWebhookInfo(infoResult.result);
       }
     } else {
-      toast.error(t("channels.webhook.setFailed", "Webhook 设置失败"), {
+      toast.error(t("channels.webhook.setFailed", "Failed to set Webhook"), {
         description: webhookResult.error,
       });
     }
@@ -1374,15 +1374,15 @@ export function SettingsChannelsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold font-serif mb-1">
-            {t("settings.sections.channels", "消息渠道")}
+            {t("settings.sections.channels", "Channels")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t("settings.channelsDescription", "配置 AI 智能体的通信渠道")}
+            {t("settings.channelsDescription", "Configure communication channels for AI agents")}
           </p>
         </div>
         <Button onClick={handleOpenCreateDialog}>
           <Plus className="h-4 w-4 mr-2" />
-          {t("channels.addChannel", "添加渠道")}
+          {t("channels.addChannel", "Add Channel")}
         </Button>
       </div>
 
@@ -1433,9 +1433,9 @@ export function SettingsChannelsPage() {
       {/* Empty state */}
       {instances.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{t("channels.noChannels", "还没有配置任何渠道")}</p>
+          <p>{t("channels.noChannels", "No channels configured yet")}</p>
           <p className="text-sm mt-1">
-            {t("channels.noChannelsHint", "点击上方按钮添加一个渠道")}
+            {t("channels.noChannelsHint", "Click the button above to add a channel")}
           </p>
         </div>
       )}
@@ -1444,15 +1444,15 @@ export function SettingsChannelsPage() {
       <Dialog open={createDialogOpen} onOpenChange={(open) => !open && handleCloseCreateDialog()}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t("channels.addChannel", "添加渠道")}</DialogTitle>
+            <DialogTitle>{t("channels.addChannel", "Add Channel")}</DialogTitle>
             <DialogDescription>
-              {t("channels.addChannelDescFull", "选择渠道类型并填写必要信息")}
+              {t("channels.addChannelDescFull", "Select channel type and fill in the required information")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Channel Type Selector */}
             <div className="space-y-2">
-              <Label>{t("channels.channelType", "渠道类型")}</Label>
+              <Label>{t("channels.channelType", "Channel Type")}</Label>
               <Select
                 value={formState.channel_type}
                 onValueChange={(v) => handleTypeChange(v as ChannelType)}
@@ -1509,16 +1509,16 @@ export function SettingsChannelsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseCreateDialog}>
-              {t("common.cancel", "取消")}
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={!isFormValid(formState) || isCreating}>
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("common.creating", "创建中...")}
+                  {t("common.creating", "Creating...")}
                 </>
               ) : (
-                t("common.create", "创建")
+                t("common.create", "Create")
               )}
             </Button>
           </DialogFooter>
@@ -1530,7 +1530,7 @@ export function SettingsChannelsPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {t("channels.editChannel", "编辑渠道")} - {editingChannel?.name}
+              {t("channels.editChannel", "Edit Channel")} - {editingChannel?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
@@ -1569,16 +1569,16 @@ export function SettingsChannelsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingChannel(null)}>
-              {t("common.cancel", "取消")}
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button onClick={handleSaveEdit} disabled={!isFormValid(formState) || isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("common.saving", "保存中...")}
+                  {t("common.saving", "Saving...")}
                 </>
               ) : (
-                t("common.save", "保存")
+                t("common.save", "Save")
               )}
             </Button>
           </DialogFooter>
@@ -1590,10 +1590,10 @@ export function SettingsChannelsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {t("channels.sendTestMessage", "发送测试消息")}
+              {t("channels.sendTestMessage", "Send Test Message")}
             </DialogTitle>
             <DialogDescription>
-              {t("channels.sendTestMessageDesc", "发送一条测试消息以验证渠道配置是否正确。")}
+              {t("channels.sendTestMessageDesc", "Send a test message to verify the channel configuration.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1620,7 +1620,7 @@ export function SettingsChannelsPage() {
                         ? t("channels.telegram.chatId", "Chat ID")
                         : testingChannel.channel_type === "discord"
                         ? t("channels.discord.channelId", "Channel ID")
-                        : t("channels.feishu.chatId", "接收者 ID")}
+                        : t("channels.feishu.chatId", "Recipient ID")}
                     </Label>
                     <Input
                       value={testChatId}
@@ -1629,18 +1629,18 @@ export function SettingsChannelsPage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       {testingChannel.channel_type === "telegram" &&
-                        t("channels.telegram.chatIdHint", "你可以从 @userinfobot 获取你的 Chat ID")}
+                        t("channels.telegram.chatIdHint", "You can get your Chat ID from @userinfobot")}
                       {testingChannel.channel_type === "discord" &&
-                        t("channels.discord.channelIdHint", "右键点击频道 > 复制频道 ID (需开启开发者模式)")}
+                        t("channels.discord.channelIdHint", "Right-click channel > Copy Channel ID (Developer Mode required)")}
                       {testingChannel.channel_type === "feishu" &&
-                        t("channels.feishu.chatIdHint", "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱")}
+                        t("channels.feishu.chatIdHint", "You can use Open ID (ou_xxx), Chat ID (oc_xxx), or email")}
                     </p>
                   </div>
                 )}
 
                 {testingChannel.channel_type === "whatsapp" && (
                   <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-                    <p>{t("channels.whatsapp.testNote", "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。")}</p>
+                    <p>{t("channels.whatsapp.testNote", "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication.")}</p>
                   </div>
                 )}
               </>
@@ -1648,7 +1648,7 @@ export function SettingsChannelsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTestDialogOpen(false)}>
-              {t("common.cancel", "取消")}
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               onClick={handleSendTestMessage}
@@ -1657,12 +1657,12 @@ export function SettingsChannelsPage() {
               {isSendingTestMessage ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("channels.testing", "测试中...")}
+                  {t("channels.testing", "Testing...")}
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-2" />
-                  {t("channels.sendTest", "发送测试")}
+                  {t("channels.sendTest", "Send Test")}
                 </>
               )}
             </Button>
@@ -1676,10 +1676,10 @@ export function SettingsChannelsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Link className="h-5 w-5" />
-              {t("channels.webhook.title", "配置 Webhook")}
+              {t("channels.webhook.title", "Configure Webhook")}
             </DialogTitle>
             <DialogDescription>
-              {t("channels.webhook.description", "配置 Telegram Bot 的 Webhook，让 Bot 能够接收消息并路由到绑定的智能体。")}
+              {t("channels.webhook.description", "Configure the Telegram Bot Webhook so the bot can receive messages and route them to the bound agent.")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1701,24 +1701,24 @@ export function SettingsChannelsPage() {
                   <div className="flex items-center justify-center p-4">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     <span className="ml-2 text-sm text-muted-foreground">
-                      {t("channels.webhook.loading", "加载中...")}
+                      {t("channels.webhook.loading", "Loading...")}
                     </span>
                   </div>
                 ) : webhookInfo ? (
                   <div className="space-y-2 p-3 rounded-lg border bg-card">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">
-                        {t("channels.webhook.currentStatus", "当前状态")}
+                        {t("channels.webhook.currentStatus", "Current Status")}
                       </span>
                       {webhookInfo.url ? (
                         <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3" />
-                          {t("channels.webhook.active", "已配置")}
+                          {t("channels.webhook.active", "Configured")}
                         </span>
                       ) : (
                         <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" />
-                          {t("channels.webhook.notConfigured", "未配置")}
+                          {t("channels.webhook.notConfigured", "Not Configured")}
                         </span>
                       )}
                     </div>
@@ -1735,7 +1735,7 @@ export function SettingsChannelsPage() {
                     )}
                     {webhookInfo.pending_update_count > 0 && (
                       <div className="text-xs text-muted-foreground">
-                        {t("channels.webhook.pendingUpdates", "待处理消息")}: {webhookInfo.pending_update_count}
+                        {t("channels.webhook.pendingUpdates", "Pending updates")}: {webhookInfo.pending_update_count}
                       </div>
                     )}
                   </div>
@@ -1757,13 +1757,13 @@ export function SettingsChannelsPage() {
                       variant="outline"
                       size="icon"
                       onClick={handleCopyWebhookUrl}
-                      title={t("channels.webhook.copy", "复制")}
+                      title={t("channels.webhook.copy", "Copy")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t("channels.webhook.urlHint", "Webhook URL 必须是公网可访问的 HTTPS 地址。本地开发可使用 ngrok 等工具。")}
+                    {t("channels.webhook.urlHint", "Webhook URL must be a publicly accessible HTTPS address. For local development, use tools like ngrok.")}
                   </p>
                 </div>
 
@@ -1772,32 +1772,32 @@ export function SettingsChannelsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">
-                        {t("channels.tunnel.title", "Cloudflare 隧道")}
+                        {t("channels.tunnel.title", "Cloudflare Tunnel")}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {t("channels.tunnel.description", "一键创建公网地址，无需安装额外工具")}
+                        {t("channels.tunnel.description", "Create a public URL with one click, no extra tools required")}
                       </p>
                     </div>
                     {tunnelState?.status === "connected" ? (
                       <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
-                        {t("channels.tunnel.connected", "已连接")}
+                        {t("channels.tunnel.connected", "Connected")}
                       </span>
                     ) : tunnelState?.status === "starting" || tunnelState?.status === "reconnecting" ? (
                       <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         {tunnelState.status === "starting"
-                          ? t("channels.tunnel.starting", "启动中...")
-                          : t("channels.tunnel.reconnecting", "重连中...")}
+                          ? t("channels.tunnel.starting", "Starting...")
+                          : t("channels.tunnel.reconnecting", "Reconnecting...")}
                       </span>
                     ) : tunnelState?.status === "error" ? (
                       <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded flex items-center gap-1">
                         <XCircle className="h-3 w-3" />
-                        {t("channels.tunnel.error", "错误")}
+                        {t("channels.tunnel.error", "Error")}
                       </span>
                     ) : (
                       <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
-                        {t("channels.tunnel.stopped", "未启动")}
+                        {t("channels.tunnel.stopped", "Stopped")}
                       </span>
                     )}
                   </div>
@@ -1820,7 +1820,7 @@ export function SettingsChannelsPage() {
                   {/* Tunnel Connections */}
                   {tunnelState?.connections && tunnelState.connections.length > 0 && (
                     <div className="text-xs text-muted-foreground">
-                      {t("channels.tunnel.connections", "连接点")}: {tunnelState.connections.map(c => c.location).join(", ")}
+                      {t("channels.tunnel.connections", "Connection points")}: {tunnelState.connections.map(c => c.location).join(", ")}
                     </div>
                   )}
 
@@ -1837,10 +1837,10 @@ export function SettingsChannelsPage() {
                         {isStoppingTunnel ? (
                           <>
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            {t("channels.tunnel.stopping", "停止中...")}
+                            {t("channels.tunnel.stopping", "Stopping...")}
                           </>
                         ) : (
-                          t("channels.tunnel.stop", "停止隧道")
+                          t("channels.tunnel.stop", "Stop Tunnel")
                         )}
                       </Button>
                     ) : (
@@ -1854,10 +1854,10 @@ export function SettingsChannelsPage() {
                         {isStartingTunnel || tunnelState?.status === "starting" ? (
                           <>
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            {t("channels.tunnel.starting", "启动中...")}
+                            {t("channels.tunnel.starting", "Starting...")}
                           </>
                         ) : (
-                          t("channels.tunnel.start", "启动隧道")
+                          t("channels.tunnel.start", "Start Tunnel")
                         )}
                       </Button>
                     )}
@@ -1872,10 +1872,10 @@ export function SettingsChannelsPage() {
                         {(isStartingTunnel || isSettingWebhook) ? (
                           <>
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                            {t("channels.tunnel.settingUp", "配置中...")}
+                            {t("channels.tunnel.settingUp", "Setting up...")}
                           </>
                         ) : (
-                          t("channels.tunnel.oneClick", "一键配置")
+                          t("channels.tunnel.oneClick", "One-Click Setup")
                         )}
                       </Button>
                     )}
@@ -1885,7 +1885,7 @@ export function SettingsChannelsPage() {
                 {/* Manual Help Section */}
                 <details className="text-xs">
                   <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
-                    {t("channels.webhook.manualSetup", "手动配置方法")}
+                    {t("channels.webhook.manualSetup", "Manual Setup")}
                   </summary>
                   <div className="mt-2 p-3 rounded-lg bg-muted/50 space-y-2">
                     <ul className="text-muted-foreground space-y-1">
@@ -1904,7 +1904,7 @@ export function SettingsChannelsPage() {
                       rel="noopener noreferrer"
                       className="text-primary hover:underline inline-flex items-center gap-1"
                     >
-                      {t("channels.webhook.learnMore", "了解更多")}
+                      {t("channels.webhook.learnMore", "Learn More")}
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
@@ -1920,12 +1920,12 @@ export function SettingsChannelsPage() {
                 disabled={isSettingWebhook}
                 className="text-destructive hover:text-destructive"
               >
-                {t("channels.webhook.delete", "删除 Webhook")}
+                {t("channels.webhook.delete", "Delete Webhook")}
               </Button>
             )}
             <div className="flex gap-2 ml-auto">
               <Button variant="outline" onClick={() => setWebhookDialogOpen(false)}>
-                {t("common.cancel", "取消")}
+                {t("common.cancel", "Cancel")}
               </Button>
               <Button
                 onClick={handleSetWebhook}
@@ -1934,12 +1934,12 @@ export function SettingsChannelsPage() {
                 {isSettingWebhook ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t("channels.webhook.setting", "设置中...")}
+                    {t("channels.webhook.setting", "Setting...")}
                   </>
                 ) : (
                   <>
                     <Link className="h-4 w-4 mr-2" />
-                    {t("channels.webhook.set", "设置 Webhook")}
+                    {t("channels.webhook.set", "Set Webhook")}
                   </>
                 )}
               </Button>

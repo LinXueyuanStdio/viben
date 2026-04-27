@@ -329,7 +329,7 @@ export function ArtifactPreview({
         )
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-          No content
+          {t("preview.noContent", "No content")}
         </div>
       )}
     </div>
@@ -382,7 +382,7 @@ export function ToolPreview({ tool }: { tool: ToolUsage }) {
           <h3 className="font-medium truncate">{tool.displayName}</h3>
           {isMcpTool(tool.name) && (
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary shrink-0">
-              MCP
+              {t("preview.mcp", "MCP")}
             </span>
           )}
           {tool.isError && (
@@ -433,7 +433,7 @@ export function ToolPreview({ tool }: { tool: ToolUsage }) {
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              No input
+              {t("preview.noInput", "No input")}
             </div>
           )
         ) : (
@@ -460,7 +460,7 @@ export function ToolPreview({ tool }: { tool: ToolUsage }) {
             )
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              No output
+              {t("preview.noOutput", "No output")}
             </div>
           )
         )}
