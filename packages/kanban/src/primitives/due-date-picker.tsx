@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRef } from "react";
 import { cn, Input, Button } from "@viben/ui";
 import { Calendar, X } from "lucide-react";
 
@@ -26,7 +27,7 @@ export const DueDatePicker = React.forwardRef<
     },
     ref
   ) => {
-    const inputRef = React.useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
