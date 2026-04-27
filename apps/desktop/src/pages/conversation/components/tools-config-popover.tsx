@@ -4,7 +4,7 @@
  * Shows a list of available tools with enable/disable toggles.
  */
 
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,9 +31,9 @@ export function ToolsConfigPopover({
   className,
 }: ToolsConfigPopoverProps) {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredTools = React.useMemo(() => {
+  const filteredTools = useMemo(() => {
     if (!searchQuery.trim()) return tools;
     const query = searchQuery.toLowerCase();
     return tools.filter(
