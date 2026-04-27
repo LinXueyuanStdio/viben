@@ -5,7 +5,7 @@
  * Click an emoji to insert it at the cursor position.
  */
 
-import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -184,7 +184,7 @@ interface EmojiPickerProps {
 export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
   const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] =
-    React.useState<CategoryKey>("smileys");
+    useState<CategoryKey>("smileys");
 
   const categories = Object.keys(EMOJI_CATEGORIES) as CategoryKey[];
 
