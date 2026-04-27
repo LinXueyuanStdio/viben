@@ -124,7 +124,7 @@ export function CoverPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {anchorRef ? (
-        <PopoverAnchor virtualRef={anchorRef} />
+        <PopoverAnchor virtualRef={anchorRef as React.RefObject<HTMLElement>} />
       ) : (
         <PopoverTrigger asChild disabled={disabled}>
           {trigger ?? defaultTrigger}
