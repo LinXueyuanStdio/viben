@@ -7,7 +7,7 @@
  * - Custom images (local path or URL)
  */
 
-import * as React from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DynamicLucideIcon } from "./dynamic-lucide-icon";
@@ -46,11 +46,11 @@ function ImageIcon({
   className?: string;
   alt?: string;
 }) {
-  const [error, setError] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Resolve the image URL
-  const imageUrl = React.useMemo(() => {
+  const imageUrl = useMemo(() => {
     // Already a full URL or data URL
     if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:")) {
       return src;
@@ -68,7 +68,7 @@ function ImageIcon({
   }, [src, workspacePath]);
 
   // Reset states when src changes
-  React.useEffect(() => {
+  useEffect(() => {
     setError(false);
     setLoading(true);
   }, [imageUrl]);
@@ -126,7 +126,7 @@ export function IconDisplay({
   alt,
 }: IconDisplayProps) {
   // Parse icon data from various formats
-  const iconData = React.useMemo(() => {
+  const iconData = useMemo(() => {
     // Parse the main icon
     let data: IconData | null = null;
 
