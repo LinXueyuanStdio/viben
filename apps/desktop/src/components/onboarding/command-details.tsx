@@ -5,7 +5,7 @@
  * Used in environment check items to show detailed information.
  */
 
-import * as React from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ export function CommandDetails({
   className,
 }: CommandDetailsProps) {
   const { t } = useTranslation();
-  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const handleCopy = async (text: string, index: number) => {
     try {
@@ -55,7 +55,7 @@ export function CommandDetails({
   };
 
   // Build items list from legacy props if items not provided
-  const displayItems: DetailItem[] = React.useMemo(() => {
+  const displayItems: DetailItem[] = useMemo(() => {
     if (items && items.length > 0) {
       return items;
     }
