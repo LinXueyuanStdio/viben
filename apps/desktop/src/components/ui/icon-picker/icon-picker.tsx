@@ -211,12 +211,12 @@ export function IconPicker({
           className="w-full"
         >
           {/* Tab bar with tools */}
-          <div className="flex items-center border-b border-border">
-            <TabsList className="flex-1 justify-start rounded-none bg-transparent p-0 h-auto">
+          <TabsList className="w-full justify-between rounded-none p-0 h-auto">
+            <div className="flex items-center">
               {showEmoji && (
                 <TabsTrigger
                   value="emoji"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className="px-3 py-2 text-xs"
                 >
                   {t("iconPicker.emoji", "Emoji")}
                 </TabsTrigger>
@@ -224,7 +224,7 @@ export function IconPicker({
               {showLucide && (
                 <TabsTrigger
                   value="lucide"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className="px-3 py-2 text-xs"
                 >
                   {t("iconPicker.icons", "Icons")}
                 </TabsTrigger>
@@ -232,12 +232,12 @@ export function IconPicker({
               {showImage && (
                 <TabsTrigger
                   value="image"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
+                  className="px-3 py-2 text-xs"
                 >
                   {t("iconPicker.image", "Image")}
                 </TabsTrigger>
               )}
-            </TabsList>
+            </div>
 
             {/* Tool buttons */}
             <div className="flex items-center gap-0.5 px-2">
@@ -264,17 +264,17 @@ export function IconPicker({
                 </Button>
               )}
             </div>
-          </div>
+          </TabsList>
 
           {/* Tab content */}
           {showEmoji && (
-            <TabsContent value="emoji" className="m-0">
+            <TabsContent value="emoji" className="mt-0">
               <EmojiTab onSelect={handleEmojiSelect} />
             </TabsContent>
           )}
 
           {showLucide && (
-            <TabsContent value="lucide" className="m-0">
+            <TabsContent value="lucide" className="mt-0">
               <LucideTab
                 value={typeof value === "object" && value?.type === "lucide" ? value.value : undefined}
                 onSelect={handleLucideSelect}
@@ -283,7 +283,7 @@ export function IconPicker({
           )}
 
           {showImage && (
-            <TabsContent value="image" className="m-0">
+            <TabsContent value="image" className="mt-0">
               <ImageTab
                 workspacePath={workspacePath}
                 onSelect={handleImageSelect}
