@@ -5,6 +5,7 @@
  */
 
 import * as React from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Bot,
@@ -117,9 +118,9 @@ export function ChatInputConfigBar({
   leftExtraContent,
 }: ChatInputConfigBarProps) {
   const { t } = useTranslation();
-  const [isToolsOpen, setIsToolsOpen] = React.useState(false);
-  const [isSkillsOpen, setIsSkillsOpen] = React.useState(false);
-  const [isContextOpen, setIsContextOpen] = React.useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [isSkillsOpen, setIsSkillsOpen] = useState(false);
+  const [isContextOpen, setIsContextOpen] = useState(false);
 
   // Calculate actual enabled counts from arrays if provided
   const actualToolsCount =
