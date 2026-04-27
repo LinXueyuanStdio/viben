@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Heart } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -27,15 +27,15 @@ export function FavoriteButton({
   className,
 }: FavoriteButtonProps) {
   const { t } = useTranslation();
-  const [isFavorited, setIsFavorited] = React.useState(initialFavorited);
-  const [count, setCount] = React.useState(initialCount);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isFavorited, setIsFavorited] = useState(initialFavorited);
+  const [count, setCount] = useState(initialCount);
+  const [isLoading, setIsLoading] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
   const apiPath = entityType === 'mcp' ? 'mcp' : 'skills';
 
   // Fetch initial state on mount if authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated) return;
 
     async function fetchFavoriteStatus() {
