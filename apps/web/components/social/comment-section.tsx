@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { CommentItem } from './comment-item';
@@ -43,10 +43,10 @@ export function CommentSection({
   className,
 }: CommentSectionProps) {
   const { t } = useTranslation();
-  const [comments, setComments] = React.useState<Comment[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [replyingTo, setReplyingTo] = React.useState<{
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{
     id: string;
     username: string;
   } | null>(null);
@@ -54,7 +54,7 @@ export function CommentSection({
   const apiPath = entityType === 'mcp' ? 'mcp' : 'skills';
 
   // Fetch comments on mount
-  const fetchComments = React.useCallback(async () => {
+  const fetchComments = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -73,7 +73,7 @@ export function CommentSection({
     }
   }, [apiPath, entityId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchComments();
   }, [fetchComments]);
 
