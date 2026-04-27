@@ -3,7 +3,7 @@
  * Uses Monaco Editor for code highlighting (read-only mode)
  * Supports static HTML preview via Blob URL and live preview via Vite
  */
-import * as React from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Code, Eye, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -160,17 +160,17 @@ export function ArtifactPreview({
   const isHtml = isHtmlArtifact(artifact);
 
   // View mode state for HTML artifacts
-  const [viewMode, setViewMode] = React.useState<HtmlViewMode>("preview");
+  const [viewMode, setViewMode] = useState<HtmlViewMode>("preview");
 
   // Create blob URL for static HTML preview
-  const iframeSrc = React.useMemo(() => {
+  const iframeSrc = useMemo(() => {
     if (!isHtml || !content) return null;
     const blob = new Blob([content], { type: "text/html" });
     return URL.createObjectURL(blob);
   }, [isHtml, content]);
 
   // Cleanup blob URL on unmount or content change
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (iframeSrc) {
         URL.revokeObjectURL(iframeSrc);
@@ -341,7 +341,7 @@ export function ArtifactPreview({
  */
 export function ToolPreview({ tool }: { tool: ToolUsage }) {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = React.useState<"input" | "output">("output");
+  const [activeSection, setActiveSection] = useState<"input" | "output">("output");
 
   const formatInput = (input: unknown): string => {
     if (!input) return "";
