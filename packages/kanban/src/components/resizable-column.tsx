@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useCallback } from "react";
 import { ChevronsLeft, ChevronsRight, Lock, GripVertical } from "lucide-react";
 import { Button, Badge, cn, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@viben/ui";
 
@@ -55,7 +56,7 @@ export function ResizableColumn({
   const isOverWip = wipLimit !== undefined && count > wipLimit;
 
   // Handle resize drag start
-  const handleResizeMouseDown = React.useCallback(
+  const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if (isLocked) return;
       e.preventDefault();
