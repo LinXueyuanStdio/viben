@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useState, useRef, useMemo, useContext, useEffect } from "react";
 import { Button, cn } from "@viben/ui";
 import { Ban, CircleSlash, Link, Copy, ChevronDown, Plus, Search } from "lucide-react";
 import type { RelationshipType } from "./relationship-types";
@@ -27,7 +28,7 @@ interface PopoverContextValue {
 const PopoverContext = React.createContext<PopoverContextValue | null>(null);
 
 function usePopoverContext() {
-  const context = React.useContext(PopoverContext);
+  const context = useContext(PopoverContext);
   if (!context) {
     throw new Error("Popover components must be used within a Popover provider");
   }
@@ -43,7 +44,7 @@ function Popover({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
 
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
@@ -96,9 +97,9 @@ const PopoverContent = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & { align?: "start" | "center" | "end" }
 >(({ className, align = "start", children, ...props }, ref) => {
   const { open, setOpen } = usePopoverContext();
-  const contentRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -155,13 +156,13 @@ export function RelationshipAdd({
   onAdd,
   disabled = false,
 }: RelationshipAddProps) {
-  const [selectedType, setSelectedType] = React.useState<RelationshipType | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
-  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const [selectedType, setSelectedType] = useState<RelationshipType | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Filter tasks based on search query
-  const filteredTasks = React.useMemo(() => {
+  const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) {
       return availableTasks;
     }
