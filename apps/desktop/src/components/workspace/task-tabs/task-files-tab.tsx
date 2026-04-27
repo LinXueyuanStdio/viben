@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   cn,
   ScrollArea,
@@ -140,7 +140,7 @@ function FileContentPreview({
   onCopyPath: (path: string) => void;
 }) {
   const { t } = useTranslation();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
     onCopyPath(file.path);
@@ -262,16 +262,16 @@ export function TaskFilesTab({
   onLoadFileContent,
 }: TaskFilesTabProps) {
   const { t } = useTranslation();
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
-  const [fileContent, setFileContent] = React.useState<string | undefined>();
-  const [isLoadingContent, setIsLoadingContent] = React.useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [fileContent, setFileContent] = useState<string | undefined>();
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
 
   // Filter to only show files (not directories) for now
   const displayFiles = files.filter((f) => f.type === "file");
   const selectedFile = displayFiles[selectedIndex];
 
   // Load file content when selection changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedFile || !onLoadFileContent) {
       setFileContent(selectedFile?.content);
       return;
@@ -299,7 +299,7 @@ export function TaskFilesTab({
   }, [selectedFile, onLoadFileContent]);
 
   // Keyboard navigation
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (displayFiles.length === 0) return;
 
@@ -317,7 +317,7 @@ export function TaskFilesTab({
   }, [displayFiles.length]);
 
   // Reset selection when files change
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedIndex(0);
   }, [taskId]);
 
