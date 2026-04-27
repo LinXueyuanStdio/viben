@@ -5,7 +5,7 @@
  * Displays all check items with their dependencies and status.
  */
 
-import * as React from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { RefreshCw, ExternalLink } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -53,20 +53,20 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   });
 
   // State for Python section
-  const [customPythonPath, setCustomPythonPath] = React.useState("");
+  const [customPythonPath, setCustomPythonPath] = useState("");
   // State for Node.js section
-  const [customNodejsPath, setCustomNodejsPath] = React.useState("");
-  const [expandedNodes, setExpandedNodes] = React.useState<Record<string, boolean>>({});
-  const [tipIndex, setTipIndex] = React.useState(0);
+  const [customNodejsPath, setCustomNodejsPath] = useState("");
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [tipIndex, setTipIndex] = useState(0);
 
   // Track whether we've started checks
-  const hasStartedRef = React.useRef(false);
+  const hasStartedRef = useRef(false);
 
   // ============================================================================
   // Loading Tips Rotation
   // ============================================================================
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!orchestrator.isRunning) return;
 
     const interval = setInterval(() => {
@@ -80,7 +80,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   // Auto-start on mount
   // ============================================================================
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasStartedRef.current) {
       log("Auto-starting environment checks");
       hasStartedRef.current = true;
@@ -93,9 +93,9 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   // ============================================================================
 
   // Track which nodes we've already auto-expanded to avoid repeated expansions
-  const autoExpandedRef = React.useRef<Set<string>>(new Set());
+  const autoExpandedRef = useRef<Set<string>>(new Set());
 
-  React.useEffect(() => {
+  useEffect(() => {
     // Auto-expand nodejs-selector or python-selector nodes when check completes
     // so users can see the logs and selection options
     for (const node of orchestrator.nodes) {
