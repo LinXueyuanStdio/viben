@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { Heart, Zap, Server } from 'lucide-react';
@@ -30,11 +30,11 @@ interface FavoritePackage {
 
 export function ProfileFavorites() {
   const { t } = useTranslation();
-  const [favorites, setFavorites] = React.useState<FavoritePackage[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [favorites, setFavorites] = useState<FavoritePackage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchFavorites = React.useCallback(async () => {
+  const fetchFavorites = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -52,7 +52,7 @@ export function ProfileFavorites() {
     }
   }, [t]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchFavorites();
   }, [fetchFavorites]);
 
