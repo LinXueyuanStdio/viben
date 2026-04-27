@@ -5,7 +5,7 @@
  * for refresh, open in new tab, fullscreen, and stop server.
  */
 
-import * as React from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -51,17 +51,17 @@ export function VitePreview({
   className,
 }: VitePreviewProps) {
   const { t } = useTranslation();
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [iframeKey, setIframeKey] = React.useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
 
   // Handle iframe refresh
-  const handleRefresh = React.useCallback(() => {
+  const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
   }, []);
 
   // Handle open in new tab
-  const handleOpenExternal = React.useCallback(async () => {
+  const handleOpenExternal = useCallback(async () => {
     if (previewUrl) {
       try {
         // Try to use Tauri opener plugin if available
@@ -75,7 +75,7 @@ export function VitePreview({
   }, [previewUrl]);
 
   // Handle keyboard shortcut for refresh
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + R to refresh
       if ((e.metaKey || e.ctrlKey) && e.key === "r") {
