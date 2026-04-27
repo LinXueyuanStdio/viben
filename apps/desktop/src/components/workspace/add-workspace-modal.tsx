@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -38,15 +38,15 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
 
   // Wizard state
-  const [step, setStep] = React.useState<WizardStep>("choose");
-  const [method, setMethod] = React.useState<CreationMethod | null>(null);
-  const [selectedPath, setSelectedPath] = React.useState<string | null>(null);
-  const [folderStatus, setFolderStatus] = React.useState<FolderStatus | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [creationResult, setCreationResult] = React.useState<CreationResult | null>(null);
+  const [step, setStep] = useState<WizardStep>("choose");
+  const [method, setMethod] = useState<CreationMethod | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [folderStatus, setFolderStatus] = useState<FolderStatus | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [creationResult, setCreationResult] = useState<CreationResult | null>(null);
 
   // Reset state when modal opens/closes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       // Reset after close animation
       const timer = setTimeout(() => {
@@ -62,7 +62,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   }, [open]);
 
   // Detect folder status via Gateway API
-  const detectFolderStatus = React.useCallback(async (path: string): Promise<FolderStatus> => {
+  const detectFolderStatus = useCallback(async (path: string): Promise<FolderStatus> => {
     try {
       const client = getGatewayClient();
       const response = await fetch(`${client["baseUrl"]}/api/workspaces/detect?path=${encodeURIComponent(path)}`);
