@@ -212,7 +212,7 @@ export const YooptaBlockOptions = ({
   return (
     <>
       <BlockOptions open={open} onOpenChange={onOpenChange} anchor={anchor}>
-        <BlockOptions.Content side="right" align="end">
+        <BlockOptions.Content side="right" align="start">
           <BlockOptions.Group>
             <BlockOptions.Item variant="destructive" onSelect={onDelete}>
               <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
