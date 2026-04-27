@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,12 @@ export function CommentForm({
   className,
 }: CommentFormProps) {
   const { t } = useTranslation();
-  const [content, setContent] = React.useState('');
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus textarea when replying
-  React.useEffect(() => {
+  useEffect(() => {
     if (parentId && textareaRef.current) {
       textareaRef.current.focus();
     }
