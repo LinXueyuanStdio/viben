@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 import {
@@ -68,15 +69,15 @@ export function ArtifactPreview({
   onStopLivePreview,
 }: ArtifactPreviewProps) {
   const { t } = useTranslation();
-  const [viewMode, setViewMode] = React.useState<ViewMode>("preview");
-  const [previewMode, setPreviewMode] = React.useState<PreviewMode>("static");
-  const [copied, setCopied] = React.useState(false);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-  const [isNodeAvailable, setIsNodeAvailable] = React.useState<boolean | null>(null);
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("preview");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("static");
+  const [copied, setCopied] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNodeAvailable, setIsNodeAvailable] = useState<boolean | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Check if Node.js is available (required for Live Preview)
-  React.useEffect(() => {
+  useEffect(() => {
     async function checkNode() {
       try {
         const baseUrl = getGatewayUrl();
@@ -93,21 +94,21 @@ export function ArtifactPreview({
 
   // Check if live preview is available for this artifact
   // Requires: HTML artifact + onStartLivePreview handler + Node.js installed
-  const canUseLivePreview = React.useMemo(() => {
+  const canUseLivePreview = useMemo(() => {
     if (!artifact) return false;
     if (!isNodeAvailable) return false;
     return artifact.type === "html" && onStartLivePreview !== undefined;
   }, [artifact, onStartLivePreview, isNodeAvailable]);
 
   // Auto-switch to live mode if live preview is already running
-  React.useEffect(() => {
+  useEffect(() => {
     if (livePreviewStatus === "running" && canUseLivePreview) {
       setPreviewMode("live");
     }
   }, [livePreviewStatus, canUseLivePreview]);
 
   // Reset view mode when artifact changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!artifact) {
       setViewMode("preview");
       return;
@@ -168,7 +169,7 @@ export function ArtifactPreview({
   };
 
   // Check if preview is available
-  const hasPreview = React.useMemo(() => {
+  const hasPreview = useMemo(() => {
     if (!artifact) return false;
     switch (artifact.type) {
       case "html":
@@ -201,7 +202,7 @@ export function ArtifactPreview({
   }, [artifact]);
 
   // Check if code view is available
-  const hasCodeView = React.useMemo(() => {
+  const hasCodeView = useMemo(() => {
     if (!artifact) return false;
     if (
       ["image", "pdf", "document", "spreadsheet", "presentation", "font", "audio", "video"].includes(
@@ -221,7 +222,7 @@ export function ArtifactPreview({
   const shouldShowStaticPreview =
     viewMode === "preview" && previewMode === "static";
 
-  const iframeSrc = React.useMemo(() => {
+  const iframeSrc = useMemo(() => {
     // Only create blob URL when we need to show static preview
     if (!shouldShowStaticPreview) return null;
     if (!artifact?.content || artifact.type !== "html") return null;
@@ -236,7 +237,7 @@ export function ArtifactPreview({
   }, [artifact?.content, artifact?.type, allArtifacts, shouldShowStaticPreview]);
 
   // Cleanup blob URL when it changes or on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (iframeSrc) {
         URL.revokeObjectURL(iframeSrc);
