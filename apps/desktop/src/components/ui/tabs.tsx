@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useContext } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +15,7 @@ interface TabsContextValue {
 const TabsContext = React.createContext<TabsContextValue | null>(null);
 
 function useTabsContext() {
-  const context = React.useContext(TabsContext);
+  const context = useContext(TabsContext);
   if (!context) {
     throw new Error("Tabs components must be used within a Tabs provider");
   }
