@@ -1,7 +1,7 @@
 /**
  * Workspace tab content for the right sidebar
  */
-import * as React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -51,7 +51,7 @@ function FileTreeItem({
   onSelect?: (file: WorkingFile) => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = React.useState(file.isExpanded ?? false);
+  const [isExpanded, setIsExpanded] = useState(file.isExpanded ?? false);
 
   const handleClick = () => {
     if (file.isDir) {
@@ -131,8 +131,8 @@ export function WorkspaceTabContent({
   onFileSelect,
 }: WorkspaceTabContentProps) {
   const { t } = useTranslation();
-  const [outputExpanded, setOutputExpanded] = React.useState(true);
-  const [externalExpanded, setExternalExpanded] = React.useState(true);
+  const [outputExpanded, setOutputExpanded] = useState(true);
+  const [externalExpanded, setExternalExpanded] = useState(true);
 
   // Get folder name from path
   const getFolderName = (path: string) => path.split(/[\\/]/).pop() || path;
