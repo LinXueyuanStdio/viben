@@ -699,13 +699,13 @@ export function useWorkspaceChat() {
             .map(uiMessageToAgentMessage)
             .filter((msg): msg is AgentMessage => msg !== null);
 
+          // Extract SDK session ID for resume - REST API returns snake_case (sdk_session_id)
           const sdkSessionMsg = uiMessages
-            .filter((msg): msg is { sdkSessionId: string } & typeof msg =>
-              msg.type === "sdk_session" && typeof msg.sdkSessionId === "string"
-            )
+            .filter((msg) => msg.type === "sdk_session")
             .pop();
+          const savedSdkSessionId = sdkSessionMsg?.sdkSessionId || sdkSessionMsg?.sdk_session_id;
 
-          loadMessages(agentMessages, sdkSessionMsg?.sdkSessionId);
+          loadMessages(agentMessages, savedSdkSessionId);
         } else {
           clearMessages();
         }

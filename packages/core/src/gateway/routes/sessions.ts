@@ -37,7 +37,7 @@ function toSnakeCaseMessage(m: { timestamp: string; role: string; content: strin
 /**
  * Transform UI message to snake_case response format
  */
-function toSnakeCaseUIMessage(m: { id: string; timestamp: string; type: string; content?: string; toolUseId?: string; toolName?: string; toolInput?: unknown; toolOutput?: string; isError?: boolean; attachments?: unknown[] }) {
+function toSnakeCaseUIMessage(m: { id: string; timestamp: string; type: string; content?: string; toolUseId?: string; toolName?: string; toolInput?: unknown; toolOutput?: string; isError?: boolean; attachments?: unknown[]; sdkSessionId?: string }) {
   return {
     id: m.id,
     timestamp: m.timestamp,
@@ -49,6 +49,7 @@ function toSnakeCaseUIMessage(m: { id: string; timestamp: string; type: string; 
     tool_output: m.toolOutput,
     is_error: m.isError,
     attachments: m.attachments,
+    sdk_session_id: m.sdkSessionId,
   };
 }
 

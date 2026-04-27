@@ -17,6 +17,11 @@ import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
 import type { ExecutorType } from "../../types";
+import {
+  encodeWorkspacePath,
+  getClaudeProjectsDir,
+  readClaudeCodeSessionMessages,
+} from "./executors";
 
 // ============================================================================
 // Helper Functions
@@ -98,6 +103,7 @@ function toSnakeCaseUIMessage(m: UIMessage) {
     tool_output: m.toolOutput,
     is_error: m.isError,
     attachments: m.attachments,
+    sdk_session_id: m.sdkSessionId,
   };
 }
 
@@ -812,10 +818,37 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const agentDir = await resolveAgentDir(id, workspace_path);
         const messages = await state.sessionStore.readUIMessages(id, session_id, agentDir);
-        return {
-          messages: messages.map(toSnakeCaseUIMessage),
-          total: messages.length,
-        };
+        if (messages.length > 0) {
+          return {
+            messages: messages.map(toSnakeCaseUIMessage),
+            total: messages.length,
+          };
+        }
+
+        // Fallback: read from Claude Code's native session file
+        // When tasks are started via `viben task start`, the detached process writes
+        // to Claude Code's own session storage (~/.claude/projects/<encoded>/<sessionId>.jsonl)
+        // but not to the viben SessionStore. This fallback reads from Claude Code's native format.
+        if (workspace_path) {
+          try {
+            const projectsDir = getClaudeProjectsDir();
+            const encodedPath = encodeWorkspacePath(workspace_path);
+            const filePath = join(projectsDir, encodedPath, `${session_id}.jsonl`);
+            if (existsSync(filePath)) {
+              const executorMessages = await readClaudeCodeSessionMessages(filePath);
+              if (executorMessages.length > 0) {
+                return {
+                  messages: executorMessages,
+                  total: executorMessages.length,
+                };
+              }
+            }
+          } catch {
+            // Fallback failed, return empty
+          }
+        }
+
+        return { messages: [], total: 0 };
       } catch (e) {
         reply.code(500);
         return { error: e instanceof Error ? e.message : "Failed to read UI messages" };

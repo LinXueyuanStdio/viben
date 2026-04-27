@@ -123,6 +123,8 @@ export interface UIMessage {
   attachments?: Record<string, unknown>[];
   /** SDK session ID for resume (stored when type is "sdk_session") */
   sdkSessionId?: string;
+  /** SDK session ID in snake_case (from REST API response) */
+  sdk_session_id?: string;
 }
 
 /** Create session request */

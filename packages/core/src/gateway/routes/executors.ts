@@ -42,7 +42,7 @@ interface ExecutorSession {
 /**
  * UI message converted from Claude Code format (snake_case to match Rust gateway)
  */
-interface ExecutorUIMessage {
+export interface ExecutorUIMessage {
   id: string;
   timestamp: string;
   type: string;
@@ -60,14 +60,14 @@ interface ExecutorUIMessage {
  * Encode a workspace path to Claude's project folder format
  * /Users/foo/bar -> -Users-foo-bar
  */
-function encodeWorkspacePath(workspacePath: string): string {
+export function encodeWorkspacePath(workspacePath: string): string {
   return workspacePath.replace(/\//g, "-");
 }
 
 /**
  * Get the Claude Code projects directory
  */
-function getClaudeProjectsDir(): string {
+export function getClaudeProjectsDir(): string {
   return path.join(os.homedir(), ".claude", "projects");
 }
 
@@ -148,7 +148,7 @@ async function readFirstUserMessage(filePath: string): Promise<string | undefine
 /**
  * Read messages from a Claude Code session file
  */
-async function readClaudeCodeSessionMessages(
+export async function readClaudeCodeSessionMessages(
   filePath: string,
   limit?: number
 ): Promise<ExecutorUIMessage[]> {

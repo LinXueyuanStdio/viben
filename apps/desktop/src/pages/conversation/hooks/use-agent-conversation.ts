@@ -59,22 +59,27 @@ const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, m
  */
 interface SSEMessageData {
   type: "session" | "sdk_session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
-  // session
+  // session (backend sends snake_case: session_id, trace_id)
   sessionId?: string;
+  session_id?: string;
   /** Trace ID for observability correlation (sent with session message) */
   traceId?: string;
-  // sdk_session - The SDK's internal session ID for resume
+  trace_id?: string;
+  // sdk_session - The SDK's internal session ID for resume (backend sends sdk_session_id)
   sdkSessionId?: string;
+  sdk_session_id?: string;
   // text
   content?: string;
   // tool_use
   id?: string;
   name?: string;
   input?: unknown;
-  // tool_result
+  // tool_result (backend sends snake_case: tool_use_id, is_error)
   toolUseId?: string;
+  tool_use_id?: string;
   output?: string;
   isError?: boolean;
+  is_error?: boolean;
   // plan
   plan?: {
     id: string;
@@ -231,25 +236,30 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     console.log("[useAgent] SSE message:", data);
 
     switch (data.type) {
-      case "session":
-        if (data.sessionId) {
-          setSessionId(data.sessionId);
+      case "session": {
+        const sid = data.sessionId || data.session_id;
+        if (sid) {
+          setSessionId(sid);
         }
         // Capture trace ID for observability
-        if (data.traceId) {
-          setTraceId(data.traceId);
-          console.log("[useAgent] Got trace ID:", data.traceId);
+        const tid = data.traceId || data.trace_id;
+        if (tid) {
+          setTraceId(tid);
+          console.log("[useAgent] Got trace ID:", tid);
         }
         break;
+      }
 
-      case "sdk_session":
+      case "sdk_session": {
         // SDK's internal session ID for resume functionality
         // This is different from the gateway session ID
-        if (data.sdkSessionId) {
-          console.log("[useAgent] Got SDK session ID:", data.sdkSessionId);
-          setSdkSessionId(data.sdkSessionId);
+        const sdkSid = data.sdkSessionId || data.sdk_session_id;
+        if (sdkSid) {
+          console.log("[useAgent] Got SDK session ID:", sdkSid);
+          setSdkSessionId(sdkSid);
         }
         break;
+      }
 
       case "text":
         // Streaming text: append to existing message or create new one
@@ -326,20 +336,24 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Reset streaming ID so next text creates a new message
         streamingMessageIdRef.current = null;
 
+        // Backend sends snake_case (tool_use_id, is_error), support both formats
+        const resultToolUseId = data.toolUseId || data.tool_use_id || "";
+        const resultIsError = data.isError ?? data.is_error;
+
         const resultMsg: AgentMessage = {
           id: generateId(),
           type: "tool_result",
-          toolUseId: data.toolUseId || "",
+          toolUseId: resultToolUseId,
           output: data.output || "",
-          isError: data.isError,
+          isError: resultIsError,
         };
         setMessages((prev) => [...prev, resultMsg]);
 
         // Update tool usage to mark as completed
-        if (data.toolUseId) {
+        if (resultToolUseId) {
           setToolUsages((prev) =>
             prev.map((t) =>
-              t.toolUseId === data.toolUseId
+              t.toolUseId === resultToolUseId
                 ? { ...t, output: resultMsg.output, completedAt: Date.now() }
                 : t
             )
