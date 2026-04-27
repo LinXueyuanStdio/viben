@@ -6,7 +6,7 @@ page:
     - write
 icon:
   type: emoji
-  value: "\U0001F44D\U0001F3FC"
+  value: "\U0001F600"
 name: heart
 description: the icon is heart
 ---
