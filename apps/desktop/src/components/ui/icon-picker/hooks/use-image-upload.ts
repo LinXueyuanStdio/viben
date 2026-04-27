@@ -1,14 +1,13 @@
 /**
  * useImageUpload Hook
  *
- * Handles image upload and validation for icon picker.
- * - Validates that images are square (equal width and height)
+ * Handles image upload for icon picker.
  * - Saves images to workspace .viben/icons/ directory
  * - Supports both local file upload and URL download
  */
 
 import { useState, useCallback } from "react";
-import { validateImageDimensions, generateIconFilename, getIconStoragePath } from "../utils";
+import { generateIconFilename, getIconStoragePath } from "../utils";
 
 export interface UseImageUploadOptions {
   /** Workspace path for saving uploaded images */
@@ -122,28 +121,13 @@ export function useImageUpload({ workspacePath }: UseImageUploadOptions = {}): U
         return null;
       }
 
-      // Validate dimensions
-      const blob = new Blob([new Uint8Array(imageData)]);
-      const objectUrl = URL.createObjectURL(blob);
+      // Generate filename and save
+      const filename = generateIconFilename(sourceExtension);
+      const relativePath = getIconStoragePath(filename);
 
-      try {
-        const validation = await validateImageDimensions(objectUrl);
+      await writeToWorkspace(workspacePath, relativePath, imageData);
 
-        if (!validation.valid) {
-          setError(validation.error ?? "Invalid image dimensions");
-          return null;
-        }
-
-        // Generate filename and save
-        const filename = generateIconFilename(sourceExtension);
-        const relativePath = getIconStoragePath(filename);
-
-        await writeToWorkspace(workspacePath, relativePath, imageData);
-
-        return relativePath;
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
+      return relativePath;
     },
     [workspacePath]
   );

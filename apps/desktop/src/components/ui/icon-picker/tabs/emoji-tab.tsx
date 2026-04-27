@@ -1,126 +1,53 @@
 /**
- * EmojiTab Component
+ * EmojiTab — emoji-mart integration
  *
- * Tab content for selecting emojis.
- * Reuses the emoji categories from the existing EmojiPicker.
+ * Wraps @emoji-mart/react Picker with app theme and i18n support.
  */
 
-import * as React from "react";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-// Emoji categories (same as chat emoji-picker)
-const EMOJI_CATEGORIES = {
-  smileys: {
-    labelKey: "chat.emojiPicker.smileys",
-    emojis: [
-      "\u{1F600}", "\u{1F603}", "\u{1F604}", "\u{1F601}", "\u{1F606}",
-      "\u{1F605}", "\u{1F602}", "\u{1F923}", "\u{1F60A}", "\u{1F607}",
-      "\u{1F642}", "\u{1F643}", "\u{1F609}", "\u{1F60C}", "\u{1F60D}",
-      "\u{1F970}", "\u{1F618}", "\u{1F617}", "\u{1F619}", "\u{1F61A}",
-      "\u{1F60B}", "\u{1F61B}", "\u{1F61C}", "\u{1F92A}", "\u{1F61D}",
-      "\u{1F911}", "\u{1F917}", "\u{1F92D}", "\u{1F92B}", "\u{1F914}",
-    ],
-  },
-  gestures: {
-    labelKey: "chat.emojiPicker.gestures",
-    emojis: [
-      "\u{1F44D}", "\u{1F44E}", "\u{1F44F}", "\u{1F64C}", "\u{1F91D}",
-      "\u{1F64F}", "\u{270D}\u{FE0F}", "\u{1F4AA}", "\u{1F91E}", "\u{270C}\u{FE0F}",
-      "\u{1F918}", "\u{1F44C}", "\u{1F448}", "\u{1F449}", "\u{1F446}",
-      "\u{1F447}", "\u{261D}\u{FE0F}", "\u{1F590}\u{FE0F}", "\u{1F4AA}", "\u{1F44A}",
-    ],
-  },
-  objects: {
-    labelKey: "chat.emojiPicker.objects",
-    emojis: [
-      "\u{2764}\u{FE0F}", "\u{1F525}", "\u{2B50}", "\u{1F31F}", "\u{2728}",
-      "\u{1F4A1}", "\u{1F389}", "\u{1F388}", "\u{1F381}", "\u{1F3C6}",
-      "\u{1F4BB}", "\u{1F4F1}", "\u{1F4E7}", "\u{1F4DD}", "\u{1F4DA}",
-      "\u{1F4D6}", "\u{1F50D}", "\u{1F511}", "\u{1F512}", "\u{1F513}",
-    ],
-  },
-  nature: {
-    labelKey: "chat.emojiPicker.nature",
-    emojis: [
-      "\u{2600}\u{FE0F}", "\u{1F324}\u{FE0F}", "\u{26C5}", "\u{1F327}\u{FE0F}",
-      "\u{26A1}", "\u{2744}\u{FE0F}", "\u{1F308}", "\u{1F33B}", "\u{1F337}",
-      "\u{1F339}", "\u{1F332}", "\u{1F334}", "\u{1F335}", "\u{1F340}",
-      "\u{1F341}", "\u{1F343}", "\u{1F436}", "\u{1F431}", "\u{1F98A}", "\u{1F981}",
-    ],
-  },
-  food: {
-    labelKey: "chat.emojiPicker.food",
-    emojis: [
-      "\u{2615}", "\u{1F375}", "\u{1F377}", "\u{1F378}", "\u{1F37A}",
-      "\u{1F354}", "\u{1F355}", "\u{1F35C}", "\u{1F363}", "\u{1F370}",
-      "\u{1F366}", "\u{1F36B}", "\u{1F34E}", "\u{1F34A}", "\u{1F34B}",
-      "\u{1F347}", "\u{1F353}", "\u{1F349}", "\u{1F34C}", "\u{1F952}",
-    ],
-  },
-  symbols: {
-    labelKey: "chat.emojiPicker.symbols",
-    emojis: [
-      "\u{2705}", "\u{274C}", "\u{2714}\u{FE0F}", "\u{2718}", "\u{2753}",
-      "\u{2757}", "\u{1F4AF}", "\u{1F4A2}", "\u{1F4A4}", "\u{1F4AC}",
-      "\u{1F4AD}", "\u{1F5E8}\u{FE0F}", "\u{2795}", "\u{2796}", "\u{2716}\u{FE0F}",
-      "\u{2797}", "\u{27A1}\u{FE0F}", "\u{2B05}\u{FE0F}", "\u{2B06}\u{FE0F}", "\u{2B07}\u{FE0F}",
-    ],
-  },
-} as const;
-
-type CategoryKey = keyof typeof EMOJI_CATEGORIES;
+import { useTheme } from "@/hooks/use-theme";
+import "../emoji-mart.css";
 
 export interface EmojiTabProps {
-  /** Callback when an emoji is selected */
   onSelect: (emoji: string) => void;
 }
 
-export function EmojiTab({ onSelect }: EmojiTabProps) {
-  const { t } = useTranslation();
-  const [selectedCategory, setSelectedCategory] = React.useState<CategoryKey>("smileys");
+interface EmojiMartEmoji {
+  id: string;
+  native: string;
+  shortcodes: string;
+  unified: string;
+}
 
-  const categories = Object.keys(EMOJI_CATEGORIES) as CategoryKey[];
+export function EmojiTab({ onSelect }: EmojiTabProps) {
+  const { i18n } = useTranslation();
+  const { resolvedTheme } = useTheme();
+
+  const handleSelect = (emoji: EmojiMartEmoji) => {
+    onSelect(emoji.native);
+  };
+
+  // Map i18n language to emoji-mart locale
+  const locale = i18n.language?.startsWith("zh") ? "zh" : "en";
 
   return (
-    <div className="flex flex-col">
-      {/* Category tabs */}
-      <div className="flex gap-1 p-2 pb-0 border-b border-border overflow-x-auto">
-        {categories.map((key) => {
-          const category = EMOJI_CATEGORIES[key];
-          const firstEmoji = category.emojis[0];
-          return (
-            <Button
-              key={key}
-              variant={selectedCategory === key ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 w-7 p-0 text-base shrink-0"
-              onClick={() => setSelectedCategory(key)}
-              title={t(category.labelKey)}
-            >
-              {firstEmoji}
-            </Button>
-          );
-        })}
-      </div>
-
-      {/* Emoji grid */}
-      <ScrollArea className="h-[200px]">
-        <div className="grid grid-cols-8 gap-0.5 p-2">
-          {EMOJI_CATEGORIES[selectedCategory].emojis.map((emoji, index) => (
-            <button
-              key={`${selectedCategory}-${index}`}
-              type="button"
-              className="flex h-8 w-8 items-center justify-center text-lg rounded transition-colors hover:bg-accent"
-              onClick={() => onSelect(emoji)}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
+    <Picker
+      data={data}
+      onEmojiSelect={handleSelect}
+      theme={resolvedTheme}
+      set="native"
+      locale={locale}
+      perLine={9}
+      previewPosition="none"
+      skinTonePosition="search"
+      maxFrequentRows={2}
+      navPosition="bottom"
+      dynamicWidth={false}
+      emojiButtonSize={36}
+      emojiSize={22}
+    />
   );
 }
 

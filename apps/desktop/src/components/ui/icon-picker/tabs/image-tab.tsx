@@ -2,8 +2,9 @@
  * ImageTab Component
  *
  * Tab content for uploading custom images or downloading from URLs.
- * - Local file upload with square dimension validation
- * - URL input with download and validation
+ * - Local file upload
+ * - URL input with download
+ * - Preview with delayed selection
  */
 
 import * as React from "react";
@@ -24,6 +25,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
   const { t } = useTranslation();
   const [mode, setMode] = React.useState<"upload" | "url">("upload");
   const [urlInput, setUrlInput] = React.useState("");
+  const [preview, setPreview] = React.useState<string | null>(null);
 
   const { uploadFile, uploadUrl, uploading, error, clearError } = useImageUpload({
     workspacePath,
@@ -50,7 +52,9 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
         clearError();
         const result = await uploadFile(selected);
         if (result) {
-          onSelect(result);
+          setPreview(result);
+          setTimeout(() => onSelect(result), 1200);
+          return;
         }
       }
     } catch (err) {
@@ -68,7 +72,9 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
     const result = await uploadUrl(urlInput.trim());
     if (result) {
       setUrlInput("");
-      onSelect(result);
+      setPreview(result);
+      setTimeout(() => onSelect(result), 1200);
+      return;
     }
   }, [urlInput, uploadUrl, onSelect, clearError]);
 
@@ -139,9 +145,6 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
               </div>
             )}
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center">
-            {t("iconPicker.squareRequired", "Image must be square (equal width and height)")}
-          </p>
         </div>
       )}
 
@@ -170,9 +173,26 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
               )}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            {t("iconPicker.squareRequired", "Image must be square (equal width and height)")}
-          </p>
+        </div>
+      )}
+
+      {/* Preview */}
+      {preview && (
+        <div className="flex flex-col items-center gap-2 p-3">
+          <div className="relative h-16 w-16 rounded-lg overflow-hidden border">
+            <img
+              src={(() => {
+                if (!workspacePath) return preview;
+                const gatewayUrl = import.meta.env.VITE_GATEWAY_URL || "http://127.0.0.1:18790";
+                return `${gatewayUrl}/api/file/read?workspace_path=${encodeURIComponent(workspacePath)}&file_path=${encodeURIComponent(preview)}`;
+              })()}
+              alt="Preview"
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Uploaded!
+          </span>
         </div>
       )}
 

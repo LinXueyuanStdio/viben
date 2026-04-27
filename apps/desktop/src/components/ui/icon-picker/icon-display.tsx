@@ -10,6 +10,7 @@
 import * as React from "react";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DynamicLucideIcon } from "./dynamic-lucide-icon";
 import { LUCIDE_ICON_MAP, DEFAULT_ICON_NAME } from "./constants";
 import { parseIconData, getIconSizeClass, getIconPixelSize } from "./utils";
 import type { IconData, IconSize } from "./types";
@@ -161,8 +162,18 @@ export function IconDisplay({
   // Render based on icon type
   switch (iconData.type) {
     case "lucide": {
-      const LucideIcon = LUCIDE_ICON_MAP[iconData.value] ?? FileText;
-      return <LucideIcon className={cn(sizeClass, "shrink-0", className)} />;
+      const StaticIcon = LUCIDE_ICON_MAP[iconData.value];
+      if (StaticIcon) {
+        return <StaticIcon className={cn(sizeClass, "shrink-0", className)} />;
+      }
+      // Fallback: dynamically load icons not in static map
+      return (
+        <DynamicLucideIcon
+          name={iconData.value}
+          size={pixelSize}
+          className={cn("shrink-0", className)}
+        />
+      );
     }
 
     case "emoji": {
