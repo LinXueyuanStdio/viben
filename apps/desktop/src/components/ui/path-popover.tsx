@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useState } from "react";
 import { Copy, Check, FolderOpen, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +48,7 @@ export function PathPopover({
   align = "center",
 }: PathPopoverProps) {
   const { t } = useTranslation();
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Get icon based on location type
   const getIcon = () => {
