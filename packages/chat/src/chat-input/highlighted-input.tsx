@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { useRef, useCallback } from "react";
 import { cn } from "@viben/ui";
 
 export interface HighlightedInputProps
@@ -46,11 +47,11 @@ export const HighlightedInput = React.forwardRef<
   },
   ref
 ) {
-  const backdropRef = React.useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const slashCommand = highlightSlashCommand ? extractSlashCommand(value) : null;
 
   // Sync scroll position between textarea and backdrop
-  const handleScroll = React.useCallback(
+  const handleScroll = useCallback(
     (e: React.UIEvent<HTMLTextAreaElement>) => {
       if (backdropRef.current) {
         backdropRef.current.scrollTop = e.currentTarget.scrollTop;
