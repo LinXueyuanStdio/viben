@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Dices, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -110,25 +111,25 @@ export function IconPicker({
   showRandom = true,
 }: IconPickerProps) {
   const { t } = useTranslation();
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
-  const setOpen = React.useCallback((v: boolean) => {
+  const setOpen = useCallback((v: boolean) => {
     if (!isControlled) setUncontrolledOpen(v);
     controlledOnOpenChange?.(v);
   }, [isControlled, controlledOnOpenChange]);
-  const [randomSpin, setRandomSpin] = React.useState(false);
+  const [randomSpin, setRandomSpin] = useState(false);
 
   // Smart default tab
-  const smartDefault = React.useMemo(
+  const smartDefault = useMemo(
     () => getSmartDefaultTab(value, allowedTypes, defaultTab),
     [value, allowedTypes, defaultTab]
   );
-  const [activeTab, setActiveTab] = React.useState<IconType>(smartDefault);
+  const [activeTab, setActiveTab] = useState<IconType>(smartDefault);
 
   // Reset active tab only when popover first opens (not on value changes)
-  const prevOpenRef = React.useRef(false);
-  React.useEffect(() => {
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
     if (open && !prevOpenRef.current) {
       // Just opened — pick smart default
       setActiveTab(getSmartDefaultTab(value, allowedTypes, defaultTab));
@@ -137,7 +138,7 @@ export function IconPicker({
   }, [open, value, allowedTypes, defaultTab]);
 
   // Handlers
-  const handleLucideSelect = React.useCallback(
+  const handleLucideSelect = useCallback(
     (iconName: string) => {
       onChange?.(createLucideIcon(iconName));
       setOpen(false);
@@ -145,7 +146,7 @@ export function IconPicker({
     [onChange]
   );
 
-  const handleEmojiSelect = React.useCallback(
+  const handleEmojiSelect = useCallback(
     (emoji: string) => {
       onChange?.(createEmojiIcon(emoji));
       setOpen(false);
@@ -153,7 +154,7 @@ export function IconPicker({
     [onChange]
   );
 
-  const handleImageSelect = React.useCallback(
+  const handleImageSelect = useCallback(
     (imagePath: string) => {
       onChange?.(createImageIcon(imagePath));
       setOpen(false);
@@ -161,12 +162,12 @@ export function IconPicker({
     [onChange]
   );
 
-  const handleRemove = React.useCallback(() => {
+  const handleRemove = useCallback(() => {
     onChange?.(null);
     setOpen(false);
   }, [onChange]);
 
-  const handleRandom = React.useCallback(() => {
+  const handleRandom = useCallback(() => {
     // Spin animation
     setRandomSpin(true);
     setTimeout(() => setRandomSpin(false), 500);
@@ -182,7 +183,7 @@ export function IconPicker({
   }, [activeTab, onChange]);
 
   // Current icon for display
-  const currentIconValue = React.useMemo(() => {
+  const currentIconValue = useMemo(() => {
     if (!value) return undefined;
     if (typeof value === "string") return value;
     return value;
@@ -215,7 +216,7 @@ export function IconPicker({
   );
 
   return (
-    <Popover open={open} onOpenChange={(v) => { console.log("[DEBUG:IconPicker:Popover] onOpenChange:", v, "isControlled:", isControlled); setOpen(v); }}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
         {trigger ?? defaultTrigger}
       </PopoverTrigger>
@@ -227,11 +228,10 @@ export function IconPicker({
         >
           {/* Tab bar with tools */}
           <TabsList className="w-full justify-between rounded-none p-0 h-auto">
-            <div className="flex items-center">
               {showEmoji && (
                 <TabsTrigger
                   value="emoji"
-                  className="px-3 py-2 text-xs"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
                 >
                   {t("iconPicker.emoji", "Emoji")}
                 </TabsTrigger>
@@ -239,7 +239,7 @@ export function IconPicker({
               {showLucide && (
                 <TabsTrigger
                   value="lucide"
-                  className="px-3 py-2 text-xs"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
                 >
                   {t("iconPicker.icons", "Icons")}
                 </TabsTrigger>
@@ -247,38 +247,37 @@ export function IconPicker({
               {showImage && (
                 <TabsTrigger
                   value="image"
-                  className="px-3 py-2 text-xs"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 py-2 text-xs"
                 >
                   {t("iconPicker.image", "Image")}
                 </TabsTrigger>
               )}
-            </div>
 
-            {/* Tool buttons */}
-            <div className="flex items-center gap-0.5 px-2">
-              {showRandomBtn && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn("h-7 w-7 p-0", randomSpin && "animate-spin")}
-                  onClick={handleRandom}
-                  title={t("iconPicker.random", "Random")}
-                >
-                  <Dices className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              {showRemoveBtn && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  onClick={handleRemove}
-                  title={t("iconPicker.remove", "Remove")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
+              {/* Tool buttons — spacer pushes to right */}
+              <div className="ml-auto flex items-center gap-0.5 px-2">
+                {showRandomBtn && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn("h-7 w-7 p-0", randomSpin && "animate-spin")}
+                    onClick={handleRandom}
+                    title={t("iconPicker.random", "Random")}
+                  >
+                    <Dices className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {showRemoveBtn && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={handleRemove}
+                    title={t("iconPicker.remove", "Remove")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
           </TabsList>
 
           {/* Tab content */}
