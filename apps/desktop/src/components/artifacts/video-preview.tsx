@@ -5,7 +5,7 @@
  * Supports both local files (via Tauri fs plugin) and remote URLs.
  */
 
-import * as React from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { ExternalLink, Loader2, Video } from "lucide-react";
@@ -21,11 +21,11 @@ import {
 
 export function VideoPreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
-  const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [fileTooLarge, setFileTooLarge] = React.useState<number | null>(null);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fileTooLarge, setFileTooLarge] = useState<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleOpenExternal = async () => {
     if (artifact.path) {
@@ -37,7 +37,7 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     let blobUrl: string | null = null;
 
     async function loadVideo() {
