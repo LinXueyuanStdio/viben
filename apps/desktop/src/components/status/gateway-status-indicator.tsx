@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Activity, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,7 @@ export function GatewayStatusIndicator({
     useGatewayStatus();
 
   // Determine variant based on status
-  const variant: StatusVariant = React.useMemo(() => {
+  const variant: StatusVariant = useMemo(() => {
     switch (status) {
       case "connected":
         return "success";
@@ -57,7 +57,7 @@ export function GatewayStatusIndicator({
   }, [status]);
 
   // Get icon based on status
-  const Icon = React.useMemo(() => {
+  const Icon = useMemo(() => {
     switch (status) {
       case "connected":
         return CheckCircle2;
@@ -87,7 +87,7 @@ export function GatewayStatusIndicator({
   };
 
   // Get display text
-  const displayText = React.useMemo(() => {
+  const displayText = useMemo(() => {
     switch (status) {
       case "connected":
         return t("gateway.connected");
@@ -103,7 +103,7 @@ export function GatewayStatusIndicator({
   }, [status, t]);
 
   // Get tooltip content
-  const tooltipContent = React.useMemo(() => {
+  const tooltipContent = useMemo(() => {
     switch (status) {
       case "connected":
         return t("gateway.connectedTooltip");
