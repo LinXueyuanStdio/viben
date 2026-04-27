@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -42,61 +42,61 @@ export function useWorkspaceChat() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
 
   // ========== UI State ==========
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Dialog states
-  const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false);
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = React.useState(false);
-  const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
-  const [isGroupDialogOpen, setIsGroupDialogOpen] = React.useState(false);
-  const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
-  const [isClearDialogOpen, setIsClearDialogOpen] = React.useState(false);
-  const [isCreateAgentDialogOpen, setIsCreateAgentDialogOpen] = React.useState(false);
-  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = React.useState(false);
-  const [conversationSearchQuery, setConversationSearchQuery] = React.useState("");
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isCreateAgentDialogOpen, setIsCreateAgentDialogOpen] = useState(false);
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+  const [conversationSearchQuery, setConversationSearchQuery] = useState("");
 
   // Create agent dialog state
-  const [selectedAgentTemplate, setSelectedAgentTemplate] = React.useState<AgentResponse | null>(null);
-  const [newAgentName, setNewAgentName] = React.useState("");
-  const [newAgentDescription, setNewAgentDescription] = React.useState("");
-  const [creatingAgent, setCreatingAgent] = React.useState(false);
-  const [createAgentLocation, setCreateAgentLocation] = React.useState<"workspace" | "global">("workspace");
-  const [globalVibenPath, setGlobalVibenPath] = React.useState<string>("");
+  const [selectedAgentTemplate, setSelectedAgentTemplate] = useState<AgentResponse | null>(null);
+  const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentDescription, setNewAgentDescription] = useState("");
+  const [creatingAgent, setCreatingAgent] = useState(false);
+  const [createAgentLocation, setCreateAgentLocation] = useState<"workspace" | "global">("workspace");
+  const [globalVibenPath, setGlobalVibenPath] = useState<string>("");
 
   // Resizable panel widths
-  const [leftPanelWidth, setLeftPanelWidth] = React.useState(240);
-  const [rightPanelWidth, setRightPanelWidth] = React.useState(320);
-  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(240);
+  const [rightPanelWidth, setRightPanelWidth] = useState(320);
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false);
 
   const MIN_LEFT_PANEL_WIDTH = 240;
   const MAX_LEFT_PANEL_WIDTH = 480;
   const MIN_RIGHT_PANEL_WIDTH = 280;
   const MAX_RIGHT_PANEL_WIDTH = 480;
 
-  const handleLeftPanelResize = React.useCallback((delta: number) => {
+  const handleLeftPanelResize = useCallback((delta: number) => {
     setLeftPanelWidth((prev) =>
       Math.min(MAX_LEFT_PANEL_WIDTH, Math.max(MIN_LEFT_PANEL_WIDTH, prev + delta))
     );
   }, []);
 
-  const handleRightPanelResize = React.useCallback((delta: number) => {
+  const handleRightPanelResize = useCallback((delta: number) => {
     setRightPanelWidth((prev) =>
       Math.min(MAX_RIGHT_PANEL_WIDTH, Math.max(MIN_RIGHT_PANEL_WIDTH, prev + delta))
     );
   }, []);
 
   // Left panel ScrollArea ref and width tracking
-  const leftPanelScrollRef = React.useRef<HTMLDivElement>(null);
-  const [leftPanelScrollWidth, setLeftPanelScrollWidth] = React.useState<number | null>(null);
+  const leftPanelScrollRef = useRef<HTMLDivElement>(null);
+  const [leftPanelScrollWidth, setLeftPanelScrollWidth] = useState<number | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     homeDir().then((home) => {
       setGlobalVibenPath(`${home}.viben/agents/`);
     });
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const scrollArea = leftPanelScrollRef.current;
     if (!scrollArea) return;
     const updateWidth = () => {
@@ -114,24 +114,24 @@ export function useWorkspaceChat() {
     : {};
 
   // ========== Conversation State ==========
-  const [conversations, setConversations] = React.useState<Conversation[]>([]);
-  const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(null);
-  const [isLoadingSessions, setIsLoadingSessions] = React.useState(false);
-  const [_sessionsError, setSessionsError] = React.useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [_sessionsError, setSessionsError] = useState<string | null>(null);
 
   // ========== Group Chat State ==========
-  const [selectedGroupChatId, setSelectedGroupChatId] = React.useState<string | null>(null);
-  const [selectedGroupSessionId, setSelectedGroupSessionId] = React.useState<string | null>(null);
-  const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
-  const [groupChatInput, setGroupChatInput] = React.useState("");
-  const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false);
-  const [renameGroupChatId, setRenameGroupChatId] = React.useState<string | null>(null);
-  const [renameGroupChatName, setRenameGroupChatName] = React.useState("");
-  const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
+  const [selectedGroupChatId, setSelectedGroupChatId] = useState<string | null>(null);
+  const [selectedGroupSessionId, setSelectedGroupSessionId] = useState<string | null>(null);
+  const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
+  const [groupChatInput, setGroupChatInput] = useState("");
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = useState(false);
+  const [renameGroupChatId, setRenameGroupChatId] = useState<string | null>(null);
+  const [renameGroupChatName, setRenameGroupChatName] = useState("");
+  const [mutedGroupChats, setMutedGroupChats] = useState<Set<string>>(new Set());
 
   // Right sidebar detail views
-  const [detailAgentId, setDetailAgentId] = React.useState<string | null>(null);
-  const [rightSidebarExecutorDetail, setRightSidebarExecutorDetail] = React.useState<{
+  const [detailAgentId, setDetailAgentId] = useState<string | null>(null);
+  const [rightSidebarExecutorDetail, setRightSidebarExecutorDetail] = useState<{
     id: string;
     name: string;
     type: string;
@@ -139,10 +139,10 @@ export function useWorkspaceChat() {
   } | null>(null);
 
   // Artifact-message linking state
-  const [highlightedArtifactId, setHighlightedArtifactId] = React.useState<string | null>(null);
-  const [highlightedMessageId, setHighlightedMessageId] = React.useState<string | null>(null);
+  const [highlightedArtifactId, setHighlightedArtifactId] = useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
-  const hasAutoExpandedSidebarRef = React.useRef(false);
+  const hasAutoExpandedSidebarRef = useRef(false);
 
   // ========== External Hooks ==========
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
@@ -159,7 +159,7 @@ export function useWorkspaceChat() {
     isNodeAvailable,
   } = useVitePreview(workspaceId || null);
 
-  const handleStartLivePreview = React.useCallback(() => {
+  const handleStartLivePreview = useCallback(() => {
     if (workspace?.path) {
       startPreview(workspace.path);
     }
@@ -167,7 +167,7 @@ export function useWorkspaceChat() {
 
   const toast = useToast();
 
-  const selectedAgentIdRef = React.useRef<string | null>(null);
+  const selectedAgentIdRef = useRef<string | null>(null);
 
   // Chat list
   const {
@@ -208,8 +208,8 @@ export function useWorkspaceChat() {
   const loadExecutors = refreshChatList;
 
   // Executor state
-  const [selectedSidebarExecutorId, setSelectedSidebarExecutorId] = React.useState<string | null>(null);
-  const [selectedExecutorSessionId, setSelectedExecutorSessionId] = React.useState<string | null>(null);
+  const [selectedSidebarExecutorId, setSelectedSidebarExecutorId] = useState<string | null>(null);
+  const [selectedExecutorSessionId, setSelectedExecutorSessionId] = useState<string | null>(null);
 
   const selectedSidebarExecutor = chatListExecutors.find((e) => e.id === selectedSidebarExecutorId);
   const selectedExecutorType = selectedSidebarExecutor?.id || null;
@@ -221,7 +221,7 @@ export function useWorkspaceChat() {
     refresh: refreshExecutorSessions,
   } = useExecutorSessions(selectedExecutorType, workspace?.path || null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (executorSessions.length > 0 && !selectedExecutorSessionId) {
       setSelectedExecutorSessionId(executorSessions[0].id);
     }
@@ -238,7 +238,7 @@ export function useWorkspaceChat() {
   } = useExecutorSessionMessages(selectedExecutorType, selectedExecutorSessionId, workspace?.path || null);
 
   // Convert ExecutorUIMessage to AgentMessage
-  const executorMessagesAsAgentMessages = React.useMemo(() => {
+  const executorMessagesAsAgentMessages = useMemo(() => {
     const convertMessages = (messages: ExecutorUIMessage[]): AgentMessage[] => {
       const toolResultMap = new Map<string, ExecutorUIMessage>();
       messages.forEach((msg) => {
@@ -329,7 +329,7 @@ export function useWorkspaceChat() {
   }, [executorMessages, t]);
 
   // Executor session statistics
-  const executorSessionStats = React.useMemo(() => {
+  const executorSessionStats = useMemo(() => {
     const toolNames = new Set<string>();
     let totalContentLength = 0;
     executorMessages.forEach((msg) => {
@@ -347,7 +347,7 @@ export function useWorkspaceChat() {
   // Models
   const { models: vibenModels } = useModels();
 
-  const executorModels = React.useMemo(() => {
+  const executorModels = useMemo(() => {
     if (!selectedExecutorType) return [];
     const allModels = vibenModels
       .filter((m) => m.is_available)
@@ -355,9 +355,9 @@ export function useWorkspaceChat() {
     return filterModelsByExecutor(allModels, selectedExecutorType);
   }, [selectedExecutorType, vibenModels]);
 
-  const [selectedExecutorModelId, setSelectedExecutorModelId] = React.useState<string | null>(null);
+  const [selectedExecutorModelId, setSelectedExecutorModelId] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (executorModels.length > 0) {
       setSelectedExecutorModelId(executorModels[0].id);
     } else {
@@ -369,7 +369,7 @@ export function useWorkspaceChat() {
   // Agents
   const { agents, defaultAgentId, setDefaultAgent, updateAgent, removeAgent, createAgent, templates: agentTemplates, refreshTemplates } = useAgents({ workspacePath: workspace?.path });
 
-  React.useEffect(() => {
+  useEffect(() => {
     refreshTemplates();
   }, [refreshTemplates]);
 
@@ -445,7 +445,7 @@ export function useWorkspaceChat() {
   });
 
   // Debug log
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("[WorkspaceChat] messages changed:", messages.length, "isStreaming:", isStreaming, "phase:", phase);
     console.log("[WorkspaceChat] selectedConversationId:", selectedConversationId, "isGroupChatMode:", selectedGroupChatId !== null);
     if (messages.length > 0) {
@@ -504,21 +504,21 @@ export function useWorkspaceChat() {
     },
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (workspace?.path) setGroupChatWorkspacePath(workspace.path);
   }, [workspace?.path, setGroupChatWorkspacePath]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (workspace?.path) loadGroupChats({ workspace_path: workspace.path, include_global: true });
   }, [workspace?.path, loadGroupChats]);
 
   const isGroupChatMode = selectedGroupChatId !== null;
 
   // ========== Notification Effects ==========
-  const prevPhaseRef = React.useRef<string | null>(null);
-  const prevErrorRef = React.useRef<string | null>(null);
+  const prevPhaseRef = useRef<string | null>(null);
+  const prevErrorRef = useRef<string | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (prevPhaseRef.current === "running" && phase === "completed") {
       const lastAssistantMessage = [...messages].reverse().find(
         (m) => m.type === "text" || m.type === "result"
@@ -535,7 +535,7 @@ export function useWorkspaceChat() {
     prevPhaseRef.current = phase;
   }, [phase, messages, currentAgent, selectedAgentId, workspaceId, selectedConversationId, notifyAIResponse, t]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (error && error !== prevErrorRef.current) {
       notifyChatError(error, currentAgent?.name);
     }
@@ -543,7 +543,7 @@ export function useWorkspaceChat() {
   }, [error, currentAgent, notifyChatError]);
 
   // Auto-expand sidebar
-  React.useEffect(() => {
+  useEffect(() => {
     if (isStreaming) return;
     if (!selectedConversationId && !selectedGroupChatId && !selectedSidebarExecutorId) return;
     if (hasAutoExpandedSidebarRef.current) return;
@@ -563,14 +563,14 @@ export function useWorkspaceChat() {
     }
   }, [artifacts.length, messages, workspace?.path, isStreaming, selectedConversationId, selectedGroupChatId, selectedSidebarExecutorId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     hasAutoExpandedSidebarRef.current = false;
   }, [selectedConversationId, selectedGroupChatId, selectedSidebarExecutorId]);
 
   // ========== Session Loading ==========
-  const isLoadingRef = React.useRef(false);
+  const isLoadingRef = useRef(false);
 
-  const refreshAgentSessions = React.useCallback(async () => {
+  const refreshAgentSessions = useCallback(async () => {
     if (!selectedAgentId || isLoadingRef.current) return;
     setIsLoadingSessions(true);
     setSessionsError(null);
@@ -592,8 +592,8 @@ export function useWorkspaceChat() {
   }, [selectedAgentId, workspace?.path, t]);
 
   // Restore last agent
-  const hasInitializedAgentRef = React.useRef(false);
-  React.useEffect(() => {
+  const hasInitializedAgentRef = useRef(false);
+  useEffect(() => {
     if (hasInitializedAgentRef.current) return;
     if (!workspaceId || agents.length === 0) return;
     hasInitializedAgentRef.current = true;
@@ -606,8 +606,8 @@ export function useWorkspaceChat() {
   }, [workspaceId, agents, defaultAgentId, setSelectedAgentId]);
 
   // Load sessions on agent change
-  const prevAgentRef = React.useRef<string | null>(null);
-  React.useEffect(() => {
+  const prevAgentRef = useRef<string | null>(null);
+  useEffect(() => {
     if (!selectedAgentId) return;
     if (agents.length === 0) return;
     if (!agents.some((a) => a.id === selectedAgentId)) return;
@@ -658,24 +658,24 @@ export function useWorkspaceChat() {
   }, [selectedAgentId, agents, workspace?.path, t]);
 
   // Persist selections
-  React.useEffect(() => {
+  useEffect(() => {
     if (workspaceId && selectedConversationId) saveLastSessionId(workspaceId, selectedConversationId);
   }, [workspaceId, selectedConversationId]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (workspaceId && selectedAgentId) saveLastAgentId(workspaceId, selectedAgentId);
   }, [workspaceId, selectedAgentId]);
 
   // Navigate back if workspace not found
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isLoadingWorkspace && !workspace && workspaceId) navigate(`/workspace/${workspaceId}`);
   }, [isLoadingWorkspace, workspace, workspaceId, navigate]);
 
   // Load messages on session change
-  const prevSessionRef = React.useRef<string | null>(null);
-  const isLoadingMessagesRef = React.useRef(false);
+  const prevSessionRef = useRef<string | null>(null);
+  const isLoadingMessagesRef = useRef(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedConversationId || !selectedAgentId) {
       prevSessionRef.current = null;
       return;
@@ -720,7 +720,7 @@ export function useWorkspaceChat() {
   }, [selectedConversationId, selectedAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ========== Filtered/Computed ==========
-  const filteredGroupChats = React.useMemo(() => {
+  const filteredGroupChats = useMemo(() => {
     if (!searchQuery.trim()) return groupChats;
     const query = searchQuery.toLowerCase();
     return groupChats.filter(
@@ -728,7 +728,7 @@ export function useWorkspaceChat() {
     );
   }, [groupChats, searchQuery]);
 
-  const filteredChatListAgents = React.useMemo(() => {
+  const filteredChatListAgents = useMemo(() => {
     if (!searchQuery.trim()) return chatListAgents;
     const query = searchQuery.toLowerCase();
     return chatListAgents.filter(
@@ -736,7 +736,7 @@ export function useWorkspaceChat() {
     );
   }, [chatListAgents, searchQuery]);
 
-  const filteredExecutors = React.useMemo(() => {
+  const filteredExecutors = useMemo(() => {
     if (!searchQuery.trim()) return chatListExecutors;
     const query = searchQuery.toLowerCase();
     return chatListExecutors.filter(
@@ -744,12 +744,12 @@ export function useWorkspaceChat() {
     );
   }, [chatListExecutors, searchQuery]);
 
-  const agentConversations = React.useMemo(() => {
+  const agentConversations = useMemo(() => {
     if (!selectedAgentId) return conversations;
     return conversations.filter((c) => c.agentId === selectedAgentId);
   }, [conversations, selectedAgentId]);
 
-  const executorSessionsForSelector = React.useMemo(() => {
+  const executorSessionsForSelector = useMemo(() => {
     return executorSessions.map((session) => ({
       id: session.id,
       name: session.name || `Session ${session.id.slice(0, 8)}`,
@@ -759,13 +759,13 @@ export function useWorkspaceChat() {
     }));
   }, [executorSessions]);
 
-  const filteredMessages = React.useMemo(() => {
+  const filteredMessages = useMemo(() => {
     if (!conversationSearchQuery.trim()) return messages;
     const query = conversationSearchQuery.toLowerCase();
     return messages.filter((m) => m.content?.toLowerCase().includes(query));
   }, [messages, conversationSearchQuery]);
 
-  const currentUserGroupRole = React.useMemo(() => {
+  const currentUserGroupRole = useMemo(() => {
     if (!groupChatMembers.length) return undefined;
     const currentUserMember = groupChatMembers.find(
       (m) => m.member_type === "human" && m.member_id === "user-1"
@@ -848,14 +848,14 @@ export function useWorkspaceChat() {
     }
   };
 
-  const handleArtifactSelect = React.useCallback((artifact: Artifact) => {
+  const handleArtifactSelect = useCallback((artifact: Artifact) => {
     setHighlightedArtifactId(artifact.id);
     if (artifact.sourceMessageId) setHighlightedMessageId(artifact.sourceMessageId);
     setIsSidebarOpen(true);
     setTimeout(() => { setHighlightedArtifactId(null); setHighlightedMessageId(null); }, 3000);
   }, []);
 
-  const handleArtifactMessageClick = React.useCallback((messageId: string) => {
+  const handleArtifactMessageClick = useCallback((messageId: string) => {
     const sourceArtifact = artifacts.find((a) => a.sourceMessageId === messageId);
     if (sourceArtifact) setHighlightedArtifactId(sourceArtifact.id);
     setHighlightedMessageId(messageId);
@@ -970,7 +970,7 @@ export function useWorkspaceChat() {
     }
   };
 
-  const handleSlashCommand = React.useCallback(
+  const handleSlashCommand = useCallback(
     async (command: SlashCommand) => {
       const context: CommandContext = {
         sessionId: selectedConversationId || undefined,
