@@ -3,7 +3,7 @@
  *
  * Dialog for viewing and editing agent memory files (MEMORY.md, logs).
  */
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileText,
@@ -47,19 +47,19 @@ export function AgentMemoryDialog({
   agentName,
 }: AgentMemoryDialogProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = React.useState("memory");
-  const [memoryContent, setMemoryContent] = React.useState("");
-  const [originalMemoryContent, setOriginalMemoryContent] = React.useState("");
-  const [todayLogContent, setTodayLogContent] = React.useState("");
-  const [yesterdayLogContent, setYesterdayLogContent] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
+  const [activeTab, setActiveTab] = useState("memory");
+  const [memoryContent, setMemoryContent] = useState("");
+  const [originalMemoryContent, setOriginalMemoryContent] = useState("");
+  const [todayLogContent, setTodayLogContent] = useState("");
+  const [yesterdayLogContent, setYesterdayLogContent] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const isDirty = memoryContent !== originalMemoryContent;
 
   // Load memory files when dialog opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       loadMemoryFiles();
     }
