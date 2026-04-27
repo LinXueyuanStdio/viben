@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   HardDrive,
   RefreshCw,
@@ -45,11 +45,11 @@ export function CacheManager({ className }: CacheManagerProps) {
     formatLastUpdated,
   } = useOfflineStatus();
 
-  const [clearing, setClearing] = React.useState(false);
-  const [localSettings, setLocalSettings] = React.useState<CacheSettings | null>(null);
+  const [clearing, setClearing] = useState(false);
+  const [localSettings, setLocalSettings] = useState<CacheSettings | null>(null);
 
   // Initialize local settings when cache settings are loaded
-  React.useEffect(() => {
+  useEffect(() => {
     if (cacheSettings && !localSettings) {
       setLocalSettings(cacheSettings);
     }
