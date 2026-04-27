@@ -1,4 +1,4 @@
-import * as React from "react";
+import { memo, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,7 @@ interface CategoryFilterProps {
  * CategoryFilter component for marketplace filtering
  * Memoized to prevent unnecessary re-renders
  */
-export const CategoryFilter = React.memo(function CategoryFilter({
+export const CategoryFilter = memo(function CategoryFilter({
   categories,
   selectedCategory,
   onSelect,
@@ -27,13 +27,13 @@ export const CategoryFilter = React.memo(function CategoryFilter({
   const { t } = useTranslation();
 
   // Memoize total package count calculation
-  const totalPackageCount = React.useMemo(
+  const totalPackageCount = useMemo(
     () => categories.reduce((sum, c) => sum + (c.packageCount ?? 0), 0),
     [categories]
   );
 
   // Memoize the "All" button click handler
-  const handleSelectAll = React.useCallback(() => {
+  const handleSelectAll = useCallback(() => {
     onSelect(null);
   }, [onSelect]);
 
@@ -78,7 +78,7 @@ export const CategoryFilter = React.memo(function CategoryFilter({
  * Individual category button component
  * Memoized to prevent re-renders when other categories change
  */
-const CategoryButton = React.memo(function CategoryButton({
+const CategoryButton = memo(function CategoryButton({
   category,
   isSelected,
   onSelect,
@@ -87,7 +87,7 @@ const CategoryButton = React.memo(function CategoryButton({
   isSelected: boolean;
   onSelect: (categoryId: string | null) => void;
 }) {
-  const handleClick = React.useCallback(() => {
+  const handleClick = useCallback(() => {
     onSelect(category.id);
   }, [onSelect, category.id]);
 
