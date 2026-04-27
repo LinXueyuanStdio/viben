@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
@@ -43,7 +44,7 @@ interface AvatarImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {}
 
 const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
   ({ className, alt, ...props }, ref) => {
-    const [hasError, setHasError] = React.useState(false);
+    const [hasError, setHasError] = useState(false);
 
     if (hasError || !props.src) {
       return null;
