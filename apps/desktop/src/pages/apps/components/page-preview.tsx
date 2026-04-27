@@ -11,7 +11,7 @@
  * - Markdown-type pages should NOT show the toggle (single view only)
  */
 
-import * as React from "react";
+import { useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -82,8 +82,8 @@ export function PagePreview({
   const { t } = useTranslation();
 
   // Debounced title save
-  const titleSaveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleTitleChange = React.useCallback(
+  const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTitleChange = useCallback(
     (newTitle: string) => {
       if (!workspacePath || !page.slug) return;
       if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
@@ -103,14 +103,14 @@ export function PagePreview({
     [workspacePath, page.slug]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
     };
   }, []);
 
   // Determine the gateway serve URL for static/markdown pages
-  const gatewayServeUrl = React.useMemo(() => {
+  const gatewayServeUrl = useMemo(() => {
     if (!workspacePath || !page.slug) return null;
     return getPageServeUrl(workspacePath, page.slug);
   }, [workspacePath, page.slug]);
