@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ export interface LinkTabProps {
 }
 
 export function LinkTab({ onSelect }: LinkTabProps) {
+  const { t } = useTranslation();
   const [urlInput, setUrlInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +27,7 @@ export function LinkTab({ onSelect }: LinkTabProps) {
     try {
       new URL(url);
     } catch {
-      setError("Invalid URL");
+      setError(t("coverPicker.invalidUrl"));
       setLoading(false);
       return;
     }
@@ -59,7 +61,7 @@ export function LinkTab({ onSelect }: LinkTabProps) {
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
         <Input
-          placeholder="https://example.com/cover.jpg"
+          placeholder={t("coverPicker.linkPlaceholder")}
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -82,7 +84,7 @@ export function LinkTab({ onSelect }: LinkTabProps) {
 
       {preview && (
         <div className="rounded-md overflow-hidden border h-16">
-          <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+          <img src={preview} alt={t("coverPicker.preview")} className="h-full w-full object-cover" />
         </div>
       )}
 

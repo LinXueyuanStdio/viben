@@ -57,7 +57,7 @@ export function StepConfigure({
   const [initViben, setInitViben] = useState(true);
   const [reinitialize, setReinitialize] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [developerName, setDeveloperName] = useState("developer");
+  const [developerName, setDeveloperName] = useState(t("workspace.stepConfigure.defaultDeveloperName", "developer"));
   const [includeCursor, setIncludeCursor] = useState(true);
 
   // Update name when folder status changes
@@ -119,7 +119,7 @@ export function StepConfigure({
       initGit: initGit && (method === "create-new" || !folderStatus?.hasGit),
       initViben: initViben && (method === "create-new" || !folderStatus?.hasViben || reinitialize),
       vibenOptions: {
-        developerName: developerName.trim() || "developer",
+        developerName: developerName.trim() || t("workspace.stepConfigure.defaultDeveloperName", "developer"),
         includeCursor,
         force: reinitialize,
       },

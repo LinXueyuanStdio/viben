@@ -1194,7 +1194,7 @@ function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
           ) : file.is_directory ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Folder className="h-16 w-16 text-amber-500 mb-4" />
-              <p>{t("fileBrowser.folder")}: {file.name}</p>
+              <p>{t("fileBrowser.folderWithName", { name: file.name })}</p>
               <p className="text-sm mt-2">{file.path}</p>
             </div>
           ) : isImage ? (
@@ -1215,8 +1215,8 @@ function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
         </div>
         <DialogFooter>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{t("fileBrowser.sizeLabel")} {formatFileSize(file.size)}</span>
-            <span>{t("fileBrowser.modifiedLabel")} {formatDate(file.modified)}</span>
+            <span>{t("fileBrowser.sizeWithValue", { size: formatFileSize(file.size) })}</span>
+            <span>{t("fileBrowser.modifiedWithValue", { date: formatDate(file.modified) })}</span>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -1639,8 +1639,7 @@ function DeleteDialog({ file, onClose, onConfirm }: DeleteDialogProps) {
         </DialogHeader>
         <div className="py-4">
           <p className="text-sm text-muted-foreground">
-            {t("fileBrowser.deleteConfirm")}{" "}
-            <span className="font-medium text-foreground">{file.name}</span>?
+            {t("fileBrowser.deleteConfirmWithName", { name: file.name })}
             {file.is_directory && ` ${t("fileBrowser.deleteAllContents")}`}
           </p>
         </div>

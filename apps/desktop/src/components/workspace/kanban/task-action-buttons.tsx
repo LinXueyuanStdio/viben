@@ -160,9 +160,11 @@ export function TaskActionButtons({
           const executionTriggeringEvents: TaskEventType[] = ["START", "RETRY", "REJECTED"];
           if (executionTriggeringEvents.includes(eventType)) {
             // Build prompt from task title and description
+            const taskLabel = t("workspace.taskActions.taskLabel", "Task:");
+            const descriptionLabel = t("workspace.taskActions.descriptionLabel", "Description:");
             const prompt = taskDescription
-              ? `Task: ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}\n\nDescription: ${taskDescription}`
-              : `Task: ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}`;
+              ? `${taskLabel} ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}\n\n${descriptionLabel} ${taskDescription}`
+              : `${taskLabel} ${taskTitle || t("workspace.taskActions.unnamedTask", "Unnamed task")}`;
 
             try {
               // Enqueue task for background execution

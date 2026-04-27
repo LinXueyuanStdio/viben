@@ -71,7 +71,7 @@ export function ImagePreview({ artifact }: PreviewComponentProps) {
           const response = await fetch(url);
           if (!response.ok) {
             throw new Error(
-              `Failed to fetch image: ${response.status} ${response.statusText}`
+              t("artifacts.fetchImageFailed", { status: response.status, statusText: response.statusText })
             );
           }
           blob = await response.blob();

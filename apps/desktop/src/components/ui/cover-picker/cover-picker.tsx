@@ -9,6 +9,7 @@
 
 import * as React from "react";
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,7 @@ export function CoverPicker({
   align = "start",
   allowRemove = true,
 }: CoverPickerProps) {
+  const { t } = useTranslation();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -117,7 +119,7 @@ export function CoverPicker({
         "disabled:cursor-not-allowed disabled:opacity-50"
       )}
     >
-      Choose cover
+      {t("coverPicker.chooseCover")}
     </button>
   );
 
@@ -141,19 +143,19 @@ export function CoverPicker({
               value="gallery"
               className={cn("px-3 py-2 text-xs", activeTab === "gallery" && "border-primary text-foreground")}
             >
-              Gallery
+              {t("coverPicker.gallery")}
             </TabsTrigger>
             <TabsTrigger
               value="upload"
               className={cn("px-3 py-2 text-xs", activeTab === "upload" && "border-primary text-foreground")}
             >
-              Upload
+              {t("coverPicker.upload")}
             </TabsTrigger>
             <TabsTrigger
               value="link"
               className={cn("px-3 py-2 text-xs", activeTab === "link" && "border-primary text-foreground")}
             >
-              Link
+              {t("coverPicker.link")}
             </TabsTrigger>
             <div className="ml-auto flex items-center gap-0.5 px-2">
               {showRemoveBtn && (
@@ -162,7 +164,7 @@ export function CoverPicker({
                   size="sm"
                   className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                   onClick={handleRemove}
-                  title="Remove cover"
+                  title={t("coverPicker.removeCover")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </Button>

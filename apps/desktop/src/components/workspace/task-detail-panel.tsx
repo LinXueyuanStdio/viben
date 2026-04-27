@@ -773,12 +773,13 @@ export function TaskDetailPanel({
   availableAgents = [],
   onNavigateToTask,
   currentUserId = "current-user",
-  currentUserName = "You",
+  currentUserName: currentUserNameProp,
   workspacePath = "",
   autoStartOnOpen = false,
   onAutoStartConsumed,
 }: TaskDetailPanelProps) {
   const { t } = useTranslation();
+  const currentUserName = currentUserNameProp ?? t("workspace.taskDetail.you", "You");
   const [activeTab, setActiveTab] = useState<string>("details");
   // Track if we should auto-start when switching to agent chat
   const [shouldAutoStart, setShouldAutoStart] = useState(false);
@@ -1642,11 +1643,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                                 <span className="text-sm font-semibold text-purple-600 dark:text-purple-400 truncate">
                                   {(() => {
                                     const match = task.pr_url?.match(/\/pull\/(\d+)/);
-                                    return match ? `Pull Request #${match[1]}` : "View PR";
+                                    return match ? t("workspace.taskDetail.pullRequestNumber", "Pull Request #{{number}}", { number: match[1] }) : t("workspace.taskDetail.viewPR", "View PR");
                                   })()}
                                 </span>
                                 <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-500 border-purple-500/30">
-                                  Open
+                                  {t("workspace.taskDetail.open", "Open")}
                                 </Badge>
                               </div>
                               <ExternalLink className="h-4 w-4 text-purple-500/70 group-hover:text-purple-500 transition-colors shrink-0" />

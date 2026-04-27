@@ -430,7 +430,6 @@ export function IssueDetailModal({
               {formatRelativeTime(issue.created_at)}
               {" · "}
               {t("workspaceDetail.github.issueDetail.commentsCount", "{{count}} comment", { count: issue.comments })}
-              {issue.comments !== 1 ? "s" : ""}
             </span>
           </div>
 

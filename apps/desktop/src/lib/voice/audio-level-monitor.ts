@@ -179,7 +179,7 @@ export class AudioLevelMonitor {
   /**
    * 计算 RMS 音量
    */
-  private calculateRMS(dataArray: Uint8Array<ArrayBufferLike>): number {
+  private calculateRMS(dataArray: Uint8Array): number {
     let sumSquares = 0;
     for (let i = 0; i < dataArray.length; i++) {
       const normalized = (dataArray[i] - 128) / 128;
@@ -196,8 +196,9 @@ export class AudioLevelMonitor {
 
     // 麦克风音量
     if (this.micAnalyser && this.micDataArray) {
-      this.micAnalyser.getByteTimeDomainData(this.micDataArray);
-      const micRms = this.calculateRMS(this.micDataArray);
+      const micData = this.micDataArray as Uint8Array<ArrayBuffer>;
+      this.micAnalyser.getByteTimeDomainData(micData);
+      const micRms = this.calculateRMS(micData);
       const micAmplified = Math.min(1, micRms * 5);
       const micRawLevel = Math.sqrt(micAmplified);
       this.smoothedMicLevel =
@@ -207,8 +208,9 @@ export class AudioLevelMonitor {
 
     // 系统音量
     if (this.systemAnalyser && this.systemDataArray) {
-      this.systemAnalyser.getByteTimeDomainData(this.systemDataArray);
-      const systemRms = this.calculateRMS(this.systemDataArray);
+      const systemData = this.systemDataArray as Uint8Array<ArrayBuffer>;
+      this.systemAnalyser.getByteTimeDomainData(systemData);
+      const systemRms = this.calculateRMS(systemData);
       const systemAmplified = Math.min(1, systemRms * 5);
       const systemRawLevel = Math.sqrt(systemAmplified);
       this.smoothedSystemLevel =

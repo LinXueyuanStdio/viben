@@ -58,7 +58,7 @@ export function PdfPreview({ artifact }: PreviewComponentProps) {
           const response = await fetch(url);
           if (!response.ok) {
             throw new Error(
-              `Failed to fetch PDF: ${response.status} ${response.statusText}`
+              t("artifacts.fetchPdfFailed", { status: response.status, statusText: response.statusText })
             );
           }
           blob = await response.blob();

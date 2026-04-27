@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getGatewayUrl } from "@/lib/gateway/config";
@@ -12,6 +13,7 @@ export interface UploadTabProps {
 }
 
 export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -42,10 +44,10 @@ export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
           setPreview(fullUrl);
           onSelect(fullUrl);
         } else {
-          setError(result.error || "Upload failed");
+          setError(result.error || t("coverPicker.uploadFailed"));
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed");
+        setError(err instanceof Error ? err.message : t("coverPicker.uploadFailed"));
       } finally {
         setUploading(false);
       }
@@ -71,19 +73,19 @@ export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
         {uploading ? (
           <div className="flex flex-col items-center gap-1">
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span className="text-xs text-muted-foreground">Uploading...</span>
+            <span className="text-xs text-muted-foreground">{t("coverPicker.uploading")}</span>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
             <Upload className="h-5 w-5" />
-            <span className="text-xs text-muted-foreground">Click to upload image</span>
+            <span className="text-xs text-muted-foreground">{t("coverPicker.clickToUpload")}</span>
           </div>
         )}
       </Button>
 
       {preview && (
         <div className="rounded-md overflow-hidden border h-16">
-          <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+          <img src={preview} alt={t("coverPicker.preview")} className="h-full w-full object-cover" />
         </div>
       )}
 

@@ -138,7 +138,7 @@ const getCategoryStyles = (category: NotificationCategory) => {
   }
 };
 
-const formatRelativeTime = (date: Date): string => {
+const formatRelativeTime = (date: Date, t: (key: string, fallback: string, options?: Record<string, unknown>) => string): string => {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSeconds = Math.floor(diffMs / 1000);
@@ -147,13 +147,13 @@ const formatRelativeTime = (date: Date): string => {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) {
-    return "just now";
+    return t("common.justNow", "just now");
   } else if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+    return t("common.minutesAgo", "{{count}}m ago", { count: diffMinutes });
   } else if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return t("common.hoursAgo", "{{count}}h ago", { count: diffHours });
   } else if (diffDays < 7) {
-    return `${diffDays}d ago`;
+    return t("common.daysAgo", "{{count}}d ago", { count: diffDays });
   } else {
     return date.toLocaleDateString();
   }
@@ -236,7 +236,7 @@ const NotificationItem = React.forwardRef<HTMLDivElement, NotificationItemProps>
               </div>
             </div>
             <span className="flex-shrink-0 text-xs text-muted-foreground">
-              {formatRelativeTime(notification.createdAt)}
+              {formatRelativeTime(notification.createdAt, t)}
             </span>
           </div>
 

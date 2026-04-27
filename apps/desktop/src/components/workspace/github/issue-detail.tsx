@@ -472,7 +472,7 @@ export function IssueDetail({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
-                    No description provided.
+                    {t("workspace.github.noDescription", "No description provided.")}
                   </p>
                 )}
               </div>
@@ -491,7 +491,7 @@ export function IssueDetail({
                   </div>
                   {issue.closed_at && (
                     <div>
-                      Closed: {formatDateTime(issue.closed_at)}
+                      {t("workspace.github.closed", "Closed")}: {formatDateTime(issue.closed_at)}
                     </div>
                   )}
                 </div>
@@ -611,7 +611,7 @@ export function IssueDetail({
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Sparkles className="h-12 w-12 text-muted-foreground/30 mb-4" />
                   <p className="text-muted-foreground mb-4">
-                    No analysis yet. Click the button below to analyze this issue.
+                    {t("workspace.github.noAnalysisYet", "No analysis yet. Click the button below to analyze this issue.")}
                   </p>
                   <Button onClick={handleAnalyze}>
                     <Sparkles className="h-4 w-4 mr-2" />
@@ -630,7 +630,7 @@ export function IssueDetail({
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Bot className="h-12 w-12 text-muted-foreground/30 mb-4" />
                 <p className="text-muted-foreground">
-                  Agent chat integration coming soon...
+                  {t("workspace.github.agentChatComingSoon", "Agent chat integration coming soon...")}
                 </p>
               </div>
             </div>

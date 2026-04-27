@@ -94,7 +94,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
       }
     } catch (err) {
       setError(
-        `Failed to play: ${err instanceof Error ? err.message : String(err)}`
+        t("artifacts.failedToPlay", { error: err instanceof Error ? err.message : String(err) })
       );
     }
   };

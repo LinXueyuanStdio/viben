@@ -417,7 +417,7 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
           {canRetry && (
             <Button variant="outline" onClick={handleRetry} disabled={isBootstrapping || isActioning}>
               <RefreshCw className={cn("mr-2 h-4 w-4", (isBootstrapping || isActioning) && "animate-spin")} />
-              {t("onboarding.gateway.retry")} ({maxRetries - retryCount} left)
+              {t("onboarding.gateway.retryWithCount", { count: maxRetries - retryCount })}
             </Button>
           )}
           <Button onClick={handleContinue} disabled={!canContinue}>

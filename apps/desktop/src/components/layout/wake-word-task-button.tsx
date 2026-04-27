@@ -70,15 +70,15 @@ export function WakeWordTaskButton({
   );
 
   const listeningTooltip = isLoading
-    ? t("sidebar.wakeWord.loading", "正在加载唤醒词模型...")
+    ? t("sidebar.wakeWord.loading", "Loading wake word model...")
     : isActive
       ? t("sidebar.wakeWord.listening", {
           wakeWord: config.wakeWord,
-          defaultValue: "正在监听「{{wakeWord}}」- 点击关闭",
+          defaultValue: "Listening for \"{{wakeWord}}\" - click to stop",
         })
       : error
         ? error
-        : t("sidebar.wakeWord.inactive", "点击开始监听唤醒词");
+        : t("sidebar.wakeWord.inactive", "Click to start listening for wake word");
 
   const ListeningIcon = isLoading ? Loader2 : AudioWaveform;
 

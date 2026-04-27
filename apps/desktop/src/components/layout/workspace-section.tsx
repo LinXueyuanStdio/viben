@@ -144,6 +144,7 @@ interface WorkspaceItemProps {
 }
 
 function WorkspaceItem({ workspace, isActive, onSelect }: WorkspaceItemProps) {
+  const { t } = useTranslation();
   const isGlobal = workspace.type === "global";
 
   return (
@@ -173,7 +174,7 @@ function WorkspaceItem({ workspace, isActive, onSelect }: WorkspaceItemProps) {
       <span className="truncate">{workspace.name}</span>
       {isGlobal && (
         <span className="ml-auto text-[10px] uppercase text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">
-          Default
+          {t("workspace.default", "Default")}
         </span>
       )}
     </NavLink>

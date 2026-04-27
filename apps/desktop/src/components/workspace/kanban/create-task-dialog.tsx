@@ -220,7 +220,7 @@ export function CreateTaskDialog({
           <div className="flex items-center gap-2 mb-3">
             <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("workspace.createTaskDialog.agent", "Agent")} & {t("workspace.createTaskDialog.model", "Model")}
+              {t("workspace.createTaskDialog.agentAndModel", "Agent & Model")}
             </span>
           </div>
 

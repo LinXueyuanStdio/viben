@@ -149,7 +149,7 @@ export function InvestigationDialog({
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-10 w-10 text-muted-foreground/30 mb-4" />
               <p className="text-sm text-muted-foreground">
-                No analysis results available.
+                {t("workspace.github.noAnalysisResults", "No analysis results available.")}
               </p>
             </div>
           )}
