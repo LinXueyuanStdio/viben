@@ -1,7 +1,7 @@
 /**
  * Group chat tab content for the right sidebar
  */
-import * as React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -130,9 +130,9 @@ function EditableField({
   inputClassName,
   disabled = false,
 }: EditableFieldProps) {
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editValue, setEditValue] = React.useState(value);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (editValue.trim() === value) {
@@ -165,7 +165,7 @@ function EditableField({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     setEditValue(value);
   }, [value]);
 
@@ -339,8 +339,8 @@ function GroupChatAddMemberSection({
   isLoading,
 }: AddMemberSectionProps) {
   const { t } = useTranslation();
-  const [selectedAgentId, setSelectedAgentId] = React.useState<string>("");
-  const [isAdding, setIsAdding] = React.useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isAdding, setIsAdding] = useState(false);
 
   const availableToAdd = availableAgents.filter(
     (agent) => !existingMemberIds.includes(agent.id)
@@ -436,10 +436,10 @@ export function GroupChatTabContent({
   isLoading,
 }: GroupChatTabContentProps) {
   const { t } = useTranslation();
-  const [removingMemberId, setRemovingMemberId] = React.useState<string | null>(null);
-  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-  const [isLeavingOrDeleting, setIsLeavingOrDeleting] = React.useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLeavingOrDeleting, setIsLeavingOrDeleting] = useState(false);
 
   const handleRemoveMember = async (memberId: string) => {
     setRemovingMemberId(memberId);
@@ -478,7 +478,7 @@ export function GroupChatTabContent({
     }
   };
 
-  const sortedMembers = React.useMemo(() => {
+  const sortedMembers = useMemo(() => {
     return [...members].sort((a, b) => {
       const roleOrder = { owner: 0, admin: 1, member: 2 };
       return roleOrder[a.role] - roleOrder[b.role];
