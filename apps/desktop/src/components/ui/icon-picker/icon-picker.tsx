@@ -19,6 +19,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  PopoverAnchor,
 } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,13 @@ export interface IconPickerProps {
   workspacePath?: string;
   disabled?: boolean;
   trigger?: React.ReactNode;
+  /**
+   * External anchor element ref — when provided, the Popover positions itself
+   * relative to this element instead of the trigger. Useful when the picker is
+   * rendered at a higher level but should visually attach to a remote element
+   * (e.g. page icon in PageTitleArea).
+   */
+  anchorRef?: React.RefObject<HTMLElement | null>;
   align?: "start" | "center" | "end";
   defaultTab?: IconType;
   allowedTypes?: IconType[];
@@ -102,6 +110,7 @@ export function IconPicker({
   workspacePath,
   disabled = false,
   trigger,
+  anchorRef,
   align = "start",
   defaultTab,
   allowedTypes = ["lucide", "emoji", "image"],
@@ -215,11 +224,22 @@ export function IconPicker({
     </button>
   );
 
+  // When anchorRef is provided, position relative to the external element.
+  // The trigger (if any) is still rendered but only used for opening — positioning
+  // comes from the PopoverAnchor wrapping the ref element via a portal-less approach.
+  const useExternalAnchor = !!anchorRef;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
-        {trigger ?? defaultTrigger}
-      </PopoverTrigger>
+      {useExternalAnchor ? (
+        /* Virtual anchor: wrap the external element so Radix positions the
+           content relative to it. PopoverTrigger is hidden (open controlled externally). */
+        <PopoverAnchor virtualRef={anchorRef} />
+      ) : (
+        <PopoverTrigger asChild disabled={disabled}>
+          {trigger ?? defaultTrigger}
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-[352px] p-0" align={align} sideOffset={4}>
         <Tabs
           value={activeTab}
