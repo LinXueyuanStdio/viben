@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -59,10 +59,10 @@ function TaskGroupComponent({
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
-  const [isExpanded, setIsExpanded] = React.useState(!isCompleted || isRunning);
+  const [isExpanded, setIsExpanded] = useState(!isCompleted || isRunning);
 
   // Auto-collapse when task completes
-  React.useEffect(() => {
+  useEffect(() => {
     if (isCompleted && !isRunning) {
       setIsExpanded(false);
     }
@@ -440,29 +440,29 @@ export function MessageList({
   className,
 }: MessageListProps) {
   const { t } = useTranslation();
-  const viewportRef = React.useRef<HTMLDivElement>(null);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll management state
-  const [showScrollButton, setShowScrollButton] = React.useState(false);
-  const userScrolledUpRef = React.useRef(false);
-  const lastScrollTopRef = React.useRef(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const userScrolledUpRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
 
   // Group messages for display - must be called before any conditional returns
   const executingTaskTitle = t("chat.executingTask");
-  const groups = React.useMemo(
+  const groups = useMemo(
     () => groupMessages(messages, isStreaming || false, executingTaskTitle),
     [messages, isStreaming, executingTaskTitle]
   );
 
   // Scroll to bottom function
-  const scrollToBottom = React.useCallback(() => {
+  const scrollToBottom = useCallback(() => {
     userScrolledUpRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   // Check scroll position to show/hide scroll button and detect manual scroll
-  const checkScrollPosition = React.useCallback(() => {
+  const checkScrollPosition = useCallback(() => {
     const container = viewportRef.current;
     if (!container) return;
 
@@ -490,21 +490,21 @@ export function MessageList({
   }, [isStreaming]);
 
   // Auto-scroll to bottom when new messages arrive (only if user hasn't scrolled up)
-  React.useEffect(() => {
+  useEffect(() => {
     if (isStreaming && !userScrolledUpRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isStreaming, pendingQuestions]);
 
   // Reset userScrolledUp when streaming stops
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isStreaming) {
       userScrolledUpRef.current = false;
     }
   }, [isStreaming]);
 
   // Add scroll listener to viewport
-  React.useEffect(() => {
+  useEffect(() => {
     const container = viewportRef.current;
     if (!container) return;
 
@@ -518,7 +518,7 @@ export function MessageList({
   }, [checkScrollPosition]);
 
   // Re-check scroll position when messages load
-  React.useEffect(() => {
+  useEffect(() => {
     if (messages.length > 0) {
       requestAnimationFrame(() => {
         checkScrollPosition();
