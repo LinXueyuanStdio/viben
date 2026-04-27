@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
+import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -829,8 +829,8 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
   onPathChange,
 }, ref) {
   const { t } = useTranslation();
-  const [columns, setColumns] = React.useState<ColumnData[]>([]);
-  const [previewFile, setPreviewFile] = React.useState<FileEntry | null>(null);
+  const [columns, setColumns] = useState<ColumnData[]>([]);
+  const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
 
@@ -1152,8 +1152,8 @@ interface QuickLookProps {
 
 function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
   const { t } = useTranslation();
-  const [content, setContent] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(false);
+  const [content, setContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!file || file.is_directory) {
@@ -1495,7 +1495,7 @@ interface CreateDialogProps {
 
 function CreateDialog({ open, type, onClose, onCreate }: CreateDialogProps) {
   const { t } = useTranslation();
-  const [name, setName] = React.useState("");
+  const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1556,7 +1556,7 @@ interface RenameDialogProps {
 
 function RenameDialog({ file, onClose, onRename }: RenameDialogProps) {
   const { t } = useTranslation();
-  const [name, setName] = React.useState("");
+  const [name, setName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1746,8 +1746,8 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
   const columnViewRef = useRef<ColumnViewRef>(null);
 
   // Dialog states for file creation
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [createDialogType, setCreateDialogType] = React.useState<"file" | "folder">("file");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogType, setCreateDialogType] = useState<"file" | "folder">("file");
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -1779,11 +1779,11 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
   }, [browser.currentPath, workspacePath, onPathChange, browser.viewMode]);
 
   // Dialog states (createDialogOpen and createDialogType are already defined above for ref)
-  const [renameFile, setRenameFile] = React.useState<FileEntry | null>(null);
-  const [deleteFile, setDeleteFile] = React.useState<FileEntry | null>(null);
+  const [renameFile, setRenameFile] = useState<FileEntry | null>(null);
+  const [deleteFile, setDeleteFile] = useState<FileEntry | null>(null);
 
   // Context menu state
-  const [contextMenu, setContextMenu] = React.useState<ContextMenuState>({
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     file: null,
     x: 0,
     y: 0,
