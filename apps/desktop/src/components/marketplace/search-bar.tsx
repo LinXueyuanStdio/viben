@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { memo, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ interface SearchBarProps {
  * SearchBar component for marketplace search
  * Memoized to prevent unnecessary re-renders
  */
-export const SearchBar = React.memo(function SearchBar({
+export const SearchBar = memo(function SearchBar({
   value,
   onChange,
   placeholder,
@@ -26,14 +26,14 @@ export const SearchBar = React.memo(function SearchBar({
 }: SearchBarProps) {
   const { t } = useTranslation();
   const defaultPlaceholder = placeholder ?? t("marketplace.searchPlaceholder");
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleClear = React.useCallback(() => {
+  const handleClear = useCallback(() => {
     onChange("");
     inputRef.current?.focus();
   }, [onChange]);
 
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onChange(e.target.value);
     },
