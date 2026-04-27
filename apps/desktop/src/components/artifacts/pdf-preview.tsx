@@ -5,7 +5,7 @@
  * Supports both local files (via Tauri fs plugin) and remote URLs.
  */
 
-import * as React from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { FileText, Loader2 } from "lucide-react";
@@ -15,12 +15,12 @@ import { isRemoteUrl, MAX_PREVIEW_SIZE, formatFileSize } from "./utils";
 
 export function PdfPreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
-  const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [fileTooLarge, setFileTooLarge] = React.useState<number | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [fileTooLarge, setFileTooLarge] = useState<number | null>(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let blobUrl: string | null = null;
 
     async function loadPdf() {
