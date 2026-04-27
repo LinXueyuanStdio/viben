@@ -10,7 +10,7 @@
  * 4. Connection verification with exponential backoff
  */
 
-import * as React from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -119,17 +119,17 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
   } = useCliInstaller();
 
   // Local state
-  const [phase, setPhase] = React.useState<BootstrapPhase>("cli-check");
-  const [tasks, setTasks] = React.useState<TaskState>({
+  const [phase, setPhase] = useState<BootstrapPhase>("cli-check");
+  const [tasks, setTasks] = useState<TaskState>({
     cli: "pending",
     gateway: "pending",
     connection: "pending",
   });
-  const [failure, setFailure] = React.useState<FailureViewType | null>(null);
-  const [retryCount, setRetryCount] = React.useState(0);
-  const [showIssueDialog, setShowIssueDialog] = React.useState(false);
-  const [issueDialogKind, setIssueDialogKind] = React.useState<CliInstallerIssueKind | null>(null);
-  const bootstrapRunRef = React.useRef(false);
+  const [failure, setFailure] = useState<FailureViewType | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showIssueDialog, setShowIssueDialog] = useState(false);
+  const [issueDialogKind, setIssueDialogKind] = useState<CliInstallerIssueKind | null>(null);
+  const bootstrapRunRef = useRef(false);
 
   const maxRetries = 3;
   const progress = calculateProgress(tasks);
@@ -138,7 +138,7 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
   // Bootstrap Flow
   // ============================================================================
 
-  const runBootstrap = React.useCallback(async () => {
+  const runBootstrap = useCallback(async () => {
     // Prevent double execution
     if (bootstrapRunRef.current) return;
     bootstrapRunRef.current = true;
@@ -270,7 +270,7 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
   ]);
 
   // Auto-start bootstrap on mount
-  React.useEffect(() => {
+  useEffect(() => {
     // Wait for initial loading to complete
     if (gatewayLoading) return;
 
@@ -480,7 +480,7 @@ interface CommandDetailsProps {
 
 function CommandDetails({ binaryPath, command }: CommandDetailsProps) {
   const { t } = useTranslation();
-  const [copiedField, setCopiedField] = React.useState<"binary" | "command" | null>(null);
+  const [copiedField, setCopiedField] = useState<"binary" | "command" | null>(null);
 
   const handleCopy = async (text: string, field: "binary" | "command") => {
     try {
