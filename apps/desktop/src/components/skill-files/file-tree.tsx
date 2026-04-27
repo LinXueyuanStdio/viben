@@ -1,4 +1,4 @@
-import * as React from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronRight, File, Folder, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SkillFileEntry } from "@/types";
@@ -34,7 +34,7 @@ interface FileTreeNodeProps {
 }
 
 function FileTreeNode({ entry, selectedPath, onSelectFile, depth }: FileTreeNodeProps) {
-  const [isOpen, setIsOpen] = React.useState(depth < 2); // Auto-expand first 2 levels
+  const [isOpen, setIsOpen] = useState(depth < 2); // Auto-expand first 2 levels
   const isSelected = selectedPath === entry.path;
   const hasChildren = entry.is_directory && entry.children && entry.children.length > 0;
 
