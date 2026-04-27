@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   FileText,
@@ -146,7 +147,7 @@ function getPreviewIcon(previewType: PreviewType) {
 
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
   const { t } = useTranslation();
-  const [error, setError] = React.useState(false);
+  const [error, setError] = useState(false);
 
   if (error) {
     return (
@@ -297,7 +298,7 @@ export function FilePreview({
   getFileInfo,
 }: FilePreviewProps) {
   const { t } = useTranslation();
-  const [state, setState] = React.useState<FilePreviewState>({
+  const [state, setState] = useState<FilePreviewState>({
     content: null,
     fileInfo: null,
     isLoading: false,
@@ -308,7 +309,7 @@ export function FilePreview({
   const Icon = getPreviewIcon(previewType);
 
   // Load file content and info when file changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open || !file) {
       setState({ content: null, fileInfo: null, isLoading: false, error: null });
       return;
@@ -361,7 +362,7 @@ export function FilePreview({
   }, [file, open, readFileContent, getFileInfo, t]);
 
   // Handle keyboard shortcuts
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
 
     function handleKeyDown(e: KeyboardEvent) {
@@ -376,7 +377,7 @@ export function FilePreview({
   }, [open, onClose]);
 
   // Prevent body scroll when modal is open
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
     } else {
