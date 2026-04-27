@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useCallback } from "react";
 import {
   File,
   FileCode,
@@ -149,7 +150,7 @@ export function FileIconView({
   // Note: selectedFile is kept for API compatibility but we use selectedFiles Set for selection state
   void _selectedFile;
   // Handle click with platform-specific multi-select detection
-  const handleClick = React.useCallback(
+  const handleClick = useCallback(
     (file: FileEntry, event: React.MouseEvent) => {
       const multiSelect = event.metaKey || event.ctrlKey;
       onSelect(file, multiSelect);
@@ -158,7 +159,7 @@ export function FileIconView({
   );
 
   // Handle double-click to open
-  const handleDoubleClick = React.useCallback(
+  const handleDoubleClick = useCallback(
     (file: FileEntry) => {
       onOpen(file);
     },
@@ -166,7 +167,7 @@ export function FileIconView({
   );
 
   // Handle keyboard navigation
-  const handleKeyDown = React.useCallback(
+  const handleKeyDown = useCallback(
     (file: FileEntry, event: React.KeyboardEvent) => {
       if (event.key === "Enter") {
         onOpen(file);
