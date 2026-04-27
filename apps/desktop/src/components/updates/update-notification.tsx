@@ -1,4 +1,4 @@
-import * as React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowUpCircle, X, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -67,16 +67,16 @@ const UpdateNotification = React.forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const [isVisible, setIsVisible] = React.useState(visible);
-    const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [isVisible, setIsVisible] = useState(visible);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Update visibility when prop changes
-    React.useEffect(() => {
+    useEffect(() => {
       setIsVisible(visible);
     }, [visible]);
 
     // Auto-hide timer
-    React.useEffect(() => {
+    useEffect(() => {
       if (isVisible && autoHideDuration > 0) {
         timeoutRef.current = setTimeout(() => {
           setIsVisible(false);
@@ -217,12 +217,12 @@ export function useUpdateNotification(
 ): UseUpdateNotificationReturn {
   const { updates, autoShow = true, autoHideDuration = 10000 } = options;
 
-  const [isVisible, setIsVisible] = React.useState(false);
-  const previousCountRef = React.useRef(0);
-  const hideTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const previousCountRef = useRef(0);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-show when new updates are detected
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoShow && updates.length > previousCountRef.current) {
       setIsVisible(true);
 
@@ -240,7 +240,7 @@ export function useUpdateNotification(
   }, [updates.length, autoShow, autoHideDuration]);
 
   // Cleanup
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
@@ -248,9 +248,9 @@ export function useUpdateNotification(
     };
   }, []);
 
-  const show = React.useCallback(() => setIsVisible(true), []);
-  const hide = React.useCallback(() => setIsVisible(false), []);
-  const toggle = React.useCallback(() => setIsVisible((v) => !v), []);
+  const show = useCallback(() => setIsVisible(true), []);
+  const hide = useCallback(() => setIsVisible(false), []);
+  const toggle = useCallback(() => setIsVisible((v) => !v), []);
 
   return {
     isVisible,
