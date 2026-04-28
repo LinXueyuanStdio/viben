@@ -217,6 +217,68 @@ Capabilities:
 }
 ```
 
+## Detection Interface
+
+Viben uses a typed detection interface to discover executors on the system. Each supported executor has a detector definition that specifies how to find and identify it:
+
+```typescript
+interface ExecutorDetector {
+  id: string;                    // e.g., "CLAUDE_CODE"
+  name: string;                  // e.g., "Claude Code"
+  description: string;           // e.g., "Anthropic's official CLI for Claude"
+  detectCommand: string;         // e.g., "claude --version"
+  configPaths: string[];         // e.g., ["~/.claude/", "~/.config/claude/"]
+  mcpConfigPath?: string;        // e.g., "~/.claude/mcp_servers.json"
+  settingsPath?: string;         // e.g., "~/.claude/settings.json"
+}
+```
+
+The `detect()` method runs the `detectCommand` for each executor and returns a `DetectedExecutor` result:
+
+```typescript
+interface DetectedExecutor {
+  id: string;
+  name: string;
+  description: string;
+  installed: boolean;
+  version?: string;              // Parsed from detectCommand output
+  path?: string;                 // Executable file path
+  configDir?: string;            // Configuration directory
+  mcpConfigPath?: string;        // MCP configuration file path
+  settingsPath?: string;         // Settings file path
+}
+```
+
+You can use the `--timeout` option with the detect/list commands to control how long Viben waits for each executor's detection command to respond:
+
+```bash
+# List executors with a custom timeout (in milliseconds)
+viben executor list --timeout 5000
+```
+
+## Executor Configuration
+
+Executor detection can be configured via YAML. Each executor definition includes detection commands used to identify whether the executor is installed:
+
+```yaml
+# Example executor config
+id: CLAUDE_CODE
+name: "Claude Code"
+description: "Anthropic's official CLI for Claude"
+detection_commands:
+  - command: "claude --version"
+    parse_version: true
+  - command: "which claude"
+    parse_path: true
+config_paths:
+  - "~/.claude/"
+  - "~/.config/claude/"
+mcp_config_path: "~/.claude/mcp_servers.json"
+settings_path: "~/.claude/settings.json"
+```
+
+The `detection_commands` section allows multiple commands to be run during detection. The `parse_version` flag indicates the command output should be parsed for a version string, while `parse_path` extracts the executable path.
+
 ## Executor Chat
 
 Non-interactive conversation with an executor.

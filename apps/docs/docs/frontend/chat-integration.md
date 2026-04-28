@@ -125,7 +125,7 @@ Core state management should be ported from workany's `useAgent.ts`:
 interface AgentState {
   messages: AgentMessage[];
   isRunning: boolean;
-  phase: 'idle' | 'planning' | 'awaiting_approval' | 'executing';
+  phase: 'idle' | 'plan' | 'awaiting_approval' | 'implement';
   plan: Plan | null;
   pendingQuestion: Question | null;
   sessionFolder: string;

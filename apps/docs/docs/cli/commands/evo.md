@@ -79,6 +79,7 @@ viben evo start <name-or-target> [options]
 |--------|-------------|
 | `--force` | Force restart even if run is active |
 | `--dry-run` | Validate configuration only, don't actually run |
+| `--batch <N>` | Override the target config's `idea.batch_size` (max ideas per iteration) |
 | `--json` | JSON format output |
 
 **Examples**:
@@ -551,6 +552,19 @@ viben evo select my-optimization
 # 10. Merge winner, cleanup loser
 viben task approve <winner-task>
 viben task cleanup <loser-task>
+```
+
+## Source Code Location
+
+```
+packages/core/src/
+├── cli/commands/evo.ts         # CLI command implementation
+└── evo/ops/
+    ├── types.ts                # Type definitions
+    ├── parser.ts               # target.md parsing
+    ├── state.ts                # state.json management
+    ├── runner.ts               # Loop orchestration
+    └── idea-generator.ts       # Idea generation
 ```
 
 ## Related Commands

@@ -259,6 +259,45 @@ recordCronExecution({
 });
 ```
 
+### Direct Metrics API
+
+For more flexible control, you can use the exported metrics objects directly:
+
+```typescript
+import { agentRequestsTotal, agentDurationSeconds } from "@viben/core/telemetry";
+
+// Manually increment counter
+agentRequestsTotal.add(1, { agent_name: "my-agent", status: "success" });
+
+// Record histogram value
+agentDurationSeconds.record(5.0, { agent_name: "my-agent", status: "success" });
+```
+
+### Observable Gauge Callbacks
+
+Observable Gauges report current values (such as active connection counts) and are automatically registered during Gateway initialization:
+
+```typescript
+// Automatically called during Gateway initialization (gateway/index.ts)
+import { registerGaugeCallbacks } from "@viben/core/telemetry";
+import { agentService } from "../services/agent";
+import { getActiveWsConnectionCount } from "./routes/ws";
+
+registerGaugeCallbacks({
+  getActiveAgentSessions: () => agentService.getActiveSessionCount(),
+  getActiveWsConnections: () => getActiveWsConnectionCount(),
+  getCronJobCounts: () => state.cron.getJobStats(),
+});
+```
+
+**Data Sources**:
+
+| Gauge | Data Source | Method |
+|-------|------------|--------|
+| `viben_agent_active_sessions` | AgentService | `agentService.getActiveSessionCount()` |
+| `viben_ws_active_connections` | ws.ts | `getActiveWsConnectionCount()` |
+| `viben_cron_jobs_total` | CronService | `state.cron.getJobStats()` |
+
 ---
 
 ## Logging Guide
@@ -318,6 +357,26 @@ process.on("SIGTERM", async () => {
   await telemetry.shutdown();
 });
 ```
+
+### HTTP Auto Instrumentation
+
+The SDK automatically instruments:
+- HTTP inbound/outbound requests
+- Fastify routes
+
+**Ignore Rules**:
+- `/health` and `/api/health` health check endpoints
+- WebSocket upgrade requests (to avoid conflicts with @fastify/websocket)
+
+---
+
+## Desktop Integration
+
+The Desktop application consumes telemetry data through the Gateway API:
+
+1. **No need** to install OpenTelemetry packages in the desktop app
+2. Use `/api/telemetry/*` endpoints to fetch data
+3. Display trace visualization in the `chat-monitor.tsx` page
 
 ---
 
@@ -454,6 +513,33 @@ Telemetry data can be queried via REST API:
 | `/api/telemetry/trace/:id/spans` | GET | Get raw spans |
 | `/api/telemetry/clean` | DELETE | Clean old files |
 | `/api/telemetry/stats` | GET | Get statistics |
+
+---
+
+## Pending Features
+
+### High Priority
+
+1. **More Route Instrumentation**
+   - Audit all routes to ensure manual spans are in place
+   - Add database operation spans
+
+### Medium Priority
+
+2. **Distributed Tracing Context Propagation**
+   - Pass trace context to external services
+   - Support W3C Trace Context standard
+
+3. **SLI/SLO Metrics**
+   - Error rate
+   - Latency percentiles
+   - Availability
+
+### Low Priority
+
+4. **Frontend Telemetry**
+   - Browser-side OpenTelemetry
+   - Frontend-to-backend trace correlation
 
 ---
 

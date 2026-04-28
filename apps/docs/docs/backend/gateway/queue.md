@@ -99,6 +99,14 @@ Batch submit tasks to the queue.
 }
 ```
 
+**Field Description**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| success | boolean | Whether all tasks were queued successfully |
+| queued | number | Number of tasks successfully queued |
+| failed | string[] | List of task IDs that failed to queue |
+
 ---
 
 ### GET /api/queue/status

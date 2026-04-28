@@ -12,11 +12,63 @@ Command queue management for operations, debugging, and monitoring queue status.
 
 The `viben queue` command is the CLI client for CommandQueue, sharing the same underlying operation layer with `/api/queue/*` Gateway endpoints. Primarily designed for agent debugging scenarios with detailed output information.
 
+## Design Principles
+
+- **Debug-first**: Detailed output for agent problem analysis
+- **CLI/API consistency**: All operations share the same underlying ops with Gateway REST API
+- **Format-friendly**: Human-readable by default, `--json` output for parsing
+
+## Architecture
+
+```
++---------------------------------------------------------------------+
+|                    CLI / Gateway                                      |
++---------------------------------------------------------------------+
+|  +------------------+         +------------------+                   |
+|  |  viben queue *   |         |  /api/queue/*    |                   |
+|  |  (CLI commands)  |         |  (REST routes)   |                   |
+|  +--------+---------+         +--------+---------+                   |
+|           |                            |                             |
+|           +------------+---------------+                             |
+|                        |                                             |
+|                        v                                             |
+|  +---------------------------------------------------------------+  |
+|  |              packages/core/src/queue/ops                       |  |
+|  |  enqueue, cancel, retry, status, list, logs, config, clean     |  |
+|  +---------------------------------------------------------------+  |
++---------------------------------------------------------------------+
+```
+
 ## Command Structure
 
 ```bash
 viben queue <subcommand> [options]
 ```
+
+## Ops-to-API Mapping
+
+### QueueOps
+
+| CLI Command | Ops Function | REST API Endpoint |
+|-------------|-------------|-------------------|
+| `viben queue status` | `getStatus()` | GET /api/queue/status |
+| `viben queue list` | `list()` | GET /api/queue/list |
+| `viben queue inspect <id>` | `getItem()` | GET /api/queue/:id |
+| `viben queue enqueue` | `enqueue()` | POST /api/queue/enqueue |
+| `viben queue cancel <id>` | `cancel()` | DELETE /api/queue/:id |
+| `viben queue retry <id>` | `retry()` | POST /api/queue/:id/retry |
+| `viben queue logs <id>` | `getLogs()` | GET /api/queue/:id/logs |
+| `viben queue watch` | (WebSocket) | WebSocket /ws/queue |
+| `viben queue config` | `getConfig()` / `setConfig()` | GET/PUT /api/queue/config |
+| `viben queue clean` | `clean()` | DELETE /api/queue/clean |
+
+### ProcessOps
+
+| Operation | Ops Function | Description |
+|-----------|-------------|-------------|
+| Spawn | `spawnProcess()` | Start a new process for a queue task |
+| Kill | `killProcess()` | Terminate a running process (SIGTERM) |
+| Monitor | `monitorProcess()` | Check process health and status |
 
 ## Subcommand Overview
 
@@ -350,6 +402,79 @@ Queue data is stored in `~/.viben/queue/` directory:
 └── logs/            # Task logs
     └── {id}.log
 ```
+
+## Global Options
+
+All subcommands support the following global options:
+
+| Option | Description |
+|--------|-------------|
+| `--json` | JSON format output |
+| `--quiet`, `-q` | Suppress non-essential output |
+| `--verbose`, `-v` | Show detailed debug information |
+| `--help`, `-h` | Show help information |
+
+**Examples**:
+
+```bash
+# Debug mode with detailed info
+viben queue status --verbose
+
+# Quiet mode for scripting
+viben queue list --quiet --json
+
+# JSON output for parsing
+viben queue inspect q_abc123 --json
+```
+
+## Error Handling
+
+All commands output detailed information on errors to help agents diagnose problems.
+
+### Common Error Scenarios
+
+**Task not found**:
+```
+Error: Task not found
+  ID:      q_abc123
+  Reason:  No task with this ID exists
+
+Hint: Use 'viben queue list --all' to see all tasks
+```
+
+**Invalid operation**:
+```
+Error: Invalid operation
+  Task:    q_abc123
+  Status:  running
+  Action:  cancel (without --force)
+
+Hint: Use 'viben queue cancel q_abc123 --force' to terminate running task
+```
+
+**Retry not available**:
+```
+Error: Cannot retry task
+  Task:    q_abc123
+  Status:  running
+  Reason:  Only completed (failed) tasks can be retried
+
+Current task status:
+  Status:   running
+  Elapsed:  2m 15s
+  PID:      12345
+```
+
+### Error Codes
+
+| Error Code | Description | Resolution |
+|------------|-------------|------------|
+| `TASK_NOT_FOUND` | Task ID does not exist | Use `viben queue list --all` to verify |
+| `INVALID_STATUS` | Operation not allowed for current status | Check task status first |
+| `PROCESS_RUNNING` | Cannot cancel without --force | Add `--force` flag |
+| `MAX_RETRIES_EXCEEDED` | Retry count exhausted | Use `--reset-count` with retry |
+| `QUEUE_FULL` | Queue at maximum capacity | Wait or increase `max_concurrency` |
+| `PERSISTENCE_ERROR` | Failed to read/write queue state | Check `~/.viben/queue/` permissions |
 
 ## Related Commands
 

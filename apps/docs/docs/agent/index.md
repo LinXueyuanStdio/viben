@@ -69,32 +69,32 @@ One Executor can support multiple Agent instances.
 
 ```bash
 # Create new agent
-viben agent create my-agent
+viben agent create -n my-agent
 
 # Create from template
-viben agent create my-agent --from-template coding-assistant
+viben agent create -n my-agent -f coding-assistant
 
 # Clone existing agent
-viben agent create my-agent --clone existing-agent
+viben agent create -n my-agent --clone existing-agent
 
-# Mark agent as template
-viben agent update my-agent --is-template true
+# Set agent as template
+viben agent set-template -n my-agent --description "A general coding assistant template"
 
 # List all templates
-viben agent list --templates
+viben agent template list
 ```
 
 ### 2. Configure Agent
 
 ```bash
 # View configuration
-viben agent config my-agent
+viben agent config -n my-agent
 
 # Set model
-viben agent config my-agent --set model=gpt-4
+viben agent config -n my-agent --set model=gpt-4
 
 # Enable MCP
-viben agent config my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
+viben agent config -n my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
 ```
 
 ### 3. Install Skill
@@ -187,18 +187,17 @@ skills:
 
 ## Supported Executor Types
 
-| ID | Name | Description |
-|----|------|-------------|
-| `CLAUDE_CODE` | Claude Code | Anthropic official CLI |
-| `CURSOR` | Cursor | AI-first editor |
-| `GEMINI_CLI` | Gemini CLI | Google Gemini CLI |
-| `CODEX` | OpenAI Codex | OpenAI Codex CLI |
-| `WINDSURF` | Windsurf | Codeium IDE |
-| `AMP` | Amp | Sourcegraph Amp |
-| `OPENCODE` | OpenCode | Open source coding agent |
-| `QWEN_CODE` | Qwen Code | Alibaba Qwen coding agent |
-| `AIDER` | Aider | AI pair programming |
-| `CONTINUE` | Continue | IDE plugin |
+| ID | CLI Tool | Description |
+|----|----------|-------------|
+| `CLAUDE_CODE` | `claude` | Claude Code CLI |
+| `AMP` | `amp` | Amp Code Agent |
+| `GEMINI` | `gemini` | Google Gemini CLI |
+| `CODEX` | `codex` | OpenAI Codex |
+| `OPENCODE` | `opencode` | Opencode CLI |
+| `CURSOR_AGENT` | `cursor` | Cursor Agent |
+| `QWEN_CODE` | `qwen` | Qwen Code |
+| `COPILOT` | `copilot` | GitHub Copilot |
+| `DROID` | `droid` | Droid Agent |
 
 ## Memory System
 

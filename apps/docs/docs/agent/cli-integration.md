@@ -14,20 +14,46 @@ This document provides a complete command reference for the Viben CLI, covering 
 viben <command> [subcommand] [options]
 
 Commands:
-  init          Initialize workspace
+  # Core Initialization & Configuration
+  init          Initialize workspace (full team workspace with executors)
+  update        Update workspace components (idea-types, reward-types)
   config        Configuration management (git-style)
-  service       Background service management
-  gateway       Start Gateway
-  executor      Executor discovery and Chat
-  agent         Agent management
-  provider      API Provider management
-  model         Model management
-  mcp           MCP Server management
-  skill         Skill management
-  channel       Chat Channel management
-  cron          Scheduled task management
   workspace     Workspace operations
-  version       Show version
+  user          Manage user identity (init, get, status)
+
+  # Services & Runtime
+  service       Manage background services
+  gateway       Start the gateway (message bus + agent loop)
+
+  # Executors & Agents
+  executor      Discover and inspect executors (Claude Code, Cursor, etc.)
+  agent         Manage agent instances and templates
+
+  # Tasks & Swarm Orchestration
+  task          Manage tasks (CRUD, context, planning, monitoring)
+  queue         Background command execution queue
+  swarm         Agent swarm orchestration (list, start, stop, cleanup)
+
+  # Models & Providers
+  provider      Manage API providers (OpenAI, Anthropic, etc.)
+  model         Manage models, aliases, and fallbacks
+
+  # Extensions & Integrations
+  mcp           Manage MCP servers
+  skill         Manage skills
+  channel       Manage chat channels (Telegram, Discord, WhatsApp, Feishu)
+
+  # Automation
+  cron          Manage scheduled tasks
+
+  # AI Assisted
+  idea          AI-powered idea generation (generate, list, promote)
+  evo           FileEvo - File-based Self-Evolution for code optimization
+  session       Session recording and management
+  context       Get current development context
+
+  # General
+  version       Show version info
   help          Show help
 ```
 
@@ -504,6 +530,502 @@ Get skill path.
 viben skill path <name>
 viben skill path <name> --agent <agent-id>
 viben skill path <name> --claude
+```
+
+## Workspace Initialization
+
+### viben init
+
+Initialize a Viben workspace with a full AI-assisted development environment, including executor configurations, project specs, and developer workspace.
+
+```bash
+# Initialize with default executors (CURSOR + CLAUDE_CODE)
+viben init --user john-doe
+
+# Specify executors
+viben init --user john-doe --executor CLAUDE_CODE --executor CURSOR
+
+# Non-interactive mode
+viben init --user john-doe -y
+
+# Force overwrite existing files
+viben init --user john-doe --force
+```
+
+**Key options**:
+
+| Option | Description |
+|--------|-------------|
+| `--user, -u` | Developer name (auto-detected from git config if omitted) |
+| `--executor, -e` | AI executor type (can be repeated for multiple executors) |
+| `--yes, -y` | Non-interactive mode |
+| `--force, -f` | Overwrite existing files |
+| `--skip-existing, -s` | Skip files that already exist |
+
+### viben update
+
+Update workspace template files (idea-types, reward-types) to the latest version.
+
+```bash
+# Update idea-types templates
+viben update --idea-types
+
+# Update reward-types templates
+viben update --reward-types
+
+# Update both
+viben update --idea-types --reward-types
+
+# Force overwrite
+viben update --idea-types --force
+```
+
+## Configuration Management
+
+### viben config
+
+Git-style configuration management using dot-notation keys.
+
+```bash
+# Read configuration
+viben config get <key>
+viben config get settings.editor
+
+# Set configuration
+viben config set <key> <value>
+viben config set settings.editor vim
+
+# List all configuration
+viben config list
+viben config list --global
+viben config list --show-origin
+
+# Edit configuration in editor
+viben config edit
+viben config edit --global
+
+# Remove a key
+viben config unset <key>
+```
+
+## Gateway Management
+
+### viben gateway
+
+Start, stop, and manage the Viben Gateway -- the core runtime that connects channels to the agent loop. The Gateway runs on port **18790** by default.
+
+```bash
+# Start gateway
+viben gateway start
+viben gateway start --host 127.0.0.1 --port 18790 --log-level info
+
+# Start in daemon mode
+viben gateway start --daemon
+
+# Stop gateway
+viben gateway stop
+
+# Restart gateway
+viben gateway restart
+
+# Check gateway status
+viben gateway status
+```
+
+**Key options**:
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--host` | Listen address | `127.0.0.1` |
+| `--port` | Listen port | `18790` |
+| `--log-level` | Log level (debug, info, warn, error) | `info` |
+| `--agent` | Agent ID to run | `main` |
+| `--daemon` | Run in background | `false` |
+
+## Service Management
+
+### viben service
+
+Manage background services such as MCP servers and sync services.
+
+```bash
+# View all service status
+viben service status
+
+# View specific service status
+viben service status <name>
+
+# Start/stop/restart a service
+viben service start <name>
+viben service stop <name>
+viben service restart <name>
+
+# View service logs
+viben service logs <name>
+viben service logs <name> -f    # Follow logs in real-time
+```
+
+**Managed services**: `mcp:<name>` (MCP Server processes), `viben:sync` (config sync), `viben:index` (local indexing).
+
+## Channel Management
+
+### viben channel
+
+Manage chat channels for the Gateway. Supports 6 channel types: Telegram, Discord, WhatsApp, Feishu/Lark, Slack, and Webhook.
+
+```bash
+# List supported channel types
+viben channel types
+
+# List configured channels
+viben channel list
+
+# Create a channel
+viben channel create -n my-telegram --type telegram --token "BOT_TOKEN"
+viben channel create -n my-discord --type discord --token "BOT_TOKEN"
+viben channel create -n my-feishu --type feishu --app-id "cli_xxx" --app-secret "xxx"
+
+# Enable/disable a channel
+viben channel enable -n <id>
+viben channel disable -n <id>
+
+# Set default channel
+viben channel set-default -n <id>
+
+# View channel connection status
+viben channel status
+```
+
+## Cron Management
+
+### viben cron
+
+Manage scheduled tasks for agents. Supports standard cron expressions and interval-based scheduling.
+
+```bash
+# List all cron jobs
+viben cron list
+
+# Add a cron job with cron expression
+viben cron add --name "daily-greeting" --message "Good morning!" --cron "0 9 * * *"
+
+# Add a cron job with interval (seconds)
+viben cron add --name "hourly-check" --message "Check for updates" --every 3600
+
+# Show cron job details
+viben cron show <job_id>
+
+# Enable/disable a cron job
+viben cron enable <job_id>
+viben cron disable <job_id>
+
+# Remove a cron job
+viben cron remove <job_id>
+
+# Run a cron job immediately (for testing)
+viben cron run <job_id>
+```
+
+## Task Management
+
+### viben task
+
+Full lifecycle task management with state machine transitions. Tasks are stored in `.viben/tasks/` and follow the state flow: `backlog -> queue -> in_progress -> review -> completed`.
+
+**Key subcommands**:
+
+```bash
+# CRUD
+viben task list [--mine] [--status <status>]
+viben task create "Add user authentication" [--priority P1]
+viben task view <task>
+viben task edit <task>
+viben task delete <task>
+
+# State transitions
+viben task enqueue <task>          # backlog -> queue
+viben task dequeue <task>          # queue -> backlog
+viben task start <task>            # Start full execution (plan -> work -> report)
+viben task pause <task>            # in_progress -> paused
+viben task resume <task>           # paused -> resume
+viben task finish <task>           # Mark task as finished
+viben task approve <task>          # review -> completed
+viben task reject <task>           # review -> backlog
+viben task retry <task>            # failed -> queue
+viben task cancel <task>           # * -> cancelled
+
+# Phase commands (can be used independently)
+viben task plan-phase <task>       # Run Plan Agent
+viben task work-phase <task>       # Run Work Agent
+viben task implement-phase <task>  # Run Implement Agent
+viben task check-phase <task>      # Run Check Agent
+
+# Context management
+viben task add-context <task> <file>...
+viben task list-context <task>
+
+# Monitoring
+viben task status [<task>] [--running] [--watch]
+viben task create-pr <task>
+
+# Cleanup
+viben task cleanup <branch> [--keep-branch]
+viben task archive <task>
+```
+
+**Example workflow**:
+
+```bash
+viben task create "Feature XYZ"
+viben task enqueue 03-11-feature-xyz
+viben task start 03-11-feature-xyz
+viben task status 03-11-feature-xyz --watch
+```
+
+## Queue Management
+
+### viben queue
+
+Background command execution queue with concurrency control and persistence. Stored in `~/.viben/queue/`.
+
+```bash
+# View queue status
+viben queue status
+
+# List queued tasks
+viben queue list [--status <status>]
+
+# Submit a command
+viben queue enqueue --command "npm test" --cwd /path/to/project
+
+# View task details
+viben queue inspect <id>
+
+# View task logs
+viben queue logs <id>
+viben queue logs <id> --follow
+
+# Cancel a task
+viben queue cancel <id>
+viben queue cancel <id> --force    # Force-terminate running task
+
+# Retry a failed task
+viben queue retry <id>
+
+# Watch queue events in real-time
+viben queue watch
+
+# Manage queue configuration
+viben queue config
+viben queue config --set max_concurrency=5
+
+# Clean completed tasks
+viben queue clean [--before 1d] [--dry-run]
+```
+
+## Swarm Orchestration
+
+### viben swarm
+
+Multi-agent orchestration for parallel development in isolated Git worktrees.
+
+> **Note**: `viben swarm start` is deprecated. Use `viben task start` or `viben task work-phase` instead.
+
+```bash
+# List all worktrees and registered agents
+viben swarm list
+
+# View agent status
+viben swarm status
+viben swarm status <task> --detail
+viben swarm status <task> --watch
+
+# Stop agents
+viben swarm stop <task>
+viben swarm stop --all [--force]
+
+# View agent registry
+viben swarm registry
+```
+
+## Workspace Operations
+
+### viben workspace
+
+Manage workspace information and configuration.
+
+```bash
+# List all known workspaces
+viben workspace list
+
+# Show current workspace info
+viben workspace current
+```
+
+## User Identity Management
+
+### viben user
+
+Manage developer identity for task management and session recording.
+
+```bash
+# Initialize user identity
+viben user init <name>
+viben user init john
+
+# Get current user
+viben user get
+viben user get --json
+```
+
+## Session Management
+
+### viben session
+
+Record and manage development sessions. Sessions are stored in journal files under `.viben/workspace/<user>/`.
+
+```bash
+# Add a session record
+viben session add --title "Implement auth" --commit "abc1234" --summary "Completed login"
+
+# List session history
+viben session list
+viben session list --all     # All users
+viben session list --limit 10
+```
+
+## Context Management
+
+### viben context
+
+Get current development context including user identity, Git status, active tasks, and journal state. Useful for AI agents to understand project state at startup.
+
+```bash
+# Show full context (text format)
+viben context
+
+# JSON format (for scripting)
+viben context --json
+```
+
+## Idea Generation
+
+### viben idea
+
+AI-powered idea generation that analyzes the project codebase and produces improvement suggestions. Supports 6 built-in types (code_improvements, ui_ux_improvements, documentation_gaps, security_hardening, performance_optimizations, code_quality) plus custom types.
+
+```bash
+# Generate ideas
+viben idea generate --types code_improvements code_quality
+
+# List generated ideas
+viben idea list
+viben idea list --type security_hardening
+
+# List available idea types
+viben idea list-types
+
+# View idea details
+viben idea view <idea-id>
+
+# Promote idea to task
+viben idea promote <idea-id>
+viben idea promote <idea-id> --start    # Promote and auto-start
+
+# Remove ideas
+viben idea remove <idea-id>
+viben idea clear --force
+```
+
+## FileEvo Code Evolution
+
+### viben evo
+
+FileEvo -- file-based self-evolution workflow that treats the codebase as "model parameters" and uses PPO-style algorithms to iteratively optimize code quality.
+
+```bash
+# Create a target file
+viben evo create my-optimization -d "Optimize code quality"
+
+# Start a FileEvo run
+viben evo start my-optimization.md
+
+# Check status
+viben evo status my-optimization
+
+# List all runs
+viben evo list
+
+# Generate ideas for current iteration
+viben evo generate-ideas my-optimization --types code_improvements
+
+# Promote ideas to tasks
+viben evo promote-ideas my-optimization --ideas po-a1b2c3d4 --start
+
+# Compute rewards
+viben evo compute-reward my-optimization
+
+# Select best candidate (PPO)
+viben evo select my-optimization
+
+# Stop a run
+viben evo stop my-optimization
+```
+
+## Provider Management
+
+### viben provider
+
+Manage API providers (OpenAI, Anthropic, Google, Azure, OpenRouter, Ollama, custom). Configuration stored in `~/.viben/providers.yaml`.
+
+```bash
+# List all providers
+viben provider list
+
+# Create a provider
+viben provider create -n my-anthropic -t anthropic --api-key "sk-ant-xxx"
+viben provider create -t openai --api-key "sk-xxx"
+
+# Remove a provider
+viben provider remove -n <name>
+
+# Set default provider
+viben provider set-default -n <name>
+
+# Check provider connectivity
+viben provider status
+```
+
+## Model Management
+
+### viben model
+
+Manage models, aliases, and fallback chains. Configuration stored in `~/.viben/models.yaml`.
+
+```bash
+# List available models
+viben model list
+viben model list --provider <provider-name>
+
+# Set default model
+viben model set-default -n claude-sonnet-4-20250514
+
+# Model aliases
+viben model alias list
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias resolve -n fast
+
+# Fallback chain
+viben model fallback list
+viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
+viben model fallback add -n <model>
+
+# Model-specific configuration
+viben model config show -n <model>
+viben model config set -n <model> --temperature 0.7 --max-tokens 8192
+
+# Check model availability
+viben model status
 ```
 
 ## Programmatic Integration

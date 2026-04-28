@@ -67,6 +67,21 @@ logger.error(f"Search failed: {error}")
 
 ## Structured Logging
 
+### Module-Level Child Logger Pattern
+
+Every module should create a child logger at the top level for consistent context:
+
+```typescript
+import { logger as globalLogger } from "../telemetry";
+
+// Create module-level child logger
+const log = globalLogger.child({ module: "my-module-name" });
+
+// Use throughout the module
+log.info({ userId: "123" }, "Processing request");
+log.error({ err: error, context: { userId: "123" } }, "Failed to process");
+```
+
 ### Basic Format
 
 ```typescript
@@ -165,6 +180,14 @@ logger.error({
 | Tokens | Security risk |
 | Personally Identifiable Information (PII) | Privacy compliance |
 
+### Automatic Redaction
+
+The telemetry logger automatically redacts sensitive fields:
+
+- `password`, `secret`, `token`, `apiKey`, `api_key`
+- `authorization`, `cookie`
+- Fields matching patterns like `*token`, `*secret`, `*key`
+
 ### Example
 
 ```typescript
@@ -183,6 +206,19 @@ logger.info({
   email: maskEmail(user.email),  // Sanitized
   action: 'login',
 }, 'User login');
+```
+
+### Safe Logging Examples
+
+```typescript
+// Safe - log ID references, not sensitive data
+log.info({ userId: user.id }, "User authenticated");
+
+// Unsafe - don't log tokens
+log.debug({ token: authToken }); // Don't do this!
+
+// Safe alternative
+log.debug({ tokenPrefix: authToken.slice(0, 8) + "..." }, "Token issued");
 ```
 
 ---
@@ -249,6 +285,66 @@ tail -f ~/.viben/telemetry/logs/$(date +%Y-%m-%d).jsonl
 # Format with jq
 tail -f ~/.viben/telemetry/logs/*.jsonl | jq .
 ```
+
+---
+
+## Best Practices
+
+### 1. Consistent Module Naming
+
+Use kebab-case for module names matching the file name:
+
+```typescript
+// In telegram-poller.ts
+const log = globalLogger.child({ module: "telegram-poller" });
+
+// In preview.ts
+const log = globalLogger.child({ module: "preview" });
+```
+
+### 2. Avoid Over-Logging
+
+- Use `debug` level for verbose output that's only useful during development
+- Use `info` level sparingly - only for significant events
+- Never log in tight loops without throttling
+
+### 3. Include Actionable Context
+
+Log enough context to debug issues without looking at source code:
+
+```typescript
+// Good - includes context for debugging
+log.error({
+  err: error,
+  taskId,
+  attempt: retryCount,
+  maxAttempts: 3
+}, "Task execution failed");
+
+// Poor - missing context
+log.error("Task failed");
+```
+
+### 4. Use Appropriate Levels for Different Environments
+
+- Development: `debug` level
+- Production: `info` level (or `warn` for high-volume services)
+
+The log level is configured via the `LOG_LEVEL` environment variable.
+
+---
+
+## Migration Checklist
+
+When migrating a file from `console.log` to the telemetry logger:
+
+1. Add import: `import { logger as globalLogger } from "../telemetry";`
+2. Create child logger: `const log = globalLogger.child({ module: "module-name" });`
+3. Replace each `console` call:
+   - `console.log("message")` -> `log.info("message")`
+   - `` console.log(`value: ${x}`) `` -> `log.info({ x }, "value")`
+   - `console.error("error:", err)` -> `log.error({ err }, "error")`
+4. Verify with `pnpm typecheck` and `pnpm build`
 
 ---
 

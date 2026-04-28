@@ -62,15 +62,21 @@ Or run directly:
 npx viben
 ```
 
-### Step 2: Initialize Developer Identity
+### Step 2: Initialize Workspace
 
 ```bash
-# Check if already initialized
-viben user get
+# Full workspace initialization (recommended)
+# Creates .viben/ directory structure, docs/specs/, executor configs, and AGENTS.md
+viben init --user <your-name>
 
-# Initialize (first time use)
-viben user init <your-name>
+# Optionally specify executors (defaults to CURSOR + CLAUDE_CODE)
+viben init --user <your-name> --executor CLAUDE_CODE --executor GEMINI
 ```
+
+:::note `viben init` vs `viben user init`
+- **`viben init --user <name>`** - Full workspace initialization. Creates the `.viben/` directory, `docs/specs/` guidelines, executor configuration files (e.g. `.claude/`, `.cursor/`), and the root `AGENTS.md`. This is the recommended way to set up a new project.
+- **`viben user init <name>`** - Sets developer identity only. Does not create workspace structure or executor configs. Use this if you only need to register your identity without initializing a workspace.
+:::
 
 ### Step 3: Create a Task
 

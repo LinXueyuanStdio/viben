@@ -30,7 +30,7 @@ Orchestrate multiple agents to collaboratively complete complex tasks:
 
 | Capability | Description |
 |------------|-------------|
-| **Multi-Executor Support** | Claude Code, Cursor, AMP, Gemini, Codex |
+| **Multi-Executor Support** | Claude Code, AMP, Gemini, Codex, OpenCode, Cursor Agent, Qwen Code, Copilot, Droid |
 | **Task Decomposition** | Break down complex tasks for different agents |
 | **Collaboration Mode** | Agents share context and results |
 

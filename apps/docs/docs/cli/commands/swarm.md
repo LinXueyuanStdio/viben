@@ -58,10 +58,14 @@ viben swarm start <task> [options]
 
 **Migration Guide**:
 
-| Old Command | New Command |
-|-------------|-------------|
-| `viben swarm start <task>` | `viben task start <task>` |
-| `viben swarm start <task>` | `viben task work-phase <task>` |
+| Old Command | New Command | Description |
+|-------------|-------------|-------------|
+| `viben swarm start <task>` | `viben task start <task>` | Full execution workflow (plan + work), recommended |
+| `viben swarm start <task>` | `viben task work-phase <task>` | Work phase only (requires prd.md to exist) |
+| `viben swarm start <task> --executor X` | `viben task start <task> --executor X` | Specify executor type |
+| `viben swarm start <task> --detach` | `viben task start <task> --detach` | Run in background |
+| `viben swarm start <task> --resume` | `viben task start <task> --resume` | Resume an existing agent session |
+| `viben swarm start <task> --resume --session <id>` | `viben task start <task> --resume --session <id>` | Resume with specific session ID |
 
 ## Stop Agent
 
@@ -108,6 +112,7 @@ viben swarm status <task> --log          # Show recent log entries
 | `--running` | Show only running agents |
 | `--stopped` | Show only stopped agents |
 | `--json` | JSON format output |
+| `--format <type>` | Output format: `table` (default), `json`, `minimal` |
 | `--detail` | Show detailed status |
 | `--watch` | Real-time monitoring of agent logs |
 | `--log` | Show recent log entries |

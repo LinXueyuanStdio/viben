@@ -1,8 +1,8 @@
 # Viben Project Architecture Report
 
-> **Version**: 0.1.0
-> **Updated**: 2026-03-27
-> **Project Description**: Agent Swarm x Code Evolution - AI-driven code iteration and intelligent agent orchestration platform
+> **Version**: 0.2.0
+> **Updated**: 2026-04-28
+> **Project Description**: Multi-agent workspace manager with kanban, calendar, timeline, and task management
 
 ---
 
@@ -23,52 +23,58 @@
 
 ### 1.1 Project Positioning
 
-**Viben** is an **Agent Swarm x Code Evolution** platform focused on AI-driven code iteration optimization and intelligent agent cluster orchestration. Core capabilities include:
-
-- **FileEvo (File-based Self-Evolution)** - Feedback-based code iteration optimization system
-- **Agent Swarm** - Multi-agent cluster orchestration and collaboration
-- **Task System (XState)** - State machine-based task workflow management
-- **Idea Generation** - AI-assisted idea generation and knowledge exploration
-
-Core Products:
+**Viben** is a multi-agent workspace manager. Core products include:
 
 | Product | Description | Technology |
 |---------|-------------|------------|
 | **Web Application** | MCP/Skill package marketplace, social features | Next.js 15 + PostgreSQL |
-| **Desktop Application** | Agent Swarm orchestration, FileEvo code optimization, task state machine | Tauri 2 + React 19 |
-| **CLI Tool** | Command-line agent cluster management and automation | TypeScript + Commander |
+| **Desktop Application** | Local agent orchestration and task management | Tauri 2 + React 19 |
+| **CLI Tool** | Command-line agent management | TypeScript + Commander |
 | **MCP Server** | Academic paper search service (18 data sources) | Python + FastMCP |
 
-### 1.2 Core Architecture Features
+### 1.2 Core Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Viben Architecture Overview                   │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
-│   │   Web   │     │ Desktop │     │   CLI   │     │  Docs   │  │
-│   │ (Next)  │     │ (Tauri) │     │  (Node) │     │(Docusr) │  │
-│   └────┬────┘     └────┬────┘     └────┬────┘     └─────────┘  │
-│        │               │               │                        │
-│        └───────────────┼───────────────┘                        │
-│                        │                                        │
-│              ┌─────────┴─────────┐                              │
-│              │   Shared Packages │                              │
-│   ┌──────────┼──────────┬────────┼──────────┐                   │
-│   │          │          │        │          │                   │
-│   │  @viben  │  @viben  │ @viben │  @viben  │                   │
-│   │  /core   │  /ui     │ /kanban│ /api-cli │                   │
-│   │          │          │        │  ent     │                   │
-│   └──────────┴──────────┴────────┴──────────┘                   │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                  Python Backend Services                 │   │
-│   │   browse-mcp (Academic Search)                           │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------------------+
+|                        Viben Architecture Overview                      |
++-------------------------------------------------------------------------+
+|                                                                         |
+|   +---------+     +---------+     +---------+     +---------+           |
+|   |   Web   |     | Desktop |     |   CLI   |     |  Docs   |           |
+|   | (Next)  |     | (Tauri) |     |  (Node) |     |(Docusr) |           |
+|   +----+----+     +----+----+     +----+----+     +---------+           |
+|        |               |               |                                |
+|        |               +-------+-------+                                |
+|        |                       |                                        |
+|        |            +----------+----------+                             |
+|        |            |   Viben Gateway     |                             |
+|        |            |   (Fastify :18790)  |                             |
+|        |            +----------+----------+                             |
+|        |                       |                                        |
+|        +-----------------------+----------------------------------------+
+|                                |                                        |
+|              +-----------------+-----------------+                      |
+|              |          @viben/core              |                      |
+|   +----------+----------+------------+----------+----------+            |
+|   |          |          |            |          |          |            |
+|   | Gateway  | Services | Executors  | Configs  |  GitHub  |            |
+|   | (40+API) | (11 svc) | (9 agents) | (YAML)  |  (API)   |            |
+|   +----------+----------+------------+----------+----------+            |
+|                                                                         |
+|   +----------+----------+------------+                                  |
+|   |  @viben  |  @viben  |   @viben   |                                  |
+|   |   /ui    |  /kanban | /api-client|                                  |
+|   +----------+----------+------------+                                  |
+|                                                                         |
+|   +---------------------------------------------------------+           |
+|   |                  Python Backend Services                 |           |
+|   |   browse-mcp (Academic Search)                           |           |
+|   +---------------------------------------------------------+           |
+|                                                                         |
++-------------------------------------------------------------------------+
 ```
+
+The Desktop and CLI applications communicate with `@viben/core` through the **Viben Gateway**, a Fastify-based HTTP/WebSocket server running on port 18790. The Web application connects to `@viben/core` directly or through the API client. This gateway layer provides a unified interface for agent orchestration, session management, and all workspace operations.
 
 ---
 
@@ -132,6 +138,7 @@ Core Products:
 
 | Technology | Language | Purpose |
 |------------|----------|---------|
+| **Fastify** | TypeScript | Viben Gateway (HTTP/WebSocket API server) |
 | **FastMCP** | Python | MCP server implementation |
 | **Poetry** | Python | Dependency management |
 | **Rust** | Rust | Tauri desktop application backend |
@@ -152,7 +159,7 @@ viben/
 ├── packages/                # Shared TypeScript packages
 │   ├── api-client/          # API client library
 │   ├── cli/                 # Command-line interface
-│   ├── core/                # Core configuration/agent management
+│   ├── core/                # Core configuration/agent management/Gateway
 │   ├── kanban/              # Kanban component library
 │   ├── ui/                  # Shared UI component library
 │   └── vibe-kanban/         # External kanban component symlink
@@ -259,14 +266,11 @@ apps/web/
 
 ### 4.2 apps/desktop (@viben/desktop)
 
-**Positioning**: Agent Swarm x Code Evolution desktop client
+**Positioning**: Local multi-agent workspace management desktop application
 
 **Core Features**:
-- **Agent Swarm** - Intelligent agent cluster orchestration and collaboration
-- **FileEvo** - Feedback-based code iteration optimization
-- **Task System (XState)** - State machine-driven task workflow
-- **Idea Generation** - AI-assisted idea generation
 - MCP server management (start/stop/monitor)
+- Agent configuration and orchestration
 - Provider/Model management
 - Kanban task management
 - AI agent chat interface
@@ -349,7 +353,7 @@ interface AppState {
 
 ### 5.1 @viben/core
 
-**Positioning**: Shared core library for configuration, agents, providers, and models
+**Positioning**: Shared core library for configuration, agents, providers, models, Gateway, executors, and services
 
 **Exported Modules**:
 ```typescript
@@ -370,27 +374,157 @@ export { McpManager, mcpManager }
 
 // Skills management
 export { SkillsManager, skillsManager }
+
+// Executors - AI coding agent executors
+export { createExecutor, EXECUTOR_TYPES, spawnChat }
+
+// Gateway - HTTP/WebSocket API gateway
+export { startGateway, registerRoutes }
+
+// Services - Background service management
+export { ServiceManager, EventService, SessionStoreService, CronService }
 ```
 
 **Directory Structure**:
 ```
 packages/core/src/
 ├── agents/       # Agent configuration and management
+├── channels/     # Message channel management
+├── cli/          # CLI command implementations
 ├── config/       # Configuration file management
+├── db/           # Database models (SQLite)
+├── executors/    # AI coding agent executors
+├── gateway/      # HTTP/WS API gateway
+├── group-chat/   # Group chat functionality
 ├── mcp/          # MCP server configuration
-├── models/       # Model definitions
+├── models/       # Model definitions and discovery
+├── notifications/ # Notification system
 ├── providers/    # Provider configuration
+├── services/     # Background services
 ├── skills/       # Skills management
+├── team/         # Team functionality
+├── telemetry/    # Telemetry and logging
 ├── types/        # Shared type definitions
+├── workspace/    # Workspace management
 ├── browser.ts    # Browser-safe exports
 └── index.ts      # Main exports
+```
+
+#### 5.1.1 Executors - AI Coding Agent Executors
+
+The executors module provides a unified interface for spawning and managing multiple AI coding agents. Each executor wraps a specific CLI tool and exposes a common API for availability checks, chat sessions, and process lifecycle management.
+
+| Executor | CLI Tool | Description |
+|----------|----------|-------------|
+| **CLAUDE_CODE** | `claude` | Claude Code CLI |
+| **AMP** | `amp` | Amp Code Agent |
+| **GEMINI** | `gemini` | Google Gemini CLI |
+| **CODEX** | `codex` | OpenAI Codex |
+| **OPENCODE** | `opencode` | Opencode CLI |
+| **CURSOR_AGENT** | `cursor` | Cursor Agent |
+| **QWEN_CODE** | `qwen` | Qwen Code |
+| **COPILOT** | `copilot` | GitHub Copilot |
+| **DROID** | `droid` | Droid Agent |
+
+```typescript
+// Create an executor instance
+const executor = createExecutor("CLAUDE_CODE");
+const availability = executor.getAvailabilityInfo();
+
+// Executors that support non-interactive chat
+const CHAT_SUPPORTED_EXECUTORS = ["CLAUDE_CODE", "GEMINI", "CODEX"];
+```
+
+#### 5.1.2 Gateway - HTTP/WebSocket API Gateway
+
+The Viben Gateway is a Fastify-based server running on port **18790**. It serves as the primary interface between the Desktop/CLI frontends and the `@viben/core` backend, exposing 40+ API routes organized by domain.
+
+| Route Module | Endpoint Prefix | Function |
+|-------------|-----------------|----------|
+| **health** | `/health` | Health check |
+| **agents** | `/api/agent` | Agent CRUD |
+| **sessions** | `/api/sessions` | Session management |
+| **executors** | `/api/executors` | Executor management |
+| **models** | `/api/models` | Model configuration |
+| **providers** | `/api/providers` | Provider configuration |
+| **channels** | `/api/channels` | Message channels |
+| **cron** | `/api/cron` | Scheduled tasks |
+| **mcp** | `/api/mcp` | MCP server management |
+| **mcp-inspector** | `/api/mcp-inspector` | MCP debugger |
+| **workspaces** | `/api/workspaces` | Workspaces |
+| **group-chats** | `/api/group-chats` | Group chats |
+| **chat-list** | `/api/chat-list` | Chat list |
+| **agent-run** | `/api/agent-run` | Agent run (SSE) |
+| **agent-ws** | `/api/agent-ws` | Agent WebSocket |
+| **files** | `/api/files` | File operations |
+| **filesystem** | `/api/filesystem` | Filesystem browsing |
+| **terminal** | `/api/terminal` | Terminal sessions |
+| **history** | `/api/history` | History records |
+| **telemetry** | `/api/telemetry` | Telemetry data |
+| **sandbox** | `/api/sandbox` | Sandbox execution |
+| **commands** | `/api/commands` | Command execution |
+| **python** | `/api/python` | Python environment |
+| **service-keys** | `/api/service-keys` | Service keys |
+| **usage** | `/api/usage` | Usage statistics |
+| **installed-sources** | `/api/installed-sources` | Installed sources |
+| **logs** | `/api/logs` | Log viewer |
+| **marketplace** | `/api/marketplace` | Marketplace integration |
+| **official-registry** | `/api/official-registry` | Official registry |
+| **cache** | `/api/cache` | Cache management |
+| **tunnel** | `/api/tunnel` | Tunnel service |
+| **kanban-data** | `/api/kanban-data` | Kanban data |
+| **packages** | `/api/packages` | Package management |
+| **github** | `/api/github` | GitHub integration |
+| **tasks** | `/api/tasks` | Task management |
+| **events** | `/api/events` | Event stream (SSE) |
+| **ws** | `/ws` | WebSocket |
+
+#### 5.1.3 Services - Background Services
+
+The services layer provides long-running background capabilities that power the Gateway and agent orchestration. The `ServiceManager` coordinates startup, shutdown, and health monitoring for all services.
+
+| Service | Description |
+|---------|-------------|
+| **EventService** | Event broadcasting and streaming |
+| **SessionStoreService** | File-based session persistence |
+| **CronService** | Scheduled task management |
+| **ContainerService** | Process spawning and management |
+| **HistoryService** | Agent history management |
+| **MessageBus** | Channel message routing |
+| **ServiceManager** | Background service management (MCP, Gateway, Viben) |
+| **BackgroundTaskManager** | Background task management (observer pattern) |
+| **AgentService** | Agent session lifecycle, plan approval |
+| **SandboxService** | Isolated code execution (multi-provider) |
+| **GitHubService** | GitHub integration (auth, repos, issues, PRs, releases) |
+
+#### 5.1.4 GitHub Integration
+
+The GitHub service module provides deep integration with GitHub for workspace-level repository management.
+
+**Capabilities**:
+
+- **Authentication**: gh CLI / Personal Access Token (PAT)
+- **Repository management**: Connect, configure, retrieve info
+- **Issue management**: List, detail, comments, investigation analysis
+- **Pull Requests**: List, create, detail
+- **Releases**: List, create, asset management
+- **Issue import**: Import issues as spec files
+
+Configuration is stored at `~/.viben/workspaces/{workspace_id}/github.yaml`.
+
+```typescript
+interface GitHubConfig {
+  auth?: GitHubAuth;                   // Authentication info
+  repository?: GitHubRepositoryConfig; // Connected repository
+  preferences?: GitHubPreferences;     // User preferences
+}
 ```
 
 ---
 
 ### 5.2 @viben/api-client
 
-**Positioning**: TypeScript API client for Viben platform
+**Positioning**: TypeScript API client for the Viben platform
 
 **Usage Example**:
 ```typescript
@@ -454,13 +588,7 @@ const { packages: skills } = await client.skill.search('git');
 
 ### 5.5 viben (CLI)
 
-**Positioning**: Agent Swarm x Code Evolution command-line tool
-
-**Core Capabilities**:
-- **Agent Swarm** - Command-line agent cluster management
-- **Task System** - Task state machine workflow (`viben task`)
-- **Queue System** - Background command execution queue (`viben queue`)
-- **FileEvo** - Code iteration optimization automation
+**Positioning**: AI agent cluster orchestration CLI
 
 **Dependencies**: `commander`, `chalk`, `yaml`
 
@@ -490,53 +618,40 @@ const { packages: skills } = await client.skill.search('git');
 
 ### 7.1 Package Dependency Graph
 
-```mermaid
-flowchart TD
-    core["@viben/core"]
-    ui["@viben/ui"]
-    api["@viben/api-client"]
-    kanban["@viben/kanban"]
-    web["@viben/web"]
-    desktop["@viben/desktop"]
-
-    core --> ui
-    core --> api
-    ui --> kanban
-    core --> kanban
-    ui --> web
-    api --> web
-    kanban --> web
-    ui --> desktop
-    api --> desktop
-    kanban --> desktop
+```
+                    @viben/core
+                        |
+          +-------------+-------------+
+          |             |             |
+      @viben/ui    @viben/api-client  |
+          |             |             |
+    @viben/kanban       |             |
+          |             |             |
+          +-------------+-------------+
+                        |
+          +-------------+-------------+
+          |                           |
+     @viben/web                 @viben/desktop
 ```
 
 ### 7.2 Data Flow Patterns
 
 **Desktop Application Data Flow**:
 
-```mermaid
-flowchart LR
-    UA[User Action] --> RC[React Component]
-    RC --> ZS[Zustand Store]
-    ZS --> TC[Tauri Command<br/>IPC]
-    TC --> RB[Rust Backend]
-    RB --> |Response| RQ[React Query]
-    RQ --> RC
-    RQ --> UI[UI State Update]
+```
+User Action --> React Component --> Zustand Store --> Tauri Command (IPC)
+                    |                                       |
+               React Query <----------- Response <----- Rust Backend
+                    |
+               UI State Update
 ```
 
 **Web Application Data Flow**:
 
-```mermaid
-flowchart LR
-    UA[User Action] --> RC[React Component]
-    RC --> API[API Route Handler]
-    API --> ORM[Drizzle ORM]
-    ORM --> DB[(PostgreSQL)]
-    DB --> ORM
-    ORM --> API
-    API --> |Server Response| RC
+```
+User Action --> React Component --> API Route Handler --> Drizzle ORM --> PostgreSQL
+                    |                                                        |
+              Server Response <----------------------------------------------+
 ```
 
 ### 7.3 State Management Patterns
@@ -592,7 +707,8 @@ commands::viben_agents::viben_list_agents
 |---------|-------------|
 | **Monorepo + Turborepo** | Shared packages, parallel builds, caching |
 | **Hybrid Application Architecture** | Web (Next.js) + Desktop (Tauri + Vite) |
-| **Shared Core Library** | TypeScript (@viben/core) provides unified configuration and service management |
+| **Shared Core Library** | TypeScript (@viben/core) provides configuration, Gateway, executors, and services |
+| **Gateway Layer** | Fastify-based HTTP/WebSocket server decouples frontends from core logic |
 | **Plugin Architecture** | browse-mcp uses stevedore for extensible searchers |
 | **Offline-First Desktop** | SQLite local storage + cloud sync |
 | **Component Library Pattern** | Radix primitives wrapped as @viben/ui |

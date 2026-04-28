@@ -74,9 +74,13 @@ Viben automatically detects installed executors on your system:
 |----------|-----------------|-------------|
 | **Claude Code** | `which claude` | ✓ |
 | **AMP** | `which amp` | ✓ |
-| **Cursor** | `which cursor` | ✓ |
-| **Gemini** | `which gemini` | - |
-| **Codex** | `which codex` | - |
+| **Gemini** | `which gemini` | ✓ |
+| **Codex** | `which codex` | ✓ |
+| **OpenCode** | `which opencode` | ✓ |
+| **Cursor Agent** | `which cursor` | ✓ |
+| **Qwen Code** | `which qwen-code` | ✓ |
+| **Copilot** | `which gh` | ✓ |
+| **Droid** | `which droid` | ✓ |
 
 ### Collaboration Modes
 
@@ -123,7 +127,6 @@ stateDiagram-v2
     in_progress --> review
     review --> completed
     completed --> [*]
-    in_progress --> archived
 ```
 
 | Status | Description |
@@ -133,7 +136,6 @@ stateDiagram-v2
 | `in_progress` | Agent is executing |
 | `review` | Awaiting human review |
 | `completed` | Task completed |
-| `archived` | Archived |
 
 ### Core Commands
 
@@ -397,7 +399,7 @@ Global configuration stored in `~/.viben/`:
 ```
 ~/.viben/
 ├── agents/              # Global agent configurations
-├── providers/           # Provider configurations
+├── providers.yaml       # Provider configurations
 ├── models.yaml          # Model configuration
 ├── channels.yaml        # Channel configuration
 ├── tasks/               # Task storage

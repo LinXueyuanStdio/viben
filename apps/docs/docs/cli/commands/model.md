@@ -19,6 +19,7 @@ viben model <subcommand> [options]
 | Subcommand | Description |
 |------------|-------------|
 | `list` | List available models |
+| `show` | Show model details |
 | `status` | Show model status |
 | `set-default` | Set the default model |
 | `alias` | Manage model aliases |
@@ -85,6 +86,43 @@ Available Models:
     ]
   }
 }
+```
+
+### Show Model
+
+Show detailed information about a specific model:
+
+```bash
+viben model show -n <model>
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-n <model>` | Model name to show details for |
+| `--json` | JSON format output |
+
+**Output (human-readable):**
+
+```
+Model: claude-sonnet-4-20250514
+
+  Provider:         anthropic-main
+  Context Window:   200K tokens
+  Max Tokens:       8192
+  Temperature:      0.7
+  Supports Vision:  yes
+  Supports Tools:   yes
+  Cost (Input):     $3 / 1M tokens
+  Cost (Output):    $15 / 1M tokens
+```
+
+**Examples**:
+
+```bash
+viben model show -n claude-sonnet-4-20250514
+viben model show -n gpt-4-turbo --json
 ```
 
 ### Model Status

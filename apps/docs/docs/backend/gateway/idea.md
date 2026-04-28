@@ -12,6 +12,27 @@ description: "AI-driven idea generation and management API"
 
 The Idea API provides AI-driven code improvement suggestion generation and management capabilities. It supports 6 built-in types and user-defined custom types. Generated ideas can be promoted to tasks.
 
+## Architecture
+
+```
++---------------------------------------------------------------+
+|                    CLI / Gateway                               |
++---------------------------------------------------------------+
+|  +------------------+         +------------------+            |
+|  |  viben idea *    |         |  /api/idea/*     |            |
+|  |  (CLI commands)  |         |  (REST routes)   |            |
+|  +--------+---------+         +--------+---------+            |
+|           |                            |                      |
+|           +------------+---------------+                      |
+|                        |                                      |
+|                        v                                      |
+|  +------------------------------------------------------------+
+|  |              packages/core/src/idea/ops                    |
+|  |  generateIdeas, listIdeas, viewIdea, promoteIdea, etc.     |
+|  +------------------------------------------------------------+
++---------------------------------------------------------------+
+```
+
 ## Endpoints
 
 | Method | Path | Description |
@@ -88,6 +109,23 @@ Generate ideas. This is a streaming endpoint that returns generation progress vi
 {"type": "error", "message": "Failed to generate ideas", "idea_type": "code_improvements"}
 ```
 
+**Non-streaming Response** (add `?stream=false` query parameter):
+
+```json
+{
+  "success": true,
+  "session_id": "03-11-api-improvement",
+  "summary": {
+    "total_ideas": 10,
+    "by_type": {
+      "code_improvements": 5,
+      "security_hardening": 5
+    }
+  },
+  "ideas": [...]
+}
+```
+
 ---
 
 ### GET /api/idea
@@ -100,7 +138,7 @@ Get idea list.
 |-----------|------|-------------|
 | workspace_path | string | **Required** Workspace path |
 | type | string | Filter by type |
-| effort | string | Filter by effort |
+| effort | string | Filter by effort (trivial/small/medium/large/complex) |
 | status | string | Filter by status (draft/promoted/dismissed) |
 | session_id | string | Filter by session ID |
 | limit | number | Limit returned count, defaults to 100 |
@@ -218,6 +256,15 @@ Get single idea details.
 }
 ```
 
+**Error Response** (404):
+
+```json
+{
+  "success": false,
+  "error": "Idea not found: a1b2c3d4"
+}
+```
+
 ---
 
 ### POST /api/idea/:id/promote
@@ -253,6 +300,16 @@ Promote idea to task.
 | model | string | No | Model to use |
 | start | boolean | No | Auto-start task |
 | worktree | boolean | No | Run in git worktree |
+
+**Effort to Priority Default Mapping**:
+
+| Effort | Priority |
+|--------|----------|
+| trivial | P3 |
+| small | P3 |
+| medium | P2 |
+| large | P1 |
+| complex | P1 |
 
 **Response**:
 
@@ -332,6 +389,8 @@ Batch delete ideas.
   "all": false
 }
 ```
+
+> **Note**: `ids`, `type`, `all` - at least one must be specified.
 
 **Response**:
 
@@ -438,6 +497,113 @@ Get generation session details.
 | implementation_approach | string | Implementation approach |
 | session_id | string | Parent session ID |
 
+### IdeaType Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Type identifier |
+| description | string | Type description |
+| source | string | Source (`builtin` or `custom`) |
+| max_ideas | number | Default maximum ideas |
+| path | string \| undefined | File path for custom types |
+
+### IdeaSession Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Session ID (format: `MM-DD-slug`) |
+| types | string[] | List of generated types |
+| model | string | Model used |
+| summary | object | Statistical summary |
+| files | string[] | List of generated files |
+| generated_at | string | Generation time |
+| updated_at | string | Update time |
+
+---
+
+## File Persistence
+
+Idea data is stored in the workspace's `.viben/ideas/` directory:
+
+```
+.viben/
+  ideas/
+    <date>-<slug>/                          # One directory per generation
+      idea.json                             # Metadata
+      idea_code_improvements_<name1>.md     # Each idea in its own file
+      idea_code_improvements_<name2>.md
+      idea_security_hardening_<name1>.md
+
+docs/
+  idea-types/                               # Custom type prompt templates
+    api_design.md
+    refactoring.md
+```
+
+---
+
+## WebSocket Event Notifications
+
+Idea generation sends events to the WebSocket (idea channel):
+
+```json
+// Generation started
+{
+  "type": "idea_generation_started",
+  "data": {
+    "session_id": "03-11-api-improvement",
+    "types": ["code_improvements", "security_hardening"]
+  }
+}
+
+// Single idea generated
+{
+  "type": "idea_generated",
+  "data": {
+    "session_id": "03-11-api-improvement",
+    "idea": {...}
+  }
+}
+
+// Type completed
+{
+  "type": "idea_type_completed",
+  "data": {
+    "session_id": "03-11-api-improvement",
+    "idea_type": "code_improvements",
+    "count": 5
+  }
+}
+
+// Generation completed
+{
+  "type": "idea_generation_completed",
+  "data": {
+    "session_id": "03-11-api-improvement",
+    "summary": {...}
+  }
+}
+
+// Idea status changed
+{
+  "type": "idea_status_changed",
+  "data": {
+    "idea_id": "a1b2c3d4",
+    "old_status": "draft",
+    "new_status": "promoted",
+    "promoted_to": "task-123"
+  }
+}
+
+// Idea deleted
+{
+  "type": "idea_deleted",
+  "data": {
+    "idea_id": "a1b2c3d4"
+  }
+}
+```
+
 ---
 
 ## Error Codes
@@ -448,6 +614,16 @@ Get generation session details.
 | 404 | NotFoundError | Idea or session not found |
 | 409 | ConflictError | Idea already promoted to task |
 | 500 | InternalError | Internal server error |
+
+**Error Response Format**:
+
+```json
+{
+  "success": false,
+  "error": "Idea not found: a1b2c3d4",
+  "code": "NOT_FOUND"
+}
+```
 
 ---
 

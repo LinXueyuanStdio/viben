@@ -101,17 +101,32 @@ An Executor is the underlying AI coding agent runtime.
 - **Independent Installation** - Requires separate installation
 - **Runtime Environment** - Provides actual AI inference capabilities
 
-**Supported Executors**:
+**Runtime Executors** (can be spawned and executed):
 
-| Executor | Type | CLI Command | MCP Support |
-|----------|------|-------------|-------------|
-| Claude Code | CLAUDE_CODE | `claude` | ✓ |
-| AMP | AMP | `amp` | ✓ |
-| Gemini | GEMINI | `gemini` | - |
-| Codex | CODEX | `codex` | - |
-| Cursor | CURSOR_AGENT | `cursor` | ✓ |
-| Qwen Code | QWEN_CODE | `qwen` | - |
-| Copilot | COPILOT | `copilot` | - |
+| Executor | Type | CLI Command |
+|----------|------|-------------|
+| Claude Code | CLAUDE_CODE | `claude` |
+| AMP | AMP | `amp` |
+| Gemini | GEMINI | `gemini` |
+| Codex | CODEX | `codex` |
+| OpenCode | OPENCODE | `opencode` |
+| Cursor Agent | CURSOR_AGENT | `cursor` |
+| Qwen Code | QWEN_CODE | `qwen` |
+| Copilot | COPILOT | `copilot` |
+| Droid | DROID | `droid` |
+
+**Template-only Executors** (for `viben init` workspace configuration, no runtime spawning):
+
+| Executor | Type |
+|----------|------|
+| Cursor IDE | CURSOR |
+| iFlow | IFLOW |
+| Kilo | KILO |
+| Kiro | KIRO |
+| Antigravity | ANTIGRAVITY |
+| Windsurf | WINDSURF |
+| Aider | AIDER |
+| Continue | CONTINUE |
 
 ### Agent
 
@@ -193,8 +208,8 @@ Viben uses YAML files for configuration storage, supporting multi-level configur
 ├── providers.yaml       # API Keys, Endpoints
 ├── models.yaml          # Model parameters
 ├── agents/              # Agent definitions
-│   └── <name>/
-│       └── AGENTS.md
+│   └── <agent-id>/
+│       └── config.yaml
 ├── cron.yaml            # Scheduled tasks
 ├── channels.yaml        # Notification channels
 └── workspaces.yaml      # Workspaces

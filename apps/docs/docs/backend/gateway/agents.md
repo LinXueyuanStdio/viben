@@ -89,7 +89,11 @@ Agents specify which executor to use via the `executor_type` field.
 
 ### GET /api/agent
 
-List all agents (Viben agents + Executor agents).
+List all user-created agents.
+
+:::info
+This API returns only agents (user-created configurations), not executors. Executors are managed separately via `/api/executors`.
+:::
 
 **Query Parameters**:
 
@@ -106,24 +110,41 @@ List all agents (Viben agents + Executor agents).
     {
       "id": "my-agent",
       "name": "My Agent",
-      "type": "viben",
+      "executor_type": "CLAUDE_CODE",
       "model": "claude-3-sonnet",
-      "provider": "anthropic",
-      "is_available": true,
-      "workspace_path": null,
-      "is_global": true
+      "description": "A helpful coding assistant",
+      "source": "global",
+      "config_path": "~/.viben/agents/my-agent/config.yaml",
+      "is_available": true
     },
     {
-      "id": "CLAUDE_CODE",
-      "name": "Claude Code",
-      "type": "executor",
-      "is_available": true,
-      "supports_mcp": true,
-      "features": ["chat", "code", "tools"]
+      "id": "project-helper",
+      "name": "Project Helper",
+      "executor_type": "CURSOR",
+      "model": "gpt-4",
+      "description": "Project-specific assistant",
+      "source": "workspace",
+      "workspace_path": "/path/to/project",
+      "config_path": "/path/to/project/.viben/agents/project-helper/config.yaml",
+      "is_available": true
     }
   ]
 }
 ```
+
+**Agent Response Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Agent ID |
+| name | string | Agent name |
+| executor_type | string | Executor type (e.g., `CLAUDE_CODE`, `CURSOR`) |
+| model | string | Model ID |
+| description | string | Agent description |
+| source | string | Agent source (`global` or `workspace`) |
+| config_path | string | Path to the agent's config.yaml file |
+| workspace_path | string | Workspace path (only for workspace-scoped agents) |
+| is_available | boolean | Whether the agent's executor is available |
 
 ---
 
@@ -331,21 +352,23 @@ User-defined agents stored in:
 - Global: `~/.viben/agents/<id>/config.yaml`
 - Workspace: `<workspace>/.viben/agents/<id>/config.yaml`
 
-### Executor Agents
+### Executor Types (executor_type)
 
-Based on executor types, available types:
+Agents specify which executor to use via the `executor_type` field. All executor types use **uppercase format**:
 
-| ID | Name | Description |
-|----|------|-------------|
+| executor_type | Executor | Description |
+|---------------|----------|-------------|
 | CLAUDE_CODE | Claude Code | Anthropic Claude Code CLI |
 | AMP | AMP | AMP coding agent |
-| GEMINI | Gemini | Google Gemini |
+| GEMINI | Gemini | Google Gemini CLI |
 | CODEX | Codex | OpenAI Codex |
-| OPENCODE | OpenCode | OpenCode agent |
-| CURSOR_AGENT | Cursor | Cursor IDE agent |
+| CURSOR | Cursor | Cursor IDE agent |
 | QWEN_CODE | Qwen Code | Qwen coding agent |
 | COPILOT | Copilot | GitHub Copilot |
-| DROID | Droid | Droid agent |
+
+:::note
+Executors themselves are managed via the [Executor API](./executors.md). Agents only reference an executor type.
+:::
 
 ---
 

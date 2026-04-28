@@ -142,9 +142,66 @@ function WorkspaceSelector() {
 
 ## Data Fetching
 
-### SWR Patterns
+### TanStack Query Patterns (Primary)
 
-Use SWR for data fetching with caching and revalidation:
+Use TanStack Query for data fetching with caching, background refetching, and request state management:
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+
+// Basic fetching
+function useAgents(workspacePath: string) {
+  const { data, error, isLoading, refetch } = useQuery({
+    queryKey: ["agents", workspacePath],
+    queryFn: () =>
+      fetcher(`/api/agent?workspace_path=${workspacePath}`),
+    enabled: !!workspacePath,
+  });
+
+  return {
+    agents: data?.agents ?? [],
+    isLoading,
+    isError: !!error,
+    refresh: refetch,
+  };
+}
+
+// Conditional fetching
+function useTask(taskId: string | undefined) {
+  const { data, error } = useQuery({
+    queryKey: ["task", taskId],
+    queryFn: () => fetcher(`/api/task/${taskId}`),
+    enabled: !!taskId, // disabled queries skip fetching
+  });
+  return { task: data, isError: !!error };
+}
+
+// Mutation with cache invalidation
+function useCreateTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    },
+  });
+}
+
+// Query with type safety and stale time
+function useAgent(agentId: string) {
+  return useQuery({
+    queryKey: ["agent", agentId],
+    queryFn: () => fetchAgent(agentId),
+    enabled: !!agentId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+```
+
+### SWR Patterns (Alternative)
+
+SWR can also be used for simpler data fetching scenarios with caching and revalidation:
 
 ```typescript
 import useSWR from "swr";
@@ -162,15 +219,6 @@ function useAgents(workspacePath: string) {
     isError: !!error,
     refresh: mutate,
   };
-}
-
-// Conditional fetching
-function useTask(taskId: string | undefined) {
-  const { data, error } = useSWR(
-    taskId ? `/api/task/${taskId}` : null, // null key skips fetching
-    fetcher
-  );
-  return { task: data, isError: error };
 }
 
 // Mutation with optimistic update
@@ -193,36 +241,6 @@ function useUpdateTask() {
       }
     );
   };
-}
-```
-
-### TanStack Query Patterns
-
-For more complex query scenarios:
-
-```typescript
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-// Query with type safety
-function useAgent(agentId: string) {
-  return useQuery({
-    queryKey: ["agent", agentId],
-    queryFn: () => fetchAgent(agentId),
-    enabled: !!agentId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-// Mutation with cache invalidation
-function useCreateTask() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: createTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
 }
 ```
 

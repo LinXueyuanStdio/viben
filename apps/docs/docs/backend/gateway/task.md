@@ -25,11 +25,11 @@ The Gateway Task API (`/api/task/*`) provides a complete HTTP interface for the 
 |----------|-----------|---------------------------|
 | CRUD | `list`, `create`, `view`, `delete` | `viben task list/create/view/delete` |
 | Lifecycle | `pause`, `resume`, `approve`, `reject`, `retry`, `cancel` | `viben task pause/resume/approve/reject/retry/cancel` |
-| Queue Management | `enqueue`, `dequeue`, `queue-status`, `batch-enqueue` | `viben task enqueue/dequeue` |
+| Queue Management | `enqueue`, `dequeue`, `queue-status`, `batch-enqueue`, `queue-config`, `clear-history` | `viben task enqueue/dequeue` |
 | Configuration | `set-branch`, `set-base`, `set-agent` | `viben task set-branch/set-base/set-agent` |
 | Context Management | `init-context`, `add-context`, `remove-context`, `list-context`, `validate-context` | `viben task init-context/add-context/...` |
 | Execution Control | `start`, `execute`, `stop`, `running` | `viben task start` |
-| Phase Commands | `plan-phase`, `implement-phase`, `check-phase`, `work-phase` | `viben task plan-phase/...` |
+| Phase Commands | `plan-phase`, `implement-phase`, `check-phase`, `work-phase`, `plan` (legacy) | `viben task plan-phase/...` |
 | Review | `review`, `context`, `status`, `create-pr` | `viben task review/context/status/create-pr` |
 | Archive | `finish`, `archive`, `list-archive` | `viben task finish/archive/list-archive` |
 | Worktree | `create-worktree`, `validate-check-phase-passed`, `cleanup` | `viben task create-worktree/cleanup` |
@@ -371,6 +371,42 @@ Batch enqueue multiple tasks.
   "workspace_path": "/path/to/workspace",
   "task_ids": ["task-1", "task-2", "task-3"],
   "executor": "CLAUDE_CODE"
+}
+```
+
+---
+
+### POST /api/task/queue-config
+
+Get or update queue configuration.
+
+**Request Body**:
+
+```json
+{
+  "workspace_path": "/path/to/workspace",
+  "max_concurrent": 4
+}
+```
+
+**Field Description**:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| workspace_path | string | Yes | Workspace path |
+| max_concurrent | number | No | Maximum concurrent tasks (omit to read current config) |
+
+---
+
+### POST /api/task/clear-history
+
+Clear execution history.
+
+**Request Body**:
+
+```json
+{
+  "workspace_path": "/path/to/workspace"
 }
 ```
 
@@ -718,6 +754,27 @@ Run Work phase (auto-creates worktree).
   "detach": true
 }
 ```
+
+---
+
+### POST /api/task/plan
+
+Run Plan phase (legacy endpoint, same as `plan-phase`).
+
+**Request Body**:
+
+```json
+{
+  "workspace_path": "/path/to/workspace",
+  "task_id": "add-user-auth",
+  "platform": "claude",
+  "verbose": false
+}
+```
+
+:::note
+This is a legacy endpoint maintained for backward compatibility. Prefer using `POST /api/task/plan-phase` instead.
+:::
 
 ---
 
@@ -1104,6 +1161,23 @@ Add session record to task log.
 | 404 | NotFoundError | Task not found |
 | 409 | StateError | Illegal state transition |
 | 500 | InternalError | Internal server error |
+
+---
+
+## Implementation File Locations
+
+| File | Description |
+|------|-------------|
+| `packages/core/src/gateway/routes/task.ts` | Gateway endpoint implementation |
+| `packages/core/src/task/ops/lifecycle.ts` | Lifecycle operations |
+| `packages/core/src/task/ops/config.ts` | Configuration operations |
+| `packages/core/src/task/ops/context-files.ts` | Context file operations |
+| `packages/core/src/task/ops/context-output.ts` | Context output |
+| `packages/core/src/task/ops/crud.ts` | CRUD operations |
+| `packages/core/src/task/ops/review.ts` | Review operations |
+| `packages/core/src/task/ops/create-pr.ts` | PR creation |
+| `packages/core/src/task/ops/session.ts` | Session records |
+| `packages/core/src/task/phase/*.ts` | Phase execution functions |
 
 ---
 

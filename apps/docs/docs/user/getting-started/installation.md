@@ -126,18 +126,51 @@ viben version
 ```
 viben <command> [options]
 
-Commands:
-  gateway       Start Gateway service
-  agent         Manage agents (Agent Swarm)
-  task          Task state machine workflows (Task System)
-  queue         Background command execution queue (Queue System)
-  provider      Manage API Providers
-  model         Manage model configurations
-  mcp           Manage MCP servers
-  skill         Manage Skills
-  channel       Manage chat channels
-  cron          Manage scheduled tasks
-  workspace     Workspace operations
+Core:
+  init          Initialize a Viben workspace with AI-assisted development workflow
+  config        Manage Viben configuration (git-style get/set)
+  gateway       Manage the Viben Gateway (start/stop/status)
+  service       Manage background services
+
+Agent:
+  agent         Manage AI agents (create, update, list, chat, memory, sessions)
+  executor      Manage AI coding agent executors (list, show, chat)
+
+Task:
+  task          Manage development tasks (state machine workflows)
+  queue         Manage background command execution queue
+  swarm         Manage multi-agent pipelines using git worktrees
+
+AI:
+  idea          AI-driven idea generation and management
+  evo           Evo - File-based Self-Evolution for code optimization
+  reward        Reward type management for Evo
+
+Tools:
+  mcp           MCP (Model Context Protocol) utilities
+  skill         Manage skills (install, search, enable/disable)
+  channel       Manage notification channels
+  cron          Manage scheduled cron jobs
+
+Workspace:
+  workspace     Workspace operations (list, current)
+  session       Session recording management
+  context       Get current development context
+  user          Manage user identity
+  page          Manage workspace pages
+
+Config:
+  provider      Manage AI providers
+  model         Manage AI models (aliases, fallback, config)
+  update        Update Viben CLI or workspace components
+
+Telemetry:
+  telemetry     Manage telemetry traces and logs
+
+Auth:
+  login         Log in to Viben with an API token
+  logout        Log out and remove saved token
+  whoami        Show current logged-in user
 ```
 
 ---

@@ -464,6 +464,55 @@ skills:
     - commit
 ```
 
+## Agent Directory Structure
+
+Each agent instance is stored under `~/.viben/agents/<agent-id>/` with the following structure:
+
+```
+~/.viben/agents/<agent-id>/
+├── config.yaml              # Agent configuration
+├── mcp_servers.json         # MCP servers configuration
+├── skills/                  # Agent-specific skills
+├── memory/                  # Agent memory
+│   ├── MEMORY.md            # Main memory file (structured knowledge)
+│   ├── 2024-01-15.md        # Daily log (append-only)
+│   ├── 2024-01-16.md        # Session startup reads today + yesterday
+│   └── ...
+├── .agentrc                 # Agent startup configuration
+├── .agent_history           # Command history
+└── .agent_sessions/         # Session storage
+    └── <session_id>/
+        ├── config.yaml              # Session configuration
+        └── messages.rollout.jsonl   # Message history (JSONL)
+```
+
+## Agent RC File (.agentrc)
+
+Each agent can have an `.agentrc` file that is sourced when the agent starts up. This file can set environment variables, default session preferences, and memory loading options.
+
+```bash
+# ~/.viben/agents/my-agent/.agentrc
+# Configuration sourced at agent startup
+
+# Environment variables
+export ANTHROPIC_API_KEY="sk-ant-xxx"
+export OPENAI_API_KEY="sk-xxx"
+
+# Default session
+DEFAULT_SESSION="main"
+
+# Memory files to load at startup
+MEMORY_FILES="MEMORY.md"
+DAILY_LOG_DAYS=2  # Read today + yesterday
+```
+
+You can also place a project-level `.agentrc` file in your project directory to provide workspace-specific overrides. When both files exist, the project-level `.agentrc` is merged on top of the agent-level one:
+
+```
+1. ~/.viben/agents/<id>/.agentrc    # Agent-level defaults
+2. <project>/.agentrc               # Project-level overrides
+```
+
 ## MCP Servers Configuration
 
 ```json

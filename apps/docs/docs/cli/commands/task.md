@@ -39,9 +39,21 @@ viben task <subcommand> [options]
 | `reject` | Reject and rework |
 | `retry` | Retry a failed task |
 | `cancel` | Cancel a task |
+| `stop` | Alias for cancel |
 | `start` | Start task execution |
+| `plan-phase` | Run Plan phase |
+| `work-phase` | Run Work phase |
+| `implement-phase` | Run Implement phase |
+| `check-phase` | Run Check phase |
 | `status` | View task status |
 | `create-pr` | Create a Pull Request |
+| `set-branch` | Set task branch name |
+| `set-base` | Set base branch for PR |
+| `set-agent` | Set agent configuration |
+| `create-worktree` | Create git worktree for task |
+| `validate-check-phase-passed` | Validate check phase passed |
+| `check-stuck` | Check if task is stuck |
+| `cleanup` | Clean up worktree and resources |
 
 ## Task CRUD
 
@@ -117,6 +129,31 @@ viben task delete <task> [--force]
 
 ## Status Lifecycle Management
 
+### Design Principles
+
+1. **Unified task_dir identifier** - All commands use the task directory name as the identifier
+2. **Explicit parameters** - `viben task <command> <task>` must specify the task
+3. **Local-first** - Directly operate on `task.json` and `events.jsonl`, no Gateway dependency
+4. **Atomic commands** - Each command is responsible for a single state transition
+
+### Command Overview
+
+```
+viben task <command> <task>
+
+State transition commands:
+  enqueue <task>     backlog -> queue        Enqueue for execution
+  dequeue <task>     queue -> backlog        Remove from queue
+  pause <task>       in_progress -> paused   Pause execution
+  resume <task>      paused -> restore       Resume execution
+  review <task>      Display review info     View task pending review
+  approve <task>     review -> completed     Approve completion
+  reject <task>      review -> backlog       Reject and rework
+  retry <task>       failed -> queue         Retry failed task
+  cancel <task>      * -> cancelled          Cancel task
+  stop <task>        Alias for cancel
+```
+
 ### Enqueue Task
 
 Move a task from backlog status to queue status and submit it to the Command Queue system.
@@ -135,6 +172,14 @@ viben task enqueue <task> [options]
 | `--priority <p>` | Priority (P0/P1/P2/P3) |
 | `--skip-queue` | Only update status, don't submit to queue system |
 
+**Behavior**:
+
+1. Validates task status is `backlog`
+2. Sets `agent/executor/model` (if specified, locked after enqueue)
+3. Sets `queuedAt` timestamp (used for FIFO ordering)
+4. Status transition: `backlog` -> `queue`
+5. Writes `QUEUE` event to `events.jsonl`
+
 **Examples**:
 
 ```bash
@@ -142,7 +187,7 @@ viben task enqueue <task> [options]
 viben task enqueue 03-10-feature-xyz
 
 # Specify execution configuration
-viben task enqueue 03-10-feature-xyz --agent my-agent --executor CLAUDE_CODE
+viben task enqueue 03-10-feature-xyz --agent my-agent --executor CLAUDE_CODE --model claude-sonnet-4-20250514
 
 # Only update status without submitting to queue
 viben task enqueue 03-10-feature-xyz --skip-queue
@@ -183,6 +228,13 @@ Remove a task from the queue and return it to backlog status.
 viben task dequeue <task>
 ```
 
+**Behavior**:
+
+1. Validates status is `queue`
+2. Clears `queuedAt`
+3. Status transition: `queue` -> `backlog`
+4. Writes `DEQUEUE` event
+
 **Examples**:
 
 ```bash
@@ -195,21 +247,55 @@ viben queue cancel q_7kA9OXDz71T7
 
 ### Pause Task
 
+Pause an executing or queued task.
+
 ```bash
 viben task pause <task>
 ```
 
+**Behavior**:
+
+1. Validates status is `in_progress` or `queue`
+2. Saves `pausedSnapshot`:
+   ```json
+   {
+     "fromState": "in_progress",
+     "subtaskIndex": 2,
+     "pausedAt": "2026-03-11T10:00:00Z"
+   }
+   ```
+3. Status transition: `in_progress`/`queue` -> `paused`
+4. Writes `PAUSE` event
+
 ### Resume Task
+
+Resume a paused task.
 
 ```bash
 viben task resume <task>
 ```
 
+**Behavior**:
+
+1. Validates status is `paused`
+2. Reads `pausedSnapshot.fromState`
+3. Restores to the state before pause
+4. Clears `pausedSnapshot`
+5. Writes `RESUME` event
+
 ### View Tasks Pending Review
+
+View detailed information about a task pending review.
 
 ```bash
 viben task review <task>
 ```
+
+**Behavior**:
+
+1. Reads `task.json`
+2. If `pr_url` exists, fetches PR statistics (via `gh` CLI)
+3. Displays task details and next-step action hints
 
 **Output**:
 
@@ -233,23 +319,54 @@ Next steps:
 
 ### Approve Task
 
+Approve a task as completed.
+
 ```bash
 viben task approve <task>
 ```
 
+**Behavior**:
+
+1. Validates status is `review`
+2. Sets `completedAt` to current time
+3. Status transition: `review` -> `completed`
+4. Writes `APPROVED` event
+
 ### Reject Task
+
+Reject a task and return it to backlog for rework.
 
 ```bash
 viben task reject <task> [--reason <text>]
 ```
 
+**Behavior**:
+
+1. Validates status is `review`
+2. Clears `pr_url` (PR may need to be closed or resubmitted)
+3. Records `reviewReason: "rejected"` and `rejectReason` (if specified)
+4. Status transition: `review` -> `backlog`
+5. Writes `REJECTED` event
+
 ### Retry Task
+
+Retry a failed task by re-enqueuing it.
 
 ```bash
 viben task retry <task>
 ```
 
+**Behavior**:
+
+1. Validates status is `failed`
+2. Clears error-related fields
+3. Re-sets `queuedAt`
+4. Status transition: `failed` -> `queue`
+5. Writes `RETRY` event
+
 ### Cancel Task
+
+Cancel a task, moving it directly to the `cancelled` terminal state.
 
 ```bash
 viben task cancel <task> [--reason <text>] [--force]
@@ -260,10 +377,92 @@ viben task stop <task>   # Alias for cancel
 
 | Option | Description |
 |--------|-------------|
-| `--reason <text>` | Cancellation reason |
+| `--reason <text>` | Cancellation reason (optional) |
 | `--force`, `-f` | Force cancel tasks in in_progress status |
 
+**Behavior**:
+
+1. Validates task status is in the allowed list: `backlog`, `queue`, `paused`, `in_progress`, `review`
+2. If status is `in_progress` and `--force` is not specified, exits with error:
+   ```
+   Error: Task is in_progress. Use --force to cancel a running task.
+   ```
+3. Records `cancelReason` (if specified)
+4. Sets `cancelledAt` to current time
+5. Status transition -> `cancelled`
+6. Writes `CANCEL` event to `events.jsonl`
+
+**Statuses that cannot be cancelled**:
+- `completed` - Already completed, use archive instead
+- `failed` - Already failed, use retry or archive instead
+- `cancelled` - Already cancelled
+
 ## Task Execution
+
+### Execution Architecture
+
+Task execution uses a layered architecture:
+
+```
++---------------------------------------------------------------------------------+
+|                           TASK EXECUTION LIFECYCLE                               |
++---------------------------------------------------------------------------------+
+|                                                                                 |
+|  [Start] viben task start <task>                                                |
+|       |                                                                         |
+|       v                                                                         |
+|  startTask() --> Read start.md as prompt --> AI executes the following flow:     |
+|       |                                                                         |
+|       |   +-------------------------------------------------------------+       |
+|       |   |  start.md Flow (AI execution)                               |       |
+|       |   +-------------------------------------------------------------+       |
+|       |   |                                                             |       |
+|       |   |  Phase 1: Plan                                              |       |
+|       |   |       |                                                     |       |
+|       |   |       v                                                     |       |
+|       |   |  viben task plan-phase --> Plan Agent                       |       |
+|       |   |       +-- Validate requirement                              |       |
+|       |   |       +-- Research codebase                                 |       |
+|       |   |       +-- Configure context (jsonl)                         |       |
+|       |   |       +-- Write prd.md                                      |       |
+|       |   |                                                             |       |
+|       |   |  Phase 2: Work                                              |       |
+|       |   |       |                                                     |       |
+|       |   |       v                                                     |       |
+|       |   |  viben task work-phase --> Work Agent                       |       |
+|       |   |       |                                                     |       |
+|       |   |       |   [Auto-create worktree when worktree=true          |       |
+|       |   |       |    or branch is set]                                |       |
+|       |   |       |                                                     |       |
+|       |   |       +-- Dispatch sub-agents (in next_action order):       |       |
+|       |   |               +-- Task(implement) --> Implement code        |       |
+|       |   |               +-- Task(check)     --> Check code            |       |
+|       |   |               +-- Task(finish)    --> Final verification    |       |
+|       |   |                                                             |       |
+|       |   |  Phase 3: Create PR (worktree mode)                         |       |
+|       |   |       +-- viben task create-pr --> Create PR                |       |
+|       |   |                                                             |       |
+|       |   |  Phase 4: Report Status                                     |       |
+|       |   |       +-- Output monitoring commands                        |       |
+|       |   |                                                             |       |
+|       |   +-------------------------------------------------------------+       |
+|       |                                                                         |
+|       v                                                                         |
+|  status: in_progress -> review                                                  |
+|                                                                                 |
++---------------------------------------------------------------------------------+
+```
+
+### Command Classification
+
+| Command | Nature | Description |
+|---------|--------|-------------|
+| `viben task start` | **Standard entry point** | Executes full flow (plan -> work -> report) |
+| `viben task plan-phase` | Phase command | Called by start internally, also usable standalone |
+| `viben task work-phase` | Phase command | Called by start internally, also usable standalone |
+| `viben task implement-phase` | Phase command | Called by work internally, also usable standalone |
+| `viben task check-phase` | Phase command | Called by work internally, also usable standalone |
+| `viben task create-worktree` | Utility command | Create worktree independently |
 
 ### Start Task
 
@@ -275,17 +474,21 @@ viben task start <task> [options]
 
 | Option | Description |
 |--------|-------------|
-| `--executor <type>` | Executor type |
+| `--executor <type>` | Executor type (CLAUDE_CODE, CURSOR, OPENCODE, etc.) |
 | `--detach` | Run in background |
-| `--worktree` | Run in an isolated git worktree |
+| `--worktree` | Run in an isolated git worktree (parallel mode) |
 | `--resume` | Resume an existing agent session |
-| `--session <id>` | Specify session-id |
+| `--session <id>` | Specify session-id (used with --resume) |
 
 **Execution Flow**:
-1. Call Plan Agent to plan the task
-2. Call Work Agent to execute the task
-3. Automatically create worktree (if configured)
-4. Enter review status upon completion
+1. Call `startTask()` (phase/start.ts)
+2. Read `/viben:start` command content (start.md)
+3. Send to Claude as a prompt
+4. AI executes the flow defined in start.md:
+   - Phase 1: `viben task plan-phase` -> Plan Agent
+   - Phase 2: `viben task work-phase` -> Work Agent
+   - Phase 3: Report Status
+5. Register agent to registry
 
 **Examples**:
 
@@ -295,20 +498,135 @@ viben task start add-user-auth --executor CURSOR
 viben task start add-user-auth --resume
 ```
 
-### Phase Commands
+### Plan Phase
+
+Run the Plan Phase, launching the Plan Agent to plan the task.
 
 ```bash
-# Run Plan phase
-viben task plan-phase <task> [--platform <platform>] [--verbose]
+viben task plan-phase <task> [options]
+```
 
-# Run Work phase
-viben task work-phase <task> [--platform <platform>] [--no-detach]
+**Options**:
 
-# Run Implement phase
-viben task implement-phase <task>
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Platform (claude, cursor, iflow, opencode), default claude |
+| `-v, --verbose` | Enable verbose output |
 
-# Run Check phase
-viben task check-phase <task>
+**Preconditions**:
+- `task.json` must exist
+- `title` or `description` field serves as the requirement
+
+**Plan Agent Flow**:
+1. Evaluate the requirement (may reject unclear or overly large requirements)
+2. Call research agent to analyze the codebase
+3. Configure context files (implement.jsonl, check.jsonl, fix.jsonl)
+4. Generate prd.md requirements document
+5. Set branch name
+
+**Examples**:
+
+```bash
+viben task plan-phase 03-11-user-auth
+viben task plan-phase 03-11-user-auth --platform cursor
+```
+
+### Work Phase
+
+Run the Work Phase, launching the Work Agent to execute the task.
+
+```bash
+viben task work-phase <task> [options]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Platform (claude, cursor, iflow, opencode), default claude |
+| `-v, --verbose` | Enable verbose output |
+| `--no-detach` | Run in foreground (default is background) |
+
+**Preconditions**:
+- `task.json` must exist
+- `prd.md` must exist (plan phase completed)
+- `work` agent must exist
+
+**Automatic Worktree Creation**:
+
+When `task.json` has `worktree=true` or a `branch` field, a git worktree is automatically created.
+
+**Work Agent Flow**:
+1. Reads `next_action` array from `task.json`
+2. Executes each action in order:
+   - `implement` -> calls implement agent
+   - `check` -> calls check agent
+   - `fix` -> calls fix agent
+   - `finish` -> calls check agent (with [finish] marker)
+
+:::note
+`create-pr` and `compute-reward` are called by the **start agent** in the main repo, not handled by the work agent.
+:::
+
+**Examples**:
+
+```bash
+viben task work-phase 03-11-user-auth
+viben task work-phase 03-11-user-auth --platform cursor
+```
+
+### Implement Phase
+
+Run the Implement Phase directly (standalone usage).
+
+```bash
+viben task implement-phase <task> [options]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Platform (claude, cursor, iflow, opencode), default claude |
+| `-v, --verbose` | Enable verbose output |
+
+**Preconditions**:
+- `task.json` must exist
+- `prd.md` must exist
+- `implement` agent must exist
+- `implement.jsonl` optional (provides code-spec file list)
+
+**Examples**:
+
+```bash
+viben task implement-phase 03-11-user-auth
+```
+
+### Check Phase
+
+Run the Check Phase directly (standalone usage).
+
+```bash
+viben task check-phase <task> [options]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-p, --platform <platform>` | Platform (claude, cursor, iflow, opencode), default claude |
+| `-v, --verbose` | Enable verbose output |
+
+**Preconditions**:
+- `task.json` must exist
+- `prd.md` must exist
+- `check` agent must exist
+- `check.jsonl` optional (provides code-spec file list)
+
+**Examples**:
+
+```bash
+viben task check-phase 03-11-user-auth
 ```
 
 ### View Status
@@ -338,6 +656,242 @@ viben task status <task> [--detail] [--watch] [--log]
 ```bash
 viben task create-pr <task> [--dry-run]
 ```
+
+## Task Configuration
+
+### Set Branch
+
+Set the Git branch name for a task.
+
+```bash
+viben task set-branch <task> --branch <branch-name>
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `--branch <name>` | Branch name to set |
+
+**Examples**:
+
+```bash
+viben task set-branch add-user-auth --branch feature/user-auth
+```
+
+### Set Base Branch
+
+Set the PR target (base) branch for a task.
+
+```bash
+viben task set-base <task> --branch <branch-name>
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `--branch <name>` | Base branch name |
+
+**Examples**:
+
+```bash
+viben task set-base add-user-auth --branch develop
+```
+
+### Set Agent
+
+Set the associated agent configuration for a task.
+
+```bash
+viben task set-agent <task> --agent <agent-id>
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `--agent <id>` | Agent ID to associate |
+
+**Examples**:
+
+```bash
+viben task set-agent add-user-auth --agent coding-assistant
+```
+
+## Worktree Management
+
+### Create Worktree
+
+Create an isolated git worktree for a task.
+
+```bash
+viben task create-worktree <task> [--skip-prd]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `--skip-prd` | Skip prd.md validation |
+
+**How It Works**:
+
+1. Validates task status (rejected tasks cannot create worktrees)
+2. Checks that `prd.md` exists (unless `--skip-prd`)
+3. Creates a git worktree and sets up the branch
+4. Updates `task.json` with the `worktree_path`
+
+**Examples**:
+
+```bash
+viben task create-worktree 03-11-user-auth
+viben task create-worktree 03-11-user-auth --skip-prd
+```
+
+## Validation
+
+### Validate Check Phase Passed
+
+Validate that the check phase has passed for a task.
+
+```bash
+viben task validate-check-phase-passed <task> [options]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output <text>` | Agent output text (for completion markers validation) |
+| `-f, --output-file <file>` | File containing agent output |
+
+**Validation Methods**:
+
+1. `verify_commands` - Runs verification commands to check
+2. `completion_markers` - Checks output for completion markers
+
+**Examples**:
+
+```bash
+viben task validate-check-phase-passed 03-11-user-auth
+viben task validate-check-phase-passed 03-11-user-auth -f .check-log
+```
+
+## Stuck Detection
+
+### Check Stuck
+
+Detect whether a task is stuck (detection only, does not perform recovery).
+
+```bash
+viben task check-stuck <task> [options]
+```
+
+**Options**:
+
+| Option | Description |
+|--------|-------------|
+| `-t, --threshold <ms>` | Stuck threshold in milliseconds (default: 120000 / 2 minutes) |
+| `-v, --verbose` | Show detailed detection data |
+| `--json` | JSON format output |
+
+**Detection Mechanism**:
+
+The command runs 4 checks to determine if a task is stuck:
+
+| Check | Description | Stuck Condition |
+|-------|-------------|-----------------|
+| `status` | Task status check | Only `in_progress` or `queue` states can be stuck |
+| `event_timestamp` | Event timestamp | No new events beyond threshold |
+| `process` | Agent process status | PID process does not exist |
+| `log_activity` | Log activity | Log file not modified for extended period |
+
+**Stuck Determination Logic**:
+
+```
+isStuck = process_not_running OR (event_timeout AND log_inactive)
+```
+
+- Process not running -> determined stuck
+- Event timeout AND log inactive -> determined stuck
+
+**Output Example**:
+
+```
+=== Stuck Check: 03-11-feature-xyz ===
+
+Status: STUCK
+  Task appears stuck: process not running, no recent events
+
+Checks:
+  ok status: Task is in active state: in_progress
+  FAIL event_timestamp: No events for 5m 32s (threshold: 2m)
+  FAIL process: Agent process not running (PID: 12345)
+  FAIL log_activity: Log file not modified for 5m 30s
+
+Task Info:
+  Status:   in_progress
+  Assignee: john
+  Last Event: AGENT_OUTPUT_CHUNK @ 2026-03-11T10:00:00Z
+  Updated:  2026-03-11T10:00:00Z
+```
+
+**JSON Output**:
+
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "taskDir": "03-11-feature-xyz",
+    "isStuck": true,
+    "summary": "Task appears stuck: process not running, no recent events",
+    "checks": [
+      {
+        "name": "status",
+        "isStuck": false,
+        "reason": "Task is in active state: in_progress"
+      },
+      {
+        "name": "event_timestamp",
+        "isStuck": true,
+        "reason": "No events for 5m 32s (threshold: 2m)"
+      },
+      {
+        "name": "process",
+        "isStuck": true,
+        "reason": "Agent process not running (PID: 12345)"
+      },
+      {
+        "name": "log_activity",
+        "isStuck": true,
+        "reason": "Log file not modified for 5m 30s"
+      }
+    ]
+  }
+}
+```
+
+**Examples**:
+
+```bash
+# Basic check
+viben task check-stuck 03-11-feature-xyz
+
+# Custom threshold (5 minutes)
+viben task check-stuck 03-11-feature-xyz -t 300000
+
+# Verbose output
+viben task check-stuck 03-11-feature-xyz --verbose
+
+# JSON output (for scripts or API)
+viben task check-stuck 03-11-feature-xyz --json
+```
+
+:::note
+The `check-stuck` command only detects stuck tasks. Automatic recovery is handled by the Gateway's `TaskRecoveryService`.
+:::
 
 ## Context Management
 
@@ -418,6 +972,31 @@ viben task cleanup --all [--yes]
 viben task cleanup --list
 ```
 
+## State Lifecycle Diagram
+
+```mermaid
+flowchart TD
+    A[viben task create] -->|create| B[backlog]
+    B -->|viben task enqueue| C[queue]
+    C -->|viben task work-phase| D[in_progress]
+    D -->|viben task pause| E[paused]
+    E -->|viben task resume| D
+    D -->|viben task create-pr| F[review]
+    F -->|viben task approve| G[completed]
+    F -->|viben task reject| B
+    C -->|viben task dequeue| B
+    D -->|execution failure| H[failed]
+    H -->|viben task retry| C
+    H -->|viben task archive| I[archived]
+    G -->|viben task cleanup| I
+
+    B -->|viben task cancel| J[cancelled]
+    C -->|viben task cancel| J
+    E -->|viben task cancel| J
+    D -->|viben task cancel --force| J
+    F -->|viben task cancel| J
+```
+
 ## Status Transitions
 
 | Command | Allowed Starting Status | Target Status |
@@ -429,7 +1008,7 @@ viben task cleanup --list
 | approve | review | completed |
 | reject | review | backlog |
 | retry | failed | queue |
-| cancel | backlog, queue, paused, in_progress*, review | cancelled |
+| cancel / stop | backlog, queue, paused, in_progress*, review | cancelled |
 
 > *`in_progress` status requires the `--force` parameter
 

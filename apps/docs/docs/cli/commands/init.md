@@ -1,128 +1,145 @@
 ---
 sidebar_position: 2
 title: "viben init"
-description: "Initialize a Viben workspace with team collaboration support"
+description: "Initialize a Viben workspace with AI-assisted development environment"
 ---
 
 # viben init
 
-Initialize a Viben workspace with team collaboration support.
+Initialize a Viben workspace with a complete AI-assisted development environment.
 
 ## Usage
 
 ```bash
-viben init [options]
+viben init [options] [target-dir]
 ```
 
 ## Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--developer, -d` | Developer name (lowercase alphanumeric with hyphens) | - |
-| `--project-type, -t` | Project type: frontend, backend, fullstack | `fullstack` |
-| `--target` | Target directory path | Current directory |
+| `--user, -u` | Developer name (lowercase alphanumeric with hyphens) | Auto-detected from `git config user.name` |
+| `--executor, -e` | AI executor type (repeatable for multiple executors) | `CURSOR,CLAUDE_CODE` |
+| `--yes, -y` | Non-interactive mode, use default values | `false` |
 | `--force, -f` | Force overwrite existing files | `false` |
-| `--skip-existing` | Skip existing files | `false` |
-| `--no-cursor` | Do not create .cursor directory | `false` |
+| `--skip-existing, -s` | Skip existing files | `false` |
 | `--from <template>` | Initialize from a template | - |
 | `--json` | JSON format output | `false` |
+
+### Supported Executors
+
+| Executor | Description | Config Directory |
+|----------|-------------|------------------|
+| `CLAUDE_CODE` | Claude Code (Anthropic) | `.claude/` |
+| `CURSOR` | Cursor IDE | `.cursor/` |
+| `GEMINI` | Gemini CLI (Google) | `.gemini/` |
+| `CODEX` | Codex CLI (OpenAI) | `.agents/skills/` |
+| `OPENCODE` | OpenCode | `.opencode/` |
+| `IFLOW` | iFlow CLI | `.iflow/` |
+| `KILO` | Kilo CLI | `.kilocode/` |
+| `KIRO` | Kiro Code | `.kiro/skills/` |
+| `ANTIGRAVITY` | Antigravity | `.agent/workflows/` |
 
 ## Examples
 
 ### Basic Initialization
 
-Create a new workspace with default configuration:
+Initialize a workspace with default executors (CURSOR + CLAUDE_CODE):
 
 ```bash
-viben init
+viben init --user <name>
+viben init --user john-doe
 ```
 
 **Output (Human-readable):**
 
 ```
-Initialized Viben workspace in /path/to/project
-  Created .viben/config.yaml
+Initializing Viben workspace...
+  Target: /path/to/project
+  Developer: john-doe
+  Executors: CURSOR, CLAUDE_CODE
+
+Workspace initialized successfully!
+
+Created 97 files:
+  .viben/     - Workflow files and workspace
+  docs/specs/ - Project specifications
+  .claude     - Claude Code configuration
+  .cursor     - Cursor configuration
+  AGENTS.md   - Root instructions file
 
 Next steps:
-  viben mcp install <name>    # Install MCP servers
-  viben skill install <name>  # Install skills
+  1. Review and customize docs/specs/ guidelines
+  2. Run viben task context <task> to verify setup
+  3. Start developing with AI assistance!
 ```
 
-### Team Workspace Initialization
-
-Initialize a full team workspace with developer identity:
+### Specify Executors
 
 ```bash
-# Initialize team workspace
-viben init --developer <name>
-viben init --developer john-doe
+# Single executor
+viben init --user john-doe --executor CLAUDE_CODE
+viben init --user john-doe --executor CURSOR
 
-# Specify project type
-viben init --developer <name> --project-type <type>
-viben init --developer john-doe --project-type frontend
-viben init --developer john-doe --project-type backend
-viben init --developer john-doe --project-type fullstack  # Default
+# Multiple executors (repeat --executor flag)
+viben init --user john-doe --executor CLAUDE_CODE --executor CURSOR
+viben init --user john-doe -e CLAUDE_CODE -e GEMINI -e CURSOR
+```
 
-# Specify target directory
-viben init --developer <name> --target <path>
-viben init --developer john-doe --target /path/to/project
+### Non-Interactive Mode
 
+```bash
+# Use defaults without prompts
+viben init --user john-doe --yes
+viben init --user john-doe -y
+```
+
+### Force Overwrite
+
+```bash
 # Force overwrite existing files
-viben init --developer <name> --force
+viben init --user john-doe --force
+```
+
+### Other Options
+
+```bash
+# Specify target directory
+viben init --user john-doe ./my-project
 
 # Skip existing files
-viben init --developer <name> --skip-existing
-
-# Exclude Cursor configuration
-viben init --developer <name> --no-cursor
+viben init --user john-doe --skip-existing
 
 # JSON output
-viben init --developer <name> --json
-```
-
-**Output (Human-readable):**
-
-```
-Initialized Viben team workspace
-
-Created directories:
-  .viben/           Team workflow and workspace
-  docs/specs/       Project specifications
-  .claude/          Claude Code configuration
-  .cursor/          Cursor IDE commands
-  AGENTS.md         Root agent instructions
-
-Developer: john-doe
-Project type: fullstack
-
-Next steps:
-  1. Review .viben/tasks/00-bootstrap-guidelines/prd.md
-  2. Fill in project-specific specs in docs/specs/
-  3. Run /viben:start to begin your first session
+viben init --user john-doe --json
 ```
 
 **Output (JSON):**
 
 ```bash
-viben init --developer john-doe --json
+viben init --user john-doe --json
 ```
 
 ```json
 {
   "success": true,
-  "path": "/path/to/project",
-  "files": [
-    ".viben/workflow.md",
-    ".viben/worktree.yaml",
-    ".viben/.gitignore",
-    ".viben/.version",
-    ".viben/.developer",
-    "docs/specs/guides/index.md",
-    ".claude/settings.json",
-    ".claude/agents/check.md",
-    "AGENTS.md"
-  ],
-  "warnings": []
+  "data": {
+    "path": "/path/to/project",
+    "files": [
+      ".viben/config.yaml",
+      ".viben/workflow.md",
+      ".viben/worktree.yaml",
+      ".viben/.gitignore",
+      ".viben/.version",
+      ".viben/.developer",
+      "docs/specs/guides/index.md",
+      ".claude/settings.json",
+      ".claude/agents/check.md",
+      "AGENTS.md"
+    ],
+    "count": 97,
+    "warnings": []
+  }
 }
 ```
 
@@ -147,26 +164,16 @@ Developer names must follow these rules:
 
 ## What Gets Created
 
-### Basic Initialization (without --developer)
-
-```
-<project>/
-  .viben/
-    config.yaml       # Workspace configuration
-```
-
-### Team Workspace (with --developer)
-
-#### .viben/ Directory
+### .viben/ Directory
 
 ```
 .viben/
++-- config.yaml              # Workspace configuration
 +-- workflow.md              # Workflow documentation
 +-- worktree.yaml            # Git worktree configuration
 +-- .gitignore               # Git ignore rules
 +-- .version                 # Version number (1.0.0)
 +-- .developer               # Developer identity info
-+-- .current-task            # Current task path
 +-- .template-hashes.json    # Template SHA256 hashes
 |
 +-- workspace/
@@ -175,14 +182,13 @@ Developer names must follow these rules:
 |       +-- index.md         # Developer index
 |       +-- journal-1.md     # Session journal
 |
++-- ideas/                   # Generated ideas (from viben idea generate)
+|
 +-- tasks/
-|   +-- archive/             # Archived tasks
-|   +-- 00-bootstrap-guidelines/
-|       +-- task.json        # Task metadata
-|       +-- prd.md           # Task requirements document
+    +-- archive/             # Archived tasks
 ```
 
-#### docs/specs/ Directory
+### docs/specs/ Directory
 
 ```
 docs/specs/
@@ -209,7 +215,37 @@ docs/specs/
     +-- state-management.md
 ```
 
-#### .claude/ Directory
+### docs/idea-types/ Directory
+
+Idea type templates used by `viben idea generate` and `viben evo generate-ideas`:
+
+```
+docs/idea-types/
++-- code_improvements.md
++-- code_quality.md
++-- documentation_gaps.md
++-- performance_optimizations.md
++-- security_hardening.md
++-- ui_ux_improvements.md
+```
+
+### docs/reward-types/ Directory
+
+Reward type definitions used by `viben evo compute-reward`:
+
+```
+docs/reward-types/
++-- code_correctness.md
++-- code_quality.md
++-- documentation.md
++-- performance.md
++-- security.md
++-- test_coverage.md
+```
+
+### .claude/ Directory
+
+Created when `CLAUDE_CODE` executor is selected:
 
 ```
 .claude/
@@ -224,22 +260,20 @@ docs/specs/
 |   +-- research.md
 |
 +-- commands/viben/          # Custom commands
-|   +-- break-loop.md
-|   +-- create-command.md
-|   +-- finish-work.md
-|   +-- integrate-skill.md
-|   +-- onboard.md
-|   +-- record-session.md
-|   +-- start.md
-|   +-- task.md
-|   +-- update-spec.md
-|
-+-- hooks/                   # Hook scripts (executable)
-    +-- ralph-loop.py
-    +-- session-start.py
+    +-- break-loop.md
+    +-- create-command.md
+    +-- finish-work.md
+    +-- integrate-skill.md
+    +-- onboard.md
+    +-- record-session.md
+    +-- start.md
+    +-- task.md
+    +-- update-spec.md
 ```
 
-#### .cursor/ Directory (Optional)
+### .cursor/ Directory
+
+Created when `CURSOR` executor is selected:
 
 ```
 .cursor/
@@ -253,6 +287,10 @@ docs/specs/
     +-- viben-start.md
     +-- viben-update-spec.md
 ```
+
+### AGENTS.md
+
+Root-level agent instruction file, read by AI agents for project-level instructions.
 
 ## Error Handling
 
@@ -278,7 +316,7 @@ JSON Output:
 }
 ```
 
-### Directory Already Exists (Team Mode)
+### Directory Already Exists
 
 ```
 Error: Directory already exists: /path/to/project/.viben
@@ -297,6 +335,15 @@ not starting or ending with hyphen.
 Valid examples: john, john-doe, dev123
 ```
 
+### Invalid Executor
+
+```
+Error: Invalid executor "INVALID".
+
+Valid executors:
+  CLAUDE_CODE, CURSOR, GEMINI, CODEX, OPENCODE, IFLOW, KILO, KIRO, ANTIGRAVITY
+```
+
 ### Permission Denied
 
 ```json
@@ -308,10 +355,6 @@ Valid examples: john, john-doe, dev123
   }
 }
 ```
-
-## File Permissions
-
-Hook script files (`.py`) are created with executable permissions (mode 0755).
 
 ## Template Hashes
 

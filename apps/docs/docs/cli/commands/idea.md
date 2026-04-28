@@ -38,6 +38,7 @@ viben idea <subcommand> [options]
 | `list-types` | List available idea types |
 | `view` | View idea details |
 | `promote` | Convert idea to task |
+| `clear` | Clear all ideas and sessions |
 | `remove` | Delete idea |
 
 ## Generate Ideas
@@ -60,6 +61,7 @@ viben idea generate --types <type>... [options]
 | `--model`, `-m` | AI model | Global config |
 | `--max-ideas` | Maximum ideas per type | 5 |
 | `--append` | Append mode, preserve existing ideas | false |
+| `--focus` | Focus area for generation | - |
 | `--override` | Force regenerate all types | false |
 | `--json` | JSON format output for progress | false |
 
@@ -230,6 +232,45 @@ viben idea promote ci-001 \
   --start
 ```
 
+## Clear Ideas
+
+Clear all ideas and sessions. This is a destructive operation that removes all session directories under `.viben/ideas/`.
+
+```bash
+viben idea clear [--force] [--json]
+```
+
+**Options**:
+
+| Parameter | Description |
+|-----------|-------------|
+| `--force`, `-f` | Skip confirmation warning |
+| `--json` | JSON format output |
+
+**Examples**:
+
+```bash
+# Clear all ideas (shows warning)
+viben idea clear
+
+# Skip warning and clear directly
+viben idea clear --force
+
+# JSON format output
+viben idea clear --force --json
+```
+
+**Output**:
+
+```
+Warning: This will remove ALL ideas and sessions. Use --force to skip this warning.
+Cleared 15 idea(s)
+```
+
+:::note
+`clear` is a shortcut for `remove --all` with clearer semantics. Both commands display a warning by default and require `--force` to skip.
+:::
+
 ## Remove Ideas
 
 ```bash
@@ -329,6 +370,54 @@ Use exponential backoff strategy, retry up to 3 times.
 3. Retry on retriable error codes (e.g., 5xx, network timeout)
 ```
 
+## Execution Flow
+
+### `viben idea generate` Pipeline
+
+```
++-------------------------------------------------------------+
+|                    GENERATE PIPELINE                         |
++-------------------------------------------------------------+
+|                                                              |
+|  STEP 1: Parse Arguments                                     |
+|  +-------------------------------------+                    |
+|  | - Validate --types parameter         |                    |
+|  | - Load type prompt (built-in or      |                    |
+|  |   custom)                            |                    |
+|  | - Determine output directory & model |                    |
+|  +-------------------------------------+                    |
+|                      |                                       |
+|                      v                                       |
+|  STEP 2: Create Output Directory                             |
+|  +-------------------------------------+                    |
+|  | .viben/ideas/<date>-<slug>/          |                    |
+|  | - Initialize idea.json               |                    |
+|  +-------------------------------------+                    |
+|                      |                                       |
+|                      v                                       |
+|  STEP 3: Generate Ideas in Parallel                          |
+|  +----------+ +----------+ +----------+                      |
+|  | type_1   | | type_2   | | type_n   |                      |
+|  | AI Agent | | AI Agent | | AI Agent |                      |
+|  +----+-----+ +----+-----+ +----+-----+                      |
+|       |            |            |                             |
+|       v            v            v                             |
+|  +---------------------------------------------+            |
+|  | idea_type1_name1.md, idea_type1_name2.md...  |            |
+|  | idea_type2_name1.md, idea_type2_name2.md...  |            |
+|  | idea_typen_name1.md, idea_typen_name2.md...  |            |
+|  +---------------------------------------------+            |
+|                      |                                       |
+|                      v                                       |
+|  STEP 4: Update Metadata                                     |
+|  +-------------------------------------+                    |
+|  | - Count ideas by type               |                    |
+|  | - Update idea.json summary          |                    |
+|  +-------------------------------------+                    |
+|                                                              |
++-------------------------------------------------------------+
+```
+
 ## Custom Types
 
 Users can create custom type prompt templates in `docs/idea-types/*.md`.
@@ -364,6 +453,47 @@ For each improvement suggestion, provide:
 - **implementation_approach**: Implementation method
 - **estimated_effort**: trivial/small/medium/large/complex
 ```
+
+### YAML Header Fields
+
+Custom type templates use YAML frontmatter with the following fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Type identifier |
+| `description` | Yes | Type description (displayed in list-types) |
+| `focus_areas` | No | List of areas to focus on during analysis |
+| `max_ideas` | No | Default maximum number of ideas, default 5 |
+| `output_format` | No | Output format specification |
+| `model` | No | Preferred model for this type |
+
+The body (after the YAML header) is the prompt content, sent directly to the AI.
+
+### Built-in Type Storage
+
+Built-in types are stored in `packages/core/templates/viben/idea-types/` and loaded directly from this directory at runtime:
+
+```
+packages/core/templates/viben/idea-types/
+  code_improvements.md        # Code improvements
+  code_quality.md             # Code quality
+  documentation_gaps.md       # Documentation gaps
+  performance_optimizations.md  # Performance optimizations
+  security_hardening.md       # Security hardening
+  ui_ux_improvements.md       # UI/UX improvements
+```
+
+### Type Lookup Order
+
+The CLI looks up idea type prompts in the following order:
+
+1. `docs/idea-types/<type>.md` (project custom types, takes priority)
+2. `packages/core/templates/viben/idea-types/<type>.md` (built-in fallback)
+
+This means:
+- Built-in types are available even without running `viben init`
+- Projects can override built-in types by placing files in `docs/idea-types/`
+- Custom types only need to be created in `docs/idea-types/`
 
 ## Related Commands
 

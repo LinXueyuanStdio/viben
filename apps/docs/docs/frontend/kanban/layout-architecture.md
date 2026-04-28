@@ -393,6 +393,72 @@ The kanban uses `@hello-pangea/dnd` (a fork of `react-beautiful-dnd`) for drag-a
 
 ---
 
+## Differences from Our Current Implementation
+
+| Aspect | vibe-kanban | Our Implementation | Fix Needed |
+|--------|-------------|-------------------|------------|
+| Scroll container | `div.overflow-x-auto` wraps KanbanProvider | Missing proper wrapper | Add wrapper div |
+| KanbanProvider | Inside scroll container | Panel has overflow-hidden | Restructure |
+| Panel overflow | `overflow-hidden` on Panel | Using style override | Match vibe-kanban |
+| Column width | `auto-cols-[minmax(200px,400px)]` | Same but not working | Check parent constraints |
+
+---
+
+## Recommended Fix for Our Project
+
+```tsx
+// workspace-kanban.tsx
+<Panel
+  id="kanban-board"
+  minSize="20%"
+  className="min-w-0 h-full overflow-hidden"
+>
+  {viewMode === "kanban" ? (
+    // THIS DIV IS THE KEY - it must be the scroll container
+    <div className="h-full overflow-x-auto">
+      <KanbanProvider onDragEnd={handleDragEnd}>
+        {/* columns */}
+      </KanbanProvider>
+    </div>
+  ) : (
+    // List view
+  )}
+</Panel>
+```
+
+The critical pattern:
+1. Panel has `overflow-hidden` (prevents Panel itself from scrolling)
+2. Inner div has `overflow-x-auto` (enables horizontal scroll)
+3. KanbanProvider uses `inline-grid` (allows content to exceed container width)
+
+---
+
+## Tailwind Configuration Reference
+
+**File**: `tailwind.new.config.js`
+
+```javascript
+module.exports = {
+  theme: {
+    extend: {
+      spacing: {
+        'half': '0.25rem',    // 4px
+        'base': '0.5rem',     // 8px
+        'plusfifty': '0.75rem', // 12px
+        'double': '1rem',     // 16px
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
+    require("tailwind-scrollbar")({ nocompatible: true })
+  ],
+}
+```
+
+---
+
 ## Common Issues and Solutions
 
 ### Issue: Columns Don't Scroll Horizontally
