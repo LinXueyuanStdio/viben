@@ -273,7 +273,7 @@ export const PhaseProgressIndicator = memo(function PhaseProgressIndicator({
                         opacity: { delay: index * 0.03, duration: 0.2 },
                       }
                 }
-                title={`${subtask.title || subtask.name}: ${subtask.status}`}
+                title={t("workspace.subtaskTooltip", "{{title}}: {{status}}", { title: subtask.title || subtask.name, status: subtask.status })}
               />
             );
           })}

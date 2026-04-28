@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
 
@@ -14,13 +15,14 @@ export interface GradientGalleryProps {
 }
 
 export function GradientGallery({ value, onSelect }: GradientGalleryProps) {
+  const { t } = useTranslation();
   const gradientEntries = Object.entries(GRADIENT_COLORS) as [string, { from: string; to: string }][];
 
   return (
     <div className="p-3 space-y-3">
       {/* Gradients */}
       <div>
-        <p className="text-[11px] font-medium text-muted-foreground mb-2">Color & Gradient</p>
+        <p className="text-[11px] font-medium text-muted-foreground mb-2">{t("coverPicker.colorAndGradient", "Color & Gradient")}</p>
         <div className="grid grid-cols-5 gap-1.5">
           {gradientEntries.map(([key, { from, to }]) => {
             const coverValue = `gradient:${key}`;

@@ -153,7 +153,7 @@ export function SpanDetailPanel({
             {(httpMethod || httpStatusCode || httpRoute || httpUrl) && (
               <div className="space-y-2">
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  HTTP
+                  {t("observability.httpSection", "HTTP")}
                 </div>
                 {httpMethod && (
                   <div className="flex items-center justify-between text-sm">
@@ -240,7 +240,7 @@ export function SpanDetailPanel({
               </div>
               <div className="flex items-center gap-2">
                 {getSpanKindIcon(span.kind)}
-                <span className="text-sm">{SPAN_KIND_NAMES[span.kind] || `UNKNOWN (${span.kind})`}</span>
+                <span className="text-sm">{SPAN_KIND_NAMES[span.kind] || t("observability.unknownSpanKind", { kind: span.kind, defaultValue: "UNKNOWN ({{kind}})" })}</span>
               </div>
             </div>
           </TabsContent>

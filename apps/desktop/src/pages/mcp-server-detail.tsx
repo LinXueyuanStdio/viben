@@ -218,7 +218,7 @@ export function McpServerDetailPage() {
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   <Database className="h-3 w-3 mr-1" />
-                  MCP
+                  {t("settingsAgents.mcp", "MCP")}
                 </Badge>
                 {server.transport && (
                   <Badge variant="secondary" className="text-xs">
@@ -381,7 +381,7 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">
                 <Database className="h-3 w-3 mr-1" />
-                MCP Server
+                {t("settingsAgents.mcpServer", "MCP Server")}
               </Badge>
               {server.transport && (
                 <Badge variant="secondary" className="text-xs font-mono">

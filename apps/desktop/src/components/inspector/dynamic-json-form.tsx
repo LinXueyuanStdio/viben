@@ -436,11 +436,11 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
             onChange(parsed);
             setJsonError(null);
           } catch (err) {
-            setJsonError(err instanceof Error ? err.message : "Invalid JSON");
+            setJsonError(err instanceof Error ? err.message : t("inspector.invalidJson", "Invalid JSON"));
           }
         }, 300);
       },
-      [onChange]
+      [onChange, t]
     );
 
     const validateJson = useCallback(() => {
@@ -452,11 +452,11 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
         setJsonError(null);
         return { isValid: true, error: null };
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Invalid JSON";
+        const errorMessage = err instanceof Error ? err.message : t("inspector.invalidJson", "Invalid JSON");
         setJsonError(errorMessage);
         return { isValid: false, error: errorMessage };
       }
-    }, [isJsonMode, rawJsonValue, onChange]);
+    }, [isJsonMode, rawJsonValue, onChange, t]);
 
     const hasJsonError = useCallback(() => !!jsonError, [jsonError]);
 
@@ -482,7 +482,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
           setIsJsonMode(false);
           setJsonError(null);
         } catch (err) {
-          setJsonError(err instanceof Error ? err.message : "Invalid JSON");
+          setJsonError(err instanceof Error ? err.message : t("inspector.invalidJson", "Invalid JSON"));
         }
       } else {
         setRawJsonValue(JSON.stringify(value ?? generateDefaultValue(resolvedSchema), null, 2));
@@ -496,7 +496,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
         setRawJsonValue(formatted);
         setJsonError(null);
       } catch (err) {
-        setJsonError(err instanceof Error ? err.message : "Invalid JSON");
+        setJsonError(err instanceof Error ? err.message : t("inspector.invalidJson", "Invalid JSON"));
       }
     };
 

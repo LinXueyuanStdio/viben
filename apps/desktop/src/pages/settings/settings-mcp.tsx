@@ -210,7 +210,7 @@ export function SettingsMcpPage() {
         {/* Header */}
         <div className="flex items-center gap-2 mb-4 px-2">
           <Server className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold font-serif">MCP</h1>
+          <h1 className="text-lg font-semibold font-serif">{t("settings.mcp.title", "MCP")}</h1>
         </div>
 
         {/* Navigation sections */}

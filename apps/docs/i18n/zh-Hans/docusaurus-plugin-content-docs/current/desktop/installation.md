@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "安装"
-description: "如何在 macOS、Windows 和 Linux 上安装微本桌面应用"
+description: "安装 Viben Desktop - Agent Swarm x Code Evolution 平台"
 ---
 
 # 桌面应用安装
 
-在所有支持平台上安装微本 Desktop 的详细说明。
+Viben Desktop 的详细安装指南。Viben Desktop 是一个 Agent Swarm x Code Evolution 平台，通过智能体集群和迭代优化驱动持续的代码进化。
 
 ## 下载
 
@@ -19,7 +19,7 @@ description: "如何在 macOS、Windows 和 Linux 上安装微本桌面应用"
 ### 要求
 
 - macOS 10.15 (Catalina) 或更高版本
-- Apple Silicon (M1/M2/M3) 或 Intel 处理器
+- Apple Silicon (M1/M2/M3/M4) 或 Intel 处理器
 
 ### 安装步骤
 
@@ -251,3 +251,11 @@ sudo apt-get remove viben
 rm -rf ~/.config/viben
 rm -rf ~/.local/share/viben
 ```
+
+---
+
+## 下一步
+
+- [功能介绍](./features) - 探索完整的功能集
+- [快速开始](../getting-started/quick-start) - 2 分钟快速上手
+- [客户端配置](../getting-started/client-configuration) - 配置 MCP 客户端

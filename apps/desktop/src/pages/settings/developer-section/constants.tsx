@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Cursor from "@lobehub/icons/es/Cursor";
 import Windsurf from "@lobehub/icons/es/Windsurf";
+import i18n from "@/i18n";
 
 // IDE icon renderer - returns icon component for given IDE key
 export function getIDEIcon(id: string): React.ReactNode {
@@ -61,7 +62,7 @@ export const IDE_OPTIONS: Record<string, { name: string }> = {
   webstorm: { name: "WebStorm" },
   pycharm: { name: "PyCharm" },
   xcode: { name: "Xcode" },
-  custom: { name: "Custom..." },
+  custom: { get name() { return i18n.t("settings.developer.customOption", "Custom..."); } },
 };
 
 // Terminal icon renderer - returns icon component for given terminal key
@@ -93,7 +94,7 @@ export function getTerminalIcon(id: string): React.ReactNode {
 }
 
 export const TERMINAL_OPTIONS: Record<string, { name: string }> = {
-  system: { name: "System Terminal" },
+  system: { get name() { return i18n.t("settings.developer.systemTerminal", "System Terminal"); } },
   iterm2: { name: "iTerm2" },
   warp: { name: "Warp" },
   alacritty: { name: "Alacritty" },
@@ -102,7 +103,7 @@ export const TERMINAL_OPTIONS: Record<string, { name: string }> = {
   ghostty: { name: "Ghostty" },
   wezterm: { name: "WezTerm" },
   terminal: { name: "Terminal.app" },
-  custom: { name: "Custom..." },
+  custom: { get name() { return i18n.t("settings.developer.customOption", "Custom..."); } },
 };
 
 export interface DebugInfo {

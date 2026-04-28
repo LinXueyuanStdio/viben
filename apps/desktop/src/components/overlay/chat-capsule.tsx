@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ChevronLeft, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
 import { DesktopMessageList } from '@/pages/conversation/components/desktop-message-list';
 import type { AgentMessage, AgentPhase } from '@/types';
@@ -13,18 +14,36 @@ import type { AgentMessage, AgentPhase } from '@/types';
 // Constants
 // ============================================================================
 
-const THINKING_WORDS = [
-  'Thinking...', 'Vibing...', 'Schlepping...', 'Combobulating...',
-  'Concocting...', 'Wrangling...', 'Noodling...', 'Percolating...',
-  'Discombobulating...', 'Skedaddling...', 'Ruminating...', 'Kibbitzing...',
-  'Zapping...', 'Finagling...', 'Bamboozling...', 'Cogitating...',
-  'Snorkelating...', 'Recalibrating...', 'Spelunking...', "Brouhaha-ing...",
-];
+function getThinkingWords(): string[] {
+  return [
+    i18n.t('chat.capsule.thinking', 'Thinking...'),
+    i18n.t('chat.capsule.vibing', 'Vibing...'),
+    i18n.t('chat.capsule.schlepping', 'Schlepping...'),
+    i18n.t('chat.capsule.combobulating', 'Combobulating...'),
+    i18n.t('chat.capsule.concocting', 'Concocting...'),
+    i18n.t('chat.capsule.wrangling', 'Wrangling...'),
+    i18n.t('chat.capsule.noodling', 'Noodling...'),
+    i18n.t('chat.capsule.percolating', 'Percolating...'),
+    i18n.t('chat.capsule.discombobulating', 'Discombobulating...'),
+    i18n.t('chat.capsule.skedaddling', 'Skedaddling...'),
+    i18n.t('chat.capsule.ruminating', 'Ruminating...'),
+    i18n.t('chat.capsule.kibbitzing', 'Kibbitzing...'),
+    i18n.t('chat.capsule.zapping', 'Zapping...'),
+    i18n.t('chat.capsule.finagling', 'Finagling...'),
+    i18n.t('chat.capsule.bamboozling', 'Bamboozling...'),
+    i18n.t('chat.capsule.cogitating', 'Cogitating...'),
+    i18n.t('chat.capsule.snorkelating', 'Snorkelating...'),
+    i18n.t('chat.capsule.recalibrating', 'Recalibrating...'),
+    i18n.t('chat.capsule.spelunking', 'Spelunking...'),
+    i18n.t('chat.capsule.brouhaha', "Brouhaha-ing..."),
+  ];
+}
 
 // Sliding window random: no repeats within last 5
 const _recentWords: string[] = [];
 function randomThinkingWord(): string {
-  const available = THINKING_WORDS.filter(w => !_recentWords.includes(w));
+  const words = getThinkingWords();
+  const available = words.filter(w => !_recentWords.includes(w));
   const pick = available[Math.floor(Math.random() * available.length)];
   _recentWords.push(pick);
   if (_recentWords.length > 5) _recentWords.shift();

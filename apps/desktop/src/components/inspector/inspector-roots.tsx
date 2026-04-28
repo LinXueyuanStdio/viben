@@ -69,11 +69,11 @@ export function InspectorRoots({ enabled = true }: InspectorRootsProps) {
   };
 
   const getRootType = (uri: string) => {
-    if (uri.startsWith("file://")) return "File System";
+    if (uri.startsWith("file://")) return t("inspector.rootType.fileSystem", "File System");
     if (uri.startsWith("http://") || uri.startsWith("https://")) return "HTTP";
     if (uri.startsWith("ftp://")) return "FTP";
     if (uri.startsWith("sftp://")) return "SFTP";
-    return "Other";
+    return t("inspector.rootType.other", "Other");
   };
 
   const allRoots = [...roots, ...customRoots];

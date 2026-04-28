@@ -15,6 +15,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 import {
   Table,
   TableBody,
@@ -152,10 +153,16 @@ function formatFileSize(bytes?: number): string {
   }
 
   if (bytes === 0) {
-    return "0 B";
+    return i18n.t("fileBrowser.zeroBytes", "0 B");
   }
 
-  const units = ["B", "KB", "MB", "GB", "TB"];
+  const units = [
+    i18n.t("fileBrowser.sizeUnits.B", "B"),
+    i18n.t("fileBrowser.sizeUnits.KB", "KB"),
+    i18n.t("fileBrowser.sizeUnits.MB", "MB"),
+    i18n.t("fileBrowser.sizeUnits.GB", "GB"),
+    i18n.t("fileBrowser.sizeUnits.TB", "TB"),
+  ];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const size = bytes / Math.pow(1024, i);
 

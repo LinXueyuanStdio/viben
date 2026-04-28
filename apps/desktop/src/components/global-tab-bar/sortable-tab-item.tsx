@@ -27,6 +27,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { PageTab } from "@/stores/tab-store";
 import { IconDisplay } from "@/components/ui/icon-picker";
@@ -75,6 +76,7 @@ export function SortableTabItem({
   onUnpin,
   onCloseOthers,
 }: SortableTabItemProps) {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -192,15 +194,15 @@ export function SortableTabItem({
           <ContextMenuContent className="w-48">
             <ContextMenuItem onClick={onUnpin}>
               <PinOff className="h-4 w-4 mr-2" />
-              Unpin Tab
+              {t("tabBar.unpinTab", "Unpin Tab")}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onClose}>
               <X className="h-4 w-4 mr-2" />
-              Close
+              {t("common.close")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onCloseOthers}>
-              Close Others
+              {t("tabBar.closeOthers", "Close Others")}
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
@@ -287,17 +289,17 @@ export function SortableTabItem({
         <ContextMenuContent className="w-48">
           <ContextMenuItem onClick={onPin}>
             <Pin className="h-4 w-4 mr-2" />
-            Pin Tab
+            {t("tabBar.pinTab", "Pin Tab")}
           </ContextMenuItem>
           {canClose && (
             <>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={onClose}>
                 <X className="h-4 w-4 mr-2" />
-                Close
+                {t("common.close")}
               </ContextMenuItem>
               <ContextMenuItem onClick={onCloseOthers}>
-                Close Others
+                {t("tabBar.closeOthers", "Close Others")}
               </ContextMenuItem>
             </>
           )}

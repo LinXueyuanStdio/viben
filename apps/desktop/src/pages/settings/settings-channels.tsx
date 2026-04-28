@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import i18n from "@/i18n";
 import {
   Eye,
   EyeOff,
@@ -349,7 +350,7 @@ async function getTelegramWebhookInfo(token: string): Promise<{
     if (data.ok) {
       return { success: true, result: data.result };
     } else {
-      return { success: false, error: data.description || "Failed to get webhook info" };
+      return { success: false, error: data.description || i18n.t("channels.webhook.getInfoFailed", "Failed to get webhook info") };
     }
   } catch (error) {
     return {
@@ -380,7 +381,7 @@ async function setTelegramWebhook(
     if (data.ok) {
       return { success: true };
     } else {
-      return { success: false, error: data.description || "Failed to set webhook" };
+      return { success: false, error: data.description || i18n.t("channels.webhook.apiSetFailed", "Failed to set webhook") };
     }
   } catch (error) {
     return {
@@ -401,7 +402,7 @@ async function deleteTelegramWebhook(token: string): Promise<{ success: boolean;
     if (data.ok) {
       return { success: true };
     } else {
-      return { success: false, error: data.description || "Failed to delete webhook" };
+      return { success: false, error: data.description || i18n.t("channels.webhook.apiDeleteFailed", "Failed to delete webhook") };
     }
   } catch (error) {
     return {

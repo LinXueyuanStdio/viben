@@ -90,8 +90,11 @@ interface CLIResponse {
 {
   "success": true,
   "data": {
-    "path": "/path/to/project/.viben",
-    "files": ["config.yaml"]
+    "task": {
+      "id": "implement-auth",
+      "state": "in_progress",
+      "swarm": ["architect", "implementer"]
+    }
   }
 }
 ```
@@ -102,8 +105,8 @@ interface CLIResponse {
 {
   "success": false,
   "error": {
-    "code": "MCP_NOT_FOUND",
-    "message": "MCP server 'unknown-mcp' not found in marketplace"
+    "code": "TASK_NOT_FOUND",
+    "message": "Task 'unknown-task' not found in workspace"
   }
 }
 ```
@@ -141,16 +144,26 @@ settings:
   pager: less
   color: auto
 
-agents:
-  - claude-code
-  - cursor
+# 群体 (Swarm) 配置
+swarm:
+  default_roles:
+    - architect
+    - implementer
+    - reviewer
+  max_parallel_agents: 4
+
+# FileEvo 设置
+evo:
+  enabled: true
+  metrics:
+    - code_quality
+    - test_coverage
+    - complexity
 
 mcp:
   enabled:
     - filesystem
     - git
-  disabled:
-    - browser
 
 skills:
   enabled:
@@ -167,16 +180,20 @@ skills:
 AI 智能体可以通过 Bash 工具使用 CLI：
 
 ```bash
-# 获取当前配置
+# 任务工作流（主要用例）
+viben task create "implement-auth" --json
+viben task enqueue implement-auth --json
+viben task start implement-auth --json
+
+# 群体编排
+viben swarm start --task implement-auth --json
+viben swarm status --json
+
+# 创意生成
+viben idea generate --context "improve auth" --json
+
+# 配置
 viben config list --json
-
-# 为工作区安装 MCP
-viben mcp install filesystem --workspace --json
-
-# 配置智能体 MCP
-viben agent config claude-code mcp add filesystem --json
-
-# 同步到智能体
 viben agent sync claude-code --json
 ```
 

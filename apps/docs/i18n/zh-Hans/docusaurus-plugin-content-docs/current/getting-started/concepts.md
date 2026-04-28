@@ -101,17 +101,32 @@ plan → implement → check → fix (失败时循环)
 - **独立安装** - 需要单独安装
 - **运行环境** - 提供实际的 AI 推理能力
 
-**支持的执行器**：
+**运行时执行器**（可以被启动和执行）：
 
-| 执行器 | 类型 | CLI 命令 | MCP 支持 |
-|--------|------|----------|----------|
-| Claude Code | CLAUDE_CODE | `claude` | ✓ |
-| AMP | AMP | `amp` | ✓ |
-| Gemini | GEMINI | `gemini` | - |
-| Codex | CODEX | `codex` | - |
-| Cursor | CURSOR_AGENT | `cursor` | ✓ |
-| Qwen Code | QWEN_CODE | `qwen` | - |
-| Copilot | COPILOT | `copilot` | - |
+| 执行器 | 类型 | CLI 命令 |
+|--------|------|----------|
+| Claude Code | CLAUDE_CODE | `claude` |
+| AMP | AMP | `amp` |
+| Gemini | GEMINI | `gemini` |
+| Codex | CODEX | `codex` |
+| OpenCode | OPENCODE | `opencode` |
+| Cursor Agent | CURSOR_AGENT | `cursor` |
+| Qwen Code | QWEN_CODE | `qwen` |
+| Copilot | COPILOT | `copilot` |
+| Droid | DROID | `droid` |
+
+**仅模板执行器**（用于 `viben init` 工作空间配置，不支持运行时启动）：
+
+| 执行器 | 类型 |
+|--------|------|
+| Cursor IDE | CURSOR |
+| iFlow | IFLOW |
+| Kilo | KILO |
+| Kiro | KIRO |
+| Antigravity | ANTIGRAVITY |
+| Windsurf | WINDSURF |
+| Aider | AIDER |
+| Continue | CONTINUE |
 
 ### 智能体 (Agent)
 
@@ -195,8 +210,8 @@ AI 驱动的代码库分析，自动发现改进点。
 ├── providers.yaml       # API Keys, Endpoints
 ├── models.yaml          # 模型参数
 ├── agents/              # Agent 定义
-│   └── <name>/
-│       └── AGENTS.md
+│   └── <agent-id>/
+│       └── config.yaml
 ├── cron.yaml            # 定时任务
 ├── channels.yaml        # 通知渠道
 └── workspaces.yaml      # 工作空间

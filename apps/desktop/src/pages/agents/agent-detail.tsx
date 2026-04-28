@@ -657,7 +657,7 @@ export function AgentDetailPage() {
       setDebugSessions(
         sessions.map((s) => ({
           id: s.id,
-          name: s.prompt || `Session ${s.id.slice(0, 8)}`,
+          name: s.prompt || t("agentDetail.sessionFallbackName", "Session {{id}}", { id: s.id.slice(0, 8) }),
           createdAt: s.created_at,
           updatedAt: s.updated_at,
           messageCount: 0,

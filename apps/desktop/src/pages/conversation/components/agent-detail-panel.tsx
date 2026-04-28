@@ -521,7 +521,7 @@ export function AgentDetailPanel({
                   )}
                   {!providerConstraintHint && agent.provider && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Provider: {agent.provider}
+                      {t("agentDetail.providerLabel", "Provider: {{provider}}", { provider: agent.provider })}
                     </p>
                   )}
                 </div>

@@ -4,6 +4,7 @@
  * Provides utilities for verifying iframe sandbox security and
  * handling bidirectional communication with sandboxed apps.
  */
+import i18n from "@/i18n";
 
 /**
  * Results from security self-test performed by sandbox proxy
@@ -116,24 +117,24 @@ export function formatSecurityResults(results: SandboxSecurityResult): string {
   const { passed, tests } = results;
 
   if (passed) {
-    return "Security check passed: App is properly isolated";
+    return i18n.t("inspector.securityCheckPassed", "Security check passed: App is properly isolated");
   }
 
   const failures: string[] = [];
 
   if (tests.parentAccess) {
-    failures.push("Parent window accessible");
+    failures.push(i18n.t("inspector.securityFailParentAccess", "Parent window accessible"));
   }
 
   if (tests.cookieAccess) {
-    failures.push("Cookies accessible");
+    failures.push(i18n.t("inspector.securityFailCookieAccess", "Cookies accessible"));
   }
 
   if (tests.localStorageAccess) {
-    failures.push("LocalStorage accessible");
+    failures.push(i18n.t("inspector.securityFailLocalStorageAccess", "LocalStorage accessible"));
   }
 
-  return `Security check failed: ${failures.join(", ")}`;
+  return `${i18n.t("inspector.securityCheckFailed", "Security check failed")}: ${failures.join(", ")}`;
 }
 
 /**

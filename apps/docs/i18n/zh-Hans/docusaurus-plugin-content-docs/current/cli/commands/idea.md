@@ -38,6 +38,7 @@ viben idea <subcommand> [options]
 | `list-types` | 列出可用的想法类型 |
 | `view` | 查看想法详情 |
 | `promote` | 将想法转为任务 |
+| `clear` | 清除所有想法和会话 |
 | `remove` | 删除想法 |
 
 ## 生成想法
@@ -229,6 +230,45 @@ viben idea promote ci-001 \
   --model opus \
   --start
 ```
+
+## 清除想法
+
+清除所有想法和会话。这是一个破坏性操作，会移除 `.viben/ideas/` 下的所有会话目录。
+
+```bash
+viben idea clear [--force] [--json]
+```
+
+**选项**:
+
+| 参数 | 说明 |
+|------|------|
+| `--force`, `-f` | 跳过确认警告 |
+| `--json` | JSON 格式输出 |
+
+**示例**:
+
+```bash
+# 清除所有想法（显示警告）
+viben idea clear
+
+# 跳过警告直接清除
+viben idea clear --force
+
+# JSON 格式输出
+viben idea clear --force --json
+```
+
+**输出**:
+
+```
+Warning: This will remove ALL ideas and sessions. Use --force to skip this warning.
+Cleared 15 idea(s)
+```
+
+:::note
+`clear` 是 `remove --all` 的快捷方式，语义更清晰。两个命令默认都会显示警告，需要 `--force` 跳过。
+:::
 
 ## 删除想法
 

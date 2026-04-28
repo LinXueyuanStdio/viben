@@ -1,18 +1,15 @@
+import i18n from "@/i18n";
 import type { CommandCategory } from "./types";
 
 /**
- * Category labels for UI display
- */
-/**
- * Category labels for UI display (fallback values, prefer i18n)
- * Use t("chat.slashCommands.categories.<category>") for translation
+ * Category labels for UI display (i18n-enabled via getter properties)
  */
 export const CATEGORY_LABELS: Record<CommandCategory, string> = {
-  session: "Session",
-  config: "Configuration",
-  info: "Information",
-  workspace: "Workspace",
-  auth: "Authentication",
+  get session() { return i18n.t("chat.slashCommands.categories.session", "Session"); },
+  get config() { return i18n.t("chat.slashCommands.categories.config", "Configuration"); },
+  get info() { return i18n.t("chat.slashCommands.categories.info", "Information"); },
+  get workspace() { return i18n.t("chat.slashCommands.categories.workspace", "Workspace"); },
+  get auth() { return i18n.t("chat.slashCommands.categories.auth", "Authentication"); },
 };
 
 /**
@@ -27,11 +24,10 @@ export const CATEGORY_ORDER: CommandCategory[] = [
 ];
 
 /**
- * Source labels for UI display (fallback values, prefer i18n)
- * Use t("chat.slashCommands.sources.<source>") for translation
+ * Source labels for UI display (i18n-enabled via getter properties)
  */
-export const SOURCE_LABELS = {
-  builtin: "Built-in",
-  workspace: "Workspace",
-  skill: "Skill",
-} as const;
+export const SOURCE_LABELS: Record<string, string> = {
+  get builtin() { return i18n.t("chat.slashCommands.sources.builtin", "Built-in"); },
+  get workspace() { return i18n.t("chat.slashCommands.sources.workspace", "Workspace"); },
+  get skill() { return i18n.t("chat.slashCommands.sources.skill", "Skill"); },
+};

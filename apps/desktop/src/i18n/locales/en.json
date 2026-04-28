@@ -148,7 +148,8 @@
     "updated": "Updated",
     "weeksAgo": "Weeks Ago",
     "failed": "Failed",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "newTab": "New Tab"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -203,7 +204,9 @@
     "deviceDetails": "Device Details",
     "deviceId": "Device ID",
     "type": "Type",
-    "platform": "Platform"
+    "platform": "Platform",
+    "pairingQrAlt": "Pairing QR Code",
+    "lan": "LAN"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -437,7 +440,10 @@
       "learnMore": "Learn More",
       "delete": "Delete Webhook",
       "setting": "Setting up...",
-      "set": "Set Webhook"
+      "set": "Set Webhook",
+      "getInfoFailed": "Failed to get webhook info",
+      "apiSetFailed": "Failed to set webhook",
+      "apiDeleteFailed": "Failed to delete webhook"
     },
     "tunnel": {
       "started": "Tunnel started",
@@ -915,7 +921,19 @@
       "appVersion": "App Version",
       "arch": "Arch",
       "logs": "Logs",
-      "config": "Config"
+      "config": "Config",
+      "debugTextTitle": "Viben Debug Info",
+      "debugTextOs": "OS: {{os}}",
+      "debugTextOsVersion": "OS Version: {{version}}",
+      "debugTextArch": "Architecture: {{arch}}",
+      "debugTextAppVersion": "App Version: {{version}}",
+      "debugTextLogsPath": "Logs Path: {{path}}",
+      "debugTextConfigPath": "Config Path: {{path}}",
+      "customOption": "Custom...",
+      "systemTerminal": "System Terminal"
+    },
+    "mcp": {
+      "title": "MCP"
     }
   },
   "sandbox": {
@@ -1203,6 +1221,7 @@
     "noClaudeMd": "No CLAUDE.md file",
     "noClaudeMdHint": "Create CLAUDE.md file in workspace root directory",
     "tools": "Tools",
+    "toolCount": "{{count}} tools",
     "openFolder": "Open in File Manager",
     "createLocation": "Storage Location",
     "workspaceLocation": "Current Workspace",
@@ -1249,6 +1268,8 @@
     "environment": "Environment Variables",
     "url": "URL",
     "mcpServerDesc": "MCP (Model Context Protocol) servers provide additional tools and capabilities to AI agents. This server is configured for the selected executor.",
+    "mcp": "MCP",
+    "mcpServer": "MCP Server",
     "promptNotFound": "Prompt Not Found",
     "promptNotFoundDesc": "The requested prompt could not be found.",
     "prompt": "Prompt",
@@ -1603,7 +1624,8 @@
     "processTerminatedUnexpectedly": "Process terminated unexpectedly",
     "commandExecuted": "Command executed",
     "endpoint": "Endpoint",
-    "errorDetails": "Error details"
+    "errorDetails": "Error details",
+    "defaultServerName": "Server {{num}}"
   },
   "pageDebug": {
     "title": "Page Debug",
@@ -2066,7 +2088,15 @@
       "sseTitle": "Server-Sent Events",
       "sseDesc": "Connect via SSE for real-time streaming",
       "httpTitle": "HTTP",
-      "httpDesc": "Connect via HTTP requests"
+      "httpDesc": "Connect via HTTP requests",
+      "keyPlaceholder": "Key",
+      "valuePlaceholder": "Value",
+      "envKeyPlaceholder": "VAR_NAME",
+      "envValuePlaceholder": "value",
+      "commandPlaceholder": "/path/to/executable",
+      "stdioDescription": "Connects to an MCP server via standard input/output streams. Requires a local executable.",
+      "sseDescription": "Connects to an MCP server using Server-Sent Events. Suitable for real-time streaming responses.",
+      "httpDescription": "Connects to an MCP server using HTTP with streaming support. The recommended transport for most use cases."
     },
     "addPair": "Add",
     "checking": "Checking...",
@@ -2160,7 +2190,10 @@
       "openWorld": "Open World",
       "openWorldDesc": "Tool may interact with external entities",
       "readOnly": "Read-only",
-      "readOnlyDesc": "Tool does not modify its environment"
+      "readOnlyDesc": "Tool does not modify its environment",
+      "value": "Value",
+      "impliedDefault": "implied default",
+      "explicitlySet": "explicitly set"
     },
     "checkingProxy": "Checking...",
     "proxyBuiltIn": "Built-in",
@@ -2168,7 +2201,17 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "invalidJson": "Invalid JSON",
+    "securityCheckPassed": "Security check passed: App is properly isolated",
+    "securityCheckFailed": "Security check failed",
+    "securityFailParentAccess": "Parent window accessible",
+    "securityFailCookieAccess": "Cookies accessible",
+    "securityFailLocalStorageAccess": "LocalStorage accessible",
+    "rootType": {
+      "fileSystem": "File System",
+      "other": "Other"
+    }
   },
   "updates": {
     "title": "Package Updates",
@@ -2539,6 +2582,9 @@
         "issues": "issues",
         "approve": "Approve",
         "prCreated": "Pull request created",
+        "processing": "Processing...",
+        "branchLabel": "Branch: {{branch}}",
+        "issueNumber": "Issue #{{number}}",
         "status": {
           "queued": "Queued",
           "analyzing": "Analyzing",
@@ -2878,6 +2924,7 @@
     "lockColumn": "Lock column width",
     "unlockColumn": "Unlock column width",
     "columnLocked": "Column width is locked",
+    "resizeColumnAriaLabel": "Resize {{column}} column",
     "taskMenu": "Task Menu",
     "duplicateTask": "Duplicate Task",
     "moveToColumn": "Move to",
@@ -3299,6 +3346,9 @@
     "selectAllInColumn": "Select all in column",
     "taskDeleted": "Task deleted",
     "taskDuplicated": "Task duplicated",
+    "createFailed": "Failed to create workspace",
+    "copySuffix": "(copy)",
+    "subtaskTooltip": "{{title}}: {{status}}",
     "bulkDeleteSuccess": "Deleted {{count}} tasks",
     "statusContext": {
       "stuck": {
@@ -4150,7 +4200,27 @@
       "done": "Done",
       "error": "Error",
       "awaitingApproval": "Awaiting Approval",
-      "awaitingInput": "Awaiting Input"
+      "awaitingInput": "Awaiting Input",
+      "thinking": "Thinking...",
+      "vibing": "Vibing...",
+      "schlepping": "Schlepping...",
+      "combobulating": "Combobulating...",
+      "concocting": "Concocting...",
+      "wrangling": "Wrangling...",
+      "noodling": "Noodling...",
+      "percolating": "Percolating...",
+      "discombobulating": "Discombobulating...",
+      "skedaddling": "Skedaddling...",
+      "ruminating": "Ruminating...",
+      "kibbitzing": "Kibbitzing...",
+      "zapping": "Zapping...",
+      "finagling": "Finagling...",
+      "bamboozling": "Bamboozling...",
+      "cogitating": "Cogitating...",
+      "snorkelating": "Snorkelating...",
+      "recalibrating": "Recalibrating...",
+      "spelunking": "Spelunking...",
+      "brouhaha": "Brouhaha-ing..."
     },
     "fileFilter": {
       "images": "Images",
@@ -4342,7 +4412,19 @@
       "objects": "Objects",
       "nature": "Nature",
       "food": "Food",
-      "symbols": "Symbols"
+      "symbols": "Symbols",
+      "filter": "Filter...",
+      "noEmojisFound": "No emojis found",
+      "categories": {
+        "smileys": "Smileys & People",
+        "animals": "Animals & Nature",
+        "food": "Food & Drink",
+        "activities": "Activities",
+        "travel": "Travel & Places",
+        "objects": "Objects",
+        "symbols": "Symbols",
+        "flags": "Flags"
+      }
     },
     "backgroundTask": {
       "running": "Running",
@@ -4398,7 +4480,12 @@
     "gatewayConnected": "Gateway",
     "gatewayMock": "Mock",
     "gatewayChecking": "...",
-    "sessionFallbackName": "Session {{id}}"
+    "sessionFallbackName": "Session {{id}}",
+    "gatewayOffline": "Offline",
+    "planRejectedMessage": "Plan rejected. How would you like me to proceed?",
+    "defaultAgentName": "Agent",
+    "sandbox": "Sandbox",
+    "worktree": "Worktree"
   },
   "creator": {
     "title": "Creator",
@@ -4995,7 +5082,15 @@
     "deleteConfirmWithName": "Are you sure you want to delete {{name}}?",
     "folderWithName": "Folder: {{name}}",
     "sizeWithValue": "Size: {{size}}",
-    "modifiedWithValue": "Modified: {{date}}"
+    "modifiedWithValue": "Modified: {{date}}",
+    "zeroBytes": "0 B",
+    "sizeUnits": {
+      "B": "B",
+      "KB": "KB",
+      "MB": "MB",
+      "GB": "GB",
+      "TB": "TB"
+    }
   },
   "filePicker": {
     "images": "Images",
@@ -5077,7 +5172,15 @@
     },
     "failedToPlay": "Failed to play: {{error}}",
     "fetchImageFailed": "Failed to fetch image: {{status}} {{statusText}}",
-    "fetchPdfFailed": "Failed to fetch PDF: {{status}} {{statusText}}"
+    "fetchPdfFailed": "Failed to fetch PDF: {{status}} {{statusText}}",
+    "openWith": {
+      "browser": "Browser",
+      "preview": "Preview",
+      "musicPlayer": "Music Player",
+      "videoPlayer": "Video Player",
+      "imageViewer": "Image Viewer",
+      "fontViewer": "Font Viewer"
+    }
   },
   "observability": {
     "title": "Observability",
@@ -5152,7 +5255,10 @@
     "url": "URL",
     "loadDatesFailed": "Failed to load dates",
     "loadTracesFailed": "Failed to load traces",
-    "loadTraceFailed": "Failed to load trace"
+    "loadTraceFailed": "Failed to load trace",
+    "httpSection": "HTTP",
+    "unknownSpanKind": "UNKNOWN ({{kind}})",
+    "zeroMs": "0ms"
   },
   "errors": {
     "github": {
@@ -5489,7 +5595,9 @@
     "copyTraceId": "Copy Trace ID",
     "copySessionId": "Copy Session ID",
     "inputPlaceholder": "Type a message...",
-    "debugSession": "Debug Session"
+    "debugSession": "Debug Session",
+    "providerLabel": "Provider: {{provider}}",
+    "sessionFallbackName": "Session {{id}}"
   },
   "agentVariables": {
     "sectionTitle": "Variables",
@@ -5615,6 +5723,8 @@
     "urlPlaceholder": "https://example.com/icon.png",
     "download": "Download",
     "noWorkspace": "Workspace required for image upload",
+    "images": "Images",
+    "uploaded": "Uploaded!",
     "category": {
       "documents": "Documents",
       "code": "Code",
@@ -5638,6 +5748,11 @@
     "maximize": "Maximize",
     "restore": "Restore",
     "close": "Close"
+  },
+  "tabBar": {
+    "pinTab": "Pin Tab",
+    "unpinTab": "Unpin Tab",
+    "closeOthers": "Close Others"
   },
   "mobile": {
     "status": {
@@ -5764,7 +5879,8 @@
     "uploadFailed": "Upload failed",
     "preview": "Preview",
     "invalidUrl": "Invalid URL",
-    "linkPlaceholder": "https://example.com/cover.jpg"
+    "linkPlaceholder": "https://example.com/cover.jpg",
+    "colorAndGradient": "Color & Gradient"
   },
   "kanban": {
     "common": {
@@ -6050,6 +6166,19 @@
     }
   },
   "editor": {
+    "errorBoundary": {
+      "message": "Something went wrong loading the editor.",
+      "tryAgain": "Try again",
+      "errorDetails": "Error details"
+    },
+    "blockCategories": {
+      "basicBlocks": "Basic blocks",
+      "media": "Media",
+      "code": "Code",
+      "advanced": "Advanced",
+      "inline": "Inline",
+      "other": "Other"
+    },
     "header": {
       "editorActions": "Editor actions",
       "editing": "Editing...",

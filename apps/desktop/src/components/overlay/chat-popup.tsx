@@ -725,7 +725,7 @@ function ChatPopup({
                     sandboxConfig.enabled ? 'text-amber-500' : 'text-muted-foreground',
                   )}
                 >
-                  Sandbox
+                  {t('chat.sandbox', 'Sandbox')}
                 </Label>
                 <Switch
                   id="popup-sandbox"
@@ -744,7 +744,7 @@ function ChatPopup({
                   )}
                 >
                   <FolderTree className="h-3.5 w-3.5" />
-                  Worktree
+                  {t('chat.worktree', 'Worktree')}
                 </Label>
                 <Switch
                   id="popup-worktree"

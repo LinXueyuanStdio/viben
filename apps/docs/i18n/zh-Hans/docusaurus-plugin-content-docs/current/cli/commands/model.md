@@ -19,10 +19,13 @@ viben model <子命令> [选项]
 | 子命令 | 描述 |
 |--------|------|
 | `list` | 列出可用模型 |
+| `show` | 查看模型详情 |
 | `status` | 显示模型状态 |
 | `set-default` | 设置默认模型 |
-| `aliases` | 管理模型别名 |
-| `fallbacks` | 管理回退链 |
+| `alias` | 管理模型别名 |
+| `fallback` | 管理回退链 |
+| `config` | 管理模型特定配置 |
+| `providers` | 列出可用的提供商 |
 
 ## 命令
 
@@ -83,6 +86,43 @@ Available Models:
     ]
   }
 }
+```
+
+### 查看模型
+
+查看特定模型的详细信息：
+
+```bash
+viben model show -n <model>
+```
+
+**选项**:
+
+| 选项 | 描述 |
+|------|------|
+| `-n <model>` | 要查看详情的模型名称 |
+| `--json` | JSON 格式输出 |
+
+**输出（人类可读）：**
+
+```
+Model: claude-sonnet-4-20250514
+
+  Provider:         anthropic-main
+  Context Window:   200K tokens
+  Max Tokens:       8192
+  Temperature:      0.7
+  Supports Vision:  yes
+  Supports Tools:   yes
+  Cost (Input):     $3 / 1M tokens
+  Cost (Output):    $15 / 1M tokens
+```
+
+**示例**:
+
+```bash
+viben model show -n claude-sonnet-4-20250514
+viben model show -n gpt-4-turbo --json
 ```
 
 ### 模型状态
@@ -154,7 +194,7 @@ Set 'claude-sonnet-4-20250514' as default model
 ### 列出别名
 
 ```bash
-viben model aliases list
+viben model alias list
 ```
 
 **输出（人类可读）：**
@@ -187,27 +227,27 @@ Model Aliases:
 
 ```bash
 # 创建别名
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n smart -f claude-sonnet-4-20250514
-viben model aliases create -n best -f claude-opus-4-20250514
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n smart -m claude-sonnet-4-20250514
+viben model alias create -n best -m claude-opus-4-20250514
 ```
 
 **输出：**
 
 ```
-Created alias 'fast' -> 'claude-3-5-haiku-latest'
+Created alias 'fast' → 'claude-3-5-haiku-latest'
 ```
 
 ### 删除别名
 
 ```bash
-viben model aliases remove -n fast
+viben model alias remove -n fast
 ```
 
-**输出：**
+### 解析别名
 
-```
-Removed alias 'fast'
+```bash
+viben model alias resolve -n fast
 ```
 
 ## 回退管理
@@ -217,7 +257,7 @@ Removed alias 'fast'
 ### 列出回退
 
 ```bash
-viben model fallbacks list
+viben model fallback list
 ```
 
 **输出（人类可读）：**
@@ -256,43 +296,49 @@ Fallback Chain:
 }
 ```
 
+### 设置回退链
+
+```bash
+# 设置回退链（支持空格或逗号分隔）
+viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
+```
+
 ### 添加到回退链
 
 ```bash
-# 添加模型到回退链
-viben model fallbacks create -n claude-sonnet-4-20250514
-viben model fallbacks create -n gpt-4-turbo
-viben model fallbacks create -n claude-3-5-haiku-latest
-```
-
-**输出：**
-
-```
-Added 'claude-sonnet-4-20250514' to fallback chain (position 1)
+viben model fallback add -n claude-sonnet-4-20250514
 ```
 
 ### 从回退链移除
 
 ```bash
-viben model fallbacks remove -n gpt-4-turbo
-```
-
-**输出：**
-
-```
-Removed 'gpt-4-turbo' from fallback chain
+viben model fallback remove -n gpt-4-turbo
 ```
 
 ### 清空回退链
 
 ```bash
-viben model fallbacks clear
+viben model fallback clear
 ```
 
-**输出：**
+## 模型配置
 
+### 查看模型配置
+
+```bash
+viben model config show -n claude-sonnet-4-20250514
 ```
-Cleared fallback chain
+
+### 设置模型配置
+
+```bash
+viben model config set -n claude-sonnet-4-20250514 --temperature 0.7 --max-tokens 8192
+```
+
+### 删除模型配置
+
+```bash
+viben model config remove -n claude-sonnet-4-20250514
 ```
 
 ## 模型配置文件

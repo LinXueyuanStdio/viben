@@ -61,7 +61,7 @@ export function WorkspaceChatPage() {
 
   // Share text for share dialog
   const shareText = chat.messages
-    .map((m) => `${m.type === "user" ? t("chat.you") : chat.currentAgent?.name || "Agent"}: ${m.content}`)
+    .map((m) => `${m.type === "user" ? t("chat.you") : chat.currentAgent?.name || t("chat.defaultAgentName", "Agent")}: ${m.content}`)
     .join("\n\n");
 
   return (

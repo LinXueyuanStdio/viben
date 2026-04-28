@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import {
@@ -46,6 +47,7 @@ export interface GlobalTabBarProps {
 }
 
 export function GlobalTabBar({ className }: GlobalTabBarProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [isMacOS, setIsMacOS] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -177,14 +179,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     openTab(
       {
         type: "new-tab",
-        name: "New Tab",
+        name: t("common.newTab", "New Tab"),
         icon: { type: "lucide", value: "plus" },
         pinned: false,
       },
       "/"
     );
     navigate("/");
-  }, [openTab, navigate]);
+  }, [openTab, navigate, t]);
 
   // Tab IDs for sortable context
   const tabIds = tabs.map((t) => t.id);
@@ -220,7 +222,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              Go Back
+              {t("common.back", "Go Back")}
             </TooltipContent>
           </Tooltip>
 
@@ -238,7 +240,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              Go Forward
+              {t("common.forward", "Go Forward")}
             </TooltipContent>
           </Tooltip>
         </div>
@@ -288,7 +290,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              New Tab
+              {t("common.newTab", "New Tab")}
             </TooltipContent>
           </Tooltip>
         </div>

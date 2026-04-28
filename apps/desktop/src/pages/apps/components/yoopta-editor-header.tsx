@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileTextIcon,
@@ -53,18 +53,23 @@ type YooptaEditorHeaderProps = {
   onShowTocChange?: (show: boolean) => void;
 };
 
-export const YooptaEditorHeader = ({ editor, title, pageWidth = "default", showToc = false, saveStatus = "idle", wordCount, updatedAt, onPageWidthChange, onShowTocChange }: YooptaEditorHeaderProps) => {
+export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, title, pageWidth = "default", showToc = false, saveStatus = "idle", wordCount, updatedAt, onPageWidthChange, onShowTocChange }: YooptaEditorHeaderProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [isLocked, setIsLocked] = useState(editor.readOnly);
   const [, forceUpdate] = useState(0);
 
-  // Subscribe to editor changes to keep undo/redo state fresh
+  // Subscribe to editor changes to keep undo/redo state fresh (debounced 100ms)
+  const forceUpdateTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
-    const onChange = () => forceUpdate((n) => n + 1);
+    const onChange = () => {
+      clearTimeout(forceUpdateTimerRef.current);
+      forceUpdateTimerRef.current = setTimeout(() => forceUpdate((n) => n + 1), 100);
+    };
     editor.on("change", onChange);
     return () => {
       editor.off("change", onChange);
+      clearTimeout(forceUpdateTimerRef.current);
     };
   }, [editor]);
 
@@ -335,7 +340,7 @@ export const YooptaEditorHeader = ({ editor, title, pageWidth = "default", showT
       </Dialog>
     </div>
   );
-};
+});
 
 function formatRelativeTime(isoString: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   const date = new Date(isoString);

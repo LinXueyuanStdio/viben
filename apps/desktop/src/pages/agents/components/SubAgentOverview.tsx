@@ -62,7 +62,7 @@ export function SubAgentOverview({ config, onCopy, copied }: SubAgentOverviewPro
           <InfoCard
             icon={<Package className="h-4 w-4" />}
             label={t("settingsAgents.tools", "Tools")}
-            value={config.tools?.length ? `${config.tools.length} tools` : "-"}
+            value={config.tools?.length ? t("settingsAgents.toolCount", "{{count}} tools", { count: config.tools.length }) : "-"}
           />
         </div>
 

@@ -49,8 +49,8 @@ export function DeveloperSection() {
       const osType = platform();
       const info: DebugInfo = {
         os: osType,
-        osVersion: "Unknown",
-        arch: "Unknown",
+        osVersion: t("common.unknown", "Unknown"),
+        arch: t("common.unknown", "Unknown"),
         appVersion: "0.1.0",
         logsPath: "~/.viben/logs",
         configPath: "~/.viben",
@@ -70,23 +70,23 @@ export function DeveloperSection() {
     }
     const info = debugInfo || {
       os: platform(),
-      osVersion: "Unknown",
-      arch: "Unknown",
+      osVersion: t("common.unknown", "Unknown"),
+      arch: t("common.unknown", "Unknown"),
       appVersion: "0.1.0",
       logsPath: "~/.viben/logs",
       configPath: "~/.viben",
     };
 
-    const debugText = `
-Viben Debug Info
-================
-OS: ${info.os}
-OS Version: ${info.osVersion}
-Architecture: ${info.arch}
-App Version: ${info.appVersion}
-Logs Path: ${info.logsPath}
-Config Path: ${info.configPath}
-    `.trim();
+    const debugText = [
+      t("settings.developer.debugTextTitle", "Viben Debug Info"),
+      "================",
+      t("settings.developer.debugTextOs", "OS: {{os}}", { os: info.os }),
+      t("settings.developer.debugTextOsVersion", "OS Version: {{version}}", { version: info.osVersion }),
+      t("settings.developer.debugTextArch", "Architecture: {{arch}}", { arch: info.arch }),
+      t("settings.developer.debugTextAppVersion", "App Version: {{version}}", { version: info.appVersion }),
+      t("settings.developer.debugTextLogsPath", "Logs Path: {{path}}", { path: info.logsPath }),
+      t("settings.developer.debugTextConfigPath", "Config Path: {{path}}", { path: info.configPath }),
+    ].join("\n");
 
     try {
       await navigator.clipboard.writeText(debugText);

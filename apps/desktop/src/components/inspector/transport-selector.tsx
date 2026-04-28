@@ -105,11 +105,14 @@ function KeyValueEditor({
   label,
   entries,
   onChange,
-  keyPlaceholder = "Key",
-  valuePlaceholder = "Value",
+  keyPlaceholder,
+  valuePlaceholder,
   valueType = "text",
   disabled = false,
 }: KeyValueEditorProps) {
+  const { t } = useTranslation();
+  const effectiveKeyPlaceholder = keyPlaceholder ?? t("inspector.transport.keyPlaceholder", "Key");
+  const effectiveValuePlaceholder = valuePlaceholder ?? t("inspector.transport.valuePlaceholder", "Value");
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
 
@@ -185,7 +188,7 @@ function KeyValueEditor({
           value={newKey}
           onChange={(e) => setNewKey(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={keyPlaceholder}
+          placeholder={effectiveKeyPlaceholder}
           className="flex-1 h-8 text-xs"
           disabled={disabled}
         />
@@ -194,7 +197,7 @@ function KeyValueEditor({
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={valuePlaceholder}
+          placeholder={effectiveValuePlaceholder}
           className="flex-1 h-8 text-xs font-mono"
           disabled={disabled}
         />
@@ -592,8 +595,8 @@ export function TransportSelector({
             label={t("inspector.transport.envVars", "Environment Variables")}
             entries={config.env}
             onChange={(env) => onConfigChange({ ...config, env })}
-            keyPlaceholder="VAR_NAME"
-            valuePlaceholder="value"
+            keyPlaceholder={t("inspector.transport.envKeyPlaceholder", "VAR_NAME")}
+            valuePlaceholder={t("inspector.transport.envValuePlaceholder", "value")}
             disabled={isConnected || isDisabled}
           />
         </div>

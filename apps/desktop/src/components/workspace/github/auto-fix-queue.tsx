@@ -95,7 +95,7 @@ function AutoFixQueueItem({
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-sm">
               {task.issue_numbers.length === 1 ? (
-                <>Issue #{task.issue_numbers[0]}</>
+                <>{t("workspaceSettings.github.autoFix.issueNumber", "Issue #{{number}}", { number: task.issue_numbers[0] })}</>
               ) : (
                 <>
                   {task.issue_numbers.length} {t("workspaceSettings.github.autoFix.issues", "issues")}

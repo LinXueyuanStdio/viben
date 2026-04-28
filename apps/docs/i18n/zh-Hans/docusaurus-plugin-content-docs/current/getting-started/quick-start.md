@@ -62,15 +62,21 @@ npm install -g viben
 npx viben
 ```
 
-### 第二步：初始化开发者身份
+### 第二步：初始化工作空间
 
 ```bash
-# 检查是否已初始化
-viben user get
+# 完整工作空间初始化（推荐）
+# 创建 .viben/ 目录结构、docs/specs/、执行器配置和 AGENTS.md
+viben init --user <your-name>
 
-# 初始化（首次使用）
-viben user init <your-name>
+# 可选：指定执行器（默认为 CURSOR + CLAUDE_CODE）
+viben init --user <your-name> --executor CLAUDE_CODE --executor GEMINI
 ```
+
+:::note `viben init` 与 `viben user init` 的区别
+- **`viben init --user <name>`** - 完整工作空间初始化。创建 `.viben/` 目录、`docs/specs/` 规范文件、执行器配置文件（如 `.claude/`、`.cursor/`）以及根目录的 `AGENTS.md`。这是设置新项目的推荐方式。
+- **`viben user init <name>`** - 仅设置开发者身份。不会创建工作空间结构或执行器配置。如果您只需要注册身份而不初始化工作空间，可以使用此命令。
+:::
 
 ### 第三步：创建任务
 

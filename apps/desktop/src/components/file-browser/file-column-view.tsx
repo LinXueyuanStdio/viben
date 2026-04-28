@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import i18n from "@/i18n";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 import type { FileEntry } from "@/types";
@@ -154,7 +155,12 @@ function getFileIcon(name: string, isDirectory: boolean) {
 function formatFileSize(bytes: number | undefined): string {
   if (bytes === undefined || bytes === 0) return "";
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
+  const sizes = [
+    i18n.t("fileBrowser.sizeUnits.B", "B"),
+    i18n.t("fileBrowser.sizeUnits.KB", "KB"),
+    i18n.t("fileBrowser.sizeUnits.MB", "MB"),
+    i18n.t("fileBrowser.sizeUnits.GB", "GB"),
+  ];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }

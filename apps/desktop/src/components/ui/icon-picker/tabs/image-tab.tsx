@@ -51,7 +51,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
         multiple: false,
         filters: [
           {
-            name: "Images",
+            name: t("iconPicker.images", "Images"),
             extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"],
           },
         ],

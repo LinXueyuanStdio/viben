@@ -446,7 +446,7 @@ const ResizeHandle = memo(function ResizeHandle({
       }}
       role="separator"
       aria-orientation="vertical"
-      aria-label={`Resize ${columnName} column`}
+      aria-label={t("workspace.resizeColumnAriaLabel", "Resize {{column}} column", { column: columnName })}
       title={isLocked ? t("workspace.columnLocked", "Column width is locked") : undefined}
     >
       {/* Wider invisible hit area for easier grabbing */}

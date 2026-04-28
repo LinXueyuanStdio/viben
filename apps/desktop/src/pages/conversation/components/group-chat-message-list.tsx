@@ -7,6 +7,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Bot, User, ArrowDown, MessageSquare, Reply } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,9 @@ function formatMessageTime(dateStr: string): string {
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
 
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
+  if (minutes < 1) return i18n.t("common.justNow", "just now");
+  if (minutes < 60) return i18n.t("common.minutesAgo", "{{count}}m ago", { count: minutes });
+  if (hours < 24) return i18n.t("common.hoursAgo", "{{count}}h ago", { count: hours });
 
   return date.toLocaleString(undefined, {
     month: "short",
@@ -255,7 +256,7 @@ function MessageItem({
               <TooltipContent side={isOwn ? "left" : "right"}>
                 <p className="font-medium">{senderName}</p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {message.type === "user" ? "human" : "agent"}
+                  {message.type === "user" ? t("groupChat.human") : t("groupChat.agent")}
                 </p>
               </TooltipContent>
             </Tooltip>

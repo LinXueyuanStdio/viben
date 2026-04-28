@@ -343,7 +343,7 @@ export function DevicePairPage() {
                   <div className="relative group">
                     <img
                       src={qr.qr_data_url}
-                      alt="Pairing QR Code"
+                      alt={t("devices.pairingQrAlt", "Pairing QR Code")}
                       className="h-56 w-56 rounded-xl shadow-lg"
                     />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
@@ -375,7 +375,7 @@ export function DevicePairPage() {
                 <div className="text-center space-y-1">
                   <div className="text-sm font-medium">{qr.payload.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {qr.payload.lan && <span>LAN: {qr.payload.lan}</span>}
+                    {qr.payload.lan && <span>{t("devices.lan", "LAN")}: {qr.payload.lan}</span>}
                   </div>
                 </div>
               )}

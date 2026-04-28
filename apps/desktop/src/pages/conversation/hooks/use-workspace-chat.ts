@@ -1073,7 +1073,7 @@ export function useWorkspaceChat() {
   const handleShareConversation = () => {
     if (!currentConversation) return;
     const shareText = messages
-      .map((m) => `${m.type === "user" ? t("chat.you") : currentAgent?.name || "Agent"}: ${m.content}`)
+      .map((m) => `${m.type === "user" ? t("chat.you") : currentAgent?.name || t("chat.defaultAgentName", "Agent")}: ${m.content}`)
       .join("\n\n");
     navigator.clipboard.writeText(shareText);
     setIsShareDialogOpen(false);

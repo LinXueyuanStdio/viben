@@ -148,7 +148,8 @@
     "updated": "Updated",
     "weeksAgo": "Weeks Ago",
     "failed": "Failed",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "newTab": "新标签页"
   },
   "elapsedTime": {
     "justNow": "刚刚",
@@ -203,7 +204,9 @@
     "deviceDetails": "设备详情",
     "deviceId": "设备 ID",
     "type": "类型",
-    "platform": "平台"
+    "platform": "平台",
+    "pairingQrAlt": "配对二维码",
+    "lan": "LAN"
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -437,7 +440,10 @@
       "learnMore": "了解更多",
       "delete": "删除 Webhook",
       "setting": "设置中...",
-      "set": "设置 Webhook"
+      "set": "设置 Webhook",
+      "getInfoFailed": "获取 Webhook 信息失败",
+      "apiSetFailed": "设置 Webhook 失败",
+      "apiDeleteFailed": "删除 Webhook 失败"
     },
     "tunnel": {
       "started": "隧道已启动",
@@ -915,7 +921,19 @@
       "appVersion": "应用版本",
       "arch": "架构",
       "logs": "日志",
-      "config": "配置"
+      "config": "配置",
+      "debugTextTitle": "Viben 调试信息",
+      "debugTextOs": "操作系统：{{os}}",
+      "debugTextOsVersion": "系统版本：{{version}}",
+      "debugTextArch": "架构：{{arch}}",
+      "debugTextAppVersion": "应用版本：{{version}}",
+      "debugTextLogsPath": "日志路径：{{path}}",
+      "debugTextConfigPath": "配置路径：{{path}}",
+      "customOption": "自定义...",
+      "systemTerminal": "系统终端"
+    },
+    "mcp": {
+      "title": "MCP"
     }
   },
   "sandbox": {
@@ -1203,6 +1221,7 @@
     "noClaudeMd": "暂无 CLAUDE.md 文件",
     "noClaudeMdHint": "在工作空间根目录创建 CLAUDE.md 文件",
     "tools": "工具",
+    "toolCount": "{{count}} 个工具",
     "openFolder": "在文件管理器中打开",
     "createLocation": "存储位置",
     "workspaceLocation": "当前工作空间",
@@ -1249,6 +1268,8 @@
     "environment": "环境变量",
     "url": "URL",
     "mcpServerDesc": "MCP（模型上下文协议）服务器为 AI 智能体提供额外的工具和能力。此服务器已为所选执行器配置。",
+    "mcp": "MCP",
+    "mcpServer": "MCP 服务器",
     "promptNotFound": "未找到提示",
     "promptNotFoundDesc": "无法找到请求的提示。",
     "prompt": "提示",
@@ -1603,7 +1624,8 @@
     "processTerminatedUnexpectedly": "进程意外终止",
     "commandExecuted": "执行的命令",
     "endpoint": "端点地址",
-    "errorDetails": "错误详情"
+    "errorDetails": "错误详情",
+    "defaultServerName": "服务器 {{num}}"
   },
   "pageDebug": {
     "title": "页面调试",
@@ -1923,7 +1945,10 @@
       "idempotent": "幂等",
       "idempotentDesc": "重复调用不会产生额外影响",
       "openWorld": "开放世界",
-      "openWorldDesc": "工具可能与外部实体交互"
+      "openWorldDesc": "工具可能与外部实体交互",
+      "value": "值",
+      "impliedDefault": "隐含默认值",
+      "explicitlySet": "显式设置"
     },
     "formInput": "表单",
     "jsonInput": "JSON",
@@ -2076,7 +2101,15 @@
       "sseTitle": "服务器推送事件",
       "sseDesc": "通过 SSE 进行实时流连接",
       "httpTitle": "HTTP",
-      "httpDesc": "通过 HTTP 请求连接"
+      "httpDesc": "通过 HTTP 请求连接",
+      "keyPlaceholder": "键",
+      "valuePlaceholder": "值",
+      "envKeyPlaceholder": "变量名",
+      "envValuePlaceholder": "值",
+      "commandPlaceholder": "/path/to/executable",
+      "stdioDescription": "通过标准输入/输出流连接 MCP 服务器。需要本地可执行文件。",
+      "sseDescription": "使用服务器推送事件连接 MCP 服务器。适用于实时流式响应。",
+      "httpDescription": "使用支持流式传输的 HTTP 连接 MCP 服务器。推荐用于大多数场景。"
     },
     "addPair": "添加",
     "checking": "检查中...",
@@ -2168,7 +2201,17 @@
     "proxyUnavailable": "不可用",
     "authDisabled": "认证：已禁用",
     "authEnabled": "认证：已启用",
-    "apps": "应用"
+    "apps": "应用",
+    "invalidJson": "无效的 JSON",
+    "securityCheckPassed": "安全检查通过：应用已正确隔离",
+    "securityCheckFailed": "安全检查失败",
+    "securityFailParentAccess": "父窗口可访问",
+    "securityFailCookieAccess": "Cookie 可访问",
+    "securityFailLocalStorageAccess": "LocalStorage 可访问",
+    "rootType": {
+      "fileSystem": "文件系统",
+      "other": "其他"
+    }
   },
   "updates": {
     "title": "包更新",
@@ -2539,6 +2582,9 @@
         "issues": "个 Issue",
         "approve": "批准",
         "prCreated": "Pull Request 已创建",
+        "processing": "处理中...",
+        "branchLabel": "分支：{{branch}}",
+        "issueNumber": "Issue #{{number}}",
         "status": {
           "queued": "排队中",
           "analyzing": "分析中",
@@ -2877,6 +2923,7 @@
     "lockColumn": "锁定列宽",
     "unlockColumn": "解锁列宽",
     "columnLocked": "列宽已锁定",
+    "resizeColumnAriaLabel": "调整 {{column}} 列宽",
     "taskMenu": "任务菜单",
     "duplicateTask": "复制任务",
     "moveToColumn": "移动到",
@@ -3299,6 +3346,9 @@
     "selectAllInColumn": "全选列中任务",
     "taskDeleted": "任务已删除",
     "taskDuplicated": "任务已复制",
+    "createFailed": "创建工作区失败",
+    "copySuffix": "（副本）",
+    "subtaskTooltip": "{{title}}：{{status}}",
     "bulkDeleteSuccess": "已删除 {{count}} 个任务",
     "statusContext": {
       "stuck": {
@@ -4150,7 +4200,27 @@
       "done": "完成",
       "error": "错误",
       "awaitingApproval": "等待审批",
-      "awaitingInput": "等待输入"
+      "awaitingInput": "等待输入",
+      "thinking": "思考中...",
+      "vibing": "感知中...",
+      "schlepping": "搬运中...",
+      "combobulating": "组装中...",
+      "concocting": "调配中...",
+      "wrangling": "驯服中...",
+      "noodling": "酝酿中...",
+      "percolating": "渗透中...",
+      "discombobulating": "解构中...",
+      "skedaddling": "疾驰中...",
+      "ruminating": "反刍中...",
+      "kibbitzing": "旁观中...",
+      "zapping": "激活中...",
+      "finagling": "精调中...",
+      "bamboozling": "迷惑中...",
+      "cogitating": "冥想中...",
+      "snorkelating": "潜行中...",
+      "recalibrating": "校准中...",
+      "spelunking": "探洞中...",
+      "brouhaha": "喧闹中..."
     },
     "fileFilter": {
       "images": "图片",
@@ -4342,7 +4412,19 @@
       "objects": "物品",
       "nature": "自然",
       "food": "食物",
-      "symbols": "符号"
+      "symbols": "符号",
+      "filter": "筛选...",
+      "noEmojisFound": "未找到表情",
+      "categories": {
+        "smileys": "表情与人物",
+        "animals": "动物与自然",
+        "food": "食物与饮品",
+        "activities": "活动",
+        "travel": "旅行与地点",
+        "objects": "物品",
+        "symbols": "符号",
+        "flags": "旗帜"
+      }
     },
     "backgroundTask": {
       "running": "运行中",
@@ -4398,7 +4480,12 @@
     "gatewayConnected": "网关已连接",
     "gatewayMock": "模拟",
     "gatewayChecking": "...",
-    "sessionFallbackName": "会话 {{id}}"
+    "sessionFallbackName": "会话 {{id}}",
+    "gatewayOffline": "离线",
+    "planRejectedMessage": "方案已拒绝。您希望我如何继续？",
+    "defaultAgentName": "智能体",
+    "sandbox": "沙箱",
+    "worktree": "工作树"
   },
   "creator": {
     "title": "创作者",
@@ -4995,7 +5082,15 @@
     "deleteConfirmWithName": "确定要删除 {{name}} 吗？",
     "folderWithName": "文件夹：{{name}}",
     "sizeWithValue": "大小：{{size}}",
-    "modifiedWithValue": "修改时间：{{date}}"
+    "modifiedWithValue": "修改时间：{{date}}",
+    "zeroBytes": "0 B",
+    "sizeUnits": {
+      "B": "B",
+      "KB": "KB",
+      "MB": "MB",
+      "GB": "GB",
+      "TB": "TB"
+    }
   },
   "filePicker": {
     "images": "图片",
@@ -5077,7 +5172,15 @@
     },
     "failedToPlay": "播放失败：{{error}}",
     "fetchImageFailed": "获取图片失败：{{status}} {{statusText}}",
-    "fetchPdfFailed": "获取 PDF 失败：{{status}} {{statusText}}"
+    "fetchPdfFailed": "获取 PDF 失败：{{status}} {{statusText}}",
+    "openWith": {
+      "browser": "浏览器",
+      "preview": "预览",
+      "musicPlayer": "音乐播放器",
+      "videoPlayer": "视频播放器",
+      "imageViewer": "图片查看器",
+      "fontViewer": "字体查看器"
+    }
   },
   "observability": {
     "title": "可观测性",
@@ -5152,7 +5255,10 @@
     "url": "URL",
     "loadDatesFailed": "加载日期失败",
     "loadTracesFailed": "加载追踪列表失败",
-    "loadTraceFailed": "加载追踪详情失败"
+    "loadTraceFailed": "加载追踪详情失败",
+    "httpSection": "HTTP",
+    "unknownSpanKind": "未知 ({{kind}})",
+    "zeroMs": "0ms"
   },
   "errors": {
     "github": {
@@ -5489,7 +5595,9 @@
     "copyTraceId": "复制 Trace ID",
     "copySessionId": "复制 Session ID",
     "inputPlaceholder": "输入消息...",
-    "debugSession": "调试会话"
+    "debugSession": "调试会话",
+    "providerLabel": "提供商：{{provider}}",
+    "sessionFallbackName": "会话 {{id}}"
   },
   "agentVariables": {
     "sectionTitle": "变量",
@@ -5615,6 +5723,8 @@
     "urlPlaceholder": "https://example.com/icon.png",
     "download": "下载",
     "noWorkspace": "需要工作空间才能上传图片",
+    "images": "图片",
+    "uploaded": "已上传！",
     "category": {
       "documents": "文档",
       "code": "代码",
@@ -5638,6 +5748,11 @@
     "maximize": "最大化",
     "restore": "还原",
     "close": "关闭"
+  },
+  "tabBar": {
+    "pinTab": "固定标签页",
+    "unpinTab": "取消固定标签页",
+    "closeOthers": "关闭其他"
   },
   "mobile": {
     "status": {
@@ -5764,7 +5879,8 @@
     "uploadFailed": "上传失败",
     "preview": "预览",
     "invalidUrl": "无效的 URL",
-    "linkPlaceholder": "https://example.com/cover.jpg"
+    "linkPlaceholder": "https://example.com/cover.jpg",
+    "colorAndGradient": "颜色与渐变"
   },
   "kanban": {
     "common": {
@@ -6050,6 +6166,19 @@
     }
   },
   "editor": {
+    "errorBoundary": {
+      "message": "编辑器加载出错。",
+      "tryAgain": "重试",
+      "errorDetails": "错误详情"
+    },
+    "blockCategories": {
+      "basicBlocks": "基础块",
+      "media": "媒体",
+      "code": "代码",
+      "advanced": "高级",
+      "inline": "内联",
+      "other": "其他"
+    },
     "header": {
       "editorActions": "编辑器操作",
       "editing": "编辑中...",

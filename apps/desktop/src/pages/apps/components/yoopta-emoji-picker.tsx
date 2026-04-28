@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { SearchIcon, XIcon } from "lucide-react";
 import {
   Popover,
@@ -308,6 +309,7 @@ export function EmojiPicker({
   currentEmoji,
   children,
 }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [activeCategoryId, setActiveCategoryId] = useState<string>(EMOJI_DATA[0].id);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -388,6 +390,20 @@ export function EmojiPicker({
 
   const isSearching = searchResults !== null;
 
+  const getCategoryName = (category: EmojiCategory): string => {
+    const names: Record<string, string> = {
+      smileys: t("emojiPicker.categories.smileys", "Smileys & People"),
+      animals: t("emojiPicker.categories.animals", "Animals & Nature"),
+      food: t("emojiPicker.categories.food", "Food & Drink"),
+      activities: t("emojiPicker.categories.activities", "Activities"),
+      travel: t("emojiPicker.categories.travel", "Travel & Places"),
+      objects: t("emojiPicker.categories.objects", "Objects"),
+      symbols: t("emojiPicker.categories.symbols", "Symbols"),
+      flags: t("emojiPicker.categories.flags", "Flags"),
+    };
+    return names[category.id] ?? category.name;
+  };
+
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -408,7 +424,7 @@ export function EmojiPicker({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Filter..."
+              placeholder={t("emojiPicker.filter", "Filter...")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-7 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -432,7 +448,7 @@ export function EmojiPicker({
                   key={category.id}
                   type="button"
                   onClick={() => handleCategoryClick(category.id)}
-                  title={category.name}
+                  title={getCategoryName(category)}
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded text-sm transition-colors",
                     activeCategoryId === category.id
@@ -463,7 +479,7 @@ export function EmojiPicker({
                 </div>
               ) : (
                 <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                  No emojis found
+                  {t("emojiPicker.noEmojisFound", "No emojis found")}
                 </div>
               )
             ) : (
@@ -476,7 +492,7 @@ export function EmojiPicker({
                   }}
                 >
                   <div className="sticky top-0 z-10 bg-popover/95 px-1 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-                    {category.name}
+                    {getCategoryName(category)}
                   </div>
                   <div className="grid grid-cols-9 gap-0.5">
                     {category.emojis.map((entry, i) => (
@@ -500,7 +516,7 @@ export function EmojiPicker({
                 className="flex w-full items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <XIcon className="h-3.5 w-3.5" />
-                Remove
+                {t("common.remove")}
               </button>
             </div>
           )}

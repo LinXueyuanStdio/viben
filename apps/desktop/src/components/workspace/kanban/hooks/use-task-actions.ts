@@ -303,7 +303,7 @@ export function useTaskActions(options: UseTaskActionsOptions): TaskActionsResul
 
       createTaskMutation.mutate({
         workspace_path: workspacePath,
-        title: `${task.title} (copy)`,
+        title: `${task.title} ${t("workspace.copySuffix", "(copy)")}`,
         description: task.description ?? undefined,
       });
       onSuccess?.(t("workspace.taskDuplicated", "Task duplicated"));

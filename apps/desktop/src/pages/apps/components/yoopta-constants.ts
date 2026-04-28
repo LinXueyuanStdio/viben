@@ -24,6 +24,7 @@ import {
   AlertCircleIcon,
   type LucideIcon,
 } from "lucide-react";
+import i18n from "@/i18n";
 
 export const BLOCK_ICONS: Record<string, LucideIcon> = {
   Paragraph: TextIcon,
@@ -54,41 +55,43 @@ export const BLOCK_ICONS: Record<string, LucideIcon> = {
 };
 
 export const BLOCK_CATEGORIES: Record<string, string> = {
-  Paragraph: "Basic blocks",
-  HeadingOne: "Basic blocks",
-  HeadingTwo: "Basic blocks",
-  HeadingThree: "Basic blocks",
-  TodoList: "Basic blocks",
-  BulletedList: "Basic blocks",
-  NumberedList: "Basic blocks",
-  Blockquote: "Basic blocks",
-  Divider: "Basic blocks",
-  Callout: "Basic blocks",
-  Image: "Media",
-  Video: "Media",
-  File: "Media",
-  Embed: "Media",
-  Emoji: "Media",
-  Code: "Code",
-  CodeGroup: "Code",
-  Table: "Advanced",
-  Accordion: "Advanced",
-  Steps: "Advanced",
-  Tabs: "Advanced",
-  Carousel: "Advanced",
-  TableOfContents: "Advanced",
-  MathBlock: "Advanced",
-  Mention: "Inline",
+  get Paragraph() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get HeadingOne() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get HeadingTwo() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get HeadingThree() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get TodoList() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get BulletedList() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get NumberedList() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get Blockquote() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get Divider() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get Callout() { return i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"); },
+  get Image() { return i18n.t("editor.blockCategories.media", "Media"); },
+  get Video() { return i18n.t("editor.blockCategories.media", "Media"); },
+  get File() { return i18n.t("editor.blockCategories.media", "Media"); },
+  get Embed() { return i18n.t("editor.blockCategories.media", "Media"); },
+  get Emoji() { return i18n.t("editor.blockCategories.media", "Media"); },
+  get Code() { return i18n.t("editor.blockCategories.code", "Code"); },
+  get CodeGroup() { return i18n.t("editor.blockCategories.code", "Code"); },
+  get Table() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get Accordion() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get Steps() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get Tabs() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get Carousel() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get TableOfContents() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get MathBlock() { return i18n.t("editor.blockCategories.advanced", "Advanced"); },
+  get Mention() { return i18n.t("editor.blockCategories.inline", "Inline"); },
 };
 
-export const CATEGORY_ORDER = [
-  "Basic blocks",
-  "Media",
-  "Code",
-  "Advanced",
-  "Inline",
-  "Other",
-];
+export function getCategoryOrder(): string[] {
+  return [
+    i18n.t("editor.blockCategories.basicBlocks", "Basic blocks"),
+    i18n.t("editor.blockCategories.media", "Media"),
+    i18n.t("editor.blockCategories.code", "Code"),
+    i18n.t("editor.blockCategories.advanced", "Advanced"),
+    i18n.t("editor.blockCategories.inline", "Inline"),
+    i18n.t("editor.blockCategories.other", "Other"),
+  ];
+}
 
 export const IS_MAC =
   typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent);

@@ -41,7 +41,7 @@ export function TimelineView({
       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3 pb-2 border-b">
         <div className="w-48 flex-shrink-0">{t("observability.spanName")}</div>
         <div className="flex-1 flex justify-between">
-          <span>0ms</span>
+          <span>{t("observability.zeroMs", "0ms")}</span>
           <span>{formatDuration(totalDuration / 4)}</span>
           <span>{formatDuration(totalDuration / 2)}</span>
           <span>{formatDuration((totalDuration * 3) / 4)}</span>

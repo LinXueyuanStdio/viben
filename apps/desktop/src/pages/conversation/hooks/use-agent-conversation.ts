@@ -780,7 +780,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     const textMessage: AgentMessage = {
       id: generateId(),
       type: "text",
-      content: "Plan rejected. How would you like me to proceed?",
+      content: i18n.t("chat.planRejectedMessage", "Plan rejected. How would you like me to proceed?"),
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
@@ -1295,7 +1295,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     const textMessage: AgentMessage = {
       id: generateId(),
       type: "text",
-      content: "Plan rejected. How would you like me to proceed?",
+      content: i18n.t("chat.planRejectedMessage", "Plan rejected. How would you like me to proceed?"),
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");

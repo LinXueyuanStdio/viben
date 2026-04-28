@@ -3,6 +3,7 @@
  */
 
 import type { Artifact, ArtifactType, OpenWithAppInfo } from "./types";
+import i18n from "@/i18n";
 
 /** Max file size for preview (50MB) */
 export const MAX_PREVIEW_SIZE = 50 * 1024 * 1024;
@@ -149,7 +150,7 @@ export function getLanguageHint(artifact: Artifact): string {
 export function getOpenWithApp(artifact: Artifact): OpenWithAppInfo | null {
   switch (artifact.type) {
     case "html":
-      return { name: "Browser", icon: "Globe" };
+      return { name: i18n.t("artifacts.openWith.browser", "Browser"), icon: "Globe" };
     case "presentation":
       return { name: "Microsoft PowerPoint", icon: "Presentation" };
     case "document":
@@ -158,15 +159,15 @@ export function getOpenWithApp(artifact: Artifact): OpenWithAppInfo | null {
     case "csv":
       return { name: "Microsoft Excel", icon: "FileSpreadsheet" };
     case "pdf":
-      return { name: "Preview", icon: "FileText" };
+      return { name: i18n.t("artifacts.openWith.preview", "Preview"), icon: "FileText" };
     case "audio":
-      return { name: "Music Player", icon: "Music" };
+      return { name: i18n.t("artifacts.openWith.musicPlayer", "Music Player"), icon: "Music" };
     case "video":
-      return { name: "Video Player", icon: "Video" };
+      return { name: i18n.t("artifacts.openWith.videoPlayer", "Video Player"), icon: "Video" };
     case "image":
-      return { name: "Image Viewer", icon: "Eye" };
+      return { name: i18n.t("artifacts.openWith.imageViewer", "Image Viewer"), icon: "Eye" };
     case "font":
-      return { name: "Font Viewer", icon: "FileText" };
+      return { name: i18n.t("artifacts.openWith.fontViewer", "Font Viewer"), icon: "FileText" };
     default:
       return null;
   }

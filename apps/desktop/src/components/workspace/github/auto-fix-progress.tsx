@@ -140,7 +140,7 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
         <div className="space-y-1">
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{task.progress_message || "Processing..."}</span>
+            <span>{task.progress_message || t("workspaceSettings.github.autoFix.processing", "Processing...")}</span>
             <span>{progress}%</span>
           </div>
         </div>
@@ -167,7 +167,7 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
       {/* Branch info */}
       {task.branch_name && (
         <div className="text-xs text-muted-foreground font-mono">
-          Branch: {task.branch_name}
+          {t("workspaceSettings.github.autoFix.branchLabel", "Branch: {{branch}}", { branch: task.branch_name })}
         </div>
       )}
     </div>

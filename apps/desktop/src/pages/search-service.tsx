@@ -75,7 +75,7 @@ export function SearchServicePage() {
   const handleCreateServer = () => {
     const availableSources = getAvailableProviders().map((p) => p.id);
     const id = addMcpServer({
-      name: `Server ${mcpServers.length + 1}`,
+      name: t("searchService.defaultServerName", "Server {{num}}", { num: mcpServers.length + 1 }),
       transport: "sse", // Default to SSE (no more stdio)
       port: 3000 + mcpServers.length, // Auto-increment port
       downloadPath: "~/Downloads/viben",

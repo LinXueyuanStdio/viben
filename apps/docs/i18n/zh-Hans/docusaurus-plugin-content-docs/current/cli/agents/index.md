@@ -1,27 +1,67 @@
 ---
 sidebar_position: 1
 title: "智能体管理"
-description: "Viben CLI 智能体管理概述 - Agent Swarm 概念、架构和命令"
+description: "Viben CLI 智能体管理概述 - 群体编排、概念和命令"
 ---
 
 # 智能体管理
 
-Viben CLI 提供了全面的智能体管理工具，支持 **Agent Swarm**（智能体集群）的编排和协调。**智能体**是一个独立的 AI 助手实例，拥有自己的配置、记忆和会话。
+Viben CLI 提供了全面的智能体管理和 **Agent Swarm** 编排工具 - 协调专业化智能体群体共同工作，持续进化你的代码库。
 
-## Agent Swarm 概念
+## 多智能体编排
 
-**Agent Swarm** 是 Viben 的核心理念之一，它允许多个智能体协同工作，各司其职：
+在 **Agent Swarm x Code Evolution** 范式中，多个智能体以不同专业分工进行协作：
 
-- **专业化分工**：不同智能体可以专注于不同任务（如代码审查、测试、文档生成）
-- **协同编排**：通过 Task System 协调多个智能体的工作流
-- **共享上下文**：智能体之间可以共享项目上下文和知识
-- **弹性扩展**：根据任务复杂度动态调整智能体数量
+| 智能体角色 | 说明 |
+|------------|------|
+| **架构师 (Architect)** | 设计系统结构并评估架构决策 |
+| **实现者 (Implementer)** | 根据任务规范编写和修改代码 |
+| **审查者 (Reviewer)** | 审查代码变更并提供质量反馈 |
+| **测试者 (Tester)** | 生成和运行测试，验证实现 |
+| **优化者 (Optimizer)** | 应用 FileEvo 迭代改进代码质量指标 |
+
+### 群体协调
+
+```mermaid
+flowchart TD
+    TQ[任务队列]
+    SO[群体编排器<br/><i>分发工作, 收集反馈</i>]
+    A[架构师]
+    I[实现者]
+    R[审查者]
+    T[测试者]
+    FE[FileEvo 循环<br/><i>从结果中学习</i>]
+
+    TQ --> SO
+    SO --> A
+    SO --> I
+    SO --> R
+    SO --> T
+    A --> FE
+    I --> FE
+    R --> FE
+    T --> FE
+```
+
+### 快速群体命令
+
+```bash
+# 为任务启动群体会话
+viben swarm start --task "implement-auth"
+
+# 列出活跃的群体智能体
+viben swarm status
+
+# 配置群体角色
+viben swarm config --roles architect,implementer,reviewer
+```
 
 ## 关键概念
 
 | 概念 | 说明 |
 |------|------|
 | **智能体 (Agent)** | 独立的 AI 助手实例，拥有自己的配置、记忆和会话 |
+| **群体 (Swarm)** | 协调一组智能体共同处理相关任务 |
 | **模板 (Template)** | 带有 `isTemplate: true` 标记的普通智能体，用作创建新智能体的蓝图 |
 | **记忆 (Memory)** | 智能体的长期记忆 (MEMORY.md + 每日日志) |
 | **会话 (Session)** | 智能体的对话历史和状态 |
@@ -164,19 +204,38 @@ Agents:
 }
 ```
 
-## 支持的智能体类型
+## 支持的执行器类型
 
-| 类型 | 说明 |
-|------|------|
-| `claude-code` | Claude Code (Anthropic) |
-| `cursor` | Cursor AI |
-| `gemini` | Google Gemini |
-| `codex` | OpenAI Codex |
-| `windsurf` | Windsurf |
-| `amp` | Amp |
-| `opencode` | OpenCode |
-| `qwen-code` | Qwen Code |
-| `droid` | Droid |
+### 运行时执行器
+
+运行时执行器可以被 Viben 启动并执行任务：
+
+| ID | CLI 工具 | 说明 |
+|----|----------|------|
+| `CLAUDE_CODE` | `claude` | Claude Code CLI |
+| `AMP` | `amp` | Amp Code Agent |
+| `GEMINI` | `gemini` | Google Gemini CLI |
+| `CODEX` | `codex` | OpenAI Codex |
+| `OPENCODE` | `opencode` | OpenCode CLI |
+| `CURSOR_AGENT` | `cursor` | Cursor Agent |
+| `QWEN_CODE` | `qwen` | Qwen Code |
+| `COPILOT` | `copilot` | GitHub Copilot |
+| `DROID` | `droid` | Droid Agent |
+
+### 仅模板执行器
+
+仅模板执行器用于 `viben init` 工作空间配置，不支持运行时启动：
+
+| ID | 说明 |
+|----|------|
+| `CURSOR` | Cursor IDE |
+| `IFLOW` | iFlow |
+| `KILO` | Kilo |
+| `KIRO` | Kiro |
+| `ANTIGRAVITY` | Antigravity |
+| `WINDSURF` | Windsurf |
+| `AIDER` | Aider |
+| `CONTINUE` | Continue |
 
 ## 下一步
 

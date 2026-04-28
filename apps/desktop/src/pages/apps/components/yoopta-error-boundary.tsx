@@ -1,5 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+import i18n from "@/i18n";
+
 type Props = {
   children: ReactNode;
   fallback?: ReactNode;
@@ -41,7 +43,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
           }}
         >
           <p style={{ marginBottom: "0.5rem", fontSize: "0.875rem" }}>
-            Something went wrong loading the editor.
+            {i18n.t("editor.errorBoundary.message", "Something went wrong loading the editor.")}
           </p>
           <button
             onClick={this.handleRetry}
@@ -55,7 +57,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
               cursor: "pointer",
             }}
           >
-            Try again
+            {i18n.t("editor.errorBoundary.tryAgain", "Try again")}
           </button>
           {this.state.error && (
             <details
@@ -65,7 +67,7 @@ export class YooptaErrorBoundary extends Component<Props, State> {
                 textAlign: "left",
               }}
             >
-              <summary style={{ cursor: "pointer" }}>Error details</summary>
+              <summary style={{ cursor: "pointer" }}>{i18n.t("editor.errorBoundary.errorDetails", "Error details")}</summary>
               <pre
                 style={{
                   marginTop: "0.5rem",

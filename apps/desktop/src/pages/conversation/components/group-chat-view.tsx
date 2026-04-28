@@ -134,7 +134,7 @@ export function GroupChatView({
               currentGroupChatSession
                 ? {
                     id: currentGroupChatSession.id,
-                    name: currentGroupChatSession.title || `Session ${currentGroupChatSession.id.slice(0, 8)}`,
+                    name: currentGroupChatSession.title || t("chat.sessionFallbackName", "Session {{id}}", { id: currentGroupChatSession.id.slice(0, 8) }),
                     createdAt: currentGroupChatSession.created_at,
                     updatedAt: currentGroupChatSession.updated_at,
                     messageCount: 0,
@@ -143,7 +143,7 @@ export function GroupChatView({
             }
             sessions={groupChatSessions.map((s) => ({
               id: s.id,
-              name: s.title || `Session ${s.id.slice(0, 8)}`,
+              name: s.title || t("chat.sessionFallbackName", "Session {{id}}", { id: s.id.slice(0, 8) }),
               createdAt: s.created_at,
               updatedAt: s.updated_at,
               messageCount: 0,

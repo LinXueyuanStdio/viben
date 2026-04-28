@@ -159,7 +159,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create workspace");
+        throw new Error(errorData.error || t("workspace.createFailed", "Failed to create workspace"));
       }
 
       const result = await response.json();

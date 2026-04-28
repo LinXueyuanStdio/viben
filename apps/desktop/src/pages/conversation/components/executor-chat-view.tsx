@@ -107,7 +107,7 @@ export function ExecutorChatView({
               />
               {gatewayConnected === true ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
-                  Gateway
+                  {t("chat.gatewayConnected", "Gateway")}
                 </span>
               ) : gatewayConnected === false ? (
                 <span
@@ -115,7 +115,7 @@ export function ExecutorChatView({
                   onClick={onCheckGateway}
                   title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
                 >
-                  Offline
+                  {t("chat.gatewayOffline", "Offline")}
                 </span>
               ) : (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">

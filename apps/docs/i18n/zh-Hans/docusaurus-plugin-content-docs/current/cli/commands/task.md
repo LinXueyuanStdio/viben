@@ -42,6 +42,13 @@ viben task <subcommand> [options]
 | `start` | 启动任务执行 |
 | `status` | 查看任务状态 |
 | `create-pr` | 创建 Pull Request |
+| `set-branch` | 设置任务分支名称 |
+| `set-base` | 设置 PR 目标（基础）分支 |
+| `set-agent` | 设置任务关联的智能体配置 |
+| `create-worktree` | 为任务创建 git worktree |
+| `validate-check-phase-passed` | 验证检查阶段是否通过 |
+| `check-stuck` | 检测任务是否卡住 |
+| `cleanup` | 清理 worktree 及相关资源 |
 
 ## 任务 CRUD
 
@@ -119,7 +126,7 @@ viben task delete <task> [--force]
 
 ### 入队任务
 
-将任务从 backlog 状态移入 queue 状态。
+将任务从 backlog 状态移入 queue 状态，并提交到命令队列系统。
 
 ```bash
 viben task enqueue <task> [options]
@@ -133,21 +140,64 @@ viben task enqueue <task> [options]
 | `--executor <type>` | 执行器类型 (CLAUDE_CODE, CURSOR, OPENCODE, etc.) |
 | `--model <id>` | 模型 ID |
 | `--priority <p>` | 优先级 (P0/P1/P2/P3) |
+| `--skip-queue` | 仅更新状态，不提交到队列系统 |
 
 **示例**:
 
 ```bash
-# 基本入队
+# 基本入队 - 提交到命令队列
 viben task enqueue 03-10-feature-xyz
 
 # 指定执行配置
 viben task enqueue 03-10-feature-xyz --agent my-agent --executor CLAUDE_CODE
+
+# 仅更新状态，不提交到队列
+viben task enqueue 03-10-feature-xyz --skip-queue
+```
+
+**工作原理**:
+
+运行 `viben task enqueue` 时，会发生以下操作:
+
+1. 任务状态从 `backlog` 更新为 `queue`
+2. 命令 `viben task start <task>` 被提交到命令队列系统
+3. 队列任务 ID 保存到 `task.json` 的 `queue_id` 字段
+4. 队列系统在有空闲容量时执行命令
+
+```bash
+# 查看队列状态
+viben queue status
+
+# 查看队列任务列表
+viben queue list
+# ID              STATUS   COMMAND                          CWD
+# q_7kA9OXDz71T7  pending  viben task start my-feature      /path/to/repo
+
+# 查看 task.json
+cat .viben/tasks/03-15-my-feature/task.json
+# {
+#   "status": "queue",
+#   "queue_id": "q_7kA9OXDz71T7",
+#   ...
+# }
 ```
 
 ### 移出队列
 
+将任务从队列中移除，恢复为 backlog 状态。
+
 ```bash
 viben task dequeue <task>
+```
+
+**示例**:
+
+```bash
+# 通过任务系统移出队列
+viben task dequeue my-feature
+
+# 也可以直接通过队列系统取消
+viben queue cancel q_7kA9OXDz71T7
 ```
 
 ### 暂停任务
@@ -296,6 +346,185 @@ viben task status <task> [--detail] [--watch] [--log]
 viben task create-pr <task> [--dry-run]
 ```
 
+## 任务配置
+
+### 设置分支
+
+为任务设置 Git 分支名称。
+
+```bash
+viben task set-branch <task> --branch <branch-name>
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `--branch <name>` | 要设置的分支名称 |
+
+**示例**:
+
+```bash
+viben task set-branch add-user-auth --branch feature/user-auth
+```
+
+### 设置基础分支
+
+为任务设置 PR 目标（基础）分支。
+
+```bash
+viben task set-base <task> --branch <branch-name>
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `--branch <name>` | 基础分支名称 |
+
+**示例**:
+
+```bash
+viben task set-base add-user-auth --branch develop
+```
+
+### 设置智能体
+
+为任务设置关联的智能体配置。
+
+```bash
+viben task set-agent <task> --agent <agent-id>
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `--agent <id>` | 要关联的智能体 ID |
+
+**示例**:
+
+```bash
+viben task set-agent add-user-auth --agent coding-assistant
+```
+
+## Worktree 管理
+
+### 创建 Worktree
+
+为任务创建隔离的 git worktree。
+
+```bash
+viben task create-worktree <task> [--skip-prd]
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `--skip-prd` | 跳过 prd.md 验证 |
+
+**工作原理**:
+
+1. 验证任务状态（被拒绝的任务无法创建 worktree）
+2. 检查 `prd.md` 是否存在（除非使用 `--skip-prd`）
+3. 创建 git worktree 并设置分支
+4. 更新 `task.json` 中的 `worktree_path`
+
+**示例**:
+
+```bash
+viben task create-worktree 03-11-user-auth
+viben task create-worktree 03-11-user-auth --skip-prd
+```
+
+## 验证
+
+### 验证检查阶段通过
+
+验证任务的检查阶段是否已通过。
+
+```bash
+viben task validate-check-phase-passed <task> [options]
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `-o, --output <text>` | 智能体输出文本（用于完成标记验证） |
+| `-f, --output-file <file>` | 包含智能体输出的文件 |
+
+**验证方式**:
+
+1. `verify_commands` - 运行验证命令进行检查
+2. `completion_markers` - 检查输出中的完成标记
+
+**示例**:
+
+```bash
+viben task validate-check-phase-passed 03-11-user-auth
+viben task validate-check-phase-passed 03-11-user-auth -f .check-log
+```
+
+## 卡住检测
+
+### 检测卡住
+
+检测任务是否卡住（仅检测，不执行恢复）。
+
+```bash
+viben task check-stuck <task> [options]
+```
+
+**选项**:
+
+| 选项 | 说明 |
+|------|------|
+| `-t, --threshold <ms>` | 卡住阈值（毫秒），默认: 120000（2 分钟） |
+| `-v, --verbose` | 显示详细检测数据 |
+| `--json` | JSON 格式输出 |
+
+**检测机制**:
+
+该命令运行 4 项检查来判断任务是否卡住:
+
+| 检查项 | 说明 | 卡住条件 |
+|--------|------|----------|
+| `status` | 任务状态检查 | 仅 `in_progress` 或 `queue` 状态可能卡住 |
+| `event_timestamp` | 事件时间戳 | 超过阈值无新事件 |
+| `process` | 智能体进程状态 | PID 进程不存在 |
+| `log_activity` | 日志活动 | 日志文件长时间未修改 |
+
+**卡住判定逻辑**:
+
+```
+isStuck = process_not_running OR (event_timeout AND log_inactive)
+```
+
+- 进程未运行 -> 判定为卡住
+- 事件超时 且 日志不活跃 -> 判定为卡住
+
+**示例**:
+
+```bash
+# 基本检测
+viben task check-stuck 03-11-feature-xyz
+
+# 自定义阈值（5 分钟）
+viben task check-stuck 03-11-feature-xyz -t 300000
+
+# 详细输出
+viben task check-stuck 03-11-feature-xyz --verbose
+
+# JSON 输出（用于脚本或 API）
+viben task check-stuck 03-11-feature-xyz --json
+```
+
+:::note
+`check-stuck` 命令仅检测卡住的任务。自动恢复由 Gateway 的 `TaskRecoveryService` 处理。
+:::
+
 ## 上下文管理
 
 ### 初始化上下文
@@ -437,8 +666,115 @@ viben task cleanup --list
 }
 ```
 
+## Task + Queue 集成
+
+任务系统与命令队列系统集成，支持排队执行任务，具备并发控制和后台处理能力。
+
+### 架构
+
+**关键原则**: 队列系统对任务系统**零知识**。队列只执行 shell 命令，不理解任务语义。
+
+```mermaid
+flowchart LR
+    subgraph Task["任务系统"]
+        T1["- task.json 管理"]
+        T2["- 状态机"]
+        T3["- 智能体调度"]
+        T4["enqueueTask()"]
+        T5["└─ queue.enqueue()"]
+    end
+
+    subgraph Queue["队列系统<br/>（零知识）"]
+        Q1["- 命令排队"]
+        Q2["- 进程管理"]
+        Q3["- 并发控制"]
+        Q4["仅执行 shell"]
+    end
+
+    Task -->|"enqueue"| Queue
+```
+
+### 数据流
+
+运行 `viben task enqueue <task>` 时:
+
+1. 任务状态在 `task.json` 中更新为 `queue`
+2. 队列系统收到命令: `viben task start <task>`
+3. 队列 ID 保存到 `task.json`
+
+队列系统执行命令时:
+
+1. `viben task start` 将状态更新为 `in_progress`
+2. 智能体执行任务
+3. 完成后状态变为 `completed` 或 `failed`
+
+### 状态映射
+
+| 任务状态 | 队列状态 | 说明 |
+|----------|----------|------|
+| `backlog` | - | 任务未提交到队列 |
+| `queue` | `pending` | 任务等待执行 |
+| `in_progress` | `running` | 任务正在执行 |
+| `completed` | `completed` (exit 0) | 任务成功完成 |
+| `failed` | `completed` (exit != 0) | 任务执行失败 |
+
+### task.json 队列字段
+
+任务入队时，`queue_id` 字段会添加到 `task.json`:
+
+```json
+{
+  "id": "my-feature",
+  "status": "queue",
+  "queue_id": "q_7kA9OXDz71T7",
+  ...
+}
+```
+
+### 工作流示例
+
+```bash
+# 1. 创建任务
+viben task create "My feature" --slug my-feature
+
+# 2. 提交到队列
+viben task enqueue my-feature
+
+# 3. 查看队列状态
+viben queue status
+# Queue Status
+# ────────────────────────────────────────
+#   Pending:     1 task(s)
+#   Running:     0 / 3 (max concurrency)
+
+# 4. 查看队列列表
+viben queue list
+# ID              STATUS   COMMAND                          CWD
+# q_7kA9OXDz71T7  pending  viben task start my-feature      /path/to/repo
+
+# 5. 监控执行
+viben queue logs q_7kA9OXDz71T7 --follow
+
+# 6. 查看任务状态
+viben task status my-feature
+```
+
+### 直接执行（跳过队列）
+
+不经过队列直接执行任务:
+
+```bash
+# 方式 1: 使用 --skip-queue 标志
+viben task enqueue my-feature --skip-queue
+viben task start my-feature
+
+# 方式 2: 直接使用 start
+viben task start my-feature
+```
+
 ## 相关命令
 
 - [viben queue](./queue) - 命令队列管理
 - [viben swarm](./swarm) - 智能体集群调度
 - [viben session](./session) - 会话记录管理
+- [viben evo](./evo) - 基于文件的自我进化

@@ -30,7 +30,7 @@ Viben Desktop 是一个原生桌面应用，通过 **Agent Swarm（智能体集�
 
 | 能力 | 说明 |
 |------|------|
-| **多执行器支持** | Claude Code、Cursor、AMP、Gemini、Codex |
+| **多执行器支持** | Claude Code、AMP、Gemini、Codex、OpenCode、Cursor Agent、Qwen Code、Copilot、Droid |
 | **任务分解** | 将复杂任务拆解给不同智能体 |
 | **协作模式** | 智能体之间共享上下文和成果 |
 

@@ -6,6 +6,7 @@
  */
 
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Settings } from "lucide-react";
 import type { Executor, ExecutorType } from "@/types";
 import type { ChatListItem } from "@/lib/gateway";
@@ -78,7 +79,7 @@ export function getExecutorDisplayName(type: ExecutorType): string {
     QWEN_CODE: "Qwen Coder",
     COPILOT: "GitHub Copilot",
     DROID: "Droid",
-    UNKNOWN: "Unknown",
+    UNKNOWN: i18n.t("common.unknown", "Unknown"),
   };
   return names[type] || type;
 }

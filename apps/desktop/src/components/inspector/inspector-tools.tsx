@@ -155,7 +155,7 @@ function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
       {badges.map(({ label, value, implied, description }) => (
         <span
           key={label}
-          title={`${description}\n\nValue: ${value ? "Yes" : "No"} (${implied ? "implied default" : "explicitly set"})`}
+          title={`${description}\n\n${t("inspector.annotations.value", "Value")}: ${value ? t("common.yes") : t("common.no")} (${implied ? t("inspector.annotations.impliedDefault", "implied default") : t("inspector.annotations.explicitlySet", "explicitly set")})`}
           className={cn(
             "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border",
             value

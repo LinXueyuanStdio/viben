@@ -15,7 +15,7 @@ import {
 } from "@yoopta/ui/action-menu-list";
 import { getRootBlockElement, useYooptaEditor } from "@yoopta/editor";
 import type { Placement } from "@floating-ui/dom";
-import { BLOCK_ICONS, BLOCK_CATEGORIES, CATEGORY_ORDER } from "./yoopta-constants";
+import { BLOCK_ICONS, BLOCK_CATEGORIES, getCategoryOrder } from "./yoopta-constants";
 
 type Props = {
   open: boolean;
@@ -162,12 +162,12 @@ function ActionMenuFloatingContent({
   const sortedGroups = useMemo(() => {
     const grouped = new Map<string, ActionMenuItem[]>();
     for (const action of actions) {
-      const category = BLOCK_CATEGORIES[action.type] || "Other";
+      const category = BLOCK_CATEGORIES[action.type] || t("editor.blockCategories.other", "Other");
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category)!.push(action);
     }
     return [...grouped.entries()].sort(
-      (a, b) => CATEGORY_ORDER.indexOf(a[0]) - CATEGORY_ORDER.indexOf(b[0]),
+      (a, b) => getCategoryOrder().indexOf(a[0]) - getCategoryOrder().indexOf(b[0]),
     );
   }, [actions]);
 
