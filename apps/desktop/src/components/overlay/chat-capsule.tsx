@@ -16,26 +16,26 @@ import type { AgentMessage, AgentPhase } from '@/types';
 
 function getThinkingWords(): string[] {
   return [
-    i18n.t('chat.capsule.thinking', 'Thinking...'),
-    i18n.t('chat.capsule.vibing', 'Vibing...'),
-    i18n.t('chat.capsule.schlepping', 'Schlepping...'),
-    i18n.t('chat.capsule.combobulating', 'Combobulating...'),
-    i18n.t('chat.capsule.concocting', 'Concocting...'),
-    i18n.t('chat.capsule.wrangling', 'Wrangling...'),
-    i18n.t('chat.capsule.noodling', 'Noodling...'),
-    i18n.t('chat.capsule.percolating', 'Percolating...'),
-    i18n.t('chat.capsule.discombobulating', 'Discombobulating...'),
-    i18n.t('chat.capsule.skedaddling', 'Skedaddling...'),
-    i18n.t('chat.capsule.ruminating', 'Ruminating...'),
-    i18n.t('chat.capsule.kibbitzing', 'Kibbitzing...'),
-    i18n.t('chat.capsule.zapping', 'Zapping...'),
-    i18n.t('chat.capsule.finagling', 'Finagling...'),
-    i18n.t('chat.capsule.bamboozling', 'Bamboozling...'),
-    i18n.t('chat.capsule.cogitating', 'Cogitating...'),
-    i18n.t('chat.capsule.snorkelating', 'Snorkelating...'),
-    i18n.t('chat.capsule.recalibrating', 'Recalibrating...'),
-    i18n.t('chat.capsule.spelunking', 'Spelunking...'),
-    i18n.t('chat.capsule.brouhaha', "Brouhaha-ing..."),
+    i18n.t('chat.capsule.thinking'),
+    i18n.t('chat.capsule.vibing'),
+    i18n.t('chat.capsule.schlepping'),
+    i18n.t('chat.capsule.combobulating'),
+    i18n.t('chat.capsule.concocting'),
+    i18n.t('chat.capsule.wrangling'),
+    i18n.t('chat.capsule.noodling'),
+    i18n.t('chat.capsule.percolating'),
+    i18n.t('chat.capsule.discombobulating'),
+    i18n.t('chat.capsule.skedaddling'),
+    i18n.t('chat.capsule.ruminating'),
+    i18n.t('chat.capsule.kibbitzing'),
+    i18n.t('chat.capsule.zapping'),
+    i18n.t('chat.capsule.finagling'),
+    i18n.t('chat.capsule.bamboozling'),
+    i18n.t('chat.capsule.cogitating'),
+    i18n.t('chat.capsule.snorkelating'),
+    i18n.t('chat.capsule.recalibrating'),
+    i18n.t('chat.capsule.spelunking'),
+    i18n.t('chat.capsule.brouhaha'),
   ];
 }
 
@@ -92,10 +92,10 @@ export function ChatCapsule({
 
   // Status text derived from messages
   const statusText = useMemo(() => {
-    if (mode === 'done') return t('chat.capsule.done', '完成');
-    if (phase === 'error') return t('chat.capsule.error', '错误');
-    if (phase === 'awaiting_approval') return t('chat.capsule.awaitingApproval', '等待审批');
-    if (phase === 'awaiting_input') return t('chat.capsule.awaitingInput', '等待输入');
+    if (mode === 'done') return t('chat.capsule.done');
+    if (phase === 'error') return t('chat.capsule.error');
+    if (phase === 'awaiting_approval') return t('chat.capsule.awaitingApproval');
+    if (phase === 'awaiting_input') return t('chat.capsule.awaitingInput');
 
     // Find the last tool_use message for tool name display
     const lastTool = [...messages].reverse().find(m => m.type === 'tool_use');

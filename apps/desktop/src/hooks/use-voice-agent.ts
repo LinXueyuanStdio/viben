@@ -179,13 +179,13 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
 
     if (!config.vocalBridgeApiKey) {
       console.error("[useVoiceAgent] No API Key configured");
-      store.actions.setError(t("settings.voice.errors.noApiKey", "请先配置 API Key"));
+      store.actions.setError(t("settings.voice.errors.noApiKey"));
       return;
     }
 
     if (!config.vocalBridgeAgentId) {
       console.error("[useVoiceAgent] No Agent ID configured");
-      store.actions.setError(t("settings.voice.errors.noAgentId", "请先配置 Agent ID"));
+      store.actions.setError(t("settings.voice.errors.noAgentId"));
       return;
     }
 

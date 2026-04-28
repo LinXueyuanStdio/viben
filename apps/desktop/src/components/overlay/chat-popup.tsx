@@ -343,11 +343,11 @@ function ChatPopup({
       const selected = await open({
         multiple: true,
         filters: [
-          { name: t('chat.fileFilter.images', '图片'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
-          { name: t('chat.fileFilter.documents', '文档'), extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'json', 'csv'] },
-          { name: t('chat.fileFilter.spreadsheets', '表格'), extensions: ['xlsx', 'xls'] },
-          { name: t('chat.fileFilter.presentations', '演示文稿'), extensions: ['pptx', 'ppt'] },
-          { name: t('chat.fileFilter.allFiles', '所有文件'), extensions: ['*'] },
+          { name: t('chat.fileFilter.images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
+          { name: t('chat.fileFilter.documents'), extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'json', 'csv'] },
+          { name: t('chat.fileFilter.spreadsheets'), extensions: ['xlsx', 'xls'] },
+          { name: t('chat.fileFilter.presentations'), extensions: ['pptx', 'ppt'] },
+          { name: t('chat.fileFilter.allFiles'), extensions: ['*'] },
         ],
       });
       if (!selected) return;
@@ -466,7 +466,7 @@ function ChatPopup({
                 'hover:bg-muted/80 transition-colors',
                 'text-muted-foreground hover:text-foreground',
               )}
-              title={t('chat.emoji', '表情')}
+              title={t('chat.emoji')}
             >
               <Smile className="h-3.5 w-3.5" />
             </button>
@@ -496,7 +496,7 @@ function ChatPopup({
             'hover:bg-muted/80 transition-colors',
             'text-muted-foreground hover:text-foreground',
           )}
-          title={t('chat.attachFile', '添加文件')}
+          title={t('chat.attachFile')}
         >
           <Paperclip className="h-3.5 w-3.5" />
         </button>
@@ -513,7 +513,7 @@ function ChatPopup({
                 'text-muted-foreground hover:text-foreground',
                 isScreenshotCapturing && 'opacity-50 cursor-not-allowed',
               )}
-              title={t('chat.screenshot', '截图')}
+              title={t('chat.screenshot')}
             >
               {isScreenshotCapturing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -526,11 +526,11 @@ function ChatPopup({
           <DropdownMenuContent align="start" className="z-[10001]">
             <DropdownMenuItem onClick={() => handleScreenshot(false)}>
               <Camera className="h-4 w-4 mr-2" />
-              {t('chat.screenshotDirect', '直接截图')}
+              {t('chat.screenshotDirect')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleScreenshot(true)}>
               <EyeOff className="h-4 w-4 mr-2" />
-              {t('chat.screenshotHideWindow', '隐藏窗口截图')}
+              {t('chat.screenshotHideWindow')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -547,7 +547,7 @@ function ChatPopup({
             'hover:bg-muted/80 transition-colors',
             'text-muted-foreground hover:text-foreground',
           )}
-          title={t('chat.openFullChat', '跳转到对话页面')}
+          title={t('chat.openFullChat')}
         >
           <Maximize2 className="h-3.5 w-3.5" />
         </button>
@@ -594,7 +594,7 @@ function ChatPopup({
           onCompositionEnd={() => { setTimeout(() => { isComposingRef.current = false; }, 0); }}
           onFocus={() => { textareaFocusedRef.current = true; }}
           onBlur={() => { textareaFocusedRef.current = false; }}
-          placeholder={t('chat.placeholder', '输入消息...')}
+          placeholder={t('chat.placeholder')}
           rows={1}
           className={cn(
             'w-full resize-none bg-muted/40',
@@ -632,14 +632,14 @@ function ChatPopup({
           <SelectTrigger className="h-7 w-auto max-w-[120px] bg-muted/50 border-border/30 rounded-full px-2.5 gap-1 text-xs hover:bg-muted/80 transition-colors [&>svg]:h-3 [&>svg]:w-3">
             <Bot className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="truncate">
-              {chatConfig.selectedAgent?.name || t('chat.agent', '智能体')}
+              {chatConfig.selectedAgent?.name || t('chat.agent')}
             </span>
           </SelectTrigger>
           <SelectContent className="z-[10001]">
             {chatConfig.workspaceAgentGroup.length > 0 && (
               <SelectGroup>
                 <SelectLabel className="text-xs text-muted-foreground">
-                  {chatConfig.workspaceName || t('chat.workspace', '工作空间')}
+                  {chatConfig.workspaceName || t('chat.workspace')}
                 </SelectLabel>
                 {chatConfig.workspaceAgentGroup.map((agent) => (
                   <SelectItem key={agent.id} value={agent.id}>
@@ -651,7 +651,7 @@ function ChatPopup({
             {chatConfig.globalAgentGroup.length > 0 && (
               <SelectGroup>
                 <SelectLabel className="text-xs text-muted-foreground">
-                  {t('chat.global', '全局')}
+                  {t('chat.global')}
                 </SelectLabel>
                 {chatConfig.globalAgentGroup.map((agent) => (
                   <SelectItem key={agent.id} value={agent.id}>
@@ -673,7 +673,7 @@ function ChatPopup({
           <SelectTrigger className="h-7 w-auto max-w-[120px] bg-muted/50 border-border/30 rounded-full px-2.5 gap-1 text-xs hover:bg-muted/80 transition-colors [&>svg]:h-3 [&>svg]:w-3">
             <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
             <span className="truncate">
-              {chatConfig.selectedModel?.name || t('chat.model', '模型')}
+              {chatConfig.selectedModel?.name || t('chat.model')}
             </span>
           </SelectTrigger>
           <SelectContent className="z-[10001]">
@@ -725,7 +725,7 @@ function ChatPopup({
                     sandboxConfig.enabled ? 'text-amber-500' : 'text-muted-foreground',
                   )}
                 >
-                  {t('chat.sandbox', 'Sandbox')}
+                  {t('chat.sandbox')}
                 </Label>
                 <Switch
                   id="popup-sandbox"
@@ -744,7 +744,7 @@ function ChatPopup({
                   )}
                 >
                   <FolderTree className="h-3.5 w-3.5" />
-                  {t('chat.worktree', 'Worktree')}
+                  {t('chat.worktree')}
                 </Label>
                 <Switch
                   id="popup-worktree"
@@ -763,7 +763,7 @@ function ChatPopup({
                   )}
                 >
                   <ListTodo className="h-3.5 w-3.5" />
-                  {t('chat.backgroundTask.title', '后台任务')}
+                  {t('chat.backgroundTask.title')}
                 </Label>
                 <Switch
                   id="popup-background-task"
@@ -800,10 +800,10 @@ function ChatPopup({
           )}
           title={
             voice.isListening
-              ? t('chat.voiceListening', '正在倾听... 点击停止')
+              ? t('chat.voiceListening')
               : voice.state === 'connecting'
-                ? t('chat.voiceConnecting', '连接中...')
-                : t('chat.voiceInput', '语音输入')
+                ? t('chat.voiceConnecting')
+                : t('chat.voiceInput')
           }
         >
           {voice.state === 'connecting' ? (
@@ -825,7 +825,7 @@ function ChatPopup({
               'bg-destructive text-destructive-foreground',
               'hover:bg-destructive/90 transition-all',
             )}
-            title={t('chat.stop', '停止')}
+            title={t('chat.stop')}
           >
             <Square className="h-3.5 w-3.5 fill-current" />
           </button>
@@ -843,7 +843,7 @@ function ChatPopup({
                 : 'bg-muted text-muted-foreground cursor-not-allowed',
               isSendAnimating && 'animate-send-pulse',
             )}
-            title={t('chat.send', '发送')}
+            title={t('chat.send')}
           >
             <Send className="h-3.5 w-3.5" />
           </button>
