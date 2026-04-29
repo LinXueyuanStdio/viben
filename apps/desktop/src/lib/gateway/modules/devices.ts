@@ -51,6 +51,11 @@ export async function getDevice(baseUrl: string, id: string): Promise<DeviceInfo
   return handleResponse<DeviceInfo>(res);
 }
 
+export async function disconnectDevice(baseUrl: string, id: string): Promise<{ success: boolean; device_id: string }> {
+  const res = await fetch(`${baseUrl}/api/devices/${id}`, { method: "DELETE" });
+  return handleResponse<{ success: boolean; device_id: string }>(res);
+}
+
 export async function getDeviceQr(baseUrl: string): Promise<QrResponse> {
   const res = await fetch(`${baseUrl}/api/devices/qr`);
   return handleResponse<QrResponse>(res);

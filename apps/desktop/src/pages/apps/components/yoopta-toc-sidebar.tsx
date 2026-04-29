@@ -52,13 +52,32 @@ export function YooptaTocSidebar({ className }: { className?: string }) {
     return headings;
   }, [editor]);
 
-  // Update headings on editor changes
+  // Update headings on editor changes (debounced to avoid per-keystroke work)
   useEffect(() => {
-    const update = () => setItems(extractHeadings());
+    let timer: ReturnType<typeof setTimeout>;
+    const update = () => {
+      const next = extractHeadings();
+      setItems(prev => {
+        if (prev.length !== next.length) return next;
+        for (let i = 0; i < prev.length; i++) {
+          if (prev[i].id !== next[i].id || prev[i].text !== next[i].text ||
+              prev[i].level !== next[i].level || prev[i].order !== next[i].order) {
+            return next;
+          }
+        }
+        return prev; // same reference → skip IntersectionObserver rebuild
+      });
+    };
+    // Initial extraction (no debounce)
     update();
-    editor.on("change", update);
+    const onChange = () => {
+      clearTimeout(timer);
+      timer = setTimeout(update, 300);
+    };
+    editor.on("change", onChange);
     return () => {
-      editor.off("change", update);
+      editor.off("change", onChange);
+      clearTimeout(timer);
     };
   }, [editor, extractHeadings]);
 

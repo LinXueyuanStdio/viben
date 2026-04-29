@@ -92,7 +92,8 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
         setOauthStatus("timeout");
         setLoading(false);
       }, OAUTH_TIMEOUT_MS);
-    } catch {
+    } catch (err) {
+      console.error("[StepLogin] OAuth flow failed:", err);
       setOauthStatus("error");
     }
   };
@@ -127,8 +128,9 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
     }
     try {
       await handleOAuthCallback(oauthCode.trim());
-    } catch {
-      // Error is handled by the hook
+    } catch (err) {
+      // Error is surfaced in UI via the useAuth hook's error state
+      console.error("[StepLogin] OAuth callback failed:", err);
     }
   };
 

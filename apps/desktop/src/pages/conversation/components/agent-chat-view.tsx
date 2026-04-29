@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Plus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { AgentMessage, Artifact } from "@/types";
+import type { AgentMessage, Artifact, TaskPlan, PendingQuestion } from "@/types";
 import type { SlashCommand } from "@viben/chat";
 import { DesktopChatInput, DesktopMessageList } from "./index";
 import { ChatHeader } from "./chat-header";
@@ -29,8 +29,8 @@ interface AgentChatViewProps {
   messages: AgentMessage[];
   phase: string;
   isStreaming: boolean;
-  pendingPlan: any;
-  pendingQuestions: any;
+  pendingPlan: TaskPlan | null;
+  pendingQuestions: PendingQuestion | null;
   artifacts: Artifact[];
   error: string | null;
   highlightedMessageId: string | null;

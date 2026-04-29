@@ -46,6 +46,7 @@ import {
   AgentSettingsTab,
 } from "@/components/agent";
 import type { CustomVariable } from "@/components/agent";
+import { arraysEqual, shallowArrayEqual } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
@@ -288,19 +289,19 @@ export function AgentDetailPage() {
         formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
         formPlanMode !== (agent.plan_mode ?? false) ||
         formApprovals !== (agent.approvals ?? false) ||
-        JSON.stringify(selectedMcpServers) !== JSON.stringify(agent.mcp_servers || []) ||
-        JSON.stringify(selectedSkills) !== JSON.stringify(agent.skills || []) ||
+        !arraysEqual(selectedMcpServers, agent.mcp_servers || []) ||
+        !arraysEqual(selectedSkills, agent.skills || []) ||
         formIsTemplate !== (agent.is_template ?? false) ||
         formTemplateDescription !== (agent.template_description || "") ||
-        JSON.stringify(formTemplateTags) !== JSON.stringify(agent.template_tags || []) ||
-        JSON.stringify(formCustomVariables) !== JSON.stringify(
+        !arraysEqual(formTemplateTags, agent.template_tags || []) ||
+        !shallowArrayEqual(formCustomVariables,
           agent.custom_variables?.map(v => ({
             name: v.name,
             defaultValue: v.default_value,
             description: v.description,
           })) || []
         ) ||
-        JSON.stringify(formEnvVariables) !== JSON.stringify(agent.env_variables || []);
+        !arraysEqual(formEnvVariables, agent.env_variables || []);
       setIsDirty(hasChanges);
     }
   }, [
@@ -481,7 +482,8 @@ export function AgentDetailPage() {
 
       const result = await client.checkAvailability(formExecutorType);
       setAvailability(result);
-    } catch {
+    } catch (err) {
+      console.error("[agent-detail] Failed to check availability:", err);
       setAvailability(null);
     } finally {
       setCheckingAvailability(false);

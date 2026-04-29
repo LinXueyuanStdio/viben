@@ -21,7 +21,6 @@ export {
   getSpanKindIcon,
   copyToClipboard,
   hasDetailData,
-  formatDuration,
   formatTime,
   formatDateTime,
   buildTraceTree,

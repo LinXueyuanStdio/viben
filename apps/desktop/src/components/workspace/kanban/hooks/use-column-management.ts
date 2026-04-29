@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useCallback, useMemo } from "react";
+import { arraysEqual } from "@/lib/utils";
 import {
   useKanbanPreferences,
   useColumnCollapse,
@@ -115,7 +116,7 @@ export function useColumnManagement(
       .map(([id]) => id);
 
     // Only update if different to avoid infinite loops
-    if (JSON.stringify(collapsed) !== JSON.stringify(preferences.collapsedColumns)) {
+    if (!arraysEqual(collapsed, preferences.collapsedColumns)) {
       updatePreference("collapsedColumns", collapsed);
     }
   }, [collapsedColumns, preferences.collapsedColumns, updatePreference]);

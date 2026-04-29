@@ -5,7 +5,7 @@
  * - Left: Conversation area (messages + chat input)
  * - Right: Trace visualization (call tree / timeline)
  */
-import React, { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Copy,
@@ -13,7 +13,6 @@ import {
   TreeDeciduous,
   Activity,
   Bot,
-  GripVertical,
   RefreshCw,
   RefreshCcw,
   Search,
@@ -38,17 +37,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ResizeHandle } from "@/pages/conversation/components/resize-handle";
 import { DesktopMessageList, DesktopChatInput, SessionSelector, type Session } from "@/components/chat";
 import {
   SpanNode,
   TimelineView,
   SpanDetailPanel,
-  formatDuration,
   formatDateTime,
   copyToClipboard,
   flattenSpans,
   filterSpans,
 } from "@/components/observability";
+import { formatDuration } from "@/lib/utils";
 import type { TraceSpanNode, TraceTree } from "@/components/observability";
 import type { AgentMessage, MessageAttachment, TaskPlan, PendingQuestion } from "@/types";
 
@@ -96,76 +96,6 @@ export interface AgentDebugTabProps {
   onRefreshTrace?: () => void;
 
   className?: string;
-}
-
-// ============================================================================
-// Resize Handle Component
-// ============================================================================
-
-interface ResizeHandleProps {
-  onResize: (delta: number) => void;
-  className?: string;
-}
-
-function ResizeHandle({ onResize, className }: ResizeHandleProps) {
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef(0);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    startXRef.current = e.clientX;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startXRef.current;
-      startXRef.current = moveEvent.clientX;
-      onResize(delta);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
-
-  return (
-    <div
-      className={cn(
-        "group relative w-1 cursor-col-resize shrink-0",
-        "flex items-center justify-center",
-        isDragging && "bg-primary/30",
-        className
-      )}
-      onMouseDown={handleMouseDown}
-    >
-      {/* Hover/drag indicator line */}
-      <div
-        className={cn(
-          "absolute inset-y-0 w-0.5 transition-colors",
-          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
-        )}
-      />
-      {/* Grip handle */}
-      <div
-        className={cn(
-          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
-          isDragging
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
-        )}
-      >
-        <GripVertical className="h-4 w-4" />
-      </div>
-    </div>
-  );
 }
 
 // ============================================================================
@@ -404,7 +334,7 @@ export function AgentDebugTab({
       </div>
 
       {/* Resize Handle */}
-      <ResizeHandle onResize={handleResize} />
+      <ResizeHandle side="left" onResize={handleResize} className="relative shrink-0 top-auto bottom-auto" />
 
       {/* Right Panel - Trace Visualization */}
       <div

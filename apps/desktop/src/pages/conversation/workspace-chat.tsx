@@ -105,7 +105,7 @@ export function WorkspaceChatPage() {
           contentStyle={chat.leftPanelContentStyle}
           searchQuery={chat.searchQuery}
           onSearchChange={chat.setSearchQuery}
-          filteredGroupChats={chat.filteredGroupChats as any}
+          filteredGroupChats={chat.filteredGroupChats}
           selectedGroupChatId={chat.selectedGroupChatId}
           mutedGroupChats={chat.mutedGroupChats}
           workspacePath={workspace.path}

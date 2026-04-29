@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, memo } from "react";
+import { arraysEqual } from "@/lib/utils";
 import { useParams, Link } from "react-router-dom";
 import {
   Loader2,
@@ -1004,7 +1005,7 @@ export function WorkspaceKanbanPage() {
     const collapsed = Object.entries(collapsedColumns)
       .filter(([_, isCollapsed]) => isCollapsed)
       .map(([id]) => id);
-    if (JSON.stringify(collapsed) !== JSON.stringify(preferences.collapsedColumns)) {
+    if (!arraysEqual(collapsed, preferences.collapsedColumns)) {
       updatePreference("collapsedColumns", collapsed);
     }
   }, [collapsedColumns, preferences.collapsedColumns, updatePreference]);

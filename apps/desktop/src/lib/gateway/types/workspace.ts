@@ -146,6 +146,10 @@ export interface AgentInfo {
   plan_mode?: boolean;
   /** Approvals (Viben agents only) */
   approvals?: boolean;
+  /** Whether this agent is marked as a template (Viben agents only) */
+  is_template?: boolean;
+  /** Template description for selection UI (Viben agents only) */
+  template_description?: string;
   /** Created at (Viben agents only) */
   created_at?: string;
   /** Updated at (Viben agents only) */

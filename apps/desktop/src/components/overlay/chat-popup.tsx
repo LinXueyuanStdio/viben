@@ -49,7 +49,7 @@ import { Label } from '@/components/ui/label';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkspaceStore } from '@/stores';
 import { useChatConfigStore } from '@/stores/chat-config-store';
-import { useAgentConversation, useChatConfig } from '@/hooks';
+import { useAgentConversation, useChatConfig, useModels } from '@/hooks';
 import { filterModelsByExecutor } from '@/lib/executor-constraints';
 import { useVoiceAgent } from '@/hooks/use-voice-agent';
 import { getGatewayUrl } from '@/lib/gateway';
@@ -110,6 +110,7 @@ function ChatPopup({
   onSendBackground,
   workspacePath,
   workspaceName,
+  contextProgress,
 }: {
   isStreaming: boolean;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
@@ -117,6 +118,8 @@ function ChatPopup({
   onSendBackground: (content: string) => void;
   workspacePath?: string;
   workspaceName?: string;
+  /** Context token usage percentage (0-100), estimated from message content */
+  contextProgress: number;
 }): ReactElement {
   const { t } = useTranslation();
   const { isChatPopupOpen, closeChatPopup } = useUiStore();
@@ -312,9 +315,9 @@ function ChatPopup({
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
   }, []);
 
-  // ---- Context progress (placeholder: token usage) ----
-  // TODO: wire real context token usage from useAgentConversation
-  const contextProgress = 0;
+  // ---- Context progress ----
+  // contextProgress is now passed as a prop from ChatPopupLayer,
+  // estimated from conversation message content length and the selected model's context_window.
 
   // ---- Toolbar actions (placeholders) ----
 
@@ -879,6 +882,27 @@ export function ChatPopupLayer(): ReactElement {
     cancel,
   } = useAgentConversation(workspacePath);
 
+  // Estimate context token usage from message content.
+  // The SSE stream does not provide real-time token counts, so we approximate
+  // by dividing total character length by 4 (rough chars-per-token heuristic).
+  // context_window comes from the Gateway model metadata.
+  const { models: vibenModels } = useModels();
+  const selectedModelId = useChatConfigStore((s) => s.selectedModelId);
+
+  const contextProgress = useMemo(() => {
+    const selectedModel = vibenModels.find((m) => m.id === selectedModelId);
+    const contextWindow = selectedModel?.context_window;
+    if (!contextWindow || contextWindow <= 0) return 0;
+
+    let totalContentLength = 0;
+    for (const msg of messages) {
+      if (msg.content) totalContentLength += msg.content.length;
+      if (msg.output) totalContentLength += msg.output.length;
+    }
+    const estimatedTokens = Math.round(totalContentLength / 4);
+    return Math.min((estimatedTokens / contextWindow) * 100, 100);
+  }, [messages, vibenModels, selectedModelId]);
+
   const handleSend = useCallback(async (content: string, attachments?: MessageAttachment[]) => {
     setLastUserQuery(content);
     setCapsuleVisible(true);
@@ -931,6 +955,7 @@ export function ChatPopupLayer(): ReactElement {
         onSendBackground={handleSendBackground}
         workspacePath={workspacePath}
         workspaceName={activeWorkspace?.name}
+        contextProgress={contextProgress}
       />
     </>
   );

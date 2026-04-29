@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, setsEqual } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 interface AgentMcpDialogProps {
@@ -120,7 +120,7 @@ export function AgentMcpDialog({
     }
   };
 
-  const hasChanges = JSON.stringify(localSelected.sort()) !== JSON.stringify(selectedServerIds.sort());
+  const hasChanges = !setsEqual(localSelected, selectedServerIds);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

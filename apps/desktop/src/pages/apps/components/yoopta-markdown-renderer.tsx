@@ -1,5 +1,5 @@
 import "./yoopta-editor.css";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -359,6 +359,9 @@ export function YooptaMarkdownRenderer({
 
   // Auto-save handler — uses dirty flag to avoid losing edits during a save
   const pendingContentRef = useRef<string | null>(null);
+  // Stash the latest YooptaContentValue so serialization happens inside the debounce callback,
+  // not synchronously on every keystroke.
+  const pendingValueRef = useRef<YooptaContentValue | null>(null);
 
   const handleSave = useCallback(
     async (md: string) => {
@@ -392,16 +395,26 @@ export function YooptaMarkdownRenderer({
     [canSave, workspacePath, slug]
   );
 
+  // Debounced save: serialization happens here (once per debounce window) instead of on every keystroke.
   const debouncedSave = useCallback(
-    (md: string) => {
+    () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
       saveTimerRef.current = setTimeout(() => {
-        handleSave(md);
+        const val = pendingValueRef.current;
+        if (!val) return;
+        pendingValueRef.current = null;
+        try {
+          const md = serializeMarkdown(editor, val, frontmatterRef.current);
+          lastContentRef.current = md;
+          handleSave(md);
+        } catch (err) {
+          console.error("[YooptaMarkdownRenderer] serialize failed:", err);
+        }
       }, SAVE_DEBOUNCE_MS);
     },
-    [handleSave]
+    [editor, handleSave]
   );
 
   // Cleanup timers on unmount
@@ -645,10 +658,13 @@ export function YooptaMarkdownRenderer({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isEditable, editor]);
 
+  // Ref to stabilize wordCount — only triggers state update when values actually change
+  const wordCountRef = useRef({ words: 0, characters: 0 });
+
   // onChange handler for auto-save and word count
   const handleChange = useCallback(
     (value: YooptaContentValue, _options: { operations: unknown[] }) => {
-      // Update word count
+      // Update word count (non-urgent — deferred via startTransition)
       try {
         const text = Object.values(value)
           .map((block) => {
@@ -664,24 +680,23 @@ export function YooptaMarkdownRenderer({
           .trim();
         const words = text ? text.split(/\s+/).length : 0;
         const characters = text.length;
-        setWordCount({ words, characters });
+        if (words !== wordCountRef.current.words || characters !== wordCountRef.current.characters) {
+          const next = { words, characters };
+          wordCountRef.current = next;
+          startTransition(() => setWordCount(next));
+        }
       } catch {
         // ignore count errors
       }
 
-      // Auto-save
+      // Auto-save: stash value reference; serialization happens inside debouncedSave
       if (canSave) {
-        try {
-          setSaveStatus('pending');
-          const md = serializeMarkdown(editor, value, frontmatterRef.current);
-          lastContentRef.current = md;
-          debouncedSave(md);
-        } catch (err) {
-          console.error("[YooptaMarkdownRenderer] serialize failed:", err);
-        }
+        pendingValueRef.current = value;
+        startTransition(() => setSaveStatus('pending'));
+        debouncedSave();
       }
     },
-    [canSave, editor, debouncedSave]
+    [canSave, debouncedSave]
   );
 
   const renderBlock = useCallback(
@@ -753,22 +768,32 @@ export function YooptaMarkdownRenderer({
     >
       <YooptaErrorBoundary>
         {/* Editor header: portal to breadcrumb bar if available, otherwise render in-place */}
-        {(() => {
-          const headerEl = (
-            <YooptaEditorHeader
-              editor={editor}
-              title={pageTitle || title}
-              pageWidth={currentPageWidth}
-              showToc={currentShowToc}
-              saveStatus={canSave ? saveStatus : undefined}
-              wordCount={wordCount}
-              updatedAt={updatedAt}
-              onPageWidthChange={canSave ? handlePageWidthChange : undefined}
-              onShowTocChange={canSave ? handleShowTocChange : undefined}
-            />
-          );
-          return headerPortal ? createPortal(headerEl, headerPortal) : headerEl;
-        })()}
+        {headerPortal ? createPortal(
+          <YooptaEditorHeader
+            editor={editor}
+            title={pageTitle || title}
+            pageWidth={currentPageWidth}
+            showToc={currentShowToc}
+            saveStatus={canSave ? saveStatus : undefined}
+            wordCount={wordCount}
+            updatedAt={updatedAt}
+            onPageWidthChange={canSave ? handlePageWidthChange : undefined}
+            onShowTocChange={canSave ? handleShowTocChange : undefined}
+          />,
+          headerPortal
+        ) : (
+          <YooptaEditorHeader
+            editor={editor}
+            title={pageTitle || title}
+            pageWidth={currentPageWidth}
+            showToc={currentShowToc}
+            saveStatus={canSave ? saveStatus : undefined}
+            wordCount={wordCount}
+            updatedAt={updatedAt}
+            onPageWidthChange={canSave ? handlePageWidthChange : undefined}
+            onShowTocChange={canSave ? handleShowTocChange : undefined}
+          />
+        )}
         {/* Cover banner */}
         {coverUrl && (
           <CoverBanner
@@ -868,11 +893,6 @@ export function YooptaMarkdownRenderer({
           />
         )}
         {!isEditable && <div className="h-24" />}
-        <div className="yoopta-editor-footer px-14 py-2 text-xs text-muted-foreground/60 select-none">
-          <span>
-            {t("editor.renderer.wordCount", { words: wordCount.words, characters: wordCount.characters })}
-          </span>
-        </div>
       </YooptaErrorBoundary>
     </div>
   );
@@ -1082,3 +1102,4 @@ const CoverBanner = memo(function CoverBanner({
     </div>
   );
 });
+

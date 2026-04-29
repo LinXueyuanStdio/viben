@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { getGatewayClient, type WorkspaceResponse } from "@/lib/gateway";
+import { toast } from "@/hooks/use-toast";
 import { useWorkspaceStore } from "@/stores";
 import { StepChooseMethod, type CreationMethod } from "./steps/step-choose-method";
 import { StepConfigure, type FolderStatus, type ConfigureFormData } from "./steps/step-configure";
@@ -187,7 +188,9 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
       setStep("complete");
     } catch (err) {
       console.error("Failed to create workspace:", err);
-      // TODO: Show error toast
+      toast.error(t("workspace.createFailed", "Failed to create workspace"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setIsSubmitting(false);
     }

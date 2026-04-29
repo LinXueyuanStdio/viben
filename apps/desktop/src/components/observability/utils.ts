@@ -47,11 +47,6 @@ export function hasDetailData(span: TraceSpan): boolean {
 }
 
 /**
- * @deprecated Import from "@/lib/utils" instead
- */
-export { formatDuration } from "@/lib/utils";
-
-/**
  * Format time for display
  */
 export function formatTime(timestamp: number): string {

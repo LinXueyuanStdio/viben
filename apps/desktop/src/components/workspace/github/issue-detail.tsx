@@ -209,6 +209,43 @@ function CommentItem({ comment, formatDateTime }: { comment: GitHubComment; form
   );
 }
 
+type IssueType = "bug" | "feature" | "enhancement" | "docs" | "refactor";
+
+/**
+ * Infer issue type from labels and analysis text.
+ * Priority: labels > spec_content > issue title/body > fallback "bug"
+ */
+function inferIssueType(
+  labels: { name: string }[],
+  specContent?: string,
+  title?: string,
+  body?: string,
+): IssueType {
+  // 1. Check labels first (most reliable)
+  const labelNames = labels.map((l) => l.name.toLowerCase());
+  for (const name of labelNames) {
+    if (name === "bug" || name.includes("bug")) return "bug";
+    if (name === "feature" || name.includes("feature request")) return "feature";
+    if (name === "enhancement" || name.includes("enhancement")) return "enhancement";
+    if (name === "documentation" || name === "docs" || name.includes("doc")) return "docs";
+    if (name === "refactor" || name.includes("refactor") || name.includes("tech debt")) return "refactor";
+  }
+
+  // 2. Check spec_content and issue text via keyword matching
+  const textToSearch = [specContent, title, body]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/\brefactor(ing)?\b|\btech[\s-]?debt\b/.test(textToSearch)) return "refactor";
+  if (/\bdocument(ation)?\b|\bdocs?\b|\breadme\b/.test(textToSearch)) return "docs";
+  if (/\bfeature\s+request\b|\bnew\s+feature\b/.test(textToSearch)) return "feature";
+  if (/\benhance(ment)?\b|\bimprove(ment)?\b/.test(textToSearch)) return "enhancement";
+
+  // 3. Fallback
+  return "bug";
+}
+
 interface IssueDetailProps {
   issue: GitHubIssue;
   workspacePath: string;
@@ -287,7 +324,7 @@ export function IssueDetail({
         };
         setCurrentAnalysis({
           issueNumber: issue.number,
-          type: "bug", // TODO: Infer from result
+          type: inferIssueType(issue.labels, result.spec_content, issue.title, issue.body),
           complexity: complexityMap[result.complexity] ?? "medium",
           summary: issue.title,
           requirements: [],

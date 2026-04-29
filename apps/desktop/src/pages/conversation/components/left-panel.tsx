@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ExecutorList } from "@/components/workspace";
 import type { AgentResponse, ChatListItemType } from "@/lib/gateway";
+import type { GroupChatItemData } from "./group-chat-list-item";
 import { ResizeHandle } from "./resize-handle";
 import { GroupChatListItem, AgentListItem } from "./index";
 
@@ -38,12 +39,7 @@ interface LeftPanelProps {
   onSearchChange: (query: string) => void;
 
   // Group chats
-  filteredGroupChats: Array<{
-    id: string;
-    name: string;
-    description?: string;
-    [key: string]: unknown;
-  }>;
+  filteredGroupChats: GroupChatItemData[];
   selectedGroupChatId: string | null;
   mutedGroupChats: Set<string>;
   workspacePath?: string;
@@ -230,7 +226,7 @@ export function LeftPanel({
               {filteredGroupChats.map((groupChat) => (
                 <GroupChatListItem
                   key={groupChat.id}
-                  groupChat={groupChat as any}
+                  groupChat={groupChat}
                   isSelected={groupChat.id === selectedGroupChatId}
                   isMuted={mutedGroupChats.has(groupChat.id)}
                   source={workspacePath ? { type: "workspace", path: workspacePath } : undefined}

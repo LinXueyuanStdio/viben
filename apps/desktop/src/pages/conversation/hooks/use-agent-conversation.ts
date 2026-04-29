@@ -462,8 +462,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Send ping message (empty object as heartbeat)
         try {
           wsRef.current.send(JSON.stringify({ type: "ping" }));
-        } catch {
-          // Ignore heartbeat errors
+        } catch (e) {
+          // Heartbeat send failures indicate connection issues
+          console.warn("[useAgent] Heartbeat send failed:", e);
         }
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -937,8 +938,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           try {
             const data = JSON.parse(buffer.slice(6));
             handleSSEMessage(data);
-          } catch {
-            // Ignore parse errors on final buffer
+          } catch (e) {
+            // Final buffer may contain incomplete JSON from stream termination
+            console.warn("[useAgent] Failed to parse final SSE buffer:", buffer, e);
           }
         }
 

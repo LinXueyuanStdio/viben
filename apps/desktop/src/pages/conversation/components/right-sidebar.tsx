@@ -2,12 +2,11 @@
  * Right sidebar for workspace chat
  * Displays workspace files, artifacts, tools, skills, and detail tabs
  */
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Layers,
   X,
-  GripVertical,
   Users,
   Bot,
   Terminal,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ResizeHandle } from "./resize-handle";
 import type { Artifact, WorkingFile, ToolUsage, AgentMessage } from "@/types";
 import type {
   GroupChat,
@@ -45,72 +45,6 @@ import {
 import type { TaskWithAttemptStatus } from "@/lib/kanban";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
-/**
- * Resize handle component for sidebar
- */
-function ResizeHandle({
-  onResize,
-}: {
-  onResize: (delta: number) => void;
-}) {
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef(0);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    startXRef.current = e.clientX;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startXRef.current - moveEvent.clientX;
-      startXRef.current = moveEvent.clientX;
-      onResize(delta);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  };
-
-  return (
-    <div
-      className={cn(
-        "group absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
-        "flex items-center justify-center",
-        isDragging && "bg-primary/30"
-      )}
-      onMouseDown={handleMouseDown}
-    >
-      {/* Hover/drag indicator line */}
-      <div
-        className={cn(
-          "absolute inset-y-0 w-0.5 transition-colors",
-          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
-        )}
-      />
-      {/* Grip handle */}
-      <div
-        className={cn(
-          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
-          isDragging
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
-        )}
-      >
-        <GripVertical className="h-4 w-4" />
-      </div>
-    </div>
-  );
-}
 
 interface RightSidebarProps {
   artifacts: Artifact[];
@@ -557,7 +491,7 @@ export function RightSidebar({
       style={{ width: width ?? 320 }}
     >
       {/* Resize handle */}
-      {onResize && <ResizeHandle onResize={onResize} />}
+      {onResize && <ResizeHandle side="right" onResize={onResize} />}
 
       {/* Tab bar - same height as header (57px) */}
       <div className="flex items-center border-b border-border shrink-0 h-14 px-1">

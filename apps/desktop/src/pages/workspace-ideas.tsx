@@ -33,6 +33,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -186,6 +188,13 @@ export function WorkspaceIdeasPage() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [selectedTypesForGenerate, setSelectedTypesForGenerate] = useState<Set<string>>(new Set());
 
+  // Create idea type dialog state
+  const [isCreateTypeDialogOpen, setIsCreateTypeDialogOpen] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [newTypeDescription, setNewTypeDescription] = useState("");
+  const [newTypePromptContent, setNewTypePromptContent] = useState("");
+  const [isCreatingType, setIsCreatingType] = useState(false);
+
   // Editor state
   const [editorContent, setEditorContent] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -215,6 +224,7 @@ export function WorkspaceIdeasPage() {
     loading: loadingTypes,
     error: typesError,
     refresh: refreshTypes,
+    createType,
     deleteType,
   } = useIdeaTypes({
     workspacePath: workspace?.path ?? null,
@@ -596,6 +606,49 @@ export function WorkspaceIdeasPage() {
     });
   }, [ideaTypes]);
 
+  // Open create idea type dialog
+  const openCreateTypeDialog = useCallback(() => {
+    setNewTypeName("");
+    setNewTypeDescription("");
+    setNewTypePromptContent("");
+    setIsCreateTypeDialogOpen(true);
+  }, []);
+
+  // Handle create idea type from dialog
+  const handleCreateTypeFromDialog = useCallback(async () => {
+    if (!newTypeName.trim()) {
+      toast.error(t("ideas.typeNameRequired"));
+      return;
+    }
+    if (!newTypeDescription.trim()) {
+      toast.error(t("ideas.typeDescriptionRequired"));
+      return;
+    }
+    if (!newTypePromptContent.trim()) {
+      toast.error(t("ideas.typePromptContentRequired"));
+      return;
+    }
+
+    setIsCreatingType(true);
+    try {
+      const result = await createType({
+        name: newTypeName.trim(),
+        description: newTypeDescription.trim(),
+        prompt_content: newTypePromptContent.trim(),
+      });
+      if (result) {
+        toast.success(t("ideas.typeCreated", { name: result.name }));
+        setIsCreateTypeDialogOpen(false);
+      } else {
+        toast.error(t("ideas.createTypeFailed"));
+      }
+    } catch {
+      toast.error(t("ideas.createTypeFailed"));
+    } finally {
+      setIsCreatingType(false);
+    }
+  }, [newTypeName, newTypeDescription, newTypePromptContent, createType, t]);
+
   // Handle promote idea to task
   const handlePromoteIdea = useCallback(
     async (idea: Idea) => {
@@ -758,7 +811,7 @@ export function WorkspaceIdeasPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {/* TODO: Create idea type */}}>
+                <DropdownMenuItem onClick={() => openCreateTypeDialog()}>
                   <FilePlus className="h-4 w-4 mr-2" />
                   {t("ideas.createIdeaType")}
                 </DropdownMenuItem>
@@ -1118,6 +1171,74 @@ export function WorkspaceIdeasPage() {
             >
               <Sparkles className="h-4 w-4 mr-2" />
               {t("ideas.generateSelected", { count: selectedTypesForGenerate.size })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Idea Type Dialog */}
+      <Dialog open={isCreateTypeDialogOpen} onOpenChange={setIsCreateTypeDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("ideas.createIdeaTypeTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("ideas.createIdeaTypeDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="type-name">{t("ideas.typeNameLabel")}</Label>
+              <Input
+                id="type-name"
+                placeholder={t("ideas.typeNamePlaceholder")}
+                value={newTypeName}
+                onChange={(e) => setNewTypeName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("ideas.typeNameHint")}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="type-description">{t("ideas.typeDescriptionLabel")}</Label>
+              <Input
+                id="type-description"
+                placeholder={t("ideas.typeDescriptionPlaceholder")}
+                value={newTypeDescription}
+                onChange={(e) => setNewTypeDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="type-prompt">{t("ideas.typePromptContentLabel")}</Label>
+              <Textarea
+                id="type-prompt"
+                placeholder={t("ideas.typePromptContentPlaceholder")}
+                value={newTypePromptContent}
+                onChange={(e) => setNewTypePromptContent(e.target.value)}
+                className="min-h-[120px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("ideas.typePromptContentHint")}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateTypeDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleCreateTypeFromDialog}
+              disabled={isCreatingType || !newTypeName.trim() || !newTypeDescription.trim() || !newTypePromptContent.trim()}
+            >
+              {isCreatingType ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FilePlus className="h-4 w-4 mr-2" />
+              )}
+              {t("ideas.createIdeaType")}
             </Button>
           </DialogFooter>
         </DialogContent>

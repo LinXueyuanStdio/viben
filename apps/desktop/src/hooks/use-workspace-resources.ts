@@ -768,6 +768,10 @@ export interface AgentListItem {
   model?: string;
   /** Provider ID (agents only) */
   provider?: string;
+  /** Whether this agent is marked as a template (agents only) */
+  is_template?: boolean;
+  /** Template description for selection UI (agents only) */
+  template_description?: string;
 }
 
 /** Counts by item type */
@@ -885,6 +889,8 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
         executor_type: a.executor_type,
         model: a.model,
         provider: a.provider,
+        is_template: a.is_template,
+        template_description: a.template_description,
       }));
 
       setExecutorItems(executors);

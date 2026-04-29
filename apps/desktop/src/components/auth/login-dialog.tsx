@@ -92,9 +92,10 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
       if (isDev) {
         setShowDevOAuth(true);
       }
-    } catch {
+    } catch (err) {
       setIsWaitingOAuth(false);
-      // Error is handled by the hook
+      // Error is surfaced in UI via the useAuth hook's error state
+      console.error("[LoginDialog] OAuth flow failed:", err);
     }
   };
 
@@ -115,8 +116,9 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
     try {
       await handleOAuthCallback(oauthCode.trim());
       // Dialog will close via useEffect when isAuthenticated becomes true
-    } catch {
-      // Error is handled by the hook
+    } catch (err) {
+      // Error is surfaced in UI via the useAuth hook's error state
+      console.error("[LoginDialog] OAuth callback failed:", err);
     }
   };
 

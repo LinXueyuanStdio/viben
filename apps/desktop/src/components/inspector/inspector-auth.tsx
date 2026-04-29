@@ -385,8 +385,9 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       // This is primarily for servers that support token management
       const response = await makeRequest<{ tokens: AuthToken[] }>("auth/list", {});
       setTokens(response.tokens || []);
-    } catch {
-      // Expected - auth listing often not supported
+    } catch (e) {
+      // Expected - most MCP servers don't support auth listing
+      console.debug("[InspectorAuth] auth/list not supported:", e);
       setTokens([]);
     } finally {
       setLoading(false);

@@ -33,14 +33,100 @@ import {
 } from "@/hooks/use-cloud-mcp";
 import {
   useOfficialRegistry,
+  getInstallCommand,
   type OfficialServerDisplay,
   type OfficialPackage,
 } from "@/hooks/use-official-registry";
+import { getGatewayClient } from "@/lib/gateway";
+import { toast } from "@/hooks/use-toast";
+import type { WorkspaceMcpServerConfig } from "@/lib/gateway/types";
 
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 
 type ViewMode = "grid" | "list";
+
+/**
+ * Build a WorkspaceMcpServerConfig from an OfficialPackage.
+ *
+ * Maps registry type + transport to the correct command/args/url shape
+ * so the gateway can persist it into the executor's MCP config file.
+ */
+function buildMcpServerConfig(
+  serverName: string,
+  pkg: OfficialPackage
+): WorkspaceMcpServerConfig {
+  const installCommand = getInstallCommand(pkg);
+
+  // Collect environment variables with default/preset values
+  const env: Record<string, string> = {};
+  if (pkg.environmentVariables) {
+    for (const envVar of pkg.environmentVariables) {
+      env[envVar.name] = envVar.value || envVar.default || "";
+    }
+  }
+
+  // For remote transports (SSE / streamable-http), set the URL directly
+  if (pkg.transport.type === "sse" || pkg.transport.type === "streamable-http") {
+    const transport = pkg.transport as { type: string; url: string };
+    return {
+      name: serverName,
+      url: transport.url,
+      transport: pkg.transport.type,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
+    };
+  }
+
+  // For stdio transport, build command + args based on registry type
+  switch (pkg.registryType) {
+    case "npm": {
+      const identifier = pkg.version
+        ? `${pkg.identifier}@${pkg.version}`
+        : pkg.identifier;
+      return {
+        name: serverName,
+        command: "npx",
+        args: ["-y", identifier],
+        transport: "stdio",
+        ...(Object.keys(env).length > 0 ? { env } : {}),
+      };
+    }
+    case "pypi": {
+      const identifier = pkg.version
+        ? `${pkg.identifier}==${pkg.version}`
+        : pkg.identifier;
+      return {
+        name: serverName,
+        command: "uvx",
+        args: [identifier],
+        transport: "stdio",
+        ...(Object.keys(env).length > 0 ? { env } : {}),
+      };
+    }
+    case "oci": {
+      const identifier = pkg.version
+        ? `${pkg.identifier}:${pkg.version}`
+        : pkg.identifier;
+      return {
+        name: serverName,
+        command: "docker",
+        args: ["run", "-i", "--rm", identifier],
+        transport: "stdio",
+        ...(Object.keys(env).length > 0 ? { env } : {}),
+      };
+    }
+    default: {
+      // Fallback: use the install command as a single shell command
+      return {
+        name: serverName,
+        command: installCommand,
+        args: [],
+        transport: "stdio",
+        ...(Object.keys(env).length > 0 ? { env } : {}),
+      };
+    }
+  }
+}
 
 export function MarketplacePage() {
   const { t } = useTranslation();
@@ -58,6 +144,10 @@ export function MarketplacePage() {
   // Official source state
   const [selectedServer, setSelectedServer] = useState<OfficialServerDisplay | null>(null);
   const [officialDetailOpen, setOfficialDetailOpen] = useState(false);
+
+  // Installation state
+  const [installingCommunity, setInstallingCommunity] = useState(false);
+  const [installingOfficial, setInstallingOfficial] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -154,15 +244,70 @@ export function MarketplacePage() {
   };
 
   // Handle install (community)
-  const handleInstallCommunity = (_pkg: CloudMcpPackage) => {
-    // TODO: Implement actual installation logic
-    // Will be implemented in a future PR
+  const handleInstallCommunity = async (pkg: CloudMcpPackage) => {
+    setInstallingCommunity(true);
+    try {
+      const gateway = getGatewayClient();
+
+      // Build MCP server config from community package
+      const serverConfig: WorkspaceMcpServerConfig = {
+        name: pkg.name,
+        ...(pkg.transport === "stdio"
+          ? {
+              command: `pip install ${pkg.slug} && ${pkg.slug}`,
+              transport: "stdio",
+            }
+          : {
+              url: pkg.repositoryUrl || undefined,
+              transport: "sse",
+            }),
+      };
+
+      // Add to global config (no workspace path = global, default executor)
+      await gateway.addMcpServer(undefined, "CLAUDE_CODE", serverConfig);
+
+      toast.success(t("marketplace.installSuccess"), {
+        description: t("marketplace.installSuccessDesc", { name: pkg.name }),
+      });
+      setCommunityDetailOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(t("marketplace.installFailed"), {
+        description: message,
+      });
+    } finally {
+      setInstallingCommunity(false);
+    }
   };
 
   // Handle install (official)
-  const handleInstallOfficial = (_pkg: OfficialPackage) => {
-    // TODO: Implement actual installation logic
-    // Will be implemented in a future PR
+  const handleInstallOfficial = async (pkg: OfficialPackage) => {
+    setInstallingOfficial(true);
+    try {
+      const gateway = getGatewayClient();
+
+      // Build MCP server config from official package
+      const serverName =
+        selectedServer?.name || pkg.identifier.split("/").pop() || pkg.identifier;
+
+      const serverConfig: WorkspaceMcpServerConfig =
+        buildMcpServerConfig(serverName, pkg);
+
+      // Add to global config (no workspace path = global, default executor)
+      await gateway.addMcpServer(undefined, "CLAUDE_CODE", serverConfig);
+
+      toast.success(t("marketplace.installSuccess"), {
+        description: t("marketplace.installSuccessDesc", { name: serverName }),
+      });
+      setOfficialDetailOpen(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(t("marketplace.installFailed"), {
+        description: message,
+      });
+    } finally {
+      setInstallingOfficial(false);
+    }
   };
 
   // Handle refresh based on current source
@@ -517,9 +662,12 @@ export function MarketplacePage() {
         package={cloudMcp.selectedPackage || selectedPackage}
         open={communityDetailOpen}
         onOpenChange={setCommunityDetailOpen}
-        onInstall={() => selectedPackage && handleInstallCommunity(selectedPackage)}
+        onInstall={() => {
+          const pkg = cloudMcp.selectedPackage || selectedPackage;
+          if (pkg) handleInstallCommunity(pkg);
+        }}
         loading={cloudMcp.selectedPackageLoading}
-        installed={false}
+        installed={installingCommunity}
       />
 
       {/* Official Server Detail Dialog */}
@@ -529,7 +677,7 @@ export function MarketplacePage() {
         onOpenChange={setOfficialDetailOpen}
         onInstall={handleInstallOfficial}
         loading={officialRegistry.selectedServerLoading}
-        installed={false}
+        installed={installingOfficial}
         versions={officialRegistry.serverVersions}
         versionsLoading={officialRegistry.versionsLoading}
         selectedVersion={officialRegistry.selectedVersion}

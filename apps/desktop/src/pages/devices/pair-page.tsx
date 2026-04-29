@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useDeviceStore, type DeviceInfo } from "@/stores/device-store";
 import { useDeviceWebSocket } from "@/hooks/use-device-websocket";
 import { getGatewayUrl } from "@/lib/gateway/config";
-import { getDevices, getDeviceQr, type QrResponse } from "@/lib/gateway/modules/devices";
+import { getDevices, getDeviceQr, disconnectDevice, type QrResponse } from "@/lib/gateway/modules/devices";
 import {
   Monitor,
   Smartphone,
@@ -50,6 +50,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
@@ -256,11 +266,14 @@ export function DevicePairPage() {
   const { t } = useTranslation();
   const devices = useDeviceStore((s) => s.devices);
   const setDevices = useDeviceStore((s) => s.setDevices);
+  const removeDevice = useDeviceStore((s) => s.removeDevice);
   const [qr, setQr] = useState<QrResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<DeviceInfo | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [disconnectTarget, setDisconnectTarget] = useState<DeviceInfo | null>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   useDeviceWebSocket({ enabled: true });
 
@@ -297,10 +310,23 @@ export function DevicePairPage() {
   }, []);
 
   const handleDisconnect = useCallback((device: DeviceInfo) => {
-    // TODO: Implement device disconnect API
-    toast.info(t("common.comingSoon"));
-    console.log("Disconnect device:", device.id);
-  }, [t]);
+    setDisconnectTarget(device);
+  }, []);
+
+  const confirmDisconnect = useCallback(async () => {
+    if (!disconnectTarget) return;
+    setDisconnecting(true);
+    try {
+      await disconnectDevice(getGatewayUrl(), disconnectTarget.id);
+      removeDevice(disconnectTarget.id);
+      toast.success(t("devices.disconnectSuccess", { name: disconnectTarget.name }));
+    } catch {
+      toast.error(t("devices.disconnectFailed"));
+    } finally {
+      setDisconnecting(false);
+      setDisconnectTarget(null);
+    }
+  }, [disconnectTarget, removeDevice, t]);
 
   const onlineCount = devices.filter(d => d.status === "online").length;
 
@@ -432,6 +458,40 @@ export function DevicePairPage() {
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
         />
+
+        {/* Disconnect Confirmation Dialog */}
+        <AlertDialog
+          open={!!disconnectTarget}
+          onOpenChange={(open) => { if (!open) setDisconnectTarget(null); }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("devices.disconnectConfirmTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("devices.disconnectConfirmDescription", { name: disconnectTarget?.name })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={disconnecting}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDisconnect}
+                disabled={disconnecting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {disconnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t("devices.disconnecting")}
+                  </>
+                ) : (
+                  t("devices.disconnect")
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );

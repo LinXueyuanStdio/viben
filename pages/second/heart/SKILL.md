@@ -6,7 +6,7 @@ page:
     - write
 icon:
   type: emoji
-  value: "\U0001F44D\U0001F3FC"
+  value: ⚗️
 name: heart
 description: the icon is heart
 cover: 'gradient:violet'
@@ -34,3 +34,17 @@ $$
 console.log("Hello World");
 
 ```
+
+Zxczx
+
+xcxzcz
+
+- [x]  xzcz
+- [x]  zxczx
+- [ ]  zxczxc
+- [ ]  xzczx
+- [ ]  xzcz
+
+zxczx
+
+Zxczxcz

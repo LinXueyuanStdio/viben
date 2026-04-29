@@ -5,6 +5,7 @@
  * - GET /api/devices - list all registered devices
  * - GET /api/devices/qr - get QR code data for mobile pairing
  * - GET /api/devices/:id - get a specific device by ID
+ * - DELETE /api/devices/:id - disconnect (unregister) a device
  * - POST /api/devices/message - send a cross-device message via mesh
  *
  * Note: /api/devices/qr is registered BEFORE /api/devices/:id
@@ -43,6 +44,23 @@ export function registerDeviceRoutes(fastify: FastifyInstance, state: AppState):
       return reply.status(404).send({ error: "device not found" });
     }
     return reply.send(device);
+  });
+
+  // --- Disconnect (unregister) a device ---
+  fastify.delete("/api/devices/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const { id } = req.params as { id: string };
+    const device = registry.getDevice(id);
+    if (!device) {
+      return reply.status(404).send({ error: "device not found" });
+    }
+
+    if (device.type === "gateway") {
+      registry.unregisterPeer(id);
+    } else {
+      registry.unregisterClient(id);
+    }
+
+    return reply.send({ success: true, device_id: id });
   });
 
   // --- Send cross-device message ---

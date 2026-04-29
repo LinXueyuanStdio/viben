@@ -12,7 +12,8 @@ import {
   type PaginatedResponse,
 } from '@viben/api-client';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { mkdir, writeFile, exists } from '@tauri-apps/plugin-fs';
+import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
+import { unzipSync } from 'fflate';
 
 // ============================================
 // Configuration
@@ -133,6 +134,70 @@ export async function listPackages(
 }
 
 // ============================================
+// Zip Extraction
+// ============================================
+
+/**
+ * Extract a zip archive (as Uint8Array) into the target directory.
+ *
+ * Uses fflate (pure JS, browser-compatible) to decompress. If all entries
+ * share a single root folder (common for GitHub-style archives), that root
+ * is stripped so the contents are written directly into `targetDir`.
+ *
+ * @param zipData  - Raw zip bytes
+ * @param targetDir - Destination directory (must already exist)
+ */
+async function extractZipToDir(
+  zipData: Uint8Array,
+  targetDir: string
+): Promise<void> {
+  const entries = unzipSync(zipData);
+
+  // Detect a single common root directory so we can strip it.
+  const paths = Object.keys(entries);
+  const roots = new Set(
+    paths
+      .filter((p) => p.includes('/'))
+      .map((p) => p.split('/')[0])
+  );
+  const stripRoot =
+    roots.size === 1 && paths.every((p) => p.startsWith(`${[...roots][0]}/`));
+  const rootPrefix = stripRoot ? `${[...roots][0]}/` : '';
+
+  for (const [name, data] of Object.entries(entries)) {
+    // fflate omits directories; entries ending with '/' have zero-length data.
+    if (name.endsWith('/')) continue;
+
+    // Skip macOS resource fork metadata
+    if (name.includes('__MACOSX')) continue;
+
+    // Strip root prefix when applicable
+    const relativePath = rootPrefix && name.startsWith(rootPrefix)
+      ? name.slice(rootPrefix.length)
+      : name;
+
+    if (!relativePath) continue;
+
+    // Ensure parent directories exist
+    const parts = relativePath.split('/');
+    if (parts.length > 1) {
+      const parentParts = parts.slice(0, -1);
+      let parentDir = targetDir;
+      for (const part of parentParts) {
+        parentDir = await join(parentDir, part);
+        if (!(await exists(parentDir))) {
+          await mkdir(parentDir, { recursive: true });
+        }
+      }
+    }
+
+    // Write the file
+    const filePath = await join(targetDir, ...relativePath.split('/'));
+    await writeFile(filePath, data);
+  }
+}
+
+// ============================================
 // Package Installation
 // ============================================
 
@@ -168,12 +233,17 @@ export async function installMcpPackage(pkg: McpPackage): Promise<string> {
     await mkdir(packageDir, { recursive: true });
   }
 
-  // Save archive
+  // Save archive, extract, then clean up
   const zipPath = await join(packageDir, `${pkg.slug}-${pkg.version}.zip`);
   const arrayBuffer = await blob.arrayBuffer();
-  await writeFile(zipPath, new Uint8Array(arrayBuffer));
+  const zipData = new Uint8Array(arrayBuffer);
+  await writeFile(zipPath, zipData);
 
-  // TODO: Extract zip to packageDir using unzip command or library
+  // Extract zip contents to packageDir
+  await extractZipToDir(zipData, packageDir);
+
+  // Clean up the temporary zip file
+  await remove(zipPath);
 
   return packageDir;
 }
@@ -203,7 +273,14 @@ export async function installSkillPackage(pkg: SkillPackage): Promise<string> {
 
   const zipPath = await join(packageDir, `${pkg.slug}-${pkg.version}.zip`);
   const arrayBuffer = await blob.arrayBuffer();
-  await writeFile(zipPath, new Uint8Array(arrayBuffer));
+  const zipData = new Uint8Array(arrayBuffer);
+  await writeFile(zipPath, zipData);
+
+  // Extract zip contents to packageDir
+  await extractZipToDir(zipData, packageDir);
+
+  // Clean up the temporary zip file
+  await remove(zipPath);
 
   return packageDir;
 }

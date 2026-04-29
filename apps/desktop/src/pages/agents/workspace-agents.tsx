@@ -130,7 +130,8 @@ export function WorkspaceAgentsPage({
   // Load global viben path
   useEffect(() => {
     homeDir().then((home) => {
-      setGlobalVibenPath(`${home}.viben/agents/`);
+      const homePath = home.endsWith("/") ? home : `${home}/`;
+      setGlobalVibenPath(`${homePath}.viben/agents/`);
     });
   }, []);
 
@@ -166,9 +167,9 @@ export function WorkspaceAgentsPage({
       source: a.source,
       path: a.config_path,
       workspacePath: a.config_path ? a.config_path.replace(/\/[^/]+\.json$/, "/") : undefined,
-      // Template fields (from new API, may be undefined)
-      isTemplate: (a as any).is_template,
-      templateDescription: (a as any).template_description,
+      // Template fields
+      isTemplate: a.is_template,
+      templateDescription: a.template_description,
     }));
   }, [agentListAgents]);
 
@@ -499,7 +500,7 @@ export function WorkspaceAgentsPage({
                       ) : (
                         apiTemplates.map((template) => {
                           // Determine source from template config or ID
-                          const isGlobal = !(template as any).source || (template as any).source === "global";
+                          const isGlobal = !template.source || template.source === "global";
                           return (
                             <DropdownMenuItem key={template.id} onClick={() => openCreateDialog(template)}>
                               <LayoutTemplate className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -707,7 +708,7 @@ export function WorkspaceAgentsPage({
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-medium">{selectedTemplate.name}</p>
                     <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                      {!(selectedTemplate as any).source || (selectedTemplate as any).source === "global"
+                      {!selectedTemplate.source || selectedTemplate.source === "global"
                         ? t("agent.globalTemplate", "Global")
                         : t("agent.workspaceTemplate", "Workspace")}
                     </Badge>

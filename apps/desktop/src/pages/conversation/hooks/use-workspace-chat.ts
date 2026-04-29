@@ -92,7 +92,8 @@ export function useWorkspaceChat() {
 
   useEffect(() => {
     homeDir().then((home) => {
-      setGlobalVibenPath(`${home}.viben/agents/`);
+      const homePath = home.endsWith("/") ? home : `${home}/`;
+      setGlobalVibenPath(`${homePath}.viben/agents/`);
     });
   }, []);
 

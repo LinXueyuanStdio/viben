@@ -525,7 +525,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                 const parsed = JSON.parse(e.target.value);
                 handleFieldChange(path, parsed);
               } catch {
-                // Allow typing
+                // JSON parse expected to fail for non-JSON input while user is typing
               }
             }}
             className="font-mono text-xs min-h-[80px]"
@@ -786,7 +786,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                     const parsed = JSON.parse(e.target.value);
                     handleFieldChange(path, parsed);
                   } catch {
-                    // Allow typing
+                    // JSON parse expected to fail for non-JSON input while user is typing
                   }
                 }}
                 className="font-mono text-xs min-h-[80px]"
@@ -840,7 +840,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                     const parsed = JSON.parse(e.target.value);
                     handleFieldChange(path, parsed);
                   } catch {
-                    // Allow typing
+                    // JSON parse expected to fail for non-JSON input while user is typing
                   }
                 }}
                 className="font-mono text-xs min-h-[80px]"
@@ -1024,7 +1024,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                   const parsed = JSON.parse(e.target.value);
                   handleFieldChange(path, parsed);
                 } catch {
-                  // Allow typing
+                  // JSON parse expected to fail for non-JSON input while user is typing
                 }
               }}
               className="font-mono text-xs min-h-[60px]"

@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, setsEqual } from "@/lib/utils";
 import { useCloudSkillPackages, type CloudSkillPackage } from "@/hooks/use-cloud-skills";
 
 interface Skill {
@@ -129,7 +129,7 @@ export function AgentSkillsDialog({
     );
   };
 
-  const hasChanges = JSON.stringify(localSelected.sort()) !== JSON.stringify(selectedSkillIds.sort());
+  const hasChanges = !setsEqual(localSelected, selectedSkillIds);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

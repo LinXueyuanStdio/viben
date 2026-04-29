@@ -62,9 +62,9 @@ import {
   SpanNode,
   TimelineView,
   SpanDetailPanel,
-  formatDuration,
   copyToClipboard,
 } from "@/components/observability";
+import { formatDuration } from "@/lib/utils";
 import type {
   TraceSpanNode,
   TraceTree,

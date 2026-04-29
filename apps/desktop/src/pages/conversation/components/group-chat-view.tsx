@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { GroupChatUIMessage, GroupChatMember } from "@/lib/gateway";
 import { SessionSelector, GroupChatMessageList } from "./index";
 
 interface GroupChatViewProps {
@@ -25,13 +26,7 @@ interface GroupChatViewProps {
       is_global?: boolean;
     };
   };
-  groupChatMembers: Array<{
-    id: string;
-    member_type: string;
-    member_id: string;
-    display_name: string;
-    role?: string;
-  }>;
+  groupChatMembers: GroupChatMember[];
   groupChatSessions: Array<{
     id: string;
     title?: string;
@@ -44,7 +39,7 @@ interface GroupChatViewProps {
     created_at: string;
     updated_at: string;
   } | null;
-  groupChatMessages: Array<unknown>;
+  groupChatMessages: GroupChatUIMessage[];
   typingMembers: string[];
   thinkingAgents: string[];
   sessionAgents: string[];
@@ -236,8 +231,8 @@ export function GroupChatView({
 
       {/* Group Chat Messages */}
       <GroupChatMessageList
-        messages={groupChatMessages as any}
-        members={groupChatMembers as any}
+        messages={groupChatMessages}
+        members={groupChatMembers}
         currentUserId="user-1"
         typingMembers={typingMembers}
         className="flex-1"

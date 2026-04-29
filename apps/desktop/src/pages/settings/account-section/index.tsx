@@ -88,7 +88,8 @@ export function AccountSection() {
         setOauthStatus("timeout");
         setLoading(false);
       }, OAUTH_TIMEOUT_MS);
-    } catch {
+    } catch (err) {
+      console.error("[AccountSection] OAuth flow failed:", err);
       setOauthStatus("error");
     }
   };
@@ -112,8 +113,9 @@ export function AccountSection() {
     }
     try {
       await handleOAuthCallback(oauthCode.trim());
-    } catch {
-      // Error is handled by the hook
+    } catch (err) {
+      // Error is surfaced in UI via the useAuth hook's error state
+      console.error("[AccountSection] OAuth callback failed:", err);
     }
   };
 
