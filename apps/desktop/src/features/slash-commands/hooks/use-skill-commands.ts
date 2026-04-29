@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createElement } from "react";
 import { Zap } from "lucide-react";
 import { getGatewayUrl } from "@/lib/gateway";
+import i18n from "@/i18n";
 import type {
   SlashCommandDefinition,
   SkillCommandFile,
@@ -72,7 +73,7 @@ export function useSkillCommands(
         commandDefs.push({
           id: `skill:${skill.name}:${trigger}`,
           name: trigger,
-          description: skill.description || `Skill: ${skill.name}`,
+          description: skill.description || i18n.t("chat.slashCommands.skillFallbackDescription", { skillName: skill.name }),
           icon: createElement(Zap, { className: "h-4 w-4" }),
           category: "workspace" as const,
           source: "skill" as const,

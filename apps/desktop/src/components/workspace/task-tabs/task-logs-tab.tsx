@@ -22,6 +22,7 @@ import {
   Square,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { formatDuration } from "@/lib/utils";
 
 /**
  * Log entry types for different log messages
@@ -137,15 +138,6 @@ function formatTimestamp(timestamp: string): string {
     minute: "2-digit",
     second: "2-digit",
   });
-}
-
-/**
- * Format duration in milliseconds
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
 /**

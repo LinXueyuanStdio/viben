@@ -11,6 +11,7 @@ import { useWorkspaceStore, useAppStore } from "@/stores";
 import type { Workspace } from "@/types";
 import { pollWithBackoff, createPollController } from "@/lib/onboarding/polling";
 import { GATEWAY_READINESS_POLICY } from "@/lib/onboarding/runtime-policies";
+import i18n from "@/i18n";
 
 export type GatewayStatus = "connected" | "disconnected" | "connecting" | "error";
 
@@ -114,7 +115,7 @@ async function pingGateway(): Promise<boolean> {
     return isOnline;
   } catch (err) {
     globalStatus = "error";
-    globalError = err instanceof Error ? err.message : "Unknown error";
+    globalError = err instanceof Error ? err.message : i18n.t("errors.gateway.unknownError", "Unknown error");
     notifyListeners();
     return false;
   }
@@ -221,7 +222,7 @@ export function useGatewayStatus(): UseGatewayStatusReturn {
       return true;
     } else {
       globalStatus = result.reason === "timeout" ? "error" : "disconnected";
-      globalError = result.reason === "timeout" ? "Connection timeout" : null;
+      globalError = result.reason === "timeout" ? i18n.t("errors.gateway.connectionTimeout", "Connection timeout") : null;
       notifyListeners();
       return false;
     }

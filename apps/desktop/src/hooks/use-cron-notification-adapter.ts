@@ -12,6 +12,7 @@
  */
 
 import { useCallback } from "react";
+import { formatDuration } from "@/lib/utils";
 import { useGatewayWebSocket, type GatewayEventPayload } from "./use-gateway-websocket";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
@@ -96,15 +97,6 @@ export function useCronNotificationAdapter() {
           // Check notification settings from the job
           const shouldNotifyInApp = notifications?.in_app !== false; // default to true
           const shouldNotifySystem = notifications?.system === true; // default to false
-
-          // Format duration for display
-          const formatDuration = (ms: number): string => {
-            if (ms < 1000) return `${ms}ms`;
-            if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-            const mins = Math.floor(ms / 60000);
-            const secs = Math.floor((ms % 60000) / 1000);
-            return `${mins}m ${secs}s`;
-          };
 
           const durationText = formatDuration(duration_ms);
           const jobTypeLabel = job_type === "agent"

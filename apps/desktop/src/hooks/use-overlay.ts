@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from "react";
 import { useOverlayStore } from "@/stores/overlay-store";
 import { loadOverlayConfig, saveOverlayConfig } from "@/lib/overlay-config";
 import type { OverlaySettings } from "@/types/overlay";
+import i18n from "@/i18n";
 
 interface UseOverlayReturn {
   visible: boolean;
@@ -33,7 +34,7 @@ export function useOverlay(): UseOverlayReturn {
         actions.loadConfig(settings);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load config");
+        setError(err instanceof Error ? err.message : i18n.t("errors.overlay.loadConfigFailed", "Failed to load config"));
         console.error("[useOverlay] Failed to load config:", err);
       })
       .finally(() => {
@@ -46,7 +47,7 @@ export function useOverlay(): UseOverlayReturn {
       await saveOverlayConfig(settings);
       actions.loadConfig(settings);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save config");
+      setError(err instanceof Error ? err.message : i18n.t("errors.overlay.saveConfigFailed", "Failed to save config"));
       throw err;
     }
   }, [actions]);

@@ -109,7 +109,7 @@ const baseWorkspaceNavItems: WorkspaceNavItem[] = [
 
 // GitHub navigation item (shown only when integrated)
 const githubNavItem: WorkspaceNavItem = {
-  titleKey: "workspace.github",
+  titleKey: "workspace.github.label",
   path: "github",
   icon: Github,
 };

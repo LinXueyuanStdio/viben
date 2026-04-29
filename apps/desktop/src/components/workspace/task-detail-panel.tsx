@@ -45,6 +45,7 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@viben/ui";
+import { formatDuration } from "@/lib/utils";
 import {
   PriorityIcon,
   PrioritySelect,
@@ -305,21 +306,6 @@ const DEFAULT_ACTION_CONFIG: ActionConfig = {
   textColor: "text-gray-500",
   ringColor: "ring-gray-500/20",
 };
-
-// Format duration helper
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`;
-  }
-  return `${seconds}s`;
-}
 
 // Format time helper (short format)
 function formatTimeShort(date: Date): string {
@@ -1309,7 +1295,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         <TabsList className="mx-4 mt-2 shrink-0 flex-wrap h-auto gap-1">
           <TabsTrigger value="details" className="flex items-center gap-1.5">
             <ListChecks className="h-4 w-4" />
-            {t("workspace.taskDetail", "Details")}
+            {t("workspace.taskDetail.label", "Details")}
           </TabsTrigger>
           <TabsTrigger value="agent-chat" className="flex items-center gap-1.5">
             <Bot className="h-4 w-4" />

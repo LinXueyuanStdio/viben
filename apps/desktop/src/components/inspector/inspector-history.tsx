@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
+import { formatDuration } from "@/lib/utils";
 
 /**
  * Single history entry representing an MCP request/response
@@ -132,13 +133,6 @@ export function HistoryPanel({
     setCopiedId(entry.id);
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) {
-      return `${ms}ms`;
-    }
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
 
   const getStatusStyle = (status: "success" | "error") => {
     if (status === "success") {

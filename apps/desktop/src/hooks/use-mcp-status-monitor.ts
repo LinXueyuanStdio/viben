@@ -4,6 +4,7 @@ import PQueue from "p-queue";
 import { useAppStore } from "@/stores";
 import { useMcpWebSocket } from "./use-mcp-websocket";
 import type { McpServerStatus, McpServerStatusInfo, McpServerInstance } from "@/types";
+import i18n from "@/i18n";
 
 // Configuration constants
 const FALLBACK_POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes (only when WebSocket disconnected)
@@ -203,7 +204,7 @@ class McpStatusMonitorManager {
       const errorInfo: McpServerStatusInfo = {
         status: "error",
         lastChecked: Date.now(),
-        error: "Server not found",
+        error: i18n.t("errors.mcp.serverNotFound", "Server not found"),
       };
       return errorInfo;
     }
@@ -248,7 +249,7 @@ class McpStatusMonitorManager {
               if (mcpStatus.error) {
                 error = mcpStatus.error;
               } else if (mcpStatus.exitCode !== undefined && mcpStatus.exitCode !== 0) {
-                error = `Process exited with code ${mcpStatus.exitCode}`;
+                error = i18n.t("errors.mcp.processExitedWithCode", { defaultValue: "Process exited with code {{code}}", code: mcpStatus.exitCode });
                 if (mcpStatus.stderr) {
                   error += `\n${mcpStatus.stderr.trim().slice(-500)}`;
                 }
@@ -270,7 +271,7 @@ class McpStatusMonitorManager {
             detectedPid = portStatus.pid ?? undefined;
           } else if (portStatus.status === "conflict") {
             status = "error";
-            error = `Port ${server.port} is in use by another process: ${portStatus.process_name || "unknown"}`;
+            error = i18n.t("errors.mcp.portInUse", { defaultValue: "Port {{port}} is in use by another process: {{process}}", port: server.port, process: portStatus.process_name || i18n.t("common.unknown", "unknown") });
           } else {
             status = "stopped";
           }
@@ -278,19 +279,19 @@ class McpStatusMonitorManager {
           console.warn("Port check failed:", portErr);
           if (server.pid && !detectedPid) {
             status = "error";
-            error = error || "Process terminated unexpectedly";
+            error = error || i18n.t("errors.mcp.processTerminated", "Process terminated unexpectedly");
           } else if (server.status === "running") {
             status = "error";
-            error = error || "Server marked as running but status check failed";
+            error = error || i18n.t("errors.mcp.statusCheckFailed", "Server marked as running but status check failed");
           }
         }
       } else if (status !== "running") {
         if (server.pid && !detectedPid) {
           status = "error";
-          error = error || "Process terminated unexpectedly";
+          error = error || i18n.t("errors.mcp.processTerminated", "Process terminated unexpectedly");
         } else if (server.status === "running" && !server.pid) {
           status = "error";
-          error = error || "Server marked as running but no process ID";
+          error = error || i18n.t("errors.mcp.runningNoProcessId", "Server marked as running but no process ID");
         }
       }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Zap, Activity, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import { formatDuration } from "@/lib/utils";
 
 interface InspectorPingProps {
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
@@ -88,13 +89,6 @@ export function InspectorPing({ makeRequest }: InspectorPingProps) {
   const clearHistory = () => {
     setPingHistory([]);
     setCurrentPing(null);
-  };
-
-  const formatDuration = (duration: number) => {
-    if (duration < 1000) {
-      return `${duration}ms`;
-    }
-    return `${(duration / 1000).toFixed(2)}s`;
   };
 
   const getStatusColor = (success: boolean) => {

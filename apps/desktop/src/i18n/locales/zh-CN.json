@@ -140,15 +140,15 @@
       "lines": "行"
     },
     "duplicate": "复制",
-    "copyFailed": "Copy Failed",
+    "copyFailed": "复制失败",
     "system": "系统",
     "completed": "已完成",
     "analyzed": "已分析",
     "done": "完成",
-    "updated": "Updated",
-    "weeksAgo": "Weeks Ago",
-    "failed": "Failed",
-    "dismiss": "Dismiss",
+    "updated": "已更新",
+    "weeksAgo": "周前",
+    "failed": "失败",
+    "dismiss": "忽略",
     "newTab": "新标签页"
   },
   "elapsedTime": {
@@ -206,7 +206,12 @@
     "type": "类型",
     "platform": "平台",
     "pairingQrAlt": "配对二维码",
-    "lan": "LAN"
+    "lan": "LAN",
+    "disconnectConfirmTitle": "断开设备连接",
+    "disconnectConfirmDescription": "确定要断开「{{name}}」的连接吗？该设备需要重新配对才能再次连接。",
+    "disconnectSuccess": "「{{name}}」已断开连接",
+    "disconnectFailed": "断开设备连接失败",
+    "disconnecting": "正在断开..."
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -289,7 +294,7 @@
     "host": "主机",
     "hostDescription": "网关服务绑定的主机地址",
     "portDescription": "网关服务监听的端口号（需要重启生效）",
-    "baseUrl": "Base URL",
+    "baseUrl": "基础 URL",
     "baseUrlDescription": "设置网关服务的基础地址",
     "baseUrlHint": "例如: http://127.0.0.1:18790 或 https://gateway.example.com",
     "urlSaved": "网关地址已保存",
@@ -654,9 +659,9 @@
       "description": "配置语音助手和唤醒词检测",
       "api": {
         "title": "API 配置",
-        "vocalBridgeKey": "Vocal Bridge API Key",
+        "vocalBridgeKey": "Vocal Bridge API 密钥",
         "vocalBridgeKeyDesc": "用于连接语音服务的 API 密钥",
-        "agentId": "Agent ID",
+        "agentId": "智能体 ID",
         "agentIdDesc": "Vocal Bridge 语音智能体 ID"
       },
       "wakeWord": {
@@ -1417,11 +1422,11 @@
       "jstor": "学术期刊数字图书馆",
       "researchgate": "研究人员社交网络"
     },
-    "pluginsAvailable": "Plugins Available",
-    "categoriesAvailable": "Categories Available",
-    "noPluginsMatch": "No Plugins Match",
-    "noPluginsAvailable": "No Plugins Available",
-    "checkBackLater": "Check Back Later"
+    "pluginsAvailable": "可用插件",
+    "categoriesAvailable": "可用分类",
+    "noPluginsMatch": "没有匹配的插件",
+    "noPluginsAvailable": "暂无可用插件",
+    "checkBackLater": "请稍后再试"
   },
   "agent": {
     "searchAgents": "搜索智能体...",
@@ -2349,10 +2354,10 @@
       "utility": "工具",
       "utilityDesc": "通用工具技能"
     },
-    "gridView": "Grid View",
-    "listView": "List View",
-    "previous": "Previous",
-    "next": "Next"
+    "gridView": "网格视图",
+    "listView": "列表视图",
+    "previous": "上一页",
+    "next": "下一页"
   },
   "marketplace": {
     "title": "MCP 市场",
@@ -2429,7 +2434,10 @@
       "utility": "工具",
       "utilityDesc": "通用工具"
     },
-    "viewDetails": "View Details"
+    "viewDetails": "查看详情",
+    "installSuccess": "MCP 服务器已安装",
+    "installSuccessDesc": "\"{{name}}\" 已添加到您的 MCP 配置中",
+    "installFailed": "安装失败"
   },
   "workspaceSettings": {
     "sections": {
@@ -2480,7 +2488,7 @@
       "searchPRs": "搜索 Pull Requests...",
       "tabs": {
         "issues": "Issues",
-        "pullRequests": "Pull Requests",
+        "pullRequests": "拉取请求",
         "releases": "Releases"
       },
       "auth": {
@@ -2816,7 +2824,14 @@
     "selectCommand": "选择一个命令查看",
     "rootNamespace": "根目录",
     "kanban": "任务看板",
-    "github": "GitHub",
+    "github": {
+      "label": "GitHub",
+      "agentChatComingSoon": "智能体聊天集成即将推出...",
+      "closed": "已关闭",
+      "noAnalysisResults": "暂无分析结果。",
+      "noAnalysisYet": "暂无分析。点击下方按钮分析此议题。",
+      "noDescription": "暂无描述。"
+    },
     "scheduledTasks": "定时任务",
     "scheduledTasksDescription": "管理定时任务和自动化",
     "addTask": "添加任务",
@@ -2844,7 +2859,13 @@
       "cancelled": "已取消",
       "archived": "已归档"
     },
-    "taskDetail": "详情",
+    "taskDetail": {
+      "label": "详情",
+      "open": "打开",
+      "pullRequestNumber": "拉取请求 #{{number}}",
+      "viewPR": "查看 PR",
+      "you": "你"
+    },
     "taskName": "任务名称",
     "description": "描述",
     "priority": {
@@ -3112,7 +3133,7 @@
       "navigateHint": "导航",
       "selectHint": "选择",
       "closeHint": "关闭",
-      "gotoCompletedDesc": "Jump to first completed task"
+      "gotoCompletedDesc": "跳转到第一个已完成的任务"
     },
     "connectionError": "连接错误",
     "noProjectFound": "暂无任务",
@@ -3150,7 +3171,7 @@
       "noModelsWarning": "未配置模型。请在设置中配置模型。",
       "noAgentsOrModels": "未配置智能体和模型。请在设置中进行配置。",
       "combinedPlaceholder": "你需要我做什么？",
-      "contentHint": "Content Hint",
+      "contentHint": "内容提示",
       "worktree": "工作树",
       "worktreeHint": "在隔离的 git 工作树中运行任务",
       "agentAndModel": "智能体和模型"
@@ -3341,7 +3362,7 @@
     "archiveTask": "归档",
     "expandAll": "全部展开",
     "expandAllHint": "展开所有折叠列",
-    "resizeColumn": "Resize Column",
+    "resizeColumn": "调整列宽",
     "deselectAllInColumn": "取消全选列中任务",
     "selectAllInColumn": "全选列中任务",
     "taskDeleted": "任务已删除",
@@ -3446,7 +3467,7 @@
     "conflictResolutionDesc": "发生同步冲突时的处理方式",
     "preferLocal": "优先本地",
     "preferCloud": "优先云端",
-    "updatedAt": "Updated At"
+    "updatedAt": "更新于"
   },
   "onboarding": {
     "footer": "微本 - Agent Swarm × Code Evolution",
@@ -4365,6 +4386,7 @@
         "skill": "技能"
       },
       "executionFailed": "执行 /{{commandName}} 失败：{{error}}",
+      "skillFallbackDescription": "技能：{{skillName}}",
       "sessionStatusTitle": "会话状态",
       "statusMessages": "消息数",
       "statusModel": "模型",
@@ -4475,8 +4497,8 @@
         "compressionTooltip": "自动压缩上下文以节省令牌"
       }
     },
-    "hideSteps": "Hide Steps",
-    "showSteps": "Show Steps",
+    "hideSteps": "隐藏步骤",
+    "showSteps": "显示步骤",
     "gatewayConnected": "网关已连接",
     "gatewayMock": "模拟",
     "gatewayChecking": "...",
@@ -4736,7 +4758,22 @@
     "noFileContent": "没有文件内容可显示",
     "cannotDeleteBuiltinType": "无法删除内置想法类型",
     "typeDeleted": "已删除想法类型「{{name}}」",
-    "deleteTypeFailed": "删除想法类型失败"
+    "deleteTypeFailed": "删除想法类型失败",
+    "createIdeaTypeTitle": "创建想法类型",
+    "createIdeaTypeDescription": "定义一个新的自定义想法类型，包含用于 AI 想法生成的提示词模板。",
+    "typeNameLabel": "类型名称",
+    "typeNamePlaceholder": "例如 testing_improvements",
+    "typeNameHint": "仅允许小写字母、数字和下划线（snake_case 格式）",
+    "typeDescriptionLabel": "描述",
+    "typeDescriptionPlaceholder": "例如 提升测试覆盖率和质量的建议",
+    "typePromptContentLabel": "提示词模板",
+    "typePromptContentPlaceholder": "编写引导 AI 生成此类型想法的提示词模板...",
+    "typePromptContentHint": "此提示词将被 AI 用于分析代码库并生成想法。",
+    "typeNameRequired": "请输入类型名称",
+    "typeDescriptionRequired": "请输入描述",
+    "typePromptContentRequired": "请输入提示词模板内容",
+    "typeCreated": "已创建想法类型「{{name}}」",
+    "createTypeFailed": "创建想法类型失败"
   },
   "preview": {
     "livePreview": "实时预览",
@@ -5029,6 +5066,9 @@
     "favorites": "收藏",
     "locations": "位置",
     "recent": "最近",
+    "desktop": "桌面",
+    "downloads": "下载",
+    "documents": "文稿",
     "viewModes": {
       "list": "列表",
       "icon": "图标",
@@ -5284,21 +5324,31 @@
     },
     "channels": {
       "chatIdRequired": "发送测试消息需要 Chat ID",
-      "loadFailed": "Load Failed",
-      "saveFailed": "Save Failed",
-      "syncFailed": "Sync Failed",
-      "createFailed": "Create Failed",
-      "updateFailed": "Update Failed",
-      "deleteFailed": "Delete Failed",
-      "setDefaultFailed": "Set Default Failed",
-      "testFailed": "Test Failed",
-      "sendTestFailed": "Send Test Failed"
+      "loadFailed": "加载失败",
+      "saveFailed": "保存失败",
+      "syncFailed": "同步失败",
+      "createFailed": "创建失败",
+      "updateFailed": "更新失败",
+      "deleteFailed": "删除失败",
+      "setDefaultFailed": "设置默认失败",
+      "testFailed": "测试失败",
+      "sendTestFailed": "发送测试失败"
     },
     "mcp": {
       "invalidConfigMissingUrl": "配置无效：缺少 URL",
       "connectionFailed": "连接失败",
       "invalidUrl": "无效的 URL：{{url}}",
-      "notConnected": "未连接到 MCP 服务器"
+      "notConnected": "未连接到 MCP 服务器",
+      "stdioRequiresCommand": "STDIO 配置需要 'command' 字段",
+      "remoteRequiresUrl": "远程配置需要 'url' 字段",
+      "configMissingTransport": "配置必须包含 'command'（stdio）或 'url'（remote）",
+      "serverNotFound": "未找到服务器",
+      "processTerminated": "进程意外终止",
+      "statusCheckFailed": "服务器标记为运行中但状态检查失败",
+      "runningNoProcessId": "服务器标记为运行中但没有进程 ID",
+      "stdioNotSupported": "STDIO 传输在浏览器环境中不受支持",
+      "processExitedWithCode": "进程退出，退出码 {{code}}",
+      "portInUse": "端口 {{port}} 正被其他进程占用：{{process}}"
     },
     "mcpProxy": {
       "portInUse": "端口 {{port}} 已被其他进程占用",
@@ -5317,7 +5367,9 @@
     },
     "gateway": {
       "notConnected": "网关未连接",
-      "notAuthenticated": "Not Authenticated"
+      "notAuthenticated": "未认证",
+      "unknownError": "未知错误",
+      "connectionTimeout": "连接超时"
     },
     "connection": {
       "failed": "连接失败",
@@ -5345,7 +5397,9 @@
     },
     "packages": {
       "loadFailed": "加载包失败",
-      "installFailed": "安装失败"
+      "installFailed": "安装失败",
+      "updateFailed": "更新失败",
+      "someUpdatesFailed": "部分包更新失败"
     },
     "workspaces": {
       "loadFailed": "加载工作区失败"
@@ -5437,8 +5491,22 @@
       "cannotConnectGateway": "无法连接到网关。网关是否正在运行？",
       "unknownError": "未知错误"
     },
+    "kanbanQueue": {
+      "fetchStatusFailed": "获取队列状态失败：{{status}}",
+      "updateConfigFailed": "更新队列配置失败：{{status}}",
+      "batchEnqueueFailed": "批量入队失败：{{status}}"
+    },
     "vitePreview": {
       "noTaskId": "未提供任务 ID"
+    },
+    "updater": {
+      "checkFailed": "检查更新失败",
+      "noUpdateAvailable": "没有可安装的更新",
+      "installFailed": "安装更新失败"
+    },
+    "overlay": {
+      "loadConfigFailed": "加载配置失败",
+      "saveConfigFailed": "保存配置失败"
     }
   },
   "availability": {
@@ -5578,8 +5646,8 @@
     "addEnvVar": "添加",
     "envVarSet": "已设置",
     "envVarNotSet": "未设置",
-    "traceId": "Trace ID",
-    "sessionId": "Session ID",
+    "traceId": "追踪 ID",
+    "sessionId": "会话 ID",
     "callTree": "调用树",
     "timeline": "时序图",
     "noTraceYet": "发送消息后将显示调用链路",
@@ -5711,6 +5779,20 @@
     "editPageDescription": "修改页面名称、描述和图标",
     "untitled": "无标题"
   },
+  "emojiPicker": {
+    "categories": {
+      "smileys": "表情与人物",
+      "animals": "动物与自然",
+      "food": "食物与饮品",
+      "activities": "活动",
+      "travel": "旅行与地点",
+      "objects": "物品",
+      "symbols": "符号",
+      "flags": "旗帜"
+    },
+    "filter": "筛选...",
+    "noEmojisFound": "未找到表情"
+  },
   "iconPicker": {
     "icons": "图标",
     "emoji": "表情",
@@ -5725,6 +5807,10 @@
     "noWorkspace": "需要工作空间才能上传图片",
     "images": "图片",
     "uploaded": "已上传！",
+    "noResults": "未找到图标",
+    "random": "随机",
+    "remove": "移除",
+    "searchIcons": "搜索图标...",
     "category": {
       "documents": "文档",
       "code": "代码",
@@ -5801,13 +5887,13 @@
   "workspaceDetail": {
     "github": {
       "issueDetail": {
-        "minutesAgo": "{{count}}m ago",
-        "hoursAgo": "{{count}}h ago",
-        "daysAgo": "{{count}}d ago",
-        "commentedAt": "commented {{time}}",
+        "minutesAgo": "{{count}}分钟前",
+        "hoursAgo": "{{count}}小时前",
+        "daysAgo": "{{count}}天前",
+        "commentedAt": "评论于 {{time}}",
         "openedThisIssue": "打开了此议题",
         "noDescription": "暂无描述。",
-        "commentsCount": "{{count}} comment",
+        "commentsCount": "{{count}} 条评论",
         "checkingTask": "检查任务中...",
         "goToTask": "前往任务",
         "createTask": "创建任务",
@@ -5822,9 +5908,9 @@
         "linkedTask": "关联任务",
         "noLinkedTask": "无关联任务",
         "timeline": "时间线",
-        "createdAt": "Created {{date}}",
-        "updatedAt": "Updated {{date}}",
-        "closedAt": "Closed {{date}}",
+        "createdAt": "创建于 {{date}}",
+        "updatedAt": "更新于 {{date}}",
+        "closedAt": "关闭于 {{date}}",
         "commentsCount_one": "{{count}} 条评论",
         "commentsCount_other": "{{count}} 条评论"
       },
@@ -5865,8 +5951,8 @@
     "check": "检测"
   },
   "commands": {
-    "helpAvailable": "{{count}} commands available. Type / to browse.",
-    "helpTip": "Use ↑↓ to navigate, Enter to select"
+    "helpAvailable": "{{count}} 个命令可用。输入 / 浏览。",
+    "helpTip": "使用 ↑↓ 导航，Enter 选择"
   },
   "coverPicker": {
     "chooseCover": "选择封面",

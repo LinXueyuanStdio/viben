@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist } from "zustand/middleware";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { useMemo, useSyncExternalStore, useCallback, useRef } from "react";
+import i18n from "@/i18n";
 
 /**
  * Gateway Queue Status response type
@@ -132,7 +133,7 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
             const response = await fetch(`${gatewayUrl}/api/queue/status`);
 
             if (!response.ok) {
-              throw new Error(`Failed to fetch queue status: ${response.status}`);
+              throw new Error(i18n.t("errors.kanbanQueue.fetchStatusFailed", { defaultValue: "Failed to fetch queue status: {{status}}", status: response.status }));
             }
 
             const data: GatewayQueueStatus = await response.json();
@@ -143,7 +144,7 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
               maxParallelTasks: data.max_concurrency,
             });
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Failed to fetch queue status";
+            const message = error instanceof Error ? error.message : i18n.t("errors.kanbanQueue.fetchStatusFailed", "Failed to fetch queue status");
             set({
               gatewayStatusError: message,
               isLoadingGatewayStatus: false,
@@ -166,7 +167,7 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
             });
 
             if (!response.ok) {
-              throw new Error(`Failed to update queue config: ${response.status}`);
+              throw new Error(i18n.t("errors.kanbanQueue.updateConfigFailed", { defaultValue: "Failed to update queue config: {{status}}", status: response.status }));
             }
 
             const config: GatewayQueueConfig = await response.json();
@@ -201,7 +202,7 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
             });
 
             if (!response.ok) {
-              throw new Error(`Failed to batch enqueue: ${response.status}`);
+              throw new Error(i18n.t("errors.kanbanQueue.batchEnqueueFailed", { defaultValue: "Failed to batch enqueue: {{status}}", status: response.status }));
             }
 
             const result: BatchEnqueueResponse = await response.json();

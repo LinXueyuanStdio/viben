@@ -11,6 +11,7 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { formatRelativeTime } from "@/lib/utils";
 import {
   Loader2,
   ArrowLeft,
@@ -392,19 +393,6 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
 function IssueRow({ issue, onSelect }: { issue: GitHubIssue; onSelect?: () => void }) {
   const { t } = useTranslation();
 
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return t("common.today");
-    if (diffDays === 1) return t("common.yesterday");
-    if (diffDays < 7) return t("common.daysAgo", { count: diffDays });
-    if (diffDays < 30) return t("common.weeksAgo", { count: Math.floor(diffDays / 7) });
-    return date.toLocaleDateString();
-  };
-
   return (
     <div
       className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors cursor-pointer"
@@ -441,7 +429,7 @@ function IssueRow({ issue, onSelect }: { issue: GitHubIssue; onSelect?: () => vo
           <span>
             {t("workspaceSettings.github.issues.openedBy", {
               user: issue.user.login,
-              date: formatRelativeTime(issue.created_at),
+              date: formatRelativeTime(issue.created_at, t),
             })}
           </span>
           {issue.milestone && (
@@ -616,19 +604,6 @@ function PRsTab({ workspacePath }: { workspacePath: string }) {
 function PRRow({ pr, onSelect }: { pr: GitHubPullRequest; onSelect?: () => void }) {
   const { t } = useTranslation();
 
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return t("common.today");
-    if (diffDays === 1) return t("common.yesterday");
-    if (diffDays < 7) return t("common.daysAgo", { count: diffDays });
-    if (diffDays < 30) return t("common.weeksAgo", { count: Math.floor(diffDays / 7) });
-    return date.toLocaleDateString();
-  };
-
   const getStatusIcon = () => {
     if (pr.merged) {
       return <GitMerge className="h-5 w-5 text-purple-600 mt-0.5 shrink-0" />;
@@ -679,7 +654,7 @@ function PRRow({ pr, onSelect }: { pr: GitHubPullRequest; onSelect?: () => void 
           <span>
             {t("workspaceSettings.github.prs.openedBy", {
               user: pr.user.login,
-              date: formatRelativeTime(pr.created_at),
+              date: formatRelativeTime(pr.created_at, t),
             })}
           </span>
           <span className="font-mono text-xs">

@@ -47,14 +47,9 @@ export function hasDetailData(span: TraceSpan): boolean {
 }
 
 /**
- * Format duration for display
+ * @deprecated Import from "@/lib/utils" instead
  */
-export function formatDuration(ms: number): string {
-  if (ms >= 1000) {
-    return `${(ms / 1000).toFixed(2)}s`;
-  }
-  return `${ms.toFixed(2)}ms`;
-}
+export { formatDuration } from "@/lib/utils";
 
 /**
  * Format time for display

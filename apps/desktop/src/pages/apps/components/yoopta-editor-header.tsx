@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, memo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { formatRelativeTime } from "@/lib/utils";
 import {
   FileTextIcon,
   CodeIcon,
@@ -341,21 +342,6 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
     </div>
   );
 });
-
-function formatRelativeTime(isoString: string, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60_000);
-  const diffHour = Math.floor(diffMs / 3_600_000);
-  const diffDay = Math.floor(diffMs / 86_400_000);
-
-  if (diffMin < 1) return t("editor.header.justNow");
-  if (diffMin < 60) return t("editor.header.minutesAgo", { count: diffMin });
-  if (diffHour < 24) return t("editor.header.hoursAgo", { count: diffHour });
-  if (diffDay < 7) return t("editor.header.daysAgo", { count: diffDay });
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
-}
 
 function ShortcutSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (

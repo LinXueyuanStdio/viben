@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { formatRelativeTime } from "@/lib/utils";
 import {
   ChevronDown,
   Plus,
@@ -83,21 +84,6 @@ interface SessionSelectorProps {
 // Helper Functions
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function formatRelativeTime(dateStr: string, t: (key: string, options?: any) => string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (minutes < 1) return t("common.justNow", "Just now");
-  if (minutes < 60) return t("common.minutesAgo", { defaultValue: "{{count}} min ago", count: minutes });
-  if (hours < 24) return t("common.hoursAgo", { defaultValue: "{{count}}h ago", count: hours });
-  if (days < 7) return t("common.daysAgo", { defaultValue: "{{count}}d ago", count: days });
-  return date.toLocaleDateString();
-}
 
 function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;

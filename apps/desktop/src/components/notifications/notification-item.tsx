@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 
@@ -135,27 +135,6 @@ const getCategoryStyles = (category: NotificationCategory) => {
         iconColor: "text-muted-foreground",
         bg: "bg-muted",
       };
-  }
-};
-
-const formatRelativeTime = (date: Date, t: (key: string, fallback: string, options?: Record<string, unknown>) => string): string => {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffSeconds < 60) {
-    return t("common.justNow", "just now");
-  } else if (diffMinutes < 60) {
-    return t("common.minutesAgo", "{{count}}m ago", { count: diffMinutes });
-  } else if (diffHours < 24) {
-    return t("common.hoursAgo", "{{count}}h ago", { count: diffHours });
-  } else if (diffDays < 7) {
-    return t("common.daysAgo", "{{count}}d ago", { count: diffDays });
-  } else {
-    return date.toLocaleDateString();
   }
 };
 

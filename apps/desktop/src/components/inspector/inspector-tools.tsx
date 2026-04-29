@@ -39,6 +39,7 @@ import DynamicJsonForm, {
   generateDefaultValue,
 } from "./dynamic-json-form";
 import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils";
 import {
   hasValidMetaPrefix,
   hasValidMetaName,
@@ -738,13 +739,6 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
         )}
       </div>
     );
-  };
-
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) {
-      return t("inspector.durationMs", "{{value}}ms").replace("{{value}}", String(ms));
-    }
-    return t("inspector.durationS", "{{value}}s").replace("{{value}}", (ms / 1000).toFixed(2));
   };
 
   const getStatusStyle = (status: string) => {

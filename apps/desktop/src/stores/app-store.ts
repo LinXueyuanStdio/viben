@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
 import { getGatewayClient } from "@/lib/gateway";
+import i18n from "@/i18n";
 
 /** Cached CLI tools detection result with timestamp */
 interface CliToolsCache {
@@ -15,26 +16,26 @@ interface CliToolsCache {
 // Source selection is now per-server in McpServerInstance.enabledSources
 const DEFAULT_PROVIDERS: Provider[] = [
   // Free & Open Access
-  { id: "arxiv", name: "arXiv", category: "free", requiresApiKey: false, description: "Pre-prints in physics, mathematics, computer science" },
-  { id: "pubmed", name: "PubMed", category: "free", requiresApiKey: false, description: "Biomedical literature from MEDLINE" },
-  { id: "pmc", name: "PMC", category: "free", requiresApiKey: false, description: "Full-text archive of biomedical articles" },
-  { id: "biorxiv", name: "bioRxiv", category: "free", requiresApiKey: false, description: "Pre-prints in biology" },
-  { id: "medrxiv", name: "medRxiv", category: "free", requiresApiKey: false, description: "Pre-prints in health sciences" },
-  { id: "semantic", name: "Semantic Scholar", category: "free", requiresApiKey: false, description: "AI-powered research tool" },
-  { id: "core", name: "CORE", category: "free", requiresApiKey: false, description: "World's largest collection of open access papers" },
-  { id: "crossref", name: "Crossref", category: "free", requiresApiKey: false, description: "DOI registration agency metadata" },
-  { id: "google_scholar", name: "Google Scholar", category: "free", requiresApiKey: false, description: "Google's academic search" },
-  { id: "iacr", name: "IACR", category: "free", requiresApiKey: false, description: "Cryptology ePrint Archive" },
+  { id: "arxiv", name: "arXiv", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.arxiv", "Pre-prints in physics, mathematics, computer science") },
+  { id: "pubmed", name: "PubMed", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.pubmed", "Biomedical literature from MEDLINE") },
+  { id: "pmc", name: "PMC", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.pmc", "Full-text archive of biomedical articles") },
+  { id: "biorxiv", name: "bioRxiv", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.biorxiv", "Pre-prints in biology") },
+  { id: "medrxiv", name: "medRxiv", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.medrxiv", "Pre-prints in health sciences") },
+  { id: "semantic", name: "Semantic Scholar", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.semantic", "AI-powered research tool") },
+  { id: "core", name: "CORE", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.core", "World's largest collection of open access papers") },
+  { id: "crossref", name: "Crossref", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.crossref", "DOI registration agency metadata") },
+  { id: "google_scholar", name: "Google Scholar", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.google_scholar", "Google's academic search") },
+  { id: "iacr", name: "IACR", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.iacr", "Cryptology ePrint Archive") },
   // API Key Required
-  { id: "sciencedirect", name: "ScienceDirect", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Elsevier's platform for peer-reviewed literature" },
-  { id: "springer", name: "Springer", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Scientific, technical and medical publications" },
-  { id: "ieee", name: "IEEE Xplore", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "IEEE and IET technical literature" },
-  { id: "scopus", name: "Scopus", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Elsevier's abstract and citation database" },
+  { id: "sciencedirect", name: "ScienceDirect", category: "api_key", requiresApiKey: true, hasApiKey: false, description: i18n.t("providers.descriptions.sciencedirect", "Elsevier's platform for peer-reviewed literature") },
+  { id: "springer", name: "Springer", category: "api_key", requiresApiKey: true, hasApiKey: false, description: i18n.t("providers.descriptions.springer", "Scientific, technical and medical publications") },
+  { id: "ieee", name: "IEEE Xplore", category: "api_key", requiresApiKey: true, hasApiKey: false, description: i18n.t("providers.descriptions.ieee", "IEEE and IET technical literature") },
+  { id: "scopus", name: "Scopus", category: "api_key", requiresApiKey: true, hasApiKey: false, description: i18n.t("providers.descriptions.scopus", "Elsevier's abstract and citation database") },
   // Institutional Access
-  { id: "acm", name: "ACM Digital Library", category: "institutional", requiresApiKey: false, description: "Computing and IT research" },
-  { id: "wos", name: "Web of Science", category: "institutional", requiresApiKey: false, description: "Clarivate's citation database" },
-  { id: "jstor", name: "JSTOR", category: "institutional", requiresApiKey: false, description: "Digital library of academic journals" },
-  { id: "researchgate", name: "ResearchGate", category: "institutional", requiresApiKey: false, description: "Social network for researchers" },
+  { id: "acm", name: "ACM Digital Library", category: "institutional", requiresApiKey: false, description: i18n.t("providers.descriptions.acm", "Computing and IT research") },
+  { id: "wos", name: "Web of Science", category: "institutional", requiresApiKey: false, description: i18n.t("providers.descriptions.wos", "Clarivate's citation database") },
+  { id: "jstor", name: "JSTOR", category: "institutional", requiresApiKey: false, description: i18n.t("providers.descriptions.jstor", "Digital library of academic journals") },
+  { id: "researchgate", name: "ResearchGate", category: "institutional", requiresApiKey: false, description: i18n.t("providers.descriptions.researchgate", "Social network for researchers") },
 ];
 
 type ApiKeys = Record<string, string | undefined>;

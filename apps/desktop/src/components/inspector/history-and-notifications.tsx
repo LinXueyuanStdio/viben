@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
+import { formatDuration } from "@/lib/utils";
 import type { InspectorHistoryEntry, InspectorNotification } from "@/types";
 
 interface HistoryAndNotificationsProps {
@@ -149,11 +150,6 @@ export function HistoryAndNotifications({
   // ==========================================================================
   // Helpers
   // ==========================================================================
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
 
   const getHistoryStatusStyle = (status: "success" | "error") => {
     if (status === "success") {

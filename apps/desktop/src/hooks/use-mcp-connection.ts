@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -238,7 +239,7 @@ export function useMcpConnection({
 
     // STDIO not supported in browser
     if (isStdioConfig(effectiveConfig)) {
-      const errorMsg = "STDIO transport is not supported in browser environment";
+      const errorMsg = i18n.t("errors.mcp.stdioNotSupported", "STDIO transport is not supported in browser environment");
       console.warn(errorMsg);
       setConnectionError(errorMsg);
       setConnectionStatus("error");
@@ -246,7 +247,7 @@ export function useMcpConnection({
     }
 
     if (!isRemoteConfig(effectiveConfig)) {
-      const errorMsg = "errors.mcp.invalidConfigMissingUrl";
+      const errorMsg = i18n.t("errors.mcp.invalidConfigMissingUrl", "Invalid config: missing url");
       console.warn("Invalid config: missing url");
       setConnectionError(errorMsg);
       setConnectionStatus("error");
@@ -366,7 +367,7 @@ export function useMcpConnection({
     } catch (error) {
       console.error("Connection error:", error);
       // Extract detailed error message
-      let errorMsg = "errors.mcp.connectionFailed";
+      let errorMsg = i18n.t("errors.mcp.connectionFailed", "Connection failed");
       if (error instanceof Error) {
         errorMsg = error.message;
         // Try to extract more details from the error
@@ -473,14 +474,14 @@ export function parseMcpConfig(jsonString: string): McpServerConfig {
 export function validateMcpConfig(config: McpServerConfig): { valid: boolean; error?: string } {
   if (isStdioConfig(config)) {
     if (!config.command) {
-      return { valid: false, error: "STDIO config requires 'command' field" };
+      return { valid: false, error: i18n.t("errors.mcp.stdioRequiresCommand", "STDIO config requires 'command' field") };
     }
     return { valid: true };
   }
 
   if (isRemoteConfig(config)) {
     if (!config.url) {
-      return { valid: false, error: "Remote config requires 'url' field" };
+      return { valid: false, error: i18n.t("errors.mcp.remoteRequiresUrl", "Remote config requires 'url' field") };
     }
     try {
       new URL(config.url);
@@ -490,7 +491,7 @@ export function validateMcpConfig(config: McpServerConfig): { valid: boolean; er
     return { valid: true };
   }
 
-  return { valid: false, error: "Config must have either 'command' (stdio) or 'url' (remote)" };
+  return { valid: false, error: i18n.t("errors.mcp.configMissingTransport", "Config must have either 'command' (stdio) or 'url' (remote)") };
 }
 
 /**

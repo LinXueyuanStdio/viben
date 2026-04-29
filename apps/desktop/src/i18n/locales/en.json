@@ -206,7 +206,12 @@
     "type": "Type",
     "platform": "Platform",
     "pairingQrAlt": "Pairing QR Code",
-    "lan": "LAN"
+    "lan": "LAN",
+    "disconnectConfirmTitle": "Disconnect Device",
+    "disconnectConfirmDescription": "Are you sure you want to disconnect \"{{name}}\"? The device will need to re-pair to connect again.",
+    "disconnectSuccess": "\"{{name}}\" has been disconnected",
+    "disconnectFailed": "Failed to disconnect device",
+    "disconnecting": "Disconnecting..."
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -2429,7 +2434,10 @@
       "utility": "Utility",
       "utilityDesc": "General utility tools"
     },
-    "viewDetails": "View Details"
+    "viewDetails": "View Details",
+    "installSuccess": "MCP server installed",
+    "installSuccessDesc": "\"{{name}}\" has been added to your MCP configuration",
+    "installFailed": "Installation failed"
   },
   "workspaceSettings": {
     "sections": {
@@ -2815,7 +2823,14 @@
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root",
     "kanban": "Task Board",
-    "github": "GitHub",
+    "github": {
+      "label": "GitHub",
+      "agentChatComingSoon": "Agent chat integration coming soon...",
+      "closed": "Closed",
+      "noAnalysisResults": "No analysis results available.",
+      "noAnalysisYet": "No analysis yet. Click the button below to analyze this issue.",
+      "noDescription": "No description provided."
+    },
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -2845,7 +2860,13 @@
       "cancelled": "Cancelled",
       "archived": "Archived"
     },
-    "taskDetail": "Details",
+    "taskDetail": {
+      "label": "Details",
+      "open": "Open",
+      "pullRequestNumber": "Pull Request #{{number}}",
+      "viewPR": "View PR",
+      "you": "You"
+    },
     "taskName": "Task Name",
     "description": "Description",
     "priority": {
@@ -4365,6 +4386,7 @@
         "skill": "Skill"
       },
       "executionFailed": "Failed to execute /{{commandName}}: {{error}}",
+      "skillFallbackDescription": "Skill: {{skillName}}",
       "sessionStatusTitle": "Session Status",
       "statusMessages": "Messages",
       "statusModel": "Model",
@@ -4736,7 +4758,22 @@
     "noFileContent": "No file content to display",
     "cannotDeleteBuiltinType": "Cannot delete built-in idea type",
     "typeDeleted": "Idea type \"{{name}}\" deleted",
-    "deleteTypeFailed": "Failed to delete idea type"
+    "deleteTypeFailed": "Failed to delete idea type",
+    "createIdeaTypeTitle": "Create Idea Type",
+    "createIdeaTypeDescription": "Define a new custom idea type with a prompt template for AI idea generation.",
+    "typeNameLabel": "Type Name",
+    "typeNamePlaceholder": "e.g. testing_improvements",
+    "typeNameHint": "Lowercase letters, numbers, and underscores only (snake_case)",
+    "typeDescriptionLabel": "Description",
+    "typeDescriptionPlaceholder": "e.g. Suggestions for improving test coverage and quality",
+    "typePromptContentLabel": "Prompt Template",
+    "typePromptContentPlaceholder": "Write the prompt template that guides AI to generate ideas of this type...",
+    "typePromptContentHint": "This prompt will be used by AI to analyze the codebase and generate ideas.",
+    "typeNameRequired": "Type name is required",
+    "typeDescriptionRequired": "Description is required",
+    "typePromptContentRequired": "Prompt template content is required",
+    "typeCreated": "Idea type \"{{name}}\" created",
+    "createTypeFailed": "Failed to create idea type"
   },
   "preview": {
     "livePreview": "Live Preview",
@@ -5029,6 +5066,9 @@
     "favorites": "Favorites",
     "locations": "Locations",
     "recent": "Recent",
+    "desktop": "Desktop",
+    "downloads": "Downloads",
+    "documents": "Documents",
     "viewModes": {
       "list": "List",
       "icon": "Icon",
@@ -5298,7 +5338,17 @@
       "invalidConfigMissingUrl": "Invalid config: missing url",
       "connectionFailed": "Connection failed",
       "invalidUrl": "Invalid URL: {{url}}",
-      "notConnected": "Not connected to MCP server"
+      "notConnected": "Not connected to MCP server",
+      "stdioRequiresCommand": "STDIO config requires 'command' field",
+      "remoteRequiresUrl": "Remote config requires 'url' field",
+      "configMissingTransport": "Config must have either 'command' (stdio) or 'url' (remote)",
+      "serverNotFound": "Server not found",
+      "processTerminated": "Process terminated unexpectedly",
+      "statusCheckFailed": "Server marked as running but status check failed",
+      "runningNoProcessId": "Server marked as running but no process ID",
+      "stdioNotSupported": "STDIO transport is not supported in browser environment",
+      "processExitedWithCode": "Process exited with code {{code}}",
+      "portInUse": "Port {{port}} is in use by another process: {{process}}"
     },
     "mcpProxy": {
       "portInUse": "Port {{port}} is in use by another process",
@@ -5317,7 +5367,9 @@
     },
     "gateway": {
       "notConnected": "Gateway not connected",
-      "notAuthenticated": "Not Authenticated"
+      "notAuthenticated": "Not Authenticated",
+      "unknownError": "Unknown error",
+      "connectionTimeout": "Connection timeout"
     },
     "connection": {
       "failed": "Connection failed",
@@ -5345,7 +5397,9 @@
     },
     "packages": {
       "loadFailed": "Failed to load packages",
-      "installFailed": "Install failed"
+      "installFailed": "Install failed",
+      "updateFailed": "Update failed",
+      "someUpdatesFailed": "Some packages failed to update"
     },
     "workspaces": {
       "loadFailed": "Failed to load workspaces"
@@ -5437,8 +5491,22 @@
       "cannotConnectGateway": "Cannot connect to Gateway. Is it running?",
       "unknownError": "Unknown error"
     },
+    "kanbanQueue": {
+      "fetchStatusFailed": "Failed to fetch queue status: {{status}}",
+      "updateConfigFailed": "Failed to update queue config: {{status}}",
+      "batchEnqueueFailed": "Failed to batch enqueue: {{status}}"
+    },
     "vitePreview": {
       "noTaskId": "No task ID provided"
+    },
+    "updater": {
+      "checkFailed": "Failed to check for updates",
+      "noUpdateAvailable": "No update available to install",
+      "installFailed": "Failed to install update"
+    },
+    "overlay": {
+      "loadConfigFailed": "Failed to load config",
+      "saveConfigFailed": "Failed to save config"
     }
   },
   "availability": {
@@ -5711,6 +5779,20 @@
     "editPageDescription": "Modify page name, description, and icon",
     "untitled": "Untitled"
   },
+  "emojiPicker": {
+    "categories": {
+      "smileys": "Smileys & People",
+      "animals": "Animals & Nature",
+      "food": "Food & Drink",
+      "activities": "Activities",
+      "travel": "Travel & Places",
+      "objects": "Objects",
+      "symbols": "Symbols",
+      "flags": "Flags"
+    },
+    "filter": "Filter...",
+    "noEmojisFound": "No emojis found"
+  },
   "iconPicker": {
     "icons": "Icons",
     "emoji": "Emoji",
@@ -5725,6 +5807,10 @@
     "noWorkspace": "Workspace required for image upload",
     "images": "Images",
     "uploaded": "Uploaded!",
+    "noResults": "No icons found",
+    "random": "Random",
+    "remove": "Remove",
+    "searchIcons": "Search icons...",
     "category": {
       "documents": "Documents",
       "code": "Code",

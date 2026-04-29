@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getClient } from "@/lib/viben";
 import { getGatewayClient } from "@/lib/gateway";
+import i18n from "@/i18n";
 
 // ============================================================================
 // Types
@@ -234,7 +235,7 @@ export function usePackageUpdates(
         });
 
         if (!result.success) {
-          throw new Error(result.error || "Update failed");
+          throw new Error(result.error || i18n.t("errors.packages.updateFailed", "Update failed"));
         }
 
         // Remove the updated package from the updates list
@@ -293,7 +294,7 @@ export function usePackageUpdates(
     setUpdatingPackageId(null);
 
     if (!allSucceeded) {
-      setError("Some packages failed to update");
+      setError(i18n.t("errors.packages.someUpdatesFailed", "Some packages failed to update"));
     }
 
     return allSucceeded;

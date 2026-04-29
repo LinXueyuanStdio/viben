@@ -5,6 +5,7 @@ import { useBuiltinCommands } from "./use-builtin-commands";
 import { useWorkspaceCommands } from "./use-workspace-commands";
 import { useSkillCommands } from "./use-skill-commands";
 import { findCommand } from "../executor";
+import i18n from "@/i18n";
 
 export interface UseSlashCommandsOptions {
   workspacePath?: string;
@@ -98,7 +99,7 @@ export function useSlashCommands(
         const errorResult: CommandResult = {
           type: "action",
           toast: {
-            message: `Failed to execute /${command.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: i18n.t("chat.slashCommands.executionFailed", { commandName: command.name, error: error instanceof Error ? error.message : i18n.t("common.unknownError") }),
             type: "error",
           },
         };

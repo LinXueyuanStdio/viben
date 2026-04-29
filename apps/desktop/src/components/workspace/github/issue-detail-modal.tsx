@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { formatRelativeTime } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -178,21 +179,6 @@ function CommentItem({
 }) {
   const { t } = useTranslation();
 
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMinutes < 1) return t("common.justNow", "just now");
-    if (diffMinutes < 60) return t("workspaceDetail.github.issueDetail.minutesAgo", "{{count}}m ago", { count: diffMinutes });
-    if (diffHours < 24) return t("workspaceDetail.github.issueDetail.hoursAgo", "{{count}}h ago", { count: diffHours });
-    if (diffDays < 7) return t("workspaceDetail.github.issueDetail.daysAgo", "{{count}}d ago", { count: diffDays });
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  };
-
   return (
     <div className={cn("relative", !isFirst && "mt-4")}>
       {/* Timeline connector */}
@@ -218,7 +204,7 @@ function CommentItem({
             <div className="bg-muted/30 px-4 py-2 border-b border-border flex items-center gap-2">
               <span className="font-semibold text-sm">{comment.user.login}</span>
               <span className="text-muted-foreground text-sm">
-                {t("workspaceDetail.github.issueDetail.commentedAt", "commented {{time}}", { time: formatRelativeTime(comment.created_at) })}
+                {t("workspaceDetail.github.issueDetail.commentedAt", "commented {{time}}", { time: formatRelativeTime(comment.created_at, t) })}
               </span>
             </div>
 
@@ -370,19 +356,6 @@ export function IssueDetailModal({
     });
   };
 
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return t("common.today", "today");
-    if (diffDays === 1) return t("common.yesterday", "yesterday");
-    if (diffDays < 7) return t("common.daysAgo_other", "{{count}} days ago", { count: diffDays });
-    if (diffDays < 30) return t("common.weeksAgo_other", "{{count}} weeks ago", { count: Math.floor(diffDays / 7) });
-    return formatDate(dateString);
-  };
-
   if (!issue) return null;
 
   return (
@@ -427,7 +400,7 @@ export function IssueDetailModal({
               {" "}
               {t("workspaceDetail.github.issueDetail.openedThisIssue", "opened this issue")}
               {" "}
-              {formatRelativeTime(issue.created_at)}
+              {formatRelativeTime(issue.created_at, t)}
               {" · "}
               {t("workspaceDetail.github.issueDetail.commentsCount", "{{count}} comment", { count: issue.comments })}
             </span>

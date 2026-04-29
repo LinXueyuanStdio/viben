@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import i18n from "@/i18n";
 
 export interface UpdateInfo {
   version: string;
@@ -64,7 +65,7 @@ export function useUpdater() {
       }
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to check for updates";
+        error instanceof Error ? error.message : i18n.t("errors.updater.checkFailed", "Failed to check for updates");
       console.error("Update check failed:", error);
       setState((prev) => ({
         ...prev,
@@ -79,7 +80,7 @@ export function useUpdater() {
     if (!update) {
       setState((prev) => ({
         ...prev,
-        error: "No update available to install",
+        error: i18n.t("errors.updater.noUpdateAvailable", "No update available to install"),
       }));
       return false;
     }
@@ -124,7 +125,7 @@ export function useUpdater() {
       return true;
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to install update";
+        error instanceof Error ? error.message : i18n.t("errors.updater.installFailed", "Failed to install update");
       console.error("Update installation failed:", error);
       setState((prev) => ({
         ...prev,
