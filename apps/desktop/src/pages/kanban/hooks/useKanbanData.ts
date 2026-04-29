@@ -20,7 +20,7 @@ export interface AvailableAgent {
 export interface AvailableModel {
   id: string;
   name: string;
-  description: undefined;
+  description?: string;
   provider: string;
   provider_id: string;
 }
@@ -85,13 +85,14 @@ export function useKanbanData(workspace: { path: string } | undefined) {
 
   // Queue settings and archived tasks store
   const queueStore = useWorkspaceKanbanQueue(workspace?.path);
+  const { fetchGatewayQueueStatus } = queueStore;
 
   // Fetch gateway queue status on mount and when workspace changes
   useEffect(() => {
     if (workspace) {
-      queueStore.fetchGatewayQueueStatus();
+      fetchGatewayQueueStatus();
     }
-  }, [workspace, queueStore.fetchGatewayQueueStatus]);
+  }, [workspace, fetchGatewayQueueStatus]);
 
   return {
     // Raw data

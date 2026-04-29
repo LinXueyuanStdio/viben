@@ -209,6 +209,9 @@ export function useKanbanBoard() {
     showArchived,
     toggleShowArchived,
     archivedTaskIds,
+    archiveTask,
+    archiveAllDone,
+    queueAllBacklogTasks,
     updateGatewayMaxConcurrency,
     isLoadingGatewayStatus,
   } = queueStore;
@@ -588,7 +591,7 @@ export function useKanbanBoard() {
     if (backlogTasks.length === 0) return;
 
     const taskIds = backlogTasks.map((t) => t.id);
-    queueStore.queueAllBacklogTasks(taskIds).catch((error) => {
+    queueAllBacklogTasks(taskIds).catch((error) => {
       console.error("[WorkspaceKanban] Queue all batch enqueue failed:", error);
     });
 
@@ -602,7 +605,7 @@ export function useKanbanBoard() {
     toast.success(
       t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
     );
-  }, [workspace, tasksByColumn, taskLifecycle, queueStore, toast, t]);
+  }, [workspace, tasksByColumn, taskLifecycle, queueAllBacklogTasks, toast, t]);
 
   // Archive All - archive all completed tasks
   const handleArchiveAll = useCallback(() => {
@@ -610,19 +613,19 @@ export function useKanbanBoard() {
     const taskIds = completedTasks.map((t) => t.id);
     if (taskIds.length === 0) return;
 
-    queueStore.archiveAllDone(taskIds);
+    archiveAllDone(taskIds);
     toast.success(
       t("workspace.archiveAllSuccess", "Archived {{count}} tasks", { count: taskIds.length })
     );
-  }, [tasksByColumn, queueStore, toast, t]);
+  }, [tasksByColumn, archiveAllDone, toast, t]);
 
   // Archive single task
   const handleArchiveTask = useCallback(
     (taskId: string) => {
-      queueStore.archiveTask(taskId);
+      archiveTask(taskId);
       toast.success(t("workspace.taskArchived", "Task archived"));
     },
-    [queueStore, toast, t]
+    [archiveTask, toast, t]
   );
 
   // Stop task
