@@ -42,7 +42,7 @@ export function GeneralSection() {
     setLanguage(langCode);
   };
 
-  // Get current language using i18n.language for reactivity
+  // Current language for reactivity (fallback to store value)
   const currentLanguage = i18n.language || language || "en";
 
   // Get timezone label using i18n

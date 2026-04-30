@@ -16,9 +16,9 @@ export const YooptaSlashCommandMenu = () => {
       }
 
       // Sort groups by CATEGORY_ORDER
+      const order = getCategoryOrder();
       const sortedGroups = [...grouped.entries()].sort(
-        (a, b) =>
-          getCategoryOrder().indexOf(a[0]) - getCategoryOrder().indexOf(b[0]),
+        (a, b) => order.indexOf(a[0]) - order.indexOf(b[0]),
       );
 
       return (
