@@ -5,7 +5,6 @@
  * Extracted from workspace-kanban.tsx for maintainability.
  */
 import type { Command, ViewMode, SortMode, SortDirection, KanbanFilter } from "@viben/kanban";
-import type { TFunction } from "i18next";
 import {
   Inbox,
   ListPlus,
@@ -51,9 +50,12 @@ export interface CommandTask {
 /**
  * Command factory context - data needed to create commands
  */
+/** Translation function type (from useTranslation().t) */
+type TranslationFn = (key: string, defaultValue?: string) => string;
+
 export interface CommandFactoryContext {
-  /** i18n translation function */
-  t: TFunction;
+  /** i18n translation function (from useTranslation hook) */
+  t: TranslationFn;
   /** Tasks grouped by column */
   tasksByColumn: Record<string, CommandTask[]>;
   /** Currently selected task ID */
