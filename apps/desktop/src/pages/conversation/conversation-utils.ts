@@ -1,5 +1,6 @@
 import type { FileSession, UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
+import i18n from "@/i18n";
 
 // ============================================================================
 // Types
@@ -59,7 +60,7 @@ export function fileSessionToConversation(session: FileSession): Conversation {
   const sessionId = session.id || crypto.randomUUID();
   return {
     id: sessionId,
-    title: session.prompt || `Session ${sessionId.slice(0, 8)}`,
+    title: session.prompt || i18n.t("chat.sessionTitle", { id: sessionId.slice(0, 8) }),
     agentId: session.agent_id,
     createdAt: session.created_at,
     updatedAt: session.updated_at,

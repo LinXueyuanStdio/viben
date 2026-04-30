@@ -12,7 +12,6 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import i18n from "@/i18n";
 import {
   Eye,
@@ -168,8 +167,8 @@ function buildChannelConfig(channel: GatewayChannel): ChannelConfig {
 function formatChannelError(
   error: string | undefined,
   channelType: ChannelType,
-  t: TFunction
 ): string {
+  const t = i18n.t.bind(i18n);
   if (!error) return t("channels.errors.unknown", "Unknown error");
 
   // Common error patterns with user-friendly messages
@@ -241,7 +240,6 @@ function formatChannelError(
  */
 async function testChannelConnection(
   channel: GatewayChannel,
-  t: TFunction
 ): Promise<{ success: boolean; details?: string; error?: string }> {
   try {
     const gatewayUrl = getGatewayUrl();
@@ -265,7 +263,7 @@ async function testChannelConnection(
     return {
       success: data.success,
       details: data.details,
-      error: data.error ? formatChannelError(data.error, channel.channel_type, t) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -310,7 +308,7 @@ async function sendTestMessage(
     const data = await response.json();
     return {
       success: data.success,
-      error: data.error ? formatChannelError(data.error, channel.channel_type, t) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);

@@ -1,5 +1,5 @@
 import "./yoopta-editor.css";
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState, useDeferredValue } from "react";
 import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -108,6 +108,7 @@ export function YooptaMarkdownRenderer({
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
   const [wordCount, setWordCount] = useState({ words: 0, characters: 0 });
+  const deferredWordCount = useDeferredValue(wordCount);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
   // Initialize to empty so the first useEffect always triggers deserialization
   const lastContentRef = useRef<string>("");
@@ -424,6 +425,7 @@ export function YooptaMarkdownRenderer({
       if (iconSaveTimerRef.current) clearTimeout(iconSaveTimerRef.current);
       if (coverSaveTimerRef.current) clearTimeout(coverSaveTimerRef.current);
       if (configSaveTimerRef.current) clearTimeout(configSaveTimerRef.current);
+      if (wordCountTimerRef.current) clearTimeout(wordCountTimerRef.current);
     };
   }, []);
 
@@ -660,34 +662,40 @@ export function YooptaMarkdownRenderer({
 
   // Ref to stabilize wordCount — only triggers state update when values actually change
   const wordCountRef = useRef({ words: 0, characters: 0 });
+  // Debounce word count computation to avoid running on every keystroke
+  const wordCountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // onChange handler for auto-save and word count
   const handleChange = useCallback(
     (value: YooptaContentValue, _options: { operations: unknown[] }) => {
-      // Update word count (non-urgent — deferred via startTransition)
-      try {
-        const text = Object.values(value)
-          .map((block) => {
-            if (!block?.value) return "";
-            return block.value
-              .map((el: any) => {
-                if (!el?.children) return "";
-                return el.children.map((child: any) => child.text || "").join("");
-              })
-              .join(" ");
-          })
-          .join(" ")
-          .trim();
-        const words = text ? text.split(/\s+/).length : 0;
-        const characters = text.length;
-        if (words !== wordCountRef.current.words || characters !== wordCountRef.current.characters) {
-          const next = { words, characters };
-          wordCountRef.current = next;
-          startTransition(() => setWordCount(next));
+      // Update word count — debounced separately so the expensive text extraction
+      // doesn't run on every single keystroke
+      if (wordCountTimerRef.current) clearTimeout(wordCountTimerRef.current);
+      wordCountTimerRef.current = setTimeout(() => {
+        try {
+          const text = Object.values(value)
+            .map((block) => {
+              if (!block?.value) return "";
+              return block.value
+                .map((el: any) => {
+                  if (!el?.children) return "";
+                  return el.children.map((child: any) => child.text || "").join("");
+                })
+                .join(" ");
+            })
+            .join(" ")
+            .trim();
+          const words = text ? text.split(/\s+/).length : 0;
+          const characters = text.length;
+          if (words !== wordCountRef.current.words || characters !== wordCountRef.current.characters) {
+            const next = { words, characters };
+            wordCountRef.current = next;
+            startTransition(() => setWordCount(next));
+          }
+        } catch {
+          // ignore count errors
         }
-      } catch {
-        // ignore count errors
-      }
+      }, 300);
 
       // Auto-save: stash value reference; serialization happens inside debouncedSave
       if (canSave) {
@@ -713,6 +721,27 @@ export function YooptaMarkdownRenderer({
   // Notion behavior: click on empty area below content → focus or create last block.
   // Uses ensureBlockFocus for reliable DOM-level focus that doesn't depend on
   // Yoopta's internal setTimeout(0) timing.
+  const contentWidthClass = useMemo(
+    () => currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl",
+    [currentPageWidth]
+  );
+
+  // Memoize editor children to avoid recreating JSX on every parent render
+  const editorChildren = useMemo(() => {
+    if (!isEditable && !currentShowToc) return null;
+    return (
+      <>
+        {isEditable && <YooptaToolbar />}
+        {isEditable && <YooptaFloatingBlockActions />}
+        {isEditable && <YooptaSlashCommandMenu />}
+        {isEditable && <SelectionBox selectionBoxElement={containerBoxRef} />}
+        {isEditable && <MentionDropdown />}
+        {isEditable && <EmojiDropdown />}
+        {currentShowToc && <YooptaTocSidebar className="yoopta-toc-panel" />}
+      </>
+    );
+  }, [isEditable, currentShowToc]);
+
   const handleEmptyAreaClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isEditable) return;
@@ -762,7 +791,7 @@ export function YooptaMarkdownRenderer({
     <div
       className={cn(
         "yoopta-notion-editor w-full mx-auto relative",
-        currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl",
+        contentWidthClass,
         className
       )}
     >
@@ -775,7 +804,7 @@ export function YooptaMarkdownRenderer({
             pageWidth={currentPageWidth}
             showToc={currentShowToc}
             saveStatus={canSave ? saveStatus : undefined}
-            wordCount={wordCount}
+            wordCount={deferredWordCount}
             updatedAt={updatedAt}
             onPageWidthChange={canSave ? handlePageWidthChange : undefined}
             onShowTocChange={canSave ? handleShowTocChange : undefined}
@@ -788,7 +817,7 @@ export function YooptaMarkdownRenderer({
             pageWidth={currentPageWidth}
             showToc={currentShowToc}
             saveStatus={canSave ? saveStatus : undefined}
-            wordCount={wordCount}
+            wordCount={deferredWordCount}
             updatedAt={updatedAt}
             onPageWidthChange={canSave ? handlePageWidthChange : undefined}
             onShowTocChange={canSave ? handleShowTocChange : undefined}
@@ -799,7 +828,7 @@ export function YooptaMarkdownRenderer({
           <CoverBanner
             coverUrl={coverUrl}
             isEditable={isEditable}
-            contentWidthClass={currentPageWidth === "full" ? "max-w-full" : currentPageWidth === "wide" ? "max-w-6xl" : "max-w-4xl"}
+            contentWidthClass={contentWidthClass}
             onCoverChange={handleCoverChange}
             onOpenCoverPicker={openCoverPicker}
           />
@@ -870,15 +899,7 @@ export function YooptaMarkdownRenderer({
               placeholder={t("editor.renderer.placeholder")}
               onChange={handleChange}
             >
-              {isEditable && <YooptaToolbar />}
-              {isEditable && <YooptaFloatingBlockActions />}
-              {isEditable && <YooptaSlashCommandMenu />}
-              {isEditable && <SelectionBox selectionBoxElement={containerBoxRef} />}
-              {isEditable && <MentionDropdown />}
-              {isEditable && <EmojiDropdown />}
-              {currentShowToc && (
-                <YooptaTocSidebar className="yoopta-toc-panel" />
-              )}
+              {editorChildren}
             </YooptaEditor>
           </BlockDndContext>
         </div>

@@ -806,7 +806,7 @@ const DynamicJsonForm = forwardRef<DynamicJsonFormRef, DynamicJsonFormProps>(
                       {resolvedSub.title ?? formatFieldLabel(key)}
                       {subRequired && <span className="text-red-500">*</span>}
                       {resolvedSub.nullable && (
-                        <span className="text-muted-foreground text-[10px]">(nullable)</span>
+                        <span className="text-muted-foreground text-[10px]">{t("inspector.nullable", "(nullable)")}</span>
                       )}
                     </Label>
                     {resolvedSub.description && (

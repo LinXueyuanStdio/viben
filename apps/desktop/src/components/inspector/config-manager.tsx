@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { McpServerConfig } from "@/hooks/use-mcp-connection";
 import { SavedConfigsSelector } from "./saved-configs-selector";
@@ -226,7 +227,7 @@ function generateServerEntry(config: McpServerConfig | null): Record<string, unk
       return {
         type: "sse",
         url: config.url,
-        note: "For SSE connections, add this URL directly in your MCP Client",
+        note: i18n.t("inspector.sseConnectionNote"),
       };
     }
 
@@ -234,7 +235,7 @@ function generateServerEntry(config: McpServerConfig | null): Record<string, unk
       return {
         type: "streamable-http",
         url: config.url,
-        note: "For Streamable HTTP connections, add this URL directly in your MCP Client",
+        note: i18n.t("inspector.httpConnectionNote"),
       };
     }
   }

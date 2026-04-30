@@ -228,7 +228,7 @@ export const KanbanToolbar = memo(function KanbanToolbar({
                   >
                     <span className="flex items-center gap-2">
                       <Icon className="h-4 w-4" style={{ color: config.color }} />
-                      {t(`workspace.priority.${priority}`, config.label)}
+                      {t(`workspace.priority.${priority}`, { defaultValue: t(config.labelKey) })}
                     </span>
                   </DropdownMenuCheckboxItem>
                 );

@@ -51,7 +51,7 @@ export { GroupChatMembersDialog } from "./group-chat-members-dialog";
 export { GroupChatSidebar } from "./group-chat-sidebar";
 
 // List Item components
-export { ListItem, getGradientByName, formatRelativeTime, gradients } from "./list-item";
+export { ListItem, getGradientByName, gradients } from "./list-item";
 export type { ListItemProps, ListItemAction, ListItemBadge, ListItemSource } from "./list-item";
 export { AgentListItem } from "./agent-list-item";
 export type { AgentListItemProps } from "./agent-list-item";

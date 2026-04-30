@@ -113,7 +113,7 @@ export function BatchReviewWizard({
           next.set(issue.number, {
             issueNumber: issue.number,
             investigation: null,
-            error: error instanceof Error ? error.message : "Analysis failed",
+            error: error instanceof Error ? error.message : t("workspace.analysisFailed", "Analysis failed"),
           });
           return next;
         });

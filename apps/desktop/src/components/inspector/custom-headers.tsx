@@ -266,7 +266,7 @@ export function CustomHeaders({
             title={t("inspector.customHeaders.switchToJson", "Switch to JSON mode")}
           >
             <Code2 className="w-3 h-3 mr-1" />
-            JSON
+            {t("inspector.json", "JSON")}
           </Button>
           <Button
             type="button"

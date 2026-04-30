@@ -891,7 +891,7 @@ export function TaskDetailPanel({
 - **Task ID**: ${task.id}
 - **Title**: ${task.title}
 - **Status**: ${task.status}
-- **Description**: ${task.description || "No description provided"}
+- **Description**: ${task.description || t("workspace.noDescription", "No description provided")}
 ${task.tags && task.tags.length > 0 ? `- **Tags**: ${task.tags.map((t) => t.name).join(", ")}` : ""}
 
 You are helping the user work on this task. Provide relevant suggestions, code examples, and guidance based on the task context.`;

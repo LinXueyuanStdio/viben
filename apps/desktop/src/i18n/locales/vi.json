@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Kiem tra trang thai ket noi va cac diem cuoi co san cua dich vu gateway",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "Đối với kết nối SSE, thêm URL này trực tiếp vào ứng dụng MCP của bạn",
+    "httpConnectionNote": "Đối với kết nối Streamable HTTP, thêm URL này trực tiếp vào ứng dụng MCP của bạn",
+    "nullable": "(có thể null)",
+    "resource": "Tài nguyên",
+    "sampleMessage": "Xin chào! Tôi có thể giúp gì cho bạn?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Phân tích thất bại",
+    "noDescription": "Không có mô tả",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -3318,7 +3326,7 @@
     "archiveTask": "Archive",
     "expandAll": "Expand All",
     "expandAllHint": "Expand all collapsed columns",
-    "resizeColumn": "Resize Column",
+    "resizeColumn": "Thay đổi kích thước cột {{name}}",
     "deselectAllInColumn": "Deselect all in column",
     "selectAllInColumn": "Select all in column",
     "taskDeleted": "Task deleted",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Phiên {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5751,5 +5760,9 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "kanban": {
+    "resizeColumn": "Thay đổi kích thước cột {{name}}",
+    "taskCopy": "{{title}} (bản sao)"
   }
 }

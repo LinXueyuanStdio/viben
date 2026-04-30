@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Semak status sambungan dan titik akhir yang tersedia perkhidmatan gateway",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "Untuk sambungan SSE, tambahkan URL ini terus dalam klien MCP anda",
+    "httpConnectionNote": "Untuk sambungan Streamable HTTP, tambahkan URL ini terus dalam klien MCP anda",
+    "nullable": "(boleh null)",
+    "resource": "Sumber",
+    "sampleMessage": "Hai! Boleh saya bantu?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Analisis gagal",
+    "noDescription": "Tiada penerangan disediakan",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Sesi {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5747,6 +5756,10 @@
     "customPath": "Custom Path",
     "customPathPlaceholder": "/path/to/viben",
     "check": "Detect"
+  },
+  "kanban": {
+    "resizeColumn": "Ubah saiz lajur {{name}}",
+    "taskCopy": "{{title}} (salinan)"
   },
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",

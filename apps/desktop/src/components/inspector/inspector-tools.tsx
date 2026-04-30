@@ -681,7 +681,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
           <div key={idx} className="border border-border rounded p-2 space-y-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <FileJson className="h-3 w-3" />
-              <span className="font-mono truncate">{uri || "Resource"}</span>
+              <span className="font-mono truncate">{uri || t("inspector.resource", "Resource")}</span>
             </div>
             {text && (
               <pre className="text-xs whitespace-pre-wrap break-words bg-muted/50 p-2 rounded max-h-32 overflow-auto">

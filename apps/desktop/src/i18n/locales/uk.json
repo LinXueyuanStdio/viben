@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Перевірка стану підключення та доступних кінцевих точок сервісу шлюзу",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "Для SSE-з'єднань додайте цю URL-адресу безпосередньо у вашому MCP-клієнті",
+    "httpConnectionNote": "Для з'єднань Streamable HTTP додайте цю URL-адресу безпосередньо у вашому MCP-клієнті",
+    "nullable": "(може бути null)",
+    "resource": "Ресурс",
+    "sampleMessage": "Привіт! Чим можу допомогти?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Помилка аналізу",
+    "noDescription": "Опис не надано",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Сесія {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5751,5 +5760,9 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "kanban": {
+    "resizeColumn": "Змінити розмір стовпця {{name}}",
+    "taskCopy": "{{title}} (копія)"
   }
 }

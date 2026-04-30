@@ -324,7 +324,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           id: toolId,
           toolUseId: data.id,
           name: data.name || "unknown",
-          displayName: data.name || "Unknown Tool",
+          displayName: data.name || i18n.t("chat.unknownTool", "Unknown Tool"),
           input: toolInput,
           timestamp: Date.now(),
         };

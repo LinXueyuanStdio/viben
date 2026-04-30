@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Kontrollera anslutningsstatus och tillgängliga slutpunkter för gateway-tjänsten",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "För SSE-anslutningar, lägg till denna URL direkt i din MCP-klient",
+    "httpConnectionNote": "För Streamable HTTP-anslutningar, lägg till denna URL direkt i din MCP-klient",
+    "nullable": "(nullbar)",
+    "resource": "Resurs",
+    "sampleMessage": "Hej! Kan jag hjälpa dig?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Analysen misslyckades",
+    "noDescription": "Ingen beskrivning angiven",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Session {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5747,6 +5756,10 @@
     "customPath": "Anpassad sökväg",
     "customPathPlaceholder": "/path/to/viben",
     "check": "Sök"
+  },
+  "kanban": {
+    "resizeColumn": "Ändra storlek på kolumnen {{name}}",
+    "taskCopy": "{{title}} (kopia)"
   },
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",

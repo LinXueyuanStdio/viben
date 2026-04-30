@@ -33,7 +33,7 @@ export function InspectorSampling({ makeRequest, enabled = true }: InspectorSamp
   const [messages, setMessages] = useState<SamplingMessage[]>([
     {
       role: "user",
-      content: { type: "text", text: "Hello! Can you help me?" },
+      content: { type: "text", text: t("inspector.sampleMessage", "Hello! Can you help me?") },
     },
   ]);
   const [maxTokens, setMaxTokens] = useState<number>(1000);

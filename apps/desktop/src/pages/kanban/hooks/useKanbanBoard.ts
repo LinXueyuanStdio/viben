@@ -36,6 +36,7 @@ import {
 import { type LifecycleAction } from "@/hooks/use-kanban";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { COLUMN_COLORS, validatePriority } from "../constants";
 import type { EnhancedTask, ColumnId } from "../types";
 import { getLifecycleActionForStatusChange } from "../utils";
@@ -556,7 +557,7 @@ export function useKanbanBoard() {
 
       createTask.mutate({
         workspace_path: workspace.path,
-        title: `${task.title} (copy)`,
+        title: i18n.t("kanban.taskCopy", { title: task.title }),
         description: task.description ?? undefined,
       });
     },

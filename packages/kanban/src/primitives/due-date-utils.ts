@@ -1,6 +1,7 @@
-import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
-export function formatDueDate(date: Date, t: TFunction): string {
+export function useFormattedDueDate(date: Date): string {
+  const { t } = useTranslation();
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -13,16 +14,23 @@ export function formatDueDate(date: Date, t: TFunction): string {
   return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 }
 
-export function getDueDateStatus(dueDate: string | Date, t: TFunction) {
+export function useDueDateStatus(dueDate: string | Date) {
   const date = typeof dueDate === "string" ? new Date(dueDate) : dueDate;
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const displayText = useFormattedDueDate(date);
 
   return {
     isOverdue: diffDays < 0,
     isDueSoon: diffDays >= 0 && diffDays <= 2,
     diffDays,
-    displayText: formatDueDate(date, t),
+    displayText,
   };
 }
+
+// Keep old names as aliases for backwards compatibility during migration
+/** @deprecated Use useFormattedDueDate instead */
+export const formatDueDate = useFormattedDueDate;
+/** @deprecated Use useDueDateStatus instead */
+export const getDueDateStatus = useDueDateStatus;

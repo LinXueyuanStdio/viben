@@ -24,7 +24,7 @@ export { AssigneeSelect } from "./assignee-select";
 export type { AssigneeSelectProps } from "./assignee-select";
 
 // Due date utilities
-export { formatDueDate, getDueDateStatus } from "./due-date-utils";
+export { useFormattedDueDate, useDueDateStatus, formatDueDate, getDueDateStatus } from "./due-date-utils";
 
 // Due date components
 export { DueDateBadge } from "./due-date-badge";

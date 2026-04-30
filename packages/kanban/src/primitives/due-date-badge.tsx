@@ -1,10 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useTranslation } from "react-i18next";
 import { cn } from "@viben/ui";
 import { Calendar } from "lucide-react";
-import { getDueDateStatus } from "./due-date-utils";
+import { useDueDateStatus } from "./due-date-utils";
 
 export interface DueDateBadgeProps {
   dueDate: string | Date;
@@ -13,8 +12,7 @@ export interface DueDateBadgeProps {
 
 export const DueDateBadge = React.forwardRef<HTMLDivElement, DueDateBadgeProps>(
   ({ dueDate, className }, ref) => {
-    const { t } = useTranslation();
-    const status = getDueDateStatus(dueDate, t);
+    const status = useDueDateStatus(dueDate);
 
     return (
       <div

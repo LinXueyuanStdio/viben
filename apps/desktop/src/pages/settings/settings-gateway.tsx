@@ -513,7 +513,7 @@ export function SettingsGatewayPage() {
             {testResult.websockets.length > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  WebSocket ({testResult.websockets.filter(w => w.available).length}/{testResult.websockets.length})
+                  {t("gateway.websocket", "WebSocket")} ({testResult.websockets.filter(w => w.available).length}/{testResult.websockets.length})
                 </Label>
                 <div className="grid grid-cols-2 gap-1">
                   {testResult.websockets.map((ws) => (

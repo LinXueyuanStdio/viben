@@ -124,7 +124,7 @@ export function ExecutorChatView({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || "unknown"}
+              {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || t("common.unknown", "Unknown")}
             </p>
           </div>
         </div>

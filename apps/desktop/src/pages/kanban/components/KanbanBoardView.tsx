@@ -369,7 +369,7 @@ export function KanbanBoardView({ board }: KanbanBoardViewProps) {
                 }}
                 role="separator"
                 aria-orientation="vertical"
-                aria-label={`Resize ${column.name} column`}
+                aria-label={t("kanban.resizeColumn", { name: column.name })}
                 title={columnLocked ? t("workspace.columnLocked", "Column width is locked") : undefined}
               >
                 <div className="absolute inset-y-0 -left-1 -right-1" />

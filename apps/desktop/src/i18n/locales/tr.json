@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Gateway hizmetinin bağlantı durumunu ve kullanılabilir uç noktaları kontrol edin",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "SSE bağlantıları için bu URL'yi doğrudan MCP istemcinize ekleyin",
+    "httpConnectionNote": "Streamable HTTP bağlantıları için bu URL'yi doğrudan MCP istemcinize ekleyin",
+    "nullable": "(boş olabilir)",
+    "resource": "Kaynak",
+    "sampleMessage": "Merhaba! Size yardımcı olabilir miyim?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Analiz başarısız",
+    "noDescription": "Açıklama sağlanmadı",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -3318,7 +3326,7 @@
     "archiveTask": "Archive",
     "expandAll": "Expand All",
     "expandAllHint": "Expand all collapsed columns",
-    "resizeColumn": "Resize Column",
+    "resizeColumn": "{{name}} sütununu yeniden boyutlandır",
     "deselectAllInColumn": "Deselect all in column",
     "selectAllInColumn": "Select all in column",
     "taskDeleted": "Task deleted",
@@ -3376,7 +3384,8 @@
         "description": "This task has been successfully completed."
       }
     },
-    "missingAgentId": "Missing agent_id parameter"
+    "missingAgentId": "Missing agent_id parameter",
+    "taskCopy": "{{title}} (kopya)"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -4151,6 +4160,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Oturum {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {

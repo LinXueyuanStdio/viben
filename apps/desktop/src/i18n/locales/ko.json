@@ -295,7 +295,8 @@
     "connectivityTestDescription": "게이트웨이 서비스의 연결 상태와 사용 가능한 엔드포인트 확인",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "SSE 연결의 경우 이 URL을 MCP 클라이언트에 직접 추가하세요",
+    "httpConnectionNote": "Streamable HTTP 연결의 경우 이 URL을 MCP 클라이언트에 직접 추가하세요",
+    "nullable": "(널 허용)",
+    "resource": "리소스",
+    "sampleMessage": "안녕하세요! 도와드릴까요?"
   },
   "updates": {
     "title": "패키지 업데이트",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "루트",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "분석 실패",
+    "noDescription": "설명이 제공되지 않았습니다",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "세션 {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5751,5 +5760,9 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "kanban": {
+    "resizeColumn": "{{name}} 열 크기 조정",
+    "taskCopy": "{{title}} (복사)"
   }
 }

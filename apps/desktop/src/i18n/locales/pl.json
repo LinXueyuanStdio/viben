@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Sprawdź stan połączenia i dostępne punkty końcowe usługi bramy",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "W przypadku połączeń SSE dodaj ten URL bezpośrednio w kliencie MCP",
+    "httpConnectionNote": "W przypadku połączeń Streamable HTTP dodaj ten URL bezpośrednio w kliencie MCP",
+    "nullable": "(nullable)",
+    "resource": "Zasób",
+    "sampleMessage": "Cześć! Czy mogę pomóc?"
   },
   "updates": {
     "title": "Package Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Root",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Analiza nie powiodła się",
+    "noDescription": "Nie podano opisu",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -4141,6 +4149,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Sesja {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
@@ -5751,5 +5760,9 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "kanban": {
+    "resizeColumn": "Zmień rozmiar kolumny {{name}}",
+    "taskCopy": "{{title}} (kopia)"
   }
 }

@@ -163,12 +163,12 @@ interface ResultInfo {
 /**
  * Parse tool output and generate a smart summary
  */
-function getResultSummary(
+function useResultSummary(
   toolName: string,
   output: string | undefined,
   isError: boolean | undefined,
-  t: (key: string, options?: string | Record<string, unknown>) => string
 ): ResultInfo {
+  const { t } = useTranslation();
   // Handle non-string output (could be object at runtime despite types)
   if (!output || typeof output !== "string") {
     return { summary: output ? JSON.stringify(output) : "", isWarning: false };
@@ -422,7 +422,7 @@ export function ToolExecutionItem({
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
   const truncatedParam = truncateParam(param);
-  const { summary, isWarning } = getResultSummary(name, output, isError, t);
+  const { summary, isWarning } = useResultSummary(name, output, isError);
 
   // Determine status
   const isRunning = isExecuting && !output;

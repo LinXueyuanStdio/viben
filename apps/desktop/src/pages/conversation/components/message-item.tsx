@@ -321,7 +321,7 @@ export function MessageItem({
   if (message.type === "tool_use") {
     return (
       <ToolExecutionItem
-        name={message.name || "unknown"}
+        name={message.name || t("common.unknown", "Unknown")}
         input={message.input}
         isExecuting
       />
