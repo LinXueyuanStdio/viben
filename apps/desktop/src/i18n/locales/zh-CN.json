@@ -303,7 +303,8 @@
     "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
     "installHint": "请安装微本: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart",
-    "checking": "检测中..."
+    "checking": "检测中...",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram 机器人",
@@ -2243,7 +2244,12 @@
     "rootType": {
       "fileSystem": "文件系统",
       "other": "其他"
-    }
+    },
+    "sseConnectionNote": "对于 SSE 连接，请直接在 MCP 客户端中添加此 URL",
+    "httpConnectionNote": "对于 Streamable HTTP 连接，请直接在 MCP 客户端中添加此 URL",
+    "nullable": "（可空）",
+    "resource": "资源",
+    "sampleMessage": "你好！能帮我吗？"
   },
   "updates": {
     "title": "包更新",
@@ -2859,6 +2865,8 @@
       "noAnalysisYet": "暂无分析。点击下方按钮分析此议题。",
       "noDescription": "暂无描述。"
     },
+    "analysisFailed": "分析失败",
+    "noDescription": "未提供描述",
     "scheduledTasks": "定时任务",
     "scheduledTasksDescription": "管理定时任务和自动化",
     "addTask": "添加任务",
@@ -4230,6 +4238,7 @@
     "noFiles": "暂无工作文件",
     "noTools": "暂无使用的工具",
     "unknownTool": "未知工具",
+    "sessionTitle": "会话 {{id}}",
     "agentCompleted": "智能体执行成功。",
     "agentFailed": "智能体执行失败。",
     "activity": {
@@ -6278,7 +6287,9 @@
       "qaRejected": "QA 问题",
       "planReview": "待审批计划",
       "stopped": "已停止"
-    }
+    },
+    "resizeColumn": "调整 {{name}} 列宽",
+    "taskCopy": "{{title}} (副本)"
   },
   "editor": {
     "errorBoundary": {
