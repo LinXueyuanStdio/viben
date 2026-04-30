@@ -1,3 +1,9 @@
+---
+sidebar_position: 21
+title: "Background Tasks"
+description: "Agent task background execution and status tracking"
+---
+
 # Background Tasks
 
 > Agent task background execution and status tracking

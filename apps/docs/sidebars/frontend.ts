@@ -10,6 +10,8 @@ const sidebars: SidebarsConfig = {
     'tailwind-v4-setup',
     'marketplace-publish-flow',
     'hook-guidelines',
+    'state-management',
+    'directory-structure',
     'quality-guidelines',
     'type-safety',
     {
@@ -17,6 +19,8 @@ const sidebars: SidebarsConfig = {
       label: 'Kanban',
       collapsed: false,
       items: [
+        'kanban/index',
+        'kanban/layout-architecture',
         'kanban/integration',
         'kanban/features',
         'kanban/phase3-advanced',
