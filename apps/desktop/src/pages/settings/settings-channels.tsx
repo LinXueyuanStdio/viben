@@ -168,8 +168,7 @@ function formatChannelError(
   error: string | undefined,
   channelType: ChannelType,
 ): string {
-  const t = i18n.t.bind(i18n);
-  if (!error) return t("channels.errors.unknown", "Unknown error");
+  if (!error) return i18n.t("channels.errors.unknown", "Unknown error");
 
   // Common error patterns with user-friendly messages
   const errorLower = error.toLowerCase();
@@ -269,7 +268,7 @@ async function testChannelConnection(
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type, t),
+      error: formatChannelError(errorMsg, channel.channel_type),
     };
   }
 }
@@ -280,10 +279,9 @@ async function testChannelConnection(
 async function sendTestMessage(
   channel: GatewayChannel,
   chatId: string | undefined,
-  t: TFunction
 ): Promise<{ success: boolean; error?: string }> {
   if (!chatId && channel.channel_type !== "whatsapp") {
-    return { success: false, error: t("errors.channels.chatIdRequired") };
+    return { success: false, error: i18n.t("errors.channels.chatIdRequired") };
   }
 
   try {
@@ -314,7 +312,7 @@ async function sendTestMessage(
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type, t),
+      error: formatChannelError(errorMsg, channel.channel_type),
     };
   }
 }
@@ -1096,7 +1094,7 @@ export function SettingsChannelsPage() {
   const handleTestConnection = async (channel: GatewayChannel) => {
     setTestingConnectionId(channel.id);
 
-    const result = await testChannelConnection(channel, t);
+    const result = await testChannelConnection(channel);
 
     setTestingConnectionId(null);
 
@@ -1129,7 +1127,7 @@ export function SettingsChannelsPage() {
     setIsSendingTestMessage(true);
     setSendingTestMessageId(testingChannel.id);
 
-    const result = await sendTestMessage(testingChannel, testChatId || undefined, t);
+    const result = await sendTestMessage(testingChannel, testChatId || undefined);
 
     setIsSendingTestMessage(false);
     setSendingTestMessageId(null);
