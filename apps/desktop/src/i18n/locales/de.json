@@ -295,7 +295,8 @@
     "connectivityTestDescription": "Verbindungsstatus und verfügbare Endpunkte des Gateway-Dienstes prüfen",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart",
-    "checking": "Checking"
+    "checking": "Checking",
+    "websocket": "WebSocket"
   },
   "channels": {
     "telegramBot": "Telegram Bot",
@@ -2195,7 +2196,12 @@
     "proxyUnavailable": "Unavailable",
     "authDisabled": "Auth: disabled",
     "authEnabled": "Auth: enabled",
-    "apps": "Apps"
+    "apps": "Apps",
+    "sseConnectionNote": "Für SSE-Verbindungen fügen Sie diese URL direkt in Ihrem MCP-Client hinzu",
+    "httpConnectionNote": "Für Streamable HTTP-Verbindungen fügen Sie diese URL direkt in Ihrem MCP-Client hinzu",
+    "nullable": "(nullable)",
+    "resource": "Ressource",
+    "sampleMessage": "Hallo! Kann ich Ihnen helfen?"
   },
   "updates": {
     "title": "Paket-Updates",
@@ -2797,6 +2803,8 @@
     "rootNamespace": "Wurzel",
     "kanban": "Task Board",
     "github": "GitHub",
+    "analysisFailed": "Analyse fehlgeschlagen",
+    "noDescription": "Keine Beschreibung vorhanden",
     "scheduledTasks": "Scheduled Tasks",
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "ideas": "Ideas",
@@ -3318,7 +3326,7 @@
     "archiveTask": "Archive",
     "expandAll": "Expand All",
     "expandAllHint": "Expand all collapsed columns",
-    "resizeColumn": "Resize Column",
+    "resizeColumn": "{{name}}-Spalte anpassen",
     "deselectAllInColumn": "Deselect all in column",
     "selectAllInColumn": "Select all in column",
     "taskDeleted": "Task deleted",
@@ -3416,7 +3424,8 @@
     "conflictResolutionDesc": "Wie Synchronisierungskonflikte behandelt werden sollen",
     "preferLocal": "Lokal bevorzugen",
     "preferCloud": "Cloud bevorzugen",
-    "updatedAt": "Updated At"
+    "updatedAt": "Updated At",
+    "taskCopy": "{{title}} (Kopie)"
   },
   "onboarding": {
     "footer": "Viben - Ihr KI-gestützter Forschungsassistent",
@@ -4141,6 +4150,7 @@
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "unknownTool": "Unknown Tool",
+    "sessionTitle": "Sitzung {{id}}",
     "agentCompleted": "Agent completed successfully.",
     "agentFailed": "Agent execution failed.",
     "activity": {
