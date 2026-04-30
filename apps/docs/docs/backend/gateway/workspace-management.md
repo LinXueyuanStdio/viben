@@ -131,7 +131,7 @@ interface McpServer {
 
 ### Workspace List Storage
 
-**Location**: `~/.browsemcp/workspaces.json`
+**Location**: `~/.viben/workspaces.json`
 
 ```json
 {
