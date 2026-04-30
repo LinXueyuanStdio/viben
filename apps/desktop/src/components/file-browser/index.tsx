@@ -54,7 +54,6 @@ import {
 import { open } from "@tauri-apps/plugin-shell";
 import { getGatewayUrl, getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { useFileBrowser, type ViewMode, type SortField, type SortDirection, type GroupField, type FileGroup } from "@/hooks/use-file-browser";
 import { SortDropdown, FileSearchInput, GroupDropdown } from "@/components/file-browser/file-actions";
 import type { FileEntry } from "@/types";
@@ -1256,7 +1255,7 @@ interface ContextMenuProps {
 }
 
 /** Get suggested apps for "Open With" based on file extension */
-function getOpenWithApps(file: FileEntry, t: TFunction): { id: string; label: string; icon: React.ReactNode }[] {
+function getOpenWithApps(file: FileEntry): { id: string; label: string; icon: React.ReactNode }[] {
   if (file.is_directory) return [];
 
   const ext = file.name.split(".").pop()?.toLowerCase();
@@ -1265,20 +1264,20 @@ function getOpenWithApps(file: FileEntry, t: TFunction): { id: string; label: st
   // Code editors for code files
   const codeExtensions = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "css", "scss", "html", "json", "yaml", "yml", "toml", "xml", "md", "txt"];
   if (ext && codeExtensions.includes(ext)) {
-    apps.push({ id: "vscode", label: t("fileBrowser.openWithApps.vscode", "VS Code"), icon: <FileCode className="h-4 w-4" /> });
-    apps.push({ id: "cursor", label: t("fileBrowser.openWithApps.cursor", "Cursor"), icon: <FileCode className="h-4 w-4" /> });
+    apps.push({ id: "vscode", label: i18n.t("fileBrowser.openWithApps.vscode", "VS Code"), icon: <FileCode className="h-4 w-4" /> });
+    apps.push({ id: "cursor", label: i18n.t("fileBrowser.openWithApps.cursor", "Cursor"), icon: <FileCode className="h-4 w-4" /> });
   }
 
   // Image viewers for images
   const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico"];
   if (ext && imageExtensions.includes(ext)) {
-    apps.push({ id: "preview", label: t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileImage className="h-4 w-4" /> });
+    apps.push({ id: "preview", label: i18n.t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileImage className="h-4 w-4" /> });
   }
 
   // Document apps
   const docExtensions = ["pdf", "doc", "docx"];
   if (ext && docExtensions.includes(ext)) {
-    apps.push({ id: "preview", label: t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileText className="h-4 w-4" /> });
+    apps.push({ id: "preview", label: i18n.t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileText className="h-4 w-4" /> });
   }
 
   return apps;
@@ -1325,7 +1324,7 @@ function ContextMenu({
 
   if (!state.file) return null;
 
-  const openWithApps = getOpenWithApps(state.file, t);
+  const openWithApps = getOpenWithApps(state.file);
 
   return (
     <div
