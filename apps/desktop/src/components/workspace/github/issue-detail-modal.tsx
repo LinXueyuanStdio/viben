@@ -204,7 +204,7 @@ function CommentItem({
             <div className="bg-muted/30 px-4 py-2 border-b border-border flex items-center gap-2">
               <span className="font-semibold text-sm">{comment.user.login}</span>
               <span className="text-muted-foreground text-sm">
-                {t("workspaceDetail.github.issueDetail.commentedAt", "commented {{time}}", { time: formatRelativeTime(comment.created_at, t) })}
+                {t("workspaceDetail.github.issueDetail.commentedAt", "commented {{time}}", { time: formatRelativeTime(comment.created_at) })}
               </span>
             </div>
 
@@ -400,7 +400,7 @@ export function IssueDetailModal({
               {" "}
               {t("workspaceDetail.github.issueDetail.openedThisIssue", "opened this issue")}
               {" "}
-              {formatRelativeTime(issue.created_at, t)}
+              {formatRelativeTime(issue.created_at)}
               {" · "}
               {t("workspaceDetail.github.issueDetail.commentsCount", "{{count}} comment", { count: issue.comments })}
             </span>

@@ -18,10 +18,10 @@ import type { GroupChat, GroupChatMember, ChatListItem } from "@/lib/gateway";
 import {
   ListItem,
   getGradientByName,
-  formatRelativeTime,
   type ListItemAction,
   type ListItemSource,
 } from "./list-item";
+import { formatRelativeTime } from "@/lib/utils";
 
 // ============================================================================
 // Types

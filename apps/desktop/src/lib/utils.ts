@@ -1,7 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { formatRelativeTime } from "@viben/kanban";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -41,50 +40,8 @@ export function shallowArrayEqual<T extends object>(a: T[], b: T[]): boolean {
   });
 }
 
-/**
- * Format a timestamp to a human-readable relative time string.
- * Accepts either an ISO date string or a Date object.
- *
- * @param dateInput - ISO date string or Date object
- * @param t - Optional i18n translation function. When omitted, returns English abbreviations.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function formatRelativeTime(
-  dateInput: string | Date,
-  t?: (key: string, options?: any) => string
-): string {
-  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
+export { formatRelativeTime };
 
-  if (t) {
-    if (minutes < 1) return t("common.justNow", { defaultValue: "just now" });
-    if (minutes < 60) return t("common.minutesAgo", { defaultValue: "{{count}}m ago", count: minutes });
-    if (hours < 24) return t("common.hoursAgo", { defaultValue: "{{count}}h ago", count: hours });
-    if (days < 7) return t("common.daysAgo", { defaultValue: "{{count}}d ago", count: days });
-  } else {
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    if (days < 7) return `${days}d`;
-  }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-/**
- * Hook for formatting relative time with i18n support.
- * Returns a memoized function that formats dates using the current locale.
- */
-export function useFormatRelativeTime() {
-  const { t } = useTranslation();
-  return useCallback(
-    (dateInput: string | Date) => formatRelativeTime(dateInput, t),
-    [t]
-  );
-}
 
 /**
  * Format duration for display.

@@ -41,7 +41,7 @@ import {
 import { useSavedConfigsStore, type SavedInspectorConfig } from "@/stores/saved-configs-store";
 import type { InspectorConfig } from "./config-manager";
 import { SaveConfigDialog } from "./save-config-dialog";
-import { formatRelativeTime } from "@/components/chat";
+import { formatRelativeTime } from "@/lib/utils";
 
 interface SavedConfigsSelectorProps {
   currentConfig: InspectorConfig | null;

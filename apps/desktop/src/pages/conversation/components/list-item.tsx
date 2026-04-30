@@ -137,8 +137,6 @@ export function getGradientByName(name: string): string {
   return colors[index];
 }
 
-// Re-export formatRelativeTime and useFormatRelativeTime from shared utility
-export { formatRelativeTime, useFormatRelativeTime } from "@/lib/utils";
 
 // ============================================================================
 // Badge Variant Styles

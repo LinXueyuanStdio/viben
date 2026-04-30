@@ -166,7 +166,7 @@ function SessionCard({
 
         {/* Meta row - compact */}
         <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-          <span>{formatRelativeTime(session.updatedAt, t)}</span>
+          <span>{formatRelativeTime(session.updatedAt)}</span>
           {session.messageCount !== undefined && session.messageCount > 0 && (
             <span className="flex items-center gap-0.5">
               <MessageSquare className="h-2.5 w-2.5" />

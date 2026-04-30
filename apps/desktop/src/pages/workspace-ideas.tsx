@@ -74,10 +74,9 @@ import {
 } from "@/hooks/use-ideas";
 import { useTranslation } from "react-i18next";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import {
   getGradientByName,
-  formatRelativeTime,
 } from "@/pages/conversation/components/list-item";
 
 // =============================================================================

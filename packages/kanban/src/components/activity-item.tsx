@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarImage, AvatarFallback, cn } from "@viben/ui";
+import { formatRelativeTime } from "./time-utils";
 import {
   Plus,
   RefreshCw,
@@ -45,33 +46,6 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function formatRelativeTime(timestamp: string, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-  const diffWeek = Math.floor(diffDay / 7);
-  const diffMonth = Math.floor(diffDay / 30);
-
-  if (diffSec < 60) {
-    return t("kanban.time.justNow");
-  } else if (diffMin < 60) {
-    return t("kanban.time.minutesAgo", { count: diffMin });
-  } else if (diffHour < 24) {
-    return t("kanban.time.hoursAgo", { count: diffHour });
-  } else if (diffDay < 7) {
-    return t("kanban.time.daysAgo", { count: diffDay });
-  } else if (diffWeek < 4) {
-    return t("kanban.time.weeksAgo", { count: diffWeek });
-  } else if (diffMonth < 12) {
-    return t("kanban.time.monthsAgo", { count: diffMonth });
-  } else {
-    return date.toLocaleDateString();
-  }
-}
 
 export const ActivityItem = React.forwardRef<HTMLDivElement, ActivityItemProps>(
   ({ event, className }, ref) => {
@@ -133,7 +107,7 @@ export const ActivityItem = React.forwardRef<HTMLDivElement, ActivityItemProps>(
 
           {/* Timestamp */}
           <div className="mt-1 text-xs text-muted-foreground/60">
-            {formatRelativeTime(event.timestamp, t)}
+            {formatRelativeTime(event.timestamp)}
           </div>
         </div>
       </div>

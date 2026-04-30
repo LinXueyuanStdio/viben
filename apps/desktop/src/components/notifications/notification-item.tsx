@@ -215,7 +215,7 @@ const NotificationItem = React.forwardRef<HTMLDivElement, NotificationItemProps>
               </div>
             </div>
             <span className="flex-shrink-0 text-xs text-muted-foreground">
-              {formatRelativeTime(notification.createdAt, t)}
+              {formatRelativeTime(notification.createdAt)}
             </span>
           </div>
 

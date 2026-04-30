@@ -153,7 +153,8 @@ export type {
   CommentAuthor,
   CommentReaction,
 } from "./comment-types";
-export { REACTION_EMOJIS, formatRelativeTime } from "./comment-types";
+export { REACTION_EMOJIS } from "./comment-types";
+export { formatRelativeTime } from "./time-utils";
 
 // Comment components
 export { CommentInput } from "./comment-input";

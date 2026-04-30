@@ -1599,7 +1599,7 @@ export function WorkspaceKanbanPage() {
 
       createTask.mutate({
         workspace_path: workspace.path,
-        title: `${task.title} (copy)`,
+        title: t("kanban.taskCopy", { title: task.title }),
         description: task.description ?? undefined,
       });
       closeMoreMenu();
@@ -2900,7 +2900,7 @@ export function WorkspaceKanbanPage() {
                     }}
                     role="separator"
                     aria-orientation="vertical"
-                    aria-label={`Resize ${column.name} column`}
+                    aria-label={t("kanban.resizeColumn", { name: column.name })}
                     title={columnLocked ? t("workspace.columnLocked", "Column width is locked") : undefined}
                   >
                     {/* Wider invisible hit area for easier grabbing */}

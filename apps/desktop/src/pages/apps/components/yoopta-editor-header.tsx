@@ -269,7 +269,7 @@ export const YooptaEditorHeader = memo(function YooptaEditorHeader({ editor, tit
                   <div>{t("editor.header.wordCount", { words: wordCount.words, characters: wordCount.characters })}</div>
                 )}
                 {updatedAt && (
-                  <div>{t("editor.header.lastEdited", { time: formatRelativeTime(updatedAt, t) })}</div>
+                  <div>{t("editor.header.lastEdited", { time: formatRelativeTime(updatedAt) })}</div>
                 )}
               </div>
             </>

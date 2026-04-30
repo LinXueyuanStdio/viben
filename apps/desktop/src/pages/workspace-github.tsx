@@ -429,7 +429,7 @@ function IssueRow({ issue, onSelect }: { issue: GitHubIssue; onSelect?: () => vo
           <span>
             {t("workspaceSettings.github.issues.openedBy", {
               user: issue.user.login,
-              date: formatRelativeTime(issue.created_at, t),
+              date: formatRelativeTime(issue.created_at),
             })}
           </span>
           {issue.milestone && (
@@ -654,7 +654,7 @@ function PRRow({ pr, onSelect }: { pr: GitHubPullRequest; onSelect?: () => void 
           <span>
             {t("workspaceSettings.github.prs.openedBy", {
               user: pr.user.login,
-              date: formatRelativeTime(pr.created_at, t),
+              date: formatRelativeTime(pr.created_at),
             })}
           </span>
           <span className="font-mono text-xs">

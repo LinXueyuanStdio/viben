@@ -18,7 +18,8 @@ import {
   cn,
 } from "@viben/ui";
 import type { Comment, CommentReaction } from "./comment-types";
-import { formatRelativeTime, REACTION_EMOJIS } from "./comment-types";
+import { REACTION_EMOJIS } from "./comment-types";
+import { formatRelativeTime } from "./time-utils";
 
 export interface CommentItemProps {
   comment: Comment;
@@ -143,7 +144,7 @@ export const CommentItem = React.forwardRef<HTMLDivElement, CommentItemProps>(
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium">{comment.author.name}</span>
             <span className="text-xs text-muted-foreground">
-              {formatRelativeTime(comment.createdAt, t)}
+              {formatRelativeTime(comment.createdAt)}
             </span>
             {comment.updatedAt && comment.updatedAt !== comment.createdAt && (
               <span className="text-xs text-muted-foreground">{t("kanban.comment.edited")}</span>
