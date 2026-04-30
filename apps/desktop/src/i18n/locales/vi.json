@@ -916,6 +916,33 @@
       "arch": "Kiến trúc",
       "logs": "Nhật ký",
       "config": "Cấu hình"
+    },
+    "timezones": {
+      "pacificHonolulu": "(GMT-10:00) Honolulu",
+      "americaAnchorage": "(GMT-9:00) Alaska",
+      "americaLosAngeles": "(GMT-8:00) Los Angeles",
+      "americaDenver": "(GMT-7:00) Denver",
+      "americaChicago": "(GMT-6:00) Chicago",
+      "americaNewYork": "(GMT-5:00) New York",
+      "americaSaoPaulo": "(GMT-3:00) Sao Paulo",
+      "atlanticAzores": "(GMT-1:00) Azores",
+      "europeLondon": "(GMT+0:00) London",
+      "europeParis": "(GMT+1:00) Paris",
+      "europeBerlin": "(GMT+1:00) Berlin",
+      "africaCairo": "(GMT+2:00) Cairo",
+      "europeMoscow": "(GMT+3:00) Moscow",
+      "asiaDubai": "(GMT+4:00) Dubai",
+      "asiaKarachi": "(GMT+5:00) Karachi",
+      "asiaKolkata": "(GMT+5:30) Mumbai",
+      "asiaDhaka": "(GMT+6:00) Dhaka",
+      "asiaBangkok": "(GMT+7:00) Bangkok",
+      "asiaShanghai": "(GMT+8:00) Shanghai",
+      "asiaHongKong": "(GMT+8:00) Hong Kong",
+      "asiaSingapore": "(GMT+8:00) Singapore",
+      "asiaTokyo": "(GMT+9:00) Tokyo",
+      "asiaSeoul": "(GMT+9:00) Seoul",
+      "australiaSydney": "(GMT+10:00) Sydney",
+      "pacificAuckland": "(GMT+12:00) Auckland"
     }
   },
   "sandbox": {
@@ -4019,7 +4046,8 @@
       "unknownError": {
         "title": "Unknown error",
         "message": "An unknown error occurred. Please check details or contact support."
-      }
+      },
+      "downloadNodejs": "Download Node.js"
     }
   },
   "chat": {
@@ -5602,7 +5630,8 @@
       "achievement": "Achievement",
       "layout": "Layout",
       "charts": "Charts",
-      "business": "Business"
+      "business": "Business",
+      "other": "Other"
     }
   },
   "windowControls": {

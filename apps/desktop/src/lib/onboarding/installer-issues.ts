@@ -161,7 +161,7 @@ function getSuggestedActions(kind: CliInstallerIssueKind): SuggestedAction[] {
       return [{ type: "skip" }, { type: "retry" }];
     case "missing-node":
       return [
-        { type: "open-link", url: "https://nodejs.org/", label: "Download Node.js" },
+        { type: "open-link", url: "https://nodejs.org/", label: i18next.t("onboarding.installerIssues.downloadNodejs", "Download Node.js") },
         { type: "retry" },
       ];
     case "npm-registry-error":

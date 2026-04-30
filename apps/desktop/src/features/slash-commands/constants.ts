@@ -1,5 +1,5 @@
-import i18n from "@/i18n";
 import type { CommandCategory } from "./types";
+import i18n from "@/i18n";
 
 /**
  * Category labels for UI display (i18n-enabled via getter properties)

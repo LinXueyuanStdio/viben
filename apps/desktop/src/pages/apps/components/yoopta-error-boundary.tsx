@@ -1,5 +1,4 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-
 import i18n from "@/i18n";
 
 type Props = {

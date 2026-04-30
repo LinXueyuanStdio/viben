@@ -42,20 +42,19 @@ export function GeneralSection() {
     setLanguage(langCode);
   };
 
-  // Get current language using i18n.language for reactivity
+  // Current language for reactivity (fallback to store value)
   const currentLanguage = i18n.language || language || "en";
-  const isZhCN = currentLanguage === "zh-CN";
 
-  // Get timezone label based on current language
+  // Get timezone label using i18n
   const getTimezoneLabel = (tz: typeof TIMEZONES[number] | string) => {
     if (typeof tz === "string") {
-      const found = TIMEZONES.find((t) => t.value === tz);
+      const found = TIMEZONES.find((item) => item.value === tz);
       if (found) {
-        return isZhCN ? found.labelZh : found.label;
+        return t(found.labelKey);
       }
       return tz;
     }
-    return isZhCN ? tz.labelZh : tz.label;
+    return t(tz.labelKey);
   };
 
   return (
@@ -164,7 +163,7 @@ export function GeneralSection() {
             <SelectContent>
               {TIMEZONES.map((tz) => (
                 <SelectItem key={tz.value} value={tz.value}>
-                  {isZhCN ? tz.labelZh : tz.label}
+                  {t(tz.labelKey)}
                 </SelectItem>
               ))}
             </SelectContent>

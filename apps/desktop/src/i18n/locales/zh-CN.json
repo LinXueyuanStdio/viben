@@ -878,6 +878,33 @@
     "autoSetTimezoneDescription": "将根据你的时区发送提醒、通知和电子邮件。",
     "timezone": "时区",
     "timezoneDescription": "当前时区设置。",
+    "timezones": {
+      "pacificHonolulu": "(GMT-10:00) 檀香山",
+      "americaAnchorage": "(GMT-9:00) 阿拉斯加",
+      "americaLosAngeles": "(GMT-8:00) 洛杉矶",
+      "americaDenver": "(GMT-7:00) 丹佛",
+      "americaChicago": "(GMT-6:00) 芝加哥",
+      "americaNewYork": "(GMT-5:00) 纽约",
+      "americaSaoPaulo": "(GMT-3:00) 圣保罗",
+      "atlanticAzores": "(GMT-1:00) 亚速尔群岛",
+      "europeLondon": "(GMT+0:00) 伦敦",
+      "europeParis": "(GMT+1:00) 巴黎",
+      "europeBerlin": "(GMT+1:00) 柏林",
+      "africaCairo": "(GMT+2:00) 开罗",
+      "europeMoscow": "(GMT+3:00) 莫斯科",
+      "asiaDubai": "(GMT+4:00) 迪拜",
+      "asiaKarachi": "(GMT+5:00) 卡拉奇",
+      "asiaKolkata": "(GMT+5:30) 孟买",
+      "asiaDhaka": "(GMT+6:00) 达卡",
+      "asiaBangkok": "(GMT+7:00) 曼谷",
+      "asiaShanghai": "(GMT+8:00) 上海",
+      "asiaHongKong": "(GMT+8:00) 香港",
+      "asiaSingapore": "(GMT+8:00) 新加坡",
+      "asiaTokyo": "(GMT+9:00) 东京",
+      "asiaSeoul": "(GMT+9:00) 首尔",
+      "australiaSydney": "(GMT+10:00) 悉尼",
+      "pacificAuckland": "(GMT+12:00) 奥克兰"
+    },
     "storage": "存储",
     "downloadPath": "下载路径",
     "offlineCache": "离线缓存",
@@ -4098,7 +4125,8 @@
       "unknownError": {
         "title": "未知错误",
         "message": "发生未知错误，请查看详细信息或联系支持。"
-      }
+      },
+      "downloadNodejs": "下载 Node.js"
     }
   },
   "chat": {
@@ -5826,7 +5854,8 @@
       "achievement": "成就",
       "layout": "布局",
       "charts": "图表",
-      "business": "商务"
+      "business": "商务",
+      "other": "其他"
     }
   },
   "windowControls": {
