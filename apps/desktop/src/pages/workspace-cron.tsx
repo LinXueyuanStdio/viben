@@ -752,16 +752,29 @@ export function WorkspaceCronPage() {
       <WorkspaceHeader
         workspace={workspace}
         segments={[
-          { label: t("cron.title"), href: `/workspace/${workspaceId}/cron` },
+          {
+            id: `workspace:${workspaceId}:cron`,
+            label: t("workspace.scheduledTasks", "Scheduled Tasks"),
+            href: `/workspace/${workspaceId}/cron`,
+            icon: { type: "lucide", value: "clock" },
+            kind: "workspace-section",
+            meta: {
+              workspaceId,
+              section: "cron",
+              routePath: "cron",
+            },
+          },
         ]}
         onRefresh={refreshJobs}
         isRefreshing={loadingJobs}
         showRemove={false}
         rightContent={
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t("cron.createJob")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="h-8" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              {t("cron.createJob")}
+            </Button>
+          </div>
         }
       />
 

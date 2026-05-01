@@ -5,13 +5,14 @@ import { syncChannels } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SettingsSection } from "./types";
 import { SECTIONS, VALID_SECTIONS, easeOutExpo, SETTINGS_SIDEBAR_COLLAPSED_KEY } from "./constants";
 import { GeneralSection } from "./general-section";
@@ -38,7 +39,7 @@ export function SettingsPage() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const location = useLocation();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
 
   // Get section from URL path (e.g., /settings/agents -> "agents")
   const getSectionFromPath = (): SettingsSection => {
@@ -68,13 +69,20 @@ export function SettingsPage() {
   // Pre-load data when navigating to certain sections
   const handleSectionChange = useCallback((section: SettingsSection) => {
     setActiveSection(section);
-    navigate(`/settings/${section}`, { replace: true });
+    openGlobalView(
+      `/settings/${section}`,
+      t(SECTIONS.find((item) => item.id === section)?.labelKey ?? "settings.title"),
+      {
+        type: "lucide",
+        value: getSettingsIconName(section),
+      }
+    );
 
     // Pre-sync channel data when navigating to channels section
     if (section === "channels") {
       syncChannels();
     }
-  }, [navigate]);
+  }, [openGlobalView, t]);
 
   // Update active section when URL changes
   useEffect(() => {
@@ -192,7 +200,7 @@ export function SettingsPage() {
         {/* Left Navigation Sidebar */}
         <motion.nav
           className={cn(
-            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300 overflow-hidden whitespace-nowrap",
+            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300 overflow-hidden whitespace-nowrap flex flex-col",
             collapsed ? "w-16" : "w-56"
           )}
           variants={itemVariants}
@@ -247,7 +255,7 @@ export function SettingsPage() {
           {/* Navigation items */}
           {collapsed ? (
             // Collapsed view - icons only with tooltips
-            <div className="flex flex-col gap-1 py-4">
+            <div className="flex flex-col gap-1 py-4 overflow-y-auto flex-1 min-h-0">
               {SECTIONS.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -280,7 +288,7 @@ export function SettingsPage() {
             </div>
           ) : (
             // Expanded view - full items
-            <ul className="space-y-1 py-4 px-2">
+            <ul className="space-y-1 py-4 px-2 overflow-y-auto flex-1 min-h-0">
               {SECTIONS.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -345,4 +353,49 @@ export function SettingsPage() {
       </motion.div>
     </TooltipProvider>
   );
+}
+
+function getSettingsIconName(section: SettingsSection): string {
+  switch (section) {
+    case "general":
+      return "settings";
+    case "account":
+      return "user";
+    case "shortcuts":
+      return "keyboard";
+    case "notifications":
+      return "bell";
+    case "gateway":
+      return "network";
+    case "channels":
+      return "message-square";
+    case "executors":
+      return "play";
+    case "model":
+      return "cpu";
+    case "agents":
+      return "bot";
+    case "mcp":
+      return "boxes";
+    case "skills":
+      return "sparkles";
+    case "sandbox":
+      return "box";
+    case "environment":
+      return "terminal";
+    case "terminalFonts":
+      return "type";
+    case "overlay":
+      return "layers";
+    case "voice":
+      return "mic";
+    case "storage":
+      return "hard-drive";
+    case "developer":
+      return "bug";
+    case "about":
+      return "info";
+    default:
+      return "settings";
+  }
 }

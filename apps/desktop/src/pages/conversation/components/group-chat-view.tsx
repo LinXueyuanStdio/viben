@@ -59,6 +59,177 @@ interface GroupChatViewProps {
   onInputChange: (value: string) => void;
   onSendTyping: (typing: boolean) => void;
   onOpenMembersDialog: () => void;
+  headerless?: boolean;
+}
+
+interface GroupChatHeaderCenterProps {
+  currentGroupChat: GroupChatViewProps["currentGroupChat"];
+  groupChatMembers: GroupChatMember[];
+  groupChatConnected: boolean;
+}
+
+interface GroupChatHeaderActionsProps {
+  currentGroupChat: GroupChatViewProps["currentGroupChat"];
+  currentGroupChatSession?: GroupChatViewProps["currentGroupChatSession"];
+  groupChatSessions: GroupChatViewProps["groupChatSessions"];
+  groupChatViewMode: "ui" | "agent";
+  groupChatViewAgentId?: string | null;
+  sessionAgents: string[];
+  groupChatMembers: GroupChatMember[];
+  onSelectSession: (sessionId: string) => void;
+  onCreateSession: () => void;
+  onSwitchView: (view: "ui" | "agent", agentId?: string) => void;
+  onOpenMembersDialog: () => void;
+}
+
+export function GroupChatHeaderCenter({
+  currentGroupChat,
+  groupChatMembers,
+  groupChatConnected,
+}: GroupChatHeaderCenterProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-400 shadow-sm">
+        <Users className="h-5 w-5 text-white" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-medium">
+            {currentGroupChat.group_chat.name}
+          </span>
+          {currentGroupChat.group_chat.is_global && (
+            <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-600">
+              {t("groupChat.global", "Global")}
+            </span>
+          )}
+          {groupChatConnected ? (
+            <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-600">
+              {t("groupChat.connected", "Connected")}
+            </span>
+          ) : (
+            <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-600">
+              {t("groupChat.disconnected", "Disconnected")}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t("groupChat.memberCount", "{{count}} members", {
+            count: groupChatMembers.length,
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function GroupChatHeaderActions({
+  currentGroupChat,
+  currentGroupChatSession,
+  groupChatSessions,
+  groupChatViewMode,
+  groupChatViewAgentId,
+  sessionAgents,
+  groupChatMembers,
+  onSelectSession,
+  onCreateSession,
+  onSwitchView,
+  onOpenMembersDialog,
+}: GroupChatHeaderActionsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex items-center gap-2">
+      <SessionSelector
+        currentSession={
+          currentGroupChatSession
+            ? {
+                id: currentGroupChatSession.id,
+                name: currentGroupChatSession.title || t("chat.sessionFallbackName", "Session {{id}}", { id: currentGroupChatSession.id.slice(0, 8) }),
+                createdAt: currentGroupChatSession.created_at,
+                updatedAt: currentGroupChatSession.updated_at,
+                messageCount: 0,
+              }
+            : undefined
+        }
+        sessions={groupChatSessions.map((s) => ({
+          id: s.id,
+          name: s.title || t("chat.sessionFallbackName", "Session {{id}}", { id: s.id.slice(0, 8) }),
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
+          messageCount: 0,
+        }))}
+        onSelect={(session) => onSelectSession(session.id)}
+        onCreateNew={onCreateSession}
+        showCreateButton={true}
+        agentName={currentGroupChat.group_chat.name}
+      />
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5">
+            {groupChatViewMode === "ui" ? (
+              <>
+                <MessageSquare className="h-3.5 w-3.5" />
+                {t("groupChat.viewUI", "Chat View")}
+              </>
+            ) : (
+              <>
+                <Bot className="h-3.5 w-3.5" />
+                {t("groupChat.viewAgent", "Agent View")}
+              </>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem
+            onClick={() => onSwitchView("ui")}
+            className={cn(groupChatViewMode === "ui" && "bg-accent")}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            {t("groupChat.viewUI", "Chat View")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+            {t("groupChat.agentViews", "Agent Views")}
+          </div>
+          {sessionAgents.map((agentId) => {
+            const agentMember = groupChatMembers.find(
+              (m) => m.member_type === "agent" && m.id === agentId
+            );
+            return (
+              <DropdownMenuItem
+                key={agentId}
+                onClick={() => onSwitchView("agent", agentId)}
+                className={cn(
+                  groupChatViewMode === "agent" && groupChatViewAgentId === agentId && "bg-accent"
+                )}
+              >
+                <Bot className="mr-2 h-4 w-4" />
+                {agentMember?.display_name || agentId}
+              </DropdownMenuItem>
+            );
+          })}
+          {sessionAgents.length === 0 ? (
+            <div className="px-2 py-1.5 text-xs italic text-muted-foreground">
+              {t("groupChat.noAgents", "No agents in session")}
+            </div>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        title={t("groupChat.viewDetails", "View Details")}
+        onClick={onOpenMembersDialog}
+      >
+        <Users className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export function GroupChatView({
@@ -84,136 +255,34 @@ export function GroupChatView({
   onInputChange,
   onSendTyping,
   onOpenMembersDialog,
+  headerless = false,
 }: GroupChatViewProps) {
   const { t } = useTranslation();
 
   return (
     <>
-      {/* Group Chat Header */}
-      <div className="flex items-center justify-between px-4 border-b bg-background h-14">
-        <div className="flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-sm">
-            <Users className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm">
-                {currentGroupChat.group_chat.name}
-              </span>
-              {currentGroupChat.group_chat.is_global && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600">
-                  {t("groupChat.global", "Global")}
-                </span>
-              )}
-              {groupChatConnected ? (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
-                  {t("groupChat.connected", "Connected")}
-                </span>
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600">
-                  {t("groupChat.disconnected", "Disconnected")}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("groupChat.memberCount", "{{count}} members", {
-                count: groupChatMembers.length,
-              })}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <SessionSelector
-            currentSession={
-              currentGroupChatSession
-                ? {
-                    id: currentGroupChatSession.id,
-                    name: currentGroupChatSession.title || t("chat.sessionFallbackName", "Session {{id}}", { id: currentGroupChatSession.id.slice(0, 8) }),
-                    createdAt: currentGroupChatSession.created_at,
-                    updatedAt: currentGroupChatSession.updated_at,
-                    messageCount: 0,
-                  }
-                : undefined
-            }
-            sessions={groupChatSessions.map((s) => ({
-              id: s.id,
-              name: s.title || t("chat.sessionFallbackName", "Session {{id}}", { id: s.id.slice(0, 8) }),
-              createdAt: s.created_at,
-              updatedAt: s.updated_at,
-              messageCount: 0,
-            }))}
-            onSelect={(session) => onSelectSession(session.id)}
-            onCreateNew={onCreateSession}
-            showCreateButton={true}
-            agentName={currentGroupChat.group_chat.name}
+      {!headerless ? (
+        <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+          <GroupChatHeaderCenter
+            currentGroupChat={currentGroupChat}
+            groupChatMembers={groupChatMembers}
+            groupChatConnected={groupChatConnected}
           />
-
-          {/* View Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                {groupChatViewMode === "ui" ? (
-                  <>
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    {t("groupChat.viewUI", "Chat View")}
-                  </>
-                ) : (
-                  <>
-                    <Bot className="h-3.5 w-3.5" />
-                    {t("groupChat.viewAgent", "Agent View")}
-                  </>
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onClick={() => onSwitchView("ui")}
-                className={cn(groupChatViewMode === "ui" && "bg-accent")}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {t("groupChat.viewUI", "Chat View")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                {t("groupChat.agentViews", "Agent Views")}
-              </div>
-              {sessionAgents.map((agentId) => {
-                const agentMember = groupChatMembers.find(
-                  (m) => m.member_type === "agent" && m.id === agentId
-                );
-                return (
-                  <DropdownMenuItem
-                    key={agentId}
-                    onClick={() => onSwitchView("agent", agentId)}
-                    className={cn(
-                      groupChatViewMode === "agent" && groupChatViewAgentId === agentId && "bg-accent"
-                    )}
-                  >
-                    <Bot className="h-4 w-4 mr-2" />
-                    {agentMember?.display_name || agentId}
-                  </DropdownMenuItem>
-                );
-              })}
-              {sessionAgents.length === 0 && (
-                <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                  {t("groupChat.noAgents", "No agents in session")}
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title={t("groupChat.viewDetails", "View Details")}
-            onClick={onOpenMembersDialog}
-          >
-            <Users className="h-4 w-4" />
-          </Button>
+          <GroupChatHeaderActions
+            currentGroupChat={currentGroupChat}
+            currentGroupChatSession={currentGroupChatSession}
+            groupChatSessions={groupChatSessions}
+            groupChatViewMode={groupChatViewMode}
+            groupChatViewAgentId={groupChatViewAgentId}
+            sessionAgents={sessionAgents}
+            groupChatMembers={groupChatMembers}
+            onSelectSession={onSelectSession}
+            onCreateSession={onCreateSession}
+            onSwitchView={onSwitchView}
+            onOpenMembersDialog={onOpenMembersDialog}
+          />
         </div>
-      </div>
+      ) : null}
 
       {/* Thinking agents indicator */}
       {thinkingAgents.length > 0 && (

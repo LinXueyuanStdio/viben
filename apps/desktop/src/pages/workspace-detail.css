@@ -1,0 +1,18 @@
+@keyframes dock-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-12px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-5px);
+  }
+}
+
+.dock-bounce {
+  animation: dock-bounce 0.4s ease-in-out;
+}

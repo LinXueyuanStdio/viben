@@ -61,8 +61,11 @@ import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
-import { buildPageTree, getPageHref } from "../utils";
+import { buildPageTree } from "../utils";
 import type { PageTreeNode } from "../utils";
+import { createBreadcrumbItem } from "@/navigation/breadcrumb-stack";
+import type { BreadcrumbStackItem } from "@/navigation/view-target";
+import { urlToLocation } from "@/navigation/location";
 
 // =============================================================================
 // Types
@@ -83,8 +86,9 @@ interface PageTreeItemProps {
   workspaceId: string;
   workspacePath: string;
   depth: number;
-  onPageClick: (page: PageConfig) => void;
-  onOpenInNewTab: (page: PageConfig) => void;
+  ancestors: PageTreeNode[];
+  onPageClick: (page: PageConfig, stack: BreadcrumbStackItem[]) => void;
+  onOpenInNewTab: (page: PageConfig, stack: BreadcrumbStackItem[]) => void;
   onDeleteClick: (page: PageConfig) => void;
   onCreateSubpage: (parentSlug: string) => void;
   onEditClick: (page: PageConfig) => void;
@@ -96,6 +100,7 @@ function PageTreeItem({
   workspaceId,
   workspacePath,
   depth,
+  ancestors,
   onPageClick,
   onOpenInNewTab,
   onDeleteClick,
@@ -116,14 +121,60 @@ function PageTreeItem({
   // Check if page is read-only (has read but not write permission)
   const isReadOnly = node.page.permission.includes("read") && !node.page.permission.includes("write");
 
-  const href = getPageHref(workspaceId, node.page.slug);
-  const isActive = location.pathname + location.search === href;
+  const currentLocation = useMemo(
+    () => urlToLocation(`${location.pathname}${location.search}${location.hash}`),
+    [location.hash, location.pathname, location.search]
+  );
+  const isActive =
+    currentLocation?.kind === "workspace-page" &&
+    currentLocation.workspaceId === workspaceId &&
+    currentLocation.pageSlug === node.page.slug;
+
+  const pageStack = useMemo(
+    () =>
+      [
+        createBreadcrumbItem({
+          id: `workspace:${workspaceId}`,
+          kind: "workspace-root",
+          label: workspaceId,
+          meta: { workspaceId },
+          location: {
+            kind: "workspace-home",
+            workspaceId,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `${workspaceId}:pages`,
+          kind: "virtual-folder",
+          label: t("page.pages"),
+          meta: { workspaceId },
+        }),
+        ...[...ancestors, node].map((item) =>
+          createBreadcrumbItem({
+            id: `${workspaceId}:page:${item.page.slug}`,
+            kind: "workspace-page",
+            label: item.page.name,
+            icon: item.page.icon,
+            meta: {
+              workspaceId,
+              pageSlug: item.page.slug,
+            },
+            location: {
+              kind: "workspace-page",
+              workspaceId,
+              pageSlug: item.page.slug,
+            },
+          })
+        ),
+      ] satisfies BreadcrumbStackItem[],
+    [ancestors, node, t, workspaceId]
+  );
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    onPageClick(node.page);
-  }, [node.page, onPageClick]);
+    onPageClick(node.page, pageStack);
+  }, [node.page, onPageClick, pageStack]);
 
   // Handle icon click - toggle expand/collapse if has children, otherwise open page
   const handleIconClick = useCallback((e: React.MouseEvent) => {
@@ -132,9 +183,9 @@ function PageTreeItem({
     if (hasChildren) {
       setIsExpanded(!isExpanded);
     } else {
-      onPageClick(node.page);
+      onPageClick(node.page, pageStack);
     }
-  }, [hasChildren, isExpanded, node.page, onPageClick]);
+  }, [hasChildren, isExpanded, node.page, onPageClick, pageStack]);
 
   return (
     <div>
@@ -305,7 +356,7 @@ function PageTreeItem({
                   className="w-40"
                 >
                   <DropdownMenuItem
-                    onClick={() => onOpenInNewTab(node.page)}
+                    onClick={() => onOpenInNewTab(node.page, pageStack)}
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
                     {t("page.openInNewTab")}
@@ -336,7 +387,7 @@ function PageTreeItem({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={() => onOpenInNewTab(node.page)}>
+          <ContextMenuItem onClick={() => onOpenInNewTab(node.page, pageStack)}>
             <ExternalLink className="mr-2 h-4 w-4" />
             {t("page.openInNewTab")}
           </ContextMenuItem>
@@ -374,6 +425,7 @@ function PageTreeItem({
               workspaceId={workspaceId}
               workspacePath={workspacePath}
               depth={depth + 1}
+              ancestors={[...ancestors, node]}
               onPageClick={onPageClick}
               onOpenInNewTab={onOpenInNewTab}
               onDeleteClick={onDeleteClick}
@@ -452,13 +504,13 @@ export function PageSection({
   }, []);
 
   // Handle page click - opens page in tab system
-  const handlePageClick = useCallback((page: PageConfig) => {
-    openPageTab(page, workspaceId);
+  const handlePageClick = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
+    openPageTab(page, workspaceId, stack);
   }, [openPageTab, workspaceId]);
 
   // Handle open in new tab
-  const handleOpenInNewTab = useCallback((page: PageConfig) => {
-    openPageInNewTab(page, workspaceId);
+  const handleOpenInNewTab = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
+    openPageInNewTab(page, workspaceId, stack);
   }, [openPageInNewTab, workspaceId]);
 
   // Handle page creation success - open new page in tab
@@ -561,10 +613,45 @@ export function PageSection({
             <SidebarIconButton
               icon={<IconDisplay icon={node.page.icon} size="md" workspacePath={workspacePath} />}
               tooltip={node.page.name}
-              onClick={() => handlePageClick(node.page)}
-            />
-          </div>
-        ))}
+            onClick={() =>
+              handlePageClick(node.page, [
+                createBreadcrumbItem({
+                  id: `workspace:${workspaceId}`,
+                  kind: "workspace-root",
+                  label: workspaceId,
+                  meta: { workspaceId },
+                  location: {
+                    kind: "workspace-home",
+                    workspaceId,
+                  },
+                }),
+                createBreadcrumbItem({
+                  id: `${workspaceId}:pages`,
+                  kind: "virtual-folder",
+                  label: t("page.pages"),
+                  icon: { type: "lucide", value: "files" },
+                  meta: { workspaceId },
+                }),
+                createBreadcrumbItem({
+                  id: `${workspaceId}:page:${node.page.slug}`,
+                  kind: "workspace-page",
+                  label: node.page.name,
+                  icon: node.page.icon,
+                  meta: {
+                    workspaceId,
+                    pageSlug: node.page.slug,
+                  },
+                  location: {
+                    kind: "workspace-page",
+                    workspaceId,
+                    pageSlug: node.page.slug,
+                  },
+                }),
+              ])
+            }
+          />
+        </div>
+      ))}
         {/* Create Page Dialog - must be rendered even in collapsed state */}
         <CreatePageDialog
           open={createDialogOpen}
@@ -598,8 +685,9 @@ export function PageSection({
                 node={node}
                 workspaceId={workspaceId}
                 workspacePath={workspacePath}
-                depth={0}
-                onPageClick={handlePageClick}
+              depth={0}
+              ancestors={[]}
+              onPageClick={handlePageClick}
                 onOpenInNewTab={handleOpenInNewTab}
                 onDeleteClick={setPageToDelete}
                 onCreateSubpage={handleCreateSubpage}

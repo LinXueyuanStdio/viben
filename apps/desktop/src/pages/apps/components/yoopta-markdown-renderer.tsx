@@ -41,6 +41,12 @@ import { CoverPicker } from "@/components/ui/cover-picker";
 import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
 import { ensureBlockFocus } from "./yoopta-focus-utils";
+import {
+  collectPageNavigationFromDom,
+  extractPageNavigation,
+  type PageNavigationExtract,
+} from "@/navigation/page-navigation-extractor";
+import { getPageHref } from "@/pages/apps/utils/page-href";
 
 const SOLID_COLOR_MAP: Record<string, string> = {
   "warm-gray": "#d6d3d1", slate: "#94a3b8", stone: "#a8a29e", neutral: "#a3a3a3",
@@ -70,6 +76,7 @@ const EDITOR_STYLES = {
 export interface YooptaMarkdownRendererProps {
   content: string;
   className?: string;
+  workspaceId?: string;
   workspacePath?: string;
   slug?: string;
   editable?: boolean;
@@ -81,6 +88,9 @@ export interface YooptaMarkdownRendererProps {
   /** ISO timestamp of the page's last modification */
   updatedAt?: string;
   onTitleChange?: (newTitle: string) => void;
+  onNavigationExtract?: (extract: PageNavigationExtract) => void;
+  onOpenPage?: (pageSlug: string) => void;
+  onOpenWeb?: (url: string, title?: string) => void;
   /** Portal target for editor header buttons. If provided, header renders into this DOM element instead of inside the editor. */
   headerPortal?: HTMLElement | null;
 }
@@ -88,6 +98,7 @@ export interface YooptaMarkdownRendererProps {
 export function YooptaMarkdownRenderer({
   content,
   className,
+  workspaceId,
   workspacePath,
   slug,
   editable,
@@ -98,6 +109,9 @@ export function YooptaMarkdownRenderer({
   showToc,
   updatedAt,
   onTitleChange,
+  onNavigationExtract,
+  onOpenPage,
+  onOpenWeb,
   headerPortal,
 }: YooptaMarkdownRendererProps) {
   const { t } = useTranslation();
@@ -281,8 +295,13 @@ export function YooptaMarkdownRenderer({
         .filter((p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
         .map((p) => ({ id: p.slug, name: p.name, avatar: '' }));
     };
-    return createYooptaPlugins(uploadFn, searchPagesFn);
-  }, [workspacePath, slug]);
+    return createYooptaPlugins({
+      uploadAsset: uploadFn,
+      searchPages: searchPagesFn,
+      buildPageHref: workspaceId ? (pageSlug) => getPageHref(workspaceId, pageSlug) : undefined,
+      buildPageMeta: () => ({ includeInPageIndex: true }),
+    });
+  }, [workspaceId, workspacePath, slug]);
 
   const editor = useMemo(() => {
     return withEmoji(
@@ -336,6 +355,11 @@ export function YooptaMarkdownRenderer({
       }
     }
   }, [editor, content]);
+
+  useEffect(() => {
+    if (!slug || !onNavigationExtract) return;
+    onNavigationExtract(extractPageNavigation(slug, content));
+  }, [content, onNavigationExtract, slug]);
 
   // Auto-focus the editor on mount (Notion behavior)
   useEffect(() => {
@@ -788,8 +812,48 @@ export function YooptaMarkdownRenderer({
     }
   }, [isEditable, editor]);
 
+  useEffect(() => {
+    if (!slug || !onNavigationExtract || !containerBoxRef.current) return;
+    onNavigationExtract(collectPageNavigationFromDom(containerBoxRef.current, slug));
+  }, [editor.children, onNavigationExtract, slug]);
+
+  const handleContentClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      const mention = target.closest<HTMLElement>("[data-mention-type='page'][data-mention-id']");
+      if (mention?.dataset.mentionId && onOpenPage) {
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenPage(mention.dataset.mentionId);
+        return;
+      }
+
+      const anchor = target.closest<HTMLAnchorElement>("a[href]");
+      const href = anchor?.getAttribute("href");
+      if (!href) return;
+
+      if (/^https?:\/\//i.test(href)) {
+        if (!workspaceId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenWeb?.(href, anchor?.textContent?.trim() || undefined);
+        return;
+      }
+
+      if (onOpenPage) {
+        event.preventDefault();
+        event.stopPropagation();
+        onOpenPage(href.replace(/^pages\//, "").replace(/\/SKILL\.md$/i, ""));
+      }
+    },
+    [onOpenPage, onOpenWeb, workspaceId]
+  );
+
   return (
     <div
+      onClickCapture={handleContentClick}
       className={cn(
         "yoopta-notion-editor w-full mx-auto relative",
         contentWidthClass,
@@ -1124,4 +1188,3 @@ const CoverBanner = memo(function CoverBanner({
     </div>
   );
 });
-

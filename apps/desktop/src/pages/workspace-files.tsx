@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Loader2, FolderOpen, ArrowLeft, File, FileCode, FileImage, FileText, X, GripVertical, Code } from "lucide-react";
+import { useParams } from "react-router-dom";
+import { Loader2, FolderOpen, File, FileCode, FileImage, FileText, X, GripVertical, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/components/file-browser";
 import { useLocalWorkspaces } from "@/hooks";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getGatewayClient } from "@/lib/gateway";
@@ -464,6 +465,7 @@ export function WorkspaceFilesPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
+  const { openGlobalView } = usePageTabs();
 
   // Reference to FileBrowser for imperative navigation
   const fileBrowserRef = useRef<FileBrowserRef>(null);
@@ -631,9 +633,17 @@ export function WorkspaceFilesPage() {
   const buildBreadcrumbs = useCallback((): BreadcrumbSegment[] => {
     const breadcrumbs: BreadcrumbSegment[] = [
       {
+        id: `workspace:${workspaceId}:files`,
         label: t("workspace.files", "Files"),
         href: `/workspace/${workspaceId}/files`,
+        kind: "workspace-section",
+        icon: { type: "lucide", value: "folder-open" },
         path: workspace?.path,
+        meta: {
+          workspaceId,
+          section: "files",
+          routePath: "files",
+        },
         onClick: () => {
           // Navigate to root (column index 0)
           fileBrowserRef.current?.navigateToColumnIndex(0);
@@ -644,9 +654,17 @@ export function WorkspaceFilesPage() {
     // Add path segments with onClick handlers for column navigation
     currentSegments.forEach((segment, index) => {
       breadcrumbs.push({
+        id: `workspace:${workspaceId}:files:${segment.path}`,
         label: segment.name,
         href: `/workspace/${workspaceId}/files`,
+        kind: "virtual-folder",
+        icon: { type: "lucide", value: "folder" },
         path: segment.path,
+        meta: {
+          workspaceId,
+          section: "files",
+          routePath: "files",
+        },
         onClick: () => {
           // Navigate to column index (index + 1 because root is 0)
           fileBrowserRef.current?.navigateToColumnIndex(index + 1);
@@ -683,11 +701,16 @@ export function WorkspaceFilesPage() {
           <p className="text-muted-foreground mb-4">
             {t("workspace.notFoundDesc")}
           </p>
-          <Button asChild>
-            <Link to="/mcp-services/dashboard">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t("workspace.backToDashboard")}
-            </Link>
+          <Button
+            type="button"
+            onClick={() =>
+              openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
+                type: "lucide",
+                value: "layout-dashboard",
+              })
+            }
+          >
+            {t("workspace.backToDashboard")}
           </Button>
         </div>
       </PageWrapper>

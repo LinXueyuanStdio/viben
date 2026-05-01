@@ -73,7 +73,7 @@ interface AgentChatViewProps {
   onOpenSessionFolder: () => void;
   onArchiveConversation: () => void;
   onAgentSettings: (agentId: string) => void;
-
+  headerless?: boolean;
 }
 
 export function AgentChatView({
@@ -123,6 +123,7 @@ export function AgentChatView({
   onOpenSessionFolder,
   onArchiveConversation,
   onAgentSettings,
+  headerless = false,
 }: AgentChatViewProps) {
   const { t } = useTranslation();
 
@@ -158,36 +159,38 @@ export function AgentChatView({
 
   return (
     <>
-      <ChatHeader
-        currentConversation={currentConversation}
-        currentAgent={currentAgent}
-        currentChatListAgent={currentChatListAgent}
-        agentConversations={agentConversationsForHeader}
-        agents={agents}
-        selectedAgentId={selectedAgentId}
-        gatewayConnected={gatewayConnected}
-        isLoadingSessions={isLoadingSessions}
-        onSelectSession={onSelectSession}
-        onCreateConversation={onCreateConversation}
-        onRenameSession={onRenameSession}
-        onDeleteSession={onDeleteSession}
-        onPinSession={onPinSession}
-        onArchiveSession={onArchiveSession}
-        onStarSession={onStarSession}
-        onDuplicateSession={onDuplicateSession}
-        onRefreshSessions={onRefreshSessions}
-        onCheckGateway={onCheckGateway}
-        onAgentAvatarClick={onAgentAvatarClick}
-        onOpenSearchDialog={onOpenSearchDialog}
-        onOpenHistoryDialog={onOpenHistoryDialog}
-        onOpenExportDialog={onOpenExportDialog}
-        onOpenGroupDialog={onOpenGroupDialog}
-        onOpenShareDialog={onOpenShareDialog}
-        onOpenClearDialog={onOpenClearDialog}
-        onNavigateToAgentSettings={onNavigateToAgentSettings}
-        onOpenSessionFolder={onOpenSessionFolder}
-        onArchiveConversation={onArchiveConversation}
-      />
+      {!headerless ? (
+        <ChatHeader
+          currentConversation={currentConversation}
+          currentAgent={currentAgent}
+          currentChatListAgent={currentChatListAgent}
+          agentConversations={agentConversationsForHeader}
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          gatewayConnected={gatewayConnected}
+          isLoadingSessions={isLoadingSessions}
+          onSelectSession={onSelectSession}
+          onCreateConversation={onCreateConversation}
+          onRenameSession={onRenameSession}
+          onDeleteSession={onDeleteSession}
+          onPinSession={onPinSession}
+          onArchiveSession={onArchiveSession}
+          onStarSession={onStarSession}
+          onDuplicateSession={onDuplicateSession}
+          onRefreshSessions={onRefreshSessions}
+          onCheckGateway={onCheckGateway}
+          onAgentAvatarClick={onAgentAvatarClick}
+          onOpenSearchDialog={onOpenSearchDialog}
+          onOpenHistoryDialog={onOpenHistoryDialog}
+          onOpenExportDialog={onOpenExportDialog}
+          onOpenGroupDialog={onOpenGroupDialog}
+          onOpenShareDialog={onOpenShareDialog}
+          onOpenClearDialog={onOpenClearDialog}
+          onNavigateToAgentSettings={onNavigateToAgentSettings}
+          onOpenSessionFolder={onOpenSessionFolder}
+          onArchiveConversation={onArchiveConversation}
+        />
+      ) : null}
 
       {/* Messages */}
       <DesktopMessageList

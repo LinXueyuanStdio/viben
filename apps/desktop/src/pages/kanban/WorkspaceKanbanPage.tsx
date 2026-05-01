@@ -95,7 +95,18 @@ export function WorkspaceKanbanPage() {
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
+          segments={[{
+            id: `workspace:${workspaceId}:kanban`,
+            label: t("workspace.kanban", "Kanban"),
+            href: `/workspace/${workspaceId}/kanban`,
+            icon: { type: "lucide", value: "layout-dashboard" },
+            kind: "workspace-section",
+            meta: {
+              workspaceId,
+              section: "kanban",
+              routePath: "kanban",
+            },
+          }]}
           showRefresh={false}
           showRemove={false}
         />
@@ -116,20 +127,34 @@ export function WorkspaceKanbanPage() {
       {/* Header with breadcrumb */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
-        showRefresh={false}
+        segments={[{
+          id: `workspace:${workspaceId}:kanban`,
+          label: t("workspace.kanban", "Kanban"),
+          href: `/workspace/${workspaceId}/kanban`,
+          icon: { type: "lucide", value: "layout-dashboard" },
+          kind: "workspace-section",
+          meta: {
+            workspaceId,
+            section: "kanban",
+            routePath: "kanban",
+          },
+        }]}
+        onRefresh={refetchTasks}
+        isRefreshing={isLoadingTasks}
         showRemove={false}
+        centerContent={
+          <ViewSwitcher
+            value={viewMode}
+            onChange={setViewMode}
+            labels={{
+              kanban: t("workspace.viewMode.kanban", "Kanban"),
+              list: t("workspace.viewMode.list", "List"),
+              table: t("workspace.viewMode.table", "Table"),
+            }}
+          />
+        }
         rightContent={
           <>
-            <ViewSwitcher
-              value={viewMode}
-              onChange={setViewMode}
-              labels={{
-                kanban: t("workspace.viewMode.kanban", "Kanban"),
-                list: t("workspace.viewMode.list", "List"),
-                table: t("workspace.viewMode.table", "Table"),
-              }}
-            />
             <Button
               size="sm"
               onClick={() => handleAddTask(columnStatuses[0]?.id || "backlog")}

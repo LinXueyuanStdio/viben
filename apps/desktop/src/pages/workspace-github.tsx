@@ -9,7 +9,7 @@
  * Design inspired by GitHub's official interface.
  */
 import { useState, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/utils";
 import {
@@ -44,7 +44,7 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLocalWorkspaces } from "@/hooks";
+import { useLocalWorkspaces, usePageTabs } from "@/hooks";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
 import { cn } from "@/lib/utils";
 import { IssueDetailModal } from "@/components/workspace/github/issue-detail-modal";
@@ -69,9 +69,9 @@ export function WorkspaceGitHubPage({
   workspaceOverride,
 }: WorkspaceGitHubPageProps = {}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { workspaceId: routeWorkspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
+  const { openGlobalView, openWorkspaceView, currentNavigationState } = usePageTabs();
 
   const workspaceId = workspaceOverride?.id ?? routeWorkspaceId;
   const workspace = workspaceOverride ?? (workspaceId ? getWorkspace(workspaceId) : undefined);
@@ -84,6 +84,50 @@ export function WorkspaceGitHubPage({
   const isAuthenticated = auth.status?.authenticated ?? false;
   const hasRepository = repo.repository !== null;
   const isIntegrated = isAuthenticated && hasRepository;
+  const headerSegments = useMemo(() => {
+    const githubSegment = {
+      label: t("nav.github"),
+      href: workspaceId
+        ? `/workspace/${encodeURIComponent(workspaceId)}/github`
+        : "#",
+      icon: { type: "lucide" as const, value: "github" },
+      kind: "workspace-section" as const,
+      meta: {
+        workspaceId,
+        section: "github" as const,
+        routePath: "github",
+      },
+    };
+    const stack = currentNavigationState?.breadcrumbStack;
+    if (stack && stack.length > 1) {
+      const mappedSegments = stack.slice(1).map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.target?.canonicalUrl ?? "#",
+        icon: item.icon,
+        kind: item.kind,
+        meta: item.meta,
+      }));
+
+      return mappedSegments.map((segment, index) =>
+        index === mappedSegments.length - 1
+          ? {
+              ...segment,
+              ...githubSegment,
+              href: githubSegment.href || segment.href,
+              meta: {
+                ...segment.meta,
+                ...githubSegment.meta,
+              },
+            }
+          : segment
+      );
+    }
+
+    return workspaceId
+      ? [githubSegment]
+      : [];
+  }, [currentNavigationState?.breadcrumbStack, t, workspaceId]);
 
   const wrapContent = (children: React.ReactNode) => {
     if (embeddedMode) {
@@ -112,11 +156,16 @@ export function WorkspaceGitHubPage({
         <h2 className="text-xl font-semibold mb-2">{t("workspace.notFound")}</h2>
         <p className="text-muted-foreground mb-4">{t("workspace.notFoundDesc")}</p>
         {!embeddedMode && (
-          <Button asChild>
-            <Link to="/mcp-services/dashboard">
+          <Button
+            onClick={() =>
+              openGlobalView("/mcp-services/dashboard", t("nav.dashboard", "Dashboard"), {
+                type: "lucide",
+                value: "layout-dashboard",
+              })
+            }
+          >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("workspace.backToDashboard")}
-            </Link>
           </Button>
         )}
       </>
@@ -150,7 +199,16 @@ export function WorkspaceGitHubPage({
           {t("workspaceSettings.github.notIntegratedDesc")}
         </p>
         {!embeddedMode && (
-          <Button onClick={() => navigate(`/workspace/${workspaceId}/chat`)}>
+          <Button
+            onClick={() =>
+              workspaceId
+                ? openWorkspaceView(workspaceId, "chat", t("workspace.chat", "Chat"), {
+                    type: "lucide",
+                    value: "message-square",
+                  })
+                : undefined
+            }
+          >
             <Settings className="h-4 w-4 mr-2" />
             {t("workspaceSettings.github.goToSettings")}
           </Button>
@@ -159,13 +217,42 @@ export function WorkspaceGitHubPage({
     );
   }
 
+  const renderTabsList = (className?: string) => (
+    <TabsList className={className ?? "h-9 border-b-0 bg-transparent p-0"}>
+      <TabsTrigger value="issues" className="h-9 rounded-md">
+        <CircleDot className="h-4 w-4 mr-2" />
+        {t("workspaceSettings.github.tabs.issues")}
+      </TabsTrigger>
+      <TabsTrigger value="prs" className="h-9 rounded-md">
+        <GitPullRequest className="h-4 w-4 mr-2" />
+        {t("workspaceSettings.github.tabs.pullRequests")}
+      </TabsTrigger>
+      <TabsTrigger value="releases" className="h-9 rounded-md">
+        <Tag className="h-4 w-4 mr-2" />
+        {t("workspaceSettings.github.tabs.releases")}
+      </TabsTrigger>
+    </TabsList>
+  );
+
   const content = (
-    <>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col min-h-0">
       {!embeddedMode && (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[{ label: t("nav.github"), href: `/workspace/${workspaceId}/github` }]}
+          segments={headerSegments}
+          showRefresh={false}
           showRemove={false}
+          centerContent={renderTabsList()}
+          rightContent={
+            repo.repository?.url ? (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={repo.repository.url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {t("workspaceSettings.github.viewOnGitHub")}
+                </a>
+              </Button>
+            ) : undefined
+          }
         />
       )}
 
@@ -199,61 +286,42 @@ export function WorkspaceGitHubPage({
                     {repo.repository.forks_count.toLocaleString()}
                   </div>
                 )}
-                <Button variant="outline" size="sm" asChild>
-                  <a href={repo.repository?.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {t("workspaceSettings.github.viewOnGitHub")}
-                  </a>
-                </Button>
+                {embeddedMode && repo.repository?.url ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={repo.repository.url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {t("workspaceSettings.github.viewOnGitHub")}
+                    </a>
+                  </Button>
+                ) : null}
               </div>
             </div>
+            {embeddedMode ? (
+              <div className="mt-4">
+                {renderTabsList("h-9 justify-start bg-transparent p-0")}
+              </div>
+            ) : null}
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="max-w-6xl mx-auto px-6 py-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="border-b w-full justify-start rounded-none bg-transparent p-0 h-auto">
-                <TabsTrigger
-                  value="issues"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <CircleDot className="h-4 w-4 mr-2" />
-                  {t("workspaceSettings.github.tabs.issues")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="prs"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <GitPullRequest className="h-4 w-4 mr-2" />
-                  {t("workspaceSettings.github.tabs.pullRequests")}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="releases"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-2"
-                >
-                  <Tag className="h-4 w-4 mr-2" />
-                  {t("workspaceSettings.github.tabs.releases")}
-                </TabsTrigger>
-              </TabsList>
+            <TabsContent value="issues" className="mt-0">
+              <IssuesTab workspacePath={workspace.path} />
+            </TabsContent>
 
-              <TabsContent value="issues" className="mt-4">
-                <IssuesTab workspacePath={workspace.path} />
-              </TabsContent>
+            <TabsContent value="prs" className="mt-0">
+              <PRsTab workspacePath={workspace.path} />
+            </TabsContent>
 
-              <TabsContent value="prs" className="mt-4">
-                <PRsTab workspacePath={workspace.path} />
-              </TabsContent>
-
-              <TabsContent value="releases" className="mt-4">
-                <ReleasesTab workspacePath={workspace.path} />
-              </TabsContent>
-            </Tabs>
+            <TabsContent value="releases" className="mt-0">
+              <ReleasesTab workspacePath={workspace.path} />
+            </TabsContent>
           </div>
         </div>
       </div>
-    </>
+    </Tabs>
   );
 
   if (embeddedMode) {

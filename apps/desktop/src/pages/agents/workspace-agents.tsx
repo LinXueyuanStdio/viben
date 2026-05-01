@@ -9,7 +9,7 @@
  * - Right: Detail panel with inline editing
  */
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Bot,
   Plus,
@@ -51,6 +51,7 @@ import {
 } from "@/components/chat";
 import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useModels, useAgentList } from "@/hooks";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Executor, ExecutorType } from "@/types";
@@ -64,7 +65,7 @@ export function WorkspaceAgentsPage({
   workspaceOverride,
 }: WorkspaceAgentsPageProps = {}) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo, openGlobalView } = usePageTabs();
 
   // Translate agent templates
   // API templates from gateway
@@ -382,9 +383,23 @@ export function WorkspaceAgentsPage({
   const handleEditItem = (itemId: string, itemType: "executor" | "agent" | "workspace-agent") => {
     const params = workspace?.path ? `?workspace_path=${encodeURIComponent(workspace.path)}` : "";
     if (itemType === "executor") {
-      navigate(`/executor/${itemId}${params}`);
+      navigateTo(`/executor/${itemId}${params}`, {
+        type: "workspace",
+        name: selectedExecutor?.name ?? itemId,
+        icon: { type: "lucide", value: "terminal" },
+        slug: itemId,
+        workspaceId: workspace?.id,
+      });
     } else {
-      navigate(`/agent/${itemId}${params}`);
+      const agentName =
+        agentListAgents.find((agent) => agent.id === itemId)?.name ?? itemId;
+      navigateTo(`/agent/${itemId}${params}`, {
+        type: "workspace",
+        name: agentName,
+        icon: { type: "lucide", value: "bot" },
+        slug: itemId,
+        workspaceId: workspace?.id,
+      });
     }
   };
 
@@ -421,14 +436,20 @@ export function WorkspaceAgentsPage({
         <p className="text-muted-foreground mb-4">
           {t("workspace.notFoundDesc")}
         </p>
-        {!settingsMode && (
-          <Button asChild>
-            <Link to="/mcp-services/dashboard">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t("workspace.backToDashboard")}
-            </Link>
+        {!settingsMode ? (
+          <Button
+            type="button"
+            onClick={() =>
+              openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
+                type: "lucide",
+                value: "layout-dashboard",
+              })
+            }
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t("workspace.backToDashboard")}
           </Button>
-        )}
+        ) : null}
       </>
     );
   }
@@ -451,7 +472,18 @@ export function WorkspaceAgentsPage({
         <WorkspaceHeader
           workspace={workspace}
           segments={[
-            { label: t("settingsAgents.title"), href: `/workspace/${workspaceId}/agents` },
+            {
+              id: `workspace:${workspaceId}:agents`,
+              label: t("settingsAgents.title"),
+              href: `/workspace/${workspaceId}/agent`,
+              kind: "workspace-section",
+              icon: { type: "lucide", value: "bot" },
+              meta: {
+                workspaceId,
+                section: "agent",
+                routePath: "agent",
+              },
+            },
           ]}
           onRefresh={refreshAll}
           isRefreshing={loading}

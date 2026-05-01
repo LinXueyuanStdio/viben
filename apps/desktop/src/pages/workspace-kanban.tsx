@@ -2176,7 +2176,18 @@ export function WorkspaceKanbanPage() {
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
+          segments={[{
+            id: `workspace:${workspaceId}:kanban`,
+            label: t("workspace.kanban", "Kanban"),
+            href: `/workspace/${workspaceId}/kanban`,
+            icon: { type: "lucide", value: "layout-dashboard" },
+            kind: "workspace-section",
+            meta: {
+              workspaceId,
+              section: "kanban",
+              routePath: "kanban",
+            },
+          }]}
           showRefresh={false}
           showRemove={false}
         />
@@ -2197,20 +2208,72 @@ export function WorkspaceKanbanPage() {
       {/* Header with breadcrumb */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
-        showRefresh={false}
+        segments={[{
+          id: `workspace:${workspaceId}:kanban`,
+          label: t("workspace.kanban", "Kanban"),
+          href: `/workspace/${workspaceId}/kanban`,
+          icon: { type: "lucide", value: "layout-dashboard" },
+          kind: "workspace-section",
+          meta: {
+            workspaceId,
+            section: "kanban",
+            routePath: "kanban",
+          },
+        }]}
+        onRefresh={handleRefresh}
+        isRefreshing={isFetchingTasks}
         showRemove={false}
+        centerContent={
+          <ViewSwitcher
+            value={viewMode}
+            onChange={setViewMode}
+            labels={{
+              kanban: t("workspace.viewMode.kanban", "Kanban"),
+              list: t("workspace.viewMode.list", "List"),
+              table: t("workspace.viewMode.table", "Table"),
+            }}
+          />
+        }
         rightContent={
           <>
-            <ViewSwitcher
-              value={viewMode}
-              onChange={setViewMode}
-              labels={{
-                kanban: t("workspace.viewMode.kanban", "Kanban"),
-                list: t("workspace.viewMode.list", "List"),
-                table: t("workspace.viewMode.table", "Table"),
-              }}
-            />
+            <Button
+              variant={showStats ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8"
+              onClick={() => setShowStats((s) => !s)}
+            >
+              <BarChart3 className="h-4 w-4 mr-1" />
+              {t("workspace.stats")}
+            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setIsCommandPaletteOpen(true)}
+                  >
+                    <Keyboard className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <div className="text-xs space-y-1">
+                    <p className="font-medium">{t("workspace.keyboardShortcuts")}</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+                      <span>{t("workspace.commandPalette.arrowKeys")}</span>
+                      <span>{t("workspace.shortcut.navigate")}</span>
+                      <span>{t("workspace.commandPalette.enter")}</span>
+                      <span>{t("workspace.shortcut.open")}</span>
+                      <span>{t("workspace.commandPalette.escape")}</span>
+                      <span>{t("workspace.shortcut.close")}</span>
+                      <span>{t("workspace.shortcut.cmdK", "Cmd/Ctrl + K")}</span>
+                      <span>{t("workspace.shortcut.command")}</span>
+                    </div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <Button
               size="sm"
               onClick={() => handleAddTask(columnStatuses[0]?.id || "backlog")}
@@ -2267,17 +2330,6 @@ export function WorkspaceKanbanPage() {
             onChange={handleSortChange}
           />
 
-          {/* Stats Toggle */}
-          <Button
-            variant={showStats ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8"
-            onClick={() => setShowStats((s) => !s)}
-          >
-            <BarChart3 className="h-4 w-4 mr-1" />
-            {t("workspace.stats")}
-          </Button>
-
           {/* Expand All Button - shown when 3+ columns are collapsed */}
           {collapsedCount >= 3 && (
             <TooltipProvider>
@@ -2299,50 +2351,6 @@ export function WorkspaceKanbanPage() {
               </Tooltip>
             </TooltipProvider>
           )}
-
-          {/* Keyboard Shortcuts Help */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => setIsCommandPaletteOpen(true)}
-                >
-                  <Keyboard className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs">
-                <div className="text-xs space-y-1">
-                  <p className="font-medium">{t("workspace.keyboardShortcuts")}</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
-                    <span>{t("workspace.commandPalette.arrowKeys")}</span>
-                    <span>{t("workspace.shortcut.navigate")}</span>
-                    <span>{t("workspace.commandPalette.enter")}</span>
-                    <span>{t("workspace.shortcut.open")}</span>
-                    <span>{t("workspace.commandPalette.escape")}</span>
-                    <span>{t("workspace.shortcut.close")}</span>
-                    <span>{t("workspace.shortcut.cmdK", "Cmd/Ctrl + K")}</span>
-                    <span>{t("workspace.shortcut.command")}</span>
-                  </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {/* Refresh Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8"
-            onClick={handleRefresh}
-            disabled={isFetchingTasks}
-          >
-            <RefreshCw
-              className={cn("h-4 w-4", isFetchingTasks && "animate-spin")}
-            />
-          </Button>
         </div>
       </div>
 

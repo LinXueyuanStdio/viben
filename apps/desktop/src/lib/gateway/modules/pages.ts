@@ -281,6 +281,27 @@ export function getPageServeUrl(
   return `${baseUrl}/api/page/serve?${params.toString()}`;
 }
 
+/**
+ * Resolve a path inside a page's served content to an absolute URL.
+ * Useful for nested markdown assets and page-scoped external previews.
+ */
+export function resolvePageServeUrl(
+  baseUrl: string,
+  workspacePath: string,
+  slug: string,
+  input: string
+): string {
+  if (/^https?:\/\//i.test(input)) {
+    return input;
+  }
+
+  if (input.startsWith("/")) {
+    return `${baseUrl}${input}`;
+  }
+
+  return getPageServeUrl(baseUrl, workspacePath, slug, input);
+}
+
 // =============================================================================
 // Templates API
 // =============================================================================

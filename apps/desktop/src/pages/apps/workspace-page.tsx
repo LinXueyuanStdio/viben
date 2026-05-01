@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -30,8 +30,11 @@ import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { usePage } from "@/hooks/use-pages";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
+import { getPageHref, getWorkspaceWebHref } from "./utils/page-href";
+import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
 
 /**
  * Extract slug from page path
@@ -246,14 +249,21 @@ function PageToolbar({
 
 export function WorkspacePage() {
   const { t } = useTranslation();
+  const params = useParams<{ workspaceId?: string; "*": string | undefined }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
+  const { navigateInTab, currentNavigationState } = usePageTabs();
 
-  // Parse URL parameters
-  const workspaceId = searchParams.get("workspace_id");
+  const routeWorkspaceId = params.workspaceId;
+  const routeSlug = params["*"]?.trim() || null;
+  const legacyWorkspaceId = searchParams.get("workspace_id");
   const pagePath = searchParams.get("page_path");
   const viewParam = searchParams.get("view") as PageViewMode | null;
-  const slug = useMemo(() => extractSlugFromPath(pagePath), [pagePath]);
+  const workspaceId = routeWorkspaceId ?? legacyWorkspaceId;
+  const slug = useMemo(
+    () => routeSlug ?? extractSlugFromPath(pagePath),
+    [pagePath, routeSlug]
+  );
 
   // View mode state — default to "page" (preview), URL param can override
   const initialViewMode: PageViewMode = useMemo(() => {
@@ -309,9 +319,74 @@ export function WorkspacePage() {
   // Use callback ref to trigger re-render when the DOM element mounts
   const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
 
+  const pageHeaderSegments = useMemo<DesktopBreadcrumbSegment[]>(() => {
+    const stack = currentNavigationState?.breadcrumbStack;
+    if (stack && stack.length > 1) {
+      return stack.slice(1).map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.target?.canonicalUrl ?? "#",
+        icon: item.icon,
+        kind: item.kind,
+        meta: item.meta,
+      }));
+    }
+
+    if (!workspaceId || !slug) {
+      return [];
+    }
+
+    const fallbackLabel =
+      page?.name ??
+      slug
+        .split("/")
+        .filter(Boolean)
+        .pop()
+        ?.replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase()) ??
+      "Page";
+
+    return [
+      {
+        id: `workspace:${workspaceId}:page:${slug}`,
+        label: fallbackLabel,
+        href: getPageHref(workspaceId, slug),
+        icon: page?.icon ?? { type: "lucide", value: "file-text" },
+        kind: "workspace-page",
+        meta: {
+          workspaceId,
+          pageSlug: slug,
+        },
+      },
+    ];
+  }, [currentNavigationState?.breadcrumbStack, page?.icon, page?.name, slug, workspaceId]);
+
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
   }, []);
+
+  const handleOpenPage = useCallback(
+    (nextPageSlug: string) => {
+      if (!workspaceId) return;
+      navigateInTab(getPageHref(workspaceId, nextPageSlug));
+    },
+    [navigateInTab, workspaceId]
+  );
+
+  const handleOpenWeb = useCallback(
+    (url: string, title?: string) => {
+      if (!workspaceId) return;
+      navigateInTab(
+        getWorkspaceWebHref({
+          workspaceId,
+          url,
+          title,
+          sourcePageSlug: slug ?? undefined,
+        })
+      );
+    },
+    [navigateInTab, slug, workspaceId]
+  );
 
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
@@ -369,9 +444,7 @@ export function WorkspacePage() {
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            { label: t("page.pages", "Pages"), href: `/workspace/${workspaceId}/files` },
-          ]}
+          segments={pageHeaderSegments}
           showRemove={false}
           showRefresh={false}
         />
@@ -405,10 +478,7 @@ export function WorkspacePage() {
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            { label: t("page.pages", "Pages"), href: `/workspace/${workspaceId}/files` },
-            { label: slug, href: "#" },
-          ]}
+          segments={pageHeaderSegments}
           showRemove={false}
           showRefresh={false}
         />
@@ -426,10 +496,7 @@ export function WorkspacePage() {
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            { label: t("page.pages", "Pages"), href: `/workspace/${workspaceId}/files` },
-            { label: slug, href: "#" },
-          ]}
+          segments={pageHeaderSegments}
           showRemove={false}
           showRefresh={false}
         />
@@ -459,10 +526,7 @@ export function WorkspacePage() {
     <PageWrapper className={cn("flex flex-col h-full", isFullscreen && "fixed inset-0 z-50")}>
       <WorkspaceHeader
         workspace={workspace}
-        segments={[
-          { label: t("page.pages", "Pages"), href: `/workspace/${workspaceId}/files` },
-          { label: page.name, href: "#" },
-        ]}
+        segments={pageHeaderSegments}
         showRemove={false}
         showRefresh={false}
         rightContent={
@@ -487,6 +551,7 @@ export function WorkspacePage() {
         <PagePreview
           page={page}
           workspacePath={workspace.path}
+          workspaceId={workspace.id}
           viewMode={viewMode}
           iframeKey={iframeKey}
           livePreviewUrl={previewUrl}
@@ -494,6 +559,8 @@ export function WorkspacePage() {
           livePreviewError={previewError}
           onStartLivePreview={handleStartLivePreview}
           onStopLivePreview={stopPreview}
+          onOpenPage={handleOpenPage}
+          onOpenWeb={handleOpenWeb}
           headerPortal={editorHeaderEl}
           className="h-full"
         />

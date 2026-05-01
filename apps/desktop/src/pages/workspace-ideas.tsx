@@ -15,7 +15,6 @@ import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { useParams } from "react-router-dom";
 import {
   Lightbulb,
-  Plus,
   Loader2,
   Sparkles,
   Trash2,
@@ -759,13 +758,50 @@ export function WorkspaceIdeasPage() {
       {/* Header */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{ label: t("ideas.title"), href: `/workspace/${workspaceId}/ideas` }]}
+        segments={[{
+          id: `workspace:${workspaceId}:ideas`,
+          label: t("workspace.ideas", "Ideas"),
+          href: `/workspace/${workspaceId}/ideas`,
+          icon: { type: "lucide", value: "lightbulb" },
+          kind: "workspace-section",
+          meta: {
+            workspaceId,
+            section: "ideas",
+            routePath: "ideas",
+          },
+        }]}
         onRefresh={handleRefresh}
         isRefreshing={loading}
         showRemove={false}
         rightContent={
           <div className="flex items-center gap-2">
-            <Button onClick={() => openGenerateDialog()} variant="default">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => setIsPanelCollapsed((collapsed) => !collapsed)}
+            >
+              {isPanelCollapsed ? (
+                <PanelLeft className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => openCreateTypeDialog()}
+            >
+              <FilePlus className="h-4 w-4 mr-2" />
+              {t("ideas.createIdeaType")}
+            </Button>
+            <Button
+              onClick={() => openGenerateDialog()}
+              variant="default"
+              size="sm"
+              className="h-8"
+            >
               <Sparkles className="h-4 w-4 mr-2" />
               {t("ideas.generateIdeas")}
             </Button>
@@ -803,28 +839,6 @@ export function WorkspaceIdeasPage() {
                 </Button>
               )}
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openCreateTypeDialog()}>
-                  <FilePlus className="h-4 w-4 mr-2" />
-                  {t("ideas.createIdeaType")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openGenerateDialog()}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {t("ideas.generateIdeas")}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsPanelCollapsed(true)}>
-                  <PanelLeftClose className="h-4 w-4 mr-2" />
-                  {t("ideas.hidePanel")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
 
           {/* List Content */}

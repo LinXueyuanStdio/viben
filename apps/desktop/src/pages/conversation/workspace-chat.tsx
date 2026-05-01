@@ -14,8 +14,20 @@ import {
 } from "./components";
 import { LeftPanel } from "./components/left-panel";
 import { AgentChatView } from "./components/agent-chat-view";
-import { ExecutorChatView } from "./components/executor-chat-view";
-import { GroupChatView } from "./components/group-chat-view";
+import {
+  ExecutorChatHeaderActions,
+  ExecutorChatHeaderCenter,
+  ExecutorChatView,
+} from "./components/executor-chat-view";
+import {
+  GroupChatHeaderActions,
+  GroupChatHeaderCenter,
+  GroupChatView,
+} from "./components/group-chat-view";
+import {
+  ChatHeaderActions,
+  ChatHeaderCenter,
+} from "./components/chat-header";
 import {
   SearchDialog,
   HistoryDialog,
@@ -64,6 +76,39 @@ export function WorkspaceChatPage() {
     .map((m) => `${m.type === "user" ? t("chat.you") : chat.currentAgent?.name || t("chat.defaultAgentName", "Agent")}: ${m.content}`)
     .join("\n\n");
 
+  const showAgentHeader = Boolean(
+    !chat.isGroupChatMode &&
+      !chat.selectedSidebarExecutorId &&
+      chat.selectedConversationId
+  );
+
+  const rightSidebarToggle = (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => chat.setIsSidebarOpen(!chat.isSidebarOpen)}
+      className="h-8"
+    >
+      {chat.isSidebarOpen ? (
+        <PanelRightClose className="h-4 w-4" />
+      ) : (
+        <PanelRightOpen className="h-4 w-4" />
+      )}
+    </Button>
+  );
+
+  const agentConversationsForHeader = chat.agentConversations.map((c) => ({
+    id: c.id,
+    name: c.title,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+    messageCount: c.messageCount,
+    isPinned: c.isPinned,
+    isStarred: c.isStarred,
+    lastMessage: c.lastMessage,
+    agentName: chat.agents.find((a) => a.id === c.agentId)?.name,
+  }));
+
   return (
     <motion.div
       initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
@@ -77,19 +122,97 @@ export function WorkspaceChatPage() {
         segments={[{ label: t("chat.title"), href: `/workspace/${workspaceId}/chat` }]}
         showRefresh={false}
         showRemove={false}
+        centerContent={
+          chat.isGroupChatMode && chat.currentGroupChat ? (
+            <GroupChatHeaderCenter
+              currentGroupChat={chat.currentGroupChat}
+              groupChatMembers={chat.groupChatMembers}
+              groupChatConnected={chat.groupChatConnected}
+            />
+          ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
+            <ExecutorChatHeaderCenter
+              selectedSidebarExecutor={chat.selectedSidebarExecutor}
+              executorSessionsForSelector={chat.executorSessionsForSelector}
+              selectedExecutorSessionId={chat.selectedExecutorSessionId}
+              gatewayConnected={chat.gatewayConnected}
+              onSelectSession={(sessionId) => chat.setSelectedExecutorSessionId(sessionId)}
+              onCheckGateway={chat.checkGatewayConnection}
+              onExecutorAvatarClick={() => {
+                chat.setRightSidebarExecutorDetail({
+                  id: chat.selectedSidebarExecutor!.id,
+                  name: chat.selectedSidebarExecutor!.name,
+                  type: chat.selectedSidebarExecutor!.icon_type || "unknown",
+                  config_path: (chat.selectedSidebarExecutor!.metadata?.config_path as string) || undefined,
+                });
+                chat.setDetailAgentId(null);
+                chat.setIsSidebarOpen(true);
+              }}
+            />
+          ) : showAgentHeader ? (
+            <ChatHeaderCenter
+              currentConversation={chat.currentConversation}
+              currentAgent={chat.currentAgent}
+              agentConversations={agentConversationsForHeader}
+              gatewayConnected={chat.gatewayConnected}
+              onSelectSession={(sessionId) => chat.setSelectedConversationId(sessionId)}
+              onCreateConversation={chat.handleCreateConversation}
+              onRenameSession={chat.handleRenameSession}
+              onDeleteSession={chat.handleDeleteSession}
+              onPinSession={chat.handlePinSession}
+              onArchiveSession={chat.handleArchiveSession}
+              onStarSession={chat.handleStarSession}
+              onDuplicateSession={chat.handleDuplicateSession}
+              onCheckGateway={chat.checkGatewayConnection}
+              onAgentAvatarClick={() => {
+                const agentId = chat.selectedAgentId || chat.currentChatListAgent?.id;
+                if (agentId) {
+                  chat.setDetailAgentId(agentId);
+                  chat.setRightSidebarExecutorDetail(null);
+                  chat.setIsSidebarOpen(true);
+                }
+              }}
+            />
+          ) : undefined
+        }
         rightContent={
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => chat.setIsSidebarOpen(!chat.isSidebarOpen)}
-            className="h-8"
-          >
-            {chat.isSidebarOpen ? (
-              <PanelRightClose className="h-4 w-4" />
-            ) : (
-              <PanelRightOpen className="h-4 w-4" />
-            )}
-          </Button>
+          <>
+            {chat.isGroupChatMode && chat.currentGroupChat ? (
+              <GroupChatHeaderActions
+                currentGroupChat={chat.currentGroupChat}
+                currentGroupChatSession={chat.currentGroupChatSession}
+                groupChatSessions={chat.groupChatSessions}
+                groupChatViewMode={chat.groupChatViewMode}
+                groupChatViewAgentId={chat.groupChatViewAgentId}
+                sessionAgents={chat.sessionAgents}
+                groupChatMembers={chat.groupChatMembers}
+                onSelectSession={chat.handleSelectGroupChatSession}
+                onCreateSession={chat.handleCreateGroupChatSession}
+                onSwitchView={chat.handleSwitchGroupChatView}
+                onOpenMembersDialog={() => chat.setIsMembersDialogOpen(true)}
+              />
+            ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
+              <ExecutorChatHeaderActions
+                isLoadingExecutorSessions={chat.isLoadingExecutorSessions}
+                onRefreshSessions={chat.refreshExecutorSessions}
+                onOpenSearchDialog={() => chat.setIsSearchDialogOpen(true)}
+              />
+            ) : showAgentHeader ? (
+              <ChatHeaderActions
+                isLoadingSessions={chat.isLoadingSessions}
+                onRefreshSessions={chat.refreshAgentSessions}
+                onOpenSearchDialog={() => chat.setIsSearchDialogOpen(true)}
+                onOpenHistoryDialog={() => chat.setIsHistoryDialogOpen(true)}
+                onOpenExportDialog={() => chat.setIsExportDialogOpen(true)}
+                onOpenGroupDialog={() => chat.setIsGroupDialogOpen(true)}
+                onOpenShareDialog={() => chat.setIsShareDialogOpen(true)}
+                onOpenClearDialog={() => chat.setIsClearDialogOpen(true)}
+                onNavigateToAgentSettings={chat.handleNavigateToAgentSettings}
+                onOpenSessionFolder={chat.handleOpenSessionFolder}
+                onArchiveConversation={chat.handleArchiveConversation}
+              />
+            ) : null}
+            {rightSidebarToggle}
+          </>
         }
       />
 
@@ -180,6 +303,7 @@ export function WorkspaceChatPage() {
               onInputChange={chat.setGroupChatInput}
               onSendTyping={chat.sendTyping}
               onOpenMembersDialog={() => chat.setIsMembersDialogOpen(true)}
+              headerless
             />
           ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
             <ExecutorChatView
@@ -208,6 +332,7 @@ export function WorkspaceChatPage() {
                 chat.setDetailAgentId(null);
                 chat.setIsSidebarOpen(true);
               }}
+              headerless
             />
           ) : (
             <AgentChatView
@@ -274,6 +399,7 @@ export function WorkspaceChatPage() {
                   else navigate(`/agent/${agentId}${params}`);
                 }
               }}
+              headerless
             />
           )}
         </div>

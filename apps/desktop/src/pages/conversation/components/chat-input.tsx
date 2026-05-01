@@ -42,6 +42,7 @@ import {
   Terminal,
   Crosshair,
   AppWindow,
+  Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
@@ -51,6 +52,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import {
   Popover,
@@ -298,7 +302,7 @@ export function ChatInput({
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
 
   // Internal screenshot handler using Tauri command
-  const { takeScreenshot, startRegionScreenshot, listWindows, takeWindowScreenshot, isCapturing: isScreenshotCapturing } = useScreenshot({
+  const { takeScreenshot, startRegionScreenshot, listMonitors, listWindows, takeWindowScreenshot, isCapturing: isScreenshotCapturing } = useScreenshot({
     onSuccess: (attachment) => {
       setAttachments((prev) => [...prev, attachment]);
     },
@@ -321,9 +325,20 @@ export function ChatInput({
     [onScreenshot, takeScreenshot]
   );
 
+  // Monitor list for region screenshot sub-menu
+  const [monitors, setMonitors] = useState<Awaited<ReturnType<typeof listMonitors>>>([]);
+
+  // Fetch monitors when screenshot dropdown opens
+  const handleScreenshotDropdownOpen = useCallback(async (open: boolean) => {
+    if (open) {
+      const result = await listMonitors();
+      setMonitors(result);
+    }
+  }, [listMonitors]);
+
   // Region screenshot handler
-  const handleRegionScreenshot = useCallback(async () => {
-    await startRegionScreenshot();
+  const handleRegionScreenshot = useCallback(async (monitorId?: number) => {
+    await startRegionScreenshot(monitorId);
   }, [startRegionScreenshot]);
 
   // Window screenshot handler - captures the first available window
@@ -1082,7 +1097,7 @@ export function ChatInput({
             </TooltipProvider>
 
             {/* Screenshot with dropdown */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={handleScreenshotDropdownOpen}>
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -1114,10 +1129,29 @@ export function ChatInput({
                   <EyeOff className="h-4 w-4 mr-2" />
                   {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRegionScreenshot()}>
-                  <Crosshair className="h-4 w-4 mr-2" />
-                  {t("chat.screenshotRegion", "Region Screenshot")}
-                </DropdownMenuItem>
+                {monitors.length > 1 ? (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Crosshair className="h-4 w-4 mr-2" />
+                      {t("chat.screenshotRegion", "Region Screenshot")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {monitors.map((m) => (
+                        <DropdownMenuItem key={m.id} onClick={() => handleRegionScreenshot(m.id)}>
+                          <Monitor className="h-4 w-4 mr-2" />
+                          {m.name || `Monitor ${m.id}`}
+                          {m.is_primary ? ` (${t("chat.primary", "Primary")})` : ""}
+                          <span className="ml-auto text-xs text-muted-foreground">{m.width}×{m.height}</span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ) : (
+                  <DropdownMenuItem onClick={() => handleRegionScreenshot()}>
+                    <Crosshair className="h-4 w-4 mr-2" />
+                    {t("chat.screenshotRegion", "Region Screenshot")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => handleWindowScreenshot()}>
                   <AppWindow className="h-4 w-4 mr-2" />
                   {t("chat.screenshotWindow", "Window Screenshot")}

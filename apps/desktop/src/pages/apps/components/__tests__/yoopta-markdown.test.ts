@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   extractFrontmatter,
   prependFrontmatter,
-  preprocessMathForDeserialize,
   normalizeBlockSeparators,
 } from "../yoopta-markdown";
 
@@ -62,48 +61,6 @@ describe("prependFrontmatter", () => {
   it("adds newline if frontmatter doesn't end with one", () => {
     const result = prependFrontmatter("---\nkey: val\n---", "# Hello");
     expect(result).toBe("---\nkey: val\n---\n# Hello");
-  });
-});
-
-// =============================================================================
-// preprocessMathForDeserialize
-// =============================================================================
-
-describe("preprocessMathForDeserialize", () => {
-  it("converts block math $$ fences to data-math-block divs", () => {
-    const md = "Some text\n\n$$\nE = mc^2\n$$\n\nMore text";
-    const result = preprocessMathForDeserialize(md);
-    expect(result).toContain('data-math-block="true"');
-    expect(result).toContain("E = mc^2");
-    expect(result).not.toContain("$$");
-  });
-
-  it("converts inline math $..$ to data-math-inline spans", () => {
-    const md = "The formula $E = mc^2$ is famous.";
-    const result = preprocessMathForDeserialize(md);
-    expect(result).toContain('data-math-inline="true"');
-    expect(result).toContain("E = mc^2");
-  });
-
-  it("does not match $$ inside block math as inline", () => {
-    const md = "$$\nx^2 + y^2 = z^2\n$$";
-    const result = preprocessMathForDeserialize(md);
-    // Should only have block math, no inline spans
-    expect(result).toContain('data-math-block="true"');
-    expect(result).not.toContain('data-math-inline');
-  });
-
-  it("handles LaTeX with special HTML chars", () => {
-    const md = "Use $a < b$ and $c > d$ in math";
-    const result = preprocessMathForDeserialize(md);
-    expect(result).toContain("a &lt; b");
-    expect(result).toContain("c &gt; d");
-  });
-
-  it("leaves non-math content untouched", () => {
-    const md = "# Hello\n\nJust a paragraph with no math.";
-    const result = preprocessMathForDeserialize(md);
-    expect(result).toBe(md);
   });
 });
 

@@ -30,6 +30,8 @@ export interface PagePreviewProps {
   page: PageConfig;
   /** Workspace path */
   workspacePath: string;
+  /** Workspace id for canonical page/web routes */
+  workspaceId: string;
   /** Current view mode (controlled from parent) */
   viewMode: PageViewMode;
   /** Key to force iframe refresh (increment to reload) */
@@ -44,6 +46,10 @@ export interface PagePreviewProps {
   onStartLivePreview?: () => void;
   /** Callback to stop live preview */
   onStopLivePreview?: () => void;
+  /** Navigate to another workspace page in the current tab */
+  onOpenPage?: (pageSlug: string) => void;
+  /** Navigate to a workspace web wrapper in the current tab */
+  onOpenWeb?: (url: string, title?: string) => void;
   /** Additional class names */
   className?: string;
   /** Portal target for editor header buttons */
@@ -69,6 +75,7 @@ function getPageServeUrl(workspacePath: string, slug: string): string {
 export function PagePreview({
   page,
   workspacePath,
+  workspaceId,
   viewMode,
   iframeKey = 0,
   livePreviewUrl,
@@ -76,6 +83,8 @@ export function PagePreview({
   livePreviewError,
   onStartLivePreview,
   onStopLivePreview,
+  onOpenPage,
+  onOpenWeb,
   className,
   headerPortal,
 }: PagePreviewProps) {
@@ -130,6 +139,7 @@ export function PagePreview({
           <YooptaMarkdownRenderer
             content={page.skill_content || ""}
             workspacePath={workspacePath}
+            workspaceId={workspaceId}
             slug={page.slug}
             title={page.name}
             icon={page.icon}
@@ -138,6 +148,8 @@ export function PagePreview({
             showToc={page.show_toc}
             updatedAt={page.updated_at}
             onTitleChange={handleTitleChange}
+            onOpenPage={onOpenPage}
+            onOpenWeb={onOpenWeb}
             headerPortal={headerPortal}
             className="h-full"
           />
@@ -151,6 +163,7 @@ export function PagePreview({
               <YooptaMarkdownRenderer
                 content={page.skill_content || ""}
                 workspacePath={workspacePath}
+                workspaceId={workspaceId}
                 slug={page.slug}
                 title={page.name}
                 icon={page.icon}
@@ -159,6 +172,8 @@ export function PagePreview({
                 showToc={page.show_toc}
                 updatedAt={page.updated_at}
                 onTitleChange={handleTitleChange}
+                onOpenPage={onOpenPage}
+                onOpenWeb={onOpenWeb}
                 headerPortal={headerPortal}
                 className="h-full"
               />

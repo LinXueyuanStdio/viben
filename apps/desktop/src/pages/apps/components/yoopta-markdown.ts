@@ -206,8 +206,6 @@ function serializeBlock(
       element,
       childText,
       block.meta,
-      editor,
-      block,
     );
     if (result) {
       // Strip trailing newline for consistency — normalizeBlockSeparators handles separation

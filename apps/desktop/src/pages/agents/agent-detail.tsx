@@ -11,7 +11,7 @@
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDebounceFn } from "ahooks";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Save,
@@ -30,6 +30,8 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
+import { PageWrapper } from "@/components/layout";
+import { WorkspaceHeader } from "@/components/workspace";
 import {
   useAgents,
   useModels,
@@ -38,6 +40,7 @@ import {
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import {
   AgentMcpDialog,
   AgentSkillsDialog,
@@ -61,8 +64,8 @@ import { uiMessageToAgentMessage } from "./utils";
 
 export function AgentDetailPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
+  const { openGlobalView, openWorkspaceView } = usePageTabs();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
@@ -618,11 +621,19 @@ export function AgentDetailPage() {
   // Navigate back to appropriate location based on scope
   const handleNavigateBack = useCallback(() => {
     if (isWorkspaceScoped && workspace) {
-      navigate(`/workspace/${workspace.id}/agents`);
+      openWorkspaceView(
+        workspace.id,
+        "agent",
+        t("settingsAgents.title"),
+        { type: "lucide", value: "bot" }
+      );
     } else {
-      navigate("/settings/agents");
+      openGlobalView("/settings/agents", t("settingsAgents.title"), {
+        type: "lucide",
+        value: "bot",
+      });
     }
-  }, [navigate, isWorkspaceScoped, workspace]);
+  }, [isWorkspaceScoped, openGlobalView, openWorkspaceView, t, workspace]);
 
   // Handle span selection for trace visualization
   const handleSelectSpan = useCallback((span: TraceSpanNode | null) => {
@@ -788,93 +799,110 @@ export function AgentDetailPage() {
   // ============================================================================
 
   return (
-    <div className="h-full flex flex-col">
+    <PageWrapper className="h-full flex flex-col">
+      {/* Breadcrumb Header */}
+      {workspace ? (
+        <WorkspaceHeader
+          workspace={workspace}
+          segments={[
+            {
+              label: t("settingsAgents.title"),
+              href: `/workspace/${workspace.id}/agent`,
+              icon: { type: "lucide", value: "bot" },
+              kind: "workspace-section",
+              meta: { section: "agent", workspaceId: workspace.id },
+            },
+            {
+              label: formName || agentId || "",
+              href: "#",
+            },
+          ]}
+          showRefresh={false}
+          showRemove={false}
+          centerContent={
+            <TabsList className="h-9 border-b-0 bg-transparent p-0">
+              <TabsTrigger value="debug" className="h-9 rounded-md">
+                {t("agentDetail.debugTab", "Debug")}
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="h-9 rounded-md">
+                {t("agentDetail.settingsTab", "Settings")}
+              </TabsTrigger>
+            </TabsList>
+          }
+          rightContent={
+            <>
+              {lastSaved && (
+                <span className="text-xs text-muted-foreground">
+                  {t("settingsAgents.lastSaved", {
+                    time: lastSaved.toLocaleTimeString(),
+                  })}
+                </span>
+              )}
+              {isDirty && (
+                <Badge variant="secondary" className="text-xs">
+                  {t("settingsAgents.unsaved")}
+                </Badge>
+              )}
+              {!formIsValid && isDirty && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="destructive" className="text-xs gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {t("settingsAgents.validationError", "Validation failed")}
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <ul className="text-xs space-y-1">
+                        {validationErrors.map((error, i) => (
+                          <li key={i}>{error}</li>
+                        ))}
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleOpenFolder}
+                      disabled={!agentFolderPath}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button onClick={handleSave} disabled={saving || !isDirty}>
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {saving ? t("common.saving", "Saving...") : t("common.save")}
+              </Button>
+            </>
+          }
+        />
+      ) : (
+        <div className="flex items-center gap-2 px-4 border-b h-14">
+          <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span className="font-medium">{formName || agentId}</span>
+        </div>
+      )}
+
       {/* Header with Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as "debug" | "settings")}
         className="flex-1 flex flex-col min-h-0"
       >
-        <div className="flex items-center justify-between px-4 border-b h-14">
-          {/* Left side: Back button + Tabs */}
-          <div className="flex items-center gap-2 h-full">
-            <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <TabsList className="h-full border-b-0">
-              <TabsTrigger value="debug" className="h-full rounded-none">
-                {t("agentDetail.debugTab", "Debug")}
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="h-full rounded-none">
-                {t("agentDetail.settingsTab", "Settings")}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Right side: Status + Actions */}
-          <div className="flex items-center gap-2">
-            {lastSaved && (
-              <span className="text-xs text-muted-foreground">
-                {t("settingsAgents.lastSaved", {
-                  time: lastSaved.toLocaleTimeString(),
-                })}
-              </span>
-            )}
-            {isDirty && (
-              <Badge variant="secondary" className="text-xs">
-                {t("settingsAgents.unsaved")}
-              </Badge>
-            )}
-            {/* Validation errors */}
-            {!formIsValid && isDirty && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="destructive" className="text-xs gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {t("settingsAgents.validationError", "Validation failed")}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <ul className="text-xs space-y-1">
-                      {validationErrors.map((error, i) => (
-                        <li key={i}>{error}</li>
-                      ))}
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {/* Open folder button */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleOpenFolder}
-                    disabled={!agentFolderPath}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              {saving ? t("common.saving", "Saving...") : t("common.save")}
-            </Button>
-          </div>
-        </div>
-
         {/* Error Banner */}
         {agentsError && (
           <div className="mx-4 mt-4 p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
@@ -996,6 +1024,6 @@ export function AgentDetailPage() {
         agentId={agentId || ""}
         agentName={formName || t("settingsAgents.unnamed")}
       />
-    </div>
+    </PageWrapper>
   );
 }

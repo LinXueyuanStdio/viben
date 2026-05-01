@@ -56,6 +56,117 @@ interface ExecutorChatViewProps {
   onCheckGateway: () => void;
   onOpenSearchDialog: () => void;
   onExecutorAvatarClick: () => void;
+  headerless?: boolean;
+}
+
+interface ExecutorChatHeaderCenterProps {
+  selectedSidebarExecutor: ExecutorChatViewProps["selectedSidebarExecutor"];
+  executorSessionsForSelector: ExecutorChatViewProps["executorSessionsForSelector"];
+  selectedExecutorSessionId: string | null;
+  gatewayConnected: boolean | null;
+  onSelectSession: (sessionId: string) => void;
+  onCheckGateway: () => void;
+  onExecutorAvatarClick: () => void;
+}
+
+interface ExecutorChatHeaderActionsProps {
+  isLoadingExecutorSessions: boolean;
+  onRefreshSessions: () => void;
+  onOpenSearchDialog: () => void;
+}
+
+export function ExecutorChatHeaderCenter({
+  selectedSidebarExecutor,
+  executorSessionsForSelector,
+  selectedExecutorSessionId,
+  gatewayConnected,
+  onSelectSession,
+  onCheckGateway,
+  onExecutorAvatarClick,
+}: ExecutorChatHeaderCenterProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <button
+        type="button"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 shadow-sm transition-opacity hover:opacity-90"
+        title={t("executor.showDetails", "Show executor details")}
+        onClick={onExecutorAvatarClick}
+      >
+        <Terminal className="h-5 w-5 text-white" />
+      </button>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <SessionSelector
+            currentSession={
+              selectedExecutorSessionId &&
+              executorSessionsForSelector.find((s) => s.id === selectedExecutorSessionId)
+                ? executorSessionsForSelector.find((s) => s.id === selectedExecutorSessionId)
+                : undefined
+            }
+            sessions={executorSessionsForSelector}
+            onSelect={(session) => onSelectSession(session.id)}
+            onCreateNew={() => {}}
+            showCreateButton={false}
+            agentName={selectedSidebarExecutor.name}
+          />
+          {gatewayConnected === true ? (
+            <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-[10px] text-green-600">
+              {t("chat.gatewayConnected", "Gateway")}
+            </span>
+          ) : gatewayConnected === false ? (
+            <span
+              className="cursor-pointer rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-600"
+              onClick={onCheckGateway}
+              title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
+            >
+              {t("chat.gatewayOffline", "Offline")}
+            </span>
+          ) : (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+              ...
+            </span>
+          )}
+        </div>
+        <p className="truncate text-xs text-muted-foreground">
+          {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || t("common.unknown", "Unknown")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function ExecutorChatHeaderActions({
+  isLoadingExecutorSessions,
+  onRefreshSessions,
+  onOpenSearchDialog,
+}: ExecutorChatHeaderActionsProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        title={t("chat.refreshSessions", "Refresh sessions")}
+        onClick={onRefreshSessions}
+        disabled={isLoadingExecutorSessions}
+      >
+        <RefreshCcw className={cn("h-4 w-4", isLoadingExecutorSessions && "animate-spin")} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        title={t("chat.searchInConversation")}
+        onClick={onOpenSearchDialog}
+      >
+        <Search className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export function ExecutorChatView({
@@ -75,82 +186,30 @@ export function ExecutorChatView({
   onCheckGateway,
   onOpenSearchDialog,
   onExecutorAvatarClick,
+  headerless = false,
 }: ExecutorChatViewProps) {
   const { t } = useTranslation();
 
   return (
     <>
-      {/* Executor Chat Header */}
-      <div className="flex items-center justify-between px-4 border-b bg-background h-14">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
-            onClick={onExecutorAvatarClick}
-            title={t("executor.showDetails", "Show executor details")}
-          >
-            <Terminal className="h-5 w-5 text-white" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <SessionSelector
-                currentSession={
-                  selectedExecutorSessionId && executorSessionsForSelector.find(s => s.id === selectedExecutorSessionId)
-                    ? executorSessionsForSelector.find(s => s.id === selectedExecutorSessionId)
-                    : undefined
-                }
-                sessions={executorSessionsForSelector}
-                onSelect={(session) => onSelectSession(session.id)}
-                onCreateNew={() => {}}
-                showCreateButton={false}
-                agentName={selectedSidebarExecutor.name}
-              />
-              {gatewayConnected === true ? (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
-                  {t("chat.gatewayConnected", "Gateway")}
-                </span>
-              ) : gatewayConnected === false ? (
-                <span
-                  className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 cursor-pointer"
-                  onClick={onCheckGateway}
-                  title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
-                >
-                  {t("chat.gatewayOffline", "Offline")}
-                </span>
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                  ...
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || t("common.unknown", "Unknown")}
-            </p>
-          </div>
+      {!headerless ? (
+        <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+          <ExecutorChatHeaderCenter
+            selectedSidebarExecutor={selectedSidebarExecutor}
+            executorSessionsForSelector={executorSessionsForSelector}
+            selectedExecutorSessionId={selectedExecutorSessionId}
+            gatewayConnected={gatewayConnected}
+            onSelectSession={onSelectSession}
+            onCheckGateway={onCheckGateway}
+            onExecutorAvatarClick={onExecutorAvatarClick}
+          />
+          <ExecutorChatHeaderActions
+            isLoadingExecutorSessions={isLoadingExecutorSessions}
+            onRefreshSessions={onRefreshSessions}
+            onOpenSearchDialog={onOpenSearchDialog}
+          />
         </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title={t("chat.refreshSessions", "Refresh sessions")}
-            onClick={onRefreshSessions}
-            disabled={isLoadingExecutorSessions}
-          >
-            <RefreshCcw className={cn("h-4 w-4", isLoadingExecutorSessions && "animate-spin")} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title={t("chat.searchInConversation")}
-            onClick={onOpenSearchDialog}
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      ) : null}
 
       {/* Executor Messages */}
       {isLoadingExecutorSessions ? (
