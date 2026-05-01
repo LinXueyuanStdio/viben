@@ -8,7 +8,7 @@
  * Route: /subagent/:configId?workspace_path=...&executor_type=...
  */
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Bot,
@@ -34,6 +34,7 @@ import {
 import { useWorkspaceAgentConfigs } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SkillFileEntry } from "@/types";
 import { SubAgentOverview } from "./components";
 import type { FileTab } from "./types";
@@ -44,7 +45,7 @@ import type { FileTab } from "./types";
 
 export function SubAgentDetailPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const [searchParams] = useSearchParams();
   const { configId } = useParams<{ configId: string }>();
 
@@ -186,7 +187,12 @@ export function SubAgentDetailPage() {
       `/executor/${executorType}`,
       effectiveWorkspacePath || undefined
     );
-    navigate(url);
+    navigateTo(url, {
+      type: "workspace",
+      slug: executorType,
+      name: executorType,
+      icon: { type: "lucide", value: "terminal" },
+    });
   };
 
   const activeTab = openTabs.find(t => t.id === activeTabId);

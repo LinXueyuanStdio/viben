@@ -10,6 +10,7 @@ import {
 import {
   type DesktopLocation,
   locationToUrl,
+  urlToLocation,
 } from "@/navigation/location";
 import {
   getSettingsSectionIcon,
@@ -20,7 +21,6 @@ import type {
   BreadcrumbStackItem,
   PushPageOptions,
   TabNavigationState,
-  WorkspaceSection,
 } from "@/navigation/view-target";
 
 export interface TabInfo {

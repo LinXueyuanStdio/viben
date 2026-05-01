@@ -8,7 +8,7 @@
  * Route: /mcp-server/:serverName?workspace_path=...&executor_type=...
  */
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Server,
@@ -44,6 +44,7 @@ import {
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -76,7 +77,7 @@ type SelectedItem = { type: "overview" } | { type: "file"; entry: SkillFileEntry
 
 export function McpServerDetailPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const [searchParams] = useSearchParams();
   const { serverName } = useParams<{ serverName: string }>();
 
@@ -150,7 +151,12 @@ export function McpServerDetailPage() {
       `/executor/${executorType}`,
       effectiveWorkspacePath || undefined
     );
-    navigate(url);
+    navigateTo(url, {
+      type: "workspace",
+      slug: executorType,
+      name: executorType,
+      icon: { type: "lucide", value: "terminal" },
+    });
   };
 
   const selectedFile = selected.type === "file" ? selected.entry : null;
