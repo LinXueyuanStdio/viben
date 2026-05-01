@@ -164,6 +164,7 @@ This directory contains detailed specifications for implementing each module of 
 | Module | Description | Status |
 |--------|-------------|--------|
 | [desktop-page-debug-mcp.md](./desktop/desktop-page-debug-mcp.md) | 页面调试 MCP - Tauri WebView 自动调试 | 📝 规划中 |
+| [desktop-navigation.md](./desktop/desktop-navigation.md) | Desktop 全局面包屑、Tab-first 导航、虚拟页面索引 | 📝 规划中 |
 
 ---
 
