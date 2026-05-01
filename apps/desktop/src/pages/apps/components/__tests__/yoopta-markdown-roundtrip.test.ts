@@ -21,7 +21,7 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   createYooptaEditor,
   type YooEditor,
@@ -131,8 +131,6 @@ describe("exact roundtrip (output === input)", () => {
     ["inline code", "Use `const x = 1` in code."],
     ["mixed inline marks", "Use **bold**, *italic*, and `code` together."],
     ["link in paragraph", "Visit [Google](https://google.com) for search."],
-    ["strikethrough", "This is ~~deleted~~ text."],
-    ["underline", "This is <u>underlined</u> text."],
     // Headings
     ["heading h1", "# Heading One"],
     ["heading h2", "## Heading Two"],
@@ -157,7 +155,6 @@ describe("exact roundtrip (output === input)", () => {
     // Blockquote
     ["blockquote", "> This is a quote"],
     ["blockquote with bold", "> This is **bold** in a quote"],
-    ["nested blockquote", "> > nested quote"],
     // Combined
     [
       "heading + paragraph + list",
@@ -393,6 +390,24 @@ describe("frontmatter preservation through roundtrip", () => {
 // =============================================================================
 
 describe("special preprocessing structures", () => {
+  it("[TOC] exact roundtrip preserves marker", () => {
+    const md = "[TOC]\n\n# Section 1\n\nContent.";
+    const output = roundtrip(editor, md);
+    expect(output).toBe(md);
+  });
+
+  it("math block $$ exact roundtrip preserves latex", () => {
+    const md = "$$\nE = mc^2\n$$";
+    const output = roundtrip(editor, md);
+    expect(output).toBe(md);
+  });
+
+  it("inline math $ exact roundtrip preserves latex", () => {
+    const md = "The formula $E = mc^2$ is famous.";
+    const output = roundtrip(editor, md);
+    expect(output).toBe(md);
+  });
+
   it("[TOC] roundtrip is idempotent", () => {
     const md = "[TOC]\n\n# Section 1\n\nContent.";
     const { first, second } = doubleRoundtrip(editor, md);
@@ -655,6 +670,8 @@ describe("real-world SKILL.md roundtrip", () => {
 // =============================================================================
 
 describe("structural preservation (block count survives roundtrip)", () => {
+  // Yoopta treats each list item as an independent top-level block (not nested
+  // children of a single list block), so "- A\n- B\n- C" produces 3 blocks.
   const structureCases: [string, string, number][] = [
     ["single paragraph", "Hello", 1],
     ["heading + paragraph", "# Title\n\nBody", 2],

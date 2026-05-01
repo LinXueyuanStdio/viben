@@ -1,16 +1,12 @@
 /**
  * Yoopta Markdown roundtrip wrapper.
  *
- * Wraps @yoopta/exports markdown.serialize / markdown.deserialize with
- * pre- and post-processing to ensure `markdown ≈ serialize(deserialize(markdown))`.
+ * Thin wrapper around @yoopta/exports markdown.serialize / markdown.deserialize.
+ * Handles only: frontmatter stripping, block separator normalization, inline math
+ * serialization override, and CodeGroup (no plugin exists).
  *
- * Plugin coverage:
- * - Lossless roundtrip: Paragraph, HeadingOne/Two/Three, BulletedList, NumberedList,
- *   TodoList, Code, Divider, Image, Table, Blockquote, MathBlock, MathInline,
- *   TableOfContents, Accordion
- * - Lossy (idempotent after first pass): Callout (→ blockquote), Embed (→ link),
- *   File (→ link), Video (→ image), Steps (→ numbered list), Tabs (→ headings),
- *   Carousel (→ numbered list), CodeGroup (→ code blocks), Mention (→ text)
+ * All deserialization (TOC, math, accordion, etc.) is handled by marked extensions
+ * and plugin HTML deserializers in @yoopta/exports and @yoopta/plugins.
  */
 
 import { markdown } from "@yoopta/exports";
@@ -40,51 +36,6 @@ export function prependFrontmatter(
 ): string {
   if (!frontmatter) return body;
   return frontmatter + (frontmatter.endsWith("\n") ? "" : "\n") + body;
-}
-
-// ---- Preprocessing helpers ----
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/**
- * Convert `[TOC]` markers into HTML that Yoopta's TableOfContents plugin
- * can recognize via its HTML deserializer (NAV with data-type="table-of-contents").
- */
-export function preprocessTocForDeserialize(md: string): string {
-  // Use [ \t]* instead of \s* to avoid consuming newlines that serve as block separators
-  return md.replace(
-    /^\[TOC\][ \t]*$/gm,
-    '<nav data-type="table-of-contents"></nav>',
-  );
-}
-
-/**
- * Convert `$$..$$` fenced math blocks into HTML that Yoopta's MathBlock plugin
- * can recognize via its HTML deserializer (node name DIV with data-math-block).
- * Also converts inline `$...$` into `<span data-math-inline>`.
- */
-export function preprocessMathForDeserialize(md: string): string {
-  // Block math: $$ ... $$ (on their own lines)
-  let result = md.replace(
-    /^\$\$\r?\n([\s\S]*?)\r?\n\$\$$/gm,
-    (_match, latex: string) =>
-      `<div data-math-block="true">${escapeHtml(latex.trim())}</div>`,
-  );
-
-  // Inline math: $..$ (not preceded by $ or followed by $)
-  result = result.replace(
-    /(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g,
-    (_match, latex: string) =>
-      `<span data-math-inline="true">${escapeHtml(latex)}</span>`,
-  );
-
-  return result;
 }
 
 // ---- Serialize post-processing ----
@@ -283,20 +234,14 @@ export function deserializeMarkdown(
   md: string,
 ): { value: YooptaContentValue; frontmatter: string } {
   const { frontmatter, body } = extractFrontmatter(md);
-  const withToc = preprocessTocForDeserialize(body);
-  const preprocessed = preprocessMathForDeserialize(withToc);
-  const value = markdown.deserialize(editor, preprocessed);
+  const value = markdown.deserialize(editor, body);
   return { value, frontmatter };
 }
 
 /**
  * Serialize Yoopta editor content to markdown string.
- * Handles all plugin types with proper markdown output.
- *
- * Plugins handled:
- * - MathBlock, MathInline, TableOfContents: custom serialization
- * - Accordion, Steps, Tabs, Carousel, CodeGroup: custom complex-structure serialization
- * - All others: delegate to plugin's parsers.markdown.serialize
+ * Delegates to plugin parsers.markdown.serialize for all plugin types.
+ * Only CodeGroup has a local override (no plugin exists for it).
  */
 export function serializeMarkdown(
   editor: YooEditor,
