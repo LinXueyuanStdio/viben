@@ -12,7 +12,7 @@
  * - agent_id: The executor/agent type (e.g., "CLAUDE_CODE")
  */
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Bot,
@@ -44,6 +44,7 @@ import {
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -53,7 +54,7 @@ interface Tab {
 
 export function SkillDetailPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const [searchParams] = useSearchParams();
   const { skillId, workspaceId, agentId: pathAgentId } = useParams<{
     skillId: string;
@@ -107,7 +108,7 @@ export function SkillDetailPage() {
           <p className="text-muted-foreground mb-4">
             {t("workspace.missingAgentId", "Missing agent_id parameter")}
           </p>
-          <Button onClick={() => navigate(-1)}>
+          <Button onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t("common.back")}
           </Button>
@@ -123,7 +124,12 @@ export function SkillDetailPage() {
       workspacePath,
       { agent_id: agentId }
     );
-    navigate(url);
+    navigateTo(url, {
+      type: "page",
+      slug: skill.id,
+      name: skill.name,
+      icon: { type: "lucide", value: "sparkles" },
+    });
 
     // Open tab if not already open
     if (!openTabs.find((t) => t.id === skill.id)) {
@@ -151,7 +157,12 @@ export function SkillDetailPage() {
           workspacePath,
           { agent_id: agentId }
         );
-        navigate(url);
+        navigateTo(url, {
+          type: "page",
+          slug: newActiveTab.id,
+          name: newActiveTab.skill.name,
+          icon: { type: "lucide", value: "sparkles" },
+        });
       } else {
         setActiveTabId(null);
         // Navigate back to executor detail
@@ -159,7 +170,12 @@ export function SkillDetailPage() {
           `/executor/${agentId}`,
           workspacePath
         );
-        navigate(url);
+        navigateTo(url, {
+          type: "workspace",
+          slug: agentId,
+          name: executor?.name || agentId,
+          icon: { type: "lucide", value: "terminal" },
+        });
       }
     }
   };
@@ -170,7 +186,12 @@ export function SkillDetailPage() {
       `/executor/${agentId}`,
       workspacePath
     );
-    navigate(url);
+    navigateTo(url, {
+      type: "workspace",
+      slug: agentId,
+      name: executor?.name || agentId,
+      icon: { type: "lucide", value: "terminal" },
+    });
   };
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
@@ -270,7 +291,12 @@ export function SkillDetailPage() {
                       workspacePath,
                       { agent_id: agentId }
                     );
-                    navigate(url);
+                    navigateTo(url, {
+                      type: "page",
+                      slug: tab.id,
+                      name: tab.skill.name,
+                      icon: { type: "lucide", value: "sparkles" },
+                    });
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 border-r cursor-pointer text-sm",

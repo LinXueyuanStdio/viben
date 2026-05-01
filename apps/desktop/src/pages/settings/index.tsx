@@ -15,6 +15,7 @@ import {
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SettingsSection } from "./types";
 import { SECTIONS, VALID_SECTIONS, easeOutExpo, SETTINGS_SIDEBAR_COLLAPSED_KEY } from "./constants";
+import { getSettingsSectionIcon } from "@/navigation/navigation-meta";
 import { GeneralSection } from "./general-section";
 import { AccountSection } from "./account-section";
 import { ShortcutsSection } from "./shortcuts-section";
@@ -72,10 +73,7 @@ export function SettingsPage() {
     openGlobalView(
       `/settings/${section}`,
       t(SECTIONS.find((item) => item.id === section)?.labelKey ?? "settings.title"),
-      {
-        type: "lucide",
-        value: getSettingsIconName(section),
-      }
+      getSettingsSectionIcon(section)
     );
 
     // Pre-sync channel data when navigating to channels section
@@ -353,49 +351,4 @@ export function SettingsPage() {
       </motion.div>
     </TooltipProvider>
   );
-}
-
-function getSettingsIconName(section: SettingsSection): string {
-  switch (section) {
-    case "general":
-      return "settings";
-    case "account":
-      return "user";
-    case "shortcuts":
-      return "keyboard";
-    case "notifications":
-      return "bell";
-    case "gateway":
-      return "network";
-    case "channels":
-      return "message-square";
-    case "executors":
-      return "play";
-    case "model":
-      return "cpu";
-    case "agents":
-      return "bot";
-    case "mcp":
-      return "boxes";
-    case "skills":
-      return "sparkles";
-    case "sandbox":
-      return "box";
-    case "environment":
-      return "terminal";
-    case "terminalFonts":
-      return "type";
-    case "overlay":
-      return "layers";
-    case "voice":
-      return "mic";
-    case "storage":
-      return "hard-drive";
-    case "developer":
-      return "bug";
-    case "about":
-      return "info";
-    default:
-      return "settings";
-  }
 }

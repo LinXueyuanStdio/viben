@@ -11,6 +11,11 @@ import {
   type DesktopLocation,
   locationToUrl,
 } from "@/navigation/location";
+import {
+  getSettingsSectionIcon,
+  getSettingsSectionLabel,
+  normalizeWorkspaceSection,
+} from "@/navigation/navigation-meta";
 import type {
   BreadcrumbStackItem,
   PushPageOptions,
@@ -90,7 +95,7 @@ function inferTabName(location: DesktopLocation, fallback?: string): string {
     case "command-detail":
       return location.commandId;
     case "settings":
-      return inferSettingsLabel(location.section);
+      return getSettingsSectionLabel(location.section);
     case "documents":
       return "Documents";
     case "device-pair":
@@ -138,51 +143,6 @@ function inferTabSlug(location: DesktopLocation, fallback?: string): string | un
       return location.path;
     default:
       return undefined;
-  }
-}
-
-function inferSettingsLabel(section?: string): string {
-  switch (section) {
-    case "general":
-      return "General";
-    case "account":
-      return "Account";
-    case "shortcuts":
-      return "Shortcuts";
-    case "notifications":
-      return "Notifications";
-    case "gateway":
-      return "Gateway";
-    case "channels":
-      return "Channels";
-    case "executors":
-      return "Executors";
-    case "model":
-      return "Model";
-    case "agents":
-      return "Agents";
-    case "mcp":
-      return "MCP";
-    case "skills":
-      return "Skills";
-    case "sandbox":
-      return "Sandbox";
-    case "environment":
-      return "Environment";
-    case "terminalFonts":
-      return "Terminal Fonts";
-    case "overlay":
-      return "Overlay";
-    case "voice":
-      return "Voice";
-    case "storage":
-      return "Storage";
-    case "developer":
-      return "Developer";
-    case "about":
-      return "About";
-    default:
-      return "Settings";
   }
 }
 
@@ -478,7 +438,10 @@ export function usePageTabs() {
         tabInfo: {
           type: inferTabType(location, "settings"),
           name,
-          icon,
+          icon:
+            location.kind === "settings"
+              ? getSettingsSectionIcon(location.section)
+              : icon,
         },
       });
     },
@@ -691,24 +654,6 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
   }
 
   return { kind: "global-route", path: url };
-}
-
-function normalizeWorkspaceSection(value: string): WorkspaceSection {
-  switch (value) {
-    case "agents":
-      return "agent";
-    case "chat":
-    case "kanban":
-    case "cron":
-    case "ideas":
-    case "agent":
-    case "files":
-    case "github":
-    case "chat-monitor":
-      return value;
-    default:
-      return "chat";
-  }
 }
 
 export function createChildBreadcrumbItem(

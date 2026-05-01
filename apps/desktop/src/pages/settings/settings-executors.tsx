@@ -6,7 +6,6 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   RefreshCw,
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, type AvailabilityInfo } from "@/lib/gateway";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 // Executor metadata
 interface ExecutorInfo {
@@ -104,7 +104,7 @@ interface ExecutorStatus {
 
 export function SettingsExecutorsPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const { status: gatewayStatus } = useGatewayStatus();
   const [executors, setExecutors] = useState<ExecutorStatus[]>(
     EXECUTORS.map((info) => ({
@@ -329,7 +329,12 @@ export function SettingsExecutorsPage() {
               )}
               onClick={() => {
                 if (isAvailable) {
-                  navigate(`/executor/${executor.info.id}`);
+                  navigateTo(`/executor/${executor.info.id}`, {
+                    type: "workspace",
+                    slug: executor.info.id,
+                    name: t(`settingsExecutors.executorNames.${executor.info.id}`, executor.info.name),
+                    icon: { type: "lucide", value: "terminal" },
+                  });
                 }
               }}
             >

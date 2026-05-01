@@ -17,8 +17,6 @@
  * - ExecutorDetailView in agent-detail page (read-only)
  * - AgentDetailPage editing section (editable)
  */
-
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -44,6 +42,7 @@ import {
   useWorkspaceCommands,
   useWorkspacePrompts,
 } from "@/hooks/use-agent-configs";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 // ============================================================================
 // Types
@@ -171,7 +170,7 @@ export function ExecutorCapabilities({
   onConfigureSkills,
 }: ExecutorCapabilitiesProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
 
   // Load data for executor (used in read-only mode)
   const { servers: mcpServers, loading: mcpLoading } = useWorkspaceMcpServers(
@@ -202,7 +201,12 @@ export function ExecutorCapabilities({
       params.set("workspace_path", workspacePath);
     }
     params.set("agent_id", executorType);
-    navigate(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`);
+    navigateTo(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`, {
+      type: "page",
+      slug: skillId,
+      name: skillId,
+      icon: { type: "lucide", value: "sparkles" },
+    });
   };
 
   const handleMcpServerClick = (serverName: string) => {
@@ -211,7 +215,12 @@ export function ExecutorCapabilities({
       params.set("workspace_path", workspacePath);
     }
     params.set("executor_type", executorType);
-    navigate(`/mcp-server/${encodeURIComponent(serverName)}?${params.toString()}`);
+    navigateTo(`/mcp-server/${encodeURIComponent(serverName)}?${params.toString()}`, {
+      type: "page",
+      slug: serverName,
+      name: serverName,
+      icon: { type: "lucide", value: "server" },
+    });
   };
 
   const handleSubAgentClick = (configId: string) => {
@@ -220,7 +229,12 @@ export function ExecutorCapabilities({
       params.set("workspace_path", workspacePath);
     }
     params.set("executor_type", executorType);
-    navigate(`/subagent/${encodeURIComponent(configId)}?${params.toString()}`);
+    navigateTo(`/subagent/${encodeURIComponent(configId)}?${params.toString()}`, {
+      type: "page",
+      slug: configId,
+      name: configId,
+      icon: { type: "lucide", value: "bot" },
+    });
   };
 
   const handlePromptClick = (promptId: string) => {
@@ -229,7 +243,12 @@ export function ExecutorCapabilities({
       params.set("workspace_path", workspacePath);
     }
     params.set("executor_type", executorType);
-    navigate(`/prompt/${encodeURIComponent(promptId)}?${params.toString()}`);
+    navigateTo(`/prompt/${encodeURIComponent(promptId)}?${params.toString()}`, {
+      type: "page",
+      slug: promptId,
+      name: promptId,
+      icon: { type: "lucide", value: "quote" },
+    });
   };
 
   const handleCommandClick = (commandId: string) => {
@@ -238,7 +257,12 @@ export function ExecutorCapabilities({
       params.set("workspace_path", workspacePath);
     }
     params.set("executor_type", executorType);
-    navigate(`/command/${encodeURIComponent(commandId)}?${params.toString()}`);
+    navigateTo(`/command/${encodeURIComponent(commandId)}?${params.toString()}`, {
+      type: "page",
+      slug: commandId,
+      name: commandId,
+      icon: { type: "lucide", value: "square-terminal" },
+    });
   };
 
   // ========== Render editable MCP section ==========
