@@ -1,3 +1,9 @@
+---
+sidebar_position: 20
+title: "SSE Streaming"
+description: "Server-Sent Events implementation for real-time Agent responses"
+---
+
 # SSE Streaming
 
 > Server-Sent Events (SSE) implementation for real-time Agent responses
