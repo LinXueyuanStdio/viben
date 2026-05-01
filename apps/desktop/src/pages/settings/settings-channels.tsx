@@ -12,7 +12,6 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
 import {
   Eye,
   EyeOff,
@@ -168,64 +167,64 @@ function formatChannelError(
   error: string | undefined,
   channelType: ChannelType,
 ): string {
-  if (!error) return i18n.t("channels.errors.unknown", "Unknown error");
+  if (!error) return "Unknown error";
 
   // Common error patterns with user-friendly messages
   const errorLower = error.toLowerCase();
 
   // Network errors
   if (errorLower.includes("fetch") || errorLower.includes("network") || errorLower.includes("econnrefused")) {
-    return t("channels.errors.networkError", "Network error: Unable to connect. Please check your internet connection.");
+    return "Network error: Unable to connect. Please check your internet connection.";
   }
 
   // Gateway not running
   if (errorLower.includes("failed to fetch") || errorLower.includes("connection refused")) {
-    return t("channels.errors.gatewayNotRunning", "Gateway not running. Please start the gateway service first.");
+    return "Gateway not running. Please start the gateway service first.";
   }
 
   // Timeout
   if (errorLower.includes("timeout")) {
-    return t("channels.errors.requestTimeout", "Request timed out. The service may be slow or unreachable.");
+    return "Request timed out. The service may be slow or unreachable.";
   }
 
   // Channel-specific error formatting
   switch (channelType) {
     case "telegram":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return t("channels.errors.telegram.invalidToken", "Invalid Bot Token. Please check your token from @BotFather.");
+        return "Invalid Bot Token. Please check your token from @BotFather.";
       }
       if (errorLower.includes("chat not found") || errorLower.includes("400")) {
-        return t("channels.errors.telegram.chatNotFound", "Chat not found. Make sure you've sent /start to the bot first.");
+        return "Chat not found. Make sure you've sent /start to the bot first.";
       }
       if (errorLower.includes("bot was blocked")) {
-        return t("channels.errors.telegram.botBlocked", "Bot was blocked by the user. Please unblock the bot in Telegram.");
+        return "Bot was blocked by the user. Please unblock the bot in Telegram.";
       }
       break;
     case "discord":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return t("channels.errors.discord.invalidToken", "Invalid Bot Token. Please check your token from Discord Developer Portal.");
+        return "Invalid Bot Token. Please check your token from Discord Developer Portal.";
       }
       if (errorLower.includes("unknown channel") || errorLower.includes("404")) {
-        return t("channels.errors.discord.channelNotFound", "Channel not found. Please verify the Channel ID.");
+        return "Channel not found. Please verify the Channel ID.";
       }
       if (errorLower.includes("missing access") || errorLower.includes("403")) {
-        return t("channels.errors.discord.missingAccess", "Bot lacks permission. Invite the bot to the channel first.");
+        return "Bot lacks permission. Invite the bot to the channel first.";
       }
       break;
     case "feishu":
       if (errorLower.includes("invalid app_id") || errorLower.includes("10003")) {
-        return t("channels.errors.feishu.invalidAppId", "Invalid App ID. Please check your credentials from Feishu Open Platform.");
+        return "Invalid App ID. Please check your credentials from Feishu Open Platform.";
       }
       if (errorLower.includes("app_secret") || errorLower.includes("10014")) {
-        return t("channels.errors.feishu.invalidAppSecret", "Invalid App Secret. Please verify your credentials.");
+        return "Invalid App Secret. Please verify your credentials.";
       }
       if (errorLower.includes("user_not_found") || errorLower.includes("230001")) {
-        return t("channels.errors.feishu.userNotFound", "User not found. Please check the Open ID or Chat ID.");
+        return "User not found. Please check the Open ID or Chat ID.";
       }
       break;
     case "whatsapp":
       if (errorLower.includes("websocket") || errorLower.includes("ws://")) {
-        return t("channels.errors.whatsapp.bridgeConnectionFailed", "Cannot connect to WhatsApp Bridge. Is the bridge server running?");
+        return "Cannot connect to WhatsApp Bridge. Is the bridge server running?";
       }
       break;
   }
@@ -281,7 +280,7 @@ async function sendTestMessage(
   chatId: string | undefined,
 ): Promise<{ success: boolean; error?: string }> {
   if (!chatId && channel.channel_type !== "whatsapp") {
-    return { success: false, error: i18n.t("errors.channels.chatIdRequired") };
+    return { success: false, error: "Chat ID is required" };
   }
 
   try {
@@ -346,7 +345,7 @@ async function getTelegramWebhookInfo(token: string): Promise<{
     if (data.ok) {
       return { success: true, result: data.result };
     } else {
-      return { success: false, error: data.description || i18n.t("channels.webhook.getInfoFailed", "Failed to get webhook info") };
+      return { success: false, error: data.description || "Failed to get webhook info" };
     }
   } catch (error) {
     return {
@@ -377,7 +376,7 @@ async function setTelegramWebhook(
     if (data.ok) {
       return { success: true };
     } else {
-      return { success: false, error: data.description || i18n.t("channels.webhook.apiSetFailed", "Failed to set webhook") };
+      return { success: false, error: data.description || "Failed to set webhook" };
     }
   } catch (error) {
     return {
@@ -398,7 +397,7 @@ async function deleteTelegramWebhook(token: string): Promise<{ success: boolean;
     if (data.ok) {
       return { success: true };
     } else {
-      return { success: false, error: data.description || i18n.t("channels.webhook.apiDeleteFailed", "Failed to delete webhook") };
+      return { success: false, error: data.description || "Failed to delete webhook" };
     }
   } catch (error) {
     return {

@@ -31,7 +31,6 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import i18n from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -156,12 +155,7 @@ function getFileIcon(file: FileEntry, size: "sm" | "md" | "lg" = "md") {
 function formatFileSize(bytes: number | undefined): string {
   if (!bytes || bytes === 0) return "--";
   const k = 1024;
-  const sizes = [
-    i18n.t("fileBrowser.sizeUnits.B", "B"),
-    i18n.t("fileBrowser.sizeUnits.KB", "KB"),
-    i18n.t("fileBrowser.sizeUnits.MB", "MB"),
-    i18n.t("fileBrowser.sizeUnits.GB", "GB"),
-  ];
+  const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
@@ -1264,20 +1258,20 @@ function getOpenWithApps(file: FileEntry): { id: string; label: string; icon: Re
   // Code editors for code files
   const codeExtensions = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "css", "scss", "html", "json", "yaml", "yml", "toml", "xml", "md", "txt"];
   if (ext && codeExtensions.includes(ext)) {
-    apps.push({ id: "vscode", label: i18n.t("fileBrowser.openWithApps.vscode", "VS Code"), icon: <FileCode className="h-4 w-4" /> });
-    apps.push({ id: "cursor", label: i18n.t("fileBrowser.openWithApps.cursor", "Cursor"), icon: <FileCode className="h-4 w-4" /> });
+    apps.push({ id: "vscode", label: "VS Code", icon: <FileCode className="h-4 w-4" /> });
+    apps.push({ id: "cursor", label: "Cursor", icon: <FileCode className="h-4 w-4" /> });
   }
 
   // Image viewers for images
   const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico"];
   if (ext && imageExtensions.includes(ext)) {
-    apps.push({ id: "preview", label: i18n.t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileImage className="h-4 w-4" /> });
+    apps.push({ id: "preview", label: "Preview", icon: <FileImage className="h-4 w-4" /> });
   }
 
   // Document apps
   const docExtensions = ["pdf", "doc", "docx"];
   if (ext && docExtensions.includes(ext)) {
-    apps.push({ id: "preview", label: i18n.t("fileBrowser.openWithApps.preview", "Preview"), icon: <FileText className="h-4 w-4" /> });
+    apps.push({ id: "preview", label: "Preview", icon: <FileText className="h-4 w-4" /> });
   }
 
   return apps;
