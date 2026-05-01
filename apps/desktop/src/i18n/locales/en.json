@@ -6078,7 +6078,9 @@
       "status": "Status",
       "assignee": "Assignee",
       "ascending": "Ascending",
-      "descending": "Descending"
+      "descending": "Descending",
+      "createdAt": "Created",
+      "updatedAt": "Updated"
     },
     "command": {
       "navigation": "Navigation",
@@ -6165,7 +6167,13 @@
       "overdue": "Overdue",
       "dueToday": "Due today",
       "dueThisWeek": "Due this week",
-      "noDueDate": "No due date"
+      "noDueDate": "No due date",
+      "searchPlaceholder": "Search...",
+      "filterByPriority": "Filter by Priority",
+      "tags": "Tags",
+      "filterByTag": "Filter by Tag",
+      "activeCount": "{{count}} active",
+      "clear": "Clear"
     },
     "activity": {
       "created": "Created",

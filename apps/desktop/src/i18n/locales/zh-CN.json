@@ -6078,7 +6078,9 @@
       "status": "状态",
       "assignee": "负责人",
       "ascending": "升序",
-      "descending": "降序"
+      "descending": "降序",
+      "createdAt": "创建时间",
+      "updatedAt": "更新时间"
     },
     "command": {
       "navigation": "导航",
@@ -6165,7 +6167,13 @@
       "overdue": "已逾期",
       "dueToday": "今天到期",
       "dueThisWeek": "本周到期",
-      "noDueDate": "无截止日期"
+      "noDueDate": "无截止日期",
+      "searchPlaceholder": "搜索...",
+      "filterByPriority": "按优先级筛选",
+      "tags": "标签",
+      "filterByTag": "按标签筛选",
+      "activeCount": "{{count}} 个活跃",
+      "clear": "清除"
     },
     "activity": {
       "created": "已创建",
