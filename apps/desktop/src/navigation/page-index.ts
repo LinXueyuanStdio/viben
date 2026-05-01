@@ -1,13 +1,14 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type {
   BreadcrumbItemKind,
+  VirtualPageIndexNode,
   WorkspaceSection,
 } from "./view-target";
 import {
-  getWorkspaceSectionDescriptor,
   getWorkspaceSectionRoutePath,
   WORKSPACE_SECTION_DESCRIPTORS,
 } from "./navigation-meta";
+export { getWorkspaceSectionDescriptor } from "./navigation-meta";
 
 export type DesktopBreadcrumbSegmentKind =
   | "workspace-root"

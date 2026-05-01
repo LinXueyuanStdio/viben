@@ -8,7 +8,7 @@
  * Route: /prompt/:promptId?workspace_path=...&executor_type=...
  */
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   MessageSquare,
@@ -44,6 +44,7 @@ import {
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -85,7 +86,7 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 
 export function PromptDetailPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const [searchParams] = useSearchParams();
   const { promptId } = useParams<{ promptId: string }>();
 
@@ -227,7 +228,12 @@ export function PromptDetailPage() {
       `/executor/${executorType}`,
       effectiveWorkspacePath || undefined
     );
-    navigate(url);
+    navigateTo(url, {
+      type: "workspace",
+      slug: executorType,
+      name: executorType,
+      icon: { type: "lucide", value: "terminal" },
+    });
   };
 
   const activeTab = openTabs.find(t => t.id === activeTabId);
