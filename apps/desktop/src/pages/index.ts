@@ -29,6 +29,7 @@ export { DocumentsPage } from "./documents";
 export { ChatMonitorPage } from "./conversation";
 export { PageDebugPage } from "./apps/page-debug";
 export { WorkspacePage } from "./apps/workspace-page";
+export { WorkspaceWebPage } from "./workspace-web";
 export { OsPage } from "./os";
 export { ConnectPage } from "./mobile/connect-page";
 export { DeviceListPage } from "./mobile/device-list-page";

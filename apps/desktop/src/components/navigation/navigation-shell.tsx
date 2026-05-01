@@ -1,0 +1,236 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { DesktopBreadcrumbBar } from "./desktop-breadcrumb-bar";
+import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
+import type { BreadcrumbStackItem } from "@/navigation/view-target";
+import type { Workspace } from "@/types";
+
+interface NavigationShellHeaderState {
+  workspace?: Workspace;
+  segments?: DesktopBreadcrumbSegment[];
+  className?: string;
+}
+
+interface RegisteredNavigationShellHeader extends NavigationShellHeaderState {
+  ownerId: string;
+}
+
+interface NavigationShellActionsContextValue {
+  setHeader: (ownerId: string, next: NavigationShellHeaderState) => void;
+  clearHeader: (ownerId: string) => void;
+}
+
+interface NavigationShellSlotsContextValue {
+  centerHost: HTMLDivElement | null;
+  rightHost: HTMLDivElement | null;
+  setCenterHost: (node: HTMLDivElement | null) => void;
+  setRightHost: (node: HTMLDivElement | null) => void;
+}
+
+const NavigationShellHeaderContext =
+  createContext<RegisteredNavigationShellHeader | null>(null);
+const NavigationShellActionsContext =
+  createContext<NavigationShellActionsContextValue | null>(null);
+const NavigationShellSlotsContext =
+  createContext<NavigationShellSlotsContextValue | null>(null);
+
+const EMPTY_SEGMENTS: DesktopBreadcrumbSegment[] = [];
+
+function areHeadersEqual(
+  current: RegisteredNavigationShellHeader | null,
+  ownerId: string,
+  next: NavigationShellHeaderState
+): boolean {
+  const currentWorkspaceId = current?.workspace?.id;
+  const nextWorkspaceId = next.workspace?.id;
+  const currentSegments = JSON.stringify(current?.segments ?? []);
+  const nextSegments = JSON.stringify(next.segments ?? []);
+
+  return (
+    current?.ownerId === ownerId &&
+    currentWorkspaceId === nextWorkspaceId &&
+    currentSegments === nextSegments &&
+    current.className === next.className
+  );
+}
+
+function mapStackItemToSegment(
+  item: BreadcrumbStackItem
+): DesktopBreadcrumbSegment {
+  return {
+    id: item.id,
+    label: item.label,
+    href: item.target?.canonicalUrl ?? "#",
+    icon: item.icon,
+    kind: item.kind,
+    meta: item.meta,
+  };
+}
+
+function buildDerivedHeader(
+  stack: BreadcrumbStackItem[] | undefined,
+  workspaces: Workspace[]
+): NavigationShellHeaderState | null {
+  if (!stack?.length) {
+    return null;
+  }
+
+  const [root, ...rest] = stack;
+  if (root.kind === "workspace-root" && root.meta?.workspaceId) {
+    const workspace = workspaces.find(
+      (item) => item.id === root.meta?.workspaceId
+    );
+
+    if (workspace) {
+      return {
+        workspace,
+        segments: rest.map(mapStackItemToSegment),
+      };
+    }
+  }
+
+  return {
+    segments: stack.map(mapStackItemToSegment),
+  };
+}
+
+export function NavigationShellProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [header, setHeaderState] =
+    useState<RegisteredNavigationShellHeader | null>(null);
+  const [centerHost, setCenterHost] = useState<HTMLDivElement | null>(null);
+  const [rightHost, setRightHost] = useState<HTMLDivElement | null>(null);
+
+  const setHeader = useCallback(
+    (ownerId: string, next: NavigationShellHeaderState) => {
+      setHeaderState((current) => {
+        if (areHeadersEqual(current, ownerId, next)) {
+          return current;
+        }
+
+        return {
+          ownerId,
+          ...next,
+        };
+      });
+    },
+    []
+  );
+
+  const clearHeader = useCallback((ownerId: string) => {
+    setHeaderState((current) =>
+      current?.ownerId === ownerId ? null : current
+    );
+  }, []);
+
+  const actionsValue = useMemo(
+    () => ({
+      setHeader,
+      clearHeader,
+    }),
+    [clearHeader, setHeader]
+  );
+  const slotsValue = useMemo(
+    () => ({
+      centerHost,
+      rightHost,
+      setCenterHost,
+      setRightHost,
+    }),
+    [centerHost, rightHost]
+  );
+
+  return (
+    <NavigationShellActionsContext.Provider value={actionsValue}>
+      <NavigationShellSlotsContext.Provider value={slotsValue}>
+        <NavigationShellHeaderContext.Provider value={header}>
+          {children}
+        </NavigationShellHeaderContext.Provider>
+      </NavigationShellSlotsContext.Provider>
+    </NavigationShellActionsContext.Provider>
+  );
+}
+
+export function useOptionalNavigationShell() {
+  return useContext(NavigationShellActionsContext);
+}
+
+export function useNavigationShellSlots() {
+  return useContext(NavigationShellSlotsContext);
+}
+
+export function GlobalBreadcrumbShell() {
+  const registeredHeader = useContext(NavigationShellHeaderContext);
+  const slots = useContext(NavigationShellSlotsContext);
+  const { currentNavigationState } = usePageTabs();
+  const { workspaces } = useLocalWorkspaces();
+
+  const derivedHeader = useMemo(
+    () => buildDerivedHeader(currentNavigationState?.breadcrumbStack, workspaces),
+    [currentNavigationState?.breadcrumbStack, workspaces]
+  );
+
+  const resolvedHeader = useMemo(() => {
+    if (!registeredHeader && !derivedHeader) {
+      return null;
+    }
+
+    return {
+      workspace: registeredHeader?.workspace ?? derivedHeader?.workspace,
+      segments:
+        registeredHeader && "segments" in registeredHeader
+          ? registeredHeader.segments ?? derivedHeader?.segments ?? EMPTY_SEGMENTS
+          : derivedHeader?.segments ?? EMPTY_SEGMENTS,
+      className: registeredHeader?.className,
+    };
+  }, [derivedHeader, registeredHeader]);
+
+  if (!resolvedHeader) {
+    return null;
+  }
+
+  const handleCenterHostRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      slots?.setCenterHost(node);
+    },
+    [slots]
+  );
+
+  const handleRightHostRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      slots?.setRightHost(node);
+    },
+    [slots]
+  );
+
+  return (
+    <DesktopBreadcrumbBar
+      workspace={resolvedHeader.workspace}
+      segments={resolvedHeader.segments}
+      className={resolvedHeader.className}
+      centerSlot={
+        <div
+          ref={handleCenterHostRef}
+          className="flex min-w-0 items-center justify-center"
+        />
+      }
+      rightSlot={
+        <div
+          ref={handleRightHostRef}
+          className="flex items-center gap-2"
+        />
+      }
+    />
+  );
+}

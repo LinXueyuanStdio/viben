@@ -12,7 +12,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import {
   DndContext,
@@ -48,7 +47,6 @@ export interface GlobalTabBarProps {
 
 export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [isMacOS, setIsMacOS] = useState(false);
   const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -72,12 +70,13 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         const isMac = platform() === "macos";
         setIsMacOS(isMac);
 
+        const appWindow = getCurrentWindow();
+
         if (!isMac) {
           setShouldReserveMacOSControlsSpace(false);
           return;
         }
 
-        const appWindow = getCurrentWindow();
         const updateWindowState = async () => {
           const isFullscreen = await appWindow.isFullscreen();
 
@@ -224,10 +223,10 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         icon: { type: "lucide", value: "plus" },
         pinned: false,
       },
-      "/"
+      "/documents"
     );
-    navigate("/");
-  }, [openTab, navigate, t]);
+  }, [openTab, t]);
+
 
   // Tab IDs for sortable context
   const tabIds = tabs.map((t) => t.id);
@@ -235,15 +234,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
       <div
+        data-tauri-drag-region
         className={cn(
           "flex items-center border-b bg-muted/30",
           isMacOS ? "h-8" : "h-10",
-          "app-region-drag",
           className
         )}
       >
         {/* Left side: macOS traffic light space + Navigation buttons */}
         <div
+          data-tauri-drag-region
           className={cn(
             "flex items-center gap-1 px-2 shrink-0",
             shouldReserveMacOSControlsSpace && "pl-20"
@@ -255,7 +255,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("app-region-no-drag", isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
                 onClick={goBackInTab}
                 disabled={!canGoBack}
               >
@@ -273,7 +273,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("app-region-no-drag", isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
                 onClick={goForwardInTab}
                 disabled={!canGoForward}
               >
@@ -292,7 +292,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         )}
 
         {/* Tabs with drag-and-drop */}
-        <div className="flex items-center gap-1 px-1 overflow-x-auto scrollbar-none app-region-no-drag">
+        <div className="flex items-center gap-1 px-1 overflow-x-auto scrollbar-none">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -336,11 +336,14 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           </Tooltip>
         </div>
 
-        {/* Spacer to push window controls to right */}
-        <div className="flex-1 app-region-drag" />
+        {/* Spacer: drag region for window dragging + double-click to maximize */}
+        <div
+          data-tauri-drag-region
+          className="flex-1 self-stretch"
+        />
 
         {/* Right side: Window Controls only */}
-        <div className="flex items-center shrink-0 app-region-no-drag">
+        <div className="flex items-center shrink-0">
           <WindowControls />
         </div>
       </div>

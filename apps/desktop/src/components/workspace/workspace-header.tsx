@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { RefreshCw, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,35 +12,51 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
+import { DesktopBreadcrumbBar } from "@/components/navigation/desktop-breadcrumb-bar";
+import { usePageTabs } from "@/hooks/use-page-tabs";
+import {
+  useNavigationShellSlots,
+  useOptionalNavigationShell,
+} from "@/components/navigation";
 import { cn } from "@/lib/utils";
-import { WorkspaceBreadcrumb, type BreadcrumbSegment } from "./workspace-breadcrumb";
+import type { BreadcrumbSegment } from "./workspace-breadcrumb";
 import type { Workspace } from "@/types";
 
 interface WorkspaceHeaderProps {
   workspace: Workspace;
-  segments?: BreadcrumbSegment[];
+  segments?: BreadcrumbSegment[] | undefined;
   onRefresh?: () => void;
   onRemove?: () => Promise<void>;
   isRefreshing?: boolean;
   showRefresh?: boolean;
   showRemove?: boolean;
   className?: string;
-  rightContent?: React.ReactNode;
+  centerContent?: ReactNode;
+  rightContent?: ReactNode;
 }
 
 export function WorkspaceHeader({
   workspace,
-  segments = [],
+  segments,
   onRefresh,
   onRemove,
   isRefreshing = false,
   showRefresh = true,
   showRemove = true,
   className,
+  centerContent,
   rightContent,
 }: WorkspaceHeaderProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
+  const navigationShell = useOptionalNavigationShell();
+  const navigationShellSlots = useNavigationShellSlots();
+  const ownerId = useId();
+  const latestHeaderRef = useRef<{
+    workspace: Workspace;
+    segments?: BreadcrumbSegment[];
+    className?: string;
+  } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -52,7 +68,10 @@ export function WorkspaceHeader({
     setIsDeleting(true);
     try {
       await onRemove();
-      navigate("/mcp-services/dashboard");
+      openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
+        type: "lucide",
+        value: "layout-dashboard",
+      });
     } catch {
       // Error handled in hook
     } finally {
@@ -61,23 +80,12 @@ export function WorkspaceHeader({
     }
   };
 
-  return (
-    <header
-      className={cn(
-        "flex h-14 items-center gap-4 px-4 border-b bg-background",
-        className
-      )}
-    >
-      {/* Left: Breadcrumb - scrollable container */}
-      <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
-        <WorkspaceBreadcrumb workspace={workspace} segments={segments} />
-      </div>
-
-      {/* Right: Actions - fixed, never shrink */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+  const actionSlot = useMemo(
+    () => (
+      <>
         {rightContent}
 
-        {showRefresh && onRefresh && (
+        {showRefresh && onRefresh ? (
           <Button
             variant="ghost"
             size="sm"
@@ -94,9 +102,9 @@ export function WorkspaceHeader({
               {isRefreshing ? t("workspace.discovering") : t("common.refresh")}
             </span>
           </Button>
-        )}
+        ) : null}
 
-        {showRemove && !isGlobal && onRemove && (
+        {showRemove && !isGlobal && onRemove ? (
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -129,16 +137,88 @@ export function WorkspaceHeader({
                   onClick={handleDelete}
                   disabled={isDeleting}
                 >
-                  {isDeleting && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
+                  {isDeleting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   {t("common.remove")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
-      </div>
-    </header>
+        ) : null}
+      </>
+    ),
+    [
+      deleteDialogOpen,
+      handleDelete,
+      isDeleting,
+      isGlobal,
+      isRefreshing,
+      onRefresh,
+      onRemove,
+      openGlobalView,
+      rightContent,
+      showRefresh,
+      showRemove,
+      t,
+      workspace.name,
+    ]
+  );
+
+  const shouldRenderRightSlot = Boolean(
+    rightContent || showRefresh || (showRemove && !isGlobal && onRemove)
+  );
+
+  useEffect(() => {
+    latestHeaderRef.current = {
+      workspace,
+      segments,
+      className: cn("", className),
+    };
+  }, [
+    className,
+    segments,
+    workspace,
+  ]);
+
+  useEffect(() => {
+    if (!navigationShell || !latestHeaderRef.current) {
+      return;
+    }
+
+    navigationShell.setHeader(ownerId, latestHeaderRef.current);
+  }, [navigationShell, ownerId, workspace.id, workspace.name, className, segments]);
+
+  useEffect(() => {
+    if (!navigationShell) {
+      return;
+    }
+
+    return () => {
+      navigationShell.clearHeader(ownerId);
+    };
+  }, [navigationShell, ownerId]);
+
+  if (navigationShell) {
+    return (
+      <>
+        {centerContent && navigationShellSlots?.centerHost
+          ? createPortal(centerContent, navigationShellSlots.centerHost)
+          : null}
+        {shouldRenderRightSlot && navigationShellSlots?.rightHost
+          ? createPortal(actionSlot, navigationShellSlots.rightHost)
+          : null}
+      </>
+    );
+  }
+
+  return (
+    <DesktopBreadcrumbBar
+      workspace={workspace}
+      segments={segments ?? []}
+      className={cn("", className)}
+      centerSlot={centerContent}
+      rightSlot={actionSlot}
+    />
   );
 }

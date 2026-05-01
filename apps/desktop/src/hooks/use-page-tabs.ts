@@ -1,22 +1,23 @@
-// apps/desktop/src/hooks/use-page-tabs.ts
-
-/**
- * Hook for managing page tabs
- *
- * Provides convenient tab operation methods, wrapping the underlying tab-store operations.
- * All navigation updates the current tab instead of creating new tabs.
- */
-
 import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
 import type { PageTab, TabType } from "@/stores/tab-store";
 import type { PageConfig } from "@/lib/gateway";
 import type { IconData } from "@/components/ui/icon-picker";
+import {
+  createBreadcrumbItem,
+  createStackForLocation,
+} from "@/navigation/breadcrumb-stack";
+import {
+  type DesktopLocation,
+  locationToUrl,
+} from "@/navigation/location";
+import type {
+  BreadcrumbStackItem,
+  PushPageOptions,
+  TabNavigationState,
+  WorkspaceSection,
+} from "@/navigation/view-target";
 
-/**
- * Tab info for navigation - used to update the current tab
- */
 export interface TabInfo {
   type: TabType;
   name: string;
@@ -25,284 +26,706 @@ export interface TabInfo {
   workspaceId?: string;
 }
 
-export function usePageTabs() {
-  const navigate = useNavigate();
+function inferTabType(location: DesktopLocation, fallback?: TabType): TabType {
+  if (fallback) return fallback;
 
+  switch (location.kind) {
+    case "workspace-page":
+    case "skill-detail":
+    case "mcp-server-detail":
+    case "subagent-detail":
+    case "prompt-detail":
+    case "command-detail":
+      return "page";
+    case "workspace-web":
+      return "web";
+    case "settings":
+      return "settings";
+    case "documents":
+    case "device-pair":
+      return "workspace";
+    case "workspace-home":
+    case "workspace-section":
+    case "workspace-agent-detail":
+    case "workspace-executor-detail":
+    case "agent-detail":
+    case "executor-detail":
+    case "global-route":
+      return "workspace";
+    default: {
+      const exhaustive: never = location;
+      return exhaustive;
+    }
+  }
+}
+
+function inferTabName(location: DesktopLocation, fallback?: string): string {
+  if (fallback) return fallback;
+
+  switch (location.kind) {
+    case "workspace-home":
+      return location.workspaceId;
+    case "workspace-section":
+      return location.section;
+    case "workspace-agent-detail":
+      return location.agentId;
+    case "workspace-executor-detail":
+      return location.executorType;
+    case "workspace-page":
+      return location.pageSlug;
+    case "workspace-web":
+      return location.title;
+    case "agent-detail":
+      return location.agentId;
+    case "executor-detail":
+      return location.executorType;
+    case "skill-detail":
+      return location.skillId;
+    case "mcp-server-detail":
+      return location.serverName;
+    case "subagent-detail":
+      return location.configId;
+    case "prompt-detail":
+      return location.promptId;
+    case "command-detail":
+      return location.commandId;
+    case "settings":
+      return inferSettingsLabel(location.section);
+    case "documents":
+      return "Documents";
+    case "device-pair":
+      return "Devices";
+    case "global-route":
+      return location.path.replace(/^\//, "");
+    default: {
+      const exhaustive: never = location;
+      return exhaustive;
+    }
+  }
+}
+
+function inferTabSlug(location: DesktopLocation, fallback?: string): string | undefined {
+  if (fallback) return fallback;
+
+  switch (location.kind) {
+    case "workspace-section":
+      return location.section;
+    case "workspace-agent-detail":
+      return location.agentId;
+    case "workspace-executor-detail":
+      return location.executorType;
+    case "workspace-page":
+      return location.pageSlug;
+    case "workspace-web":
+      return location.webId ?? location.url;
+    case "agent-detail":
+      return location.agentId;
+    case "executor-detail":
+      return location.executorType;
+    case "skill-detail":
+      return location.skillId;
+    case "mcp-server-detail":
+      return location.serverName;
+    case "subagent-detail":
+      return location.configId;
+    case "prompt-detail":
+      return location.promptId;
+    case "command-detail":
+      return location.commandId;
+    case "settings":
+      return location.section;
+    case "global-route":
+      return location.path;
+    default:
+      return undefined;
+  }
+}
+
+function inferSettingsLabel(section?: string): string {
+  switch (section) {
+    case "general":
+      return "General";
+    case "account":
+      return "Account";
+    case "shortcuts":
+      return "Shortcuts";
+    case "notifications":
+      return "Notifications";
+    case "gateway":
+      return "Gateway";
+    case "channels":
+      return "Channels";
+    case "executors":
+      return "Executors";
+    case "model":
+      return "Model";
+    case "agents":
+      return "Agents";
+    case "mcp":
+      return "MCP";
+    case "skills":
+      return "Skills";
+    case "sandbox":
+      return "Sandbox";
+    case "environment":
+      return "Environment";
+    case "terminalFonts":
+      return "Terminal Fonts";
+    case "overlay":
+      return "Overlay";
+    case "voice":
+      return "Voice";
+    case "storage":
+      return "Storage";
+    case "developer":
+      return "Developer";
+    case "about":
+      return "About";
+    default:
+      return "Settings";
+  }
+}
+
+function inferWorkspaceId(location: DesktopLocation, fallback?: string): string | undefined {
+  if (fallback) return fallback;
+  return "workspaceId" in location ? location.workspaceId : undefined;
+}
+
+export function usePageTabs() {
   const tabs = useTabStore((state) => state.tabs);
   const activeTabId = useTabStore((state) => state.activeTabId);
   const activeTab = useTabStore(selectActiveTab);
 
   const openTab = useTabStore((state) => state.openTab);
-  const closeTab = useTabStore((state) => state.closeTab);
+  const closeTabStore = useTabStore((state) => state.closeTab);
   const setActiveTab = useTabStore((state) => state.setActiveTab);
   const updateTab = useTabStore((state) => state.updateTab);
-  const tabNavigate = useTabStore((state) => state.navigate);
+  const navigate = useTabStore((state) => state.navigate);
+  const navigateToLocationStore = useTabStore((state) => state.navigateToLocation);
+  const replaceLocationStore = useTabStore((state) => state.replaceLocation);
+  const pushPageStore = useTabStore((state) => state.pushPage);
+  const popToStore = useTabStore((state) => state.popTo);
+  const resetStackStore = useTabStore((state) => state.resetStack);
   const goBack = useTabStore((state) => state.goBack);
   const goForward = useTabStore((state) => state.goForward);
   const canGoBack = useTabStore((state) => state.canGoBack);
   const canGoForward = useTabStore((state) => state.canGoForward);
   const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
+  const getCurrentNavigationState = useTabStore((state) => state.getCurrentNavigationState);
 
-  /**
-   * Navigate to a URL and update the current tab info.
-   * This is the primary navigation method - always updates current tab.
-   *
-   * @param url - The URL to navigate to (internal route or external http/https)
-   * @param tabInfo - Tab display info (name, icon, type)
-   */
+  const openLocation = useCallback(
+    (
+      location: DesktopLocation,
+      options?: {
+        tabInfo?: Partial<TabInfo>;
+        breadcrumbStack?: BreadcrumbStackItem[];
+        openInNewTab?: boolean;
+      }
+    ) => {
+      const navigationState: TabNavigationState = {
+        location,
+        breadcrumbStack:
+          options?.breadcrumbStack ??
+          createStackForLocation(
+            location,
+            options?.tabInfo?.name,
+            options?.tabInfo?.icon
+          ),
+      };
+
+      const nextTab = {
+        type: inferTabType(location, options?.tabInfo?.type),
+        slug: inferTabSlug(location, options?.tabInfo?.slug),
+        workspaceId: inferWorkspaceId(location, options?.tabInfo?.workspaceId),
+        name: inferTabName(location, options?.tabInfo?.name),
+        icon: options?.tabInfo?.icon,
+        pinned: false,
+      };
+
+      if (options?.openInNewTab || !activeTabId) {
+        return openTab({
+          ...nextTab,
+          navigationState,
+        });
+      }
+
+      updateTab(activeTabId, nextTab);
+      navigateToLocationStore(activeTabId, location, {
+        breadcrumbStack: navigationState.breadcrumbStack,
+      });
+      return activeTabId;
+    },
+    [activeTabId, navigateToLocationStore, openTab, updateTab]
+  );
+
+  const replaceLocation = useCallback(
+    (
+      location: DesktopLocation,
+      patch?: Partial<TabNavigationState>,
+      tabInfo?: Partial<TabInfo>
+    ) => {
+      if (!activeTabId) {
+        return openLocation(location, {
+          tabInfo,
+          breadcrumbStack: patch?.breadcrumbStack,
+          openInNewTab: true,
+        });
+      }
+
+      updateTab(activeTabId, {
+        type: inferTabType(location, tabInfo?.type),
+        slug: inferTabSlug(location, tabInfo?.slug),
+        workspaceId: inferWorkspaceId(location, tabInfo?.workspaceId),
+        name: inferTabName(location, tabInfo?.name),
+        icon: tabInfo?.icon,
+      });
+      replaceLocationStore(activeTabId, location, patch);
+      return activeTabId;
+    },
+    [activeTabId, openLocation, replaceLocationStore, updateTab]
+  );
+
+  const pushPage = useCallback(
+    (
+      item: BreadcrumbStackItem,
+      nextLocation: DesktopLocation,
+      options?: PushPageOptions,
+      tabInfo?: Partial<TabInfo>
+    ) => {
+      if (!activeTabId) {
+        return openLocation(nextLocation, {
+          tabInfo,
+          breadcrumbStack: [...createStackForLocation(nextLocation), item],
+          openInNewTab: true,
+        });
+      }
+
+      updateTab(activeTabId, {
+        type: inferTabType(nextLocation, tabInfo?.type),
+        slug: inferTabSlug(nextLocation, tabInfo?.slug),
+        workspaceId: inferWorkspaceId(nextLocation, tabInfo?.workspaceId),
+        name: inferTabName(nextLocation, tabInfo?.name),
+        icon: tabInfo?.icon,
+      });
+      pushPageStore(activeTabId, item, nextLocation, options);
+      return activeTabId;
+    },
+    [activeTabId, openLocation, pushPageStore, updateTab]
+  );
+
+  const popTo = useCallback(
+    (index: number) => {
+      if (!activeTabId) return;
+      popToStore(activeTabId, index);
+    },
+    [activeTabId, popToStore]
+  );
+
+  const resetStack = useCallback(
+    (next: TabNavigationState, tabInfo?: Partial<TabInfo>) => {
+      if (!activeTabId) {
+        return openLocation(next.location, {
+          tabInfo,
+          breadcrumbStack: next.breadcrumbStack,
+          openInNewTab: true,
+        });
+      }
+
+      updateTab(activeTabId, {
+        type: inferTabType(next.location, tabInfo?.type),
+        slug: inferTabSlug(next.location, tabInfo?.slug),
+        workspaceId: inferWorkspaceId(next.location, tabInfo?.workspaceId),
+        name: inferTabName(next.location, tabInfo?.name),
+        icon: tabInfo?.icon,
+      });
+      resetStackStore(activeTabId, next);
+      return activeTabId;
+    },
+    [activeTabId, openLocation, resetStackStore, updateTab]
+  );
+
   const navigateTo = useCallback(
     (url: string, tabInfo: TabInfo) => {
-      // Determine if this is an external URL
       const isExternal = url.startsWith("http://") || url.startsWith("https://");
+      if (isExternal) {
+        const workspaceId = tabInfo.workspaceId ?? "global";
+        return openLocation(
+          {
+            kind: "workspace-web",
+            workspaceId,
+            url,
+            title: tabInfo.name,
+          },
+          { tabInfo }
+        );
+      }
 
-      // If there's an active tab, update it
       if (activeTabId) {
         updateTab(activeTabId, {
-          type: isExternal ? "web" : tabInfo.type,
+          type: tabInfo.type,
           slug: tabInfo.slug,
           workspaceId: tabInfo.workspaceId,
           name: tabInfo.name,
           icon: tabInfo.icon,
         });
-        tabNavigate(activeTabId, url);
-
-        // For internal routes, use react-router navigate
-        // For external URLs, we'd need a webview (handled by the page component)
-        if (!isExternal) {
-          navigate(url);
-        }
+        navigate(activeTabId, url);
         return activeTabId;
       }
 
-      // No active tab, create one (only happens on first navigation)
-      const tabId = openTab(
-        {
-          type: isExternal ? "web" : tabInfo.type,
-          slug: tabInfo.slug,
-          workspaceId: tabInfo.workspaceId,
-          name: tabInfo.name,
-          icon: tabInfo.icon,
-          pinned: false,
+      const location = buildLocationFromLegacyUrl(url);
+      return openTab({
+        type: tabInfo.type,
+        slug: tabInfo.slug,
+        workspaceId: tabInfo.workspaceId,
+        name: tabInfo.name,
+        icon: tabInfo.icon,
+        pinned: false,
+        navigationState: {
+          location,
+          breadcrumbStack: createStackForLocation(location),
         },
-        url
-      );
-
-      if (!isExternal) {
-        navigate(url);
-      }
-      return tabId;
-    },
-    [activeTabId, openTab, updateTab, tabNavigate, navigate]
-  );
-
-  /**
-   * Navigate to a workspace page (from pages/ directory)
-   * Updates current tab instead of creating new one.
-   */
-  const openPageTab = useCallback(
-    (page: PageConfig, workspaceId: string) => {
-      const url = `/workspace/page?workspace_id=${workspaceId}&page_path=pages/${page.slug}/SKILL.md`;
-      return navigateTo(url, {
-        type: "page",
-        slug: page.slug,
-        workspaceId,
-        name: page.name,
-        icon: page.icon ?? { type: "lucide", value: "file-text" },
       });
     },
-    [navigateTo]
+    [activeTabId, navigate, openLocation, openTab, updateTab]
   );
 
-  /**
-   * Open a workspace page in a NEW tab (always creates new tab)
-   */
-  const openPageInNewTab = useCallback(
-    (page: PageConfig, workspaceId: string) => {
-      const url = `/workspace/page?workspace_id=${workspaceId}&page_path=pages/${page.slug}/SKILL.md`;
-      const tabId = openTab(
+  const openPageTab = useCallback(
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
+      openLocation(
         {
-          type: "page",
-          slug: page.slug,
+          kind: "workspace-page",
           workspaceId,
-          name: page.name,
-          icon: page.icon ?? { type: "lucide", value: "file-text" },
-          pinned: false,
+          pageSlug: page.slug,
         },
-        url
-      );
-      navigate(url);
-      return tabId;
-    },
-    [openTab, navigate]
+        {
+          breadcrumbStack,
+          tabInfo: {
+            type: "page",
+            slug: page.slug,
+            workspaceId,
+            name: page.name,
+            icon: page.icon ?? { type: "lucide", value: "file-text" },
+          },
+        }
+      ),
+    [openLocation]
   );
 
-  /**
-   * Navigate to a workspace view (chat, kanban, files, agents, etc.)
-   */
+  const openPageInNewTab = useCallback(
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
+      openLocation(
+        {
+          kind: "workspace-page",
+          workspaceId,
+          pageSlug: page.slug,
+        },
+        {
+          openInNewTab: true,
+          breadcrumbStack,
+          tabInfo: {
+            type: "page",
+            slug: page.slug,
+            workspaceId,
+            name: page.name,
+            icon: page.icon ?? { type: "lucide", value: "file-text" },
+          },
+        }
+      ),
+    [openLocation]
+  );
+
   const openWorkspaceView = useCallback(
     (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => {
-      const url = `/workspace/${workspaceId}/${viewPath}`;
-      return navigateTo(url, {
-        type: "workspace",
-        slug: viewPath,
-        workspaceId,
-        name: viewName,
-        icon,
-      });
+      if (!viewPath) {
+        return openLocation(
+          { kind: "workspace-home", workspaceId },
+          {
+            tabInfo: {
+              type: "workspace",
+              slug: "home",
+              workspaceId,
+              name: viewName,
+              icon,
+            },
+          }
+        );
+      }
+
+      return openLocation(
+        {
+          kind: "workspace-section",
+          workspaceId,
+          section: normalizeWorkspaceSection(viewPath),
+        },
+        {
+          tabInfo: {
+            type: "workspace",
+            slug: viewPath,
+            workspaceId,
+            name: viewName,
+            icon,
+          },
+        }
+      );
     },
-    [navigateTo]
+    [openLocation]
   );
 
-  /**
-   * Navigate to a global route (settings, documents, etc.)
-   */
   const openGlobalView = useCallback(
     (path: string, name: string, icon: IconData) => {
-      return navigateTo(path, {
-        type: "settings",
-        name,
-        icon,
+      const location = buildLocationFromLegacyUrl(path);
+      return openLocation(location, {
+        tabInfo: {
+          type: inferTabType(location, "settings"),
+          name,
+          icon,
+        },
       });
     },
-    [navigateTo]
+    [openLocation]
   );
 
-  /**
-   * Navigate to an external web URL
-   */
   const openWebUrl = useCallback(
-    (url: string, title?: string) => {
-      let hostname = url;
-      try {
-        hostname = new URL(url).hostname;
-      } catch {
-        // Invalid URL, use the raw string
-      }
-      return navigateTo(url, {
-        type: "web",
-        name: title ?? hostname,
-        icon: { type: "lucide", value: "globe" },
-      });
-    },
-    [navigateTo]
+    (url: string, title?: string, workspaceId = activeTab?.workspaceId ?? "global") =>
+      openLocation(
+        {
+          kind: "workspace-web",
+          workspaceId,
+          title: title ?? safeHostname(url),
+          url,
+        },
+        {
+          tabInfo: {
+            type: "web",
+            workspaceId,
+            name: title ?? safeHostname(url),
+            icon: { type: "lucide", value: "globe" },
+          },
+        }
+      ),
+    [activeTab?.workspaceId, openLocation]
   );
 
-  // Open a chat - updates current tab
   const openChatTab = useCallback(
-    (chatId: string, chatName: string, workspaceId: string) => {
-      const url = `/workspace/${workspaceId}/chat?chat_id=${chatId}`;
-      return navigateTo(url, {
-        type: "chat",
-        slug: chatId,
-        workspaceId,
-        name: chatName,
-        icon: { type: "lucide", value: "message-square" },
-      });
-    },
-    [navigateTo]
+    (_chatId: string, chatName: string, workspaceId: string) =>
+      openLocation(
+        {
+          kind: "workspace-section",
+          workspaceId,
+          section: "chat",
+        },
+        {
+          tabInfo: {
+            type: "chat",
+            slug: "chat",
+            workspaceId,
+            name: chatName,
+            icon: { type: "lucide", value: "message-square" },
+          },
+        }
+      ),
+    [openLocation]
   );
 
-  // Switch to a specific tab (used by tab bar clicks)
   const switchToTab = useCallback(
     (tabId: string) => {
       setActiveTab(tabId);
-      const url = getCurrentUrl(tabId);
-      if (url) {
-        // Check if external URL
-        if (url.startsWith("http://") || url.startsWith("https://")) {
-          // External URLs are handled by webview in the page
-          // Just set active tab, don't navigate
-        } else {
-          navigate(url);
-        }
-      }
+      return getCurrentUrl(tabId);
     },
-    [setActiveTab, getCurrentUrl, navigate]
+    [getCurrentUrl, setActiveTab]
   );
 
-  // Close tab with navigation
-  const closeTabWithNav = useCallback(
+  const closeTab = useCallback(
     (tabId: string) => {
-      const tabIndex = tabs.findIndex((t) => t.id === tabId);
-      const isActive = activeTabId === tabId;
-
-      closeTab(tabId);
-
-      if (isActive && tabs.length > 1) {
-        // Navigate to next tab
-        const remainingTabs = tabs.filter((t) => t.id !== tabId);
-        const nextTab = remainingTabs[Math.min(tabIndex, remainingTabs.length - 1)];
-        if (nextTab) {
-          const url = nextTab.history[nextTab.historyIndex];
-          if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-            navigate(url);
-          }
-        }
-      }
+      closeTabStore(tabId);
     },
-    [tabs, activeTabId, closeTab, navigate]
+    [closeTabStore]
   );
 
-  // Navigate within current tab (for internal navigation without changing tab info)
   const navigateInTab = useCallback(
     (url: string) => {
-      if (activeTabId) {
-        tabNavigate(activeTabId, url);
-      }
-      if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        navigate(url);
-      }
+      if (!activeTabId) return;
+      navigate(activeTabId, url);
     },
-    [activeTabId, tabNavigate, navigate]
+    [activeTabId, navigate]
   );
 
-  // Go back in current tab
   const goBackInTab = useCallback(() => {
     if (activeTabId && canGoBack(activeTabId)) {
       goBack(activeTabId);
-      const url = getCurrentUrl(activeTabId);
-      if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-        navigate(url);
-      }
     }
-  }, [activeTabId, canGoBack, goBack, getCurrentUrl, navigate]);
+  }, [activeTabId, canGoBack, goBack]);
 
-  // Go forward in current tab
   const goForwardInTab = useCallback(() => {
     if (activeTabId && canGoForward(activeTabId)) {
       goForward(activeTabId);
-      const url = getCurrentUrl(activeTabId);
-      if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-        navigate(url);
-      }
     }
-  }, [activeTabId, canGoForward, goForward, getCurrentUrl, navigate]);
+  }, [activeTabId, canGoForward, goForward]);
 
   return {
-    // State
     tabs,
     activeTab,
     activeTabId,
-    // Primary navigation (updates current tab)
     navigateTo,
+    openLocation,
+    replaceLocation,
+    pushPage,
+    popTo,
+    resetStack,
     openPageTab,
     openWorkspaceView,
     openGlobalView,
     openWebUrl,
     openChatTab,
-    // New tab creation (explicitly creates new tab)
     openPageInNewTab,
-    // Tab switching (for tab bar)
     switchToTab,
-    closeTab: closeTabWithNav,
-    // History navigation
+    closeTab,
     navigateInTab,
     goBackInTab,
     goForwardInTab,
     canGoBack: activeTabId ? canGoBack(activeTabId) : false,
     canGoForward: activeTabId ? canGoForward(activeTabId) : false,
+    currentUrl: activeTabId ? getCurrentUrl(activeTabId) : null,
+    currentNavigationState: activeTabId
+      ? getCurrentNavigationState(activeTabId)
+      : null,
   };
 }
 
-// Re-export types for convenience
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+function buildLocationFromLegacyUrl(url: string): DesktopLocation {
+  const parsed = urlToLocation(url);
+  if (parsed) {
+    return parsed;
+  }
+
+  if (url === "/documents") {
+    return { kind: "documents" };
+  }
+  if (url === "/devices/pair") {
+    return { kind: "device-pair" };
+  }
+  if (url.startsWith("/settings")) {
+    const section = url.split("/")[2];
+    return { kind: "settings", section };
+  }
+
+  if (url === "/publish" || url === "/my-packages" || url === "/analytics") {
+    return { kind: "global-route", path: url };
+  }
+
+  if (url.startsWith("/workspace/page")) {
+    const parsed = new URL(url, "http://desktop.local");
+    const workspaceId = parsed.searchParams.get("workspace_id");
+    const pagePath = parsed.searchParams.get("page_path");
+    return {
+      kind: "workspace-page",
+      workspaceId: workspaceId ?? "global",
+      pageSlug:
+        pagePath?.replace(/^pages\//, "").replace(/\/SKILL\.md$/, "") ?? "page",
+    };
+  }
+
+  if (url.startsWith("/workspace/")) {
+    const parsed = new URL(url, "http://desktop.local");
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const workspaceId = parts[1];
+    if (!workspaceId) {
+      return { kind: "documents" };
+    }
+
+    if (parts.length === 2) {
+      return { kind: "workspace-home", workspaceId };
+    }
+
+    if (parts[2] === "page" && parts[3]) {
+      return {
+        kind: "workspace-page",
+        workspaceId,
+        pageSlug: parts
+          .slice(3)
+          .map((part) => decodeURIComponent(part))
+          .join("/"),
+      };
+    }
+
+    if (parts[2] === "agent" && parts[3]) {
+      return {
+        kind: "workspace-agent-detail",
+        workspaceId,
+        agentId: decodeURIComponent(parts[3]),
+      };
+    }
+
+    if (parts[2] === "executor" && parts[3]) {
+      return {
+        kind: "workspace-executor-detail",
+        workspaceId,
+        executorType: decodeURIComponent(parts[3]),
+      };
+    }
+
+    if (parts[2] === "web") {
+      return {
+        kind: "workspace-web",
+        workspaceId,
+        url: parsed.searchParams.get("url") ?? "",
+        title: parsed.searchParams.get("title") ?? "Web",
+        sourcePageSlug: parsed.searchParams.get("source_page") ?? undefined,
+        webId: parsed.searchParams.get("web_id") ?? undefined,
+      };
+    }
+
+    return {
+      kind: "workspace-section",
+      workspaceId,
+      section: normalizeWorkspaceSection(parts[2] ?? "chat"),
+    };
+  }
+
+  return { kind: "global-route", path: url };
+}
+
+function normalizeWorkspaceSection(value: string): WorkspaceSection {
+  switch (value) {
+    case "agents":
+      return "agent";
+    case "chat":
+    case "kanban":
+    case "cron":
+    case "ideas":
+    case "agent":
+    case "files":
+    case "github":
+    case "chat-monitor":
+      return value;
+    default:
+      return "chat";
+  }
+}
+
+export function createChildBreadcrumbItem(
+  label: string,
+  location: DesktopLocation,
+  partial?: Partial<BreadcrumbStackItem>
+): BreadcrumbStackItem {
+  return createBreadcrumbItem({
+    id: partial?.id ?? locationToUrl(location),
+    kind: partial?.kind ?? "workspace-page",
+    label,
+    icon: partial?.icon,
+    meta: partial?.meta,
+    parentNodeId: partial?.parentNodeId,
+    sourceNodeId: partial?.sourceNodeId,
+    location,
+  });
+}
+
 export type { PageTab, TabType };
