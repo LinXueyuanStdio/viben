@@ -183,7 +183,8 @@ pub fn run() {
             .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_fs::init())
-            .plugin(tauri_plugin_deep_link::init());
+            .plugin(tauri_plugin_deep_link::init())
+            .plugin(tauri_plugin_screenshots::init());
     }
 
     #[cfg(mobile)]
@@ -242,9 +243,13 @@ pub fn run() {
                 commands::cli_installer::inspect_node_installer,
                 commands::cli_installer::install_env,
                 commands::cli_installer::refresh_environment,
-                // Screenshot commands (native screen capture)
+                // Screenshot commands (native screen capture via tauri-plugin-screenshots)
                 commands::screenshot::take_screenshot,
                 commands::screenshot::take_screenshot_region,
+                commands::screenshot::list_screenshot_windows,
+                commands::screenshot::take_window_screenshot,
+                commands::screenshot::start_region_screenshot,
+                commands::screenshot::close_screenshot_overlay,
                 // Window commands (multi-window support)
                 commands::window::open_workspace_in_new_window,
                 commands::window::get_workspace_windows,

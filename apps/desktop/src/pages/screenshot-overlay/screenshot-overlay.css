@@ -1,0 +1,19 @@
+/* Screenshot overlay - fullscreen, no chrome */
+.screenshot-overlay-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+/* Reset body styles for overlay window */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}

@@ -85,6 +85,7 @@
     "core:window:allow-set-focus",
     "core:window:allow-set-position",
     "core:window:allow-unminimize",
-    "deep-link:default"
+    "deep-link:default",
+    "screenshots:default"
   ]
 }
