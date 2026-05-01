@@ -4,14 +4,13 @@
  * Wraps @yoopta/exports markdown.serialize / markdown.deserialize with
  * pre- and post-processing to ensure `markdown ≈ serialize(deserialize(markdown))`.
  *
- * Known Yoopta upstream issues this wrapper fixes:
- * 1. Block separator is `\n` (single) → paragraphs merge on re-import because
- *    `marked` with `breaks: true` treats `\n` as `<br>`.
- *    Fix: post-process serialized output to use `\n\n` between blocks.
- * 2. YAML frontmatter is corrupted (marked parses `---` as `<hr>`).
- *    Fix: strip frontmatter before deserialize, prepend it back on serialize.
- * 3. Math blocks `$$..$$` are not recognized by marked.
- *    Fix: pre-process math fences into `<div data-math-block>` before marked.
+ * Plugin coverage:
+ * - Lossless roundtrip: Paragraph, HeadingOne/Two/Three, BulletedList, NumberedList,
+ *   TodoList, Code, Divider, Image, Table, Blockquote, MathBlock, MathInline,
+ *   TableOfContents, Accordion
+ * - Lossy (idempotent after first pass): Callout (→ blockquote), Embed (→ link),
+ *   File (→ link), Video (→ image), Steps (→ numbered list), Tabs (→ headings),
+ *   Carousel (→ numbered list), CodeGroup (→ code blocks), Mention (→ text)
  */
 
 import { markdown } from "@yoopta/exports";
@@ -43,15 +42,24 @@ export function prependFrontmatter(
   return frontmatter + (frontmatter.endsWith("\n") ? "" : "\n") + body;
 }
 
-// ---- Math pre-processing ----
+// ---- Preprocessing helpers ----
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 /**
  * Convert `[TOC]` markers into HTML that Yoopta's TableOfContents plugin
  * can recognize via its HTML deserializer (NAV with data-type="table-of-contents").
  */
 export function preprocessTocForDeserialize(md: string): string {
+  // Use [ \t]* instead of \s* to avoid consuming newlines that serve as block separators
   return md.replace(
-    /^\[TOC\]\s*$/gm,
+    /^\[TOC\][ \t]*$/gm,
     '<nav data-type="table-of-contents"></nav>',
   );
 }
@@ -79,14 +87,6 @@ export function preprocessMathForDeserialize(md: string): string {
   return result;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 // ---- Serialize post-processing ----
 
 /**
@@ -95,6 +95,7 @@ function escapeHtml(s: string): string {
  * This function ensures double-newline separation while preserving:
  * - Code fences (```...```)
  * - Math fences ($$...$$)
+ * - HTML blocks (<details>...</details>)
  * - Existing double-newlines
  */
 export function normalizeBlockSeparators(md: string): string {
@@ -102,6 +103,7 @@ export function normalizeBlockSeparators(md: string): string {
   const result: string[] = [];
   let inCodeFence = false;
   let inMathFence = false;
+  let inHtmlBlock = 0; // depth counter for nested HTML blocks
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -115,11 +117,16 @@ export function normalizeBlockSeparators(md: string): string {
     if (trimmed === "$$") {
       inMathFence = !inMathFence;
     }
+    // Track HTML block state (details, div, etc.)
+    if (!inCodeFence && !inMathFence) {
+      if (/^<(details|div)\b/i.test(trimmed)) inHtmlBlock++;
+      if (/^<\/(details|div)>/i.test(trimmed)) inHtmlBlock = Math.max(0, inHtmlBlock - 1);
+    }
 
     result.push(line);
 
-    // If inside a fenced block, don't add extra newlines
-    if (inCodeFence || inMathFence) continue;
+    // If inside a fenced block or HTML block, don't add extra newlines
+    if (inCodeFence || inMathFence || inHtmlBlock > 0) continue;
 
     // After a non-empty line, if the next line is also non-empty and not already
     // preceded by a blank line, check if we need to insert a blank line
@@ -140,8 +147,8 @@ export function normalizeBlockSeparators(md: string): string {
       const isNextTable = lines[i + 1]?.trim().startsWith("|");
       if (isCurrentTable && isNextTable) continue;
 
-      // Don't add blank lines after headings that are followed by content
-      // (they already have correct separation)
+      // Don't add blank lines inside HTML blocks (closing tag followed by opening tag)
+      if (/^<\/(details|div)>/i.test(trimmed) && /^<(details|div)\b/i.test(lines[i + 1]?.trim())) continue;
 
       // Add blank line between different block types
       result.push("");
@@ -155,57 +162,10 @@ export function normalizeBlockSeparators(md: string): string {
     .trim();
 }
 
-// ---- Public API ----
+// ---- Inline content serialization ----
 
 /**
- * Deserialize markdown string to Yoopta editor content.
- * Handles frontmatter stripping and math pre-processing.
- */
-export function deserializeMarkdown(
-  editor: YooEditor,
-  md: string,
-): { value: YooptaContentValue; frontmatter: string } {
-  const { frontmatter, body } = extractFrontmatter(md);
-  const withToc = preprocessTocForDeserialize(body);
-  const preprocessed = preprocessMathForDeserialize(withToc);
-  const value = markdown.deserialize(editor, preprocessed);
-  return { value, frontmatter };
-}
-
-/**
- * Serialize a single block to markdown.
- * Handles blocks that @yoopta/exports doesn't natively support
- * (MathBlock, MathInline, TableOfContents have empty parsers.markdown).
- */
-function serializeBlock(
-  editor: YooEditor,
-  block: { type: string; value: any[]; meta: any },
-): string {
-  // MathBlock: props.latex → $$ fenced block
-  if (block.type === "MathBlock") {
-    const latex = block.value?.[0]?.props?.latex ?? "";
-    return `$$\n${latex}\n$$`;
-  }
-
-  // TableOfContents → [TOC] marker
-  if (block.type === "TableOfContents") {
-    return "[TOC]";
-  }
-
-  // For other blocks, use the plugin's markdown serializer if available
-  const plugin = editor.plugins[block.type];
-  if (plugin?.parsers?.markdown?.serialize) {
-    const element = block.value[0];
-    const childText = element?.children?.map((c: any) => c.text || "").join("") ?? "";
-    const result = plugin.parsers.markdown.serialize(element, childText, block.meta);
-    if (result) return result;
-  }
-
-  return "";
-}
-
-/**
- * Serialize a block that may contain inline math elements.
+ * Serialize inline content including math-inline elements.
  * Walks the Slate node tree and produces markdown text with $latex$ for MathInline nodes.
  */
 function serializeInlineContent(children: any[]): string {
@@ -217,9 +177,20 @@ function serializeInlineContent(children: any[]): string {
     }
     // Regular text node (may have marks)
     if (child.text !== undefined) {
-      return child.text;
+      let text = child.text as string;
+      if (child.bold) text = `**${text}**`;
+      if (child.italic) text = `*${text}*`;
+      if (child.strike) text = `~~${text}~~`;
+      if (child.code) text = `\`${text}\``;
+      if (child.underline) text = `<u>${text}</u>`;
+      return text;
     }
-    // Nested element (e.g. link) — recurse into its children
+    // Link element
+    if (child.type === "link" && child.props?.url) {
+      const linkText = serializeInlineContent(child.children ?? []);
+      return `[${linkText}](${child.props.url})`;
+    }
+    // Nested element — recurse into its children
     if (child.children) {
       return serializeInlineContent(child.children);
     }
@@ -241,14 +212,91 @@ function blockHasInlineMath(block: { value: any[] }): boolean {
   return false;
 }
 
+// ---- Block serialization ----
+
+/**
+ * Serialize a single Yoopta block to markdown.
+ * Handles all plugin types including those without native markdown serializers.
+ */
+function serializeBlock(
+  editor: YooEditor,
+  block: { id?: string; type: string; value: any[]; meta: any },
+): string {
+  const element = block.value?.[0];
+  if (!element) return "";
+
+  switch (block.type) {
+    // --- Custom handled (no plugin exists) ---
+
+    case "CodeGroup": {
+      // CodeGroup serializes as multiple fenced code blocks
+      const tabsList = element.children?.find((c: any) => c.type === "code-group-list");
+      const contents = element.children?.filter((c: any) => c.type === "code-group-content") ?? [];
+      const tabHeadings = tabsList?.children ?? [];
+
+      return tabHeadings.map((heading: any) => {
+        const headingText = serializeInlineContent(heading.children ?? []);
+        const content = contents.find((c: any) => c.props?.referenceId === heading.id);
+        const contentText = content ? serializeInlineContent(content.children ?? []) : "";
+        const language = content?.props?.language ?? "";
+        return `\`\`\`${language} title="${headingText}"\n${contentText}\n\`\`\``;
+      }).join("\n\n");
+    }
+
+    default:
+      break;
+  }
+
+  // --- Use plugin's markdown serializer ---
+  const plugin = editor.plugins[block.type];
+  if (plugin?.parsers?.markdown?.serialize) {
+    const childText = element.children?.map((c: any) => c.text || "").join("") ?? "";
+    const result = plugin.parsers.markdown.serialize(
+      element,
+      childText,
+      block.meta,
+      editor,
+      block,
+    );
+    if (result) {
+      // Strip trailing newline for consistency — normalizeBlockSeparators handles separation
+      return result.replace(/\n$/, "");
+    }
+  }
+
+  // Fallback: serialize as plain text paragraph
+  const fallbackText = serializeInlineContent(element.children ?? []);
+  return fallbackText;
+}
+
+// ---- Public API ----
+
+/**
+ * Deserialize markdown string to Yoopta editor content.
+ * Handles frontmatter stripping and preprocessing for:
+ * - [TOC] markers
+ * - Math blocks ($$..$$) and inline math ($...$)
+ * - Raw HTML pass-through (accordion <details>, etc.)
+ */
+export function deserializeMarkdown(
+  editor: YooEditor,
+  md: string,
+): { value: YooptaContentValue; frontmatter: string } {
+  const { frontmatter, body } = extractFrontmatter(md);
+  const withToc = preprocessTocForDeserialize(body);
+  const preprocessed = preprocessMathForDeserialize(withToc);
+  const value = markdown.deserialize(editor, preprocessed);
+  return { value, frontmatter };
+}
+
 /**
  * Serialize Yoopta editor content to markdown string.
- * Handles frontmatter prepending, block separator normalization,
- * and blocks that @yoopta/exports doesn't support (MathBlock, TableOfContents).
+ * Handles all plugin types with proper markdown output.
  *
- * Fix for upstream issue: MathBlock, MathInline, and TableOfContents plugins
- * have empty `parsers.markdown`, so `markdown.serialize()` drops them.
- * We handle these types manually.
+ * Plugins handled:
+ * - MathBlock, MathInline, TableOfContents: custom serialization
+ * - Accordion, Steps, Tabs, Carousel, CodeGroup: custom complex-structure serialization
+ * - All others: delegate to plugin's parsers.markdown.serialize
  */
 export function serializeMarkdown(
   editor: YooEditor,
@@ -265,18 +313,16 @@ export function serializeMarkdown(
   for (const block of blocks) {
     if (!block) continue;
 
-    // For blocks containing inline math, we need custom serialization
+    // For blocks containing inline math, use custom serialization
     // to preserve $latex$ syntax that the default serializer drops
     if (blockHasInlineMath(block) && block.type !== "MathBlock") {
-      // Use the plugin's markdown serializer but with inline math injected
       const plugin = editor.plugins[block.type];
       if (plugin?.parsers?.markdown?.serialize) {
         const element = block.value[0] as any;
-        // Build text with inline math preserved
         const childText = serializeInlineContent(element?.children ?? []);
         const result = plugin.parsers.markdown.serialize(element, childText, block.meta);
         if (result) {
-          parts.push(result);
+          parts.push(result.replace(/\n$/, ""));
           continue;
         }
       }

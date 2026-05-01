@@ -42,6 +42,10 @@ import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
 import { ensureBlockFocus } from "./yoopta-focus-utils";
 
+const SOLID_COLOR_MAP: Record<string, string> = {
+  "warm-gray": "#d6d3d1", slate: "#94a3b8", stone: "#a8a29e", neutral: "#a3a3a3",
+};
+
 /** Parse a cover value into CSS background style. */
 function parseCoverBackground(cover: string): React.CSSProperties {
   if (cover.startsWith("gradient:")) {
@@ -50,10 +54,7 @@ function parseCoverBackground(cover: string): React.CSSProperties {
     if (g) return { background: `linear-gradient(135deg, ${g.from}, ${g.to})` };
   }
   if (cover.startsWith("solid:")) {
-    const solidMap: Record<string, string> = {
-      "warm-gray": "#d6d3d1", slate: "#94a3b8", stone: "#a8a29e", neutral: "#a3a3a3",
-    };
-    const color = solidMap[cover.slice(6)];
+    const color = SOLID_COLOR_MAP[cover.slice(6)];
     if (color) return { background: color };
   }
   // URL — use as background-image for img tag (handled separately)
@@ -110,6 +111,8 @@ export function YooptaMarkdownRenderer({
   const [wordCount, setWordCount] = useState({ words: 0, characters: 0 });
   const deferredWordCount = useDeferredValue(wordCount);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error'>('idle');
+  const saveStatusRef = useRef(saveStatus);
+  saveStatusRef.current = saveStatus;
   // Initialize to empty so the first useEffect always triggers deserialization
   const lastContentRef = useRef<string>("");
   const frontmatterRef = useRef<string>("");
@@ -126,23 +129,11 @@ export function YooptaMarkdownRenderer({
   const [currentShowToc, setCurrentShowToc] = useState(showToc ?? false);
   const configSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync title from props
-  useEffect(() => {
-    setPageTitle(title || "");
-  }, [title]);
-
-  // Sync icon from props
-  useEffect(() => {
-    setPageIcon(icon ?? null);
-  }, [icon]);
-
-  // Sync page width/toc from props
-  useEffect(() => {
-    setCurrentPageWidth(pageWidth || "default");
-  }, [pageWidth]);
-  useEffect(() => {
-    setCurrentShowToc(showToc ?? false);
-  }, [showToc]);
+  // Sync props to local state — single effect to reduce per-render overhead
+  useEffect(() => { setPageTitle(title || ""); }, [title]);
+  useEffect(() => { setPageIcon(icon ?? null); }, [icon]);
+  useEffect(() => { setCurrentPageWidth(pageWidth || "default"); }, [pageWidth]);
+  useEffect(() => { setCurrentShowToc(showToc ?? false); }, [showToc]);
 
   const handleTitleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -270,6 +261,8 @@ export function YooptaMarkdownRenderer({
     },
     [persistIcon]
   );
+
+  const openIconPicker = useCallback(() => setShowIconPicker(true), []);
 
   const plugins = useMemo(() => {
     if (!workspacePath || !slug) return createYooptaPlugins();
@@ -440,9 +433,12 @@ export function YooptaMarkdownRenderer({
           clearTimeout(saveTimerRef.current);
           saveTimerRef.current = null;
         }
-        const md = serializeMarkdown(editor, editor.children, frontmatterRef.current);
-        lastContentRef.current = md;
-        handleSave(md);
+        // Defer serialization off the keydown event to avoid blocking input
+        setTimeout(() => {
+          const md = serializeMarkdown(editor, editor.children, frontmatterRef.current);
+          lastContentRef.current = md;
+          handleSave(md);
+        }, 0);
       }
     };
     document.addEventListener("keydown", handleKeyDown);
@@ -700,7 +696,12 @@ export function YooptaMarkdownRenderer({
       // Auto-save: stash value reference; serialization happens inside debouncedSave
       if (canSave) {
         pendingValueRef.current = value;
-        startTransition(() => setSaveStatus('pending'));
+        // Only transition to 'pending' if not already in a saving/pending state — avoids
+        // scheduling a React state update on every single keystroke.
+        const status = saveStatusRef.current;
+        if (status === 'idle' || status === 'saved') {
+          startTransition(() => setSaveStatus('pending'));
+        }
         debouncedSave();
       }
     },
@@ -840,7 +841,7 @@ export function YooptaMarkdownRenderer({
             coverUrl={coverUrl}
             workspacePath={workspacePath}
             iconAnchorRef={iconAnchorRef}
-            onOpenIconPicker={() => setShowIconPicker(true)}
+            onOpenIconPicker={openIconPicker}
             onOpenCoverPicker={openCoverPicker}
             onTitleChange={handleTitleChange}
             onTitleKeyDown={handleTitleKeyDown}

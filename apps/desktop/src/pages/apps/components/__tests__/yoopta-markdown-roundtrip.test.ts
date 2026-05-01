@@ -9,12 +9,14 @@
  * Tests are organized into:
  * 1. Exact roundtrip — output === input (lossless)
  * 2. Idempotent roundtrip — f(f(x)) === f(x) (stable after first pass)
- * 3. Upstream known issues — tests that SHOULD pass but fail due to @yoopta bugs
+ * 3. Blockquote roundtrip (fixed upstream)
  * 4. Frontmatter preservation
  * 5. Special preprocessing (TOC, math)
- * 6. Real-world SKILL.md content
- * 7. Structural preservation (block count)
- * 8. Edge cases
+ * 6. Lossy plugins (idempotent) — Callout, Embed, File, Video, Steps, Tabs, Carousel, Mention
+ * 7. Accordion roundtrip (HTML passthrough)
+ * 8. Real-world SKILL.md content
+ * 9. Structural preservation (block count)
+ * 10. Edge cases
  *
  * @vitest-environment jsdom
  */
@@ -37,6 +39,15 @@ import Link from "@yoopta/link";
 import Table from "@yoopta/table";
 import Image from "@yoopta/image";
 import Embed from "@yoopta/embed";
+import Video from "@yoopta/video";
+import File from "@yoopta/file";
+import Accordion from "@yoopta/accordion";
+import Steps from "@yoopta/steps";
+import Tabs from "@yoopta/tabs";
+import Carousel from "@yoopta/carousel";
+import Mention from "@yoopta/mention";
+import { MathInline, MathBlock } from "@yoopta/math";
+import TableOfContents from "@yoopta/table-of-contents";
 
 import { deserializeMarkdown, serializeMarkdown } from "../yoopta-markdown";
 
@@ -60,6 +71,16 @@ const PLUGINS = [
   Table,
   Image,
   Embed,
+  Video,
+  File,
+  Accordion,
+  Steps,
+  Tabs,
+  Carousel,
+  Mention,
+  MathInline,
+  MathBlock,
+  TableOfContents,
 ];
 
 function createTestEditor(): YooEditor {
@@ -93,7 +114,7 @@ function doubleRoundtrip(
 
 let editor: YooEditor;
 
-beforeAll(() => {
+beforeEach(() => {
   editor = createTestEditor();
 });
 
@@ -103,31 +124,48 @@ beforeAll(() => {
 
 describe("exact roundtrip (output === input)", () => {
   const cases: [string, string][] = [
+    // Paragraph
     ["simple paragraph", "Hello world"],
-    ["heading h1", "# Heading One"],
-    ["heading h2", "## Heading Two"],
-    ["heading h3", "### Heading Three"],
-    ["multiple headings", "# H1\n\n## H2\n\n### H3"],
-    ["heading + paragraph", "# Title\n\nSome content here."],
-    ["bulleted list", "- Item 1\n- Item 2\n- Item 3"],
-    [
-      "paragraph + bulleted list",
-      "A paragraph.\n\n- Item 1\n- Item 2\n- Item 3",
-    ],
     ["bold text", "This is **bold** text."],
     ["italic text", "This is *italic* text."],
     ["inline code", "Use `const x = 1` in code."],
     ["mixed inline marks", "Use **bold**, *italic*, and `code` together."],
     ["link in paragraph", "Visit [Google](https://google.com) for search."],
+    ["strikethrough", "This is ~~deleted~~ text."],
+    ["underline", "This is <u>underlined</u> text."],
+    // Headings
+    ["heading h1", "# Heading One"],
+    ["heading h2", "## Heading Two"],
+    ["heading h3", "### Heading Three"],
+    ["multiple headings", "# H1\n\n## H2\n\n### H3"],
+    ["heading + paragraph", "# Title\n\nSome content here."],
+    // Lists
+    ["bulleted list", "- Item 1\n- Item 2\n- Item 3"],
+    [
+      "paragraph + bulleted list",
+      "A paragraph.\n\n- Item 1\n- Item 2\n- Item 3",
+    ],
+    // Image
     ["image", "![alt text](https://example.com/image.png)"],
+    // Divider
     ["divider", "---"],
+    // Table
+    [
+      "table",
+      "| Name | Age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 25 |",
+    ],
+    // Blockquote
+    ["blockquote", "> This is a quote"],
+    ["blockquote with bold", "> This is **bold** in a quote"],
+    ["nested blockquote", "> > nested quote"],
+    // Combined
     [
       "heading + paragraph + list",
       "# Title\n\nIntro paragraph.\n\n- Item A\n- Item B",
     ],
     [
-      "table",
-      "| Name | Age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 25 |",
+      "heading + paragraph + blockquote",
+      "# Title\n\nSome text.\n\n> A quote here",
     ],
   ];
 
@@ -148,6 +186,7 @@ describe("exact roundtrip (output === input)", () => {
 
 describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
   const cases: [string, string][] = [
+    // Core block types
     ["simple paragraph", "Hello world"],
     ["heading h1", "# Heading One"],
     ["heading + paragraph", "# Title\n\nSome content here."],
@@ -169,11 +208,41 @@ describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
     ["bold text", "This is **bold** text."],
     ["italic text", "This is *italic* text."],
     ["inline code", "Use `const x = 1` in code."],
+    ["strikethrough", "This is ~~deleted~~ text."],
+    ["underline", "This is <u>underlined</u> text."],
     ["link", "Visit [Google](https://google.com) for search."],
     ["image", "![alt text](https://example.com/image.png)"],
     [
       "table",
       "| A | B |\n| --- | --- |\n| 1 | 2 |",
+    ],
+    ["blockquote", "> A blockquote"],
+    ["blockquote with inline marks", "> This is **bold** and *italic*"],
+    ["nested blockquote", "> > nested quote"],
+    // Complex mixed content
+    [
+      "mixed content with all types",
+      [
+        "# Title",
+        "",
+        "Intro paragraph with **bold** and *italic*.",
+        "",
+        "- Bullet A",
+        "- Bullet B",
+        "",
+        "1. First",
+        "2. Second",
+        "",
+        "> A blockquote",
+        "",
+        "```js",
+        "const x = 42;",
+        "```",
+        "",
+        "---",
+        "",
+        "Final paragraph.",
+      ].join("\n"),
     ],
   ];
 
@@ -186,24 +255,16 @@ describe("idempotent roundtrip (f(f(x)) === f(x))", () => {
 });
 
 // =============================================================================
-// 3. Upstream known issues (@yoopta bugs)
-//
-// These tests document bugs in @yoopta/exports that break roundtrip.
-// They are marked with `it.fails` so CI stays green, but the failures are
-// visible. When upstream fixes land, these tests will start passing and
-// `it.fails` will alert us to remove the annotation.
+// 3. Blockquote roundtrip (fixed upstream)
 // =============================================================================
 
-describe("upstream known issues", () => {
-  // @yoopta/blockquote serialize adds an extra leading space on every roundtrip.
-  // Input "> quote" → first pass ">  quote " → second pass ">   quote  " (diverges)
-  it.fails("blockquote idempotency (upstream adds extra space each roundtrip)", () => {
+describe("blockquote roundtrip (fixed upstream)", () => {
+  it("blockquote idempotency", () => {
     const { first, second } = doubleRoundtrip(editor, "> This is a quote");
     expect(second).toBe(first);
   });
 
-  // Mixed content containing a blockquote also diverges due to the same bug.
-  it.fails("mixed content with blockquote idempotency", () => {
+  it("mixed content with blockquote idempotency", () => {
     const md = [
       "# Title",
       "",
@@ -229,10 +290,20 @@ describe("upstream known issues", () => {
     expect(second).toBe(first);
   });
 
-  // Blockquote exact roundtrip also fails — upstream adds trailing space.
-  it.fails("blockquote exact roundtrip (upstream adds trailing/leading spaces)", () => {
+  it("blockquote exact roundtrip", () => {
     const output = roundtrip(editor, "> This is a quote");
     expect(output).toBe("> This is a quote");
+  });
+
+  it("blockquote with bold", () => {
+    const output = roundtrip(editor, "> This is **bold** in a quote");
+    expect(output).toBe("> This is **bold** in a quote");
+  });
+
+  it("blockquote with link", () => {
+    const md = "> Visit [Google](https://google.com) for search";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
   });
 });
 
@@ -376,7 +447,114 @@ describe("special preprocessing structures", () => {
 });
 
 // =============================================================================
-// 6. Real-world SKILL.md files
+// 6. Lossy plugins — ensure idempotency after first pass
+//
+// These plugins serialize to standard markdown syntax that maps to a different
+// block type on reimport. After the first roundtrip normalizes them,
+// subsequent roundtrips must be stable.
+// =============================================================================
+
+describe("lossy plugins (idempotent after first pass)", () => {
+  it("callout → blockquote (idempotent)", () => {
+    // Callout serializes as `> text` — identical to blockquote syntax.
+    // On reimport it becomes a Blockquote block (lossy), but the content is stable.
+    // NOTE: We cannot distinguish callout from blockquote at the markdown level;
+    // this test verifies that the shared `> text` syntax is idempotent regardless
+    // of which plugin originally produced it.
+    const md = "> This is a callout";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("embed → link paragraph (idempotent)", () => {
+    // Embed serializes as [title](url) which becomes a paragraph with link.
+    const md = "[YouTube Video](https://youtube.com/watch?v=123)";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("file → link paragraph (idempotent)", () => {
+    // File serializes as [name.ext](src)
+    const md = "[document.pdf](https://example.com/doc.pdf)";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("video → image (idempotent)", () => {
+    // Video serializes as ![src](src)
+    const md = "![https://example.com/video.mp4](https://example.com/video.mp4)";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("mention → plain text (idempotent)", () => {
+    // Mention serializes as @name which becomes plain text
+    const md = "Hello @John how are you";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("numbered list counter normalization (idempotent)", () => {
+    // Upstream normalizes all counters (2., 3.) to 1.
+    const md = "1. First\n2. Second\n3. Third";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("code block language normalization (idempotent)", () => {
+    // Code block preserves language
+    const md = "```typescript\nconst x: number = 1;\n```";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+});
+
+// =============================================================================
+// 7. Accordion roundtrip (HTML passthrough)
+// =============================================================================
+
+describe("accordion roundtrip (HTML passthrough)", () => {
+  it("single accordion item is idempotent", () => {
+    const md = "<details>\n<summary>Question</summary>\n<p>Answer here</p>\n</details>";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("multiple accordion items are idempotent", () => {
+    const md = [
+      "<details>",
+      "<summary>First Question</summary>",
+      "<p>First answer</p>",
+      "</details>",
+      "<details>",
+      "<summary>Second Question</summary>",
+      "<p>Second answer</p>",
+      "</details>",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("accordion with surrounding content is idempotent", () => {
+    const md = [
+      "# FAQ",
+      "",
+      "Here are common questions:",
+      "",
+      "<details>",
+      "<summary>What is this?</summary>",
+      "<p>A test</p>",
+      "</details>",
+      "",
+      "More content below.",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+});
+
+// =============================================================================
+// 8. Real-world SKILL.md files
 // =============================================================================
 
 describe("real-world SKILL.md roundtrip", () => {
@@ -426,10 +604,54 @@ describe("real-world SKILL.md roundtrip", () => {
     const { first, second } = doubleRoundtrip(editor, md);
     expect(second).toBe(first);
   });
+
+  it("page with code blocks and tables", () => {
+    const md = [
+      "# API Reference",
+      "",
+      "## Endpoints",
+      "",
+      "| Method | Path | Description |",
+      "| --- | --- | --- |",
+      "| GET | /api/users | List users |",
+      "| POST | /api/users | Create user |",
+      "",
+      "## Example",
+      "",
+      "```typescript",
+      "const response = await fetch('/api/users');",
+      "const users = await response.json();",
+      "```",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("page with math and TOC", () => {
+    const md = [
+      "---",
+      "page:",
+      "  type: markdown",
+      "---",
+      "[TOC]",
+      "",
+      "# Physics Notes",
+      "",
+      "The formula $E = mc^2$ is fundamental.",
+      "",
+      "## Derivation",
+      "",
+      "$$",
+      "E = \\int F \\cdot dx",
+      "$$",
+    ].join("\n");
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
 });
 
 // =============================================================================
-// 7. Structural preservation — block count survives roundtrip
+// 9. Structural preservation — block count survives roundtrip
 // =============================================================================
 
 describe("structural preservation (block count survives roundtrip)", () => {
@@ -456,7 +678,7 @@ describe("structural preservation (block count survives roundtrip)", () => {
 });
 
 // =============================================================================
-// 8. Edge cases
+// 10. Edge cases
 // =============================================================================
 
 describe("edge cases", () => {
@@ -504,6 +726,18 @@ describe("edge cases", () => {
   it("very long paragraph is preserved", () => {
     const longText = "Word ".repeat(500).trim() + ".";
     const { first, second } = doubleRoundtrip(editor, longText);
+    expect(second).toBe(first);
+  });
+
+  it("consecutive dividers", () => {
+    const md = "---\n\n---\n\n---";
+    const { first, second } = doubleRoundtrip(editor, md);
+    expect(second).toBe(first);
+  });
+
+  it("deeply nested list items (depth via spaces)", () => {
+    const md = "- Level 1\n  - Level 2\n    - Level 3";
+    const { first, second } = doubleRoundtrip(editor, md);
     expect(second).toBe(first);
   });
 });
