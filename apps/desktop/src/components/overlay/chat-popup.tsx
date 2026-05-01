@@ -20,8 +20,9 @@ import {
   Loader2,
   EyeOff,
   ChevronDown,
+  Crosshair,
+  AppWindow,
 } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { MessageAttachment } from '@viben/chat';
 import { cn } from '@/lib/utils';
@@ -51,20 +52,11 @@ import { useWorkspaceStore } from '@/stores';
 import { useChatConfigStore } from '@/stores/chat-config-store';
 import { useAgentConversation, useChatConfig, useModels } from '@/hooks';
 import { filterModelsByExecutor } from '@/lib/executor-constraints';
+import { useScreenshot } from '@/hooks/use-screenshot';
 import { useVoiceAgent } from '@/hooks/use-voice-agent';
 import { getGatewayUrl } from '@/lib/gateway';
 import { startBackgroundTask } from '@/lib/gateway/modules/agent-execution';
 import { ChatCapsule } from './chat-capsule';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-interface ScreenshotResult {
-  data: string;
-  width: number;
-  height: number;
-}
 
 // ============================================================================
 // Helpers
@@ -143,7 +135,21 @@ function ChatPopup({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isSendAnimating, setIsSendAnimating] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
-  const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
+  // Screenshot hook
+  const {
+    takeScreenshot,
+    startRegionScreenshot,
+    listWindows,
+    takeWindowScreenshot,
+    isCapturing: isScreenshotCapturing,
+  } = useScreenshot({
+    onSuccess: (attachment) => {
+      setAttachments((prev) => [...prev, attachment]);
+    },
+    onError: (error) => {
+      console.error('[ChatPopup] Screenshot failed:', error);
+    },
+  });
 
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
@@ -389,28 +395,6 @@ function ChatPopup({
     }
   }, [t]);
 
-  const handleScreenshot = useCallback(async (hideWindow = false) => {
-    try {
-      setIsScreenshotCapturing(true);
-      const result = await invoke<ScreenshotResult>('take_screenshot', {
-        hideWindow,
-      });
-      const attachment: MessageAttachment = {
-        id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        type: 'image',
-        name: `screenshot-${new Date().toISOString().replace(/[:.]/g, '-')}.png`,
-        data: result.data,
-        mimeType: 'image/png',
-        isLoading: false,
-      };
-      setAttachments((prev) => [...prev, attachment]);
-    } catch (err) {
-      console.error('[ChatPopup] Screenshot failed:', err);
-    } finally {
-      setIsScreenshotCapturing(false);
-    }
-  }, []);
-
   const handleRemoveAttachment = useCallback((id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
@@ -530,13 +514,26 @@ function ChatPopup({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="z-[10001]">
-            <DropdownMenuItem onClick={() => handleScreenshot(false)}>
+            <DropdownMenuItem onClick={() => takeScreenshot(false)}>
               <Camera className="h-4 w-4 mr-2" />
               {t('chat.screenshotDirect')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleScreenshot(true)}>
+            <DropdownMenuItem onClick={() => takeScreenshot(true)}>
               <EyeOff className="h-4 w-4 mr-2" />
               {t('chat.screenshotHideWindow')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => startRegionScreenshot()}>
+              <Crosshair className="h-4 w-4 mr-2" />
+              {t('chat.screenshotRegion', '区域截图')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={async () => {
+              const windows = await listWindows();
+              if (windows.length > 0) {
+                await takeWindowScreenshot(windows[0].id);
+              }
+            }}>
+              <AppWindow className="h-4 w-4 mr-2" />
+              {t('chat.screenshotWindow', '窗口截图')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

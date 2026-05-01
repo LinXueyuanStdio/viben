@@ -68,8 +68,8 @@ export function ScreenshotOverlayPage() {
     screenshotRef.current = screenshot;
 
     // Listen for screenshot generated (user confirmed)
-    screenshot.on('screenshotGenerated', (dataUrl: string) => {
-      handleScreenshotGenerated(dataUrl);
+    screenshot.on('screenshotGenerated', (...args: unknown[]) => {
+      handleScreenshotGenerated(args[0] as string);
     });
 
     // Listen for close (user cancelled)
@@ -87,6 +87,7 @@ export function ScreenshotOverlayPage() {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      screenshotRef.current?.destroy();
       screenshotRef.current = null;
     };
   }, [imagePath, handleClose, handleScreenshotGenerated]);

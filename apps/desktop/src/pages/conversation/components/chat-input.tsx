@@ -40,6 +40,8 @@ import {
   Check,
   EyeOff,
   Terminal,
+  Crosshair,
+  AppWindow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
@@ -296,7 +298,7 @@ export function ChatInput({
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
 
   // Internal screenshot handler using Tauri command
-  const { takeScreenshot, isCapturing: isScreenshotCapturing } = useScreenshot({
+  const { takeScreenshot, startRegionScreenshot, listWindows, takeWindowScreenshot, isCapturing: isScreenshotCapturing } = useScreenshot({
     onSuccess: (attachment) => {
       setAttachments((prev) => [...prev, attachment]);
     },
@@ -318,6 +320,19 @@ export function ChatInput({
     },
     [onScreenshot, takeScreenshot]
   );
+
+  // Region screenshot handler
+  const handleRegionScreenshot = useCallback(async () => {
+    await startRegionScreenshot();
+  }, [startRegionScreenshot]);
+
+  // Window screenshot handler - captures the first available window
+  const handleWindowScreenshot = useCallback(async () => {
+    const windows = await listWindows();
+    if (windows.length > 0) {
+      await takeWindowScreenshot(windows[0].id);
+    }
+  }, [listWindows, takeWindowScreenshot]);
 
   // Filter slash commands based on query
   const filteredSlashCommands = useMemo(() => {
@@ -1098,6 +1113,14 @@ export function ChatInput({
                 <DropdownMenuItem onClick={() => handleScreenshot(true)}>
                   <EyeOff className="h-4 w-4 mr-2" />
                   {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleRegionScreenshot()}>
+                  <Crosshair className="h-4 w-4 mr-2" />
+                  {t("chat.screenshotRegion", "Region Screenshot")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleWindowScreenshot()}>
+                  <AppWindow className="h-4 w-4 mr-2" />
+                  {t("chat.screenshotWindow", "Window Screenshot")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

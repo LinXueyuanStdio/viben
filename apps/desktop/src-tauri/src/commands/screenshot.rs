@@ -8,7 +8,7 @@
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use std::io::Cursor;
-use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use xcap::{Monitor, Window};
 
 /// Screenshot result containing base64 encoded PNG data
@@ -129,6 +129,23 @@ pub async fn start_region_screenshot<R: Runtime>(app: AppHandle<R>) -> Result<St
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     }
 
+    // Use inner function to capture errors, then recover on failure
+    let result = do_region_screenshot(&app).await;
+
+    if result.is_err() {
+        // Recovery: show main window on failure so it doesn't stay hidden forever
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+
+    result
+}
+
+/// Inner logic for region screenshot (capture + save + create overlay).
+/// Separated so that `start_region_screenshot` can recover the main window on failure.
+async fn do_region_screenshot<R: Runtime>(app: &AppHandle<R>) -> Result<String, String> {
     // Capture primary monitor and save to temp file
     let monitor = get_primary_monitor()?;
     let image = monitor
@@ -143,18 +160,27 @@ pub async fn start_region_screenshot<R: Runtime>(app: AppHandle<R>) -> Result<St
 
     let screenshot_path_str = screenshot_path.to_string_lossy().to_string();
 
-    // Create fullscreen overlay window
+    // Get monitor dimensions for overlay window sizing.
+    // On macOS, .fullscreen(true) triggers a native Space transition which moves the window
+    // away from the current desktop. Instead, we size the window to cover the entire screen.
+    let monitor_width = monitor.width();
+    let monitor_height = monitor.height();
+    let monitor_x = monitor.x();
+    let monitor_y = monitor.y();
+
+    // Create overlay window covering the full screen (not native fullscreen)
     let url = format!(
         "/screenshot-overlay?image={}",
         urlencoding::encode(&screenshot_path_str)
     );
     let _overlay_window = WebviewWindowBuilder::new(
-        &app,
+        app,
         "screenshot-overlay",
         WebviewUrl::App(url.into()),
     )
     .title("Screenshot")
-    .fullscreen(true)
+    .inner_size(monitor_width as f64, monitor_height as f64)
+    .position(monitor_x as f64, monitor_y as f64)
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
@@ -181,6 +207,12 @@ pub async fn close_screenshot_overlay<R: Runtime>(
         let _ = std::fs::remove_file(&path);
     }
 
+    // Emit screenshot-cancelled event so frontend can reset isCapturing state.
+    // The frontend should ignore this if it already received a screenshot result.
+    if let Some(main_window) = app.get_webview_window("main") {
+        let _ = main_window.emit("screenshot-cancelled", ());
+    }
+
     // Show main window again
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -198,11 +230,16 @@ pub async fn close_screenshot_overlay<R: Runtime>(
 fn get_primary_monitor() -> Result<Monitor, String> {
     let monitors = Monitor::all().map_err(|e| format!("Failed to get monitors: {}", e))?;
 
-    monitors
-        .into_iter()
-        .find(|m| m.is_primary())
-        .or_else(|| Monitor::all().ok().and_then(|m| m.into_iter().next()))
-        .ok_or_else(|| "No monitors found".to_string())
+    let mut fallback = None;
+    for monitor in monitors {
+        if monitor.is_primary() {
+            return Ok(monitor);
+        }
+        if fallback.is_none() {
+            fallback = Some(monitor);
+        }
+    }
+    fallback.ok_or_else(|| "No monitors found".to_string())
 }
 
 /// Capture the primary monitor and convert to ScreenshotResult

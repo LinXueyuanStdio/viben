@@ -1,78 +1,64 @@
 /**
  * Hook for capturing screenshots via Tauri
- *
- * This hook provides functions to take screenshots using the Tauri backend.
- * It supports two modes:
- * - Direct screenshot: capture screen immediately
- * - Hide window screenshot: hide the app window, capture screen, then show window again
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { MessageAttachment } from "@/types";
 
 /**
  * Screenshot result from Tauri backend
  */
 interface ScreenshotResult {
-  /** Base64 encoded PNG image data (as data URL) */
   data: string;
-  /** Width of the captured screenshot */
   width: number;
-  /** Height of the captured screenshot */
   height: number;
 }
 
-/**
- * Options for the useScreenshot hook
- */
 export interface UseScreenshotOptions {
-  /** Callback when screenshot is taken successfully */
   onSuccess?: (attachment: MessageAttachment) => void;
-  /** Callback when screenshot fails */
   onError?: (error: string) => void;
 }
 
-/**
- * Return type of the useScreenshot hook
- */
+export interface ScreenshotWindowInfo {
+  id: number;
+  title: string;
+  app_name: string;
+}
+
 export interface UseScreenshotReturn {
-  /** Take a screenshot of the primary screen */
   takeScreenshot: (hideWindow?: boolean) => Promise<MessageAttachment | null>;
-  /** Take a screenshot of a specific region */
   takeScreenshotRegion: (
     x: number,
     y: number,
     width: number,
     height: number
   ) => Promise<MessageAttachment | null>;
-  /** Whether a screenshot is currently being taken */
+  startRegionScreenshot: () => Promise<void>;
+  listWindows: () => Promise<ScreenshotWindowInfo[]>;
+  takeWindowScreenshot: (windowId: number) => Promise<MessageAttachment | null>;
   isCapturing: boolean;
-  /** Error message if screenshot failed */
   error: string | null;
 }
 
 /**
- * Hook for capturing screenshots
- *
- * @example
- * ```tsx
- * const { takeScreenshot, isCapturing } = useScreenshot({
- *   onSuccess: (attachment) => {
- *     setAttachments(prev => [...prev, attachment]);
- *   },
- *   onError: (error) => {
- *     console.error('Screenshot failed:', error);
- *   },
- * });
- *
- * // Direct screenshot
- * await takeScreenshot();
- *
- * // Screenshot with window hidden
- * await takeScreenshot(true);
- * ```
+ * Create a MessageAttachment from screenshot data
  */
+function createScreenshotAttachment(
+  data: string,
+  prefix = "screenshot"
+): MessageAttachment {
+  return {
+    id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    type: "image",
+    name: `${prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`,
+    data,
+    mimeType: "image/png",
+    isLoading: false,
+  };
+}
+
 export function useScreenshot(
   options: UseScreenshotOptions = {}
 ): UseScreenshotReturn {
@@ -80,12 +66,14 @@ export function useScreenshot(
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Take a screenshot of the primary screen
-   *
-   * @param hideWindow - If true, hide the main window before capturing
-   * @returns MessageAttachment containing the screenshot, or null on error
-   */
+  // Use refs for callbacks to avoid stale closures in event listeners
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  });
+
   const takeScreenshot = useCallback(
     async (hideWindow = false): Promise<MessageAttachment | null> => {
       setIsCapturing(true);
@@ -96,39 +84,22 @@ export function useScreenshot(
           hideWindow,
         });
 
-        const attachment: MessageAttachment = {
-          id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          type: "image",
-          name: `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.png`,
-          data: result.data,
-          mimeType: "image/png",
-          isLoading: false,
-        };
-
-        onSuccess?.(attachment);
+        const attachment = createScreenshotAttachment(result.data, "screenshot");
+        onSuccessRef.current?.(attachment);
         return attachment;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : String(err);
         setError(errorMessage);
-        onError?.(errorMessage);
+        onErrorRef.current?.(errorMessage);
         return null;
       } finally {
         setIsCapturing(false);
       }
     },
-    [onSuccess, onError]
+    []
   );
 
-  /**
-   * Take a screenshot of a specific region
-   *
-   * @param x - X coordinate of the region
-   * @param y - Y coordinate of the region
-   * @param width - Width of the region
-   * @param height - Height of the region
-   * @returns MessageAttachment containing the screenshot, or null on error
-   */
   const takeScreenshotRegion = useCallback(
     async (
       x: number,
@@ -142,41 +113,109 @@ export function useScreenshot(
       try {
         const result = await invoke<ScreenshotResult>(
           "take_screenshot_region",
-          {
-            x,
-            y,
-            width,
-            height,
-          }
+          { x, y, width, height }
         );
 
-        const attachment: MessageAttachment = {
-          id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          type: "image",
-          name: `screenshot-region-${new Date().toISOString().replace(/[:.]/g, "-")}.png`,
-          data: result.data,
-          mimeType: "image/png",
-          isLoading: false,
-        };
-
-        onSuccess?.(attachment);
+        const attachment = createScreenshotAttachment(result.data, "screenshot-region");
+        onSuccessRef.current?.(attachment);
         return attachment;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : String(err);
         setError(errorMessage);
-        onError?.(errorMessage);
+        onErrorRef.current?.(errorMessage);
         return null;
       } finally {
         setIsCapturing(false);
       }
     },
-    [onSuccess, onError]
+    []
   );
+
+  const startRegionScreenshot = useCallback(async () => {
+    setIsCapturing(true);
+    setError(null);
+
+    try {
+      await invoke<string>("start_region_screenshot");
+      // Result will come back via the screenshot-result event listener
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      onErrorRef.current?.(errorMessage);
+      setIsCapturing(false);
+    }
+  }, []);
+
+  const listWindows = useCallback(async (): Promise<ScreenshotWindowInfo[]> => {
+    try {
+      return await invoke<ScreenshotWindowInfo[]>("list_screenshot_windows");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      onErrorRef.current?.(errorMessage);
+      return [];
+    }
+  }, []);
+
+  const takeWindowScreenshot = useCallback(
+    async (windowId: number): Promise<MessageAttachment | null> => {
+      setIsCapturing(true);
+      setError(null);
+
+      try {
+        const result = await invoke<ScreenshotResult>(
+          "take_window_screenshot",
+          { windowId }
+        );
+
+        const attachment = createScreenshotAttachment(result.data, "screenshot-window");
+        onSuccessRef.current?.(attachment);
+        return attachment;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        onErrorRef.current?.(errorMessage);
+        return null;
+      } finally {
+        setIsCapturing(false);
+      }
+    },
+    []
+  );
+
+  // Listen for screenshot results and cancellation from the overlay window
+  // Register once (empty deps) - uses refs for callbacks to avoid stale closures
+  useEffect(() => {
+    const unlistenResult = listen<{ data: string; type: string }>(
+      "screenshot-result",
+      (event) => {
+        const { data } = event.payload;
+        const attachment = createScreenshotAttachment(data, "screenshot-region");
+        onSuccessRef.current?.(attachment);
+        setIsCapturing(false);
+      }
+    );
+
+    const unlistenCancelled = listen("screenshot-cancelled", () => {
+      setIsCapturing(false);
+    });
+
+    return () => {
+      unlistenResult.then((fn) => fn());
+      unlistenCancelled.then((fn) => fn());
+    };
+  }, []);
 
   return {
     takeScreenshot,
     takeScreenshotRegion,
+    startRegionScreenshot,
+    listWindows,
+    takeWindowScreenshot,
     isCapturing,
     error,
   };
