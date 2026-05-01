@@ -40,6 +40,9 @@ export class MeshService {
   /** Connect to a remote gateway as initiator */
   connectToPeer(address: string): void {
     const conn = new PeerConnection(this.localInfo);
+    conn.on("error", () => {
+      // Suppress unhandled error – reconnection is handled via the close event
+    });
     conn.on("ready", (info: PeerInfo) => {
       this.peers.set(info.gateway_id, conn);
       this.registry.registerPeer(info.gateway_id, {
@@ -81,6 +84,9 @@ export class MeshService {
       return;
     }
     const conn = new PeerConnection(this.localInfo);
+    conn.on("error", () => {
+      // Suppress unhandled error – close event handles cleanup
+    });
     conn.on("message", (msg: MeshMessage) => this.handleMessage(msg));
     conn.on("close", () => {
       this.peers.delete(remoteInfo.gateway_id);
