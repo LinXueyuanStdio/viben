@@ -82,18 +82,20 @@ export const useChatConfigStore = create<ChatConfigState>()(
       // List management
       setGlobalAgents: (agents) => {
         set({ globalAgents: agents });
-        // Auto-select first agent if none selected and agents available
         const state = get();
-        if (!state.selectedAgentId && agents.length > 0) {
+        // Auto-select first agent if none selected or current selection is invalid
+        const currentValid = agents.some((a) => a.id === state.selectedAgentId);
+        if ((!state.selectedAgentId || !currentValid) && agents.length > 0) {
           set({ selectedAgentId: agents[0].id });
         }
       },
 
       setGlobalModels: (models) => {
         set({ globalModels: models });
-        // Auto-select first model if none selected and models available
         const state = get();
-        if (!state.selectedModelId && models.length > 0) {
+        // Auto-select first model if none selected or current selection is invalid
+        const currentValid = models.some((m) => m.id === state.selectedModelId);
+        if ((!state.selectedModelId || !currentValid) && models.length > 0) {
           set({ selectedModelId: models[0].id });
         }
       },

@@ -10,7 +10,7 @@
 export * from "./types";
 
 // Utilities
-export { cn, isImageFile, formatTokens } from "./utils";
+export { cn, isImageFile, formatTokens, getMimeType } from "./utils";
 
 // Model icons
 export { getModelIcon } from "./model-icons";

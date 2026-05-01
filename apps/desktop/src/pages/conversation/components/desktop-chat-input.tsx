@@ -28,10 +28,9 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
 import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
+import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { useChatConfig } from "@/hooks";
 import { SandboxToggle } from "./sandbox-toggle";
 import type { ExecutorType } from "@viben/core/shared";
@@ -109,7 +108,6 @@ export function DesktopChatInput({
   configBarLeftExtra: propConfigBarLeftExtra,
   ...props
 }: DesktopChatInputProps) {
-  const { t } = useTranslation();
   // Get global config if enabled
   const chatConfig = useChatConfig();
 
@@ -186,89 +184,7 @@ export function DesktopChatInput({
   const handleOpenFile = useCallback(async (): Promise<
     MessageAttachment[] | null
   > => {
-    try {
-      const selected = await open({
-        multiple: true,
-        filters: [
-          {
-            name: t("filePicker.images"),
-            extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"],
-          },
-          {
-            name: t("filePicker.documents"),
-            extensions: ["pdf", "doc", "docx", "txt", "md", "json", "csv"],
-          },
-          {
-            name: t("filePicker.spreadsheets"),
-            extensions: ["xlsx", "xls"],
-          },
-          {
-            name: t("filePicker.presentations"),
-            extensions: ["pptx", "ppt"],
-          },
-          {
-            name: t("filePicker.allFiles"),
-            extensions: ["*"],
-          },
-        ],
-      });
-
-      // User cancelled
-      if (!selected) {
-        return null;
-      }
-
-      // Normalize to array
-      const paths = Array.isArray(selected) ? selected : [selected];
-
-      // Read files and create attachments
-      const attachments: MessageAttachment[] = [];
-
-      for (const path of paths) {
-        try {
-          // Read file via Tauri
-          const { readFile } = await import("@tauri-apps/plugin-fs");
-          const fileData = await readFile(path);
-
-          // Convert to base64
-          const base64 = btoa(
-            new Uint8Array(fileData).reduce(
-              (data, byte) => data + String.fromCharCode(byte),
-              ""
-            )
-          );
-
-          // Determine MIME type from extension
-          const ext = path.split(".").pop()?.toLowerCase() || "";
-          const mimeType = getMimeType(ext);
-          const isImage = mimeType.startsWith("image/");
-
-          // Get filename from path
-          const fileName = path.split(/[\\/]/).pop() || "file";
-
-          const attachment: MessageAttachment = {
-            id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            type: isImage ? "image" : "file",
-            name: fileName,
-            data: `data:${mimeType};base64,${base64}`,
-            mimeType,
-            isLoading: false,
-          };
-
-          attachments.push(attachment);
-        } catch (readError) {
-          console.error(
-            `[DesktopChatInput] Failed to read file ${path}:`,
-            readError
-          );
-        }
-      }
-
-      return attachments.length > 0 ? attachments : null;
-    } catch (err) {
-      console.error("[DesktopChatInput] File dialog failed:", err);
-      return null;
-    }
+    return openAndReadFiles();
   }, []);
 
   // Build config bar extra content
@@ -309,36 +225,3 @@ export function DesktopChatInput({
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Get MIME type from file extension
- */
-function getMimeType(ext: string): string {
-  const mimeTypes: Record<string, string> = {
-    // Images
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    webp: "image/webp",
-    bmp: "image/bmp",
-    svg: "image/svg+xml",
-    ico: "image/x-icon",
-    // Documents
-    pdf: "application/pdf",
-    doc: "application/msword",
-    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    txt: "text/plain",
-    md: "text/markdown",
-    json: "application/json",
-    csv: "text/csv",
-    // Spreadsheets
-    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    xls: "application/vnd.ms-excel",
-    // Presentations
-    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ppt: "application/vnd.ms-powerpoint",
-  };
-
-  return mimeTypes[ext] || "application/octet-stream";
-}

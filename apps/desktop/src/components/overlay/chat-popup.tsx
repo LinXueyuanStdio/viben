@@ -14,18 +14,12 @@ import {
   Square,
   Smile,
   Paperclip,
-  Camera,
   Maximize2,
-  X,
   Loader2,
-  EyeOff,
-  ChevronDown,
-  Crosshair,
-  AppWindow,
 } from 'lucide-react';
-import { open } from '@tauri-apps/plugin-dialog';
-import type { MessageAttachment } from '@viben/chat';
+import { AttachmentPreview, type MessageAttachment } from '@viben/chat';
 import { cn } from '@/lib/utils';
+import { openAndReadFiles } from '@/lib/tauri-file-attach';
 import {
   Select,
   SelectContent,
@@ -39,19 +33,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { EmojiTab } from '@/components/ui/icon-picker/tabs/emoji-tab';
+import { ScreenshotDropdown } from '@/components/chat/screenshot-dropdown';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkspaceStore } from '@/stores';
 import { useChatConfigStore } from '@/stores/chat-config-store';
 import { useAgentConversation, useChatConfig, useModels } from '@/hooks';
 import { filterModelsByExecutor } from '@/lib/executor-constraints';
+import { useModelAutoCorrect } from '@/hooks/use-model-auto-correct';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import { useVoiceAgent } from '@/hooks/use-voice-agent';
 import { getGatewayUrl } from '@/lib/gateway';
@@ -61,21 +52,6 @@ import { ChatCapsule } from './chat-capsule';
 // ============================================================================
 // Helpers
 // ============================================================================
-
-function getMimeType(ext: string): string {
-  const mimeTypes: Record<string, string> = {
-    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-    webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml',
-    pdf: 'application/pdf', doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    txt: 'text/plain', md: 'text/markdown', json: 'application/json', csv: 'text/csv',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    xls: 'application/vnd.ms-excel',
-    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    ppt: 'application/vnd.ms-powerpoint',
-  };
-  return mimeTypes[ext] || 'application/octet-stream';
-}
 
 // ============================================================================
 // Constants
@@ -139,6 +115,7 @@ function ChatPopup({
   const {
     takeScreenshot,
     startRegionScreenshot,
+    listMonitors,
     listWindows,
     takeWindowScreenshot,
     isCapturing: isScreenshotCapturing,
@@ -150,6 +127,7 @@ function ChatPopup({
       console.error('[ChatPopup] Screenshot failed:', error);
     },
   });
+
 
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
@@ -168,6 +146,9 @@ function ChatPopup({
     () => filterModelsByExecutor(chatConfig.models, selectedAgent?.executor_type),
     [chatConfig.models, selectedAgent?.executor_type],
   );
+
+  // Auto-correct model selection when agent changes cause filtered list to exclude current model
+  useModelAutoCorrect(filteredModels, chatConfig.selectedModelId, chatConfig.setSelectedModelId);
 
   // ---- Lifecycle / open-close ----
 
@@ -330,9 +311,8 @@ function ChatPopup({
 
   // ---- Toolbar actions (placeholders) ----
 
-  // Simple emoji quick-insert (common emojis inline; full picker can be added later)
+  // Emoji picker (using emoji-mart via EmojiTab)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const quickEmojis = ['👍', '❤️', '😊', '🎉', '🔥', '👀', '✅', '💡', '🚀', '🤔', '😂', '🙏'];
   const handleEmojiInsert = useCallback((emoji: string) => {
     const ta = textareaRef.current;
     if (ta) {
@@ -351,49 +331,11 @@ function ChatPopup({
   }, [content]);
 
   const handleAttachFile = useCallback(async () => {
-    try {
-      const selected = await open({
-        multiple: true,
-        filters: [
-          { name: t('chat.fileFilter.images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'] },
-          { name: t('chat.fileFilter.documents'), extensions: ['pdf', 'doc', 'docx', 'txt', 'md', 'json', 'csv'] },
-          { name: t('chat.fileFilter.spreadsheets'), extensions: ['xlsx', 'xls'] },
-          { name: t('chat.fileFilter.presentations'), extensions: ['pptx', 'ppt'] },
-          { name: t('chat.fileFilter.allFiles'), extensions: ['*'] },
-        ],
-      });
-      if (!selected) return;
-      const paths = Array.isArray(selected) ? selected : [selected];
-
-      for (const path of paths) {
-        try {
-          const { readFile } = await import('@tauri-apps/plugin-fs');
-          const fileData = await readFile(path);
-          const base64 = btoa(
-            new Uint8Array(fileData).reduce((data, byte) => data + String.fromCharCode(byte), ''),
-          );
-          const ext = path.split('.').pop()?.toLowerCase() || '';
-          const mimeType = getMimeType(ext);
-          const isImage = mimeType.startsWith('image/');
-          const fileName = path.split(/[\\/]/).pop() || 'file';
-
-          const attachment: MessageAttachment = {
-            id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            type: isImage ? 'image' : 'file',
-            name: fileName,
-            data: `data:${mimeType};base64,${base64}`,
-            mimeType,
-            isLoading: false,
-          };
-          setAttachments((prev) => [...prev, attachment]);
-        } catch (readErr) {
-          console.error(`[ChatPopup] Failed to read file ${path}:`, readErr);
-        }
-      }
-    } catch (err) {
-      console.error('[ChatPopup] File dialog failed:', err);
+    const result = await openAndReadFiles();
+    if (result) {
+      setAttachments((prev) => [...prev, ...result]);
     }
-  }, [t]);
+  }, []);
 
   const handleRemoveAttachment = useCallback((id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
@@ -461,19 +403,8 @@ function ChatPopup({
               <Smile className="h-3.5 w-3.5" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-2 z-[10001]" side="top" align="start">
-            <div className="grid grid-cols-6 gap-1">
-              {quickEmojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => handleEmojiInsert(emoji)}
-                  className="h-8 w-8 flex items-center justify-center rounded hover:bg-muted/80 text-base transition-colors"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+          <PopoverContent className="w-auto p-0 z-[10001]" side="top" align="start">
+            <EmojiTab onSelect={handleEmojiInsert} />
           </PopoverContent>
         </Popover>
 
@@ -492,51 +423,16 @@ function ChatPopup({
         </button>
 
         {/* Screenshot with dropdown */}
-        <DropdownMenu onOpenChange={handleSelectOpenChange}>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              disabled={isScreenshotCapturing}
-              className={cn(
-                'h-7 flex items-center gap-0.5 rounded-full px-1.5',
-                'hover:bg-muted/80 transition-colors',
-                'text-muted-foreground hover:text-foreground',
-                isScreenshotCapturing && 'opacity-50 cursor-not-allowed',
-              )}
-              title={t('chat.screenshot')}
-            >
-              {isScreenshotCapturing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Camera className="h-3.5 w-3.5" />
-              )}
-              <ChevronDown className="h-2.5 w-2.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="z-[10001]">
-            <DropdownMenuItem onClick={() => takeScreenshot(false)}>
-              <Camera className="h-4 w-4 mr-2" />
-              {t('chat.screenshotDirect')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => takeScreenshot(true)}>
-              <EyeOff className="h-4 w-4 mr-2" />
-              {t('chat.screenshotHideWindow')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => startRegionScreenshot()}>
-              <Crosshair className="h-4 w-4 mr-2" />
-              {t('chat.screenshotRegion', '区域截图')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => {
-              const windows = await listWindows();
-              if (windows.length > 0) {
-                await takeWindowScreenshot(windows[0].id);
-              }
-            }}>
-              <AppWindow className="h-4 w-4 mr-2" />
-              {t('chat.screenshotWindow', '窗口截图')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <ScreenshotDropdown
+          takeScreenshot={takeScreenshot}
+          startRegionScreenshot={startRegionScreenshot}
+          listMonitors={listMonitors}
+          listWindows={listWindows}
+          takeWindowScreenshot={takeWindowScreenshot}
+          isCapturing={isScreenshotCapturing}
+          onOpenChange={handleSelectOpenChange}
+          contentClassName="z-[10001]"
+        />
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -557,34 +453,11 @@ function ChatPopup({
       </div>
 
       {/* Attachment preview */}
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-3 pt-1 pb-1">
-          {attachments.map((att) => (
-            <div
-              key={att.id}
-              className="relative group flex items-center gap-1.5 bg-muted/60 border border-border/40 rounded-lg px-2 py-1 text-xs"
-            >
-              {att.type === 'image' ? (
-                <img
-                  src={att.data}
-                  alt={att.name}
-                  className="h-8 w-8 rounded object-cover"
-                />
-              ) : (
-                <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              )}
-              <span className="truncate max-w-[100px] text-muted-foreground">{att.name}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveAttachment(att.id)}
-                className="h-4 w-4 flex items-center justify-center rounded-full bg-muted hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-              >
-                <X className="h-2.5 w-2.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      <AttachmentPreview
+        attachments={attachments}
+        onRemove={handleRemoveAttachment}
+        className="px-3 pt-1 pb-1 border-0"
+      />
 
       {/* Textarea */}
       <div className="px-4 pt-1 pb-2">

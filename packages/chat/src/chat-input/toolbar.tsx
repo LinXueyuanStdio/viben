@@ -4,6 +4,7 @@
  * Top toolbar with emoji picker, file attachment, screenshot, and expand buttons.
  */
 
+import type { ReactNode } from "react";
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -49,6 +50,8 @@ export interface ChatInputToolbarProps {
   isScreenshotCapturing?: boolean;
   /** Whether to show the expand button */
   showExpand?: boolean;
+  /** Extra action buttons to render after the built-in actions (emoji, file, screenshot) */
+  extraActions?: ReactNode;
   /** Additional CSS class */
   className?: string;
 }
@@ -62,6 +65,7 @@ export function ChatInputToolbar({
   disabled,
   isScreenshotCapturing,
   showExpand,
+  extraActions,
   className,
 }: ChatInputToolbarProps) {
   const { t } = useTranslation();
@@ -166,6 +170,9 @@ export function ChatInputToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        {/* Extra actions slot for platform-specific buttons */}
+        {extraActions}
       </div>
 
       {/* Expand Button */}

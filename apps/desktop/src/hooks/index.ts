@@ -242,6 +242,7 @@ export type {
 // Chat Config
 export { useChatConfig, useRouteChatContext } from "@/pages/conversation/hooks/use-chat-config";
 export type { UseChatConfigOptions, UseChatConfigReturn } from "@/pages/conversation/hooks/use-chat-config";
+export { useModelAutoCorrect } from "./use-model-auto-correct";
 
 // Cron Job Management
 export {
