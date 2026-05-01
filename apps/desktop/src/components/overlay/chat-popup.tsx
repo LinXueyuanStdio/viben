@@ -252,8 +252,11 @@ function ChatPopup({
         target.closest('[data-radix-select-viewport]') ||
         target.closest('[data-radix-select-content]') ||
         target.closest('[data-radix-popper-content-wrapper]') ||
+        target.closest('[data-radix-menu-content]') ||
         target.closest('[role="listbox"]') ||
         target.closest('[role="option"]') ||
+        target.closest('[role="menu"]') ||
+        target.closest('[role="menuitem"]') ||
         target.hasAttribute('data-radix-focus-guard')
       ) return;
       if (containerRef.current && !containerRef.current.contains(target)) {
@@ -505,7 +508,7 @@ function ChatPopup({
         </button>
 
         {/* Screenshot with dropdown */}
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={handleSelectOpenChange}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"

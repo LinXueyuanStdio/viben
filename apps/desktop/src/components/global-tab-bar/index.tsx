@@ -50,22 +50,63 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isMacOS, setIsMacOS] = useState(false);
+  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set());
   const prevTabIdsRef = useRef<string[]>([]);
 
   // Detect platform for macOS traffic light spacing
   useEffect(() => {
+    let mounted = true;
+    let unlisten: (() => void) | null = null;
+
     const detectPlatform = async () => {
       try {
-        const { platform } = await import("@tauri-apps/plugin-os");
-        setIsMacOS(platform() === "macos");
+        const [{ platform }, { getCurrentWindow }] = await Promise.all([
+          import("@tauri-apps/plugin-os"),
+          import("@tauri-apps/api/window"),
+        ]);
+
+        if (!mounted) return;
+
+        const isMac = platform() === "macos";
+        setIsMacOS(isMac);
+
+        if (!isMac) {
+          setShouldReserveMacOSControlsSpace(false);
+          return;
+        }
+
+        const appWindow = getCurrentWindow();
+        const updateWindowState = async () => {
+          const isFullscreen = await appWindow.isFullscreen();
+
+          if (mounted) {
+            // Keep leading space while macOS traffic lights remain visible.
+            // Only reclaim the space in native fullscreen, where the controls
+            // are no longer occupying the leading edge of the title bar.
+            setShouldReserveMacOSControlsSpace(!isFullscreen);
+          }
+        };
+
+        await updateWindowState();
+        unlisten = await appWindow.onResized(() => {
+          void updateWindowState();
+        });
       } catch {
         // In web dev mode, default to non-macOS
         setIsMacOS(false);
+        setShouldReserveMacOSControlsSpace(false);
       }
     };
     detectPlatform();
+
+    return () => {
+      mounted = false;
+      if (unlisten) {
+        unlisten();
+      }
+    };
   }, []);
 
   // Get tab data from hooks
@@ -205,7 +246,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         <div
           className={cn(
             "flex items-center gap-1 px-2 shrink-0",
-            isMacOS && "pl-20"
+            shouldReserveMacOSControlsSpace && "pl-20"
           )}
         >
           {/* Back button */}
