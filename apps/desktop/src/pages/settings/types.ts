@@ -1,5 +1,7 @@
 import type React from "react";
-import type { SettingsSection } from "@/navigation/navigation-meta";
+import type { SettingsSection as NavigationSettingsSection } from "@/navigation/navigation-meta";
+
+export type SettingsSection = NavigationSettingsSection;
 
 // Section configuration
 export interface SectionConfig {

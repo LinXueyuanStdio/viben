@@ -1,6 +1,6 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type { DesktopLocation } from "./location";
-import { buildViewTarget, type BreadcrumbStackItem, type WorkspaceSection } from "./view-target";
+import { buildViewTarget, type BreadcrumbStackItem } from "./view-target";
 import { locationToUrl } from "./location";
 import {
   getSettingsSectionIcon,
