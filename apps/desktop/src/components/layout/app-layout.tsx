@@ -11,6 +11,11 @@ import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useVoiceConfigInit } from "@/hooks/use-voice-config-init";
 import { useAppStore } from "@/stores";
+import {
+  GlobalBreadcrumbShell,
+  NavigationShellProvider,
+  TabRouterBridge,
+} from "@/components/navigation";
 
 export function AppLayout() {
   const { selectedPython, browseMcpInfo } = usePython();
@@ -57,18 +62,24 @@ export function AppLayout() {
   }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
   return (
-    <div className="flex h-screen flex-col">
-      {/* Global Tab Bar at top */}
-      <GlobalTabBar />
+    <NavigationShellProvider>
+      <div className="flex h-screen flex-col">
+        <TabRouterBridge />
+        {/* Global Tab Bar at top */}
+        <GlobalTabBar />
 
-      {/* Rest of the existing layout */}
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-auto bg-background theme-transition">
-          {/* Page transition animation removed - causes blank screen during navigation */}
-          <Outlet />
-        </main>
+        {/* Rest of the existing layout */}
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <div className="flex min-w-0 flex-1 flex-col bg-background theme-transition">
+            <GlobalBreadcrumbShell />
+            <main className="min-h-0 flex-1 overflow-auto">
+              {/* Page transition animation removed - causes blank screen during navigation */}
+              <Outlet />
+            </main>
+          </div>
+        </div>
       </div>
-    </div>
+    </NavigationShellProvider>
   );
 }

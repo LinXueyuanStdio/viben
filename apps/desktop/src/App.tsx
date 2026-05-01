@@ -36,6 +36,7 @@ import {
   ChatMonitorPage,
   PageDebugPage,
   WorkspacePage,
+  WorkspaceWebPage,
   OsPage,
   ConnectPage,
   DeviceListPage,
@@ -191,6 +192,11 @@ function App() {
                 <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
                 <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
                 <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
+                <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
+                <Route path="workspace/:workspaceId/executor/:executorType" element={<ExecutorDetailPage />} />
+                <Route path="workspace/:workspaceId/page/*" element={<WorkspacePage />} />
+                <Route path="workspace/:workspaceId/web" element={<WorkspaceWebPage />} />
+                <Route path="workspace/:workspaceId/agent" element={<WorkspaceAgentsPage />} />
                 <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
                 <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
                 <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />

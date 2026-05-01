@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Settings,
   PanelLeftClose,
@@ -102,7 +102,7 @@ const baseWorkspaceNavItems: WorkspaceNavItem[] = [
   { titleKey: "workspace.kanban", path: "kanban", icon: LayoutDashboard },
   { titleKey: "workspace.scheduledTasks", path: "cron", icon: Clock },
   { titleKey: "workspace.ideas", path: "ideas", icon: Lightbulb },
-  { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
+  { titleKey: "workspace.sections.agents", path: "agent", icon: Bot },
   { titleKey: "workspace.files", path: "files", icon: FolderOpen },
   { titleKey: "workspace.chatMonitor", path: "chat-monitor", icon: Activity },
 ];
@@ -119,7 +119,6 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const { openWorkspaceView, openGlobalView } = usePageTabs();
 
   const {
@@ -228,7 +227,10 @@ export function Sidebar() {
       toast.success(t("workspace.deleteSuccess"));
       // If deleting active workspace, navigate to home
       if (workspaceToDelete.id === activeWorkspaceId) {
-        navigate("/");
+        openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
+          type: "lucide",
+          value: "layout-dashboard",
+        });
       }
     } catch (error) {
       console.error("Failed to delete workspace:", error);
@@ -258,7 +260,14 @@ export function Sidebar() {
       });
       toast.success(t("sidebar.taskCreated"));
       // Navigate to kanban board to see the new task
-      navigate(`/workspace/${activeWorkspaceId}/kanban`);
+      if (activeWorkspaceId) {
+        openWorkspaceView(
+          activeWorkspaceId,
+          "kanban",
+          t("workspace.kanban", "Task Board"),
+          { type: "lucide", value: "layout-dashboard" }
+        );
+      }
     } catch (error) {
       console.error("Failed to create task:", error);
       toast.error(t("sidebar.taskCreateFailed"));
@@ -521,6 +530,7 @@ export function Sidebar() {
             <NavItemComponent
               item={{ titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone }}
               collapsed={collapsed}
+              onNavigate={handleGlobalNavClick}
             />
             <NavItemComponent
               item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
@@ -528,7 +538,7 @@ export function Sidebar() {
               onNavigate={handleGlobalNavClick}
             />
             <NavItemComponent
-              item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
+              item={{ titleKey: "nav.settings", href: "/settings/general", icon: Settings }}
               collapsed={collapsed}
               onNavigate={handleGlobalNavClick}
             />
@@ -555,7 +565,7 @@ export function Sidebar() {
               onNavigate={handleGlobalNavClick}
             />
             <NavItemComponent
-              item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
+              item={{ titleKey: "nav.settings", href: "/settings/general", icon: Settings }}
               collapsed={collapsed}
               onNavigate={handleGlobalNavClick}
             />
@@ -651,8 +661,7 @@ function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps
   const isActiveOrChild = location.pathname === item.href ||
     location.pathname.startsWith(item.href + "/");
 
-  // Extract icon name from href path (e.g., "/settings" -> "settings")
-  const iconName = item.href.split("/").filter(Boolean).pop() ?? "file";
+  const iconName = getGlobalNavIconName(item.href);
 
   const handleClick = () => {
     if (onNavigate) {
@@ -704,6 +713,27 @@ function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps
   );
 }
 
+function getGlobalNavIconName(href: string): string {
+  switch (href) {
+    case "/publish":
+      return "upload";
+    case "/my-packages":
+      return "package-search";
+    case "/analytics":
+      return "bar-chart-3";
+    case "/documents":
+      return "file-text";
+    case "/settings":
+      return "settings";
+    case "/devices/pair":
+      return "smartphone";
+    case "/mcp-services/dashboard":
+      return "layout-dashboard";
+    default:
+      return href.split("/").filter(Boolean).pop() ?? "file";
+  }
+}
+
 interface WorkspaceNavItemComponentProps {
   item: WorkspaceNavItem;
   workspaceId: string;
@@ -716,10 +746,15 @@ function WorkspaceNavItemComponent({ item, workspaceId, collapsed, onNavigate }:
   const location = useLocation();
   const title = t(item.titleKey);
   const href = `/workspace/${workspaceId}/${item.path}`;
+  const agentCompatHref = `/workspace/${workspaceId}/agent`;
 
   // Check if this item is active
-  const isActive = location.pathname === href ||
-    location.pathname.startsWith(href + "/");
+  const isActive =
+    location.pathname === href ||
+    location.pathname.startsWith(href + "/") ||
+    (item.path === "agents" &&
+      (location.pathname === agentCompatHref ||
+        location.pathname.startsWith(agentCompatHref + "/")));
 
   // Use item path as icon name
   const iconName = item.path;
