@@ -5,6 +5,9 @@ pub mod utils;
 use commands::gateway::GatewayState;
 
 #[cfg(desktop)]
+use commands::screenshot::ScreenshotStore;
+
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -209,6 +212,32 @@ pub fn run() {
     {
         builder = builder
             .manage(GatewayState::default())
+            .manage(ScreenshotStore::default())
+            .register_uri_scheme_protocol("viben-screenshot", |ctx, request| {
+                // Serve screenshot images from in-memory store.
+                // URL format: viben-screenshot://localhost/{image-id}
+                let path = request.uri().path();
+                let image_id = path.trim_start_matches('/');
+
+                let store = ctx.app_handle().state::<ScreenshotStore>();
+                let images = store.images.lock().unwrap();
+
+                if let Some(data) = images.get(image_id) {
+                    tauri::http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", "image/jpeg")
+                        .header("Content-Length", data.len())
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(data.clone())
+                        .unwrap()
+                } else {
+                    tauri::http::Response::builder()
+                        .status(404)
+                        .header("Content-Type", "text/plain")
+                        .body(b"Image not found".to_vec())
+                        .unwrap()
+                }
+            })
             .invoke_handler(tauri::generate_handler![
                 // Tray commands (native system tray)
                 commands::tray::update_tray_status,
@@ -246,9 +275,11 @@ pub fn run() {
                 // Screenshot commands (native screen capture via tauri-plugin-screenshots)
                 commands::screenshot::take_screenshot,
                 commands::screenshot::take_screenshot_region,
+                commands::screenshot::list_monitors,
                 commands::screenshot::list_screenshot_windows,
                 commands::screenshot::take_window_screenshot,
                 commands::screenshot::start_region_screenshot,
+                commands::screenshot::confirm_region_screenshot,
                 commands::screenshot::close_screenshot_overlay,
                 // Window commands (multi-window support)
                 commands::window::open_workspace_in_new_window,

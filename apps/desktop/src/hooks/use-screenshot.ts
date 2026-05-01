@@ -27,6 +27,17 @@ export interface ScreenshotWindowInfo {
   app_name: string;
 }
 
+export interface ScreenshotMonitorInfo {
+  id: number;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  is_primary: boolean;
+  scale_factor: number;
+}
+
 export interface UseScreenshotReturn {
   takeScreenshot: (hideWindow?: boolean) => Promise<MessageAttachment | null>;
   takeScreenshotRegion: (
@@ -35,7 +46,8 @@ export interface UseScreenshotReturn {
     width: number,
     height: number
   ) => Promise<MessageAttachment | null>;
-  startRegionScreenshot: () => Promise<void>;
+  startRegionScreenshot: (monitorId?: number) => Promise<void>;
+  listMonitors: () => Promise<ScreenshotMonitorInfo[]>;
   listWindows: () => Promise<ScreenshotWindowInfo[]>;
   takeWindowScreenshot: (windowId: number) => Promise<MessageAttachment | null>;
   isCapturing: boolean;
@@ -132,12 +144,26 @@ export function useScreenshot(
     []
   );
 
-  const startRegionScreenshot = useCallback(async () => {
+  const listMonitors = useCallback(async (): Promise<ScreenshotMonitorInfo[]> => {
+    try {
+      return await invoke<ScreenshotMonitorInfo[]>("list_monitors");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : String(err);
+      setError(errorMessage);
+      onErrorRef.current?.(errorMessage);
+      return [];
+    }
+  }, []);
+
+  const startRegionScreenshot = useCallback(async (monitorId?: number) => {
     setIsCapturing(true);
     setError(null);
 
     try {
-      await invoke<string>("start_region_screenshot");
+      await invoke<string>("start_region_screenshot", {
+        monitorId: monitorId ?? null,
+      });
       // Result will come back via the screenshot-result event listener
     } catch (err) {
       const errorMessage =
@@ -189,10 +215,14 @@ export function useScreenshot(
 
   // Listen for screenshot results and cancellation from the overlay window
   // Register once (empty deps) - uses refs for callbacks to avoid stale closures
+  // Uses a flag to prevent cancelled event from firing after result is received
   useEffect(() => {
+    let gotResult = false;
+
     const unlistenResult = listen<{ data: string; type: string }>(
       "screenshot-result",
       (event) => {
+        gotResult = true;
         const { data } = event.payload;
         const attachment = createScreenshotAttachment(data, "screenshot-region");
         onSuccessRef.current?.(attachment);
@@ -201,7 +231,9 @@ export function useScreenshot(
     );
 
     const unlistenCancelled = listen("screenshot-cancelled", () => {
-      setIsCapturing(false);
+      if (!gotResult) {
+        setIsCapturing(false);
+      }
     });
 
     return () => {
@@ -214,6 +246,7 @@ export function useScreenshot(
     takeScreenshot,
     takeScreenshotRegion,
     startRegionScreenshot,
+    listMonitors,
     listWindows,
     takeWindowScreenshot,
     isCapturing,
