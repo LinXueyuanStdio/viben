@@ -1,0 +1,29 @@
+/* Presentation Layer — tldraw transparent canvas overlay */
+
+.presentation-tldraw-container .tl-background {
+  background: transparent !important;
+}
+
+.presentation-tldraw-container .tl-canvas {
+  background: transparent !important;
+}
+
+.presentation-tldraw-container [data-testid="tldraw"] {
+  background: transparent !important;
+}
+
+/* Override tldraw's default background color variable */
+.presentation-tldraw-container .tl-theme__light,
+.presentation-tldraw-container .tl-theme__dark {
+  --color-background: transparent;
+}
+
+/* Ensure the container doesn't capture pointer events */
+.presentation-tldraw-container .tl-container {
+  pointer-events: none;
+}
+
+/* Hide tldraw watermark in presentation mode */
+.presentation-tldraw-container .tl-watermark_SEE-LICENSE {
+  display: none;
+}

@@ -12,6 +12,7 @@ export enum PixiZIndex {
 }
 
 export enum DOMZIndex {
+  PresentationLayer = 9997,
   OverlayCanvas = 9998,
   InteractiveLayer = 9999,
 }

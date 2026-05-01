@@ -14,6 +14,7 @@ import type {
   WaveConfig,
   OverlaySettings,
 } from "@/types/overlay";
+import type { PresentationCommand } from "@/lib/presentation/types";
 import { PERFORMANCE_LIMITS } from "@/lib/overlay/constants";
 
 interface OverlayState {
@@ -51,6 +52,10 @@ interface OverlayState {
   waveEnabled: boolean;
   waveState: WaveState;
   waveConfig: WaveConfig;
+
+  // Presentation
+  presentationActive: boolean;
+  presentationCommands: PresentationCommand[];
 }
 
 interface OverlayActions {
@@ -96,6 +101,13 @@ interface OverlayActions {
   setWaveEnabled: (enabled: boolean) => void;
   setWaveState: (state: WaveState) => void;
   setWaveConfig: (config: Partial<WaveConfig>) => void;
+
+  // Presentation
+  startPresentation: () => void;
+  stopPresentation: () => void;
+  addPresentationCommand: (cmd: PresentationCommand) => void;
+  addPresentationCommands: (cmds: PresentationCommand[]) => void;
+  clearPresentationCommands: () => void;
 }
 
 const initialState: OverlayState = {
@@ -145,6 +157,9 @@ const initialState: OverlayState = {
     particlesEnabled: true,
     audioLevel: 0,
   },
+
+  presentationActive: false,
+  presentationCommands: [],
 };
 
 export const useOverlayStore = create<OverlayState & { actions: OverlayActions }>((set, get) => ({
@@ -283,5 +298,13 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
     setWaveEnabled: (enabled) => set({ waveEnabled: enabled }),
     setWaveState: (state) => set({ waveState: state }),
     setWaveConfig: (config) => set((s) => ({ waveConfig: { ...s.waveConfig, ...config } })),
+
+    startPresentation: () => set({ presentationActive: true, presentationCommands: [] }),
+    stopPresentation: () => set({ presentationActive: false, presentationCommands: [] }),
+    addPresentationCommand: (cmd) =>
+      set((s) => ({ presentationCommands: [...s.presentationCommands, cmd] })),
+    addPresentationCommands: (cmds) =>
+      set((s) => ({ presentationCommands: [...s.presentationCommands, ...cmds] })),
+    clearPresentationCommands: () => set({ presentationCommands: [] }),
   },
 }));
