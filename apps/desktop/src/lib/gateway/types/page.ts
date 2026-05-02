@@ -80,9 +80,15 @@ export interface PageResult {
   error?: string;
 }
 
+/** Page order data keyed by parent ("root" for top-level, or parent slug) */
+export interface PageOrderData {
+  [parentKey: string]: string[];
+}
+
 export interface ListPagesResult extends PageResult {
   pages: PageConfig[];
   count: number;
+  page_order?: PageOrderData;
 }
 
 export interface ViewPageResult extends PageResult {
@@ -154,4 +160,31 @@ export interface CreatePageParams {
   timeout?: number;
   url?: string;
   headers?: Record<string, string>;
+}
+
+// =============================================================================
+// Reorder Types
+// =============================================================================
+
+export interface ReorderPagesParams {
+  workspace_path: string;
+  parent_slug: string | null;
+  ordered_slugs: string[];
+}
+
+export interface ReorderPagesResult extends PageResult {
+  // empty on success
+}
+
+// =============================================================================
+// Duplicate Types
+// =============================================================================
+
+export interface DuplicatePageParams {
+  workspace_path: string;
+  slug: string;
+}
+
+export interface DuplicatePageResult extends PageResult {
+  page?: PageConfig;
 }

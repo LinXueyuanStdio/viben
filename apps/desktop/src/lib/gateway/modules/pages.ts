@@ -15,6 +15,10 @@ import type {
   CreatePageParams,
   UpdatePageConfigParams,
   UpdatePageConfigResult,
+  ReorderPagesParams,
+  ReorderPagesResult,
+  DuplicatePageParams,
+  DuplicatePageResult,
   ListTemplatesResult,
 } from "../types/page";
 
@@ -35,6 +39,10 @@ export type {
   CreatePageParams,
   UpdatePageConfigParams,
   UpdatePageConfigResult,
+  ReorderPagesParams,
+  ReorderPagesResult,
+  DuplicatePageParams,
+  DuplicatePageResult,
   PageTemplate,
   ListTemplatesResult,
 } from "../types/page";
@@ -216,6 +224,68 @@ export async function updatePageConfig(
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to update page config: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Reorder Pages
+// =============================================================================
+
+/**
+ * Reorder pages within a parent level
+ */
+export async function reorderPages(
+  baseUrl: string,
+  params: ReorderPagesParams
+): Promise<ReorderPagesResult> {
+  const response = await fetch(`${baseUrl}/api/page/reorder`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to reorder pages: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Duplicate Page
+// =============================================================================
+
+/**
+ * Duplicate a page (copy all files with a new slug)
+ */
+export async function duplicatePage(
+  baseUrl: string,
+  params: DuplicatePageParams
+): Promise<DuplicatePageResult> {
+  const response = await fetch(`${baseUrl}/api/page/duplicate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(params),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to duplicate page: ${errorMessage}`,
       response.status
     );
   }

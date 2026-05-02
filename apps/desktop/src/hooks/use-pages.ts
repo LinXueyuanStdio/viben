@@ -16,10 +16,12 @@ import {
   viewPage as viewPageApi,
   createPage as createPageApi,
   deletePage as deletePageApi,
+  duplicatePage as duplicatePageApi,
   updatePageConfig as updatePageConfigApi,
+  reorderPages as reorderPagesApi,
   listTemplates as listTemplatesApi,
 } from "@/lib/gateway";
-import type { CreatePageParams, UpdatePageConfigParams } from "@/lib/gateway";
+import type { CreatePageParams, UpdatePageConfigParams, ReorderPagesParams, DuplicatePageParams } from "@/lib/gateway";
 
 // Re-export types for convenience
 export type {
@@ -67,6 +69,22 @@ export function usePages(workspacePath: string | undefined) {
     queryFn: () => listPagesApi(getGatewayUrl(), workspacePath!),
     enabled: !!workspacePath,
     select: (data) => data.pages,
+  });
+}
+
+/**
+ * Hook for fetching page order in a workspace.
+ * Shares the same query cache as usePages.
+ *
+ * @param workspacePath - The workspace path
+ * @returns Query result with page order map
+ */
+export function usePageOrder(workspacePath: string | undefined) {
+  return useQuery({
+    queryKey: pageKeys.list(workspacePath ?? ""),
+    queryFn: () => listPagesApi(getGatewayUrl(), workspacePath!),
+    enabled: !!workspacePath,
+    select: (data) => data.page_order,
   });
 }
 
@@ -124,6 +142,25 @@ export function useDeletePage() {
 }
 
 /**
+ * Hook for duplicating a page
+ *
+ * @returns Mutation for duplicating a page
+ */
+export function useDuplicatePage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: DuplicatePageParams) =>
+      duplicatePageApi(getGatewayUrl(), params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.list(variables.workspace_path),
+      });
+    },
+  });
+}
+
+/**
  * Hook for updating page config (name, description, icon)
  *
  * @returns Mutation for updating a page config
@@ -140,6 +177,25 @@ export function useUpdatePageConfig() {
       });
       queryClient.invalidateQueries({
         queryKey: pageKeys.detail(variables.workspace_path, variables.slug),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for reordering pages within a parent level
+ *
+ * @returns Mutation for reordering pages
+ */
+export function useReorderPages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: ReorderPagesParams) =>
+      reorderPagesApi(getGatewayUrl(), params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: pageKeys.list(variables.workspace_path),
       });
     },
   });
