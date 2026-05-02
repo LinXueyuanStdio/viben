@@ -216,6 +216,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     onCheckAvailability,
     availability,
     checkingAvailability,
+    providerConstraintHint,
     onConfigureMcp,
     onConfigureSkills,
     onRemoveMcpServer,
@@ -355,6 +356,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             onCheckAvailability={onCheckAvailability}
             availability={availability}
             checkingAvailability={checkingAvailability}
+            providerConstraintHint={providerConstraintHint}
             onConfigureMcp={onConfigureMcp}
             onConfigureSkills={onConfigureSkills}
             onRemoveMcpServer={onRemoveMcpServer}

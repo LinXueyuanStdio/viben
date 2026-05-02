@@ -1,4 +1,5 @@
 export { AgentMcpDialog } from "./agent-mcp-dialog";
+export type { AgentMcpEntry } from "./agent-mcp-dialog";
 export { AgentSkillsDialog } from "./agent-skills-dialog";
 export { AgentMemoryDialog } from "./agent-memory-dialog";
 export { AgentOverviewPanel } from "./agent-overview-panel";
