@@ -255,6 +255,7 @@ pub fn run() {
                 commands::screenshot::take_window_screenshot,
                 commands::screenshot::start_region_screenshot,
                 commands::screenshot::get_screenshot_image,
+                commands::screenshot::log_screenshot_trace,
                 commands::screenshot::confirm_region_screenshot,
                 commands::screenshot::close_screenshot_overlay,
                 // Window commands (multi-window support)
@@ -295,13 +296,18 @@ pub fn run() {
                     });
                 }
 
-                // Register deep link handler for OAuth callback
-                // URL format: viben://oauth?session=<base64url-encoded-json>
+                // Register deep link handler.
+                // OAuth callback format: viben://oauth?session=<base64url-encoded-json>
+                // Desktop navigation format: viben://workspace/... or viben://settings/...
                 let app_handle = app.handle().clone();
                 app.deep_link().on_open_url(move |event| {
                     let urls = event.urls();
                     for url in urls {
-                        if url.scheme() == "viben" && url.host_str() == Some("oauth") {
+                        if url.scheme() != "viben" {
+                            continue;
+                        }
+
+                        if url.host_str() == Some("oauth") {
                             // Check for error first
                             if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
                                 // Emit error event to frontend
@@ -328,6 +334,16 @@ pub fn run() {
                                     let _ = window.set_focus();
                                 }
                             }
+
+                            continue;
+                        }
+
+                        let _ = app_handle.emit("desktop-deep-link", url.to_string());
+
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.unminimize();
+                            let _ = window.show();
+                            let _ = window.set_focus();
                         }
                     }
                 });

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
+import { fileURLToPath } from "url";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -103,6 +104,10 @@ export default defineConfig(async () => ({
   build: {
     // Enable code splitting for dynamic imports
     rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        screenshotOverlay: fileURLToPath(new URL("./screenshot-overlay.html", import.meta.url)),
+      },
       // Externalize server-side only packages (including deep imports)
       external: (id: string) => {
         // Match exact package names or deep imports (e.g., @pkg/name/dist/file.js)

@@ -11,8 +11,12 @@
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use std::collections::HashMap;
+use std::fs::{create_dir_all, OpenOptions};
 use std::io::Cursor;
+use std::io::Write;
+use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use xcap::{Monitor, Window};
 
@@ -60,6 +64,15 @@ pub struct MonitorInfo {
     pub height: u32,
     pub is_primary: bool,
     pub scale_factor: f32,
+}
+
+#[derive(serde::Serialize)]
+struct ScreenshotTraceLogEntry {
+    ts: String,
+    trace_id: String,
+    source: String,
+    stage: String,
+    details: serde_json::Value,
 }
 
 /// Take a screenshot of the primary monitor
@@ -177,22 +190,66 @@ pub async fn take_window_screenshot(window_id: u32) -> Result<ScreenshotResult, 
 pub async fn start_region_screenshot<R: Runtime>(
     app: AppHandle<R>,
     monitor_id: Option<u32>,
+    trace_id: Option<String>,
+    client_started_at_ms: Option<u64>,
 ) -> Result<String, String> {
+    let trace_id = trace_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let request_started = Instant::now();
+
+    let _ = write_screenshot_trace(
+        &trace_id,
+        "rust",
+        "start_region_screenshot_received",
+        serde_json::json!({
+            "monitor_id": monitor_id,
+            "client_started_at_ms": client_started_at_ms,
+        }),
+    );
+
     // Hide main window — 150ms is enough for macOS window server to process the hide
     if let Some(window) = app.get_webview_window("main") {
+        let hide_started = Instant::now();
         let _ = window.hide();
         tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        let _ = write_screenshot_trace(
+            &trace_id,
+            "rust",
+            "main_window_hidden",
+            serde_json::json!({
+                "elapsed_ms": hide_started.elapsed().as_millis(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
     }
 
     // Use inner function to capture errors, then recover on failure
-    let result = do_region_screenshot(&app, monitor_id).await;
+    let result = do_region_screenshot(&app, monitor_id, &trace_id, request_started).await;
 
     if result.is_err() {
+        let _ = write_screenshot_trace(
+            &trace_id,
+            "rust",
+            "start_region_screenshot_failed",
+            serde_json::json!({
+                "error": result.as_ref().err(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
         // Recovery: show main window on failure so it doesn't stay hidden forever
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.show();
             let _ = window.set_focus();
         }
+    } else {
+        let _ = write_screenshot_trace(
+            &trace_id,
+            "rust",
+            "start_region_screenshot_completed",
+            serde_json::json!({
+                "image_id": result.as_ref().ok(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
     }
 
     result
@@ -203,6 +260,8 @@ pub async fn start_region_screenshot<R: Runtime>(
 async fn do_region_screenshot<R: Runtime>(
     app: &AppHandle<R>,
     monitor_id: Option<u32>,
+    trace_id: &str,
+    request_started: Instant,
 ) -> Result<String, String> {
     // Find the target monitor
     let monitor = if let Some(id) = monitor_id {
@@ -211,18 +270,57 @@ async fn do_region_screenshot<R: Runtime>(
         get_primary_monitor()?
     };
 
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "monitor_selected",
+        serde_json::json!({
+            "monitor_id": monitor.id(),
+            "monitor_name": monitor.name(),
+            "monitor_x": monitor.x(),
+            "monitor_y": monitor.y(),
+            "monitor_width": monitor.width(),
+            "monitor_height": monitor.height(),
+            "scale_factor": monitor.scale_factor(),
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
+
+    let capture_started = Instant::now();
     let image = monitor
         .capture_image()
         .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "monitor_capture_completed",
+        serde_json::json!({
+            "elapsed_ms": capture_started.elapsed().as_millis(),
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
 
     // Encode to JPEG in memory only — frontend fetches via IPC command (no file/protocol issues).
     let dynamic_img = image::DynamicImage::ImageRgba8(image);
     let mut jpeg_buf = Cursor::new(Vec::new());
     let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buf, 92);
+    let encode_started = Instant::now();
     dynamic_img
         .write_with_encoder(encoder)
         .map_err(|e| format!("Failed to encode JPEG: {}", e))?;
     let jpeg_bytes = jpeg_buf.into_inner();
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "jpeg_encode_completed",
+        serde_json::json!({
+            "elapsed_ms": encode_started.elapsed().as_millis(),
+            "jpeg_bytes_len": jpeg_bytes.len(),
+            "image_width": dynamic_img.width(),
+            "image_height": dynamic_img.height(),
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
 
     // Store in memory — frontend calls get_screenshot_image to retrieve as base64 data URL
     let image_id = uuid::Uuid::new_v4().to_string();
@@ -232,6 +330,15 @@ async fn do_region_screenshot<R: Runtime>(
         images.clear();
         images.insert(image_id.clone(), jpeg_bytes);
     }
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "image_stored_in_memory",
+        serde_json::json!({
+            "image_id": image_id,
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
 
     // Get monitor dimensions for overlay window sizing.
     // xcap monitor.width()/height() returns logical pixels on macOS.
@@ -243,24 +350,37 @@ async fn do_region_screenshot<R: Runtime>(
 
     // Overlay window URL — only pass the image ID and monitor scale.
     let url = format!(
-        "/screenshot-overlay?id={}&scale={}",
+        "/screenshot-overlay.html?id={}&scale={}&trace={}",
         urlencoding::encode(&image_id),
-        scale_factor
+        scale_factor,
+        urlencoding::encode(trace_id),
     );
+    let window_url = url.clone();
 
     // Close any existing overlay window first (from a previous session)
     if let Some(existing) = app.get_webview_window("screenshot-overlay") {
+        let close_started = Instant::now();
         let _ = existing.close();
         // Brief pause to let the window close
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        let _ = write_screenshot_trace(
+            trace_id,
+            "rust",
+            "previous_overlay_window_closed",
+            serde_json::json!({
+                "elapsed_ms": close_started.elapsed().as_millis(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
     }
 
     // Create overlay window covering the selected monitor.
     // On macOS: do NOT use .maximized(true) — it respects safe area (excludes menu bar)
+    let window_create_started = Instant::now();
     let _overlay_window = WebviewWindowBuilder::new(
         app,
         "screenshot-overlay",
-        WebviewUrl::App(url.into()),
+        WebviewUrl::App(window_url.into()),
     )
     .title("Screenshot")
     .inner_size(monitor_width as f64, monitor_height as f64)
@@ -268,9 +388,23 @@ async fn do_region_screenshot<R: Runtime>(
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
-    .focused(true)
+    .visible(false)
     .build()
     .map_err(|e| format!("Failed to create overlay window: {}", e))?;
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "overlay_window_created",
+        serde_json::json!({
+            "url": url,
+            "window_width": monitor_width,
+            "window_height": monitor_height,
+            "window_x": monitor_x,
+            "window_y": monitor_y,
+            "elapsed_ms": window_create_started.elapsed().as_millis(),
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
 
     Ok(image_id)
 }
@@ -281,14 +415,36 @@ async fn do_region_screenshot<R: Runtime>(
 pub async fn get_screenshot_image<R: Runtime>(
     app: AppHandle<R>,
     image_id: String,
+    trace_id: Option<String>,
 ) -> Result<String, String> {
+    let started = Instant::now();
     let store = app.state::<ScreenshotStore>();
     let images = store.images.lock().unwrap();
     let bytes = images
         .get(&image_id)
         .ok_or_else(|| "Screenshot not found in memory store".to_string())?;
     let b64 = BASE64_STANDARD.encode(bytes);
+    let _ = write_screenshot_trace(
+        trace_id.as_deref().unwrap_or("unknown"),
+        "rust",
+        "get_screenshot_image_completed",
+        serde_json::json!({
+            "image_id": image_id,
+            "bytes_len": bytes.len(),
+            "elapsed_ms": started.elapsed().as_millis(),
+        }),
+    );
     Ok(format!("data:image/jpeg;base64,{}", b64))
+}
+
+#[tauri::command]
+pub async fn log_screenshot_trace(
+    trace_id: String,
+    source: String,
+    stage: String,
+    details: serde_json::Value,
+) -> Result<(), String> {
+    write_screenshot_trace(&trace_id, &source, &stage, details)
 }
 
 /// Confirm region screenshot: crop the stored image in Rust and emit result to main window.
@@ -497,4 +653,39 @@ fn image_to_result(img: &image::DynamicImage) -> Result<ScreenshotResult, String
         width,
         height,
     })
+}
+
+fn screenshot_trace_log_path() -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or_else(|| "Failed to resolve home directory".to_string())?;
+    let dir = home.join(".viben").join("logs");
+    create_dir_all(&dir).map_err(|e| format!("Failed to create screenshot log dir: {}", e))?;
+    Ok(dir.join("screenshot-region-trace.jsonl"))
+}
+
+fn write_screenshot_trace(
+    trace_id: &str,
+    source: &str,
+    stage: &str,
+    details: serde_json::Value,
+) -> Result<(), String> {
+    let path = screenshot_trace_log_path()?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("Failed to open screenshot trace log: {}", e))?;
+
+    let entry = ScreenshotTraceLogEntry {
+        ts: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+        trace_id: trace_id.to_string(),
+        source: source.to_string(),
+        stage: stage.to_string(),
+        details,
+    };
+
+    let line = serde_json::to_string(&entry)
+        .map_err(|e| format!("Failed to serialize screenshot trace log entry: {}", e))?;
+    file.write_all(line.as_bytes())
+        .and_then(|_| file.write_all(b"\n"))
+        .map_err(|e| format!("Failed to write screenshot trace log: {}", e))
 }
