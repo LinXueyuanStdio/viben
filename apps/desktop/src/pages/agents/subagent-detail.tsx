@@ -31,10 +31,10 @@ import {
   useConfigFiles,
   getParentDir,
 } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useWorkspaceAgentConfigs } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SkillFileEntry } from "@/types";
 import { SubAgentOverview } from "./components";
 import type { FileTab } from "./types";
@@ -45,7 +45,7 @@ import type { FileTab } from "./types";
 
 export function SubAgentDetailPage() {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const { openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { configId } = useParams<{ configId: string }>();
 
@@ -183,16 +183,10 @@ export function SubAgentDetailPage() {
   };
 
   const handleNavigateBack = () => {
-    const url = buildWorkspaceUrl(
-      `/executor/${executorType}`,
+    openExecutorDetail(
+      executorType,
       effectiveWorkspacePath || undefined
     );
-    navigateTo(url, {
-      type: "workspace",
-      slug: executorType,
-      name: executorType,
-      icon: { type: "lucide", value: "terminal" },
-    });
   };
 
   const activeTab = openTabs.find(t => t.id === activeTabId);

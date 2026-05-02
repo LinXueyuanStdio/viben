@@ -40,7 +40,7 @@ import {
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   AgentMcpDialog,
   AgentSkillsDialog,
@@ -65,7 +65,7 @@ import { uiMessageToAgentMessage } from "./utils";
 export function AgentDetailPage() {
   const { t } = useTranslation();
   const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
-  const { openGlobalView, openWorkspaceView } = usePageTabs();
+  const { openSettings, openWorkspaceSection } = useDesktopRouting();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
@@ -180,7 +180,7 @@ export function AgentDetailPage() {
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"debug" | "settings">("debug");
+  const [activeTab, setActiveTab] = useState<"debug" | "settings">("settings");
 
   // Dialog states
   const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
@@ -621,19 +621,11 @@ export function AgentDetailPage() {
   // Navigate back to appropriate location based on scope
   const handleNavigateBack = useCallback(() => {
     if (isWorkspaceScoped && workspace) {
-      openWorkspaceView(
-        workspace.id,
-        "agent",
-        t("settingsAgents.title"),
-        { type: "lucide", value: "bot" }
-      );
+      openWorkspaceSection(workspace.id, "agent");
     } else {
-      openGlobalView("/settings/agents", t("settingsAgents.title"), {
-        type: "lucide",
-        value: "bot",
-      });
+      openSettings("agents");
     }
-  }, [isWorkspaceScoped, openGlobalView, openWorkspaceView, t, workspace]);
+  }, [isWorkspaceScoped, openSettings, openWorkspaceSection, workspace]);
 
   // Handle span selection for trace visualization
   const handleSelectSpan = useCallback((span: TraceSpanNode | null) => {
@@ -826,11 +818,11 @@ export function AgentDetailPage() {
             showRemove={false}
             centerContent={
               <TabsList className="h-9 border-b-0 bg-transparent p-0">
-                <TabsTrigger value="debug" className="h-9 rounded-md">
-                  {t("agentDetail.debugTab", "Debug")}
-                </TabsTrigger>
                 <TabsTrigger value="settings" className="h-9 rounded-md">
                   {t("agentDetail.settingsTab", "Settings")}
+                </TabsTrigger>
+                <TabsTrigger value="debug" className="h-9 rounded-md">
+                  {t("agentDetail.debugTab", "Debug")}
                 </TabsTrigger>
               </TabsList>
             }

@@ -51,7 +51,7 @@ import {
 } from "@/components/chat";
 import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useModels, useAgentList } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Executor, ExecutorType } from "@/types";
@@ -65,7 +65,12 @@ export function WorkspaceAgentsPage({
   workspaceOverride,
 }: WorkspaceAgentsPageProps = {}) {
   const { t } = useTranslation();
-  const { navigateTo, openGlobalView } = usePageTabs();
+  const {
+    openDashboard,
+    openPath,
+    openWorkspaceAgentDetail,
+    openWorkspaceExecutorDetail,
+  } = useDesktopRouting();
 
   // Translate agent templates
   // API templates from gateway
@@ -379,27 +384,15 @@ export function WorkspaceAgentsPage({
   };
 
   // Navigate to detail/edit page
-  // Executors use /executor/:type, agents use /agent/:id
   const handleEditItem = (itemId: string, itemType: "executor" | "agent" | "workspace-agent") => {
-    const params = workspace?.path ? `?workspace_path=${encodeURIComponent(workspace.path)}` : "";
+    if (!workspace?.id) {
+      return;
+    }
+
     if (itemType === "executor") {
-      navigateTo(`/executor/${itemId}${params}`, {
-        type: "workspace",
-        name: selectedExecutor?.name ?? itemId,
-        icon: { type: "lucide", value: "terminal" },
-        slug: itemId,
-        workspaceId: workspace?.id,
-      });
+      openWorkspaceExecutorDetail(workspace.id, itemId);
     } else {
-      const agentName =
-        agentListAgents.find((agent) => agent.id === itemId)?.name ?? itemId;
-      navigateTo(`/agent/${itemId}${params}`, {
-        type: "workspace",
-        name: agentName,
-        icon: { type: "lucide", value: "bot" },
-        slug: itemId,
-        workspaceId: workspace?.id,
-      });
+      openWorkspaceAgentDetail(workspace.id, itemId);
     }
   };
 
@@ -439,12 +432,7 @@ export function WorkspaceAgentsPage({
         {!settingsMode ? (
           <Button
             type="button"
-            onClick={() =>
-              openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
-                type: "lucide",
-                value: "layout-dashboard",
-              })
-            }
+            onClick={() => openDashboard()}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t("workspace.backToDashboard")}

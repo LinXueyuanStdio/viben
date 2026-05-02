@@ -44,7 +44,8 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLocalWorkspaces, usePageTabs } from "@/hooks";
+import { useLocalWorkspaces } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
 import { cn } from "@/lib/utils";
 import { IssueDetailModal } from "@/components/workspace/github/issue-detail-modal";
@@ -71,7 +72,11 @@ export function WorkspaceGitHubPage({
   const { t } = useTranslation();
   const { workspaceId: routeWorkspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
-  const { openGlobalView, openWorkspaceView, currentNavigationState } = usePageTabs();
+  const {
+    currentStack,
+    openPath,
+    openWorkspaceSection,
+  } = useDesktopRouting();
 
   const workspaceId = workspaceOverride?.id ?? routeWorkspaceId;
   const workspace = workspaceOverride ?? (workspaceId ? getWorkspace(workspaceId) : undefined);
@@ -98,7 +103,7 @@ export function WorkspaceGitHubPage({
         routePath: "github",
       },
     };
-    const stack = currentNavigationState?.breadcrumbStack;
+    const stack = currentStack;
     if (stack && stack.length > 1) {
       const mappedSegments = stack.slice(1).map((item) => ({
         id: item.id,
@@ -127,7 +132,7 @@ export function WorkspaceGitHubPage({
     return workspaceId
       ? [githubSegment]
       : [];
-  }, [currentNavigationState?.breadcrumbStack, t, workspaceId]);
+  }, [currentStack, t, workspaceId]);
 
   const wrapContent = (children: React.ReactNode) => {
     if (embeddedMode) {
@@ -158,9 +163,12 @@ export function WorkspaceGitHubPage({
         {!embeddedMode && (
           <Button
             onClick={() =>
-              openGlobalView("/mcp-services/dashboard", t("nav.dashboard", "Dashboard"), {
-                type: "lucide",
-                value: "layout-dashboard",
+              openPath("/mcp-services/dashboard", {
+                title: t("nav.dashboard", "Dashboard"),
+                icon: {
+                  type: "lucide",
+                  value: "layout-dashboard",
+                },
               })
             }
           >
@@ -202,10 +210,7 @@ export function WorkspaceGitHubPage({
           <Button
             onClick={() =>
               workspaceId
-                ? openWorkspaceView(workspaceId, "chat", t("workspace.chat", "Chat"), {
-                    type: "lucide",
-                    value: "message-square",
-                  })
+                ? openWorkspaceSection(workspaceId, "chat")
                 : undefined
             }
           >

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Renderer, RenderScheduler } from "@viben/os";
 import { useLocalWorkspaces } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { cn } from "@/lib/utils";
 import { WorkspaceHeader } from "@/components/workspace";
 import { PageWrapper } from "@/components/layout";
@@ -42,7 +42,12 @@ export function WorkspaceDetailPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading } = useLocalWorkspaces();
-  const { navigateTo } = usePageTabs();
+  const {
+    openWorkspaceSection,
+    openSettings,
+    openDocuments,
+    openDevicePair,
+  } = useDesktopRouting();
   const [hoveredApp, setHoveredApp] = useState<string | null>(null);
   const [clickedApp, setClickedApp] = useState<string | null>(null);
 
@@ -155,20 +160,42 @@ export function WorkspaceDetailPage() {
     navigateTimerRef.current = setTimeout(() => {
       navigateTimerRef.current = null;
       setClickedApp(null);
-      navigateTo(app.path, {
-        type:
-          app.id === "settings"
-            ? "settings"
-            : app.id === "documents"
-              ? "workspace"
-              : "workspace",
-        slug: app.id,
-        workspaceId: workspaceId,
-        name: app.name,
-        icon: { type: "lucide", value: app.id === "settings" ? "settings" : app.id === "documents" ? "file-text" : app.id === "devices" ? "smartphone" : "panel-top" },
-      });
+      switch (app.id) {
+        case "settings":
+          openSettings(undefined, { openMode: "reuse" });
+          return;
+        case "documents":
+          openDocuments({ openMode: "reuse" });
+          return;
+        case "devices":
+          openDevicePair({ openMode: "reuse" });
+          return;
+        case "chat":
+          if (workspaceId) openWorkspaceSection(workspaceId, "chat", { openMode: "reuse" });
+          return;
+        case "kanban":
+          if (workspaceId) openWorkspaceSection(workspaceId, "kanban", { openMode: "reuse" });
+          return;
+        case "cron":
+          if (workspaceId) openWorkspaceSection(workspaceId, "cron", { openMode: "reuse" });
+          return;
+        case "ideas":
+          if (workspaceId) openWorkspaceSection(workspaceId, "ideas", { openMode: "reuse" });
+          return;
+        case "agents":
+          if (workspaceId) openWorkspaceSection(workspaceId, "agent", { openMode: "reuse" });
+          return;
+        case "files":
+          if (workspaceId) openWorkspaceSection(workspaceId, "files", { openMode: "reuse" });
+          return;
+        case "monitor":
+          if (workspaceId) openWorkspaceSection(workspaceId, "chat-monitor", { openMode: "reuse" });
+          return;
+        default:
+          return;
+      }
     }, 400);
-  }, [navigateTo, workspaceId]);
+  }, [openDevicePair, openDocuments, openSettings, openWorkspaceSection, workspaceId]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent, app: AppInfo) => {

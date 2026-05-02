@@ -42,9 +42,9 @@ import {
   useSkillFileContent,
   useSkillFileWriter,
 } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -54,7 +54,7 @@ interface Tab {
 
 export function SkillDetailPage() {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const { openExecutorDetail, openSkillDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { skillId, workspaceId, agentId: pathAgentId } = useParams<{
     skillId: string;
@@ -108,7 +108,7 @@ export function SkillDetailPage() {
           <p className="text-muted-foreground mb-4">
             {t("workspace.missingAgentId", "Missing agent_id parameter")}
           </p>
-          <Button onClick={() => window.history.back()}>
+          <Button onClick={() => openExecutorDetail(agentId ?? "CLAUDE_CODE", workspacePath || undefined)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t("common.back")}
           </Button>
@@ -118,18 +118,13 @@ export function SkillDetailPage() {
   }
 
   const handleSelectSkill = (skill: WorkspaceSkill) => {
-    // Navigate to the skill with query params
-    const url = buildWorkspaceUrl(
-      `/skill/${skill.id}`,
-      workspacePath,
-      { agent_id: agentId }
+    openSkillDetail(
+      skill.id,
+      {
+        agentId,
+        workspacePath: workspacePath || undefined,
+      }
     );
-    navigateTo(url, {
-      type: "page",
-      slug: skill.id,
-      name: skill.name,
-      icon: { type: "lucide", value: "sparkles" },
-    });
 
     // Open tab if not already open
     if (!openTabs.find((t) => t.id === skill.id)) {
@@ -152,46 +147,19 @@ export function SkillDetailPage() {
       if (newTabs.length > 0) {
         const newActiveTab = newTabs[newTabs.length - 1];
         setActiveTabId(newActiveTab.id);
-        const url = buildWorkspaceUrl(
-          `/skill/${newActiveTab.id}`,
-          workspacePath,
-          { agent_id: agentId }
-        );
-        navigateTo(url, {
-          type: "page",
-          slug: newActiveTab.id,
-          name: newActiveTab.skill.name,
-          icon: { type: "lucide", value: "sparkles" },
+        openSkillDetail(newActiveTab.id, {
+          agentId,
+          workspacePath: workspacePath || undefined,
         });
       } else {
         setActiveTabId(null);
-        // Navigate back to executor detail
-        const url = buildWorkspaceUrl(
-          `/executor/${agentId}`,
-          workspacePath
-        );
-        navigateTo(url, {
-          type: "workspace",
-          slug: agentId,
-          name: executor?.name || agentId,
-          icon: { type: "lucide", value: "terminal" },
-        });
+        openExecutorDetail(agentId, workspacePath || undefined);
       }
     }
   };
 
   const handleNavigateBack = () => {
-    // Navigate back to executor detail
-    const url = buildWorkspaceUrl(
-      `/executor/${agentId}`,
-      workspacePath
-    );
-    navigateTo(url, {
-      type: "workspace",
-      slug: agentId,
-      name: executor?.name || agentId,
-      icon: { type: "lucide", value: "terminal" },
-    });
+    openExecutorDetail(agentId, workspacePath || undefined);
   };
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
@@ -286,16 +254,9 @@ export function SkillDetailPage() {
                   key={tab.id}
                   onClick={() => {
                     setActiveTabId(tab.id);
-                    const url = buildWorkspaceUrl(
-                      `/skill/${tab.id}`,
-                      workspacePath,
-                      { agent_id: agentId }
-                    );
-                    navigateTo(url, {
-                      type: "page",
-                      slug: tab.id,
-                      name: tab.skill.name,
-                      icon: { type: "lucide", value: "sparkles" },
+                    openSkillDetail(tab.id, {
+                      agentId,
+                      workspacePath: workspacePath || undefined,
                     });
                   }}
                   className={cn(

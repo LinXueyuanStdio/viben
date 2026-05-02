@@ -42,9 +42,9 @@ import {
   getParentDir,
   useWorkspacePrompts,
 } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -86,7 +86,7 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 
 export function PromptDetailPage() {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const { openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { promptId } = useParams<{ promptId: string }>();
 
@@ -224,16 +224,10 @@ export function PromptDetailPage() {
   };
 
   const handleNavigateBack = () => {
-    const url = buildWorkspaceUrl(
-      `/executor/${executorType}`,
+    openExecutorDetail(
+      executorType,
       effectiveWorkspacePath || undefined
     );
-    navigateTo(url, {
-      type: "workspace",
-      slug: executorType,
-      name: executorType,
-      icon: { type: "lucide", value: "terminal" },
-    });
   };
 
   const activeTab = openTabs.find(t => t.id === activeTabId);

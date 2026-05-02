@@ -39,7 +39,7 @@ import {
   useExecutors,
   useAgentConversation,
 } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
@@ -61,7 +61,7 @@ import {
 export function ExecutorDetailPage() {
   const { t } = useTranslation();
   const { executorType, workspaceId } = useParams<{ executorType: string; workspaceId?: string }>();
-  const { openGlobalView, openWorkspaceView } = usePageTabs();
+  const { openSettings, openWorkspaceSection } = useDesktopRouting();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace } = useWorkspaceParam({ workspaceId });
@@ -204,19 +204,11 @@ export function ExecutorDetailPage() {
   // Navigation back
   const handleNavigateBack = useCallback(() => {
     if (workspace) {
-      openWorkspaceView(
-        workspace.id,
-        "agent",
-        t("settingsAgents.title"),
-        { type: "lucide", value: "bot" }
-      );
+      openWorkspaceSection(workspace.id, "agent");
     } else {
-      openGlobalView("/settings/executors", t("settingsExecutors.title"), {
-        type: "lucide",
-        value: "terminal",
-      });
+      openSettings("executors");
     }
-  }, [openGlobalView, openWorkspaceView, t, workspace]);
+  }, [openSettings, openWorkspaceSection, workspace]);
 
   // Slash commands for executor chat
   const slashCommands = useMemo<SlashCommand[]>(() => [

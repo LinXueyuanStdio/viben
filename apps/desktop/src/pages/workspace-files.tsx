@@ -6,7 +6,7 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/components/file-browser";
 import { useLocalWorkspaces } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getGatewayClient } from "@/lib/gateway";
@@ -465,7 +465,7 @@ export function WorkspaceFilesPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
-  const { openGlobalView } = usePageTabs();
+  const { openPath } = useDesktopRouting();
 
   // Reference to FileBrowser for imperative navigation
   const fileBrowserRef = useRef<FileBrowserRef>(null);
@@ -703,12 +703,13 @@ export function WorkspaceFilesPage() {
           </p>
           <Button
             type="button"
-            onClick={() =>
-              openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
+            onClick={() => openPath("/mcp-services/dashboard", {
+              title: t("nav.dashboard"),
+              icon: {
                 type: "lucide",
                 value: "layout-dashboard",
-              })
-            }
+              },
+            })}
           >
             {t("workspace.backToDashboard")}
           </Button>
