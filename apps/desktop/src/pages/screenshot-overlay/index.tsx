@@ -40,6 +40,7 @@ export function ScreenshotOverlayPage() {
 
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Selection state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -69,9 +70,14 @@ export function ScreenshotOverlayPage() {
   // This bypasses all file/protocol/scope issues and is 100% reliable.
   useEffect(() => {
     if (!imageId) return;
+    setImageLoaded(false);
+    setLoadError(null);
     invoke<string>('get_screenshot_image', { imageId })
       .then((dataUrl) => setImageUrl(dataUrl))
-      .catch((err) => console.error('[Screenshot] Failed to get image data:', err));
+      .catch((err) => {
+        console.error('[Screenshot] Failed to get image data:', err);
+        setLoadError(err instanceof Error ? err.message : String(err));
+      });
   }, [imageId]);
 
   const handleClose = useCallback(async (confirmed = false) => {
@@ -399,8 +405,17 @@ export function ScreenshotOverlayPage() {
           className="screenshot-bg-image"
           draggable={false}
           onLoad={() => setImageLoaded(true)}
-          onError={(e) => console.error('[Screenshot] Image failed to load:', e)}
+          onError={(e) => {
+            console.error('[Screenshot] Image failed to load:', e);
+            setLoadError('Failed to load screenshot image');
+          }}
         />
+      )}
+
+      {!imageLoaded && (
+        <div className="screenshot-overlay-status">
+          {loadError ? '截图加载失败，按 Esc 退出后重试' : '正在加载截图...'}
+        </div>
       )}
 
       {/* Canvas mask for selection (on top of image, below Konva) */}
