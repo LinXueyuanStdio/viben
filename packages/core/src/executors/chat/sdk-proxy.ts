@@ -442,7 +442,9 @@ export class SdkChatProxy implements ChatProxy {
   async *executeStreaming(
     options: ChatOptions
   ): AsyncGenerator<SSEMessage, void, unknown> {
+    const perfT0 = Date.now();
     const sdk = await loadClaudeSdk();
+    log.info({ sdkLoadMs: Date.now() - perfT0 }, "[perf] SDK loaded");
     if (!sdk) {
       yield { type: "error", message: "Claude Agent SDK not installed" };
       return;
@@ -492,7 +494,9 @@ export class SdkChatProxy implements ChatProxy {
 
     try {
       // Find Claude Code executable path
+      const perfFindStart = Date.now();
       const claudePath = findClaudeCodeExecutable();
+      log.info({ findExeMs: Date.now() - perfFindStart, claudePath }, "[perf] findClaudeCodeExecutable");
 
       // Build query options following WorkAny patterns
       const queryOptions: Record<string, unknown> = {
@@ -594,7 +598,9 @@ export class SdkChatProxy implements ChatProxy {
 
       // Resolve SDK MCP servers from registry by name
       if (mcpServers && mcpServers.length > 0) {
+        const perfMcpStart = Date.now();
         const resolvedServers = resolveSdkMcpServers(sdk, mcpServers);
+        log.info({ mcpResolveMs: Date.now() - perfMcpStart, names: Object.keys(resolvedServers) }, "[perf] resolveSdkMcpServers");
         if (Object.keys(resolvedServers).length > 0) {
           queryOptions.mcpServers = resolvedServers;
           verboseLog('Registered SDK MCP servers', { names: Object.keys(resolvedServers) });
@@ -602,13 +608,25 @@ export class SdkChatProxy implements ChatProxy {
       }
 
       // Execute query
+      const perfQueryStart = Date.now();
+      log.info({ elapsed: perfQueryStart - perfT0 }, "[perf] About to call sdk.query()");
+
       const queryResult = sdk.query({
         prompt,
         options: queryOptions as Parameters<typeof sdk.query>[0]["options"],
       });
 
+      log.info({ sdkQueryCallMs: Date.now() - perfQueryStart }, "[perf] sdk.query() returned (iterator created)");
+
       // Stream messages - yield all SSE messages from each SDK message
+      let perfMsgCount = 0;
+      let perfFirstMsgTime = 0;
       for await (const message of queryResult) {
+        perfMsgCount++;
+        if (perfMsgCount === 1) {
+          perfFirstMsgTime = Date.now() - perfQueryStart;
+          log.info({ firstMsgMs: perfFirstMsgTime, type: (message as Record<string, unknown>).type }, "[perf] First SDK message received");
+        }
         for (const sseMessage of this.convertToSSEMessages(message)) {
           yield sseMessage;
         }

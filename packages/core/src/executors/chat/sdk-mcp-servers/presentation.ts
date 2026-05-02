@@ -1,10 +1,15 @@
 /**
  * Presentation MCP Server
  *
- * Provides overlay drawing tools (arrows, highlights, circles, text, lines)
- * for agent presentation mode. The actual rendering is done on the frontend —
- * tool handlers here validate input and return success.
- * The frontend intercepts tool_use SSE events and dispatches to overlay store.
+ * Provides whiteboard-style overlay tools for agent presentation mode.
+ * The low-level drawing protocol remains `presentation_draw`, while higher-level
+ * semantic tools help agents choose the right presentation pattern more
+ * reliably: spotlighting a region, adding a callout, walking through a flow,
+ * or comparing two regions.
+ *
+ * The actual rendering is done on the frontend. Tool handlers here validate
+ * input and return success; the frontend intercepts tool_use SSE events and
+ * dispatches the corresponding drawing commands to the overlay store.
  */
 
 import { registerSdkMcpServer } from "../sdk-mcp-registry";
@@ -13,11 +18,27 @@ registerSdkMcpServer("presentation", (sdk) => {
   const { createSdkMcpServer, tool } = sdk;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const z = require("zod");
+  type CallToolResult = import("@modelcontextprotocol/sdk/types.js").CallToolResult;
+
+  function ok(message: string): CallToolResult {
+    return { content: [{ type: "text" as const, text: message }] };
+  }
+
+  function error(message: string): CallToolResult {
+    return { content: [{ type: "text" as const, text: message }], isError: true };
+  }
 
   const pointSchema = {
     x: z.number().describe("X coordinate in CSS pixels (0 = left edge)"),
     y: z.number().describe("Y coordinate in CSS pixels (0 = top edge)"),
   };
+
+  const rectSchema = z.object({
+    x: z.number().describe("Left position in CSS pixels"),
+    y: z.number().describe("Top position in CSS pixels"),
+    width: z.number().positive().describe("Width in CSS pixels"),
+    height: z.number().positive().describe("Height in CSS pixels"),
+  });
 
   const colorEnum = z
     .enum([
@@ -30,6 +51,20 @@ registerSdkMcpServer("presentation", (sdk) => {
 
   const sizeEnum = z.enum(["s", "m", "l"]).optional().describe("Shape size");
   const animateFlag = z.boolean().optional().describe("Whether to animate entrance (fade in)");
+  const holdMsSchema = z
+    .number()
+    .min(0)
+    .max(10000)
+    .optional()
+    .describe("Optional pause after the visual appears, in milliseconds (max 10s)");
+  const notePositionSchema = z
+    .object(pointSchema)
+    .optional()
+    .describe("Top-left position for explanatory text. If omitted, the frontend places it near the target.");
+  const spotlightStyleEnum = z
+    .enum(["highlight", "circle"])
+    .optional()
+    .describe("Use highlight for panels/forms and circle for compact targets like icons or buttons");
 
   const arrowCommand = z.object({
     type: z.literal("arrow"),
@@ -43,10 +78,7 @@ registerSdkMcpServer("presentation", (sdk) => {
 
   const highlightCommand = z.object({
     type: z.literal("highlight"),
-    region: z.object({
-      x: z.number(), y: z.number(),
-      width: z.number(), height: z.number(),
-    }),
+    region: rectSchema,
     color: colorEnum,
     animate: animateFlag,
   });
@@ -81,13 +113,75 @@ registerSdkMcpServer("presentation", (sdk) => {
     ms: z.number().min(0).max(10000).describe("Wait ms (max 10s)"),
   });
 
+  const spotlightToolSchema = z.object({
+    target: rectSchema.describe("The UI area to spotlight for the user"),
+    title: z.string().optional().describe("Short heading to display near the target"),
+    description: z.string().optional().describe("Optional one-line explanation for the target"),
+    notePosition: notePositionSchema,
+    style: spotlightStyleEnum,
+    color: colorEnum,
+    holdMs: holdMsSchema,
+    clearBefore: z.boolean().optional().describe("Clear existing annotations before starting this spotlight"),
+    animate: animateFlag,
+  });
+
+  const walkthroughStepSchema = z.object({
+    target: rectSchema.describe("The UI area for this step"),
+    title: z.string().describe("Short step title shown near the target"),
+    description: z.string().optional().describe("Optional one-line explanation for the step"),
+    notePosition: notePositionSchema,
+    style: spotlightStyleEnum,
+    color: colorEnum,
+    holdMs: holdMsSchema,
+    animate: animateFlag,
+  });
+
+  const calloutToolSchema = z.object({
+    target: rectSchema.describe("The UI area being called out"),
+    from: z.object(pointSchema).describe("Where the explanatory text and arrow should start"),
+    label: z.string().describe("Short explanatory label for the callout"),
+    description: z.string().optional().describe("Optional extra explanation shown under the label"),
+    color: colorEnum,
+    holdMs: holdMsSchema,
+    clearBefore: z.boolean().optional().describe("Clear existing annotations before starting this callout"),
+    animate: animateFlag,
+  });
+
+  const walkthroughToolSchema = z.object({
+    steps: z
+      .array(walkthroughStepSchema)
+      .min(1)
+      .max(8)
+      .describe("Ordered walkthrough steps"),
+    clearBefore: z.boolean().optional().describe("Clear existing annotations before the walkthrough starts"),
+    clearBetween: z.boolean().optional().describe("Clear previous step annotations before each next step. Recommended for clean demos."),
+  });
+
+  const compareToolSchema = z.object({
+    left: z.object({
+      target: rectSchema.describe("Left or first region to compare"),
+      label: z.string().describe("Short label for the left region"),
+      color: colorEnum,
+    }),
+    right: z.object({
+      target: rectSchema.describe("Right or second region to compare"),
+      label: z.string().describe("Short label for the right region"),
+      color: colorEnum,
+    }),
+    title: z.string().optional().describe("Optional headline above the comparison"),
+    description: z.string().optional().describe("Optional supporting explanation"),
+    holdMs: holdMsSchema,
+    clearBefore: z.boolean().optional().describe("Clear existing annotations before starting this comparison"),
+    animate: animateFlag,
+  });
+
   return createSdkMcpServer({
     name: "presentation",
-    version: "1.0.0",
+    version: "1.1.0",
     tools: [
       tool(
         "presentation_draw",
-        "在用户屏幕上绘制可视化标注进行演示讲解。支持箭头、高亮框、圆圈、文字、线条。坐标以屏幕 CSS 像素为单位，左上角为 (0,0)。使用前请先通过截图获取屏幕坐标信息。",
+        "低层绘制接口。在用户屏幕上绘制箭头、高亮框、圆圈、文字和线条。适合你已经明确知道每一步绘制细节时使用。坐标以屏幕 CSS 像素为单位，左上角为 (0,0)。使用前请先通过截图获取屏幕坐标信息。",
         {
           commands: z.array(
             z.discriminatedUnion("type", [
@@ -99,22 +193,70 @@ registerSdkMcpServer("presentation", (sdk) => {
         async (args) => {
           const commands = args.commands;
           if (!commands || !Array.isArray(commands) || commands.length === 0) {
-            return { content: [{ type: "text", text: "Error: commands array is empty" }], isError: true };
+            return error("Error: commands array is empty");
           }
-          return { content: [{ type: "text", text: `Queued ${commands.length} presentation command(s).` }] };
+          return ok(`Queued ${commands.length} presentation command(s).`);
+        }
+      ),
+      tool(
+        "presentation_spotlight",
+        "高亮一个界面区域并附加简短说明。适合聚焦讲解单个按钮、卡片、输入框或面板。比手写 draw 命令更容易被稳定调用。",
+        spotlightToolSchema.shape,
+        async (rawArgs) => {
+          const args = rawArgs as { title?: string; description?: string };
+          if (!args.title && !args.description) {
+            return error("Error: provide title or description so the user knows what is being spotlighted.");
+          }
+          return ok("Queued spotlight presentation.");
+        }
+      ),
+      tool(
+        "presentation_callout",
+        "为某个界面区域添加带箭头的说明 callout。适合从空白区域引出解释，再指向目标控件或结果区域。",
+        calloutToolSchema.shape,
+        async (rawArgs) => {
+          const args = rawArgs as { label: string };
+          if (!args.label.trim()) {
+            return error("Error: label must not be empty.");
+          }
+          return ok("Queued callout presentation.");
+        }
+      ),
+      tool(
+        "presentation_walkthrough",
+        "按步骤依次讲解多个界面区域。适合 onboarding、功能流程、表单填写路径、或者让用户跟着你逐步操作。",
+        walkthroughToolSchema.shape,
+        async (rawArgs) => {
+          const args = rawArgs as { steps: unknown[] };
+          if (!args.steps.length) {
+            return error("Error: steps array is empty.");
+          }
+          return ok(`Queued walkthrough with ${args.steps.length} step(s).`);
+        }
+      ),
+      tool(
+        "presentation_compare",
+        "并排比较两个界面区域并添加标签。适合讲解 before/after、左/右面板差异、旧版/新版变化，或两个结果区域的对照。",
+        compareToolSchema.shape,
+        async (rawArgs) => {
+          const args = rawArgs as { left: { label: string }; right: { label: string } };
+          if (!args.left.label.trim() || !args.right.label.trim()) {
+            return error("Error: both comparison labels must be non-empty.");
+          }
+          return ok("Queued comparison presentation.");
         }
       ),
       tool(
         "presentation_clear",
         "清空演示画布上的所有标注。",
         {},
-        async () => ({ content: [{ type: "text", text: "Presentation canvas cleared." }] })
+        async () => ok("Presentation canvas cleared.")
       ),
       tool(
         "presentation_stop",
         "退出演示模式，清空画布并隐藏 overlay。",
         {},
-        async () => ({ content: [{ type: "text", text: "Presentation mode stopped." }] })
+        async () => ok("Presentation mode stopped.")
       ),
     ],
   });
