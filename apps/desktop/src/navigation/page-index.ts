@@ -1,9 +1,12 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type {
+  BreadcrumbStackItem,
   BreadcrumbItemKind,
   VirtualPageIndexNode,
   WorkspaceSection,
 } from "./view-target";
+import { createBreadcrumbItem } from "./breadcrumb-stack";
+import type { DesktopLocation } from "./location";
 import {
   getWorkspaceSectionRoutePath,
   WORKSPACE_SECTION_DESCRIPTORS,
@@ -69,6 +72,50 @@ export interface ResolvePageIndexBranchInput {
     href: string
   ) => void;
   labelGlobalWorkspace?: string;
+}
+
+export function stackToDesktopSegments(
+  stack: BreadcrumbStackItem[] | undefined
+): DesktopBreadcrumbSegment[] {
+  if (!stack || stack.length <= 1) {
+    return [];
+  }
+
+  return stack.slice(1).map((item) => ({
+    id: item.id,
+    label: item.label,
+    href: item.target?.canonicalUrl ?? "#",
+    icon: item.icon,
+    kind: item.kind,
+    meta: item.meta,
+  }));
+}
+
+export function buildFallbackDesktopSegment(input: {
+  id: string;
+  label: string;
+  location: DesktopLocation;
+  kind: BreadcrumbItemKind;
+  icon?: IconData;
+  meta?: DesktopBreadcrumbSegment["meta"];
+}): DesktopBreadcrumbSegment {
+  const item = createBreadcrumbItem({
+    id: input.id,
+    label: input.label,
+    location: input.location,
+    kind: input.kind,
+    icon: input.icon,
+    meta: input.meta,
+  });
+
+  return {
+    id: item.id,
+    label: item.label,
+    href: item.target?.canonicalUrl ?? "#",
+    icon: item.icon,
+    kind: item.kind,
+    meta: item.meta,
+  };
 }
 
 export function createWorkspaceRootNode(

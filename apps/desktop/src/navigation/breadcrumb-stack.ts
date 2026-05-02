@@ -65,6 +65,50 @@ function humanizeSlugSegment(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function getSystemLocationLabel(location: DesktopLocation): string | undefined {
+  switch (location.kind) {
+    case "workspace-section":
+      return getWorkspaceSectionLabel(location.section) || location.section;
+    case "settings":
+      return location.section
+        ? getSettingsSectionLabel(location.section)
+        : getSettingsSectionLabel();
+    case "documents":
+      return "Documents";
+    case "device-pair":
+      return "Devices";
+    case "global-route": {
+      const normalizedPath =
+        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+      return GLOBAL_ROUTE_META[normalizedPath]?.label;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function getSystemLocationIcon(location: DesktopLocation): IconData | undefined {
+  switch (location.kind) {
+    case "workspace-section":
+      return getWorkspaceSectionDescriptor(location.section)?.icon;
+    case "settings":
+      return location.section
+        ? getSettingsSectionIcon(location.section)
+        : { type: "lucide", value: "settings" };
+    case "documents":
+      return { type: "lucide", value: "file-text" };
+    case "device-pair":
+      return { type: "lucide", value: "smartphone" };
+    case "global-route": {
+      const normalizedPath =
+        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+      return GLOBAL_ROUTE_META[normalizedPath]?.icon;
+    }
+    default:
+      return undefined;
+  }
+}
+
 function createWorkspacePagePathItems(
   workspaceId: string,
   pageSlug: string,
@@ -179,6 +223,8 @@ export function createStackForLocation(
   title?: string,
   icon?: IconData
 ): BreadcrumbStackItem[] {
+  const resolvedTitle = getSystemLocationLabel(location) ?? title;
+  const resolvedIcon = getSystemLocationIcon(location) ?? icon;
   const agentSection = getWorkspaceSectionDescriptor("agent");
   const root = createBreadcrumbItem({
     id: `workspace:${"workspaceId" in location ? location.workspaceId : "global"}`,
@@ -203,11 +249,11 @@ export function createStackForLocation(
           id: `${location.workspaceId}:${location.section}`,
           kind: "workspace-section",
           label:
-            title ??
+            resolvedTitle ??
             getWorkspaceSectionLabel(location.section) ??
             location.section,
           icon:
-            icon ??
+            resolvedIcon ??
             getWorkspaceSectionDescriptor(location.section)?.icon,
           meta: {
             workspaceId: location.workspaceId,
@@ -478,8 +524,8 @@ export function createStackForLocation(
               createBreadcrumbItem({
                 id: `settings:${location.section}`,
                 kind: "global-route",
-                label: title ?? getSettingsSectionLabel(location.section),
-                icon: icon ?? getSettingsSectionIcon(location.section),
+                label: resolvedTitle ?? getSettingsSectionLabel(location.section),
+                icon: resolvedIcon ?? getSettingsSectionIcon(location.section),
                 location,
               }),
             ]
@@ -490,7 +536,8 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: "documents",
           kind: "virtual-folder",
-          label: title ?? "Documents",
+          label: resolvedTitle ?? "Documents",
+          icon: resolvedIcon,
           location,
         }),
       ];
@@ -499,7 +546,8 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: "device-pair",
           kind: "virtual-folder",
-          label: title ?? "Devices",
+          label: resolvedTitle ?? "Devices",
+          icon: resolvedIcon,
           location,
         }),
       ];
@@ -510,8 +558,11 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: `global:${location.path}`,
           kind: "global-route",
-          label: title ?? routeMeta?.label ?? normalizedPath.replace(/^\//, ""),
-          icon: icon ?? routeMeta?.icon,
+          label:
+            resolvedTitle ??
+            routeMeta?.label ??
+            normalizedPath.replace(/^\//, ""),
+          icon: resolvedIcon ?? routeMeta?.icon,
           location,
         }),
       ];
