@@ -465,7 +465,7 @@ export function WorkspaceFilesPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
-  const { openPath } = useDesktopRouting();
+  const { openDashboard } = useDesktopRouting();
 
   // Reference to FileBrowser for imperative navigation
   const fileBrowserRef = useRef<FileBrowserRef>(null);
@@ -703,13 +703,7 @@ export function WorkspaceFilesPage() {
           </p>
           <Button
             type="button"
-            onClick={() => openPath("/mcp-services/dashboard", {
-              title: t("nav.dashboard"),
-              icon: {
-                type: "lucide",
-                value: "layout-dashboard",
-              },
-            })}
+            onClick={() => openDashboard()}
           >
             {t("workspace.backToDashboard")}
           </Button>

@@ -48,6 +48,7 @@ export function WorkspaceChatPage() {
     workspace,
     isLoadingWorkspace,
   } = chat;
+  const resolvedWorkspaceId = workspaceId ?? workspace?.id ?? null;
 
   if (isLoadingWorkspace) {
     return (
@@ -142,7 +143,8 @@ export function WorkspaceChatPage() {
             chat.setSelectedSidebarExecutorId(executor.id);
           }}
           onExecutorSettings={(executor) => {
-            openWorkspaceExecutorDetail(workspaceId, executor.id);
+            if (!resolvedWorkspaceId) return;
+            openWorkspaceExecutorDetail(resolvedWorkspaceId, executor.id);
           }}
           onRefreshExecutors={chat.loadExecutors}
           filteredChatListAgents={chat.filteredChatListAgents}
@@ -157,11 +159,12 @@ export function WorkspaceChatPage() {
             chat.setSelectedAgentId(agentId);
           }}
           onAgentSettings={(agentId) => {
+            if (!resolvedWorkspaceId) return;
             if (isExecutorType(agentId)) {
-              openWorkspaceExecutorDetail(workspaceId, agentId);
+              openWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
               return;
             }
-            openWorkspaceAgentDetail(workspaceId, agentId);
+            openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
           }}
           onSetDefaultAgent={chat.setDefaultAgent}
           onDeleteAgent={chat.removeAgent}
@@ -284,11 +287,12 @@ export function WorkspaceChatPage() {
               onOpenSessionFolder={chat.handleOpenSessionFolder}
               onArchiveConversation={chat.handleArchiveConversation}
               onAgentSettings={(agentId) => {
+                if (!resolvedWorkspaceId) return;
                 if (isExecutorType(agentId)) {
-                  openWorkspaceExecutorDetail(workspaceId, agentId);
+                  openWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
                   return;
                 }
-                openWorkspaceAgentDetail(workspaceId, agentId);
+                openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
               }}
             />
           )}
@@ -306,8 +310,9 @@ export function WorkspaceChatPage() {
           onResize={chat.handleRightPanelResize}
           tasks={chat.tasks}
           isTasksLoading={chat.isTasksLoading}
-          onTaskClick={(task) => {
-            openWorkspaceSection(workspaceId, "kanban");
+          onTaskClick={() => {
+            if (!resolvedWorkspaceId) return;
+            openWorkspaceSection(resolvedWorkspaceId, "kanban");
           }}
           highlightedArtifactId={chat.highlightedArtifactId}
           onArtifactSelect={chat.handleArtifactSelect}
@@ -328,10 +333,12 @@ export function WorkspaceChatPage() {
           executorDetail={chat.rightSidebarExecutorDetail}
           workspacePath={workspace.path}
           onAgentSettings={(agentId) => {
-            openWorkspaceAgentDetail(workspaceId, agentId);
+            if (!resolvedWorkspaceId) return;
+            openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
           }}
           onExecutorSettings={(executorId) => {
-            openWorkspaceExecutorDetail(workspaceId, executorId);
+            if (!resolvedWorkspaceId) return;
+            openWorkspaceExecutorDetail(resolvedWorkspaceId, executorId);
           }}
           isAgentDefault={chat.rightSidebarAgentDetail?.id === chat.defaultAgentId}
           agentModels={chat.agentModelsForPanel}

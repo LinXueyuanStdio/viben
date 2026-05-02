@@ -15,7 +15,6 @@ import {
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import type { SettingsSection } from "./types";
 import { SECTIONS, VALID_SECTIONS, easeOutExpo, SETTINGS_SIDEBAR_COLLAPSED_KEY } from "./constants";
-import { getSettingsSectionIcon } from "@/navigation/navigation-meta";
 import { GeneralSection } from "./general-section";
 import { AccountSection } from "./account-section";
 import { ShortcutsSection } from "./shortcuts-section";

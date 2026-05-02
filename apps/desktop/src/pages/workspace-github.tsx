@@ -74,7 +74,7 @@ export function WorkspaceGitHubPage({
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
   const {
     currentStack,
-    openPath,
+    openDashboard,
     openWorkspaceSection,
   } = useDesktopRouting();
 
@@ -162,15 +162,7 @@ export function WorkspaceGitHubPage({
         <p className="text-muted-foreground mb-4">{t("workspace.notFoundDesc")}</p>
         {!embeddedMode && (
           <Button
-            onClick={() =>
-              openPath("/mcp-services/dashboard", {
-                title: t("nav.dashboard", "Dashboard"),
-                icon: {
-                  type: "lucide",
-                  value: "layout-dashboard",
-                },
-              })
-            }
+            onClick={() => openDashboard()}
           >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("workspace.backToDashboard")}

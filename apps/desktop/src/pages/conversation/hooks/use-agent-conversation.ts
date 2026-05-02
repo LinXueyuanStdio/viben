@@ -339,13 +339,17 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // depending on SDK version and MCP server name resolution.
         const toolName = data.name || "";
         if (toolName === "presentation_draw" || toolName === "mcp__presentation__presentation_draw") {
+          console.log("[Presentation] Draw tool intercepted, input:", JSON.stringify(toolInput));
           const store = useOverlayStore.getState();
           if (!store.presentationActive) {
             store.actions.startPresentation();
           }
           const commands = toolInput.commands;
-          if (Array.isArray(commands)) {
+          if (Array.isArray(commands) && commands.length > 0) {
+            console.log("[Presentation] Adding", commands.length, "commands to store");
             store.actions.addPresentationCommands(commands as PresentationCommand[]);
+          } else {
+            console.warn("[Presentation] No commands found in input. Keys:", Object.keys(toolInput));
           }
         } else if (toolName === "presentation_clear" || toolName === "mcp__presentation__presentation_clear") {
           const store = useOverlayStore.getState();
