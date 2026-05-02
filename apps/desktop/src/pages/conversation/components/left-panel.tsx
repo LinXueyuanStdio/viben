@@ -86,9 +86,6 @@ interface LeftPanelProps {
   agentTemplates: AgentResponse[];
   onCreateAgent: (template?: AgentResponse | null) => void;
   onCreateGroupChat: () => void;
-
-  // Navigate
-  navigate: (url: string) => void;
 }
 
 export function LeftPanel({

@@ -235,12 +235,28 @@ export function SubAgentDetailPage() {
           workspace={workspace}
           segments={[
             {
+              id: `workspace:${workspace.id}:executor:${executorType}`,
               label: executorType,
               href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
+              icon: { type: "lucide", value: "terminal" },
+              kind: "workspace-executor",
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
             },
             {
+              id: `workspace:${workspace.id}:subagent:${config.id}`,
               label: config.name,
-              href: "#",
+              href: buildWorkspaceUrl(`/subagent/${config.id}`, effectiveWorkspacePath || undefined, {
+                executor_type: executorType,
+              }),
+              icon: { type: "lucide", value: "bot" },
+              kind: "workspace-agent",
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
             },
           ]}
           showRefresh={false}

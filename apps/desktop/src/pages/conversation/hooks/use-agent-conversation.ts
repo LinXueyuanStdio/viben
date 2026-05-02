@@ -31,6 +31,8 @@ import {
   updateBackgroundTaskStatus,
 } from "@/lib/background-tasks";
 import i18n from "@/i18n";
+import { useOverlayStore } from "@/stores/overlay-store";
+import type { PresentationCommand } from "@/lib/presentation/types";
 
 /**
  * Generate a unique ID
@@ -229,6 +231,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     }
   }, [client]);
 
+
   /**
    * Handle SSE message from /api/agent/run endpoint
    */
@@ -329,6 +332,33 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           timestamp: Date.now(),
         };
         setToolUsages((prev) => [...prev, toolUsage]);
+
+        // --- Presentation tool interception ---
+        // When agent calls presentation tools, dispatch to overlay store.
+        // Tool names may arrive as "presentation_draw" or "mcp__presentation__presentation_draw"
+        // depending on SDK version and MCP server name resolution.
+        const toolName = data.name || "";
+        if (toolName === "presentation_draw" || toolName === "mcp__presentation__presentation_draw") {
+          const store = useOverlayStore.getState();
+          if (!store.presentationActive) {
+            store.actions.startPresentation();
+          }
+          const commands = toolInput.commands;
+          if (Array.isArray(commands)) {
+            store.actions.addPresentationCommands(commands as PresentationCommand[]);
+          }
+        } else if (toolName === "presentation_clear" || toolName === "mcp__presentation__presentation_clear") {
+          const store = useOverlayStore.getState();
+          if (store.presentationActive) {
+            store.actions.clearPresentationCommands();
+            store.actions.addPresentationCommand({ type: "clear" });
+          }
+        } else if (toolName === "presentation_stop" || toolName === "mcp__presentation__presentation_stop") {
+          const store = useOverlayStore.getState();
+          if (store.presentationActive) {
+            store.actions.stopPresentation();
+          }
+        }
         break;
       }
 

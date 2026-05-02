@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isExecutorType, buildWorkspaceUrl } from "@/hooks";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
   RightSidebar,
@@ -14,20 +15,8 @@ import {
 } from "./components";
 import { LeftPanel } from "./components/left-panel";
 import { AgentChatView } from "./components/agent-chat-view";
-import {
-  ExecutorChatHeaderActions,
-  ExecutorChatHeaderCenter,
-  ExecutorChatView,
-} from "./components/executor-chat-view";
-import {
-  GroupChatHeaderActions,
-  GroupChatHeaderCenter,
-  GroupChatView,
-} from "./components/group-chat-view";
-import {
-  ChatHeaderActions,
-  ChatHeaderCenter,
-} from "./components/chat-header";
+import { ExecutorChatView } from "./components/executor-chat-view";
+import { GroupChatView } from "./components/group-chat-view";
 import {
   SearchDialog,
   HistoryDialog,
@@ -47,10 +36,10 @@ import { useWorkspaceChat } from "./hooks/use-workspace-chat";
 export function WorkspaceChatPage() {
   const prefersReducedMotion = useReducedMotion();
   const chat = useWorkspaceChat();
+  const { navigateTo } = usePageTabs();
 
   const {
     workspaceId,
-    navigate,
     t,
     workspace,
     isLoadingWorkspace,
@@ -76,12 +65,6 @@ export function WorkspaceChatPage() {
     .map((m) => `${m.type === "user" ? t("chat.you") : chat.currentAgent?.name || t("chat.defaultAgentName", "Agent")}: ${m.content}`)
     .join("\n\n");
 
-  const showAgentHeader = Boolean(
-    !chat.isGroupChatMode &&
-      !chat.selectedSidebarExecutorId &&
-      chat.selectedConversationId
-  );
-
   const rightSidebarToggle = (
     <Button
       variant="ghost"
@@ -97,18 +80,6 @@ export function WorkspaceChatPage() {
     </Button>
   );
 
-  const agentConversationsForHeader = chat.agentConversations.map((c) => ({
-    id: c.id,
-    name: c.title,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-    messageCount: c.messageCount,
-    isPinned: c.isPinned,
-    isStarred: c.isStarred,
-    lastMessage: c.lastMessage,
-    agentName: chat.agents.find((a) => a.id === c.agentId)?.name,
-  }));
-
   return (
     <motion.div
       initial={{ opacity: prefersReducedMotion ? 1 : 0 }}
@@ -119,101 +90,21 @@ export function WorkspaceChatPage() {
       {/* Header */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{ label: t("chat.title"), href: `/workspace/${workspaceId}/chat` }]}
+        segments={[{
+          id: `workspace:${workspaceId}:chat`,
+          label: t("workspace.chat", "Chat"),
+          href: `/workspace/${workspaceId}/chat`,
+          icon: { type: "lucide", value: "message-square" },
+          kind: "workspace-section",
+          meta: {
+            workspaceId,
+            section: "chat",
+            routePath: "chat",
+          },
+        }]}
         showRefresh={false}
         showRemove={false}
-        centerContent={
-          chat.isGroupChatMode && chat.currentGroupChat ? (
-            <GroupChatHeaderCenter
-              currentGroupChat={chat.currentGroupChat}
-              groupChatMembers={chat.groupChatMembers}
-              groupChatConnected={chat.groupChatConnected}
-            />
-          ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
-            <ExecutorChatHeaderCenter
-              selectedSidebarExecutor={chat.selectedSidebarExecutor}
-              executorSessionsForSelector={chat.executorSessionsForSelector}
-              selectedExecutorSessionId={chat.selectedExecutorSessionId}
-              gatewayConnected={chat.gatewayConnected}
-              onSelectSession={(sessionId) => chat.setSelectedExecutorSessionId(sessionId)}
-              onCheckGateway={chat.checkGatewayConnection}
-              onExecutorAvatarClick={() => {
-                chat.setRightSidebarExecutorDetail({
-                  id: chat.selectedSidebarExecutor!.id,
-                  name: chat.selectedSidebarExecutor!.name,
-                  type: chat.selectedSidebarExecutor!.icon_type || "unknown",
-                  config_path: (chat.selectedSidebarExecutor!.metadata?.config_path as string) || undefined,
-                });
-                chat.setDetailAgentId(null);
-                chat.setIsSidebarOpen(true);
-              }}
-            />
-          ) : showAgentHeader ? (
-            <ChatHeaderCenter
-              currentConversation={chat.currentConversation}
-              currentAgent={chat.currentAgent}
-              agentConversations={agentConversationsForHeader}
-              gatewayConnected={chat.gatewayConnected}
-              onSelectSession={(sessionId) => chat.setSelectedConversationId(sessionId)}
-              onCreateConversation={chat.handleCreateConversation}
-              onRenameSession={chat.handleRenameSession}
-              onDeleteSession={chat.handleDeleteSession}
-              onPinSession={chat.handlePinSession}
-              onArchiveSession={chat.handleArchiveSession}
-              onStarSession={chat.handleStarSession}
-              onDuplicateSession={chat.handleDuplicateSession}
-              onCheckGateway={chat.checkGatewayConnection}
-              onAgentAvatarClick={() => {
-                const agentId = chat.selectedAgentId || chat.currentChatListAgent?.id;
-                if (agentId) {
-                  chat.setDetailAgentId(agentId);
-                  chat.setRightSidebarExecutorDetail(null);
-                  chat.setIsSidebarOpen(true);
-                }
-              }}
-            />
-          ) : undefined
-        }
-        rightContent={
-          <>
-            {chat.isGroupChatMode && chat.currentGroupChat ? (
-              <GroupChatHeaderActions
-                currentGroupChat={chat.currentGroupChat}
-                currentGroupChatSession={chat.currentGroupChatSession}
-                groupChatSessions={chat.groupChatSessions}
-                groupChatViewMode={chat.groupChatViewMode}
-                groupChatViewAgentId={chat.groupChatViewAgentId}
-                sessionAgents={chat.sessionAgents}
-                groupChatMembers={chat.groupChatMembers}
-                onSelectSession={chat.handleSelectGroupChatSession}
-                onCreateSession={chat.handleCreateGroupChatSession}
-                onSwitchView={chat.handleSwitchGroupChatView}
-                onOpenMembersDialog={() => chat.setIsMembersDialogOpen(true)}
-              />
-            ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
-              <ExecutorChatHeaderActions
-                isLoadingExecutorSessions={chat.isLoadingExecutorSessions}
-                onRefreshSessions={chat.refreshExecutorSessions}
-                onOpenSearchDialog={() => chat.setIsSearchDialogOpen(true)}
-              />
-            ) : showAgentHeader ? (
-              <ChatHeaderActions
-                isLoadingSessions={chat.isLoadingSessions}
-                onRefreshSessions={chat.refreshAgentSessions}
-                onOpenSearchDialog={() => chat.setIsSearchDialogOpen(true)}
-                onOpenHistoryDialog={() => chat.setIsHistoryDialogOpen(true)}
-                onOpenExportDialog={() => chat.setIsExportDialogOpen(true)}
-                onOpenGroupDialog={() => chat.setIsGroupDialogOpen(true)}
-                onOpenShareDialog={() => chat.setIsShareDialogOpen(true)}
-                onOpenClearDialog={() => chat.setIsClearDialogOpen(true)}
-                onNavigateToAgentSettings={chat.handleNavigateToAgentSettings}
-                onOpenSessionFolder={chat.handleOpenSessionFolder}
-                onArchiveConversation={chat.handleArchiveConversation}
-              />
-            ) : null}
-            {rightSidebarToggle}
-          </>
-        }
+        rightContent={rightSidebarToggle}
       />
 
       {/* Main content */}
@@ -248,7 +139,12 @@ export function WorkspaceChatPage() {
           }}
           onExecutorSettings={(executor) => {
             const url = buildWorkspaceUrl(`/executor/${executor.id}`, workspace.path);
-            navigate(url);
+            navigateTo(url, {
+              type: "workspace",
+              slug: executor.id,
+              name: executor.id,
+              icon: { type: "lucide", value: "terminal" },
+            });
           }}
           onRefreshExecutors={chat.loadExecutors}
           filteredChatListAgents={chat.filteredChatListAgents}
@@ -265,8 +161,21 @@ export function WorkspaceChatPage() {
           onAgentSettings={(agentId) => {
             if (workspace.path) {
               const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              if (isExecutorType(agentId)) navigate(`/executor/${agentId}${params}`);
-              else navigate(`/agent/${agentId}${params}`);
+              if (isExecutorType(agentId)) {
+                navigateTo(`/executor/${agentId}${params}`, {
+                  type: "workspace",
+                  slug: agentId,
+                  name: agentId,
+                  icon: { type: "lucide", value: "terminal" },
+                });
+              } else {
+                navigateTo(`/agent/${agentId}${params}`, {
+                  type: "workspace",
+                  slug: agentId,
+                  name: agentId,
+                  icon: { type: "lucide", value: "bot" },
+                });
+              }
             }
           }}
           onSetDefaultAgent={chat.setDefaultAgent}
@@ -274,7 +183,6 @@ export function WorkspaceChatPage() {
           agentTemplates={chat.agentTemplates}
           onCreateAgent={chat.openCreateAgentDialog}
           onCreateGroupChat={() => chat.setIsCreateGroupDialogOpen(true)}
-          navigate={navigate}
         />
 
         {/* Middle: Chat Area */}
@@ -303,7 +211,6 @@ export function WorkspaceChatPage() {
               onInputChange={chat.setGroupChatInput}
               onSendTyping={chat.sendTyping}
               onOpenMembersDialog={() => chat.setIsMembersDialogOpen(true)}
-              headerless
             />
           ) : chat.selectedSidebarExecutorId && chat.selectedSidebarExecutor ? (
             <ExecutorChatView
@@ -332,7 +239,6 @@ export function WorkspaceChatPage() {
                 chat.setDetailAgentId(null);
                 chat.setIsSidebarOpen(true);
               }}
-              headerless
             />
           ) : (
             <AgentChatView
@@ -395,11 +301,23 @@ export function WorkspaceChatPage() {
               onAgentSettings={(agentId) => {
                 if (workspace.path) {
                   const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-                  if (isExecutorType(agentId)) navigate(`/executor/${agentId}${params}`);
-                  else navigate(`/agent/${agentId}${params}`);
+                  if (isExecutorType(agentId)) {
+                    navigateTo(`/executor/${agentId}${params}`, {
+                      type: "workspace",
+                      slug: agentId,
+                      name: agentId,
+                      icon: { type: "lucide", value: "terminal" },
+                    });
+                  } else {
+                    navigateTo(`/agent/${agentId}${params}`, {
+                      type: "workspace",
+                      slug: agentId,
+                      name: agentId,
+                      icon: { type: "lucide", value: "bot" },
+                    });
+                  }
                 }
               }}
-              headerless
             />
           )}
         </div>
@@ -417,7 +335,15 @@ export function WorkspaceChatPage() {
           tasks={chat.tasks}
           isTasksLoading={chat.isTasksLoading}
           onTaskClick={(task) => {
-            if (workspace.path) navigate(`/workspace/${workspaceId}/kanban?task_id=${task.id}`);
+            if (workspace.path) {
+              navigateTo(`/workspace/${workspaceId}/kanban?task_id=${task.id}`, {
+                type: "workspace",
+                slug: "kanban",
+                workspaceId,
+                name: t("workspace.kanban", "Kanban"),
+                icon: { type: "lucide", value: "layout-dashboard" },
+              });
+            }
           }}
           highlightedArtifactId={chat.highlightedArtifactId}
           onArtifactSelect={chat.handleArtifactSelect}
@@ -440,13 +366,23 @@ export function WorkspaceChatPage() {
           onAgentSettings={(agentId) => {
             if (workspace.path) {
               const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              navigate(`/agent/${agentId}${params}`);
+              navigateTo(`/agent/${agentId}${params}`, {
+                type: "workspace",
+                slug: agentId,
+                name: agentId,
+                icon: { type: "lucide", value: "bot" },
+              });
             }
           }}
           onExecutorSettings={(executorId) => {
             if (workspace.path) {
               const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              navigate(`/executor/${executorId}${params}`);
+              navigateTo(`/executor/${executorId}${params}`, {
+                type: "workspace",
+                slug: executorId,
+                name: executorId,
+                icon: { type: "lucide", value: "terminal" },
+              });
             }
           }}
           isAgentDefault={chat.rightSidebarAgentDetail?.id === chat.defaultAgentId}
