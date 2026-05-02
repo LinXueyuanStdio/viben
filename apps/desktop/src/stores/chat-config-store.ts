@@ -32,6 +32,9 @@ interface ChatConfigState {
   // Sandbox configuration (session-level)
   sandboxConfig: SandboxConfig;
 
+  // Steering prompt (persistent instructions prepended to agent's appendPrompt)
+  steeringPrompt: string;
+
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -49,6 +52,9 @@ interface ChatConfigState {
   setSandboxEnabled: (enabled: boolean) => void;
   setSandboxProvider: (provider: SandboxProviderType | undefined) => void;
   setSandboxConfig: (config: Partial<SandboxConfig>) => void;
+
+  // Actions - Steering
+  setSteeringPrompt: (prompt: string) => void;
 
   // Actions - Loading state
   setLoading: (loading: boolean) => void;
@@ -76,6 +82,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
         enabled: false,
         provider: undefined,
       },
+      steeringPrompt: "",
       isLoading: false,
       error: null,
 
