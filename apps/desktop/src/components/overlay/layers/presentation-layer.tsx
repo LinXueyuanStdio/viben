@@ -14,7 +14,10 @@ export function PresentationLayer() {
   const editorRef = useRef<Editor | null>(null)
   const processedCountRef = useRef(0)
 
-  // Process new commands as they arrive
+  // Process new commands as they arrive.
+  // Guard against the race where commands arrive before Tldraw mounts:
+  // if editorRef is still null, we skip WITHOUT advancing processedCountRef
+  // so the commands will be retried when onMount fires.
   useEffect(() => {
     const editor = editorRef.current
     if (!editor || !presentationActive) return
@@ -22,7 +25,6 @@ export function PresentationLayer() {
     const newCommands = commands.slice(processedCountRef.current)
     if (newCommands.length === 0) return
 
-    // Execute new commands sequentially with delays
     let cancelled = false
     const run = async () => {
       for (const cmd of newCommands) {
@@ -43,7 +45,7 @@ export function PresentationLayer() {
     }
   }, [commands, presentationActive])
 
-  // Reset processed count when presentation starts/stops
+  // Reset processed count when presentation stops
   useEffect(() => {
     if (!presentationActive) {
       processedCountRef.current = 0
@@ -54,10 +56,30 @@ export function PresentationLayer() {
     editorRef.current = editor
     // Lock camera to prevent scroll/zoom
     editor.setCameraOptions({ isLocked: true })
+
+    // Flush any commands that arrived before mount.
+    // Read directly from store to avoid stale closure.
+    const store = useOverlayStore.getState()
+    const pending = store.presentationCommands.slice(processedCountRef.current)
+    if (pending.length > 0) {
+      processedCountRef.current = store.presentationCommands.length
+      let i = 0
+      const runPending = async () => {
+        for (const cmd of pending) {
+          if (cmd.type === "wait") {
+            await new Promise((r) => setTimeout(r, cmd.ms))
+          } else {
+            executeCommand(editor, cmd)
+            await new Promise((r) => setTimeout(r, 50))
+          }
+          i++
+        }
+      }
+      runPending()
+    }
   }, [])
 
   const handleExit = useCallback(() => {
-    // Clear tldraw canvas
     const editor = editorRef.current
     if (editor) {
       const allShapes = editor.getCurrentPageShapes()
@@ -77,15 +99,27 @@ export function PresentationLayer() {
         position: "fixed",
         inset: 0,
         zIndex: DOMZIndex.PresentationLayer,
-        pointerEvents: "none",
+        // Block interaction with underlying window.
+        // ChatPopup sits above this z-index so it remains interactive.
+        pointerEvents: "auto",
       }}
     >
-      {/* tldraw canvas — transparent background, no UI, no interaction */}
+      {/* Semi-transparent backdrop to dim background */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.15)",
+          pointerEvents: "auto",
+        }}
+      />
+
+      {/* tldraw canvas — transparent background, no UI */}
       <div
         className="presentation-tldraw-container"
         style={{
-          width: "100%",
-          height: "100%",
+          position: "absolute",
+          inset: 0,
           pointerEvents: "none",
         }}
       >
@@ -104,6 +138,7 @@ export function PresentationLayer() {
           top: 16,
           right: 16,
           pointerEvents: "auto",
+          zIndex: 1,
           display: "flex",
           alignItems: "center",
           gap: 6,

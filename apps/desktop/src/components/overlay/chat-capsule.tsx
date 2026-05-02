@@ -122,7 +122,8 @@ export function ChatCapsule({
     }
 
     if (lastMsg.type === 'tool_use') {
-      const input = JSON.stringify(lastMsg.input || {}).slice(0, 60);
+      const inputStr = JSON.stringify(lastMsg.input || {});
+      const input = inputStr.length > 200 ? inputStr.slice(0, 200) + '\u2026' : inputStr;
       return { type: 'tool' as const, content: `${lastMsg.name}(${input})` };
     }
 
@@ -309,6 +310,7 @@ export function ChatCapsule({
               simpleMode
               maxMessageWidth="100%"
               className="min-h-0"
+              toolExpandedInline
             />
           )}
         </div>
