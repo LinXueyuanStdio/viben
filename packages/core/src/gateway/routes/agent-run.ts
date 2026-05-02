@@ -471,10 +471,11 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     });
 
     // Load agent config: prefer agentConfigPath, fallback to inline config
+    const perfConfigStart = Date.now();
     let agentConfig: AgentConfigPayload | null = null;
     if (agentConfigPath) {
-      log.debug("config", "loading_from_path", { agentConfigPath });
       agentConfig = await loadAgentConfigFromPath(agentConfigPath);
+      log.info("perf", "config_load_from_path", { loadMs: Date.now() - perfConfigStart, agentConfigPath });
       if (!agentConfig) {
         log.warn("config", "path_load_failed", { agentConfigPath, fallbackToInline: !!inlineConfig });
         agentConfig = inlineConfig || null;
@@ -592,11 +593,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       // Persist user message to UI messages file BEFORE streaming
       // This ensures user messages appear when loading the session
       if (persistSessionId && persistTaskId && prompt) {
-        log.debug("persistence", "saving_user_message", {
-          persistSessionId,
-          persistTaskId,
-          agentDir,
-        });
+        const perfPersistUserStart = Date.now();
         try {
           const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
           // Pass agentDir for workspace-level agents to find the correct session directory
@@ -607,11 +604,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             type: "user",
             content: prompt,
           }, agentDir);
-          log.debug("persistence", "user_message_saved");
+          log.info("perf", "user_message_persist", { persistMs: Date.now() - perfPersistUserStart });
         } catch (e) {
           // Non-fatal: log but continue
           log.warn("persistence", "user_message_save_failed", {
             error: e instanceof Error ? e.message : String(e),
+            persistMs: Date.now() - perfPersistUserStart,
           });
         }
       }
@@ -685,16 +683,30 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       const pendingToolNames = new Map<string, string>();
 
       // Stream messages to client
+      let perfStreamStart = Date.now();
+      let perfFirstMessageTime = 0;
+      let perfTotalPersistMs = 0;
+      let perfTotalSendMs = 0;
+      let perfTotalTelemetryMs = 0;
+
       for await (const message of stream) {
         messageCount++;
+        const perfMsgStart = Date.now();
+
+        if (messageCount === 1) {
+          perfFirstMessageTime = perfMsgStart - perfStreamStart;
+          log.info("perf", "first_message_from_sdk", { waitMs: perfFirstMessageTime, type: message.type });
+        }
 
         // Record every SSE event to the stream span for telemetry
         // This allows viewing all events in the trace tree
+        const perfTelStart = Date.now();
         streamSpan.addEvent(`sse.${message.type}`, {
           "sse.message_index": messageCount,
           "sse.type": message.type,
           "sse.payload": JSON.stringify(message).slice(0, 4000), // Truncate large payloads
         });
+        perfTotalTelemetryMs += Date.now() - perfTelStart;
 
         // Track message statistics and log by type
         if (message.type === "text" && "content" in message) {
@@ -831,9 +843,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         }
         // Note: plan message type is defined but not currently emitted by SdkChatProxy.
 
+        const perfSendStart = Date.now();
         sendSSE(reply, message);
+        perfTotalSendMs += Date.now() - perfSendStart;
 
         // Persist message to file system if sessionId and taskId provided
+        const perfPersistStart = Date.now();
         if (persistSessionId && persistTaskId) {
           const persistAgentId = resolveAgentId(agentConfigPath, agentConfig);
           const timestamp = new Date().toISOString();
@@ -910,6 +925,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           }
         }
 
+        perfTotalPersistMs += Date.now() - perfPersistStart;
+
+        // Log per-message overhead for slow messages (>50ms overhead)
+        const perfMsgOverhead = Date.now() - perfMsgStart;
+        if (perfMsgOverhead > 50) {
+          log.warn("perf", "slow_message_processing", {
+            msgIndex: messageCount,
+            type: message.type,
+            overheadMs: perfMsgOverhead,
+          });
+        }
+
         // Check if session was cancelled (via abort controller)
         if (agentService.isSessionAborted(sessionId)) {
           log.warn("stream", "cancelled_by_user", { messageCount });
@@ -943,6 +970,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       pendingToolSpans.clear();
 
       // Log stream completion summary
+      const perfStreamTotal = Date.now() - perfStreamStart;
       log.info("stream", "completed", {
         messageCount,
         textLength,
@@ -951,6 +979,21 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         errorCount,
         toolNames: [...new Set(toolNames)], // unique tool names
         elapsed: log.elapsed(),
+      });
+
+      // Performance summary
+      log.info("perf", "stream_summary", {
+        totalStreamMs: perfStreamTotal,
+        firstMessageMs: perfFirstMessageTime,
+        totalSendMs: perfTotalSendMs,
+        totalPersistMs: perfTotalPersistMs,
+        totalTelemetryMs: perfTotalTelemetryMs,
+        messageCount,
+        avgPersistPerMsg: messageCount > 0 ? Math.round(perfTotalPersistMs / messageCount) : 0,
+        avgSendPerMsg: messageCount > 0 ? Math.round(perfTotalSendMs / messageCount) : 0,
+        pctPersist: perfStreamTotal > 0 ? Math.round(perfTotalPersistMs / perfStreamTotal * 100) : 0,
+        pctSend: perfStreamTotal > 0 ? Math.round(perfTotalSendMs / perfStreamTotal * 100) : 0,
+        pctTelemetry: perfStreamTotal > 0 ? Math.round(perfTotalTelemetryMs / perfStreamTotal * 100) : 0,
       });
 
       // Combine all text parts for response body
