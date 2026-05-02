@@ -254,7 +254,6 @@ pub fn run() {
                 commands::screenshot::list_screenshot_windows,
                 commands::screenshot::take_window_screenshot,
                 commands::screenshot::start_region_screenshot,
-                commands::screenshot::get_screenshot_image,
                 commands::screenshot::log_screenshot_trace,
                 commands::screenshot::confirm_region_screenshot,
                 commands::screenshot::close_screenshot_overlay,

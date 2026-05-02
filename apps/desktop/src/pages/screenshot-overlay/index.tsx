@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { readFile } from '@tauri-apps/plugin-fs';
 import { Stage, Layer, Rect, Ellipse, Arrow, Line, Text } from 'react-konva';
 import './screenshot-overlay.css';
 
@@ -38,8 +39,10 @@ export function ScreenshotOverlayPage() {
   const imageId = searchParams.get('id') || '';
   const scaleFactor = parseFloat(searchParams.get('scale') || '1');
   const traceId = searchParams.get('trace') || 'unknown';
+  const imagePath = searchParams.get('path') || '';
+  const pixelWidth = parseInt(searchParams.get('pixelWidth') || '0', 10);
+  const pixelHeight = parseInt(searchParams.get('pixelHeight') || '0', 10);
 
-  const [imageUrl, setImageUrl] = useState<string>('');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const hasShownWindowRef = useRef(false);
@@ -66,7 +69,7 @@ export function ScreenshotOverlayPage() {
   const stageRef = useRef<any>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const logTrace = useCallback(async (stage: string, details: Record<string, unknown> = {}) => {
     try {
@@ -85,38 +88,88 @@ export function ScreenshotOverlayPage() {
     void logTrace('overlay_page_mounted', {
       imageId,
       scaleFactor,
+      imagePath,
+      pixelWidth,
+      pixelHeight,
       href: window.location.href,
     });
-  }, [imageId, logTrace, scaleFactor]);
+  }, [imageId, imagePath, logTrace, pixelHeight, pixelWidth, scaleFactor]);
 
-  // Load screenshot image via IPC command — returns base64 data URL from memory store.
-  // This bypasses all file/protocol/scope issues and is 100% reliable.
+  // Load raw screenshot pixels from the temp file written by Rust and paint them
+  // into a fullscreen canvas. This avoids startup-time base64/JPEG work.
   useEffect(() => {
-    if (!imageId) return;
+    if (!imageId || !imagePath || !pixelWidth || !pixelHeight) return;
     setImageLoaded(false);
     setLoadError(null);
     hasShownWindowRef.current = false;
     const startedAt = performance.now();
-    void logTrace('get_screenshot_image_requested', { imageId });
-    invoke<string>('get_screenshot_image', { imageId, traceId })
-      .then((dataUrl) => {
-        void logTrace('get_screenshot_image_resolved', {
+    void logTrace('raw_screenshot_file_read_requested', {
+      imageId,
+      imagePath,
+      pixelWidth,
+      pixelHeight,
+    });
+    readFile(imagePath)
+      .then((bytes) => {
+        const expectedLength = pixelWidth * pixelHeight * 4;
+        if (bytes.length !== expectedLength) {
+          throw new Error(`Unexpected raw screenshot byte length: ${bytes.length}, expected ${expectedLength}`);
+        }
+
+        const backgroundCanvas = backgroundCanvasRef.current;
+        if (!backgroundCanvas) {
+          throw new Error('Background canvas is not ready');
+        }
+
+        const backgroundCtx = backgroundCanvas.getContext('2d');
+        if (!backgroundCtx) {
+          throw new Error('Failed to get background canvas context');
+        }
+
+        backgroundCanvas.width = window.innerWidth;
+        backgroundCanvas.height = window.innerHeight;
+
+        const bitmapCanvas = document.createElement('canvas');
+        bitmapCanvas.width = pixelWidth;
+        bitmapCanvas.height = pixelHeight;
+        const bitmapCtx = bitmapCanvas.getContext('2d');
+        if (!bitmapCtx) {
+          throw new Error('Failed to get bitmap canvas context');
+        }
+
+        const imageData = new ImageData(
+          new Uint8ClampedArray(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+          pixelWidth,
+          pixelHeight,
+        );
+        bitmapCtx.putImageData(imageData, 0, 0);
+        backgroundCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
+        backgroundCtx.drawImage(bitmapCanvas, 0, 0, backgroundCanvas.width, backgroundCanvas.height);
+
+        void logTrace('raw_screenshot_file_read_completed', {
           imageId,
           elapsedMs: Math.round(performance.now() - startedAt),
-          dataUrlLength: dataUrl.length,
+          bytesLen: bytes.length,
         });
-        setImageUrl(dataUrl);
+        void logTrace('screenshot_canvas_painted', {
+          imageId,
+          displayWidth: backgroundCanvas.width,
+          displayHeight: backgroundCanvas.height,
+          pixelWidth,
+          pixelHeight,
+        });
+        setImageLoaded(true);
       })
       .catch((err) => {
-        console.error('[Screenshot] Failed to get image data:', err);
-        void logTrace('get_screenshot_image_failed', {
+        console.error('[Screenshot] Failed to load raw screenshot file:', err);
+        void logTrace('raw_screenshot_file_read_failed', {
           imageId,
           elapsedMs: Math.round(performance.now() - startedAt),
           error: err instanceof Error ? err.message : String(err),
         });
         setLoadError(err instanceof Error ? err.message : String(err));
       });
-  }, [imageId, logTrace]);
+  }, [imageId, imagePath, logTrace, pixelHeight, pixelWidth]);
 
   useEffect(() => {
     if (!imageLoaded || hasShownWindowRef.current) return;
@@ -224,9 +277,8 @@ export function ScreenshotOverlayPage() {
       ctx.strokeRect(x, y, width, height);
 
       // Size label
-      const img = imgRef.current;
-      const imgScaleX = img ? img.naturalWidth / window.innerWidth : scaleFactor;
-      const imgScaleY = img ? img.naturalHeight / window.innerHeight : scaleFactor;
+      const imgScaleX = pixelWidth > 0 ? pixelWidth / window.innerWidth : scaleFactor;
+      const imgScaleY = pixelHeight > 0 ? pixelHeight / window.innerHeight : scaleFactor;
       const w = Math.round(width * imgScaleX);
       const h = Math.round(height * imgScaleY);
       const label = `${w} × ${h}`;
@@ -243,7 +295,7 @@ export function ScreenshotOverlayPage() {
       ctx.fillStyle = '#409eff';
       ctx.fillText(label, labelX, labelY);
     }
-  }, [region, imageLoaded, scaleFactor]);
+  }, [pixelHeight, pixelWidth, region, imageLoaded, scaleFactor]);
 
   // Drag state for moving the selected region
   const [isDragging, setIsDragging] = useState(false);
@@ -479,29 +531,10 @@ export function ScreenshotOverlayPage() {
 
   return (
     <div className="screenshot-overlay-container">
-      {/* Background image */}
-      {imageUrl && (
-        <img
-          ref={imgRef}
-          src={imageUrl}
-          className="screenshot-bg-image"
-          draggable={false}
-          onLoad={() => {
-            void logTrace('screenshot_image_dom_loaded', {
-              naturalWidth: imgRef.current?.naturalWidth ?? null,
-              naturalHeight: imgRef.current?.naturalHeight ?? null,
-            });
-            setImageLoaded(true);
-          }}
-          onError={(e) => {
-            console.error('[Screenshot] Image failed to load:', e);
-            void logTrace('screenshot_image_dom_failed', {
-              error: 'img onError fired',
-            });
-            setLoadError('Failed to load screenshot image');
-          }}
-        />
-      )}
+      <canvas
+        ref={backgroundCanvasRef}
+        className="screenshot-bg-image"
+      />
 
       {!imageLoaded && (
         <div className="screenshot-overlay-status">

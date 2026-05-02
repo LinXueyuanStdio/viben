@@ -6,14 +6,13 @@
 //! - Window enumeration and per-window capture
 //! - Region screenshot via overlay window (with annotation)
 //!
-//! Region capture keeps the full-screen screenshot in an in-memory store.
-//! The overlay window only receives a lightweight preview image so the
-//! selection UI can appear quickly, while the final crop still uses the
-//! original full-resolution pixels.
+//! Region capture writes the full-resolution RGBA pixels to a temp file.
+//! The overlay window reads that file directly, so startup avoids eager image
+//! encoding while the final crop still uses the original pixels.
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use std::collections::HashMap;
-use std::fs::{create_dir_all, OpenOptions};
+use std::fs::{create_dir_all, remove_file, write, OpenOptions};
 use std::io::Cursor;
 use std::io::Write;
 use std::path::PathBuf;
@@ -22,17 +21,14 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use xcap::{Monitor, Window};
 
-const OVERLAY_PREVIEW_JPEG_QUALITY: u8 = 80;
-
 struct StoredScreenshot {
     original_width: u32,
     original_height: u32,
-    original_rgba: Vec<u8>,
-    preview_jpeg: Vec<u8>,
+    raw_rgba_path: PathBuf,
 }
 
 /// In-memory store for the current region-screenshot session.
-/// Key: image ID (uuid), Value: full-resolution pixels + lightweight preview JPEG.
+/// Key: image ID (uuid), Value: full-resolution pixel metadata.
 pub struct ScreenshotStore {
     images: Mutex<HashMap<String, StoredScreenshot>>,
 }
@@ -313,72 +309,27 @@ async fn do_region_screenshot<R: Runtime>(
 
     let original_width = image.width();
     let original_height = image.height();
-    let preview_width = monitor.width().max(1);
-    let preview_height = monitor.height().max(1);
-
-    let preview_resize_started = Instant::now();
-    let preview_image = if original_width == preview_width && original_height == preview_height {
-        let _ = write_screenshot_trace(
-            trace_id,
-            "rust",
-            "overlay_preview_resize_skipped",
-            serde_json::json!({
-                "preview_width": preview_width,
-                "preview_height": preview_height,
-                "total_elapsed_ms": request_started.elapsed().as_millis(),
-            }),
-        );
-        image.clone()
-    } else {
-        let preview = image::imageops::resize(
-            &image,
-            preview_width,
-            preview_height,
-            image::imageops::FilterType::Triangle,
-        );
-        let _ = write_screenshot_trace(
-            trace_id,
-            "rust",
-            "overlay_preview_resized",
-            serde_json::json!({
-                "elapsed_ms": preview_resize_started.elapsed().as_millis(),
-                "original_width": original_width,
-                "original_height": original_height,
-                "preview_width": preview_width,
-                "preview_height": preview_height,
-                "total_elapsed_ms": request_started.elapsed().as_millis(),
-            }),
-        );
-        preview
-    };
-
-    let preview_encode_started = Instant::now();
-    let mut preview_jpeg_buf = Cursor::new(Vec::new());
-    let preview_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
-        &mut preview_jpeg_buf,
-        OVERLAY_PREVIEW_JPEG_QUALITY,
-    );
-    image::DynamicImage::ImageRgba8(preview_image)
-        .write_with_encoder(preview_encoder)
-        .map_err(|e| format!("Failed to encode overlay preview JPEG: {}", e))?;
-    let preview_jpeg = preview_jpeg_buf.into_inner();
+    let original_rgba = image.into_raw();
+    let raw_file_path = std::env::temp_dir().join(format!(
+        "viben-screenshot-{}.rgba",
+        uuid::Uuid::new_v4()
+    ));
+    let write_started = Instant::now();
+    write(&raw_file_path, &original_rgba)
+        .map_err(|e| format!("Failed to write raw screenshot file: {}", e))?;
     let _ = write_screenshot_trace(
         trace_id,
         "rust",
-        "overlay_preview_jpeg_encoded",
+        "raw_screenshot_file_written",
         serde_json::json!({
-            "elapsed_ms": preview_encode_started.elapsed().as_millis(),
-            "jpeg_bytes_len": preview_jpeg.len(),
-            "jpeg_quality": OVERLAY_PREVIEW_JPEG_QUALITY,
-            "preview_width": preview_width,
-            "preview_height": preview_height,
+            "path": raw_file_path,
+            "bytes_len": original_rgba.len(),
+            "elapsed_ms": write_started.elapsed().as_millis(),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
     );
 
-    let original_rgba = image.into_raw();
-
-    // Store full-resolution pixels in memory — frontend only fetches the preview data URL.
+    // Store metadata for later crop/cleanup.
     let image_id = uuid::Uuid::new_v4().to_string();
     let store = app.state::<ScreenshotStore>();
     {
@@ -389,8 +340,7 @@ async fn do_region_screenshot<R: Runtime>(
             StoredScreenshot {
                 original_width,
                 original_height,
-                original_rgba,
-                preview_jpeg,
+                raw_rgba_path: raw_file_path.clone(),
             },
         );
     }
@@ -417,12 +367,15 @@ async fn do_region_screenshot<R: Runtime>(
     let monitor_y = monitor.y();
     let scale_factor = monitor.scale_factor();
 
-    // Overlay window URL — only pass the image ID and monitor scale.
+    // Overlay window URL — pass screenshot metadata and temp file path.
     let url = format!(
-        "/screenshot-overlay.html?id={}&scale={}&trace={}",
+        "/screenshot-overlay.html?id={}&scale={}&trace={}&path={}&pixelWidth={}&pixelHeight={}",
         urlencoding::encode(&image_id),
         scale_factor,
         urlencoding::encode(trace_id),
+        urlencoding::encode(&raw_file_path.to_string_lossy()),
+        original_width,
+        original_height,
     );
     let window_url = url.clone();
 
@@ -478,34 +431,6 @@ async fn do_region_screenshot<R: Runtime>(
     Ok(image_id)
 }
 
-/// Get the screenshot image data as base64 data URL from memory store.
-/// Called by the overlay frontend to display the captured screenshot.
-#[tauri::command]
-pub async fn get_screenshot_image<R: Runtime>(
-    app: AppHandle<R>,
-    image_id: String,
-    trace_id: Option<String>,
-) -> Result<String, String> {
-    let started = Instant::now();
-    let store = app.state::<ScreenshotStore>();
-    let images = store.images.lock().unwrap();
-    let stored = images
-        .get(&image_id)
-        .ok_or_else(|| "Screenshot not found in memory store".to_string())?;
-    let b64 = BASE64_STANDARD.encode(&stored.preview_jpeg);
-    let _ = write_screenshot_trace(
-        trace_id.as_deref().unwrap_or("unknown"),
-        "rust",
-        "get_screenshot_image_completed",
-        serde_json::json!({
-            "image_id": image_id,
-            "bytes_len": stored.preview_jpeg.len(),
-            "elapsed_ms": started.elapsed().as_millis(),
-        }),
-    );
-    Ok(format!("data:image/jpeg;base64,{}", b64))
-}
-
 #[tauri::command]
 pub async fn log_screenshot_trace(
     trace_id: String,
@@ -539,10 +464,12 @@ pub async fn confirm_region_screenshot<R: Runtime>(
             .ok_or_else(|| "Screenshot image not found in store".to_string())?
     };
 
+    let raw_rgba = std::fs::read(&stored.raw_rgba_path)
+        .map_err(|e| format!("Failed to read stored screenshot file: {}", e))?;
     let full_img = image::RgbaImage::from_raw(
         stored.original_width,
         stored.original_height,
-        stored.original_rgba,
+        raw_rgba,
     )
     .ok_or_else(|| "Failed to reconstruct stored screenshot".to_string())?;
     let full_img = image::DynamicImage::ImageRgba8(full_img);
@@ -619,6 +546,7 @@ pub async fn confirm_region_screenshot<R: Runtime>(
     if let Some(window) = app.get_webview_window("screenshot-overlay") {
         let _ = window.close();
     }
+    let _ = remove_file(&stored.raw_rgba_path);
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
@@ -643,7 +571,9 @@ pub async fn close_screenshot_overlay<R: Runtime>(
     if let Some(ref id) = image_id {
         let store = app.state::<ScreenshotStore>();
         let mut images = store.images.lock().unwrap();
-        images.remove(id);
+        if let Some(stored) = images.remove(id) {
+            let _ = remove_file(stored.raw_rgba_path);
+        }
     }
 
     // Only emit screenshot-cancelled if NOT confirmed (user pressed ESC/cancel).
