@@ -418,7 +418,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
   };
 
   return (
-    <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 theme-transition">
+    <div className="rounded-xl border bg-card p-4 theme-transition">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-start gap-3">
           <div
@@ -836,7 +836,7 @@ function PluginCard({
   }, [plugin.categories, categories]);
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden transition-all duration-300 hover:border-primary/30 hover:shadow-lg theme-transition">
+    <div className="rounded-xl border bg-card overflow-hidden theme-transition">
       {/* Header */}
       <button
         onClick={onToggle}

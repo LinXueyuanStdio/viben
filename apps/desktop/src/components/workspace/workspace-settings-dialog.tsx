@@ -310,7 +310,7 @@ function GeneralSection({ workspace }: SectionProps) {
       </div>
 
       {/* Basic Info */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("workspaceSettings.basicInfo")} />
 
         <SettingsItem
@@ -338,7 +338,7 @@ function GeneralSection({ workspace }: SectionProps) {
       </div>
 
       {/* Path */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("workspaceSettings.location")} />
 
         <div className="space-y-3">
@@ -397,7 +397,7 @@ function ExecutorsSection({ workspace }: SectionProps) {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
@@ -453,7 +453,7 @@ function AgentsSection({ workspace }: SectionProps) {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
@@ -512,7 +512,7 @@ function McpSection(_props: SectionProps) {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="text-center py-8">
           <Server className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-sm text-muted-foreground">
@@ -542,7 +542,7 @@ function SkillsSection(_props: SectionProps) {
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="text-center py-8">
           <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
           <p className="text-sm text-muted-foreground">
@@ -578,7 +578,7 @@ function GitHubSettingsSection({ workspace }: SectionProps) {
       </div>
 
       {/* Authentication Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <GitHubAuth
           status={auth.status}
           loading={auth.loading}
@@ -591,7 +591,7 @@ function GitHubSettingsSection({ workspace }: SectionProps) {
 
       {/* Repository Card (only shown when authenticated) */}
       {isAuthenticated && (
-        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-4">
           <GitHubRepository
             repository={repo.repository}
             detectedRepository={repo.detectedRepository}
@@ -641,7 +641,7 @@ function AboutSection({ workspace }: SectionProps) {
       </div>
 
       {/* Workspace Info */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-4 mb-4">
           <div className="p-3 rounded-xl bg-primary/10">
             <FolderOpen className="h-6 w-6 text-primary" />
@@ -658,7 +658,7 @@ function AboutSection({ workspace }: SectionProps) {
       </div>
 
       {/* Timestamps */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("workspaceSettings.timestamps")} />
 
         <SettingsItem
@@ -681,7 +681,7 @@ function AboutSection({ workspace }: SectionProps) {
       </div>
 
       {/* Workspace ID */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("workspaceSettings.technical")} />
 
         <SettingsItem

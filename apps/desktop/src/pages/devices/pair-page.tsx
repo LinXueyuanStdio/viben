@@ -99,7 +99,7 @@ function DeviceCard({ device, onViewDetails, onDisconnect }: DeviceCardProps) {
 
   return (
     <Card className={cn(
-      "transition-all duration-200 hover:shadow-md",
+      "transition-colors duration-200",
       isOnline ? "border-green-500/30" : "border-border"
     )}>
       <CardContent className="p-4">

@@ -169,7 +169,7 @@ export function DashboardPage() {
         </motion.div>
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" className="h-full">
-            <Link to="/mcp-services/data-sources" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+            <Link to="/mcp-services/data-sources" className="block h-full -m-6 rounded-lg p-6 transition-colors duration-200 hover:bg-muted/50">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
@@ -185,7 +185,7 @@ export function DashboardPage() {
         </motion.div>
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" className="h-full">
-            <Link to="/mcp-services/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+            <Link to="/mcp-services/search-service" className="block h-full -m-6 rounded-lg p-6 transition-colors duration-200 hover:bg-muted/50">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
@@ -786,7 +786,7 @@ function QuickActionCard({ title, description, linkTo, count }: QuickActionCardP
   return (
     <Link
       to={linkTo}
-      className="flex items-center justify-between rounded-lg border bg-card p-4 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md theme-transition flex-1"
+      className="flex flex-1 items-center justify-between rounded-lg border bg-card p-4 transition-colors duration-200 theme-transition hover:bg-muted/50"
     >
       <div>
         <h3 className="font-semibold">{title}</h3>

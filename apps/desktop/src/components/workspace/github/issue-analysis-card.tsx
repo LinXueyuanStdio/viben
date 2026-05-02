@@ -80,7 +80,7 @@ export function IssueAnalysisCard({ analysis }: IssueAnalysisCardProps) {
       </div>
 
       {/* Summary */}
-      <div className="rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-lg border border-border bg-card p-4">
         <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
           <Target className="h-4 w-4" />
           {t("workspaceSettings.github.analysis.summary", "Summary")}
@@ -109,7 +109,7 @@ export function IssueAnalysisCard({ analysis }: IssueAnalysisCardProps) {
 
       {/* Affected Areas */}
       {analysis.affectedAreas.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-lg border border-border bg-card p-4">
           <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <Folder className="h-4 w-4" />
             {t("workspaceSettings.github.analysis.affectedAreas", "Affected Areas")}
@@ -126,7 +126,7 @@ export function IssueAnalysisCard({ analysis }: IssueAnalysisCardProps) {
 
       {/* Suggested Labels */}
       {analysis.suggestedLabels.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-lg border border-border bg-card p-4">
           <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <Tag className="h-4 w-4" />
             {t("workspaceSettings.github.analysis.suggestedLabels", "Suggested Labels")}
@@ -143,7 +143,7 @@ export function IssueAnalysisCard({ analysis }: IssueAnalysisCardProps) {
 
       {/* Estimated Files */}
       {analysis.estimatedFiles.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-lg border border-border bg-card p-4">
           <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
             <FileText className="h-4 w-4" />
             {t("workspaceSettings.github.analysis.estimatedFiles", "Estimated Files")}
@@ -211,7 +211,7 @@ interface AnalysisSectionProps {
 
 function AnalysisSection({ icon: Icon, title, items, variant = "bullet" }: AnalysisSectionProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-primary/30">
+    <div className="rounded-lg border border-border bg-card p-4">
       <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
         <Icon className="h-4 w-4" />
         {title}

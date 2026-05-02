@@ -94,7 +94,7 @@ export function AboutPage() {
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           {t("about.systemStatus")}
         </h2>
-        <div className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-4 space-y-3">
           {/* Python Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ export function AboutPage() {
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           {t("about.updates")}
         </h2>
-        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-4">
           {/* Error state */}
           {error && (
             <div className="mb-3 p-2 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center justify-between">
@@ -270,7 +270,7 @@ export function AboutPage() {
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           {t("about.author")}
         </h2>
-        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
@@ -315,7 +315,7 @@ function LinkButton({ icon: Icon, label, href, onClick }: LinkButtonProps) {
   return (
     <button
       onClick={() => onClick(href)}
-      className="flex items-center justify-between rounded-xl border bg-card p-3 hover:bg-muted hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 w-full"
+      className="flex items-center justify-between rounded-xl border bg-card p-3 hover:bg-muted transition-colors duration-200 w-full"
     >
       <div className="flex items-center gap-3">
         <Icon className="h-4 w-4 text-muted-foreground" />

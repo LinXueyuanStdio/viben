@@ -46,7 +46,7 @@ export function GitHubSection({ workspace }: GitHubSectionProps) {
       </div>
 
       {/* Authentication Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <GitHubAuth
           status={auth.status}
           loading={auth.loading}
@@ -59,7 +59,7 @@ export function GitHubSection({ workspace }: GitHubSectionProps) {
 
       {/* Repository Card (only shown when authenticated) */}
       {isAuthenticated && (
-        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-4">
           <GitHubRepository
             repository={repo.repository}
             detectedRepository={repo.detectedRepository}
