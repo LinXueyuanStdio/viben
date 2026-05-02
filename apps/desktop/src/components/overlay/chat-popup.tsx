@@ -788,6 +788,10 @@ export function ChatPopupLayer(): ReactElement {
     cancel();
   }, [cancel]);
 
+  const handleDismissCapsule = useCallback(() => {
+    setCapsuleVisible(false);
+  }, []);
+
   const handleSendBackground = useCallback(async (content: string) => {
     try {
       const baseUrl = await getGatewayUrl();
@@ -822,6 +826,7 @@ export function ChatPopupLayer(): ReactElement {
         phase={phase}
         lastUserQuery={lastUserQuery}
         onCancel={handleCancel}
+        onDismiss={handleDismissCapsule}
       />
       <ChatPopup
         isStreaming={isStreaming}

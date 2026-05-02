@@ -10,6 +10,7 @@ import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapte
 import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useVoiceConfigInit } from "@/hooks/use-voice-config-init";
+import { useDesktopDeepLink } from "@/hooks/use-desktop-deep-link";
 import { useAppStore } from "@/stores";
 import {
   GlobalBreadcrumbShell,
@@ -44,6 +45,9 @@ export function AppLayout() {
 
   // Load voice configuration from disk so sidebar can display wake word
   useVoiceConfigInit();
+
+  // Initialize desktop deep link listener
+  useDesktopDeepLink();
 
   // Setup status detection - updates whenever browseMcpInfo changes
   // This ensures status is updated when user installs browse-mcp

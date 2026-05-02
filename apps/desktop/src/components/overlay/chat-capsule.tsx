@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ChevronLeft, Square } from 'lucide-react';
+import { X, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -63,6 +63,7 @@ export interface ChatCapsuleProps {
   phase: AgentPhase;
   lastUserQuery: string;
   onCancel?: () => void;
+  onDismiss?: () => void;
 }
 
 // ============================================================================
@@ -76,10 +77,12 @@ export function ChatCapsule({
   phase,
   lastUserQuery,
   onCancel,
+  onDismiss,
 }: ChatCapsuleProps): ReactElement | null {
   const [expanded, setExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const msgListRef = useRef<HTMLDivElement>(null);
+  const capsuleRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   // Derive capsule mode from phase
@@ -144,6 +147,24 @@ export function ChatCapsule({
     setExpanded(prev => !prev);
   }, []);
 
+  // Click outside to dismiss
+  useEffect(() => {
+    if (!visible || !onDismiss) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      if (capsuleRef.current && !capsuleRef.current.contains(e.target as Node)) {
+        onDismiss();
+      }
+    };
+    // Delay registration to avoid immediate dismissal from the triggering click
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleMouseDown);
+    }, 50);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [visible, onDismiss]);
+
   if (!visible) return null;
 
   const isThinking = mode === 'thinking';
@@ -186,6 +207,7 @@ export function ChatCapsule({
 
   const capsule = (
     <div
+      ref={capsuleRef}
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-fit pointer-events-auto"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -230,19 +252,20 @@ export function ChatCapsule({
             </button>
           )}
 
-          {/* Expand button */}
-          <button
-            type="button"
-            className={cn(
-              'w-6 h-6 rounded-full bg-muted hover:bg-accent',
-              'flex items-center justify-center shrink-0',
-              'transition-[background,transform] duration-[350ms] ease-[cubic-bezier(0.4,0,0.2,1)]',
-              expanded && '-rotate-90',
-            )}
-            onClick={(e) => { e.stopPropagation(); handleToggleExpand(); }}
-          >
-            <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
+          {/* Dismiss button */}
+          {onDismiss && (
+            <button
+              type="button"
+              className={cn(
+                'w-6 h-6 rounded-full bg-muted hover:bg-accent',
+                'flex items-center justify-center shrink-0',
+                'transition-colors duration-200',
+              )}
+              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+            >
+              <X className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
         </div>
 
         {/* Body (collapsed view: streaming content or tool info) */}

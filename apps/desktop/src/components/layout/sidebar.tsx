@@ -6,7 +6,6 @@ import {
   Upload,
   PackageSearch,
   BarChart3,
-  FileText,
   Activity,
   MessageSquare,
   LayoutDashboard,
@@ -20,7 +19,6 @@ import {
   ExternalLink,
   Lightbulb,
   Home,
-  Smartphone,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
@@ -52,13 +50,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { WakeWordTaskButton } from "./wake-word-task-button";
+import { SidebarBottomDrawer } from "./sidebar-bottom-drawer";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { AddWorkspaceModal } from "@/components/workspace";
 import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
@@ -68,13 +66,14 @@ import { _useCreateTask } from "@/hooks/use-kanban";
 import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
 import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
 import { PageSection } from "@/pages/apps/components/page-section";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useUiStore } from "@/stores";
 import type { IconData } from "@/components/ui/icon-picker";
+import { normalizeWorkspaceSection } from "@/navigation/navigation-meta";
 
 interface NavItem {
   titleKey: string;
@@ -119,7 +118,7 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { openWorkspaceView, openGlobalView } = usePageTabs();
+  const { openWorkspaceSection, openWorkspaceHome, openPath } = useDesktopRouting();
 
   const {
     workspaces,
@@ -185,24 +184,27 @@ export function Sidebar() {
 
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
-    // Navigate to chat and update current tab
-    openWorkspaceView(workspaceId, "chat", t("workspace.chat"), { type: "lucide", value: "message-square" });
+    openWorkspaceSection(workspaceId, "chat");
   };
 
   // Handle workspace nav item click - updates current tab
   const handleWorkspaceNavClick = useCallback(
-    (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => {
-      openWorkspaceView(workspaceId, viewPath, viewName, icon);
+    (workspaceId: string, viewPath: string, _viewName: string, _icon: IconData) => {
+      openWorkspaceSection(workspaceId, normalizeWorkspaceSection(viewPath));
     },
-    [openWorkspaceView]
+    [openWorkspaceSection]
   );
 
   // Handle global nav item click - updates current tab
   const handleGlobalNavClick = useCallback(
     (href: string, name: string, icon: IconData) => {
-      openGlobalView(href, name, icon);
+      openPath(href, {
+        title: name,
+        icon,
+        type: href.startsWith("/settings") ? "settings" : "workspace",
+      });
     },
-    [openGlobalView]
+    [openPath]
   );
 
   const handleConfigureWorkspace = (workspaceId: string) => {
@@ -227,9 +229,12 @@ export function Sidebar() {
       toast.success(t("workspace.deleteSuccess"));
       // If deleting active workspace, navigate to home
       if (workspaceToDelete.id === activeWorkspaceId) {
-        openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
-          type: "lucide",
-          value: "layout-dashboard",
+        openPath("/mcp-services/dashboard", {
+          title: t("nav.dashboard"),
+          icon: {
+            type: "lucide",
+            value: "layout-dashboard",
+          },
         });
       }
     } catch (error) {
@@ -261,12 +266,7 @@ export function Sidebar() {
       toast.success(t("sidebar.taskCreated"));
       // Navigate to kanban board to see the new task
       if (activeWorkspaceId) {
-        openWorkspaceView(
-          activeWorkspaceId,
-          "kanban",
-          t("workspace.kanban", "Task Board"),
-          { type: "lucide", value: "layout-dashboard" }
-        );
+        openWorkspaceSection(activeWorkspaceId, "kanban");
       }
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -472,8 +472,7 @@ export function Sidebar() {
                           size="icon"
                           className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                           onClick={() => {
-                            // Navigate to workspace root page (WorkspaceDetailPage)
-                            openWorkspaceView(activeWorkspaceId, "", t("sidebar.workspaceHome"), { type: "lucide", value: "home" });
+                            openWorkspaceHome(activeWorkspaceId);
                           }}
                         >
                           <Home className="h-3.5 w-3.5" />
@@ -517,66 +516,17 @@ export function Sidebar() {
           )}
         </ScrollArea>
 
-        {/* Bottom Navigation & New Task */}
-        {collapsed ? (
-          // Collapsed: all items use grid centering
-          <div className="pb-4 flex flex-col gap-1">
-            <div className="grid place-items-center w-full py-2">
-              <Separator className="w-10 bg-sidebar-border" />
-            </div>
-            <div className="grid place-items-center w-full">
-              <GatewayStatusIndicator collapsed={collapsed} />
-            </div>
-            <NavItemComponent
-              item={{ titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            <NavItemComponent
-              item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            <NavItemComponent
-              item={{ titleKey: "nav.settings", href: "/settings/general", icon: Settings }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            {/* Wake Word + New Task Button */}
+        {/* Bottom: Drawer + New Task */}
+        <div className="pb-2 flex flex-col gap-0.5">
+          <SidebarBottomDrawer collapsed={collapsed} />
+          <div className={collapsed ? undefined : "px-2"}>
             <WakeWordTaskButton
-              collapsed
+              collapsed={collapsed}
               onCreateTask={openChatPopup}
               disabled={!activeWorkspace}
             />
           </div>
-        ) : (
-          // Expanded: full layout
-          <div className="pb-4 px-2">
-            <Separator className="mb-4 bg-sidebar-border" />
-            <GatewayStatusIndicator collapsed={collapsed} />
-            <NavItemComponent
-              item={{ titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            <NavItemComponent
-              item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            <NavItemComponent
-              item={{ titleKey: "nav.settings", href: "/settings/general", icon: Settings }}
-              collapsed={collapsed}
-              onNavigate={handleGlobalNavClick}
-            />
-            {/* Wake Word + New Task Button */}
-            <WakeWordTaskButton
-              collapsed={false}
-              onCreateTask={openChatPopup}
-              disabled={!activeWorkspace}
-            />
-          </div>
-        )}
+        </div>
 
         {/* Create Task Dialog */}
         <CreateTaskDialog

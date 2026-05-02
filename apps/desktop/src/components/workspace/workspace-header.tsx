@@ -1,5 +1,4 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { RefreshCw, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,9 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { DesktopBreadcrumbBar } from "@/components/navigation/desktop-breadcrumb-bar";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import {
-  useNavigationShellSlots,
+  useDesktopRouting,
+  useDesktopRoutingHeaderSync,
+} from "@/hooks/use-desktop-routing";
+import {
   useOptionalNavigationShell,
 } from "@/components/navigation";
 import { cn } from "@/lib/utils";
@@ -48,9 +49,9 @@ export function WorkspaceHeader({
   rightContent,
 }: WorkspaceHeaderProps) {
   const { t } = useTranslation();
-  const { openGlobalView } = usePageTabs();
+  const routing = useDesktopRouting();
+  const { openRoute } = routing;
   const navigationShell = useOptionalNavigationShell();
-  const navigationShellSlots = useNavigationShellSlots();
   const ownerId = useId();
   const latestHeaderRef = useRef<{
     workspace: Workspace;
@@ -68,10 +69,7 @@ export function WorkspaceHeader({
     setIsDeleting(true);
     try {
       await onRemove();
-      openGlobalView("/mcp-services/dashboard", t("nav.dashboard"), {
-        type: "lucide",
-        value: "layout-dashboard",
-      });
+      openRoute({ kind: "global-route", path: "/mcp-services/dashboard" });
     } catch {
       // Error handled in hook
     } finally {
@@ -156,7 +154,7 @@ export function WorkspaceHeader({
       isRefreshing,
       onRefresh,
       onRemove,
-      openGlobalView,
+      openRoute,
       rightContent,
       showRefresh,
       showRemove,
@@ -167,6 +165,12 @@ export function WorkspaceHeader({
 
   const shouldRenderRightSlot = Boolean(
     rightContent || showRefresh || (showRemove && !isGlobal && onRemove)
+  );
+
+  useDesktopRoutingHeaderSync(
+    routing,
+    navigationShell ? centerContent ?? null : null,
+    navigationShell && shouldRenderRightSlot ? actionSlot : null
   );
 
   useEffect(() => {
@@ -200,16 +204,7 @@ export function WorkspaceHeader({
   }, [navigationShell, ownerId]);
 
   if (navigationShell) {
-    return (
-      <>
-        {centerContent && navigationShellSlots?.centerHost
-          ? createPortal(centerContent, navigationShellSlots.centerHost)
-          : null}
-        {shouldRenderRightSlot && navigationShellSlots?.rightHost
-          ? createPortal(actionSlot, navigationShellSlots.rightHost)
-          : null}
-      </>
-    );
+    return null;
   }
 
   return (
