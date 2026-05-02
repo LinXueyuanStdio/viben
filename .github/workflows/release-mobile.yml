@@ -260,6 +260,18 @@ jobs:
           mv tauri.conf.tmp.json tauri.conf.json
           echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
 
+      - name: Set iOS development team
+        run: |
+          cd apps/desktop/src-tauri
+          # Use APPLE_DEVELOPMENT_TEAM secret or a placeholder for unsigned builds
+          TEAM_ID="${{ secrets.APPLE_DEVELOPMENT_TEAM }}"
+          if [ -z "$TEAM_ID" ]; then
+            TEAM_ID="PLACEHOLDER"
+          fi
+          jq --arg t "$TEAM_ID" '.bundle.iOS.developmentTeam = $t' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Set development team to: $TEAM_ID"
+
       - name: Initialize iOS project
         working-directory: apps/desktop
         run: pnpm tauri ios init
