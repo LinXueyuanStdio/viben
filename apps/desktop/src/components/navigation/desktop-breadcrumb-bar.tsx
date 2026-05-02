@@ -228,7 +228,7 @@ export function DesktopBreadcrumbBar({
   return (
     <header
       className={cn(
-        "grid h-14 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 border-b bg-background px-4",
+        "grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b bg-background px-4",
         className
       )}
     >
@@ -253,14 +253,14 @@ export function DesktopBreadcrumbBar({
         </nav>
       </div>
       {centerSlot ? (
-        <div className="flex min-w-0 items-center justify-center">
+        <div className="flex min-w-0 items-center justify-center justify-self-center">
           {centerSlot}
         </div>
       ) : (
         <div />
       )}
       {rightSlot ? (
-        <div className="flex shrink-0 items-center gap-2">{rightSlot}</div>
+        <div className="flex shrink-0 items-center justify-self-end gap-2">{rightSlot}</div>
       ) : (
         <div />
       )}

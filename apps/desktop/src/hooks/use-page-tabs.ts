@@ -15,6 +15,7 @@ import {
 import {
   getSettingsSectionIcon,
   getSettingsSectionLabel,
+  getWorkspaceSectionLabel,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
 import type {
@@ -71,7 +72,7 @@ function inferTabName(location: DesktopLocation, fallback?: string): string {
     case "workspace-home":
       return location.workspaceId;
     case "workspace-section":
-      return location.section;
+      return getWorkspaceSectionLabel(location.section) || location.section;
     case "workspace-agent-detail":
       return location.agentId;
     case "workspace-executor-detail":

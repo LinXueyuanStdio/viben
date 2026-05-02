@@ -6,6 +6,7 @@ import {
   getSettingsSectionIcon,
   getSettingsSectionLabel,
   getWorkspaceSectionDescriptor,
+  getWorkspaceSectionLabel,
 } from "./navigation-meta";
 
 const DEFAULT_ICONS: Record<string, BreadcrumbStackItem["icon"]> = {
@@ -203,7 +204,7 @@ export function createStackForLocation(
           kind: "workspace-section",
           label:
             title ??
-            getWorkspaceSectionDescriptor(location.section)?.fallbackLabel ??
+            getWorkspaceSectionLabel(location.section) ??
             location.section,
           icon:
             icon ??
@@ -220,7 +221,7 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: `${location.workspaceId}:agent`,
           kind: "workspace-section",
-          label: agentSection?.fallbackLabel ?? "Agents",
+          label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
           icon: agentSection?.icon,
           meta: { workspaceId: location.workspaceId },
           location: {
@@ -247,7 +248,7 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: `${location.workspaceId}:agent`,
           kind: "workspace-section",
-          label: agentSection?.fallbackLabel ?? "Agents",
+          label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
           icon: agentSection?.icon,
           meta: { workspaceId: location.workspaceId },
           location: {
@@ -468,7 +469,7 @@ export function createStackForLocation(
         createBreadcrumbItem({
           id: "settings",
           kind: "virtual-folder",
-          label: "Settings",
+          label: getSettingsSectionLabel(),
           icon: { type: "lucide", value: "settings" },
           location: { kind: "settings" },
         }),

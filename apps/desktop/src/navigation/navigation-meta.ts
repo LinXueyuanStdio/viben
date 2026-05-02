@@ -1,4 +1,5 @@
 import type { IconData } from "@/components/ui/icon-picker";
+import i18n from "@/i18n";
 import type { VirtualPageIndexNode, WorkspaceSection } from "./view-target";
 
 export type SettingsSection =
@@ -285,7 +286,12 @@ export function isSettingsSection(value: string): value is SettingsSection {
 }
 
 export function getSettingsSectionLabel(section?: string): string {
-  return getSettingsSectionDescriptor(section)?.fallbackLabel ?? "Settings";
+  const descriptor = getSettingsSectionDescriptor(section);
+  if (!descriptor) {
+    return i18n.t("settings.title", "Settings");
+  }
+
+  return i18n.t(descriptor.titleKey, descriptor.fallbackLabel);
 }
 
 export function getSettingsSectionIcon(
@@ -297,4 +303,13 @@ export function getSettingsSectionIcon(
       value: "settings",
     }
   );
+}
+
+export function getWorkspaceSectionLabel(section?: WorkspaceSection): string {
+  const descriptor = getWorkspaceSectionDescriptor(section);
+  if (!descriptor) {
+    return "";
+  }
+
+  return i18n.t(descriptor.titleKey, descriptor.fallbackLabel);
 }
