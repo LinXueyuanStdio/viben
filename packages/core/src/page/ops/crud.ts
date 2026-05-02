@@ -415,6 +415,10 @@ export async function duplicatePage(
     };
   }
 
+  // Read the original page name BEFORE copying
+  const originalPage = await getPageBySlug(workspace_path, slug);
+  const originalName = originalPage?.name ?? slug;
+
   // Generate a unique slug for the copy
   let newSlug = `${slug}-copy`;
   let counter = 2;
@@ -429,18 +433,18 @@ export async function duplicatePage(
   const { cpSync } = await import("node:fs");
   cpSync(sourceDir, targetDir, { recursive: true });
 
-  // Update the name in SKILL.md frontmatter to indicate it's a copy
+  // Update the name in the COPY's SKILL.md to indicate it's a duplicate.
+  // Use a targeted regex replacement instead of gray-matter.stringify to avoid
+  // reformatting the entire YAML (which could corrupt the original on APFS clones).
   const skillPath = join(targetDir, SKILL_FILE);
   if (existsSync(skillPath)) {
-    const content = readFileSync(skillPath, "utf-8");
-    const matter = (await import("gray-matter")).default;
-    const { data, content: body } = matter(content);
-
-    if (data.name) {
-      data.name = `${data.name} (Copy)`;
-    }
-
-    const updated = matter.stringify(body, data);
+    const raw = readFileSync(skillPath, "utf-8");
+    const newName = `${originalName} (Copy)`;
+    // Replace the name field in YAML frontmatter (handles both quoted and unquoted)
+    const updated = raw.replace(
+      /^(name:\s*)(["']?)(.+?)\2\s*$/m,
+      `$1"${newName}"`
+    );
     writeFileSync(skillPath, updated, "utf-8");
   }
 
