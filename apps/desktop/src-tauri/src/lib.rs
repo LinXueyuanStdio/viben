@@ -173,7 +173,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_window_state::Builder::new()
-                .with_denylist(&["tray-popup"])
+                .with_denylist(&["tray-popup", "screenshot-overlay"])
                 .build(),
         )
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -213,31 +213,6 @@ pub fn run() {
         builder = builder
             .manage(GatewayState::default())
             .manage(ScreenshotStore::default())
-            .register_uri_scheme_protocol("viben-screenshot", |ctx, request| {
-                // Serve screenshot images from in-memory store.
-                // URL format: viben-screenshot://localhost/{image-id}
-                let path = request.uri().path();
-                let image_id = path.trim_start_matches('/');
-
-                let store = ctx.app_handle().state::<ScreenshotStore>();
-                let images = store.images.lock().unwrap();
-
-                if let Some(data) = images.get(image_id) {
-                    tauri::http::Response::builder()
-                        .status(200)
-                        .header("Content-Type", "image/jpeg")
-                        .header("Content-Length", data.len())
-                        .header("Access-Control-Allow-Origin", "*")
-                        .body(data.clone())
-                        .unwrap()
-                } else {
-                    tauri::http::Response::builder()
-                        .status(404)
-                        .header("Content-Type", "text/plain")
-                        .body(b"Image not found".to_vec())
-                        .unwrap()
-                }
-            })
             .invoke_handler(tauri::generate_handler![
                 // Tray commands (native system tray)
                 commands::tray::update_tray_status,
@@ -279,6 +254,7 @@ pub fn run() {
                 commands::screenshot::list_screenshot_windows,
                 commands::screenshot::take_window_screenshot,
                 commands::screenshot::start_region_screenshot,
+                commands::screenshot::get_screenshot_image,
                 commands::screenshot::confirm_region_screenshot,
                 commands::screenshot::close_screenshot_overlay,
                 // Window commands (multi-window support)

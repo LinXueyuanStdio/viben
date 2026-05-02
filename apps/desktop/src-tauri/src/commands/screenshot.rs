@@ -215,23 +215,22 @@ async fn do_region_screenshot<R: Runtime>(
         .capture_image()
         .map_err(|e| format!("Failed to capture monitor: {}", e))?;
 
-    // Encode to JPEG in memory — no file I/O needed.
-    // JPEG encode is ~30-50ms; the image is served via custom protocol `viben-screenshot://`.
+    // Encode to JPEG in memory only — frontend fetches via IPC command (no file/protocol issues).
     let dynamic_img = image::DynamicImage::ImageRgba8(image);
     let mut jpeg_buf = Cursor::new(Vec::new());
     let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buf, 92);
     dynamic_img
         .write_with_encoder(encoder)
         .map_err(|e| format!("Failed to encode JPEG: {}", e))?;
+    let jpeg_bytes = jpeg_buf.into_inner();
 
-    // Store in the shared ScreenshotStore
+    // Store in memory — frontend calls get_screenshot_image to retrieve as base64 data URL
     let image_id = uuid::Uuid::new_v4().to_string();
     let store = app.state::<ScreenshotStore>();
     {
         let mut images = store.images.lock().unwrap();
-        // Clear any previous images to avoid memory bloat
         images.clear();
-        images.insert(image_id.clone(), jpeg_buf.into_inner());
+        images.insert(image_id.clone(), jpeg_bytes);
     }
 
     // Get monitor dimensions for overlay window sizing.
@@ -245,9 +244,9 @@ async fn do_region_screenshot<R: Runtime>(
     // Also pass image dimensions so frontend knows the actual pixel size
     let img_width = dynamic_img.width();
 
-    // Overlay window URL — image served via viben-screenshot://localhost/{id}
+    // Overlay window URL — only pass image ID (frontend fetches data via IPC)
     let url = format!(
-        "/screenshot-overlay?image={}&scale={}&imgw={}",
+        "/screenshot-overlay?id={}&scale={}&imgw={}",
         urlencoding::encode(&image_id),
         scale_factor,
         img_width
@@ -261,8 +260,7 @@ async fn do_region_screenshot<R: Runtime>(
     }
 
     // Create overlay window covering the full screen.
-    // - transparent(true): webview bg is transparent, avoids white flash before CSS loads
-    // - visible(false): window hidden until frontend image loaded, then shows via JS
+    // CSS sets body background to #000, so the brief load time shows black (not white).
     // On macOS: do NOT use .maximized(true) — it respects safe area (excludes menu bar)
     let _overlay_window = WebviewWindowBuilder::new(
         app,
@@ -273,14 +271,29 @@ async fn do_region_screenshot<R: Runtime>(
     .inner_size(monitor_width as f64, monitor_height as f64)
     .position(monitor_x as f64, monitor_y as f64)
     .decorations(false)
-    .transparent(true)
     .always_on_top(true)
     .skip_taskbar(true)
-    .visible(false)
+    .focused(true)
     .build()
     .map_err(|e| format!("Failed to create overlay window: {}", e))?;
 
     Ok(image_id)
+}
+
+/// Get the screenshot image data as base64 data URL from memory store.
+/// Called by the overlay frontend to display the captured screenshot.
+#[tauri::command]
+pub async fn get_screenshot_image<R: Runtime>(
+    app: AppHandle<R>,
+    image_id: String,
+) -> Result<String, String> {
+    let store = app.state::<ScreenshotStore>();
+    let images = store.images.lock().unwrap();
+    let bytes = images
+        .get(&image_id)
+        .ok_or_else(|| "Screenshot not found in memory store".to_string())?;
+    let b64 = BASE64_STANDARD.encode(bytes);
+    Ok(format!("data:image/jpeg;base64,{}", b64))
 }
 
 /// Confirm region screenshot: crop the stored image in Rust and emit result to main window.
@@ -409,14 +422,13 @@ pub async fn close_screenshot_overlay<R: Runtime>(
     }
 
     // Clean up in-memory screenshot data
-    if let Some(id) = image_id {
+    if let Some(ref id) = image_id {
         let store = app.state::<ScreenshotStore>();
         let mut images = store.images.lock().unwrap();
-        images.remove(&id);
+        images.remove(id);
     }
 
     // Only emit screenshot-cancelled if NOT confirmed (user pressed ESC/cancel).
-    // When confirmed, the overlay already emitted screenshot-result before calling close.
     if !confirmed.unwrap_or(false) {
         if let Some(main_window) = app.get_webview_window("main") {
             let _ = main_window.emit("screenshot-cancelled", ());

@@ -6,14 +6,7 @@
   height: 100vh;
   overflow: hidden;
   cursor: crosshair;
-}
-
-/* Reset body styles for overlay window — transparent bg to avoid white flash */
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: transparent;
+  background: #000;
 }
 
 /* Background image - fills entire viewport */

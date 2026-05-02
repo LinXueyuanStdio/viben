@@ -6,7 +6,6 @@
  */
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import {
   Server,
   Plus,
@@ -31,6 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, setsEqual } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 interface AgentMcpDialogProps {
   open: boolean;
@@ -46,7 +46,7 @@ export function AgentMcpDialog({
   onServersChange,
 }: AgentMcpDialogProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
   const mcpServers = useAppStore((state) => state.mcpServers);
   const [localSelected, setLocalSelected] = useState<string[]>(selectedServerIds);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,7 +93,10 @@ export function AgentMcpDialog({
 
   const handleGoToSearchService = () => {
     onOpenChange(false);
-    navigate("/search-service");
+    openGlobalView("/mcp-services/search-service", t("nav.searchService", "Search Service"), {
+      type: "lucide",
+      value: "search",
+    });
   };
 
   const getStatusColor = (status: string) => {

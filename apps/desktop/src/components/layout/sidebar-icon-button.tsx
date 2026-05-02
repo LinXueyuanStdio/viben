@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 interface SidebarIconButtonProps {
   /** Icon component to render */
@@ -37,7 +38,7 @@ export function SidebarIconButton({
   onClick,
   disabled,
 }: SidebarIconButtonProps) {
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const location = useLocation();
 
   // Check if current route matches href (for active state)
@@ -54,7 +55,10 @@ export function SidebarIconButton({
     }
     // Fallback: use href for direct navigation
     if (href) {
-      navigate(href);
+      navigateTo(href, {
+        type: href.startsWith("/settings") ? "settings" : "workspace",
+        name: tooltip,
+      });
     }
   };
 

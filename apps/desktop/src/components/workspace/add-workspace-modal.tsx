@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import {
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getGatewayClient, type WorkspaceResponse } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { useWorkspaceStore } from "@/stores";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import { StepChooseMethod, type CreationMethod } from "./steps/step-choose-method";
 import { StepConfigure, type FolderStatus, type ConfigureFormData } from "./steps/step-configure";
 import { StepComplete, type CreationResult } from "./steps/step-complete";
@@ -34,7 +34,7 @@ interface AddWorkspaceModalProps {
  */
 export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openWorkspaceView } = usePageTabs();
   const addWorkspaceToStore = useWorkspaceStore((s) => s.addWorkspace);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
 
@@ -202,7 +202,12 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
       // Select the workspace and navigate
       setActiveWorkspace(creationResult.workspaceId);
       onOpenChange(false);
-      navigate(`/workspace/${creationResult.workspaceId}/chat`);
+      openWorkspaceView(
+        creationResult.workspaceId,
+        "chat",
+        t("workspace.chat", "Chat"),
+        { type: "lucide", value: "message-square" }
+      );
     }
   };
 

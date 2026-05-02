@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Stage, Layer, Rect, Ellipse, Arrow, Line, Text } from 'react-konva';
 import './screenshot-overlay.css';
 
@@ -36,11 +35,10 @@ interface Annotation {
 
 export function ScreenshotOverlayPage() {
   const [searchParams] = useSearchParams();
-  const imageId = searchParams.get('image') || '';
+  const imageId = searchParams.get('id') || '';
   const scaleFactor = parseFloat(searchParams.get('scale') || '1');
 
-  // Image served via custom protocol — no file I/O needed
-  const imageUrl = imageId ? `viben-screenshot://localhost/${imageId}` : '';
+  const [imageUrl, setImageUrl] = useState<string>('');
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Selection state
@@ -67,14 +65,14 @@ export function ScreenshotOverlayPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // Fallback: show window after 300ms even if image hasn't loaded yet (avoids stuck hidden window)
+  // Load screenshot image via IPC command — returns base64 data URL from memory store.
+  // This bypasses all file/protocol/scope issues and is 100% reliable.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      getCurrentWindow().show();
-      getCurrentWindow().setFocus();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!imageId) return;
+    invoke<string>('get_screenshot_image', { imageId })
+      .then((dataUrl) => setImageUrl(dataUrl))
+      .catch((err) => console.error('[Screenshot] Failed to get image data:', err));
+  }, [imageId]);
 
   const handleClose = useCallback(async (confirmed = false) => {
     await invoke('close_screenshot_overlay', { imageId, confirmed });
@@ -111,7 +109,8 @@ export function ScreenshotOverlayPage() {
     }
   }, [imageId, annotations, handleClose]);
 
-  // Redraw canvas mask
+  // Redraw canvas mask — only after image has loaded so the user sees the
+  // screenshot underneath (not black-on-black which makes everything invisible).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !imageLoaded) return;
@@ -126,7 +125,7 @@ export function ScreenshotOverlayPage() {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Clear the selected region
+    // Clear the selected region (reveals the screenshot image below)
     if (region && region.width > 0 && region.height > 0) {
       const { x, y, width, height } = region;
       ctx.clearRect(x, y, width, height);
@@ -182,6 +181,8 @@ export function ScreenshotOverlayPage() {
       }
       return;
     }
+    // Don't allow selection until image is loaded (otherwise it's black on black)
+    if (!imageLoaded) return;
     // If we already have a region and a tool is active, don't restart selection
     if (region && tool !== 'none') return;
 
@@ -391,18 +392,16 @@ export function ScreenshotOverlayPage() {
   return (
     <div className="screenshot-overlay-container">
       {/* Background image */}
-      <img
-        ref={imgRef}
-        src={imageUrl}
-        className="screenshot-bg-image"
-        draggable={false}
-        onLoad={() => {
-          setImageLoaded(true);
-          // Show the window now that content is ready — eliminates white flash
-          getCurrentWindow().show();
-          getCurrentWindow().setFocus();
-        }}
-      />
+      {imageUrl && (
+        <img
+          ref={imgRef}
+          src={imageUrl}
+          className="screenshot-bg-image"
+          draggable={false}
+          onLoad={() => setImageLoaded(true)}
+          onError={(e) => console.error('[Screenshot] Image failed to load:', e)}
+        />
+      )}
 
       {/* Canvas mask for selection (on top of image, below Konva) */}
       <canvas

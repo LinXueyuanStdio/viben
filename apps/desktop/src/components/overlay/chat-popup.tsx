@@ -753,7 +753,9 @@ export function ChatPopupLayer(): ReactElement {
     isStreaming,
     phase,
     cancel,
-  } = useAgentConversation(workspacePath);
+  } = useAgentConversation(workspacePath, {
+    agentConfig: { mcpServers: ["presentation"] },
+  });
 
   // Estimate context token usage from message content.
   // The SSE stream does not provide real-time token counts, so we approximate

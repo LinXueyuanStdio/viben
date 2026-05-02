@@ -6,7 +6,6 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -32,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useGitHubComments } from "@/hooks/use-github";
 import { useTasks, _useCreateTask } from "@/hooks/use-kanban";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { Task } from "@/lib/kanban";
 import type { GitHubIssue, GitHubComment } from "@/lib/github-client";
 
@@ -282,7 +282,7 @@ export function IssueDetailModal({
   onOpenChange,
 }: IssueDetailModalProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { navigateTo } = usePageTabs();
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
 
   // Fetch tasks using hook
@@ -343,9 +343,14 @@ export function IssueDetailModal({
     if (linkedTask) {
       onOpenChange(false);
       // Navigate to kanban with task selected
-      navigate(`/workspace/${encodeURIComponent(workspacePath)}/kanban?task=${linkedTask.id}`);
+      navigateTo(`/workspace/${encodeURIComponent(workspacePath)}/kanban?task=${linkedTask.id}`, {
+        type: "workspace",
+        slug: "kanban",
+        name: t("workspace.kanban", "Kanban"),
+        icon: { type: "lucide", value: "layout-dashboard" },
+      });
     }
-  }, [linkedTask, workspacePath, navigate, onOpenChange]);
+  }, [linkedTask, navigateTo, onOpenChange, t, workspacePath]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

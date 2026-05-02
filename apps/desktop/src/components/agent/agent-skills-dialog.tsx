@@ -6,7 +6,6 @@
  */
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
 import {
   Sparkles,
   Plus,
@@ -32,6 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, setsEqual } from "@/lib/utils";
 import { useCloudSkillPackages, type CloudSkillPackage } from "@/hooks/use-cloud-skills";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 interface Skill {
   id: string;
@@ -55,7 +55,7 @@ export function AgentSkillsDialog({
   onSkillsChange,
 }: AgentSkillsDialogProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
   const { packages, loading: isLoading, error } = useCloudSkillPackages();
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,7 +112,10 @@ export function AgentSkillsDialog({
 
   const handleGoToMarketplace = () => {
     onOpenChange(false);
-    navigate("/skills-market");
+    openGlobalView("/skills-market", t("nav.skillsMarket", "Skills Market"), {
+      type: "lucide",
+      value: "sparkles",
+    });
   };
 
   const getSkillTypeBadge = (type: string) => {

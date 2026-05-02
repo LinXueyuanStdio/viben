@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { Activity, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
@@ -10,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
@@ -36,7 +36,7 @@ export function GatewayStatusIndicator({
   className,
 }: GatewayStatusIndicatorProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
   const { status, isChecking, error, checkConnection } =
     useGatewayStatus();
 
@@ -79,10 +79,16 @@ export function GatewayStatusIndicator({
       const connected = await checkConnection();
       if (!connected) {
         // If still not connected, navigate to gateway settings
-        navigate("/settings/gateway");
+        openGlobalView("/settings/gateway", t("settingsGateway.title", "Gateway"), {
+          type: "lucide",
+          value: "network",
+        });
       }
     } else {
-      navigate("/settings/gateway");
+      openGlobalView("/settings/gateway", t("settingsGateway.title", "Gateway"), {
+        type: "lucide",
+        value: "network",
+      });
     }
   };
 

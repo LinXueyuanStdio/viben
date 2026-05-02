@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 interface UserMenuProps {
   /** Whether the sidebar is collapsed */
@@ -39,7 +39,7 @@ interface UserMenuProps {
 export function UserMenu({ collapsed = false, className }: UserMenuProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { openGlobalView } = usePageTabs();
 
   if (!user) return null;
 
@@ -56,7 +56,10 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/mcp-services/dashboard");
+    openGlobalView("/mcp-services/dashboard", t("nav.dashboard", "Dashboard"), {
+      type: "lucide",
+      value: "layout-dashboard",
+    });
   };
 
   const handleProfileClick = () => {
@@ -65,7 +68,10 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
   };
 
   const handleSettingsClick = () => {
-    navigate("/settings");
+    openGlobalView("/settings", t("nav.settings", "Settings"), {
+      type: "lucide",
+      value: "settings",
+    });
   };
 
   return (

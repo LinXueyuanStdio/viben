@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Server, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores";
@@ -12,6 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
+import { usePageTabs } from "@/hooks/use-page-tabs";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
@@ -50,7 +50,7 @@ type StatusPhase =
  */
 export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const { openGlobalView, navigateTo } = usePageTabs();
   const { mcpServers, mcpServerStatuses } = useAppStore();
   const { getStats } = useMcpStatusMonitor();
   const { selectedPython, browseMcpInfo, loading: pythonLoading } = usePython();
@@ -133,11 +133,19 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
       case "python_missing":
       case "package_checking":
       case "package_missing":
-        navigate("/settings/environment");
+        openGlobalView("/settings/environment", t("settingsEnvironment.title", "Environment"), {
+          type: "lucide",
+          value: "terminal",
+        });
         break;
       default:
         // Navigate to MCP settings page with dashboard tab
-        navigate("/settings/mcp?tab=dashboard");
+        navigateTo("/settings/mcp?tab=dashboard", {
+          type: "settings",
+          slug: "mcp",
+          name: t("settingsMcp.title", "MCP"),
+          icon: { type: "lucide", value: "boxes" },
+        });
     }
   };
 
