@@ -239,6 +239,7 @@ export function AgentChatView({
           hideExecutorSelector
           hideModelSelector
           showSandboxToggle
+          showSteeringToggle
           slashCommands={slashCommands}
           onSlashCommand={onSlashCommand}
           onAgentSettings={(agentId) => onAgentSettings(agentId)}

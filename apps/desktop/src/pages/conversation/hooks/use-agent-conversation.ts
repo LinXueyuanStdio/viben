@@ -33,6 +33,7 @@ import {
 import i18n from "@/i18n";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { PresentationCommand } from "@/lib/presentation/types";
+import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
 
 /**
  * Generate a unique ID
@@ -55,6 +56,404 @@ const LARGE_FILE_THRESHOLD = 100000; // 100KB - files larger than this are marke
  * Mock delay for fallback implementation
  */
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+type PresentationColor =
+  | "black"
+  | "grey"
+  | "light-violet"
+  | "violet"
+  | "blue"
+  | "light-blue"
+  | "yellow"
+  | "orange"
+  | "green"
+  | "light-green"
+  | "light-red"
+  | "red"
+  | "white";
+
+interface PresentationPoint {
+  x: number;
+  y: number;
+}
+
+interface PresentationRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface SpotlightToolInput {
+  target?: PresentationRect;
+  title?: string;
+  description?: string;
+  notePosition?: PresentationPoint;
+  style?: "highlight" | "circle";
+  color?: PresentationColor;
+  holdMs?: number;
+  clearBefore?: boolean;
+  animate?: boolean;
+}
+
+interface CalloutToolInput {
+  target?: PresentationRect;
+  from?: PresentationPoint;
+  label?: string;
+  description?: string;
+  color?: PresentationColor;
+  holdMs?: number;
+  clearBefore?: boolean;
+  animate?: boolean;
+}
+
+interface WalkthroughStepInput {
+  target?: PresentationRect;
+  title?: string;
+  description?: string;
+  notePosition?: PresentationPoint;
+  style?: "highlight" | "circle";
+  color?: PresentationColor;
+  holdMs?: number;
+  animate?: boolean;
+}
+
+interface WalkthroughToolInput {
+  steps?: WalkthroughStepInput[];
+  clearBefore?: boolean;
+  clearBetween?: boolean;
+}
+
+interface CompareSideInput {
+  target?: PresentationRect;
+  label?: string;
+  color?: PresentationColor;
+}
+
+interface CompareToolInput {
+  left?: CompareSideInput;
+  right?: CompareSideInput;
+  title?: string;
+  description?: string;
+  holdMs?: number;
+  clearBefore?: boolean;
+  animate?: boolean;
+}
+
+const PRESENTATION_DRAW_TOOL_NAMES = new Set([
+  "presentation_draw",
+  "mcp__presentation__presentation_draw",
+]);
+
+const PRESENTATION_CLEAR_TOOL_NAMES = new Set([
+  "presentation_clear",
+  "mcp__presentation__presentation_clear",
+]);
+
+const PRESENTATION_STOP_TOOL_NAMES = new Set([
+  "presentation_stop",
+  "mcp__presentation__presentation_stop",
+]);
+
+const PRESENTATION_SPOTLIGHT_TOOL_NAMES = new Set([
+  "presentation_spotlight",
+  "mcp__presentation__presentation_spotlight",
+]);
+
+const PRESENTATION_CALLOUT_TOOL_NAMES = new Set([
+  "presentation_callout",
+  "mcp__presentation__presentation_callout",
+]);
+
+const PRESENTATION_WALKTHROUGH_TOOL_NAMES = new Set([
+  "presentation_walkthrough",
+  "mcp__presentation__presentation_walkthrough",
+]);
+
+const PRESENTATION_COMPARE_TOOL_NAMES = new Set([
+  "presentation_compare",
+  "mcp__presentation__presentation_compare",
+]);
+
+function isRect(value: unknown): value is PresentationRect {
+  if (!value || typeof value !== "object") return false;
+  const rect = value as Record<string, unknown>;
+  return (
+    typeof rect.x === "number" &&
+    typeof rect.y === "number" &&
+    typeof rect.width === "number" &&
+    typeof rect.height === "number"
+  );
+}
+
+function isPoint(value: unknown): value is PresentationPoint {
+  if (!value || typeof value !== "object") return false;
+  const point = value as Record<string, unknown>;
+  return typeof point.x === "number" && typeof point.y === "number";
+}
+
+function clampHoldMs(ms: unknown): number | undefined {
+  if (typeof ms !== "number" || Number.isNaN(ms)) return undefined;
+  return Math.max(0, Math.min(10000, ms));
+}
+
+function getRectCenter(rect: PresentationRect): PresentationPoint {
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+}
+
+function getRectOutlineStyle(style: SpotlightToolInput["style"], rect: PresentationRect) {
+  if (style === "circle") {
+    return {
+      type: "circle" as const,
+      center: getRectCenter(rect),
+      radius: Math.max(rect.width, rect.height) / 2,
+    };
+  }
+
+  return {
+    type: "highlight" as const,
+    region: rect,
+  };
+}
+
+function buildNoteContent(title?: string, description?: string): string | undefined {
+  const lines = [title?.trim(), description?.trim()].filter(Boolean);
+  if (!lines.length) return undefined;
+  return lines.join("\n");
+}
+
+function getDefaultNotePosition(rect: PresentationRect): PresentationPoint {
+  return {
+    x: rect.x,
+    y: Math.max(24, rect.y - 56),
+  };
+}
+
+function buildSpotlightCommands(input: SpotlightToolInput): PresentationCommand[] {
+  if (!isRect(input.target)) return [];
+
+  const commands: PresentationCommand[] = [];
+  const color = input.color ?? "yellow";
+  const holdMs = clampHoldMs(input.holdMs);
+
+  if (input.clearBefore) {
+    commands.push({ type: "clear" });
+  }
+
+  const outline = getRectOutlineStyle(input.style, input.target);
+  if (outline.type === "circle") {
+    commands.push({
+      type: "circle",
+      center: outline.center,
+      radius: outline.radius,
+      color,
+      animate: input.animate,
+    });
+  } else {
+    commands.push({
+      type: "highlight",
+      region: outline.region,
+      color,
+      animate: input.animate,
+    });
+  }
+
+  const noteContent = buildNoteContent(input.title, input.description);
+  const notePosition = isPoint(input.notePosition)
+    ? input.notePosition
+    : getDefaultNotePosition(input.target);
+  if (noteContent) {
+    commands.push({
+      type: "text",
+      position: notePosition,
+      content: noteContent,
+      color: input.color ?? "black",
+      size: "m",
+    });
+  }
+
+  if (holdMs !== undefined && holdMs > 0) {
+    commands.push({ type: "wait", ms: holdMs });
+  }
+
+  return commands;
+}
+
+function buildCalloutCommands(input: CalloutToolInput): PresentationCommand[] {
+  if (!isRect(input.target) || !isPoint(input.from)) return [];
+
+  const commands: PresentationCommand[] = [];
+  const color = input.color ?? "red";
+  const holdMs = clampHoldMs(input.holdMs);
+  const center = getRectCenter(input.target);
+  const noteContent = buildNoteContent(input.label, input.description);
+
+  if (input.clearBefore) {
+    commands.push({ type: "clear" });
+  }
+
+  commands.push({
+    type: "highlight",
+    region: input.target,
+    color,
+    animate: input.animate,
+  });
+  commands.push({
+    type: "arrow",
+    from: input.from,
+    to: center,
+    color,
+    label: input.label?.trim() || undefined,
+    size: "m",
+    animate: input.animate,
+  });
+
+  if (noteContent) {
+    commands.push({
+      type: "text",
+      position: input.from,
+      content: noteContent,
+      color: input.color ?? "black",
+      size: "m",
+    });
+  }
+
+  if (holdMs !== undefined && holdMs > 0) {
+    commands.push({ type: "wait", ms: holdMs });
+  }
+
+  return commands;
+}
+
+function buildWalkthroughCommands(input: WalkthroughToolInput): PresentationCommand[] {
+  const steps = Array.isArray(input.steps) ? input.steps : [];
+  const commands: PresentationCommand[] = [];
+
+  if (input.clearBefore) {
+    commands.push({ type: "clear" });
+  }
+
+  steps.forEach((step, index) => {
+    if (!isRect(step.target)) return;
+    if (index > 0 && input.clearBetween) {
+      commands.push({ type: "clear" });
+    }
+    commands.push(...buildSpotlightCommands({
+      target: step.target,
+      title: step.title ? `Step ${index + 1}: ${step.title}` : `Step ${index + 1}`,
+      description: step.description,
+      notePosition: step.notePosition,
+      style: step.style,
+      color: step.color ?? "blue",
+      holdMs: step.holdMs ?? 900,
+      animate: step.animate ?? true,
+      clearBefore: false,
+    }));
+  });
+
+  return commands;
+}
+
+function buildCompareCommands(input: CompareToolInput): PresentationCommand[] {
+  if (!isRect(input.left?.target) || !isRect(input.right?.target)) return [];
+
+  const commands: PresentationCommand[] = [];
+  const holdMs = clampHoldMs(input.holdMs);
+  const leftColor = input.left.color ?? "blue";
+  const rightColor = input.right.color ?? "orange";
+
+  if (input.clearBefore) {
+    commands.push({ type: "clear" });
+  }
+
+  if (input.title?.trim()) {
+    const topY = Math.max(24, Math.min(input.left.target.y, input.right.target.y) - 72);
+    commands.push({
+      type: "text",
+      position: {
+        x: Math.min(input.left.target.x, input.right.target.x),
+        y: topY,
+      },
+      content: buildNoteContent(input.title, input.description) ?? input.title.trim(),
+      color: "black",
+      size: "l",
+    });
+  }
+
+  commands.push({
+    type: "highlight",
+    region: input.left.target,
+    color: leftColor,
+    animate: input.animate,
+  });
+  commands.push({
+    type: "highlight",
+    region: input.right.target,
+    color: rightColor,
+    animate: input.animate,
+  });
+
+  if (input.left.label?.trim()) {
+    commands.push({
+      type: "text",
+      position: getDefaultNotePosition(input.left.target),
+      content: input.left.label.trim(),
+      color: leftColor,
+      size: "m",
+    });
+  }
+
+  if (input.right.label?.trim()) {
+    commands.push({
+      type: "text",
+      position: getDefaultNotePosition(input.right.target),
+      content: input.right.label.trim(),
+      color: rightColor,
+      size: "m",
+    });
+  }
+
+  commands.push({
+    type: "line",
+    points: [
+      getRectCenter(input.left.target),
+      getRectCenter(input.right.target),
+    ],
+    color: "grey",
+    size: "s",
+    animate: input.animate,
+  });
+
+  if (holdMs !== undefined && holdMs > 0) {
+    commands.push({ type: "wait", ms: holdMs });
+  }
+
+  return commands;
+}
+
+function compilePresentationCommands(toolName: string, toolInput: Record<string, unknown>): PresentationCommand[] {
+  if (PRESENTATION_DRAW_TOOL_NAMES.has(toolName)) {
+    return Array.isArray(toolInput.commands) ? (toolInput.commands as PresentationCommand[]) : [];
+  }
+
+  if (PRESENTATION_SPOTLIGHT_TOOL_NAMES.has(toolName)) {
+    return buildSpotlightCommands(toolInput as SpotlightToolInput);
+  }
+
+  if (PRESENTATION_CALLOUT_TOOL_NAMES.has(toolName)) {
+    return buildCalloutCommands(toolInput as CalloutToolInput);
+  }
+
+  if (PRESENTATION_WALKTHROUGH_TOOL_NAMES.has(toolName)) {
+    return buildWalkthroughCommands(toolInput as WalkthroughToolInput);
+  }
+
+  if (PRESENTATION_COMPARE_TOOL_NAMES.has(toolName)) {
+    return buildCompareCommands(toolInput as CompareToolInput);
+  }
+
+  return [];
+}
 
 /**
  * SSE message data from /api/agent/run endpoint
@@ -236,10 +635,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
    * Handle SSE message from /api/agent/run endpoint
    */
   const handleSSEMessage = useCallback((data: SSEMessageData) => {
-    console.log("[useAgent] SSE message:", data);
+    perfMark(`SSE:${data.type}`, data.type === "text" ? `len=${(data.content || "").length}` : data.type === "tool_use" ? `name=${data.name}` : data.type === "tool_result" ? `id=${data.tool_use_id}` : undefined);
 
     switch (data.type) {
       case "session": {
+        perfMark("SSE:session:received");
         const sid = data.sessionId || data.session_id;
         if (sid) {
           setSessionId(sid);
@@ -248,7 +648,6 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const tid = data.traceId || data.trace_id;
         if (tid) {
           setTraceId(tid);
-          console.log("[useAgent] Got trace ID:", tid);
         }
         break;
       }
@@ -338,26 +737,32 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Tool names may arrive as "presentation_draw" or "mcp__presentation__presentation_draw"
         // depending on SDK version and MCP server name resolution.
         const toolName = data.name || "";
-        if (toolName === "presentation_draw" || toolName === "mcp__presentation__presentation_draw") {
-          console.log("[Presentation] Draw tool intercepted, input:", JSON.stringify(toolInput));
+        if (
+          PRESENTATION_DRAW_TOOL_NAMES.has(toolName) ||
+          PRESENTATION_SPOTLIGHT_TOOL_NAMES.has(toolName) ||
+          PRESENTATION_CALLOUT_TOOL_NAMES.has(toolName) ||
+          PRESENTATION_WALKTHROUGH_TOOL_NAMES.has(toolName) ||
+          PRESENTATION_COMPARE_TOOL_NAMES.has(toolName)
+        ) {
+          console.log("[Presentation] Tool intercepted:", toolName, JSON.stringify(toolInput));
           const store = useOverlayStore.getState();
           if (!store.presentationActive) {
             store.actions.startPresentation();
           }
-          const commands = toolInput.commands;
+          const commands = compilePresentationCommands(toolName, toolInput);
           if (Array.isArray(commands) && commands.length > 0) {
             console.log("[Presentation] Adding", commands.length, "commands to store");
-            store.actions.addPresentationCommands(commands as PresentationCommand[]);
+            store.actions.addPresentationCommands(commands);
           } else {
-            console.warn("[Presentation] No commands found in input. Keys:", Object.keys(toolInput));
+            console.warn("[Presentation] No commands compiled for tool. Keys:", Object.keys(toolInput));
           }
-        } else if (toolName === "presentation_clear" || toolName === "mcp__presentation__presentation_clear") {
+        } else if (PRESENTATION_CLEAR_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
           if (store.presentationActive) {
             store.actions.clearPresentationCommands();
             store.actions.addPresentationCommand({ type: "clear" });
           }
-        } else if (toolName === "presentation_stop" || toolName === "mcp__presentation__presentation_stop") {
+        } else if (PRESENTATION_STOP_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
           if (store.presentationActive) {
             store.actions.stopPresentation();
@@ -441,6 +846,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         streamingMessageIdRef.current = null;
         setPhase("completed");
         setIsStreaming(false);
+        perfMark("SSE:result:phase=completed", `cost=${data.cost}, duration=${data.duration}`);
         break;
 
       case "error": {
@@ -466,6 +872,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setIsStreaming(false);
         // Use functional update to check current phase value (avoids stale closure)
         setPhase((currentPhase) => currentPhase === "running" ? "completed" : currentPhase);
+        perfEnd("SSE:done - stream finished");
         break;
     }
   }, []);
@@ -874,7 +1281,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     async (content: string, attachments?: MessageAttachment[]) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
-      console.log("[useAgent] sendMessageReal called with:", content.slice(0, 50), "attachments:", attachments?.length || 0);
+      perfStart(`sendMessageReal: ${content.slice(0, 80)}`);
+      perfMark("FE:sendMessageReal:start");
 
       // Reset streaming state for new message
       streamingMessageIdRef.current = null;
@@ -960,7 +1368,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           requestBody.cwd = workspaceId;
         }
 
-        console.log("[useAgent] Request body:", requestBody);
+        perfMark("FE:fetch:start", `url=${url}, resume=${!!sdkSessionId}`);
 
         const response = await fetch(url, {
           method: "POST",
@@ -971,6 +1379,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           body: JSON.stringify(requestBody),
         });
 
+        perfMark("FE:fetch:response_received", `status=${response.status}`);
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -980,6 +1390,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
 
         // Read SSE stream
+        perfMark("FE:stream:start_reading");
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";

@@ -126,6 +126,9 @@ export const useChatConfigStore = create<ChatConfigState>()(
           sandboxConfig: { ...state.sandboxConfig, ...config },
         })),
 
+      // Steering
+      setSteeringPrompt: (prompt) => set({ steeringPrompt: prompt }),
+
       // Loading state
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
@@ -149,6 +152,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
         selectedModelId: state.selectedModelId,
         selectedExecutor: state.selectedExecutor,
         sandboxConfig: state.sandboxConfig,
+        steeringPrompt: state.steeringPrompt,
       }),
     }
   )
