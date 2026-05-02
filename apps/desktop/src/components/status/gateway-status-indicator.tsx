@@ -9,13 +9,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
 interface GatewayStatusIndicatorProps {
   collapsed?: boolean;
   className?: string;
+  /** Suppress tooltip (e.g. when parent provides its own hover panel) */
+  disableTooltip?: boolean;
 }
 
 /**
@@ -34,9 +36,10 @@ interface GatewayStatusIndicatorProps {
 export function GatewayStatusIndicator({
   collapsed = false,
   className,
+  disableTooltip = false,
 }: GatewayStatusIndicatorProps) {
   const { t } = useTranslation();
-  const { openGlobalView } = usePageTabs();
+  const { openSettings } = useDesktopRouting();
   const { status, isChecking, error, checkConnection } =
     useGatewayStatus();
 
@@ -79,16 +82,10 @@ export function GatewayStatusIndicator({
       const connected = await checkConnection();
       if (!connected) {
         // If still not connected, navigate to gateway settings
-        openGlobalView("/settings/gateway", t("settingsGateway.title", "Gateway"), {
-          type: "lucide",
-          value: "network",
-        });
+        openSettings("gateway");
       }
     } else {
-      openGlobalView("/settings/gateway", t("settingsGateway.title", "Gateway"), {
-        type: "lucide",
-        value: "network",
-      });
+      openSettings("gateway");
     }
   };
 
@@ -124,34 +121,65 @@ export function GatewayStatusIndicator({
     }
   }, [status, error, t]);
 
-  // Collapsed view - just icon with tooltip
+  const collapsedButton = (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
+        "hover:bg-sidebar-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className
+      )}
+    >
+      <Icon
+        className={cn(
+          "h-4 w-4",
+          isChecking && "animate-spin",
+          variant === "success" && "text-green-500",
+          variant === "warning" && "text-yellow-500",
+          variant === "error" && "text-red-500",
+          variant === "neutral" && "text-muted-foreground"
+        )}
+      />
+    </button>
+  );
+
+  const expandedButton = (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs",
+        "transition-colors duration-200",
+        "hover:bg-sidebar-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className
+      )}
+    >
+      <Icon
+        className={cn(
+          "h-3.5 w-3.5 shrink-0",
+          isChecking && "animate-spin",
+          variant === "success" && "text-green-500",
+          variant === "warning" && "text-yellow-500",
+          variant === "error" && "text-red-500",
+          variant === "neutral" && "text-muted-foreground"
+        )}
+      />
+      <span className="text-sidebar-foreground/70 truncate">
+        {displayText}
+      </span>
+    </button>
+  );
+
+  // Collapsed view
   if (collapsed) {
+    if (disableTooltip) return collapsedButton;
     return (
       <TooltipProvider delayDuration={0}>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={handleClick}
-              className={cn(
-                "flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
-                "hover:bg-sidebar-accent",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                className
-              )}
-            >
-              <Icon
-                className={cn(
-                  "h-4 w-4",
-                  isChecking && "animate-spin",
-                  variant === "success" && "text-green-500",
-                  variant === "warning" && "text-yellow-500",
-                  variant === "error" && "text-red-500",
-                  variant === "neutral" && "text-muted-foreground"
-                )}
-              />
-            </button>
-          </TooltipTrigger>
+          <TooltipTrigger asChild>{collapsedButton}</TooltipTrigger>
           <TooltipContent side="right" className="font-medium">
             {tooltipContent}
           </TooltipContent>
@@ -160,37 +188,12 @@ export function GatewayStatusIndicator({
     );
   }
 
-  // Expanded view - full indicator
+  // Expanded view
+  if (disableTooltip) return expandedButton;
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={handleClick}
-            className={cn(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs",
-              "transition-colors duration-200",
-              "hover:bg-sidebar-accent",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              className
-            )}
-          >
-            <Icon
-              className={cn(
-                "h-3.5 w-3.5 shrink-0",
-                isChecking && "animate-spin",
-                variant === "success" && "text-green-500",
-                variant === "warning" && "text-yellow-500",
-                variant === "error" && "text-red-500",
-                variant === "neutral" && "text-muted-foreground"
-              )}
-            />
-            <span className="text-sidebar-foreground/70 truncate">
-              {displayText}
-            </span>
-          </button>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{expandedButton}</TooltipTrigger>
         <TooltipContent side="top" className="font-medium">
           {tooltipContent}
         </TooltipContent>

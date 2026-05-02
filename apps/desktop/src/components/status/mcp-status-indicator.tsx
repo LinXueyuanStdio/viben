@@ -11,7 +11,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
@@ -50,7 +50,7 @@ type StatusPhase =
  */
 export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
-  const { openGlobalView, navigateTo } = usePageTabs();
+  const { openSettings, openPath } = useDesktopRouting();
   const { mcpServers, mcpServerStatuses } = useAppStore();
   const { getStats } = useMcpStatusMonitor();
   const { selectedPython, browseMcpInfo, loading: pythonLoading } = usePython();
@@ -133,17 +133,14 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
       case "python_missing":
       case "package_checking":
       case "package_missing":
-        openGlobalView("/settings/environment", t("settingsEnvironment.title", "Environment"), {
-          type: "lucide",
-          value: "terminal",
-        });
+        openSettings("environment");
         break;
       default:
         // Navigate to MCP settings page with dashboard tab
-        navigateTo("/settings/mcp?tab=dashboard", {
+        openPath("/settings/mcp?tab=dashboard", {
           type: "settings",
           slug: "mcp",
-          name: t("settingsMcp.title", "MCP"),
+          title: t("settingsMcp.title", "MCP"),
           icon: { type: "lucide", value: "boxes" },
         });
     }

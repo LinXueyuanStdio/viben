@@ -43,7 +43,6 @@ export const PackageCard = React.memo(function PackageCard({
     <div
       className={cn(
         "group relative flex h-full flex-col rounded-xl border bg-card p-4 transition-all duration-300 cursor-pointer",
-        "hover:border-primary/30 hover:shadow-lg hover:-translate-y-1",
         className
       )}
       onClick={onSelect}

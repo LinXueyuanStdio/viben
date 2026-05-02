@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getGatewayClient, type WorkspaceResponse } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { useWorkspaceStore } from "@/stores";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { StepChooseMethod, type CreationMethod } from "./steps/step-choose-method";
 import { StepConfigure, type FolderStatus, type ConfigureFormData } from "./steps/step-configure";
 import { StepComplete, type CreationResult } from "./steps/step-complete";
@@ -34,7 +34,7 @@ interface AddWorkspaceModalProps {
  */
 export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps) {
   const { t } = useTranslation();
-  const { openWorkspaceView } = usePageTabs();
+  const { openWorkspaceSection } = useDesktopRouting();
   const addWorkspaceToStore = useWorkspaceStore((s) => s.addWorkspace);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
 
@@ -202,12 +202,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
       // Select the workspace and navigate
       setActiveWorkspace(creationResult.workspaceId);
       onOpenChange(false);
-      openWorkspaceView(
-        creationResult.workspaceId,
-        "chat",
-        t("workspace.chat", "Chat"),
-        { type: "lucide", value: "message-square" }
-      );
+      openWorkspaceSection(creationResult.workspaceId, "chat");
     }
   };
 

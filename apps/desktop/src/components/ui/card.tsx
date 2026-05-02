@@ -7,7 +7,6 @@ const cardVariants = cva(
   [
     "rounded-2xl bg-card border border-border",
     "transition-all duration-300",
-    "hover:border-primary/30 hover:shadow-lg hover:-translate-y-1",
   ],
   {
     variants: {
@@ -28,7 +27,7 @@ const cardVariants = cva(
       },
       interactive: {
         true: "",
-        false: "hover:translate-y-0 hover:shadow-none hover:border-border",
+        false: "",
       },
     },
     defaultVariants: {

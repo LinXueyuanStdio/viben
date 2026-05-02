@@ -152,7 +152,7 @@ export function DashboardCard({
         "relative overflow-hidden border-0 bg-gradient-to-br transition-all duration-300 h-full",
         config.gradient,
         !disabled && config.hoverGradient,
-        !disabled && "hover:shadow-lg cursor-pointer",
+        !disabled && "cursor-pointer",
         disabled && "opacity-60 cursor-not-allowed",
         className
       )}

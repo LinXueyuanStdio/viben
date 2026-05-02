@@ -31,7 +31,8 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useGitHubComments } from "@/hooks/use-github";
 import { useTasks, _useCreateTask } from "@/hooks/use-kanban";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { Task } from "@/lib/kanban";
 import type { GitHubIssue, GitHubComment } from "@/lib/github-client";
 
@@ -282,8 +283,10 @@ export function IssueDetailModal({
   onOpenChange,
 }: IssueDetailModalProps) {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const { openWorkspaceSection } = useDesktopRouting();
+  const { workspaces } = useLocalWorkspaces();
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
+  const workspace = workspaces.find((item) => item.path === workspacePath);
 
   // Fetch tasks using hook
   const { data: tasks, isLoading: loadingTask } = useTasks(workspacePath);
@@ -340,17 +343,13 @@ export function IssueDetailModal({
   }, [issue, workspacePath, createTaskMutation]);
 
   const handleGoToTask = useCallback(() => {
-    if (linkedTask) {
+    if (linkedTask && workspace?.id) {
       onOpenChange(false);
-      // Navigate to kanban with task selected
-      navigateTo(`/workspace/${encodeURIComponent(workspacePath)}/kanban?task=${linkedTask.id}`, {
-        type: "workspace",
-        slug: "kanban",
-        name: t("workspace.kanban", "Kanban"),
-        icon: { type: "lucide", value: "layout-dashboard" },
+      openWorkspaceSection(workspace.id, "kanban", {
+        openMode: "reuse",
       });
     }
-  }, [linkedTask, navigateTo, onOpenChange, t, workspacePath]);
+  }, [linkedTask, onOpenChange, openWorkspaceSection, workspace?.id]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

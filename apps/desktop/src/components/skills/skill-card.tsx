@@ -106,7 +106,6 @@ export const SkillCard = memo(function SkillCard({
       className={cn(
         "rounded-xl border bg-card p-4",
         "transition-all duration-300",
-        "hover:border-primary/30 hover:shadow-lg hover:-translate-y-1",
         "theme-transition cursor-pointer"
       )}
       onClick={handleViewDetails}

@@ -31,7 +31,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, setsEqual } from "@/lib/utils";
 import { useCloudSkillPackages, type CloudSkillPackage } from "@/hooks/use-cloud-skills";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 interface Skill {
   id: string;
@@ -55,7 +55,7 @@ export function AgentSkillsDialog({
   onSkillsChange,
 }: AgentSkillsDialogProps) {
   const { t } = useTranslation();
-  const { openGlobalView } = usePageTabs();
+  const { openPath } = useDesktopRouting();
   const { packages, loading: isLoading, error } = useCloudSkillPackages();
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,9 +112,9 @@ export function AgentSkillsDialog({
 
   const handleGoToMarketplace = () => {
     onOpenChange(false);
-    openGlobalView("/skills-market", t("nav.skillsMarket", "Skills Market"), {
-      type: "lucide",
-      value: "sparkles",
+    openPath("/skills-market", {
+      title: t("nav.skillsMarket", "Skills Market"),
+      icon: { type: "lucide", value: "sparkles" },
     });
   };
 

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 interface UserMenuProps {
   /** Whether the sidebar is collapsed */
@@ -39,7 +39,7 @@ interface UserMenuProps {
 export function UserMenu({ collapsed = false, className }: UserMenuProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const { openGlobalView } = usePageTabs();
+  const { openPath, openSettings } = useDesktopRouting();
 
   if (!user) return null;
 
@@ -56,9 +56,10 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
 
   const handleLogout = async () => {
     await logout();
-    openGlobalView("/mcp-services/dashboard", t("nav.dashboard", "Dashboard"), {
-      type: "lucide",
-      value: "layout-dashboard",
+    openPath("/mcp-services/dashboard", {
+      type: "settings",
+      icon: { type: "lucide", value: "layout-dashboard" },
+      title: t("nav.dashboard", "Dashboard"),
     });
   };
 
@@ -68,10 +69,7 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
   };
 
   const handleSettingsClick = () => {
-    openGlobalView("/settings", t("nav.settings", "Settings"), {
-      type: "lucide",
-      value: "settings",
-    });
+    openSettings();
   };
 
   return (

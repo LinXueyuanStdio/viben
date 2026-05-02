@@ -30,7 +30,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, setsEqual } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 interface AgentMcpDialogProps {
   open: boolean;
@@ -46,7 +46,7 @@ export function AgentMcpDialog({
   onServersChange,
 }: AgentMcpDialogProps) {
   const { t } = useTranslation();
-  const { openGlobalView } = usePageTabs();
+  const { openPath } = useDesktopRouting();
   const mcpServers = useAppStore((state) => state.mcpServers);
   const [localSelected, setLocalSelected] = useState<string[]>(selectedServerIds);
   const [searchQuery, setSearchQuery] = useState("");
@@ -93,9 +93,9 @@ export function AgentMcpDialog({
 
   const handleGoToSearchService = () => {
     onOpenChange(false);
-    openGlobalView("/mcp-services/search-service", t("nav.searchService", "Search Service"), {
-      type: "lucide",
-      value: "search",
+    openPath("/mcp-services/search-service", {
+      title: t("nav.searchService", "Search Service"),
+      icon: { type: "lucide", value: "search" },
     });
   };
 
