@@ -805,12 +805,6 @@ export function ChatPopupLayer(): ReactElement {
   }, [workspacePath]);
 
   useEffect(() => {
-    if (messages.length > 0 && !capsuleVisible) {
-      setCapsuleVisible(true);
-    }
-  }, [messages.length, capsuleVisible]);
-
-  useEffect(() => {
     if (messages.length === 0) {
       setCapsuleVisible(false);
       setLastUserQuery('');

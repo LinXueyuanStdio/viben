@@ -7,7 +7,9 @@
 //! - Region screenshot via overlay window (with annotation)
 //!
 //! Region capture keeps the full-screen screenshot in an in-memory store.
-//! The overlay window requests it back via a Tauri command as a data URL.
+//! The overlay window only receives a lightweight preview image so the
+//! selection UI can appear quickly, while the final crop still uses the
+//! original full-resolution pixels.
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use std::collections::HashMap;
@@ -20,10 +22,19 @@ use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use xcap::{Monitor, Window};
 
+const OVERLAY_PREVIEW_JPEG_QUALITY: u8 = 80;
+
+struct StoredScreenshot {
+    original_width: u32,
+    original_height: u32,
+    original_rgba: Vec<u8>,
+    preview_jpeg: Vec<u8>,
+}
+
 /// In-memory store for the current region-screenshot session.
-/// Key: image ID (uuid), Value: JPEG bytes.
+/// Key: image ID (uuid), Value: full-resolution pixels + lightweight preview JPEG.
 pub struct ScreenshotStore {
-    pub images: Mutex<HashMap<String, Vec<u8>>>,
+    images: Mutex<HashMap<String, StoredScreenshot>>,
 }
 
 impl Default for ScreenshotStore {
@@ -300,35 +311,88 @@ async fn do_region_screenshot<R: Runtime>(
         }),
     );
 
-    // Encode to JPEG in memory only — frontend fetches via IPC command (no file/protocol issues).
-    let dynamic_img = image::DynamicImage::ImageRgba8(image);
-    let mut jpeg_buf = Cursor::new(Vec::new());
-    let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buf, 92);
-    let encode_started = Instant::now();
-    dynamic_img
-        .write_with_encoder(encoder)
-        .map_err(|e| format!("Failed to encode JPEG: {}", e))?;
-    let jpeg_bytes = jpeg_buf.into_inner();
+    let original_width = image.width();
+    let original_height = image.height();
+    let preview_width = monitor.width().max(1);
+    let preview_height = monitor.height().max(1);
+
+    let preview_resize_started = Instant::now();
+    let preview_image = if original_width == preview_width && original_height == preview_height {
+        let _ = write_screenshot_trace(
+            trace_id,
+            "rust",
+            "overlay_preview_resize_skipped",
+            serde_json::json!({
+                "preview_width": preview_width,
+                "preview_height": preview_height,
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
+        image.clone()
+    } else {
+        let preview = image::imageops::resize(
+            &image,
+            preview_width,
+            preview_height,
+            image::imageops::FilterType::Triangle,
+        );
+        let _ = write_screenshot_trace(
+            trace_id,
+            "rust",
+            "overlay_preview_resized",
+            serde_json::json!({
+                "elapsed_ms": preview_resize_started.elapsed().as_millis(),
+                "original_width": original_width,
+                "original_height": original_height,
+                "preview_width": preview_width,
+                "preview_height": preview_height,
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
+        preview
+    };
+
+    let preview_encode_started = Instant::now();
+    let mut preview_jpeg_buf = Cursor::new(Vec::new());
+    let preview_encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(
+        &mut preview_jpeg_buf,
+        OVERLAY_PREVIEW_JPEG_QUALITY,
+    );
+    image::DynamicImage::ImageRgba8(preview_image)
+        .write_with_encoder(preview_encoder)
+        .map_err(|e| format!("Failed to encode overlay preview JPEG: {}", e))?;
+    let preview_jpeg = preview_jpeg_buf.into_inner();
     let _ = write_screenshot_trace(
         trace_id,
         "rust",
-        "jpeg_encode_completed",
+        "overlay_preview_jpeg_encoded",
         serde_json::json!({
-            "elapsed_ms": encode_started.elapsed().as_millis(),
-            "jpeg_bytes_len": jpeg_bytes.len(),
-            "image_width": dynamic_img.width(),
-            "image_height": dynamic_img.height(),
+            "elapsed_ms": preview_encode_started.elapsed().as_millis(),
+            "jpeg_bytes_len": preview_jpeg.len(),
+            "jpeg_quality": OVERLAY_PREVIEW_JPEG_QUALITY,
+            "preview_width": preview_width,
+            "preview_height": preview_height,
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
     );
 
-    // Store in memory — frontend calls get_screenshot_image to retrieve as base64 data URL
+    let original_rgba = image.into_raw();
+
+    // Store full-resolution pixels in memory — frontend only fetches the preview data URL.
     let image_id = uuid::Uuid::new_v4().to_string();
     let store = app.state::<ScreenshotStore>();
     {
         let mut images = store.images.lock().unwrap();
         images.clear();
-        images.insert(image_id.clone(), jpeg_bytes);
+        images.insert(
+            image_id.clone(),
+            StoredScreenshot {
+                original_width,
+                original_height,
+                original_rgba,
+                preview_jpeg,
+            },
+        );
     }
     let _ = write_screenshot_trace(
         trace_id,
@@ -336,6 +400,11 @@ async fn do_region_screenshot<R: Runtime>(
         "image_stored_in_memory",
         serde_json::json!({
             "image_id": image_id,
+            "original_width": original_width,
+            "original_height": original_height,
+            "raw_bytes_len": (original_width as usize)
+                .saturating_mul(original_height as usize)
+                .saturating_mul(4),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
     );
@@ -420,17 +489,17 @@ pub async fn get_screenshot_image<R: Runtime>(
     let started = Instant::now();
     let store = app.state::<ScreenshotStore>();
     let images = store.images.lock().unwrap();
-    let bytes = images
+    let stored = images
         .get(&image_id)
         .ok_or_else(|| "Screenshot not found in memory store".to_string())?;
-    let b64 = BASE64_STANDARD.encode(bytes);
+    let b64 = BASE64_STANDARD.encode(&stored.preview_jpeg);
     let _ = write_screenshot_trace(
         trace_id.as_deref().unwrap_or("unknown"),
         "rust",
         "get_screenshot_image_completed",
         serde_json::json!({
             "image_id": image_id,
-            "bytes_len": bytes.len(),
+            "bytes_len": stored.preview_jpeg.len(),
             "elapsed_ms": started.elapsed().as_millis(),
         }),
     );
@@ -461,19 +530,22 @@ pub async fn confirm_region_screenshot<R: Runtime>(
     screen_height: f64,
     annotation_data: Option<String>,
 ) -> Result<(), String> {
-    // Get the stored full-screen image
-    let jpeg_bytes = {
+    // Take ownership of the stored full-screen image once the user confirms.
+    let stored = {
         let store = app.state::<ScreenshotStore>();
-        let images = store.images.lock().unwrap();
+        let mut images = store.images.lock().unwrap();
         images
-            .get(&image_id)
-            .cloned()
+            .remove(&image_id)
             .ok_or_else(|| "Screenshot image not found in store".to_string())?
     };
 
-    // Decode JPEG to get the full image
-    let full_img = image::load_from_memory_with_format(&jpeg_bytes, image::ImageFormat::Jpeg)
-        .map_err(|e| format!("Failed to decode stored image: {}", e))?;
+    let full_img = image::RgbaImage::from_raw(
+        stored.original_width,
+        stored.original_height,
+        stored.original_rgba,
+    )
+    .ok_or_else(|| "Failed to reconstruct stored screenshot".to_string())?;
+    let full_img = image::DynamicImage::ImageRgba8(full_img);
 
     // Map screen coordinates to image pixel coordinates
     let img_scale_x = full_img.width() as f64 / screen_width;
@@ -546,11 +618,6 @@ pub async fn confirm_region_screenshot<R: Runtime>(
     // Close overlay and clean up
     if let Some(window) = app.get_webview_window("screenshot-overlay") {
         let _ = window.close();
-    }
-    {
-        let store = app.state::<ScreenshotStore>();
-        let mut images = store.images.lock().unwrap();
-        images.remove(&image_id);
     }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
