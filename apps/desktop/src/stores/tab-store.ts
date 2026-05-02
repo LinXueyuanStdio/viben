@@ -40,9 +40,16 @@ export interface PageTab {
   viewMode?: PageViewMode;
 }
 
+export interface ClosedTabSnapshot {
+  tab: PageTab;
+  closedAt: number;
+  originIndex: number;
+}
+
 interface TabState {
   tabs: PageTab[];
   activeTabId: string | null;
+  recentlyClosedTabs: ClosedTabSnapshot[];
 }
 
 interface OpenTabInput extends Omit<PageTab, "id" | "history" | "historyIndex" | "navigationHistory"> {
@@ -71,6 +78,7 @@ interface TabActions {
   ) => void;
   popTo: (tabId: string, index: number) => void;
   resetStack: (tabId: string, next: TabNavigationState) => void;
+  jumpToHistory: (tabId: string, historyIndex: number) => void;
   goBack: (tabId: string) => void;
   goForward: (tabId: string) => void;
   canGoBack: (tabId: string) => boolean;
@@ -78,11 +86,14 @@ interface TabActions {
   getCurrentUrl: (tabId: string) => string | null;
   getCurrentNavigationState: (tabId: string) => TabNavigationState | null;
   closeAllTabs: () => void;
+  duplicateTab: (tabId: string) => string | null;
+  reopenClosedTab: () => string | null;
   restoreTab: (tab: PageTab) => void;
 }
 
 const generateTabId = () =>
   `tab-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+const MAX_RECENTLY_CLOSED_TABS = 20;
 
 function findLastPinnedIndex(tabs: PageTab[]): number {
   for (let index = tabs.length - 1; index >= 0; index -= 1) {
@@ -158,11 +169,50 @@ function updateTabHistory(
   return syncLegacyHistory(updater(coerceNavigationHistory(tab)));
 }
 
+function cloneTabWithNewId(tab: PageTab, overrides?: Partial<PageTab>): PageTab {
+  return syncLegacyHistory({
+    ...coerceNavigationHistory(tab),
+    ...overrides,
+    id: generateTabId(),
+  });
+}
+
+function createClosedSnapshot(tab: PageTab, originIndex: number): ClosedTabSnapshot {
+  return {
+    tab: coerceNavigationHistory(tab),
+    originIndex,
+    closedAt: Date.now(),
+  };
+}
+
+function pushClosedSnapshots(
+  stack: ClosedTabSnapshot[],
+  snapshots: ClosedTabSnapshot[]
+): ClosedTabSnapshot[] {
+  if (snapshots.length === 0) {
+    return stack;
+  }
+
+  return [...snapshots].reverse().concat(stack).slice(0, MAX_RECENTLY_CLOSED_TABS);
+}
+
+function restoreClosedTabIntoTabs(
+  tabs: PageTab[],
+  snapshot: ClosedTabSnapshot
+): { tabs: PageTab[]; restoredTab: PageTab } {
+  const restoredTab = cloneTabWithNewId(snapshot.tab);
+  const nextTabs = [...tabs];
+  const insertIndex = Math.max(0, Math.min(snapshot.originIndex, nextTabs.length));
+  nextTabs.splice(insertIndex, 0, restoredTab);
+  return { tabs: nextTabs, restoredTab };
+}
+
 export const useTabStore = create<TabState & TabActions>()(
   persist(
     (set, get) => ({
       tabs: [],
       activeTabId: null,
+      recentlyClosedTabs: [],
 
       openTab: (tabData, url) => {
         const id = generateTabId();
@@ -190,6 +240,10 @@ export const useTabStore = create<TabState & TabActions>()(
           const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
           if (tabIndex === -1) return state;
 
+          const recentlyClosedTabs = pushClosedSnapshots(
+            state.recentlyClosedTabs,
+            [createClosedSnapshot(state.tabs[tabIndex], tabIndex)]
+          );
           const tabs = state.tabs.filter((tab) => tab.id !== tabId);
           let activeTabId = state.activeTabId;
 
@@ -203,15 +257,23 @@ export const useTabStore = create<TabState & TabActions>()(
             }
           }
 
-          return { tabs, activeTabId };
+          return { tabs, activeTabId, recentlyClosedTabs };
         });
       },
 
       closeOtherTabs: (tabId) => {
-        set((state) => ({
-          tabs: state.tabs.filter((tab) => tab.pinned || tab.id === tabId),
-          activeTabId: tabId,
-        }));
+        set((state) => {
+          const snapshots = state.tabs
+            .map((tab, index) => ({ tab, index }))
+            .filter(({ tab }) => !tab.pinned && tab.id !== tabId)
+            .map(({ tab, index }) => createClosedSnapshot(tab, index));
+
+          return {
+            tabs: state.tabs.filter((tab) => tab.pinned || tab.id === tabId),
+            activeTabId: tabId,
+            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
+          };
+        });
       },
 
       closeTabsToRight: (tabId) => {
@@ -219,12 +281,21 @@ export const useTabStore = create<TabState & TabActions>()(
           const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
           if (tabIndex === -1) return state;
 
-          const tabs = state.tabs.filter((tab, index) => index <= tabIndex || tab.pinned);
+          const snapshots = state.tabs
+            .map((tab, index) => ({ tab, index }))
+            .filter(({ tab, index }) => index > tabIndex && !tab.pinned)
+            .map(({ tab, index }) => createClosedSnapshot(tab, index));
+          const closingIds = new Set(snapshots.map((snapshot) => snapshot.tab.id));
+          const tabs = state.tabs.filter((tab) => !closingIds.has(tab.id));
           const activeTabId = tabs.some((tab) => tab.id === state.activeTabId)
             ? state.activeTabId
             : tabId;
 
-          return { tabs, activeTabId };
+          return {
+            tabs,
+            activeTabId,
+            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
+          };
         });
       },
 
@@ -424,6 +495,28 @@ export const useTabStore = create<TabState & TabActions>()(
         }));
       },
 
+      jumpToHistory: (tabId, historyIndex) => {
+        set((state) => ({
+          tabs: state.tabs.map((tab) => {
+            if (tab.id !== tabId) return tab;
+            const current = coerceNavigationHistory(tab);
+            const nextIndex = Math.max(
+              0,
+              Math.min(historyIndex, current.navigationHistory.length - 1)
+            );
+
+            if (nextIndex === current.historyIndex) {
+              return current;
+            }
+
+            return syncLegacyHistory({
+              ...current,
+              historyIndex: nextIndex,
+            });
+          }),
+        }));
+      },
+
       goBack: (tabId) => {
         set((state) => ({
           tabs: state.tabs.map((tab) => {
@@ -483,18 +576,69 @@ export const useTabStore = create<TabState & TabActions>()(
 
       closeAllTabs: () => {
         set((state) => {
+          const snapshots = state.tabs
+            .map((tab, index) => ({ tab, index }))
+            .filter(({ tab }) => !tab.pinned)
+            .map(({ tab, index }) => createClosedSnapshot(tab, index));
           const tabs = state.tabs.filter((tab) => tab.pinned);
           return {
             tabs,
             activeTabId: tabs[0]?.id ?? null,
+            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
           };
         });
       },
 
+      duplicateTab: (tabId) => {
+        const state = get();
+        const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+        if (tabIndex === -1) return null;
+
+        const duplicatedTab = cloneTabWithNewId(state.tabs[tabIndex], {
+          pinned: false,
+        });
+
+        set((current) => {
+          const tabs = [...current.tabs];
+          tabs.splice(tabIndex + 1, 0, duplicatedTab);
+          return {
+            tabs,
+            activeTabId: duplicatedTab.id,
+          };
+        });
+
+        return duplicatedTab.id;
+      },
+
+      reopenClosedTab: () => {
+        const state = get();
+        const snapshot = state.recentlyClosedTabs[0];
+        if (!snapshot) return null;
+
+        let restoredTabId: string | null = null;
+
+        set((current) => {
+          const [nextSnapshot, ...restSnapshots] = current.recentlyClosedTabs;
+          if (!nextSnapshot) return current;
+
+          const restored = restoreClosedTabIntoTabs(current.tabs, nextSnapshot);
+          restoredTabId = restored.restoredTab.id;
+
+          return {
+            tabs: restored.tabs,
+            activeTabId: restored.restoredTab.id,
+            recentlyClosedTabs: restSnapshots,
+          };
+        });
+
+        return restoredTabId;
+      },
+
       restoreTab: (tab) => {
+        const restoredTab = cloneTabWithNewId(tab);
         set((state) => ({
-          tabs: [...state.tabs, coerceNavigationHistory(tab)],
-          activeTabId: tab.id,
+          tabs: [...state.tabs, restoredTab],
+          activeTabId: restoredTab.id,
         }));
       },
     }),
@@ -503,6 +647,7 @@ export const useTabStore = create<TabState & TabActions>()(
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId,
+        recentlyClosedTabs: state.recentlyClosedTabs,
       }),
       merge: (persisted, current) => {
         const merged = {
@@ -513,6 +658,10 @@ export const useTabStore = create<TabState & TabActions>()(
         return {
           ...merged,
           tabs: (merged.tabs ?? []).map(coerceNavigationHistory),
+          recentlyClosedTabs: (merged.recentlyClosedTabs ?? []).map((snapshot) => ({
+            ...snapshot,
+            tab: coerceNavigationHistory(snapshot.tab),
+          })),
         };
       },
     }

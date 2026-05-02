@@ -167,6 +167,7 @@ export function usePageTabs() {
   const pushPageStore = useTabStore((state) => state.pushPage);
   const popToStore = useTabStore((state) => state.popTo);
   const resetStackStore = useTabStore((state) => state.resetStack);
+  const jumpToHistoryStore = useTabStore((state) => state.jumpToHistory);
   const goBack = useTabStore((state) => state.goBack);
   const goForward = useTabStore((state) => state.goForward);
   const canGoBack = useTabStore((state) => state.canGoBack);
@@ -526,6 +527,22 @@ export function usePageTabs() {
     }
   }, [activeTabId, canGoForward, goForward]);
 
+  const jumpToHistory = useCallback(
+    (historyIndex: number) => {
+      if (!activeTabId) return;
+      jumpToHistoryStore(activeTabId, historyIndex);
+    },
+    [activeTabId, jumpToHistoryStore]
+  );
+
+  const getTabLink = useCallback(
+    (tabId: string) => {
+      const state = getCurrentNavigationState(tabId);
+      return state ? locationToUrl(state.location) : null;
+    },
+    [getCurrentNavigationState]
+  );
+
   return {
     tabs,
     activeTab,
@@ -544,9 +561,11 @@ export function usePageTabs() {
     openPageInNewTab,
     switchToTab,
     closeTab,
+    getTabLink,
     navigateInTab,
     goBackInTab,
     goForwardInTab,
+    jumpToHistory,
     canGoBack: activeTabId ? canGoBack(activeTabId) : false,
     canGoForward: activeTabId ? canGoForward(activeTabId) : false,
     currentUrl: activeTabId ? getCurrentUrl(activeTabId) : null,

@@ -62,6 +62,15 @@ export interface SortableTabItemProps {
   onPin: () => void;
   onUnpin: () => void;
   onCloseOthers: () => void;
+  onCloseRight: () => void;
+  onDuplicate: () => void;
+  onReopenClosed: () => void;
+  onCopyLink: () => void | Promise<void>;
+  onMoveToStart: () => void;
+  onMoveToEnd: () => void;
+  canReopenClosed?: boolean;
+  canMoveToStart?: boolean;
+  canMoveToEnd?: boolean;
 }
 
 export function SortableTabItem({
@@ -75,6 +84,15 @@ export function SortableTabItem({
   onPin,
   onUnpin,
   onCloseOthers,
+  onCloseRight,
+  onDuplicate,
+  onReopenClosed,
+  onCopyLink,
+  onMoveToStart,
+  onMoveToEnd,
+  canReopenClosed = false,
+  canMoveToStart = false,
+  canMoveToEnd = false,
 }: SortableTabItemProps) {
   const { t } = useTranslation();
   const {
@@ -192,17 +210,38 @@ export function SortableTabItem({
             </TooltipContent>
           </Tooltip>
           <ContextMenuContent className="w-48">
-            <ContextMenuItem onClick={onUnpin}>
-              <PinOff className="h-4 w-4 mr-2" />
-              {t("tabBar.unpinTab", "Unpin Tab")}
-            </ContextMenuItem>
-            <ContextMenuSeparator />
             <ContextMenuItem onClick={onClose}>
               <X className="h-4 w-4 mr-2" />
               {t("common.close")}
             </ContextMenuItem>
             <ContextMenuItem onClick={onCloseOthers}>
               {t("tabBar.closeOthers", "Close Others")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onCloseRight}>
+              {t("tabBar.closeToRight", "Close Tabs to the Right")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onReopenClosed} disabled={!canReopenClosed}>
+              {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onDuplicate}>
+              {t("tabBar.duplicateTab", "Duplicate Tab")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onUnpin}>
+              <PinOff className="h-4 w-4 mr-2" />
+              {t("tabBar.unpinTab", "Unpin Tab")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onCopyLink}>
+              {t("tabBar.copyLink", "Copy Link")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onMoveToStart} disabled={!canMoveToStart}>
+              {t("tabBar.moveToStart", "Move to Start")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={onMoveToEnd} disabled={!canMoveToEnd}>
+              {t("tabBar.moveToEnd", "Move to End")}
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
@@ -287,13 +326,8 @@ export function SortableTabItem({
           </button>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={onPin}>
-            <Pin className="h-4 w-4 mr-2" />
-            {t("tabBar.pinTab", "Pin Tab")}
-          </ContextMenuItem>
           {canClose && (
             <>
-              <ContextMenuSeparator />
               <ContextMenuItem onClick={onClose}>
                 <X className="h-4 w-4 mr-2" />
                 {t("common.close")}
@@ -301,8 +335,34 @@ export function SortableTabItem({
               <ContextMenuItem onClick={onCloseOthers}>
                 {t("tabBar.closeOthers", "Close Others")}
               </ContextMenuItem>
+              <ContextMenuItem onClick={onCloseRight}>
+                {t("tabBar.closeToRight", "Close Tabs to the Right")}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
             </>
           )}
+          <ContextMenuItem onClick={onReopenClosed} disabled={!canReopenClosed}>
+            {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onDuplicate}>
+            {t("tabBar.duplicateTab", "Duplicate Tab")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onPin}>
+            <Pin className="h-4 w-4 mr-2" />
+            {t("tabBar.pinTab", "Pin Tab")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onCopyLink}>
+            {t("tabBar.copyLink", "Copy Link")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onMoveToStart} disabled={!canMoveToStart}>
+            {t("tabBar.moveToStart", "Move to Start")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onMoveToEnd} disabled={!canMoveToEnd}>
+            {t("tabBar.moveToEnd", "Move to End")}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
     </div>

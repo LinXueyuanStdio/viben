@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +30,14 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -118,13 +127,20 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     canGoForward,
     switchToTab,
     closeTab,
+    getTabLink,
+    jumpToHistory,
   } = usePageTabs();
 
   // Get additional store actions
   const pinTab = useTabStore((state) => state.pinTab);
   const unpinTab = useTabStore((state) => state.unpinTab);
   const closeOtherTabs = useTabStore((state) => state.closeOtherTabs);
+  const closeTabsToRight = useTabStore((state) => state.closeTabsToRight);
+  const duplicateTab = useTabStore((state) => state.duplicateTab);
+  const reopenClosedTab = useTabStore((state) => state.reopenClosedTab);
+  const closeAllTabs = useTabStore((state) => state.closeAllTabs);
   const moveTab = useTabStore((state) => state.moveTab);
+  const hasRecentlyClosedTabs = useTabStore((state) => state.recentlyClosedTabs.length > 0);
 
   // Track newly added tabs for entrance animation
   useEffect(() => {
@@ -211,6 +227,85 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     [closeOtherTabs]
   );
 
+  const handleCloseRight = useCallback(
+    (tabId: string) => {
+      closeTabsToRight(tabId);
+    },
+    [closeTabsToRight]
+  );
+
+  const handleDuplicateTab = useCallback(
+    (tabId: string) => {
+      duplicateTab(tabId);
+    },
+    [duplicateTab]
+  );
+
+  const handleMoveTabToStart = useCallback(
+    (tabId: string) => {
+      const fromIndex = tabs.findIndex((tab) => tab.id === tabId);
+      if (fromIndex <= 0) return;
+      moveTab(fromIndex, 0);
+    },
+    [moveTab, tabs]
+  );
+
+  const handleMoveTabToEnd = useCallback(
+    (tabId: string) => {
+      const fromIndex = tabs.findIndex((tab) => tab.id === tabId);
+      if (fromIndex === -1 || fromIndex >= tabs.length - 1) return;
+      moveTab(fromIndex, tabs.length - 1);
+    },
+    [moveTab, tabs]
+  );
+
+  const handleReopenClosedTab = useCallback(() => {
+    reopenClosedTab();
+  }, [reopenClosedTab]);
+
+  const handleCloseAllTabs = useCallback(() => {
+    closeAllTabs();
+  }, [closeAllTabs]);
+
+  const handleCopyTabLink = useCallback(
+    async (tabId: string) => {
+      const link = getTabLink(tabId);
+      if (!link) return;
+
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success(t("pageSection.linkCopied", "Link copied to clipboard"));
+      } catch (error) {
+        console.error("Failed to copy tab link:", error);
+        toast.error(t("common.copyFailed", "Failed to copy"));
+      }
+    },
+    [getTabLink, t]
+  );
+
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+  const backHistoryItems = activeTab
+    ? activeTab.navigationHistory
+        .slice(0, activeTab.historyIndex)
+        .map((state, index) => ({
+          historyIndex: index,
+          label:
+            state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
+            state.location.kind,
+        }))
+        .reverse()
+    : [];
+  const forwardHistoryItems = activeTab
+    ? activeTab.navigationHistory
+        .slice(activeTab.historyIndex + 1)
+        .map((state, offset) => ({
+          historyIndex: activeTab.historyIndex + offset + 1,
+          label:
+            state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
+            state.location.kind,
+        }))
+    : [];
+
   // Get openTab action for creating new tabs
   const openTab = useTabStore((state) => state.openTab);
 
@@ -250,40 +345,82 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           )}
         >
           {/* Back button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
-                onClick={goBackInTab}
-                disabled={!canGoBack}
-              >
-                <ChevronLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {t("common.back", "Go Back")}
-            </TooltipContent>
-          </Tooltip>
+          <ContextMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ContextMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                    onClick={goBackInTab}
+                    disabled={!canGoBack}
+                  >
+                    <ChevronLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                  </Button>
+                </ContextMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {t("common.back", "Go Back")}
+              </TooltipContent>
+            </Tooltip>
+            <ContextMenuContent className="w-56">
+              <ContextMenuLabel>{t("tabBar.backHistory", "Back History")}</ContextMenuLabel>
+              {backHistoryItems.length > 0 ? (
+                backHistoryItems.map((item) => (
+                  <ContextMenuItem
+                    key={`back-${item.historyIndex}`}
+                    onClick={() => jumpToHistory(item.historyIndex)}
+                  >
+                    {item.label}
+                  </ContextMenuItem>
+                ))
+              ) : (
+                <ContextMenuItem disabled>
+                  {t("tabBar.noBackHistory", "No back history")}
+                </ContextMenuItem>
+              )}
+            </ContextMenuContent>
+          </ContextMenu>
 
           {/* Forward button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
-                onClick={goForwardInTab}
-                disabled={!canGoForward}
-              >
-                <ChevronRight className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {t("common.forward", "Go Forward")}
-            </TooltipContent>
-          </Tooltip>
+          <ContextMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ContextMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                    onClick={goForwardInTab}
+                    disabled={!canGoForward}
+                  >
+                    <ChevronRight className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                  </Button>
+                </ContextMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {t("common.forward", "Go Forward")}
+              </TooltipContent>
+            </Tooltip>
+            <ContextMenuContent className="w-56">
+              <ContextMenuLabel>{t("tabBar.forwardHistory", "Forward History")}</ContextMenuLabel>
+              {forwardHistoryItems.length > 0 ? (
+                forwardHistoryItems.map((item) => (
+                  <ContextMenuItem
+                    key={`forward-${item.historyIndex}`}
+                    onClick={() => jumpToHistory(item.historyIndex)}
+                  >
+                    {item.label}
+                  </ContextMenuItem>
+                ))
+              ) : (
+                <ContextMenuItem disabled>
+                  {t("tabBar.noForwardHistory", "No forward history")}
+                </ContextMenuItem>
+              )}
+            </ContextMenuContent>
+          </ContextMenu>
         </div>
 
         {/* Separator between nav and tabs */}
@@ -313,6 +450,15 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                   onPin={() => handlePinTab(tab.id)}
                   onUnpin={() => handleUnpinTab(tab.id)}
                   onCloseOthers={() => handleCloseOthers(tab.id)}
+                  onCloseRight={() => handleCloseRight(tab.id)}
+                  onDuplicate={() => handleDuplicateTab(tab.id)}
+                  onReopenClosed={handleReopenClosedTab}
+                  onCopyLink={() => handleCopyTabLink(tab.id)}
+                  onMoveToStart={() => handleMoveTabToStart(tab.id)}
+                  onMoveToEnd={() => handleMoveTabToEnd(tab.id)}
+                  canReopenClosed={hasRecentlyClosedTabs}
+                  canMoveToStart={tabs.findIndex((item) => item.id === tab.id) > 0}
+                  canMoveToEnd={tabs.findIndex((item) => item.id === tab.id) < tabs.length - 1}
                 />
               ))}
             </SortableContext>
@@ -336,11 +482,27 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           </Tooltip>
         </div>
 
-        {/* Spacer: drag region for window dragging + double-click to maximize */}
-        <div
-          data-tauri-drag-region
-          className="flex-1 self-stretch"
-        />
+        {/* Spacer: drag region for window dragging + empty-space context menu */}
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              data-tauri-drag-region
+              className="flex-1 self-stretch"
+            />
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-52">
+            <ContextMenuItem onClick={handleNewTab}>
+              {t("common.newTab", "New Tab")}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleReopenClosedTab} disabled={!hasRecentlyClosedTabs}>
+              {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={handleCloseAllTabs} disabled={tabs.every((tab) => tab.pinned)}>
+              {t("tabBar.closeAllUnpinned", "Close All Unpinned Tabs")}
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
         {/* Right side: Window Controls only */}
         <div className="flex items-center shrink-0">
