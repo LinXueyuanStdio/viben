@@ -5814,7 +5814,9 @@
     "updateFailed": "更新页面失败",
     "editPage": "编辑页面",
     "editPageDescription": "修改页面名称、描述和图标",
-    "untitled": "无标题"
+    "untitled": "无标题",
+    "copyLink": "复制链接",
+    "linkCopied": "链接已复制到剪贴板"
   },
   "emojiPicker": {
     "categories": {

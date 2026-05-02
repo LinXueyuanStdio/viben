@@ -5814,7 +5814,9 @@
     "updateFailed": "Failed to update page",
     "editPage": "Edit Page",
     "editPageDescription": "Modify page name, description, and icon",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "copyLink": "Copy Link",
+    "linkCopied": "Link copied to clipboard"
   },
   "emojiPicker": {
     "categories": {
