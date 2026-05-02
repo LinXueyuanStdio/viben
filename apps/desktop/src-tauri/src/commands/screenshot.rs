@@ -6,8 +6,8 @@
 //! - Window enumeration and per-window capture
 //! - Region screenshot via overlay window (with annotation)
 //!
-//! Performance: Uses a custom URI scheme (`viben-screenshot://`) to serve
-//! captured images directly from memory, eliminating temp file I/O.
+//! Region capture keeps the full-screen screenshot in an in-memory store.
+//! The overlay window requests it back via a Tauri command as a data URL.
 
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine};
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 use xcap::{Monitor, Window};
 
-/// In-memory store for screenshot images served via custom protocol.
+/// In-memory store for the current region-screenshot session.
 /// Key: image ID (uuid), Value: JPEG bytes.
 pub struct ScreenshotStore {
     pub images: Mutex<HashMap<String, Vec<u8>>>,
@@ -172,7 +172,7 @@ pub async fn take_window_screenshot(window_id: u32) -> Result<ScreenshotResult, 
     image_to_result(&dynamic)
 }
 
-/// Start region screenshot: capture specified monitor, save to temp file, open overlay window
+/// Start region screenshot: capture a monitor, cache it in memory, open the overlay window.
 #[tauri::command]
 pub async fn start_region_screenshot<R: Runtime>(
     app: AppHandle<R>,
@@ -241,15 +241,11 @@ async fn do_region_screenshot<R: Runtime>(
     let monitor_y = monitor.y();
     let scale_factor = monitor.scale_factor();
 
-    // Also pass image dimensions so frontend knows the actual pixel size
-    let img_width = dynamic_img.width();
-
-    // Overlay window URL — only pass image ID (frontend fetches data via IPC)
+    // Overlay window URL — only pass the image ID and monitor scale.
     let url = format!(
-        "/screenshot-overlay?id={}&scale={}&imgw={}",
+        "/screenshot-overlay?id={}&scale={}",
         urlencoding::encode(&image_id),
-        scale_factor,
-        img_width
+        scale_factor
     );
 
     // Close any existing overlay window first (from a previous session)
@@ -259,8 +255,7 @@ async fn do_region_screenshot<R: Runtime>(
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 
-    // Create overlay window covering the full screen.
-    // CSS sets body background to #000, so the brief load time shows black (not white).
+    // Create overlay window covering the selected monitor.
     // On macOS: do NOT use .maximized(true) — it respects safe area (excludes menu bar)
     let _overlay_window = WebviewWindowBuilder::new(
         app,

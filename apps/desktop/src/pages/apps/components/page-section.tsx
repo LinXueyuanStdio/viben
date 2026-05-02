@@ -567,6 +567,7 @@ export function PageSection({
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
+  const duplicatePageMutation = useDuplicatePage();
   const reorderPagesMutation = useReorderPages();
 
   // Delete confirmation state
@@ -755,6 +756,24 @@ export function PageSection({
       });
     });
   }, [workspaceId, t]);
+
+  // Handle duplicate page
+  const handleDuplicate = useCallback((page: PageConfig) => {
+    if (!workspacePath) return;
+    duplicatePageMutation.mutate(
+      { workspace_path: workspacePath, slug: page.slug },
+      {
+        onSuccess: (result) => {
+          if (result.success && result.page) {
+            toast.success(t("page.duplicateSuccess"));
+          }
+        },
+        onError: () => {
+          toast.error(t("common.error"));
+        },
+      }
+    );
+  }, [workspacePath, duplicatePageMutation, t]);
 
   // Handle page creation success - open new page in tab
   const handleCreateSuccess = useCallback((slug: string) => {
