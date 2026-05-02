@@ -133,7 +133,7 @@ export function useConversation(
       temperature: agentDetail.temperature,
       max_tokens: agentDetail.max_tokens,
       executor_type: agentDetail.executor_type,
-      mcp_servers: agentDetail.mcp_servers,
+      mcp_servers: agentDetail.mcp_servers?.map((s) => typeof s === "string" ? s : s.name),
       skills: agentDetail.skills,
       plan_mode: agentDetail.plan_mode,
       approvals: agentDetail.approvals,

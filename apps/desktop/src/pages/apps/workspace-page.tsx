@@ -347,7 +347,6 @@ export function WorkspacePage() {
           workspaceId,
           pageSlug: slug,
         },
-        kind: "workspace-page",
         icon: page?.icon ?? { type: "lucide", value: "file-text" },
         meta: {
           workspaceId,

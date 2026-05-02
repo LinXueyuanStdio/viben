@@ -1253,7 +1253,7 @@
     "goToSearchService": "Go to Search Service",
     "createNewServer": "Create Server",
     "configureSkills": "Configure Skills",
-    "configureSkillsDesc": "Select skills to enable for this agent. Skills extend the agent's capabilities.",
+    "configureSkillsDesc": "Select skills to enhance your agent's capabilities",
     "noSkillsAvailable": "No skills installed. Browse the marketplace to install skills.",
     "browseMarketplace": "Browse Marketplace",
     "browseMore": "Browse More",
@@ -1263,6 +1263,46 @@
     "editableMemory": "Editable persistent memory",
     "noMcpServersHint": "Create MCP servers to provide tools for your agent",
     "noSkillsHint": "Install skills from the marketplace to extend your agent",
+    "mcpTab": {
+      "registered": "Registered",
+      "builtin": "Built-in",
+      "custom": "Custom"
+    },
+    "skillsTab": {
+      "marketplace": "Marketplace",
+      "local": "Local Path",
+      "builtin": "Built-in"
+    },
+    "mcpCustomForm": {
+      "name": "Server Name",
+      "namePlaceholder": "my-mcp-server",
+      "type": "Transport",
+      "command": "Command",
+      "commandPlaceholder": "node",
+      "args": "Arguments",
+      "argsPlaceholder": "server.js, --port, 3000",
+      "url": "URL",
+      "urlPlaceholder": "http://localhost:3000/sse",
+      "env": "Environment Variables",
+      "envKey": "Key",
+      "envValue": "Value",
+      "headers": "Headers",
+      "addEnv": "Add Variable",
+      "addHeader": "Add Header",
+      "addServer": "Add Server"
+    },
+    "mcpBuiltinDesc": {
+      "presentation": "Presentation mode tools for overlay drawing, spotlight, callout, and walkthrough annotations"
+    },
+    "skillsLocalPath": {
+      "browse": "Browse",
+      "pathPlaceholder": "Enter relative path (e.g., ./skills/my-skill)",
+      "pathHint": "Select a directory containing SKILL.md",
+      "noSkillMd": "Selected directory does not contain SKILL.md",
+      "addPath": "Add Path"
+    },
+    "builtinComingSoon": "No built-in skills yet, stay tuned",
+    "providerConstraint": "Only {{providers}} models supported for this executor",
     "gatewayNotRunningHint": "Gateway service is not running. Please start Gateway in Settings first.",
     "prompts": "Prompts",
     "commands": "Commands",

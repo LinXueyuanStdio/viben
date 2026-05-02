@@ -220,7 +220,7 @@ export function useWorkspaceChat() {
     system_prompt: detailAgentData.system_prompt,
     temperature: detailAgentData.temperature,
     max_tokens: detailAgentData.max_tokens,
-    mcp_servers: detailAgentData.mcp_servers,
+    mcp_servers: detailAgentData.mcp_servers?.map((s) => typeof s === "string" ? s : s.name),
     skills: detailAgentData.skills,
     created_at: detailAgentData.created_at,
     updated_at: detailAgentData.updated_at,

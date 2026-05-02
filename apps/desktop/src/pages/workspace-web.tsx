@@ -85,7 +85,6 @@ export function WorkspaceWebPage() {
           webId: searchParams.get("web_id") ?? undefined,
           sourcePageSlug: searchParams.get("source_page") ?? undefined,
         },
-        kind: "workspace-web",
         icon: { type: "lucide", value: "globe" },
         meta: webMeta,
       }),

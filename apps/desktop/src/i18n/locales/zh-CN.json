@@ -1253,7 +1253,7 @@
     "goToSearchService": "前往搜索服务",
     "createNewServer": "创建服务器",
     "configureSkills": "配置技能",
-    "configureSkillsDesc": "选择要为此智能体启用的技能。技能可以扩展智能体的能力。",
+    "configureSkillsDesc": "选择技能以增强智能体的能力",
     "noSkillsAvailable": "没有已安装的技能。浏览商店以安装技能。",
     "browseMarketplace": "浏览商店",
     "browseMore": "浏览更多",
@@ -1263,6 +1263,46 @@
     "editableMemory": "可编辑的持久记忆",
     "noMcpServersHint": "创建 MCP 服务器以为您的智能体提供工具",
     "noSkillsHint": "从商店安装技能以扩展您的智能体",
+    "mcpTab": {
+      "registered": "已注册",
+      "builtin": "内置",
+      "custom": "自定义"
+    },
+    "skillsTab": {
+      "marketplace": "市场",
+      "local": "本地路径",
+      "builtin": "内置"
+    },
+    "mcpCustomForm": {
+      "name": "服务器名称",
+      "namePlaceholder": "my-mcp-server",
+      "type": "传输协议",
+      "command": "命令",
+      "commandPlaceholder": "node",
+      "args": "参数",
+      "argsPlaceholder": "server.js, --port, 3000",
+      "url": "URL",
+      "urlPlaceholder": "http://localhost:3000/sse",
+      "env": "环境变量",
+      "envKey": "键",
+      "envValue": "值",
+      "headers": "请求头",
+      "addEnv": "添加变量",
+      "addHeader": "添加请求头",
+      "addServer": "添加服务器"
+    },
+    "mcpBuiltinDesc": {
+      "presentation": "演示模式工具，支持画板标注、高亮、引导等功能"
+    },
+    "skillsLocalPath": {
+      "browse": "浏览",
+      "pathPlaceholder": "输入相对路径（如 ./skills/my-skill）",
+      "pathHint": "选择包含 SKILL.md 的目录",
+      "noSkillMd": "所选目录中不包含 SKILL.md",
+      "addPath": "添加路径"
+    },
+    "builtinComingSoon": "暂无内置技能，敬请期待",
+    "providerConstraint": "此执行器仅支持 {{providers}} 模型",
     "gatewayNotRunningHint": "Gateway 服务未运行。请先在设置中启动 Gateway。",
     "prompts": "提示词",
     "commands": "指令",
