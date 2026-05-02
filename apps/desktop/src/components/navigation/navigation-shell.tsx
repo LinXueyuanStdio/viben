@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -26,6 +27,9 @@ interface RegisteredNavigationShellHeader extends NavigationShellHeaderState {
 interface NavigationShellActionsContextValue {
   setHeader: (ownerId: string, next: NavigationShellHeaderState) => void;
   clearHeader: (ownerId: string) => void;
+  setCenterContent: (ownerId: string, content: ReactNode | null) => void;
+  setRightContent: (ownerId: string, content: ReactNode | null) => void;
+  clearSlotContent: (ownerId: string) => void;
 }
 
 interface NavigationShellSlotsContextValue {
@@ -33,6 +37,8 @@ interface NavigationShellSlotsContextValue {
   rightHost: HTMLDivElement | null;
   setCenterHost: (node: HTMLDivElement | null) => void;
   setRightHost: (node: HTMLDivElement | null) => void;
+  centerContent: ReactNode | null;
+  rightContent: ReactNode | null;
 }
 
 const NavigationShellHeaderContext =
@@ -109,8 +115,11 @@ export function NavigationShellProvider({
 }) {
   const [header, setHeaderState] =
     useState<RegisteredNavigationShellHeader | null>(null);
+  const [centerContent, setCenterContentState] = useState<ReactNode | null>(null);
+  const [rightContent, setRightContentState] = useState<ReactNode | null>(null);
   const [centerHost, setCenterHost] = useState<HTMLDivElement | null>(null);
   const [rightHost, setRightHost] = useState<HTMLDivElement | null>(null);
+  const slotOwnerRef = useRef<string | null>(null);
 
   const setHeader = useCallback(
     (ownerId: string, next: NavigationShellHeaderState) => {
@@ -134,12 +143,35 @@ export function NavigationShellProvider({
     );
   }, []);
 
+  const setCenterContent = useCallback((ownerId: string, content: ReactNode | null) => {
+    slotOwnerRef.current = ownerId;
+    setCenterContentState(content);
+  }, []);
+
+  const setRightContent = useCallback((ownerId: string, content: ReactNode | null) => {
+    slotOwnerRef.current = ownerId;
+    setRightContentState(content);
+  }, []);
+
+  const clearSlotContent = useCallback((ownerId: string) => {
+    if (slotOwnerRef.current !== ownerId) {
+      return;
+    }
+
+    slotOwnerRef.current = null;
+    setCenterContentState(null);
+    setRightContentState(null);
+  }, []);
+
   const actionsValue = useMemo(
     () => ({
       setHeader,
       clearHeader,
+      setCenterContent,
+      setRightContent,
+      clearSlotContent,
     }),
-    [clearHeader, setHeader]
+    [clearHeader, clearSlotContent, setCenterContent, setHeader, setRightContent]
   );
   const slotsValue = useMemo(
     () => ({
@@ -147,8 +179,10 @@ export function NavigationShellProvider({
       rightHost,
       setCenterHost,
       setRightHost,
+      centerContent,
+      rightContent,
     }),
-    [centerHost, rightHost]
+    [centerContent, centerHost, rightContent, rightHost]
   );
 
   return (
@@ -164,6 +198,10 @@ export function NavigationShellProvider({
 
 export function useOptionalNavigationShell() {
   return useContext(NavigationShellActionsContext);
+}
+
+export function useNavigationShellHeaderState() {
+  return useContext(NavigationShellHeaderContext);
 }
 
 export function useNavigationShellSlots() {
@@ -223,13 +261,17 @@ export function GlobalBreadcrumbShell() {
         <div
           ref={handleCenterHostRef}
           className="flex min-w-0 items-center justify-center"
-        />
+        >
+          {slots?.centerContent}
+        </div>
       }
       rightSlot={
         <div
           ref={handleRightHostRef}
           className="flex items-center gap-2"
-        />
+        >
+          {slots?.rightContent}
+        </div>
       }
     />
   );

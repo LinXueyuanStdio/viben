@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import { cn } from "@/lib/utils";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { BreadcrumbDropdown } from "./breadcrumb-dropdown";
 import {
   getWorkspaceSectionDescriptor,
@@ -46,7 +46,7 @@ export function DesktopBreadcrumbBar({
 }: DesktopBreadcrumbBarProps) {
   const { t } = useTranslation();
   const { workspaces, selectWorkspace } = useLocalWorkspaces();
-  const { navigateTo, openWorkspaceView } = usePageTabs();
+  const { openPath, openWorkspaceHome, openWorkspaceSection } = useDesktopRouting();
 
   const currentSection = useMemo(() => {
     const sectionSegment = segments.find((segment) => {
@@ -58,9 +58,9 @@ export function DesktopBreadcrumbBar({
 
   const navigateWithTab = useCallback(
     (segment: Pick<DesktopBreadcrumbSegment, "href" | "label" | "icon" | "kind" | "meta">) => {
-      navigateTo(segment.href, {
+      openPath(segment.href, {
         type: inferTabType(segment.href, segment.kind),
-        name: segment.label,
+        title: segment.label,
         icon: segment.icon,
         slug:
           segment.meta?.section ??
@@ -70,7 +70,7 @@ export function DesktopBreadcrumbBar({
         workspaceId: segment.meta?.workspaceId ?? workspace?.id,
       });
     },
-    [navigateTo, workspace?.id]
+    [openPath, workspace?.id]
   );
 
   const handleWorkspaceSelect = useCallback(
@@ -80,55 +80,30 @@ export function DesktopBreadcrumbBar({
       if (currentSection) {
         const descriptor = getWorkspaceSectionDescriptor(currentSection);
         if (descriptor) {
-          openWorkspaceView(
-            workspaceId,
-            descriptor.routePath,
-            t(descriptor.titleKey, descriptor.fallbackLabel),
-            descriptor.icon
-          );
+          openWorkspaceSection(workspaceId, descriptor.section);
           return;
         }
       }
 
-      const nextWorkspace = workspaces.find((item) => item.id === workspaceId);
-      navigateTo(`/workspace/${encodeURIComponent(workspaceId)}`, {
-        type: "workspace",
-        name:
-          nextWorkspace?.type === "global"
-            ? t("workspace.global", "Global Workspace")
-            : nextWorkspace?.name ?? t("sidebar.workspaceHome", "Workspace"),
-        icon: {
-          type: "lucide",
-          value: nextWorkspace?.type === "global" ? "globe" : "folder-open",
-        },
-        workspaceId,
-      });
+      openWorkspaceHome(workspaceId);
     },
-    [currentSection, navigateTo, openWorkspaceView, selectWorkspace, t, workspaces]
+    [currentSection, openWorkspaceHome, openWorkspaceSection, selectWorkspace]
   );
 
   const handleSectionSelect = useCallback(
-    (section: NonNullable<DesktopBreadcrumbSegment["meta"]>["section"], routePath: string, href: string) => {
+    (section: NonNullable<DesktopBreadcrumbSegment["meta"]>["section"], _routePath: string, href: string) => {
       if (!workspace?.id || !section) {
-        navigateTo(href, {
+        openPath(href, {
           type: "workspace",
-          name: href,
+          title: href,
           workspaceId: workspace?.id,
         });
         return;
       }
 
-      const descriptor = getWorkspaceSectionDescriptor(section);
-      openWorkspaceView(
-        workspace.id,
-        routePath,
-        descriptor
-          ? t(descriptor.titleKey, descriptor.fallbackLabel)
-          : section,
-        descriptor?.icon ?? { type: "lucide", value: "file-text" }
-      );
+      openWorkspaceSection(workspace.id, section);
     },
-    [navigateTo, openWorkspaceView, t, workspace?.id]
+    [openPath, openWorkspaceSection, workspace?.id]
   );
 
   const rootSegment = useMemo<DesktopBreadcrumbSegment | null>(() => {

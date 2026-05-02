@@ -42,7 +42,6 @@ import {
   DeviceListPage,
   MobileChatPage,
   DevicePairPage,
-  ScreenshotOverlayPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -207,9 +206,6 @@ function App() {
 
               {/* Onboarding - separate full-screen wizard without layout */}
               <Route path="/onboarding" element={<OnboardingPage />} />
-
-              {/* Screenshot overlay - fullscreen region selection + annotation */}
-              <Route path="/screenshot-overlay" element={<ScreenshotOverlayPage />} />
             </>
           )}
         </Routes>
