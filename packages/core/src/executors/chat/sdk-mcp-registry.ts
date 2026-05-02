@@ -59,6 +59,13 @@ export function hasSdkMcpServer(name: string): boolean {
   return getRegistry().has(name);
 }
 
+/**
+ * Get all registered SDK MCP server names.
+ */
+export function getRegisteredSdkMcpServerNames(): string[] {
+  return Array.from(getRegistry().keys());
+}
+
 // ============================================================================
 // Built-in SDK MCP Server registrations
 // ============================================================================
